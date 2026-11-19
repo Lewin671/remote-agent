@@ -2264,90 +2264,74 @@
     <string name="transport_summary_off" formatted="false">"直连已关闭"</string>
     <string name="transport_use_file" formatted="false">"用于文件"</string>
     <string name="transport_use_read" formatted="false">"用于加载"</string>
-    <string name="usage_backfilled_summary">"%1$s · 已算近 %2$d 天"</string>
+    <string name="usage_axis_24h" formatted="false">"24 时"</string>
     <string name="usage_backfilling_banner">"正在从本机记录补算历史 · 已算 %1$d / %2$d 天"</string>
     <string name="usage_backfilling_cell" formatted="false">"补算中"</string>
-    <string name="usage_backfilling_zone" formatted="false">"更早记录补算中…"</string>
-    <string name="usage_cache_formula_footnote" formatted="false">"命中率 = 缓存读取 ÷（未缓存输入 + 缓存读取 + 缓存写入），按输入 token 加权。"</string>
-    <string name="usage_cache_write_footnote" formatted="false">"注：「—」表示该 CLI 或模型未单独上报缓存写入量，对应输入已计入未缓存输入，不影响总输入与命中率计算。"</string>
-    <string name="usage_chart_a11y_line">"%3$s %2$s趋势图，含 %1$d 条序列"</string>
-    <string name="usage_chart_a11y_tokens">"%2$s 消耗量柱状图，共 %3$s tokens，含 %1$d 对模型；下方表格含全部拆分数值"</string>
-    <string name="usage_col_cache_read" formatted="false">"缓存读取"</string>
-    <string name="usage_col_cache_write" formatted="false">"缓存写入"</string>
-    <string name="usage_col_hit_rate" formatted="false">"命中率"</string>
-    <string name="usage_col_median" formatted="false">"中位"</string>
-    <string name="usage_col_output" formatted="false">"输出"</string>
-    <string name="usage_col_pair" formatted="false">"Agent · 模型"</string>
-    <string name="usage_col_reqs" formatted="false">"次数"</string>
-    <string name="usage_col_total" formatted="false">"总量"</string>
-    <string name="usage_col_ttft_median" formatted="false">"首字中位"</string>
-    <string name="usage_col_uncached" formatted="false">"未缓存输入"</string>
-    <string name="usage_col_valid_reqs" formatted="false">"有效次"</string>
-    <string name="usage_col_vs_prev" formatted="false">"较上期"</string>
+    <plurals name="usage_charts_a11y">
+        <item quantity="other">"%2$s 用量与速度图表，共 %3$s tokens，%1$d 个模型"</item>
+    </plurals>
+    <string name="usage_col_cache" formatted="false">"命中"</string>
+    <string name="usage_col_model" formatted="false">"模型"</string>
+    <string name="usage_col_speed" formatted="false">"速度"</string>
+    <string name="usage_col_tokens" formatted="false">"消耗"</string>
+    <string name="usage_col_ttft" formatted="false">"首字"</string>
     <string name="usage_comp_cache_read" formatted="false">"缓存读"</string>
     <string name="usage_comp_cache_write" formatted="false">"缓存写"</string>
     <string name="usage_comp_output" formatted="false">"输出"</string>
-    <string name="usage_comp_reasoning">"含推理 %1$s"</string>
+    <string name="usage_comp_reasoning_label" formatted="false">"推理"</string>
     <string name="usage_comp_uncached" formatted="false">"输入"</string>
     <string name="usage_custom_end_label" formatted="false">"结束日期"</string>
-    <string name="usage_custom_range_change" formatted="false">"改日期"</string>
+    <string name="usage_custom_range_cross_year">"%6$d年%5$d月%4$d日 – %3$d年%2$d月%1$d日"</string>
     <string name="usage_custom_range_limit_hint" formatted="false">"可选近 90 天内，跨度 1–90 天"</string>
-    <string name="usage_custom_range_summary">"%3$s – %2$s（%1$d 天）"</string>
+    <string name="usage_custom_range_same_year">"%5$d年%4$d月%3$d日 – %2$d月%1$d日"</string>
+    <string name="usage_custom_range_single_day">"%3$d年%2$d月%1$d日"</string>
     <string name="usage_custom_start_label" formatted="false">"开始日期"</string>
-    <string name="usage_duration_min_sec">"%1$d 分 %2$d 秒"</string>
-    <string name="usage_empty_body" formatted="false">"在电脑上正常使用 CLI 对话后，这里会自动统计每次模型请求的 token 消耗、缓存命中率与输出速度。remote-agent 不会主动发请求。"</string>
-    <string name="usage_empty_title" formatted="false">"这段时间没有用量与速度记录"</string>
+    <string name="usage_empty_no_records" formatted="false">"这段时间没有记录"</string>
     <string name="usage_entry_cache_pct">"缓存 %1$s"</string>
     <string name="usage_entry_few_samples">"%2$s（仅 %1$d 次）"</string>
     <string name="usage_entry_last_30d" formatted="false">"近 30 天"</string>
     <string name="usage_entry_last_7d" formatted="false">"近 7 天"</string>
     <string name="usage_entry_no_speed">"%1$s（尚无测速样本）"</string>
     <string name="usage_entry_reqs">"%1$d 次"</string>
-    <string name="usage_few_samples_count">"仅 %1$d 次请求"</string>
-    <string name="usage_few_samples_hint" formatted="false">"满 3 次后画趋势线"</string>
-    <string name="usage_filter_all" formatted="false">"全部"</string>
     <string name="usage_flat" formatted="false">"持平"</string>
+    <string name="usage_footer_note" formatted="false">"只读取这台电脑上 CLI 自己留下的记录，不额外发请求。过短的回复不计入速度和首字延迟。"</string>
+    <plurals name="usage_hero_reqs">
+        <item quantity="other">"%2$s 次"</item>
+    </plurals>
+    <string name="usage_hero_share">"占 %1$s"</string>
     <string name="usage_kpi_unit_tokens" formatted="false">"tokens"</string>
     <string name="usage_kpi_unit_toks" formatted="false">"tok/s"</string>
     <string name="usage_load_error_title" formatted="false">"没能读取用量与速度"</string>
     <string name="usage_mixed_unavailable_footnote">"已启用的 %1$s 暂无本地用量来源，未计入上表。"</string>
+    <string name="usage_no_sample_a11y" formatted="false">"无样本"</string>
     <string name="usage_offline_banner">"%1$s 不在线，下面是 %2$s 的记录"</string>
     <string name="usage_offline_empty_body">"这台设备还没有缓存过 %1$s 的用量与速度记录，等电脑连上后自动读取。"</string>
     <string name="usage_offline_empty_title">"%1$s 当前不在线"</string>
     <string name="usage_only_unavailable_body">"这台电脑当前只启用了 %1$s；Claude Code 与 Codex 的本地记录会自动统计。"</string>
     <string name="usage_only_unavailable_title">"%1$s 暂不支持统计用量与速度"</string>
-    <string name="usage_outlier_note" formatted="false">"含长思考高波动样本"</string>
-    <string name="usage_pairs_capped_summary">"已叠满 4 对上限（共 %1$d 对）"</string>
-    <string name="usage_pairs_summary">"%2$s · 共 %1$d 对"</string>
-    <string name="usage_passive_footnote" formatted="false">"数据基于本机 CLI 日志被动采集，不换算货币金额。"</string>
     <string name="usage_range_30d" formatted="false">"30 天"</string>
     <string name="usage_range_7d" formatted="false">"7 天"</string>
     <string name="usage_range_custom" formatted="false">"自定义"</string>
     <string name="usage_range_today" formatted="false">"今天"</string>
-    <string name="usage_row_sub_cache">"读 %2$s · 未缓存 %1$s · 写 %3$s"</string>
-    <string name="usage_row_sub_speed">"p10–p90 %2$s–%1$s · 首字 %3$s"</string>
-    <string name="usage_row_sub_tap_overlay" formatted="false">"点按叠加上图"</string>
-    <string name="usage_row_sub_tokens">"入 %1$s · 读 %3$s · 写 %4$s · 出 %2$s"</string>
-    <string name="usage_row_sub_tokens_reasoning">"入 %1$s · 读 %3$s · 写 %5$s · 出 %2$s（推理 %4$s）"</string>
-    <string name="usage_scrub_total">"共 %1$s"</string>
-    <string name="usage_speed_threshold_footnote" formatted="false">"速度与首字延迟仅计单次输出满 16 token 且生成耗时 ≥ 200 ms 的请求；极短工具回复仍计入消耗量与缓存命中率。"</string>
-    <string name="usage_sub_median_p10_p90">"中位数 · p10–p90 %2$s–%1$s"</string>
-    <string name="usage_sub_p10_p90">"p10–p90 %2$s–%1$s"</string>
-    <string name="usage_sub_recent10">"近 10 次 p50 %1$s tok/s"</string>
-    <string name="usage_sub_vs_prev_30d" formatted="false">"较上个 30 天"</string>
-    <string name="usage_sub_vs_prev_7d" formatted="false">"较上个 7 天"</string>
-    <string name="usage_sub_vs_prev_generic" formatted="false">"较上期"</string>
-    <string name="usage_sub_weighted_cache" formatted="false">"按输入 token 加权"</string>
-    <string name="usage_subtitle_live">"%1$s · 被动记录"</string>
+    <string name="usage_scope_all_empty" formatted="false">"全部模型"</string>
+    <plurals name="usage_scope_all_models">
+        <item quantity="other">"全部 %1$d 个模型"</item>
+    </plurals>
+    <string name="usage_scope_clear_a11y" formatted="false">"查看全部模型"</string>
+    <string name="usage_scrub_day">"%2$d月%1$d日"</string>
+    <string name="usage_scrub_day_hour_range">"%3$d月%1$d日 %4$d–%2$d 时"</string>
+    <string name="usage_scrub_hour_range">"%2$d–%1$d 时"</string>
+    <string name="usage_strip_cache_hit" formatted="false">"缓存命中"</string>
+    <string name="usage_strip_speed" formatted="false">"输出速度"</string>
+    <string name="usage_strip_ttft" formatted="false">"首字延迟"</string>
     <string name="usage_subtitle_offline">"%1$s · 离线"</string>
-    <string name="usage_tab_cache_hit" formatted="false">"缓存命中"</string>
-    <string name="usage_tab_speed" formatted="false">"输出速度"</string>
-    <string name="usage_tab_tokens" formatted="false">"消耗量"</string>
-    <string name="usage_tab_ttft" formatted="false">"首字延迟"</string>
     <string name="usage_title" formatted="false">"用量与速度"</string>
     <string name="usage_unit_wan" formatted="false">"万"</string>
     <string name="usage_unit_yi" formatted="false">"亿"</string>
-    <string name="usage_unreported_aria" formatted="false">"未单独上报"</string>
     <string name="usage_unsupported_body">"更新 %1$s 上的 remote-agent 后，可查看 token 消耗量、缓存命中率与输出速度。"</string>
     <string name="usage_unsupported_title" formatted="false">"电脑上的 remote-agent 版本较旧"</string>
+    <plurals name="usage_vs_prev_days">
+        <item quantity="other">"较前 %1$d 天"</item>
+    </plurals>
+    <string name="usage_vs_yesterday" formatted="false">"较昨天"</string>
 </resources>

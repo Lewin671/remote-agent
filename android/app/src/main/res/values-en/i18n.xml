@@ -2359,90 +2359,78 @@
     <string name="transport_summary_off" formatted="false">"Direct is off"</string>
     <string name="transport_use_file" formatted="false">"Used for files"</string>
     <string name="transport_use_read" formatted="false">"Used for loading"</string>
-    <string name="usage_backfilled_summary">"%1$s · %2$dd indexed"</string>
+    <string name="usage_axis_24h" formatted="false">"24h"</string>
     <string name="usage_backfilling_banner">"Indexing local history · %1$d / %2$d days"</string>
     <string name="usage_backfilling_cell" formatted="false">"Indexing"</string>
-    <string name="usage_backfilling_zone" formatted="false">"Indexing earlier history…"</string>
-    <string name="usage_cache_formula_footnote" formatted="false">"Cache hit rate = cache read ÷ (uncached input + cache read + cache write), weighted by input tokens."</string>
-    <string name="usage_cache_write_footnote" formatted="false">"Note: “—” means the CLI or model did not report cache write separately; those input tokens are included in uncached input and do not affect total input or hit rate."</string>
-    <string name="usage_chart_a11y_line">"%3$s %2$s trend chart with %1$d series"</string>
-    <string name="usage_chart_a11y_tokens">"Bar chart of %2$s token usage, %3$s tokens across %1$d agent-model pairs; full breakdown in the table below"</string>
-    <string name="usage_col_cache_read" formatted="false">"Cache read"</string>
-    <string name="usage_col_cache_write" formatted="false">"Cache write"</string>
-    <string name="usage_col_hit_rate" formatted="false">"Cache hit"</string>
-    <string name="usage_col_median" formatted="false">"Median"</string>
-    <string name="usage_col_output" formatted="false">"Output"</string>
-    <string name="usage_col_pair" formatted="false">"Agent · Model"</string>
-    <string name="usage_col_reqs" formatted="false">"Reqs"</string>
-    <string name="usage_col_total" formatted="false">"Total"</string>
-    <string name="usage_col_ttft_median" formatted="false">"TTFT med"</string>
-    <string name="usage_col_uncached" formatted="false">"Uncached"</string>
-    <string name="usage_col_valid_reqs" formatted="false">"Valid"</string>
-    <string name="usage_col_vs_prev" formatted="false">"vs prev"</string>
+    <plurals name="usage_charts_a11y">
+        <item quantity="one">"Usage and speed charts for %2$s, %3$s tokens across %1$d model"</item>
+        <item quantity="other">"Usage and speed charts for %2$s, %3$s tokens across %1$d models"</item>
+    </plurals>
+    <string name="usage_col_cache" formatted="false">"Cache"</string>
+    <string name="usage_col_model" formatted="false">"Model"</string>
+    <string name="usage_col_speed" formatted="false">"Speed"</string>
+    <string name="usage_col_tokens" formatted="false">"Tokens"</string>
+    <string name="usage_col_ttft" formatted="false">"TTFT"</string>
     <string name="usage_comp_cache_read" formatted="false">"Read"</string>
     <string name="usage_comp_cache_write" formatted="false">"Write"</string>
     <string name="usage_comp_output" formatted="false">"Output"</string>
-    <string name="usage_comp_reasoning">"incl. %1$s reasoning"</string>
-    <string name="usage_comp_uncached" formatted="false">"Uncached"</string>
+    <string name="usage_comp_reasoning_label" formatted="false">"Reasoning"</string>
+    <string name="usage_comp_uncached" formatted="false">"Input"</string>
     <string name="usage_custom_end_label" formatted="false">"End date"</string>
-    <string name="usage_custom_range_change" formatted="false">"Dates"</string>
+    <string name="usage_custom_range_cross_year">"%5$d/%4$d/%6$d – %2$d/%1$d/%3$d"</string>
     <string name="usage_custom_range_limit_hint" formatted="false">"Up to 90 days ago, 1–90d span"</string>
-    <string name="usage_custom_range_summary">"%3$s – %2$s (%1$dd)"</string>
+    <string name="usage_custom_range_same_year">"%4$d/%3$d/%5$d – %2$d/%1$d/%5$d"</string>
+    <string name="usage_custom_range_single_day">"%2$d/%1$d/%3$d"</string>
     <string name="usage_custom_start_label" formatted="false">"Start date"</string>
-    <string name="usage_duration_min_sec">"%1$dm %2$ds"</string>
-    <string name="usage_empty_body" formatted="false">"After using CLIs on this computer, per-request token usage, cache hit rate, and output speed appear here automatically. remote-agent never sends extra requests."</string>
-    <string name="usage_empty_title" formatted="false">"No usage or speed records in this period"</string>
+    <string name="usage_empty_no_records" formatted="false">"No records in this period"</string>
     <string name="usage_entry_cache_pct">"Cache %1$s"</string>
     <string name="usage_entry_few_samples">"%2$s (%1$d only)"</string>
     <string name="usage_entry_last_30d" formatted="false">"Last 30d"</string>
     <string name="usage_entry_last_7d" formatted="false">"Last 7d"</string>
     <string name="usage_entry_no_speed">"%1$s (no speed samples yet)"</string>
     <string name="usage_entry_reqs">"%1$d reqs"</string>
-    <string name="usage_few_samples_count">"Only %1$d requests"</string>
-    <string name="usage_few_samples_hint" formatted="false">"Trend starts at 3 requests"</string>
-    <string name="usage_filter_all" formatted="false">"All"</string>
     <string name="usage_flat" formatted="false">"Flat"</string>
+    <string name="usage_footer_note" formatted="false">"Reads only local logs saved by CLIs on this computer, with no extra requests. Very short replies are excluded from speed and TTFT."</string>
+    <plurals name="usage_hero_reqs">
+        <item quantity="one">"%2$s req"</item>
+        <item quantity="other">"%2$s reqs"</item>
+    </plurals>
+    <string name="usage_hero_share">"%1$s of total"</string>
     <string name="usage_kpi_unit_tokens" formatted="false">"tokens"</string>
     <string name="usage_kpi_unit_toks" formatted="false">"tok/s"</string>
     <string name="usage_load_error_title" formatted="false">"Could not load usage and speed"</string>
     <string name="usage_mixed_unavailable_footnote">"Enabled %1$s has no local usage source and is excluded above."</string>
+    <string name="usage_no_sample_a11y" formatted="false">"no samples"</string>
     <string name="usage_offline_banner">"%1$s is offline. Showing cached data from %2$s"</string>
     <string name="usage_offline_empty_body">"No cached usage records for %1$s on this device yet. Data will load automatically when online."</string>
     <string name="usage_offline_empty_title">"%1$s is currently offline"</string>
     <string name="usage_only_unavailable_body">"Only %1$s is currently enabled on this computer. Local telemetry for Claude Code and Codex is collected automatically."</string>
     <string name="usage_only_unavailable_title">"%1$s usage and speed telemetry unavailable"</string>
-    <string name="usage_outlier_note" formatted="false">"High variance from long reasoning"</string>
-    <string name="usage_pairs_capped_summary">"Max 4 overlaid (%1$d total)"</string>
-    <string name="usage_pairs_summary">"%2$s · %1$d pairs"</string>
-    <string name="usage_passive_footnote" formatted="false">"Passively collected from local CLI logs; no monetary conversion."</string>
     <string name="usage_range_30d" formatted="false">"30d"</string>
     <string name="usage_range_7d" formatted="false">"7d"</string>
     <string name="usage_range_custom" formatted="false">"Custom"</string>
     <string name="usage_range_today" formatted="false">"Today"</string>
-    <string name="usage_row_sub_cache">"Read %2$s · Uncached %1$s · Write %3$s"</string>
-    <string name="usage_row_sub_speed">"p10–p90 %2$s–%1$s · TTFT %3$s"</string>
-    <string name="usage_row_sub_tap_overlay" formatted="false">"Tap to overlay"</string>
-    <string name="usage_row_sub_tokens">"In %1$s · Read %3$s · Write %4$s · Out %2$s"</string>
-    <string name="usage_row_sub_tokens_reasoning">"In %1$s · Read %3$s · Write %5$s · Out %2$s (%4$s reasoning)"</string>
-    <string name="usage_scrub_total">"Total %1$s"</string>
-    <string name="usage_speed_threshold_footnote" formatted="false">"Speed and TTFT count only responses with ≥ 16 output tokens and ≥ 200 ms generation duration; shorter tool replies still count in Tokens and Cache Hit."</string>
-    <string name="usage_sub_median_p10_p90">"Median · p10–p90 %2$s–%1$s"</string>
-    <string name="usage_sub_p10_p90">"p10–p90 %2$s–%1$s"</string>
-    <string name="usage_sub_recent10">"Last 10 p50 %1$s tok/s"</string>
-    <string name="usage_sub_vs_prev_30d" formatted="false">"vs prev 30d"</string>
-    <string name="usage_sub_vs_prev_7d" formatted="false">"vs prev 7d"</string>
-    <string name="usage_sub_vs_prev_generic" formatted="false">"vs prev"</string>
-    <string name="usage_sub_weighted_cache" formatted="false">"Weighted by input tokens"</string>
-    <string name="usage_subtitle_live">"%1$s · Passive log"</string>
+    <string name="usage_scope_all_empty" formatted="false">"All models"</string>
+    <plurals name="usage_scope_all_models">
+        <item quantity="one">"All %1$d model"</item>
+        <item quantity="other">"All %1$d models"</item>
+    </plurals>
+    <string name="usage_scope_clear_a11y" formatted="false">"Show all models"</string>
+    <string name="usage_scrub_day">"%2$d/%1$d"</string>
+    <string name="usage_scrub_day_hour_range">"%3$d/%1$d %4$d–%2$dh"</string>
+    <string name="usage_scrub_hour_range">"%2$d–%1$dh"</string>
+    <string name="usage_strip_cache_hit" formatted="false">"Cache hit"</string>
+    <string name="usage_strip_speed" formatted="false">"Output speed"</string>
+    <string name="usage_strip_ttft" formatted="false">"TTFT"</string>
     <string name="usage_subtitle_offline">"%1$s · Offline"</string>
-    <string name="usage_tab_cache_hit" formatted="false">"Cache Hit"</string>
-    <string name="usage_tab_speed" formatted="false">"Speed"</string>
-    <string name="usage_tab_tokens" formatted="false">"Tokens"</string>
-    <string name="usage_tab_ttft" formatted="false">"TTFT"</string>
     <string name="usage_title" formatted="false">"Usage &amp; speed"</string>
     <string name="usage_unit_wan" formatted="false">"10k"</string>
     <string name="usage_unit_yi" formatted="false">"100M"</string>
-    <string name="usage_unreported_aria" formatted="false">"not reported separately"</string>
     <string name="usage_unsupported_body">"Update remote-agent on %1$s to view token consumption, cache hit rate, and output speed."</string>
     <string name="usage_unsupported_title" formatted="false">"remote-agent on this computer is older"</string>
+    <plurals name="usage_vs_prev_days">
+        <item quantity="one">"vs prev %1$d day"</item>
+        <item quantity="other">"vs prev %1$dd"</item>
+    </plurals>
+    <string name="usage_vs_yesterday" formatted="false">"vs yesterday"</string>
 </resources>

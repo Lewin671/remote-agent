@@ -1758,92 +1758,68 @@ export interface MessageArgs {
   "transport.summary_off": { [name: string]: never };
   "transport.use_file": { [name: string]: never };
   "transport.use_read": { [name: string]: never };
-  "usage.backfilled_summary": { name: string; scanned: number };
+  "usage.axis_24h": { [name: string]: never };
   "usage.backfilling_banner": { scanned: number; total: number };
   "usage.backfilling_cell": { [name: string]: never };
-  "usage.backfilling_zone": { [name: string]: never };
-  "usage.cache_formula_footnote": { [name: string]: never };
-  "usage.cache_write_footnote": { [name: string]: never };
-  "usage.chart_a11y_line": { count: number; metric: string; name: string };
-  "usage.chart_a11y_tokens": { count: number; name: string; total: string };
-  "usage.col_cache_read": { [name: string]: never };
-  "usage.col_cache_write": { [name: string]: never };
-  "usage.col_hit_rate": { [name: string]: never };
-  "usage.col_median": { [name: string]: never };
-  "usage.col_output": { [name: string]: never };
-  "usage.col_pair": { [name: string]: never };
-  "usage.col_reqs": { [name: string]: never };
-  "usage.col_total": { [name: string]: never };
-  "usage.col_ttft_median": { [name: string]: never };
-  "usage.col_uncached": { [name: string]: never };
-  "usage.col_valid_reqs": { [name: string]: never };
-  "usage.col_vs_prev": { [name: string]: never };
+  "usage.charts_a11y": { count: number; name: string; total: string };
+  "usage.col_cache": { [name: string]: never };
+  "usage.col_model": { [name: string]: never };
+  "usage.col_speed": { [name: string]: never };
+  "usage.col_tokens": { [name: string]: never };
+  "usage.col_ttft": { [name: string]: never };
   "usage.comp_cache_read": { [name: string]: never };
   "usage.comp_cache_write": { [name: string]: never };
   "usage.comp_output": { [name: string]: never };
-  "usage.comp_reasoning": { value: string };
+  "usage.comp_reasoning_label": { [name: string]: never };
   "usage.comp_uncached": { [name: string]: never };
   "usage.custom_end_label": { [name: string]: never };
-  "usage.custom_range_change": { [name: string]: never };
+  "usage.custom_range_cross_year": { endDay: number; endMonth: number; endYear: number; startDay: number; startMonth: number; startYear: number };
   "usage.custom_range_limit_hint": { [name: string]: never };
-  "usage.custom_range_summary": { days: number; end: string; start: string };
+  "usage.custom_range_same_year": { endDay: number; endMonth: number; startDay: number; startMonth: number; year: number };
+  "usage.custom_range_single_day": { day: number; month: number; year: number };
   "usage.custom_start_label": { [name: string]: never };
-  "usage.duration_min_sec": { min: number; sec: number };
-  "usage.empty_body": { [name: string]: never };
-  "usage.empty_title": { [name: string]: never };
+  "usage.empty_no_records": { [name: string]: never };
   "usage.entry_cache_pct": { pct: string };
   "usage.entry_few_samples": { count: number; detail: string };
   "usage.entry_last_30d": { [name: string]: never };
   "usage.entry_last_7d": { [name: string]: never };
   "usage.entry_no_speed": { detail: string };
   "usage.entry_reqs": { count: number };
-  "usage.few_samples_count": { count: number };
-  "usage.few_samples_hint": { [name: string]: never };
-  "usage.filter_all": { [name: string]: never };
   "usage.flat": { [name: string]: never };
+  "usage.footer_note": { [name: string]: never };
+  "usage.hero_reqs": { count: number; formatted: string };
+  "usage.hero_share": { pct: string };
   "usage.kpi_unit_tokens": { [name: string]: never };
   "usage.kpi_unit_toks": { [name: string]: never };
   "usage.load_error_title": { [name: string]: never };
   "usage.mixed_unavailable_footnote": { agents: string };
+  "usage.no_sample_a11y": { [name: string]: never };
   "usage.offline_banner": { name: string; time: string };
   "usage.offline_empty_body": { name: string };
   "usage.offline_empty_title": { name: string };
   "usage.only_unavailable_body": { agents: string };
   "usage.only_unavailable_title": { agents: string };
-  "usage.outlier_note": { [name: string]: never };
-  "usage.pairs_capped_summary": { count: number };
-  "usage.pairs_summary": { count: number; name: string };
-  "usage.passive_footnote": { [name: string]: never };
   "usage.range_30d": { [name: string]: never };
   "usage.range_7d": { [name: string]: never };
   "usage.range_custom": { [name: string]: never };
   "usage.range_today": { [name: string]: never };
-  "usage.row_sub_cache": { inp: string; read: string; write: string };
-  "usage.row_sub_speed": { high: string; low: string; ttft: string };
-  "usage.row_sub_tap_overlay": { [name: string]: never };
-  "usage.row_sub_tokens": { inp: string; out: string; read: string; write: string };
-  "usage.row_sub_tokens_reasoning": { inp: string; out: string; read: string; reas: string; write: string };
-  "usage.scrub_total": { total: string };
-  "usage.speed_threshold_footnote": { [name: string]: never };
-  "usage.sub_median_p10_p90": { high: string; low: string };
-  "usage.sub_p10_p90": { high: string; low: string };
-  "usage.sub_recent10": { speed: string };
-  "usage.sub_vs_prev_30d": { [name: string]: never };
-  "usage.sub_vs_prev_7d": { [name: string]: never };
-  "usage.sub_vs_prev_generic": { [name: string]: never };
-  "usage.sub_weighted_cache": { [name: string]: never };
-  "usage.subtitle_live": { name: string };
+  "usage.scope_all_empty": { [name: string]: never };
+  "usage.scope_all_models": { count: number };
+  "usage.scope_clear_a11y": { [name: string]: never };
+  "usage.scrub_day": { day: number; month: number };
+  "usage.scrub_day_hour_range": { day: number; end: number; month: number; start: number };
+  "usage.scrub_hour_range": { end: number; start: number };
+  "usage.strip_cache_hit": { [name: string]: never };
+  "usage.strip_speed": { [name: string]: never };
+  "usage.strip_ttft": { [name: string]: never };
   "usage.subtitle_offline": { name: string };
-  "usage.tab_cache_hit": { [name: string]: never };
-  "usage.tab_speed": { [name: string]: never };
-  "usage.tab_tokens": { [name: string]: never };
-  "usage.tab_ttft": { [name: string]: never };
   "usage.title": { [name: string]: never };
   "usage.unit_wan": { [name: string]: never };
   "usage.unit_yi": { [name: string]: never };
-  "usage.unreported_aria": { [name: string]: never };
   "usage.unsupported_body": { name: string };
   "usage.unsupported_title": { [name: string]: never };
+  "usage.vs_prev_days": { days: number };
+  "usage.vs_yesterday": { [name: string]: never };
 }
 export type MessageKey = keyof MessageArgs;
 export const messages = {
@@ -4133,92 +4109,92 @@ export const messages = {
     "transport.summary_off": "Direct is off",
     "transport.use_file": "Used for files",
     "transport.use_read": "Used for loading",
-    "usage.backfilled_summary": "{name} · {scanned}d indexed",
+    "usage.axis_24h": "24h",
     "usage.backfilling_banner": "Indexing local history · {scanned} / {total} days",
     "usage.backfilling_cell": "Indexing",
-    "usage.backfilling_zone": "Indexing earlier history…",
-    "usage.cache_formula_footnote": "Cache hit rate = cache read ÷ (uncached input + cache read + cache write), weighted by input tokens.",
-    "usage.cache_write_footnote": "Note: “—” means the CLI or model did not report cache write separately; those input tokens are included in uncached input and do not affect total input or hit rate.",
-    "usage.chart_a11y_line": "{name} {metric} trend chart with {count} series",
-    "usage.chart_a11y_tokens": "Bar chart of {name} token usage, {total} tokens across {count} agent-model pairs; full breakdown in the table below",
-    "usage.col_cache_read": "Cache read",
-    "usage.col_cache_write": "Cache write",
-    "usage.col_hit_rate": "Cache hit",
-    "usage.col_median": "Median",
-    "usage.col_output": "Output",
-    "usage.col_pair": "Agent · Model",
-    "usage.col_reqs": "Reqs",
-    "usage.col_total": "Total",
-    "usage.col_ttft_median": "TTFT med",
-    "usage.col_uncached": "Uncached",
-    "usage.col_valid_reqs": "Valid",
-    "usage.col_vs_prev": "vs prev",
+    "usage.charts_a11y": {
+      "forms": {
+        "one": "Usage and speed charts for {name}, {total} tokens across {count} model",
+        "other": "Usage and speed charts for {name}, {total} tokens across {count} models"
+      },
+      "plural": "count"
+    },
+    "usage.col_cache": "Cache",
+    "usage.col_model": "Model",
+    "usage.col_speed": "Speed",
+    "usage.col_tokens": "Tokens",
+    "usage.col_ttft": "TTFT",
     "usage.comp_cache_read": "Read",
     "usage.comp_cache_write": "Write",
     "usage.comp_output": "Output",
-    "usage.comp_reasoning": "incl. {value} reasoning",
-    "usage.comp_uncached": "Uncached",
+    "usage.comp_reasoning_label": "Reasoning",
+    "usage.comp_uncached": "Input",
     "usage.custom_end_label": "End date",
-    "usage.custom_range_change": "Dates",
+    "usage.custom_range_cross_year": "{startMonth}/{startDay}/{startYear} – {endMonth}/{endDay}/{endYear}",
     "usage.custom_range_limit_hint": "Up to 90 days ago, 1–90d span",
-    "usage.custom_range_summary": "{start} – {end} ({days}d)",
+    "usage.custom_range_same_year": "{startMonth}/{startDay}/{year} – {endMonth}/{endDay}/{year}",
+    "usage.custom_range_single_day": "{month}/{day}/{year}",
     "usage.custom_start_label": "Start date",
-    "usage.duration_min_sec": "{min}m {sec}s",
-    "usage.empty_body": "After using CLIs on this computer, per-request token usage, cache hit rate, and output speed appear here automatically. remote-agent never sends extra requests.",
-    "usage.empty_title": "No usage or speed records in this period",
+    "usage.empty_no_records": "No records in this period",
     "usage.entry_cache_pct": "Cache {pct}",
     "usage.entry_few_samples": "{detail} ({count} only)",
     "usage.entry_last_30d": "Last 30d",
     "usage.entry_last_7d": "Last 7d",
     "usage.entry_no_speed": "{detail} (no speed samples yet)",
     "usage.entry_reqs": "{count} reqs",
-    "usage.few_samples_count": "Only {count} requests",
-    "usage.few_samples_hint": "Trend starts at 3 requests",
-    "usage.filter_all": "All",
     "usage.flat": "Flat",
+    "usage.footer_note": "Reads only local logs saved by CLIs on this computer, with no extra requests. Very short replies are excluded from speed and TTFT.",
+    "usage.hero_reqs": {
+      "forms": {
+        "one": "{formatted} req",
+        "other": "{formatted} reqs"
+      },
+      "plural": "count"
+    },
+    "usage.hero_share": "{pct} of total",
     "usage.kpi_unit_tokens": "tokens",
     "usage.kpi_unit_toks": "tok/s",
     "usage.load_error_title": "Could not load usage and speed",
     "usage.mixed_unavailable_footnote": "Enabled {agents} has no local usage source and is excluded above.",
+    "usage.no_sample_a11y": "no samples",
     "usage.offline_banner": "{name} is offline. Showing cached data from {time}",
     "usage.offline_empty_body": "No cached usage records for {name} on this device yet. Data will load automatically when online.",
     "usage.offline_empty_title": "{name} is currently offline",
     "usage.only_unavailable_body": "Only {agents} is currently enabled on this computer. Local telemetry for Claude Code and Codex is collected automatically.",
     "usage.only_unavailable_title": "{agents} usage and speed telemetry unavailable",
-    "usage.outlier_note": "High variance from long reasoning",
-    "usage.pairs_capped_summary": "Max 4 overlaid ({count} total)",
-    "usage.pairs_summary": "{name} · {count} pairs",
-    "usage.passive_footnote": "Passively collected from local CLI logs; no monetary conversion.",
     "usage.range_30d": "30d",
     "usage.range_7d": "7d",
     "usage.range_custom": "Custom",
     "usage.range_today": "Today",
-    "usage.row_sub_cache": "Read {read} · Uncached {inp} · Write {write}",
-    "usage.row_sub_speed": "p10–p90 {low}–{high} · TTFT {ttft}",
-    "usage.row_sub_tap_overlay": "Tap to overlay",
-    "usage.row_sub_tokens": "In {inp} · Read {read} · Write {write} · Out {out}",
-    "usage.row_sub_tokens_reasoning": "In {inp} · Read {read} · Write {write} · Out {out} ({reas} reasoning)",
-    "usage.scrub_total": "Total {total}",
-    "usage.speed_threshold_footnote": "Speed and TTFT count only responses with ≥ 16 output tokens and ≥ 200 ms generation duration; shorter tool replies still count in Tokens and Cache Hit.",
-    "usage.sub_median_p10_p90": "Median · p10–p90 {low}–{high}",
-    "usage.sub_p10_p90": "p10–p90 {low}–{high}",
-    "usage.sub_recent10": "Last 10 p50 {speed} tok/s",
-    "usage.sub_vs_prev_30d": "vs prev 30d",
-    "usage.sub_vs_prev_7d": "vs prev 7d",
-    "usage.sub_vs_prev_generic": "vs prev",
-    "usage.sub_weighted_cache": "Weighted by input tokens",
-    "usage.subtitle_live": "{name} · Passive log",
+    "usage.scope_all_empty": "All models",
+    "usage.scope_all_models": {
+      "forms": {
+        "one": "All {count} model",
+        "other": "All {count} models"
+      },
+      "plural": "count"
+    },
+    "usage.scope_clear_a11y": "Show all models",
+    "usage.scrub_day": "{month}/{day}",
+    "usage.scrub_day_hour_range": "{month}/{day} {start}–{end}h",
+    "usage.scrub_hour_range": "{start}–{end}h",
+    "usage.strip_cache_hit": "Cache hit",
+    "usage.strip_speed": "Output speed",
+    "usage.strip_ttft": "TTFT",
     "usage.subtitle_offline": "{name} · Offline",
-    "usage.tab_cache_hit": "Cache Hit",
-    "usage.tab_speed": "Speed",
-    "usage.tab_tokens": "Tokens",
-    "usage.tab_ttft": "TTFT",
     "usage.title": "Usage & speed",
     "usage.unit_wan": "10k",
     "usage.unit_yi": "100M",
-    "usage.unreported_aria": "not reported separately",
     "usage.unsupported_body": "Update remote-agent on {name} to view token consumption, cache hit rate, and output speed.",
-    "usage.unsupported_title": "remote-agent on this computer is older"
+    "usage.unsupported_title": "remote-agent on this computer is older",
+    "usage.vs_prev_days": {
+      "forms": {
+        "one": "vs prev {days} day",
+        "other": "vs prev {days}d"
+      },
+      "plural": "days"
+    },
+    "usage.vs_yesterday": "vs yesterday"
   },
   "zh-CN": {
     "approval.allow": "允许",
@@ -6414,91 +6390,87 @@ export const messages = {
     "transport.summary_off": "直连已关闭",
     "transport.use_file": "用于文件",
     "transport.use_read": "用于加载",
-    "usage.backfilled_summary": "{name} · 已算近 {scanned} 天",
+    "usage.axis_24h": "24 时",
     "usage.backfilling_banner": "正在从本机记录补算历史 · 已算 {scanned} / {total} 天",
     "usage.backfilling_cell": "补算中",
-    "usage.backfilling_zone": "更早记录补算中…",
-    "usage.cache_formula_footnote": "命中率 = 缓存读取 ÷（未缓存输入 + 缓存读取 + 缓存写入），按输入 token 加权。",
-    "usage.cache_write_footnote": "注：「—」表示该 CLI 或模型未单独上报缓存写入量，对应输入已计入未缓存输入，不影响总输入与命中率计算。",
-    "usage.chart_a11y_line": "{name} {metric}趋势图，含 {count} 条序列",
-    "usage.chart_a11y_tokens": "{name} 消耗量柱状图，共 {total} tokens，含 {count} 对模型；下方表格含全部拆分数值",
-    "usage.col_cache_read": "缓存读取",
-    "usage.col_cache_write": "缓存写入",
-    "usage.col_hit_rate": "命中率",
-    "usage.col_median": "中位",
-    "usage.col_output": "输出",
-    "usage.col_pair": "Agent · 模型",
-    "usage.col_reqs": "次数",
-    "usage.col_total": "总量",
-    "usage.col_ttft_median": "首字中位",
-    "usage.col_uncached": "未缓存输入",
-    "usage.col_valid_reqs": "有效次",
-    "usage.col_vs_prev": "较上期",
+    "usage.charts_a11y": {
+      "forms": {
+        "other": "{name} 用量与速度图表，共 {total} tokens，{count} 个模型"
+      },
+      "plural": "count"
+    },
+    "usage.col_cache": "命中",
+    "usage.col_model": "模型",
+    "usage.col_speed": "速度",
+    "usage.col_tokens": "消耗",
+    "usage.col_ttft": "首字",
     "usage.comp_cache_read": "缓存读",
     "usage.comp_cache_write": "缓存写",
     "usage.comp_output": "输出",
-    "usage.comp_reasoning": "含推理 {value}",
+    "usage.comp_reasoning_label": "推理",
     "usage.comp_uncached": "输入",
     "usage.custom_end_label": "结束日期",
-    "usage.custom_range_change": "改日期",
+    "usage.custom_range_cross_year": "{startYear}年{startMonth}月{startDay}日 – {endYear}年{endMonth}月{endDay}日",
     "usage.custom_range_limit_hint": "可选近 90 天内，跨度 1–90 天",
-    "usage.custom_range_summary": "{start} – {end}（{days} 天）",
+    "usage.custom_range_same_year": "{year}年{startMonth}月{startDay}日 – {endMonth}月{endDay}日",
+    "usage.custom_range_single_day": "{year}年{month}月{day}日",
     "usage.custom_start_label": "开始日期",
-    "usage.duration_min_sec": "{min} 分 {sec} 秒",
-    "usage.empty_body": "在电脑上正常使用 CLI 对话后，这里会自动统计每次模型请求的 token 消耗、缓存命中率与输出速度。remote-agent 不会主动发请求。",
-    "usage.empty_title": "这段时间没有用量与速度记录",
+    "usage.empty_no_records": "这段时间没有记录",
     "usage.entry_cache_pct": "缓存 {pct}",
     "usage.entry_few_samples": "{detail}（仅 {count} 次）",
     "usage.entry_last_30d": "近 30 天",
     "usage.entry_last_7d": "近 7 天",
     "usage.entry_no_speed": "{detail}（尚无测速样本）",
     "usage.entry_reqs": "{count} 次",
-    "usage.few_samples_count": "仅 {count} 次请求",
-    "usage.few_samples_hint": "满 3 次后画趋势线",
-    "usage.filter_all": "全部",
     "usage.flat": "持平",
+    "usage.footer_note": "只读取这台电脑上 CLI 自己留下的记录，不额外发请求。过短的回复不计入速度和首字延迟。",
+    "usage.hero_reqs": {
+      "forms": {
+        "other": "{formatted} 次"
+      },
+      "plural": "count"
+    },
+    "usage.hero_share": "占 {pct}",
     "usage.kpi_unit_tokens": "tokens",
     "usage.kpi_unit_toks": "tok/s",
     "usage.load_error_title": "没能读取用量与速度",
     "usage.mixed_unavailable_footnote": "已启用的 {agents} 暂无本地用量来源，未计入上表。",
+    "usage.no_sample_a11y": "无样本",
     "usage.offline_banner": "{name} 不在线，下面是 {time} 的记录",
     "usage.offline_empty_body": "这台设备还没有缓存过 {name} 的用量与速度记录，等电脑连上后自动读取。",
     "usage.offline_empty_title": "{name} 当前不在线",
     "usage.only_unavailable_body": "这台电脑当前只启用了 {agents}；Claude Code 与 Codex 的本地记录会自动统计。",
     "usage.only_unavailable_title": "{agents} 暂不支持统计用量与速度",
-    "usage.outlier_note": "含长思考高波动样本",
-    "usage.pairs_capped_summary": "已叠满 4 对上限（共 {count} 对）",
-    "usage.pairs_summary": "{name} · 共 {count} 对",
-    "usage.passive_footnote": "数据基于本机 CLI 日志被动采集，不换算货币金额。",
     "usage.range_30d": "30 天",
     "usage.range_7d": "7 天",
     "usage.range_custom": "自定义",
     "usage.range_today": "今天",
-    "usage.row_sub_cache": "读 {read} · 未缓存 {inp} · 写 {write}",
-    "usage.row_sub_speed": "p10–p90 {low}–{high} · 首字 {ttft}",
-    "usage.row_sub_tap_overlay": "点按叠加上图",
-    "usage.row_sub_tokens": "入 {inp} · 读 {read} · 写 {write} · 出 {out}",
-    "usage.row_sub_tokens_reasoning": "入 {inp} · 读 {read} · 写 {write} · 出 {out}（推理 {reas}）",
-    "usage.scrub_total": "共 {total}",
-    "usage.speed_threshold_footnote": "速度与首字延迟仅计单次输出满 16 token 且生成耗时 ≥ 200 ms 的请求；极短工具回复仍计入消耗量与缓存命中率。",
-    "usage.sub_median_p10_p90": "中位数 · p10–p90 {low}–{high}",
-    "usage.sub_p10_p90": "p10–p90 {low}–{high}",
-    "usage.sub_recent10": "近 10 次 p50 {speed} tok/s",
-    "usage.sub_vs_prev_30d": "较上个 30 天",
-    "usage.sub_vs_prev_7d": "较上个 7 天",
-    "usage.sub_vs_prev_generic": "较上期",
-    "usage.sub_weighted_cache": "按输入 token 加权",
-    "usage.subtitle_live": "{name} · 被动记录",
+    "usage.scope_all_empty": "全部模型",
+    "usage.scope_all_models": {
+      "forms": {
+        "other": "全部 {count} 个模型"
+      },
+      "plural": "count"
+    },
+    "usage.scope_clear_a11y": "查看全部模型",
+    "usage.scrub_day": "{month}月{day}日",
+    "usage.scrub_day_hour_range": "{month}月{day}日 {start}–{end} 时",
+    "usage.scrub_hour_range": "{start}–{end} 时",
+    "usage.strip_cache_hit": "缓存命中",
+    "usage.strip_speed": "输出速度",
+    "usage.strip_ttft": "首字延迟",
     "usage.subtitle_offline": "{name} · 离线",
-    "usage.tab_cache_hit": "缓存命中",
-    "usage.tab_speed": "输出速度",
-    "usage.tab_tokens": "消耗量",
-    "usage.tab_ttft": "首字延迟",
     "usage.title": "用量与速度",
     "usage.unit_wan": "万",
     "usage.unit_yi": "亿",
-    "usage.unreported_aria": "未单独上报",
     "usage.unsupported_body": "更新 {name} 上的 remote-agent 后，可查看 token 消耗量、缓存命中率与输出速度。",
-    "usage.unsupported_title": "电脑上的 remote-agent 版本较旧"
+    "usage.unsupported_title": "电脑上的 remote-agent 版本较旧",
+    "usage.vs_prev_days": {
+      "forms": {
+        "other": "较前 {days} 天"
+      },
+      "plural": "days"
+    },
+    "usage.vs_yesterday": "较昨天"
   }
 } as const;

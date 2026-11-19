@@ -1618,5 +1618,69 @@
 			<string>Edited %1$lld files</string>
 		</dict>
 	</dict>
+	<key>usage_charts_a11y</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Usage and speed charts for %2$@, %3$@ tokens across %1$lld model</string>
+			<key>other</key>
+			<string>Usage and speed charts for %2$@, %3$@ tokens across %1$lld models</string>
+		</dict>
+	</dict>
+	<key>usage_hero_reqs</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ req</string>
+			<key>other</key>
+			<string>%2$@ reqs</string>
+		</dict>
+	</dict>
+	<key>usage_scope_all_models</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>All %1$lld model</string>
+			<key>other</key>
+			<string>All %1$lld models</string>
+		</dict>
+	</dict>
+	<key>usage_vs_prev_days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@days@</string>
+		<key>days</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>vs prev %1$lld day</string>
+			<key>other</key>
+			<string>vs prev %1$lldd</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

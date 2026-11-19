@@ -6881,10 +6881,8 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.use_read" -> {
             resources.getString(R.string.transport_use_read)
         }
-        "usage.backfilled_summary" -> {
-            val name = message.args.getValue("name") as String
-            val scanned = message.args.getValue("scanned") as Int
-            resources.getString(R.string.usage_backfilled_summary, name, scanned)
+        "usage.axis_24h" -> {
+            resources.getString(R.string.usage_axis_24h)
         }
         "usage.backfilling_banner" -> {
             val scanned = message.args.getValue("scanned") as Int
@@ -6894,62 +6892,26 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "usage.backfilling_cell" -> {
             resources.getString(R.string.usage_backfilling_cell)
         }
-        "usage.backfilling_zone" -> {
-            resources.getString(R.string.usage_backfilling_zone)
-        }
-        "usage.cache_formula_footnote" -> {
-            resources.getString(R.string.usage_cache_formula_footnote)
-        }
-        "usage.cache_write_footnote" -> {
-            resources.getString(R.string.usage_cache_write_footnote)
-        }
-        "usage.chart_a11y_line" -> {
-            val count = message.args.getValue("count") as Int
-            val metric = message.args.getValue("metric") as String
-            val name = message.args.getValue("name") as String
-            resources.getString(R.string.usage_chart_a11y_line, count, metric, name)
-        }
-        "usage.chart_a11y_tokens" -> {
+        "usage.charts_a11y" -> {
             val count = message.args.getValue("count") as Int
             val name = message.args.getValue("name") as String
             val total = message.args.getValue("total") as String
-            resources.getString(R.string.usage_chart_a11y_tokens, count, name, total)
+            resources.getQuantityString(R.plurals.usage_charts_a11y, count, count, name, total)
         }
-        "usage.col_cache_read" -> {
-            resources.getString(R.string.usage_col_cache_read)
+        "usage.col_cache" -> {
+            resources.getString(R.string.usage_col_cache)
         }
-        "usage.col_cache_write" -> {
-            resources.getString(R.string.usage_col_cache_write)
+        "usage.col_model" -> {
+            resources.getString(R.string.usage_col_model)
         }
-        "usage.col_hit_rate" -> {
-            resources.getString(R.string.usage_col_hit_rate)
+        "usage.col_speed" -> {
+            resources.getString(R.string.usage_col_speed)
         }
-        "usage.col_median" -> {
-            resources.getString(R.string.usage_col_median)
+        "usage.col_tokens" -> {
+            resources.getString(R.string.usage_col_tokens)
         }
-        "usage.col_output" -> {
-            resources.getString(R.string.usage_col_output)
-        }
-        "usage.col_pair" -> {
-            resources.getString(R.string.usage_col_pair)
-        }
-        "usage.col_reqs" -> {
-            resources.getString(R.string.usage_col_reqs)
-        }
-        "usage.col_total" -> {
-            resources.getString(R.string.usage_col_total)
-        }
-        "usage.col_ttft_median" -> {
-            resources.getString(R.string.usage_col_ttft_median)
-        }
-        "usage.col_uncached" -> {
-            resources.getString(R.string.usage_col_uncached)
-        }
-        "usage.col_valid_reqs" -> {
-            resources.getString(R.string.usage_col_valid_reqs)
-        }
-        "usage.col_vs_prev" -> {
-            resources.getString(R.string.usage_col_vs_prev)
+        "usage.col_ttft" -> {
+            resources.getString(R.string.usage_col_ttft)
         }
         "usage.comp_cache_read" -> {
             resources.getString(R.string.usage_comp_cache_read)
@@ -6960,9 +6922,8 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "usage.comp_output" -> {
             resources.getString(R.string.usage_comp_output)
         }
-        "usage.comp_reasoning" -> {
-            val value = message.args.getValue("value") as String
-            resources.getString(R.string.usage_comp_reasoning, value)
+        "usage.comp_reasoning_label" -> {
+            resources.getString(R.string.usage_comp_reasoning_label)
         }
         "usage.comp_uncached" -> {
             resources.getString(R.string.usage_comp_uncached)
@@ -6970,42 +6931,42 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "usage.custom_end_label" -> {
             resources.getString(R.string.usage_custom_end_label)
         }
-        "usage.custom_range_change" -> {
-            resources.getString(R.string.usage_custom_range_change)
+        "usage.custom_range_cross_year" -> {
+            val endDay = message.args.getValue("endDay") as Int
+            val endMonth = message.args.getValue("endMonth") as Int
+            val endYear = message.args.getValue("endYear") as Int
+            val startDay = message.args.getValue("startDay") as Int
+            val startMonth = message.args.getValue("startMonth") as Int
+            val startYear = message.args.getValue("startYear") as Int
+            resources.getString(R.string.usage_custom_range_cross_year, endDay, endMonth, endYear, startDay, startMonth, startYear)
         }
         "usage.custom_range_limit_hint" -> {
             resources.getString(R.string.usage_custom_range_limit_hint)
         }
-        "usage.custom_range_summary" -> {
-            val days = message.args.getValue("days") as Int
-            val end = message.args.getValue("end") as String
-            val start = message.args.getValue("start") as String
-            resources.getString(R.string.usage_custom_range_summary, days, end, start)
+        "usage.custom_range_same_year" -> {
+            val endDay = message.args.getValue("endDay") as Int
+            val endMonth = message.args.getValue("endMonth") as Int
+            val startDay = message.args.getValue("startDay") as Int
+            val startMonth = message.args.getValue("startMonth") as Int
+            val year = message.args.getValue("year") as Int
+            resources.getString(R.string.usage_custom_range_same_year, endDay, endMonth, startDay, startMonth, year)
+        }
+        "usage.custom_range_single_day" -> {
+            val day = message.args.getValue("day") as Int
+            val month = message.args.getValue("month") as Int
+            val year = message.args.getValue("year") as Int
+            resources.getString(R.string.usage_custom_range_single_day, day, month, year)
         }
         "usage.custom_start_label" -> {
             resources.getString(R.string.usage_custom_start_label)
         }
-        "usage.duration_min_sec" -> {
-            val min = message.args.getValue("min") as Int
-            val sec = message.args.getValue("sec") as Int
-            resources.getString(R.string.usage_duration_min_sec, min, sec)
-        }
-        "usage.empty_body" -> {
-            resources.getString(R.string.usage_empty_body)
-        }
-        "usage.empty_title" -> {
-            resources.getString(R.string.usage_empty_title)
+        "usage.empty_no_records" -> {
+            resources.getString(R.string.usage_empty_no_records)
         }
         "usage.entry_cache_pct" -> {
             val pct = message.args.getValue("pct") as String
             resources.getString(R.string.usage_entry_cache_pct, pct)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage14(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "usage.entry_few_samples" -> {
             val count = message.args.getValue("count") as Int
             val detail = message.args.getValue("detail") as String
@@ -7025,18 +6986,20 @@ private fun resolveUiMessage14(resources: android.content.res.Resources, message
             val count = message.args.getValue("count") as Int
             resources.getString(R.string.usage_entry_reqs, count)
         }
-        "usage.few_samples_count" -> {
-            val count = message.args.getValue("count") as Int
-            resources.getString(R.string.usage_few_samples_count, count)
-        }
-        "usage.few_samples_hint" -> {
-            resources.getString(R.string.usage_few_samples_hint)
-        }
-        "usage.filter_all" -> {
-            resources.getString(R.string.usage_filter_all)
-        }
         "usage.flat" -> {
             resources.getString(R.string.usage_flat)
+        }
+        "usage.footer_note" -> {
+            resources.getString(R.string.usage_footer_note)
+        }
+        "usage.hero_reqs" -> {
+            val count = message.args.getValue("count") as Int
+            val formatted = message.args.getValue("formatted") as String
+            resources.getQuantityString(R.plurals.usage_hero_reqs, count, count, formatted)
+        }
+        "usage.hero_share" -> {
+            val pct = message.args.getValue("pct") as String
+            resources.getString(R.string.usage_hero_share, pct)
         }
         "usage.kpi_unit_tokens" -> {
             resources.getString(R.string.usage_kpi_unit_tokens)
@@ -7047,9 +7010,18 @@ private fun resolveUiMessage14(resources: android.content.res.Resources, message
         "usage.load_error_title" -> {
             resources.getString(R.string.usage_load_error_title)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage14(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "usage.mixed_unavailable_footnote" -> {
             val agents = message.args.getValue("agents") as String
             resources.getString(R.string.usage_mixed_unavailable_footnote, agents)
+        }
+        "usage.no_sample_a11y" -> {
+            resources.getString(R.string.usage_no_sample_a11y)
         }
         "usage.offline_banner" -> {
             val name = message.args.getValue("name") as String
@@ -7072,21 +7044,6 @@ private fun resolveUiMessage14(resources: android.content.res.Resources, message
             val agents = message.args.getValue("agents") as String
             resources.getString(R.string.usage_only_unavailable_title, agents)
         }
-        "usage.outlier_note" -> {
-            resources.getString(R.string.usage_outlier_note)
-        }
-        "usage.pairs_capped_summary" -> {
-            val count = message.args.getValue("count") as Int
-            resources.getString(R.string.usage_pairs_capped_summary, count)
-        }
-        "usage.pairs_summary" -> {
-            val count = message.args.getValue("count") as Int
-            val name = message.args.getValue("name") as String
-            resources.getString(R.string.usage_pairs_summary, count, name)
-        }
-        "usage.passive_footnote" -> {
-            resources.getString(R.string.usage_passive_footnote)
-        }
         "usage.range_30d" -> {
             resources.getString(R.string.usage_range_30d)
         }
@@ -7099,88 +7056,45 @@ private fun resolveUiMessage14(resources: android.content.res.Resources, message
         "usage.range_today" -> {
             resources.getString(R.string.usage_range_today)
         }
-        "usage.row_sub_cache" -> {
-            val inp = message.args.getValue("inp") as String
-            val read = message.args.getValue("read") as String
-            val write = message.args.getValue("write") as String
-            resources.getString(R.string.usage_row_sub_cache, inp, read, write)
+        "usage.scope_all_empty" -> {
+            resources.getString(R.string.usage_scope_all_empty)
         }
-        "usage.row_sub_speed" -> {
-            val high = message.args.getValue("high") as String
-            val low = message.args.getValue("low") as String
-            val ttft = message.args.getValue("ttft") as String
-            resources.getString(R.string.usage_row_sub_speed, high, low, ttft)
+        "usage.scope_all_models" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.usage_scope_all_models, count, count)
         }
-        "usage.row_sub_tap_overlay" -> {
-            resources.getString(R.string.usage_row_sub_tap_overlay)
+        "usage.scope_clear_a11y" -> {
+            resources.getString(R.string.usage_scope_clear_a11y)
         }
-        "usage.row_sub_tokens" -> {
-            val inp = message.args.getValue("inp") as String
-            val out = message.args.getValue("out") as String
-            val read = message.args.getValue("read") as String
-            val write = message.args.getValue("write") as String
-            resources.getString(R.string.usage_row_sub_tokens, inp, out, read, write)
+        "usage.scrub_day" -> {
+            val day = message.args.getValue("day") as Int
+            val month = message.args.getValue("month") as Int
+            resources.getString(R.string.usage_scrub_day, day, month)
         }
-        "usage.row_sub_tokens_reasoning" -> {
-            val inp = message.args.getValue("inp") as String
-            val out = message.args.getValue("out") as String
-            val read = message.args.getValue("read") as String
-            val reas = message.args.getValue("reas") as String
-            val write = message.args.getValue("write") as String
-            resources.getString(R.string.usage_row_sub_tokens_reasoning, inp, out, read, reas, write)
+        "usage.scrub_day_hour_range" -> {
+            val day = message.args.getValue("day") as Int
+            val end = message.args.getValue("end") as Int
+            val month = message.args.getValue("month") as Int
+            val start = message.args.getValue("start") as Int
+            resources.getString(R.string.usage_scrub_day_hour_range, day, end, month, start)
         }
-        "usage.scrub_total" -> {
-            val total = message.args.getValue("total") as String
-            resources.getString(R.string.usage_scrub_total, total)
+        "usage.scrub_hour_range" -> {
+            val end = message.args.getValue("end") as Int
+            val start = message.args.getValue("start") as Int
+            resources.getString(R.string.usage_scrub_hour_range, end, start)
         }
-        "usage.speed_threshold_footnote" -> {
-            resources.getString(R.string.usage_speed_threshold_footnote)
+        "usage.strip_cache_hit" -> {
+            resources.getString(R.string.usage_strip_cache_hit)
         }
-        "usage.sub_median_p10_p90" -> {
-            val high = message.args.getValue("high") as String
-            val low = message.args.getValue("low") as String
-            resources.getString(R.string.usage_sub_median_p10_p90, high, low)
+        "usage.strip_speed" -> {
+            resources.getString(R.string.usage_strip_speed)
         }
-        "usage.sub_p10_p90" -> {
-            val high = message.args.getValue("high") as String
-            val low = message.args.getValue("low") as String
-            resources.getString(R.string.usage_sub_p10_p90, high, low)
-        }
-        "usage.sub_recent10" -> {
-            val speed = message.args.getValue("speed") as String
-            resources.getString(R.string.usage_sub_recent10, speed)
-        }
-        "usage.sub_vs_prev_30d" -> {
-            resources.getString(R.string.usage_sub_vs_prev_30d)
-        }
-        "usage.sub_vs_prev_7d" -> {
-            resources.getString(R.string.usage_sub_vs_prev_7d)
-        }
-        "usage.sub_vs_prev_generic" -> {
-            resources.getString(R.string.usage_sub_vs_prev_generic)
-        }
-        "usage.sub_weighted_cache" -> {
-            resources.getString(R.string.usage_sub_weighted_cache)
-        }
-        "usage.subtitle_live" -> {
-            val name = message.args.getValue("name") as String
-            resources.getString(R.string.usage_subtitle_live, name)
+        "usage.strip_ttft" -> {
+            resources.getString(R.string.usage_strip_ttft)
         }
         "usage.subtitle_offline" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.usage_subtitle_offline, name)
-        }
-        "usage.tab_cache_hit" -> {
-            resources.getString(R.string.usage_tab_cache_hit)
-        }
-        "usage.tab_speed" -> {
-            resources.getString(R.string.usage_tab_speed)
-        }
-        "usage.tab_tokens" -> {
-            resources.getString(R.string.usage_tab_tokens)
-        }
-        "usage.tab_ttft" -> {
-            resources.getString(R.string.usage_tab_ttft)
         }
         "usage.title" -> {
             resources.getString(R.string.usage_title)
@@ -7191,15 +7105,19 @@ private fun resolveUiMessage14(resources: android.content.res.Resources, message
         "usage.unit_yi" -> {
             resources.getString(R.string.usage_unit_yi)
         }
-        "usage.unreported_aria" -> {
-            resources.getString(R.string.usage_unreported_aria)
-        }
         "usage.unsupported_body" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.usage_unsupported_body, name)
         }
         "usage.unsupported_title" -> {
             resources.getString(R.string.usage_unsupported_title)
+        }
+        "usage.vs_prev_days" -> {
+            val days = message.args.getValue("days") as Int
+            resources.getQuantityString(R.plurals.usage_vs_prev_days, days, days)
+        }
+        "usage.vs_yesterday" -> {
+            resources.getString(R.string.usage_vs_yesterday)
         }
         else -> null
     }

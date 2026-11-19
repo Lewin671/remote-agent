@@ -8483,9 +8483,9 @@ public enum L10n {
         let key = "transport_use_read"
         return format(key, locale: locale, args: [])
     }
-    public static func usageBackfilledSummary(name: String, scanned: Int, locale: String = MessageLocale.current) -> String {
-        let key = "usage_backfilled_summary"
-        return format(key, locale: locale, args: [name, Int64(scanned)])
+    public static func usageAxis24H(locale: String = MessageLocale.current) -> String {
+        let key = "usage_axis_24h"
+        return format(key, locale: locale, args: [])
     }
     public static func usageBackfillingBanner(scanned: Int, total: Int, locale: String = MessageLocale.current) -> String {
         let key = "usage_backfilling_banner"
@@ -8495,72 +8495,28 @@ public enum L10n {
         let key = "usage_backfilling_cell"
         return format(key, locale: locale, args: [])
     }
-    public static func usageBackfillingZone(locale: String = MessageLocale.current) -> String {
-        let key = "usage_backfilling_zone"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageCacheFormulaFootnote(locale: String = MessageLocale.current) -> String {
-        let key = "usage_cache_formula_footnote"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageCacheWriteFootnote(locale: String = MessageLocale.current) -> String {
-        let key = "usage_cache_write_footnote"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageChartA11YLine(count: Int, metric: String, name: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_chart_a11y_line"
-        return format(key, locale: locale, args: [Int64(count), metric, name])
-    }
-    public static func usageChartA11YTokens(count: Int, name: String, total: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_chart_a11y_tokens"
+    public static func usageChartsA11Y(count: Int, name: String, total: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_charts_a11y"
         return format(key, locale: locale, args: [Int64(count), name, total])
     }
-    public static func usageColCacheRead(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_cache_read"
+    public static func usageColCache(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_cache"
         return format(key, locale: locale, args: [])
     }
-    public static func usageColCacheWrite(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_cache_write"
+    public static func usageColModel(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_model"
         return format(key, locale: locale, args: [])
     }
-    public static func usageColHitRate(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_hit_rate"
+    public static func usageColSpeed(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_speed"
         return format(key, locale: locale, args: [])
     }
-    public static func usageColMedian(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_median"
+    public static func usageColTokens(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_tokens"
         return format(key, locale: locale, args: [])
     }
-    public static func usageColOutput(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_output"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageColPair(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_pair"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageColReqs(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_reqs"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageColTotal(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_total"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageColTtftMedian(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_ttft_median"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageColUncached(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_uncached"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageColValidReqs(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_valid_reqs"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageColVsPrev(locale: String = MessageLocale.current) -> String {
-        let key = "usage_col_vs_prev"
+    public static func usageColTtft(locale: String = MessageLocale.current) -> String {
+        let key = "usage_col_ttft"
         return format(key, locale: locale, args: [])
     }
     public static func usageCompCacheRead(locale: String = MessageLocale.current) -> String {
@@ -8575,9 +8531,9 @@ public enum L10n {
         let key = "usage_comp_output"
         return format(key, locale: locale, args: [])
     }
-    public static func usageCompReasoning(value: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_comp_reasoning"
-        return format(key, locale: locale, args: [value])
+    public static func usageCompReasoningLabel(locale: String = MessageLocale.current) -> String {
+        let key = "usage_comp_reasoning_label"
+        return format(key, locale: locale, args: [])
     }
     public static func usageCompUncached(locale: String = MessageLocale.current) -> String {
         let key = "usage_comp_uncached"
@@ -8587,32 +8543,28 @@ public enum L10n {
         let key = "usage_custom_end_label"
         return format(key, locale: locale, args: [])
     }
-    public static func usageCustomRangeChange(locale: String = MessageLocale.current) -> String {
-        let key = "usage_custom_range_change"
-        return format(key, locale: locale, args: [])
+    public static func usageCustomRangeCrossYear(endDay: Int, endMonth: Int, endYear: Int, startDay: Int, startMonth: Int, startYear: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_custom_range_cross_year"
+        return format(key, locale: locale, args: [Int64(endDay), Int64(endMonth), Int64(endYear), Int64(startDay), Int64(startMonth), Int64(startYear)])
     }
     public static func usageCustomRangeLimitHint(locale: String = MessageLocale.current) -> String {
         let key = "usage_custom_range_limit_hint"
         return format(key, locale: locale, args: [])
     }
-    public static func usageCustomRangeSummary(days: Int, end: String, start: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_custom_range_summary"
-        return format(key, locale: locale, args: [Int64(days), end, start])
+    public static func usageCustomRangeSameYear(endDay: Int, endMonth: Int, startDay: Int, startMonth: Int, year: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_custom_range_same_year"
+        return format(key, locale: locale, args: [Int64(endDay), Int64(endMonth), Int64(startDay), Int64(startMonth), Int64(year)])
+    }
+    public static func usageCustomRangeSingleDay(day: Int, month: Int, year: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_custom_range_single_day"
+        return format(key, locale: locale, args: [Int64(day), Int64(month), Int64(year)])
     }
     public static func usageCustomStartLabel(locale: String = MessageLocale.current) -> String {
         let key = "usage_custom_start_label"
         return format(key, locale: locale, args: [])
     }
-    public static func usageDurationMinSec(min: Int, sec: Int, locale: String = MessageLocale.current) -> String {
-        let key = "usage_duration_min_sec"
-        return format(key, locale: locale, args: [Int64(min), Int64(sec)])
-    }
-    public static func usageEmptyBody(locale: String = MessageLocale.current) -> String {
-        let key = "usage_empty_body"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageEmptyTitle(locale: String = MessageLocale.current) -> String {
-        let key = "usage_empty_title"
+    public static func usageEmptyNoRecords(locale: String = MessageLocale.current) -> String {
+        let key = "usage_empty_no_records"
         return format(key, locale: locale, args: [])
     }
     public static func usageEntryCachePct(pct: String, locale: String = MessageLocale.current) -> String {
@@ -8639,21 +8591,21 @@ public enum L10n {
         let key = "usage_entry_reqs"
         return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func usageFewSamplesCount(count: Int, locale: String = MessageLocale.current) -> String {
-        let key = "usage_few_samples_count"
-        return format(key, locale: locale, args: [Int64(count)])
-    }
-    public static func usageFewSamplesHint(locale: String = MessageLocale.current) -> String {
-        let key = "usage_few_samples_hint"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageFilterAll(locale: String = MessageLocale.current) -> String {
-        let key = "usage_filter_all"
-        return format(key, locale: locale, args: [])
-    }
     public static func usageFlat(locale: String = MessageLocale.current) -> String {
         let key = "usage_flat"
         return format(key, locale: locale, args: [])
+    }
+    public static func usageFooterNote(locale: String = MessageLocale.current) -> String {
+        let key = "usage_footer_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageHeroReqs(count: Int, formatted: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_hero_reqs"
+        return format(key, locale: locale, args: [Int64(count), formatted])
+    }
+    public static func usageHeroShare(pct: String, locale: String = MessageLocale.current) -> String {
+        let key = "usage_hero_share"
+        return format(key, locale: locale, args: [pct])
     }
     public static func usageKpiUnitTokens(locale: String = MessageLocale.current) -> String {
         let key = "usage_kpi_unit_tokens"
@@ -8670,6 +8622,10 @@ public enum L10n {
     public static func usageMixedUnavailableFootnote(agents: String, locale: String = MessageLocale.current) -> String {
         let key = "usage_mixed_unavailable_footnote"
         return format(key, locale: locale, args: [agents])
+    }
+    public static func usageNoSampleA11Y(locale: String = MessageLocale.current) -> String {
+        let key = "usage_no_sample_a11y"
+        return format(key, locale: locale, args: [])
     }
     public static func usageOfflineBanner(name: String, time: String, locale: String = MessageLocale.current) -> String {
         let key = "usage_offline_banner"
@@ -8691,22 +8647,6 @@ public enum L10n {
         let key = "usage_only_unavailable_title"
         return format(key, locale: locale, args: [agents])
     }
-    public static func usageOutlierNote(locale: String = MessageLocale.current) -> String {
-        let key = "usage_outlier_note"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usagePairsCappedSummary(count: Int, locale: String = MessageLocale.current) -> String {
-        let key = "usage_pairs_capped_summary"
-        return format(key, locale: locale, args: [Int64(count)])
-    }
-    public static func usagePairsSummary(count: Int, name: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_pairs_summary"
-        return format(key, locale: locale, args: [Int64(count), name])
-    }
-    public static func usagePassiveFootnote(locale: String = MessageLocale.current) -> String {
-        let key = "usage_passive_footnote"
-        return format(key, locale: locale, args: [])
-    }
     public static func usageRange30D(locale: String = MessageLocale.current) -> String {
         let key = "usage_range_30d"
         return format(key, locale: locale, args: [])
@@ -8723,85 +8663,45 @@ public enum L10n {
         let key = "usage_range_today"
         return format(key, locale: locale, args: [])
     }
-    public static func usageRowSubCache(inp: String, read: String, write: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_row_sub_cache"
-        return format(key, locale: locale, args: [inp, read, write])
-    }
-    public static func usageRowSubSpeed(high: String, low: String, ttft: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_row_sub_speed"
-        return format(key, locale: locale, args: [high, low, ttft])
-    }
-    public static func usageRowSubTapOverlay(locale: String = MessageLocale.current) -> String {
-        let key = "usage_row_sub_tap_overlay"
+    public static func usageScopeAllEmpty(locale: String = MessageLocale.current) -> String {
+        let key = "usage_scope_all_empty"
         return format(key, locale: locale, args: [])
     }
-    public static func usageRowSubTokens(inp: String, out: String, read: String, write: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_row_sub_tokens"
-        return format(key, locale: locale, args: [inp, out, read, write])
+    public static func usageScopeAllModels(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_scope_all_models"
+        return format(key, locale: locale, args: [Int64(count)])
     }
-    public static func usageRowSubTokensReasoning(inp: String, out: String, read: String, reas: String, write: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_row_sub_tokens_reasoning"
-        return format(key, locale: locale, args: [inp, out, read, reas, write])
-    }
-    public static func usageScrubTotal(total: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_scrub_total"
-        return format(key, locale: locale, args: [total])
-    }
-    public static func usageSpeedThresholdFootnote(locale: String = MessageLocale.current) -> String {
-        let key = "usage_speed_threshold_footnote"
+    public static func usageScopeClearA11Y(locale: String = MessageLocale.current) -> String {
+        let key = "usage_scope_clear_a11y"
         return format(key, locale: locale, args: [])
     }
-    public static func usageSubMedianP10P90(high: String, low: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_sub_median_p10_p90"
-        return format(key, locale: locale, args: [high, low])
+    public static func usageScrubDay(day: Int, month: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_scrub_day"
+        return format(key, locale: locale, args: [Int64(day), Int64(month)])
     }
-    public static func usageSubP10P90(high: String, low: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_sub_p10_p90"
-        return format(key, locale: locale, args: [high, low])
+    public static func usageScrubDayHourRange(day: Int, end: Int, month: Int, start: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_scrub_day_hour_range"
+        return format(key, locale: locale, args: [Int64(day), Int64(end), Int64(month), Int64(start)])
     }
-    public static func usageSubRecent10(speed: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_sub_recent10"
-        return format(key, locale: locale, args: [speed])
+    public static func usageScrubHourRange(end: Int, start: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_scrub_hour_range"
+        return format(key, locale: locale, args: [Int64(end), Int64(start)])
     }
-    public static func usageSubVsPrev30D(locale: String = MessageLocale.current) -> String {
-        let key = "usage_sub_vs_prev_30d"
+    public static func usageStripCacheHit(locale: String = MessageLocale.current) -> String {
+        let key = "usage_strip_cache_hit"
         return format(key, locale: locale, args: [])
     }
-    public static func usageSubVsPrev7D(locale: String = MessageLocale.current) -> String {
-        let key = "usage_sub_vs_prev_7d"
+    public static func usageStripSpeed(locale: String = MessageLocale.current) -> String {
+        let key = "usage_strip_speed"
         return format(key, locale: locale, args: [])
     }
-    public static func usageSubVsPrevGeneric(locale: String = MessageLocale.current) -> String {
-        let key = "usage_sub_vs_prev_generic"
+    public static func usageStripTtft(locale: String = MessageLocale.current) -> String {
+        let key = "usage_strip_ttft"
         return format(key, locale: locale, args: [])
-    }
-    public static func usageSubWeightedCache(locale: String = MessageLocale.current) -> String {
-        let key = "usage_sub_weighted_cache"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageSubtitleLive(name: String, locale: String = MessageLocale.current) -> String {
-        let key = "usage_subtitle_live"
-        return format(key, locale: locale, args: [name])
     }
     public static func usageSubtitleOffline(name: String, locale: String = MessageLocale.current) -> String {
         let key = "usage_subtitle_offline"
         return format(key, locale: locale, args: [name])
-    }
-    public static func usageTabCacheHit(locale: String = MessageLocale.current) -> String {
-        let key = "usage_tab_cache_hit"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageTabSpeed(locale: String = MessageLocale.current) -> String {
-        let key = "usage_tab_speed"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageTabTokens(locale: String = MessageLocale.current) -> String {
-        let key = "usage_tab_tokens"
-        return format(key, locale: locale, args: [])
-    }
-    public static func usageTabTtft(locale: String = MessageLocale.current) -> String {
-        let key = "usage_tab_ttft"
-        return format(key, locale: locale, args: [])
     }
     public static func usageTitle(locale: String = MessageLocale.current) -> String {
         let key = "usage_title"
@@ -8815,16 +8715,20 @@ public enum L10n {
         let key = "usage_unit_yi"
         return format(key, locale: locale, args: [])
     }
-    public static func usageUnreportedAria(locale: String = MessageLocale.current) -> String {
-        let key = "usage_unreported_aria"
-        return format(key, locale: locale, args: [])
-    }
     public static func usageUnsupportedBody(name: String, locale: String = MessageLocale.current) -> String {
         let key = "usage_unsupported_body"
         return format(key, locale: locale, args: [name])
     }
     public static func usageUnsupportedTitle(locale: String = MessageLocale.current) -> String {
         let key = "usage_unsupported_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func usageVsPrevDays(days: Int, locale: String = MessageLocale.current) -> String {
+        let key = "usage_vs_prev_days"
+        return format(key, locale: locale, args: [Int64(days)])
+    }
+    public static func usageVsYesterday(locale: String = MessageLocale.current) -> String {
+        let key = "usage_vs_yesterday"
         return format(key, locale: locale, args: [])
     }
 }
@@ -17299,9 +17203,9 @@ public enum L10nMessage {
         let key = "transport_use_read"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageBackfilledSummary(name: String, scanned: Int) -> LocalizedMessage {
-        let key = "usage_backfilled_summary"
-        return LocalizedMessage(key: key, arguments: [.string(name), .integer(Int64(scanned))])
+    public static func usageAxis24H() -> LocalizedMessage {
+        let key = "usage_axis_24h"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func usageBackfillingBanner(scanned: Int, total: Int) -> LocalizedMessage {
         let key = "usage_backfilling_banner"
@@ -17311,72 +17215,28 @@ public enum L10nMessage {
         let key = "usage_backfilling_cell"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageBackfillingZone() -> LocalizedMessage {
-        let key = "usage_backfilling_zone"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageCacheFormulaFootnote() -> LocalizedMessage {
-        let key = "usage_cache_formula_footnote"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageCacheWriteFootnote() -> LocalizedMessage {
-        let key = "usage_cache_write_footnote"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageChartA11YLine(count: Int, metric: String, name: String) -> LocalizedMessage {
-        let key = "usage_chart_a11y_line"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(metric), .string(name)])
-    }
-    public static func usageChartA11YTokens(count: Int, name: String, total: String) -> LocalizedMessage {
-        let key = "usage_chart_a11y_tokens"
+    public static func usageChartsA11Y(count: Int, name: String, total: String) -> LocalizedMessage {
+        let key = "usage_charts_a11y"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(name), .string(total)])
     }
-    public static func usageColCacheRead() -> LocalizedMessage {
-        let key = "usage_col_cache_read"
+    public static func usageColCache() -> LocalizedMessage {
+        let key = "usage_col_cache"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageColCacheWrite() -> LocalizedMessage {
-        let key = "usage_col_cache_write"
+    public static func usageColModel() -> LocalizedMessage {
+        let key = "usage_col_model"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageColHitRate() -> LocalizedMessage {
-        let key = "usage_col_hit_rate"
+    public static func usageColSpeed() -> LocalizedMessage {
+        let key = "usage_col_speed"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageColMedian() -> LocalizedMessage {
-        let key = "usage_col_median"
+    public static func usageColTokens() -> LocalizedMessage {
+        let key = "usage_col_tokens"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageColOutput() -> LocalizedMessage {
-        let key = "usage_col_output"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageColPair() -> LocalizedMessage {
-        let key = "usage_col_pair"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageColReqs() -> LocalizedMessage {
-        let key = "usage_col_reqs"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageColTotal() -> LocalizedMessage {
-        let key = "usage_col_total"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageColTtftMedian() -> LocalizedMessage {
-        let key = "usage_col_ttft_median"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageColUncached() -> LocalizedMessage {
-        let key = "usage_col_uncached"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageColValidReqs() -> LocalizedMessage {
-        let key = "usage_col_valid_reqs"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageColVsPrev() -> LocalizedMessage {
-        let key = "usage_col_vs_prev"
+    public static func usageColTtft() -> LocalizedMessage {
+        let key = "usage_col_ttft"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func usageCompCacheRead() -> LocalizedMessage {
@@ -17391,9 +17251,9 @@ public enum L10nMessage {
         let key = "usage_comp_output"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageCompReasoning(value: String) -> LocalizedMessage {
-        let key = "usage_comp_reasoning"
-        return LocalizedMessage(key: key, arguments: [.string(value)])
+    public static func usageCompReasoningLabel() -> LocalizedMessage {
+        let key = "usage_comp_reasoning_label"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func usageCompUncached() -> LocalizedMessage {
         let key = "usage_comp_uncached"
@@ -17403,32 +17263,28 @@ public enum L10nMessage {
         let key = "usage_custom_end_label"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageCustomRangeChange() -> LocalizedMessage {
-        let key = "usage_custom_range_change"
-        return LocalizedMessage(key: key, arguments: [])
+    public static func usageCustomRangeCrossYear(endDay: Int, endMonth: Int, endYear: Int, startDay: Int, startMonth: Int, startYear: Int) -> LocalizedMessage {
+        let key = "usage_custom_range_cross_year"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(endDay)), .integer(Int64(endMonth)), .integer(Int64(endYear)), .integer(Int64(startDay)), .integer(Int64(startMonth)), .integer(Int64(startYear))])
     }
     public static func usageCustomRangeLimitHint() -> LocalizedMessage {
         let key = "usage_custom_range_limit_hint"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageCustomRangeSummary(days: Int, end: String, start: String) -> LocalizedMessage {
-        let key = "usage_custom_range_summary"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(days)), .string(end), .string(start)])
+    public static func usageCustomRangeSameYear(endDay: Int, endMonth: Int, startDay: Int, startMonth: Int, year: Int) -> LocalizedMessage {
+        let key = "usage_custom_range_same_year"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(endDay)), .integer(Int64(endMonth)), .integer(Int64(startDay)), .integer(Int64(startMonth)), .integer(Int64(year))])
+    }
+    public static func usageCustomRangeSingleDay(day: Int, month: Int, year: Int) -> LocalizedMessage {
+        let key = "usage_custom_range_single_day"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .integer(Int64(year))])
     }
     public static func usageCustomStartLabel() -> LocalizedMessage {
         let key = "usage_custom_start_label"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageDurationMinSec(min: Int, sec: Int) -> LocalizedMessage {
-        let key = "usage_duration_min_sec"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(min)), .integer(Int64(sec))])
-    }
-    public static func usageEmptyBody() -> LocalizedMessage {
-        let key = "usage_empty_body"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageEmptyTitle() -> LocalizedMessage {
-        let key = "usage_empty_title"
+    public static func usageEmptyNoRecords() -> LocalizedMessage {
+        let key = "usage_empty_no_records"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func usageEntryCachePct(pct: String) -> LocalizedMessage {
@@ -17455,21 +17311,21 @@ public enum L10nMessage {
         let key = "usage_entry_reqs"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
     }
-    public static func usageFewSamplesCount(count: Int) -> LocalizedMessage {
-        let key = "usage_few_samples_count"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
-    }
-    public static func usageFewSamplesHint() -> LocalizedMessage {
-        let key = "usage_few_samples_hint"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageFilterAll() -> LocalizedMessage {
-        let key = "usage_filter_all"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func usageFlat() -> LocalizedMessage {
         let key = "usage_flat"
         return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageFooterNote() -> LocalizedMessage {
+        let key = "usage_footer_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageHeroReqs(count: Int, formatted: String) -> LocalizedMessage {
+        let key = "usage_hero_reqs"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(formatted)])
+    }
+    public static func usageHeroShare(pct: String) -> LocalizedMessage {
+        let key = "usage_hero_share"
+        return LocalizedMessage(key: key, arguments: [.string(pct)])
     }
     public static func usageKpiUnitTokens() -> LocalizedMessage {
         let key = "usage_kpi_unit_tokens"
@@ -17486,6 +17342,10 @@ public enum L10nMessage {
     public static func usageMixedUnavailableFootnote(agents: String) -> LocalizedMessage {
         let key = "usage_mixed_unavailable_footnote"
         return LocalizedMessage(key: key, arguments: [.string(agents)])
+    }
+    public static func usageNoSampleA11Y() -> LocalizedMessage {
+        let key = "usage_no_sample_a11y"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func usageOfflineBanner(name: String, time: String) -> LocalizedMessage {
         let key = "usage_offline_banner"
@@ -17507,22 +17367,6 @@ public enum L10nMessage {
         let key = "usage_only_unavailable_title"
         return LocalizedMessage(key: key, arguments: [.string(agents)])
     }
-    public static func usageOutlierNote() -> LocalizedMessage {
-        let key = "usage_outlier_note"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usagePairsCappedSummary(count: Int) -> LocalizedMessage {
-        let key = "usage_pairs_capped_summary"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
-    }
-    public static func usagePairsSummary(count: Int, name: String) -> LocalizedMessage {
-        let key = "usage_pairs_summary"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(name)])
-    }
-    public static func usagePassiveFootnote() -> LocalizedMessage {
-        let key = "usage_passive_footnote"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func usageRange30D() -> LocalizedMessage {
         let key = "usage_range_30d"
         return LocalizedMessage(key: key, arguments: [])
@@ -17539,85 +17383,45 @@ public enum L10nMessage {
         let key = "usage_range_today"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageRowSubCache(inp: String, read: String, write: String) -> LocalizedMessage {
-        let key = "usage_row_sub_cache"
-        return LocalizedMessage(key: key, arguments: [.string(inp), .string(read), .string(write)])
-    }
-    public static func usageRowSubSpeed(high: String, low: String, ttft: String) -> LocalizedMessage {
-        let key = "usage_row_sub_speed"
-        return LocalizedMessage(key: key, arguments: [.string(high), .string(low), .string(ttft)])
-    }
-    public static func usageRowSubTapOverlay() -> LocalizedMessage {
-        let key = "usage_row_sub_tap_overlay"
+    public static func usageScopeAllEmpty() -> LocalizedMessage {
+        let key = "usage_scope_all_empty"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageRowSubTokens(inp: String, out: String, read: String, write: String) -> LocalizedMessage {
-        let key = "usage_row_sub_tokens"
-        return LocalizedMessage(key: key, arguments: [.string(inp), .string(out), .string(read), .string(write)])
+    public static func usageScopeAllModels(count: Int) -> LocalizedMessage {
+        let key = "usage_scope_all_models"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
     }
-    public static func usageRowSubTokensReasoning(inp: String, out: String, read: String, reas: String, write: String) -> LocalizedMessage {
-        let key = "usage_row_sub_tokens_reasoning"
-        return LocalizedMessage(key: key, arguments: [.string(inp), .string(out), .string(read), .string(reas), .string(write)])
-    }
-    public static func usageScrubTotal(total: String) -> LocalizedMessage {
-        let key = "usage_scrub_total"
-        return LocalizedMessage(key: key, arguments: [.string(total)])
-    }
-    public static func usageSpeedThresholdFootnote() -> LocalizedMessage {
-        let key = "usage_speed_threshold_footnote"
+    public static func usageScopeClearA11Y() -> LocalizedMessage {
+        let key = "usage_scope_clear_a11y"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageSubMedianP10P90(high: String, low: String) -> LocalizedMessage {
-        let key = "usage_sub_median_p10_p90"
-        return LocalizedMessage(key: key, arguments: [.string(high), .string(low)])
+    public static func usageScrubDay(day: Int, month: Int) -> LocalizedMessage {
+        let key = "usage_scrub_day"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month))])
     }
-    public static func usageSubP10P90(high: String, low: String) -> LocalizedMessage {
-        let key = "usage_sub_p10_p90"
-        return LocalizedMessage(key: key, arguments: [.string(high), .string(low)])
+    public static func usageScrubDayHourRange(day: Int, end: Int, month: Int, start: Int) -> LocalizedMessage {
+        let key = "usage_scrub_day_hour_range"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(end)), .integer(Int64(month)), .integer(Int64(start))])
     }
-    public static func usageSubRecent10(speed: String) -> LocalizedMessage {
-        let key = "usage_sub_recent10"
-        return LocalizedMessage(key: key, arguments: [.string(speed)])
+    public static func usageScrubHourRange(end: Int, start: Int) -> LocalizedMessage {
+        let key = "usage_scrub_hour_range"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(end)), .integer(Int64(start))])
     }
-    public static func usageSubVsPrev30D() -> LocalizedMessage {
-        let key = "usage_sub_vs_prev_30d"
+    public static func usageStripCacheHit() -> LocalizedMessage {
+        let key = "usage_strip_cache_hit"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageSubVsPrev7D() -> LocalizedMessage {
-        let key = "usage_sub_vs_prev_7d"
+    public static func usageStripSpeed() -> LocalizedMessage {
+        let key = "usage_strip_speed"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageSubVsPrevGeneric() -> LocalizedMessage {
-        let key = "usage_sub_vs_prev_generic"
+    public static func usageStripTtft() -> LocalizedMessage {
+        let key = "usage_strip_ttft"
         return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageSubWeightedCache() -> LocalizedMessage {
-        let key = "usage_sub_weighted_cache"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageSubtitleLive(name: String) -> LocalizedMessage {
-        let key = "usage_subtitle_live"
-        return LocalizedMessage(key: key, arguments: [.string(name)])
     }
     public static func usageSubtitleOffline(name: String) -> LocalizedMessage {
         let key = "usage_subtitle_offline"
         return LocalizedMessage(key: key, arguments: [.string(name)])
-    }
-    public static func usageTabCacheHit() -> LocalizedMessage {
-        let key = "usage_tab_cache_hit"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageTabSpeed() -> LocalizedMessage {
-        let key = "usage_tab_speed"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageTabTokens() -> LocalizedMessage {
-        let key = "usage_tab_tokens"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func usageTabTtft() -> LocalizedMessage {
-        let key = "usage_tab_ttft"
-        return LocalizedMessage(key: key, arguments: [])
     }
     public static func usageTitle() -> LocalizedMessage {
         let key = "usage_title"
@@ -17631,16 +17435,20 @@ public enum L10nMessage {
         let key = "usage_unit_yi"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func usageUnreportedAria() -> LocalizedMessage {
-        let key = "usage_unreported_aria"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func usageUnsupportedBody(name: String) -> LocalizedMessage {
         let key = "usage_unsupported_body"
         return LocalizedMessage(key: key, arguments: [.string(name)])
     }
     public static func usageUnsupportedTitle() -> LocalizedMessage {
         let key = "usage_unsupported_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func usageVsPrevDays(days: Int) -> LocalizedMessage {
+        let key = "usage_vs_prev_days"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(days))])
+    }
+    public static func usageVsYesterday() -> LocalizedMessage {
+        let key = "usage_vs_yesterday"
         return LocalizedMessage(key: key, arguments: [])
     }
 }
@@ -19916,92 +19724,68 @@ public enum L10nText {
         case "transport.summary_off": return L10n.format("transport_summary_off", locale: locale, args: [])
         case "transport.use_file": return L10n.format("transport_use_file", locale: locale, args: [])
         case "transport.use_read": return L10n.format("transport_use_read", locale: locale, args: [])
-        case "usage.backfilled_summary": return L10n.format("usage_backfilled_summary", locale: locale, args: [strArg(args["name"]), intArg(args["scanned"])])
+        case "usage.axis_24h": return L10n.format("usage_axis_24h", locale: locale, args: [])
         case "usage.backfilling_banner": return L10n.format("usage_backfilling_banner", locale: locale, args: [intArg(args["scanned"]), intArg(args["total"])])
         case "usage.backfilling_cell": return L10n.format("usage_backfilling_cell", locale: locale, args: [])
-        case "usage.backfilling_zone": return L10n.format("usage_backfilling_zone", locale: locale, args: [])
-        case "usage.cache_formula_footnote": return L10n.format("usage_cache_formula_footnote", locale: locale, args: [])
-        case "usage.cache_write_footnote": return L10n.format("usage_cache_write_footnote", locale: locale, args: [])
-        case "usage.chart_a11y_line": return L10n.format("usage_chart_a11y_line", locale: locale, args: [intArg(args["count"]), strArg(args["metric"]), strArg(args["name"])])
-        case "usage.chart_a11y_tokens": return L10n.format("usage_chart_a11y_tokens", locale: locale, args: [intArg(args["count"]), strArg(args["name"]), strArg(args["total"])])
-        case "usage.col_cache_read": return L10n.format("usage_col_cache_read", locale: locale, args: [])
-        case "usage.col_cache_write": return L10n.format("usage_col_cache_write", locale: locale, args: [])
-        case "usage.col_hit_rate": return L10n.format("usage_col_hit_rate", locale: locale, args: [])
-        case "usage.col_median": return L10n.format("usage_col_median", locale: locale, args: [])
-        case "usage.col_output": return L10n.format("usage_col_output", locale: locale, args: [])
-        case "usage.col_pair": return L10n.format("usage_col_pair", locale: locale, args: [])
-        case "usage.col_reqs": return L10n.format("usage_col_reqs", locale: locale, args: [])
-        case "usage.col_total": return L10n.format("usage_col_total", locale: locale, args: [])
-        case "usage.col_ttft_median": return L10n.format("usage_col_ttft_median", locale: locale, args: [])
-        case "usage.col_uncached": return L10n.format("usage_col_uncached", locale: locale, args: [])
-        case "usage.col_valid_reqs": return L10n.format("usage_col_valid_reqs", locale: locale, args: [])
-        case "usage.col_vs_prev": return L10n.format("usage_col_vs_prev", locale: locale, args: [])
+        case "usage.charts_a11y": return L10n.format("usage_charts_a11y", locale: locale, args: [intArg(args["count"]), strArg(args["name"]), strArg(args["total"])])
+        case "usage.col_cache": return L10n.format("usage_col_cache", locale: locale, args: [])
+        case "usage.col_model": return L10n.format("usage_col_model", locale: locale, args: [])
+        case "usage.col_speed": return L10n.format("usage_col_speed", locale: locale, args: [])
+        case "usage.col_tokens": return L10n.format("usage_col_tokens", locale: locale, args: [])
+        case "usage.col_ttft": return L10n.format("usage_col_ttft", locale: locale, args: [])
         case "usage.comp_cache_read": return L10n.format("usage_comp_cache_read", locale: locale, args: [])
         case "usage.comp_cache_write": return L10n.format("usage_comp_cache_write", locale: locale, args: [])
         case "usage.comp_output": return L10n.format("usage_comp_output", locale: locale, args: [])
-        case "usage.comp_reasoning": return L10n.format("usage_comp_reasoning", locale: locale, args: [strArg(args["value"])])
+        case "usage.comp_reasoning_label": return L10n.format("usage_comp_reasoning_label", locale: locale, args: [])
         case "usage.comp_uncached": return L10n.format("usage_comp_uncached", locale: locale, args: [])
         case "usage.custom_end_label": return L10n.format("usage_custom_end_label", locale: locale, args: [])
-        case "usage.custom_range_change": return L10n.format("usage_custom_range_change", locale: locale, args: [])
+        case "usage.custom_range_cross_year": return L10n.format("usage_custom_range_cross_year", locale: locale, args: [intArg(args["endDay"]), intArg(args["endMonth"]), intArg(args["endYear"]), intArg(args["startDay"]), intArg(args["startMonth"]), intArg(args["startYear"])])
         case "usage.custom_range_limit_hint": return L10n.format("usage_custom_range_limit_hint", locale: locale, args: [])
-        case "usage.custom_range_summary": return L10n.format("usage_custom_range_summary", locale: locale, args: [intArg(args["days"]), strArg(args["end"]), strArg(args["start"])])
+        case "usage.custom_range_same_year": return L10n.format("usage_custom_range_same_year", locale: locale, args: [intArg(args["endDay"]), intArg(args["endMonth"]), intArg(args["startDay"]), intArg(args["startMonth"]), intArg(args["year"])])
+        case "usage.custom_range_single_day": return L10n.format("usage_custom_range_single_day", locale: locale, args: [intArg(args["day"]), intArg(args["month"]), intArg(args["year"])])
         case "usage.custom_start_label": return L10n.format("usage_custom_start_label", locale: locale, args: [])
-        case "usage.duration_min_sec": return L10n.format("usage_duration_min_sec", locale: locale, args: [intArg(args["min"]), intArg(args["sec"])])
-        case "usage.empty_body": return L10n.format("usage_empty_body", locale: locale, args: [])
-        case "usage.empty_title": return L10n.format("usage_empty_title", locale: locale, args: [])
+        case "usage.empty_no_records": return L10n.format("usage_empty_no_records", locale: locale, args: [])
         case "usage.entry_cache_pct": return L10n.format("usage_entry_cache_pct", locale: locale, args: [strArg(args["pct"])])
         case "usage.entry_few_samples": return L10n.format("usage_entry_few_samples", locale: locale, args: [intArg(args["count"]), strArg(args["detail"])])
         case "usage.entry_last_30d": return L10n.format("usage_entry_last_30d", locale: locale, args: [])
         case "usage.entry_last_7d": return L10n.format("usage_entry_last_7d", locale: locale, args: [])
         case "usage.entry_no_speed": return L10n.format("usage_entry_no_speed", locale: locale, args: [strArg(args["detail"])])
         case "usage.entry_reqs": return L10n.format("usage_entry_reqs", locale: locale, args: [intArg(args["count"])])
-        case "usage.few_samples_count": return L10n.format("usage_few_samples_count", locale: locale, args: [intArg(args["count"])])
-        case "usage.few_samples_hint": return L10n.format("usage_few_samples_hint", locale: locale, args: [])
-        case "usage.filter_all": return L10n.format("usage_filter_all", locale: locale, args: [])
         case "usage.flat": return L10n.format("usage_flat", locale: locale, args: [])
+        case "usage.footer_note": return L10n.format("usage_footer_note", locale: locale, args: [])
+        case "usage.hero_reqs": return L10n.format("usage_hero_reqs", locale: locale, args: [intArg(args["count"]), strArg(args["formatted"])])
+        case "usage.hero_share": return L10n.format("usage_hero_share", locale: locale, args: [strArg(args["pct"])])
         case "usage.kpi_unit_tokens": return L10n.format("usage_kpi_unit_tokens", locale: locale, args: [])
         case "usage.kpi_unit_toks": return L10n.format("usage_kpi_unit_toks", locale: locale, args: [])
         case "usage.load_error_title": return L10n.format("usage_load_error_title", locale: locale, args: [])
         case "usage.mixed_unavailable_footnote": return L10n.format("usage_mixed_unavailable_footnote", locale: locale, args: [strArg(args["agents"])])
+        case "usage.no_sample_a11y": return L10n.format("usage_no_sample_a11y", locale: locale, args: [])
         case "usage.offline_banner": return L10n.format("usage_offline_banner", locale: locale, args: [strArg(args["name"]), strArg(args["time"])])
         case "usage.offline_empty_body": return L10n.format("usage_offline_empty_body", locale: locale, args: [strArg(args["name"])])
         case "usage.offline_empty_title": return L10n.format("usage_offline_empty_title", locale: locale, args: [strArg(args["name"])])
         case "usage.only_unavailable_body": return L10n.format("usage_only_unavailable_body", locale: locale, args: [strArg(args["agents"])])
         case "usage.only_unavailable_title": return L10n.format("usage_only_unavailable_title", locale: locale, args: [strArg(args["agents"])])
-        case "usage.outlier_note": return L10n.format("usage_outlier_note", locale: locale, args: [])
-        case "usage.pairs_capped_summary": return L10n.format("usage_pairs_capped_summary", locale: locale, args: [intArg(args["count"])])
-        case "usage.pairs_summary": return L10n.format("usage_pairs_summary", locale: locale, args: [intArg(args["count"]), strArg(args["name"])])
-        case "usage.passive_footnote": return L10n.format("usage_passive_footnote", locale: locale, args: [])
         case "usage.range_30d": return L10n.format("usage_range_30d", locale: locale, args: [])
         case "usage.range_7d": return L10n.format("usage_range_7d", locale: locale, args: [])
         case "usage.range_custom": return L10n.format("usage_range_custom", locale: locale, args: [])
         case "usage.range_today": return L10n.format("usage_range_today", locale: locale, args: [])
-        case "usage.row_sub_cache": return L10n.format("usage_row_sub_cache", locale: locale, args: [strArg(args["inp"]), strArg(args["read"]), strArg(args["write"])])
-        case "usage.row_sub_speed": return L10n.format("usage_row_sub_speed", locale: locale, args: [strArg(args["high"]), strArg(args["low"]), strArg(args["ttft"])])
-        case "usage.row_sub_tap_overlay": return L10n.format("usage_row_sub_tap_overlay", locale: locale, args: [])
-        case "usage.row_sub_tokens": return L10n.format("usage_row_sub_tokens", locale: locale, args: [strArg(args["inp"]), strArg(args["out"]), strArg(args["read"]), strArg(args["write"])])
-        case "usage.row_sub_tokens_reasoning": return L10n.format("usage_row_sub_tokens_reasoning", locale: locale, args: [strArg(args["inp"]), strArg(args["out"]), strArg(args["read"]), strArg(args["reas"]), strArg(args["write"])])
-        case "usage.scrub_total": return L10n.format("usage_scrub_total", locale: locale, args: [strArg(args["total"])])
-        case "usage.speed_threshold_footnote": return L10n.format("usage_speed_threshold_footnote", locale: locale, args: [])
-        case "usage.sub_median_p10_p90": return L10n.format("usage_sub_median_p10_p90", locale: locale, args: [strArg(args["high"]), strArg(args["low"])])
-        case "usage.sub_p10_p90": return L10n.format("usage_sub_p10_p90", locale: locale, args: [strArg(args["high"]), strArg(args["low"])])
-        case "usage.sub_recent10": return L10n.format("usage_sub_recent10", locale: locale, args: [strArg(args["speed"])])
-        case "usage.sub_vs_prev_30d": return L10n.format("usage_sub_vs_prev_30d", locale: locale, args: [])
-        case "usage.sub_vs_prev_7d": return L10n.format("usage_sub_vs_prev_7d", locale: locale, args: [])
-        case "usage.sub_vs_prev_generic": return L10n.format("usage_sub_vs_prev_generic", locale: locale, args: [])
-        case "usage.sub_weighted_cache": return L10n.format("usage_sub_weighted_cache", locale: locale, args: [])
-        case "usage.subtitle_live": return L10n.format("usage_subtitle_live", locale: locale, args: [strArg(args["name"])])
+        case "usage.scope_all_empty": return L10n.format("usage_scope_all_empty", locale: locale, args: [])
+        case "usage.scope_all_models": return L10n.format("usage_scope_all_models", locale: locale, args: [intArg(args["count"])])
+        case "usage.scope_clear_a11y": return L10n.format("usage_scope_clear_a11y", locale: locale, args: [])
+        case "usage.scrub_day": return L10n.format("usage_scrub_day", locale: locale, args: [intArg(args["day"]), intArg(args["month"])])
+        case "usage.scrub_day_hour_range": return L10n.format("usage_scrub_day_hour_range", locale: locale, args: [intArg(args["day"]), intArg(args["end"]), intArg(args["month"]), intArg(args["start"])])
+        case "usage.scrub_hour_range": return L10n.format("usage_scrub_hour_range", locale: locale, args: [intArg(args["end"]), intArg(args["start"])])
+        case "usage.strip_cache_hit": return L10n.format("usage_strip_cache_hit", locale: locale, args: [])
+        case "usage.strip_speed": return L10n.format("usage_strip_speed", locale: locale, args: [])
+        case "usage.strip_ttft": return L10n.format("usage_strip_ttft", locale: locale, args: [])
         case "usage.subtitle_offline": return L10n.format("usage_subtitle_offline", locale: locale, args: [strArg(args["name"])])
-        case "usage.tab_cache_hit": return L10n.format("usage_tab_cache_hit", locale: locale, args: [])
-        case "usage.tab_speed": return L10n.format("usage_tab_speed", locale: locale, args: [])
-        case "usage.tab_tokens": return L10n.format("usage_tab_tokens", locale: locale, args: [])
-        case "usage.tab_ttft": return L10n.format("usage_tab_ttft", locale: locale, args: [])
         case "usage.title": return L10n.format("usage_title", locale: locale, args: [])
         case "usage.unit_wan": return L10n.format("usage_unit_wan", locale: locale, args: [])
         case "usage.unit_yi": return L10n.format("usage_unit_yi", locale: locale, args: [])
-        case "usage.unreported_aria": return L10n.format("usage_unreported_aria", locale: locale, args: [])
         case "usage.unsupported_body": return L10n.format("usage_unsupported_body", locale: locale, args: [strArg(args["name"])])
         case "usage.unsupported_title": return L10n.format("usage_unsupported_title", locale: locale, args: [])
+        case "usage.vs_prev_days": return L10n.format("usage_vs_prev_days", locale: locale, args: [intArg(args["days"])])
+        case "usage.vs_yesterday": return L10n.format("usage_vs_yesterday", locale: locale, args: [])
         default: return nil
         }
     }
