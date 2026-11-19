@@ -18,6 +18,7 @@ public  final class UsageScreenOpenEvent extends
     machineId_ = "";
     timezone_ = "";
     bucketBoundsMs_ = emptyLongList();
+    focusModel_ = "";
   }
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
   private java.lang.String machineId_;
@@ -330,6 +331,122 @@ public  final class UsageScreenOpenEvent extends
   private void clearPrevStartMs() {
 
     prevStartMs_ = 0L;
+  }
+
+  public static final int APPLY_FOCUS_FIELD_NUMBER = 9;
+  private boolean applyFocus_;
+  /**
+   * <code>bool apply_focus = 9 [json_name = "applyFocus"];</code>
+   * @return The applyFocus.
+   */
+  @java.lang.Override
+  public boolean getApplyFocus() {
+    return applyFocus_;
+  }
+  /**
+   * <code>bool apply_focus = 9 [json_name = "applyFocus"];</code>
+   * @param value The applyFocus to set.
+   */
+  private void setApplyFocus(boolean value) {
+    
+    applyFocus_ = value;
+  }
+  /**
+   * <code>bool apply_focus = 9 [json_name = "applyFocus"];</code>
+   */
+  private void clearApplyFocus() {
+
+    applyFocus_ = false;
+  }
+
+  public static final int FOCUS_AGENT_FIELD_NUMBER = 10;
+  private int focusAgent_;
+  /**
+   * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+   * @return The enum numeric value on the wire for focusAgent.
+   */
+  @java.lang.Override
+  public int getFocusAgentValue() {
+    return focusAgent_;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+   * @return The focusAgent.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Agent getFocusAgent() {
+    io.github.lewin671.remoteagent.proto.Agent result = io.github.lewin671.remoteagent.proto.Agent.forNumber(focusAgent_);
+    return result == null ? io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+   * @param value The enum numeric value on the wire for focusAgent to set.
+   */
+  private void setFocusAgentValue(int value) {
+      focusAgent_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+   * @param value The focusAgent to set.
+   */
+  private void setFocusAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+    focusAgent_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+   */
+  private void clearFocusAgent() {
+
+    focusAgent_ = 0;
+  }
+
+  public static final int FOCUS_MODEL_FIELD_NUMBER = 11;
+  private java.lang.String focusModel_;
+  /**
+   * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+   * @return The focusModel.
+   */
+  @java.lang.Override
+  public java.lang.String getFocusModel() {
+    return focusModel_;
+  }
+  /**
+   * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+   * @return The bytes for focusModel.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFocusModelBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(focusModel_);
+  }
+  /**
+   * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+   * @param value The focusModel to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFocusModel(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    focusModel_ = value;
+  }
+  /**
+   * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+   */
+  private void clearFocusModel() {
+
+    focusModel_ = getDefaultInstance().getFocusModel();
+  }
+  /**
+   * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+   * @param value The bytes for focusModel to set.
+   */
+  private void setFocusModelBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    focusModel_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent parseFrom(
@@ -754,6 +871,129 @@ public  final class UsageScreenOpenEvent extends
       return this;
     }
 
+    /**
+     * <code>bool apply_focus = 9 [json_name = "applyFocus"];</code>
+     * @return The applyFocus.
+     */
+    @java.lang.Override
+    public boolean getApplyFocus() {
+      return instance.getApplyFocus();
+    }
+    /**
+     * <code>bool apply_focus = 9 [json_name = "applyFocus"];</code>
+     * @param value The applyFocus to set.
+     * @return This builder for chaining.
+     */
+    public Builder setApplyFocus(boolean value) {
+      copyOnWrite();
+      instance.setApplyFocus(value);
+      return this;
+    }
+    /**
+     * <code>bool apply_focus = 9 [json_name = "applyFocus"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearApplyFocus() {
+      copyOnWrite();
+      instance.clearApplyFocus();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+     * @return The enum numeric value on the wire for focusAgent.
+     */
+    @java.lang.Override
+    public int getFocusAgentValue() {
+      return instance.getFocusAgentValue();
+    }
+    /**
+     * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+     * @param value The focusAgent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFocusAgentValue(int value) {
+      copyOnWrite();
+      instance.setFocusAgentValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+     * @return The focusAgent.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Agent getFocusAgent() {
+      return instance.getFocusAgent();
+    }
+    /**
+     * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+     * @param value The enum numeric value on the wire for focusAgent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFocusAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+      copyOnWrite();
+      instance.setFocusAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFocusAgent() {
+      copyOnWrite();
+      instance.clearFocusAgent();
+      return this;
+    }
+
+    /**
+     * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+     * @return The focusModel.
+     */
+    @java.lang.Override
+    public java.lang.String getFocusModel() {
+      return instance.getFocusModel();
+    }
+    /**
+     * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+     * @return The bytes for focusModel.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFocusModelBytes() {
+      return instance.getFocusModelBytes();
+    }
+    /**
+     * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+     * @param value The focusModel to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFocusModel(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setFocusModel(value);
+      return this;
+    }
+    /**
+     * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFocusModel() {
+      copyOnWrite();
+      instance.clearFocusModel();
+      return this;
+    }
+    /**
+     * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+     * @param value The bytes for focusModel to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFocusModelBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setFocusModelBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageScreenOpenEvent)
   }
   @java.lang.Override
@@ -778,10 +1018,14 @@ public  final class UsageScreenOpenEvent extends
             "tzOffsetMinutes_",
             "bucketBoundsMs_",
             "prevStartMs_",
+            "applyFocus_",
+            "focusAgent_",
+            "focusModel_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0001\u0000\u0001\u0208\u0002\f\u0003\u0002" +
-              "\u0004\u0002\u0005\u0208\u0006\u0004\u0007%\b\u0002";
+              "\u0000\u000b\u0000\u0000\u0001\u000b\u000b\u0000\u0001\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0002\u0004\u0002\u0005\u0208\u0006\u0004\u0007%\b\u0002\t\u0007\n\f\u000b" +
+              "\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

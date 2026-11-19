@@ -6,12 +6,12 @@ import "remoteagent/core/v1/text.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
 
-enum UsageMetricTab {
-  USAGE_METRIC_TAB_UNSPECIFIED = 0;
-  USAGE_METRIC_TAB_TOKENS = 1;
-  USAGE_METRIC_TAB_CACHE_HIT = 2;
-  USAGE_METRIC_TAB_OUTPUT_SPEED = 3;
-  USAGE_METRIC_TAB_TTFT = 4;
+enum UsageSortColumn {
+  USAGE_SORT_COLUMN_UNSPECIFIED = 0;
+  USAGE_SORT_COLUMN_TOKENS = 1;
+  USAGE_SORT_COLUMN_CACHE_HIT = 2;
+  USAGE_SORT_COLUMN_SPEED = 3;
+  USAGE_SORT_COLUMN_TTFT = 4;
 }
 
 message UsageScreenRequest {
@@ -21,30 +21,89 @@ message UsageScreenRequest {
   remoteagent.v1.UsageRangePreset preset = 4;
   int64 custom_start_ms = 5;
   int64 custom_end_ms = 6;
-  UsageMetricTab metric = 7;
 }
 
-message UsageSeriesView {
+message UsageCompositionView {
+  uint64 uncached_input_tokens = 1;
+  uint64 cache_read_tokens = 2;
+  uint64 cache_write_tokens = 3;
+  uint64 output_tokens = 4;
+  uint64 reasoning_output_tokens = 5;
+}
+
+message UsageHeroView {
+  bool scrubbing = 1;
+  int32 scrub_bucket_index = 2;
+  int64 scrub_start_ms = 3;
+  int64 scrub_end_ms = 4;
+  bool has_selected_model = 5;
+  remoteagent.v1.Agent selected_agent = 6;
+  string selected_agent_name = 7;
+  string selected_model = 8;
+  string selected_series_key = 9;
+  int32 total_model_count = 10;
+  uint64 total_tokens = 11;
+  uint64 request_count = 12;
+  bool has_share_percent = 13;
+  double share_ratio = 14;
+  bool has_tokens_delta = 15;
+  double tokens_delta_percent = 16;
+  bool previous_backfilling = 17;
+  UsageCompositionView composition = 18;
+  int32 period_composition_rows = 19;
+}
+
+message UsageBarBucketView {
+  int64 start_ms = 1;
+  int64 end_ms = 2;
+  uint64 all_tokens = 3;
+  uint64 selected_tokens = 4;
+  bool has_data = 5;
+}
+
+message UsageBarChartView {
+  uint64 y_max = 1;
+  uint64 y_mid = 2;
+  repeated UsageBarBucketView buckets = 3;
+}
+
+message UsageStripPointView {
+  bool has_value = 1;
+  double value = 2;
+}
+
+message UsageMetricStripView {
+  bool has_value = 1;
+  double current_value = 2;
+  bool has_range = 3;
+  double min_value = 4;
+  double max_value = 5;
+  double scale_min = 6;
+  double scale_max = 7;
+  int32 last_valid_index = 8;
+  repeated UsageStripPointView all_points = 9;
+  repeated UsageStripPointView selected_points = 10;
+}
+
+message UsageModelRowView {
   remoteagent.v1.Agent agent = 1;
   string agent_name = 2;
   string model = 3;
   string series_key = 4;
-  int32 pattern_index = 5;
-  bool focused = 6;
-  bool cache_write_supported = 7;
-  bool few_speed_samples = 8;
-  remoteagent.v1.UsagePeriodSummary current = 9;
-  remoteagent.v1.UsagePeriodSummary previous = 10;
-  bool has_tokens_delta = 11;
-  double tokens_delta_percent = 12;
-  bool has_cache_hit_delta = 13;
-  double cache_hit_delta_points = 14;
-  bool has_speed_delta = 15;
-  double speed_delta_percent = 16;
-  bool has_ttft_delta = 17;
-  double ttft_delta_percent = 18;
-  bool previous_backfilling = 19;
-  repeated remoteagent.v1.UsageBucketPoint buckets = 20;
+  bool selected = 5;
+  double share_ratio = 6;
+  uint64 total_tokens = 7;
+  bool has_cache_hit = 8;
+  double cache_hit_rate = 9;
+  bool has_speed = 10;
+  double speed_p50 = 11;
+  bool has_ttft = 12;
+  double ttft_p50_ms = 13;
+  bool has_tokens_delta = 14;
+  double tokens_delta_percent = 15;
+  bool previous_backfilling = 16;
+  uint64 usage_request_count = 17;
+  uint64 speed_request_count = 18;
 }
 
 message UsageViewModel {
@@ -65,15 +124,17 @@ message UsageViewModel {
   remoteagent.v1.UsageBucketGranularity granularity = 15;
   int64 start_ms = 16;
   int64 end_ms = 17;
-  UsageMetricTab metric = 18;
-  remoteagent.v1.Agent focus_agent = 19;
-  string focus_model = 20;
-  repeated remoteagent.v1.UsageAgentSource sources = 21;
-  repeated UsageSeriesView series = 22;
-  bool has_any_usage = 23;
-  bool has_any_speed = 24;
-  bool show_cache_write_footnote = 25;
-  Text unsupported_footnote = 26;
+  int32 range_days = 18;
+  UsageSortColumn sort_by = 19;
+  repeated remoteagent.v1.UsageAgentSource sources = 20;
+  bool has_any_usage = 21;
+  UsageHeroView hero = 22;
+  UsageBarChartView bar_chart = 23;
+  UsageMetricStripView cache_hit_strip = 24;
+  UsageMetricStripView output_speed_strip = 25;
+  UsageMetricStripView ttft_strip = 26;
+  repeated UsageModelRowView rows = 27;
+  Text unsupported_footnote = 28;
 }
 
 // ---- Events & Effects (Usage & Speed) ----
@@ -87,10 +148,30 @@ message UsageScreenOpenEvent {
   int32 tz_offset_minutes = 6;
   repeated int64 bucket_bounds_ms = 7;
   int64 prev_start_ms = 8;
+  bool apply_focus = 9;
+  remoteagent.v1.Agent focus_agent = 10;
+  string focus_model = 11;
 }
 
 message UsageScreenRetryEvent {
   string machine_id = 1;
+}
+
+message UsageScreenSelectSortEvent {
+  string machine_id = 1;
+  UsageSortColumn sort_by = 2;
+}
+
+message UsageScreenSelectSeriesEvent {
+  string machine_id = 1;
+  string series_key = 2;
+  bool toggle = 3;
+}
+
+message UsageScreenScrubEvent {
+  string machine_id = 1;
+  int32 bucket_index = 2;
+  bool clear = 3;
 }
 
 message UsageCacheLoadedEvent {

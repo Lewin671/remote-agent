@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"math"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -10,6 +11,33 @@ import (
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
+
+func computeRangeDays(preset v1.UsageRangePreset, startMs, endMs, customStartMs, customEndMs int64) int32 {
+	if startMs > 0 && endMs > startMs {
+		d := int32(math.Round(float64(endMs-startMs) / 86_400_000.0))
+		if d < 1 {
+			return 1
+		}
+		return d
+	}
+	switch preset {
+	case v1.UsageRangePreset_USAGE_RANGE_PRESET_TODAY:
+		return 1
+	case v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS:
+		return 30
+	case v1.UsageRangePreset_USAGE_RANGE_PRESET_CUSTOM:
+		if customStartMs > 0 && customEndMs >= customStartMs {
+			d := int32(math.Round(float64(customEndMs-customStartMs)/86_400_000.0)) + 1
+			if d < 1 {
+				return 1
+			}
+			return d
+		}
+		return 7
+	default:
+		return 7
+	}
+}
 
 // BuildUsageView constructs the UsageViewModel for the Usage & Speed page.
 func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.UsageScreenRequest) *corev1.UsageViewModel {
@@ -23,18 +51,29 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 	if preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED {
 		preset = v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS
 	}
-	metric := req.Metric
-	if metric == corev1.UsageMetricTab_USAGE_METRIC_TAB_UNSPECIFIED {
-		metric = corev1.UsageMetricTab_USAGE_METRIC_TAB_TOKENS
+
+	var ui *UsageUIState
+	if st.UsageUI != nil && req.MachineId != "" {
+		ui = st.UsageUI[req.MachineId]
+	}
+	sortBy := corev1.UsageSortColumn_USAGE_SORT_COLUMN_TOKENS
+	if ui != nil && ui.SortBy != corev1.UsageSortColumn_USAGE_SORT_COLUMN_UNSPECIFIED {
+		sortBy = ui.SortBy
 	}
 
 	m := findMachineByID(st, req.MachineId)
 	vm := &corev1.UsageViewModel{
-		MachineId:  req.MachineId,
-		Preset:     preset,
-		Metric:     metric,
-		FocusAgent: req.FocusAgent,
-		FocusModel: req.FocusModel,
+		MachineId: req.MachineId,
+		Preset:    preset,
+		RangeDays: computeRangeDays(preset, 0, 0, req.CustomStartMs, req.CustomEndMs),
+		SortBy:    sortBy,
+		Hero: &corev1.UsageHeroView{
+			Composition: &corev1.UsageCompositionView{},
+		},
+		BarChart:         &corev1.UsageBarChartView{},
+		CacheHitStrip:    &corev1.UsageMetricStripView{LastValidIndex: -1},
+		OutputSpeedStrip: &corev1.UsageMetricStripView{LastValidIndex: -1},
+		TtftStrip:        &corev1.UsageMetricStripView{LastValidIndex: -1},
 	}
 	_ = syncView
 
@@ -68,13 +107,7 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 	vm.CachedOffline = cachedOffline
 	vm.CachedAtMs = cachedAtMs
 
-	if vm.Online && snap == nil && rawEntry != nil && !loading {
-		if !text.IsEmpty(rawEntry.ErrorText) {
-			vm.ErrorText = rawEntry.ErrorText
-		} else if rawEntry.Error != "" {
-			vm.ErrorText = text.Plain(rawEntry.Error)
-		}
-	} else if vm.Online && snap != nil && rawEntry != nil && !loading {
+	if vm.Online && rawEntry != nil && !loading {
 		if !text.IsEmpty(rawEntry.ErrorText) {
 			vm.ErrorText = rawEntry.ErrorText
 		} else if rawEntry.Error != "" {
@@ -86,6 +119,7 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 		vm.Granularity = snap.Granularity
 		vm.StartMs = snap.StartMs
 		vm.EndMs = snap.EndMs
+		vm.RangeDays = computeRangeDays(preset, snap.StartMs, snap.EndMs, req.CustomStartMs, req.CustomEndMs)
 		vm.Backfilling = snap.Backfilling
 		vm.BackfillScannedDays = snap.BackfillScannedDays
 		vm.BackfillTotalDays = snap.BackfillTotalDays
@@ -107,7 +141,7 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 			}
 		}
 
-		// Filter disabled agents from series before building view models.
+		filteredSeries := filterDisabledSeries(m.Meta, snap.Series)
 		filteredResp := &v1.UsageStatsResponse{
 			Preset:                    snap.Preset,
 			Granularity:               snap.Granularity,
@@ -118,25 +152,47 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 			BackfillScannedDays:       snap.BackfillScannedDays,
 			BackfillTotalDays:         snap.BackfillTotalDays,
 			PreviousPeriodBackfilling: snap.PreviousPeriodBackfilling,
-			Series:                    filterDisabledSeries(m.Meta, snap.Series),
+			Series:                    filteredSeries,
 		}
-		vm.Series = usage.BuildSeriesViews(filteredResp, req.FocusAgent, req.FocusModel)
 
-		for _, s := range vm.Series {
-			if s.Current != nil && s.Current.UsageRequestCount > 0 {
-				vm.HasAnyUsage = true
-			}
-			if s.Current != nil && s.Current.SpeedRequestCount > 0 {
-				vm.HasAnySpeed = true
-			}
-			if !s.CacheWriteSupported {
-				vm.ShowCacheWriteFootnote = true
+		selectedKey := ""
+		if ui != nil && ui.HasSelectionOverride {
+			selectedKey = ui.SelectedSeriesKey
+		} else if req.FocusAgent != v1.Agent_AGENT_UNSPECIFIED && req.FocusModel != "" {
+			selectedKey = usage.SeriesKey(req.FocusAgent, req.FocusModel)
+		} else if req.FocusAgent != v1.Agent_AGENT_UNSPECIFIED || req.FocusModel != "" {
+			for _, s := range usage.ActiveSeries(filteredResp) {
+				if usage.MatchesSeries(s.Agent, s.Model, req.FocusAgent, req.FocusModel) {
+					selectedKey = usage.SeriesKey(s.Agent, s.Model)
+					break
+				}
 			}
 		}
+
+		var hasScrub bool
+		var scrubIdx int32
+		if ui != nil {
+			hasScrub = ui.HasScrub
+			scrubIdx = ui.ScrubBucketIndex
+		}
+
+		proj := usage.BuildUsageProjection(filteredResp, usage.ProjectionOptions{
+			SortBy:            sortBy,
+			SelectedSeriesKey: selectedKey,
+			HasScrub:          hasScrub,
+			ScrubBucketIndex:  scrubIdx,
+		})
+		vm.HasAnyUsage = proj.HasAnyUsage
+		vm.Hero = proj.Hero
+		vm.BarChart = proj.BarChart
+		vm.CacheHitStrip = proj.CacheHitStrip
+		vm.OutputSpeedStrip = proj.OutputSpeedStrip
+		vm.TtftStrip = proj.TtftStrip
+		vm.Rows = proj.Rows
 
 		if len(unavailNames) > 0 {
 			joined := strings.Join(unavailNames, ", ")
-			if availCount == 0 && len(vm.Series) == 0 {
+			if availCount == 0 && len(vm.Rows) == 0 {
 				vm.UnsupportedFootnote = text.Msg(text.KeyUsageOnlyUnavailableTitle, text.Str("agents", joined))
 			} else {
 				vm.UnsupportedFootnote = text.Msg(text.KeyUsageMixedUnavailableFootnote, text.Str("agents", joined))

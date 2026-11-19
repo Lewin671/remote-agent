@@ -85,4 +85,33 @@ public interface UsageScreenOpenEventOrBuilder extends
    * @return The prevStartMs.
    */
   long getPrevStartMs();
+
+  /**
+   * <code>bool apply_focus = 9 [json_name = "applyFocus"];</code>
+   * @return The applyFocus.
+   */
+  boolean getApplyFocus();
+
+  /**
+   * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+   * @return The enum numeric value on the wire for focusAgent.
+   */
+  int getFocusAgentValue();
+  /**
+   * <code>.remoteagent.v1.Agent focus_agent = 10 [json_name = "focusAgent"];</code>
+   * @return The focusAgent.
+   */
+  io.github.lewin671.remoteagent.proto.Agent getFocusAgent();
+
+  /**
+   * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+   * @return The focusModel.
+   */
+  java.lang.String getFocusModel();
+  /**
+   * <code>string focus_model = 11 [json_name = "focusModel"];</code>
+   * @return The bytes for focusModel.
+   */
+  com.google.protobuf.ByteString
+      getFocusModelBytes();
 }

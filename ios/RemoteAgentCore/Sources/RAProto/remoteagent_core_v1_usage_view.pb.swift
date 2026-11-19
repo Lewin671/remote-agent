@@ -20,12 +20,12 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
-public enum PBCoreUsageMetricTab: SwiftProtobuf.Enum, Swift.CaseIterable {
+public enum PBCoreUsageSortColumn: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
   case tokens // = 1
   case cacheHit // = 2
-  case outputSpeed // = 3
+  case speed // = 3
   case ttft // = 4
   case UNRECOGNIZED(Int)
 
@@ -38,7 +38,7 @@ public enum PBCoreUsageMetricTab: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 0: self = .unspecified
     case 1: self = .tokens
     case 2: self = .cacheHit
-    case 3: self = .outputSpeed
+    case 3: self = .speed
     case 4: self = .ttft
     default: self = .UNRECOGNIZED(rawValue)
     }
@@ -49,18 +49,18 @@ public enum PBCoreUsageMetricTab: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .unspecified: return 0
     case .tokens: return 1
     case .cacheHit: return 2
-    case .outputSpeed: return 3
+    case .speed: return 3
     case .ttft: return 4
     case .UNRECOGNIZED(let i): return i
     }
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  public static let allCases: [PBCoreUsageMetricTab] = [
+  public static let allCases: [PBCoreUsageSortColumn] = [
     .unspecified,
     .tokens,
     .cacheHit,
-    .outputSpeed,
+    .speed,
     .ttft,
   ]
 
@@ -83,14 +83,223 @@ public struct PBCoreUsageScreenRequest: Sendable {
 
   public var customEndMs: Int64 = 0
 
-  public var metric: PBCoreUsageMetricTab = .unspecified
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreUsageCompositionView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var uncachedInputTokens: UInt64 = 0
+
+  public var cacheReadTokens: UInt64 = 0
+
+  public var cacheWriteTokens: UInt64 = 0
+
+  public var outputTokens: UInt64 = 0
+
+  public var reasoningOutputTokens: UInt64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 }
 
-public struct PBCoreUsageSeriesView: @unchecked Sendable {
+public struct PBCoreUsageHeroView: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var scrubbing: Bool {
+    get {return _storage._scrubbing}
+    set {_uniqueStorage()._scrubbing = newValue}
+  }
+
+  public var scrubBucketIndex: Int32 {
+    get {return _storage._scrubBucketIndex}
+    set {_uniqueStorage()._scrubBucketIndex = newValue}
+  }
+
+  public var scrubStartMs: Int64 {
+    get {return _storage._scrubStartMs}
+    set {_uniqueStorage()._scrubStartMs = newValue}
+  }
+
+  public var scrubEndMs: Int64 {
+    get {return _storage._scrubEndMs}
+    set {_uniqueStorage()._scrubEndMs = newValue}
+  }
+
+  public var hasSelectedModel_p: Bool {
+    get {return _storage._hasSelectedModel_p}
+    set {_uniqueStorage()._hasSelectedModel_p = newValue}
+  }
+
+  public var selectedAgent: PBAgent {
+    get {return _storage._selectedAgent}
+    set {_uniqueStorage()._selectedAgent = newValue}
+  }
+
+  public var selectedAgentName: String {
+    get {return _storage._selectedAgentName}
+    set {_uniqueStorage()._selectedAgentName = newValue}
+  }
+
+  public var selectedModel: String {
+    get {return _storage._selectedModel}
+    set {_uniqueStorage()._selectedModel = newValue}
+  }
+
+  public var selectedSeriesKey: String {
+    get {return _storage._selectedSeriesKey}
+    set {_uniqueStorage()._selectedSeriesKey = newValue}
+  }
+
+  public var totalModelCount: Int32 {
+    get {return _storage._totalModelCount}
+    set {_uniqueStorage()._totalModelCount = newValue}
+  }
+
+  public var totalTokens: UInt64 {
+    get {return _storage._totalTokens}
+    set {_uniqueStorage()._totalTokens = newValue}
+  }
+
+  public var requestCount: UInt64 {
+    get {return _storage._requestCount}
+    set {_uniqueStorage()._requestCount = newValue}
+  }
+
+  public var hasSharePercent_p: Bool {
+    get {return _storage._hasSharePercent_p}
+    set {_uniqueStorage()._hasSharePercent_p = newValue}
+  }
+
+  public var shareRatio: Double {
+    get {return _storage._shareRatio}
+    set {_uniqueStorage()._shareRatio = newValue}
+  }
+
+  public var hasTokensDelta_p: Bool {
+    get {return _storage._hasTokensDelta_p}
+    set {_uniqueStorage()._hasTokensDelta_p = newValue}
+  }
+
+  public var tokensDeltaPercent: Double {
+    get {return _storage._tokensDeltaPercent}
+    set {_uniqueStorage()._tokensDeltaPercent = newValue}
+  }
+
+  public var previousBackfilling: Bool {
+    get {return _storage._previousBackfilling}
+    set {_uniqueStorage()._previousBackfilling = newValue}
+  }
+
+  public var composition: PBCoreUsageCompositionView {
+    get {return _storage._composition ?? PBCoreUsageCompositionView()}
+    set {_uniqueStorage()._composition = newValue}
+  }
+  /// Returns true if `composition` has been explicitly set.
+  public var hasComposition: Bool {return _storage._composition != nil}
+  /// Clears the value of `composition`. Subsequent reads from it will return its default value.
+  public mutating func clearComposition() {_uniqueStorage()._composition = nil}
+
+  public var periodCompositionRows: Int32 {
+    get {return _storage._periodCompositionRows}
+    set {_uniqueStorage()._periodCompositionRows = newValue}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBCoreUsageBarBucketView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var startMs: Int64 = 0
+
+  public var endMs: Int64 = 0
+
+  public var allTokens: UInt64 = 0
+
+  public var selectedTokens: UInt64 = 0
+
+  public var hasData_p: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreUsageBarChartView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var yMax: UInt64 = 0
+
+  public var yMid: UInt64 = 0
+
+  public var buckets: [PBCoreUsageBarBucketView] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreUsageStripPointView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var hasValue_p: Bool = false
+
+  public var value: Double = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreUsageMetricStripView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var hasValue_p: Bool = false
+
+  public var currentValue: Double = 0
+
+  public var hasRange_p: Bool = false
+
+  public var minValue: Double = 0
+
+  public var maxValue: Double = 0
+
+  public var scaleMin: Double = 0
+
+  public var scaleMax: Double = 0
+
+  public var lastValidIndex: Int32 = 0
+
+  public var allPoints: [PBCoreUsageStripPointView] = []
+
+  public var selectedPoints: [PBCoreUsageStripPointView] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreUsageModelRowView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -115,43 +324,50 @@ public struct PBCoreUsageSeriesView: @unchecked Sendable {
     set {_uniqueStorage()._seriesKey = newValue}
   }
 
-  public var patternIndex: Int32 {
-    get {return _storage._patternIndex}
-    set {_uniqueStorage()._patternIndex = newValue}
+  public var selected: Bool {
+    get {return _storage._selected}
+    set {_uniqueStorage()._selected = newValue}
   }
 
-  public var focused: Bool {
-    get {return _storage._focused}
-    set {_uniqueStorage()._focused = newValue}
+  public var shareRatio: Double {
+    get {return _storage._shareRatio}
+    set {_uniqueStorage()._shareRatio = newValue}
   }
 
-  public var cacheWriteSupported: Bool {
-    get {return _storage._cacheWriteSupported}
-    set {_uniqueStorage()._cacheWriteSupported = newValue}
+  public var totalTokens: UInt64 {
+    get {return _storage._totalTokens}
+    set {_uniqueStorage()._totalTokens = newValue}
   }
 
-  public var fewSpeedSamples: Bool {
-    get {return _storage._fewSpeedSamples}
-    set {_uniqueStorage()._fewSpeedSamples = newValue}
+  public var hasCacheHit_p: Bool {
+    get {return _storage._hasCacheHit_p}
+    set {_uniqueStorage()._hasCacheHit_p = newValue}
   }
 
-  public var current: PBUsagePeriodSummary {
-    get {return _storage._current ?? PBUsagePeriodSummary()}
-    set {_uniqueStorage()._current = newValue}
+  public var cacheHitRate: Double {
+    get {return _storage._cacheHitRate}
+    set {_uniqueStorage()._cacheHitRate = newValue}
   }
-  /// Returns true if `current` has been explicitly set.
-  public var hasCurrent: Bool {return _storage._current != nil}
-  /// Clears the value of `current`. Subsequent reads from it will return its default value.
-  public mutating func clearCurrent() {_uniqueStorage()._current = nil}
 
-  public var previous: PBUsagePeriodSummary {
-    get {return _storage._previous ?? PBUsagePeriodSummary()}
-    set {_uniqueStorage()._previous = newValue}
+  public var hasSpeed_p: Bool {
+    get {return _storage._hasSpeed_p}
+    set {_uniqueStorage()._hasSpeed_p = newValue}
   }
-  /// Returns true if `previous` has been explicitly set.
-  public var hasPrevious: Bool {return _storage._previous != nil}
-  /// Clears the value of `previous`. Subsequent reads from it will return its default value.
-  public mutating func clearPrevious() {_uniqueStorage()._previous = nil}
+
+  public var speedP50: Double {
+    get {return _storage._speedP50}
+    set {_uniqueStorage()._speedP50 = newValue}
+  }
+
+  public var hasTtft_p: Bool {
+    get {return _storage._hasTtft_p}
+    set {_uniqueStorage()._hasTtft_p = newValue}
+  }
+
+  public var ttftP50Ms: Double {
+    get {return _storage._ttftP50Ms}
+    set {_uniqueStorage()._ttftP50Ms = newValue}
+  }
 
   public var hasTokensDelta_p: Bool {
     get {return _storage._hasTokensDelta_p}
@@ -163,44 +379,19 @@ public struct PBCoreUsageSeriesView: @unchecked Sendable {
     set {_uniqueStorage()._tokensDeltaPercent = newValue}
   }
 
-  public var hasCacheHitDelta_p: Bool {
-    get {return _storage._hasCacheHitDelta_p}
-    set {_uniqueStorage()._hasCacheHitDelta_p = newValue}
-  }
-
-  public var cacheHitDeltaPoints: Double {
-    get {return _storage._cacheHitDeltaPoints}
-    set {_uniqueStorage()._cacheHitDeltaPoints = newValue}
-  }
-
-  public var hasSpeedDelta_p: Bool {
-    get {return _storage._hasSpeedDelta_p}
-    set {_uniqueStorage()._hasSpeedDelta_p = newValue}
-  }
-
-  public var speedDeltaPercent: Double {
-    get {return _storage._speedDeltaPercent}
-    set {_uniqueStorage()._speedDeltaPercent = newValue}
-  }
-
-  public var hasTtftDelta_p: Bool {
-    get {return _storage._hasTtftDelta_p}
-    set {_uniqueStorage()._hasTtftDelta_p = newValue}
-  }
-
-  public var ttftDeltaPercent: Double {
-    get {return _storage._ttftDeltaPercent}
-    set {_uniqueStorage()._ttftDeltaPercent = newValue}
-  }
-
   public var previousBackfilling: Bool {
     get {return _storage._previousBackfilling}
     set {_uniqueStorage()._previousBackfilling = newValue}
   }
 
-  public var buckets: [PBUsageBucketPoint] {
-    get {return _storage._buckets}
-    set {_uniqueStorage()._buckets = newValue}
+  public var usageRequestCount: UInt64 {
+    get {return _storage._usageRequestCount}
+    set {_uniqueStorage()._usageRequestCount = newValue}
+  }
+
+  public var speedRequestCount: UInt64 {
+    get {return _storage._speedRequestCount}
+    set {_uniqueStorage()._speedRequestCount = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -304,19 +495,14 @@ public struct PBCoreUsageViewModel: @unchecked Sendable {
     set {_uniqueStorage()._endMs = newValue}
   }
 
-  public var metric: PBCoreUsageMetricTab {
-    get {return _storage._metric}
-    set {_uniqueStorage()._metric = newValue}
+  public var rangeDays: Int32 {
+    get {return _storage._rangeDays}
+    set {_uniqueStorage()._rangeDays = newValue}
   }
 
-  public var focusAgent: PBAgent {
-    get {return _storage._focusAgent}
-    set {_uniqueStorage()._focusAgent = newValue}
-  }
-
-  public var focusModel: String {
-    get {return _storage._focusModel}
-    set {_uniqueStorage()._focusModel = newValue}
+  public var sortBy: PBCoreUsageSortColumn {
+    get {return _storage._sortBy}
+    set {_uniqueStorage()._sortBy = newValue}
   }
 
   public var sources: [PBUsageAgentSource] {
@@ -324,24 +510,59 @@ public struct PBCoreUsageViewModel: @unchecked Sendable {
     set {_uniqueStorage()._sources = newValue}
   }
 
-  public var series: [PBCoreUsageSeriesView] {
-    get {return _storage._series}
-    set {_uniqueStorage()._series = newValue}
-  }
-
   public var hasAnyUsage_p: Bool {
     get {return _storage._hasAnyUsage_p}
     set {_uniqueStorage()._hasAnyUsage_p = newValue}
   }
 
-  public var hasAnySpeed_p: Bool {
-    get {return _storage._hasAnySpeed_p}
-    set {_uniqueStorage()._hasAnySpeed_p = newValue}
+  public var hero: PBCoreUsageHeroView {
+    get {return _storage._hero ?? PBCoreUsageHeroView()}
+    set {_uniqueStorage()._hero = newValue}
   }
+  /// Returns true if `hero` has been explicitly set.
+  public var hasHero: Bool {return _storage._hero != nil}
+  /// Clears the value of `hero`. Subsequent reads from it will return its default value.
+  public mutating func clearHero() {_uniqueStorage()._hero = nil}
 
-  public var showCacheWriteFootnote: Bool {
-    get {return _storage._showCacheWriteFootnote}
-    set {_uniqueStorage()._showCacheWriteFootnote = newValue}
+  public var barChart: PBCoreUsageBarChartView {
+    get {return _storage._barChart ?? PBCoreUsageBarChartView()}
+    set {_uniqueStorage()._barChart = newValue}
+  }
+  /// Returns true if `barChart` has been explicitly set.
+  public var hasBarChart: Bool {return _storage._barChart != nil}
+  /// Clears the value of `barChart`. Subsequent reads from it will return its default value.
+  public mutating func clearBarChart() {_uniqueStorage()._barChart = nil}
+
+  public var cacheHitStrip: PBCoreUsageMetricStripView {
+    get {return _storage._cacheHitStrip ?? PBCoreUsageMetricStripView()}
+    set {_uniqueStorage()._cacheHitStrip = newValue}
+  }
+  /// Returns true if `cacheHitStrip` has been explicitly set.
+  public var hasCacheHitStrip: Bool {return _storage._cacheHitStrip != nil}
+  /// Clears the value of `cacheHitStrip`. Subsequent reads from it will return its default value.
+  public mutating func clearCacheHitStrip() {_uniqueStorage()._cacheHitStrip = nil}
+
+  public var outputSpeedStrip: PBCoreUsageMetricStripView {
+    get {return _storage._outputSpeedStrip ?? PBCoreUsageMetricStripView()}
+    set {_uniqueStorage()._outputSpeedStrip = newValue}
+  }
+  /// Returns true if `outputSpeedStrip` has been explicitly set.
+  public var hasOutputSpeedStrip: Bool {return _storage._outputSpeedStrip != nil}
+  /// Clears the value of `outputSpeedStrip`. Subsequent reads from it will return its default value.
+  public mutating func clearOutputSpeedStrip() {_uniqueStorage()._outputSpeedStrip = nil}
+
+  public var ttftStrip: PBCoreUsageMetricStripView {
+    get {return _storage._ttftStrip ?? PBCoreUsageMetricStripView()}
+    set {_uniqueStorage()._ttftStrip = newValue}
+  }
+  /// Returns true if `ttftStrip` has been explicitly set.
+  public var hasTtftStrip: Bool {return _storage._ttftStrip != nil}
+  /// Clears the value of `ttftStrip`. Subsequent reads from it will return its default value.
+  public mutating func clearTtftStrip() {_uniqueStorage()._ttftStrip = nil}
+
+  public var rows: [PBCoreUsageModelRowView] {
+    get {return _storage._rows}
+    set {_uniqueStorage()._rows = newValue}
   }
 
   public var unsupportedFootnote: PBCoreText {
@@ -381,6 +602,12 @@ public struct PBCoreUsageScreenOpenEvent: Sendable {
 
   public var prevStartMs: Int64 = 0
 
+  public var applyFocus: Bool = false
+
+  public var focusAgent: PBAgent = .unspecified
+
+  public var focusModel: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -392,6 +619,52 @@ public struct PBCoreUsageScreenRetryEvent: Sendable {
   // methods supported on all messages.
 
   public var machineID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreUsageScreenSelectSortEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var machineID: String = String()
+
+  public var sortBy: PBCoreUsageSortColumn = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreUsageScreenSelectSeriesEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var machineID: String = String()
+
+  public var seriesKey: String = String()
+
+  public var toggle: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreUsageScreenScrubEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var machineID: String = String()
+
+  public var bucketIndex: Int32 = 0
+
+  public var clear: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -448,13 +721,13 @@ public struct PBCoreUsageCacheWriteEffect: Sendable {
 
 fileprivate let _protobuf_package = "remoteagent.core.v1"
 
-extension PBCoreUsageMetricTab: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0USAGE_METRIC_TAB_UNSPECIFIED\0\u{1}USAGE_METRIC_TAB_TOKENS\0\u{1}USAGE_METRIC_TAB_CACHE_HIT\0\u{1}USAGE_METRIC_TAB_OUTPUT_SPEED\0\u{1}USAGE_METRIC_TAB_TTFT\0")
+extension PBCoreUsageSortColumn: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0USAGE_SORT_COLUMN_UNSPECIFIED\0\u{1}USAGE_SORT_COLUMN_TOKENS\0\u{1}USAGE_SORT_COLUMN_CACHE_HIT\0\u{1}USAGE_SORT_COLUMN_SPEED\0\u{1}USAGE_SORT_COLUMN_TTFT\0")
 }
 
 extension PBCoreUsageScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageScreenRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}focus_agent\0\u{3}focus_model\0\u{1}preset\0\u{3}custom_start_ms\0\u{3}custom_end_ms\0\u{1}metric\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}focus_agent\0\u{3}focus_model\0\u{1}preset\0\u{3}custom_start_ms\0\u{3}custom_end_ms\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -468,7 +741,6 @@ extension PBCoreUsageScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 4: try { try decoder.decodeSingularEnumField(value: &self.preset) }()
       case 5: try { try decoder.decodeSingularInt64Field(value: &self.customStartMs) }()
       case 6: try { try decoder.decodeSingularInt64Field(value: &self.customEndMs) }()
-      case 7: try { try decoder.decodeSingularEnumField(value: &self.metric) }()
       default: break
       }
     }
@@ -493,9 +765,6 @@ extension PBCoreUsageScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.customEndMs != 0 {
       try visitor.visitSingularInt64Field(value: self.customEndMs, fieldNumber: 6)
     }
-    if self.metric != .unspecified {
-      try visitor.visitSingularEnumField(value: self.metric, fieldNumber: 7)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -506,37 +775,480 @@ extension PBCoreUsageScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.preset != rhs.preset {return false}
     if lhs.customStartMs != rhs.customStartMs {return false}
     if lhs.customEndMs != rhs.customEndMs {return false}
-    if lhs.metric != rhs.metric {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
-extension PBCoreUsageSeriesView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".UsageSeriesView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{3}agent_name\0\u{1}model\0\u{3}series_key\0\u{3}pattern_index\0\u{1}focused\0\u{3}cache_write_supported\0\u{3}few_speed_samples\0\u{1}current\0\u{1}previous\0\u{3}has_tokens_delta\0\u{3}tokens_delta_percent\0\u{3}has_cache_hit_delta\0\u{3}cache_hit_delta_points\0\u{3}has_speed_delta\0\u{3}speed_delta_percent\0\u{3}has_ttft_delta\0\u{3}ttft_delta_percent\0\u{3}previous_backfilling\0\u{1}buckets\0")
+extension PBCoreUsageCompositionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageCompositionView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}uncached_input_tokens\0\u{3}cache_read_tokens\0\u{3}cache_write_tokens\0\u{3}output_tokens\0\u{3}reasoning_output_tokens\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.uncachedInputTokens) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.cacheReadTokens) }()
+      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.cacheWriteTokens) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.outputTokens) }()
+      case 5: try { try decoder.decodeSingularUInt64Field(value: &self.reasoningOutputTokens) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.uncachedInputTokens != 0 {
+      try visitor.visitSingularUInt64Field(value: self.uncachedInputTokens, fieldNumber: 1)
+    }
+    if self.cacheReadTokens != 0 {
+      try visitor.visitSingularUInt64Field(value: self.cacheReadTokens, fieldNumber: 2)
+    }
+    if self.cacheWriteTokens != 0 {
+      try visitor.visitSingularUInt64Field(value: self.cacheWriteTokens, fieldNumber: 3)
+    }
+    if self.outputTokens != 0 {
+      try visitor.visitSingularUInt64Field(value: self.outputTokens, fieldNumber: 4)
+    }
+    if self.reasoningOutputTokens != 0 {
+      try visitor.visitSingularUInt64Field(value: self.reasoningOutputTokens, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageCompositionView, rhs: PBCoreUsageCompositionView) -> Bool {
+    if lhs.uncachedInputTokens != rhs.uncachedInputTokens {return false}
+    if lhs.cacheReadTokens != rhs.cacheReadTokens {return false}
+    if lhs.cacheWriteTokens != rhs.cacheWriteTokens {return false}
+    if lhs.outputTokens != rhs.outputTokens {return false}
+    if lhs.reasoningOutputTokens != rhs.reasoningOutputTokens {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageHeroView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageHeroView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}scrubbing\0\u{3}scrub_bucket_index\0\u{3}scrub_start_ms\0\u{3}scrub_end_ms\0\u{3}has_selected_model\0\u{3}selected_agent\0\u{3}selected_agent_name\0\u{3}selected_model\0\u{3}selected_series_key\0\u{3}total_model_count\0\u{3}total_tokens\0\u{3}request_count\0\u{3}has_share_percent\0\u{3}share_ratio\0\u{3}has_tokens_delta\0\u{3}tokens_delta_percent\0\u{3}previous_backfilling\0\u{1}composition\0\u{3}period_composition_rows\0")
+
+  fileprivate class _StorageClass {
+    var _scrubbing: Bool = false
+    var _scrubBucketIndex: Int32 = 0
+    var _scrubStartMs: Int64 = 0
+    var _scrubEndMs: Int64 = 0
+    var _hasSelectedModel_p: Bool = false
+    var _selectedAgent: PBAgent = .unspecified
+    var _selectedAgentName: String = String()
+    var _selectedModel: String = String()
+    var _selectedSeriesKey: String = String()
+    var _totalModelCount: Int32 = 0
+    var _totalTokens: UInt64 = 0
+    var _requestCount: UInt64 = 0
+    var _hasSharePercent_p: Bool = false
+    var _shareRatio: Double = 0
+    var _hasTokensDelta_p: Bool = false
+    var _tokensDeltaPercent: Double = 0
+    var _previousBackfilling: Bool = false
+    var _composition: PBCoreUsageCompositionView? = nil
+    var _periodCompositionRows: Int32 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _scrubbing = source._scrubbing
+      _scrubBucketIndex = source._scrubBucketIndex
+      _scrubStartMs = source._scrubStartMs
+      _scrubEndMs = source._scrubEndMs
+      _hasSelectedModel_p = source._hasSelectedModel_p
+      _selectedAgent = source._selectedAgent
+      _selectedAgentName = source._selectedAgentName
+      _selectedModel = source._selectedModel
+      _selectedSeriesKey = source._selectedSeriesKey
+      _totalModelCount = source._totalModelCount
+      _totalTokens = source._totalTokens
+      _requestCount = source._requestCount
+      _hasSharePercent_p = source._hasSharePercent_p
+      _shareRatio = source._shareRatio
+      _hasTokensDelta_p = source._hasTokensDelta_p
+      _tokensDeltaPercent = source._tokensDeltaPercent
+      _previousBackfilling = source._previousBackfilling
+      _composition = source._composition
+      _periodCompositionRows = source._periodCompositionRows
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularBoolField(value: &_storage._scrubbing) }()
+        case 2: try { try decoder.decodeSingularInt32Field(value: &_storage._scrubBucketIndex) }()
+        case 3: try { try decoder.decodeSingularInt64Field(value: &_storage._scrubStartMs) }()
+        case 4: try { try decoder.decodeSingularInt64Field(value: &_storage._scrubEndMs) }()
+        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._hasSelectedModel_p) }()
+        case 6: try { try decoder.decodeSingularEnumField(value: &_storage._selectedAgent) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._selectedAgentName) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._selectedModel) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._selectedSeriesKey) }()
+        case 10: try { try decoder.decodeSingularInt32Field(value: &_storage._totalModelCount) }()
+        case 11: try { try decoder.decodeSingularUInt64Field(value: &_storage._totalTokens) }()
+        case 12: try { try decoder.decodeSingularUInt64Field(value: &_storage._requestCount) }()
+        case 13: try { try decoder.decodeSingularBoolField(value: &_storage._hasSharePercent_p) }()
+        case 14: try { try decoder.decodeSingularDoubleField(value: &_storage._shareRatio) }()
+        case 15: try { try decoder.decodeSingularBoolField(value: &_storage._hasTokensDelta_p) }()
+        case 16: try { try decoder.decodeSingularDoubleField(value: &_storage._tokensDeltaPercent) }()
+        case 17: try { try decoder.decodeSingularBoolField(value: &_storage._previousBackfilling) }()
+        case 18: try { try decoder.decodeSingularMessageField(value: &_storage._composition) }()
+        case 19: try { try decoder.decodeSingularInt32Field(value: &_storage._periodCompositionRows) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._scrubbing != false {
+        try visitor.visitSingularBoolField(value: _storage._scrubbing, fieldNumber: 1)
+      }
+      if _storage._scrubBucketIndex != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._scrubBucketIndex, fieldNumber: 2)
+      }
+      if _storage._scrubStartMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._scrubStartMs, fieldNumber: 3)
+      }
+      if _storage._scrubEndMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._scrubEndMs, fieldNumber: 4)
+      }
+      if _storage._hasSelectedModel_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasSelectedModel_p, fieldNumber: 5)
+      }
+      if _storage._selectedAgent != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._selectedAgent, fieldNumber: 6)
+      }
+      if !_storage._selectedAgentName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._selectedAgentName, fieldNumber: 7)
+      }
+      if !_storage._selectedModel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._selectedModel, fieldNumber: 8)
+      }
+      if !_storage._selectedSeriesKey.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._selectedSeriesKey, fieldNumber: 9)
+      }
+      if _storage._totalModelCount != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._totalModelCount, fieldNumber: 10)
+      }
+      if _storage._totalTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._totalTokens, fieldNumber: 11)
+      }
+      if _storage._requestCount != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._requestCount, fieldNumber: 12)
+      }
+      if _storage._hasSharePercent_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasSharePercent_p, fieldNumber: 13)
+      }
+      if _storage._shareRatio.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._shareRatio, fieldNumber: 14)
+      }
+      if _storage._hasTokensDelta_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasTokensDelta_p, fieldNumber: 15)
+      }
+      if _storage._tokensDeltaPercent.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._tokensDeltaPercent, fieldNumber: 16)
+      }
+      if _storage._previousBackfilling != false {
+        try visitor.visitSingularBoolField(value: _storage._previousBackfilling, fieldNumber: 17)
+      }
+      try { if let v = _storage._composition {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
+      } }()
+      if _storage._periodCompositionRows != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._periodCompositionRows, fieldNumber: 19)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageHeroView, rhs: PBCoreUsageHeroView) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._scrubbing != rhs_storage._scrubbing {return false}
+        if _storage._scrubBucketIndex != rhs_storage._scrubBucketIndex {return false}
+        if _storage._scrubStartMs != rhs_storage._scrubStartMs {return false}
+        if _storage._scrubEndMs != rhs_storage._scrubEndMs {return false}
+        if _storage._hasSelectedModel_p != rhs_storage._hasSelectedModel_p {return false}
+        if _storage._selectedAgent != rhs_storage._selectedAgent {return false}
+        if _storage._selectedAgentName != rhs_storage._selectedAgentName {return false}
+        if _storage._selectedModel != rhs_storage._selectedModel {return false}
+        if _storage._selectedSeriesKey != rhs_storage._selectedSeriesKey {return false}
+        if _storage._totalModelCount != rhs_storage._totalModelCount {return false}
+        if _storage._totalTokens != rhs_storage._totalTokens {return false}
+        if _storage._requestCount != rhs_storage._requestCount {return false}
+        if _storage._hasSharePercent_p != rhs_storage._hasSharePercent_p {return false}
+        if _storage._shareRatio != rhs_storage._shareRatio {return false}
+        if _storage._hasTokensDelta_p != rhs_storage._hasTokensDelta_p {return false}
+        if _storage._tokensDeltaPercent != rhs_storage._tokensDeltaPercent {return false}
+        if _storage._previousBackfilling != rhs_storage._previousBackfilling {return false}
+        if _storage._composition != rhs_storage._composition {return false}
+        if _storage._periodCompositionRows != rhs_storage._periodCompositionRows {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageBarBucketView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageBarBucketView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}start_ms\0\u{3}end_ms\0\u{3}all_tokens\0\u{3}selected_tokens\0\u{3}has_data\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.startMs) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.endMs) }()
+      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.allTokens) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.selectedTokens) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.hasData_p) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.startMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.startMs, fieldNumber: 1)
+    }
+    if self.endMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.endMs, fieldNumber: 2)
+    }
+    if self.allTokens != 0 {
+      try visitor.visitSingularUInt64Field(value: self.allTokens, fieldNumber: 3)
+    }
+    if self.selectedTokens != 0 {
+      try visitor.visitSingularUInt64Field(value: self.selectedTokens, fieldNumber: 4)
+    }
+    if self.hasData_p != false {
+      try visitor.visitSingularBoolField(value: self.hasData_p, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageBarBucketView, rhs: PBCoreUsageBarBucketView) -> Bool {
+    if lhs.startMs != rhs.startMs {return false}
+    if lhs.endMs != rhs.endMs {return false}
+    if lhs.allTokens != rhs.allTokens {return false}
+    if lhs.selectedTokens != rhs.selectedTokens {return false}
+    if lhs.hasData_p != rhs.hasData_p {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageBarChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageBarChartView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}y_max\0\u{3}y_mid\0\u{1}buckets\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.yMax) }()
+      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.yMid) }()
+      case 3: try { try decoder.decodeRepeatedMessageField(value: &self.buckets) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.yMax != 0 {
+      try visitor.visitSingularUInt64Field(value: self.yMax, fieldNumber: 1)
+    }
+    if self.yMid != 0 {
+      try visitor.visitSingularUInt64Field(value: self.yMid, fieldNumber: 2)
+    }
+    if !self.buckets.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.buckets, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageBarChartView, rhs: PBCoreUsageBarChartView) -> Bool {
+    if lhs.yMax != rhs.yMax {return false}
+    if lhs.yMid != rhs.yMid {return false}
+    if lhs.buckets != rhs.buckets {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageStripPointView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageStripPointView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}value\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.hasValue_p) }()
+      case 2: try { try decoder.decodeSingularDoubleField(value: &self.value) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.hasValue_p != false {
+      try visitor.visitSingularBoolField(value: self.hasValue_p, fieldNumber: 1)
+    }
+    if self.value.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.value, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageStripPointView, rhs: PBCoreUsageStripPointView) -> Bool {
+    if lhs.hasValue_p != rhs.hasValue_p {return false}
+    if lhs.value != rhs.value {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageMetricStripView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageMetricStripView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{3}current_value\0\u{3}has_range\0\u{3}min_value\0\u{3}max_value\0\u{3}scale_min\0\u{3}scale_max\0\u{3}last_valid_index\0\u{3}all_points\0\u{3}selected_points\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.hasValue_p) }()
+      case 2: try { try decoder.decodeSingularDoubleField(value: &self.currentValue) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.hasRange_p) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self.minValue) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self.maxValue) }()
+      case 6: try { try decoder.decodeSingularDoubleField(value: &self.scaleMin) }()
+      case 7: try { try decoder.decodeSingularDoubleField(value: &self.scaleMax) }()
+      case 8: try { try decoder.decodeSingularInt32Field(value: &self.lastValidIndex) }()
+      case 9: try { try decoder.decodeRepeatedMessageField(value: &self.allPoints) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.selectedPoints) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.hasValue_p != false {
+      try visitor.visitSingularBoolField(value: self.hasValue_p, fieldNumber: 1)
+    }
+    if self.currentValue.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.currentValue, fieldNumber: 2)
+    }
+    if self.hasRange_p != false {
+      try visitor.visitSingularBoolField(value: self.hasRange_p, fieldNumber: 3)
+    }
+    if self.minValue.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.minValue, fieldNumber: 4)
+    }
+    if self.maxValue.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.maxValue, fieldNumber: 5)
+    }
+    if self.scaleMin.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.scaleMin, fieldNumber: 6)
+    }
+    if self.scaleMax.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.scaleMax, fieldNumber: 7)
+    }
+    if self.lastValidIndex != 0 {
+      try visitor.visitSingularInt32Field(value: self.lastValidIndex, fieldNumber: 8)
+    }
+    if !self.allPoints.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.allPoints, fieldNumber: 9)
+    }
+    if !self.selectedPoints.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.selectedPoints, fieldNumber: 10)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageMetricStripView, rhs: PBCoreUsageMetricStripView) -> Bool {
+    if lhs.hasValue_p != rhs.hasValue_p {return false}
+    if lhs.currentValue != rhs.currentValue {return false}
+    if lhs.hasRange_p != rhs.hasRange_p {return false}
+    if lhs.minValue != rhs.minValue {return false}
+    if lhs.maxValue != rhs.maxValue {return false}
+    if lhs.scaleMin != rhs.scaleMin {return false}
+    if lhs.scaleMax != rhs.scaleMax {return false}
+    if lhs.lastValidIndex != rhs.lastValidIndex {return false}
+    if lhs.allPoints != rhs.allPoints {return false}
+    if lhs.selectedPoints != rhs.selectedPoints {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageModelRowView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{3}agent_name\0\u{1}model\0\u{3}series_key\0\u{1}selected\0\u{3}share_ratio\0\u{3}total_tokens\0\u{3}has_cache_hit\0\u{3}cache_hit_rate\0\u{3}has_speed\0\u{3}speed_p50\0\u{3}has_ttft\0\u{3}ttft_p50_ms\0\u{3}has_tokens_delta\0\u{3}tokens_delta_percent\0\u{3}previous_backfilling\0\u{3}usage_request_count\0\u{3}speed_request_count\0")
 
   fileprivate class _StorageClass {
     var _agent: PBAgent = .unspecified
     var _agentName: String = String()
     var _model: String = String()
     var _seriesKey: String = String()
-    var _patternIndex: Int32 = 0
-    var _focused: Bool = false
-    var _cacheWriteSupported: Bool = false
-    var _fewSpeedSamples: Bool = false
-    var _current: PBUsagePeriodSummary? = nil
-    var _previous: PBUsagePeriodSummary? = nil
+    var _selected: Bool = false
+    var _shareRatio: Double = 0
+    var _totalTokens: UInt64 = 0
+    var _hasCacheHit_p: Bool = false
+    var _cacheHitRate: Double = 0
+    var _hasSpeed_p: Bool = false
+    var _speedP50: Double = 0
+    var _hasTtft_p: Bool = false
+    var _ttftP50Ms: Double = 0
     var _hasTokensDelta_p: Bool = false
     var _tokensDeltaPercent: Double = 0
-    var _hasCacheHitDelta_p: Bool = false
-    var _cacheHitDeltaPoints: Double = 0
-    var _hasSpeedDelta_p: Bool = false
-    var _speedDeltaPercent: Double = 0
-    var _hasTtftDelta_p: Bool = false
-    var _ttftDeltaPercent: Double = 0
     var _previousBackfilling: Bool = false
-    var _buckets: [PBUsageBucketPoint] = []
+    var _usageRequestCount: UInt64 = 0
+    var _speedRequestCount: UInt64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -551,22 +1263,20 @@ extension PBCoreUsageSeriesView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _agentName = source._agentName
       _model = source._model
       _seriesKey = source._seriesKey
-      _patternIndex = source._patternIndex
-      _focused = source._focused
-      _cacheWriteSupported = source._cacheWriteSupported
-      _fewSpeedSamples = source._fewSpeedSamples
-      _current = source._current
-      _previous = source._previous
+      _selected = source._selected
+      _shareRatio = source._shareRatio
+      _totalTokens = source._totalTokens
+      _hasCacheHit_p = source._hasCacheHit_p
+      _cacheHitRate = source._cacheHitRate
+      _hasSpeed_p = source._hasSpeed_p
+      _speedP50 = source._speedP50
+      _hasTtft_p = source._hasTtft_p
+      _ttftP50Ms = source._ttftP50Ms
       _hasTokensDelta_p = source._hasTokensDelta_p
       _tokensDeltaPercent = source._tokensDeltaPercent
-      _hasCacheHitDelta_p = source._hasCacheHitDelta_p
-      _cacheHitDeltaPoints = source._cacheHitDeltaPoints
-      _hasSpeedDelta_p = source._hasSpeedDelta_p
-      _speedDeltaPercent = source._speedDeltaPercent
-      _hasTtftDelta_p = source._hasTtftDelta_p
-      _ttftDeltaPercent = source._ttftDeltaPercent
       _previousBackfilling = source._previousBackfilling
-      _buckets = source._buckets
+      _usageRequestCount = source._usageRequestCount
+      _speedRequestCount = source._speedRequestCount
     }
   }
 
@@ -589,22 +1299,20 @@ extension PBCoreUsageSeriesView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 2: try { try decoder.decodeSingularStringField(value: &_storage._agentName) }()
         case 3: try { try decoder.decodeSingularStringField(value: &_storage._model) }()
         case 4: try { try decoder.decodeSingularStringField(value: &_storage._seriesKey) }()
-        case 5: try { try decoder.decodeSingularInt32Field(value: &_storage._patternIndex) }()
-        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._focused) }()
-        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._cacheWriteSupported) }()
-        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._fewSpeedSamples) }()
-        case 9: try { try decoder.decodeSingularMessageField(value: &_storage._current) }()
-        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._previous) }()
-        case 11: try { try decoder.decodeSingularBoolField(value: &_storage._hasTokensDelta_p) }()
-        case 12: try { try decoder.decodeSingularDoubleField(value: &_storage._tokensDeltaPercent) }()
-        case 13: try { try decoder.decodeSingularBoolField(value: &_storage._hasCacheHitDelta_p) }()
-        case 14: try { try decoder.decodeSingularDoubleField(value: &_storage._cacheHitDeltaPoints) }()
-        case 15: try { try decoder.decodeSingularBoolField(value: &_storage._hasSpeedDelta_p) }()
-        case 16: try { try decoder.decodeSingularDoubleField(value: &_storage._speedDeltaPercent) }()
-        case 17: try { try decoder.decodeSingularBoolField(value: &_storage._hasTtftDelta_p) }()
-        case 18: try { try decoder.decodeSingularDoubleField(value: &_storage._ttftDeltaPercent) }()
-        case 19: try { try decoder.decodeSingularBoolField(value: &_storage._previousBackfilling) }()
-        case 20: try { try decoder.decodeRepeatedMessageField(value: &_storage._buckets) }()
+        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._selected) }()
+        case 6: try { try decoder.decodeSingularDoubleField(value: &_storage._shareRatio) }()
+        case 7: try { try decoder.decodeSingularUInt64Field(value: &_storage._totalTokens) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._hasCacheHit_p) }()
+        case 9: try { try decoder.decodeSingularDoubleField(value: &_storage._cacheHitRate) }()
+        case 10: try { try decoder.decodeSingularBoolField(value: &_storage._hasSpeed_p) }()
+        case 11: try { try decoder.decodeSingularDoubleField(value: &_storage._speedP50) }()
+        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._hasTtft_p) }()
+        case 13: try { try decoder.decodeSingularDoubleField(value: &_storage._ttftP50Ms) }()
+        case 14: try { try decoder.decodeSingularBoolField(value: &_storage._hasTokensDelta_p) }()
+        case 15: try { try decoder.decodeSingularDoubleField(value: &_storage._tokensDeltaPercent) }()
+        case 16: try { try decoder.decodeSingularBoolField(value: &_storage._previousBackfilling) }()
+        case 17: try { try decoder.decodeSingularUInt64Field(value: &_storage._usageRequestCount) }()
+        case 18: try { try decoder.decodeSingularUInt64Field(value: &_storage._speedRequestCount) }()
         default: break
         }
       }
@@ -613,10 +1321,6 @@ extension PBCoreUsageSeriesView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
       if _storage._agent != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._agent, fieldNumber: 1)
       }
@@ -629,59 +1333,53 @@ extension PBCoreUsageSeriesView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._seriesKey.isEmpty {
         try visitor.visitSingularStringField(value: _storage._seriesKey, fieldNumber: 4)
       }
-      if _storage._patternIndex != 0 {
-        try visitor.visitSingularInt32Field(value: _storage._patternIndex, fieldNumber: 5)
+      if _storage._selected != false {
+        try visitor.visitSingularBoolField(value: _storage._selected, fieldNumber: 5)
       }
-      if _storage._focused != false {
-        try visitor.visitSingularBoolField(value: _storage._focused, fieldNumber: 6)
+      if _storage._shareRatio.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._shareRatio, fieldNumber: 6)
       }
-      if _storage._cacheWriteSupported != false {
-        try visitor.visitSingularBoolField(value: _storage._cacheWriteSupported, fieldNumber: 7)
+      if _storage._totalTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._totalTokens, fieldNumber: 7)
       }
-      if _storage._fewSpeedSamples != false {
-        try visitor.visitSingularBoolField(value: _storage._fewSpeedSamples, fieldNumber: 8)
+      if _storage._hasCacheHit_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasCacheHit_p, fieldNumber: 8)
       }
-      try { if let v = _storage._current {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
-      } }()
-      try { if let v = _storage._previous {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
-      } }()
+      if _storage._cacheHitRate.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._cacheHitRate, fieldNumber: 9)
+      }
+      if _storage._hasSpeed_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasSpeed_p, fieldNumber: 10)
+      }
+      if _storage._speedP50.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._speedP50, fieldNumber: 11)
+      }
+      if _storage._hasTtft_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasTtft_p, fieldNumber: 12)
+      }
+      if _storage._ttftP50Ms.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._ttftP50Ms, fieldNumber: 13)
+      }
       if _storage._hasTokensDelta_p != false {
-        try visitor.visitSingularBoolField(value: _storage._hasTokensDelta_p, fieldNumber: 11)
+        try visitor.visitSingularBoolField(value: _storage._hasTokensDelta_p, fieldNumber: 14)
       }
       if _storage._tokensDeltaPercent.bitPattern != 0 {
-        try visitor.visitSingularDoubleField(value: _storage._tokensDeltaPercent, fieldNumber: 12)
-      }
-      if _storage._hasCacheHitDelta_p != false {
-        try visitor.visitSingularBoolField(value: _storage._hasCacheHitDelta_p, fieldNumber: 13)
-      }
-      if _storage._cacheHitDeltaPoints.bitPattern != 0 {
-        try visitor.visitSingularDoubleField(value: _storage._cacheHitDeltaPoints, fieldNumber: 14)
-      }
-      if _storage._hasSpeedDelta_p != false {
-        try visitor.visitSingularBoolField(value: _storage._hasSpeedDelta_p, fieldNumber: 15)
-      }
-      if _storage._speedDeltaPercent.bitPattern != 0 {
-        try visitor.visitSingularDoubleField(value: _storage._speedDeltaPercent, fieldNumber: 16)
-      }
-      if _storage._hasTtftDelta_p != false {
-        try visitor.visitSingularBoolField(value: _storage._hasTtftDelta_p, fieldNumber: 17)
-      }
-      if _storage._ttftDeltaPercent.bitPattern != 0 {
-        try visitor.visitSingularDoubleField(value: _storage._ttftDeltaPercent, fieldNumber: 18)
+        try visitor.visitSingularDoubleField(value: _storage._tokensDeltaPercent, fieldNumber: 15)
       }
       if _storage._previousBackfilling != false {
-        try visitor.visitSingularBoolField(value: _storage._previousBackfilling, fieldNumber: 19)
+        try visitor.visitSingularBoolField(value: _storage._previousBackfilling, fieldNumber: 16)
       }
-      if !_storage._buckets.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._buckets, fieldNumber: 20)
+      if _storage._usageRequestCount != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._usageRequestCount, fieldNumber: 17)
+      }
+      if _storage._speedRequestCount != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._speedRequestCount, fieldNumber: 18)
       }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: PBCoreUsageSeriesView, rhs: PBCoreUsageSeriesView) -> Bool {
+  public static func ==(lhs: PBCoreUsageModelRowView, rhs: PBCoreUsageModelRowView) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -690,22 +1388,20 @@ extension PBCoreUsageSeriesView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._agentName != rhs_storage._agentName {return false}
         if _storage._model != rhs_storage._model {return false}
         if _storage._seriesKey != rhs_storage._seriesKey {return false}
-        if _storage._patternIndex != rhs_storage._patternIndex {return false}
-        if _storage._focused != rhs_storage._focused {return false}
-        if _storage._cacheWriteSupported != rhs_storage._cacheWriteSupported {return false}
-        if _storage._fewSpeedSamples != rhs_storage._fewSpeedSamples {return false}
-        if _storage._current != rhs_storage._current {return false}
-        if _storage._previous != rhs_storage._previous {return false}
+        if _storage._selected != rhs_storage._selected {return false}
+        if _storage._shareRatio != rhs_storage._shareRatio {return false}
+        if _storage._totalTokens != rhs_storage._totalTokens {return false}
+        if _storage._hasCacheHit_p != rhs_storage._hasCacheHit_p {return false}
+        if _storage._cacheHitRate != rhs_storage._cacheHitRate {return false}
+        if _storage._hasSpeed_p != rhs_storage._hasSpeed_p {return false}
+        if _storage._speedP50 != rhs_storage._speedP50 {return false}
+        if _storage._hasTtft_p != rhs_storage._hasTtft_p {return false}
+        if _storage._ttftP50Ms != rhs_storage._ttftP50Ms {return false}
         if _storage._hasTokensDelta_p != rhs_storage._hasTokensDelta_p {return false}
         if _storage._tokensDeltaPercent != rhs_storage._tokensDeltaPercent {return false}
-        if _storage._hasCacheHitDelta_p != rhs_storage._hasCacheHitDelta_p {return false}
-        if _storage._cacheHitDeltaPoints != rhs_storage._cacheHitDeltaPoints {return false}
-        if _storage._hasSpeedDelta_p != rhs_storage._hasSpeedDelta_p {return false}
-        if _storage._speedDeltaPercent != rhs_storage._speedDeltaPercent {return false}
-        if _storage._hasTtftDelta_p != rhs_storage._hasTtftDelta_p {return false}
-        if _storage._ttftDeltaPercent != rhs_storage._ttftDeltaPercent {return false}
         if _storage._previousBackfilling != rhs_storage._previousBackfilling {return false}
-        if _storage._buckets != rhs_storage._buckets {return false}
+        if _storage._usageRequestCount != rhs_storage._usageRequestCount {return false}
+        if _storage._speedRequestCount != rhs_storage._speedRequestCount {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -717,7 +1413,7 @@ extension PBCoreUsageSeriesView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}machine_name\0\u{1}found\0\u{1}supported\0\u{1}online\0\u{1}loading\0\u{3}error_text\0\u{3}cached_offline\0\u{3}cached_at_ms\0\u{1}backfilling\0\u{3}backfill_scanned_days\0\u{3}backfill_total_days\0\u{3}previous_period_backfilling\0\u{1}preset\0\u{1}granularity\0\u{3}start_ms\0\u{3}end_ms\0\u{1}metric\0\u{3}focus_agent\0\u{3}focus_model\0\u{1}sources\0\u{1}series\0\u{3}has_any_usage\0\u{3}has_any_speed\0\u{3}show_cache_write_footnote\0\u{3}unsupported_footnote\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}machine_name\0\u{1}found\0\u{1}supported\0\u{1}online\0\u{1}loading\0\u{3}error_text\0\u{3}cached_offline\0\u{3}cached_at_ms\0\u{1}backfilling\0\u{3}backfill_scanned_days\0\u{3}backfill_total_days\0\u{3}previous_period_backfilling\0\u{1}preset\0\u{1}granularity\0\u{3}start_ms\0\u{3}end_ms\0\u{3}range_days\0\u{3}sort_by\0\u{1}sources\0\u{3}has_any_usage\0\u{1}hero\0\u{3}bar_chart\0\u{3}cache_hit_strip\0\u{3}output_speed_strip\0\u{3}ttft_strip\0\u{1}rows\0\u{3}unsupported_footnote\0")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -737,14 +1433,16 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _granularity: PBUsageBucketGranularity = .unspecified
     var _startMs: Int64 = 0
     var _endMs: Int64 = 0
-    var _metric: PBCoreUsageMetricTab = .unspecified
-    var _focusAgent: PBAgent = .unspecified
-    var _focusModel: String = String()
+    var _rangeDays: Int32 = 0
+    var _sortBy: PBCoreUsageSortColumn = .unspecified
     var _sources: [PBUsageAgentSource] = []
-    var _series: [PBCoreUsageSeriesView] = []
     var _hasAnyUsage_p: Bool = false
-    var _hasAnySpeed_p: Bool = false
-    var _showCacheWriteFootnote: Bool = false
+    var _hero: PBCoreUsageHeroView? = nil
+    var _barChart: PBCoreUsageBarChartView? = nil
+    var _cacheHitStrip: PBCoreUsageMetricStripView? = nil
+    var _outputSpeedStrip: PBCoreUsageMetricStripView? = nil
+    var _ttftStrip: PBCoreUsageMetricStripView? = nil
+    var _rows: [PBCoreUsageModelRowView] = []
     var _unsupportedFootnote: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
@@ -773,14 +1471,16 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       _granularity = source._granularity
       _startMs = source._startMs
       _endMs = source._endMs
-      _metric = source._metric
-      _focusAgent = source._focusAgent
-      _focusModel = source._focusModel
+      _rangeDays = source._rangeDays
+      _sortBy = source._sortBy
       _sources = source._sources
-      _series = source._series
       _hasAnyUsage_p = source._hasAnyUsage_p
-      _hasAnySpeed_p = source._hasAnySpeed_p
-      _showCacheWriteFootnote = source._showCacheWriteFootnote
+      _hero = source._hero
+      _barChart = source._barChart
+      _cacheHitStrip = source._cacheHitStrip
+      _outputSpeedStrip = source._outputSpeedStrip
+      _ttftStrip = source._ttftStrip
+      _rows = source._rows
       _unsupportedFootnote = source._unsupportedFootnote
     }
   }
@@ -817,15 +1517,17 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         case 15: try { try decoder.decodeSingularEnumField(value: &_storage._granularity) }()
         case 16: try { try decoder.decodeSingularInt64Field(value: &_storage._startMs) }()
         case 17: try { try decoder.decodeSingularInt64Field(value: &_storage._endMs) }()
-        case 18: try { try decoder.decodeSingularEnumField(value: &_storage._metric) }()
-        case 19: try { try decoder.decodeSingularEnumField(value: &_storage._focusAgent) }()
-        case 20: try { try decoder.decodeSingularStringField(value: &_storage._focusModel) }()
-        case 21: try { try decoder.decodeRepeatedMessageField(value: &_storage._sources) }()
-        case 22: try { try decoder.decodeRepeatedMessageField(value: &_storage._series) }()
-        case 23: try { try decoder.decodeSingularBoolField(value: &_storage._hasAnyUsage_p) }()
-        case 24: try { try decoder.decodeSingularBoolField(value: &_storage._hasAnySpeed_p) }()
-        case 25: try { try decoder.decodeSingularBoolField(value: &_storage._showCacheWriteFootnote) }()
-        case 26: try { try decoder.decodeSingularMessageField(value: &_storage._unsupportedFootnote) }()
+        case 18: try { try decoder.decodeSingularInt32Field(value: &_storage._rangeDays) }()
+        case 19: try { try decoder.decodeSingularEnumField(value: &_storage._sortBy) }()
+        case 20: try { try decoder.decodeRepeatedMessageField(value: &_storage._sources) }()
+        case 21: try { try decoder.decodeSingularBoolField(value: &_storage._hasAnyUsage_p) }()
+        case 22: try { try decoder.decodeSingularMessageField(value: &_storage._hero) }()
+        case 23: try { try decoder.decodeSingularMessageField(value: &_storage._barChart) }()
+        case 24: try { try decoder.decodeSingularMessageField(value: &_storage._cacheHitStrip) }()
+        case 25: try { try decoder.decodeSingularMessageField(value: &_storage._outputSpeedStrip) }()
+        case 26: try { try decoder.decodeSingularMessageField(value: &_storage._ttftStrip) }()
+        case 27: try { try decoder.decodeRepeatedMessageField(value: &_storage._rows) }()
+        case 28: try { try decoder.decodeSingularMessageField(value: &_storage._unsupportedFootnote) }()
         default: break
         }
       }
@@ -889,32 +1591,38 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if _storage._endMs != 0 {
         try visitor.visitSingularInt64Field(value: _storage._endMs, fieldNumber: 17)
       }
-      if _storage._metric != .unspecified {
-        try visitor.visitSingularEnumField(value: _storage._metric, fieldNumber: 18)
+      if _storage._rangeDays != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._rangeDays, fieldNumber: 18)
       }
-      if _storage._focusAgent != .unspecified {
-        try visitor.visitSingularEnumField(value: _storage._focusAgent, fieldNumber: 19)
-      }
-      if !_storage._focusModel.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._focusModel, fieldNumber: 20)
+      if _storage._sortBy != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._sortBy, fieldNumber: 19)
       }
       if !_storage._sources.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._sources, fieldNumber: 21)
-      }
-      if !_storage._series.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._series, fieldNumber: 22)
+        try visitor.visitRepeatedMessageField(value: _storage._sources, fieldNumber: 20)
       }
       if _storage._hasAnyUsage_p != false {
-        try visitor.visitSingularBoolField(value: _storage._hasAnyUsage_p, fieldNumber: 23)
+        try visitor.visitSingularBoolField(value: _storage._hasAnyUsage_p, fieldNumber: 21)
       }
-      if _storage._hasAnySpeed_p != false {
-        try visitor.visitSingularBoolField(value: _storage._hasAnySpeed_p, fieldNumber: 24)
-      }
-      if _storage._showCacheWriteFootnote != false {
-        try visitor.visitSingularBoolField(value: _storage._showCacheWriteFootnote, fieldNumber: 25)
+      try { if let v = _storage._hero {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
+      } }()
+      try { if let v = _storage._barChart {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+      } }()
+      try { if let v = _storage._cacheHitStrip {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
+      } }()
+      try { if let v = _storage._outputSpeedStrip {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
+      } }()
+      try { if let v = _storage._ttftStrip {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+      } }()
+      if !_storage._rows.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._rows, fieldNumber: 27)
       }
       try { if let v = _storage._unsupportedFootnote {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 28)
       } }()
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -942,14 +1650,16 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         if _storage._granularity != rhs_storage._granularity {return false}
         if _storage._startMs != rhs_storage._startMs {return false}
         if _storage._endMs != rhs_storage._endMs {return false}
-        if _storage._metric != rhs_storage._metric {return false}
-        if _storage._focusAgent != rhs_storage._focusAgent {return false}
-        if _storage._focusModel != rhs_storage._focusModel {return false}
+        if _storage._rangeDays != rhs_storage._rangeDays {return false}
+        if _storage._sortBy != rhs_storage._sortBy {return false}
         if _storage._sources != rhs_storage._sources {return false}
-        if _storage._series != rhs_storage._series {return false}
         if _storage._hasAnyUsage_p != rhs_storage._hasAnyUsage_p {return false}
-        if _storage._hasAnySpeed_p != rhs_storage._hasAnySpeed_p {return false}
-        if _storage._showCacheWriteFootnote != rhs_storage._showCacheWriteFootnote {return false}
+        if _storage._hero != rhs_storage._hero {return false}
+        if _storage._barChart != rhs_storage._barChart {return false}
+        if _storage._cacheHitStrip != rhs_storage._cacheHitStrip {return false}
+        if _storage._outputSpeedStrip != rhs_storage._outputSpeedStrip {return false}
+        if _storage._ttftStrip != rhs_storage._ttftStrip {return false}
+        if _storage._rows != rhs_storage._rows {return false}
         if _storage._unsupportedFootnote != rhs_storage._unsupportedFootnote {return false}
         return true
       }
@@ -962,7 +1672,7 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBCoreUsageScreenOpenEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageScreenOpenEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}preset\0\u{3}custom_start_ms\0\u{3}custom_end_ms\0\u{1}timezone\0\u{3}tz_offset_minutes\0\u{3}bucket_bounds_ms\0\u{3}prev_start_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}preset\0\u{3}custom_start_ms\0\u{3}custom_end_ms\0\u{1}timezone\0\u{3}tz_offset_minutes\0\u{3}bucket_bounds_ms\0\u{3}prev_start_ms\0\u{3}apply_focus\0\u{3}focus_agent\0\u{3}focus_model\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -978,6 +1688,9 @@ extension PBCoreUsageScreenOpenEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 6: try { try decoder.decodeSingularInt32Field(value: &self.tzOffsetMinutes) }()
       case 7: try { try decoder.decodeRepeatedInt64Field(value: &self.bucketBoundsMs) }()
       case 8: try { try decoder.decodeSingularInt64Field(value: &self.prevStartMs) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.applyFocus) }()
+      case 10: try { try decoder.decodeSingularEnumField(value: &self.focusAgent) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.focusModel) }()
       default: break
       }
     }
@@ -1008,6 +1721,15 @@ extension PBCoreUsageScreenOpenEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.prevStartMs != 0 {
       try visitor.visitSingularInt64Field(value: self.prevStartMs, fieldNumber: 8)
     }
+    if self.applyFocus != false {
+      try visitor.visitSingularBoolField(value: self.applyFocus, fieldNumber: 9)
+    }
+    if self.focusAgent != .unspecified {
+      try visitor.visitSingularEnumField(value: self.focusAgent, fieldNumber: 10)
+    }
+    if !self.focusModel.isEmpty {
+      try visitor.visitSingularStringField(value: self.focusModel, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1020,6 +1742,9 @@ extension PBCoreUsageScreenOpenEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.tzOffsetMinutes != rhs.tzOffsetMinutes {return false}
     if lhs.bucketBoundsMs != rhs.bucketBoundsMs {return false}
     if lhs.prevStartMs != rhs.prevStartMs {return false}
+    if lhs.applyFocus != rhs.applyFocus {return false}
+    if lhs.focusAgent != rhs.focusAgent {return false}
+    if lhs.focusModel != rhs.focusModel {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1050,6 +1775,121 @@ extension PBCoreUsageScreenRetryEvent: SwiftProtobuf.Message, SwiftProtobuf._Mes
 
   public static func ==(lhs: PBCoreUsageScreenRetryEvent, rhs: PBCoreUsageScreenRetryEvent) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageScreenSelectSortEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageScreenSelectSortEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}sort_by\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.sortBy) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
+    }
+    if self.sortBy != .unspecified {
+      try visitor.visitSingularEnumField(value: self.sortBy, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageScreenSelectSortEvent, rhs: PBCoreUsageScreenSelectSortEvent) -> Bool {
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.sortBy != rhs.sortBy {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageScreenSelectSeriesEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageScreenSelectSeriesEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}series_key\0\u{1}toggle\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.seriesKey) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.toggle) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
+    }
+    if !self.seriesKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.seriesKey, fieldNumber: 2)
+    }
+    if self.toggle != false {
+      try visitor.visitSingularBoolField(value: self.toggle, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageScreenSelectSeriesEvent, rhs: PBCoreUsageScreenSelectSeriesEvent) -> Bool {
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.seriesKey != rhs.seriesKey {return false}
+    if lhs.toggle != rhs.toggle {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreUsageScreenScrubEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageScreenScrubEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}bucket_index\0\u{1}clear\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.bucketIndex) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.clear) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
+    }
+    if self.bucketIndex != 0 {
+      try visitor.visitSingularInt32Field(value: self.bucketIndex, fieldNumber: 2)
+    }
+    if self.clear != false {
+      try visitor.visitSingularBoolField(value: self.clear, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageScreenScrubEvent, rhs: PBCoreUsageScreenScrubEvent) -> Bool {
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.bucketIndex != rhs.bucketIndex {return false}
+    if lhs.clear != rhs.clear {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

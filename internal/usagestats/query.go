@@ -324,7 +324,7 @@ func resolveBounds(now time.Time, loc *time.Location, preset pb.UsageRangePreset
 			cur = cur.Add(time.Hour)
 		}
 		bounds = append(bounds, endExcl.UnixMilli())
-	case numDays <= 3:
+	case numDays <= 7:
 		gran = pb.UsageBucketGranularity_USAGE_BUCKET_GRANULARITY_SIX_HOURS
 		day := startDay
 		for day.Before(endExcl) {

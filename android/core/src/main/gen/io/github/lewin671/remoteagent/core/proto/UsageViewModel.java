@@ -17,9 +17,8 @@ public  final class UsageViewModel extends
   private UsageViewModel() {
     machineId_ = "";
     machineName_ = "";
-    focusModel_ = "";
     sources_ = emptyProtobufList();
-    series_ = emptyProtobufList();
+    rows_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -562,170 +561,106 @@ public  final class UsageViewModel extends
     endMs_ = 0L;
   }
 
-  public static final int METRIC_FIELD_NUMBER = 18;
-  private int metric_;
+  public static final int RANGE_DAYS_FIELD_NUMBER = 18;
+  private int rangeDays_;
   /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-   * @return The enum numeric value on the wire for metric.
+   * <code>int32 range_days = 18 [json_name = "rangeDays"];</code>
+   * @return The rangeDays.
    */
   @java.lang.Override
-  public int getMetricValue() {
-    return metric_;
+  public int getRangeDays() {
+    return rangeDays_;
   }
   /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-   * @return The metric.
+   * <code>int32 range_days = 18 [json_name = "rangeDays"];</code>
+   * @param value The rangeDays to set.
+   */
+  private void setRangeDays(int value) {
+    
+    rangeDays_ = value;
+  }
+  /**
+   * <code>int32 range_days = 18 [json_name = "rangeDays"];</code>
+   */
+  private void clearRangeDays() {
+
+    rangeDays_ = 0;
+  }
+
+  public static final int SORT_BY_FIELD_NUMBER = 19;
+  private int sortBy_;
+  /**
+   * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+   * @return The enum numeric value on the wire for sortBy.
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.UsageMetricTab getMetric() {
-    io.github.lewin671.remoteagent.core.proto.UsageMetricTab result = io.github.lewin671.remoteagent.core.proto.UsageMetricTab.forNumber(metric_);
-    return result == null ? io.github.lewin671.remoteagent.core.proto.UsageMetricTab.UNRECOGNIZED : result;
+  public int getSortByValue() {
+    return sortBy_;
   }
   /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-   * @param value The enum numeric value on the wire for metric to set.
-   */
-  private void setMetricValue(int value) {
-      metric_ = value;
-  }
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-   * @param value The metric to set.
-   */
-  private void setMetric(io.github.lewin671.remoteagent.core.proto.UsageMetricTab value) {
-    metric_ = value.getNumber();
-
-  }
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-   */
-  private void clearMetric() {
-
-    metric_ = 0;
-  }
-
-  public static final int FOCUS_AGENT_FIELD_NUMBER = 19;
-  private int focusAgent_;
-  /**
-   * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-   * @return The enum numeric value on the wire for focusAgent.
+   * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+   * @return The sortBy.
    */
   @java.lang.Override
-  public int getFocusAgentValue() {
-    return focusAgent_;
+  public io.github.lewin671.remoteagent.core.proto.UsageSortColumn getSortBy() {
+    io.github.lewin671.remoteagent.core.proto.UsageSortColumn result = io.github.lewin671.remoteagent.core.proto.UsageSortColumn.forNumber(sortBy_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.UsageSortColumn.UNRECOGNIZED : result;
   }
   /**
-   * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-   * @return The focusAgent.
+   * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+   * @param value The enum numeric value on the wire for sortBy to set.
    */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Agent getFocusAgent() {
-    io.github.lewin671.remoteagent.proto.Agent result = io.github.lewin671.remoteagent.proto.Agent.forNumber(focusAgent_);
-    return result == null ? io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED : result;
+  private void setSortByValue(int value) {
+      sortBy_ = value;
   }
   /**
-   * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-   * @param value The enum numeric value on the wire for focusAgent to set.
+   * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+   * @param value The sortBy to set.
    */
-  private void setFocusAgentValue(int value) {
-      focusAgent_ = value;
-  }
-  /**
-   * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-   * @param value The focusAgent to set.
-   */
-  private void setFocusAgent(io.github.lewin671.remoteagent.proto.Agent value) {
-    focusAgent_ = value.getNumber();
+  private void setSortBy(io.github.lewin671.remoteagent.core.proto.UsageSortColumn value) {
+    sortBy_ = value.getNumber();
 
   }
   /**
-   * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
+   * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
    */
-  private void clearFocusAgent() {
+  private void clearSortBy() {
 
-    focusAgent_ = 0;
+    sortBy_ = 0;
   }
 
-  public static final int FOCUS_MODEL_FIELD_NUMBER = 20;
-  private java.lang.String focusModel_;
-  /**
-   * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-   * @return The focusModel.
-   */
-  @java.lang.Override
-  public java.lang.String getFocusModel() {
-    return focusModel_;
-  }
-  /**
-   * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-   * @return The bytes for focusModel.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getFocusModelBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(focusModel_);
-  }
-  /**
-   * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-   * @param value The focusModel to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setFocusModel(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    focusModel_ = value;
-  }
-  /**
-   * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-   */
-  private void clearFocusModel() {
-
-    focusModel_ = getDefaultInstance().getFocusModel();
-  }
-  /**
-   * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-   * @param value The bytes for focusModel to set.
-   */
-  private void setFocusModelBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    focusModel_ = value.toStringUtf8();
-
-  }
-
-  public static final int SOURCES_FIELD_NUMBER = 21;
+  public static final int SOURCES_FIELD_NUMBER = 20;
   private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.UsageAgentSource> sources_;
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.Override
   public java.util.List<io.github.lewin671.remoteagent.proto.UsageAgentSource> getSourcesList() {
     return sources_;
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   public java.util.List<? extends io.github.lewin671.remoteagent.proto.UsageAgentSourceOrBuilder> 
       getSourcesOrBuilderList() {
     return sources_;
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.Override
   public int getSourcesCount() {
     return sources_.size();
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.Override
   public io.github.lewin671.remoteagent.proto.UsageAgentSource getSources(int index) {
     return sources_.get(index);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   public io.github.lewin671.remoteagent.proto.UsageAgentSourceOrBuilder getSourcesOrBuilder(
       int index) {
@@ -740,7 +675,7 @@ public  final class UsageViewModel extends
   }
 
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void setSources(
@@ -750,7 +685,7 @@ public  final class UsageViewModel extends
     sources_.set(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void addSources(io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
@@ -759,7 +694,7 @@ public  final class UsageViewModel extends
     sources_.add(value);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void addSources(
@@ -769,7 +704,7 @@ public  final class UsageViewModel extends
     sources_.add(index, value);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   private void addAllSources(
       java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.UsageAgentSource> values) {
@@ -778,120 +713,23 @@ public  final class UsageViewModel extends
         values, sources_);
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   private void clearSources() {
     sources_ = emptyProtobufList();
   }
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   private void removeSources(int index) {
     ensureSourcesIsMutable();
     sources_.remove(index);
   }
 
-  public static final int SERIES_FIELD_NUMBER = 22;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.UsageSeriesView> series_;
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.UsageSeriesView> getSeriesList() {
-    return series_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.UsageSeriesViewOrBuilder> 
-      getSeriesOrBuilderList() {
-    return series_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  @java.lang.Override
-  public int getSeriesCount() {
-    return series_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.UsageSeriesView getSeries(int index) {
-    return series_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  public io.github.lewin671.remoteagent.core.proto.UsageSeriesViewOrBuilder getSeriesOrBuilder(
-      int index) {
-    return series_.get(index);
-  }
-  private void ensureSeriesIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.UsageSeriesView> tmp = series_;
-    if (!tmp.isModifiable()) {
-      series_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSeries(
-      int index, io.github.lewin671.remoteagent.core.proto.UsageSeriesView value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSeriesIsMutable();
-    series_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addSeries(io.github.lewin671.remoteagent.core.proto.UsageSeriesView value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSeriesIsMutable();
-    series_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addSeries(
-      int index, io.github.lewin671.remoteagent.core.proto.UsageSeriesView value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSeriesIsMutable();
-    series_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  private void addAllSeries(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.UsageSeriesView> values) {
-    ensureSeriesIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, series_);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  private void clearSeries() {
-    series_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  private void removeSeries(int index) {
-    ensureSeriesIsMutable();
-    series_.remove(index);
-  }
-
-  public static final int HAS_ANY_USAGE_FIELD_NUMBER = 23;
+  public static final int HAS_ANY_USAGE_FIELD_NUMBER = 21;
   private boolean hasAnyUsage_;
   /**
-   * <code>bool has_any_usage = 23 [json_name = "hasAnyUsage"];</code>
+   * <code>bool has_any_usage = 21 [json_name = "hasAnyUsage"];</code>
    * @return The hasAnyUsage.
    */
   @java.lang.Override
@@ -899,7 +737,7 @@ public  final class UsageViewModel extends
     return hasAnyUsage_;
   }
   /**
-   * <code>bool has_any_usage = 23 [json_name = "hasAnyUsage"];</code>
+   * <code>bool has_any_usage = 21 [json_name = "hasAnyUsage"];</code>
    * @param value The hasAnyUsage to set.
    */
   private void setHasAnyUsage(boolean value) {
@@ -907,92 +745,377 @@ public  final class UsageViewModel extends
     hasAnyUsage_ = value;
   }
   /**
-   * <code>bool has_any_usage = 23 [json_name = "hasAnyUsage"];</code>
+   * <code>bool has_any_usage = 21 [json_name = "hasAnyUsage"];</code>
    */
   private void clearHasAnyUsage() {
 
     hasAnyUsage_ = false;
   }
 
-  public static final int HAS_ANY_SPEED_FIELD_NUMBER = 24;
-  private boolean hasAnySpeed_;
+  public static final int HERO_FIELD_NUMBER = 22;
+  private io.github.lewin671.remoteagent.core.proto.UsageHeroView hero_;
   /**
-   * <code>bool has_any_speed = 24 [json_name = "hasAnySpeed"];</code>
-   * @return The hasAnySpeed.
+   * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
    */
   @java.lang.Override
-  public boolean getHasAnySpeed() {
-    return hasAnySpeed_;
-  }
-  /**
-   * <code>bool has_any_speed = 24 [json_name = "hasAnySpeed"];</code>
-   * @param value The hasAnySpeed to set.
-   */
-  private void setHasAnySpeed(boolean value) {
-    
-    hasAnySpeed_ = value;
-  }
-  /**
-   * <code>bool has_any_speed = 24 [json_name = "hasAnySpeed"];</code>
-   */
-  private void clearHasAnySpeed() {
-
-    hasAnySpeed_ = false;
-  }
-
-  public static final int SHOW_CACHE_WRITE_FOOTNOTE_FIELD_NUMBER = 25;
-  private boolean showCacheWriteFootnote_;
-  /**
-   * <code>bool show_cache_write_footnote = 25 [json_name = "showCacheWriteFootnote"];</code>
-   * @return The showCacheWriteFootnote.
-   */
-  @java.lang.Override
-  public boolean getShowCacheWriteFootnote() {
-    return showCacheWriteFootnote_;
-  }
-  /**
-   * <code>bool show_cache_write_footnote = 25 [json_name = "showCacheWriteFootnote"];</code>
-   * @param value The showCacheWriteFootnote to set.
-   */
-  private void setShowCacheWriteFootnote(boolean value) {
-    
-    showCacheWriteFootnote_ = value;
-  }
-  /**
-   * <code>bool show_cache_write_footnote = 25 [json_name = "showCacheWriteFootnote"];</code>
-   */
-  private void clearShowCacheWriteFootnote() {
-
-    showCacheWriteFootnote_ = false;
-  }
-
-  public static final int UNSUPPORTED_FOOTNOTE_FIELD_NUMBER = 26;
-  private io.github.lewin671.remoteagent.core.proto.Text unsupportedFootnote_;
-  /**
-   * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
-   */
-  @java.lang.Override
-  public boolean hasUnsupportedFootnote() {
+  public boolean hasHero() {
     return ((bitField0_ & 0x00000002) != 0);
   }
   /**
-   * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+   * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageHeroView getHero() {
+    return hero_ == null ? io.github.lewin671.remoteagent.core.proto.UsageHeroView.getDefaultInstance() : hero_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHero(io.github.lewin671.remoteagent.core.proto.UsageHeroView value) {
+    value.getClass();  // minimal bytecode null check
+    hero_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeHero(io.github.lewin671.remoteagent.core.proto.UsageHeroView value) {
+    value.getClass();  // minimal bytecode null check
+    if (hero_ != null &&
+        hero_ != io.github.lewin671.remoteagent.core.proto.UsageHeroView.getDefaultInstance()) {
+      hero_ =
+        io.github.lewin671.remoteagent.core.proto.UsageHeroView.newBuilder(hero_).mergeFrom(value).buildPartial();
+    } else {
+      hero_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+   */
+  private void clearHero() {
+    hero_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int BAR_CHART_FIELD_NUMBER = 23;
+  private io.github.lewin671.remoteagent.core.proto.UsageBarChartView barChart_;
+  /**
+   * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+   */
+  @java.lang.Override
+  public boolean hasBarChart() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageBarChartView getBarChart() {
+    return barChart_ == null ? io.github.lewin671.remoteagent.core.proto.UsageBarChartView.getDefaultInstance() : barChart_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setBarChart(io.github.lewin671.remoteagent.core.proto.UsageBarChartView value) {
+    value.getClass();  // minimal bytecode null check
+    barChart_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeBarChart(io.github.lewin671.remoteagent.core.proto.UsageBarChartView value) {
+    value.getClass();  // minimal bytecode null check
+    if (barChart_ != null &&
+        barChart_ != io.github.lewin671.remoteagent.core.proto.UsageBarChartView.getDefaultInstance()) {
+      barChart_ =
+        io.github.lewin671.remoteagent.core.proto.UsageBarChartView.newBuilder(barChart_).mergeFrom(value).buildPartial();
+    } else {
+      barChart_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+   */
+  private void clearBarChart() {
+    barChart_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int CACHE_HIT_STRIP_FIELD_NUMBER = 24;
+  private io.github.lewin671.remoteagent.core.proto.UsageMetricStripView cacheHitStrip_;
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCacheHitStrip() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getCacheHitStrip() {
+    return cacheHitStrip_ == null ? io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.getDefaultInstance() : cacheHitStrip_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCacheHitStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+    value.getClass();  // minimal bytecode null check
+    cacheHitStrip_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCacheHitStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+    value.getClass();  // minimal bytecode null check
+    if (cacheHitStrip_ != null &&
+        cacheHitStrip_ != io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.getDefaultInstance()) {
+      cacheHitStrip_ =
+        io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.newBuilder(cacheHitStrip_).mergeFrom(value).buildPartial();
+    } else {
+      cacheHitStrip_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+   */
+  private void clearCacheHitStrip() {
+    cacheHitStrip_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int OUTPUT_SPEED_STRIP_FIELD_NUMBER = 25;
+  private io.github.lewin671.remoteagent.core.proto.UsageMetricStripView outputSpeedStrip_;
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOutputSpeedStrip() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getOutputSpeedStrip() {
+    return outputSpeedStrip_ == null ? io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.getDefaultInstance() : outputSpeedStrip_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOutputSpeedStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+    value.getClass();  // minimal bytecode null check
+    outputSpeedStrip_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeOutputSpeedStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+    value.getClass();  // minimal bytecode null check
+    if (outputSpeedStrip_ != null &&
+        outputSpeedStrip_ != io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.getDefaultInstance()) {
+      outputSpeedStrip_ =
+        io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.newBuilder(outputSpeedStrip_).mergeFrom(value).buildPartial();
+    } else {
+      outputSpeedStrip_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+   */
+  private void clearOutputSpeedStrip() {
+    outputSpeedStrip_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
+  public static final int TTFT_STRIP_FIELD_NUMBER = 26;
+  private io.github.lewin671.remoteagent.core.proto.UsageMetricStripView ttftStrip_;
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTtftStrip() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getTtftStrip() {
+    return ttftStrip_ == null ? io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.getDefaultInstance() : ttftStrip_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTtftStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+    value.getClass();  // minimal bytecode null check
+    ttftStrip_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeTtftStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+    value.getClass();  // minimal bytecode null check
+    if (ttftStrip_ != null &&
+        ttftStrip_ != io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.getDefaultInstance()) {
+      ttftStrip_ =
+        io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.newBuilder(ttftStrip_).mergeFrom(value).buildPartial();
+    } else {
+      ttftStrip_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+   */
+  private void clearTtftStrip() {
+    ttftStrip_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
+  public static final int ROWS_FIELD_NUMBER = 27;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.UsageModelRowView> rows_;
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.UsageModelRowView> getRowsList() {
+    return rows_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.UsageModelRowViewOrBuilder> 
+      getRowsOrBuilderList() {
+    return rows_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  @java.lang.Override
+  public int getRowsCount() {
+    return rows_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageModelRowView getRows(int index) {
+    return rows_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.UsageModelRowViewOrBuilder getRowsOrBuilder(
+      int index) {
+    return rows_.get(index);
+  }
+  private void ensureRowsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.UsageModelRowView> tmp = rows_;
+    if (!tmp.isModifiable()) {
+      rows_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRows(
+      int index, io.github.lewin671.remoteagent.core.proto.UsageModelRowView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRowsIsMutable();
+    rows_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addRows(io.github.lewin671.remoteagent.core.proto.UsageModelRowView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRowsIsMutable();
+    rows_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addRows(
+      int index, io.github.lewin671.remoteagent.core.proto.UsageModelRowView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRowsIsMutable();
+    rows_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  private void addAllRows(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.UsageModelRowView> values) {
+    ensureRowsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, rows_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  private void clearRows() {
+    rows_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  private void removeRows(int index) {
+    ensureRowsIsMutable();
+    rows_.remove(index);
+  }
+
+  public static final int UNSUPPORTED_FOOTNOTE_FIELD_NUMBER = 28;
+  private io.github.lewin671.remoteagent.core.proto.Text unsupportedFootnote_;
+  /**
+   * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUnsupportedFootnote() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
    */
   @java.lang.Override
   public io.github.lewin671.remoteagent.core.proto.Text getUnsupportedFootnote() {
     return unsupportedFootnote_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : unsupportedFootnote_;
   }
   /**
-   * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+   * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void setUnsupportedFootnote(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     unsupportedFootnote_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000040;
   }
   /**
-   * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+   * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
    */
   @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
   private void mergeUnsupportedFootnote(io.github.lewin671.remoteagent.core.proto.Text value) {
@@ -1004,14 +1127,14 @@ public  final class UsageViewModel extends
     } else {
       unsupportedFootnote_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000040;
   }
   /**
-   * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+   * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
    */
   private void clearUnsupportedFootnote() {
     unsupportedFootnote_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000040);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.UsageViewModel parseFrom(
@@ -1685,148 +1808,81 @@ public  final class UsageViewModel extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-     * @return The enum numeric value on the wire for metric.
+     * <code>int32 range_days = 18 [json_name = "rangeDays"];</code>
+     * @return The rangeDays.
      */
     @java.lang.Override
-    public int getMetricValue() {
-      return instance.getMetricValue();
+    public int getRangeDays() {
+      return instance.getRangeDays();
     }
     /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-     * @param value The metric to set.
+     * <code>int32 range_days = 18 [json_name = "rangeDays"];</code>
+     * @param value The rangeDays to set.
      * @return This builder for chaining.
      */
-    public Builder setMetricValue(int value) {
+    public Builder setRangeDays(int value) {
       copyOnWrite();
-      instance.setMetricValue(value);
+      instance.setRangeDays(value);
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-     * @return The metric.
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.UsageMetricTab getMetric() {
-      return instance.getMetric();
-    }
-    /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-     * @param value The enum numeric value on the wire for metric to set.
+     * <code>int32 range_days = 18 [json_name = "rangeDays"];</code>
      * @return This builder for chaining.
      */
-    public Builder setMetric(io.github.lewin671.remoteagent.core.proto.UsageMetricTab value) {
+    public Builder clearRangeDays() {
       copyOnWrite();
-      instance.setMetric(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearMetric() {
-      copyOnWrite();
-      instance.clearMetric();
+      instance.clearRangeDays();
       return this;
     }
 
     /**
-     * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-     * @return The enum numeric value on the wire for focusAgent.
+     * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+     * @return The enum numeric value on the wire for sortBy.
      */
     @java.lang.Override
-    public int getFocusAgentValue() {
-      return instance.getFocusAgentValue();
+    public int getSortByValue() {
+      return instance.getSortByValue();
     }
     /**
-     * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-     * @param value The focusAgent to set.
+     * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+     * @param value The sortBy to set.
      * @return This builder for chaining.
      */
-    public Builder setFocusAgentValue(int value) {
+    public Builder setSortByValue(int value) {
       copyOnWrite();
-      instance.setFocusAgentValue(value);
+      instance.setSortByValue(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-     * @return The focusAgent.
+     * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+     * @return The sortBy.
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Agent getFocusAgent() {
-      return instance.getFocusAgent();
+    public io.github.lewin671.remoteagent.core.proto.UsageSortColumn getSortBy() {
+      return instance.getSortBy();
     }
     /**
-     * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-     * @param value The enum numeric value on the wire for focusAgent to set.
+     * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+     * @param value The enum numeric value on the wire for sortBy to set.
      * @return This builder for chaining.
      */
-    public Builder setFocusAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+    public Builder setSortBy(io.github.lewin671.remoteagent.core.proto.UsageSortColumn value) {
       copyOnWrite();
-      instance.setFocusAgent(value);
+      instance.setSortBy(value);
       return this;
     }
     /**
-     * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
+     * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearFocusAgent() {
+    public Builder clearSortBy() {
       copyOnWrite();
-      instance.clearFocusAgent();
+      instance.clearSortBy();
       return this;
     }
 
     /**
-     * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-     * @return The focusModel.
-     */
-    @java.lang.Override
-    public java.lang.String getFocusModel() {
-      return instance.getFocusModel();
-    }
-    /**
-     * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-     * @return The bytes for focusModel.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getFocusModelBytes() {
-      return instance.getFocusModelBytes();
-    }
-    /**
-     * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-     * @param value The focusModel to set.
-     * @return This builder for chaining.
-     */
-    public Builder setFocusModel(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setFocusModel(value);
-      return this;
-    }
-    /**
-     * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearFocusModel() {
-      copyOnWrite();
-      instance.clearFocusModel();
-      return this;
-    }
-    /**
-     * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-     * @param value The bytes for focusModel to set.
-     * @return This builder for chaining.
-     */
-    public Builder setFocusModelBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setFocusModelBytes(value);
-      return this;
-    }
-
-    /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     @java.lang.Override
     public java.util.List<io.github.lewin671.remoteagent.proto.UsageAgentSource> getSourcesList() {
@@ -1834,20 +1890,20 @@ public  final class UsageViewModel extends
           instance.getSourcesList());
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     @java.lang.Override
     public int getSourcesCount() {
       return instance.getSourcesCount();
     }/**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     @java.lang.Override
     public io.github.lewin671.remoteagent.proto.UsageAgentSource getSources(int index) {
       return instance.getSources(index);
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder setSources(
         int index, io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
@@ -1856,7 +1912,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder setSources(
         int index, io.github.lewin671.remoteagent.proto.UsageAgentSource.Builder builderForValue) {
@@ -1866,7 +1922,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder addSources(io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
       copyOnWrite();
@@ -1874,7 +1930,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder addSources(
         int index, io.github.lewin671.remoteagent.proto.UsageAgentSource value) {
@@ -1883,7 +1939,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder addSources(
         io.github.lewin671.remoteagent.proto.UsageAgentSource.Builder builderForValue) {
@@ -1892,7 +1948,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder addSources(
         int index, io.github.lewin671.remoteagent.proto.UsageAgentSource.Builder builderForValue) {
@@ -1902,7 +1958,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder addAllSources(
         java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.UsageAgentSource> values) {
@@ -1911,7 +1967,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder clearSources() {
       copyOnWrite();
@@ -1919,7 +1975,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+     * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
      */
     public Builder removeSources(int index) {
       copyOnWrite();
@@ -1928,109 +1984,7 @@ public  final class UsageViewModel extends
     }
 
     /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.UsageSeriesView> getSeriesList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getSeriesList());
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    @java.lang.Override
-    public int getSeriesCount() {
-      return instance.getSeriesCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.UsageSeriesView getSeries(int index) {
-      return instance.getSeries(index);
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder setSeries(
-        int index, io.github.lewin671.remoteagent.core.proto.UsageSeriesView value) {
-      copyOnWrite();
-      instance.setSeries(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder setSeries(
-        int index, io.github.lewin671.remoteagent.core.proto.UsageSeriesView.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSeries(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder addSeries(io.github.lewin671.remoteagent.core.proto.UsageSeriesView value) {
-      copyOnWrite();
-      instance.addSeries(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder addSeries(
-        int index, io.github.lewin671.remoteagent.core.proto.UsageSeriesView value) {
-      copyOnWrite();
-      instance.addSeries(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder addSeries(
-        io.github.lewin671.remoteagent.core.proto.UsageSeriesView.Builder builderForValue) {
-      copyOnWrite();
-      instance.addSeries(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder addSeries(
-        int index, io.github.lewin671.remoteagent.core.proto.UsageSeriesView.Builder builderForValue) {
-      copyOnWrite();
-      instance.addSeries(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder addAllSeries(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.UsageSeriesView> values) {
-      copyOnWrite();
-      instance.addAllSeries(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder clearSeries() {
-      copyOnWrite();
-      instance.clearSeries();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-     */
-    public Builder removeSeries(int index) {
-      copyOnWrite();
-      instance.removeSeries(index);
-      return this;
-    }
-
-    /**
-     * <code>bool has_any_usage = 23 [json_name = "hasAnyUsage"];</code>
+     * <code>bool has_any_usage = 21 [json_name = "hasAnyUsage"];</code>
      * @return The hasAnyUsage.
      */
     @java.lang.Override
@@ -2038,7 +1992,7 @@ public  final class UsageViewModel extends
       return instance.getHasAnyUsage();
     }
     /**
-     * <code>bool has_any_usage = 23 [json_name = "hasAnyUsage"];</code>
+     * <code>bool has_any_usage = 21 [json_name = "hasAnyUsage"];</code>
      * @param value The hasAnyUsage to set.
      * @return This builder for chaining.
      */
@@ -2048,7 +2002,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>bool has_any_usage = 23 [json_name = "hasAnyUsage"];</code>
+     * <code>bool has_any_usage = 21 [json_name = "hasAnyUsage"];</code>
      * @return This builder for chaining.
      */
     public Builder clearHasAnyUsage() {
@@ -2058,77 +2012,358 @@ public  final class UsageViewModel extends
     }
 
     /**
-     * <code>bool has_any_speed = 24 [json_name = "hasAnySpeed"];</code>
-     * @return The hasAnySpeed.
+     * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
      */
     @java.lang.Override
-    public boolean getHasAnySpeed() {
-      return instance.getHasAnySpeed();
+    public boolean hasHero() {
+      return instance.hasHero();
     }
     /**
-     * <code>bool has_any_speed = 24 [json_name = "hasAnySpeed"];</code>
-     * @param value The hasAnySpeed to set.
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
      */
-    public Builder setHasAnySpeed(boolean value) {
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageHeroView getHero() {
+      return instance.getHero();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+     */
+    public Builder setHero(io.github.lewin671.remoteagent.core.proto.UsageHeroView value) {
       copyOnWrite();
-      instance.setHasAnySpeed(value);
+      instance.setHero(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+     */
+    public Builder setHero(
+        io.github.lewin671.remoteagent.core.proto.UsageHeroView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHero(builderForValue.build());
       return this;
     }
     /**
-     * <code>bool has_any_speed = 24 [json_name = "hasAnySpeed"];</code>
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
      */
-    public Builder clearHasAnySpeed() {
+    public Builder mergeHero(io.github.lewin671.remoteagent.core.proto.UsageHeroView value) {
       copyOnWrite();
-      instance.clearHasAnySpeed();
+      instance.mergeHero(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+     */
+    public Builder clearHero() {  copyOnWrite();
+      instance.clearHero();
       return this;
     }
 
     /**
-     * <code>bool show_cache_write_footnote = 25 [json_name = "showCacheWriteFootnote"];</code>
-     * @return The showCacheWriteFootnote.
+     * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
      */
     @java.lang.Override
-    public boolean getShowCacheWriteFootnote() {
-      return instance.getShowCacheWriteFootnote();
+    public boolean hasBarChart() {
+      return instance.hasBarChart();
     }
     /**
-     * <code>bool show_cache_write_footnote = 25 [json_name = "showCacheWriteFootnote"];</code>
-     * @param value The showCacheWriteFootnote to set.
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
      */
-    public Builder setShowCacheWriteFootnote(boolean value) {
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageBarChartView getBarChart() {
+      return instance.getBarChart();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+     */
+    public Builder setBarChart(io.github.lewin671.remoteagent.core.proto.UsageBarChartView value) {
       copyOnWrite();
-      instance.setShowCacheWriteFootnote(value);
+      instance.setBarChart(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+     */
+    public Builder setBarChart(
+        io.github.lewin671.remoteagent.core.proto.UsageBarChartView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setBarChart(builderForValue.build());
       return this;
     }
     /**
-     * <code>bool show_cache_write_footnote = 25 [json_name = "showCacheWriteFootnote"];</code>
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
      */
-    public Builder clearShowCacheWriteFootnote() {
+    public Builder mergeBarChart(io.github.lewin671.remoteagent.core.proto.UsageBarChartView value) {
       copyOnWrite();
-      instance.clearShowCacheWriteFootnote();
+      instance.mergeBarChart(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+     */
+    public Builder clearBarChart() {  copyOnWrite();
+      instance.clearBarChart();
       return this;
     }
 
     /**
-     * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+     * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCacheHitStrip() {
+      return instance.hasCacheHitStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getCacheHitStrip() {
+      return instance.getCacheHitStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+     */
+    public Builder setCacheHitStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+      copyOnWrite();
+      instance.setCacheHitStrip(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+     */
+    public Builder setCacheHitStrip(
+        io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCacheHitStrip(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+     */
+    public Builder mergeCacheHitStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+      copyOnWrite();
+      instance.mergeCacheHitStrip(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+     */
+    public Builder clearCacheHitStrip() {  copyOnWrite();
+      instance.clearCacheHitStrip();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOutputSpeedStrip() {
+      return instance.hasOutputSpeedStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getOutputSpeedStrip() {
+      return instance.getOutputSpeedStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+     */
+    public Builder setOutputSpeedStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+      copyOnWrite();
+      instance.setOutputSpeedStrip(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+     */
+    public Builder setOutputSpeedStrip(
+        io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOutputSpeedStrip(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+     */
+    public Builder mergeOutputSpeedStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+      copyOnWrite();
+      instance.mergeOutputSpeedStrip(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+     */
+    public Builder clearOutputSpeedStrip() {  copyOnWrite();
+      instance.clearOutputSpeedStrip();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTtftStrip() {
+      return instance.hasTtftStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getTtftStrip() {
+      return instance.getTtftStrip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+     */
+    public Builder setTtftStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+      copyOnWrite();
+      instance.setTtftStrip(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+     */
+    public Builder setTtftStrip(
+        io.github.lewin671.remoteagent.core.proto.UsageMetricStripView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTtftStrip(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+     */
+    public Builder mergeTtftStrip(io.github.lewin671.remoteagent.core.proto.UsageMetricStripView value) {
+      copyOnWrite();
+      instance.mergeTtftStrip(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+     */
+    public Builder clearTtftStrip() {  copyOnWrite();
+      instance.clearTtftStrip();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.UsageModelRowView> getRowsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getRowsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    @java.lang.Override
+    public int getRowsCount() {
+      return instance.getRowsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageModelRowView getRows(int index) {
+      return instance.getRows(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder setRows(
+        int index, io.github.lewin671.remoteagent.core.proto.UsageModelRowView value) {
+      copyOnWrite();
+      instance.setRows(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder setRows(
+        int index, io.github.lewin671.remoteagent.core.proto.UsageModelRowView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRows(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder addRows(io.github.lewin671.remoteagent.core.proto.UsageModelRowView value) {
+      copyOnWrite();
+      instance.addRows(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder addRows(
+        int index, io.github.lewin671.remoteagent.core.proto.UsageModelRowView value) {
+      copyOnWrite();
+      instance.addRows(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder addRows(
+        io.github.lewin671.remoteagent.core.proto.UsageModelRowView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addRows(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder addRows(
+        int index, io.github.lewin671.remoteagent.core.proto.UsageModelRowView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addRows(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder addAllRows(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.UsageModelRowView> values) {
+      copyOnWrite();
+      instance.addAllRows(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder clearRows() {
+      copyOnWrite();
+      instance.clearRows();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+     */
+    public Builder removeRows(int index) {
+      copyOnWrite();
+      instance.removeRows(index);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
      */
     @java.lang.Override
     public boolean hasUnsupportedFootnote() {
       return instance.hasUnsupportedFootnote();
     }
     /**
-     * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+     * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
      */
     @java.lang.Override
     public io.github.lewin671.remoteagent.core.proto.Text getUnsupportedFootnote() {
       return instance.getUnsupportedFootnote();
     }
     /**
-     * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+     * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
      */
     public Builder setUnsupportedFootnote(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
@@ -2136,7 +2371,7 @@ public  final class UsageViewModel extends
       return this;
       }
     /**
-     * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+     * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
      */
     public Builder setUnsupportedFootnote(
         io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
@@ -2145,7 +2380,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+     * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
      */
     public Builder mergeUnsupportedFootnote(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
@@ -2153,7 +2388,7 @@ public  final class UsageViewModel extends
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+     * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
      */
     public Builder clearUnsupportedFootnote() {  copyOnWrite();
       instance.clearUnsupportedFootnote();
@@ -2194,24 +2429,26 @@ public  final class UsageViewModel extends
             "granularity_",
             "startMs_",
             "endMs_",
-            "metric_",
-            "focusAgent_",
-            "focusModel_",
+            "rangeDays_",
+            "sortBy_",
             "sources_",
             io.github.lewin671.remoteagent.proto.UsageAgentSource.class,
-            "series_",
-            io.github.lewin671.remoteagent.core.proto.UsageSeriesView.class,
             "hasAnyUsage_",
-            "hasAnySpeed_",
-            "showCacheWriteFootnote_",
+            "hero_",
+            "barChart_",
+            "cacheHitStrip_",
+            "outputSpeedStrip_",
+            "ttftStrip_",
+            "rows_",
+            io.github.lewin671.remoteagent.core.proto.UsageModelRowView.class,
             "unsupportedFootnote_",
           };
           java.lang.String info =
-              "\u0000\u001a\u0000\u0001\u0001\u001a\u001a\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u1009\u0000\b\u0007\t\u0002" +
               "\n\u0007\u000b\u0004\f\u0004\r\u0007\u000e\f\u000f\f\u0010\u0002\u0011\u0002\u0012" +
-              "\f\u0013\f\u0014\u0208\u0015\u001b\u0016\u001b\u0017\u0007\u0018\u0007\u0019\u0007" +
-              "\u001a\u1009\u0001";
+              "\u0004\u0013\f\u0014\u001b\u0015\u0007\u0016\u1009\u0001\u0017\u1009\u0002\u0018" +
+              "\u1009\u0003\u0019\u1009\u0004\u001a\u1009\u0005\u001b\u001b\u001c\u1009\u0006";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

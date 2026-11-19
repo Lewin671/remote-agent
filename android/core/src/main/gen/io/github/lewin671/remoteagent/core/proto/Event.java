@@ -87,6 +87,9 @@ public  final class Event extends
     USAGE_SCREEN_OPEN(380),
     USAGE_SCREEN_RETRY(381),
     USAGE_CACHE_LOADED(382),
+    USAGE_SCREEN_SELECT_SORT(383),
+    USAGE_SCREEN_SELECT_SERIES(384),
+    USAGE_SCREEN_SCRUB(385),
     UPDATE_CLIENT_NAME(370),
     SET_NOTIFICATION_PREF(375),
     SET_APPEARANCE_PREF(376),
@@ -216,6 +219,9 @@ public  final class Event extends
         case 380: return USAGE_SCREEN_OPEN;
         case 381: return USAGE_SCREEN_RETRY;
         case 382: return USAGE_CACHE_LOADED;
+        case 383: return USAGE_SCREEN_SELECT_SORT;
+        case 384: return USAGE_SCREEN_SELECT_SERIES;
+        case 385: return USAGE_SCREEN_SCRUB;
         case 370: return UPDATE_CLIENT_NAME;
         case 375: return SET_NOTIFICATION_PREF;
         case 376: return SET_APPEARANCE_PREF;
@@ -3712,6 +3718,162 @@ public  final class Event extends
    */
   private void clearUsageCacheLoaded() {
     if (eventCase_ == 382) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int USAGE_SCREEN_SELECT_SORT_FIELD_NUMBER = 383;
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageScreenSelectSort() {
+    return eventCase_ == 383;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent getUsageScreenSelectSort() {
+    if (eventCase_ == 383) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageScreenSelectSort(io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 383;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageScreenSelectSort(io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 383 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 383;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+   */
+  private void clearUsageScreenSelectSort() {
+    if (eventCase_ == 383) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int USAGE_SCREEN_SELECT_SERIES_FIELD_NUMBER = 384;
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageScreenSelectSeries() {
+    return eventCase_ == 384;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent getUsageScreenSelectSeries() {
+    if (eventCase_ == 384) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageScreenSelectSeries(io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 384;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageScreenSelectSeries(io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 384 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 384;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+   */
+  private void clearUsageScreenSelectSeries() {
+    if (eventCase_ == 384) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int USAGE_SCREEN_SCRUB_FIELD_NUMBER = 385;
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageScreenScrub() {
+    return eventCase_ == 385;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent getUsageScreenScrub() {
+    if (eventCase_ == 385) {
+       return (io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageScreenScrub(io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 385;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeUsageScreenScrub(io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 385 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 385;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+   */
+  private void clearUsageScreenScrub() {
+    if (eventCase_ == 385) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -9709,6 +9871,150 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageScreenSelectSort() {
+      return instance.hasUsageScreenSelectSort();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent getUsageScreenSelectSort() {
+      return instance.getUsageScreenSelectSort();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+     */
+    public Builder setUsageScreenSelectSort(io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent value) {
+      copyOnWrite();
+      instance.setUsageScreenSelectSort(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+     */
+    public Builder setUsageScreenSelectSort(
+        io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageScreenSelectSort(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+     */
+    public Builder mergeUsageScreenSelectSort(io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent value) {
+      copyOnWrite();
+      instance.mergeUsageScreenSelectSort(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+     */
+    public Builder clearUsageScreenSelectSort() {
+      copyOnWrite();
+      instance.clearUsageScreenSelectSort();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageScreenSelectSeries() {
+      return instance.hasUsageScreenSelectSeries();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent getUsageScreenSelectSeries() {
+      return instance.getUsageScreenSelectSeries();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+     */
+    public Builder setUsageScreenSelectSeries(io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent value) {
+      copyOnWrite();
+      instance.setUsageScreenSelectSeries(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+     */
+    public Builder setUsageScreenSelectSeries(
+        io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageScreenSelectSeries(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+     */
+    public Builder mergeUsageScreenSelectSeries(io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent value) {
+      copyOnWrite();
+      instance.mergeUsageScreenSelectSeries(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+     */
+    public Builder clearUsageScreenSelectSeries() {
+      copyOnWrite();
+      instance.clearUsageScreenSelectSeries();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageScreenScrub() {
+      return instance.hasUsageScreenScrub();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent getUsageScreenScrub() {
+      return instance.getUsageScreenScrub();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+     */
+    public Builder setUsageScreenScrub(io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent value) {
+      copyOnWrite();
+      instance.setUsageScreenScrub(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+     */
+    public Builder setUsageScreenScrub(
+        io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageScreenScrub(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+     */
+    public Builder mergeUsageScreenScrub(io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent value) {
+      copyOnWrite();
+      instance.mergeUsageScreenScrub(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+     */
+    public Builder clearUsageScreenScrub() {
+      copyOnWrite();
+      instance.clearUsageScreenScrub();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
      */
     @java.lang.Override
@@ -12365,9 +12671,12 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UsageScreenOpenEvent.class,
             io.github.lewin671.remoteagent.core.proto.UsageScreenRetryEvent.class,
             io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent.class,
+            io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.class,
           };
           java.lang.String info =
-              "\u0000v\u0001\u0000\u0001\u017ev\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000y\u0001\u0000\u0001\u0181y\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
               "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
@@ -12384,7 +12693,7 @@ public  final class Event extends
               "\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169" +
               "<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u016e<\u0000\u0172<\u0000" +
               "\u0177<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d" +
-              "<\u0000\u017e<\u0000";
+              "<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

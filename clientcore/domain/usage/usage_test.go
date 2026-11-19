@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
@@ -33,8 +34,12 @@ func TestFormatTokens(t *testing.T) {
 		{140_000_000, false, "1.4亿"},
 		{140_000_000, true, "140M"},
 		{999_600_000, true, "1B"},
+		{1_500_000_000, false, "15亿"},
 		{3_480_000_000, false, "34.8亿"},
 		{3_480_000_000, true, "3.5B"},
+		{12_860_000_000, false, "128.6亿"},
+		{12_860_000_000, true, "12.9B"},
+		{22_950_000_000, false, "229.5亿"},
 	}
 	for _, tc := range cases {
 		if got := FormatTokens(tc.n, tc.en); got != tc.exp {
@@ -61,7 +66,30 @@ func TestFormatCacheHit(t *testing.T) {
 	}
 }
 
-func TestComputeDeltasThresholdsAndBuildSeriesViews(t *testing.T) {
+func TestNiceCeiling(t *testing.T) {
+	cases := []struct {
+		peak uint64
+		want uint64
+	}{
+		{0, 1},
+		{1, 1},
+		{820, 1000},
+		{1200, 1500},
+		{1600, 2000},
+		{2200, 3000},
+		{3500, 4000},
+		{4200, 5000},
+		{7500, 8000},
+		{85_000_000, 100_000_000},
+	}
+	for _, tc := range cases {
+		if got := NiceCeiling(tc.peak); got != tc.want {
+			t.Errorf("NiceCeiling(%d) = %d, want %d", tc.peak, got, tc.want)
+		}
+	}
+}
+
+func TestComputeDeltasThresholdsAndBuildUsageProjection(t *testing.T) {
 	few := &v1.UsageSeries{
 		Agent: v1.Agent_AGENT_CODEX,
 		Model: "gpt-5",
@@ -94,7 +122,7 @@ func TestComputeDeltasThresholdsAndBuildSeriesViews(t *testing.T) {
 		t.Fatalf("expected all deltas false when current requests < 3, got %+v", d)
 	}
 
-	normal := &v1.UsageSeries{
+	claude := &v1.UsageSeries{
 		Agent:               v1.Agent_AGENT_CLAUDE,
 		Model:               "claude-sonnet-4-6",
 		CacheWriteSupported: true,
@@ -126,34 +154,154 @@ func TestComputeDeltasThresholdsAndBuildSeriesViews(t *testing.T) {
 			HasTtft:             true,
 			TtftP50Ms:           1000,
 		},
+		Buckets: []*v1.UsageBucketPoint{
+			{
+				StartMs:               1000,
+				EndMs:                 2000,
+				UncachedInputTokens:   200_000,
+				CacheReadTokens:       1_000_000,
+				CacheWriteTokens:      500_000,
+				OutputTokens:          300_000,
+				ReasoningOutputTokens: 50_000,
+				UsageRequestCount:     8,
+				SpeedRequestCount:     8,
+				SpeedP50:              90,
+				TtftP50Ms:             900,
+			},
+			{
+				StartMs:               2000,
+				EndMs:                 3000,
+				UncachedInputTokens:   300_000,
+				CacheReadTokens:       2_000_000,
+				OutputTokens:          520_000,
+				ReasoningOutputTokens: 70_000,
+				UsageRequestCount:     12,
+				SpeedRequestCount:     10,
+				SpeedP50:              94,
+				TtftP50Ms:             700,
+			},
+		},
 	}
-	if TotalTokens(normal.Current) != 4_820_000 {
-		t.Fatalf("TotalTokens double-counted reasoning? got %d", TotalTokens(normal.Current))
+	if TotalTokens(claude.Current) != 4_820_000 {
+		t.Fatalf("TotalTokens double-counted reasoning? got %d", TotalTokens(claude.Current))
 	}
-	if d := ComputeDeltas(normal, true); d.HasTokens || d.HasCacheHit || d.HasSpeed || d.HasTtft {
+	if d := ComputeDeltas(claude, true); d.HasTokens || d.HasCacheHit || d.HasSpeed || d.HasTtft {
 		t.Fatalf("expected no deltas during previous backfilling, got %+v", d)
 	}
-	d := ComputeDeltas(normal, false)
+	d := ComputeDeltas(claude, false)
 	if !d.HasTokens || math.Abs(d.CacheHitPoints-10.0) > 1e-6 || !d.HasSpeed || !d.HasTtft {
 		t.Fatalf("unexpected normal deltas: %+v", d)
 	}
 
-	// Focus ordering puts secondary series first with PatternIndex 0.
-	resp := &v1.UsageStatsResponse{Series: []*v1.UsageSeries{normal, {
+	codex := &v1.UsageSeries{
 		Agent: v1.Agent_AGENT_CODEX,
 		Model: "gpt-5.4",
 		Current: &v1.UsagePeriodSummary{
-			UncachedInputTokens: 1000,
-			OutputTokens:        100,
-			UsageRequestCount:   2,
-			SpeedRequestCount:   2,
+			UncachedInputTokens: 100_000,
+			CacheReadTokens:     900_000,
+			OutputTokens:        80_000,
+			UsageRequestCount:   10,
+			SpeedRequestCount:   10,
+			HasCacheHitRate:     true,
+			CacheHitRate:        0.90,
+			HasSpeed:            true,
+			SpeedP50:            120,
+			HasTtft:             true,
+			TtftP50Ms:           400,
 		},
-	}}}
-	views := BuildSeriesViews(resp, v1.Agent_AGENT_CODEX, "gpt-5.4")
-	if len(views) != 2 || !views[0].Focused || views[0].PatternIndex != 0 || views[1].PatternIndex != 1 {
-		t.Fatalf("unexpected focused series views: %+v", views)
+		Buckets: []*v1.UsageBucketPoint{
+			{
+				StartMs:             1000,
+				EndMs:               2000,
+				UncachedInputTokens: 100_000,
+				CacheReadTokens:     900_000,
+				OutputTokens:        80_000,
+				UsageRequestCount:   10,
+				SpeedRequestCount:   10,
+				SpeedP50:            120,
+				TtftP50Ms:           400,
+			},
+			{StartMs: 2000, EndMs: 3000},
+		},
 	}
-	if !views[0].FewSpeedSamples {
-		t.Fatal("expected FewSpeedSamples=true when SpeedRequestCount=2")
+	noSpeed := &v1.UsageSeries{
+		Agent: v1.Agent_AGENT_CODEX,
+		Model: "gpt-5.4-mini",
+		Current: &v1.UsagePeriodSummary{
+			UncachedInputTokens: 50_000,
+			OutputTokens:        5_000,
+			UsageRequestCount:   4,
+		},
+		Buckets: []*v1.UsageBucketPoint{
+			{StartMs: 1000, EndMs: 2000},
+			{StartMs: 2000, EndMs: 3000, UncachedInputTokens: 50_000, OutputTokens: 5_000, UsageRequestCount: 4},
+		},
+	}
+	// Series only active in the previous period must still contribute to all-models previous total.
+	prevOnly := &v1.UsageSeries{
+		Agent:   v1.Agent_AGENT_CLAUDE,
+		Model:   "claude-haiku-4-5",
+		Current: &v1.UsagePeriodSummary{},
+		Previous: &v1.UsagePeriodSummary{
+			UncachedInputTokens: 1_000_000,
+			UsageRequestCount:   5,
+		},
+	}
+
+	resp := &v1.UsageStatsResponse{Series: []*v1.UsageSeries{claude, codex, noSpeed, prevOnly}}
+
+	// 1. Default all-models projection sorted by TTFT asc puts fastest TTFT first and missing TTFT last,
+	// while ShareRatio stays anchored to token consumption.
+	pSort := BuildUsageProjection(resp, ProjectionOptions{
+		SortBy: corev1.UsageSortColumn_USAGE_SORT_COLUMN_TTFT,
+	})
+	if !pSort.HasAnyUsage || len(pSort.Rows) != 3 {
+		t.Fatalf("expected 3 active rows (prevOnly excluded), got %+v", pSort.Rows)
+	}
+	if pSort.Rows[0].Model != "gpt-5.4" || pSort.Rows[1].Model != "claude-sonnet-4-6" || pSort.Rows[2].Model != "gpt-5.4-mini" {
+		t.Fatalf("unexpected TTFT ascending sort order: %+v", pSort.Rows)
+	}
+	if math.Abs(pSort.Rows[1].ShareRatio-1.0) > 1e-6 {
+		t.Fatalf("expected claude ShareRatio=1.0 even when sorted by TTFT, got %v", pSort.Rows[1].ShareRatio)
+	}
+	// All-models current = 4,820,000 + 1,080,000 + 55,000 = 5,955,000; previous = 3,000,000 + 1,000,000 = 4,000,000 (+48.875%).
+	if !pSort.Hero.HasTokensDelta || math.Abs(pSort.Hero.TokensDeltaPercent-48.875) > 0.01 {
+		t.Fatalf("expected all-models delta including prevOnly (~48.875%%), got has=%v pct=%v", pSort.Hero.HasTokensDelta, pSort.Hero.TokensDeltaPercent)
+	}
+	if pSort.Hero.PeriodCompositionRows != 5 {
+		t.Fatalf("expected 5 non-zero composition rows, got %d", pSort.Hero.PeriodCompositionRows)
+	}
+
+	// 2. Single-model selection keeps BarChart scaled to all models and overlays selected tokens + strip curves.
+	pSel := BuildUsageProjection(resp, ProjectionOptions{
+		SelectedSeriesKey: SeriesKey(v1.Agent_AGENT_CODEX, "gpt-5.4"),
+	})
+	if !pSel.Hero.HasSelectedModel || pSel.Hero.SelectedModel != "gpt-5.4" {
+		t.Fatalf("expected gpt-5.4 selected in hero, got %+v", pSel.Hero)
+	}
+	if pSel.Hero.PeriodCompositionRows != 3 { // uncached, cache_read, output (no cache_write, no reasoning)
+		t.Fatalf("expected 3 non-zero composition rows for codex, got %d", pSel.Hero.PeriodCompositionRows)
+	}
+	if pSel.BarChart.YMax != pSort.BarChart.YMax {
+		t.Fatalf("bar chart YMax must remain scaled to all models: got %d vs %d", pSel.BarChart.YMax, pSort.BarChart.YMax)
+	}
+	if pSel.BarChart.Buckets[0].AllTokens <= pSel.BarChart.Buckets[0].SelectedTokens {
+		t.Fatalf("expected bucket 0 AllTokens (%d) > SelectedTokens (%d)", pSel.BarChart.Buckets[0].AllTokens, pSel.BarChart.Buckets[0].SelectedTokens)
+	}
+	if len(pSel.OutputSpeedStrip.AllPoints) != 2 || len(pSel.OutputSpeedStrip.SelectedPoints) != 2 {
+		t.Fatalf("expected both AllPoints and SelectedPoints populated on strip")
+	}
+
+	// 3. Scrubbing an empty bucket for selected model reports 0 tokens and HasValue=false on strips while keeping SelectedModel.
+	pScrub := BuildUsageProjection(resp, ProjectionOptions{
+		SelectedSeriesKey: SeriesKey(v1.Agent_AGENT_CODEX, "gpt-5.4"),
+		HasScrub:          true,
+		ScrubBucketIndex:  1,
+	})
+	if !pScrub.Hero.Scrubbing || pScrub.Hero.SelectedModel != "gpt-5.4" || pScrub.Hero.TotalTokens != 0 {
+		t.Fatalf("unexpected scrub hero for empty bucket: %+v", pScrub.Hero)
+	}
+	if pScrub.OutputSpeedStrip.HasValue || pScrub.TtftStrip.HasValue || pScrub.CacheHitStrip.HasValue {
+		t.Fatalf("expected strip HasValue=false on empty scrubbed bucket")
 	}
 }

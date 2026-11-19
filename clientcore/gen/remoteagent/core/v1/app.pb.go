@@ -5758,6 +5758,18 @@ type Event_UsageCacheLoaded struct{ UsageCacheLoaded *UsageCacheLoadedEvent }
 
 func (*Event_UsageCacheLoaded) isEvent_Event() {}
 
+type Event_UsageScreenSelectSort struct{ UsageScreenSelectSort *UsageScreenSelectSortEvent }
+
+func (*Event_UsageScreenSelectSort) isEvent_Event() {}
+
+type Event_UsageScreenSelectSeries struct{ UsageScreenSelectSeries *UsageScreenSelectSeriesEvent }
+
+func (*Event_UsageScreenSelectSeries) isEvent_Event() {}
+
+type Event_UsageScreenScrub struct{ UsageScreenScrub *UsageScreenScrubEvent }
+
+func (*Event_UsageScreenScrub) isEvent_Event() {}
+
 type Event_UpdateClientName struct{ UpdateClientName *UpdateClientNameEvent }
 
 func (*Event_UpdateClientName) isEvent_Event() {}
@@ -6357,6 +6369,24 @@ func (m *Event) GetUsageScreenRetry() *UsageScreenRetryEvent {
 func (m *Event) GetUsageCacheLoaded() *UsageCacheLoadedEvent {
 	if x, ok := m.GetEvent().(*Event_UsageCacheLoaded); ok && x != nil {
 		return x.UsageCacheLoaded
+	}
+	return nil
+}
+func (m *Event) GetUsageScreenSelectSort() *UsageScreenSelectSortEvent {
+	if x, ok := m.GetEvent().(*Event_UsageScreenSelectSort); ok && x != nil {
+		return x.UsageScreenSelectSort
+	}
+	return nil
+}
+func (m *Event) GetUsageScreenSelectSeries() *UsageScreenSelectSeriesEvent {
+	if x, ok := m.GetEvent().(*Event_UsageScreenSelectSeries); ok && x != nil {
+		return x.UsageScreenSelectSeries
+	}
+	return nil
+}
+func (m *Event) GetUsageScreenScrub() *UsageScreenScrubEvent {
+	if x, ok := m.GetEvent().(*Event_UsageScreenScrub); ok && x != nil {
+		return x.UsageScreenScrub
 	}
 	return nil
 }
@@ -7668,6 +7698,51 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_UsageCacheLoaded{UsageCacheLoaded: sub}
+				continue
+			}
+		case 383:
+			if wtyp == litewire.BytesType {
+				var sub *UsageScreenSelectSortEvent
+				if cur, ok := m.Event.(*Event_UsageScreenSelectSort); ok && cur != nil {
+					sub = cur.UsageScreenSelectSort
+				}
+				if sub == nil {
+					sub = &UsageScreenSelectSortEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_UsageScreenSelectSort{UsageScreenSelectSort: sub}
+				continue
+			}
+		case 384:
+			if wtyp == litewire.BytesType {
+				var sub *UsageScreenSelectSeriesEvent
+				if cur, ok := m.Event.(*Event_UsageScreenSelectSeries); ok && cur != nil {
+					sub = cur.UsageScreenSelectSeries
+				}
+				if sub == nil {
+					sub = &UsageScreenSelectSeriesEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_UsageScreenSelectSeries{UsageScreenSelectSeries: sub}
+				continue
+			}
+		case 385:
+			if wtyp == litewire.BytesType {
+				var sub *UsageScreenScrubEvent
+				if cur, ok := m.Event.(*Event_UsageScreenScrub); ok && cur != nil {
+					sub = cur.UsageScreenScrub
+				}
+				if sub == nil {
+					sub = &UsageScreenScrubEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_UsageScreenScrub{UsageScreenScrub: sub}
 				continue
 			}
 		case 370:

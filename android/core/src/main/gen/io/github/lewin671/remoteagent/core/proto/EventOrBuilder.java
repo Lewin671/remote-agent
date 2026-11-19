@@ -737,6 +737,39 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageCacheLoadedEvent getUsageCacheLoaded();
 
   /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+   * @return Whether the usageScreenSelectSort field is set.
+   */
+  boolean hasUsageScreenSelectSort();
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSortEvent usage_screen_select_sort = 383 [json_name = "usageScreenSelectSort"];</code>
+   * @return The usageScreenSelectSort.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent getUsageScreenSelectSort();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+   * @return Whether the usageScreenSelectSeries field is set.
+   */
+  boolean hasUsageScreenSelectSeries();
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenSelectSeriesEvent usage_screen_select_series = 384 [json_name = "usageScreenSelectSeries"];</code>
+   * @return The usageScreenSelectSeries.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent getUsageScreenSelectSeries();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+   * @return Whether the usageScreenScrub field is set.
+   */
+  boolean hasUsageScreenScrub();
+  /**
+   * <code>.remoteagent.core.v1.UsageScreenScrubEvent usage_screen_scrub = 385 [json_name = "usageScreenScrub"];</code>
+   * @return The usageScreenScrub.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent getUsageScreenScrub();
+
+  /**
    * <code>.remoteagent.core.v1.UpdateClientNameEvent update_client_name = 370 [json_name = "updateClientName"];</code>
    * @return Whether the updateClientName field is set.
    */

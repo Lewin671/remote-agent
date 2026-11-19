@@ -140,92 +140,118 @@ public interface UsageViewModelOrBuilder extends
   long getEndMs();
 
   /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-   * @return The enum numeric value on the wire for metric.
+   * <code>int32 range_days = 18 [json_name = "rangeDays"];</code>
+   * @return The rangeDays.
    */
-  int getMetricValue();
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 18 [json_name = "metric"];</code>
-   * @return The metric.
-   */
-  io.github.lewin671.remoteagent.core.proto.UsageMetricTab getMetric();
+  int getRangeDays();
 
   /**
-   * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-   * @return The enum numeric value on the wire for focusAgent.
+   * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+   * @return The enum numeric value on the wire for sortBy.
    */
-  int getFocusAgentValue();
+  int getSortByValue();
   /**
-   * <code>.remoteagent.v1.Agent focus_agent = 19 [json_name = "focusAgent"];</code>
-   * @return The focusAgent.
+   * <code>.remoteagent.core.v1.UsageSortColumn sort_by = 19 [json_name = "sortBy"];</code>
+   * @return The sortBy.
    */
-  io.github.lewin671.remoteagent.proto.Agent getFocusAgent();
+  io.github.lewin671.remoteagent.core.proto.UsageSortColumn getSortBy();
 
   /**
-   * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-   * @return The focusModel.
-   */
-  java.lang.String getFocusModel();
-  /**
-   * <code>string focus_model = 20 [json_name = "focusModel"];</code>
-   * @return The bytes for focusModel.
-   */
-  com.google.protobuf.ByteString
-      getFocusModelBytes();
-
-  /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   java.util.List<io.github.lewin671.remoteagent.proto.UsageAgentSource> 
       getSourcesList();
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   io.github.lewin671.remoteagent.proto.UsageAgentSource getSources(int index);
   /**
-   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 21 [json_name = "sources"];</code>
+   * <code>repeated .remoteagent.v1.UsageAgentSource sources = 20 [json_name = "sources"];</code>
    */
   int getSourcesCount();
 
   /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.UsageSeriesView> 
-      getSeriesList();
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  io.github.lewin671.remoteagent.core.proto.UsageSeriesView getSeries(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.UsageSeriesView series = 22 [json_name = "series"];</code>
-   */
-  int getSeriesCount();
-
-  /**
-   * <code>bool has_any_usage = 23 [json_name = "hasAnyUsage"];</code>
+   * <code>bool has_any_usage = 21 [json_name = "hasAnyUsage"];</code>
    * @return The hasAnyUsage.
    */
   boolean getHasAnyUsage();
 
   /**
-   * <code>bool has_any_speed = 24 [json_name = "hasAnySpeed"];</code>
-   * @return The hasAnySpeed.
+   * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+   * @return Whether the hero field is set.
    */
-  boolean getHasAnySpeed();
+  boolean hasHero();
+  /**
+   * <code>.remoteagent.core.v1.UsageHeroView hero = 22 [json_name = "hero"];</code>
+   * @return The hero.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageHeroView getHero();
 
   /**
-   * <code>bool show_cache_write_footnote = 25 [json_name = "showCacheWriteFootnote"];</code>
-   * @return The showCacheWriteFootnote.
+   * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+   * @return Whether the barChart field is set.
    */
-  boolean getShowCacheWriteFootnote();
+  boolean hasBarChart();
+  /**
+   * <code>.remoteagent.core.v1.UsageBarChartView bar_chart = 23 [json_name = "barChart"];</code>
+   * @return The barChart.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageBarChartView getBarChart();
 
   /**
-   * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+   * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+   * @return Whether the cacheHitStrip field is set.
+   */
+  boolean hasCacheHitStrip();
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView cache_hit_strip = 24 [json_name = "cacheHitStrip"];</code>
+   * @return The cacheHitStrip.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getCacheHitStrip();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+   * @return Whether the outputSpeedStrip field is set.
+   */
+  boolean hasOutputSpeedStrip();
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView output_speed_strip = 25 [json_name = "outputSpeedStrip"];</code>
+   * @return The outputSpeedStrip.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getOutputSpeedStrip();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+   * @return Whether the ttftStrip field is set.
+   */
+  boolean hasTtftStrip();
+  /**
+   * <code>.remoteagent.core.v1.UsageMetricStripView ttft_strip = 26 [json_name = "ttftStrip"];</code>
+   * @return The ttftStrip.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageMetricStripView getTtftStrip();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.UsageModelRowView> 
+      getRowsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageModelRowView getRows(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageModelRowView rows = 27 [json_name = "rows"];</code>
+   */
+  int getRowsCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
    * @return Whether the unsupportedFootnote field is set.
    */
   boolean hasUnsupportedFootnote();
   /**
-   * <code>.remoteagent.core.v1.Text unsupported_footnote = 26 [json_name = "unsupportedFootnote"];</code>
+   * <code>.remoteagent.core.v1.Text unsupported_footnote = 28 [json_name = "unsupportedFootnote"];</code>
    * @return The unsupportedFootnote.
    */
   io.github.lewin671.remoteagent.core.proto.Text getUnsupportedFootnote();

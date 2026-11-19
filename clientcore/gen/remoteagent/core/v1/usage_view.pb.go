@@ -8,14 +8,14 @@ import (
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
-type UsageMetricTab int32
+type UsageSortColumn int32
 
 const (
-	UsageMetricTab_USAGE_METRIC_TAB_UNSPECIFIED  UsageMetricTab = 0
-	UsageMetricTab_USAGE_METRIC_TAB_TOKENS       UsageMetricTab = 1
-	UsageMetricTab_USAGE_METRIC_TAB_CACHE_HIT    UsageMetricTab = 2
-	UsageMetricTab_USAGE_METRIC_TAB_OUTPUT_SPEED UsageMetricTab = 3
-	UsageMetricTab_USAGE_METRIC_TAB_TTFT         UsageMetricTab = 4
+	UsageSortColumn_USAGE_SORT_COLUMN_UNSPECIFIED UsageSortColumn = 0
+	UsageSortColumn_USAGE_SORT_COLUMN_TOKENS      UsageSortColumn = 1
+	UsageSortColumn_USAGE_SORT_COLUMN_CACHE_HIT   UsageSortColumn = 2
+	UsageSortColumn_USAGE_SORT_COLUMN_SPEED       UsageSortColumn = 3
+	UsageSortColumn_USAGE_SORT_COLUMN_TTFT        UsageSortColumn = 4
 )
 
 type UsageScreenRequest struct {
@@ -25,7 +25,6 @@ type UsageScreenRequest struct {
 	Preset        v1.UsageRangePreset
 	CustomStartMs int64
 	CustomEndMs   int64
-	Metric        UsageMetricTab
 }
 
 func (m *UsageScreenRequest) GetMachineId() string {
@@ -61,12 +60,6 @@ func (m *UsageScreenRequest) GetCustomStartMs() int64 {
 func (m *UsageScreenRequest) GetCustomEndMs() int64 {
 	if m != nil {
 		return m.CustomEndMs
-	}
-	return 0
-}
-func (m *UsageScreenRequest) GetMetric() UsageMetricTab {
-	if m != nil {
-		return m.Metric
 	}
 	return 0
 }
@@ -132,15 +125,6 @@ func (m *UsageScreenRequest) Unmarshal(b []byte) error {
 				m.CustomEndMs = int64(v)
 				continue
 			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Metric = UsageMetricTab(int32(v))
-				continue
-			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -149,187 +133,59 @@ func (m *UsageScreenRequest) Unmarshal(b []byte) error {
 	return nil
 }
 
-type UsageSeriesView struct {
-	Agent               v1.Agent
-	AgentName           string
-	Model               string
-	SeriesKey           string
-	PatternIndex        int32
-	Focused             bool
-	CacheWriteSupported bool
-	FewSpeedSamples     bool
-	Current             *v1.UsagePeriodSummary
-	Previous            *v1.UsagePeriodSummary
-	HasTokensDelta      bool
-	TokensDeltaPercent  float64
-	HasCacheHitDelta    bool
-	CacheHitDeltaPoints float64
-	HasSpeedDelta       bool
-	SpeedDeltaPercent   float64
-	HasTtftDelta        bool
-	TtftDeltaPercent    float64
-	PreviousBackfilling bool
-	Buckets             []*v1.UsageBucketPoint
+type UsageCompositionView struct {
+	UncachedInputTokens   uint64
+	CacheReadTokens       uint64
+	CacheWriteTokens      uint64
+	OutputTokens          uint64
+	ReasoningOutputTokens uint64
 }
 
-func (m *UsageSeriesView) GetAgent() v1.Agent {
+func (m *UsageCompositionView) GetUncachedInputTokens() uint64 {
 	if m != nil {
-		return m.Agent
+		return m.UncachedInputTokens
 	}
 	return 0
 }
-func (m *UsageSeriesView) GetAgentName() string {
+func (m *UsageCompositionView) GetCacheReadTokens() uint64 {
 	if m != nil {
-		return m.AgentName
-	}
-	return ""
-}
-func (m *UsageSeriesView) GetModel() string {
-	if m != nil {
-		return m.Model
-	}
-	return ""
-}
-func (m *UsageSeriesView) GetSeriesKey() string {
-	if m != nil {
-		return m.SeriesKey
-	}
-	return ""
-}
-func (m *UsageSeriesView) GetPatternIndex() int32 {
-	if m != nil {
-		return m.PatternIndex
+		return m.CacheReadTokens
 	}
 	return 0
 }
-func (m *UsageSeriesView) GetFocused() bool {
+func (m *UsageCompositionView) GetCacheWriteTokens() uint64 {
 	if m != nil {
-		return m.Focused
-	}
-	return false
-}
-func (m *UsageSeriesView) GetCacheWriteSupported() bool {
-	if m != nil {
-		return m.CacheWriteSupported
-	}
-	return false
-}
-func (m *UsageSeriesView) GetFewSpeedSamples() bool {
-	if m != nil {
-		return m.FewSpeedSamples
-	}
-	return false
-}
-func (m *UsageSeriesView) GetCurrent() *v1.UsagePeriodSummary {
-	if m != nil {
-		return m.Current
-	}
-	return nil
-}
-func (m *UsageSeriesView) GetPrevious() *v1.UsagePeriodSummary {
-	if m != nil {
-		return m.Previous
-	}
-	return nil
-}
-func (m *UsageSeriesView) GetHasTokensDelta() bool {
-	if m != nil {
-		return m.HasTokensDelta
-	}
-	return false
-}
-func (m *UsageSeriesView) GetTokensDeltaPercent() float64 {
-	if m != nil {
-		return m.TokensDeltaPercent
+		return m.CacheWriteTokens
 	}
 	return 0
 }
-func (m *UsageSeriesView) GetHasCacheHitDelta() bool {
+func (m *UsageCompositionView) GetOutputTokens() uint64 {
 	if m != nil {
-		return m.HasCacheHitDelta
-	}
-	return false
-}
-func (m *UsageSeriesView) GetCacheHitDeltaPoints() float64 {
-	if m != nil {
-		return m.CacheHitDeltaPoints
+		return m.OutputTokens
 	}
 	return 0
 }
-func (m *UsageSeriesView) GetHasSpeedDelta() bool {
+func (m *UsageCompositionView) GetReasoningOutputTokens() uint64 {
 	if m != nil {
-		return m.HasSpeedDelta
-	}
-	return false
-}
-func (m *UsageSeriesView) GetSpeedDeltaPercent() float64 {
-	if m != nil {
-		return m.SpeedDeltaPercent
+		return m.ReasoningOutputTokens
 	}
 	return 0
-}
-func (m *UsageSeriesView) GetHasTtftDelta() bool {
-	if m != nil {
-		return m.HasTtftDelta
-	}
-	return false
-}
-func (m *UsageSeriesView) GetTtftDeltaPercent() float64 {
-	if m != nil {
-		return m.TtftDeltaPercent
-	}
-	return 0
-}
-func (m *UsageSeriesView) GetPreviousBackfilling() bool {
-	if m != nil {
-		return m.PreviousBackfilling
-	}
-	return false
-}
-func (m *UsageSeriesView) GetBuckets() []*v1.UsageBucketPoint {
-	if m != nil {
-		return m.Buckets
-	}
-	return nil
 }
 
-func (m *UsageSeriesView) Size() int {
+func (m *UsageCompositionView) Size() int {
 	if m == nil {
 		return 0
 	}
 	n := 0
-	n += litewire.SizeInt32(1, int32(m.Agent))
-	n += litewire.SizeString(2, m.AgentName)
-	n += litewire.SizeString(3, m.Model)
-	n += litewire.SizeString(4, m.SeriesKey)
-	n += litewire.SizeInt32(5, int32(m.PatternIndex))
-	n += litewire.SizeBool(6, m.Focused)
-	n += litewire.SizeBool(7, m.CacheWriteSupported)
-	n += litewire.SizeBool(8, m.FewSpeedSamples)
-	if m.Current != nil {
-		n += litewire.SizeMessage(9, m.Current.Size())
-	}
-	if m.Previous != nil {
-		n += litewire.SizeMessage(10, m.Previous.Size())
-	}
-	n += litewire.SizeBool(11, m.HasTokensDelta)
-	n += litewire.SizeDouble(12, m.TokensDeltaPercent)
-	n += litewire.SizeBool(13, m.HasCacheHitDelta)
-	n += litewire.SizeDouble(14, m.CacheHitDeltaPoints)
-	n += litewire.SizeBool(15, m.HasSpeedDelta)
-	n += litewire.SizeDouble(16, m.SpeedDeltaPercent)
-	n += litewire.SizeBool(17, m.HasTtftDelta)
-	n += litewire.SizeDouble(18, m.TtftDeltaPercent)
-	n += litewire.SizeBool(19, m.PreviousBackfilling)
-	for _, v := range m.Buckets {
-		if v != nil {
-			n += litewire.SizeMessage(20, v.Size())
-		}
-	}
+	n += litewire.SizeVarintField(1, uint64(m.UncachedInputTokens))
+	n += litewire.SizeVarintField(2, uint64(m.CacheReadTokens))
+	n += litewire.SizeVarintField(3, uint64(m.CacheWriteTokens))
+	n += litewire.SizeVarintField(4, uint64(m.OutputTokens))
+	n += litewire.SizeVarintField(5, uint64(m.ReasoningOutputTokens))
 	return n
 }
 
-func (m *UsageSeriesView) Marshal() ([]byte, error) {
+func (m *UsageCompositionView) Marshal() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -340,7 +196,715 @@ func (m *UsageSeriesView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(make([]byte, 0, sz)), nil
 }
 
-func (m *UsageSeriesView) AppendMarshal(b []byte) []byte {
+func (m *UsageCompositionView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.UncachedInputTokens))
+	b = litewire.AppendVarint(b, 2, uint64(m.CacheReadTokens))
+	b = litewire.AppendVarint(b, 3, uint64(m.CacheWriteTokens))
+	b = litewire.AppendVarint(b, 4, uint64(m.OutputTokens))
+	b = litewire.AppendVarint(b, 5, uint64(m.ReasoningOutputTokens))
+	return b
+}
+
+type UsageHeroView struct {
+	Scrubbing             bool
+	ScrubBucketIndex      int32
+	ScrubStartMs          int64
+	ScrubEndMs            int64
+	HasSelectedModel      bool
+	SelectedAgent         v1.Agent
+	SelectedAgentName     string
+	SelectedModel         string
+	SelectedSeriesKey     string
+	TotalModelCount       int32
+	TotalTokens           uint64
+	RequestCount          uint64
+	HasSharePercent       bool
+	ShareRatio            float64
+	HasTokensDelta        bool
+	TokensDeltaPercent    float64
+	PreviousBackfilling   bool
+	Composition           *UsageCompositionView
+	PeriodCompositionRows int32
+}
+
+func (m *UsageHeroView) GetScrubbing() bool {
+	if m != nil {
+		return m.Scrubbing
+	}
+	return false
+}
+func (m *UsageHeroView) GetScrubBucketIndex() int32 {
+	if m != nil {
+		return m.ScrubBucketIndex
+	}
+	return 0
+}
+func (m *UsageHeroView) GetScrubStartMs() int64 {
+	if m != nil {
+		return m.ScrubStartMs
+	}
+	return 0
+}
+func (m *UsageHeroView) GetScrubEndMs() int64 {
+	if m != nil {
+		return m.ScrubEndMs
+	}
+	return 0
+}
+func (m *UsageHeroView) GetHasSelectedModel() bool {
+	if m != nil {
+		return m.HasSelectedModel
+	}
+	return false
+}
+func (m *UsageHeroView) GetSelectedAgent() v1.Agent {
+	if m != nil {
+		return m.SelectedAgent
+	}
+	return 0
+}
+func (m *UsageHeroView) GetSelectedAgentName() string {
+	if m != nil {
+		return m.SelectedAgentName
+	}
+	return ""
+}
+func (m *UsageHeroView) GetSelectedModel() string {
+	if m != nil {
+		return m.SelectedModel
+	}
+	return ""
+}
+func (m *UsageHeroView) GetSelectedSeriesKey() string {
+	if m != nil {
+		return m.SelectedSeriesKey
+	}
+	return ""
+}
+func (m *UsageHeroView) GetTotalModelCount() int32 {
+	if m != nil {
+		return m.TotalModelCount
+	}
+	return 0
+}
+func (m *UsageHeroView) GetTotalTokens() uint64 {
+	if m != nil {
+		return m.TotalTokens
+	}
+	return 0
+}
+func (m *UsageHeroView) GetRequestCount() uint64 {
+	if m != nil {
+		return m.RequestCount
+	}
+	return 0
+}
+func (m *UsageHeroView) GetHasSharePercent() bool {
+	if m != nil {
+		return m.HasSharePercent
+	}
+	return false
+}
+func (m *UsageHeroView) GetShareRatio() float64 {
+	if m != nil {
+		return m.ShareRatio
+	}
+	return 0
+}
+func (m *UsageHeroView) GetHasTokensDelta() bool {
+	if m != nil {
+		return m.HasTokensDelta
+	}
+	return false
+}
+func (m *UsageHeroView) GetTokensDeltaPercent() float64 {
+	if m != nil {
+		return m.TokensDeltaPercent
+	}
+	return 0
+}
+func (m *UsageHeroView) GetPreviousBackfilling() bool {
+	if m != nil {
+		return m.PreviousBackfilling
+	}
+	return false
+}
+func (m *UsageHeroView) GetComposition() *UsageCompositionView {
+	if m != nil {
+		return m.Composition
+	}
+	return nil
+}
+func (m *UsageHeroView) GetPeriodCompositionRows() int32 {
+	if m != nil {
+		return m.PeriodCompositionRows
+	}
+	return 0
+}
+
+func (m *UsageHeroView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.Scrubbing)
+	n += litewire.SizeInt32(2, int32(m.ScrubBucketIndex))
+	n += litewire.SizeVarintField(3, uint64(m.ScrubStartMs))
+	n += litewire.SizeVarintField(4, uint64(m.ScrubEndMs))
+	n += litewire.SizeBool(5, m.HasSelectedModel)
+	n += litewire.SizeInt32(6, int32(m.SelectedAgent))
+	n += litewire.SizeString(7, m.SelectedAgentName)
+	n += litewire.SizeString(8, m.SelectedModel)
+	n += litewire.SizeString(9, m.SelectedSeriesKey)
+	n += litewire.SizeInt32(10, int32(m.TotalModelCount))
+	n += litewire.SizeVarintField(11, uint64(m.TotalTokens))
+	n += litewire.SizeVarintField(12, uint64(m.RequestCount))
+	n += litewire.SizeBool(13, m.HasSharePercent)
+	n += litewire.SizeDouble(14, m.ShareRatio)
+	n += litewire.SizeBool(15, m.HasTokensDelta)
+	n += litewire.SizeDouble(16, m.TokensDeltaPercent)
+	n += litewire.SizeBool(17, m.PreviousBackfilling)
+	if m.Composition != nil {
+		n += litewire.SizeMessage(18, m.Composition.Size())
+	}
+	n += litewire.SizeInt32(19, int32(m.PeriodCompositionRows))
+	return n
+}
+
+func (m *UsageHeroView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageHeroView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.Scrubbing)
+	b = litewire.AppendInt32(b, 2, int32(m.ScrubBucketIndex))
+	b = litewire.AppendVarint(b, 3, uint64(m.ScrubStartMs))
+	b = litewire.AppendVarint(b, 4, uint64(m.ScrubEndMs))
+	b = litewire.AppendBool(b, 5, m.HasSelectedModel)
+	b = litewire.AppendInt32(b, 6, int32(m.SelectedAgent))
+	b = litewire.AppendString(b, 7, m.SelectedAgentName)
+	b = litewire.AppendString(b, 8, m.SelectedModel)
+	b = litewire.AppendString(b, 9, m.SelectedSeriesKey)
+	b = litewire.AppendInt32(b, 10, int32(m.TotalModelCount))
+	b = litewire.AppendVarint(b, 11, uint64(m.TotalTokens))
+	b = litewire.AppendVarint(b, 12, uint64(m.RequestCount))
+	b = litewire.AppendBool(b, 13, m.HasSharePercent)
+	b = litewire.AppendDouble(b, 14, m.ShareRatio)
+	b = litewire.AppendBool(b, 15, m.HasTokensDelta)
+	b = litewire.AppendDouble(b, 16, m.TokensDeltaPercent)
+	b = litewire.AppendBool(b, 17, m.PreviousBackfilling)
+	if m.Composition != nil {
+		b = litewire.AppendMessage(b, 18, m.Composition)
+	}
+	b = litewire.AppendInt32(b, 19, int32(m.PeriodCompositionRows))
+	return b
+}
+
+type UsageBarBucketView struct {
+	StartMs        int64
+	EndMs          int64
+	AllTokens      uint64
+	SelectedTokens uint64
+	HasData        bool
+}
+
+func (m *UsageBarBucketView) GetStartMs() int64 {
+	if m != nil {
+		return m.StartMs
+	}
+	return 0
+}
+func (m *UsageBarBucketView) GetEndMs() int64 {
+	if m != nil {
+		return m.EndMs
+	}
+	return 0
+}
+func (m *UsageBarBucketView) GetAllTokens() uint64 {
+	if m != nil {
+		return m.AllTokens
+	}
+	return 0
+}
+func (m *UsageBarBucketView) GetSelectedTokens() uint64 {
+	if m != nil {
+		return m.SelectedTokens
+	}
+	return 0
+}
+func (m *UsageBarBucketView) GetHasData() bool {
+	if m != nil {
+		return m.HasData
+	}
+	return false
+}
+
+func (m *UsageBarBucketView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeVarintField(1, uint64(m.StartMs))
+	n += litewire.SizeVarintField(2, uint64(m.EndMs))
+	n += litewire.SizeVarintField(3, uint64(m.AllTokens))
+	n += litewire.SizeVarintField(4, uint64(m.SelectedTokens))
+	n += litewire.SizeBool(5, m.HasData)
+	return n
+}
+
+func (m *UsageBarBucketView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageBarBucketView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.StartMs))
+	b = litewire.AppendVarint(b, 2, uint64(m.EndMs))
+	b = litewire.AppendVarint(b, 3, uint64(m.AllTokens))
+	b = litewire.AppendVarint(b, 4, uint64(m.SelectedTokens))
+	b = litewire.AppendBool(b, 5, m.HasData)
+	return b
+}
+
+type UsageBarChartView struct {
+	YMax    uint64
+	YMid    uint64
+	Buckets []*UsageBarBucketView
+}
+
+func (m *UsageBarChartView) GetYMax() uint64 {
+	if m != nil {
+		return m.YMax
+	}
+	return 0
+}
+func (m *UsageBarChartView) GetYMid() uint64 {
+	if m != nil {
+		return m.YMid
+	}
+	return 0
+}
+func (m *UsageBarChartView) GetBuckets() []*UsageBarBucketView {
+	if m != nil {
+		return m.Buckets
+	}
+	return nil
+}
+
+func (m *UsageBarChartView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeVarintField(1, uint64(m.YMax))
+	n += litewire.SizeVarintField(2, uint64(m.YMid))
+	for _, v := range m.Buckets {
+		if v != nil {
+			n += litewire.SizeMessage(3, v.Size())
+		}
+	}
+	return n
+}
+
+func (m *UsageBarChartView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageBarChartView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.YMax))
+	b = litewire.AppendVarint(b, 2, uint64(m.YMid))
+	for _, v := range m.Buckets {
+		if v != nil {
+			b = litewire.AppendMessage(b, 3, v)
+		}
+	}
+	return b
+}
+
+type UsageStripPointView struct {
+	HasValue bool
+	Value    float64
+}
+
+func (m *UsageStripPointView) GetHasValue() bool {
+	if m != nil {
+		return m.HasValue
+	}
+	return false
+}
+func (m *UsageStripPointView) GetValue() float64 {
+	if m != nil {
+		return m.Value
+	}
+	return 0
+}
+
+func (m *UsageStripPointView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.HasValue)
+	n += litewire.SizeDouble(2, m.Value)
+	return n
+}
+
+func (m *UsageStripPointView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageStripPointView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.HasValue)
+	b = litewire.AppendDouble(b, 2, m.Value)
+	return b
+}
+
+type UsageMetricStripView struct {
+	HasValue       bool
+	CurrentValue   float64
+	HasRange       bool
+	MinValue       float64
+	MaxValue       float64
+	ScaleMin       float64
+	ScaleMax       float64
+	LastValidIndex int32
+	AllPoints      []*UsageStripPointView
+	SelectedPoints []*UsageStripPointView
+}
+
+func (m *UsageMetricStripView) GetHasValue() bool {
+	if m != nil {
+		return m.HasValue
+	}
+	return false
+}
+func (m *UsageMetricStripView) GetCurrentValue() float64 {
+	if m != nil {
+		return m.CurrentValue
+	}
+	return 0
+}
+func (m *UsageMetricStripView) GetHasRange() bool {
+	if m != nil {
+		return m.HasRange
+	}
+	return false
+}
+func (m *UsageMetricStripView) GetMinValue() float64 {
+	if m != nil {
+		return m.MinValue
+	}
+	return 0
+}
+func (m *UsageMetricStripView) GetMaxValue() float64 {
+	if m != nil {
+		return m.MaxValue
+	}
+	return 0
+}
+func (m *UsageMetricStripView) GetScaleMin() float64 {
+	if m != nil {
+		return m.ScaleMin
+	}
+	return 0
+}
+func (m *UsageMetricStripView) GetScaleMax() float64 {
+	if m != nil {
+		return m.ScaleMax
+	}
+	return 0
+}
+func (m *UsageMetricStripView) GetLastValidIndex() int32 {
+	if m != nil {
+		return m.LastValidIndex
+	}
+	return 0
+}
+func (m *UsageMetricStripView) GetAllPoints() []*UsageStripPointView {
+	if m != nil {
+		return m.AllPoints
+	}
+	return nil
+}
+func (m *UsageMetricStripView) GetSelectedPoints() []*UsageStripPointView {
+	if m != nil {
+		return m.SelectedPoints
+	}
+	return nil
+}
+
+func (m *UsageMetricStripView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeBool(1, m.HasValue)
+	n += litewire.SizeDouble(2, m.CurrentValue)
+	n += litewire.SizeBool(3, m.HasRange)
+	n += litewire.SizeDouble(4, m.MinValue)
+	n += litewire.SizeDouble(5, m.MaxValue)
+	n += litewire.SizeDouble(6, m.ScaleMin)
+	n += litewire.SizeDouble(7, m.ScaleMax)
+	n += litewire.SizeInt32(8, int32(m.LastValidIndex))
+	for _, v := range m.AllPoints {
+		if v != nil {
+			n += litewire.SizeMessage(9, v.Size())
+		}
+	}
+	for _, v := range m.SelectedPoints {
+		if v != nil {
+			n += litewire.SizeMessage(10, v.Size())
+		}
+	}
+	return n
+}
+
+func (m *UsageMetricStripView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageMetricStripView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.HasValue)
+	b = litewire.AppendDouble(b, 2, m.CurrentValue)
+	b = litewire.AppendBool(b, 3, m.HasRange)
+	b = litewire.AppendDouble(b, 4, m.MinValue)
+	b = litewire.AppendDouble(b, 5, m.MaxValue)
+	b = litewire.AppendDouble(b, 6, m.ScaleMin)
+	b = litewire.AppendDouble(b, 7, m.ScaleMax)
+	b = litewire.AppendInt32(b, 8, int32(m.LastValidIndex))
+	for _, v := range m.AllPoints {
+		if v != nil {
+			b = litewire.AppendMessage(b, 9, v)
+		}
+	}
+	for _, v := range m.SelectedPoints {
+		if v != nil {
+			b = litewire.AppendMessage(b, 10, v)
+		}
+	}
+	return b
+}
+
+type UsageModelRowView struct {
+	Agent               v1.Agent
+	AgentName           string
+	Model               string
+	SeriesKey           string
+	Selected            bool
+	ShareRatio          float64
+	TotalTokens         uint64
+	HasCacheHit         bool
+	CacheHitRate        float64
+	HasSpeed            bool
+	SpeedP50            float64
+	HasTtft             bool
+	TtftP50Ms           float64
+	HasTokensDelta      bool
+	TokensDeltaPercent  float64
+	PreviousBackfilling bool
+	UsageRequestCount   uint64
+	SpeedRequestCount   uint64
+}
+
+func (m *UsageModelRowView) GetAgent() v1.Agent {
+	if m != nil {
+		return m.Agent
+	}
+	return 0
+}
+func (m *UsageModelRowView) GetAgentName() string {
+	if m != nil {
+		return m.AgentName
+	}
+	return ""
+}
+func (m *UsageModelRowView) GetModel() string {
+	if m != nil {
+		return m.Model
+	}
+	return ""
+}
+func (m *UsageModelRowView) GetSeriesKey() string {
+	if m != nil {
+		return m.SeriesKey
+	}
+	return ""
+}
+func (m *UsageModelRowView) GetSelected() bool {
+	if m != nil {
+		return m.Selected
+	}
+	return false
+}
+func (m *UsageModelRowView) GetShareRatio() float64 {
+	if m != nil {
+		return m.ShareRatio
+	}
+	return 0
+}
+func (m *UsageModelRowView) GetTotalTokens() uint64 {
+	if m != nil {
+		return m.TotalTokens
+	}
+	return 0
+}
+func (m *UsageModelRowView) GetHasCacheHit() bool {
+	if m != nil {
+		return m.HasCacheHit
+	}
+	return false
+}
+func (m *UsageModelRowView) GetCacheHitRate() float64 {
+	if m != nil {
+		return m.CacheHitRate
+	}
+	return 0
+}
+func (m *UsageModelRowView) GetHasSpeed() bool {
+	if m != nil {
+		return m.HasSpeed
+	}
+	return false
+}
+func (m *UsageModelRowView) GetSpeedP50() float64 {
+	if m != nil {
+		return m.SpeedP50
+	}
+	return 0
+}
+func (m *UsageModelRowView) GetHasTtft() bool {
+	if m != nil {
+		return m.HasTtft
+	}
+	return false
+}
+func (m *UsageModelRowView) GetTtftP50Ms() float64 {
+	if m != nil {
+		return m.TtftP50Ms
+	}
+	return 0
+}
+func (m *UsageModelRowView) GetHasTokensDelta() bool {
+	if m != nil {
+		return m.HasTokensDelta
+	}
+	return false
+}
+func (m *UsageModelRowView) GetTokensDeltaPercent() float64 {
+	if m != nil {
+		return m.TokensDeltaPercent
+	}
+	return 0
+}
+func (m *UsageModelRowView) GetPreviousBackfilling() bool {
+	if m != nil {
+		return m.PreviousBackfilling
+	}
+	return false
+}
+func (m *UsageModelRowView) GetUsageRequestCount() uint64 {
+	if m != nil {
+		return m.UsageRequestCount
+	}
+	return 0
+}
+func (m *UsageModelRowView) GetSpeedRequestCount() uint64 {
+	if m != nil {
+		return m.SpeedRequestCount
+	}
+	return 0
+}
+
+func (m *UsageModelRowView) Size() int {
+	if m == nil {
+		return 0
+	}
+	n := 0
+	n += litewire.SizeInt32(1, int32(m.Agent))
+	n += litewire.SizeString(2, m.AgentName)
+	n += litewire.SizeString(3, m.Model)
+	n += litewire.SizeString(4, m.SeriesKey)
+	n += litewire.SizeBool(5, m.Selected)
+	n += litewire.SizeDouble(6, m.ShareRatio)
+	n += litewire.SizeVarintField(7, uint64(m.TotalTokens))
+	n += litewire.SizeBool(8, m.HasCacheHit)
+	n += litewire.SizeDouble(9, m.CacheHitRate)
+	n += litewire.SizeBool(10, m.HasSpeed)
+	n += litewire.SizeDouble(11, m.SpeedP50)
+	n += litewire.SizeBool(12, m.HasTtft)
+	n += litewire.SizeDouble(13, m.TtftP50Ms)
+	n += litewire.SizeBool(14, m.HasTokensDelta)
+	n += litewire.SizeDouble(15, m.TokensDeltaPercent)
+	n += litewire.SizeBool(16, m.PreviousBackfilling)
+	n += litewire.SizeVarintField(17, uint64(m.UsageRequestCount))
+	n += litewire.SizeVarintField(18, uint64(m.SpeedRequestCount))
+	return n
+}
+
+func (m *UsageModelRowView) Marshal() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	sz := m.Size()
+	if sz == 0 {
+		return nil, nil
+	}
+	return m.AppendMarshal(make([]byte, 0, sz)), nil
+}
+
+func (m *UsageModelRowView) AppendMarshal(b []byte) []byte {
 	if m == nil {
 		return b
 	}
@@ -348,30 +912,20 @@ func (m *UsageSeriesView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 2, m.AgentName)
 	b = litewire.AppendString(b, 3, m.Model)
 	b = litewire.AppendString(b, 4, m.SeriesKey)
-	b = litewire.AppendInt32(b, 5, int32(m.PatternIndex))
-	b = litewire.AppendBool(b, 6, m.Focused)
-	b = litewire.AppendBool(b, 7, m.CacheWriteSupported)
-	b = litewire.AppendBool(b, 8, m.FewSpeedSamples)
-	if m.Current != nil {
-		b = litewire.AppendMessage(b, 9, m.Current)
-	}
-	if m.Previous != nil {
-		b = litewire.AppendMessage(b, 10, m.Previous)
-	}
-	b = litewire.AppendBool(b, 11, m.HasTokensDelta)
-	b = litewire.AppendDouble(b, 12, m.TokensDeltaPercent)
-	b = litewire.AppendBool(b, 13, m.HasCacheHitDelta)
-	b = litewire.AppendDouble(b, 14, m.CacheHitDeltaPoints)
-	b = litewire.AppendBool(b, 15, m.HasSpeedDelta)
-	b = litewire.AppendDouble(b, 16, m.SpeedDeltaPercent)
-	b = litewire.AppendBool(b, 17, m.HasTtftDelta)
-	b = litewire.AppendDouble(b, 18, m.TtftDeltaPercent)
-	b = litewire.AppendBool(b, 19, m.PreviousBackfilling)
-	for _, v := range m.Buckets {
-		if v != nil {
-			b = litewire.AppendMessage(b, 20, v)
-		}
-	}
+	b = litewire.AppendBool(b, 5, m.Selected)
+	b = litewire.AppendDouble(b, 6, m.ShareRatio)
+	b = litewire.AppendVarint(b, 7, uint64(m.TotalTokens))
+	b = litewire.AppendBool(b, 8, m.HasCacheHit)
+	b = litewire.AppendDouble(b, 9, m.CacheHitRate)
+	b = litewire.AppendBool(b, 10, m.HasSpeed)
+	b = litewire.AppendDouble(b, 11, m.SpeedP50)
+	b = litewire.AppendBool(b, 12, m.HasTtft)
+	b = litewire.AppendDouble(b, 13, m.TtftP50Ms)
+	b = litewire.AppendBool(b, 14, m.HasTokensDelta)
+	b = litewire.AppendDouble(b, 15, m.TokensDeltaPercent)
+	b = litewire.AppendBool(b, 16, m.PreviousBackfilling)
+	b = litewire.AppendVarint(b, 17, uint64(m.UsageRequestCount))
+	b = litewire.AppendVarint(b, 18, uint64(m.SpeedRequestCount))
 	return b
 }
 
@@ -393,14 +947,16 @@ type UsageViewModel struct {
 	Granularity               v1.UsageBucketGranularity
 	StartMs                   int64
 	EndMs                     int64
-	Metric                    UsageMetricTab
-	FocusAgent                v1.Agent
-	FocusModel                string
+	RangeDays                 int32
+	SortBy                    UsageSortColumn
 	Sources                   []*v1.UsageAgentSource
-	Series                    []*UsageSeriesView
 	HasAnyUsage               bool
-	HasAnySpeed               bool
-	ShowCacheWriteFootnote    bool
+	Hero                      *UsageHeroView
+	BarChart                  *UsageBarChartView
+	CacheHitStrip             *UsageMetricStripView
+	OutputSpeedStrip          *UsageMetricStripView
+	TtftStrip                 *UsageMetricStripView
+	Rows                      []*UsageModelRowView
 	UnsupportedFootnote       *Text
 }
 
@@ -506,33 +1062,21 @@ func (m *UsageViewModel) GetEndMs() int64 {
 	}
 	return 0
 }
-func (m *UsageViewModel) GetMetric() UsageMetricTab {
+func (m *UsageViewModel) GetRangeDays() int32 {
 	if m != nil {
-		return m.Metric
+		return m.RangeDays
 	}
 	return 0
 }
-func (m *UsageViewModel) GetFocusAgent() v1.Agent {
+func (m *UsageViewModel) GetSortBy() UsageSortColumn {
 	if m != nil {
-		return m.FocusAgent
+		return m.SortBy
 	}
 	return 0
-}
-func (m *UsageViewModel) GetFocusModel() string {
-	if m != nil {
-		return m.FocusModel
-	}
-	return ""
 }
 func (m *UsageViewModel) GetSources() []*v1.UsageAgentSource {
 	if m != nil {
 		return m.Sources
-	}
-	return nil
-}
-func (m *UsageViewModel) GetSeries() []*UsageSeriesView {
-	if m != nil {
-		return m.Series
 	}
 	return nil
 }
@@ -542,17 +1086,41 @@ func (m *UsageViewModel) GetHasAnyUsage() bool {
 	}
 	return false
 }
-func (m *UsageViewModel) GetHasAnySpeed() bool {
+func (m *UsageViewModel) GetHero() *UsageHeroView {
 	if m != nil {
-		return m.HasAnySpeed
+		return m.Hero
 	}
-	return false
+	return nil
 }
-func (m *UsageViewModel) GetShowCacheWriteFootnote() bool {
+func (m *UsageViewModel) GetBarChart() *UsageBarChartView {
 	if m != nil {
-		return m.ShowCacheWriteFootnote
+		return m.BarChart
 	}
-	return false
+	return nil
+}
+func (m *UsageViewModel) GetCacheHitStrip() *UsageMetricStripView {
+	if m != nil {
+		return m.CacheHitStrip
+	}
+	return nil
+}
+func (m *UsageViewModel) GetOutputSpeedStrip() *UsageMetricStripView {
+	if m != nil {
+		return m.OutputSpeedStrip
+	}
+	return nil
+}
+func (m *UsageViewModel) GetTtftStrip() *UsageMetricStripView {
+	if m != nil {
+		return m.TtftStrip
+	}
+	return nil
+}
+func (m *UsageViewModel) GetRows() []*UsageModelRowView {
+	if m != nil {
+		return m.Rows
+	}
+	return nil
 }
 func (m *UsageViewModel) GetUnsupportedFootnote() *Text {
 	if m != nil {
@@ -585,24 +1153,36 @@ func (m *UsageViewModel) Size() int {
 	n += litewire.SizeInt32(15, int32(m.Granularity))
 	n += litewire.SizeVarintField(16, uint64(m.StartMs))
 	n += litewire.SizeVarintField(17, uint64(m.EndMs))
-	n += litewire.SizeInt32(18, int32(m.Metric))
-	n += litewire.SizeInt32(19, int32(m.FocusAgent))
-	n += litewire.SizeString(20, m.FocusModel)
+	n += litewire.SizeInt32(18, int32(m.RangeDays))
+	n += litewire.SizeInt32(19, int32(m.SortBy))
 	for _, v := range m.Sources {
 		if v != nil {
-			n += litewire.SizeMessage(21, v.Size())
+			n += litewire.SizeMessage(20, v.Size())
 		}
 	}
-	for _, v := range m.Series {
+	n += litewire.SizeBool(21, m.HasAnyUsage)
+	if m.Hero != nil {
+		n += litewire.SizeMessage(22, m.Hero.Size())
+	}
+	if m.BarChart != nil {
+		n += litewire.SizeMessage(23, m.BarChart.Size())
+	}
+	if m.CacheHitStrip != nil {
+		n += litewire.SizeMessage(24, m.CacheHitStrip.Size())
+	}
+	if m.OutputSpeedStrip != nil {
+		n += litewire.SizeMessage(25, m.OutputSpeedStrip.Size())
+	}
+	if m.TtftStrip != nil {
+		n += litewire.SizeMessage(26, m.TtftStrip.Size())
+	}
+	for _, v := range m.Rows {
 		if v != nil {
-			n += litewire.SizeMessage(22, v.Size())
+			n += litewire.SizeMessage(27, v.Size())
 		}
 	}
-	n += litewire.SizeBool(23, m.HasAnyUsage)
-	n += litewire.SizeBool(24, m.HasAnySpeed)
-	n += litewire.SizeBool(25, m.ShowCacheWriteFootnote)
 	if m.UnsupportedFootnote != nil {
-		n += litewire.SizeMessage(26, m.UnsupportedFootnote.Size())
+		n += litewire.SizeMessage(28, m.UnsupportedFootnote.Size())
 	}
 	return n
 }
@@ -641,24 +1221,36 @@ func (m *UsageViewModel) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 15, int32(m.Granularity))
 	b = litewire.AppendVarint(b, 16, uint64(m.StartMs))
 	b = litewire.AppendVarint(b, 17, uint64(m.EndMs))
-	b = litewire.AppendInt32(b, 18, int32(m.Metric))
-	b = litewire.AppendInt32(b, 19, int32(m.FocusAgent))
-	b = litewire.AppendString(b, 20, m.FocusModel)
+	b = litewire.AppendInt32(b, 18, int32(m.RangeDays))
+	b = litewire.AppendInt32(b, 19, int32(m.SortBy))
 	for _, v := range m.Sources {
 		if v != nil {
-			b = litewire.AppendMessage(b, 21, v)
+			b = litewire.AppendMessage(b, 20, v)
 		}
 	}
-	for _, v := range m.Series {
+	b = litewire.AppendBool(b, 21, m.HasAnyUsage)
+	if m.Hero != nil {
+		b = litewire.AppendMessage(b, 22, m.Hero)
+	}
+	if m.BarChart != nil {
+		b = litewire.AppendMessage(b, 23, m.BarChart)
+	}
+	if m.CacheHitStrip != nil {
+		b = litewire.AppendMessage(b, 24, m.CacheHitStrip)
+	}
+	if m.OutputSpeedStrip != nil {
+		b = litewire.AppendMessage(b, 25, m.OutputSpeedStrip)
+	}
+	if m.TtftStrip != nil {
+		b = litewire.AppendMessage(b, 26, m.TtftStrip)
+	}
+	for _, v := range m.Rows {
 		if v != nil {
-			b = litewire.AppendMessage(b, 22, v)
+			b = litewire.AppendMessage(b, 27, v)
 		}
 	}
-	b = litewire.AppendBool(b, 23, m.HasAnyUsage)
-	b = litewire.AppendBool(b, 24, m.HasAnySpeed)
-	b = litewire.AppendBool(b, 25, m.ShowCacheWriteFootnote)
 	if m.UnsupportedFootnote != nil {
-		b = litewire.AppendMessage(b, 26, m.UnsupportedFootnote)
+		b = litewire.AppendMessage(b, 28, m.UnsupportedFootnote)
 	}
 	return b
 }
@@ -672,6 +1264,9 @@ type UsageScreenOpenEvent struct {
 	TzOffsetMinutes int32
 	BucketBoundsMs  []int64
 	PrevStartMs     int64
+	ApplyFocus      bool
+	FocusAgent      v1.Agent
+	FocusModel      string
 }
 
 func (m *UsageScreenOpenEvent) GetMachineId() string {
@@ -721,6 +1316,24 @@ func (m *UsageScreenOpenEvent) GetPrevStartMs() int64 {
 		return m.PrevStartMs
 	}
 	return 0
+}
+func (m *UsageScreenOpenEvent) GetApplyFocus() bool {
+	if m != nil {
+		return m.ApplyFocus
+	}
+	return false
+}
+func (m *UsageScreenOpenEvent) GetFocusAgent() v1.Agent {
+	if m != nil {
+		return m.FocusAgent
+	}
+	return 0
+}
+func (m *UsageScreenOpenEvent) GetFocusModel() string {
+	if m != nil {
+		return m.FocusModel
+	}
+	return ""
 }
 
 func (m *UsageScreenOpenEvent) Unmarshal(b []byte) error {
@@ -816,6 +1429,33 @@ func (m *UsageScreenOpenEvent) Unmarshal(b []byte) error {
 				m.PrevStartMs = int64(v)
 				continue
 			}
+		case 9:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ApplyFocus = litewire.DecodeBool(v)
+				continue
+			}
+		case 10:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.FocusAgent = v1.Agent(int32(v))
+				continue
+			}
+		case 11:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.FocusModel = v
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -849,6 +1489,191 @@ func (m *UsageScreenRetryEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.MachineId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type UsageScreenSelectSortEvent struct {
+	MachineId string
+	SortBy    UsageSortColumn
+}
+
+func (m *UsageScreenSelectSortEvent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *UsageScreenSelectSortEvent) GetSortBy() UsageSortColumn {
+	if m != nil {
+		return m.SortBy
+	}
+	return 0
+}
+
+func (m *UsageScreenSelectSortEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.SortBy = UsageSortColumn(int32(v))
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type UsageScreenSelectSeriesEvent struct {
+	MachineId string
+	SeriesKey string
+	Toggle    bool
+}
+
+func (m *UsageScreenSelectSeriesEvent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *UsageScreenSelectSeriesEvent) GetSeriesKey() string {
+	if m != nil {
+		return m.SeriesKey
+	}
+	return ""
+}
+func (m *UsageScreenSelectSeriesEvent) GetToggle() bool {
+	if m != nil {
+		return m.Toggle
+	}
+	return false
+}
+
+func (m *UsageScreenSelectSeriesEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.SeriesKey = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Toggle = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type UsageScreenScrubEvent struct {
+	MachineId   string
+	BucketIndex int32
+	Clear       bool
+}
+
+func (m *UsageScreenScrubEvent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *UsageScreenScrubEvent) GetBucketIndex() int32 {
+	if m != nil {
+		return m.BucketIndex
+	}
+	return 0
+}
+func (m *UsageScreenScrubEvent) GetClear() bool {
+	if m != nil {
+		return m.Clear
+	}
+	return false
+}
+
+func (m *UsageScreenScrubEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.BucketIndex = int32(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Clear = litewire.DecodeBool(v)
 				continue
 			}
 		}

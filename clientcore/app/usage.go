@@ -41,6 +41,20 @@ func (m *Model) ensureUsageEntry(key screens.UsageCacheKey) *screens.UsageSnapsh
 	return entry
 }
 
+func (m *Model) ensureUsageUI(machineID string) *screens.UsageUIState {
+	if m.state.UsageUI == nil {
+		m.state.UsageUI = make(map[string]*screens.UsageUIState)
+	}
+	ui := m.state.UsageUI[machineID]
+	if ui == nil {
+		ui = &screens.UsageUIState{
+			SortBy: corev1.UsageSortColumn_USAGE_SORT_COLUMN_TOKENS,
+		}
+		m.state.UsageUI[machineID] = ui
+	}
+	return ui
+}
+
 func (c *Core) viewUsage(req *corev1.UsageScreenRequest) (*corev1.ViewModel, error) {
 	sv := c.m.sync.BuildSyncStateView()
 	vm := screens.BuildUsageView(c.m.state, sv, req)
@@ -93,6 +107,9 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 			TzOffsetMinutes: src.TzOffsetMinutes,
 			BucketBoundsMs:  slices.Clone(src.BucketBoundsMs),
 			PrevStartMs:     src.PrevStartMs,
+			ApplyFocus:      src.ApplyFocus,
+			FocusAgent:      src.FocusAgent,
+			FocusModel:      src.FocusModel,
 		}
 		if u.Preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_UNSPECIFIED {
 			u.Preset = v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS
@@ -101,6 +118,21 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 			c.m.lastUsageParams = make(map[string]*corev1.UsageScreenOpenEvent)
 		}
 		c.m.lastUsageParams[u.MachineId] = u
+		ui := c.m.ensureUsageUI(u.MachineId)
+		ui.HasScrub = false
+		if u.ApplyFocus {
+			ui.SortBy = corev1.UsageSortColumn_USAGE_SORT_COLUMN_TOKENS
+			if u.FocusAgent != v1.Agent_AGENT_UNSPECIFIED && u.FocusModel != "" {
+				ui.SelectedSeriesKey = usage.SeriesKey(u.FocusAgent, u.FocusModel)
+				ui.HasSelectionOverride = true
+			} else if u.FocusAgent == v1.Agent_AGENT_UNSPECIFIED && u.FocusModel == "" {
+				ui.SelectedSeriesKey = ""
+				ui.HasSelectionOverride = true
+			} else {
+				ui.SelectedSeriesKey = ""
+				ui.HasSelectionOverride = false
+			}
+		}
 		c.m.usageActive = true
 		c.fetchUsage(ctx, u.MachineId, u.Preset, u.CustomStartMs, u.CustomEndMs, u)
 		c.m.usageDirty = true
@@ -117,6 +149,50 @@ func (c *Core) dispatchUsageUI(ctx *sync.StepContext, ev *corev1.Event) []*corev
 		} else {
 			c.fetchUsage(ctx, id, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, 0, 0, nil)
 		}
+		c.m.usageDirty = true
+
+	case *corev1.Event_UsageScreenSelectSort:
+		if k.UsageScreenSelectSort == nil || k.UsageScreenSelectSort.MachineId == "" {
+			return nil
+		}
+		ui := c.m.ensureUsageUI(k.UsageScreenSelectSort.MachineId)
+		sortBy := k.UsageScreenSelectSort.SortBy
+		if sortBy == corev1.UsageSortColumn_USAGE_SORT_COLUMN_UNSPECIFIED {
+			sortBy = corev1.UsageSortColumn_USAGE_SORT_COLUMN_TOKENS
+		}
+		ui.SortBy = sortBy
+		c.m.usageActive = true
+		c.m.usageDirty = true
+
+	case *corev1.Event_UsageScreenSelectSeries:
+		if k.UsageScreenSelectSeries == nil || k.UsageScreenSelectSeries.MachineId == "" {
+			return nil
+		}
+		sel := k.UsageScreenSelectSeries
+		ui := c.m.ensureUsageUI(sel.MachineId)
+		ui.HasSelectionOverride = true
+		ui.HasScrub = false
+		if sel.Toggle && ui.SelectedSeriesKey == sel.SeriesKey {
+			ui.SelectedSeriesKey = ""
+		} else {
+			ui.SelectedSeriesKey = sel.SeriesKey
+		}
+		c.m.usageActive = true
+		c.m.usageDirty = true
+
+	case *corev1.Event_UsageScreenScrub:
+		if k.UsageScreenScrub == nil || k.UsageScreenScrub.MachineId == "" {
+			return nil
+		}
+		sc := k.UsageScreenScrub
+		ui := c.m.ensureUsageUI(sc.MachineId)
+		if sc.Clear {
+			ui.HasScrub = false
+		} else {
+			ui.HasScrub = true
+			ui.ScrubBucketIndex = sc.BucketIndex
+		}
+		c.m.usageActive = true
 		c.m.usageDirty = true
 
 	case *corev1.Event_UsageCacheLoaded:

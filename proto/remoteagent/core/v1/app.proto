@@ -553,6 +553,9 @@ message Event {
     UsageScreenOpenEvent usage_screen_open = 380;
     UsageScreenRetryEvent usage_screen_retry = 381;
     UsageCacheLoadedEvent usage_cache_loaded = 382;
+    UsageScreenSelectSortEvent usage_screen_select_sort = 383;
+    UsageScreenSelectSeriesEvent usage_screen_select_series = 384;
+    UsageScreenScrubEvent usage_screen_scrub = 385;
     UpdateClientNameEvent update_client_name = 370;
     SetNotificationPrefEvent set_notification_pref = 375;
     SetAppearancePrefEvent set_appearance_pref = 376;

@@ -452,8 +452,8 @@ func TestUsageScreenFetchCacheWriteAndSessionEntry(t *testing.T) {
 		t.Fatalf("View(Usage): %v", err)
 	}
 	u := uVM.GetUsage()
-	if !u.GetHasAnyUsage() || len(u.GetSeries()) != 1 || !u.GetSeries()[0].GetFewSpeedSamples() || u.GetUnsupportedFootnote() == nil {
-		t.Fatalf("unexpected UsageViewModel: hasUsage=%v len=%d footnote=%v", u.GetHasAnyUsage(), len(u.GetSeries()), u.GetUnsupportedFootnote())
+	if !u.GetHasAnyUsage() || len(u.GetRows()) != 1 || !u.GetHero().GetHasSelectedModel() || u.GetUnsupportedFootnote() == nil {
+		t.Fatalf("unexpected UsageViewModel: hasUsage=%v rows=%d sel=%v footnote=%v", u.GetHasAnyUsage(), len(u.GetRows()), u.GetHero().GetHasSelectedModel(), u.GetUnsupportedFootnote())
 	}
 
 	// Verify Session Settings UsageEntry picks up cached summary.
@@ -553,8 +553,8 @@ func TestUsageOfflineCacheAndMachineStatus30dFallback(t *testing.T) {
 
 	uVM, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Usage{Usage: &corev1.UsageScreenRequest{MachineId: "m-1", Preset: v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS}}})
 	u := uVM.GetUsage()
-	if !u.GetCachedOffline() || u.GetCachedAtMs() != 1_791_633_100_000 || len(u.GetSeries()) != 1 {
-		t.Fatalf("unexpected offline UsageViewModel: offline=%v cachedAt=%d series=%d", u.GetCachedOffline(), u.GetCachedAtMs(), len(u.GetSeries()))
+	if !u.GetCachedOffline() || u.GetCachedAtMs() != 1_791_633_100_000 || len(u.GetRows()) != 1 {
+		t.Fatalf("unexpected offline UsageViewModel: offline=%v cachedAt=%d rows=%d", u.GetCachedOffline(), u.GetCachedAtMs(), len(u.GetRows()))
 	}
 }
 
@@ -655,8 +655,8 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 		t.Fatalf("View(Usage): %v", err)
 	}
 	u := uVM.GetUsage()
-	if !u.GetHasAnyUsage() || u.GetHasAnySpeed() || !u.GetShowCacheWriteFootnote() || u.GetUnsupportedFootnote() != nil || len(u.GetSeries()) != 1 {
-		t.Fatalf("unexpected Antigravity UsageViewModel: hasUsage=%v hasSpeed=%v cwFoot=%v unavail=%+v len=%d", u.GetHasAnyUsage(), u.GetHasAnySpeed(), u.GetShowCacheWriteFootnote(), u.GetUnsupportedFootnote(), len(u.GetSeries()))
+	if !u.GetHasAnyUsage() || u.GetOutputSpeedStrip().GetHasValue() || u.GetRows()[0].GetHasSpeed() || u.GetUnsupportedFootnote() != nil || len(u.GetRows()) != 1 {
+		t.Fatalf("unexpected Antigravity UsageViewModel: hasUsage=%v stripHasSpeed=%v rowHasSpeed=%v unavail=%+v len=%d", u.GetHasAnyUsage(), u.GetOutputSpeedStrip().GetHasValue(), u.GetRows()[0].GetHasSpeed(), u.GetUnsupportedFootnote(), len(u.GetRows()))
 	}
 
 	msVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_MachineStatus{MachineStatus: &corev1.MachineStatusScreenRequest{MachineId: "m-1"}}})
@@ -784,5 +784,156 @@ func TestUpdateMachineAgentDefaultsClearsEffortOnModelChangeWithoutEffort(t *tes
 	}
 	if got := updated.GetDefaultEffort(); got != "" {
 		t.Fatalf("expected stale effort cleared when model switches without effort, got %q", got)
+	}
+}
+
+func TestUsageScreenSortSeriesToggleAndScrubEvents(t *testing.T) {
+	c := New()
+	defer c.Close()
+	seedDualCLIMachine(t, c)
+
+	bOpen := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_050,
+		Event: &corev1.Event_UsageScreenOpen{
+			UsageScreenOpen: &corev1.UsageScreenOpenEvent{
+				MachineId:  "m-1",
+				Preset:     v1.UsageRangePreset_USAGE_RANGE_PRESET_TODAY,
+				ApplyFocus: true,
+			},
+		},
+	})
+	var dc *corev1.DispatchCommandEffect
+	for _, eff := range bOpen.Effects {
+		if eff.GetDispatchCommand() != nil {
+			var cmd v1.Command
+			if err := cmd.Unmarshal(eff.GetDispatchCommand().CommandBytes); err == nil && cmd.GetGetUsageStats() != nil {
+				dc = eff.GetDispatchCommand()
+			}
+		}
+	}
+	if dc == nil {
+		t.Fatal("expected GetUsageStats dispatch")
+	}
+	settleUpdateSettings(c, dc, 1_791_633_600_060, &v1.CommandResult{
+		Outcome:         "executed",
+		ResultAvailable: true,
+		Kind: &v1.CommandResult_UsageStats{
+			UsageStats: &v1.UsageStatsResponse{
+				Preset:      v1.UsageRangePreset_USAGE_RANGE_PRESET_TODAY,
+				Granularity: v1.UsageBucketGranularity_USAGE_BUCKET_GRANULARITY_HOUR,
+				StartMs:     1_791_590_400_000,
+				EndMs:       1_791_676_800_000,
+				Series: []*v1.UsageSeries{
+					{
+						Agent: v1.Agent_AGENT_CLAUDE,
+						Model: "claude-opus-4-6",
+						Current: &v1.UsagePeriodSummary{
+							UncachedInputTokens: 200_000,
+							OutputTokens:        50_000,
+							UsageRequestCount:   10,
+							SpeedRequestCount:   10,
+							HasSpeed:            true,
+							SpeedP50:            50,
+							HasTtft:             true,
+							TtftP50Ms:           1200,
+						},
+						Buckets: []*v1.UsageBucketPoint{
+							{StartMs: 1_791_590_400_000, EndMs: 1_791_594_000_000, UncachedInputTokens: 150_000, OutputTokens: 30_000, UsageRequestCount: 6, SpeedRequestCount: 6, SpeedP50: 48, TtftP50Ms: 1300},
+							{StartMs: 1_791_594_000_000, EndMs: 1_791_597_600_000, UncachedInputTokens: 50_000, OutputTokens: 20_000, UsageRequestCount: 4, SpeedRequestCount: 4, SpeedP50: 54, TtftP50Ms: 1100},
+						},
+					},
+					{
+						Agent: v1.Agent_AGENT_CODEX,
+						Model: "gpt-5.4",
+						Current: &v1.UsagePeriodSummary{
+							UncachedInputTokens: 100_000,
+							OutputTokens:        20_000,
+							UsageRequestCount:   5,
+							SpeedRequestCount:   5,
+							HasSpeed:            true,
+							SpeedP50:            120,
+							HasTtft:             true,
+							TtftP50Ms:           400,
+						},
+						Buckets: []*v1.UsageBucketPoint{
+							{StartMs: 1_791_590_400_000, EndMs: 1_791_594_000_000, UncachedInputTokens: 100_000, OutputTokens: 20_000, UsageRequestCount: 5, SpeedRequestCount: 5, SpeedP50: 120, TtftP50Ms: 400},
+							{StartMs: 1_791_594_000_000, EndMs: 1_791_597_600_000},
+						},
+					},
+				},
+			},
+		},
+	}, "")
+
+	// Sort by Speed desc -> Codex first.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_070,
+		Event: &corev1.Event_UsageScreenSelectSort{
+			UsageScreenSelectSort: &corev1.UsageScreenSelectSortEvent{
+				MachineId: "m-1",
+				SortBy:    corev1.UsageSortColumn_USAGE_SORT_COLUMN_SPEED,
+			},
+		},
+	})
+	vm1, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Usage{Usage: &corev1.UsageScreenRequest{MachineId: "m-1", Preset: v1.UsageRangePreset_USAGE_RANGE_PRESET_TODAY}}})
+	if vm1.GetUsage().GetSortBy() != corev1.UsageSortColumn_USAGE_SORT_COLUMN_SPEED || vm1.GetUsage().GetRows()[0].GetModel() != "gpt-5.4" {
+		t.Fatalf("expected speed sort with gpt-5.4 first, got %+v", vm1.GetUsage().GetRows())
+	}
+
+	// Select Codex series -> Hero switches to Codex.
+	codexKey := vm1.GetUsage().GetRows()[0].GetSeriesKey()
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_080,
+		Event: &corev1.Event_UsageScreenSelectSeries{
+			UsageScreenSelectSeries: &corev1.UsageScreenSelectSeriesEvent{
+				MachineId: "m-1",
+				SeriesKey: codexKey,
+				Toggle:    true,
+			},
+		},
+	})
+	vm2, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Usage{Usage: &corev1.UsageScreenRequest{MachineId: "m-1", Preset: v1.UsageRangePreset_USAGE_RANGE_PRESET_TODAY}}})
+	if !vm2.GetUsage().GetHero().GetHasSelectedModel() || vm2.GetUsage().GetHero().GetSelectedModel() != "gpt-5.4" || vm2.GetUsage().GetHero().GetTotalTokens() != 120_000 {
+		t.Fatalf("expected selected gpt-5.4 hero, got %+v", vm2.GetUsage().GetHero())
+	}
+
+	// Scrub bucket 0, then clear scrub.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_090,
+		Event: &corev1.Event_UsageScreenScrub{
+			UsageScreenScrub: &corev1.UsageScreenScrubEvent{
+				MachineId:   "m-1",
+				BucketIndex: 0,
+			},
+		},
+	})
+	vm3, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Usage{Usage: &corev1.UsageScreenRequest{MachineId: "m-1", Preset: v1.UsageRangePreset_USAGE_RANGE_PRESET_TODAY}}})
+	if !vm3.GetUsage().GetHero().GetScrubbing() || vm3.GetUsage().GetHero().GetTotalTokens() != 120_000 || vm3.GetUsage().GetOutputSpeedStrip().GetCurrentValue() != 120 {
+		t.Fatalf("unexpected scrub state: hero=%+v speed=%+v", vm3.GetUsage().GetHero(), vm3.GetUsage().GetOutputSpeedStrip())
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_100,
+		Event: &corev1.Event_UsageScreenScrub{
+			UsageScreenScrub: &corev1.UsageScreenScrubEvent{
+				MachineId: "m-1",
+				Clear:     true,
+			},
+		},
+	})
+
+	// Toggle same series again -> clears selection back to All.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_110,
+		Event: &corev1.Event_UsageScreenSelectSeries{
+			UsageScreenSelectSeries: &corev1.UsageScreenSelectSeriesEvent{
+				MachineId: "m-1",
+				SeriesKey: codexKey,
+				Toggle:    true,
+			},
+		},
+	})
+	vm4, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Usage{Usage: &corev1.UsageScreenRequest{MachineId: "m-1", Preset: v1.UsageRangePreset_USAGE_RANGE_PRESET_TODAY}}})
+	if vm4.GetUsage().GetHero().GetHasSelectedModel() || vm4.GetUsage().GetHero().GetTotalTokens() != 370_000 {
+		t.Fatalf("expected toggle off back to all models, got %+v", vm4.GetUsage().GetHero())
 	}
 }

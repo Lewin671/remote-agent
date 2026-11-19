@@ -67,15 +67,4 @@ public interface UsageScreenRequestOrBuilder extends
    * @return The customEndMs.
    */
   long getCustomEndMs();
-
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-   * @return The enum numeric value on the wire for metric.
-   */
-  int getMetricValue();
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-   * @return The metric.
-   */
-  io.github.lewin671.remoteagent.core.proto.UsageMetricTab getMetric();
 }

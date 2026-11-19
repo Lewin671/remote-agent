@@ -250,48 +250,6 @@ public  final class UsageScreenRequest extends
     customEndMs_ = 0L;
   }
 
-  public static final int METRIC_FIELD_NUMBER = 7;
-  private int metric_;
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-   * @return The enum numeric value on the wire for metric.
-   */
-  @java.lang.Override
-  public int getMetricValue() {
-    return metric_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-   * @return The metric.
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.UsageMetricTab getMetric() {
-    io.github.lewin671.remoteagent.core.proto.UsageMetricTab result = io.github.lewin671.remoteagent.core.proto.UsageMetricTab.forNumber(metric_);
-    return result == null ? io.github.lewin671.remoteagent.core.proto.UsageMetricTab.UNRECOGNIZED : result;
-  }
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-   * @param value The enum numeric value on the wire for metric to set.
-   */
-  private void setMetricValue(int value) {
-      metric_ = value;
-  }
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-   * @param value The metric to set.
-   */
-  private void setMetric(io.github.lewin671.remoteagent.core.proto.UsageMetricTab value) {
-    metric_ = value.getNumber();
-
-  }
-  /**
-   * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-   */
-  private void clearMetric() {
-
-    metric_ = 0;
-  }
-
   public static io.github.lewin671.remoteagent.core.proto.UsageScreenRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -635,52 +593,6 @@ public  final class UsageScreenRequest extends
       return this;
     }
 
-    /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-     * @return The enum numeric value on the wire for metric.
-     */
-    @java.lang.Override
-    public int getMetricValue() {
-      return instance.getMetricValue();
-    }
-    /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-     * @param value The metric to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMetricValue(int value) {
-      copyOnWrite();
-      instance.setMetricValue(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-     * @return The metric.
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.UsageMetricTab getMetric() {
-      return instance.getMetric();
-    }
-    /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-     * @param value The enum numeric value on the wire for metric to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMetric(io.github.lewin671.remoteagent.core.proto.UsageMetricTab value) {
-      copyOnWrite();
-      instance.setMetric(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.UsageMetricTab metric = 7 [json_name = "metric"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearMetric() {
-      copyOnWrite();
-      instance.clearMetric();
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageScreenRequest)
   }
   @java.lang.Override
@@ -703,11 +615,10 @@ public  final class UsageScreenRequest extends
             "preset_",
             "customStartMs_",
             "customEndMs_",
-            "metric_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\f" +
-              "\u0003\u0208\u0004\f\u0005\u0002\u0006\u0002\u0007\f";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u0208\u0004\f\u0005\u0002\u0006\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

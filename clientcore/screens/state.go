@@ -39,6 +39,15 @@ type UsageCacheKey struct {
 	CustomEndMs   int64
 }
 
+// UsageUIState tracks per-machine Usage & Speed sort, single-model selection, and scrub state.
+type UsageUIState struct {
+	SortBy               corev1.UsageSortColumn
+	SelectedSeriesKey    string
+	HasSelectionOverride bool
+	HasScrub             bool
+	ScrubBucketIndex     int32
+}
+
 // UsageSnapshotEntry holds live and offline-cached usage telemetry for one machine+range.
 type UsageSnapshotEntry struct {
 	Live        *v1.UsageStatsResponse
@@ -126,6 +135,7 @@ type State struct {
 	MachineModels   map[MachineAgentKey]*ModelsCacheEntry
 	MachineSettings map[string]*SettingsCacheEntry
 	UsageSnapshots  map[UsageCacheKey]*UsageSnapshotEntry
+	UsageUI         map[string]*UsageUIState
 
 	StandaloneProjectKey string
 	NewSessions          map[string]*NewSessionDraft
@@ -148,6 +158,7 @@ func NewState() *State {
 		MachineModels:            make(map[MachineAgentKey]*ModelsCacheEntry),
 		MachineSettings:          make(map[string]*SettingsCacheEntry),
 		UsageSnapshots:           make(map[UsageCacheKey]*UsageSnapshotEntry),
+		UsageUI:                  make(map[string]*UsageUIState),
 		NewSessions:              make(map[string]*NewSessionDraft),
 		Schedules:                NewScheduleState(),
 	}
