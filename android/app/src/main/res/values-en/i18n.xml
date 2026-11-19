@@ -1386,13 +1386,11 @@
     <string name="security_android_join_receipt_device_public_key_mismatch" formatted="false">"Join receipt device public key mismatch"</string>
     <string name="security_android_join_receipt_does_not_contain_this_device_s_identity" formatted="false">"Join receipt does not contain this device\'s identity"</string>
     <string name="security_android_keep_this_phone_s_account_root_key_and_device_identity" formatted="false">"Keep this phone\'s account root key and device identity, discard protocol 9 security state, create protocol 10 genesis state, and make this phone the managing client. Use an old version to read protocol 9 history."</string>
-    <string name="security_android_last_used_times_are_on_the_right_each_device_changes" formatted="false">"Last used times are on the right. Each device changes its own name. The managing client can remove other devices."</string>
     <string name="security_android_membership_sync_failed_there_may_be_an_invalid_pairing_check" formatted="false">"Membership sync failed. There may be an invalid pairing. Check the device list and remove incomplete devices, then start again."</string>
     <string name="security_android_name_changes_sync_to_other_clients_set_notifications_on_this" formatted="false">"Name changes sync to other clients. Set notifications on this phone; they cannot be changed remotely here."</string>
     <string name="security_android_new_recovery_code_confirmed_saved_offline" formatted="false">"New recovery code confirmed saved offline"</string>
     <string name="security_android_no_account_available_to_upgrade" formatted="false">"No account available to upgrade"</string>
     <string name="security_android_no_candidate_device" formatted="false">"No candidate device"</string>
-    <string name="security_android_no_computers_yet" formatted="false">"No computers yet"</string>
     <string name="security_android_no_device_has_joined_yet" formatted="false">"No device has joined yet"</string>
     <string name="security_android_not_read_yet" formatted="false">"Not read yet"</string>
     <string name="security_android_only_a_removed_computer_s_archive_from_the_same_account" formatted="false">"Only a removed computer\'s archive from the same account can be resumed"</string>
@@ -1424,7 +1422,6 @@
     <string name="security_android_recovery_eligible_at">"Eligible at: %1$s"</string>
     <string name="security_android_recovery_not_found_it_may_be_complete_or_vetoed" formatted="false">"Recovery not found. It may be complete or vetoed"</string>
     <string name="security_android_registration_challenge_expired_retry" formatted="false">"Registration challenge expired. Retry"</string>
-    <string name="security_android_remote_control" formatted="false">"Remote control"</string>
     <string name="security_android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"Removal disconnects its login and clears push subscriptions. Computer sessions and history are kept. Rejoining requires approval on the managing client."</string>
     <string name="security_android_remove_this_client" formatted="false">"Remove this client"</string>
     <string name="security_android_removed" formatted="false">"Removed"</string>
@@ -1827,20 +1824,16 @@
     <string name="session_usage_entry_unavailable">"%1$s usage and speed telemetry unavailable"</string>
     <string name="session_view" formatted="false">"View"</string>
     <string name="settings_about" formatted="false">"About"</string>
-    <string name="settings_account" formatted="false">"Account"</string>
     <string name="settings_account_quota" formatted="false">"Account quota"</string>
     <string name="settings_account_security_title" formatted="false">"Account security"</string>
     <string name="settings_add_device_footer_hint">"To add a computer or client, open Settings › Add device on the managing client (%1$s)."</string>
     <string name="settings_add_device_item" formatted="false">"Add device"</string>
     <string name="settings_add_first_computer" formatted="false">"Add first computer"</string>
     <string name="settings_added" formatted="false">"Added"</string>
-    <string name="settings_all_clients" formatted="false">"All clients"</string>
-    <string name="settings_all_devices" formatted="false">"All devices"</string>
     <string name="settings_android_allow_in_settings" formatted="false">"Allow in settings"</string>
     <string name="settings_android_allow_remote_agent_to_install_apps_in_system_settings_then" formatted="false">"Allow remote-agent to install apps in system settings, then return to continue."</string>
     <string name="settings_android_allow_the_original_computer_to_resume_value1_s_retained_sessions">"Allow the original computer to resume %1$s\'s retained sessions and images. The old identity remains revoked. Enter the pairing code on the original computer."</string>
     <string name="settings_android_already_on_the_latest_published_version" formatted="false">"Already on the latest published version"</string>
-    <string name="settings_android_approval_commands_will_appear_in_system_notifications_and_may_remain" formatted="false">"Approval commands will appear in system notifications and may remain in notification history. The lock screen still shows generic text"</string>
     <string name="settings_android_attachment_storage_this_phone" formatted="false">"Attachment storage · This phone"</string>
     <string name="settings_android_cannot_connect_to_the_release_address" formatted="false">"Cannot connect to the release address"</string>
     <string name="settings_android_cannot_open_the_system_installer" formatted="false">"Cannot open the system installer."</string>
@@ -1864,7 +1857,6 @@
     <string name="settings_android_downloaded_file_does_not_match_release_information" formatted="false">"Downloaded file does not match release information"</string>
     <string name="settings_android_downloading_value1_value2">"Downloading %1$s / %2$s"</string>
     <string name="settings_android_fonts_sil_open_font_license_1_1" formatted="false">"Fonts · SIL Open Font License 1.1"</string>
-    <string name="settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the" formatted="false">"For an unverified version, run remote-agent doctor on the computer"</string>
     <string name="settings_android_go_runtime_and_standard_library" formatted="false">"Go runtime and standard library for the shared core"</string>
     <string name="settings_android_icons_isc_license" formatted="false">"Icons · ISC License"</string>
     <string name="settings_android_image_drafts_and_file_source_information_are_cleared_after_7" formatted="false">"Image drafts and file source information are cleared after 7 idle days. Unconfirmed messages stay until confirmed or removed. File contents are not copied to the phone. Existing content is kept when storage is full."</string>
@@ -1874,7 +1866,6 @@
     <string name="settings_android_invalid_release_information_format" formatted="false">"Invalid release information format"</string>
     <string name="settings_android_later" formatted="false">"Later"</string>
     <string name="settings_android_latin_text_and_numbers_in_the_interface" formatted="false">"Latin text and numbers in the interface"</string>
-    <string name="settings_android_local_storage" formatted="false">"Local storage"</string>
     <string name="settings_android_new_computer" formatted="false">"New computer"</string>
     <string name="settings_android_new_device" formatted="false">"New device"</string>
     <string name="settings_android_new_device_joined" formatted="false">"New device joined"</string>
@@ -1892,11 +1883,9 @@
     <string name="settings_android_release_size_is_not_a_number" formatted="false">"Release size is not a number"</string>
     <string name="settings_android_release_versioncode_is_not_a_number" formatted="false">"Release versionCode is not a number"</string>
     <string name="settings_android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced" formatted="false">"Remove reclaimable originals and cache. Large images not yet synced will show previews only. Originals queued or in use, and session history, are kept."</string>
-    <string name="settings_android_remove_this_machine" formatted="false">"Remove this machine…"</string>
     <string name="settings_android_requests_to_join" formatted="false">" requests to join"</string>
     <string name="settings_android_sarasa_fixed_sc_symbol_subset" formatted="false">"Sarasa Fixed SC (symbol subset)"</string>
     <string name="settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" formatted="false">"Sessions end automatically after prolonged inactivity (not running, no pending actions, and no terminal input). You can resume at any time; chat history is kept."</string>
-    <string name="settings_android_show_content_and_approve_in_notifications" formatted="false">"Show content and approve in notifications"</string>
     <string name="settings_android_terminal_symbols" formatted="false">"Terminal symbols"</string>
     <string name="settings_android_the_downloaded_file_is_not_an_installation_package" formatted="false">"The downloaded file is not an installation package"</string>
     <string name="settings_android_the_downloaded_package_does_not_match_the_release_information" formatted="false">"The downloaded package does not match the release information"</string>
@@ -1909,7 +1898,6 @@
     <string name="settings_android_this_release_changes_the_protocol_after_installing_also_update_remote" formatted="false">"This release changes the protocol. After installing, also update remote-agent on the computer to continue."</string>
     <string name="settings_android_to_resume_a_removed_computer_s_sessions_open_its_retained" formatted="false">"To resume a removed computer\'s sessions, open its retained archive and choose “Rejoin and resume sessions”."</string>
     <string name="settings_android_unknown" formatted="false">"Unknown"</string>
-    <string name="settings_android_unverified" formatted="false">"Unverified"</string>
     <string name="settings_android_up_to_date" formatted="false">"Up to date"</string>
     <string name="settings_android_update" formatted="false">"Update"</string>
     <string name="settings_android_value1_approval_mode">"%1$s · Approval mode"</string>
@@ -1930,7 +1918,6 @@
     <string name="settings_cannot_sign_in_to_the_relay_right_now" formatted="false">"Cannot sign in to the relay right now"</string>
     <string name="settings_check_for_updates" formatted="false">"Check for updates"</string>
     <string name="settings_checking" formatted="false">" Checking…"</string>
-    <string name="settings_clear" formatted="false">"Clear…"</string>
     <string name="settings_clear_reclaimable_attachments_and_cache" formatted="false">"Clear reclaimable attachments and cache?"</string>
     <string name="settings_clear_settings" formatted="false">"Clear"</string>
     <string name="settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache" formatted="false">"Clears reclaimable originals, previews, and unsynced large image cache. Queued and active originals, session files, and history remain; unsynced large images will show only previews."</string>
@@ -1951,11 +1938,9 @@
     <string name="settings_cli_switches_offline_reason">"%1$s is offline. Showing the last synced state"</string>
     <string name="settings_cli_switches_state_off" formatted="false">"off"</string>
     <string name="settings_cli_switches_state_on" formatted="false">"on"</string>
-    <string name="settings_cli_switches_title" formatted="false">"Enabled CLIs"</string>
     <string name="settings_cli_switches_update_error">"Could not update enabled CLIs: %1$s"</string>
     <string name="settings_cli_unverified_badge" formatted="false">"Unverified"</string>
     <string name="settings_cli_unverified_short" formatted="false">"Unverified"</string>
-    <string name="settings_cli_version">"%1$s version"</string>
     <string name="settings_client_name" formatted="false">"Client name"</string>
     <string name="settings_clients_add_client" formatted="false">"Add client"</string>
     <string name="settings_clients_control_sessions" formatted="false">"Clients · Control sessions"</string>
@@ -1972,7 +1957,6 @@
     <string name="settings_computer" formatted="false">"Computer"</string>
     <string name="settings_computer_offline_showing_the_last_reading" formatted="false">"Computer offline. Showing the last reading."</string>
     <string name="settings_computer_settings_offline">"%1$s is offline. Its settings are unavailable for now."</string>
-    <string name="settings_computers_run_clis" formatted="false">"Computers · Run CLIs"</string>
     <string name="settings_could_not_download_retry_later" formatted="false">"Could not download. Retry later."</string>
     <string name="settings_could_not_read_the_device_list" formatted="false">"Could not read the device list"</string>
     <string name="settings_current" formatted="false">"Current"</string>
@@ -1983,7 +1967,6 @@
     <string name="settings_details" formatted="false">"Details"</string>
     <string name="settings_device_id" formatted="false">"Device ID"</string>
     <string name="settings_device_not_found" formatted="false">"Device not found"</string>
-    <string name="settings_devices" formatted="false">"Devices"</string>
     <string name="settings_empty_computers_authority_body" formatted="false">"Generate a pairing code and run remote-agent account join in your computer\'s terminal."</string>
     <string name="settings_empty_computers_member_body">"Open Settings › Add device on the managing client (%1$s) to add a computer."</string>
     <string name="settings_empty_computers_title" formatted="false">"No computers yet"</string>
@@ -2061,8 +2044,6 @@
     <string name="settings_section_runtime_and_storage" formatted="false">"Runtime &amp; storage"</string>
     <string name="settings_section_this_device" formatted="false">"This device"</string>
     <string name="settings_security_notifications" formatted="false">"Security notifications"</string>
-    <string name="settings_security_notifications_are_independent_of_session_alerts_delivery_is" formatted="false">"Security notifications are independent of session alerts. Delivery is not guaranteed; open the managing client daily to check recovery requests."</string>
-    <string name="settings_security_summary_authority" formatted="false">"This device manages"</string>
     <string name="settings_security_summary_non_authority">"Manager: %1$s"</string>
     <string name="settings_server_and_connection" formatted="false">"Server &amp; connection"</string>
     <string name="settings_session_alerts_are_off_you_will_not_be_notified" formatted="false">"Session alerts are off. You will not be notified of approvals."</string>
@@ -2093,8 +2074,6 @@
     <string name="settings_the_new_device_has_not_finished_joining_if_it" formatted="false">"The new device has not finished joining. If it cannot continue, remove it and pair again."</string>
     <string name="settings_the_original_operation_is_unfinished_continue_verifying" formatted="false">"The original operation is unfinished. Continue verifying."</string>
     <string name="settings_the_original_security_operation_is_verified_complete_you_can" formatted="false">"The original security operation is verified complete. You can rejoin the account."</string>
-    <string name="settings_the_time_on_the_right_is_the_last_use" formatted="false">"The time on the right is the last use. Names can only be changed on that device."</string>
-    <string name="settings_theme" formatted="false">"Theme"</string>
     <string name="settings_theme_auto" formatted="false">"Auto"</string>
     <string name="settings_this_browser_does_not_support_push_notifications" formatted="false">"This browser does not support push notifications"</string>
     <string name="settings_this_device_was_removed_from_the_account" formatted="false">"This device was removed from the account"</string>
@@ -2102,7 +2081,6 @@
     <string name="settings_times_are_shown_in_beijing_time_quotas_belong_to" formatted="false">"Times are shown in Beijing time. Quotas belong to the CLI’s signed-in account; other usage on that account may also count."</string>
     <string name="settings_unanswered_approvals_are_denied_after_this_time" formatted="false">"Unanswered approvals are denied after this time"</string>
     <string name="settings_unfinished_pairing" formatted="false">"Unfinished pairing"</string>
-    <string name="settings_unfinished_pairing_settings" formatted="false">" · Unfinished pairing"</string>
     <string name="settings_unnamed" formatted="false">"Unnamed"</string>
     <string name="settings_unverified" formatted="false">"Unverified · "</string>
     <string name="settings_up_to_date" formatted="false">"Up to date"</string>
@@ -2293,21 +2271,17 @@
     <string name="transport_conn_footer_unsupported_app" formatted="false">"This app version does not support direct connections yet; everything connects via relay."</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"Turn it on from this computer to use direct connections"</string>
     <string name="transport_detail_relay_only" formatted="false">"Everything connects via relay as usual"</string>
-    <string name="transport_diag" formatted="false">"Diagnostics"</string>
     <string name="transport_diag_check_path" formatted="false">"Local or public direct path"</string>
     <string name="transport_diag_check_peer" formatted="false">"Computer reachable &amp; responding"</string>
     <string name="transport_diag_check_retry" formatted="false">"Background auto-retry"</string>
     <string name="transport_diag_connected_body" formatted="false">"Loading and files are back on a direct connection."</string>
     <string name="transport_diag_connected_title" formatted="false">"Direct connected"</string>
-    <string name="transport_diag_copy" formatted="false">"Copy diagnostics"</string>
     <string name="transport_diag_copy_permission" formatted="false">"Couldn’t copy; check clipboard permission"</string>
-    <string name="transport_diag_copy_support" formatted="false">"Copy diagnostics for support"</string>
     <string name="transport_diag_explain_generic" formatted="false">"Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use."</string>
     <string name="transport_diag_explain_nat" formatted="false">"Both devices are behind restrictive networks such as cellular NAT or a corporate LAN. Everything currently uses relay automatically with no impact on use."</string>
     <string name="transport_diag_explain_no_reply" formatted="false">"The computer did not reply to the direct handshake; direct connections may be off there or blocked by a firewall. Everything currently uses relay automatically with no impact on use."</string>
     <string name="transport_diag_explain_peer_old" formatted="false">"The remote-agent version on the computer does not support direct connections yet; update it to enable direct paths. Everything currently uses relay automatically with no impact on use."</string>
     <string name="transport_diag_explain_probe_blocked" formatted="false">"This network appears to block UDP packets needed for direct probing. Everything currently uses relay automatically with no impact on use."</string>
-    <string name="transport_diag_footer" formatted="false">"Diagnostics show address types and ranges only, never the addresses themselves."</string>
     <string name="transport_diag_path_failed" formatted="false">"Could not establish a direct path"</string>
     <string name="transport_diag_path_nat" formatted="false">"Both sides are behind shared NAT; direct traversal failed"</string>
     <string name="transport_diag_path_udp_blocked" formatted="false">"UDP direct probing appears blocked on this network"</string>
@@ -2316,7 +2290,6 @@
     <string name="transport_diag_privacy_footer" formatted="false">"Copied diagnostics include address types and ranges only—no IP addresses, ports, or chat content."</string>
     <string name="transport_diag_report_title" formatted="false">"Direct connection diagnostics"</string>
     <string name="transport_diag_report_verdict">"Summary: %1$s"</string>
-    <string name="transport_diag_retry" formatted="false">"Try again"</string>
     <string name="transport_diag_retry_auto_desc" formatted="false">"Retries automatically when Wi-Fi or network changes"</string>
     <string name="transport_diag_retry_wait_desc" formatted="false">"Resumes automatically after updating remote-agent on the computer"</string>
     <string name="transport_diag_retrying" formatted="false">"Trying…"</string>
@@ -2340,7 +2313,6 @@
     <string name="transport_file_speed_direct">"Direct %1$s MiB/s"</string>
     <string name="transport_file_speed_relay">"Relay %1$s MiB/s"</string>
     <string name="transport_footer" formatted="false">"Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background."</string>
-    <string name="transport_group" formatted="false">"Connection"</string>
     <string name="transport_popover_a11y" formatted="false">"Direct connection active, tap for details"</string>
     <string name="transport_popover_direct_body" formatted="false">"Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first."</string>
     <string name="transport_popover_direct_title">"Direct to %1$s"</string>
@@ -2386,7 +2358,6 @@
     <string name="transport_summary_off" formatted="false">"Direct is off"</string>
     <string name="transport_use_file" formatted="false">"Used for files"</string>
     <string name="transport_use_read" formatted="false">"Used for loading"</string>
-    <string name="transport_why_not_connected" formatted="false">"Why it didn’t connect"</string>
     <string name="usage_backfilled_summary">"%1$s · %2$dd indexed"</string>
     <string name="usage_backfilling_banner">"Indexing local history · %1$d / %2$d days"</string>
     <string name="usage_backfilling_cell" formatted="false">"Indexing"</string>

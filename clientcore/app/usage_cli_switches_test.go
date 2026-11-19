@@ -720,3 +720,69 @@ func TestMachineSettingsOpenPrefetchesAllAgentsAndUsage(t *testing.T) {
 		t.Fatalf("expected GetSettings (%v) and 7d GetUsageStats (%v)", gotSettings, gotUsage7d)
 	}
 }
+
+func TestUpdateMachineAgentDefaultsClearsEffortOnModelChangeWithoutEffort(t *testing.T) {
+	c := New()
+	defer c.Close()
+	seedDualCLIMachine(t, c)
+	openBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_050,
+		Event: &corev1.Event_MachineSettingsOpen{
+			MachineSettingsOpen: &corev1.MachineSettingsOpenEvent{MachineId: "m-1"},
+		},
+	})
+	var getDC *corev1.DispatchCommandEffect
+	for _, eff := range openBatch.Effects {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			var cmd v1.Command
+			if err := cmd.Unmarshal(dc.CommandBytes); err == nil && cmd.GetGetSettings() != nil {
+				getDC = dc
+			}
+		}
+	}
+	if getDC == nil {
+		t.Fatal("expected GetSettings dispatch")
+	}
+	settleUpdateSettings(c, getDC, 1_791_633_600_055, &v1.CommandResult{
+		Outcome:         "executed",
+		ResultAvailable: true,
+		Kind: &v1.CommandResult_GetSettings{
+			GetSettings: &v1.GetSettingsResponse{
+				Settings: &v1.DaemonSettings{
+					DefaultModel:  "gpt-5",
+					DefaultEffort: "high",
+				},
+			},
+		},
+	}, "")
+
+	modelB := "gpt-5-mini"
+	batch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_060,
+		Event: &corev1.Event_UpdateMachineAgentDefaults{
+			UpdateMachineAgentDefaults: &corev1.UpdateMachineAgentDefaultsEvent{
+				MachineId: "m-1",
+				Agent:     v1.Agent_AGENT_CODEX,
+				Model:     &modelB,
+			},
+		},
+	})
+	var updated *v1.DaemonSettings
+	for _, eff := range batch.Effects {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			var cmd v1.Command
+			if err := cmd.Unmarshal(dc.CommandBytes); err == nil && cmd.GetUpdateSettings() != nil {
+				updated = cmd.GetUpdateSettings().GetSettings()
+			}
+		}
+	}
+	if updated == nil {
+		t.Fatalf("expected UpdateSettings command")
+	}
+	if got := updated.GetDefaultModel(); got != modelB {
+		t.Fatalf("expected model %q, got %q", modelB, got)
+	}
+	if got := updated.GetDefaultEffort(); got != "" {
+		t.Fatalf("expected stale effort cleared when model switches without effort, got %q", got)
+	}
+}

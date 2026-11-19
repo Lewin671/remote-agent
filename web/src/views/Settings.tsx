@@ -3,6 +3,7 @@ import * as l10n from "../i18n";
 import { t } from "../i18n";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import {
+  MachineStatusDot,
   QuotaBannerSeverity,
   QuotaSectionState,
   QuotaTone,
@@ -19,6 +20,7 @@ import type {
   SettingsViewModel,
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import {
+  ConnProbeState,
   NotificationPermissionState,
   PushRegistrationState,
   ThemePreference,
@@ -42,7 +44,6 @@ import {
   Banner,
   NavBar,
   Sheet,
-  StateMark,
   Switch,
   GlassButton,
   useRemote,
@@ -108,6 +109,14 @@ function SyncClientEffects({ remote }: { remote: Remote }) {
   }, [host, update]);
 
   return null;
+}
+
+function serverConnDotFor(vm: SettingsViewModel): MachineStatusDot {
+  const s = vm.connCheck?.serverState;
+  if (!vm.online || s === ConnProbeState.UNAVAILABLE) return MachineStatusDot.RED_STATIC;
+  if (s === ConnProbeState.SLOW || s === ConnProbeState.CHECKING) return MachineStatusDot.ORANGE_STATIC;
+  if (s === ConnProbeState.WORKING) return MachineStatusDot.GREEN_LIVE;
+  return MachineStatusDot.UNSPECIFIED;
 }
 
 function MachineRow({ m, go }: { m: MachineListCardView; go: Go }) {
@@ -225,7 +234,11 @@ export function SettingsScreenView({
       {vm.machines.length === 0 ? (
         <div className="set-empty-card" data-late={vm.machinesLoading ? "1" : undefined}>
           <b>{renderText(vm.emptyMachinesText) || l10n.t("settings.empty_computers_title")}</b>
-          {renderText(vm.emptyMachinesBody) && <p>{renderText(vm.emptyMachinesBody)}</p>}
+          {renderText(vm.emptyMachinesBody) ? (
+            <p>{renderText(vm.emptyMachinesBody)}</p>
+          ) : (
+            !vm.canAddDevice && addHint && <p>{addHint}</p>
+          )}
           {vm.canAddDevice && (
             <button type="button" className="pri-btn" onClick={addClick}>
               <Plus />
@@ -284,7 +297,7 @@ export function SettingsScreenView({
         <button type="button" className="row" onClick={onOpenConnCheck}>
           <span className="row-name">{l10n.t("settings.server_and_connection")}</span>
           <span className="v">
-            <StateMark kind={connTone} />
+            <StatusDotMark dot={serverConnDotFor(vm)} fallback={connTone} />
             <span className="vt">{serverHost || connText}</span>
           </span>
           <ChevronRight className="chev" />
@@ -581,6 +594,9 @@ export function ClientsScreenView({
   managementStandaloneSlot?: ReactNode;
 }) {
   const hintText = renderText(vm.errorText);
+  const clientCountText =
+    renderText(vm.clientCountText) ||
+    (vm.clients.length > 0 ? l10n.t("settings.clients_count", { count: vm.clients.length }) : "");
   return (
     <div className="page set">
       <NavBar
@@ -598,8 +614,11 @@ export function ClientsScreenView({
                 <div key={d.deviceId} className="row has-ic">
                   <span className="lead"><Smartphone /></span>
                   <span className="row-name">
-                    <b>{d.deviceId}</b>
-                    <small>{l10n.t("settings.clients_pairing_incomplete_desc")}</small>
+                    <b>{d.displayName || d.description || d.shortId || d.deviceId}</b>
+                    <small>
+                      {l10n.t("settings.clients_pairing_incomplete_desc")}
+                      {d.shortId ? ` · ${d.shortId}` : ""}
+                    </small>
                   </span>
                   <span className="v warn-txt">{l10n.t("settings.clients_pairing_incomplete_badge")}</span>
                 </div>
@@ -610,9 +629,7 @@ export function ClientsScreenView({
 
         <div className="label">
           <span>{l10n.t("settings.clients_group_paired")}</span>
-          {vm.clients.length > 0 && (
-            <span className="lbl-meta">{l10n.t("settings.clients_count", { count: vm.clients.length })}</span>
-          )}
+          {clientCountText && <span className="lbl-meta">{clientCountText}</span>}
         </div>
         <div className="grp">
           {(hintText || devicesLoadError) && (
@@ -623,22 +640,35 @@ export function ClientsScreenView({
               </button>
             </div>
           )}
-          {vm.clients.map((c: ClientRowView) => (
-            <button
-              key={c.deviceId}
-              type="button"
-              className="row has-ic client"
-              onClick={() => go("c/" + encodeURIComponent(c.deviceId))}
-            >
-              <span className="lead ico"><ClientIcon description={c.description} /></span>
-              <span className="row-name client-info">
-                {c.displayName || c.description || c.shortId}
-                {c.description && <small>{c.description}</small>}
-              </span>
-              <span className="v">{renderText(c.roleLabel) || renderText(c.lastUsedText)}</span>
-              <ChevronRight className="chev" />
-            </button>
-          ))}
+          {vm.clients.map((c: ClientRowView) => {
+            const title = c.displayName || c.description || c.shortId;
+            const sub = [
+              c.displayName && c.description && c.description !== c.displayName ? c.description : "",
+              c.shortId,
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            const trailing =
+              c.isSelf || c.isAuthority
+                ? renderText(c.roleLabel) || renderText(c.lastUsedText)
+                : renderText(c.lastUsedText) || renderText(c.roleLabel);
+            return (
+              <button
+                key={c.deviceId}
+                type="button"
+                className="row has-ic client"
+                onClick={() => go("c/" + encodeURIComponent(c.deviceId))}
+              >
+                <span className="lead ico"><ClientIcon description={c.description} /></span>
+                <span className="row-name client-info">
+                  <b>{title}</b>
+                  {sub && <small>{sub}</small>}
+                </span>
+                <span className="v">{trailing}</span>
+                <ChevronRight className="chev" />
+              </button>
+            );
+          })}
           {vm.isManager && (
             <button type="button" className="row has-ic act" onClick={() => go("settings/add-device")}>
               <span className="lead"><Plus /></span>

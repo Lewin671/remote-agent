@@ -620,4 +620,69 @@ class SettingsRedesignTest {
         ui.onNodeWithText("在此电脑启用").assertIsDisplayed()
         ui.onNodeWithText("停用后不出现在这台电脑的新任务、新定时、额度和用量与速度里；停用前已创建的会话和历史照常可用。").assertIsDisplayed()
     }
+
+    @Test
+    fun attachmentStorageErrorRetryHidesZeroProjectsAndSingleEffort() {
+        var retried = 0
+        var storageClicks = 0
+        val vm = MachineSettingsViewModel.newBuilder()
+            .setMachineId("m-err")
+            .setName("DevBox")
+            .setFound(true)
+            .setMember(true)
+            .setOnline(true)
+            .setEditable(true)
+            .setShowCliSwitches(true)
+            .setCliSwitchesEditable(true)
+            .setCliSwitchesConflictBanner(lit("开关配置在其他设备修改过"))
+            .addCliVersions(
+                CliVersionView.newBuilder()
+                    .setAgent(Agent.AGENT_CODEX)
+                    .setName("Codex")
+                    .setVersion("1.0.0")
+                    .setVerified(true)
+                    .setEnabled(true)
+                    .setDefaults(
+                        MachineAgentDefaultsView.newBuilder()
+                            .setAgent(Agent.AGENT_CODEX)
+                            .setAgentName("Codex")
+                            .setSelectedModel("gpt-5")
+                            .addEffortChoices(EffortChoiceView.newBuilder().setId("medium").setLabel(lit("中")).setSelected(true)),
+                    ),
+            )
+            .addCliVersions(
+                CliVersionView.newBuilder().setAgent(Agent.AGENT_CLAUDE).setName("Claude Code").setVersion("2.0").setVerified(true).setEnabled(true),
+            )
+            .setAttachmentStorage(AttachmentStorageView.newBuilder().setLoaded(false))
+            .setSettingsError(lit("无法读取存储设置"))
+            .setProjectCount(0)
+            .build()
+        val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
+        var showStorage by mutableStateOf(false)
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalNav provides nav) {
+                    if (showStorage) {
+                        MachineAttachmentStorageScreenContent(vm = vm, onRetry = { retried++ })
+                    } else {
+                        DeviceScreenContent(vm = vm, onOpenStorage = { storageClicks++ })
+                    }
+                }
+            }
+        }
+        ui.onNodeWithText("项目").assertDoesNotExist()
+        ui.onNodeWithText("附件存储").performScrollTo().performClick()
+        assertEquals(1, storageClicks)
+
+        ui.onNodeWithText("Codex").performScrollTo().performClick()
+        ui.waitForIdle()
+        ui.onAllNodesWithText("开关配置在其他设备修改过").onLast().assertIsDisplayed()
+        ui.onNodeWithText("推理强度").assertDoesNotExist()
+
+        ui.runOnUiThread { showStorage = true }
+        ui.waitForIdle()
+        ui.onNodeWithText("无法读取存储设置").assertIsDisplayed()
+        ui.onNodeWithText(sessionText(UiMessages.commonRetry())).performClick()
+        assertEquals(1, retried)
+    }
 }

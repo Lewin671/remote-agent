@@ -4218,5 +4218,305 @@
     "path": "internal/usagestats/agy_db.go",
     "literal": "agy:%s:%d",
     "reason": "Internal deduplication key format for Antigravity conversation DB steps matching transcript steps, never displayed."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Kit.kt",
+    "literal": "pulse",
+    "reason": "Internal Jetpack Compose animation debug label, never rendered as UI text."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Kit.kt",
+    "literal": "status-dot",
+    "reason": "Internal Jetpack Compose animation debug label, never rendered as UI text."
+  },
+  {
+    "path": "web/src/Workspace.tsx",
+    "literal": "; else if (kind === \"settings\" && arg === \"clients\") page =",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/Workspace.tsx",
+    "literal": "; else if (kind === \"settings\" && arg === \"licenses\") page =",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/Workspace.tsx",
+    "literal": "; else if (kind === \"settings\" && arg === \"notifications\") page =",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/ConnectionGroup.tsx",
+    "literal": "(); const [copied, setCopied] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/ConnectionGroup.tsx",
+    "literal": ": !copied ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/ConnectionGroup.tsx",
+    "literal": "ok",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Licenses.tsx",
+    "literal": "${res.status}",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Licenses.tsx",
+    "literal": "(); const [load, setLoad] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Licenses.tsx",
+    "literal": "content-type",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Licenses.tsx",
+    "literal": "error",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Licenses.tsx",
+    "literal": "fonts",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Licenses.tsx",
+    "literal": "text/html",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Licenses.tsx",
+    "literal": "unavailable",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": " locked",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "(); const [directOpen, setDirectOpen] = useState(directOpenDefault); const [runtimeSheet, setRuntimeSheet] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": ") : !cli.enabled ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": ") : ( !directUnsupported && cg && ( cg.rowDot ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "0 || !!projectCountText) && (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "0 || vm.showUsageEntry) && (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "; case MachineRingKind.DISK: return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "; case MachineRingKind.MEMORY: return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "body set",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "c.bytes === storage.selectedQuotaBytes) ?? storage?.quotaChoices[0]; const limitLabel = (limitChoice && renderText(limitChoice.label)) || renderText(storage?.limitLabel) || \"—\"; const usedLabel = renderText(storage?.usedTotalText) || renderText(storage?.uploadedText) || \"—\"; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "center muted",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "chev",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "cli-sh-ttl",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "err",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "gf",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "grp",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "grp cli-sw-grp",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "hint",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "list",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "m.selected)?.label)) || renderText(cli.defaultModeLabel) || l10n.t(\"models.default\"); const modeDanger = cli.defaultModeDanger || ad?.selectedMode === ApprovalMode.FULL_ACCESS; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "page set",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "radiogroup",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "ring-svg",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "row",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "row cli-sw-row",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "row help",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "set-banners",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "true",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "v.agent === activeCliAgent) : undefined; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": "warn",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Projects.tsx",
+    "literal": "r.key === removingKey) : undefined; const blocked = !vm.canEdit ? renderText(vm.blockedReason) || t(\"projects.connect_to_edit\") : \"\"; const filterName = vm.filterMachineName || vm.filterMachineId; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": ") : updateError ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "; if (/iphone|ios|android|pixel|phone|mobile/.test(s)) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "; if (/macos|mac os|windows|linux|desktop/.test(s)) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "; return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "body set",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "button",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/MachineSettings.tsx",
+    "literal": ") : !vm.online ? (",
+    "reason": "TypeScript/JSX 语法结构片段（箭头函数与三元表达式符号之间的代码），并非用户可见文案；词法扫描器按 >...< 误判。"
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": ") : ( !vm.canAddDevice && addHint &&",
+    "reason": "TypeScript/JSX 语法结构片段（箭头函数与三元表达式符号之间的代码），并非用户可见文案；词法扫描器按 >...< 误判。"
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "go(\"settings/add-device\")); return (",
+    "reason": "TypeScript/JSX 语法结构片段（箭头函数与 return 之间的代码），并非用户可见文案；词法扫描器按 >...< 误判。"
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "page set",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "ready",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "row has-ic",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "row-name client-info",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "settings/add-device",
+    "reason": "Internal CSS class name, ARIA/HTML attribute, route path, MIME type, or internal Error sentinel; never rendered to users."
   }
 ]

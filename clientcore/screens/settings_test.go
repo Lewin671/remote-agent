@@ -456,4 +456,14 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 	if projVM.GetManage().GetProjectCount() != 1 || projVM.GetManage().GetFilterMachineId() != "1234567890abcdef" {
 		t.Fatalf("expected filtered ManageProjects count=1, got %+v", projVM.GetManage())
 	}
+
+	// Verify loading placeholders ("—") when usage snapshots and image storage stats haven't arrived yet.
+	clear(st.UsageSnapshots)
+	loadingVM := BuildMachineSettings(st, sv, nil, "1234567890abcdef")
+	if loadingVM.GetUsageEmptyText().GetLiteral() != "—" {
+		t.Fatalf("expected UsageEmptyText='—' while snapshots missing, got %+v", loadingVM.GetUsageEmptyText())
+	}
+	if loadingVM.GetAttachmentStorage().GetSummaryText().GetLiteral() != "—" {
+		t.Fatalf("expected AttachmentStorage.SummaryText='—' while storage missing, got %+v", loadingVM.GetAttachmentStorage().GetSummaryText())
+	}
 }

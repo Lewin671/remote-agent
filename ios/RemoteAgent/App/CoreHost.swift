@@ -609,6 +609,13 @@ actor CoreHost: SyncEngine {
         }
     }
 
+    func reportNotificationPref(supported: Bool) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.setNotificationPref.supported = supported
+        }
+    }
+
     func openSettings() async {
         guard !closed else { return }
         await renderTargets([.settings])
@@ -2363,8 +2370,10 @@ actor CoreHost: SyncEngine {
             _ = await stepDemo { $0.networkChanged = .with { $0.signature = "none"; $0.available = false } }
         case .noServer:
             let dropEffs = await stepDemo { $0.streamClosed = .with { $0.legID = legID; $0.unresolvedHost = true; $0.error = self.demoState.error } }
-            if let grace = dropEffs.compactMap({ if case .scheduleTimer(let t)? = $0.effect, t.kind == .linkGrace { return t.timerID }; return nil }).first {
-                _ = await stepDemo { $0.timerFired = .with { $0.timerID = grace; $0.kind = .linkGrace } }
+            for eff in dropEffs {
+                if case .scheduleTimer(let t)? = eff.effect, t.kind == .linkGrace {
+                    _ = await stepDemo { $0.timerFired = .with { $0.timerID = t.timerID; $0.kind = t.kind; $0.key = t.key } }
+                }
             }
         case .waiting:
             _ = await stepDemo { $0.streamClosed = .with { $0.legID = legID } }

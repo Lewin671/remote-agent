@@ -73,7 +73,7 @@ struct DevicesScreen: View {
         let pairedClients = vm.clients.filter { !$0.isSelf } + vm.unfinishedPairings
 
         if !selfClients.isEmpty {
-            GroupCard {
+            GroupCard(separatorLeading: 46) {
                 ForEach(selfClients, id: \.deviceID) { c in
                     ClientRow(
                         client: c,
@@ -85,7 +85,7 @@ struct DevicesScreen: View {
 
         if !pairedClients.isEmpty {
             GroupLabel(L10n.settingsClientsGroupPaired())
-            GroupCard {
+            GroupCard(separatorLeading: 46) {
                 ForEach(pairedClients, id: \.deviceID) { c in
                     ClientRow(
                         client: c,
@@ -93,16 +93,29 @@ struct DevicesScreen: View {
                         onRemove: access.isAuthority && !c.isSelf ? { removing = c } : nil
                     )
                 }
+                if vm.canAddDevice {
+                    GRow(L10n.settingsClientsAddClient(), action: true) {
+                        nav.open(.addDevice())
+                    }
+                    .lead {
+                        SymbolImage("plus", size: 17, color: DS.blue)
+                            .frame(width: 22, alignment: .center)
+                    }
+                }
+            }
+        } else if vm.canAddDevice {
+            GroupCard(separatorLeading: 46) {
+                GRow(L10n.settingsClientsAddClient(), action: true) {
+                    nav.open(.addDevice())
+                }
+                .lead {
+                    SymbolImage("plus", size: 17, color: DS.blue)
+                        .frame(width: 22, alignment: .center)
+                }
             }
         }
 
-        if vm.canAddDevice {
-            GroupCard {
-                GRow(L10n.settingsClientsAddClient(), action: true, icon: "plus") {
-                    nav.open(.addDevice())
-                }
-            }
-        } else {
+        if !vm.canAddDevice {
             let hint = vm.addDeviceHint.rendered()
             if !hint.isEmpty { GroupNote(hint) }
         }

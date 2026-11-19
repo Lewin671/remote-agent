@@ -210,7 +210,7 @@ fun SettingsScreen() {
         vm = vm,
         state = state,
         push = push,
-        serverDisplay = remote.account.server.removePrefix("https://"),
+        serverDisplay = remote.account.server.removePrefix("https://").removePrefix("http://"),
         localCacheText = localCacheBytes?.let { imageBytes(it, copy) }.orEmpty(),
         versionFallback = version,
         updaterEnabled = Updater.enabled(app),
@@ -585,10 +585,15 @@ internal fun MachinesGroup(
             }
             if (emptyBody.isNotEmpty()) {
                 Text(emptyBody, style = T.s13, color = p.ink2)
+            } else if (!vm.canAddDevice) {
+                val addHint = uiText(vm.addDeviceHint)
+                if (addHint.isNotEmpty()) {
+                    Text(addHint, style = T.s13, color = p.ink2)
+                }
             }
             if (!vm.machinesLoading && vm.canAddDevice) {
                 PillButton(
-                    copy(UiMessages.settingsAddDeviceItem()),
+                    copy(UiMessages.settingsAddFirstComputer()),
                     onPair,
                     Modifier.fillMaxWidth().padding(top = 4.dp),
                     ButtonKind.INK,
@@ -922,7 +927,7 @@ internal fun DeviceScreenContent(
             if (vm.showStatusEntry) {
                 MachineRingsCard(
                     vm.statusRingsList,
-                    vm.online,
+                    vm.member && vm.online && vm.protocolMismatch == 0,
                     onOpen = onOpenStatus,
                     dot = vm.statusCardDot,
                     badge = uiText(vm.statusCardBadge),
@@ -965,32 +970,41 @@ internal fun DeviceScreenContent(
                                 }
                                 else -> AnnotatedString("")
                             }
-                            GRow(
-                                sec.agentName,
-                                lead = {
-                                    Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
-                                        AgentMarks.of(sec.agent)?.let { Icon(it, null, Modifier.size(20.dp), p.ink2) }
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .heightIn(min = 50.dp)
+                                    .clickable(onClick = onOpenQuota)
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                                    AgentMarks.of(sec.agent)?.let { Icon(it, null, Modifier.size(20.dp), p.ink2) }
+                                }
+                                Text(
+                                    sec.agentName,
+                                    style = T.s17,
+                                    color = p.ink,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    if (trailingText.isNotEmpty()) {
+                                        Text(
+                                            trailingText,
+                                            style = T.s15.digits(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.widthIn(max = 200.dp),
+                                        )
                                     }
-                                },
-                                trailing = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        if (trailingText.isNotEmpty()) {
-                                            Text(
-                                                trailingText,
-                                                style = T.s15.digits(),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.widthIn(max = 200.dp),
-                                            )
-                                        }
-                                        Arrow(p.ink3, T.s15)
-                                    }
-                                },
-                                onClick = onOpenQuota,
-                            )
+                                    Arrow(p.ink3, T.s15)
+                                }
+                            }
                         }
                     }
                     if (vm.showUsageEntry) {
@@ -1008,22 +1022,46 @@ internal fun DeviceScreenContent(
                                 }
                                 else -> copy(UiMessages.settingsUsageSummaryEmpty())
                             }
-                            GRow(
-                                copy(UiMessages.settingsUsageAndSpeed()),
-                                usageSummary,
-                                singleLineValue = true,
-                                lead = {
-                                    Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
-                                        Ic(Lucide.Gauge, 20.dp, p.ink2)
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .heightIn(min = 50.dp)
+                                    .clickable(onClick = onOpenUsage)
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                                    Ic(Lucide.Gauge, 20.dp, p.ink2)
+                                }
+                                Text(
+                                    copy(UiMessages.settingsUsageAndSpeed()),
+                                    style = T.s17,
+                                    color = p.ink,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    if (usageSummary.isNotEmpty()) {
+                                        Text(
+                                            usageSummary,
+                                            style = T.s15.digits(),
+                                            color = p.ink2,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.widthIn(max = 200.dp),
+                                        )
                                     }
-                                },
-                                onClick = onOpenUsage,
-                                chevron = true,
-                            )
+                                    Arrow(p.ink3, T.s15)
+                                }
+                            }
                         }
                     }
                 }
-                Group(rows = rows)
+                ClientsAlignedCard(rows = rows)
             }
 
             // Module 2: 编程 CLI
@@ -1037,7 +1075,7 @@ internal fun DeviceScreenContent(
                         tone = NoticeTone.WARN,
                     )
                 }
-                Group(
+                ClientsAlignedCard(
                     rows = vm.cliVersionsList.map { cli ->
                         @Composable {
                             val unverifiedWord = uiText(cli.unverifiedLabel)
@@ -1236,7 +1274,7 @@ internal fun DeviceScreenContent(
                         storageSummary,
                         valueColor = if (vm.attachmentStorage.summaryWarn) p.orangeInk else null,
                         singleLineValue = true,
-                        onClick = if (vm.hasAttachmentStorage() || vm.member) onOpenStorage else null,
+                        onClick = if (vm.member && vm.protocolMismatch == 0) onOpenStorage else null,
                         chevron = true,
                     )
                 }
@@ -1245,12 +1283,14 @@ internal fun DeviceScreenContent(
 
             // Module 4: 管理 + Bottom Danger
             SectionLabel(copy(UiMessages.settingsSectionManagement()))
-            val projectCountLabel = uiText(vm.projectCountText).ifEmpty {
+            val rawProjectCount = uiText(vm.projectCountText)
+            val showProjects = vm.projectCount > 0 || rawProjectCount.isNotEmpty()
+            val projectCountLabel = rawProjectCount.ifEmpty {
                 copy(UiMessages.settingsProjectCountValue(vm.projectCount))
             }
-            Group(
-                rows = listOf(
-                    {
+            val mgmtRows: List<@Composable () -> Unit> = buildList {
+                if (showProjects) {
+                    add {
                         GRow(
                             copy(UiMessages.settingsProjectsRow()),
                             projectCountLabel,
@@ -1258,22 +1298,23 @@ internal fun DeviceScreenContent(
                             onClick = { onOpenProjects(vm.machineId) },
                             chevron = true,
                         )
-                    },
-                    {
-                        GRow(
-                            copy(UiMessages.settingsDeviceId()),
-                            trailing = {
-                                Text(
-                                    vm.shortId.ifEmpty { vm.machineId.take(8) },
-                                    style = T.s13.copy(fontFamily = FontFamily.Monospace),
-                                    color = p.ink2,
-                                    maxLines = 1,
-                                )
-                            },
-                        )
-                    },
-                ),
-            )
+                    }
+                }
+                add {
+                    GRow(
+                        copy(UiMessages.settingsDeviceId()),
+                        trailing = {
+                            Text(
+                                vm.shortId.ifEmpty { vm.machineId.take(8) },
+                                style = T.s13.copy(fontFamily = FontFamily.Monospace),
+                                color = p.ink2,
+                                maxLines = 1,
+                            )
+                        },
+                    )
+                }
+            }
+            Group(rows = mgmtRows)
 
             val mgmt = vm.management
             if (mgmt.canRejoin) {
@@ -1482,6 +1523,13 @@ private fun CliSettingsSheet(
 
     AdaptiveSheet(onClose = onClose) {
         SheetHead(cli.name, copy(UiMessages.commonDone()), onClose)
+        if (vm.hasCliSwitchesConflictBanner() && uiText(vm.cliSwitchesConflictBanner).isNotEmpty()) {
+            Notice(
+                uiText(vm.cliSwitchesConflictBanner),
+                Modifier.padding(bottom = 10.dp),
+                NoticeTone.WARN,
+            )
+        }
         if (vm.hasCliSwitchesDisabledReason() && uiText(vm.cliSwitchesDisabledReason).isNotEmpty()) {
             Notice(
                 uiText(vm.cliSwitchesDisabledReason),
@@ -1589,16 +1637,16 @@ private fun CliSettingsSheet(
                     onClick = if (editableDefaults && d.modelChoicesList.isNotEmpty()) onPickModel else null,
                     chevron = true,
                 )
-                Box(Modifier.topLine(p.sep, 18.dp)) {
-                    GRow(
-                        copy(UiMessages.settingsCliSheetEffort()),
-                        effortLabel,
-                        singleLineValue = true,
-                        onClick = if (editableDefaults) {
-                            if (d.effortChoicesList.size > 1) onPickEffort else if (d.modelChoicesList.isNotEmpty()) onPickModel else null
-                        } else null,
-                        chevron = true,
-                    )
+                if (d.effortChoicesList.size > 1) {
+                    Box(Modifier.topLine(p.sep, 18.dp)) {
+                        GRow(
+                            copy(UiMessages.settingsCliSheetEffort()),
+                            effortLabel,
+                            singleLineValue = true,
+                            onClick = if (editableDefaults) onPickEffort else null,
+                            chevron = true,
+                        )
+                    }
                 }
                 Box(Modifier.topLine(p.sep, 18.dp)) {
                     GRow(
@@ -2047,6 +2095,7 @@ fun MachineAttachmentStorageScreen(id: String) {
     LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
     MachineAttachmentStorageScreenContent(
         vm = vm,
+        onRetry = { remote.coreHost.openMachineSettings(id) },
         onQuota = { bytes -> remote.coreHost.updateMachineDaemonSettings(id, imageUploadQuotaBytes = bytes) },
         onClean = { remote.coreHost.updateMachineDaemonSettings(id, cleanImages = true) },
     )
@@ -2055,6 +2104,7 @@ fun MachineAttachmentStorageScreen(id: String) {
 @Composable
 internal fun MachineAttachmentStorageScreenContent(
     vm: MachineSettingsViewModel,
+    onRetry: () -> Unit = {},
     onQuota: (Long) -> Unit = {},
     onClean: () -> Unit = {},
 ) {
@@ -2077,13 +2127,30 @@ internal fun MachineAttachmentStorageScreenContent(
             if (saveErr.isNotEmpty()) {
                 Notice(saveErr, Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp), NoticeTone.ERROR)
             }
+            val readError = uiText(vm.settingsError)
             val editableControls = vm.online && vm.editable && !vm.savePending
-            MachineAttachmentStorage(
-                storage = vm.attachmentStorage,
-                enabled = editableControls && !vm.attachmentStorage.cleaning,
-                onQuota = onQuota,
-                onClean = onClean,
-            )
+            if (!vm.attachmentStorage.loaded) {
+                if (readError.isNotEmpty()) {
+                    Notice(
+                        readError,
+                        Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                        NoticeTone.ERROR,
+                        action = copy(UiMessages.commonRetry()),
+                        onAction = onRetry,
+                    )
+                } else if (!vm.online) {
+                    PageNote(copy(UiMessages.settingsAndroidValue1IsOfflineConnectToReadAndEditNewSession(vm.name.ifEmpty { vm.machineId })))
+                } else {
+                    PageNote(copy(UiMessages.commonLoading()))
+                }
+            } else {
+                MachineAttachmentStorage(
+                    storage = vm.attachmentStorage,
+                    enabled = editableControls && !vm.attachmentStorage.cleaning,
+                    onQuota = onQuota,
+                    onClean = onClean,
+                )
+            }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -2148,14 +2215,14 @@ internal fun MachineAttachmentStorage(
                 .background(p.fill2),
         ) {
             Row(Modifier.fillMaxSize()) {
-                if (upPct > 0) Box(Modifier.weight(upPct.toFloat()).fillMaxHeight().background(p.blue))
+                if (upPct > 0) Box(Modifier.weight(upPct.toFloat()).fillMaxHeight().background(p.ink))
                 if (prePct > 0) Box(Modifier.weight(prePct.toFloat()).fillMaxHeight().background(p.ink3))
                 if (resPct > 0) Box(Modifier.weight(resPct.toFloat()).fillMaxHeight().background(p.orange))
                 if (remPct > 0) Spacer(Modifier.weight(remPct.toFloat()))
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            StorageLegendDot(p.blue, copy(UiMessages.settingsStorageLegendUploaded()))
+            StorageLegendDot(p.ink, copy(UiMessages.settingsStorageLegendUploaded()))
             StorageLegendDot(p.ink3, copy(UiMessages.settingsStorageLegendPreview()))
             if (storage.showEmergencyReserve || resPct > 0) {
                 StorageLegendDot(p.orange, copy(UiMessages.settingsStorageLegendReserve()))

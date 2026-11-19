@@ -576,6 +576,7 @@ final class AppModel {
             self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
         }
         await ctx.coreHost.reportAppearancePref(settings.settings.theme.proto)
+        await ctx.coreHost.reportNotificationPref(supported: false)
         installAuthorityProtection(made.remote.authorityGate)
         updateAuthorityAvailability()
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
@@ -856,6 +857,7 @@ final class AppModel {
                     scheduleSeen: scheduleSeen
                 )
                 await host?.reportAppearancePref(initialTheme)
+                await host?.reportNotificationPref(supported: false)
             }
         }
 

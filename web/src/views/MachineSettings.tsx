@@ -371,7 +371,7 @@ function CliSettingsSheet({
       {!cli.verified && (
         <div className="gf">{l10n.t("settings.version_unverified_run_remote_agent_doctor_on_this_computer")}</div>
       )}
-      {canToggleCli && vm.cliSwitchesLeaseExpired && renderText(vm.cliSwitchesFooter) && (
+      {canToggleCli && renderText(vm.cliSwitchesFooter) && (
         <div className="gf">{renderText(vm.cliSwitchesFooter)}</div>
       )}
       {cli.enabled && ad ? (
@@ -388,7 +388,7 @@ function CliSettingsSheet({
               <span className="v">{renderText(ad.selectedModelLabel) || l10n.t("models.default")}</span>
               <ChevronRight className="chev" />
             </button>
-            {ad.effortChoices.length > 0 && (
+            {ad.effortChoices.length > 1 && (
               <button
                 type="button"
                 className="row"
@@ -430,11 +430,13 @@ export function AttachmentStorageScreenView({
   id,
   vm,
   onBack,
+  onRetrySettings,
   onUpdateDaemonSettings,
 }: {
   id: string;
   vm: MachineSettingsViewModel;
   onBack: () => void;
+  onRetrySettings?: () => void;
   onUpdateDaemonSettings: (patch: { imageUploadQuotaBytes?: bigint; cleanImages?: boolean }) => void;
 }) {
   const [pickingLimit, setPickingLimit] = useState(false);
@@ -477,9 +479,23 @@ export function AttachmentStorageScreenView({
           <div className="set-banners"><Banner kind={vm.saveUnknown ? "warn" : "err"}>{renderText(vm.saveError)}</Banner></div>
         )}
         {!storage?.loaded ? (
-          <div className="center muted" data-late={vm.settingsLoading ? "1" : undefined}>
-            {renderText(vm.settingsError) || l10n.t("settings.attachment_storage")}
-          </div>
+          renderText(vm.settingsError) ? (
+            <div className="center muted">
+              {renderText(vm.settingsError)}
+              {onRetrySettings && (
+                <>
+                  {" "}
+                  <button type="button" className="link" onClick={onRetrySettings}>{t("common.retry")}</button>
+                </>
+              )}
+            </div>
+          ) : !vm.online ? (
+            <div className="center muted">{l10n.t("settings.offline")}</div>
+          ) : (
+            <div className="center muted" data-late={vm.settingsLoading ? "1" : undefined}>
+              {l10n.t("common.loading")}
+            </div>
+          )
         ) : (
           <>
             <div className="grp stor-card">
@@ -674,6 +690,7 @@ export function MachineSettingsScreenView({
         id={id}
         vm={vm}
         onBack={onBack}
+        onRetrySettings={onRetrySettings}
         onUpdateDaemonSettings={onUpdateDaemonSettings}
       />
     );
@@ -719,7 +736,7 @@ export function MachineSettingsScreenView({
   const storageSummary = storage
     ? renderText(storage.summaryText) || (storage.loaded ? renderText(storage.limitLabel) : "") || "—"
     : "";
-  const canOpenStorage = !!storage?.loaded && vm.member && vm.protocolMismatch === 0;
+  const canOpenStorage = !!storage && vm.member && vm.protocolMismatch === 0;
 
   let usageSummaryText = "";
   if (vm.showUsageEntry) {
@@ -921,7 +938,7 @@ export function MachineSettingsScreenView({
               onClick={() => go(routeForMachineStorage(id))}
             >
               <span className="row-name">{l10n.t("settings.attachment_storage")}</span>
-              <span className={"v" + (storage.summaryWarn && canOpenStorage ? " warn-txt" : "")}>
+              <span className={"v" + (storage.summaryWarn && storage.loaded && canOpenStorage ? " warn-txt" : "")}>
                 {storageSummary}
               </span>
               <ChevronRight className="chev" />

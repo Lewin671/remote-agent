@@ -12,15 +12,12 @@ interface LicenseEntry {
 
 const LICENSE_GROUPS: Array<{
   id: string;
-  titleKey:
-    | "settings.licenses_web_fonts_title"
-    | "settings.licenses_web_icons_title"
-    | "settings.licenses_web_packages_title";
+  title: () => string;
   items: LicenseEntry[];
 }> = [
   {
     id: "fonts",
-    titleKey: "settings.licenses_web_fonts_title",
+    title: () => l10n.t("settings.licenses_web_fonts_title"),
     items: [
       { id: "inter", name: "Inter", license: "SIL Open Font License 1.1", path: "/fonts/OFL-Inter.txt" },
       { id: "jetbrains-mono", name: "JetBrains Mono", license: "SIL Open Font License 1.1", path: "/fonts/OFL-JetBrainsMono.txt" },
@@ -28,14 +25,14 @@ const LICENSE_GROUPS: Array<{
   },
   {
     id: "icons",
-    titleKey: "settings.licenses_web_icons_title",
+    title: () => l10n.t("settings.licenses_web_icons_title"),
     items: [
       { id: "lucide", name: "Lucide", license: "ISC License", path: "/licenses/ISC-Lucide.txt" },
     ],
   },
   {
     id: "packages",
-    titleKey: "settings.licenses_web_packages_title",
+    title: () => l10n.t("settings.licenses_web_packages_title"),
     items: [
       { id: "notices", name: "THIRD_PARTY_NOTICES.txt", license: "Web / Runtime Dependencies", path: "/licenses/THIRD_PARTY_NOTICES.txt" },
     ],
@@ -90,7 +87,7 @@ export function LicensesPage({ onBack }: { onBack: () => void }) {
       <div className="body set">
         {LICENSE_GROUPS.map((g) => (
           <div key={g.id}>
-            <div className="label">{l10n.t(g.titleKey)}</div>
+            <div className="label">{g.title()}</div>
             <div className="grp">
               {g.items.map((item) => (
                 <button

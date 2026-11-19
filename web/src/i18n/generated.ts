@@ -1260,15 +1260,12 @@ export interface MessageArgs {
   "session.usage_entry_unavailable": { agent: string };
   "session.view": { [name: string]: never };
   "settings.about": { [name: string]: never };
-  "settings.account": { [name: string]: never };
   "settings.account_quota": { [name: string]: never };
   "settings.account_security_title": { [name: string]: never };
   "settings.add_device_footer_hint": { name: string };
   "settings.add_device_item": { [name: string]: never };
   "settings.add_first_computer": { [name: string]: never };
   "settings.added": { [name: string]: never };
-  "settings.all_clients": { [name: string]: never };
-  "settings.all_devices": { [name: string]: never };
   "settings.appearance": { [name: string]: never };
   "settings.approval_timeout": { [name: string]: never };
   "settings.attachment_storage": { [name: string]: never };
@@ -1280,7 +1277,6 @@ export interface MessageArgs {
   "settings.cannot_sign_in_to_the_relay_right_now": { [name: string]: never };
   "settings.check_for_updates": { [name: string]: never };
   "settings.checking": { [name: string]: never };
-  "settings.clear": { [name: string]: never };
   "settings.clear_reclaimable_attachments_and_cache": { [name: string]: never };
   "settings.clear_settings": { [name: string]: never };
   "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": { [name: string]: never };
@@ -1301,11 +1297,9 @@ export interface MessageArgs {
   "settings.cli_switches_offline_reason": { name: string };
   "settings.cli_switches_state_off": { [name: string]: never };
   "settings.cli_switches_state_on": { [name: string]: never };
-  "settings.cli_switches_title": { [name: string]: never };
   "settings.cli_switches_update_error": { reason: string };
   "settings.cli_unverified_badge": { [name: string]: never };
   "settings.cli_unverified_short": { [name: string]: never };
-  "settings.cli_version": { name: string };
   "settings.client_name": { [name: string]: never };
   "settings.clients_add_client": { [name: string]: never };
   "settings.clients_control_sessions": { [name: string]: never };
@@ -1322,7 +1316,6 @@ export interface MessageArgs {
   "settings.computer": { [name: string]: never };
   "settings.computer_offline_showing_the_last_reading": { [name: string]: never };
   "settings.computer_settings_offline": { name: string };
-  "settings.computers_run_clis": { [name: string]: never };
   "settings.could_not_download_retry_later": { [name: string]: never };
   "settings.could_not_read_the_device_list": { [name: string]: never };
   "settings.current": { [name: string]: never };
@@ -1333,7 +1326,6 @@ export interface MessageArgs {
   "settings.details": { [name: string]: never };
   "settings.device_id": { [name: string]: never };
   "settings.device_not_found": { [name: string]: never };
-  "settings.devices": { [name: string]: never };
   "settings.empty_computers_authority_body": { [name: string]: never };
   "settings.empty_computers_member_body": { name: string };
   "settings.empty_computers_title": { [name: string]: never };
@@ -1411,8 +1403,6 @@ export interface MessageArgs {
   "settings.section_runtime_and_storage": { [name: string]: never };
   "settings.section_this_device": { [name: string]: never };
   "settings.security_notifications": { [name: string]: never };
-  "settings.security_notifications_are_independent_of_session_alerts_delivery_is": { [name: string]: never };
-  "settings.security_summary_authority": { [name: string]: never };
   "settings.security_summary_non_authority": { name: string };
   "settings.server_and_connection": { [name: string]: never };
   "settings.session_alerts_are_off_you_will_not_be_notified": { [name: string]: never };
@@ -1443,8 +1433,6 @@ export interface MessageArgs {
   "settings.the_new_device_has_not_finished_joining_if_it": { [name: string]: never };
   "settings.the_original_operation_is_unfinished_continue_verifying": { [name: string]: never };
   "settings.the_original_security_operation_is_verified_complete_you_can": { [name: string]: never };
-  "settings.the_time_on_the_right_is_the_last_use": { [name: string]: never };
-  "settings.theme": { [name: string]: never };
   "settings.theme_auto": { [name: string]: never };
   "settings.this_browser_does_not_support_push_notifications": { [name: string]: never };
   "settings.this_device_was_removed_from_the_account": { [name: string]: never };
@@ -1452,7 +1440,6 @@ export interface MessageArgs {
   "settings.times_are_shown_in_beijing_time_quotas_belong_to": { [name: string]: never };
   "settings.unanswered_approvals_are_denied_after_this_time": { [name: string]: never };
   "settings.unfinished_pairing": { [name: string]: never };
-  "settings.unfinished_pairing_settings": { [name: string]: never };
   "settings.unnamed": { [name: string]: never };
   "settings.unverified": { [name: string]: never };
   "settings.up_to_date": { [name: string]: never };
@@ -1585,7 +1572,6 @@ export interface MessageArgs {
   "transport.conn_footer_unsupported_browser": { [name: string]: never };
   "transport.detail_daemon_disabled": { [name: string]: never };
   "transport.detail_relay_only": { [name: string]: never };
-  "transport.diag": { [name: string]: never };
   "transport.diag_at": { seconds: string; state: string };
   "transport.diag_cand": { count: number; kind: string; scope: string };
   "transport.diag_channel": { [name: string]: never };
@@ -1594,9 +1580,7 @@ export interface MessageArgs {
   "transport.diag_check_retry": { [name: string]: never };
   "transport.diag_connected_body": { [name: string]: never };
   "transport.diag_connected_title": { [name: string]: never };
-  "transport.diag_copy": { [name: string]: never };
   "transport.diag_copy_permission": { [name: string]: never };
-  "transport.diag_copy_support": { [name: string]: never };
   "transport.diag_count": { count: number };
   "transport.diag_dtls": { [name: string]: never };
   "transport.diag_explain_generic": { [name: string]: never };
@@ -1605,7 +1589,6 @@ export interface MessageArgs {
   "transport.diag_explain_peer_old": { [name: string]: never };
   "transport.diag_explain_probe_blocked": { [name: string]: never };
   "transport.diag_family_unknown": { [name: string]: never };
-  "transport.diag_footer": { [name: string]: never };
   "transport.diag_g_checks": { [name: string]: never };
   "transport.diag_g_local": { [name: string]: never };
   "transport.diag_g_peer": { [name: string]: never };
@@ -1657,7 +1640,6 @@ export interface MessageArgs {
   "transport.diag_result_retired": { [name: string]: never };
   "transport.diag_result_timeout": { [name: string]: never };
   "transport.diag_result_trying": { [name: string]: never };
-  "transport.diag_retry": { [name: string]: never };
   "transport.diag_retry_auto_desc": { [name: string]: never };
   "transport.diag_retry_wait_desc": { [name: string]: never };
   "transport.diag_retrying": { [name: string]: never };
@@ -1729,7 +1711,6 @@ export interface MessageArgs {
   "transport.file_speed_direct": { direct: string };
   "transport.file_speed_relay": { relay: string };
   "transport.footer": { [name: string]: never };
-  "transport.group": { [name: string]: never };
   "transport.popover_a11y": { [name: string]: never };
   "transport.popover_direct_body": { [name: string]: never };
   "transport.popover_direct_title": { name: string };
@@ -1776,7 +1757,6 @@ export interface MessageArgs {
   "transport.summary_off": { [name: string]: never };
   "transport.use_file": { [name: string]: never };
   "transport.use_read": { [name: string]: never };
-  "transport.why_not_connected": { [name: string]: never };
   "usage.backfilled_summary": { name: string; scanned: number };
   "usage.backfilling_banner": { scanned: number; total: number };
   "usage.backfilling_cell": { [name: string]: never };
@@ -3582,15 +3562,12 @@ export const messages = {
     "session.usage_entry_unavailable": "{agent} usage and speed telemetry unavailable",
     "session.view": "View",
     "settings.about": "About",
-    "settings.account": "Account",
     "settings.account_quota": "Account quota",
     "settings.account_security_title": "Account security",
     "settings.add_device_footer_hint": "To add a computer or client, open Settings › Add device on the managing client ({name}).",
     "settings.add_device_item": "Add device",
     "settings.add_first_computer": "Add first computer",
     "settings.added": "Added",
-    "settings.all_clients": "All clients",
-    "settings.all_devices": "All devices",
     "settings.appearance": "Appearance",
     "settings.approval_timeout": "Approval timeout",
     "settings.attachment_storage": "Attachment storage",
@@ -3602,7 +3579,6 @@ export const messages = {
     "settings.cannot_sign_in_to_the_relay_right_now": "Cannot sign in to the relay right now",
     "settings.check_for_updates": "Check for updates",
     "settings.checking": " Checking…",
-    "settings.clear": "Clear…",
     "settings.clear_reclaimable_attachments_and_cache": "Clear reclaimable attachments and cache?",
     "settings.clear_settings": "Clear",
     "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": "Clears reclaimable originals, previews, and unsynced large image cache. Queued and active originals, session files, and history remain; unsynced large images will show only previews.",
@@ -3623,11 +3599,9 @@ export const messages = {
     "settings.cli_switches_offline_reason": "{name} is offline. Showing the last synced state",
     "settings.cli_switches_state_off": "off",
     "settings.cli_switches_state_on": "on",
-    "settings.cli_switches_title": "Enabled CLIs",
     "settings.cli_switches_update_error": "Could not update enabled CLIs: {reason}",
     "settings.cli_unverified_badge": "Unverified",
     "settings.cli_unverified_short": "Unverified",
-    "settings.cli_version": "{name} version",
     "settings.client_name": "Client name",
     "settings.clients_add_client": "Add client",
     "settings.clients_control_sessions": "Clients · Control sessions",
@@ -3644,7 +3618,6 @@ export const messages = {
     "settings.computer": "Computer",
     "settings.computer_offline_showing_the_last_reading": "Computer offline. Showing the last reading.",
     "settings.computer_settings_offline": "{name} is offline. Its settings are unavailable for now.",
-    "settings.computers_run_clis": "Computers · Run CLIs",
     "settings.could_not_download_retry_later": "Could not download. Retry later.",
     "settings.could_not_read_the_device_list": "Could not read the device list",
     "settings.current": "Current",
@@ -3655,7 +3628,6 @@ export const messages = {
     "settings.details": "Details",
     "settings.device_id": "Device ID",
     "settings.device_not_found": "Device not found",
-    "settings.devices": "Devices",
     "settings.empty_computers_authority_body": "Generate a pairing code and run remote-agent account join in your computer's terminal.",
     "settings.empty_computers_member_body": "Open Settings › Add device on the managing client ({name}) to add a computer.",
     "settings.empty_computers_title": "No computers yet",
@@ -3733,8 +3705,6 @@ export const messages = {
     "settings.section_runtime_and_storage": "Runtime & storage",
     "settings.section_this_device": "This device",
     "settings.security_notifications": "Security notifications",
-    "settings.security_notifications_are_independent_of_session_alerts_delivery_is": "Security notifications are independent of session alerts. Delivery is not guaranteed; open the managing client daily to check recovery requests.",
-    "settings.security_summary_authority": "This device manages",
     "settings.security_summary_non_authority": "Manager: {name}",
     "settings.server_and_connection": "Server & connection",
     "settings.session_alerts_are_off_you_will_not_be_notified": "Session alerts are off. You will not be notified of approvals.",
@@ -3765,8 +3735,6 @@ export const messages = {
     "settings.the_new_device_has_not_finished_joining_if_it": "The new device has not finished joining. If it cannot continue, remove it and pair again.",
     "settings.the_original_operation_is_unfinished_continue_verifying": "The original operation is unfinished. Continue verifying.",
     "settings.the_original_security_operation_is_verified_complete_you_can": "The original security operation is verified complete. You can rejoin the account.",
-    "settings.the_time_on_the_right_is_the_last_use": "The time on the right is the last use. Names can only be changed on that device.",
-    "settings.theme": "Theme",
     "settings.theme_auto": "Auto",
     "settings.this_browser_does_not_support_push_notifications": "This browser does not support push notifications",
     "settings.this_device_was_removed_from_the_account": "This device was removed from the account",
@@ -3774,7 +3742,6 @@ export const messages = {
     "settings.times_are_shown_in_beijing_time_quotas_belong_to": "Times are shown in Beijing time. Quotas belong to the CLI’s signed-in account; other usage on that account may also count.",
     "settings.unanswered_approvals_are_denied_after_this_time": "Unanswered approvals are denied after this time",
     "settings.unfinished_pairing": "Unfinished pairing",
-    "settings.unfinished_pairing_settings": " · Unfinished pairing",
     "settings.unnamed": "Unnamed",
     "settings.unverified": "Unverified · ",
     "settings.up_to_date": "Up to date",
@@ -3979,7 +3946,6 @@ export const messages = {
     "transport.conn_footer_unsupported_browser": "This browser does not support direct connections; everything connects via relay.",
     "transport.detail_daemon_disabled": "Turn it on from this computer to use direct connections",
     "transport.detail_relay_only": "Everything connects via relay as usual",
-    "transport.diag": "Diagnostics",
     "transport.diag_at": "{state} {seconds} s",
     "transport.diag_cand": "{kind} ×{count} ({scope})",
     "transport.diag_channel": "Data channel",
@@ -3988,9 +3954,7 @@ export const messages = {
     "transport.diag_check_retry": "Background auto-retry",
     "transport.diag_connected_body": "Loading and files are back on a direct connection.",
     "transport.diag_connected_title": "Direct connected",
-    "transport.diag_copy": "Copy diagnostics",
     "transport.diag_copy_permission": "Couldn’t copy; check clipboard permission",
-    "transport.diag_copy_support": "Copy diagnostics for support",
     "transport.diag_count": "×{count}",
     "transport.diag_dtls": "Encryption handshake",
     "transport.diag_explain_generic": "Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use.",
@@ -3999,7 +3963,6 @@ export const messages = {
     "transport.diag_explain_peer_old": "The remote-agent version on the computer does not support direct connections yet; update it to enable direct paths. Everything currently uses relay automatically with no impact on use.",
     "transport.diag_explain_probe_blocked": "This network appears to block UDP packets needed for direct probing. Everything currently uses relay automatically with no impact on use.",
     "transport.diag_family_unknown": "unknown",
-    "transport.diag_footer": "Diagnostics show address types and ranges only, never the addresses themselves.",
     "transport.diag_g_checks": "Connectivity checks",
     "transport.diag_g_local": "This device's addresses",
     "transport.diag_g_peer": "The computer's addresses",
@@ -4051,7 +4014,6 @@ export const messages = {
     "transport.diag_result_retired": "Replaced by a newer round",
     "transport.diag_result_timeout": "Didn't connect",
     "transport.diag_result_trying": "In progress",
-    "transport.diag_retry": "Try again",
     "transport.diag_retry_auto_desc": "Retries automatically when Wi-Fi or network changes",
     "transport.diag_retry_wait_desc": "Resumes automatically after updating remote-agent on the computer",
     "transport.diag_retrying": "Trying…",
@@ -4123,7 +4085,6 @@ export const messages = {
     "transport.file_speed_direct": "Direct {direct} MiB/s",
     "transport.file_speed_relay": "Relay {relay} MiB/s",
     "transport.footer": "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.",
-    "transport.group": "Connection",
     "transport.popover_a11y": "Direct connection active, tap for details",
     "transport.popover_direct_body": "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first.",
     "transport.popover_direct_title": "Direct to {name}",
@@ -4170,7 +4131,6 @@ export const messages = {
     "transport.summary_off": "Direct is off",
     "transport.use_file": "Used for files",
     "transport.use_read": "Used for loading",
-    "transport.why_not_connected": "Why it didn’t connect",
     "usage.backfilled_summary": "{name} · {scanned}d indexed",
     "usage.backfilling_banner": "Indexing local history · {scanned} / {total} days",
     "usage.backfilling_cell": "Indexing",
@@ -5892,15 +5852,12 @@ export const messages = {
     "session.usage_entry_unavailable": "{agent} 暂不支持统计用量与速度",
     "session.view": "视图",
     "settings.about": "关于",
-    "settings.account": "账户",
     "settings.account_quota": "账户额度",
     "settings.account_security_title": "账户安全",
     "settings.add_device_footer_hint": "要添加电脑或客户端，在管理端（{name}）上打开「设置 › 添加设备」。",
     "settings.add_device_item": "添加设备",
     "settings.add_first_computer": "添加第一台电脑",
     "settings.added": "添加于",
-    "settings.all_clients": "全部客户端",
-    "settings.all_devices": "全部设备",
     "settings.appearance": "外观",
     "settings.approval_timeout": "审批超时",
     "settings.attachment_storage": "附件存储",
@@ -5912,7 +5869,6 @@ export const messages = {
     "settings.cannot_sign_in_to_the_relay_right_now": "暂时无法登录中继",
     "settings.check_for_updates": "检查更新",
     "settings.checking": "正在检查更新…",
-    "settings.clear": "清理…",
     "settings.clear_reclaimable_attachments_and_cache": "清理可回收附件和缓存？",
     "settings.clear_settings": "清理",
     "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": "清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话文件和历史保留；尚未同步的大图会只显示预览。",
@@ -5933,11 +5889,9 @@ export const messages = {
     "settings.cli_switches_offline_reason": "{name} 未连接，显示的是上次的状态",
     "settings.cli_switches_state_off": "已停用",
     "settings.cli_switches_state_on": "已开启",
-    "settings.cli_switches_title": "启用的 CLI",
     "settings.cli_switches_update_error": "没能更新启用的 CLI：{reason}",
     "settings.cli_unverified_badge": "版本未验证",
     "settings.cli_unverified_short": "未验证",
-    "settings.cli_version": "{name} 版本",
     "settings.client_name": "客户端名称",
     "settings.clients_add_client": "添加新客户端",
     "settings.clients_control_sessions": "客户端 · 操作会话",
@@ -5954,7 +5908,6 @@ export const messages = {
     "settings.computer": "电脑",
     "settings.computer_offline_showing_the_last_reading": "电脑不在线，显示上次记录",
     "settings.computer_settings_offline": "{name} 不在线，暂时看不到它的设置。",
-    "settings.computers_run_clis": "电脑 · 运行 CLI",
     "settings.could_not_download_retry_later": "没能下载，稍后再试",
     "settings.could_not_read_the_device_list": "没能读取设备列表",
     "settings.current": "当前",
@@ -5965,7 +5918,6 @@ export const messages = {
     "settings.details": "说明",
     "settings.device_id": "设备 ID",
     "settings.device_not_found": "没有这台设备",
-    "settings.devices": "设备",
     "settings.empty_computers_authority_body": "生成配对码后，在电脑终端运行 remote-agent account join 即可接入。",
     "settings.empty_computers_member_body": "在管理端（{name}）上打开「设置 › 添加设备」，把电脑加进来。",
     "settings.empty_computers_title": "还没有电脑",
@@ -6043,8 +5995,6 @@ export const messages = {
     "settings.section_runtime_and_storage": "运行与存储",
     "settings.section_this_device": "本机",
     "settings.security_notifications": "安全通知",
-    "settings.security_notifications_are_independent_of_session_alerts_delivery_is": "安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。",
-    "settings.security_summary_authority": "本机是管理端",
     "settings.security_summary_non_authority": "管理端：{name}",
     "settings.server_and_connection": "服务器与连接",
     "settings.session_alerts_are_off_you_will_not_be_notified": "会话提醒没开，审批来了不会提醒你",
@@ -6075,8 +6025,6 @@ export const messages = {
     "settings.the_new_device_has_not_finished_joining_if_it": "新设备尚未完成加入。若无法继续，可移除后重新配对。",
     "settings.the_original_operation_is_unfinished_continue_verifying": "原操作尚未完成，请继续核实。",
     "settings.the_original_security_operation_is_verified_complete_you_can": "原安全操作已核实完成，可以重新加入账户。",
-    "settings.the_time_on_the_right_is_the_last_use": "右边是上次使用的时间。名称只能在那台设备上修改。",
-    "settings.theme": "主题",
     "settings.theme_auto": "自动",
     "settings.this_browser_does_not_support_push_notifications": "这个浏览器不支持推送",
     "settings.this_device_was_removed_from_the_account": "本机已被移出账户",
@@ -6084,7 +6032,6 @@ export const messages = {
     "settings.times_are_shown_in_beijing_time_quotas_belong_to": "时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。",
     "settings.unanswered_approvals_are_denied_after_this_time": "没人处理的审批过了这个时间就拒绝。",
     "settings.unfinished_pairing": "未完成的配对",
-    "settings.unfinished_pairing_settings": " · 未完成的配对",
     "settings.unnamed": "未命名",
     "settings.unverified": "未验证 · ",
     "settings.up_to_date": "已是最新版本",
@@ -6279,7 +6226,6 @@ export const messages = {
     "transport.conn_footer_unsupported_browser": "这个浏览器不支持直连，已全部经中继连接。",
     "transport.detail_daemon_disabled": "在这台电脑上开启后可用",
     "transport.detail_relay_only": "已全部经中继连接，不影响正常使用",
-    "transport.diag": "诊断信息",
     "transport.diag_at": "{state} {seconds} 秒",
     "transport.diag_cand": "{kind} ×{count}（{scope}）",
     "transport.diag_channel": "数据通道",
@@ -6288,9 +6234,7 @@ export const messages = {
     "transport.diag_check_retry": "后台自动重试",
     "transport.diag_connected_body": "加载与文件现在已恢复直连。",
     "transport.diag_connected_title": "直连已连上",
-    "transport.diag_copy": "复制诊断信息",
     "transport.diag_copy_permission": "没能复制，请检查剪贴板权限",
-    "transport.diag_copy_support": "复制诊断给支持",
     "transport.diag_count": "×{count}",
     "transport.diag_dtls": "加密握手",
     "transport.diag_explain_generic": "本次协商没有在时限内完成，网络稳定后会自动再试。当前所有操作都已自动走中继，不影响正常使用。",
@@ -6299,7 +6243,6 @@ export const messages = {
     "transport.diag_explain_peer_old": "电脑上安装的 remote-agent 版本暂不支持直连，更新后即可自动使用。当前所有操作都已自动走中继，不影响正常使用。",
     "transport.diag_explain_probe_blocked": "当前网络限制了直连探测所需的 UDP 通信。当前所有操作都已自动走中继，不影响正常使用。",
     "transport.diag_family_unknown": "未知",
-    "transport.diag_footer": "诊断信息只包含地址的类型和范围，不含具体地址。",
     "transport.diag_g_checks": "连通检查",
     "transport.diag_g_local": "本机地址",
     "transport.diag_g_peer": "电脑地址",
@@ -6351,7 +6294,6 @@ export const messages = {
     "transport.diag_result_retired": "被新一轮替换",
     "transport.diag_result_timeout": "没连上",
     "transport.diag_result_trying": "进行中",
-    "transport.diag_retry": "重新尝试",
     "transport.diag_retry_auto_desc": "切换 Wi-Fi 或网络变化时会自动再试",
     "transport.diag_retry_wait_desc": "更新电脑上的 remote-agent 后自动恢复",
     "transport.diag_retrying": "正在尝试…",
@@ -6423,7 +6365,6 @@ export const messages = {
     "transport.file_speed_direct": "直连 {direct} MiB/s",
     "transport.file_speed_relay": "中继 {relay} MiB/s",
     "transport.footer": "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。",
-    "transport.group": "连接",
     "transport.popover_a11y": "直连已生效，点按查看连接详情",
     "transport.popover_direct_body": "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。",
     "transport.popover_direct_title": "直连 {name}",
@@ -6470,7 +6411,6 @@ export const messages = {
     "transport.summary_off": "直连已关闭",
     "transport.use_file": "用于文件",
     "transport.use_read": "用于加载",
-    "transport.why_not_connected": "为什么没连上",
     "usage.backfilled_summary": "{name} · 已算近 {scanned} 天",
     "usage.backfilling_banner": "正在从本机记录补算历史 · 已算 {scanned} / {total} 天",
     "usage.backfilling_cell": "补算中",

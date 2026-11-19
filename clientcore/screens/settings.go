@@ -729,6 +729,8 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 				vm.UsageCachedOffline = cached30
 			} else if snap7 != nil || snap30 != nil {
 				vm.UsageEmptyText = text.Msg(text.KeySettingsUsageSummaryEmpty)
+			} else {
+				vm.UsageEmptyText = text.Plain("—")
 			}
 		}
 	}
@@ -1113,6 +1115,7 @@ func buildAttachmentStorageView(quotaBytes int64, extra *MachineSettingsExtra, a
 		return v
 	}
 	if extra == nil || extra.ImageStorage == nil {
+		v.SummaryText = text.Plain("—")
 		return v
 	}
 	st := extra.ImageStorage

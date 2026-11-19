@@ -60,11 +60,15 @@ struct SettingsScreen: View {
         if vm.clockSkewed {
             GroupBanner(vm.clockSkewBannerText.rendered(), tone: .warn)
         }
-        if vm.isManager && vm.recoveryPending {
-            let recMsg = vm.recoveryBannerText.rendered()
+        if vm.recoveryPending {
+            let recMsg = vm.recoveryBannerText.rendered().or(L10n.settingsRecoveryWaitingBanner())
             if !recMsg.isEmpty {
-                GroupBanner(recMsg, tone: .warn, action: L10n.dockHandle()) {
-                    nav.open(.accountSecurity)
+                if vm.isManager {
+                    GroupBanner(recMsg, tone: .warn, action: L10n.dockHandle()) {
+                        nav.open(.accountSecurity)
+                    }
+                } else {
+                    GroupBanner(recMsg, tone: .warn)
                 }
             }
         }
@@ -161,7 +165,17 @@ struct SettingsScreen: View {
             GRow(L10n.settingsServerAndConnection(), value: hostOf(context.account.server), chevron: true) {
                 nav.open(.connectionCheck)
             }
-            .valueLead { StatusMark(vm.online ? .online : .off) }
+            .valueLead { serverDot(vm) }
+        }
+    }
+
+    @ViewBuilder private func serverDot(_ vm: PBSettingsViewModel) -> some View {
+        if !vm.online || vm.connCheck.serverState == .unavailable {
+            Dot(DS.red)
+        } else if vm.connCheck.serverState == .slow || vm.connCheck.serverState == .checking {
+            Dot(DS.orange)
+        } else {
+            StatusMark(.online)
         }
     }
 

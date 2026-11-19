@@ -1304,13 +1304,11 @@
     <string name="security_android_join_receipt_device_public_key_mismatch" formatted="false">"加入回执的本机公钥不匹配"</string>
     <string name="security_android_join_receipt_does_not_contain_this_device_s_identity" formatted="false">"加入回执没有本机身份"</string>
     <string name="security_android_keep_this_phone_s_account_root_key_and_device_identity" formatted="false">"保留这台手机的账户根密钥和设备身份，丢弃协议 9 的安全状态，生成协议 10 的创世状态并让这台手机成为管理端。协议 9 的历史要用旧版本读。"</string>
-    <string name="security_android_last_used_times_are_on_the_right_each_device_changes" formatted="false">"右边是上次使用的时间。名称在每台设备上自己改，管理端可以移除其他设备。"</string>
     <string name="security_android_membership_sync_failed_there_may_be_an_invalid_pairing_check" formatted="false">"同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。"</string>
     <string name="security_android_name_changes_sync_to_other_clients_set_notifications_on_this" formatted="false">"修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。"</string>
     <string name="security_android_new_recovery_code_confirmed_saved_offline" formatted="false">"已确认离线保存新恢复码"</string>
     <string name="security_android_no_account_available_to_upgrade" formatted="false">"没有可升级的账户"</string>
     <string name="security_android_no_candidate_device" formatted="false">"没有候选设备"</string>
-    <string name="security_android_no_computers_yet" formatted="false">"还没有电脑"</string>
     <string name="security_android_no_device_has_joined_yet" formatted="false">"还没有设备加入"</string>
     <string name="security_android_not_read_yet" formatted="false">"尚未读取"</string>
     <string name="security_android_only_a_removed_computer_s_archive_from_the_same_account" formatted="false">"只能接续同一账户已移除电脑的档案"</string>
@@ -1342,7 +1340,6 @@
     <string name="security_android_recovery_eligible_at">"可生效时间：%1$s"</string>
     <string name="security_android_recovery_not_found_it_may_be_complete_or_vetoed" formatted="false">"找不到这次恢复，它可能已经完成或被否决"</string>
     <string name="security_android_registration_challenge_expired_retry" formatted="false">"注册挑战已过期，请重试"</string>
-    <string name="security_android_remote_control" formatted="false">"远程控制"</string>
     <string name="security_android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端上批准。"</string>
     <string name="security_android_remove_this_client" formatted="false">"移除这个客户端"</string>
     <string name="security_android_removed" formatted="false">"已移除"</string>
@@ -1741,20 +1738,16 @@
     <string name="session_usage_entry_unavailable">"%1$s 暂不支持统计用量与速度"</string>
     <string name="session_view" formatted="false">"视图"</string>
     <string name="settings_about" formatted="false">"关于"</string>
-    <string name="settings_account" formatted="false">"账户"</string>
     <string name="settings_account_quota" formatted="false">"账户额度"</string>
     <string name="settings_account_security_title" formatted="false">"账户安全"</string>
     <string name="settings_add_device_footer_hint">"要添加电脑或客户端，在管理端（%1$s）上打开「设置 › 添加设备」。"</string>
     <string name="settings_add_device_item" formatted="false">"添加设备"</string>
     <string name="settings_add_first_computer" formatted="false">"添加第一台电脑"</string>
     <string name="settings_added" formatted="false">"添加于"</string>
-    <string name="settings_all_clients" formatted="false">"全部客户端"</string>
-    <string name="settings_all_devices" formatted="false">"全部设备"</string>
     <string name="settings_android_allow_in_settings" formatted="false">"去允许"</string>
     <string name="settings_android_allow_remote_agent_to_install_apps_in_system_settings_then" formatted="false">"先在系统设置里允许 remote-agent 安装应用，回来后继续。"</string>
     <string name="settings_android_allow_the_original_computer_to_resume_value1_s_retained_sessions">"允许原电脑接续 %1$s 的保留会话和图片。旧身份仍然撤销；请在原电脑上输入配对码。"</string>
     <string name="settings_android_already_on_the_latest_published_version" formatted="false">"已是最新发布版本"</string>
-    <string name="settings_android_approval_commands_will_appear_in_system_notifications_and_may_remain" formatted="false">"打开后审批的命令会进入系统通知，可能留在通知历史里；锁屏上仍只显示通用文案"</string>
     <string name="settings_android_attachment_storage_this_phone" formatted="false">"附件存储 · 这台手机"</string>
     <string name="settings_android_cannot_connect_to_the_release_address" formatted="false">"连不上发布地址"</string>
     <string name="settings_android_cannot_open_the_system_installer" formatted="false">"打不开系统的安装器。"</string>
@@ -1778,7 +1771,6 @@
     <string name="settings_android_downloaded_file_does_not_match_release_information" formatted="false">"下载的文件和发布信息不一致"</string>
     <string name="settings_android_downloading_value1_value2">"正在下载 %1$s / %2$s"</string>
     <string name="settings_android_fonts_sil_open_font_license_1_1" formatted="false">"字体 · SIL Open Font License 1.1"</string>
-    <string name="settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the" formatted="false">"未验证的版本请在电脑上运行 remote-agent doctor"</string>
     <string name="settings_android_go_runtime_and_standard_library" formatted="false">"共享核心的 Go 运行时与标准库"</string>
     <string name="settings_android_icons_isc_license" formatted="false">"图标 · ISC License"</string>
     <string name="settings_android_image_drafts_and_file_source_information_are_cleared_after_7" formatted="false">"图片草稿和文件来源信息闲置 7 天后清理；待确认消息保留到确认或移除。文件正文不复制到手机，容量不足时保留已有内容。"</string>
@@ -1788,7 +1780,6 @@
     <string name="settings_android_invalid_release_information_format" formatted="false">"发布信息格式不对"</string>
     <string name="settings_android_later" formatted="false">"以后再说"</string>
     <string name="settings_android_latin_text_and_numbers_in_the_interface" formatted="false">"界面中的西文和数字"</string>
-    <string name="settings_android_local_storage" formatted="false">"本机存储"</string>
     <string name="settings_android_new_computer" formatted="false">"新电脑"</string>
     <string name="settings_android_new_device" formatted="false">"新设备"</string>
     <string name="settings_android_new_device_joined" formatted="false">"设备已加入"</string>
@@ -1806,11 +1797,9 @@
     <string name="settings_android_release_size_is_not_a_number" formatted="false">"发布信息的 size 不是数字"</string>
     <string name="settings_android_release_versioncode_is_not_a_number" formatted="false">"发布信息的 versionCode 不是数字"</string>
     <string name="settings_android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced" formatted="false">"清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。"</string>
-    <string name="settings_android_remove_this_machine" formatted="false">"移除这台电脑…"</string>
     <string name="settings_android_requests_to_join" formatted="false">" 请求加入"</string>
     <string name="settings_android_sarasa_fixed_sc_symbol_subset" formatted="false">"Sarasa Fixed SC（符号子集）"</string>
     <string name="settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" formatted="false">"会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。"</string>
-    <string name="settings_android_show_content_and_approve_in_notifications" formatted="false">"在通知里显示内容并直接审批"</string>
     <string name="settings_android_terminal_symbols" formatted="false">"终端里的符号"</string>
     <string name="settings_android_the_downloaded_file_is_not_an_installation_package" formatted="false">"下载的文件不是安装包"</string>
     <string name="settings_android_the_downloaded_package_does_not_match_the_release_information" formatted="false">"下载的安装包和发布信息不一致"</string>
@@ -1823,7 +1812,6 @@
     <string name="settings_android_this_release_changes_the_protocol_after_installing_also_update_remote" formatted="false">"这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。"</string>
     <string name="settings_android_to_resume_a_removed_computer_s_sessions_open_its_retained" formatted="false">"已移除的电脑要接续原会话，请从那台电脑的保留档案进入“重新加入并接续会话”。"</string>
     <string name="settings_android_unknown" formatted="false">"未知"</string>
-    <string name="settings_android_unverified" formatted="false">"未验证"</string>
     <string name="settings_android_up_to_date" formatted="false">"已是最新版本"</string>
     <string name="settings_android_update" formatted="false">"更新"</string>
     <string name="settings_android_value1_approval_mode">"%1$s · 审批模式"</string>
@@ -1844,7 +1832,6 @@
     <string name="settings_cannot_sign_in_to_the_relay_right_now" formatted="false">"暂时无法登录中继"</string>
     <string name="settings_check_for_updates" formatted="false">"检查更新"</string>
     <string name="settings_checking" formatted="false">"正在检查更新…"</string>
-    <string name="settings_clear" formatted="false">"清理…"</string>
     <string name="settings_clear_reclaimable_attachments_and_cache" formatted="false">"清理可回收附件和缓存？"</string>
     <string name="settings_clear_settings" formatted="false">"清理"</string>
     <string name="settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache" formatted="false">"清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话文件和历史保留；尚未同步的大图会只显示预览。"</string>
@@ -1865,11 +1852,9 @@
     <string name="settings_cli_switches_offline_reason">"%1$s 未连接，显示的是上次的状态"</string>
     <string name="settings_cli_switches_state_off" formatted="false">"已停用"</string>
     <string name="settings_cli_switches_state_on" formatted="false">"已开启"</string>
-    <string name="settings_cli_switches_title" formatted="false">"启用的 CLI"</string>
     <string name="settings_cli_switches_update_error">"没能更新启用的 CLI：%1$s"</string>
     <string name="settings_cli_unverified_badge" formatted="false">"版本未验证"</string>
     <string name="settings_cli_unverified_short" formatted="false">"未验证"</string>
-    <string name="settings_cli_version">"%1$s 版本"</string>
     <string name="settings_client_name" formatted="false">"客户端名称"</string>
     <string name="settings_clients_add_client" formatted="false">"添加新客户端"</string>
     <string name="settings_clients_control_sessions" formatted="false">"客户端 · 操作会话"</string>
@@ -1886,7 +1871,6 @@
     <string name="settings_computer" formatted="false">"电脑"</string>
     <string name="settings_computer_offline_showing_the_last_reading" formatted="false">"电脑不在线，显示上次记录"</string>
     <string name="settings_computer_settings_offline">"%1$s 不在线，暂时看不到它的设置。"</string>
-    <string name="settings_computers_run_clis" formatted="false">"电脑 · 运行 CLI"</string>
     <string name="settings_could_not_download_retry_later" formatted="false">"没能下载，稍后再试"</string>
     <string name="settings_could_not_read_the_device_list" formatted="false">"没能读取设备列表"</string>
     <string name="settings_current" formatted="false">"当前"</string>
@@ -1897,7 +1881,6 @@
     <string name="settings_details" formatted="false">"说明"</string>
     <string name="settings_device_id" formatted="false">"设备 ID"</string>
     <string name="settings_device_not_found" formatted="false">"没有这台设备"</string>
-    <string name="settings_devices" formatted="false">"设备"</string>
     <string name="settings_empty_computers_authority_body" formatted="false">"生成配对码后，在电脑终端运行 remote-agent account join 即可接入。"</string>
     <string name="settings_empty_computers_member_body">"在管理端（%1$s）上打开「设置 › 添加设备」，把电脑加进来。"</string>
     <string name="settings_empty_computers_title" formatted="false">"还没有电脑"</string>
@@ -1975,8 +1958,6 @@
     <string name="settings_section_runtime_and_storage" formatted="false">"运行与存储"</string>
     <string name="settings_section_this_device" formatted="false">"本机"</string>
     <string name="settings_security_notifications" formatted="false">"安全通知"</string>
-    <string name="settings_security_notifications_are_independent_of_session_alerts_delivery_is" formatted="false">"安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。"</string>
-    <string name="settings_security_summary_authority" formatted="false">"本机是管理端"</string>
     <string name="settings_security_summary_non_authority">"管理端：%1$s"</string>
     <string name="settings_server_and_connection" formatted="false">"服务器与连接"</string>
     <string name="settings_session_alerts_are_off_you_will_not_be_notified" formatted="false">"会话提醒没开，审批来了不会提醒你"</string>
@@ -2007,8 +1988,6 @@
     <string name="settings_the_new_device_has_not_finished_joining_if_it" formatted="false">"新设备尚未完成加入。若无法继续，可移除后重新配对。"</string>
     <string name="settings_the_original_operation_is_unfinished_continue_verifying" formatted="false">"原操作尚未完成，请继续核实。"</string>
     <string name="settings_the_original_security_operation_is_verified_complete_you_can" formatted="false">"原安全操作已核实完成，可以重新加入账户。"</string>
-    <string name="settings_the_time_on_the_right_is_the_last_use" formatted="false">"右边是上次使用的时间。名称只能在那台设备上修改。"</string>
-    <string name="settings_theme" formatted="false">"主题"</string>
     <string name="settings_theme_auto" formatted="false">"自动"</string>
     <string name="settings_this_browser_does_not_support_push_notifications" formatted="false">"这个浏览器不支持推送"</string>
     <string name="settings_this_device_was_removed_from_the_account" formatted="false">"本机已被移出账户"</string>
@@ -2016,7 +1995,6 @@
     <string name="settings_times_are_shown_in_beijing_time_quotas_belong_to" formatted="false">"时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。"</string>
     <string name="settings_unanswered_approvals_are_denied_after_this_time" formatted="false">"没人处理的审批过了这个时间就拒绝。"</string>
     <string name="settings_unfinished_pairing" formatted="false">"未完成的配对"</string>
-    <string name="settings_unfinished_pairing_settings" formatted="false">" · 未完成的配对"</string>
     <string name="settings_unnamed" formatted="false">"未命名"</string>
     <string name="settings_unverified" formatted="false">"未验证 · "</string>
     <string name="settings_up_to_date" formatted="false">"已是最新版本"</string>
@@ -2198,21 +2176,17 @@
     <string name="transport_conn_footer_unsupported_app" formatted="false">"当前应用版本暂不支持直连，已全部经中继连接。"</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"在这台电脑上开启后可用"</string>
     <string name="transport_detail_relay_only" formatted="false">"已全部经中继连接，不影响正常使用"</string>
-    <string name="transport_diag" formatted="false">"诊断信息"</string>
     <string name="transport_diag_check_path" formatted="false">"局域网或公网直通"</string>
     <string name="transport_diag_check_peer" formatted="false">"电脑在线并响应"</string>
     <string name="transport_diag_check_retry" formatted="false">"后台自动重试"</string>
     <string name="transport_diag_connected_body" formatted="false">"加载与文件现在已恢复直连。"</string>
     <string name="transport_diag_connected_title" formatted="false">"直连已连上"</string>
-    <string name="transport_diag_copy" formatted="false">"复制诊断信息"</string>
     <string name="transport_diag_copy_permission" formatted="false">"没能复制，请检查剪贴板权限"</string>
-    <string name="transport_diag_copy_support" formatted="false">"复制诊断给支持"</string>
     <string name="transport_diag_explain_generic" formatted="false">"本次协商没有在时限内完成，网络稳定后会自动再试。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_explain_nat" formatted="false">"本机与电脑各自处在限制直连的网络里，常见于蜂窝网络或公司内网。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_explain_no_reply" formatted="false">"电脑没有回应直连握手，可能在电脑上关闭了直连或防火墙拦下了请求。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_explain_peer_old" formatted="false">"电脑上安装的 remote-agent 版本暂不支持直连，更新后即可自动使用。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_explain_probe_blocked" formatted="false">"当前网络限制了直连探测所需的 UDP 通信。当前所有操作都已自动走中继，不影响正常使用。"</string>
-    <string name="transport_diag_footer" formatted="false">"诊断信息只包含地址的类型和范围，不含具体地址。"</string>
     <string name="transport_diag_path_failed" formatted="false">"未能建立直连通道"</string>
     <string name="transport_diag_path_nat" formatted="false">"两边都在运营商共享网关后，未能直通"</string>
     <string name="transport_diag_path_udp_blocked" formatted="false">"UDP 直连探测被当前网络拦截"</string>
@@ -2221,7 +2195,6 @@
     <string name="transport_diag_privacy_footer" formatted="false">"复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。"</string>
     <string name="transport_diag_report_title" formatted="false">"直连诊断"</string>
     <string name="transport_diag_report_verdict">"结论：%1$s"</string>
-    <string name="transport_diag_retry" formatted="false">"重新尝试"</string>
     <string name="transport_diag_retry_auto_desc" formatted="false">"切换 Wi-Fi 或网络变化时会自动再试"</string>
     <string name="transport_diag_retry_wait_desc" formatted="false">"更新电脑上的 remote-agent 后自动恢复"</string>
     <string name="transport_diag_retrying" formatted="false">"正在尝试…"</string>
@@ -2245,7 +2218,6 @@
     <string name="transport_file_speed_direct">"直连 %1$s MiB/s"</string>
     <string name="transport_file_speed_relay">"中继 %1$s MiB/s"</string>
     <string name="transport_footer" formatted="false">"发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。"</string>
-    <string name="transport_group" formatted="false">"连接"</string>
     <string name="transport_popover_a11y" formatted="false">"直连已生效，点按查看连接详情"</string>
     <string name="transport_popover_direct_body" formatted="false">"加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。"</string>
     <string name="transport_popover_direct_title">"直连 %1$s"</string>
@@ -2291,7 +2263,6 @@
     <string name="transport_summary_off" formatted="false">"直连已关闭"</string>
     <string name="transport_use_file" formatted="false">"用于文件"</string>
     <string name="transport_use_read" formatted="false">"用于加载"</string>
-    <string name="transport_why_not_connected" formatted="false">"为什么没连上"</string>
     <string name="usage_backfilled_summary">"%1$s · 已算近 %2$d 天"</string>
     <string name="usage_backfilling_banner">"正在从本机记录补算历史 · 已算 %1$d / %2$d 天"</string>
     <string name="usage_backfilling_cell" formatted="false">"补算中"</string>

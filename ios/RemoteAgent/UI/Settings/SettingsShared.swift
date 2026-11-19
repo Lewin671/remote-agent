@@ -181,7 +181,10 @@ struct ClientRow: View {
             chevron: true,
             valueColor: client.pairingIncomplete ? DS.orangeInk : nil
         ) { nav.open(.client(id: client.deviceID)) }
-        .lead { DeviceIcon(clientIcon(description: client.description_p)) }
+        .lead {
+            SymbolImage(clientIcon(description: client.description_p), size: 20, color: DS.ink2)
+                .frame(width: 22, alignment: .center)
+        }
         .contextMenu {
             if let onRename { Button(L10n.sessionRename(), action: onRename) }
             Button(L10n.settingsIosCopyDeviceId()) { UIPasteboard.general.string = client.deviceID }

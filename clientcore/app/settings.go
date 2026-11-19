@@ -667,7 +667,12 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 		} else {
 			cur = &v1.DaemonSettings{}
 		}
-		next := lists.WithDefaults(cur, u.Agent, u.Model, u.Effort, u.Mode)
+		effort := u.Effort
+		if u.Model != nil && effort == nil {
+			empty := ""
+			effort = &empty
+		}
+		next := lists.WithDefaults(cur, u.Agent, u.Model, effort, u.Mode)
 		c.dispatchUpdateSettings(ctx, u.MachineId, next, false)
 
 	case *corev1.Event_UpdateMachineDaemonSettings:

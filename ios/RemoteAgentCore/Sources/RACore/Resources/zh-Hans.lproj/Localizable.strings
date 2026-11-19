@@ -1462,15 +1462,12 @@
 "session_usage_entry_unavailable" = "%1$@ 暂不支持统计用量与速度";
 "session_view" = "视图";
 "settings_about" = "关于";
-"settings_account" = "账户";
 "settings_account_quota" = "账户额度";
 "settings_account_security_title" = "账户安全";
 "settings_add_device_footer_hint" = "要添加电脑或客户端，在管理端（%1$@）上打开「设置 › 添加设备」。";
 "settings_add_device_item" = "添加设备";
 "settings_add_first_computer" = "添加第一台电脑";
 "settings_added" = "添加于";
-"settings_all_clients" = "全部客户端";
-"settings_all_devices" = "全部设备";
 "settings_appearance" = "外观";
 "settings_approval_timeout" = "审批超时";
 "settings_attachment_storage" = "附件存储";
@@ -1482,7 +1479,6 @@
 "settings_cannot_sign_in_to_the_relay_right_now" = "暂时无法登录中继";
 "settings_check_for_updates" = "检查更新";
 "settings_checking" = "正在检查更新…";
-"settings_clear" = "清理…";
 "settings_clear_reclaimable_attachments_and_cache" = "清理可回收附件和缓存？";
 "settings_clear_settings" = "清理";
 "settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache" = "清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话文件和历史保留；尚未同步的大图会只显示预览。";
@@ -1499,11 +1495,9 @@
 "settings_cli_switches_keep_one" = "至少保留一个启用";
 "settings_cli_switches_lease_expired_footer" = "远程控制已暂停，在管理端续期后可修改。";
 "settings_cli_switches_offline_reason" = "%1$@ 未连接，显示的是上次的状态";
-"settings_cli_switches_title" = "启用的 CLI";
 "settings_cli_switches_update_error" = "没能更新启用的 CLI：%1$@";
 "settings_cli_unverified_badge" = "版本未验证";
 "settings_cli_unverified_short" = "未验证";
-"settings_cli_version" = "%1$@ 版本";
 "settings_client_name" = "客户端名称";
 "settings_clients_add_client" = "添加新客户端";
 "settings_clients_control_sessions" = "客户端 · 操作会话";
@@ -1520,7 +1514,6 @@
 "settings_computer" = "电脑";
 "settings_computer_offline_showing_the_last_reading" = "电脑不在线，显示上次记录";
 "settings_computer_settings_offline" = "%1$@ 不在线，暂时看不到它的设置。";
-"settings_computers_run_clis" = "电脑 · 运行 CLI";
 "settings_could_not_download_retry_later" = "没能下载，稍后再试";
 "settings_could_not_read_the_device_list" = "没能读取设备列表";
 "settings_current" = "当前";
@@ -1532,7 +1525,6 @@
 "settings_details" = "说明";
 "settings_device_id" = "设备 ID";
 "settings_device_not_found" = "没有这台设备";
-"settings_devices" = "设备";
 "settings_empty_computers_authority_body" = "生成配对码后，在电脑终端运行 remote-agent account join 即可接入。";
 "settings_empty_computers_member_body" = "在管理端（%1$@）上打开「设置 › 添加设备」，把电脑加进来。";
 "settings_empty_computers_title" = "还没有电脑";
@@ -1548,7 +1540,6 @@
 "settings_ios_approvals_questions_and_plans_waiting_for_you_appear_at" = "等你处理的审批、提问和计划排在「会话」页最上面";
 "settings_ios_clear_reclaimable_images" = "清理可回收图片？";
 "settings_ios_clears_reclaimable_originals_and_cache_unsynced_full_size_images" = "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。";
-"settings_ios_cli_versions" = "CLI 版本";
 "settings_ios_computer_sessions_do_not_depend_on_alerts_unanswered_approvals" = "电脑上的会话不依赖提醒：没人处理的审批到时间按拒绝算，之后仍可以在会话里继续。";
 "settings_ios_connect_to_the_server_to_read_and_edit_new" = "连上服务器后才能读取和修改新会话默认设置";
 "settings_ios_copy_device_id" = "复制设备 ID";
@@ -1562,13 +1553,11 @@
 "settings_ios_how_many_sessions_are_waiting_for_you" = "有几个会话在等你";
 "settings_ios_how_to_know_something_needs_attention_now" = "现在怎么知道有事要处理";
 "settings_ios_icons_and_libraries" = "图标和库";
-"settings_ios_images_are_stored_on_this_computer_images_being_sent" = "图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。";
 "settings_ios_is_offline_connect_to_read_and_edit_new_session" = "%1$@ 不在线，连上后才能读取和修改新会话默认设置";
 "settings_ios_leave_blank_for_the_default_name" = "留空就用默认名称";
 "settings_ios_libraries_resolved_with_dependencies" = "随依赖一起解析的库";
 "settings_ios_license_text_is_not_bundled_with_the_app" = "许可证文本没有随 App 打包";
 "settings_ios_local_ciphertext_cache" = "本机的密文缓存";
-"settings_ios_local_storage" = "本机存储";
 "settings_ios_name_set_in_settings" = "设置页改的名字";
 "settings_ios_no_computers_yet" = "还没有电脑";
 "settings_ios_notifications" = "通知";
@@ -1584,18 +1573,13 @@
 "settings_ios_support_and_feedback" = "支持与反馈";
 "settings_ios_the_android_app_and_home_screen_web_app_can" = "Android App 和添加到主屏幕的网页可以在各自的设置里开启提醒";
 "settings_ios_the_number_on_the_sessions_tab" = "「会话」标签上的数字";
-"settings_ios_the_time_on_the_right_is_the_last_use" = "右边是上次使用的时间。";
 "settings_ios_these_libraries_are_used_by_optional_parts_of_connect" = "这些是 connect-swift 和 SwiftTerm 的可选部分用到的库，没有编进这个 App；许可证一并附上。";
 "settings_ios_this_client_is_not_in_the_current_trusted_directory" = "这个客户端不在当前可信目录中，撤销状态以回执为准";
 "settings_ios_this_computer_is_not_in_the_current_trusted_directory" = "这台电脑不在当前可信目录中，撤销状态以回执为准";
 "settings_ios_this_ios_version_cannot_send_alerts_yet_you_will" = "这个 iOS 版本还不能发提醒。有会话等你处理时不会收到系统通知，打开 App 后会显示在「会话」页最上面。";
 "settings_ios_type" = "种类";
-"settings_ios_unanswered_approvals_are_denied_after_this_time" = "没人处理的审批过了这个时间就拒绝。";
 "settings_ios_unknown" = "未知";
 "settings_ios_unsure_whether_the_computer_saved_this_change_reload_to" = "不确定电脑有没有保存这次修改，重新读取后以电脑上的为准";
-"settings_ios_unverified" = "未验证 ·";
-"settings_ios_verified" = "已验证 ·";
-"settings_ios_version" = "版本";
 "settings_ios_while_the_app_is_open" = "打开 App 时";
 "settings_iphone_push_help" = "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送：在 Safari 里点分享按钮，选「添加到主屏幕」，再从主屏幕上的图标打开。";
 "settings_last_used" = "上次使用";
@@ -1662,8 +1646,6 @@
 "settings_section_runtime_and_storage" = "运行与存储";
 "settings_section_this_device" = "本机";
 "settings_security_notifications" = "安全通知";
-"settings_security_notifications_are_independent_of_session_alerts_delivery_is" = "安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。";
-"settings_security_summary_authority" = "本机是管理端";
 "settings_security_summary_non_authority" = "管理端：%1$@";
 "settings_server_and_connection" = "服务器与连接";
 "settings_session_alerts_are_off_you_will_not_be_notified" = "会话提醒没开，审批来了不会提醒你";
@@ -1694,8 +1676,6 @@
 "settings_the_new_device_has_not_finished_joining_if_it" = "新设备尚未完成加入。若无法继续，可移除后重新配对。";
 "settings_the_original_operation_is_unfinished_continue_verifying" = "原操作尚未完成，请继续核实。";
 "settings_the_original_security_operation_is_verified_complete_you_can" = "原安全操作已核实完成，可以重新加入账户。";
-"settings_the_time_on_the_right_is_the_last_use" = "右边是上次使用的时间。名称只能在那台设备上修改。";
-"settings_theme" = "主题";
 "settings_theme_auto" = "自动";
 "settings_this_browser_does_not_support_push_notifications" = "这个浏览器不支持推送";
 "settings_this_device_was_removed_from_the_account" = "本机已被移出账户";
@@ -1703,7 +1683,6 @@
 "settings_times_are_shown_in_beijing_time_quotas_belong_to" = "时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。";
 "settings_unanswered_approvals_are_denied_after_this_time" = "没人处理的审批过了这个时间就拒绝。";
 "settings_unfinished_pairing" = "未完成的配对";
-"settings_unfinished_pairing_settings" = " · 未完成的配对";
 "settings_unnamed" = "未命名";
 "settings_unverified" = "未验证 · ";
 "settings_up_to_date" = "已是最新版本";
@@ -1856,7 +1835,6 @@
 "transport_conn_footer_unsupported_app" = "当前应用版本暂不支持直连，已全部经中继连接。";
 "transport_detail_daemon_disabled" = "在这台电脑上开启后可用";
 "transport_detail_relay_only" = "已全部经中继连接，不影响正常使用";
-"transport_diag" = "诊断信息";
 "transport_diag_at" = "%2$@ %1$@ 秒";
 "transport_diag_cand" = "%2$@ ×%1$lld（%3$@）";
 "transport_diag_channel" = "数据通道";
@@ -1865,9 +1843,7 @@
 "transport_diag_check_retry" = "后台自动重试";
 "transport_diag_connected_body" = "加载与文件现在已恢复直连。";
 "transport_diag_connected_title" = "直连已连上";
-"transport_diag_copy" = "复制诊断信息";
 "transport_diag_copy_permission" = "没能复制，请检查剪贴板权限";
-"transport_diag_copy_support" = "复制诊断给支持";
 "transport_diag_count" = "×%1$lld";
 "transport_diag_dtls" = "加密握手";
 "transport_diag_explain_generic" = "本次协商没有在时限内完成，网络稳定后会自动再试。当前所有操作都已自动走中继，不影响正常使用。";
@@ -1876,7 +1852,6 @@
 "transport_diag_explain_peer_old" = "电脑上安装的 remote-agent 版本暂不支持直连，更新后即可自动使用。当前所有操作都已自动走中继，不影响正常使用。";
 "transport_diag_explain_probe_blocked" = "当前网络限制了直连探测所需的 UDP 通信。当前所有操作都已自动走中继，不影响正常使用。";
 "transport_diag_family_unknown" = "未知";
-"transport_diag_footer" = "诊断信息只包含地址的类型和范围，不含具体地址。";
 "transport_diag_g_checks" = "连通检查";
 "transport_diag_g_local" = "本机地址";
 "transport_diag_g_peer" = "电脑地址";
@@ -1928,7 +1903,6 @@
 "transport_diag_result_retired" = "被新一轮替换";
 "transport_diag_result_timeout" = "没连上";
 "transport_diag_result_trying" = "进行中";
-"transport_diag_retry" = "重新尝试";
 "transport_diag_retry_auto_desc" = "切换 Wi-Fi 或网络变化时会自动再试";
 "transport_diag_retry_wait_desc" = "更新电脑上的 remote-agent 后自动恢复";
 "transport_diag_retrying" = "正在尝试…";
@@ -2000,7 +1974,6 @@
 "transport_file_speed_direct" = "直连 %1$@ MiB/s";
 "transport_file_speed_relay" = "中继 %1$@ MiB/s";
 "transport_footer" = "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。";
-"transport_group" = "连接";
 "transport_popover_a11y" = "直连已生效，点按查看连接详情";
 "transport_popover_direct_body" = "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。";
 "transport_popover_direct_title" = "直连 %1$@";

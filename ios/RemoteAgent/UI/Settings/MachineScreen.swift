@@ -171,15 +171,10 @@ struct MachineScreenContent<Management: View>: View {
         }
         .navBar(title, subtitle: subtitle, dot: dotColor)
         .onChange(of: vm.found, initial: true) { _, found in
-            guard found, !handledInitialDeepLink else { return }
-            handledInitialDeepLink = true
-            if initialDirect && vm.member && vm.hasConnection && vm.connection.toggleVisible {
-                directSheetOpen = true
-            } else if let target = Self.parseAgentSlug(initialCliAgent),
-                      vm.cliVersions.contains(where: { $0.agent == target }) {
-                onSelectAgent(target)
-                cliSheetAgent = CliSheetAgent(agent: target)
-            }
+            tryConsumeInitialDeepLink(found: found, cliVersions: vm.cliVersions)
+        }
+        .onChange(of: vm.cliVersions.count, initial: true) { _, _ in
+            tryConsumeInitialDeepLink(found: vm.found, cliVersions: vm.cliVersions)
         }
         .sheet(item: $cliSheetAgent) { item in
             CliSettingsSheet(
@@ -188,6 +183,7 @@ struct MachineScreenContent<Management: View>: View {
                 onSelectAgent: onSelectAgent,
                 onToggleAgent: onToggleAgent,
                 onUpdateDefaults: onUpdateAgentDefaults,
+                onRetrySettings: onRetrySettings,
                 onClose: { cliSheetAgent = nil }
             )
         }
@@ -212,6 +208,27 @@ struct MachineScreenContent<Management: View>: View {
             let next = choices[(idx + 1) % choices.count]
             onUpdateDaemonSettings(next.seconds, nil, nil, false)
         }
+    }
+
+    private func tryConsumeInitialDeepLink(found: Bool, cliVersions: [PBCliVersionView]) {
+        guard found, !handledInitialDeepLink else { return }
+        if initialDirect {
+            if vm.member && vm.hasConnection && vm.connection.toggleVisible {
+                handledInitialDeepLink = true
+                directSheetOpen = true
+            }
+            return
+        }
+        if let target = Self.parseAgentSlug(initialCliAgent) {
+            guard !cliVersions.isEmpty else { return }
+            handledInitialDeepLink = true
+            if cliVersions.contains(where: { $0.agent == target }) {
+                onSelectAgent(target)
+                cliSheetAgent = CliSheetAgent(agent: target)
+            }
+            return
+        }
+        handledInitialDeepLink = true
     }
 
     static func parseAgentSlug(_ slug: String?) -> PBAgent? {
@@ -292,7 +309,7 @@ struct MachineScreenContent<Management: View>: View {
     @ViewBuilder private func quotaAndUsageModule(_ vm: PBMachineSettingsViewModel) -> some View {
         if !vm.quotaRows.isEmpty || vm.showUsageEntry {
             GroupLabel(L10n.settingsSectionQuotaAndUsage())
-            GroupCard {
+            GroupCard(separatorLeading: 46) {
                 ForEach(Array(vm.quotaRows.enumerated()), id: \.offset) { _, sec in
                     quotaRow(sec)
                 }
@@ -306,7 +323,7 @@ struct MachineScreenContent<Management: View>: View {
                         onOpenUsage()
                     }
                     .lead {
-                        SymbolImage("speedometer", size: 17, color: DS.ink)
+                        SymbolImage("speedometer", size: 20, color: DS.ink2)
                             .frame(width: 22, alignment: .center)
                     }
                 }
@@ -382,7 +399,7 @@ struct MachineScreenContent<Management: View>: View {
                 GroupBanner(disabledReason, tone: .warn)
             }
 
-            GroupCard {
+            GroupCard(separatorLeading: 46) {
                 ForEach(Array(vm.cliVersions.enumerated()), id: \.offset) { _, a in
                     cliRow(a)
                 }
@@ -459,7 +476,7 @@ struct MachineScreenContent<Management: View>: View {
         let readError = vm.settingsError.rendered()
         let saveErr = vm.saveError.rendered()
         let showDirect = vm.member && vm.hasConnection && vm.connection.toggleVisible
-        let showStorage = vm.hasAttachmentStorage && vm.attachmentStorage.loaded
+        let showStorage = vm.hasAttachmentStorage
         let showDaemonPickers = vm.editable && !vm.settingsLoading && !vm.approvalTimeoutChoices.isEmpty
 
         if showDirect || showStorage || vm.editable || !vm.online || vm.unlinked {
@@ -499,9 +516,9 @@ struct MachineScreenContent<Management: View>: View {
                     let s = vm.attachmentStorage
                     GRow(
                         L10n.settingsAttachmentStorage(),
-                        value: s.summaryText.rendered(),
+                        value: s.summaryText.rendered().or("—"),
                         chevron: true,
-                        valueColor: s.summaryWarn ? DS.orangeInk : DS.ink2,
+                        valueColor: (s.loaded && s.summaryWarn) ? DS.orangeInk : DS.ink2,
                         valueLines: 1
                     ) {
                         onOpenStorage()
@@ -539,13 +556,18 @@ struct MachineScreenContent<Management: View>: View {
     }
 
     @ViewBuilder private func managementModule(_ vm: PBMachineSettingsViewModel) -> some View {
-        let projectCount = vm.projectCountText.rendered().or(vm.projectCount > 0 ? "\(vm.projectCount)" : "\(vm.projects.count)")
+        let rawCount = vm.projectCountText.rendered()
+        let countNum = vm.projectCount > 0 ? Int(vm.projectCount) : vm.projects.count
+        let showProjects = countNum > 0 || !rawCount.isEmpty
+        let projectCount = rawCount.or("\(countNum)")
         let shortIdText = vm.shortID.or("…" + String(vm.machineID.suffix(8)))
 
         GroupLabel(L10n.settingsSectionManagement())
         GroupCard {
-            GRow(L10n.settingsProjectsRow(), value: projectCount, chevron: true, valueLines: 1) {
-                onOpenProjects()
+            if showProjects {
+                GRow(L10n.settingsProjectsRow(), value: projectCount, chevron: true, valueLines: 1) {
+                    onOpenProjects()
+                }
             }
             GRow(L10n.settingsDeviceId()) {}
                 .trailing {
@@ -602,6 +624,7 @@ private struct CliSettingsSheet: View {
     let onSelectAgent: (PBAgent) -> Void
     let onToggleAgent: (PBAgent, Bool) -> Void
     let onUpdateDefaults: (PBAgent, String?, String?, PBApprovalMode?) -> Void
+    let onRetrySettings: () -> Void
     let onClose: () -> Void
 
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -662,6 +685,17 @@ private struct CliSettingsSheet: View {
         let saving = cli?.saving ?? false
         let showSwitch = vm.cliVersions.count >= 2 && vm.showCliSwitches
         let canToggle = vm.cliSwitchesEditable && !locked && !saving && vm.editable && !vm.savePending
+        let conflictBanner = vm.cliSwitchesConflictBanner.rendered()
+        let disabledReason = vm.cliSwitchesDisabledReason.rendered()
+        let switchesFooter = vm.cliSwitchesFooter.rendered()
+        let readError = vm.settingsError.rendered()
+
+        if showSwitch && !conflictBanner.isEmpty {
+            GroupBanner(conflictBanner, tone: .warn)
+        }
+        if showSwitch && !disabledReason.isEmpty {
+            GroupBanner(disabledReason, tone: .warn)
+        }
 
         GroupCard {
             if showSwitch {
@@ -707,6 +741,9 @@ private struct CliSettingsSheet: View {
         if !verified {
             GroupNote(L10n.settingsIosForUnverifiedVersionsRunRemoteAgentDoctorOnThe())
         }
+        if showSwitch && !switchesFooter.isEmpty {
+            GroupNote(switchesFooter)
+        }
 
         if !enabled {
             GroupNote(L10n.settingsCliDisabledExplanation())
@@ -721,8 +758,10 @@ private struct CliSettingsSheet: View {
                 GRow(L10n.settingsCliSheetModel(), value: modelValue, chevron: true, enabled: !busy) {
                     subpage = .model
                 }
-                GRow(L10n.settingsCliSheetEffort(), value: effortValue, chevron: true, enabled: !busy) {
-                    subpage = d.effortChoices.count > 1 ? .effort : .model
+                if d.effortChoices.count > 1 {
+                    GRow(L10n.settingsCliSheetEffort(), value: effortValue, chevron: true, enabled: !busy) {
+                        subpage = .effort
+                    }
                 }
                 GRow(
                     L10n.settingsCliSheetMode(),
@@ -735,6 +774,8 @@ private struct CliSettingsSheet: View {
                 }
             }
             GroupNote(L10n.settingsCliNewProjectDefaultsFooter())
+        } else if !readError.isEmpty {
+            GroupBanner(readError, tone: .error, action: L10n.commonRetry(), onAction: onRetrySettings)
         }
     }
 
@@ -806,6 +847,7 @@ private struct DirectSettingsSheet: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var copied = false
     @State private var cooldown = false
+    @State private var wasDiagShown = false
 
     private struct DiagCheckRow {
         let dotColor: Color
@@ -825,7 +867,8 @@ private struct DirectSettingsSheet: View {
         let showSpeeds = view.stage != .disabled && view.stage != .unsupported && view.stage != .offline
         let isDirect = view.stage == .direct
         let isRunning = view.stage == .connecting || view.stage == .measuring || directStatus?.state == .connecting
-        let isEnabledPath = view.toggleChecked && view.stage != .disabled && view.stage != .unsupported && view.stage != .offline
+        let showDiagSection = !isDirect && (view.showDiagnosticsEntry || (wasDiagShown && isRunning))
+        let explanation = diagnosticExplanation(connected: isDirect)
 
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -853,8 +896,14 @@ private struct DirectSettingsSheet: View {
                     }
                 }
 
-                if isEnabledPath {
+                if showDiagSection {
                     let checks = buildDiagChecks(connected: isDirect, running: isRunning)
+                    GroupLabel(L10n.transportDiagSectionAuto())
+                    Text(explanation)
+                        .font(.subheadline)
+                        .foregroundStyle(DS.ink2)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
                     GroupCard(separatorLeading: 34) {
                         ForEach(Array(checks.enumerated()), id: \.offset) { _, row in
                             HStack(alignment: .center, spacing: 10) {
@@ -874,37 +923,35 @@ private struct DirectSettingsSheet: View {
                         }
                     }
 
-                    if !isDirect {
-                        let peerOutdated = directStatus?.reason == .peerUnsupported
-                        let retryDisabled = isRunning || cooldown || peerOutdated || view.stage == .unsupported
-                        VStack(spacing: 10) {
-                            Btn(
-                                isRunning ? L10n.transportDiagRetrying() : L10n.transportRowRetryDirect(),
-                                kind: .primary,
-                                enabled: !retryDisabled
-                            ) {
-                                cooldown = true
-                                onRetry()
-                                Task {
-                                    try? await Task.sleep(for: .seconds(2))
-                                    cooldown = false
-                                }
-                            }
-                            Btn(
-                                copied ? L10n.transportRowDiagCopied() : L10n.transportRowDiagCopySupport(),
-                                kind: .secondary
-                            ) {
-                                UIPasteboard.general.string = diagnosticReport(verdict: detail.or(status))
-                                copied = true
-                                Task {
-                                    try? await Task.sleep(for: .seconds(1.8))
-                                    copied = false
-                                }
+                    let peerOutdated = directStatus?.reason == .peerUnsupported
+                    let retryDisabled = isRunning || cooldown || peerOutdated || view.stage == .unsupported
+                    VStack(spacing: 10) {
+                        Btn(
+                            isRunning ? L10n.transportDiagRetrying() : L10n.transportRowRetryDirect(),
+                            kind: .primary,
+                            enabled: !retryDisabled
+                        ) {
+                            cooldown = true
+                            onRetry()
+                            Task {
+                                try? await Task.sleep(for: .seconds(2))
+                                cooldown = false
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
+                        Btn(
+                            copied ? L10n.transportRowDiagCopied() : L10n.transportRowDiagCopySupport(),
+                            kind: .secondary
+                        ) {
+                            UIPasteboard.general.string = diagnosticReport(verdict: detail.or(status))
+                            copied = true
+                            Task {
+                                try? await Task.sleep(for: .seconds(1.8))
+                                copied = false
+                            }
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
                 }
 
                 GroupNote(view.footerText.rendered().or(L10n.transportDiagPrivacyFooter()))
@@ -915,6 +962,33 @@ private struct DirectSettingsSheet: View {
         .sheetSurface()
         .tint(DS.blue)
         .adaptiveModalPresentation(sizeClass: sizeClass)
+        .onChange(of: view.showDiagnosticsEntry, initial: true) { _, show in
+            if isDirect || !view.toggleChecked {
+                wasDiagShown = false
+            } else if show {
+                wasDiagShown = true
+            }
+        }
+        .onChange(of: isDirect) { _, direct in
+            if direct { wasDiagShown = false }
+        }
+        .onChange(of: view.toggleChecked) { _, checked in
+            if !checked { wasDiagShown = false }
+        }
+    }
+
+    private func diagnosticExplanation(connected: Bool) -> String {
+        guard !connected else { return L10n.transportDiagConnectedBody() }
+        switch directStatus?.reason {
+        case .peerUnsupported:
+            return L10n.transportDiagExplainPeerOld()
+        case .noResponse:
+            return L10n.transportDiagExplainNoReply()
+        case .noTraversal:
+            return L10n.transportDiagExplainNat()
+        default:
+            return L10n.transportDiagExplainGeneric()
+        }
     }
 
     private func buildDiagChecks(connected: Bool, running: Bool) -> [DiagCheckRow] {
@@ -956,7 +1030,7 @@ private struct DirectSettingsSheet: View {
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "en_US_POSIX")
         fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let lines = [
+        var lines = [
             L10n.transportDiagReportTitle(),
             L10n.transportDiagReportVerdict(verdict: verdict.or(L10n.transportDiagVerdictNone())),
             "Client: iOS \(UIDevice.current.systemVersion)",
@@ -964,6 +1038,13 @@ private struct DirectSettingsSheet: View {
             "Time: \(fmt.string(from: Date()))",
             "Stage: \(view.stage.rawValue), Reason: \(directStatus?.reason.map { String(describing: $0) } ?? "none")",
         ]
+        if let ds = directStatus {
+            let directMs = ds.readMs[DirectPath.direct].map { String(format: "%.0fms", $0) } ?? "-"
+            let relayMs = ds.readMs[DirectPath.relay].map { String(format: "%.0fms", $0) } ?? "-"
+            let directMiB = ds.fileMiBps[DirectPath.direct].map { String(format: "%.1fMB/s", $0) } ?? "-"
+            let relayMiB = ds.fileMiBps[DirectPath.relay].map { String(format: "%.1fMB/s", $0) } ?? "-"
+            lines.append("Routes: readDirect=\(ds.readDirect) fileDirect=\(ds.fileDirect) readMs(direct=\(directMs), relay=\(relayMs)) file(direct=\(directMiB), relay=\(relayMiB))")
+        }
         return lines.joined(separator: "\n")
     }
 }

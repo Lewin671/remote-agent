@@ -16,9 +16,12 @@ import {
 } from "../gen/remoteagent/core/v1/machine_view_pb";
 import {
   AttachmentStorageViewSchema,
+  ClientRowViewSchema,
   CliVersionViewSchema,
   ConnectionGroupStage,
   ConnectionGroupViewSchema,
+  DevicesViewModelSchema,
+  EffortChoiceViewSchema,
   MachineAgentDefaultsViewSchema,
   MachineSettingsViewModelSchema,
   ModeChoiceViewSchema,
@@ -29,7 +32,9 @@ import { localeStore, t as message } from "../i18n";
 import { patchSyncState } from "../test/remote-fixture";
 import { ManagePage } from "./Projects";
 import {
+  AttachmentStorageScreenView,
   ClientsPage,
+  ClientsScreenView,
   LicensesPage,
   MachinePage,
   MachineSettingsScreenView,
@@ -114,7 +119,8 @@ describe("Settings home redesign (4 groups + separated danger card)", () => {
 
     // No duplicate multi-bar cards or dual 全部设备/全部客户端 rows or push banner copy on Settings home
     expect(host.querySelector(".mach-card")).toBeNull();
-    expect(host.textContent).not.toContain(message("settings.all_devices"));
+    expect(host.textContent).not.toContain("全部设备");
+    expect(host.textContent).not.toContain("全部客户端");
     expect(host.textContent).not.toContain(message("settings.session_alerts_are_off_you_will_not_be_notified"));
 
     // Last danger group separated cleanly with red exit action
@@ -555,6 +561,117 @@ describe("Computer Page 4 core modules + Archive Fix + Storage Page + Filtered P
       <MachinePage remote={r} id="mac" section="cli" subParam="2" go={go} onBack={() => undefined} />,
     );
     expect(document.querySelector(".sheet .cli-sh-ttl")?.textContent).toContain("Claude Code");
+  });
+
+  it("renders paired client lastUsedText (not generic roleLabel), hides single effort choice, and allows unloaded storage retry", async () => {
+    const devVm = create(DevicesViewModelSchema, {
+      clientCountText: create(TextSchema, { literal: "共 3 台客户端" }),
+      clients: [
+        create(ClientRowViewSchema, {
+          deviceId: "c-self",
+          displayName: "My iPhone",
+          description: "iPhone 16 Pro",
+          shortId: "…11112222",
+          isSelf: true,
+          roleLabel: create(TextSchema, { literal: "本机" }),
+          lastUsedText: create(TextSchema, { literal: "现在" }),
+        }),
+        create(ClientRowViewSchema, {
+          deviceId: "c-peer",
+          displayName: "iPad Pro",
+          description: "iPadOS",
+          shortId: "…33334444",
+          isSelf: false,
+          isAuthority: false,
+          roleLabel: create(TextSchema, { literal: "已配对的客户端" }),
+          lastUsedText: create(TextSchema, { literal: "2 小时前" }),
+        }),
+      ],
+    });
+    await mountAsync(
+      <ClientsScreenView vm={devVm} go={() => undefined} onBack={() => undefined} onRetry={() => undefined} />,
+    );
+    expect(host.querySelector(".lbl-meta")?.textContent).toBe("共 3 台客户端");
+    const peerBtn = [...host.querySelectorAll<HTMLButtonElement>("button.row.client")].find(
+      (b) => b.querySelector(".row-name b")?.textContent === "iPad Pro",
+    )!;
+    expect(peerBtn.querySelector(".row-name small")?.textContent).toContain("…33334444");
+    expect(peerBtn.querySelector(".v")?.textContent).toBe("2 小时前");
+
+    // Unloaded storage remains clickable and AttachmentStorageScreenView shows error + retry
+    const go = vi.fn();
+    const onRetry = vi.fn();
+    const vm = create(MachineSettingsViewModelSchema, {
+      found: true,
+      machineId: "m-unload",
+      name: "Workbox",
+      member: true,
+      online: true,
+      editable: true,
+      showCliSwitches: true,
+      cliSwitchesEditable: true,
+      cliSwitchesFooter: create(TextSchema, { literal: "停用只影响新建会话选项" }),
+      cliVersions: [
+        create(CliVersionViewSchema, {
+          agent: Agent.CODEX,
+          name: "Codex",
+          version: "1.0.0",
+          verified: true,
+          enabled: true,
+          defaults: create(MachineAgentDefaultsViewSchema, {
+            agent: Agent.CODEX,
+            agentName: "Codex",
+            effortChoices: [create(EffortChoiceViewSchema, { id: "medium", label: create(TextSchema, { literal: "中" }), selected: true })],
+          }),
+        }),
+        create(CliVersionViewSchema, {
+          agent: Agent.CLAUDE,
+          name: "Claude Code",
+          version: "2.0.0",
+          verified: true,
+          enabled: true,
+        }),
+      ],
+      attachmentStorage: create(AttachmentStorageViewSchema, { loaded: false }),
+      settingsError: create(TextSchema, { literal: "读取设置失败" }),
+    });
+    await mountAsync(
+      <MachineSettingsScreenView
+        id="m-unload"
+        vm={vm}
+        go={go}
+        onBack={() => undefined}
+        onRetrySettings={onRetry}
+        onUpdateAgentDefaults={() => undefined}
+        onUpdateDaemonSettings={() => undefined}
+      />,
+    );
+    const storBtn = [...host.querySelectorAll<HTMLButtonElement>("button.row")].find((b) =>
+      b.textContent?.includes(message("settings.attachment_storage")),
+    )!;
+    expect(storBtn.disabled).toBe(false);
+    await act(async () => storBtn.click());
+    expect(go).toHaveBeenCalledWith("m/m-unload/storage");
+
+    // Open CLI sheet: single effort hides 推理强度 row; cliSwitchesFooter displays even without leaseExpired
+    const codexBtn = host.querySelector<HTMLButtonElement>(".cli-row")!;
+    await act(async () => codexBtn.click());
+    expect(document.querySelector(".sheet")?.textContent).toContain("停用只影响新建会话选项");
+    expect(document.querySelector(".sheet")?.textContent).not.toContain(message("settings.cli_sheet_effort"));
+
+    await mountAsync(
+      <AttachmentStorageScreenView
+        id="m-unload"
+        vm={vm}
+        onBack={() => undefined}
+        onRetrySettings={onRetry}
+        onUpdateDaemonSettings={() => undefined}
+      />,
+    );
+    expect(host.textContent).toContain("读取设置失败");
+    const retryBtn = host.querySelector<HTMLButtonElement>("button.link")!;
+    await act(async () => retryBtn.click());
+    expect(onRetry).toHaveBeenCalled();
   });
 });
 

@@ -342,22 +342,6 @@
     }
   },
   {
-    "key": "transport.group",
-    "zh-CN": "连接",
-    "en": "Connection",
-    "notes": "电脑设置页里直连设置那一组的分组标题，样式同其他分组标题。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.status_direct",
     "zh-CN": "正在用直连",
     "en": "Using direct",
@@ -490,70 +474,6 @@
     "zh-CN": "直连已关闭",
     "en": "Direct is off",
     "notes": "连接检测里电脑名下的一行摘要：用户在本设备上关了这台电脑的直连开关。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.diag",
-    "zh-CN": "诊断信息",
-    "en": "Diagnostics",
-    "notes": "「连接」组最后一行的名称，也是诊断页的标题。导航行，行尾 ›。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.diag_copy",
-    "zh-CN": "复制诊断信息",
-    "en": "Copy diagnostics",
-    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：把同样内容（地址已隐去）复制成纯文字，方便发给支持。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.diag_retry",
-    "zh-CN": "重新尝试",
-    "en": "Try again",
-    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）里的文字操作：立即再试一次直连。正在建立或已连上时置灰。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.diag_footer",
-    "zh-CN": "诊断信息只包含地址的类型和范围，不含具体地址。",
-    "en": "Diagnostics show address types and ranges only, never the addresses themselves.",
-    "notes": "直连诊断页（电脑设置页「连接」组最后一行「诊断信息」点开）底部的一句隐私说明。",
     "params": {},
     "platforms": [
       "web",
@@ -2600,37 +2520,6 @@
     "zh-CN": "连接设置",
     "en": "Connection settings",
     "notes": "直连轻气泡底栏右侧跳转电脑设置连接组的链接。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.why_not_connected",
-    "zh-CN": "为什么没连上",
-    "en": "Why it didn’t connect",
-    "notes": "直连排障入口与排障单标题。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "transport.diag_copy_support",
-    "zh-CN": "复制诊断给支持",
-    "en": "Copy diagnostics for support",
-    "notes": "人话排障单的复制纯文本按钮文字。",
     "params": {},
     "platforms": [
       "web",

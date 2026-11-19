@@ -552,20 +552,6 @@
     }
   },
   {
-    "key": "security.android_last_used_times_are_on_the_right_each_device_changes",
-    "zh-CN": "右边是上次使用的时间。名称在每台设备上自己改，管理端可以移除其他设备。",
-    "en": "Last used times are on the right. Each device changes its own name. The managing client can remove other devices.",
-    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.android_membership_sync_failed_there_may_be_an_invalid_pairing_check",
     "zh-CN": "同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。",
     "en": "Membership sync failed. There may be an invalid pairing. Check the device list and remove incomplete devices, then start again.",
@@ -626,20 +612,6 @@
     "zh-CN": "没有候选设备",
     "en": "No candidate device",
     "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_no_computers_yet",
-    "zh-CN": "还没有电脑",
-    "en": "No computers yet",
-    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -1079,20 +1051,6 @@
     "zh-CN": "注册挑战已过期，请重试",
     "en": "Registration challenge expired. Retry",
     "notes": "Android Signup 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.android_remote_control",
-    "zh-CN": "远程控制",
-    "en": "Remote control",
-    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"

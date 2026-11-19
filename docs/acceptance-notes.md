@@ -2610,3 +2610,15 @@ p95 增量为 **−0.003 ms**，满足 <5 ms 门槛。计时覆盖已认证的�
 **复现旧的全套 E2E**（`DirectTransportE2ETest`，调试构建，20 个样本，p99 即最大值）：两次运行里一次停在「bulk 下载升级到直连」之前，另一次走到审批：基线 89.7，p50 151.5，p95 328.2，p99 392.3 ms。与笔记本上的 55–59 基线、243–316 p99 同量级，调试构建在安静机器上并没有明显更好。
 
 **不覆盖**：真机、iOS（iMac 没有 Xcode）和网页；R8 发布构建；多个 bulk worker；WAN 延迟（harness 的中继在本机回环）；停顿原因。夹具修正：iMac 上用户的 zsh 配置在 pty-host 里不上报 CLI 启动，daemon 一分钟后结束会话，测试夹具在宿主侧补写那份报告（假 CLI 与审批无关）。host 脚本、延迟代理、运行脚本和原始 JSON、logcat 保留在任务报告，不入库。临时模拟器、AVD、server、daemon、工具链和 /tmp 私有目录在结束后已删除。
+
+## 设置页与电脑页重设计（2026-11-19）
+
+按 [client-v64](design/client-v64.html)（自 `client-v63.html` 迁移更新）、[design-system](design-system.md) 与已定稿交互稿，在不改动线上 wire v17 协议的前提下完成 `clientcore` 视图模型（`settings_view.proto` / `clientcore/screens` / `clientcore/app`）、`i18n` 双语文案及 Web（窄屏与 `>=900px` `s0–s3` 双栏）、Android（手机与 `>=840dp` 平板）、iOS（iPhone 与 iPad，含新增 `UsageScreen` 与 `MachineStorageScreen`）三端同构落地：设置页 4 组与独立危险卡、纯「客户端」二级页、「通知」二级页、电脑页 4 模块 +「电脑状态」概览卡、CLI 设置与统一直连单层弹层、「附件存储」组成条与单选上限页，以及磁盘/直连/CLI 停用跨页直达。
+
+- **协议与文案 / 构建检查**：`proto/remoteagent/v1` 零改动；`scripts/i18n.py generate --check`、`scripts/i18n.py lint`、`scripts/public_scan.py` 通过；`scripts/core/build.sh all` 与 `android-host` 全量产物生成通过。
+- **Go 与 Core**：`cd clientcore && go test ./...`、`go test ./...` 与 `python3 scripts/dev/check.py go full`（覆盖 `cmd/...`、`internal/...`、`clientcore/...`）全部通过。
+- **Web**：`python3 scripts/dev/check.py web full` 通过（`tsc -b` + `vitest run`：130 个测试文件 1759 条用例通过，2 条既有跳过）。
+- **Android**：`python3 scripts/dev/check.py android full`（`:core:test`、`:terminal:testReleaseUnitTest`、`:app:testDebugUnitTest`、`:app:lintVitalRelease`）`BUILD SUCCESSFUL`。
+- **iOS**：`ConnectHardwareKeyboard = false` 下在 `iPhone 18 Pro` 模拟器串行执行 `ios/scripts/check.sh`（Swift package 测试、`buf generate` 一致性、`RemoteAgentTests`）与 `ios/scripts/check.sh ui`（全套 UI 自动化）均以退出码 `0` 通过。
+- **隔离 E2E 与无头 Playwright 验证**：通过 `scripts/dev/e2e-up.sh` / `dev-env.sh` 启动隔离 relay 与新配对守护进程，在无头浏览器完成账户初始化、四图确认配对、实时电脑页 4 模块查看、WebRTC 直连协商、Codex 停用切换与重载持久化校验，以及 `#/settings` 与电脑页在 `390x844` / `1440x900` 暗色模式与 `200%` 根字号（`32px`）下 `scrollWidth <= clientWidth` 无水平溢出与无原生 `<select>` 验证。
+- **未覆盖**：真机端到端安装、iOS 真机推送与真机屏幕交互仍沿用既有限制（见 [plan](plan.md)）。

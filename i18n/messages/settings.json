@@ -61,20 +61,6 @@
     }
   },
   {
-    "key": "settings.android_approval_commands_will_appear_in_system_notifications_and_may_remain",
-    "zh-CN": "打开后审批的命令会进入系统通知，可能留在通知历史里；锁屏上仍只显示通用文案",
-    "en": "Approval commands will appear in system notifications and may remain in notification history. The lock screen still shows generic text",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_attachment_storage_this_phone",
     "zh-CN": "附件存储 · 这台手机",
     "en": "Attachment storage · This phone",
@@ -436,20 +422,6 @@
     }
   },
   {
-    "key": "settings.android_for_an_unverified_version_run_remote_agent_doctor_on_the",
-    "zh-CN": "未验证的版本请在电脑上运行 remote-agent doctor",
-    "en": "For an unverified version, run remote-agent doctor on the computer",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_go_runtime_and_standard_library",
     "zh-CN": "共享核心的 Go 运行时与标准库",
     "en": "Go runtime and standard library for the shared core",
@@ -565,20 +537,6 @@
     "key": "settings.android_latin_text_and_numbers_in_the_interface",
     "zh-CN": "界面中的西文和数字",
     "en": "Latin text and numbers in the interface",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_local_storage",
-    "zh-CN": "本机存储",
-    "en": "Local storage",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
@@ -843,20 +801,6 @@
     }
   },
   {
-    "key": "settings.android_remove_this_machine",
-    "zh-CN": "移除这台电脑…",
-    "en": "Remove this machine…",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_requests_to_join",
     "zh-CN": " 请求加入",
     "en": " requests to join",
@@ -888,20 +832,6 @@
     "key": "settings.android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending",
     "zh-CN": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
     "en": "Sessions end automatically after prolonged inactivity (not running, no pending actions, and no terminal input). You can resume at any time; chat history is kept.",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.android_show_content_and_approve_in_notifications",
-    "zh-CN": "在通知里显示内容并直接审批",
-    "en": "Show content and approve in notifications",
     "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
@@ -1081,20 +1011,6 @@
     }
   },
   {
-    "key": "settings.android_unverified",
-    "zh-CN": "未验证",
-    "en": "Unverified",
-    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.android_up_to_date",
     "zh-CN": "已是最新版本",
     "en": "Up to date",
@@ -1252,22 +1168,6 @@
     }
   },
   {
-    "key": "settings.all_devices",
-    "zh-CN": "全部设备",
-    "en": "All devices",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.default_approval_mode",
     "zh-CN": "默认审批模式",
     "en": "Default approval mode",
@@ -1313,20 +1213,6 @@
     "key": "settings.ios_clears_reclaimable_originals_and_cache_unsynced_full_size_images",
     "zh-CN": "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。",
     "en": "Clears reclaimable originals and cache. Unsynced full-size images will show only previews. Originals queued or used in the current run, and session history, are retained.",
-    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.ios_cli_versions",
-    "zh-CN": "CLI 版本",
-    "en": "CLI versions",
     "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
@@ -1511,20 +1397,6 @@
     }
   },
   {
-    "key": "settings.ios_images_are_stored_on_this_computer_images_being_sent",
-    "zh-CN": "图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。",
-    "en": "Images are stored on this computer. Images being sent or used in execution are not cleared. The preview cache is limited to 150 MiB and reclaimed automatically.",
-    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.ios_is_offline_connect_to_read_and_edit_new_session",
     "zh-CN": "{value} 不在线，连上后才能读取和修改新会话默认设置",
     "en": "{value} is offline. Connect to read and edit new-session defaults.",
@@ -1590,20 +1462,6 @@
     "zh-CN": "本机的密文缓存",
     "en": "Local ciphertext cache",
     "notes": "iOS Licenses.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.ios_local_storage",
-    "zh-CN": "本机存储",
-    "en": "Local storage",
-    "notes": "iOS SettingsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -1810,20 +1668,6 @@
     }
   },
   {
-    "key": "settings.ios_the_time_on_the_right_is_the_last_use",
-    "zh-CN": "右边是上次使用的时间。",
-    "en": "The time on the right is the last use.",
-    "notes": "iOS DevicesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.ios_these_libraries_are_used_by_optional_parts_of_connect",
     "zh-CN": "这些是 connect-swift 和 SwiftTerm 的可选部分用到的库，没有编进这个 App；许可证一并附上。",
     "en": "These libraries are used by optional parts of connect-swift and SwiftTerm and are not compiled into this app. Their licenses are included.",
@@ -1894,20 +1738,6 @@
     }
   },
   {
-    "key": "settings.ios_unanswered_approvals_are_denied_after_this_time",
-    "zh-CN": "没人处理的审批过了这个时间就拒绝。",
-    "en": "Unanswered approvals are denied after this time.",
-    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.ios_unknown",
     "zh-CN": "未知",
     "en": "Unknown",
@@ -1926,48 +1756,6 @@
     "zh-CN": "不确定电脑有没有保存这次修改，重新读取后以电脑上的为准",
     "en": "Unsure whether the computer saved this change. Reload to use the computer’s settings.",
     "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.ios_unverified",
-    "zh-CN": "未验证 ·",
-    "en": "Unverified ·",
-    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.ios_verified",
-    "zh-CN": "已验证 ·",
-    "en": "Verified ·",
-    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.ios_version",
-    "zh-CN": "版本",
-    "en": "Version",
-    "notes": "iOS SettingsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -2024,22 +1812,6 @@
     }
   },
   {
-    "key": "settings.all_clients",
-    "zh-CN": "全部客户端",
-    "en": "All clients",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.appearance",
     "zh-CN": "外观",
     "en": "Appearance",
@@ -2056,41 +1828,9 @@
     }
   },
   {
-    "key": "settings.theme",
-    "zh-CN": "主题",
-    "en": "Theme",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.about",
     "zh-CN": "关于",
     "en": "About",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.account",
-    "zh-CN": "账户",
-    "en": "Account",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -2424,22 +2164,6 @@
     }
   },
   {
-    "key": "settings.devices",
-    "zh-CN": "设备",
-    "en": "Devices",
-    "notes": "Settings 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.unfinished_pairing",
     "zh-CN": "未完成的配对",
     "en": "Unfinished pairing",
@@ -2459,38 +2183,6 @@
     "key": "settings.the_new_device_has_not_finished_joining_if_it",
     "zh-CN": "新设备尚未完成加入。若无法继续，可移除后重新配对。",
     "en": "The new device has not finished joining. If it cannot continue, remove it and pair again.",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.unfinished_pairing_settings",
-    "zh-CN": " · 未完成的配对",
-    "en": " · Unfinished pairing",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.computers_run_clis",
-    "zh-CN": "电脑 · 运行 CLI",
-    "en": "Computers · Run CLIs",
     "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -2540,22 +2232,6 @@
     "zh-CN": "管理端",
     "en": "Managing client",
     "notes": "Settings 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.the_time_on_the_right_is_the_last_use",
-    "zh-CN": "右边是上次使用的时间。名称只能在那台设备上修改。",
-    "en": "The time on the right is the last use. Names can only be changed on that device.",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
       "web",
@@ -3016,22 +2692,6 @@
     }
   },
   {
-    "key": "settings.security_notifications_are_independent_of_session_alerts_delivery_is",
-    "zh-CN": "安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。",
-    "en": "Security notifications are independent of session alerts. Delivery is not guaranteed; open the managing client daily to check recovery requests.",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.approval_timeout",
     "zh-CN": "审批超时",
     "en": "Approval timeout",
@@ -3356,22 +3016,6 @@
     }
   },
   {
-    "key": "settings.clear",
-    "zh-CN": "清理…",
-    "en": "Clear…",
-    "notes": "Settings 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.can_free",
     "zh-CN": "可释放 {value}",
     "en": "Can free {value}",
@@ -3578,27 +3222,6 @@
     }
   },
   {
-    "key": "settings.cli_version",
-    "zh-CN": "{name} 版本",
-    "en": "{name} version",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.iphone_push_help",
     "zh-CN": "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送：在 Safari 里点分享按钮，选「添加到主屏幕」，再从主屏幕上的图标打开。",
     "en": "On iPhone, add to Home Screen and open from there to receive push notifications: in Safari, tap Share, choose Add to Home Screen, then open its icon.",
@@ -3683,22 +3306,6 @@
     "notes": "iOS Licenses.swift 的原生界面/错误提示。说明 google.golang.org/protobuf 的用途；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.cli_switches_title",
-    "zh-CN": "启用的 CLI",
-    "en": "Enabled CLIs",
-    "params": {},
-    "notes": "设置在电脑详情页的分组标题，用于按电脑独立开关已安装的 CLI。",
-    "platforms": [
-      "web",
-      "android",
       "ios"
     ],
     "status": {
@@ -4408,22 +4015,6 @@
     "zh-CN": "账户安全",
     "en": "Account security",
     "notes": "设置页行名与账户安全二级页标题。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.security_summary_authority",
-    "zh-CN": "本机是管理端",
-    "en": "This device manages",
-    "notes": "「账户安全」行尾：本机就是管理端时的简短摘要。",
     "params": {},
     "platforms": [
       "web",

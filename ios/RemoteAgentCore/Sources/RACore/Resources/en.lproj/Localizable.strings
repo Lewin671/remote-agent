@@ -1462,15 +1462,12 @@
 "session_usage_entry_unavailable" = "%1$@ usage and speed telemetry unavailable";
 "session_view" = "View";
 "settings_about" = "About";
-"settings_account" = "Account";
 "settings_account_quota" = "Account quota";
 "settings_account_security_title" = "Account security";
 "settings_add_device_footer_hint" = "To add a computer or client, open Settings › Add device on the managing client (%1$@).";
 "settings_add_device_item" = "Add device";
 "settings_add_first_computer" = "Add first computer";
 "settings_added" = "Added";
-"settings_all_clients" = "All clients";
-"settings_all_devices" = "All devices";
 "settings_appearance" = "Appearance";
 "settings_approval_timeout" = "Approval timeout";
 "settings_attachment_storage" = "Attachment storage";
@@ -1482,7 +1479,6 @@
 "settings_cannot_sign_in_to_the_relay_right_now" = "Cannot sign in to the relay right now";
 "settings_check_for_updates" = "Check for updates";
 "settings_checking" = " Checking…";
-"settings_clear" = "Clear…";
 "settings_clear_reclaimable_attachments_and_cache" = "Clear reclaimable attachments and cache?";
 "settings_clear_settings" = "Clear";
 "settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache" = "Clears reclaimable originals, previews, and unsynced large image cache. Queued and active originals, session files, and history remain; unsynced large images will show only previews.";
@@ -1499,11 +1495,9 @@
 "settings_cli_switches_keep_one" = "Keep at least one on";
 "settings_cli_switches_lease_expired_footer" = "Remote control is paused; renew on the managing device to make changes.";
 "settings_cli_switches_offline_reason" = "%1$@ is offline. Showing the last synced state";
-"settings_cli_switches_title" = "Enabled CLIs";
 "settings_cli_switches_update_error" = "Could not update enabled CLIs: %1$@";
 "settings_cli_unverified_badge" = "Unverified";
 "settings_cli_unverified_short" = "Unverified";
-"settings_cli_version" = "%1$@ version";
 "settings_client_name" = "Client name";
 "settings_clients_add_client" = "Add client";
 "settings_clients_control_sessions" = "Clients · Control sessions";
@@ -1520,7 +1514,6 @@
 "settings_computer" = "Computer";
 "settings_computer_offline_showing_the_last_reading" = "Computer offline. Showing the last reading.";
 "settings_computer_settings_offline" = "%1$@ is offline. Its settings are unavailable for now.";
-"settings_computers_run_clis" = "Computers · Run CLIs";
 "settings_could_not_download_retry_later" = "Could not download. Retry later.";
 "settings_could_not_read_the_device_list" = "Could not read the device list";
 "settings_current" = "Current";
@@ -1532,7 +1525,6 @@
 "settings_details" = "Details";
 "settings_device_id" = "Device ID";
 "settings_device_not_found" = "Device not found";
-"settings_devices" = "Devices";
 "settings_empty_computers_authority_body" = "Generate a pairing code and run remote-agent account join in your computer's terminal.";
 "settings_empty_computers_member_body" = "Open Settings › Add device on the managing client (%1$@) to add a computer.";
 "settings_empty_computers_title" = "No computers yet";
@@ -1548,7 +1540,6 @@
 "settings_ios_approvals_questions_and_plans_waiting_for_you_appear_at" = "Approvals, questions, and plans waiting for you appear at the top of Sessions";
 "settings_ios_clear_reclaimable_images" = "Clear reclaimable images?";
 "settings_ios_clears_reclaimable_originals_and_cache_unsynced_full_size_images" = "Clears reclaimable originals and cache. Unsynced full-size images will show only previews. Originals queued or used in the current run, and session history, are retained.";
-"settings_ios_cli_versions" = "CLI versions";
 "settings_ios_computer_sessions_do_not_depend_on_alerts_unanswered_approvals" = "Computer sessions do not depend on alerts. Unanswered approvals are denied when they expire; you can continue later in the session.";
 "settings_ios_connect_to_the_server_to_read_and_edit_new" = "Connect to the server to read and edit new-session defaults";
 "settings_ios_copy_device_id" = "Copy device ID";
@@ -1562,13 +1553,11 @@
 "settings_ios_how_many_sessions_are_waiting_for_you" = "How many sessions are waiting for you";
 "settings_ios_how_to_know_something_needs_attention_now" = "How to know something needs attention now";
 "settings_ios_icons_and_libraries" = "Icons and libraries";
-"settings_ios_images_are_stored_on_this_computer_images_being_sent" = "Images are stored on this computer. Images being sent or used in execution are not cleared. The preview cache is limited to 150 MiB and reclaimed automatically.";
 "settings_ios_is_offline_connect_to_read_and_edit_new_session" = "%1$@ is offline. Connect to read and edit new-session defaults.";
 "settings_ios_leave_blank_for_the_default_name" = "Leave blank for the default name";
 "settings_ios_libraries_resolved_with_dependencies" = "Libraries resolved with dependencies";
 "settings_ios_license_text_is_not_bundled_with_the_app" = "License text is not bundled with the app";
 "settings_ios_local_ciphertext_cache" = "Local ciphertext cache";
-"settings_ios_local_storage" = "Local storage";
 "settings_ios_name_set_in_settings" = "Name set in settings";
 "settings_ios_no_computers_yet" = "No computers yet";
 "settings_ios_notifications" = "Notifications";
@@ -1584,18 +1573,13 @@
 "settings_ios_support_and_feedback" = "Support and feedback";
 "settings_ios_the_android_app_and_home_screen_web_app_can" = "The Android app and home screen web app can enable alerts in their own settings";
 "settings_ios_the_number_on_the_sessions_tab" = "The number on the Sessions tab";
-"settings_ios_the_time_on_the_right_is_the_last_use" = "The time on the right is the last use.";
 "settings_ios_these_libraries_are_used_by_optional_parts_of_connect" = "These libraries are used by optional parts of connect-swift and SwiftTerm and are not compiled into this app. Their licenses are included.";
 "settings_ios_this_client_is_not_in_the_current_trusted_directory" = "This client is not in the current trusted directory. Revocation status is determined by the receipt.";
 "settings_ios_this_computer_is_not_in_the_current_trusted_directory" = "This computer is not in the current trusted directory. Revocation status is determined by the receipt.";
 "settings_ios_this_ios_version_cannot_send_alerts_yet_you_will" = "This iOS version cannot send alerts yet. You will not receive system notifications when a session needs attention. Open the app to see it at the top of Sessions.";
 "settings_ios_type" = "Type";
-"settings_ios_unanswered_approvals_are_denied_after_this_time" = "Unanswered approvals are denied after this time.";
 "settings_ios_unknown" = "Unknown";
 "settings_ios_unsure_whether_the_computer_saved_this_change_reload_to" = "Unsure whether the computer saved this change. Reload to use the computer’s settings.";
-"settings_ios_unverified" = "Unverified ·";
-"settings_ios_verified" = "Verified ·";
-"settings_ios_version" = "Version";
 "settings_ios_while_the_app_is_open" = "While the app is open";
 "settings_iphone_push_help" = "On iPhone, add to Home Screen and open from there to receive push notifications: in Safari, tap Share, choose Add to Home Screen, then open its icon.";
 "settings_last_used" = "Last used";
@@ -1662,8 +1646,6 @@
 "settings_section_runtime_and_storage" = "Runtime & storage";
 "settings_section_this_device" = "This device";
 "settings_security_notifications" = "Security notifications";
-"settings_security_notifications_are_independent_of_session_alerts_delivery_is" = "Security notifications are independent of session alerts. Delivery is not guaranteed; open the managing client daily to check recovery requests.";
-"settings_security_summary_authority" = "This device manages";
 "settings_security_summary_non_authority" = "Manager: %1$@";
 "settings_server_and_connection" = "Server & connection";
 "settings_session_alerts_are_off_you_will_not_be_notified" = "Session alerts are off. You will not be notified of approvals.";
@@ -1694,8 +1676,6 @@
 "settings_the_new_device_has_not_finished_joining_if_it" = "The new device has not finished joining. If it cannot continue, remove it and pair again.";
 "settings_the_original_operation_is_unfinished_continue_verifying" = "The original operation is unfinished. Continue verifying.";
 "settings_the_original_security_operation_is_verified_complete_you_can" = "The original security operation is verified complete. You can rejoin the account.";
-"settings_the_time_on_the_right_is_the_last_use" = "The time on the right is the last use. Names can only be changed on that device.";
-"settings_theme" = "Theme";
 "settings_theme_auto" = "Auto";
 "settings_this_browser_does_not_support_push_notifications" = "This browser does not support push notifications";
 "settings_this_device_was_removed_from_the_account" = "This device was removed from the account";
@@ -1703,7 +1683,6 @@
 "settings_times_are_shown_in_beijing_time_quotas_belong_to" = "Times are shown in Beijing time. Quotas belong to the CLI’s signed-in account; other usage on that account may also count.";
 "settings_unanswered_approvals_are_denied_after_this_time" = "Unanswered approvals are denied after this time";
 "settings_unfinished_pairing" = "Unfinished pairing";
-"settings_unfinished_pairing_settings" = " · Unfinished pairing";
 "settings_unnamed" = "Unnamed";
 "settings_unverified" = "Unverified · ";
 "settings_up_to_date" = "Up to date";
@@ -1856,7 +1835,6 @@
 "transport_conn_footer_unsupported_app" = "This app version does not support direct connections yet; everything connects via relay.";
 "transport_detail_daemon_disabled" = "Turn it on from this computer to use direct connections";
 "transport_detail_relay_only" = "Everything connects via relay as usual";
-"transport_diag" = "Diagnostics";
 "transport_diag_at" = "%2$@ %1$@ s";
 "transport_diag_cand" = "%2$@ ×%1$lld (%3$@)";
 "transport_diag_channel" = "Data channel";
@@ -1865,9 +1843,7 @@
 "transport_diag_check_retry" = "Background auto-retry";
 "transport_diag_connected_body" = "Loading and files are back on a direct connection.";
 "transport_diag_connected_title" = "Direct connected";
-"transport_diag_copy" = "Copy diagnostics";
 "transport_diag_copy_permission" = "Couldn’t copy; check clipboard permission";
-"transport_diag_copy_support" = "Copy diagnostics for support";
 "transport_diag_count" = "×%1$lld";
 "transport_diag_dtls" = "Encryption handshake";
 "transport_diag_explain_generic" = "Direct negotiation did not finish within the time budget and will retry when the network changes. Everything currently uses relay automatically with no impact on use.";
@@ -1876,7 +1852,6 @@
 "transport_diag_explain_peer_old" = "The remote-agent version on the computer does not support direct connections yet; update it to enable direct paths. Everything currently uses relay automatically with no impact on use.";
 "transport_diag_explain_probe_blocked" = "This network appears to block UDP packets needed for direct probing. Everything currently uses relay automatically with no impact on use.";
 "transport_diag_family_unknown" = "unknown";
-"transport_diag_footer" = "Diagnostics show address types and ranges only, never the addresses themselves.";
 "transport_diag_g_checks" = "Connectivity checks";
 "transport_diag_g_local" = "This device's addresses";
 "transport_diag_g_peer" = "The computer's addresses";
@@ -1928,7 +1903,6 @@
 "transport_diag_result_retired" = "Replaced by a newer round";
 "transport_diag_result_timeout" = "Didn't connect";
 "transport_diag_result_trying" = "In progress";
-"transport_diag_retry" = "Try again";
 "transport_diag_retry_auto_desc" = "Retries automatically when Wi-Fi or network changes";
 "transport_diag_retry_wait_desc" = "Resumes automatically after updating remote-agent on the computer";
 "transport_diag_retrying" = "Trying…";
@@ -2000,7 +1974,6 @@
 "transport_file_speed_direct" = "Direct %1$@ MiB/s";
 "transport_file_speed_relay" = "Relay %1$@ MiB/s";
 "transport_footer" = "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background.";
-"transport_group" = "Connection";
 "transport_popover_a11y" = "Direct connection active, tap for details";
 "transport_popover_direct_body" = "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first.";
 "transport_popover_direct_title" = "Direct to %1$@";

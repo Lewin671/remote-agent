@@ -113,6 +113,14 @@ internal fun DirectConnectionSheet(
     val status = state.machines[machineId]?.pathState?.directStatus
     val connected = status?.stage == DirectStage.DIRECT_ACTIVE && (status.readDirect || status.fileDirect)
     val running = status?.stage == DirectStage.TRYING
+    var wasDiagShown by remember(machineId) { mutableStateOf(view.showDiagnosticsEntry) }
+    LaunchedEffect(view.showDiagnosticsEntry, connected, view.toggleChecked) {
+        if (connected || !view.toggleChecked) {
+            wasDiagShown = false
+        } else if (view.showDiagnosticsEntry) {
+            wasDiagShown = true
+        }
+    }
 
     LaunchedEffect(machineId, running, diagLinesOverride) {
         diagLines = diagLinesOverride ?: DirectDiag.lines()
@@ -227,7 +235,7 @@ internal fun DirectConnectionSheet(
                 }
             }
         }
-        if (view.showDiagnosticsEntry) {
+        if (view.showDiagnosticsEntry || (wasDiagShown && running && !connected)) {
             FieldLabel(copy(UiMessages.transportDiagSectionAuto()))
             Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }.padding(horizontal = 12.dp, vertical = 2.dp)) {
                 Text(body, style = T.s13, color = p.ink2)

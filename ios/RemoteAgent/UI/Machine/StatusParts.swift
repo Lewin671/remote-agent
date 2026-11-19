@@ -177,7 +177,9 @@ struct MachineRingsCard: View {
                                 .foregroundStyle(statusWarn ? DS.orangeInk : DS.ink2)
                                 .fontWeight(statusWarn ? .semibold : .regular)
                         }
-                        Arrow(DS.ink2)
+                        if online {
+                            Arrow(DS.ink2)
+                        }
                     }
                 }
                 .padding(.horizontal, 14)
@@ -199,8 +201,7 @@ struct MachineRingsCard: View {
                         }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(r.a11YLabel.rendered())
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityAction { onOpen() }
+                        .accessibilityAddTraits(online ? .isButton : [])
                     }
                 }
                 .padding(.horizontal, 18).padding(.vertical, 16)
@@ -217,8 +218,7 @@ struct MachineRingsCard: View {
                         .frame(maxWidth: .infinity)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(r.a11YLabel.rendered())
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityAction { onOpen() }
+                        .accessibilityAddTraits(online ? .isButton : [])
                     }
                 }
                 .padding(.horizontal, 6).padding(.top, 16).padding(.bottom, 14)
@@ -227,10 +227,22 @@ struct MachineRingsCard: View {
         .frame(maxWidth: .infinity)
         .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
         .opacity(online ? 1 : 0.55)
-        .contentShape(RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
-        .onTapGesture { onOpen() }
+        .ringsCardAction(enabled: online, action: onOpen)
         .padding(.init(top: 0, leading: 16, bottom: 12, trailing: 16))
         .accessibilityIdentifier("machine-rings")
+    }
+}
+
+private extension View {
+    @ViewBuilder func ringsCardAction(enabled: Bool, action: @escaping () -> Void) -> some View {
+        if enabled {
+            self
+                .contentShape(RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
+                .onTapGesture { action() }
+                .accessibilityAction { action() }
+        } else {
+            self
+        }
     }
 }
 
