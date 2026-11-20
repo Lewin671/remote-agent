@@ -5667,9 +5667,9 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.current" -> {
             resources.getString(R.string.settings_current)
         }
-        "settings.daemon_protocol_tag" -> {
-            val version = message.args.getValue("version") as Int
-            resources.getString(R.string.settings_daemon_protocol_tag, version)
+        "settings.daemon_version_tag" -> {
+            val version = message.args.getValue("version") as String
+            resources.getString(R.string.settings_daemon_version_tag, version)
         }
         "settings.dark" -> {
             resources.getString(R.string.settings_dark)

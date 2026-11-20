@@ -291,7 +291,7 @@ class SettingsRedesignTest {
             .setOnline(true)
             .setEditable(true)
             .setHeaderDot(MachineStatusDot.MACHINE_STATUS_DOT_ORANGE_STATIC)
-            .setHeaderSubtitle(lit("在线 · daemon v17"))
+            .setHeaderSubtitle(lit("在线 · daemon 0.94.0"))
             .setShowStatusEntry(true)
             .setStatusCardDot(MachineStatusDot.MACHINE_STATUS_DOT_ORANGE_STATIC)
             .setStatusCardBadge(lit("磁盘紧张"))
@@ -402,7 +402,7 @@ class SettingsRedesignTest {
 
         // Header + Module 0
         ui.onNodeWithText("StudioBox").assertIsDisplayed()
-        ui.onNodeWithText("在线 · daemon v17").assertIsDisplayed()
+        ui.onNodeWithText("在线 · daemon 0.94.0").assertIsDisplayed()
         ui.onNodeWithText("磁盘紧张").performClick()
         assertEquals(1, openedStatus)
 

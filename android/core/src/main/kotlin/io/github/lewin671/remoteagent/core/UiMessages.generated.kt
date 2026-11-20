@@ -1707,7 +1707,7 @@ object UiMessages {
     fun settingsCouldNotDownloadRetryLater(): UiMessage = UiMessage("settings.could_not_download_retry_later", emptyMap())
     fun settingsCouldNotReadTheDeviceList(): UiMessage = UiMessage("settings.could_not_read_the_device_list", emptyMap())
     fun settingsCurrent(): UiMessage = UiMessage("settings.current", emptyMap())
-    fun settingsDaemonProtocolTag(version: Int): UiMessage = UiMessage("settings.daemon_protocol_tag", mapOf("version" to version))
+    fun settingsDaemonVersionTag(version: String): UiMessage = UiMessage("settings.daemon_version_tag", mapOf("version" to version))
     fun settingsDark(): UiMessage = UiMessage("settings.dark", emptyMap())
     fun settingsDefault(): UiMessage = UiMessage("settings.default", emptyMap())
     fun settingsDeleteComputerRecordsEllipsis(): UiMessage = UiMessage("settings.delete_computer_records_ellipsis", emptyMap())

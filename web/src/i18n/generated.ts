@@ -1322,7 +1322,7 @@ export interface MessageArgs {
   "settings.could_not_download_retry_later": { [name: string]: never };
   "settings.could_not_read_the_device_list": { [name: string]: never };
   "settings.current": { [name: string]: never };
-  "settings.daemon_protocol_tag": { version: number };
+  "settings.daemon_version_tag": { version: string };
   "settings.dark": { [name: string]: never };
   "settings.default": { [name: string]: never };
   "settings.delete_computer_records_ellipsis": { [name: string]: never };
@@ -3627,7 +3627,7 @@ export const messages = {
     "settings.could_not_download_retry_later": "Could not download. Retry later.",
     "settings.could_not_read_the_device_list": "Could not read the device list",
     "settings.current": "Current",
-    "settings.daemon_protocol_tag": "daemon v{version}",
+    "settings.daemon_version_tag": "daemon {version}",
     "settings.dark": "Dark",
     "settings.default": " (default)",
     "settings.delete_computer_records_ellipsis": "Delete computer records…",
@@ -5940,7 +5940,7 @@ export const messages = {
     "settings.could_not_download_retry_later": "没能下载，稍后再试",
     "settings.could_not_read_the_device_list": "没能读取设备列表",
     "settings.current": "当前",
-    "settings.daemon_protocol_tag": "daemon v{version}",
+    "settings.daemon_version_tag": "daemon {version}",
     "settings.dark": "暗色",
     "settings.default": "（默认）",
     "settings.delete_computer_records_ellipsis": "删除这台电脑的记录…",

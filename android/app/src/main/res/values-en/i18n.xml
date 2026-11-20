@@ -1974,7 +1974,7 @@
     <string name="settings_could_not_download_retry_later" formatted="false">"Could not download. Retry later."</string>
     <string name="settings_could_not_read_the_device_list" formatted="false">"Could not read the device list"</string>
     <string name="settings_current" formatted="false">"Current"</string>
-    <string name="settings_daemon_protocol_tag">"daemon v%1$d"</string>
+    <string name="settings_daemon_version_tag">"daemon %1$s"</string>
     <string name="settings_dark" formatted="false">"Dark"</string>
     <string name="settings_default" formatted="false">" (default)"</string>
     <string name="settings_delete_computer_records_ellipsis" formatted="false">"Delete computer records…"</string>

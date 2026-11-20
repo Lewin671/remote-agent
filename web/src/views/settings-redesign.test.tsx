@@ -374,7 +374,7 @@ describe("Computer Page 4 core modules + Archive Fix + Storage Page + Filtered P
       online: true,
       editable: true,
       headerDot: MachineStatusDot.GREEN_LIVE,
-      headerSubtitle: create(TextSchema, { literal: "在线 · daemon v17" }),
+      headerSubtitle: create(TextSchema, { literal: "在线 · daemon 0.94.0" }),
       showStatusEntry: true,
       statusCardDot: MachineStatusDot.ORANGE_STATIC,
       statusCardBadge: create(TextSchema, { literal: "磁盘紧张" }),

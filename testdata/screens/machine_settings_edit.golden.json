@@ -1057,11 +1057,11 @@
                   "key": "common.online"
                 },
                 {
-                  "key": "settings.daemon_protocol_tag",
+                  "key": "settings.daemon_version_tag",
                   "args": [
                     {
                       "name": "version",
-                      "intValue": "17"
+                      "strValue": "0.94.0"
                     }
                   ]
                 }
@@ -1940,11 +1940,11 @@
                   "key": "common.online"
                 },
                 {
-                  "key": "settings.daemon_protocol_tag",
+                  "key": "settings.daemon_version_tag",
                   "args": [
                     {
                       "name": "version",
-                      "intValue": "17"
+                      "strValue": "0.94.0"
                     }
                   ]
                 }
@@ -2798,11 +2798,11 @@
                   "key": "common.online"
                 },
                 {
-                  "key": "settings.daemon_protocol_tag",
+                  "key": "settings.daemon_version_tag",
                   "args": [
                     {
                       "name": "version",
-                      "intValue": "17"
+                      "strValue": "0.94.0"
                     }
                   ]
                 }
@@ -3624,11 +3624,11 @@
                   "key": "common.online"
                 },
                 {
-                  "key": "settings.daemon_protocol_tag",
+                  "key": "settings.daemon_version_tag",
                   "args": [
                     {
                       "name": "version",
-                      "intValue": "17"
+                      "strValue": "0.94.0"
                     }
                   ]
                 }

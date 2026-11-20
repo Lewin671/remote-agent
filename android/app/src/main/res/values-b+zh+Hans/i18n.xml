@@ -1884,7 +1884,7 @@
     <string name="settings_could_not_download_retry_later" formatted="false">"没能下载，稍后再试"</string>
     <string name="settings_could_not_read_the_device_list" formatted="false">"没能读取设备列表"</string>
     <string name="settings_current" formatted="false">"当前"</string>
-    <string name="settings_daemon_protocol_tag">"daemon v%1$d"</string>
+    <string name="settings_daemon_version_tag">"daemon %1$s"</string>
     <string name="settings_dark" formatted="false">"暗色"</string>
     <string name="settings_default" formatted="false">"（默认）"</string>
     <string name="settings_delete_computer_records_ellipsis" formatted="false">"删除这台电脑的记录…"</string>

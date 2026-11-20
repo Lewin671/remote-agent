@@ -67,6 +67,7 @@
               "meta": {
                 "hostname": "MacStudio",
                 "protocolVersion": 17,
+                "daemonVersion": "0.94.0",
                 "capabilities": { "machineStatus": true },
                 "agents": [
                   { "agent": "AGENT_CODEX", "version": "0.42.0", "verified": true, "defaultMode": "APPROVAL_MODE_ASK" },

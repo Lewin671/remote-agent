@@ -4333,14 +4333,14 @@
     }
   },
   {
-    "key": "settings.daemon_protocol_tag",
-    "zh-CN": "daemon v{version}",
-    "en": "daemon v{version}",
-    "notes": "电脑页顶栏副标题里的 daemon 协议版本标记。",
+    "key": "settings.daemon_version_tag",
+    "zh-CN": "daemon {version}",
+    "en": "daemon {version}",
+    "notes": "电脑页顶栏副标题里 daemon 的产品版本标记。version：daemon 报告的产品版本原文（如 0.94.0，源码构建可能带 -dev 等后缀），不翻译；「daemon」是程序名，不翻译。",
     "params": {
       "version": {
-        "type": "integer",
-        "example": 17
+        "type": "string",
+        "example": "0.94.0"
       }
     },
     "platforms": [

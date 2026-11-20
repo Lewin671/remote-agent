@@ -1519,7 +1519,7 @@
 "settings_could_not_download_retry_later" = "Could not download. Retry later.";
 "settings_could_not_read_the_device_list" = "Could not read the device list";
 "settings_current" = "Current";
-"settings_daemon_protocol_tag" = "daemon v%1$lld";
+"settings_daemon_version_tag" = "daemon %1$@";
 "settings_dark" = "Dark";
 "settings_default" = " (default)";
 "settings_default_approval_mode" = "Default approval mode";

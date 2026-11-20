@@ -6477,9 +6477,9 @@ public enum L10n {
         let key = "settings_current"
         return format(key, locale: locale, args: [])
     }
-    public static func settingsDaemonProtocolTag(version: Int, locale: String = MessageLocale.current) -> String {
-        let key = "settings_daemon_protocol_tag"
-        return format(key, locale: locale, args: [Int64(version)])
+    public static func settingsDaemonVersionTag(version: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_daemon_version_tag"
+        return format(key, locale: locale, args: [version])
     }
     public static func settingsDark(locale: String = MessageLocale.current) -> String {
         let key = "settings_dark"
@@ -15217,9 +15217,9 @@ public enum L10nMessage {
         let key = "settings_current"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func settingsDaemonProtocolTag(version: Int) -> LocalizedMessage {
-        let key = "settings_daemon_protocol_tag"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(version))])
+    public static func settingsDaemonVersionTag(version: String) -> LocalizedMessage {
+        let key = "settings_daemon_version_tag"
+        return LocalizedMessage(key: key, arguments: [.string(version)])
     }
     public static func settingsDark() -> LocalizedMessage {
         let key = "settings_dark"
@@ -19233,7 +19233,7 @@ public enum L10nText {
         case "settings.could_not_download_retry_later": return L10n.format("settings_could_not_download_retry_later", locale: locale, args: [])
         case "settings.could_not_read_the_device_list": return L10n.format("settings_could_not_read_the_device_list", locale: locale, args: [])
         case "settings.current": return L10n.format("settings_current", locale: locale, args: [])
-        case "settings.daemon_protocol_tag": return L10n.format("settings_daemon_protocol_tag", locale: locale, args: [intArg(args["version"])])
+        case "settings.daemon_version_tag": return L10n.format("settings_daemon_version_tag", locale: locale, args: [strArg(args["version"])])
         case "settings.dark": return L10n.format("settings_dark", locale: locale, args: [])
         case "settings.default": return L10n.format("settings_default", locale: locale, args: [])
         case "settings.default_approval_mode": return L10n.format("settings_default_approval_mode", locale: locale, args: [])

@@ -667,8 +667,8 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 				subParts = append(subParts, rel)
 			}
 		}
-		if m.Meta != nil && m.Meta.ProtocolVersion > 0 {
-			subParts = append(subParts, text.Msg(text.KeySettingsDaemonProtocolTag, text.Int("version", int64(m.Meta.ProtocolVersion))))
+		if m.Meta != nil && m.Meta.DaemonVersion != "" {
+			subParts = append(subParts, text.Msg(text.KeySettingsDaemonVersionTag, text.Str("version", m.Meta.DaemonVersion)))
 		}
 		vm.HeaderSubtitle = text.JoinLiteral(" · ", subParts...)
 	}
