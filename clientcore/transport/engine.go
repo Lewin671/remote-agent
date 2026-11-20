@@ -420,15 +420,18 @@ func (e *Engine) setEnabled(now int64, m string, on bool) {
 	}
 }
 
+// retryNow is 「重新尝试」: one round at once through the same discovery,
+// failure count untouched, at most every ManualGapMs. With a lapsed proof it
+// authorizes first and the round starts once the sync succeeds.
 func (e *Engine) retryNow(now int64, m string) {
 	p := e.peers[m]
-	if !e.foreground || !e.enabled(m) || !e.current(now) || p != nil && e.active(p, now) || e.hasManual && now-e.manualAt < ManualGapMs {
+	if !e.foreground || !e.legReady || !e.enabled(m) || p != nil && e.active(p, now) || e.hasManual && now-e.manualAt < ManualGapMs {
 		e.emit(RetryNowResult{Machine: m})
 		return
 	}
 	e.manualAt, e.hasManual = now, true
 	delete(e.retryAfter, m)
-	e.discover(now)
+	e.refreshAndDiscover(now)
 	e.emit(RetryNowResult{Machine: m, Started: true})
 }
 

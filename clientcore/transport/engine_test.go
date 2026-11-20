@@ -660,8 +660,18 @@ func TestRetryNow(t *testing.T) {
 	r.do(SetEnabled{Machine: "m1", Enabled: true})
 	r.fail(r.e.lastRound, FailureNone)
 	r.advance(FreshMs)
+	if r.do(RetryNow{Machine: "m1"}); !result().Started || !has[Authorize](r.out) || has[StartRound](r.out) {
+		t.Fatalf("a lapsed proof authorizes first: %#v", r.out)
+	}
+	if !has[StartRound](r.sync()) {
+		t.Fatal("the round starts once the sync succeeds")
+	}
+	r.do(AuthorizeDone{OK: true})
+	r.fail(r.e.lastRound, FailureNone)
+	r.advance(2001)
+	r.do(MainLeg{Ready: false})
 	if r.do(RetryNow{Machine: "m1"}); result().Started {
-		t.Fatal("a lapsed proof")
+		t.Fatal("no main connection")
 	}
 }
 
