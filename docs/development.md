@@ -86,7 +86,7 @@ quick 的整个命令预算为 60 秒，full 为 30 分钟；预算耗尽返回 
 位于 `scripts/dev/`，供日常开发与 peer 任务快速拉起环境、排查故障及生成测试素材。各隔离环境入口（`scripts/dev/e2e-up.sh`、`ios/scripts/dev-env.sh`、`scripts/dev/check.py` 等）启动时会清掉从宿主会话继承的 `RA_SESSION`、`RA_EXE` 与 `REMOTE_AGENT_HOME`（脚本自设的 `REMOTE_AGENT_HOME` 优先），避免测试或工具命令误连日常 daemon：
 
 - `scripts/dev/preflight.sh`：开工前检查常见环境坑：`RA_DEV_DIR` 路径长度（规避 macOS AF_UNIX 104 字符超长）、残留会话变量（提示需 unset 的列表）、磁盘可用空间与中继 2 GiB 低水位、端口可用性与核心工具（tmux/go/pnpm/adb/xcrun）、Android 设备在线与屏幕唤醒状态（`--wake` 唤醒）、iOS 模拟器可用性。
-- `scripts/dev/e2e-up.sh` / `scripts/dev/e2e-down.sh`：基于 `dev-env.sh` 一键启动与停止隔离的本地端到端环境。自动分配短路径与端口，拉起隔离 relay、初始化测试账户与 daemon、启动 Vite 网页代理服务，并打印网页地址与 CLI 示例；`e2e-down.sh` 一键停止服务、清理 tmux socket 与临时目录。
+- `scripts/dev/e2e-up.sh` / `scripts/dev/e2e-down.sh`：基于 `dev-env.sh` 一键启动与停止隔离的本地端到端环境。自动分配短路径与端口，拉起隔离 relay、初始化测试账户与 daemon、先选定 Vite 端口，再带着精确来源（`http://127.0.0.1:<端口>`、`http://localhost:<端口>`）启动 relay：relay 的 `--allowed-origins` 只认完整来源，不支持端口通配（`http://127.0.0.1:*` 会被丢掉，网页的 WebSocket 与跨域请求因此被拒）。缺少 `build/core/web` 时先构建网页 WASM 核心，再启动 Vite，并打印网页地址与 CLI 示例。默认账户由 CLI 创建、没有管理端，网页只能用 `?demo`；`--no-account` 让 relay 不建账户，打印 setup token，网页「创建账户」时填 relay 地址（不是 Vite 端口，否则账户绑定到代理地址，电脑加入会报「账户属于另一台服务器」）与 token，再用「添加设备」的配对码运行 `scripts/dev/e2e-up.sh join CODE --daemon` 让本机加入。`e2e-down.sh` 一键停止服务、清理 tmux socket 与临时目录。
 - `scripts/dev/fixtures.sh [目录]`（或 `scripts/dev/fixtures/generate.py`）：生成全套编号测试素材至指定目录（普通 PNG、长图、64MP 超大像素、>20MB 大图、GIF、WebP、损坏文件、HEIC、超长单行命令、多行 heredoc 文本），不提交二进制进仓库。
 - `scripts/dev/frames.sh <视频> [输出目录] [时间点...]`：使用 ffmpeg 提取全片约 2fps 的缩略联系表（`contact/sheet.jpg` 及帧序列）和指定时间点前后的逐帧片段，输出固定目录结构与元数据。
 - `scripts/dev/worktree.sh <任务名>`：按 AGENTS.md 约定创建新分支与 worktree，使用 pnpm 离线 store 快速连接 Web 依赖，并打印 Android/iOS 缓存复用规则与各端单测运行命令。

@@ -1,6 +1,8 @@
 #!/bin/sh
 # e2e-up.sh: starts a fully-configured isolated remote-agent dev environment
 # (relay server, initialized dev account, running daemon, and optional Vite web server).
+# With --no-account the relay has no account yet: the web client makes it with
+# the printed setup token and this computer joins with a pairing code.
 set -eu
 
 # Never leak an enclosing session's daemon/session env into the isolated dev env.
@@ -17,12 +19,13 @@ die() {
 
 # Subcommand dispatch if environment is already running
 case "${1:-}" in
-cli)
+cli|join)
+	sub=$1
 	shift
 	dir="${RA_DEV_DIR:-}"
 	if [ -z "$dir" ] && [ -f "$pointer" ]; then dir=$(cat "$pointer"); fi
 	[ -n "$dir" ] && [ -d "$dir" ] || die "no running environment found; start with: $0"
-	RA_DEV_DIR="$dir" exec "$dev_env" cli "$@"
+	RA_DEV_DIR="$dir" exec "$dev_env" "$sub" "$@"
 	;;
 status)
 	dir="${RA_DEV_DIR:-}"
@@ -35,6 +38,7 @@ esac
 # Options
 port=""
 with_web=1
+with_account=1
 custom_dir=""
 
 while [ $# -gt 0 ]; do
@@ -50,9 +54,14 @@ while [ $# -gt 0 ]; do
 	--no-web)
 		with_web=0
 		;;
+	--no-account)
+		with_account=0
+		;;
 	-h|--help)
-		echo "Usage: $0 [--dir PATH] [--port PORT] [--no-web]"
+		echo "Usage: $0 [--dir PATH] [--port PORT] [--no-web] [--no-account]"
+		echo "       --no-account: no account on the relay; the web client makes it with the setup token"
 		echo "       $0 cli ARGS...    (run CLI command in active environment)"
+		echo "       $0 join CODE      (--no-account: this computer joins with the web client's pairing code, then runs its daemon)"
 		echo "       $0 status         (show environment status)"
 		exit 0
 		;;
@@ -82,13 +91,19 @@ if [ ${#dir} -gt 70 ]; then
 fi
 
 echo "==> [1/3] Starting isolated relay & daemon in $dir..."
-start_args="--daemon"
+if [ $with_account -eq 1 ]; then start_args="--daemon"; else start_args="--no-account"; fi
 if [ -n "$port" ]; then
 	start_args="$start_args --port $port"
 fi
 
-# Set allowed origins for web access
-export RA_DEV_ALLOWED_ORIGINS="http://localhost:*,http://127.0.0.1:*"
+# The relay only allows the exact web origins it is given (it does not take a
+# port wildcard), so the Vite port is chosen here, before the relay starts, and
+# Vite is told to keep to it.
+web_port=""
+if [ $with_web -eq 1 ] && command -v pnpm >/dev/null 2>&1 && [ -d "$repo/web" ]; then
+	web_port=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
+	export RA_DEV_ALLOWED_ORIGINS="http://127.0.0.1:$web_port,http://localhost:$web_port"
+fi
 export RA_DEV_DIR="$dir"
 
 # Start dev-env
@@ -100,7 +115,8 @@ fi
 rm -f "$dir.start.log"
 
 url=$(cat "$dir/url")
-account_id=$(sed -n 's/.*this machine is \([0-9a-f]*\).*/\1/p' "$dir/account.log" 2>/dev/null || echo "unknown")
+account_id="none"
+[ $with_account -eq 0 ] || account_id=$(sed -n 's/.*this machine is \([0-9a-f]*\).*/\1/p' "$dir/account.log" 2>/dev/null || echo "unknown")
 echo "$dir" > "$pointer"
 
 echo "==> [2/3] Verifying relay health and daemon socket..."
@@ -109,24 +125,30 @@ if ! curl -fsS -o /dev/null "$url/healthz" 2>/dev/null; then
 	die "Step 2/3 failed: relay /healthz did not respond at $url"
 fi
 
-if [ ! -S "$dir/home/daemon.sock" ]; then
+if [ $with_account -eq 1 ] && [ ! -S "$dir/home/daemon.sock" ]; then
 	"$repo/scripts/dev/e2e-down.sh" "$dir" >/dev/null 2>&1 || true
 	die "Step 2/3 failed: daemon socket $dir/home/daemon.sock not found"
 fi
 
 web_url=""
-if [ $with_web -eq 1 ] && command -v pnpm >/dev/null 2>&1 && [ -d "$repo/web" ]; then
+if [ -n "$web_port" ]; then
 	echo "==> [3/3] Starting Vite web client..."
+	# The page imports the WASM client core, which is a build output.
+	if [ ! -f "$repo/build/core/web/core.wasm" ]; then
+		echo "    building the web WASM core (build/core/web)..."
+		"$repo/scripts/core/build.sh" web >"$dir.core.log" 2>&1 || { cat "$dir.core.log" >&2; echo "warning: the WASM core did not build; the page will not load" >&2; }
+		rm -f "$dir.core.log"
+	fi
 	web_log="$dir/web.log"
 	web_pid=$(python3 -c '
 import subprocess, os, sys
 env = os.environ.copy()
 env["RA_PROXY"] = sys.argv[2]
-p = subprocess.Popen(["pnpm", "--dir", sys.argv[1], "exec", "vite", "--host", "127.0.0.1", "--port", "0"],
+p = subprocess.Popen(["pnpm", "--dir", sys.argv[1], "exec", "vite", "--host", "127.0.0.1", "--port", sys.argv[4], "--strictPort"],
                      stdin=subprocess.DEVNULL, stdout=open(sys.argv[3], "w"), stderr=subprocess.STDOUT,
                      env=env, start_new_session=True)
 print(p.pid)
-' "$repo/web" "$url" "$web_log")
+' "$repo/web" "$url" "$web_log" "$web_port")
 	echo "$web_pid" > "$dir/web.pid"
 
 	# Wait for Vite to bind and print Local: http://127.0.0.1:<port>
@@ -160,18 +182,32 @@ echo "============================================================"
 echo "  Directory:  $dir"
 echo "  Relay URL:  $url"
 if [ -n "$web_url" ]; then
-	echo "  Web Client: $web_url"
+	echo "  Web Client: $web_url   (origin allowed on the relay)"
 	echo "  Demo Mode:  $web_url/?demo"
 fi
 echo "  Account:    $account_id"
 echo "  Tmux Sock:  $(cat "$dir/tmux-socket")"
 echo
-echo "CLI usage:"
-echo "  scripts/dev/e2e-up.sh cli session list"
-echo "  scripts/dev/e2e-up.sh cli session create"
-echo "  # or with dev-env.sh:"
-echo "  RA_DEV_DIR=$dir ios/scripts/dev-env.sh cli session list"
-echo
+if [ $with_account -eq 0 ]; then
+	echo "Web as the authority client (this relay has no account yet):"
+	echo "  1. open the Web Client, choose 创建账户, enter the Relay URL above (not the Vite port)"
+	echo "     and the setup token: $(cat "$dir/setup-token")"
+	echo "  2. 设置 > 添加设备 shows a pairing code, then: scripts/dev/e2e-up.sh join CODE --daemon"
+	echo "  3. after that: scripts/dev/e2e-up.sh cli session list"
+	echo
+elif [ -n "$web_url" ]; then
+	echo "Web note: this account was made by the CLI and has no authority client, so the web page"
+	echo "cannot join it (only ?demo works). To drive the real relay from the page, start with --no-account."
+	echo
+fi
+if [ $with_account -eq 1 ]; then
+	echo "CLI usage:"
+	echo "  scripts/dev/e2e-up.sh cli session list"
+	echo "  scripts/dev/e2e-up.sh cli session create"
+	echo "  # or with dev-env.sh:"
+	echo "  RA_DEV_DIR=$dir ios/scripts/dev-env.sh cli session list"
+	echo
+fi
 echo "Stop & cleanup:"
 echo "  scripts/dev/e2e-down.sh $dir"
 echo "============================================================"
