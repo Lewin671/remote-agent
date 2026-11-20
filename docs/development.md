@@ -90,6 +90,7 @@ quick 的整个命令预算为 60 秒，full 为 30 分钟；预算耗尽返回 
 - `scripts/dev/fixtures.sh [目录]`（或 `scripts/dev/fixtures/generate.py`）：生成全套编号测试素材至指定目录（普通 PNG、长图、64MP 超大像素、>20MB 大图、GIF、WebP、损坏文件、HEIC、超长单行命令、多行 heredoc 文本），不提交二进制进仓库。
 - `scripts/dev/frames.sh <视频> [输出目录] [时间点...]`：使用 ffmpeg 提取全片约 2fps 的缩略联系表（`contact/sheet.jpg` 及帧序列）和指定时间点前后的逐帧片段，输出固定目录结构与元数据。
 - `scripts/dev/worktree.sh <任务名>`：按 AGENTS.md 约定创建新分支与 worktree，使用 pnpm 离线 store 快速连接 Web 依赖，并打印 Android/iOS 缓存复用规则与各端单测运行命令。
+- `python3 -I scripts/dev/code_size.py [--ref <提交>] [--base <提交>] [--json]`：只读统计网页、Android、iOS、clientcore 的产品与测试物理行数（含注释和空行，排除生成代码；根 module 的 Go 仅作参考行），用作「客户端逻辑迁进共享核心」的验收指标。默认统计当前工作树，`--ref` 统计某个提交，`--base` 输出与之对比的增减；验收记录里引用三端各自的增减。各端的包含/排除口径集中在脚本顶部的 `TARGETS`。
 
 ## iOS 卡顿诊断
 
