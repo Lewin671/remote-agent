@@ -247,6 +247,9 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 		callsMu.Unlock()
 		done <- struct{}{}
 	}
+	// Step 2 moved the clock past sess's round deadline, so its ticker ends
+	// it at some nondeterministic point; reconcile needs an active session.
+	dp.session = sess2
 	dp.paths[0] = new(direct.Path)
 	dp.subscribed = map[string]struct{}{"present": {}, "missing": {}}
 	m.active[peerMem.ID] = dp
