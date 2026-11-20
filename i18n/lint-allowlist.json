@@ -4673,5 +4673,30 @@
     "path": "web/src/views/Composer.tsx",
     "literal": "void; tray?: Tray; trayView?: ReactNode; pendingTray?: ReactNode; attach?: ReactNode; cardProps?: HTMLAttributes",
     "reason": "Lexical JSX scanner false positive: TypeScript prop type signature between angle brackets, not rendered text."
+  },
+  {
+    "path": "internal/daemon/quota.go",
+    "literal": "zh-CN",
+    "reason": "Explicit stage-0 display locale code for generated messages; not rendered text."
+  },
+  {
+    "path": "internal/daemon/quota_probe.go",
+    "literal": "usage probe failed",
+    "reason": "Structured log message or attribute key for the local daemon log; never rendered to users."
+  },
+  {
+    "path": "internal/daemon/quota_probe.go",
+    "literal": "agent",
+    "reason": "Structured log message or attribute key for the local daemon log; never rendered to users."
+  },
+  {
+    "path": "internal/daemon/quota_probe.go",
+    "literal": "reason",
+    "reason": "Structured log message or attribute key for the local daemon log; never rendered to users."
+  },
+  {
+    "path": "internal/daemon/quota_probe.go",
+    "literal": "duration_ms",
+    "reason": "Structured log message or attribute key for the local daemon log; never rendered to users."
   }
 ]
