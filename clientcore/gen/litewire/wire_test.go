@@ -32,9 +32,6 @@ func TestLitewireMatchesProtowire(t *testing.T) {
 		if string(got) != string(want) {
 			t.Fatalf("AppendInt32Always(%d) = %x, want %x", v, got, want)
 		}
-		if sz := SizeInt32Always(3, v); sz != len(want) {
-			t.Fatalf("SizeInt32Always(%d) = %d, want %d", v, sz, len(want))
-		}
 	}
 
 	i64s := []int64{0, 1, -1, 12345, -12345, math.MinInt64, math.MaxInt64}

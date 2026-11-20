@@ -33,17 +33,7 @@ func (m *Timestamp) Clone() *Timestamp {
 }
 
 func (m *Timestamp) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	if m.Seconds != 0 {
-		n += litewire.SizeVarintField(1, uint64(m.Seconds))
-	}
-	if m.Nanos != 0 {
-		n += litewire.SizeInt32(2, m.Nanos)
-	}
-	return n
+	return len(m.AppendMarshal(nil))
 }
 
 func (m *Timestamp) AppendMarshal(b []byte) []byte {
@@ -60,14 +50,7 @@ func (m *Timestamp) AppendMarshal(b []byte) []byte {
 }
 
 func (m *Timestamp) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *Timestamp) Unmarshal(b []byte) error {
