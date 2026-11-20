@@ -160,8 +160,7 @@ type Daemon struct {
 	cached           *pb.DaemonSettings
 
 	statusCollector *machinestatus.Collector
-	usageMu         sync.Mutex
-	usageCollector  *usagestats.Collector
+	usage           *usageService
 	diskGuard       *machinestatus.DiskGuard
 	diskVolume      func() (*pb.DiskStatus, error)
 	diskLogMu       sync.Mutex
@@ -183,6 +182,7 @@ func New(dir string, cfg Config) *Daemon {
 		agents:   map[pb.Agent]agent.Adapter{},
 		uploads:  newUploads(dir),
 	}
+	d.usage = &usageService{build: d.newUsageCollector}
 	d.quota = newQuotaService(dir, d.adapterList, d.byKind)
 	d.diskGuard = machinestatus.NewDiskGuard(dir)
 	d.statusCollector = machinestatus.New(dir, d.machineRoots)
@@ -288,7 +288,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	d.reconcileEnabledAgents()
 	d.quota.load()
 	background.Go(func() { d.statusCollector.Run(ctx) })
-	if uc := d.ensureUsageCollector(); uc != nil {
+	if uc := d.usage.ensure(); uc != nil {
 		usageCol = uc
 		background.Go(func() { uc.Run(ctx) })
 	}

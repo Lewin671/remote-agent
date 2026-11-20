@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -78,17 +79,25 @@ func (d *Daemon) newUsageCollector() *usagestats.Collector {
 	return uc
 }
 
-func (d *Daemon) ensureUsageCollector() *usagestats.Collector {
-	d.usageMu.Lock()
-	defer d.usageMu.Unlock()
-	if d.usageCollector == nil {
-		d.usageCollector = d.newUsageCollector()
+// usageService builds the usage statistics collector on first use. It has its
+// own lock, separate from Daemon.mu.
+type usageService struct {
+	mu        sync.Mutex
+	build     func() *usagestats.Collector
+	collector *usagestats.Collector
+}
+
+func (u *usageService) ensure() *usagestats.Collector {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.collector == nil {
+		u.collector = u.build()
 	}
-	return d.usageCollector
+	return u.collector
 }
 
 func (h *handler) GetUsageStats(ctx context.Context, req *connect.Request[pb.GetUsageStatsRequest]) (*connect.Response[pb.UsageStatsResponse], error) {
-	uc := h.d.ensureUsageCollector()
+	uc := h.d.usage.ensure()
 	if uc == nil {
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("usage stats unavailable"))
 	}
