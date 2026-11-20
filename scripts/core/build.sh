@@ -103,6 +103,35 @@ core_output_current() {
   [[ -z "$newer" ]]
 }
 
+# Upper bound for core.wasm after brotli (quality 11, 16 MiB window, as `brotli -q 11`).
+# The budget in docs/architecture.md (体积与性能预算) is 1.6 MB; this sits just above the
+# current size so growth is a decision, not a drift. Raise it in the same change as the
+# code that needs the room, and say why.
+CORE_WASM_BROTLI_MAX=1575000
+
+check_wasm_size() {
+  local wasm="$1" size
+  if ! command -v node >/dev/null 2>&1; then
+    echo "node is needed to measure core.wasm" >&2
+    rm -f "$wasm"
+    exit 1
+  fi
+  size="$(node -e '
+const zlib = require("zlib");
+const data = require("fs").readFileSync(process.argv[1]);
+const p = zlib.constants;
+process.stdout.write(String(zlib.brotliCompressSync(data, { params: {
+  [p.BROTLI_PARAM_QUALITY]: 11, [p.BROTLI_PARAM_LGWIN]: 24, [p.BROTLI_PARAM_SIZE_HINT]: data.length,
+} }).length));
+' "$wasm")"
+  if (( size > CORE_WASM_BROTLI_MAX )); then
+    rm -f "$wasm"
+    echo "core.wasm is $size bytes after brotli, over the $CORE_WASM_BROTLI_MAX limit in scripts/core/build.sh" >&2
+    exit 1
+  fi
+  WASM_BROTLI_SIZE="$size"
+}
+
 build_web() {
   local out="$OUT_ROOT/web"
   mkdir -p "$out"
@@ -123,8 +152,9 @@ build_web() {
     cd "$CORE_ROOT"
     GOOS=js GOARCH=wasm go build -trimpath -ldflags="-s -w" -o "$out/core.wasm" ./cmd/corewasm
   )
+  check_wasm_size "$out/core.wasm"
   cp -f "$wasm_exec" "$out/wasm_exec.js"
-  echo "built web: $out/core.wasm ($out/wasm_exec.js)"
+  echo "built web: $out/core.wasm ($WASM_BROTLI_SIZE bytes brotli, limit $CORE_WASM_BROTLI_MAX; $out/wasm_exec.js)"
 }
 
 build_android() {
