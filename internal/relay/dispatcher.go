@@ -43,6 +43,7 @@ func (r *Relay) newDispatcher(ctx context.Context, acct *Account, recovering boo
 	client := remoteagentv1connect.NewClientServiceClient(httpClient(), acct.Server, connect.WithInterceptors(securityCredentials.bearer()))
 	security, err := openSecuritySession(acct, client)
 	if err != nil {
+		stopMaintenance()
 		cancel()
 		return nil, err
 	}
