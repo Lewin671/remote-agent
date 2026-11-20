@@ -7,6 +7,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -60,7 +61,7 @@ func mixString(h uint64, s string) uint64 {
 }
 
 func computeTimelineCacheKey(
-	in SessionViewInput,
+	in world.SessionSnapshot,
 	events []*v1.Event,
 	p *corev1.ProjectionState,
 	caps lists.AgentCapabilities,
@@ -196,7 +197,7 @@ func runningToolFromStarted(e *v1.Event) *corev1.RunningTool {
 }
 
 func buildSessionTimeline(
-	in SessionViewInput,
+	in world.SessionSnapshot,
 	st *State,
 	ls *lists.Session,
 	lm *lists.Machine,

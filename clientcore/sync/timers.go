@@ -127,7 +127,7 @@ func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) 
 			e.onLegDropped(ctx, legID, false, false, "", "stream open timeout")
 		}
 	case corev1.TimerKind_TIMER_KIND_LIVENESS:
-		if !e.running || !e.streamOpen || e.liveness == nil {
+		if !e.running || !e.w.LivePushConnected || e.liveness == nil {
 			return
 		}
 		if e.liveness.Suspect(e.monoMs) {
@@ -153,19 +153,19 @@ func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) 
 			}
 			return
 		}
-		if e.running && !e.streamOpen && e.networkAvailable {
-			e.conn = lists.ConnOffline
-			if e.offlineSinceMs == 0 && e.nowMs > 0 {
-				e.offlineSinceMs = e.nowMs
+		if e.running && !e.w.LivePushConnected && e.networkAvailable {
+			e.w.World.Connection = lists.ConnOffline
+			if e.w.DisconnectedAtMs == 0 && e.nowMs > 0 {
+				e.w.DisconnectedAtMs = e.nowMs
 			}
 			ctx.Dirty.Add(true, true, true)
 		}
 	case corev1.TimerKind_TIMER_KIND_LIST_RETRY:
-		if e.running && e.streamOpen {
+		if e.running && e.w.LivePushConnected {
 			e.startRefresh(ctx)
 		}
 	case corev1.TimerKind_TIMER_KIND_PREFS_RETRY:
-		if e.running && e.streamOpen && !e.prefs.Loaded {
+		if e.running && e.w.LivePushConnected && !e.prefs.Loaded {
 			e.startLoadPrefs(ctx)
 		}
 	case corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP:

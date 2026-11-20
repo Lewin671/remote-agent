@@ -7,6 +7,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -99,7 +100,7 @@ func (c *Core) viewSession(req *corev1.SessionScreenRequest) (*corev1.ViewModel,
 	}, nil
 }
 
-func reconcileSessionSnapshot(snap syncSessionInputAlias, ui *screens.SessionUIState) {
+func reconcileSessionSnapshot(snap world.SessionSnapshot, ui *screens.SessionUIState) {
 	if ui == nil {
 		return
 	}
@@ -253,8 +254,6 @@ func hasOutgoingReq(ui *screens.SessionUIState, reqID string) bool {
 	}
 	return false
 }
-
-type syncSessionInputAlias = screens.SessionViewInput
 
 func (c *Core) noteCreateSessionSubmitted(projectKey string, req *v1.CreateSessionRequest) {
 	if req == nil || projectKey == "" {
@@ -577,7 +576,6 @@ func (c *Core) settlePlanPreflight(
 		c.submitSessionCommandDirect(ctx, store, ui, pf.sessionID, pf.machineID, pf.slotKey, slotKindAnswerPlan, "", 0, "", cmd)
 	})
 
-	c.m.sync.SyncToState(c.m.state)
 	*effects = append(*effects, stepRes.Effects...)
 	dirty.Add(stepRes.Dirty.Home, stepRes.Dirty.Project, stepRes.Dirty.NewSession)
 	if stepRes.Dirty.SessionData {
@@ -638,8 +636,8 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		c.m.sync.LookupSessionIfMissing(ctx, sid)
 		if sess := c.m.sync.SessionEntry(sid); sess != nil && sess.MachineID != "" {
 			agent := lists.DefaultAgent
-			if sess.Meta != nil && sess.Meta.Agent != v1.Agent_AGENT_UNSPECIFIED {
-				agent = sess.Meta.Agent
+			if sess.Info != nil && sess.Info.Agent != v1.Agent_AGENT_UNSPECIFIED {
+				agent = sess.Info.Agent
 			}
 			if k.SessionOpen.RefreshModels {
 				delete(c.m.state.MachineModels, screens.MachineAgentKey{MachineID: sess.MachineID, Agent: agent})
@@ -932,7 +930,7 @@ func canonicalSlotKey(cmd *v1.Command, sid string, qIdx int32) string {
 	return "session:" + sid
 }
 
-func fillObservedPreconditions(cmd *v1.Command, snap screens.SessionViewInput, ui *screens.SessionUIState) {
+func fillObservedPreconditions(cmd *v1.Command, snap world.SessionSnapshot, ui *screens.SessionUIState) {
 	switch k := cmd.Kind.(type) {
 	case *v1.Command_ResolveApproval:
 		if r := k.ResolveApproval; r != nil && r.ObservedEventSeq == 0 {
@@ -1009,7 +1007,7 @@ func findOrAppendOutgoing(
 	return og
 }
 
-func (c *Core) sessionMachineID(sid string, snap screens.SessionViewInput) string {
+func (c *Core) sessionMachineID(sid string, snap world.SessionSnapshot) string {
 	if snap.Session != nil && snap.Session.MachineID != "" {
 		return snap.Session.MachineID
 	}
@@ -1019,7 +1017,7 @@ func (c *Core) sessionMachineID(sid string, snap screens.SessionViewInput) strin
 	return ""
 }
 
-func (c *Core) findTrayViewAndItem(store *sessionStore, sid, reqID string) (*screens.SessionUIState, screens.SessionViewInput, *corev1.SessionPendingTrayView, *corev1.SessionTrayItemView) {
+func (c *Core) findTrayViewAndItem(store *sessionStore, sid, reqID string) (*screens.SessionUIState, world.SessionSnapshot, *corev1.SessionPendingTrayView, *corev1.SessionTrayItemView) {
 	ui := store.ensureUI(sid)
 	snap := c.m.sync.SessionSnapshot(sid)
 	reconcileSessionSnapshot(snap, ui)
@@ -1037,7 +1035,7 @@ func (c *Core) findTrayViewAndItem(store *sessionStore, sid, reqID string) (*scr
 	return ui, snap, tray, found
 }
 
-func (c *Core) submitCancelInput(ctx *sync.StepContext, store *sessionStore, ui *screens.SessionUIState, snap screens.SessionViewInput, sid, reqID string) {
+func (c *Core) submitCancelInput(ctx *sync.StepContext, store *sessionStore, ui *screens.SessionUIState, snap world.SessionSnapshot, sid, reqID string) {
 	cmd := &v1.Command{
 		ProtocolVersion: sync.ProtocolVersion,
 		Kind: &v1.Command_CancelInput{
@@ -1448,9 +1446,9 @@ func (c *Core) maybeStartCodexSteerGrace(ctx *sync.StepContext, ui *screens.Sess
 	if snap.Session != nil && snap.Session.Info != nil {
 		agent = snap.Session.Info.Agent
 		status = snap.Session.Info.Status
-	} else if se := c.m.sync.SessionEntry(sid); se != nil && se.Meta != nil {
-		agent = se.Meta.Agent
-		status = se.Meta.Status
+	} else if se := c.m.sync.SessionEntry(sid); se != nil && se.Info != nil {
+		agent = se.Info.Agent
+		status = se.Info.Status
 	}
 	if agent != v1.Agent_AGENT_CODEX || status == v1.SessionStatus_SESSION_STATUS_STARTING {
 		return
@@ -1473,7 +1471,7 @@ func (c *Core) maybeStartCodexSteerGrace(ctx *sync.StepContext, ui *screens.Sess
 	}
 }
 
-func activeInputSetFromSnap(snap screens.SessionViewInput, ui *screens.SessionUIState) map[string]bool {
+func activeInputSetFromSnap(snap world.SessionSnapshot, ui *screens.SessionUIState) map[string]bool {
 	out := make(map[string]bool)
 	if snap.Projection == nil {
 		return out

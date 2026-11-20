@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -210,7 +211,7 @@ func TestPendingTrayAllSevenGroupsOrderingHeadersAndNumbering(t *testing.T) {
 	}
 	// Tag unrelated terminal inputs with another request ID so FindStartPromptInput doesn't mistake them for PendingStartPrompt.
 	otherOrigin := &v1.Origin{Kind: v1.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "dev-self", RequestId: "other-req"}
-	in := screens.SessionViewInput{
+	in := world.SessionSnapshot{
 		Found:        true,
 		Session:      baseSession(v1.SessionStatus_SESSION_STATUS_RUNNING),
 		ThisDeviceID: "dev-self",
@@ -250,7 +251,7 @@ func TestPendingTrayAllSevenGroupsOrderingHeadersAndNumbering(t *testing.T) {
 		},
 	}
 
-	st := screens.NewState()
+	st := screens.NewState(nil)
 	st.Cal.NowMs = 1_791_078_060_000
 	in.Machine.LastSeenMs = st.Cal.NowMs
 
@@ -730,14 +731,14 @@ func TestRestoreCancelAllUndoTimerAndAttachmentRetention(t *testing.T) {
 }
 
 func TestForeignScheduledOfflineAndAntigravityConstraints(t *testing.T) {
-	st := screens.NewState()
+	st := screens.NewState(nil)
 	st.Cal.NowMs = 1_791_078_060_000
 	ls := &lists.Session{
 		ID:        "s-misc",
 		MachineID: "m1",
 		Info:      &v1.Session{Id: "s-misc", Agent: v1.Agent_AGENT_ANTIGRAVITY, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
 	}
-	in := screens.SessionViewInput{
+	in := world.SessionSnapshot{
 		Found:        true,
 		Session:      ls,
 		ThisDeviceID: "dev-self",

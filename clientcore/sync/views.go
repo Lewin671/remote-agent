@@ -66,17 +66,9 @@ func syncPendingFromLists(p lists.PendingAction) *corev1.SyncPendingAction {
 	}
 }
 
-func (e *Engine) buildSyncMachineView(m *MachineEntry, unlinked bool) *corev1.SyncMachineView {
+func (e *Engine) buildSyncMachineView(m *MachineEntry) *corev1.SyncMachineView {
 	if m == nil {
 		return nil
-	}
-	directReady := e.directReady[m.ID]
-	reachable := e.machineReachable(m)
-	reachabilityUnknown := e.machineReachabilityUnknown(m)
-	mUnlinked := unlinked && !directReady
-	var pv uint32
-	if m.Meta != nil {
-		pv = m.Meta.ProtocolVersion
 	}
 	return &corev1.SyncMachineView{
 		MachineId:           m.ID,
@@ -85,13 +77,13 @@ func (e *Engine) buildSyncMachineView(m *MachineEntry, unlinked bool) *corev1.Sy
 		Meta:                m.Meta.Clone(),
 		MetaRev:             m.MetaRev,
 		MetaBroken:          m.MetaBroken,
-		Reachable:           reachable,
-		Unlinked:            mUnlinked,
-		DirectReady:         directReady,
-		ProtocolVersion:     pv,
-		DaemonOutOfDate:     pv > 0 && pv < ProtocolVersion,
-		ClientOutOfDate:     pv > 0 && pv > ProtocolVersion,
-		ReachabilityUnknown: reachabilityUnknown,
+		Reachable:           m.reachable,
+		Unlinked:            m.unlinked,
+		DirectReady:         e.directReady[m.ID],
+		ProtocolVersion:     m.ProtocolVersion,
+		DaemonOutOfDate:     m.DaemonOutOfDate,
+		ClientOutOfDate:     m.ClientOutOfDate,
+		ReachabilityUnknown: e.machineReachabilityUnknown(m),
 	}
 }
 
@@ -100,13 +92,13 @@ func (e *Engine) buildSyncSessionView(s *SessionEntry) *corev1.SyncSessionView {
 		return nil
 	}
 	var createdMs int64
-	if s.Meta != nil && s.Meta.CreatedAt != nil {
-		createdMs = s.Meta.CreatedAt.Seconds*1000 + int64(s.Meta.CreatedAt.Nanos)/1_000_000
+	if s.Info != nil && s.Info.CreatedAt != nil {
+		createdMs = s.Info.CreatedAt.Seconds*1000 + int64(s.Info.CreatedAt.Nanos)/1_000_000
 	}
 	return &corev1.SyncSessionView{
 		SessionId:         s.ID,
 		MachineId:         s.MachineID,
-		Info:              s.Meta.Clone(),
+		Info:              s.Info.Clone(),
 		MetaRev:           s.MetaRev,
 		LastSeq:           s.LastSeq,
 		CreatedMs:         createdMs,
@@ -119,7 +111,7 @@ func (e *Engine) buildSyncSessionView(s *SessionEntry) *corev1.SyncSessionView {
 		OpenFailed:        s.OpenFailed,
 		ScheduleName:      s.ScheduleName,
 		ScheduleUnread:    s.ScheduleUnread,
-		Pending:           syncPendingFromLists(s.LivePending),
+		Pending:           syncPendingFromLists(s.Pending),
 	}
 }
 
@@ -148,42 +140,22 @@ func (e *Engine) buildSyncDeviceView(d *DeviceEntry) *corev1.SyncDeviceView {
 	}
 }
 
-// BuildSyncStateView constructs the transitional SyncStateView snapshot for unmigrated Step 3-4 screens.
+// BuildSyncStateView constructs the transitional SyncStateView snapshot for unmigrated Step 3-4 screens
+// from the engine's world.
 func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
-	displayGrace := e.displayGraceActive()
-	unlinked := e.worldUnlinked()
-
-	machines := make([]*corev1.SyncMachineView, 0, len(e.machines))
-	for _, m := range e.machines {
-		if mv := e.buildSyncMachineView(m, unlinked); mv != nil {
+	w := &e.w
+	machines := make([]*corev1.SyncMachineView, 0, len(w.World.Machines))
+	for _, m := range w.World.Machines {
+		if mv := e.buildSyncMachineView(e.machines[m.ID]); mv != nil {
 			machines = append(machines, mv)
 		}
 	}
-	slices.SortFunc(machines, func(a, b *corev1.SyncMachineView) int {
-		if a.MachineId < b.MachineId {
-			return -1
-		}
-		if a.MachineId > b.MachineId {
-			return 1
-		}
-		return 0
-	})
-
-	sessions := make([]*corev1.SyncSessionView, 0, len(e.sessions))
-	for _, s := range e.sessions {
-		if sv := e.buildSyncSessionView(s); sv != nil {
+	sessions := make([]*corev1.SyncSessionView, 0, len(w.World.Sessions))
+	for _, s := range w.World.Sessions {
+		if sv := e.buildSyncSessionView(e.sessions[s.ID]); sv != nil {
 			sessions = append(sessions, sv)
 		}
 	}
-	slices.SortFunc(sessions, func(a, b *corev1.SyncSessionView) int {
-		if a.SessionId < b.SessionId {
-			return -1
-		}
-		if a.SessionId > b.SessionId {
-			return 1
-		}
-		return 0
-	})
 
 	devices := make([]*corev1.SyncDeviceView, 0, len(e.devices))
 	for _, d := range e.devices {
@@ -202,31 +174,31 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 	})
 
 	var nextCursor *v1.SessionCursor
-	if e.sessionsNext != nil {
+	if w.World.SessionsNext != nil {
 		nextCursor = &v1.SessionCursor{
-			EndedMs:   e.sessionsNext.EndedMs,
-			SessionId: e.sessionsNext.SessionID,
+			EndedMs:   w.World.SessionsNext.EndedMs,
+			SessionId: w.World.SessionsNext.SessionID,
 		}
 	}
 
 	var prefsCopy *v1.ProjectPrefs
-	if e.prefs.Prefs != nil {
-		prefsCopy = e.prefs.Prefs.Clone()
+	if w.World.Prefs != nil {
+		prefsCopy = w.World.Prefs.Clone()
 	}
 
 	return &corev1.SyncStateView{
-		Connection:             protoConnState(e.conn),
-		ConnectionReason:       e.connReasonText,
+		Connection:             protoConnState(w.World.Connection),
+		ConnectionReason:       w.ConnectionReasonText,
 		ConnectionStep:         e.connStepText,
-		DisconnectedAtMs:       e.offlineSinceMs,
-		LivePushConnected:      e.streamOpen,
-		Unlinked:               unlinked,
-		IsManager:              e.isManager(),
+		DisconnectedAtMs:       w.DisconnectedAtMs,
+		LivePushConnected:      w.LivePushConnected,
+		Unlinked:               e.unlinkedFlag,
+		IsManager:              w.World.IsManager,
 		SelfDeviceId:           e.security.SelfDeviceID,
 		AuthorityDeviceId:      e.security.AuthorityDeviceID,
-		ManagerName:            e.managerNameText(),
-		AccountControlLost:     e.accountControlLost(),
-		AccountClockSkewed:     e.accountClockSkewed(),
+		ManagerName:            w.ManagerNameText,
+		AccountControlLost:     w.World.AccountControlLost,
+		AccountClockSkewed:     w.World.AccountClockSkewed,
 		Removed:                e.removed,
 		SecurityLoaded:         e.security.Loaded,
 		IsMember:               e.security.IsMember,
@@ -234,26 +206,26 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		RecoveryPending:        e.security.RecoveryPending,
 		RecoveryReadyMs:        e.security.RecoveryReadyMs,
 		RecoveryObjectsPending: e.security.RecoveryObjectsPending,
-		ClientProtocolVersion:  ProtocolVersion,
+		ClientProtocolVersion:  w.World.ClientVersion,
 		Machines:               machines,
-		MachinesListed:         e.machinesListed,
+		MachinesListed:         w.World.MachinesListed,
 		Sessions:               sessions,
-		SessionsListed:         e.sessionsListed,
-		LiveLoaded:             e.liveLoaded,
-		HasMoreSessions:        e.hasMoreSessions,
+		SessionsListed:         w.World.SessionsListed,
+		LiveLoaded:             w.World.LiveLoaded,
+		HasMoreSessions:        w.World.HasMoreSessions,
 		NextCursor:             nextCursor,
-		LoadingMoreSessions:    e.loadingMore,
-		SessionListFailed:      e.sessionListErr != nil,
-		SessionListError:       e.sessionListErr,
-		PrefsLoaded:            e.prefs.Loaded,
-		PrefsLoadFailed:        e.prefs.LoadFailed,
+		LoadingMoreSessions:    w.World.LoadingMoreSessions,
+		SessionListFailed:      w.World.SessionListFailed,
+		SessionListError:       w.SessionListErrorText,
+		PrefsLoaded:            w.World.PrefsLoaded,
+		PrefsLoadFailed:        w.World.PrefsLoadFailed,
 		PrefsBroken:            e.prefs.Broken,
 		PrefsRevision:          e.prefs.Revision,
-		PrefsSyncing:           len(e.prefsQueue) > 0,
+		PrefsSyncing:           w.World.PrefsSyncing,
 		Prefs:                  prefsCopy,
 		Devices:                devices,
-		DisplayGrace:           displayGrace,
-		ReachabilityUnknown:    e.coldStartGraceActive(),
+		DisplayGrace:           w.DisplayGrace,
+		ReachabilityUnknown:    w.ReachabilityUnknown,
 	}
 }
 
@@ -280,9 +252,9 @@ func (e *Engine) BuildSessionDataView(sessionID string) *corev1.SessionDataView 
 	if s != nil {
 		out.LastSeq = s.LastSeq
 		out.Retired = s.RetiredHistory
-		meta = s.Meta
-		if s.Meta != nil {
-			agent = s.Meta.Agent
+		meta = s.Info
+		if s.Info != nil {
+			agent = s.Info.Agent
 		}
 		if s.Checkpoint != nil {
 			liveSnap = s.Checkpoint.Clone()

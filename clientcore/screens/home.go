@@ -10,7 +10,7 @@ import (
 // endedLimit == 0 defaults to lists.EndedPage (30); endedLimit < 0 returns all held ended items.
 func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 	if st == nil {
-		st = NewState()
+		st = NewState(nil)
 	}
 	dw := displayWorld(st)
 	projRes, homeData := lists.BuildProjectsAndHome(&dw, st.RememberedScope, st.RememberedScopeToken, nil, st.Scope, st.ProjectSearch, st.HomeFilterQuery, st.Cal, lists.HomeShown{

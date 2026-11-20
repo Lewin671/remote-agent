@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
 func TestBuildHomeStructuredAttentionAndHighlight(t *testing.T) {
-	st := NewState()
+	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
 	st.World.Connection = lists.ConnConnected
 	st.World.LiveLoaded = true
@@ -132,7 +133,7 @@ func TestBuildHomeDisplayGraceHoldsConnectedHeadlineAndHidesUnlinked(t *testing.
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			st := NewState()
+			st := NewState(nil)
 			st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
 			st.DisplayGrace = tc.displayGrace
 			unlinkedPtr := &unlinkedFalse
@@ -212,11 +213,11 @@ func TestBuildSessionDisplayGraceHoldsEnabledComposerAndStatus(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			st := NewState()
+			st := NewState(nil)
 			st.DisplayGrace = tc.displayGrace
 			st.World = lists.World{Connection: lists.ConnReconnecting, Unlinked: &unlinkedTrue}
 			reachableFalse := false
-			in := SessionViewInput{
+			in := world.SessionSnapshot{
 				Found:          true,
 				SessionsListed: true,
 				LiveLoaded:     true,
@@ -318,7 +319,7 @@ func TestBuildHomeAndSessionColdStartReachabilityUnknown(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			st := NewState()
+			st := NewState(nil)
 			st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
 			st.ReachabilityUnknown = tc.reachabilityUnknown
 			unlinkedPtr := &unlinkedFalse
@@ -360,7 +361,7 @@ func TestBuildHomeAndSessionColdStartReachabilityUnknown(t *testing.T) {
 				t.Fatalf("expected Home Running[0].Status=%v, got %+v", tc.wantRowStatus, homeVM.Running)
 			}
 
-			in := SessionViewInput{
+			in := world.SessionSnapshot{
 				Found:               true,
 				SessionsListed:      true,
 				LiveLoaded:          true,
@@ -401,7 +402,7 @@ func TestBuildHomeAndSessionColdStartReachabilityUnknown(t *testing.T) {
 }
 
 func TestBuildHomePopupRowLocalizesDiagnosticPreview(t *testing.T) {
-	st := NewState()
+	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
 	st.World.Connection = lists.ConnConnected
 	st.World.LiveLoaded = true

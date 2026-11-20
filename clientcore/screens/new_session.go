@@ -85,7 +85,7 @@ func clampRunes(s string, max int) string {
 // projectKey empty selects the active selectable project; non-empty fixes the project context.
 func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 	if st == nil {
-		st = NewState()
+		st = NewState(nil)
 	}
 	projRes := lists.BuildProjects(&st.World, st.ProjectSearch, st.RememberedScope, st.RememberedScopeToken, nil, st.Scope)
 
@@ -350,7 +350,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			TargetMachineId: cfg.MachineID,
 		})
 	}
-	if draft != nil && draft.ConfigSaveError != "" {
+	if draft != nil && st.PrefsSettingsErrorText[key] != nil {
 		notices = append(notices, &corev1.NewSessionNoticeView{
 			Kind:     corev1.NoticeKind_NOTICE_KIND_CONFIG_SAVE_ERROR,
 			Severity: corev1.NoticeSeverity_NOTICE_SEVERITY_WARN,

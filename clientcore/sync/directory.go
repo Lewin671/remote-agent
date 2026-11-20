@@ -36,24 +36,24 @@ func (e *Engine) handleCacheBootstrapLoaded(ctx *StepContext, ev *corev1.CacheBo
 		e.scopeHMACKey = append([]byte(nil), ev.ScopeHmacKey...)
 	}
 
-	if !e.machinesListed {
+	if !e.w.World.MachinesListed {
 		for _, m := range ev.Machines {
 			if m == nil || m.MachineId == "" {
 				continue
 			}
 			if _, exists := e.machines[m.MachineId]; !exists {
-				e.machines[m.MachineId] = plainToMachineEntry(m)
+				e.storeMachine(plainToMachineEntry(m))
 			}
 		}
 	}
-	if !e.sessionsListed {
+	if !e.w.World.SessionsListed {
 		for _, s := range ev.Sessions {
 			if s == nil || s.SessionId == "" {
 				continue
 			}
 			if _, exists := e.sessions[s.SessionId]; !exists {
 				entry := plainToSessionEntry(s, nil)
-				e.sessions[s.SessionId] = entry
+				e.storeSession(entry)
 				e.listed[s.SessionId] = true
 			}
 		}
@@ -108,22 +108,22 @@ func (e *Engine) startRefreshDevices(ctx *StepContext, force bool) {
 
 // RequestMoreSessions asks for the next page of ended sessions (if connected and more remain).
 func (e *Engine) RequestMoreSessions(ctx *StepContext) {
-	if !e.sessionsListed {
-		if e.running && e.streamOpen && e.refreshOpID == 0 {
+	if !e.w.World.SessionsListed {
+		if e.running && e.w.LivePushConnected && e.refreshOpID == 0 {
 			e.startRefresh(ctx)
 		}
 		return
 	}
-	if e.pageOpID != 0 || e.sessionsNext == nil || !e.running || e.conn != lists.ConnConnected {
-		if e.conn != lists.ConnConnected && e.sessionsNext != nil {
-			e.sessionListErr = text.Msg(text.KeyConnectionNoServer)
+	if e.pageOpID != 0 || e.w.World.SessionsNext == nil || !e.running || e.w.World.Connection != lists.ConnConnected {
+		if e.w.World.Connection != lists.ConnConnected && e.w.World.SessionsNext != nil {
+			e.w.SessionListErrorText = text.Msg(text.KeyConnectionNoServer)
 			ctx.Dirty.Add(true, true, false)
 		}
 		return
 	}
-	e.loadingMore = true
-	e.sessionListErr = nil
-	e.sessionListRaw = ""
+	e.w.World.LoadingMoreSessions = true
+	e.w.SessionListErrorText = nil
+	e.w.World.SessionListError = ""
 	e.pageOpID = e.allocOpID()
 	e.pageListingGen = e.listingGen
 	ctx.emit(&corev1.Effect{
@@ -133,8 +133,8 @@ func (e *Engine) RequestMoreSessions(ctx *StepContext) {
 				Kind: &corev1.RpcEffect_FetchSessionsPage{
 					FetchSessionsPage: &corev1.FetchSessionsPageRpc{
 						After: &v1.SessionCursor{
-							EndedMs:   e.sessionsNext.EndedMs,
-							SessionId: e.sessionsNext.SessionID,
+							EndedMs:   e.w.World.SessionsNext.EndedMs,
+							SessionId: e.w.World.SessionsNext.SessionID,
 						},
 						Limit: SessionPageLimit,
 					},
@@ -148,7 +148,7 @@ func (e *Engine) RequestMoreSessions(ctx *StepContext) {
 // RequestAllSessions ensures all remaining ended-session pages are fetched (e.g. for title filtering).
 func (e *Engine) RequestAllSessions(ctx *StepContext) {
 	e.wantAllSessions = true
-	if !e.sessionsListed || e.sessionsNext != nil {
+	if !e.w.World.SessionsListed || e.w.World.SessionsNext != nil {
 		e.RequestMoreSessions(ctx)
 	}
 }
@@ -184,17 +184,17 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 	e.refreshOpID = 0
 	if ev.Error != "" {
 		if ev.UnresolvedHost {
-			e.sessionListErr = text.Msg(text.KeyConnectionNoServer)
+			e.w.SessionListErrorText = text.Msg(text.KeyConnectionNoServer)
 		} else {
-			e.sessionListErr = text.Plain(ev.Error)
+			e.w.SessionListErrorText = text.Plain(ev.Error)
 		}
-		e.sessionListRaw = ev.Error
+		e.w.World.SessionListError = ev.Error
 		wait := e.listBackoffMs
 		if wait <= 0 {
 			wait = ListRetryInitialMs
 		}
 		e.listBackoffMs = min(wait*2, ListRetryMaxMs)
-		if e.streamOpen {
+		if e.w.LivePushConnected {
 			e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_LIST_RETRY, "", wait)
 		}
 		ctx.Dirty.MarkAll()
@@ -204,14 +204,14 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 	e.listBackoffMs = ListRetryInitialMs
 	e.listingGen++
 	e.pageOpID = 0
-	e.loadingMore = false
-	e.machinesListed = true
-	e.sessionsListed = true
-	e.liveLoaded = true
+	e.w.World.LoadingMoreSessions = false
+	e.w.World.MachinesListed = true
+	e.w.World.SessionsListed = true
+	e.w.World.LiveLoaded = true
 	e.coldStartGraceExpired = true
 	e.clearColdStartGrace(ctx)
-	e.sessionListErr = nil
-	e.sessionListRaw = ""
+	e.w.SessionListErrorText = nil
+	e.w.World.SessionListError = ""
 
 	mp := e.refreshSnapshotM
 	sp := e.refreshSnapshotS
@@ -321,11 +321,11 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 	}
 
 	e.reconcileDevices(ev.Devices, rp, false)
-	e.sessionsNext = pageNext
-	e.hasMoreSessions = pageNext != nil
+	e.w.World.SessionsNext = pageNext
+	e.w.World.HasMoreSessions = pageNext != nil
 
 	e.updateLivePollers(ctx)
-	if e.wantAllSessions && e.sessionsNext != nil {
+	if e.wantAllSessions && e.w.World.SessionsNext != nil {
 		e.RequestMoreSessions(ctx)
 	}
 	ctx.Dirty.MarkAll()
@@ -336,35 +336,35 @@ func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.Sessions
 		return
 	}
 	e.pageOpID = 0
-	e.loadingMore = false
+	e.w.World.LoadingMoreSessions = false
 	if e.pageListingGen != e.listingGen {
 		return
 	}
 	if ev.Error != "" {
-		e.sessionListErr = text.Plain(ev.Error)
-		e.sessionListRaw = ev.Error
+		e.w.SessionListErrorText = text.Plain(ev.Error)
+		e.w.World.SessionListError = ev.Error
 		ctx.Dirty.Add(true, true, false)
 		return
 	}
-	e.sessionListErr = nil
-	e.sessionListRaw = ""
+	e.w.SessionListErrorText = nil
+	e.w.World.SessionListError = ""
 	for _, s := range ev.Sessions {
 		if s != nil && s.SessionId != "" {
 			e.putSession(ctx, s, false)
 		}
 	}
 	if ev.Next != nil && (ev.Next.EndedMs != 0 || ev.Next.SessionId != "") {
-		e.sessionsNext = &lists.SessionPlace{
+		e.w.World.SessionsNext = &lists.SessionPlace{
 			EndedMs:   ev.Next.EndedMs,
 			SessionID: ev.Next.SessionId,
 		}
-		e.hasMoreSessions = true
+		e.w.World.HasMoreSessions = true
 	} else {
-		e.sessionsNext = nil
-		e.hasMoreSessions = false
+		e.w.World.SessionsNext = nil
+		e.w.World.HasMoreSessions = false
 	}
 	e.updateLivePollers(ctx)
-	if e.wantAllSessions && e.sessionsNext != nil {
+	if e.wantAllSessions && e.w.World.SessionsNext != nil {
 		e.RequestMoreSessions(ctx)
 	}
 	ctx.Dirty.Add(true, true, false)
@@ -428,11 +428,11 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 	if e.liveness != nil {
 		e.liveness.OnFrame(e.monoMs, isHeartbeat)
 	}
-	if e.conn == lists.ConnConnecting {
-		e.conn = lists.ConnConnected
-		e.offlineSinceMs = 0
+	if e.w.World.Connection == lists.ConnConnecting {
+		e.w.World.Connection = lists.ConnConnected
+		e.w.DisconnectedAtMs = 0
 		e.connStepText = nil
-		e.connReasonText = nil
+		e.w.ConnectionReasonText = nil
 		ctx.Dirty.MarkAll()
 	}
 
@@ -559,7 +559,7 @@ func (e *Engine) putMachine(ctx *StepContext, pm *corev1.PlainMachine, staleOnli
 			entry.Meta.SettingsRevision = cur.Meta.SettingsRevision
 		}
 	}
-	e.machines[pm.MachineId] = entry
+	e.storeMachine(entry)
 	if writeCache && pm.CacheRef != "" {
 		ctx.emit(&corev1.Effect{
 			Effect: &corev1.Effect_CacheWrite{
@@ -572,7 +572,10 @@ func (e *Engine) putMachine(ctx *StepContext, pm *corev1.PlainMachine, staleOnli
 }
 
 func (e *Engine) dropMachine(ctx *StepContext, machineID string) {
-	delete(e.machines, machineID)
+	if _, ok := e.machines[machineID]; ok {
+		delete(e.machines, machineID)
+		e.machineOrderStale = true
+	}
 	delete(e.directReady, machineID)
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_CacheDelete{
@@ -596,7 +599,7 @@ func (e *Engine) putSession(ctx *StepContext, ps *corev1.PlainSession, writeCach
 	prev := e.sessions[ps.SessionId]
 	entry := plainToSessionEntry(ps, prev)
 	e.refreshSessionPending(entry)
-	e.sessions[ps.SessionId] = entry
+	e.storeSession(entry)
 
 	if ps.OpenFailed && ps.MachineId != "" && ps.CacheRef != "" && e.isTrustedMachine(ps.MachineId) {
 		ctx.emit(&corev1.Effect{
@@ -656,11 +659,15 @@ func (e *Engine) SeedSession(ctx *StepContext, machineID string, meta *v1.Sessio
 		Meta:      meta.Clone(),
 	}, false)
 	e.updateLivePollers(ctx)
+	e.refreshWorld()
 	ctx.Dirty.MarkAll()
 }
 
 func (e *Engine) removeSession(ctx *StepContext, sid string, dropFromCache bool) {
-	delete(e.sessions, sid)
+	if _, ok := e.sessions[sid]; ok {
+		delete(e.sessions, sid)
+		e.sessionOrderStale = true
+	}
 	delete(e.listed, sid)
 	delete(e.buffers, sid)
 	delete(e.livePollInFlight, sid)
@@ -696,10 +703,12 @@ func plainToMachineEntry(pm *corev1.PlainMachine) *MachineEntry {
 		meta = pm.Meta.Clone()
 	}
 	return &MachineEntry{
-		ID:         pm.MachineId,
-		Online:     pm.Online,
-		LastSeenMs: pm.LastSeenMs,
-		Meta:       meta,
+		Machine: lists.Machine{
+			ID:         pm.MachineId,
+			Online:     pm.Online,
+			LastSeenMs: pm.LastSeenMs,
+			Meta:       meta,
+		},
 		MetaRev:    pm.MetaRev,
 		MetaBroken: pm.MetaBroken,
 		CacheRef:   pm.CacheRef,
@@ -708,12 +717,14 @@ func plainToMachineEntry(pm *corev1.PlainMachine) *MachineEntry {
 
 func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEntry {
 	entry := &SessionEntry{
-		ID:                ps.SessionId,
-		MachineID:         ps.MachineId,
+		Session: lists.Session{
+			ID:            ps.SessionId,
+			MachineID:     ps.MachineId,
+			UpdatedMs:     ps.UpdatedMs,
+			ListedEndedMs: ps.ListedEndedMs,
+		},
 		LastSeq:           ps.LastSeq,
 		ServerLastSeq:     ps.LastSeq,
-		UpdatedMs:         ps.UpdatedMs,
-		ListedEndedMs:     ps.ListedEndedMs,
 		MetaRev:           ps.MetaRev,
 		CheckpointInvalid: ps.CheckpointInvalid,
 		RetiredHistory:    ps.RetiredHistory,
@@ -721,7 +732,7 @@ func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEn
 		CacheRef:          ps.CacheRef,
 	}
 	if ps.Meta != nil {
-		entry.Meta = ps.Meta.Clone()
+		entry.setInfo(ps.Meta.Clone())
 	}
 	if ps.Checkpoint != nil {
 		entry.Checkpoint = ps.Checkpoint.Clone()
@@ -739,8 +750,8 @@ func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEn
 		if entry.ServerLastSeq > entry.LastSeq {
 			entry.LastSeq = entry.ServerLastSeq
 		}
-		if entry.Meta == nil && prev.Meta != nil && prev.MetaRev >= entry.MetaRev {
-			entry.Meta = prev.Meta
+		if entry.Info == nil && prev.Info != nil && prev.MetaRev >= entry.MetaRev {
+			entry.setInfo(prev.Info)
 			entry.MetaRev = prev.MetaRev
 		}
 		if entry.Checkpoint == nil && !ps.CheckpointInvalid {
@@ -777,8 +788,8 @@ func (e *Engine) refreshSessionPending(s *SessionEntry) {
 		return
 	}
 	var agent v1.Agent
-	if s.Meta != nil {
-		agent = s.Meta.Agent
+	if s.Info != nil {
+		agent = s.Info.Agent
 	}
 	var ps *corev1.ProjectionState
 	if buf := e.buffers[s.ID]; buf != nil && len(buf.prefix) > 0 {
@@ -796,7 +807,7 @@ func (e *Engine) refreshSessionPending(s *SessionEntry) {
 	} else if s.Checkpoint != nil {
 		ps = projection.CurrentActions(nil, s.Checkpoint, nil)
 	}
-	s.LivePending = pendingFromProjection(ps, s.Meta)
+	s.Pending = pendingFromProjection(ps, s.Info)
 }
 
 func pendingFromProjection(ps *corev1.ProjectionState, meta *v1.Session) lists.PendingAction {

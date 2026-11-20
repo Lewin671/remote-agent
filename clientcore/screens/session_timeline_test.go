@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestTimelineCacheReuseAndInvalidation(t *testing.T) {
-	st := NewState()
+	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
 	ls := &lists.Session{
 		ID:        "s1",
@@ -23,7 +24,7 @@ func TestTimelineCacheReuseAndInvalidation(t *testing.T) {
 		{Seq: 1, SessionId: "s1", Kind: &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "hello"}}},
 		{Seq: 2, SessionId: "s1", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "world"}}},
 	}
-	in := SessionViewInput{
+	in := world.SessionSnapshot{
 		Found:    true,
 		Session:  ls,
 		Loaded:   true,
@@ -65,7 +66,7 @@ func TestTimelineCacheReuseAndInvalidation(t *testing.T) {
 }
 
 func TestBuildTimelineResolvesCompletedToolOnTailSlice(t *testing.T) {
-	st := NewState()
+	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
 	ls := &lists.Session{
 		ID:        "s1",
@@ -78,7 +79,7 @@ func TestBuildTimelineResolvesCompletedToolOnTailSlice(t *testing.T) {
 		{Seq: 502, SessionId: "s1", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "mid"}}},
 		{Seq: 503, SessionId: "s1", Kind: &v1.Event_ToolCall{ToolCall: &v1.ToolCall{CallId: "c1", Title: "rg", Output: "ok"}}},
 	}
-	in := SessionViewInput{
+	in := world.SessionSnapshot{
 		Found:         true,
 		Session:       ls,
 		TailRequested: true,
@@ -99,7 +100,7 @@ func TestBuildTimelineResolvesCompletedToolOnTailSlice(t *testing.T) {
 }
 
 func TestTimelineReportsOfflineForOfflineAndNoNetworkAndClearsCacheOnZeroRev(t *testing.T) {
-	st := NewState()
+	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
 	ls := &lists.Session{
 		ID:        "s1",
@@ -121,7 +122,7 @@ func TestTimelineReportsOfflineForOfflineAndNoNetworkAndClearsCacheOnZeroRev(t *
 		{lists.ConnConnecting, false},
 		{lists.ConnConnected, false},
 	} {
-		vm := BuildSessionView(SessionViewInput{
+		vm := BuildSessionView(world.SessionSnapshot{
 			Found:         true,
 			Session:       ls,
 			Conn:          tc.conn,
@@ -141,7 +142,7 @@ func TestTimelineReportsOfflineForOfflineAndNoNetworkAndClearsCacheOnZeroRev(t *
 	}
 
 	// EventRev == 0 (no active EventBuffer) must clear any stale retained timeline cache.
-	BuildSessionView(SessionViewInput{Found: true, Session: ls, EventRev: 0}, st, req, ui)
+	BuildSessionView(world.SessionSnapshot{Found: true, Session: ls, EventRev: 0}, st, req, ui)
 	if ui.HasTimelineCache() {
 		t.Fatalf("expected EventRev=0 to release timeline cache")
 	}
@@ -192,9 +193,9 @@ func TestNotifyReceipts(t *testing.T) {
 		{name: "not today writes the date", events: turn(reply, notice(5, system, today-2*86_400_000, "## 结论")), withDate: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			st := NewState()
+			st := NewState(nil)
 			st.Cal = lists.Calendar{NowMs: today + 60_000, TodayStartMs: today - 3_600_000, NowYear: 2023, UTCOffsetMinutes: 0}
-			vm := BuildSessionView(SessionViewInput{Found: true, Session: ls, Loaded: true, EventRev: 1, Events: tc.events},
+			vm := BuildSessionView(world.SessionSnapshot{Found: true, Session: ls, Loaded: true, EventRev: 1, Events: tc.events},
 				st, &corev1.SessionScreenRequest{SessionId: "s1"}, NewSessionUIState())
 			items := vm.GetTimeline().GetItems()
 			last := items[len(items)-1]

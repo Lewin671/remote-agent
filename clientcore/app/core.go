@@ -31,7 +31,6 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 	if screen == nil {
 		return nil, errors.New("app: nil screen request")
 	}
-	c.m.sync.SyncToState(c.m.state)
 	c.m.decodeScopeIfReady()
 
 	switch s := screen.Screen.(type) {
@@ -119,6 +118,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	}
 
 	consumed, syncRes := c.m.sync.HandleEvent(ev)
+	c.m.adoptHomeScopeToken()
 	if consumed {
 		var hookEffects []*corev1.Effect
 		c.onSyncEventConsumed(ev, &hookEffects)
@@ -166,7 +166,6 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 }
 
 func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.DirtyFlags) {
-	c.m.sync.SyncToState(c.m.state)
 	c.m.decodeScopeIfReady()
 	if c.m.sessions != nil {
 		for sid, ui := range c.m.sessions.uiBySession {
@@ -435,7 +434,6 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 }
 
 func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Effect {
-	c.m.sync.SyncToState(c.m.state)
 	var effects []*corev1.Effect
 	st := c.m.state
 
@@ -503,7 +501,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				kind = lists.PrefsOpUnpin
 			}
 			c.m.sync.EnqueuePrefsOp(ctx, &lists.FullPrefsOp{Kind: kind, Path: key}, false, "")
-			c.m.sync.SyncToState(st)
 			ctx.Dirty.Add(true, true, false)
 		}
 
@@ -515,7 +512,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				kind = lists.PrefsOpUnhide
 			}
 			c.m.sync.EnqueuePrefsOp(ctx, &lists.FullPrefsOp{Kind: kind, Path: key}, false, "")
-			c.m.sync.SyncToState(st)
 			ctx.Dirty.Add(true, true, false)
 		}
 
@@ -532,7 +528,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			st.DirPicker.Error = ""
 			st.DirPicker.ErrorText = nil
 			st.DirPicker.ActiveRequestID = ""
-			c.m.sync.SyncToState(st)
 			if forNewTask {
 				d := c.m.ensureDraft(k.ProjectAdd.Path)
 				d.MachineChosen = machID != ""
@@ -576,7 +571,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		if k.ProjectOpenDirPicker != nil {
 			machID := k.ProjectOpenDirPicker.MachineId
 			if machID == "" {
-				c.m.sync.SyncToState(st)
 				for _, m := range st.World.Machines {
 					if m != nil && lists.MachineReachable(m) && (machID == "" || m.ID < machID) {
 						machID = m.ID
@@ -675,7 +669,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, true)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
-				c.m.sync.SyncToState(st)
 				ctx.Dirty.Add(false, false, true)
 			}
 		}
@@ -695,7 +688,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, false)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
-				c.m.sync.SyncToState(st)
 				ctx.Dirty.Add(false, false, true)
 			}
 		}
@@ -721,7 +713,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				d.ResetOnNextOpen = false
 				op := buildFullSettingsOp(d.Config, false)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
-				c.m.sync.SyncToState(st)
 				ctx.Dirty.Add(false, false, true)
 			}
 		}
@@ -762,7 +753,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		if d := c.m.ensureDraft(key); d != nil && d.Config.Cwd != "" {
 			op := buildFullSettingsOp(d.Config, false)
 			c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
-			c.m.sync.SyncToState(st)
 			ctx.Dirty.Add(false, false, true)
 		}
 

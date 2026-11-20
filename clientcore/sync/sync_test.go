@@ -12,7 +12,6 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
-	"github.com/Lewin671/remote-agent/clientcore/screens"
 )
 
 func seedEntropy(n int) ([]string, []float64) {
@@ -224,7 +223,7 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 	e3 := NewEngine()
 	e3.running = true
 	e3.legID = 7
-	e3.conn = lists.ConnConnecting
+	e3.w.World.Connection = lists.ConnConnecting
 	e3.liveness = NewLegLiveness(1_000)
 	e3.HandleEvent(&corev1.Event{
 		NowMs:  now,
@@ -662,8 +661,8 @@ func TestEventsTailFirstGapFillBrokenCacheAndLRU(t *testing.T) {
 	if buf.PrefixLen() != 1200 || buf.PendingCount() != 0 || !buf.IsLoaded() {
 		t.Fatalf("expected contiguous 1200 loaded events, got prefix=%d pending=%d loaded=%v", buf.PrefixLen(), buf.PendingCount(), buf.IsLoaded())
 	}
-	if !e.SessionEntry("s1").LivePending.HasApproval || e.SessionEntry("s1").LivePending.ApprovalID != "ap-tail" {
-		t.Fatalf("expected approval projection ap-tail after draining, got %+v", e.SessionEntry("s1").LivePending)
+	if !e.SessionEntry("s1").Pending.HasApproval || e.SessionEntry("s1").Pending.ApprovalID != "ap-tail" {
+		t.Fatalf("expected approval projection ap-tail after draining, got %+v", e.SessionEntry("s1").Pending)
 	}
 	// Once drained, an out-of-order live event (1202 before 1201) must not
 	// switch the display back to a one-event tail.
@@ -772,10 +771,8 @@ func TestLivePollingLifecycle(t *testing.T) {
 			},
 		},
 	})
-	st := screens.NewState()
-	e.SyncToState(st)
-	if !e.SessionEntry("s1").LivePending.HasQuestion || !st.World.Sessions[0].Pending.HasQuestion {
-		t.Fatalf("expected Question pending from live snapshot in SyncToState")
+	if !e.SessionEntry("s1").Pending.HasQuestion || !e.World().World.Sessions[0].Pending.HasQuestion {
+		t.Fatalf("expected Question pending from live snapshot in the world")
 	}
 	var hasLiveTimer bool
 	for _, eff := range outRes.Effects {
@@ -897,7 +894,7 @@ func TestPrefsCASLoopConflictIdempotencyAndMaxAttempts(t *testing.T) {
 			},
 		},
 	})
-	if len(e.prefsQueue) != 0 || e.prefs.Revision != 5 || !e.prefsChangedElsewhere {
+	if len(e.prefsQueue) != 0 || e.prefs.Revision != 5 || !e.w.ProjectChangedElsewhere {
 		t.Fatalf("expected idempotent CAS completion with changedElsewhere=true, queue=%d rev=%d", len(e.prefsQueue), e.prefs.Revision)
 	}
 }
@@ -1361,7 +1358,7 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 func TestBackgroundAndStopClearDirectReady(t *testing.T) {
 	e := NewEngine()
 	startAndConnect(t, e, 1_000)
-	m := &MachineEntry{ID: "m-1", Online: false}
+	m := &MachineEntry{Machine: lists.Machine{ID: "m-1", Online: false}}
 	e.machines["m-1"] = m
 	e.HandleEvent(&corev1.Event{
 		NowMs: 1_100,
@@ -1454,7 +1451,7 @@ func TestResumeAfterStopAndBackgroundEmitsTouchSyncSecurity(t *testing.T) {
 
 	// 2. BACKGROUND -> FOREGROUND while running/stream open must also emit SyncSecurityEffect(Touch=true).
 	prevGen := startSec.NetworkGeneration
-	e.streamOpen = true
+	e.w.LivePushConnected = true
 	e.HandleEvent(&corev1.Event{
 		NowMs: 2_200,
 		Event: &corev1.Event_SyncLifecycle{
@@ -2212,7 +2209,7 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 		},
 	})
 
-	// Drop relay stream so e.conn leaves ConnConnected.
+	// Drop relay stream so e.w.World.Connection leaves ConnConnected.
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 80,
 		Event: &corev1.Event_StreamClosed{
@@ -2223,7 +2220,7 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 		t.Fatalf("expected relay disconnected after StreamClosed")
 	}
 
-	// Direct events arrive while relay is disconnected: buffer updates, e.conn does NOT become ConnConnected.
+	// Direct events arrive while relay is disconnected: buffer updates, e.w.World.Connection does NOT become ConnConnected.
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 90,
 		Event: &corev1.Event_DirectEventsReceived{

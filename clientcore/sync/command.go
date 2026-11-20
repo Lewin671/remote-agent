@@ -234,7 +234,7 @@ func (e *Engine) preflightAndEmit(ctx *StepContext, prep *PreparedCommand, retry
 			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyConnectionNoNetwork), false)
 			return false
 		}
-		if e.conn != lists.ConnConnected {
+		if e.w.World.Connection != lists.ConnConnected {
 			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyErrorsNotConnected), false)
 			return false
 		}
@@ -393,7 +393,7 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 		}
 		res := ev.Result
 		if (cat == outcome.Executed && res != nil && !res.ResultAvailable) || (cat == outcome.Conflict && res != nil && res.ConflictKind == "identity") {
-			if e.running && e.streamOpen {
+			if e.running && e.w.LivePushConnected {
 				e.startRefresh(ctx)
 				if prep.SessionID != "" {
 					e.dispatchLivePoll(ctx, prep.SessionID)
@@ -428,7 +428,7 @@ func (e *Engine) handleRetryableTransportOutcome(ctx *StepContext, prep *Prepare
 	if ev.TransportCode == errCodeUnavailable && prep.Dispatch.Unresolved() {
 		if prep.RecoveryUntilMs == 0 {
 			prep.RecoveryUntilMs = e.monoMs + CommandUnavailableWindowMs
-			if !ev.NotForwarded && !e.streamOpen && !e.connecting {
+			if !ev.NotForwarded && !e.w.LivePushConnected && !e.connecting {
 				e.beginConnect(ctx)
 			}
 		}

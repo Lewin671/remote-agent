@@ -985,7 +985,6 @@ func (c *Core) onToggleMachineAgentSettled(sc sync.SettledCommand, meta cmdMeta,
 			se.ErrorText = nil
 			me.ImageStorage = resp.GetImageStorage().Clone()
 			c.m.sync.ApplyMachineSettingsSnapshot(meta.machineID, st)
-			c.m.sync.SyncToState(c.m.state)
 		}
 		me.ToggleBanner = nil
 

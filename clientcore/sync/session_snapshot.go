@@ -1,26 +1,25 @@
 package sync
 
 import (
-	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
-	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
-	"github.com/Lewin671/remote-agent/clientcore/screens"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
 // SessionSnapshot gathers the current sync state and zero-copy shown events for sessionID.
-func (e *Engine) SessionSnapshot(sessionID string) screens.SessionViewInput {
-	out := screens.SessionViewInput{
-		SessionsListed:     e.sessionsListed,
-		LiveLoaded:         e.liveLoaded,
-		Removed:            e.removed,
-		AccountControlLost: e.accountControlLost(),
-		AccountClockSkewed: e.accountClockSkewed(),
-		Conn:                e.conn,
+func (e *Engine) SessionSnapshot(sessionID string) world.SessionSnapshot {
+	out := world.SessionSnapshot{
+		SessionsListed:      e.w.World.SessionsListed,
+		LiveLoaded:          e.w.World.LiveLoaded,
+		Removed:             e.removed,
+		AccountControlLost:  e.accountControlLost(),
+		AccountClockSkewed:  e.accountClockSkewed(),
+		Conn:                e.w.World.Connection,
 		Unlinked:            e.worldUnlinked(),
 		ReachabilityUnknown: e.coldStartGraceActive(),
 		ProtocolVersion:     ProtocolVersion,
-		DeviceNames:        makeDeviceNameMap(e.devices),
-		ThisDeviceID:       e.security.SelfDeviceID,
+		DeviceNames:         makeDeviceNameMap(e.devices),
+		ThisDeviceID:        e.security.SelfDeviceID,
 	}
 	for _, id := range e.sessionByIDOps {
 		if id == sessionID {
@@ -41,33 +40,16 @@ func (e *Engine) SessionSnapshot(sessionID string) screens.SessionViewInput {
 	if s != nil {
 		out.LastSeq = s.LastSeq
 		out.Retired = s.RetiredHistory
-		out.Session = &lists.Session{
-			ID:             s.ID,
-			MachineID:      s.MachineID,
-			Info:           s.Meta,
-			UpdatedMs:      s.UpdatedMs,
-			ListedEndedMs:  s.ListedEndedMs,
-			Pending:        s.LivePending,
-			ScheduleName:   s.ScheduleName,
-			ScheduleUnread: s.ScheduleUnread,
-		}
+		out.Session = &s.Session
 		if s.MachineID != "" && e.directReady[s.MachineID] {
 			out.Unlinked = false
 			out.ReachabilityUnknown = false
 		}
-		if s.Meta != nil {
-			agent = s.Meta.Agent
+		if s.Info != nil {
+			agent = s.Info.Agent
 		}
 		if m := e.machines[s.MachineID]; m != nil {
-			reachable := e.machineReachable(m)
-			out.Machine = &lists.Machine{
-				ID:                  m.ID,
-				Online:              m.Online,
-				Reachable:           &reachable,
-				ReachabilityUnknown: e.machineReachabilityUnknown(m),
-				LastSeenMs:          m.LastSeenMs,
-				Meta:                m.Meta,
-			}
+			out.Machine = &m.Machine
 		}
 		if s.Checkpoint != nil {
 			liveSnap = s.Checkpoint

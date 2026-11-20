@@ -3,6 +3,7 @@ package screens
 
 import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
@@ -95,23 +96,14 @@ type NewSessionDraft struct {
 	StartErrorText       *corev1.Text
 	DiskFull             bool
 	ActiveStartRequestID string
-	ConfigSaveError      string
-	ConfigSaving         bool
 	AutoModeSupported    bool
 }
 
-// State is the full semantic client state snapshot owned by Core and rendered by screens.
+// State is what the screen builders render from: the core's synchronized
+// world, which the sync engine owns and screens only read, plus the
+// screen-owned UI state (scope, search, drafts, pickers and fetched caches).
 type State struct {
-	World                lists.World
-	Cal                  lists.Calendar
-	DisplayGrace         bool
-	ReachabilityUnknown  bool
-	ConnectionReason     string
-	ConnectionReasonText *corev1.Text
-	SessionListErrorText *corev1.Text
-	ManagerNameText      *corev1.Text
-	DisconnectedAtMs     int64
-	LivePushConnected    bool
+	*world.State
 
 	RememberedScope       *lists.Scope
 	RememberedScopeToken  string
@@ -119,16 +111,7 @@ type State struct {
 	HomeFilterQuery       string
 	HomeSelectedSessionID string
 
-	ProjectSearch            string
-	ProjectChangedElsewhere  bool
-	PrefsPendingPath         map[string]bool
-	PrefsSaveErrorByPath     map[string]string
-	PrefsSaveErrorTextByPath map[string]*corev1.Text
-	PrefsGlobalError         string
-	PrefsGlobalErrorText     *corev1.Text
-	PrefsSavingSettings      map[string]bool
-	PrefsSettingsError       map[string]string
-	PrefsSettingsErrorText   map[string]*corev1.Text
+	ProjectSearch string
 
 	DirPicker DirPickerState
 
@@ -143,23 +126,19 @@ type State struct {
 	Schedules *ScheduleState
 }
 
-// NewState constructs an initialized State with empty lookup maps.
-func NewState() *State {
+// NewState constructs a State over w with empty UI lookup maps. A nil w gets a
+// fresh, empty world, which is what builders see before any sync.
+func NewState(w *world.State) *State {
+	if w == nil {
+		w = world.New()
+	}
 	return &State{
-		World: lists.World{
-			Connection: lists.ConnConnecting,
-		},
-		PrefsPendingPath:         make(map[string]bool),
-		PrefsSaveErrorByPath:     make(map[string]string),
-		PrefsSaveErrorTextByPath: make(map[string]*corev1.Text),
-		PrefsSavingSettings:      make(map[string]bool),
-		PrefsSettingsError:       make(map[string]string),
-		PrefsSettingsErrorText:   make(map[string]*corev1.Text),
-		MachineModels:            make(map[MachineAgentKey]*ModelsCacheEntry),
-		MachineSettings:          make(map[string]*SettingsCacheEntry),
-		UsageSnapshots:           make(map[UsageCacheKey]*UsageSnapshotEntry),
-		UsageUI:                  make(map[string]*UsageUIState),
-		NewSessions:              make(map[string]*NewSessionDraft),
-		Schedules:                NewScheduleState(),
+		State:           w,
+		MachineModels:   make(map[MachineAgentKey]*ModelsCacheEntry),
+		MachineSettings: make(map[string]*SettingsCacheEntry),
+		UsageSnapshots:  make(map[UsageCacheKey]*UsageSnapshotEntry),
+		UsageUI:         make(map[string]*UsageUIState),
+		NewSessions:     make(map[string]*NewSessionDraft),
+		Schedules:       NewScheduleState(),
 	}
 }

@@ -3,17 +3,19 @@ package sync
 import (
 	"slices"
 
+	"strings"
+
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 func (e *Engine) worldUnlinked() bool {
-	return e.conn == lists.ConnNoNetwork ||
-		e.conn == lists.ConnOffline ||
-		(e.conn == lists.ConnReconnecting && !e.liveLoaded)
+	return e.w.World.Connection == lists.ConnNoNetwork ||
+		e.w.World.Connection == lists.ConnOffline ||
+		(e.w.World.Connection == lists.ConnReconnecting && !e.w.World.LiveLoaded)
 }
 
 func (e *Engine) machineReachable(m *MachineEntry) bool {
@@ -126,155 +128,110 @@ func (e *Engine) Run(fn func(ctx *StepContext)) StepResult {
 	if fn != nil {
 		fn(ctx)
 	}
+	e.refreshWorld()
 	return finalizeResult(ctx)
 }
 
-// SyncToState materializes the derived sync state into screens.State.
-func (e *Engine) SyncToState(st *screens.State) {
-	if st == nil {
-		return
-	}
-	displayGrace := e.displayGraceActive()
-	reachabilityUnknown := e.coldStartGraceActive()
-	unlinked := e.worldUnlinked()
+// World returns the core's synchronized world. The engine is its only writer:
+// derived fields are refreshed when HandleEvent and Run return and when
+// SeedSession and EnqueuePrefsOp change the directory or prefs mid-step.
+// Callers must treat it as read-only.
+func (e *Engine) World() *world.State {
+	return &e.w
+}
 
-	machines := make([]*lists.Machine, 0, len(e.machines))
+// refreshWorld recomputes the world fields derived from other engine state
+// (connection, clocks, security, prefs queue) and re-sorts the machine and
+// session lists after membership changes. It costs O(machines), never
+// O(sessions), unless sessions were added or removed.
+func (e *Engine) refreshWorld() {
+	w := &e.w
+	if e.machineOrderStale {
+		w.World.Machines = sortedByID(e.machines, func(m *MachineEntry) *lists.Machine { return &m.Machine })
+		e.machineOrderStale = false
+	}
+	if e.sessionOrderStale {
+		w.World.Sessions = sortedByID(e.sessions, func(s *SessionEntry) *lists.Session { return &s.Session })
+		e.sessionOrderStale = false
+	}
+
+	unlinked := e.worldUnlinked()
 	for _, m := range e.machines {
 		if m == nil {
 			continue
 		}
 		reachable := e.machineReachable(m)
-		unknown := !reachable && e.machineReachabilityUnknown(m)
-		mUnlinked := unlinked && !e.directReady[m.ID]
+		m.reachable = reachable
+		m.unlinked = unlinked && !e.directReady[m.ID]
+		m.Reachable = &m.reachable
+		m.Unlinked = &m.unlinked
+		m.ReachabilityUnknown = !reachable && e.machineReachabilityUnknown(m)
 		var pv uint32
 		if m.Meta != nil {
 			pv = m.Meta.ProtocolVersion
 		}
-		machines = append(machines, &lists.Machine{
-			ID:                  m.ID,
-			Online:              m.Online,
-			Reachable:           &reachable,
-			ReachabilityUnknown: unknown,
-			Unlinked:            &mUnlinked,
-			LastSeenMs:          m.LastSeenMs,
-			ProtocolVersion:     pv,
-			DaemonOutOfDate:     pv > 0 && pv < ProtocolVersion,
-			ClientOutOfDate:     pv > 0 && pv > ProtocolVersion,
-			Meta:                m.Meta,
-		})
-	}
-	slices.SortFunc(machines, func(a, b *lists.Machine) int {
-		if a.ID < b.ID {
-			return -1
-		}
-		if a.ID > b.ID {
-			return 1
-		}
-		return 0
-	})
-
-	sessions := make([]*lists.Session, 0, len(e.sessions))
-	for _, s := range e.sessions {
-		if s == nil {
-			continue
-		}
-		var preview string
-		if s.Meta != nil {
-			preview = s.Meta.Preview
-		}
-		sessions = append(sessions, &lists.Session{
-			ID:             s.ID,
-			MachineID:      s.MachineID,
-			Info:           s.Meta,
-			UpdatedMs:      s.UpdatedMs,
-			ListedEndedMs:  s.ListedEndedMs,
-			Preview:        preview,
-			Pending:        s.LivePending,
-			ScheduleName:   s.ScheduleName,
-			ScheduleUnread: s.ScheduleUnread,
-		})
-	}
-	slices.SortFunc(sessions, func(a, b *lists.Session) int {
-		if a.ID < b.ID {
-			return -1
-		}
-		if a.ID > b.ID {
-			return 1
-		}
-		return 0
-	})
-
-	st.Cal = e.cal
-	st.DisplayGrace = displayGrace
-	st.ReachabilityUnknown = reachabilityUnknown
-	st.ConnectionReason = ""
-	st.ConnectionReasonText = e.connReasonText
-	st.SessionListErrorText = e.sessionListErr
-	st.ManagerNameText = e.managerNameText()
-	st.DisconnectedAtMs = e.offlineSinceMs
-	st.LivePushConnected = e.streamOpen
-
-	st.ProjectChangedElsewhere = e.prefsChangedElsewhere
-	st.PrefsGlobalError = ""
-	st.PrefsGlobalErrorText = e.prefsGlobalErr
-
-	clear(st.PrefsPendingPath)
-	for k, v := range e.prefsPendingByPath {
-		st.PrefsPendingPath[k] = v
-	}
-	clear(st.PrefsSaveErrorByPath)
-	clear(st.PrefsSaveErrorTextByPath)
-	for k, v := range e.prefsErrorByPath {
-		st.PrefsSaveErrorTextByPath[k] = v
-	}
-	clear(st.PrefsSavingSettings)
-	for k, v := range e.prefsSettingsSaving {
-		st.PrefsSavingSettings[k] = v
-	}
-	clear(st.PrefsSettingsError)
-	clear(st.PrefsSettingsErrorText)
-	for k, v := range e.prefsSettingsErr {
-		st.PrefsSettingsErrorText[k] = v
-	}
-	for key, d := range st.NewSessions {
-		if d == nil {
-			continue
-		}
-		d.ConfigSaving = st.PrefsSavingSettings[key]
-		if st.PrefsSettingsErrorText[key] != nil {
-			d.ConfigSaveError = "failed"
-		} else {
-			d.ConfigSaveError = ""
-		}
+		m.ProtocolVersion = pv
+		m.DaemonOutOfDate = pv > 0 && pv < ProtocolVersion
+		m.ClientOutOfDate = pv > 0 && pv > ProtocolVersion
 	}
 
-	if e.homeScopeToken != "" && st.RememberedScopeToken == "" {
-		st.RememberedScopeToken = e.homeScopeToken
-	}
+	e.unlinkedFlag = unlinked
+	w.DisplayGrace = e.displayGraceActive()
+	w.ReachabilityUnknown = e.coldStartGraceActive()
+	w.ManagerNameText = e.managerNameText()
+	w.World.SessionListFailed = w.SessionListErrorText != nil
+	w.World.Prefs = e.prefs.Prefs
+	w.World.PrefsLoaded = e.prefs.Loaded
+	w.World.PrefsLoadFailed = e.prefs.LoadFailed
+	w.World.PrefsSyncing = len(e.prefsQueue) > 0
+	w.World.IsManager = e.isManager()
+	w.World.ManagerName = e.managerDevicePlainName()
+	w.World.AccountControlLost = e.accountControlLost()
+	w.World.AccountClockSkewed = e.accountClockSkewed()
+}
 
-	st.World = lists.World{
-		Machines:            machines,
-		MachinesListed:      e.machinesListed,
-		Sessions:            sessions,
-		SessionsListed:      e.sessionsListed,
-		SessionsNext:        e.sessionsNext,
-		HasMoreSessions:     e.hasMoreSessions,
-		LoadingMoreSessions: e.loadingMore,
-		SessionListFailed:   e.sessionListErr != nil,
-		SessionListError:    e.sessionListRaw,
-		LiveLoaded:          e.liveLoaded,
-		Prefs:               e.prefs.Prefs,
-		PrefsLoaded:         e.prefs.Loaded,
-		PrefsLoadFailed:     e.prefs.LoadFailed,
-		PrefsSyncing:        len(e.prefsQueue) > 0,
-		Connection:          e.conn,
-		Unlinked:            &unlinked,
-		ClientVersion:       ProtocolVersion,
-		IsManager:           e.isManager(),
-		ManagerName:         e.managerDevicePlainName(),
-		AccountControlLost:  e.accountControlLost(),
-		AccountClockSkewed:  e.accountClockSkewed(),
+// storeMachine records m as the entry for its ID, replacing any previous one.
+func (e *Engine) storeMachine(m *MachineEntry) {
+	prev := e.machines[m.ID]
+	e.machines[m.ID] = m
+	e.machineOrderStale = e.machineOrderStale || !replaceByID(e.w.World.Machines, prev != nil, &m.Machine, func(x *lists.Machine) string { return x.ID })
+}
+
+// storeSession records s as the entry for its ID, replacing any previous one.
+func (e *Engine) storeSession(s *SessionEntry) {
+	prev := e.sessions[s.ID]
+	e.sessions[s.ID] = s
+	e.sessionOrderStale = e.sessionOrderStale || !replaceByID(e.w.World.Sessions, prev != nil, &s.Session, func(x *lists.Session) string { return x.ID })
+}
+
+// replaceByID swaps v into the ID-sorted list in place when an entry with the
+// same ID is already there; it reports false when the list must be re-sorted.
+func replaceByID[T any](list []*T, existed bool, v *T, id func(*T) string) bool {
+	if !existed {
+		return false
 	}
+	key := id(v)
+	i, ok := slices.BinarySearchFunc(list, key, func(x *T, k string) int { return strings.Compare(id(x), k) })
+	if !ok {
+		return false
+	}
+	list[i] = v
+	return true
+}
+
+func sortedByID[E any, T any](entries map[string]*E, view func(*E) *T) []*T {
+	ids := make([]string, 0, len(entries))
+	for id, x := range entries {
+		if x != nil {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	out := make([]*T, len(ids))
+	for i, id := range ids {
+		out[i] = view(entries[id])
+	}
+	return out
 }
 
 // MachineEntry returns the plain machine entry for machineID, or nil.
@@ -294,7 +251,7 @@ func (e *Engine) Prefs() PrefsState {
 
 // Connection returns the current connection state.
 func (e *Engine) Connection() lists.ConnectionKind {
-	return e.conn
+	return e.w.World.Connection
 }
 
 // RecoveryState exposes the internal Recovery instance for testing/inspection.

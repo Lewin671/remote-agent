@@ -9,6 +9,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
@@ -115,34 +116,36 @@ func (d DirtyFlags) ScreenTargets() []corev1.ScreenTarget {
 }
 
 // MachineEntry holds plaintext machine state verified by the shell security gate.
+// The embedded lists.Machine is the copy the world's machine list points at;
+// its reachability fields are derived and refreshed by refreshWorld.
 type MachineEntry struct {
-	ID         string
-	Online     bool
-	LastSeenMs int64
-	Meta       *v1.MachineMeta
+	lists.Machine
 	MetaRev    uint64
 	MetaBroken bool
 	CacheRef   string
+
+	reachable bool
+	unlinked  bool
 }
 
 // SessionEntry holds plaintext session state and derived checkpoint/reducer actions.
+// The embedded lists.Session is the copy the world's session list points at.
 type SessionEntry struct {
-	ID                string
-	MachineID         string
+	lists.Session
 	LastSeq           uint64
 	ServerLastSeq     uint64
-	UpdatedMs         int64
-	ListedEndedMs     int64
-	Meta              *v1.Session
 	MetaRev           uint64
 	Checkpoint        *v1.LiveSnapshot
 	CheckpointInvalid bool
 	RetiredHistory    bool
 	OpenFailed        bool
 	CacheRef          string
-	ScheduleName      string
-	ScheduleUnread    bool
-	LivePending       lists.PendingAction
+}
+
+// setInfo replaces the session metadata and the list preview derived from it.
+func (s *SessionEntry) setInfo(info *v1.Session) {
+	s.Info = info
+	s.Preview = info.GetPreview()
 }
 
 // DeviceEntry holds plaintext device state.
@@ -312,10 +315,18 @@ func (p *entropyPool) maybeRequest(ctx *StepContext) {
 
 // Engine holds the full sans-IO sync state machine for a single client account.
 type Engine struct {
+	// w is the core's single synchronized world. The engine is its only
+	// writer; screens read it in place through World.
+	w world.State
+	// unlinkedFlag backs w.World.Unlinked; the order flags mark the world's
+	// machine and session lists for re-sorting after inserts and removals.
+	unlinkedFlag      bool
+	machineOrderStale bool
+	sessionOrderStale bool
+
 	nowMs            int64
 	monoMs           int64
 	seenExplicitMono bool
-	cal              lists.Calendar
 	entropy          entropyPool
 
 	running          bool
@@ -334,17 +345,15 @@ type Engine struct {
 	nextPushSeq  uint64
 	nextEventRev uint64
 
-	recovery   *Recovery
-	liveness   *LegLiveness
-	timers     map[timerKey]timerEntry
-	conn                  lists.ConnectionKind
+	recovery              *Recovery
+	liveness              *LegLiveness
+	timers                map[timerKey]timerEntry
 	everReady             bool
 	displayGraceUntilMs   int64
 	coldStartGraceUntilMs int64
 	coldStartGraceExpired bool
 	connecting            bool
-	streamOpen bool
-	wantedConn bool
+	wantedConn            bool
 
 	activeTokenOpID   uint64
 	activeSecOpID     uint64
@@ -354,10 +363,8 @@ type Engine struct {
 	tokenExpiresMs    int64
 	forceLogin        bool
 	legID             uint64
-	offlineSinceMs    int64
 	connStartedAtMs   int64
 	connStepText      *corev1.Text
-	connReasonText    *corev1.Text
 	serverAhead       bool
 	listBackoffMs     int64
 	prefsBackoffMs    int64
@@ -366,15 +373,7 @@ type Engine struct {
 	sessions        map[string]*SessionEntry
 	devices         map[string]*DeviceEntry
 	listed          map[string]bool
-	machinesListed  bool
-	sessionsListed  bool
-	liveLoaded      bool
-	sessionsNext    *lists.SessionPlace
-	hasMoreSessions bool
-	loadingMore     bool
 	wantAllSessions bool
-	sessionListErr  *corev1.Text
-	sessionListRaw  string
 
 	listingGen         uint64
 	refreshRun         uint64
@@ -401,19 +400,13 @@ type Engine struct {
 	livePollInFlight map[string]string // session_id -> active request_id
 	livePollReqToSid map[string]string // request_id -> session_id
 
-	prefs                 PrefsState
-	prefsLoadOpID         uint64
-	prefsQueue            []prefsQueueItem
-	prefsChangedElsewhere bool
-	prefsGlobalErr        *corev1.Text
-	prefsErrorByPath      map[string]*corev1.Text
-	prefsPendingByPath    map[string]bool
-	prefsSettingsSaving   map[string]bool
-	prefsSettingsErr      map[string]*corev1.Text
+	prefs         PrefsState
+	prefsLoadOpID uint64
+	prefsQueue    []prefsQueueItem
 
-	security          SecurityState
-	homeScopeToken    string
-	scopeHMACKey      []byte
+	security       SecurityState
+	homeScopeToken string
+	scopeHMACKey   []byte
 
 	inFlightCmds    map[string]*PreparedCommand
 	reqIDByAttempt  map[string]string
@@ -423,39 +416,39 @@ type Engine struct {
 
 // NewEngine constructs a fresh sans-IO sync Engine.
 func NewEngine() *Engine {
-	return &Engine{
-		foreground:          true,
-		networkAvailable:    true,
-		recovery:            NewRecovery(NewRecoveryBudget(4.0, 2.0)),
-		timers:              make(map[timerKey]timerEntry),
-		conn:                lists.ConnConnecting,
-		listBackoffMs:       ListRetryInitialMs,
-		prefsBackoffMs:      PrefsRetryInitialMs,
-		machines:            make(map[string]*MachineEntry),
-		sessions:            make(map[string]*SessionEntry),
-		devices:             make(map[string]*DeviceEntry),
-		listed:              make(map[string]bool),
-		sessionByIDOps:      make(map[uint64]string),
-		sessionByIDFailed:   make(map[string]bool),
-		machinePushes:       make(map[string]uint64),
-		sessionPushes:       make(map[string]uint64),
-		removedPushes:       make(map[string]uint64),
-		devicePushes:        make(map[string]uint64),
-		directReady:         make(map[string]bool),
-		buffers:             make(map[string]*EventBuffer),
-		watchedSessions:     make(map[string]bool),
-		pinnedSessions:      make(map[string]bool),
-		livePollInFlight:    make(map[string]string),
-		livePollReqToSid:    make(map[string]string),
-		prefsErrorByPath:    make(map[string]*corev1.Text),
-		prefsPendingByPath:  make(map[string]bool),
-		prefsSettingsSaving: make(map[string]bool),
-		prefsSettingsErr:    make(map[string]*corev1.Text),
-		inFlightCmds:        make(map[string]*PreparedCommand),
-		reqIDByAttempt:      make(map[string]string),
-		attemptTrackers:     make(map[string]*AttemptTracker),
-		retryReqByTimer:     make(map[string]string),
+	e := &Engine{
+		foreground:        true,
+		networkAvailable:  true,
+		recovery:          NewRecovery(NewRecoveryBudget(4.0, 2.0)),
+		timers:            make(map[timerKey]timerEntry),
+		listBackoffMs:     ListRetryInitialMs,
+		prefsBackoffMs:    PrefsRetryInitialMs,
+		machines:          make(map[string]*MachineEntry),
+		sessions:          make(map[string]*SessionEntry),
+		devices:           make(map[string]*DeviceEntry),
+		listed:            make(map[string]bool),
+		sessionByIDOps:    make(map[uint64]string),
+		sessionByIDFailed: make(map[string]bool),
+		machinePushes:     make(map[string]uint64),
+		sessionPushes:     make(map[string]uint64),
+		removedPushes:     make(map[string]uint64),
+		devicePushes:      make(map[string]uint64),
+		directReady:       make(map[string]bool),
+		buffers:           make(map[string]*EventBuffer),
+		watchedSessions:   make(map[string]bool),
+		pinnedSessions:    make(map[string]bool),
+		livePollInFlight:  make(map[string]string),
+		livePollReqToSid:  make(map[string]string),
+		inFlightCmds:      make(map[string]*PreparedCommand),
+		reqIDByAttempt:    make(map[string]string),
+		attemptTrackers:   make(map[string]*AttemptTracker),
+		retryReqByTimer:   make(map[string]string),
 	}
+	e.w.Init()
+	e.w.World.ClientVersion = ProtocolVersion
+	e.w.World.Unlinked = &e.unlinkedFlag
+	e.refreshWorld()
+	return e
 }
 
 func (e *Engine) allocOpID() uint64 {
@@ -472,7 +465,7 @@ func (e *Engine) advanceClocks(nowMs, monoMs int64, cal *corev1.LocalCalendar) {
 	prevNow := e.nowMs
 	if nowMs > 0 {
 		e.nowMs = nowMs
-		e.cal.NowMs = nowMs
+		e.w.Cal.NowMs = nowMs
 	}
 	if monoMs > 0 {
 		if !e.seenExplicitMono {
@@ -498,7 +491,7 @@ func (e *Engine) advanceClocks(nowMs, monoMs int64, cal *corev1.LocalCalendar) {
 				})
 			}
 		}
-		e.cal = lists.Calendar{
+		e.w.Cal = lists.Calendar{
 			NowMs:            e.nowMs,
 			TodayStartMs:     cal.TodayStartMs,
 			YesterdayStartMs: cal.YesterdayStartMs,
@@ -516,12 +509,18 @@ func (e *Engine) NowMs() int64 { return e.nowMs }
 func (e *Engine) MonoMs() int64 { return e.monoMs }
 
 // Calendar returns the current local calendar boundaries.
-func (e *Engine) Calendar() lists.Calendar { return e.cal }
+func (e *Engine) Calendar() lists.Calendar { return e.w.Cal }
 
 // HandleEvent processes sync-level fields of ev (clocks, entropy, lifecycle, network,
 // timers, cache, auth, security, stream, RPC, commands, watch, pin, route/schedule hints).
 // It returns whether the event was consumed by sync (ui-screen events return false).
 func (e *Engine) HandleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
+	consumed, res = e.handleEvent(ev)
+	e.refreshWorld()
+	return consumed, res
+}
+
+func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	ctx := newStepContext()
 	e.entropy.needRequested = false
 	if ev == nil {

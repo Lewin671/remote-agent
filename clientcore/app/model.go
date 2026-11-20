@@ -52,6 +52,7 @@ type frozenSchedOp struct {
 }
 
 // Model holds the sync engine, screen state, and pending UI command metadata.
+// state reads the engine's world in place; only the engine writes it.
 type Model struct {
 	sync                  *sync.Engine
 	state                 *screens.State
@@ -71,9 +72,10 @@ type Model struct {
 }
 
 func newModel() *Model {
+	eng := sync.NewEngine()
 	m := &Model{
-		sync:               sync.NewEngine(),
-		state:              screens.NewState(),
+		sync:               eng,
+		state:              screens.NewState(eng.World()),
 		pendingCmdMeta:     make(map[string]cmdMeta),
 		frozenSchedOps:     make(map[string]frozenSchedOp),
 		lastUsageFetchedMs: make(map[screens.UsageCacheKey]int64),
@@ -275,6 +277,14 @@ func (m *Model) decodeScopeIfReady() {
 		if m.state.Scope == nil {
 			m.state.Scope = decoded
 		}
+	}
+}
+
+// adoptHomeScopeToken seeds the remembered home scope from the token the shell
+// restored at startup, until the user picks a scope of their own.
+func (m *Model) adoptHomeScopeToken() {
+	if m.state.RememberedScopeToken == "" {
+		m.state.RememberedScopeToken = m.sync.HomeScopeToken()
 	}
 }
 

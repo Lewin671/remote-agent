@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
@@ -64,7 +65,7 @@ func TestIsHomeInlineQuestionEligibleCriteria(t *testing.T) {
 
 func TestBuildHomeTopAttentionQuestion(t *testing.T) {
 	reachable := true
-	st := &State{
+	st := &State{State: &world.State{
 		Cal: lists.Calendar{NowMs: 1_700_000_060_000},
 		World: lists.World{
 			Machines: []*lists.Machine{
@@ -90,7 +91,7 @@ func TestBuildHomeTopAttentionQuestion(t *testing.T) {
 				},
 			},
 		},
-	}
+	}}
 
 	vm := BuildHome(st, 10)
 	if !vm.TopAttentionActionable || vm.TopAttentionCard != nil || vm.TopAttentionQuestion == nil {

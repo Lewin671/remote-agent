@@ -32,25 +32,25 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		}
 		e.connectGen++
 		e.connecting = false
-		e.streamOpen = false
+		e.w.LivePushConnected = false
 		e.wantedConn = false
 		e.activeTokenOpID = 0
 		e.activeSecOpID = 0
 		e.refreshOpID = 0
 		e.pageOpID = 0
 		e.prefsLoadOpID = 0
-		if !e.streamOpen {
-			e.conn = lists.ConnConnecting
+		if !e.w.LivePushConnected {
+			e.w.World.Connection = lists.ConnConnecting
 			e.connStartedAtMs = e.nowMs
 			e.connStepText = text.Msg(text.KeyErrorsReadingLocalState)
 		}
 		e.displayGraceUntilMs = 0
-		if e.everReady && !e.removed && e.foreground && e.conn != lists.ConnConnected {
+		if e.everReady && !e.removed && e.foreground && e.w.World.Connection != lists.ConnConnected {
 			e.startDisplayGrace(ctx)
 		}
 		e.coldStartGraceUntilMs = 0
 		e.coldStartGraceExpired = false
-		if !e.machinesListed && !e.removed && e.foreground && e.networkAvailable {
+		if !e.w.World.MachinesListed && !e.removed && e.foreground && e.networkAvailable {
 			e.startColdStartGrace(ctx)
 		}
 		if !e.bootstrapped {
@@ -73,7 +73,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP:
 		e.running = false
-		e.conn = lists.ConnOffline
+		e.w.World.Connection = lists.ConnOffline
 		e.displayGraceUntilMs = 0
 		e.coldStartGraceUntilMs = 0
 		e.coldStartGraceExpired = false
@@ -83,7 +83,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 			e.emitCloseStream(ctx, e.legID)
 			e.legID = 0
 		}
-		e.streamOpen = false
+		e.w.LivePushConnected = false
 		e.connecting = false
 		e.wantedConn = false
 		e.activeTokenOpID = 0
@@ -104,11 +104,11 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		wasForeground := e.foreground
 		e.foreground = true
 		e.updateLivePollers(ctx)
-		if !wasForeground && e.everReady && !e.removed && e.running && e.conn != lists.ConnConnected {
+		if !wasForeground && e.everReady && !e.removed && e.running && e.w.World.Connection != lists.ConnConnected {
 			e.startDisplayGrace(ctx)
 			ctx.Dirty.MarkAll()
 		}
-		if !wasForeground && !e.machinesListed && !e.coldStartGraceExpired && !e.removed && e.running && e.networkAvailable {
+		if !wasForeground && !e.w.World.MachinesListed && !e.coldStartGraceExpired && !e.removed && e.running && e.networkAvailable {
 			e.startColdStartGrace(ctx)
 			ctx.Dirty.MarkAll()
 		}
@@ -116,14 +116,14 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 			if e.security.Loaded || e.everReady {
 				e.networkGen++
 			}
-			if !e.streamOpen && !e.connecting {
+			if !e.w.LivePushConnected && !e.connecting {
 				if e.networkAvailable {
 					e.beginConnect(ctx)
 				}
 			} else if !e.security.Loaded || e.security.VerifiedNetGen != e.networkGen {
 				e.requestSyncSecurity(ctx, true)
 			}
-		} else if e.running && !e.removed && e.networkAvailable && !e.streamOpen && !e.connecting {
+		} else if e.running && !e.removed && e.networkAvailable && !e.w.LivePushConnected && !e.connecting {
 			e.beginConnect(ctx)
 		}
 
@@ -151,7 +151,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		}
 		e.connectGen++
 		e.connecting = false
-		e.streamOpen = false
+		e.w.LivePushConnected = false
 		e.activeTokenOpID = 0
 		e.recovery.Ready()
 		if e.networkAvailable {
@@ -199,24 +199,24 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 	}
 
 	if !ev.Available {
-		wasConnected := e.conn == lists.ConnConnected
+		wasConnected := e.w.World.Connection == lists.ConnConnected
 		e.connectGen++
 		if e.legID > 0 {
 			e.emitCloseStream(ctx, e.legID)
 			e.legID = 0
 		}
-		e.streamOpen = false
+		e.w.LivePushConnected = false
 		e.connecting = false
 		e.activeTokenOpID = 0
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_STREAM_OPEN, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LINK_GRACE, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_RECONNECT, "")
-		e.conn = lists.ConnNoNetwork
-		if e.offlineSinceMs == 0 && e.nowMs > 0 {
-			e.offlineSinceMs = e.nowMs
+		e.w.World.Connection = lists.ConnNoNetwork
+		if e.w.DisconnectedAtMs == 0 && e.nowMs > 0 {
+			e.w.DisconnectedAtMs = e.nowMs
 		}
-		e.connReasonText = text.Msg(text.KeyConnectionNoNetwork)
+		e.w.ConnectionReasonText = text.Msg(text.KeyConnectionNoNetwork)
 		if wasConnected && e.everReady && !e.removed && e.running && e.foreground {
 			e.startDisplayGrace(ctx)
 		}
@@ -226,32 +226,32 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 		return
 	}
 
-	if e.conn == lists.ConnNoNetwork {
+	if e.w.World.Connection == lists.ConnNoNetwork {
 		if e.everReady {
-			e.conn = lists.ConnReconnecting
+			e.w.World.Connection = lists.ConnReconnecting
 		} else {
-			e.conn = lists.ConnConnecting
+			e.w.World.Connection = lists.ConnConnecting
 		}
-		e.connReasonText = nil
+		e.w.ConnectionReasonText = nil
 	}
-	if !e.machinesListed && !e.coldStartGraceExpired && e.running && !e.removed && e.foreground && e.coldStartGraceUntilMs == 0 {
+	if !e.w.World.MachinesListed && !e.coldStartGraceExpired && e.running && !e.removed && e.foreground && e.coldStartGraceUntilMs == 0 {
 		e.startColdStartGrace(ctx)
 	}
-	if sigChanged && e.streamOpen && e.legID > 0 {
+	if sigChanged && e.w.LivePushConnected && e.legID > 0 {
 		legID := e.legID
 		e.emitCloseStream(ctx, legID)
 		e.onLegDropped(ctx, legID, false, false, "", "")
 		ctx.Dirty.MarkAll()
 		return
 	}
-	if e.running && !e.removed && !e.streamOpen && !e.connecting {
+	if e.running && !e.removed && !e.w.LivePushConnected && !e.connecting {
 		e.beginConnect(ctx)
 	}
 	ctx.Dirty.MarkAll()
 }
 
 func (e *Engine) beginConnect(ctx *StepContext) {
-	if !e.running || e.removed || !e.networkAvailable || e.connecting || e.streamOpen || e.isTimerActive(corev1.TimerKind_TIMER_KIND_RECONNECT, "") {
+	if !e.running || e.removed || !e.networkAvailable || e.connecting || e.w.LivePushConnected || e.isTimerActive(corev1.TimerKind_TIMER_KIND_RECONNECT, "") {
 		return
 	}
 	wait := e.recovery.Delay(e.monoMs)
@@ -265,11 +265,11 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 	e.connectGen++
 	e.connecting = true
 	e.wantedConn = false
-	if !e.streamOpen {
-		if e.everReady && e.conn != lists.ConnOffline {
-			e.conn = lists.ConnReconnecting
+	if !e.w.LivePushConnected {
+		if e.everReady && e.w.World.Connection != lists.ConnOffline {
+			e.w.World.Connection = lists.ConnReconnecting
 		} else if !e.everReady {
-			e.conn = lists.ConnConnecting
+			e.w.World.Connection = lists.ConnConnecting
 		}
 		e.connStartedAtMs = e.nowMs
 		e.connStepText = text.Msg(text.KeyErrorsSigningIn)
@@ -322,16 +322,16 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 		e.clearDisplayGrace(ctx)
 		e.clearColdStartGrace(ctx)
 		e.connecting = false
-		e.streamOpen = false
+		e.w.LivePushConnected = false
 		e.cachedToken = ""
 		e.tokenExpiresMs = 0
 		e.forceLogin = false
-		e.conn = lists.ConnOffline
-		if e.offlineSinceMs == 0 && e.nowMs > 0 {
-			e.offlineSinceMs = e.nowMs
+		e.w.World.Connection = lists.ConnOffline
+		if e.w.DisconnectedAtMs == 0 && e.nowMs > 0 {
+			e.w.DisconnectedAtMs = e.nowMs
 		}
 		e.connStepText = nil
-		e.connReasonText = text.Msg(text.KeyErrorsTheServerDoesNotRecognizeThisDeviceItMay)
+		e.w.ConnectionReasonText = text.Msg(text.KeyErrorsTheServerDoesNotRecognizeThisDeviceItMay)
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LINK_GRACE, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_RECONNECT, "")
 		e.updateLivePollers(ctx)
@@ -373,7 +373,7 @@ func (e *Engine) handleStreamReady(ctx *StepContext, ev *corev1.StreamReadyEvent
 	e.clearDisplayGrace(ctx)
 
 	e.connecting = false
-	e.streamOpen = true
+	e.w.LivePushConnected = true
 	e.everReady = true
 	e.wantedConn = false
 	e.recovery.Ready()
@@ -381,10 +381,10 @@ func (e *Engine) handleStreamReady(ctx *StepContext, ev *corev1.StreamReadyEvent
 	e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "", LivenessTickMs)
 
 	e.serverAhead = ev.ServerTimeMs > 0 && e.nowMs > 0 && (e.nowMs-ev.ServerTimeMs > MaxClockSkewMs)
-	e.conn = lists.ConnConnected
-	e.offlineSinceMs = 0
+	e.w.World.Connection = lists.ConnConnected
+	e.w.DisconnectedAtMs = 0
 	e.connStepText = nil
-	e.connReasonText = nil
+	e.w.ConnectionReasonText = nil
 
 	e.startRefresh(ctx)
 	if !e.prefs.Loaded {
@@ -416,7 +416,7 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 		return
 	}
 	e.legID = 0
-	e.streamOpen = false
+	e.w.LivePushConnected = false
 	e.connecting = false
 	e.liveness = nil
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_STREAM_OPEN, "")
@@ -444,13 +444,13 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 }
 
 func (e *Engine) onConnectFailure(ctx *StepContext, unresolvedHost bool, errCode, errMsg string) {
-	wasConnected := e.conn == lists.ConnConnected
+	wasConnected := e.w.World.Connection == lists.ConnConnected
 	e.connStepText = nil
-	e.connReasonText = classifyConnectError(unresolvedHost, errCode, errMsg)
+	e.w.ConnectionReasonText = classifyConnectError(unresolvedHost, errCode, errMsg)
 	if !e.networkAvailable {
-		e.conn = lists.ConnNoNetwork
-		if e.offlineSinceMs == 0 && e.nowMs > 0 {
-			e.offlineSinceMs = e.nowMs
+		e.w.World.Connection = lists.ConnNoNetwork
+		if e.w.DisconnectedAtMs == 0 && e.nowMs > 0 {
+			e.w.DisconnectedAtMs = e.nowMs
 		}
 		if wasConnected && e.everReady && !e.removed && e.running && e.foreground {
 			e.startDisplayGrace(ctx)
@@ -458,12 +458,12 @@ func (e *Engine) onConnectFailure(ctx *StepContext, unresolvedHost bool, errCode
 		return
 	}
 	if e.everReady && !e.isTimerActive(corev1.TimerKind_TIMER_KIND_LINK_GRACE, "") {
-		if e.conn == lists.ConnConnected || e.conn == lists.ConnReconnecting {
-			e.conn = lists.ConnReconnecting
+		if e.w.World.Connection == lists.ConnConnected || e.w.World.Connection == lists.ConnReconnecting {
+			e.w.World.Connection = lists.ConnReconnecting
 			e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_LINK_GRACE, "", LinkGraceMs)
 		}
 	} else if !e.everReady {
-		e.conn = lists.ConnConnecting
+		e.w.World.Connection = lists.ConnConnecting
 	}
 	e.recovery.Failed(e.monoMs, e.entropy.nextFloat(ctx))
 	e.beginConnect(ctx)
@@ -473,7 +473,7 @@ func (e *Engine) onConnectFailure(ctx *StepContext, unresolvedHost bool, errCode
 }
 
 func (e *Engine) displayGraceActive() bool {
-	if !e.everReady || e.removed || e.conn == lists.ConnConnected {
+	if !e.everReady || e.removed || e.w.World.Connection == lists.ConnConnected {
 		return false
 	}
 	if !e.running || !e.foreground {
@@ -483,7 +483,7 @@ func (e *Engine) displayGraceActive() bool {
 }
 
 func (e *Engine) startDisplayGrace(ctx *StepContext) {
-	if !e.everReady || e.removed || e.conn == lists.ConnConnected || !e.running || !e.foreground {
+	if !e.everReady || e.removed || e.w.World.Connection == lists.ConnConnected || !e.running || !e.foreground {
 		return
 	}
 	until := e.monoMs + DisplayGraceMs
@@ -515,14 +515,14 @@ func (e *Engine) expireDisplayGraceOnClock(ctx *StepContext) {
 }
 
 func (e *Engine) coldStartGraceActive() bool {
-	if e.machinesListed || e.removed || !e.running || !e.foreground || !e.networkAvailable {
+	if e.w.World.MachinesListed || e.removed || !e.running || !e.foreground || !e.networkAvailable {
 		return false
 	}
 	return e.coldStartGraceUntilMs > 0 && e.monoMs < e.coldStartGraceUntilMs
 }
 
 func (e *Engine) startColdStartGrace(ctx *StepContext) {
-	if e.machinesListed || e.coldStartGraceExpired || e.removed || !e.running || !e.foreground || !e.networkAvailable {
+	if e.w.World.MachinesListed || e.coldStartGraceExpired || e.removed || !e.running || !e.foreground || !e.networkAvailable {
 		return
 	}
 	until := e.monoMs + DisplayGraceMs
@@ -573,7 +573,7 @@ func (e *Engine) handleSecuritySnapshot(ctx *StepContext, ev *corev1.SecuritySna
 	}
 	if ev.Error != "" {
 		if ev.UnresolvedHost {
-			e.connReasonText = text.Msg(text.KeyConnectionNoServer)
+			e.w.ConnectionReasonText = text.Msg(text.KeyConnectionNoServer)
 			ctx.Dirty.Add(true, false, false)
 		}
 		return

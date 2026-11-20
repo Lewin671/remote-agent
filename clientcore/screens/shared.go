@@ -170,10 +170,8 @@ func formatRelativeTime(ms int64, cal lists.Calendar) *corev1.Text {
 }
 
 func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
-	reason := st.ConnectionReason
 	view := &corev1.ConnectionStatusView{
 		LivePushConnected: st.LivePushConnected,
-		Reason:            reason,
 		DisconnectedAtMs:  st.DisconnectedAtMs,
 	}
 	switch st.World.Connection {
@@ -181,8 +179,8 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 		view.State = corev1.ConnState_CONN_STATE_CONNECTED
 		view.BadgeText = text.Msg(text.KeyConnectionConnected)
 		if !st.LivePushConnected {
-			if hasReason(st.ConnectionReasonText, reason) {
-				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnectedSessionChangesMayBe, reasonArg("value", st.ConnectionReasonText, reason))
+			if !text.IsEmpty(st.ConnectionReasonText) {
+				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnectedSessionChangesMayBe, text.ArgText("value", st.ConnectionReasonText))
 			} else {
 				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnected)
 			}
@@ -194,8 +192,8 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 	case lists.ConnOffline:
 		view.State = corev1.ConnState_CONN_STATE_OFFLINE
 		view.BadgeText = text.Msg(text.KeyConnectionUnreachable)
-		if hasReason(st.ConnectionReasonText, reason) {
-			view.DetailText = text.Msg(text.KeyConnectionServerDetails, reasonArg("reason", st.ConnectionReasonText, reason))
+		if !text.IsEmpty(st.ConnectionReasonText) {
+			view.DetailText = text.Msg(text.KeyConnectionServerDetails, text.ArgText("reason", st.ConnectionReasonText))
 		} else {
 			view.DetailText = text.Msg(text.KeyConnectionNoResponse)
 		}
@@ -379,8 +377,6 @@ func buildProjectRow(p *lists.ProjectSummary, st *State) *corev1.ProjectRowView 
 	var saveErr *corev1.Text
 	if errTxt := st.PrefsSaveErrorTextByPath[p.Key]; !text.IsEmpty(errTxt) {
 		saveErr = text.Msg(text.KeyCommonSaveFailed, text.ArgText("reason", errTxt))
-	} else if msg := st.PrefsSaveErrorByPath[p.Key]; msg != "" {
-		saveErr = text.Msg(text.KeyCommonSaveFailed, text.Str("reason", msg))
 	}
 	return &corev1.ProjectRowView{
 		Key:          p.Key,

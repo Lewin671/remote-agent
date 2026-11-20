@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -1472,13 +1473,13 @@ func TestCanceledStartupPromptDoesNotResurrectGhostBubble(t *testing.T) {
 }
 
 func TestPendingTrayGroupingNumberingAndOrigin(t *testing.T) {
-	st := screens.NewState()
+	st := screens.NewState(nil)
 	ls := &lists.Session{
 		ID:        "s1",
 		MachineID: "m1",
 		Info:      &v1.Session{Id: "s1", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
 	}
-	in := screens.SessionViewInput{
+	in := world.SessionSnapshot{
 		Found:        true,
 		Session:      ls,
 		ThisDeviceID: "dev-self",
@@ -1660,8 +1661,8 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 
 	// Unknown session while LookingUp=true must populate StatusText=common.loading with Missing=false and MissingText=nil.
 	loadingVM := screens.BuildSessionView(
-		screens.SessionViewInput{Found: false, SessionsListed: true, LookingUp: true},
-		screens.NewState(),
+		world.SessionSnapshot{Found: false, SessionsListed: true, LookingUp: true},
+		screens.NewState(nil),
 		&corev1.SessionScreenRequest{SessionId: "s-unknown"},
 		screens.NewSessionUIState(),
 	)

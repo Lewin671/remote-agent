@@ -10,7 +10,7 @@ import (
 )
 
 func TestBuildDevicesAndSettingsExcludeMachinesFromClientRows(t *testing.T) {
-	st := NewState()
+	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: 1_700_000_000_000}
 	st.World.Connection = lists.ConnConnected
 	st.World.Machines = []*lists.Machine{
@@ -130,7 +130,7 @@ func TestMissingOrEmptyMachinesReportLoadingUntilListedOrOffline(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			st := NewState()
+			st := NewState(nil)
 			st.World.Connection = tc.conn
 			st.World.MachinesListed = tc.listed
 			unlinkedFlag := tc.unlinked
@@ -179,7 +179,7 @@ func ptrF64(v float64) *float64 { return &v }
 
 func TestSettingsRedesignProjections(t *testing.T) {
 	now := int64(1_791_633_600_000)
-	st := NewState()
+	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: now, TodayStartMs: now - 10_800_000}
 	st.World.Connection = lists.ConnConnected
 	st.World.ClientVersion = 17
@@ -333,7 +333,7 @@ func TestSettingsRedesignProjections(t *testing.T) {
 
 func TestMachineSettingsRedesignProjections(t *testing.T) {
 	now := int64(1_791_633_600_000)
-	st := NewState()
+	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: now}
 	st.World.Connection = lists.ConnConnected
 	st.World.ClientVersion = 17

@@ -93,7 +93,6 @@ func (c *Core) viewSchedules(screen *corev1.Screen) (*corev1.ViewModel, bool, er
 		if s.Schedules != nil {
 			endedLimit = int(s.Schedules.EndedLimit)
 		}
-		c.m.sync.SyncToState(c.m.state)
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Schedules{
 				Schedules: screens.BuildSchedules(c.m.state, endedLimit),
@@ -108,7 +107,6 @@ func (c *Core) viewSchedules(screen *corev1.Screen) (*corev1.ViewModel, bool, er
 			tid = s.ScheduleDetail.TaskId
 			earlierLimit = int(s.ScheduleDetail.EarlierRunsLimit)
 		}
-		c.m.sync.SyncToState(c.m.state)
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_ScheduleDetail{
 				ScheduleDetail: screens.BuildScheduleDetail(c.m.state, mid, tid, earlierLimit),
@@ -120,7 +118,6 @@ func (c *Core) viewSchedules(screen *corev1.Screen) (*corev1.ViewModel, bool, er
 		if s.ScheduleForm != nil {
 			formKey = s.ScheduleForm.FormKey
 		}
-		c.m.sync.SyncToState(c.m.state)
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_ScheduleForm{
 				ScheduleForm: screens.BuildScheduleForm(c.m.state, formKey),
@@ -132,7 +129,6 @@ func (c *Core) viewSchedules(screen *corev1.Screen) (*corev1.ViewModel, bool, er
 		if s.ScheduleSessionStrip != nil {
 			sid = s.ScheduleSessionStrip.SessionId
 		}
-		c.m.sync.SyncToState(c.m.state)
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_ScheduleSessionStrip{
 				ScheduleSessionStrip: screens.BuildScheduleSessionStrip(c.m.state, sid),
@@ -424,7 +420,6 @@ func (c *Core) onSyncEventConsumed(ev *corev1.Event, effects *[]*corev1.Effect) 
 	if !c.m.schedActive {
 		return
 	}
-	c.m.sync.SyncToState(c.m.state)
 	ss := ensureSchedState(c.m.state)
 	switch k := ev.Event.(type) {
 	case *corev1.Event_SyncLifecycle:
@@ -937,7 +932,6 @@ func (c *Core) applyScheduleModelDefaults(form *screens.ScheduleFormState) {
 }
 
 func (c *Core) dispatchSchedulesUI(ctx *sync.StepContext, ev *corev1.Event) ([]*corev1.Effect, bool) {
-	c.m.sync.SyncToState(c.m.state)
 	st := c.m.state
 	ss := ensureSchedState(st)
 	var effects []*corev1.Effect

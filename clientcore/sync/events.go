@@ -204,7 +204,7 @@ func (e *Engine) handleSessionWatch(ctx *StepContext, ev *corev1.SessionWatchEve
 		e.watchedSessions[sid] = true
 		if b := e.buffers[sid]; b != nil {
 			b.usedAtMs = e.monoMs
-			if !b.fetching && !b.awaitingCache && e.running && e.conn == lists.ConnConnected {
+			if !b.fetching && !b.awaitingCache && e.running && e.w.World.Connection == lists.ConnConnected {
 				e.startFetchEvents(ctx, sid)
 			}
 		} else if e.sessions[sid] != nil {
@@ -279,8 +279,8 @@ func (e *Engine) startLoadEvents(ctx *StepContext, sid string) {
 		return
 	}
 	var agent v1.Agent
-	if s.Meta != nil {
-		agent = s.Meta.Agent
+	if s.Info != nil {
+		agent = s.Info.Agent
 	}
 	b := newEventBuffer(sid, agent, e.monoMs)
 	e.bumpRev(b)
@@ -323,8 +323,8 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 	b.activeCacheOpID = 0
 	s := e.sessions[ev.SessionId]
 	var agent v1.Agent
-	if s != nil && s.Meta != nil {
-		agent = s.Meta.Agent
+	if s != nil && s.Info != nil {
+		agent = s.Info.Agent
 	}
 
 	if ev.Retired {
@@ -367,13 +367,13 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 			b.cacheFirstSeq = ev.Events[0].Seq
 			b.cacheAfterSeq = 0
 			e.requestNextCacheBackfill(ctx, ev.SessionId, b)
-			if e.running && e.conn == lists.ConnConnected {
+			if e.running && e.w.World.Connection == lists.ConnConnected {
 				e.startFetchEvents(ctx, ev.SessionId)
 			}
 			ctx.Dirty.MarkSessionData()
 			return
 		}
-		if e.running && e.conn == lists.ConnConnected {
+		if e.running && e.w.World.Connection == lists.ConnConnected {
 			e.startFetchEvents(ctx, ev.SessionId)
 		}
 		e.trimHistory(ctx)
@@ -388,7 +388,7 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 	if len(ev.Events) < int(CacheEventPageSize) || lastSeq <= b.cacheAfterSeq || lastSeq+1 >= b.cacheFirstSeq {
 		b.backfilling = false
 		b.awaitingCache = false
-		if e.running && e.conn == lists.ConnConnected {
+		if e.running && e.w.World.Connection == lists.ConnConnected {
 			e.startFetchEvents(ctx, ev.SessionId)
 		}
 		e.trimHistory(ctx)
@@ -443,7 +443,7 @@ func (e *Engine) dropCorruptCacheAndRefetch(ctx *StepContext, sid string, b *Eve
 	b.retryingCorruptCache = true
 	b.awaitingCache = false
 	b.backfilling = false
-	if e.running && e.conn == lists.ConnConnected {
+	if e.running && e.w.World.Connection == lists.ConnConnected {
 		e.startFetchEvents(ctx, sid)
 	}
 	ctx.Dirty.MarkSessionData()
@@ -452,7 +452,7 @@ func (e *Engine) dropCorruptCacheAndRefetch(ctx *StepContext, sid string, b *Eve
 func (e *Engine) startFetchEvents(ctx *StepContext, sid string) {
 	b := e.buffers[sid]
 	s := e.sessions[sid]
-	if b == nil || s == nil || !e.running || e.conn != lists.ConnConnected {
+	if b == nil || s == nil || !e.running || e.w.World.Connection != lists.ConnConnected {
 		return
 	}
 	if b.retired {
@@ -637,7 +637,7 @@ func (e *Engine) finishFetchCycle(ctx *StepContext, sid string, b *EventBuffer, 
 		b.fetchErrorText = nil
 	}
 	ctx.Dirty.MarkSessionData()
-	if b.refetch && e.running && e.conn == lists.ConnConnected {
+	if b.refetch && e.running && e.w.World.Connection == lists.ConnConnected {
 		e.startFetchEvents(ctx, sid)
 	}
 }
@@ -803,8 +803,8 @@ func (e *Engine) ingestEvents(
 			if pe.Verified && idx < len(b.prefix) && projection.IsSkeleton(b.prefix[idx]) && !projection.IsSkeleton(ev) {
 				b.prefix[idx] = ev
 				var agent v1.Agent
-				if s.Meta != nil {
-					agent = s.Meta.Agent
+				if s.Info != nil {
+					agent = s.Info.Agent
 				}
 				b.rebuildReducer(agent)
 				advancedPrefix = true

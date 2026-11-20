@@ -690,7 +690,7 @@ func buildTaskItemView(
 // BuildSchedules constructs the layout-agnostic SchedulesViewModel.
 func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 	if st == nil {
-		st = NewState()
+		st = NewState(nil)
 	}
 	ss := ensureScheduleState(st)
 	bounds := scheduleBounds(st)
@@ -893,7 +893,7 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 // BuildScheduleDetail constructs the layout-agnostic ScheduleDetailViewModel.
 func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) *corev1.ScheduleDetailViewModel {
 	if st == nil {
-		st = NewState()
+		st = NewState(nil)
 	}
 	ss := ensureScheduleState(st)
 	bounds := scheduleBounds(st)
@@ -1328,7 +1328,7 @@ func buildTimingDraftView(d schedule.TimingDraft, errTxt *corev1.Text, applied b
 // BuildScheduleForm constructs the ScheduleFormViewModel for create or edit drafts.
 func BuildScheduleForm(st *State, formKey string) *corev1.ScheduleFormViewModel {
 	if st == nil {
-		st = NewState()
+		st = NewState(nil)
 	}
 	ss := ensureScheduleState(st)
 	bounds := scheduleBounds(st)

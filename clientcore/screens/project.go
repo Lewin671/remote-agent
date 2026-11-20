@@ -11,7 +11,7 @@ import (
 // BuildProject constructs the ProjectViewModel for project detail (with endedLimit window) or management.
 func BuildProject(st *State, projectKey string, manage bool, endedLimit int, machineID ...string) *corev1.ProjectViewModel {
 	if st == nil {
-		st = NewState()
+		st = NewState(nil)
 	}
 	var filterMachineID string
 	if len(machineID) > 0 {
@@ -80,8 +80,8 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 
 	pendingPath := st.PrefsPendingPath[key]
 	var noticeErr *corev1.Text
-	if hasReason(st.PrefsSaveErrorTextByPath[key], st.PrefsSaveErrorByPath[key]) {
-		noticeErr = text.Msg(text.KeyCommonSaveFailed, reasonArg("reason", st.PrefsSaveErrorTextByPath[key], st.PrefsSaveErrorByPath[key]))
+	if !text.IsEmpty(st.PrefsSaveErrorTextByPath[key]) {
+		noticeErr = text.Msg(text.KeyCommonSaveFailed, text.ArgText("reason", st.PrefsSaveErrorTextByPath[key]))
 	}
 	noticeText := text.Msg(text.KeyProjectsRemoved)
 	if page.IsHidden && pendingPath {
@@ -96,8 +96,8 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 	}
 
 	var settingsErr *corev1.Text
-	if hasReason(st.PrefsSettingsErrorText[key], st.PrefsSettingsError[key]) {
-		settingsErr = text.Msg(text.KeyProjectsSettingsFailed, reasonArg("reason", st.PrefsSettingsErrorText[key], st.PrefsSettingsError[key]))
+	if !text.IsEmpty(st.PrefsSettingsErrorText[key]) {
+		settingsErr = text.Msg(text.KeyProjectsSettingsFailed, text.ArgText("reason", st.PrefsSettingsErrorText[key]))
 	} else if st.PrefsSavingSettings[key] {
 		settingsErr = text.Msg(text.KeyProjectsSavingSettings)
 	}
@@ -175,8 +175,8 @@ func buildManageProjectsView(st *State, filterMachineID string) *corev1.ManagePr
 		blocked = text.Msg(text.KeyProjectsConnectToEdit)
 	}
 	var saveErr *corev1.Text
-	if hasReason(st.PrefsGlobalErrorText, st.PrefsGlobalError) {
-		saveErr = text.Msg(text.KeyProjectsSaveFailedReason, reasonArg("reason", st.PrefsGlobalErrorText, st.PrefsGlobalError))
+	if !text.IsEmpty(st.PrefsGlobalErrorText) {
+		saveErr = text.Msg(text.KeyProjectsSaveFailedReason, text.ArgText("reason", st.PrefsGlobalErrorText))
 	}
 	var filterMachineName string
 	if filterMachineID != "" {

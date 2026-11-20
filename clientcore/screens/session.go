@@ -7,48 +7,11 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
-
-// SessionViewInput carries pure synchronized snapshot fields needed by BuildSessionView.
-type SessionViewInput struct {
-	Found                bool
-	SessionsListed       bool
-	LiveLoaded           bool
-	Removed              bool
-	AccountControlLost   bool
-	AccountClockSkewed   bool
-	Conn                 lists.ConnectionKind
-	Unlinked             bool
-	ReachabilityUnknown  bool
-	LookingUp            bool
-	ProtocolVersion      uint32
-	Session              *lists.Session
-	Machine              *lists.Machine
-	Checkpoint           *v1.LiveSnapshot
-	DeviceNames          map[string]string
-	ThisDeviceID         string
-	Loading              bool
-	Loaded               bool
-	AwaitingCache        bool
-	Backfilling          bool
-	Fetching             bool
-	HasGap               bool
-	TailRequested        bool
-	Retired              bool
-	RetryingCorruptCache bool
-	Error                *corev1.Text
-	FetchError           *corev1.Text
-	PrefixLen            uint64
-	PendingCount         int32
-	UnavailableCount     uint32
-	LastSeq              uint64
-	EventRev             uint64
-	Projection           *corev1.ProjectionState
-	Events               []*v1.Event
-}
 
 const (
 	// DefaultSessionWindowLimit bounds initial tail rendering when callers omit limit.
@@ -206,7 +169,7 @@ func NewSessionUIState() *SessionUIState {
 
 // BuildSessionView constructs the full SessionViewModel from sync state, world state, and UI state.
 func BuildSessionView(
-	in SessionViewInput,
+	in world.SessionSnapshot,
 	st *State,
 	req *corev1.SessionScreenRequest,
 	ui *SessionUIState,
@@ -302,7 +265,7 @@ func sessionEffectiveAgent(ls *lists.Session, raw *lists.Session) v1.Agent {
 }
 
 func buildSessionHeader(
-	in SessionViewInput,
+	in world.SessionSnapshot,
 	st *State,
 	ls *lists.Session,
 	lm *lists.Machine,
@@ -632,7 +595,7 @@ func commandSlotState(ui *SessionUIState, slotKey string, expiredText, unknownTe
 }
 
 func buildSessionActions(
-	in SessionViewInput,
+	in world.SessionSnapshot,
 	st *State,
 	ls *lists.Session,
 	lm *lists.Machine,
@@ -940,7 +903,7 @@ func modeUnavailableText(r lists.ModeUnavailableReason, agentName string) *corev
 }
 
 func buildSessionDock(
-	in SessionViewInput,
+	in world.SessionSnapshot,
 	st *State,
 	ls *lists.Session,
 	lm *lists.Machine,
@@ -1260,7 +1223,7 @@ func planChoiceHint(ui *SessionUIState, slotKey string) string {
 	}
 }
 
-func findApprovalSeq(in SessionViewInput, id string) (uint64, bool) {
+func findApprovalSeq(in world.SessionSnapshot, id string) (uint64, bool) {
 	if in.Checkpoint != nil {
 		for _, a := range in.Checkpoint.Actions {
 			if a != nil && a.GetApprovalRequested() != nil && a.GetApprovalRequested().ApprovalId == id {
@@ -1276,7 +1239,7 @@ func findApprovalSeq(in SessionViewInput, id string) (uint64, bool) {
 	return 0, false
 }
 
-func findQuestionSeq(in SessionViewInput, id string) (uint64, bool) {
+func findQuestionSeq(in world.SessionSnapshot, id string) (uint64, bool) {
 	if in.Checkpoint != nil {
 		for _, a := range in.Checkpoint.Actions {
 			if a != nil && a.GetQuestionAsked() != nil && a.GetQuestionAsked().QuestionId == id {
@@ -1341,7 +1304,7 @@ func buildPlanChoices(caps lists.AgentCapabilities) []*corev1.SessionPlanChoiceO
 }
 
 func buildSessionComposer(
-	in SessionViewInput,
+	in world.SessionSnapshot,
 	st *State,
 	ls *lists.Session,
 	lm *lists.Machine,
@@ -1436,7 +1399,7 @@ var trayGroupOrder = []corev1.SessionTrayGroupKind{
 
 type trayBuildParams struct {
 	sid           string
-	in            SessionViewInput
+	in            world.SessionSnapshot
 	st            *State
 	lm            *lists.Machine
 	caps          lists.AgentCapabilities

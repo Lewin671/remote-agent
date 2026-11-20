@@ -10,7 +10,7 @@ func (e *Engine) EnsureSessionEventsLoaded(ctx *StepContext, sid string) {
 		return
 	}
 	if e.sessions[sid] == nil {
-		if e.sessionByIDFailed[sid] || !e.running || e.conn != lists.ConnConnected {
+		if e.sessionByIDFailed[sid] || !e.running || e.w.World.Connection != lists.ConnConnected {
 			return
 		}
 		for _, pending := range e.sessionByIDOps {
@@ -26,7 +26,7 @@ func (e *Engine) EnsureSessionEventsLoaded(ctx *StepContext, sid string) {
 		e.startLoadEvents(ctx, sid)
 		return
 	}
-	if !b.loaded && !b.awaitingCache && !b.fetching && !b.retired && b.errorText == nil && b.fetchErrorText == nil && len(b.unavailableSeqs) == 0 && e.running && e.conn == lists.ConnConnected {
+	if !b.loaded && !b.awaitingCache && !b.fetching && !b.retired && b.errorText == nil && b.fetchErrorText == nil && len(b.unavailableSeqs) == 0 && e.running && e.w.World.Connection == lists.ConnConnected {
 		e.startFetchEvents(ctx, sid)
 	}
 }
@@ -36,7 +36,7 @@ func (e *Engine) SessionEventsSettled(sid string) bool {
 	if sid == "" {
 		return true
 	}
-	offline := !e.running || e.conn != lists.ConnConnected
+	offline := !e.running || e.w.World.Connection != lists.ConnConnected
 	if e.sessions[sid] == nil {
 		return offline || e.sessionByIDFailed[sid]
 	}

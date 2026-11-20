@@ -7,14 +7,14 @@ import (
 )
 
 func (e *Engine) canPollLive(sid string) bool {
-	if !e.running || !e.foreground || e.conn != lists.ConnConnected {
+	if !e.running || !e.foreground || e.w.World.Connection != lists.ConnConnected {
 		return false
 	}
 	if !e.watchedSessions[sid] {
 		return false
 	}
 	s := e.sessions[sid]
-	if s == nil || lists.Exited(&lists.Session{Info: s.Meta}) {
+	if s == nil || lists.Exited(&s.Session) {
 		return false
 	}
 	m := e.machines[s.MachineID]
@@ -102,7 +102,7 @@ func (e *Engine) ApplyLiveSnapshot(ctx *StepContext, sid string, snap *v1.LiveSn
 		if snap.Session.LastSeq > s.LastSeq {
 			s.LastSeq = snap.Session.LastSeq
 		}
-		s.Meta = snap.Session.Clone()
+		s.setInfo(snap.Session.Clone())
 	}
 	e.refreshSessionPending(s)
 	ctx.Dirty.Add(true, true, false)

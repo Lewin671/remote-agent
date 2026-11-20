@@ -59,22 +59,28 @@ func (e *Engine) startLoadPrefs(ctx *StepContext) {
 // EnqueuePrefsOp enqueues an idempotent ProjectPrefs CAS mutation.
 // For settings mutations pass forSettings=true and optional draftKey for draft tracking.
 func (e *Engine) EnqueuePrefsOp(ctx *StepContext, op *lists.FullPrefsOp, forSettings bool, draftKey string) bool {
+	ok := e.enqueuePrefsOp(ctx, op, forSettings, draftKey)
+	e.refreshWorld()
+	return ok
+}
+
+func (e *Engine) enqueuePrefsOp(ctx *StepContext, op *lists.FullPrefsOp, forSettings bool, draftKey string) bool {
 	if op == nil {
 		return false
 	}
-	e.prefsGlobalErr = nil
+	e.w.PrefsGlobalErrorText = nil
 	if forSettings {
-		delete(e.prefsSettingsErr, op.Path)
+		delete(e.w.PrefsSettingsErrorText, op.Path)
 	} else {
-		delete(e.prefsErrorByPath, op.Path)
+		delete(e.w.PrefsSaveErrorTextByPath, op.Path)
 	}
 
 	if errText := e.prefsMutationGuardError(); errText != nil {
 		if forSettings {
-			e.prefsSettingsErr[op.Path] = errText
+			e.w.PrefsSettingsErrorText[op.Path] = errText
 		} else {
-			e.prefsErrorByPath[op.Path] = errText
-			e.prefsGlobalErr = errText
+			e.w.PrefsSaveErrorTextByPath[op.Path] = errText
+			e.w.PrefsGlobalErrorText = errText
 		}
 		ctx.Dirty.Add(true, true, true)
 		return false
@@ -89,9 +95,9 @@ func (e *Engine) EnqueuePrefsOp(ctx *StepContext, op *lists.FullPrefsOp, forSett
 		Op:          op,
 	}
 	if forSettings {
-		e.prefsSettingsSaving[op.Path] = true
+		e.w.PrefsSavingSettings[op.Path] = true
 	} else {
-		e.prefsPendingByPath[op.Path] = true
+		e.w.PrefsPendingPath[op.Path] = true
 	}
 	e.prefsQueue = append(e.prefsQueue, item)
 	if len(e.prefsQueue) == 1 {
@@ -111,7 +117,7 @@ func (e *Engine) prefsMutationGuardError() *corev1.Text {
 	if !e.networkAvailable {
 		return text.Msg(text.KeyConnectionNoNetwork)
 	}
-	if e.conn != lists.ConnConnected {
+	if e.w.World.Connection != lists.ConnConnected {
 		return text.Msg(text.KeyErrorsNotConnected)
 	}
 	return nil
@@ -153,7 +159,7 @@ func (e *Engine) handleAccountPrefsFetched(ctx *StepContext, ev *corev1.AccountP
 	e.prefsLoadOpID = 0
 	if ev.Error != "" {
 		e.prefs.LoadFailed = !e.prefs.Loaded
-		if e.running && e.streamOpen && !e.prefs.Loaded {
+		if e.running && e.w.LivePushConnected && !e.prefs.Loaded {
 			wait := e.prefsBackoffMs
 			if wait <= 0 {
 				wait = PrefsRetryInitialMs
@@ -195,7 +201,7 @@ func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPre
 	if head.Attempt == 0 {
 		head.InitialBase = baseRev
 	} else if baseRev > head.InitialBase {
-		e.prefsChangedElsewhere = true
+		e.w.ProjectChangedElsewhere = true
 	}
 
 	if basePrefs != nil && slices.Contains(basePrefs.RecentOps, head.OpID) {
@@ -247,7 +253,7 @@ func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.Accoun
 	}
 	if !ev.Applied || ev.SealConflict {
 		head.Attempt++
-		e.prefsChangedElsewhere = true
+		e.w.ProjectChangedElsewhere = true
 		if head.Attempt >= PrefsCASMaxAttempts {
 			e.finishPrefsOp(ctx, text.Msg(text.KeyErrorsOtherClientsKeptChangingTheProjectListChangesCould))
 			return
@@ -278,20 +284,20 @@ func (e *Engine) finishPrefsOp(ctx *StepContext, errText *corev1.Text) {
 	e.prefsQueue = e.prefsQueue[1:]
 
 	if done.ForSettings {
-		delete(e.prefsSettingsSaving, done.Path)
+		delete(e.w.PrefsSavingSettings, done.Path)
 		if errText != nil {
-			e.prefsSettingsErr[done.Path] = errText
+			e.w.PrefsSettingsErrorText[done.Path] = errText
 		} else {
-			delete(e.prefsSettingsErr, done.Path)
+			delete(e.w.PrefsSettingsErrorText, done.Path)
 		}
 	} else {
-		delete(e.prefsPendingByPath, done.Path)
+		delete(e.w.PrefsPendingPath, done.Path)
 		if errText != nil {
-			e.prefsErrorByPath[done.Path] = errText
-			e.prefsGlobalErr = errText
+			e.w.PrefsSaveErrorTextByPath[done.Path] = errText
+			e.w.PrefsGlobalErrorText = errText
 		} else {
-			delete(e.prefsErrorByPath, done.Path)
-			e.prefsGlobalErr = nil
+			delete(e.w.PrefsSaveErrorTextByPath, done.Path)
+			e.w.PrefsGlobalErrorText = nil
 		}
 	}
 
