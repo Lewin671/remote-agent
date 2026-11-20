@@ -74,17 +74,6 @@ func (d *Daemon) agyQuotaSource() (agent.UsageProbeSource, bool) {
 	return src, true
 }
 
-func (d *Daemon) hasSavedQuota(kind pb.Agent) bool {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	for _, q := range d.quotas {
-		if q.Agent == kind {
-			return true
-		}
-	}
-	return false
-}
-
 func (d *Daemon) stepAgyQuota(ctx context.Context, m *agyQuotaMonitor) {
 	if ctx.Err() != nil {
 		return
@@ -101,7 +90,7 @@ func (d *Daemon) stepAgyQuota(ctx context.Context, m *agyQuotaMonitor) {
 		m.baselineReady = true
 		if !m.startupChecked {
 			m.startupChecked = true
-			if !d.hasSavedQuota(pb.Agent_AGENT_ANTIGRAVITY) {
+			if !d.quota.hasSaved(pb.Agent_AGENT_ANTIGRAVITY) {
 				d.runAgyQuotaProbe(ctx, m, src)
 			}
 		}
@@ -153,26 +142,17 @@ func (d *Daemon) runAgyQuotaProbe(ctx context.Context, m *agyQuotaMonitor, src a
 func (d *Daemon) recordAgyProbeResult(q *pb.AgentQuota, err error, now time.Time, elapsed time.Duration) {
 	if err != nil {
 		reasonClass, detail := classifyAgyProbeError(err)
-		d.mu.Lock()
-		if d.quotaErrors == nil {
-			d.quotaErrors = map[pb.Agent]string{}
-		}
-		d.quotaErrors[pb.Agent_AGENT_ANTIGRAVITY] = detail
-		d.mu.Unlock()
+		d.quota.setError(pb.Agent_AGENT_ANTIGRAVITY, detail)
 		slog.Warn("agy usage probe failed", "reason", reasonClass, "duration_ms", elapsed.Milliseconds())
 		return
 	}
 	if q == nil {
 		return
 	}
-	d.mu.Lock()
-	if d.quotaErrors != nil {
-		delete(d.quotaErrors, pb.Agent_AGENT_ANTIGRAVITY)
-	}
-	d.mu.Unlock()
+	d.quota.setError(pb.Agent_AGENT_ANTIGRAVITY, "")
 	// Live `/usage` RPC observation (not an idle status-line replay); credits
 	// may recover within the same reset window, so monotonic must be false.
-	d.recordQuotaWithPolicy(agyUsageProbeSource, q, now, false)
+	d.quota.record(agyUsageProbeSource, q, now, false)
 	slog.Info("agy usage probe ok", "duration_ms", elapsed.Milliseconds())
 }
 

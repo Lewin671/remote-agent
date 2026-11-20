@@ -142,13 +142,13 @@ func TestQuotaProvidersRemainIndependentOnFingerprintCollision(t *testing.T) {
 	h := agyHarness(t)
 	now := time.Now()
 	for _, kind := range []pb.Agent{pb.Agent_AGENT_CLAUDE, pb.Agent_AGENT_ANTIGRAVITY} {
-		h.d.recordQuota("source", &pb.AgentQuota{Agent: kind, Account: "same-fingerprint", State: pb.QuotaState_QUOTA_STATE_OK, Windows: []*pb.QuotaWindow{{Name: "window"}}}, now)
+		h.d.quota.record("source", &pb.AgentQuota{Agent: kind, Account: "same-fingerprint", State: pb.QuotaState_QUOTA_STATE_OK, Windows: []*pb.QuotaWindow{{Name: "window"}}}, now, true)
 	}
-	if len(h.d.quotas) != 2 {
+	if len(h.d.quota.store) != 2 {
 		t.Fatal("providers merged on account fingerprint")
 	}
-	h.d.recordQuota("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "changed-account", State: pb.QuotaState_QUOTA_STATE_OK}, now.Add(time.Minute))
-	if len(h.d.quotas) != 2 {
+	h.d.quota.record("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "changed-account", State: pb.QuotaState_QUOTA_STATE_OK}, now.Add(time.Minute), true)
+	if len(h.d.quota.store) != 2 {
 		t.Fatal("agy account change deleted Claude's quota")
 	}
 }
@@ -277,19 +277,19 @@ func TestAgyQuotaCanRecoverWithinSameResetWindow(t *testing.T) {
 	h := agyHarness(t)
 	now := time.Now()
 	used := 100.0
-	h.d.recordQuotaWithPolicy("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &used, ResetsAtMs: 2000000}}}, now, false)
+	h.d.quota.record("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &used, ResetsAtMs: 2000000}}}, now, false)
 	recovered := 99.8
-	h.d.recordQuotaWithPolicy("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &recovered, ResetsAtMs: 2000000}}}, now.Add(time.Second), false)
+	h.d.quota.record("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &recovered, ResetsAtMs: 2000000}}}, now.Add(time.Second), false)
 	var q *pb.AgentQuota
-	for _, entry := range h.d.quotas {
+	for _, entry := range h.d.quota.store {
 		q = entry
 	}
 	if q.Windows[0].GetUsedPercent() != 99.8 {
 		t.Fatal("credit recovery discarded as decreasing usage")
 	}
 	older := 100.0
-	h.d.recordQuotaWithPolicy("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &older, ResetsAtMs: 1000000}}}, now.Add(2*time.Second), false)
-	for _, entry := range h.d.quotas {
+	h.d.quota.record("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &older, ResetsAtMs: 1000000}}}, now.Add(2*time.Second), false)
+	for _, entry := range h.d.quota.store {
 		q = entry
 	}
 	if q.Windows[0].GetUsedPercent() != 99.8 {

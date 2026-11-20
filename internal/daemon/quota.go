@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -49,12 +50,34 @@ type quotaReport struct {
 	windows []*pb.QuotaWindow
 }
 
-func (d *Daemon) quotaPath() string { return filepath.Join(d.dir, "quota.json") }
+// quotaService owns the account limits and the usage-limit state derived from
+// them. It has its own lock, never held together with Daemon.mu, so recording
+// a status line or building machine metadata does not contend with sessions.
+type quotaService struct {
+	dir      string
+	adapters func() []agent.Adapter
+	byKind   func(pb.Agent) (agent.Adapter, bool)
 
-// loadQuotas reads the saved CLI limits, keeping only the logged
-// in account's.
-func (d *Daemon) loadQuotas() {
-	b, err := os.ReadFile(d.quotaPath())
+	mu     sync.Mutex
+	limits *pb.TokenUsage // latest usage limits seen in any session
+	// limitsAt is when Codex reported them.
+	limitsAt time.Time
+	// errors is the last status line parse failure per CLI, without private data.
+	errors map[pb.Agent]string
+	store  quotaStore // CLI account limits
+	// reported is each session's last raw status line quota, before merging.
+	reported map[string]quotaReport
+}
+
+func newQuotaService(dir string, adapters func() []agent.Adapter, byKind func(pb.Agent) (agent.Adapter, bool)) *quotaService {
+	return &quotaService{dir: dir, adapters: adapters, byKind: byKind}
+}
+
+func (q *quotaService) path() string { return filepath.Join(q.dir, "quota.json") }
+
+// load reads the saved CLI limits, keeping only the logged in account's.
+func (q *quotaService) load() {
+	b, err := os.ReadFile(q.path())
 	if err != nil {
 		return
 	}
@@ -62,13 +85,13 @@ func (d *Daemon) loadQuotas() {
 	if json.Unmarshal(b, &saved) != nil {
 		return
 	}
-	q := quotaStore{}
+	loaded := quotaStore{}
 	for key, raw := range saved {
 		e := &pb.AgentQuota{}
 		if protojson.Unmarshal(raw, e) != nil || e.Account == "" || key != quotaKey(e) {
 			continue // an unknown account's record is not reused
 		}
-		a, ok := d.byKind(e.Agent)
+		a, ok := q.byKind(e.Agent)
 		if !ok {
 			continue
 		}
@@ -79,16 +102,16 @@ func (d *Daemon) loadQuotas() {
 		} else {
 			continue
 		}
-		q[key] = e
+		loaded[key] = e
 	}
-	d.mu.Lock()
-	d.quotas = q
-	d.mu.Unlock()
+	q.mu.Lock()
+	q.store = loaded
+	q.mu.Unlock()
 }
 
-func (d *Daemon) saveQuotasLocked() {
+func (q *quotaService) saveLocked() {
 	out := map[string]json.RawMessage{}
-	for key, e := range d.quotas {
+	for key, e := range q.store {
 		if e.Account == "" {
 			continue
 		}
@@ -98,7 +121,7 @@ func (d *Daemon) saveQuotasLocked() {
 		}
 	}
 	b, _ := json.Marshal(out)
-	if err := writeFileSync(d.quotaPath(), b); err != nil {
+	if err := writeFileSync(q.path(), b); err != nil {
 		slog.Warn("save account limits", "err", errClass(err))
 	}
 }
@@ -121,16 +144,11 @@ func (d *Daemon) statusLineContext(ctx context.Context, sessionID string, raw js
 	if ctx.Err() != nil {
 		return
 	}
-	d.mu.Lock()
-	if d.quotaErrors == nil {
-		d.quotaErrors = map[pb.Agent]string{}
-	}
 	if err != nil {
-		d.quotaErrors[session.ag.Kind()] = i18n.QuotaReadFailed("zh-CN")
+		d.quota.setError(session.ag.Kind(), i18n.QuotaReadFailed("zh-CN"))
 	} else {
-		delete(d.quotaErrors, session.ag.Kind())
+		d.quota.setError(session.ag.Kind(), "")
 	}
-	d.mu.Unlock()
 	if err != nil {
 		return
 	}
@@ -139,54 +157,78 @@ func (d *Daemon) statusLineContext(ctx context.Context, sessionID string, raw js
 		session.recordStatusLine(report, now)
 	}
 	if report.Quota != nil && ctx.Err() == nil {
-		d.recordQuotaWithPolicy(sessionID, report.Quota, now, report.QuotaMonotonic)
+		d.quota.record(sessionID, report.Quota, now, report.QuotaMonotonic)
 	}
 }
 
-func (d *Daemon) recordQuota(sessionID string, e *pb.AgentQuota, now time.Time) {
-	d.recordQuotaWithPolicy(sessionID, e, now, true)
+// setError records the CLI's latest quota read failure, or clears it when
+// detail is empty.
+func (q *quotaService) setError(kind pb.Agent, detail string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if detail == "" {
+		delete(q.errors, kind)
+		return
+	}
+	if q.errors == nil {
+		q.errors = map[pb.Agent]string{}
+	}
+	q.errors[kind] = detail
 }
-func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now time.Time, monotonic bool) {
+
+// hasSaved reports whether any limits record of the CLI exists.
+func (q *quotaService) hasSaved(kind pb.Agent) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for _, e := range q.store {
+		if e.Agent == kind {
+			return true
+		}
+	}
+	return false
+}
+
+func (q *quotaService) record(sessionID string, e *pb.AgentQuota, now time.Time, monotonic bool) {
 	e.ObservedMs = now.UnixMilli()
 	if e.Account == "" {
 		e.SourceSessionId = sessionID
 	}
 	key := quotaKey(e)
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.quotas == nil {
-		d.quotas = quotaStore{}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.store == nil {
+		q.store = quotaStore{}
 	}
 	dropped := false
 	if e.Account != "" {
 		// Another account logged in: the old one's record goes.
-		for k, old := range d.quotas {
+		for k, old := range q.store {
 			if old.Agent == e.Agent && old.Account != "" && old.Account != e.Account {
-				delete(d.quotas, k)
+				delete(q.store, k)
 				dropped = true
 			}
 		}
 		if e.Agent == pb.Agent_AGENT_ANTIGRAVITY {
-			delete(d.quotas, quotaKey(&pb.AgentQuota{Agent: e.Agent, SourceSessionId: agyUsageProbeSource}))
+			delete(q.store, quotaKey(&pb.AgentQuota{Agent: e.Agent, SourceSessionId: agyUsageProbeSource}))
 		}
 	}
 	// The status line does not say whose limits it shows, and a session
 	// repeats those of its last reply until the next one. The same
 	// windows it reported under another login are that login's.
-	if d.reported == nil {
-		d.reported = map[string]quotaReport{}
+	if q.reported == nil {
+		q.reported = map[string]quotaReport{}
 	}
-	last, known := d.reported[sessionID]
+	last, known := q.reported[sessionID]
 	unchanged := known && proto.Equal(&pb.AgentQuota{Windows: last.windows}, &pb.AgentQuota{Windows: e.Windows})
 	if monotonic && unchanged && last.account != e.Account {
 		if dropped {
-			d.saveQuotasLocked()
+			q.saveLocked()
 		}
 		return
 	}
-	d.reported[sessionID] = quotaReport{account: e.Account, windows: e.Windows}
+	q.reported[sessionID] = quotaReport{account: e.Account, windows: e.Windows}
 	fresh := monotonic && known && !unchanged
-	if old := d.quotas[key]; old != nil {
+	if old := q.store[key]; old != nil {
 		reported := e.Windows
 		if now.UnixMilli() < old.ObservedMs {
 			return
@@ -207,8 +249,8 @@ func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now t
 			return
 		}
 	}
-	d.quotas[key] = e
-	d.saveQuotasLocked()
+	q.store[key] = e
+	q.saveLocked()
 }
 
 // newestWindows conservatively merges a session's first status line, whose
@@ -285,31 +327,89 @@ func latestWindows(old, reported []*pb.QuotaWindow) []*pb.QuotaWindow {
 	return out
 }
 
-// quotaEntries lists the limits for the machine metadata. Callers hold
-// d.mu.
-func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
+// accountLimitsLoop also picks up limits from runs remote-agent does not
+// manage, such as `codex exec` started by another agent. It only reads
+// local files; nothing asks a service.
+func (q *quotaService) accountLimitsLoop(ctx context.Context) {
+	since := map[pb.Agent]time.Time{}
+	t := time.NewTicker(accountLimitsInterval)
+	defer t.Stop()
+	for {
+		q.pollAccountLimits(since, time.Now())
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+	}
+}
+
+// pollAccountLimits reads what changed since each CLI's last poll.
+func (q *quotaService) pollAccountLimits(since map[pb.Agent]time.Time, now time.Time) {
+	for _, a := range q.adapters() {
+		src, ok := a.(agent.AccountLimitsSource)
+		if !ok || a.Bin() == "" {
+			continue
+		}
+		after, ok := since[a.Kind()]
+		if !ok {
+			after = now.Add(-accountLimitsLookback)
+		}
+		u, at, seen := src.AccountLimits(after)
+		if u != nil {
+			q.noteLimits(u, at)
+		}
+		if seen.After(after) {
+			after = seen
+		}
+		since[a.Kind()] = after
+	}
+}
+
+const (
+	accountLimitsInterval = time.Minute
+	// The longest Codex window is a week; older records are past their reset.
+	accountLimitsLookback = 8 * 24 * time.Hour
+)
+
+// noteLimits keeps the newest usage limits Codex reported.
+func (q *quotaService) noteLimits(u *pb.TokenUsage, at time.Time) {
+	if u.PrimaryLimit == nil && u.SecondaryLimit == nil {
+		return
+	}
+	q.mu.Lock()
+	if at.After(q.limitsAt) || q.limits == nil {
+		q.limits, q.limitsAt = u, at
+	}
+	q.mu.Unlock()
+}
+
+// entries lists the limits for the machine metadata.
+func (q *quotaService) entries() []*pb.AgentQuota {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	var out []*pb.AgentQuota
-	for _, ag := range d.adapterList() {
+	for _, ag := range q.adapters() {
 		if ag.Bin() == "" {
 			continue
 		}
 		if cl, ok := ag.(agent.StatusLineAccount); ok {
 			var agentQuotas []*pb.AgentQuota
-			keys := make([]string, 0, len(d.quotas))
-			for k := range d.quotas {
+			keys := make([]string, 0, len(q.store))
+			for k := range q.store {
 				keys = append(keys, k)
 			}
 			sort.Strings(keys)
 			for _, k := range keys {
-				if d.quotas[k].Agent == ag.Kind() {
-					q := proto.CloneOf(d.quotas[k])
-					if detail := d.quotaErrors[ag.Kind()]; detail != "" {
-						q.State, q.Detail = pb.QuotaState_QUOTA_STATE_FAILED, detail
+				if q.store[k].Agent == ag.Kind() {
+					cp := proto.CloneOf(q.store[k])
+					if detail := q.errors[ag.Kind()]; detail != "" {
+						cp.State, cp.Detail = pb.QuotaState_QUOTA_STATE_FAILED, detail
 					}
 					if order, ok := ag.(agent.QuotaWindowOrder); ok {
-						order.OrderQuotaWindows(q.Windows)
+						order.OrderQuotaWindows(cp.Windows)
 					}
-					agentQuotas = append(agentQuotas, q)
+					agentQuotas = append(agentQuotas, cp)
 				}
 			}
 			if len(agentQuotas) > 0 {
@@ -319,7 +419,7 @@ func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 				if ag.Kind() == pb.Agent_AGENT_ANTIGRAVITY {
 					e.Detail = i18n.QuotaAgyWaiting("zh-CN")
 				}
-				if detail := d.quotaErrors[ag.Kind()]; detail != "" {
+				if detail := q.errors[ag.Kind()]; detail != "" {
 					e.State, e.Detail = pb.QuotaState_QUOTA_STATE_FAILED, detail
 				}
 				if cl.ManagedStatusLine("") {
@@ -329,11 +429,11 @@ func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 			}
 		} else {
 			e := &pb.AgentQuota{Agent: ag.Kind(), State: pb.QuotaState_QUOTA_STATE_WAITING}
-			if _, ok := ag.(agent.AccountLimitsSource); ok && d.limits == nil {
+			if _, ok := ag.(agent.AccountLimitsSource); ok && q.limits == nil {
 				e.Detail = i18n.QuotaCodexWaiting("zh-CN")
 			}
-			if u := d.limits; u != nil {
-				e.State, e.Plan, e.ObservedMs = pb.QuotaState_QUOTA_STATE_OK, u.PlanType, d.limitsAt.UnixMilli()
+			if u := q.limits; u != nil {
+				e.State, e.Plan, e.ObservedMs = pb.QuotaState_QUOTA_STATE_OK, u.PlanType, q.limitsAt.UnixMilli()
 				for _, w := range []struct {
 					name string
 					l    *pb.RateLimit

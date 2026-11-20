@@ -131,13 +131,10 @@ type Daemon struct {
 	// starting are the sessions whose CLI has been started and that are
 	// not in sessions yet; each channel is closed once its session is, or
 	// its creation failed.
-	starting    map[string]chan struct{}
-	limits      *pb.TokenUsage      // latest usage limits seen in any session
-	limitsAt    time.Time           // when Codex reported them
-	quotaErrors map[pb.Agent]string // last status line parse failure, without private data
-	quotas      quotaStore          // CLI account limits
-	// reported is each session's last raw status line quota, before merging.
-	reported map[string]quotaReport
+	starting map[string]chan struct{}
+
+	// quota has its own lock; Daemon.mu never guards account limits.
+	quota *quotaService
 
 	// syncStateDir overrides the durability boundary for state-file fault tests.
 	syncStateDir func(string) error
@@ -186,6 +183,7 @@ func New(dir string, cfg Config) *Daemon {
 		agents:   map[pb.Agent]agent.Adapter{},
 		uploads:  newUploads(dir),
 	}
+	d.quota = newQuotaService(dir, d.adapterList, d.byKind)
 	d.diskGuard = machinestatus.NewDiskGuard(dir)
 	d.statusCollector = machinestatus.New(dir, d.machineRoots)
 	d.uploads.limits = func() int64 { return d.settings().ImageUploadQuotaBytes }
@@ -288,14 +286,14 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return err
 	}
 	d.reconcileEnabledAgents()
-	d.loadQuotas()
+	d.quota.load()
 	background.Go(func() { d.statusCollector.Run(ctx) })
 	if uc := d.ensureUsageCollector(); uc != nil {
 		usageCol = uc
 		background.Go(func() { uc.Run(ctx) })
 	}
 	background.Go(func() { d.diskLoop(ctx) })
-	background.Go(func() { d.accountLimitsLoop(ctx) })
+	background.Go(func() { d.quota.accountLimitsLoop(ctx) })
 	background.Go(func() { d.agyQuotaLoop(ctx) })
 	// Finish transfer intents before restoring queue refs, without treating
 	// persisted Exited as final: tmux may still be alive and reattach below.
@@ -835,63 +833,6 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	return s, acceptedErr
 }
 
-// accountLimitsLoop also picks up limits from runs remote-agent does not
-// manage, such as `codex exec` started by another agent. It only reads
-// local files; nothing asks a service.
-func (d *Daemon) accountLimitsLoop(ctx context.Context) {
-	since := map[pb.Agent]time.Time{}
-	t := time.NewTicker(accountLimitsInterval)
-	defer t.Stop()
-	for {
-		d.pollAccountLimits(since, time.Now())
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-		}
-	}
-}
-
-// pollAccountLimits reads what changed since each CLI's last poll.
-func (d *Daemon) pollAccountLimits(since map[pb.Agent]time.Time, now time.Time) {
-	for _, a := range d.adapterList() {
-		src, ok := a.(agent.AccountLimitsSource)
-		if !ok || a.Bin() == "" {
-			continue
-		}
-		after, ok := since[a.Kind()]
-		if !ok {
-			after = now.Add(-accountLimitsLookback)
-		}
-		u, at, seen := src.AccountLimits(after)
-		if u != nil {
-			d.noteLimits(u, at)
-		}
-		if seen.After(after) {
-			after = seen
-		}
-		since[a.Kind()] = after
-	}
-}
-
-const (
-	accountLimitsInterval = time.Minute
-	// The longest Codex window is a week; older records are past their reset.
-	accountLimitsLookback = 8 * 24 * time.Hour
-)
-
-// noteLimits keeps the newest usage limits Codex reported.
-func (d *Daemon) noteLimits(u *pb.TokenUsage, at time.Time) {
-	if u.PrimaryLimit == nil && u.SecondaryLimit == nil {
-		return
-	}
-	d.mu.Lock()
-	if at.After(d.limitsAt) || d.limits == nil {
-		d.limits, d.limitsAt = u, at
-	}
-	d.mu.Unlock()
-}
-
 // MachineMeta describes this machine for clients.
 func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	host, _ := os.Hostname()
@@ -913,8 +854,8 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	if d.diskGuard != nil {
 		m.DiskStatus = d.diskGuard.Metadata()
 	}
+	m.Quotas = d.quota.entries()
 	d.mu.Lock()
-	m.Quotas = d.quotaEntriesLocked()
 	sessions := make([]*session, 0, len(d.sessions))
 	for _, s := range d.sessions {
 		sessions = append(sessions, s)

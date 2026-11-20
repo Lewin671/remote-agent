@@ -371,11 +371,9 @@ func TestAgyQuotaOrderSurvivesMergingAndUnknownBuckets(t *testing.T) {
 		windows = append(windows, &pb.QuotaWindow{Name: name})
 	}
 	q := &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "example-account", Windows: windows, State: pb.QuotaState_QUOTA_STATE_OK}
-	h.d.recordQuotaWithPolicy("example-session", q, time.Now(), false)
-	h.d.recordQuotaWithPolicy("example-session", &pb.AgentQuota{Agent: q.Agent, Account: q.Account, Windows: []*pb.QuotaWindow{{Name: "gemini-5h"}}}, time.Now().Add(time.Second), false)
-	h.d.mu.Lock()
-	entries := h.d.quotaEntriesLocked()
-	h.d.mu.Unlock()
+	h.d.quota.record("example-session", q, time.Now(), false)
+	h.d.quota.record("example-session", &pb.AgentQuota{Agent: q.Agent, Account: q.Account, Windows: []*pb.QuotaWindow{{Name: "gemini-5h"}}}, time.Now().Add(time.Second), false)
+	entries := h.d.quota.entries()
 	var got []string
 	for _, entry := range entries {
 		if entry.Agent == q.Agent {

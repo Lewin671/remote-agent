@@ -396,7 +396,7 @@ func (s *session) observe(e *pb.Event) {
 		if e.Time != nil {
 			at = e.Time.AsTime()
 		}
-		s.d.noteLimits(k.TokenUsage, at)
+		s.d.quota.noteLimits(k.TokenUsage, at)
 	case *pb.Event_SettingsChanged:
 		s.context = s.ag.ApplySettings(s.context, k.SettingsChanged)
 	case *pb.Event_InputState:

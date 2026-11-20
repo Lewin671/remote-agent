@@ -14,9 +14,9 @@ func TestContextUpdateDoesNotRenewCodexQuota(t *testing.T) {
 	at := time.Now().Add(-time.Hour)
 	u := &pb.TokenUsage{TotalTokens: 123, ContextWindow: 10000, PrimaryLimit: &pb.RateLimit{UsedPercent: 29, WindowMinutes: 10080}}
 	h.s.usage = u
-	h.d.noteLimits(u, at)
+	h.d.quota.noteLimits(u, at)
 	h.s.recordStatusLine(&agent.StatusLine{ContextWindow: 20000}, time.Now())
-	if !h.d.limitsAt.Equal(at) {
+	if !h.d.quota.limitsAt.Equal(at) {
 		t.Fatal("context update renewed account quota")
 	}
 	if h.s.usage.GetTotalTokens() != 123 || h.s.usage.GetContextWindow() != 20000 {
@@ -37,7 +37,7 @@ func TestUnmanagedCodexRunUpdatesQuota(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "codex", Home: home}}})
-	h.d.pollAccountLimits(map[pb.Agent]time.Time{}, time.Now())
+	h.d.quota.pollAccountLimits(map[pb.Agent]time.Time{}, time.Now())
 	var got *pb.AgentQuota
 	for _, q := range h.d.MachineMeta().Quotas {
 		if q.Agent == pb.Agent_AGENT_CODEX {

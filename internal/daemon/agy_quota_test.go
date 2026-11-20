@@ -139,7 +139,7 @@ func TestAgyQuotaSkipsStartupWhenSavedAndDebouncesActivity(t *testing.T) {
 	// Seed a saved quota record (e.g. from statusline or quota.json).
 	clk := &fakeClock{now: time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)}
 	used := 10.0
-	h.d.recordQuotaWithPolicy("statusline-seed", &pb.AgentQuota{
+	h.d.quota.record("statusline-seed", &pb.AgentQuota{
 		Agent:   pb.Agent_AGENT_ANTIGRAVITY,
 		Account: antigravity.EmailFingerprint("seed@example.com"),
 		State:   pb.QuotaState_QUOTA_STATE_OK,

@@ -81,7 +81,7 @@ func TestClaudeQuotaSessionFreshness(t *testing.T) {
 			newDaemon := func() *Daemon {
 				d := New(dir, Config{})
 				d.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", home)
-				d.loadQuotas()
+				d.quota.load()
 				return d
 			}
 			d := newDaemon()
@@ -176,7 +176,7 @@ func TestClaudeQuotaFromStatusLine(t *testing.T) {
 	// A restart keeps the record of the same account...
 	d2 := New(h.d.dir, Config{})
 	d2.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", home)
-	d2.loadQuotas()
+	d2.quota.load()
 	if q := claudeQuota(d2); len(q) != 1 || q[0].GetWindows()[0].GetUsedPercent() != 1 {
 		t.Fatalf("after restart: %v", q)
 	}
@@ -184,7 +184,7 @@ func TestClaudeQuotaFromStatusLine(t *testing.T) {
 	writeAccount(t, home, "acct-2")
 	d3 := New(h.d.dir, Config{})
 	d3.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", home)
-	d3.loadQuotas()
+	d3.quota.load()
 	if q := claudeQuota(d3); len(q) != 1 || q[0].State != pb.QuotaState_QUOTA_STATE_WAITING {
 		t.Fatalf("other account: %v", q)
 	}
@@ -292,7 +292,7 @@ func reportClaudeQuota(t *testing.T, d *Daemon, id string, raw []byte, now time.
 		t.Fatal(err)
 	}
 	if report.Quota != nil {
-		d.recordQuota(id, report.Quota, now)
+		d.quota.record(id, report.Quota, now, true)
 	}
 }
 
@@ -327,5 +327,47 @@ func TestQuotaStatusLineFailureAndRecovery(t *testing.T) {
 	q = agyQuota(h.d)[0]
 	if q.State != pb.QuotaState_QUOTA_STATE_OK || q.ObservedMs != now.UnixMilli() {
 		t.Fatalf("renewed absent data: %v", q)
+	}
+}
+
+// The quota service stands alone: no Daemon, sessions or Daemon.mu involved.
+func TestQuotaServiceWithoutDaemon(t *testing.T) {
+	home, dir := t.TempDir(), t.TempDir()
+	writeAccount(t, home, "quota-account")
+	ad := claude.New("/bin/true", home)
+	newService := func(ad agent.Adapter) *quotaService {
+		return newQuotaService(dir,
+			func() []agent.Adapter { return []agent.Adapter{ad} },
+			func(k pb.Agent) (agent.Adapter, bool) { return ad, k == pb.Agent_AGENT_CLAUDE })
+	}
+	fp, _, _ := ad.Account()
+	used := 12.0
+	q := newService(ad)
+	if q.hasSaved(pb.Agent_AGENT_CLAUDE) {
+		t.Fatal("nothing recorded yet")
+	}
+	q.record("s1", &pb.AgentQuota{Agent: pb.Agent_AGENT_CLAUDE, Account: fp, Windows: []*pb.QuotaWindow{{Name: "five_hour", UsedPercent: &used}}}, time.Now(), true)
+	if !q.hasSaved(pb.Agent_AGENT_CLAUDE) || q.hasSaved(pb.Agent_AGENT_ANTIGRAVITY) {
+		t.Fatal("hasSaved wrong")
+	}
+	q.setError(pb.Agent_AGENT_CLAUDE, "read failed")
+	if got := q.entries(); len(got) != 1 || got[0].State != pb.QuotaState_QUOTA_STATE_FAILED || got[0].Detail != "read failed" {
+		t.Fatalf("error not shown: %v", got)
+	}
+	q.setError(pb.Agent_AGENT_CLAUDE, "")
+	if got := q.entries(); got[0].State == pb.QuotaState_QUOTA_STATE_FAILED {
+		t.Fatalf("error not cleared: %v", got)
+	}
+	again := newService(ad)
+	again.load()
+	if got := again.entries(); len(got) != 1 || got[0].Account != fp {
+		t.Fatalf("saved limits not reloaded: %v", got)
+	}
+	other := t.TempDir()
+	writeAccount(t, other, "another-account")
+	switched := newService(claude.New("/bin/true", other))
+	switched.load()
+	if switched.hasSaved(pb.Agent_AGENT_CLAUDE) {
+		t.Fatal("a record of another account must not be reloaded")
 	}
 }
