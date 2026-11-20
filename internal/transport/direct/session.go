@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/pion/webrtc/v4"
 )
@@ -98,7 +99,7 @@ type Session struct {
 	challenge     []byte
 	receipts      map[string]cachedBytes
 	controlSeen   map[string]cachedBytes
-	peerScopes    map[uint64]*peerScopeWindow
+	peerScope     linkcore.PeerScope
 }
 type deliveryResult struct {
 	current func() bool
@@ -322,11 +323,9 @@ func (s *Session) pruneControl(now uint64) {
 }
 func (s *Session) flush(now uint64) {
 	s.pruneControl(now)
-	for _, window := range s.peerScopes {
-		if window.gap != 0 && now >= window.gap {
-			s.Retire()
-			return
-		}
+	if s.peerScope.Expired(now) {
+		s.Retire()
+		return
 	}
 	if s.controlWindow != nil {
 		for _, raw := range s.controlWindow.Tick(now) {

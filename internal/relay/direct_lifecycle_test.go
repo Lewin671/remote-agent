@@ -24,6 +24,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
@@ -127,7 +128,7 @@ func TestDirectWriteLoopRemainingResidenceDoesNotCloseSlowHealthyMainWebSocket(t
 		writeWake: make(chan struct{}, 1),
 	}
 	for i := range m.outgoing {
-		m.outgoing[i] = transport.FairQueue[*peerOutput]{Entries: 64, Bytes: 1 << 20, PeerEntries: 16, PeerBytes: 256 << 10}
+		m.outgoing[i] = linkcore.FairQueue[*peerOutput]{Entries: 64, Bytes: 1 << 20, PeerEntries: 16, PeerBytes: 256 << 10}
 	}
 	m.workers.Go(m.writeLoop)
 	defer func() {
@@ -217,7 +218,7 @@ func TestDirectWriteLoopDropsExpiredFrameBeforeDispatch(t *testing.T) {
 		writeWake: make(chan struct{}, 1),
 	}
 	for i := range m.outgoing {
-		m.outgoing[i] = transport.FairQueue[*peerOutput]{Entries: 64, Bytes: 1 << 20, PeerEntries: 16, PeerBytes: 256 << 10}
+		m.outgoing[i] = linkcore.FairQueue[*peerOutput]{Entries: 64, Bytes: 1 << 20, PeerEntries: 16, PeerBytes: 256 << 10}
 	}
 	p := &blockingWritePath{}
 	_, detach := m.attach(p)
@@ -1631,7 +1632,7 @@ func TestDirectReceiveDoesNotDropFramesUnderManagerLockContention(t *testing.T) 
 	}
 	m := &directManager{
 		self:     self,
-		incoming: transport.FairQueue[*peerInput]{Entries: 256, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 1 << 20},
+		incoming: linkcore.FairQueue[*peerInput]{Entries: 256, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 1 << 20},
 		readWake: make(chan struct{}, 2),
 	}
 	conn := make([]byte, 16)

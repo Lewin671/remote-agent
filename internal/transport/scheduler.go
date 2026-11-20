@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
 type Class uint8
@@ -57,7 +59,7 @@ type Scheduler struct {
 	now             func() time.Time
 	after           func(time.Duration, func()) func() bool
 	mu              sync.Mutex
-	queues          [4]FairQueue[*Job]
+	queues          [4]linkcore.FairQueue[*Job]
 	used            [3]int
 	nonReserved     int
 	activeSnapshots map[string]bool
@@ -75,7 +77,7 @@ func NewScheduler(link *Link) *Scheduler {
 func NewSchedulerWithClock(link *Link, now func() time.Time, after func(time.Duration, func()) func() bool) *Scheduler {
 	s := &Scheduler{link: link, now: now, after: after, activeSessions: map[string]bool{}, activeSnapshots: map[string]bool{}, quarantined: map[string]int{}}
 	for c, count := range []int{32, 16, 64, 16} {
-		s.queues[c] = FairQueue[*Job]{Entries: count, Bytes: ExecutionQueueBytes, PeerEntries: count / 4, PeerBytes: ExecutionQueueBytes / 4, EmptyPeerException: true}
+		s.queues[c] = linkcore.FairQueue[*Job]{Entries: count, Bytes: ExecutionQueueBytes, PeerEntries: count / 4, PeerBytes: ExecutionQueueBytes / 4, EmptyPeerException: true}
 	}
 	return s
 }

@@ -1,4 +1,4 @@
-package transport
+package linkcore
 
 // FairQueue is bounded by retained payload bytes and entries, with round robin
 // peers and flows within each peer. Its owner supplies synchronization.

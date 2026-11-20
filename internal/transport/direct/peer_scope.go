@@ -2,15 +2,10 @@ package direct
 
 import (
 	"bytes"
+
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
-
-type peerScopeWindow struct {
-	next    uint64
-	pending map[uint64]peerwire.Opened
-	at      map[uint64]uint64
-	gap     uint64
-}
 
 // Peer-scope Restart/Close use an independent ordered window. All target
 // generations are checked before any SDK object is retired.
@@ -33,29 +28,15 @@ func (s *Session) receivePeerScope(o peerwire.Opened, now uint64) {
 	if !s.validPeerScope(o) {
 		return
 	}
-	if s.peerScopes == nil {
-		s.peerScopes = map[uint64]*peerScopeWindow{}
-	}
-	window := s.peerScopes[o.Context.Generation]
-	if window == nil {
-		if len(s.peerScopes) >= 32 {
-			return
-		}
-		window = &peerScopeWindow{next: 1, pending: map[uint64]peerwire.Opened{}, at: map[uint64]uint64{}}
-		s.peerScopes[o.Context.Generation] = window
-	}
-	if o.Context.Seq < window.next || len(window.pending) >= 32 {
+	admit := s.peerScope.Admit(o, now, s.cfg.Deadline)
+	if admit == linkcore.ScopeDrop {
 		return
 	}
 	s.controlSeen[key] = cachedBytes{bytes: append([]byte(nil), o.Hash...), until: o.Context.Deadline + 300000}
-	if o.Context.Seq > window.next {
-		window.pending[o.Context.Seq] = o
-		window.at[o.Context.Seq] = now
-		if window.gap == 0 {
-			window.gap = min(now+2500, o.Context.Deadline, s.cfg.Deadline)
-		}
+	if admit == linkcore.ScopeBuffered {
 		return
 	}
+	generation := o.Context.Generation
 	for {
 		fresh, err := s.cfg.Self.Open(s.cfg.Codec, o.Raw, s.pcs[0].signal.Peer, now)
 		if err != nil || !s.validPeerScope(fresh) {
@@ -71,38 +52,14 @@ func (s *Session) receivePeerScope(o peerwire.Opened, now uint64) {
 		for use := range targets {
 			s.restartPC(int(use-1), now)
 		}
-		window.next++
-		next, ok := window.pending[window.next]
+		next, ok := s.peerScope.Advance(generation)
 		if !ok {
 			break
 		}
-		delete(window.pending, window.next)
-		delete(window.at, window.next)
 		o = next
 	}
-	window.gap = 0
-	for seq, pending := range window.pending {
-		due := min(window.at[seq]+2500, pending.Context.Deadline, s.cfg.Deadline)
-		if window.gap == 0 || due < window.gap {
-			window.gap = due
-		}
-	}
+	s.peerScope.Settle(generation, s.cfg.Deadline)
 }
 func (s *Session) validPeerScope(o peerwire.Opened) bool {
-	if o.Type == 9 {
-		return true
-	}
-	if o.Type != 8 || !s.pcs[0].signal.Offerer() {
-		return false
-	}
-	targets, err := peerwire.ReadRestart(o.Payload)
-	if err != nil {
-		return false
-	}
-	for use, gen := range targets {
-		if use < 1 || use > 2 || s.pcs[use-1].signal.Generation != gen {
-			return false
-		}
-	}
-	return true
+	return linkcore.ValidPeerScope(o, s.pcs[0].signal.Offerer(), [2]uint64{s.pcs[0].signal.Generation, s.pcs[1].signal.Generation})
 }

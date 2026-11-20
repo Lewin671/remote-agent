@@ -4,11 +4,12 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
 type peerRates struct {
-	buckets [2]directedTokens
+	buckets [2]linkcore.Tokens
 	touched time.Time
 }
 type peerReservation struct {
@@ -51,21 +52,6 @@ func (m *directManager) reserveAuthentication(peer string, o peerwire.Opened, no
 	m.authCounts[peer]++
 	return true
 }
-func takeTokens(old directedTokens, now time.Time, n int, fps, bps, burst float64) (directedTokens, bool) {
-	if old.at.IsZero() {
-		old = directedTokens{at: now, frames: burst, bytes: bps}
-	}
-	dt := max(0, now.Sub(old.at).Seconds())
-	old.at = now
-	old.frames = min(burst, old.frames+dt*fps)
-	old.bytes = min(bps, old.bytes+dt*bps)
-	if old.frames < 1 || old.bytes < float64(n) {
-		return old, false
-	}
-	old.frames--
-	old.bytes -= float64(n)
-	return old, true
-}
 func (m *directManager) allowIncoming(peer string, class, n int, now time.Time) bool {
 	if class < 0 || class > 1 || class == 0 && n > 64<<10 || class == 1 && n > 16<<10 {
 		return false
@@ -91,11 +77,11 @@ func (m *directManager) allowIncoming(peer string, class, n int, now time.Time) 
 		fps, bps, burst = 512, 512<<10, 1024
 		afps, abps, aburst = 2048, 4<<20, 2048
 	}
-	per, ok := takeTokens(rates.buckets[class], now, n, fps, bps, burst)
+	per, ok := rates.buckets[class].Take(now.UnixMilli(), n, fps, bps, burst)
 	if !ok {
 		return false
 	}
-	account, ok := takeTokens(m.inboundAccount[class], now, n, afps, abps, aburst)
+	account, ok := m.inboundAccount[class].Take(now.UnixMilli(), n, afps, abps, aburst)
 	if !ok {
 		return false
 	}

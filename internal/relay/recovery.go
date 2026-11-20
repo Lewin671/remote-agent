@@ -78,7 +78,7 @@ func (r *Relay) session(parent context.Context, acct *Account, d *dispatcher) er
 	}
 	policy := transport.Recovery{Budget: r.recoveryBudget}
 	origin := time.Now()
-	elapsed := func() int64 { return time.Since(origin).Nanoseconds() }
+	elapsed := func() int64 { return time.Since(origin).Milliseconds() }
 	var active *mainPath
 	var generation uint64
 	var dialing bool

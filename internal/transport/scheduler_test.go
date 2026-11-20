@@ -7,11 +7,13 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
 func TestExecutionQueueBudgetsAndEmptyPeerException(t *testing.T) {
 	for _, entries := range []int{32, 16, 64, 16} {
-		q := FairQueue[int]{Entries: entries, Bytes: ExecutionQueueBytes, PeerEntries: entries / 4, PeerBytes: ExecutionQueueBytes / 4, EmptyPeerException: true}
+		q := linkcore.FairQueue[int]{Entries: entries, Bytes: ExecutionQueueBytes, PeerEntries: entries / 4, PeerBytes: ExecutionQueueBytes / 4, EmptyPeerException: true}
 		if !q.Push("peer", "session", 4<<20, 1) {
 			t.Fatal("legal decoded body rejected from empty queue")
 		}
@@ -31,20 +33,6 @@ func TestExecutionQueueBudgetsAndEmptyPeerException(t *testing.T) {
 		}
 		if q.Push("peer", "session", 1, 999) {
 			t.Fatal("peer entry cap bypassed")
-		}
-	}
-}
-func TestQueueRotatesPeersAndSessions(t *testing.T) {
-	q := FairQueue[string]{Entries: 64, Bytes: 4096, PeerEntries: 16, PeerBytes: 1024}
-	for _, v := range []struct{ peer, flow, value string }{{"p", "a", "a1"}, {"p", "a", "a2"}, {"p", "b", "b1"}, {"q", "c", "c1"}} {
-		if !q.Push(v.peer, v.flow, 1, v.value) {
-			t.Fatal("push")
-		}
-	}
-	for _, want := range []string{"a1", "c1", "b1", "a2"} {
-		got, ok := q.Pop(func(string) bool { return true })
-		if !ok || got != want {
-			t.Fatalf("got %q want %q", got, want)
 		}
 	}
 }
@@ -165,19 +153,6 @@ func TestQueueExpiryAndQuarantineKeepOriginalSlot(t *testing.T) {
 			t.Fatal("quarantine affected unrelated resource")
 		}
 	})
-}
-
-func TestQueueSkipsBlockedResourceInSamePeerFlow(t *testing.T) {
-	q := FairQueue[string]{Entries: 64, Bytes: 4096, PeerEntries: 16, PeerBytes: 1024}
-	q.Push("peer", "machine", 1, "quarantined")
-	q.Push("peer", "machine", 1, "healthy")
-	got, ok := q.Pop(func(resource string) bool { return resource != "quarantined" })
-	if !ok || got != "healthy" {
-		t.Fatal("quarantined resource blocked an unrelated request from the same peer")
-	}
-	if q.Len() != 1 {
-		t.Fatal("blocked request was discarded")
-	}
 }
 
 func TestControlPriorityLevelsKeepSnapshotLast(t *testing.T) {

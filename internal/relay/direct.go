@@ -24,6 +24,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"google.golang.org/protobuf/proto"
 )
@@ -78,17 +79,13 @@ type peerOutput struct {
 	until time.Time
 }
 type directedUsage struct{ frames, bytes [2]int }
-type directedTokens struct {
-	at            time.Time
-	frames, bytes float64
-}
 type directManager struct {
 	authReservations map[string]peerReservation
 	authCounts       map[string]int
 	inMu             sync.Mutex
 	inClosed         bool
 	inboundPeers     map[string]*peerRates
-	inboundAccount   [2]directedTokens
+	inboundAccount   [2]linkcore.Tokens
 
 	closeOnce sync.Once
 
@@ -104,11 +101,11 @@ type directManager struct {
 	sessions            map[string]*directPeer
 	active              map[string]*directPeer
 	tailers             map[string]*directTailer
-	incoming            transport.FairQueue[*peerInput]
-	outgoing            [3]transport.FairQueue[*peerOutput]
+	incoming            linkcore.FairQueue[*peerInput]
+	outgoing            [3]linkcore.FairQueue[*peerOutput]
 	queued              map[string]*directedUsage
 	queuedBytes         [2]int
-	tokens              [2]directedTokens
+	tokens              [2]linkcore.Tokens
 	readWake, writeWake chan struct{}
 	path                transport.Path
 	pathGeneration      atomic.Uint64
@@ -161,9 +158,9 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	if port := directPort(os.Getenv("REMOTE_AGENT_DIRECT_PORT")); port > 0 && !m.loopback {
 		m.port = direct.NewPortMux(port, false)
 	}
-	m.incoming = transport.FairQueue[*peerInput]{Entries: 256, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 1 << 20}
+	m.incoming = linkcore.FairQueue[*peerInput]{Entries: 256, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 1 << 20}
 	for i := range m.outgoing {
-		m.outgoing[i] = transport.FairQueue[*peerOutput]{Entries: 4096, Bytes: 32 << 20, PeerEntries: 512, PeerBytes: 4 << 20}
+		m.outgoing[i] = linkcore.FairQueue[*peerOutput]{Entries: 4096, Bytes: 32 << 20, PeerEntries: 512, PeerBytes: 4 << 20}
 	}
 	for range 2 {
 		m.workers.Go(m.readLoop)
@@ -663,22 +660,9 @@ func (m *directManager) reserveRate(class, n int, now time.Time) bool {
 	if class == 1 {
 		fps, bps, burst = 512, 512<<10, 1024
 	}
-	b := m.tokens[class]
-	if b.at.IsZero() {
-		b = directedTokens{at: now, frames: burst, bytes: bps}
-	}
-	dt := max(0, now.Sub(b.at).Seconds())
-	b.at = now
-	b.frames = min(burst, b.frames+dt*fps)
-	b.bytes = min(bps, b.bytes+dt*bps)
-	if b.frames < 1 || b.bytes < float64(n) {
-		m.tokens[class] = b
-		return false
-	}
-	b.frames--
-	b.bytes -= float64(n)
+	b, ok := m.tokens[class].Take(now.UnixMilli(), n, fps, bps, burst)
 	m.tokens[class] = b
-	return true
+	return ok
 }
 func (m *directManager) releaseOutput(q *peerOutput) {
 	m.mu.Lock()

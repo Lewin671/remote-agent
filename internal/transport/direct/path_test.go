@@ -84,25 +84,6 @@ func TestRealLocalDataChannelFragmentRoundTrip(t *testing.T) {
 		}
 	}
 }
-func TestPoolCountsReplacementsAndAllUses(t *testing.T) {
-	p := NewPool(8)
-	for _, peer := range []string{"a", "b", "c", "d", "e", "f", "g", "h"} {
-		if !p.acquire(peer, "test", 1) || !p.acquire(peer, "test", 2) || p.acquire(peer, "test", 1) {
-			t.Fatal("per-peer PC cap")
-		}
-	}
-	if p.acquire("i", "test", 1) {
-		t.Fatal("peer cap")
-	}
-	if !p.reserve("a", 0, 2<<20, 128) || p.reserve("a", 0, 1, 1) {
-		t.Fatal("peer send cap")
-	}
-	p.free("a", 0, 2<<20, 128)
-	if !p.reserve("a", 1, 2<<20, 128) || p.reserve("a", 1, 1, 0) {
-		t.Fatal("peer receive cap")
-	}
-	p.free("a", 1, 2<<20, 128)
-}
 func TestUntrustedFragmentsChargeActualBytesAndExpire(t *testing.T) {
 	pool := NewPool(8)
 	if !pool.acquire("peer", "test", 1) {
@@ -115,16 +96,16 @@ func TestUntrustedFragmentsChargeActualBytesAndExpire(t *testing.T) {
 	f := &pb.Fragment{MessageId: make([]byte, 16), Count: 2, CiphertextLength: 8, CiphertextSha256: make([]byte, 32), PathGeneration: 1, Fragment: []byte("123456")}
 	send(f)
 	send(f)
-	if pool.total[1] != 6 {
+	if pool.reserved(1) != 6 {
 		t.Fatal("duplicate double charged")
 	}
 	f.Index = 1
 	send(f)
-	if pool.total[1] != 6 {
+	if pool.reserved(1) != 6 {
 		t.Fatal("retained beyond declared total")
 	}
 	p.expire(time.Now().Add(5 * time.Second))
-	if pool.total[1] != 0 || len(p.pending) != 0 {
+	if pool.reserved(1) != 0 || len(p.pending) != 0 {
 		t.Fatal("expiry did not free actual retained bytes")
 	}
 	pool.release("peer", 1)
@@ -220,7 +201,7 @@ func TestReadCloseConcurrentDrain(t *testing.T) {
 			}
 		}
 		pool.mu.Lock()
-		empty := len(pool.peers) == 0 && pool.total == [2]int{}
+		empty := pool.core.Idle()
 		pool.mu.Unlock()
 		if !empty {
 			t.Fatal("close leaked receive or SDK reservations")

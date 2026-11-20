@@ -11,6 +11,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -76,8 +77,8 @@ type commandAdmission struct {
 	cancel           context.CancelFunc
 	workers          sync.WaitGroup
 	mu               sync.Mutex
-	frames           transport.FairQueue[*authFrame]
-	results          transport.FairQueue[*callResult]
+	frames           linkcore.FairQueue[*authFrame]
+	results          linkcore.FairQueue[*callResult]
 	wake, replies    chan struct{}
 	syncing          map[string]bool
 	inflight         map[string]*pendingExecution
@@ -90,8 +91,8 @@ func (c *endpoint) admissionOwner() *commandAdmission {
 	c.admissionOnce.Do(func() {
 		ctx, cancel := context.WithCancel(c.link.Context())
 		a := &commandAdmission{endpoint: c, ctx: ctx, cancel: cancel, wake: make(chan struct{}, 2), replies: make(chan struct{}, 2), syncing: map[string]bool{}, inflight: map[string]*pendingExecution{}, scheduler: transport.NewSchedulerWithClock(c.link, c.r.SchedulerNow, c.r.SchedulerAfter)}
-		a.frames = transport.FairQueue[*authFrame]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
-		a.results = transport.FairQueue[*callResult]{Entries: 64, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 4 << 20}
+		a.frames = linkcore.FairQueue[*authFrame]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
+		a.results = linkcore.FairQueue[*callResult]{Entries: 64, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 4 << 20}
 		a.authenticate = func(w deviceauth.Wire) (*deviceauth.Authenticated, error) {
 			return c.security.endpoint.Authenticate(w, nil, uint64(time.Now().UnixMilli()))
 		}
