@@ -167,6 +167,40 @@ func (s *Session) View() View {
 	return v
 }
 
+// NextTimer returns the earliest time at which a Tick has timed work other
+// than the round deadline and the replay window: a retransmission, a
+// candidate batch or a reorder gap. ok is false when there is none.
+func (s *Session) NextTimer() (due uint64, ok bool) {
+	at := func(t uint64) {
+		if !ok || t < due {
+			due, ok = t, true
+		}
+	}
+	for _, sender := range s.senders() {
+		if sender.Paused || sender.TimedOut {
+			continue
+		}
+		for _, p := range sender.Pending {
+			if p.Attempts < 3 {
+				at(max(p.First+[]uint64{0, 500, 1500}[p.Attempts], p.NotBefore)) // as peerwire.Sender.Tick
+			}
+		}
+	}
+	for i := range s.pcs {
+		p := &s.pcs[i]
+		if len(p.batch.Pending) > 0 {
+			at(p.batch.Due)
+		}
+		if p.signal.GapDeadline != 0 {
+			at(p.signal.GapDeadline)
+		}
+	}
+	if gap, found := s.peerScope.nextGap(); found {
+		at(gap)
+	}
+	return due, ok
+}
+
 // Steps names how far each use got: boot, local SDP, remote SDP, DTLS,
 // confirm sent, announced; one letter each when reached, a dash when not.
 func (s *Session) Steps() [2]string {

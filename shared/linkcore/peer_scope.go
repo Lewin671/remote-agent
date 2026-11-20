@@ -86,6 +86,16 @@ func (p *PeerScope) Expired(now uint64) bool {
 	return false
 }
 
+// nextGap returns the earliest open gap deadline.
+func (p *PeerScope) nextGap() (due uint64, ok bool) {
+	for _, w := range p.windows {
+		if w.gap != 0 && (!ok || w.gap < due) {
+			due, ok = w.gap, true
+		}
+	}
+	return due, ok
+}
+
 // ValidPeerScope checks a peer-scope Close (9) or Restart (8). Only the
 // offerer may receive Restart, and every target must name the current
 // generation of its use.

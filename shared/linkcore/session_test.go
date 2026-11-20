@@ -645,6 +645,26 @@ func TestQueuedRestartWinsOverReadinessWhileTheSDKIsBusy(t *testing.T) {
 	}
 }
 
+// NextTimer names the retransmission an idle executor must wake for, and
+// nothing while the sender is paused.
+func TestNextTimerIsTheProbeRetransmission(t *testing.T) {
+	a, b := orderedKeys(t)
+	n := newFakePair(t, a, b)
+	e, start := n.ends[0], n.now
+	if due, ok := e.s.NextTimer(); !ok || due != start+500 {
+		t.Fatalf("NextTimer = %d, %v; want the Probe's first retry", due-start, ok)
+	}
+	e.handle(PeerDiscovered{})
+	fields, _ := peerwire.Parse(e.sent[0].Raw, 5)
+	e.handle(DeliveryResult{ID: fields[4].B, Status: 2})
+	if _, ok := e.s.NextTimer(); ok {
+		t.Fatal("a paused sender still has a timer")
+	}
+	if _, ok := n.ends[1].s.NextTimer(); ok {
+		t.Fatal("the responder has a timer before any frame")
+	}
+}
+
 func TestStepsAreWords(t *testing.T) {
 	if got := steps(true, true, true, false, false, false); got != "blr---" {
 		t.Fatalf("steps = %q", got)

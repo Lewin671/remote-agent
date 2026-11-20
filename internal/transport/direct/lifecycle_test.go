@@ -26,48 +26,68 @@ func testSession(t *testing.T, ctx context.Context, now func() time.Time, send f
 	return s, initial
 }
 
-// SDK callbacks of a replaced PC never reach the queue, and cannot close the
-// replacement when the queue is full.
-func TestSDKCallbacksKeepTheirOriginalPCOwner(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+// A real restart: the offerer's healthy use-1 PC reports failure while a
+// write still holds its pool slot, so the replacement is refused and created
+// on a later tick once the old PC has released the slot. Callbacks of the
+// old PC never reach the queue and, with the queue full, cannot close the
+// replacement; the pump checks the mirrored View after every step.
+func TestRestartReplacesThePCAndOldCallbacksStayOut(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	now := time.Now()
-	s, _ := testSession(t, ctx, func() time.Time { return now }, func(Outbound) bool { return true }, false)
-	s.events = make(chan linkcore.Event, 1)
-	s.current[0].Store(1)
-	s.generation[0].Store(1)
-	if !s.createPC(linkcore.CreatePC{ID: 1, Use: 1, Generation: 1}) {
-		t.Fatal("initial PC missing")
+	p := newPump(t, ctx)
+	initiator, responder, a, b := pumpPair(t, p)
+	offerer, answerer := initiator, responder
+	if string(b.ID) < string(a.ID) {
+		offerer, answerer = responder, initiator
 	}
-	old := s.paths[1]
-	// A restart moves use 1 to generation 2 and closes the old PC.
-	s.current[0].Store(2)
-	s.generation[0].Store(2)
-	old.closeWhy("generation_reset")
-	old.Wait()
-	if !s.createPC(linkcore.CreatePC{ID: 2, Use: 1, Generation: 2}) {
-		t.Fatal("replacement PC missing")
+	p.run(func() bool { return offerer.bothReady() && answerer.bothReady() })
+	old := offerer.ready[1]
+	_, hold, err := old.reserveWrite([]byte("in flight"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	current := s.paths[2]
-	defer func() { current.Close(); current.Wait() }()
-	s.events <- linkcore.PeerDiscovered{}
+	released := false
+	release := func() {
+		if !released {
+			released = true
+			hold()
+		}
+	}
+	t.Cleanup(release) // before the sessions wait for their PCs
+	offerer.s.events <- linkcore.PCStateChanged{ID: offerer.s.current[0].Load(), State: linkcore.PCFailed}
+	p.run(func() bool {
+		// The restart asked for a replacement and the SDK side refused it:
+		// use 1 has no PC while the old one still holds its slot.
+		if offerer.s.current[0].Load() == 0 && !isClosed(old) {
+			release()
+		}
+		return offerer.ready[1].cfg.Generation == 2 && answerer.ready[1].cfg.Generation == 2
+	})
+	if !released || p.elapsed() >= 10000 {
+		t.Fatalf("replacement not refused while the slot was held (released=%v) or late (%d ms)", released, p.elapsed())
+	}
+	current := offerer.ready[1]
+	s := offerer.s
+	for len(s.events) < cap(s.events) {
+		s.events <- linkcore.PeerDiscovered{}
+	}
 	old.cfg.Candidate(nil)
 	old.cfg.State(webrtc.PeerConnectionStateFailed)
-	if ctx.Err() != nil || !pathAlive(current) {
+	if !pathAlive(current) {
 		t.Fatal("stale SDK callback closed the replacement on a full queue")
 	}
-	if len(s.events) != 1 {
-		t.Fatal("old callback entered replacement queue")
+	for len(s.events) > 0 {
+		<-s.events
 	}
-	<-s.events
 	old.cfg.Candidate(nil)
 	if len(s.events) != 0 {
-		t.Fatal("old SDK callback entered replacement queue")
+		t.Fatal("old SDK callback entered the queue")
 	}
 	current.cfg.Candidate(nil)
-	if e, ok := (<-s.events).(linkcore.PCLocalCandidate); !ok || e.ID != 2 || !e.End {
+	if e, ok := (<-s.events).(linkcore.PCLocalCandidate); !ok || e.ID != s.current[0].Load() || !e.End {
 		t.Fatal("current candidate callback was lost")
 	}
+	exchange(t, ctx, offerer, answerer)
 }
 
 // A delivery result is checked against the main connection when it is
