@@ -306,21 +306,18 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			// The guard only ends a hung run; no step below waits on wall time.
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
 
 			r := New(directLifecycleBackend{})
 			SetDirectLoopbackForTest(r)
-			baseReal := time.Now()
-			var clockPaused atomic.Bool
-			var pausedAtMs atomic.Int64
-			var extraOffsetMs atomic.Int64
-			fakeNow := func() time.Time {
-				if clockPaused.Load() {
-					return time.UnixMilli(pausedAtMs.Load() + extraOffsetMs.Load())
-				}
-				return time.UnixMilli(baseReal.UnixMilli() + time.Since(baseReal).Milliseconds() + extraOffsetMs.Load())
-			}
+			// Every session, lease and Probe deadline reads this clock, which
+			// moves only when the test advances it: a slow machine cannot
+			// expire a round, a Probe or a command while Pion connects.
+			var clockMs atomic.Int64
+			clockMs.Store(time.Now().UnixMilli())
+			fakeNow := func() time.Time { return time.UnixMilli(clockMs.Load()) }
 			fakeNowUint := func() uint64 { return uint64(fakeNow().UnixMilli()) }
 			SetDirectClockForTest(r, fakeNow)
 
@@ -529,12 +526,10 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 					return err
 				}
 				packet, _ := proto.Marshal(env)
-				callCtx, callCancel := context.WithTimeout(ctx, 3*time.Second)
-				defer callCancel()
-				if err := path.Write(callCtx, packet); err != nil {
+				if err := path.Write(ctx, packet); err != nil {
 					return err
 				}
-				respRaw, err := path.Read(callCtx)
+				respRaw, err := path.Read(ctx)
 				if err != nil {
 					return err
 				}
@@ -595,10 +590,8 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 			}
 
 			// 2. Deliver a delayed Probe from a retired losing connection (connB, same client Boot).
-			// Pause the virtual clock while waiting for Challenge(connB) so CPU load cannot expire
-			// the 800 ms Probe deadline before the daemon answers it.
-			pausedAtMs.Store(baseReal.UnixMilli() + time.Since(baseReal).Milliseconds())
-			clockPaused.Store(true)
+			// The clock stands still until the test moves it, so the 800 ms Probe
+			// deadline holds however long the daemon takes to answer.
 			connB := make([]byte, 16)
 			_, _ = rand.Read(connB)
 			probeNow := fakeNowUint()
@@ -652,8 +645,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 			}
 
 			// ...and after advancing the virtual clock past the candidate round's deadline.
-			extraOffsetMs.Add(1000)
-			clockPaused.Store(false)
+			clockMs.Add(1000)
 			select {
 			case <-pB.session.Done():
 			case <-ctx.Done():
