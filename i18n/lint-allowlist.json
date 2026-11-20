@@ -1625,6 +1625,11 @@
     "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
   },
   {
+    "path": "shared/linkcore/session.go",
+    "literal": "direct_session_refused",
+    "reason": "Internal sentinel for a refused direct session configuration; the executor maps it to its own error and it is never rendered or logged."
+  },
+  {
     "path": "web/src/transport/peer/sender.js",
     "literal": "mutable frame",
     "reason": "Internal peer transport validation token, crypto domain, or schema literal. The transport owner discards validation errors and reports localized path status; this literal is never rendered or logged."
