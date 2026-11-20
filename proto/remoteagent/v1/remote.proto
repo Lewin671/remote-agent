@@ -47,6 +47,11 @@ message MachineMeta {
   repeated Agent disabled_agents = 16;
   // Monotonic settings revision from DaemonSettings.revision.
   uint64 settings_revision = 17;
+  // The daemon's product version (internal/buildinfo, as `--version`
+  // prints it), e.g. "0.94.0"; source builds report other forms such as
+  // "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+  // decided by protocol_version.
+  string daemon_version = 18;
 }
 
 // ProjectSummary is what a machine knows of a project beyond its live

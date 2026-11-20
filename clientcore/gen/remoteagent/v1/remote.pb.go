@@ -49,6 +49,7 @@ type MachineMeta struct {
 	DiskStatus       *DiskStatus
 	DisabledAgents   []Agent
 	SettingsRevision uint64
+	DaemonVersion    string
 }
 
 func (m *MachineMeta) GetHostname() string {
@@ -135,6 +136,12 @@ func (m *MachineMeta) GetSettingsRevision() uint64 {
 	}
 	return 0
 }
+func (m *MachineMeta) GetDaemonVersion() string {
+	if m != nil {
+		return m.DaemonVersion
+	}
+	return ""
+}
 
 func (m *MachineMeta) Clone() *MachineMeta {
 	if m == nil {
@@ -212,6 +219,7 @@ func (m *MachineMeta) AppendMarshal(b []byte) []byte {
 		b = litewire.EndMessage(b, start)
 	}
 	b = litewire.AppendVarint(b, 17, uint64(m.SettingsRevision))
+	b = litewire.AppendString(b, 18, m.DaemonVersion)
 	return b
 }
 
@@ -362,6 +370,15 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 					return err
 				}
 				m.SettingsRevision = v
+				continue
+			}
+		case 18:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.DaemonVersion = v
 				continue
 			}
 		}

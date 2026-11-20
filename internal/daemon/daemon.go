@@ -23,6 +23,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/buildinfo"
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/machinestatus"
@@ -851,6 +852,7 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	m.SettingsRevision = st.Revision
 	m.Capabilities = d.capabilities()
 	m.ProtocolVersion = protocol.Version
+	m.DaemonVersion = buildinfo.Version
 	if d.diskGuard != nil {
 		m.DiskStatus = d.diskGuard.Metadata()
 	}

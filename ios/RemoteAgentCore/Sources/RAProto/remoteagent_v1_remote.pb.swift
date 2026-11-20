@@ -258,6 +258,15 @@ public struct PBMachineMeta: @unchecked Sendable {
     set {_uniqueStorage()._settingsRevision = newValue}
   }
 
+  /// The daemon's product version (internal/buildinfo, as `--version`
+  /// prints it), e.g. "0.94.0"; source builds report other forms such as
+  /// "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+  /// decided by protocol_version.
+  public var daemonVersion: String {
+    get {return _storage._daemonVersion}
+    set {_uniqueStorage()._daemonVersion = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1557,7 +1566,7 @@ extension PBDefaultModeSource: SwiftProtobuf._ProtoNameProviding {
 
 extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineMeta"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hostname\0\u{1}os\0\u{2}\u{4}home\0\u{3}codex_version\0\u{3}codex_verified\0\u{1}agents\0\u{1}capabilities\0\u{1}quotas\0\u{3}protocol_version\0\u{1}projects\0\u{3}schedule_revision\0\u{3}disk_status\0\u{3}disabled_agents\0\u{3}settings_revision\0\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}hostname\0\u{1}os\0\u{2}\u{4}home\0\u{3}codex_version\0\u{3}codex_verified\0\u{1}agents\0\u{1}capabilities\0\u{1}quotas\0\u{3}protocol_version\0\u{1}projects\0\u{3}schedule_revision\0\u{3}disk_status\0\u{3}disabled_agents\0\u{3}settings_revision\0\u{3}daemon_version\0\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}")
 
   fileprivate class _StorageClass {
     var _hostname: String = String()
@@ -1574,6 +1583,7 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
     var _diskStatus: PBDiskStatus? = nil
     var _disabledAgents: [PBAgent] = []
     var _settingsRevision: UInt64 = 0
+    var _daemonVersion: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1598,6 +1608,7 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       _diskStatus = source._diskStatus
       _disabledAgents = source._disabledAgents
       _settingsRevision = source._settingsRevision
+      _daemonVersion = source._daemonVersion
     }
   }
 
@@ -1630,6 +1641,7 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._diskStatus) }()
         case 16: try { try decoder.decodeRepeatedEnumField(value: &_storage._disabledAgents) }()
         case 17: try { try decoder.decodeSingularUInt64Field(value: &_storage._settingsRevision) }()
+        case 18: try { try decoder.decodeSingularStringField(value: &_storage._daemonVersion) }()
         default: break
         }
       }
@@ -1684,6 +1696,9 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
       if _storage._settingsRevision != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._settingsRevision, fieldNumber: 17)
       }
+      if !_storage._daemonVersion.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._daemonVersion, fieldNumber: 18)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1707,6 +1722,7 @@ extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
         if _storage._diskStatus != rhs_storage._diskStatus {return false}
         if _storage._disabledAgents != rhs_storage._disabledAgents {return false}
         if _storage._settingsRevision != rhs_storage._settingsRevision {return false}
+        if _storage._daemonVersion != rhs_storage._daemonVersion {return false}
         return true
       }
       if !storagesAreEqual {return false}

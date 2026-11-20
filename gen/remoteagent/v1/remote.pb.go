@@ -216,8 +216,13 @@ type MachineMeta struct {
 	DisabledAgents []Agent `protobuf:"varint,16,rep,packed,name=disabled_agents,json=disabledAgents,proto3,enum=remoteagent.v1.Agent" json:"disabled_agents,omitempty"`
 	// Monotonic settings revision from DaemonSettings.revision.
 	SettingsRevision uint64 `protobuf:"varint,17,opt,name=settings_revision,json=settingsRevision,proto3" json:"settings_revision,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The daemon's product version (internal/buildinfo, as `--version`
+	// prints it), e.g. "0.94.0"; source builds report other forms such as
+	// "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+	// decided by protocol_version.
+	DaemonVersion string `protobuf:"bytes,18,opt,name=daemon_version,json=daemonVersion,proto3" json:"daemon_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MachineMeta) Reset() {
@@ -346,6 +351,13 @@ func (x *MachineMeta) GetSettingsRevision() uint64 {
 		return x.SettingsRevision
 	}
 	return 0
+}
+
+func (x *MachineMeta) GetDaemonVersion() string {
+	if x != nil {
+		return x.DaemonVersion
+	}
+	return ""
 }
 
 // ProjectSummary is what a machine knows of a project beyond its live
@@ -3255,7 +3267,7 @@ var File_remoteagent_v1_remote_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\n" +
-	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\x1a!remoteagent/v1/capabilities.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\"\x99\x05\n" +
+	"\x1bremoteagent/v1/remote.proto\x12\x0eremoteagent.v1\x1a\x1aremoteagent/v1/event.proto\x1a!remoteagent/v1/capabilities.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\"\xc0\x05\n" +
 	"\vMachineMeta\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
 	"\x02os\x18\x02 \x01(\tR\x02os\x12\x12\n" +
@@ -3272,7 +3284,8 @@ const file_remoteagent_v1_remote_proto_rawDesc = "" +
 	"\vdisk_status\x18\x0f \x01(\v2\x1a.remoteagent.v1.DiskStatusR\n" +
 	"diskStatus\x12>\n" +
 	"\x0fdisabled_agents\x18\x10 \x03(\x0e2\x15.remoteagent.v1.AgentR\x0edisabledAgents\x12+\n" +
-	"\x11settings_revision\x18\x11 \x01(\x04R\x10settingsRevisionJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"\x8e\x01\n" +
+	"\x11settings_revision\x18\x11 \x01(\x04R\x10settingsRevision\x12%\n" +
+	"\x0edaemon_version\x18\x12 \x01(\tR\rdaemonVersionJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"\x8e\x01\n" +
 	"\x0eProjectSummary\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x14\n" +
 	"\x05ended\x18\x02 \x01(\rR\x05ended\x12*\n" +
