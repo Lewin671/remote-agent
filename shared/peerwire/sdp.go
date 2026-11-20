@@ -2,15 +2,62 @@ package peerwire
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 )
 
-func matches(pattern, value string) bool { return regexp.MustCompile(pattern).MatchString(value) }
+// The SDP checks are hand-written instead of regexp (which would add about
+// 87 KB to the client core); TestSDPWithoutRegexpAgrees pins them to the
+// original patterns, quoted next to each matcher.
+
+func all(v string, ok func(byte) bool) bool {
+	for i := 0; i < len(v); i++ {
+		if !ok(v[i]) {
+			return false
+		}
+	}
+	return true
+}
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }
+func isHex(c byte) bool   { _, ok := unhexDigit(c); return ok }
+func isBase64(c byte) bool {
+	return isDigit(c) || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '+' || c == '/'
+}
+
+// ^m=application [1-9][0-9]* UDP/DTLS/SCTP webrtc-datachannel$
+func mediaLine(l string) bool {
+	rest, ok := strings.CutPrefix(l, "m=application ")
+	port, tail, ok2 := strings.Cut(rest, " ")
+	return ok && ok2 && tail == "UDP/DTLS/SCTP webrtc-datachannel" && port != "" && port[0] != '0' && all(port, isDigit)
+}
+
+// ^[vostcm]=
+func typedLine(l string) bool {
+	return len(l) >= 2 && l[1] == '=' && strings.IndexByte("vostcm", l[0]) >= 0
+}
+
+// ^sha-256 ([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$
+func fingerprintValue(fp string) bool {
+	v, ok := strings.CutPrefix(fp, "sha-256 ")
+	if !ok || len(v) != 95 {
+		return false
+	}
+	for i := 0; i < len(v); i++ {
+		if i%3 == 2 {
+			if v[i] != ':' {
+				return false
+			}
+		} else if !isHex(v[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// ^[A-Za-z0-9+/]{min,256}$
+func iceToken(v string, min int) bool { return len(v) >= min && len(v) <= 256 && all(v, isBase64) }
 
 func ValidateSDP(raw []byte) error {
 	fail := errors.New("invalid SDP")
@@ -27,7 +74,7 @@ func ValidateSDP(raw []byte) error {
 	for _, line := range strings.Split(strings.TrimSuffix(string(raw), "\r\n"), "\r\n") {
 		if strings.HasPrefix(line, "m=") {
 			section++
-			if section != 1 || !matches(`^m=application [1-9][0-9]* UDP/DTLS/SCTP webrtc-datachannel$`, line) {
+			if section != 1 || !mediaLine(line) {
 				return fail
 			}
 		}
@@ -49,7 +96,7 @@ func ValidateSDP(raw []byte) error {
 				return fail
 			}
 			scopes[section][name] = value
-		} else if !matches(`^[vostcm]=`, line) {
+		} else if !typedLine(line) {
 			return fail
 		}
 	}
@@ -59,7 +106,7 @@ func ValidateSDP(raw []byte) error {
 	fingerprint := ""
 	for _, scope := range scopes {
 		if fp, exists := scope["fingerprint"]; exists {
-			if !matches(`^sha-256 ([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$`, fp) {
+			if !fingerprintValue(fp) {
 				return fail
 			}
 			if fingerprint != "" && !strings.EqualFold(fingerprint, fp) {
@@ -85,15 +132,16 @@ func ValidateSDP(raw []byte) error {
 			return fail
 		}
 	}
-	if !matches(`^[A-Za-z0-9+/]{4,256}$`, values["ice-ufrag"]) || !matches(`^[A-Za-z0-9+/]{22,256}$`, values["ice-pwd"]) {
+	if !iceToken(values["ice-ufrag"], 4) || !iceToken(values["ice-pwd"], 22) {
 		return fail
 	}
-	if !matches(`^(active|passive|actpass)$`, values["setup"]) {
+	if setup := values["setup"]; setup != "active" && setup != "passive" && setup != "actpass" {
 		return fail
 	}
+	// ^[0-9]+$
 	port := scopes[1]["sctp-port"]
 	n, err := strconv.Atoi(port)
-	if !matches(`^[0-9]+$`, port) || err != nil || n > 65535 {
+	if port == "" || !all(port, isDigit) || err != nil || n > 65535 {
 		return fail
 	}
 	return nil
@@ -114,8 +162,19 @@ func InspectSDP(raw []byte) (SDPInfo, error) {
 			r.Mid = []byte(strings.TrimPrefix(line, "a=mid:"))
 		}
 		if strings.HasPrefix(line, "a=fingerprint:sha-256 ") {
-			r.Fingerprint, _ = hex.DecodeString(strings.ReplaceAll(strings.TrimPrefix(line, "a=fingerprint:sha-256 "), ":", ""))
+			r.Fingerprint = fingerprintBytes(strings.TrimPrefix(line, "a=fingerprint:sha-256 "))
 		}
 	}
 	return r, nil
+}
+
+// fingerprintBytes decodes a fingerprint ValidateSDP already accepted.
+func fingerprintBytes(v string) []byte {
+	out := make([]byte, 0, 32)
+	for i := 0; i+1 < len(v); i += 3 {
+		hi, _ := unhexDigit(v[i])
+		lo, _ := unhexDigit(v[i+1])
+		out = append(out, hi<<4|lo)
+	}
+	return out
 }
