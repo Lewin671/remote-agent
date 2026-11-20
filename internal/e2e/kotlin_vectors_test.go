@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // kotlinVectors are made by the Android client's :core tests
@@ -108,7 +109,7 @@ func TestKotlinVectors(t *testing.T) {
 	if hex.EncodeToString(ik.Public()) != p.InitiatorPublic || hex.EncodeToString(jk.Public()) != p.JoinerPublic {
 		t.Error("pairing public keys differ")
 	}
-	tr := PairTranscript(p.PairingID, ik.Public(), jk.Public(), p.JoinerKind)
+	tr := devicesec.PairTranscript(p.PairingID, ik.Public(), jk.Public(), p.JoinerKind)
 	if hex.EncodeToString(tr) != p.Transcript {
 		t.Error("transcript differs")
 	}

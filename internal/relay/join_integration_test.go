@@ -106,7 +106,7 @@ func testJoinRegistration(t *testing.T, refused bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	commit := e2e.PairDomainCommit(key.Public(), trust)
+	commit := devicesec.PairDomainCommit(key.Public(), trust)
 	created, err := pairingAPI.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: commit}))
 	if err != nil {
 		t.Fatal(err)
@@ -155,7 +155,7 @@ func testJoinRegistration(t *testing.T, refused bool) {
 	if _, err := pairingAPI.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: created.Msg.PairingId, InitiatorPublic: key.Public(), Trust: trust})); err != nil {
 		t.Fatal(err)
 	}
-	tr := e2e.PairDomainTranscript(created.Msg.PairingId, key.Public(), st.JoinerPublic, st.DevicePublicKey, st.DeviceHpkePublicKey, int32(st.JoinerKind), trust)
+	tr := devicesec.PairDomainTranscript(created.Msg.PairingId, key.Public(), st.JoinerPublic, st.DevicePublicKey, st.DeviceHpkePublicKey, int32(st.JoinerKind), trust)
 	secrets, err := key.Derive(st.JoinerPublic, tr)
 	if err != nil {
 		t.Fatal(err)

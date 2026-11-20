@@ -687,10 +687,10 @@ func TestPairingLimits(t *testing.T) {
 	pc := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, ts.authority(t).phoneEd, ts.authority(t).phoneID)))
 	anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
 	ikey, _ := e2e.NewPairKey()
-	if _, err := anon.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairDomainCommit(ikey.Public(), ts.pairTrust(t, ts.authority(t).phoneID))})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+	if _, err := anon.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: devicesec.PairDomainCommit(ikey.Public(), ts.pairTrust(t, ts.authority(t).phoneID))})); connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("anonymous create: %v", err)
 	}
-	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairDomainCommit(ikey.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
+	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: devicesec.PairDomainCommit(ikey.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
 	if err != nil {
 		t.Fatal(err)
 	}

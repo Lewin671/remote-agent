@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -38,9 +39,9 @@ func TestApprovalRejectsSignatureAndIdentitySubstitution(t *testing.T) {
 	}
 	x, _ := NewPairKey()
 	y, _ := NewPairKey()
-	first := PairIdentityTranscript("pair", x.Public(), y.Public(), candidate, 2)
+	first := devicesec.PairIdentityTranscript("pair", x.Public(), y.Public(), candidate, 2)
 	candidate[0] ^= 1
-	second := PairIdentityTranscript("pair", x.Public(), y.Public(), candidate, 2)
+	second := devicesec.PairIdentityTranscript("pair", x.Public(), y.Public(), candidate, 2)
 	if bytes.Equal(first, second) {
 		t.Fatal("SAS is not bound to the permanent signing identity")
 	}
@@ -58,7 +59,7 @@ func TestPairApprovalVectors(t *testing.T) {
 	sig := ed25519.Sign(signer, append([]byte(PairApprovalContext), raw...))
 	x, _ := pairKeyFrom(bytes.Repeat([]byte{0x55}, 32))
 	y, _ := pairKeyFrom(bytes.Repeat([]byte{0x66}, 32))
-	tr := PairIdentityTranscript(a.PairingId, x.Public(), y.Public(), a.CandidateDevicePublicKey, 2)
+	tr := devicesec.PairIdentityTranscript(a.PairingId, x.Public(), y.Public(), a.CandidateDevicePublicKey, 2)
 	shared, _ := x.Derive(y.Public(), tr)
 	values := map[string]string{"root": hex.EncodeToString(root), "approver_seed": hex.EncodeToString(signerSeed), "candidate_seed": hex.EncodeToString(candidateSeed), "candidate_public": hex.EncodeToString(a.CandidateDevicePublicKey), "approval": hex.EncodeToString(raw), "signature": hex.EncodeToString(sig), "initiator_public": hex.EncodeToString(x.Public()), "joiner_public": hex.EncodeToString(y.Public()), "transcript": hex.EncodeToString(tr), "sas": hex.EncodeToString(shared.SAS[:]), "pairing_id": a.PairingId}
 	b, _ := json.MarshalIndent(values, "", "  ")

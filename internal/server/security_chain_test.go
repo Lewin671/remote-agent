@@ -260,7 +260,7 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	createdPairing, err := pairClient.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairDomainCommit(pkey.Public(), ts.pairTrust(t, c.phoneID))}))
+	createdPairing, err := pairClient.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: devicesec.PairDomainCommit(pkey.Public(), ts.pairTrust(t, c.phoneID))}))
 	if err != nil {
 		t.Fatal(err)
 	}

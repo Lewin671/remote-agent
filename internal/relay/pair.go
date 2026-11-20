@@ -202,13 +202,13 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		return nil, err
 	}
 	pin, approver, err := devicesec.ParsePairTrustDescriptor(st.Trust)
-	if err != nil || !bytes.Equal(e2e.PairDomainCommit(st.InitiatorPublic, st.Trust), commit) {
+	if err != nil || !bytes.Equal(devicesec.PairDomainCommit(st.InitiatorPublic, st.Trust), commit) {
 		return nil, errors.New("the existing device's trust descriptor does not match its commitment; pairing stopped")
 	}
 	if err := checkJoiningAccount(existing, pin, localStore); err != nil {
 		return nil, err
 	}
-	tr := e2e.PairDomainTranscript(id, st.InitiatorPublic, key.Public(), pub, xpub, int32(pb.DeviceKind_DEVICE_KIND_MACHINE), st.Trust)
+	tr := devicesec.PairDomainTranscript(id, st.InitiatorPublic, key.Public(), pub, xpub, int32(pb.DeviceKind_DEVICE_KIND_MACHINE), st.Trust)
 	secrets, err := key.Derive(st.InitiatorPublic, tr)
 	if err != nil {
 		return nil, err

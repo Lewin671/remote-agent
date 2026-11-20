@@ -584,7 +584,7 @@ func livePairCLI(t *testing.T, ctx context.Context, phone *remoteclient.Authorit
 	mustLive(t, err)
 	trust, err := devicesec.PairTrustDescriptor(phone.Pin, phone.Member.ID)
 	mustLive(t, err)
-	commit := e2e.PairDomainCommit(key.Public(), trust)
+	commit := devicesec.PairDomainCommit(key.Public(), trust)
 	created, err := api.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: commit}))
 	mustLive(t, err)
 	cmd := exec.CommandContext(ctx, bin, "account", "join", (relay.PairLink{Code: created.Msg.Code, Commit: commit, Server: phone.Server}).URL("https://example.com"))
@@ -643,7 +643,7 @@ func livePairCLI(t *testing.T, ctx context.Context, phone *remoteclient.Authorit
 	phone.Lease = lease
 	_, err = api.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{PairingId: created.Msg.PairingId, InitiatorPublic: key.Public(), Trust: trust}))
 	mustLive(t, err)
-	transcript := e2e.PairDomainTranscript(created.Msg.PairingId, key.Public(), status.JoinerPublic, status.DevicePublicKey, status.DeviceHpkePublicKey, int32(status.JoinerKind), trust)
+	transcript := devicesec.PairDomainTranscript(created.Msg.PairingId, key.Public(), status.JoinerPublic, status.DevicePublicKey, status.DeviceHpkePublicKey, int32(status.JoinerKind), trust)
 	secrets, err := key.Derive(status.JoinerPublic, transcript)
 	mustLive(t, err)
 	chain := []*pb.SecurityState{}

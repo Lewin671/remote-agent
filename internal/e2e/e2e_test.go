@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -178,14 +179,14 @@ func TestVectors(t *testing.T) {
 	pv.InitiatorPrivate, pv.JoinerPrivate = hex.EncodeToString(ip), hex.EncodeToString(jp)
 	pv.InitiatorPublic, pv.JoinerPublic = hex.EncodeToString(ik.Public()), hex.EncodeToString(jk.Public())
 	pv.PairingID, pv.JoinerKind = "0123456789abcdef0123456789abcdef", 2
-	tr := PairTranscript(pv.PairingID, ik.Public(), jk.Public(), pv.JoinerKind)
+	tr := devicesec.PairTranscript(pv.PairingID, ik.Public(), jk.Public(), pv.JoinerKind)
 	pv.Transcript = hex.EncodeToString(tr)
 	ps, err := ik.Derive(jk.Public(), tr)
 	if err != nil {
 		t.Fatal(err)
 	}
 	pv.SAS, pv.Key = hex.EncodeToString(ps.SAS[:]), hex.EncodeToString(ps.Key)
-	pv.Emoji = SASEmoji[:]
+	pv.Emoji = devicesec.SASEmoji[:]
 
 	const path = "testdata/vectors.json"
 
@@ -211,7 +212,7 @@ func TestVectors(t *testing.T) {
 func TestPairing(t *testing.T) {
 	init, _ := NewPairKey()
 	join, _ := NewPairKey()
-	tr := PairTranscript("pid", init.Public(), join.Public(), 2)
+	tr := devicesec.PairTranscript("pid", init.Public(), join.Public(), 2)
 	a, err := init.Derive(join.Public(), tr)
 	if err != nil {
 		t.Fatal(err)
@@ -225,7 +226,7 @@ func TestPairing(t *testing.T) {
 	}
 	// A swapped key gives other emoji (with overwhelming probability).
 	mitm, _ := NewPairKey()
-	c, _ := join.Derive(mitm.Public(), PairTranscript("pid", mitm.Public(), join.Public(), 2))
+	c, _ := join.Derive(mitm.Public(), devicesec.PairTranscript("pid", mitm.Public(), join.Public(), 2))
 	if c.SAS == a.SAS {
 		t.Fatal("swapped key gave the same SAS")
 	}
@@ -233,7 +234,7 @@ func TestPairing(t *testing.T) {
 		t.Fatal("accepted an all-zero public key")
 	}
 	seen := map[string]bool{}
-	for _, e := range SASEmoji {
+	for _, e := range devicesec.SASEmoji {
 		if e == "" || seen[e] {
 			t.Fatalf("emoji table has %q twice or empty", e)
 		}

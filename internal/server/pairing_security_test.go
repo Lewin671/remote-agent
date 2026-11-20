@@ -7,6 +7,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"net/http"
 	"testing"
 	"time"
@@ -18,7 +19,7 @@ func TestPairingRateLimitDoesNotRevealValidCodes(t *testing.T) {
 	pc := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, ts.authority(t).phoneEd, ts.authority(t).phoneID)))
 	anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
 	key, _ := e2e.NewPairKey()
-	created, err := pc.CreatePairing(context.Background(), connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairDomainCommit(key.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
+	created, err := pc.CreatePairing(context.Background(), connect.NewRequest(&pb.CreatePairingRequest{Commit: devicesec.PairDomainCommit(key.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +43,7 @@ func TestCanceledPairingCannotReleaseApprovedPayload(t *testing.T) {
 	anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
 	ctx := context.Background()
 	key, _ := e2e.NewPairKey()
-	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairDomainCommit(key.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
+	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: devicesec.PairDomainCommit(key.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +90,7 @@ SELECT 'capacity-' || i, ?, 'synthetic-approver', 'synthetic-candidate', 2, X'01
 			pc := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, ts.authority(t).phoneEd, ts.authority(t).phoneID)))
 			anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
 			key, _ := e2e.NewPairKey()
-			created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: e2e.PairDomainCommit(key.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
+			created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: devicesec.PairDomainCommit(key.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
 			if err != nil {
 				t.Fatal(err)
 			}

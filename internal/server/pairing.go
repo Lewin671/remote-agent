@@ -301,7 +301,7 @@ func (ps *pairingService) RevealPairing(ctx context.Context, req *connect.Reques
 		return nil, invalid("missing or oversized trust descriptor")
 	}
 	pin, approver, err := devicesec.ParsePairTrustDescriptor(req.Msg.Trust)
-	if err != nil || pin.Account != p.account || approver != p.initiator || !bytes.Equal(e2e.PairDomainCommit(req.Msg.InitiatorPublic, req.Msg.Trust), p.commit) {
+	if err != nil || pin.Account != p.account || approver != p.initiator || !bytes.Equal(devicesec.PairDomainCommit(req.Msg.InitiatorPublic, req.Msg.Trust), p.commit) {
 		return nil, invalid("the trust descriptor does not match the commitment")
 	}
 	p.trust = bytes.Clone(req.Msg.Trust)
