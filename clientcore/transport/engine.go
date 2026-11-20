@@ -227,6 +227,16 @@ func (e *Engine) current(now int64) bool {
 	return e.foreground && e.member && e.proven && now < e.freshUntil
 }
 
+// SignalAuthorized is the session layer's authorization for one signal step
+// (offer, answer, candidates, confirm): inside the freshness window the
+// security proof already covers it and no sync is asked for; once it lapses
+// the step waits for Authorize and the SecuritySynced that follows (the
+// Android authorizeUnlessFresh rule). The session layer must not sync per step.
+func (e *Engine) SignalAuthorized(now int64, id RoundID) bool {
+	p := e.rounds[id]
+	return p != nil && e.valid(p, now)
+}
+
 func (e *Engine) valid(p *round, now int64) bool {
 	return p.live && e.current(now) && p.head == e.head && e.enabled(p.machine)
 }

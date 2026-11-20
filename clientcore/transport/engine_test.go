@@ -166,6 +166,9 @@ func TestReadyGates(t *testing.T) {
 	if r.e.Ready(r.now+FreshMs, "m1", read) {
 		t.Fatal("a lapsed security proof stops the path")
 	}
+	if id := r.e.peers["m1"].id; !r.e.SignalAuthorized(r.now+FreshMs-1, id) || r.e.SignalAuthorized(r.now+FreshMs, id) {
+		t.Fatal("a signal step needs no sync inside the freshness window, and one after it")
+	}
 	r.do(SecuritySynced{Member: true, Account: "acct", Head: "h2", StartedAt: r.now, LeaseNotAfter: lease, Machines: []string{"m1"}})
 	if r.e.Ready(r.now, "m1", read) || len(of[CloseRound](r.out)) != 1 {
 		t.Fatal("a new head closes rounds of the old one")
