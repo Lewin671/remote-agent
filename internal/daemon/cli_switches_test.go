@@ -139,8 +139,17 @@ func TestCliSwitchesPersistenceConflictAndEnforcement(t *testing.T) {
 		},
 		Active: &schedule.Run{ID: "run-1", Status: "dispatching", TargetType: "new_session", StartedAt: time.Now().UTC()},
 	}
-	// Ensure Claude is currently disabled.
+	// Ensure Claude is currently disabled. Whichever goroutine above won is
+	// up to the scheduler; if Codex was the one disabled, enable it again
+	// first so Claude is not the last enabled CLI.
 	if !d.isAgentDisabled(pb.Agent_AGENT_CLAUDE) {
+		if _, err := rpc.UpdateSettings(ctx, connect.NewRequest(&pb.UpdateSettingsRequest{
+			Settings:      &pb.DaemonSettings{},
+			ToggleAgent:   &agCodex,
+			ToggleEnabled: &enTrue,
+		})); err != nil {
+			t.Fatal(err)
+		}
 		if _, err := rpc.UpdateSettings(ctx, connect.NewRequest(&pb.UpdateSettingsRequest{
 			Settings:      &pb.DaemonSettings{},
 			ToggleAgent:   &agClaude,
