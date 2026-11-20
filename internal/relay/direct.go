@@ -660,7 +660,7 @@ func (m *directManager) reserveRate(class, n int, now time.Time) bool {
 	if class == 1 {
 		fps, bps, burst = 512, 512<<10, 1024
 	}
-	b, ok := m.tokens[class].Take(now.UnixMilli(), n, fps, bps, burst)
+	b, ok := m.tokens[class].Take(transport.MonotonicMs(now), n, fps, bps, burst)
 	m.tokens[class] = b
 	return ok
 }

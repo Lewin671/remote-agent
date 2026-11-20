@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
@@ -77,11 +78,11 @@ func (m *directManager) allowIncoming(peer string, class, n int, now time.Time) 
 		fps, bps, burst = 512, 512<<10, 1024
 		afps, abps, aburst = 2048, 4<<20, 2048
 	}
-	per, ok := rates.buckets[class].Take(now.UnixMilli(), n, fps, bps, burst)
+	per, ok := rates.buckets[class].Take(transport.MonotonicMs(now), n, fps, bps, burst)
 	if !ok {
 		return false
 	}
-	account, ok := m.inboundAccount[class].Take(now.UnixMilli(), n, afps, abps, aburst)
+	account, ok := m.inboundAccount[class].Take(transport.MonotonicMs(now), n, afps, abps, aburst)
 	if !ok {
 		return false
 	}
