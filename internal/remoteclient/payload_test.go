@@ -10,6 +10,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"net/http/httptest"
 	"os"
@@ -22,7 +23,7 @@ type payloadServer struct {
 	remoteagentv1connect.UnimplementedClientServiceHandler
 	endpoint      *deviceauth.Endpoint
 	received      [][]byte
-	expectedState *deviceauth.Hash
+	expectedState *devicesec.Hash
 }
 
 func (s *payloadServer) Forward(_ context.Context, r *connect.Request[pb.ForwardRequest]) (*connect.Response[pb.ForwardResponse], error) {
@@ -35,7 +36,7 @@ func (s *payloadServer) Forward(_ context.Context, r *connect.Request[pb.Forward
 		return nil, err
 	}
 	if s.expectedState != nil && h.State != *s.expectedState {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, deviceauth.ErrStale)
+		return nil, connect.NewError(connect.CodeFailedPrecondition, devicesec.ErrStale)
 	}
 	plain, err := deviceauth.Unpack(h, p)
 	if err != nil {
@@ -44,11 +45,11 @@ func (s *payloadServer) Forward(_ context.Context, r *connect.Request[pb.Forward
 	s.received = append(s.received, bytes.Clone(plain))
 	key, payload, _ := deviceauth.RequestIdentity(h, p)
 	body, _ := proto.Marshal(&pb.CommandResult{Outcome: "executed", Reason: "completed", ResultAvailable: true, RequestKeyHash: key[:], PayloadHash: payload[:], Kind: &pb.CommandResult_CreateSession{CreateSession: &pb.CreateSessionResponse{Session: &pb.Session{Id: "created"}}}})
-	result, err := s.endpoint.Prepare(deviceauth.Header{Kind: 6, Purpose: deviceauth.Result, Machine: h.Machine, Session: h.Session, Request: h.Request}, nil, body)
+	result, err := s.endpoint.Prepare(devicesec.Header{Kind: 6, Purpose: devicesec.Result, Machine: h.Machine, Session: h.Session, Request: h.Request}, nil, body)
 	if err != nil {
 		return nil, err
 	}
-	env, _ := result.Envelope()
+	env, _ := deviceauth.Envelope(result)
 	return connect.NewResponse(&pb.ForwardResponse{Result: env, Outcome: "executed", Reason: "completed", AttemptId: r.Msg.AttemptId}), nil
 }
 func TestCreateSessionRetryRetainsOriginalPayloadBytes(t *testing.T) {
@@ -68,12 +69,12 @@ func TestCreateSessionRetryRetainsOriginalPayloadBytes(t *testing.T) {
 		t.Fatal("fixture must expose re-encoding")
 	}
 	client, machine, mid := syntheticTerminalSecurity(t)
-	h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: mid, Request: NewRequestID(), Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}
+	h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: mid, Request: NewRequestID(), Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}
 	sealed, err := client.endpoint.Prepare(h, nil, plain)
 	if err != nil {
 		t.Fatal(err)
 	}
-	env, _ := sealed.Envelope()
+	env, _ := deviceauth.Envelope(sealed)
 	handler := &payloadServer{endpoint: machine}
 	_, service := remoteagentv1connect.NewClientServiceHandler(handler)
 	server := httptest.NewServer(testEpochHandler(service))
@@ -120,10 +121,10 @@ func TestCreateSessionRetryRetainsOriginalPayloadBytes(t *testing.T) {
 }
 
 func TestForwardRefreshesTheSealWhenVerifiedAuthorizationChanges(t *testing.T) {
-	var head deviceauth.State
+	var head devicesec.State
 	var key []byte
 	var authority ed25519.PrivateKey
-	client, machine, mid := syntheticTerminalSecurity(t, func(h deviceauth.State, k []byte, a ed25519.PrivateKey) { head, key, authority = h, k, a })
+	client, machine, mid := syntheticTerminalSecurity(t, func(h devicesec.State, k []byte, a ed25519.PrivateKey) { head, key, authority = h, k, a })
 	raw, err := os.ReadFile("../../testdata/transport/prepared-command.json")
 	if err != nil {
 		t.Fatal(err)
@@ -131,12 +132,12 @@ func TestForwardRefreshesTheSealWhenVerifiedAuthorizationChanges(t *testing.T) {
 	var fixture struct{ Plain string }
 	json.Unmarshal(raw, &fixture)
 	plain, _ := base64.StdEncoding.DecodeString(fixture.Plain)
-	h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: mid, Request: NewRequestID(), Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}
+	h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: mid, Request: NewRequestID(), Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}
 	sealed, err := client.endpoint.Prepare(h, nil, plain)
 	if err != nil {
 		t.Fatal(err)
 	}
-	env, _ := sealed.Envelope()
+	env, _ := deviceauth.Envelope(sealed)
 	var recovery [32]byte
 	recovery[0] = 2
 	next, err := deviceauth.BuildRecoveryKeyRotation(head, key, recovery, authority, head.Core.IssuedAt+1)
@@ -144,7 +145,7 @@ func TestForwardRefreshesTheSealWhenVerifiedAuthorizationChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, endpoint := range []*deviceauth.Endpoint{client.endpoint, machine} {
-		if err = endpoint.Install([]deviceauth.State{next}, []*deviceauth.RecoveryStatement{nil}); err != nil {
+		if err = endpoint.Install([]devicesec.State{next}, []*devicesec.RecoveryStatement{nil}); err != nil {
 			t.Fatal(err)
 		}
 	}

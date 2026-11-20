@@ -11,6 +11,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -143,7 +144,7 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	machine, err := authority.Enroll(ctx, med, mx, deviceauth.Machine)
+	machine, err := authority.Enroll(ctx, med, mx, devicesec.Machine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +175,7 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	enrolled, err := authority.Enroll(ctx, ced, cx, deviceauth.Client)
+	enrolled, err := authority.Enroll(ctx, ced, cx, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}

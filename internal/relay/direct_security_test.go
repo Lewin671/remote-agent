@@ -13,9 +13,10 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
-func directBinding(t *testing.T, c *conn) (deviceauth.Member, deviceauth.Member, deviceauth.Hash) {
+func directBinding(t *testing.T, c *conn) (devicesec.Member, devicesec.Member, devicesec.Hash) {
 	t.Helper()
 	_, head, id := c.security.endpoint.Snapshot()
 	self, _ := head.Core.Member(id)
@@ -41,7 +42,7 @@ func TestDirectSyncWholeRoundDeadlineAndUnavailable(t *testing.T) {
 					t.Fatal("fresh binding unavailable", err)
 				}
 				calls := 0
-				var rotation deviceauth.State
+				var rotation devicesec.State
 				if mode == "partial-pages" {
 					_, recovery, _ := ed25519.GenerateKey(nil)
 					var public [32]byte
@@ -168,7 +169,7 @@ func TestDirectInstallAndLeaseGates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = s.endpoint.Install([]deviceauth.State{next}, []*deviceauth.RecoveryStatement{nil}); err != nil {
+	if err = s.endpoint.Install([]devicesec.State{next}, []*devicesec.RecoveryStatement{nil}); err != nil {
 		t.Fatal(err)
 	}
 	if s.directCurrent(self, peer, hash) {

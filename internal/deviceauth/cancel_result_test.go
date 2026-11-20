@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestInterruptedCallbackLeavesStartedRecord(t *testing.T) {
@@ -17,12 +19,12 @@ func TestInterruptedCallbackLeavesStartedRecord(t *testing.T) {
 			cl := c.clientEndpoint(t)
 			defer cl.Close()
 			now := uint64(time.Now().UnixMilli())
-			w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "interrupted-request", Deadline: now + 60000}, nil, commandBody(t))
+			w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "interrupted-request", Deadline: now + 60000}, nil, commandBody(t))
 			if err != nil {
 				t.Fatal(err)
 			}
 			calls := 0
-			_, _ = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+			_, _ = m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 				calls++
 				return Undetermined(), cause
 			})
@@ -37,7 +39,7 @@ func TestInterruptedCallbackLeavesStartedRecord(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer m.Close()
-			_, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+			_, err = m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 				calls++
 				return Final(nil), nil
 			})
@@ -59,13 +61,13 @@ func TestInFlightDuplicateIsNotUnknownState(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "concurrent-request", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "concurrent-request", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		_, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 			close(entered)
 			<-release
 			return Final([]byte("done")), nil
@@ -73,7 +75,7 @@ func TestInFlightDuplicateIsNotUnknownState(t *testing.T) {
 		done <- err
 	}()
 	<-entered
-	_, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	_, err = m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		t.Error("duplicate executed")
 		return Final(nil), nil
 	})
@@ -84,7 +86,7 @@ func TestInFlightDuplicateIsNotUnknownState(t *testing.T) {
 	if err == nil || errors.Is(err, ErrUnknown) {
 		t.Fatalf("in-flight duplicate confused with unknown epoch: %v", err)
 	}
-	out, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	out, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		t.Error("completed duplicate executed")
 		return Final(nil), nil
 	})
@@ -101,12 +103,12 @@ func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
 	deadline := now + 60000
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "pruned-interruption", Deadline: deadline}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "pruned-interruption", Deadline: deadline}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	calls := 0
-	_, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	_, err = m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		calls++
 		return Undetermined(), context.Canceled
 	})
@@ -114,16 +116,16 @@ func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Admission of another request actually prunes the persisted expired entry.
-	next, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "next-request-after-prune", Deadline: deadline + acceptedGrace + 60000}, nil, commandBody(t))
+	next, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "next-request-after-prune", Deadline: deadline + acceptedGrace + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = m.Accept(next, nil, deadline+acceptedGrace, func(Header, []byte) (Completion, error) {
+	if _, err = m.Accept(next, nil, deadline+acceptedGrace, func(devicesec.Header, []byte) (Completion, error) {
 		return Final([]byte("done")), nil
 	}); err != nil {
 		t.Fatal(err)
 	}
-	h, _ := ParseHeader(w.Header)
+	h, _ := devicesec.ParseHeader(w.Header)
 	if _, ok := m.data.Accepted[acceptedKey(h)]; ok {
 		t.Fatal("entry was not pruned")
 	}
@@ -133,7 +135,7 @@ func TestPrunedInterruptedRequestCannotExecuteAfterDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer m.Close()
-	_, err = m.Accept(w, nil, deadline+acceptedGrace, func(Header, []byte) (Completion, error) {
+	_, err = m.Accept(w, nil, deadline+acceptedGrace, func(devicesec.Header, []byte) (Completion, error) {
 		calls++
 		return Final(nil), nil
 	})

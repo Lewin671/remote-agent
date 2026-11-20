@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // TestFutureStateIsAClockError covers a state issued by a device whose clock
@@ -12,11 +14,11 @@ import (
 // merely behind, so a daemon or client can warn about it.
 func TestFutureStateIsAClockError(t *testing.T) {
 	now := uint64(time.Now().UnixMilli())
-	phone, phoneEd, phoneX := testMember(t, 0x11, Client)
+	phone, phoneEd, phoneX := testMember(t, 0x11, devicesec.Client)
 	var recoveryPub [32]byte
 	recoveryPub[0] = 0x22
 	secret := bytes.Repeat([]byte{0x33}, 32)
-	g, err := BuildGenesis("0123456789abcdef0123456789abcdef", digest("test/domain", []byte("clock")), phone, recoveryPub, secret, phoneEd, now)
+	g, err := BuildGenesis("0123456789abcdef0123456789abcdef", devicesec.Digest("test/domain", []byte("clock")), phone, recoveryPub, secret, phoneEd, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +26,7 @@ func TestFutureStateIsAClockError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ep, err := initTestEndpoint("", pin, []State{g}, []*RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX)
+	ep, err := initTestEndpoint("", pin, []devicesec.State{g}, []*devicesec.RecoveryStatement{nil}, phone.ID, phoneEd.Seed(), phoneX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +35,7 @@ func TestFutureStateIsAClockError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ep.Install([]State{future}, []*RecoveryStatement{nil}); !errors.Is(err, ErrClock) {
+	if err := ep.Install([]devicesec.State{future}, []*devicesec.RecoveryStatement{nil}); !errors.Is(err, devicesec.ErrClock) {
 		t.Fatalf("future state install = %v, want ErrClock", err)
 	}
 }

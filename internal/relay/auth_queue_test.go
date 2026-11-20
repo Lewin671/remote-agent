@@ -12,6 +12,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 type heldMembershipClient struct {
@@ -44,7 +45,7 @@ func TestUnknownEpochWaitQueueIsBoundedAndLeavesAuthenticationFree(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			h, err := deviceauth.ParseHeader(wire.Header)
+			h, err := devicesec.ParseHeader(wire.Header)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +55,7 @@ func TestUnknownEpochWaitQueueIsBoundedAndLeavesAuthenticationFree(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			env, err := wire.Envelope()
+			env, err := deviceauth.Envelope(wire)
 			if err != nil {
 				t.Fatal(err)
 			}

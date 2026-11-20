@@ -25,6 +25,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/updater"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func must(err error) {
@@ -71,7 +72,7 @@ func main() {
 	must(err)
 	x, _, err := deviceauth.NewXKey()
 	must(err)
-	machine, err := auth.Enroll(ctx, ed, x, deviceauth.Machine)
+	machine, err := auth.Enroll(ctx, ed, x, devicesec.Machine)
 	must(err)
 	home := filepath.Join(dir, "schedule-home")
 	must(os.MkdirAll(home, 0700))

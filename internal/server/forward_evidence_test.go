@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"testing"
 	"time"
 )
@@ -26,7 +26,7 @@ func unf(err error) *pb.NotForwarded {
 func TestForwardEvidenceStopsAtEnqueue(t *testing.T) {
 	ts := newTestServer(t)
 	a := ts.account(t, ts.keys)
-	env, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: a.mid, Sender: a.cid, RequestId: "0123456789abcdef0123456789abcdef", DeadlineMs: time.Now().Add(time.Minute).UnixMilli()}, []byte("fixture"))
+	env, _ := opaqueEnvelope(&pb.Header{Version: devicesec.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: a.mid, Sender: a.cid, RequestId: "0123456789abcdef0123456789abcdef", DeadlineMs: time.Now().Add(time.Minute).UnixMilli()}, []byte("fixture"))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	req := forwardRequest(&pb.ForwardRequest{MachineId: a.mid, Command: env}, ts.srv.forwardAttempts.epoch)
@@ -46,7 +46,7 @@ func TestForwardEvidenceStopsAtEnqueue(t *testing.T) {
 	}
 	// Quota/admission paths use the same detail without inspecting any plaintext.
 	for _, code := range []connect.Code{connect.CodeUnavailable, connect.CodeResourceExhausted, connect.CodeUnauthenticated, connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeInvalidArgument} {
-		err := notForwarded(connect.NewError(code, deviceauth.ErrCapacity), req.Msg.AttemptId, ts.srv.forwardAttempts.epoch, "admission_refused")
+		err := notForwarded(connect.NewError(code, devicesec.ErrCapacity), req.Msg.AttemptId, ts.srv.forwardAttempts.epoch, "admission_refused")
 		if p := unf(err); p == nil || p.AttemptId != req.Msg.AttemptId {
 			t.Fatal(code)
 		}

@@ -24,6 +24,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"google.golang.org/protobuf/proto"
@@ -120,7 +121,7 @@ type directManager struct {
 
 func newDirectManager(d *dispatcher) (*directManager, error) {
 	if d.acct.Security == nil || len(d.acct.DeviceSeed) != 32 {
-		return nil, deviceauth.ErrUntrusted
+		return nil, devicesec.ErrUntrusted
 	}
 	box, err := ecdh.X25519().NewPrivateKey(d.acct.Security.XPrivate)
 	if err != nil {
@@ -129,8 +130,8 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	sign := ed25519.NewKeyFromSeed(d.acct.DeviceSeed)
 	_, head, id := d.security.endpoint.Snapshot()
 	member, ok := head.Core.Member(id)
-	if !ok || member.Kind != deviceauth.Machine || !bytes.Equal(member.EdPublic[:], sign.Public().(ed25519.PublicKey)) || !bytes.Equal(member.XPublic[:], box.PublicKey().Bytes()) {
-		return nil, deviceauth.ErrUntrusted
+	if !ok || member.Kind != devicesec.Machine || !bytes.Equal(member.EdPublic[:], sign.Public().(ed25519.PublicKey)) || !bytes.Equal(member.XPublic[:], box.PublicKey().Bytes()) {
+		return nil, devicesec.ErrUntrusted
 	}
 	policy, err := openDirectPolicy(filepath.Join(paths.Dir(), "direct-policy-"+id+".json"))
 	if err != nil {
@@ -266,7 +267,7 @@ func (m *directManager) scope(id string) (deviceauth.PeerBinding, *peerwire.Code
 	peer, ok := head.Core.Member(id)
 	hash, err := head.Hash()
 	binding := deviceauth.PeerBinding{Self: self, Peer: peer, Head: hash}
-	if err != nil || !own || !ok || peer.Kind != deviceauth.Client || !m.d.security.directCurrent(self, peer, hash) {
+	if err != nil || !own || !ok || peer.Kind != devicesec.Client || !m.d.security.directCurrent(self, peer, hash) {
 		return binding, nil, peerwire.Public{}, false
 	}
 	codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.Version)
@@ -370,7 +371,7 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 			}
 		}
 	}
-	p := &directPeer{policyVersion: m.policy.version(id), binding: binding, codec: codec, peer: peer, connection: append([]byte(nil), connection...), expires: now + 10000 + deviceauth.MaxClockSkew, writeWake: make(chan struct{}, 1)}
+	p := &directPeer{policyVersion: m.policy.version(id), binding: binding, codec: codec, peer: peer, connection: append([]byte(nil), connection...), expires: now + 10000 + devicesec.MaxClockSkew, writeWake: make(chan struct{}, 1)}
 	p.processValid.Store(true)
 	allow := func() bool {
 		return p.processValid.Load() && m.ctx.Err() == nil && m.d.security.directCurrent(binding.Self, binding.Peer, binding.Head)
@@ -577,8 +578,8 @@ func (m *directManager) readPath(peer *directPeer, use uint64, path *direct.Path
 		if err != nil {
 			continue
 		}
-		header, err := deviceauth.ParseHeader(wire.Header)
-		if err != nil || header.Sender != peer.binding.Peer.ID || header.Machine != m.d.acct.DeviceID || header.Purpose != deviceauth.Command {
+		header, err := devicesec.ParseHeader(wire.Header)
+		if err != nil || header.Sender != peer.binding.Peer.ID || header.Machine != m.d.acct.DeviceID || header.Purpose != devicesec.Command {
 			continue
 		}
 		deadline := time.UnixMilli(int64(header.Deadline))
@@ -799,7 +800,7 @@ func (m *directManager) maintenance() {
 		}
 		_, head, _ := m.d.security.endpoint.Snapshot()
 		for _, member := range head.Core.Members {
-			if member.Kind != deviceauth.Client {
+			if member.Kind != devicesec.Client {
 				continue
 			}
 			binding, codec, peer, ok := m.scope(member.ID)
@@ -994,7 +995,7 @@ func (m *directManager) pushDirectEvent(ctx context.Context, key []byte, sid str
 		SessionId: sid,
 		Seq:       fitted.Seq,
 		Sender:    m.d.acct.DeviceID,
-	}, deviceauth.Event, key, fitted)
+	}, devicesec.Event, key, fitted)
 	if err != nil {
 		return
 	}

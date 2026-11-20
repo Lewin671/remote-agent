@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // Done is consulted by waitLocked only after registering the waiter. This
@@ -29,7 +31,7 @@ func TestCanceledDuplicateReleasesWaiterWithoutCancelingExecution(t *testing.T) 
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "cancel-waiting-request", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "cancel-waiting-request", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +40,11 @@ func TestCanceledDuplicateReleasesWaiterWithoutCancelingExecution(t *testing.T) 
 	defer once.Do(func() { close(release) })
 	done := make(chan error, 1)
 	go func() {
-		_, err := e.Accept(w, nil, now, func(Header, []byte) (Completion, error) { close(entered); <-release; return Final([]byte("done")), nil })
+		_, err := e.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
+			close(entered)
+			<-release
+			return Final([]byte("done")), nil
+		})
 		done <- err
 	}()
 	<-entered
@@ -90,7 +96,7 @@ func TestSlotAcquisitionRechecksIdentityPauseAndExpiry(t *testing.T) {
 			cl := c.clientEndpoint(t)
 			defer cl.Close()
 			now := uint64(time.Now().UnixMilli())
-			h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "slot-recheck-request", Deadline: now + 60000}
+			h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "slot-recheck-request", Deadline: now + 60000}
 			w, err := cl.Prepare(h, nil, commandBody(t))
 			if err != nil {
 				t.Fatal(err)
@@ -114,7 +120,7 @@ func TestSlotAcquisitionRechecksIdentityPauseAndExpiry(t *testing.T) {
 			}}
 			done := make(chan error, 1)
 			go func() {
-				out, err := e.AcceptWith(ctx, w, nil, now, options, func(Header, []byte) (Completion, error) { calls.Add(1); return Final(nil), nil })
+				out, err := e.AcceptWith(ctx, w, nil, now, options, func(devicesec.Header, []byte) (Completion, error) { calls.Add(1); return Final(nil), nil })
 				if change == "duplicate" && err == nil && string(out) != "saved" {
 					err = errors.New("lost cached result")
 				}
@@ -132,7 +138,7 @@ func TestSlotAcquisitionRechecksIdentityPauseAndExpiry(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				if _, err = e.Accept(original, nil, now, func(Header, []byte) (Completion, error) { return Final([]byte("saved")), nil }); err != nil {
+				if _, err = e.Accept(original, nil, now, func(devicesec.Header, []byte) (Completion, error) { return Final([]byte("saved")), nil }); err != nil {
 					t.Fatal(err)
 				}
 			case "pause":
@@ -150,7 +156,7 @@ func TestSlotAcquisitionRechecksIdentityPauseAndExpiry(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("slot acquisition held a lock")
 			}
-			want := map[string]error{"duplicate": nil, "conflict": ErrIdentityConflict, "pause": ErrUntrusted, "expiry": ErrExpired}[change]
+			want := map[string]error{"duplicate": nil, "conflict": ErrIdentityConflict, "pause": devicesec.ErrUntrusted, "expiry": ErrExpired}[change]
 			if change == "canceled" {
 				if !errors.Is(err, context.Canceled) && err != ErrOutcomeUnknown {
 					t.Fatal(err)
@@ -172,11 +178,11 @@ func TestSlotWaitHonorsSignedDeadline(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "slot-deadline-request", Deadline: now + 100}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "slot-deadline-request", Deadline: now + 100}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = e.AcceptWith(context.Background(), w, nil, now, AcceptOptions{Acquire: func(ctx context.Context) (func(), error) { <-ctx.Done(); return nil, ctx.Err() }}, func(Header, []byte) (Completion, error) {
+	_, err = e.AcceptWith(context.Background(), w, nil, now, AcceptOptions{Acquire: func(ctx context.Context) (func(), error) { <-ctx.Done(); return nil, ctx.Err() }}, func(devicesec.Header, []byte) (Completion, error) {
 		t.Fatal("expired slot wait executed")
 		return Final(nil), nil
 	})
@@ -195,7 +201,7 @@ func TestSlotRaceReleasesAcquiredSlotBeforeDuplicateWait(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "slot-race-request", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "slot-race-request", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,13 +221,16 @@ func TestSlotRaceReleasesAcquiredSlotBeforeDuplicateWait(t *testing.T) {
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			}
-		}}, func(Header, []byte) (Completion, error) { t.Error("second callback started"); return Final(nil), nil })
+		}}, func(devicesec.Header, []byte) (Completion, error) {
+			t.Error("second callback started")
+			return Final(nil), nil
+		})
 		result <- err
 	}()
 	<-queued
 	first := make(chan error, 1)
 	go func() {
-		_, err := e.Accept(w, nil, now, func(Header, []byte) (Completion, error) { close(running); <-finish; return Final(nil), nil })
+		_, err := e.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) { close(running); <-finish; return Final(nil), nil })
 		first <- err
 	}()
 	<-running

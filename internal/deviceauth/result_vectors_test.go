@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/outcome"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"os"
 	"testing"
@@ -38,15 +39,15 @@ func TestSharedProofVectors(t *testing.T) {
 	var f proofVectors
 	if os.Getenv("GEN_OUTCOME_VECTORS") == "1" {
 		base := buildVectors(t)
-		state, _ := ParseState(raw(base.Added.State))
+		state, _ := devicesec.ParseState(raw(base.Added.State))
 		sh, _ := state.Hash()
 		phone := ed25519.NewKeyFromSeed(hexraw(base.PhoneSeed))
 		machine := ed25519.NewKeyFromSeed(hexraw(base.MachineSeed))
 		secret := hexraw(base.ContentSecret2)
-		h := Header{Account: state.Core.Account, Domain: state.Core.Domain, Epoch: state.Core.Epoch, State: sh, ContentEpoch: state.Core.ContentEpoch, Sender: ID(phone.Public().(ed25519.PublicKey)), Kind: 5, Purpose: Command, Machine: ID(machine.Public().(ed25519.PublicKey)), Session: "fixture-session", Request: "0123456789abcdef0123456789abcdef", Deadline: 1700000600000}
+		h := devicesec.Header{Account: state.Core.Account, Domain: state.Core.Domain, Epoch: state.Core.Epoch, State: sh, ContentEpoch: state.Core.ContentEpoch, Sender: devicesec.ID(phone.Public().(ed25519.PublicKey)), Kind: 5, Purpose: devicesec.Command, Machine: devicesec.ID(machine.Public().(ed25519.PublicKey)), Session: "fixture-session", Request: "0123456789abcdef0123456789abcdef", Deadline: 1700000600000}
 		plain, _ := proto.Marshal(&pb.Command{ProtocolVersion: 15, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: h.Session, Text: "fixture", RequestId: h.Request}}})
 		w, _ := Seal(secret, nil, h, plain, phone)
-		env, _ := w.Envelope()
+		env, _ := Envelope(w)
 		encoded, _ := proto.Marshal(env)
 		key, payload, _ := RequestIdentity(h, plain)
 		f = proofVectors{State: base.Added.State, Secret: base.ContentSecret2, Command: b64(encoded), Plain: b64(plain), Key: hex.EncodeToString(key[:]), Payload: hex.EncodeToString(payload[:])}
@@ -94,14 +95,14 @@ func TestSharedProofVectors(t *testing.T) {
 			resultBody, _ := proto.Marshal(r)
 			rh := h
 			rh.Kind = 6
-			rh.Purpose = Result
+			rh.Purpose = devicesec.Result
 			rh.Sender = h.Machine
 			rh.Deadline = 0
 			resultWire, e := Seal(secret, nil, rh, resultBody, machine)
 			if e != nil {
 				t.Fatal(e)
 			}
-			resultEnv, _ := resultWire.Envelope()
+			resultEnv, _ := Envelope(resultWire)
 			if kind == "bad_signature" {
 				resultEnv.Signature[0] ^= 1
 				expected = "unknown"
@@ -130,12 +131,12 @@ func TestSharedProofVectors(t *testing.T) {
 	if e = json.Unmarshal(b, &f); e != nil {
 		t.Fatal(e)
 	}
-	state, _ := ParseState(raw(f.State))
+	state, _ := devicesec.ParseState(raw(f.State))
 	secret := hexraw(f.Secret)
 	command := &pb.Envelope{}
 	proto.Unmarshal(raw(f.Command), command)
 	wire, _ := FromEnvelope(command)
-	h, p, e := wire.Open(secret, nil, state, state, false, 0)
+	h, p, e := OpenEnvelope(wire, secret, nil, state, state, false, 0)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -150,7 +151,7 @@ func TestSharedProofVectors(t *testing.T) {
 			w, e := FromEnvelope(env)
 			got := outcome.Unknown
 			if e == nil {
-				_, plain, e := w.Open(secret, nil, state, state, false, 0)
+				_, plain, e := OpenEnvelope(w, secret, nil, state, state, false, 0)
 				if e == nil {
 					r := &pb.CommandResult{}
 					if proto.Unmarshal(plain, r) == nil {

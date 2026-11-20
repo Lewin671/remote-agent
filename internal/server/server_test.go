@@ -23,6 +23,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -32,8 +33,8 @@ type testChain struct {
 	phoneX   []byte
 	recovery ed25519.PrivateKey
 	secret   []byte
-	states   []deviceauth.State
-	proofs   []*deviceauth.RecoveryStatement
+	states   []devicesec.State
+	proofs   []*devicesec.RecoveryStatement
 }
 
 type testServer struct {
@@ -118,7 +119,7 @@ func (ts *testServer) extendChain(t *testing.T, id string, priv ed25519.PrivateK
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := deviceauth.NewMember(priv.Public().(ed25519.PublicKey), xpub, kindOf(kind))
+	m, err := devicesec.NewMember(priv.Public().(ed25519.PublicKey), xpub, kindOf(kind))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +137,7 @@ func (ts *testServer) bootstrapChain(t *testing.T, acct string, priv ed25519.Pri
 	if err != nil {
 		t.Fatal(err)
 	}
-	phone, err := deviceauth.NewMember(phoneEd.Public().(ed25519.PublicKey), pxpub, deviceauth.Client)
+	phone, err := devicesec.NewMember(phoneEd.Public().(ed25519.PublicKey), pxpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +162,7 @@ func (ts *testServer) bootstrapChain(t *testing.T, acct string, priv ed25519.Pri
 	}
 	var recoveryPub [32]byte
 	copy(recoveryPub[:], recovery.Public().(ed25519.PublicKey))
-	var domain deviceauth.Hash
+	var domain devicesec.Hash
 	domain[0] = 7
 	secret := make([]byte, 32)
 	secret[0] = 3
@@ -172,13 +173,13 @@ func (ts *testServer) bootstrapChain(t *testing.T, acct string, priv ed25519.Pri
 	if err := ts.pinChain(t, acct, genesis); err != nil {
 		t.Fatal(err)
 	}
-	c := &testChain{phoneEd: phoneEd, phoneID: phone.ID, phoneX: px, recovery: recovery, secret: secret, states: []deviceauth.State{genesis}, proofs: []*deviceauth.RecoveryStatement{nil}}
+	c := &testChain{phoneEd: phoneEd, phoneID: phone.ID, phoneX: px, recovery: recovery, secret: secret, states: []devicesec.State{genesis}, proofs: []*devicesec.RecoveryStatement{nil}}
 	ts.rememberKey(phone.ID, phoneEd)
 	_, xpub, err := deviceauth.NewXKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := deviceauth.NewMember(priv.Public().(ed25519.PublicKey), xpub, kindOf(kind))
+	first, err := devicesec.NewMember(priv.Public().(ed25519.PublicKey), xpub, kindOf(kind))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,14 +187,14 @@ func (ts *testServer) bootstrapChain(t *testing.T, acct string, priv ed25519.Pri
 	return c
 }
 
-func kindOf(kind pb.DeviceKind) deviceauth.Kind {
+func kindOf(kind pb.DeviceKind) devicesec.Kind {
 	if kind == pb.DeviceKind_DEVICE_KIND_CLIENT {
-		return deviceauth.Client
+		return devicesec.Client
 	}
-	return deviceauth.Machine
+	return devicesec.Machine
 }
 
-func (ts *testServer) pinChain(t *testing.T, acct string, genesis deviceauth.State) error {
+func (ts *testServer) pinChain(t *testing.T, acct string, genesis devicesec.State) error {
 	t.Helper()
 	raw, err := genesis.MarshalBinary()
 	if err != nil {
@@ -208,7 +209,7 @@ func (ts *testServer) pinChain(t *testing.T, acct string, genesis deviceauth.Sta
 	return err
 }
 
-func (ts *testServer) addMemberLocked(t *testing.T, acct string, c *testChain, m deviceauth.Member, xpub []byte) {
+func (ts *testServer) addMemberLocked(t *testing.T, acct string, c *testChain, m devicesec.Member, xpub []byte) {
 	t.Helper()
 	newSecret := make([]byte, 32)
 	newSecret[0] = byte(len(c.states) + 1)
@@ -235,7 +236,7 @@ func (ts *testServer) removeViaState(t *testing.T, ids ...string) error {
 	acct := ts.acct()
 	c := ts.chains[acct]
 	parent := c.states[len(c.states)-1]
-	members := append([]deviceauth.Member(nil), parent.Core.Members...)
+	members := append([]devicesec.Member(nil), parent.Core.Members...)
 	removed := append([]string(nil), parent.Core.Removed...)
 	for _, id := range ids {
 		for i, m := range members {
@@ -277,7 +278,7 @@ func (ts *testServer) pairTrust(t *testing.T, approver string) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	trust, err := deviceauth.PairTrustDescriptor(pin, approver)
+	trust, err := devicesec.PairTrustDescriptor(pin, approver)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -447,7 +448,7 @@ func TestUploadRules(t *testing.T) {
 	ctx := context.Background()
 	skey := e2e.NewKey()
 	ev := func(machine string, seq uint64) *pb.StoredEvent {
-		env, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: machine, SessionId: "s", Seq: seq}, []byte("x"))
+		env, _ := opaqueEnvelope(&pb.Header{Version: devicesec.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: machine, SessionId: "s", Seq: seq}, []byte("x"))
 		return &pb.StoredEvent{Seq: seq, Envelope: env}
 	}
 	upload := func(c remoteagentv1connect.MachineServiceClient, evs ...*pb.StoredEvent) (uint64, error) {
@@ -460,7 +461,7 @@ func TestUploadRules(t *testing.T) {
 	if _, err := upload(m, ev(mid, 1)); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("unknown session: %v", err)
 	}
-	keyEnv, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	keyEnv, _ := opaqueEnvelope(&pb.Header{Version: devicesec.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
 	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s"})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("session without key: %v", err)
 	}
@@ -487,7 +488,7 @@ func TestUploadRules(t *testing.T) {
 	if _, err := upload(m2, ev(mid2, 4)); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("other machine: %v", err)
 	}
-	keyEnv2, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid2, SessionId: "s"}, skey)
+	keyEnv2, _ := opaqueEnvelope(&pb.Header{Version: devicesec.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid2, SessionId: "s"}, skey)
 	if _, err := m2.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv2})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("other machine put: %v", err)
 	}
@@ -574,7 +575,7 @@ func TestPushAndRemoveDevice(t *testing.T) {
 	c := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cpriv, cid)))
 
 	skey := e2e.NewKey()
-	keyEnv, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	keyEnv, _ := opaqueEnvelope(&pb.Header{Version: devicesec.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
 	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv})); err != nil {
 		t.Fatal(err)
 	}

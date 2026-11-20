@@ -20,6 +20,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -69,13 +70,13 @@ type response struct {
 type fixture struct {
 	mu       sync.Mutex
 	account  string
-	domain   deviceauth.Hash
+	domain   devicesec.Hash
 	phoneEd  ed25519.PrivateKey
 	recovery ed25519.PrivateKey
-	pin      deviceauth.Pin
+	pin      devicesec.Pin
 	secret   []byte
-	states   []deviceauth.State
-	proofs   []*deviceauth.RecoveryStatement
+	states   []devicesec.State
+	proofs   []*devicesec.RecoveryStatement
 	members  map[string]*member
 }
 type member struct {
@@ -116,26 +117,26 @@ func (f *fixture) recordFor(id string) (*record, error) {
 // add appends one member state. x is the member's X25519 private key when the
 // fixture holds it; without one the member exists in the chain but has no
 // endpoint (a pairing joiner keeps its own keys).
-func (f *fixture) add(ed ed25519.PrivateKey, edPub, xpub, x []byte, kind deviceauth.Kind) (deviceauth.Member, error) {
-	m, err := deviceauth.NewMember(edPub, xpub, kind)
+func (f *fixture) add(ed ed25519.PrivateKey, edPub, xpub, x []byte, kind devicesec.Kind) (devicesec.Member, error) {
+	m, err := devicesec.NewMember(edPub, xpub, kind)
 	if err != nil {
-		return deviceauth.Member{}, err
+		return devicesec.Member{}, err
 	}
 	newSecret := make([]byte, 32)
 	if _, err := rand.Read(newSecret); err != nil {
-		return deviceauth.Member{}, err
+		return devicesec.Member{}, err
 	}
 	parent := f.states[len(f.states)-1]
 	s, err := deviceauth.BuildPairState(parent, m, xpub, f.secret, newSecret, f.phoneEd, nowMs())
 	if err != nil {
-		return deviceauth.Member{}, err
+		return devicesec.Member{}, err
 	}
 	f.states = append(f.states, s)
 	f.proofs = append(f.proofs, nil)
 	f.secret = newSecret
 	f.members[m.ID] = &member{ed: ed, x: x}
 	if err := f.refreshEndpoints(); err != nil {
-		return deviceauth.Member{}, err
+		return devicesec.Member{}, err
 	}
 	return m, nil
 }
@@ -173,7 +174,7 @@ func (f *fixture) run(q request) (response, error) {
 		if err != nil {
 			return response{}, err
 		}
-		m, err := deviceauth.NewMember(f.phoneEd.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
+		m, err := devicesec.NewMember(f.phoneEd.Public().(ed25519.PublicKey), xpub, devicesec.Client)
 		if err != nil {
 			return response{}, err
 		}
@@ -199,8 +200,8 @@ func (f *fixture) run(q request) (response, error) {
 		if err != nil {
 			return response{}, err
 		}
-		f.states = []deviceauth.State{g}
-		f.proofs = []*deviceauth.RecoveryStatement{nil}
+		f.states = []devicesec.State{g}
+		f.proofs = []*devicesec.RecoveryStatement{nil}
 		l, _ := deviceauth.BuildLease(f.states[len(f.states)-1], f.phoneEd, f.states[len(f.states)-1].Core.IssuedAt)
 		endpoint, err := deviceauth.InitEndpoint("", f.pin, f.states, f.proofs, m.ID, f.phoneEd.Seed(), x, l)
 		if err != nil {
@@ -215,9 +216,9 @@ func (f *fixture) run(q request) (response, error) {
 		if f.phoneEd == nil {
 			return response{}, errors.New("missing synthetic authority")
 		}
-		kind := deviceauth.Kind(q.Kind)
+		kind := devicesec.Kind(q.Kind)
 		if kind == 0 {
-			kind = deviceauth.Machine
+			kind = devicesec.Machine
 		}
 		if len(q.EdPublic) == 32 {
 			// The joiner keeps its own Ed/X private keys.
@@ -265,7 +266,7 @@ func (f *fixture) run(q request) (response, error) {
 			targets[id] = true
 		}
 		parent := f.states[len(f.states)-1]
-		var members []deviceauth.Member
+		var members []devicesec.Member
 		for _, m := range parent.Core.Members {
 			if targets[m.ID] {
 				if m.ID == parent.Core.AuthorityID {
@@ -308,12 +309,12 @@ func (f *fixture) run(q request) (response, error) {
 		if err != nil {
 			return response{}, err
 		}
-		candidate, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
+		candidate, err := devicesec.NewMember(ed.Public().(ed25519.PublicKey), xpub, devicesec.Client)
 		if err != nil {
 			return response{}, err
 		}
 		parent := f.states[len(f.states)-1]
-		members := []deviceauth.Member{candidate}
+		members := []devicesec.Member{candidate}
 		for _, m := range parent.Core.Members {
 			if m.ID != parent.Core.AuthorityID {
 				members = append(members, m)
@@ -338,7 +339,7 @@ func (f *fixture) run(q request) (response, error) {
 		f.secret = secret
 		for _, m := range f.members {
 			if m.endpoint != nil {
-				if err := m.endpoint.Install([]deviceauth.State{state}, []*deviceauth.RecoveryStatement{&proof}); err != nil {
+				if err := m.endpoint.Install([]devicesec.State{state}, []*devicesec.RecoveryStatement{&proof}); err != nil {
 					return response{}, err
 				}
 			}
@@ -401,12 +402,12 @@ func (f *fixture) run(q request) (response, error) {
 		if err := proto.Unmarshal(q.Header, h); err != nil {
 			return response{}, err
 		}
-		header := deviceauth.Header{Kind: uint32(h.Kind), Purpose: deviceauth.Purpose(h.Kind), Machine: h.MachineId, Session: h.SessionId, Request: h.RequestId, Seq: h.Seq, Deadline: uint64(h.DeadlineMs), Compression: uint32(h.Compression)}
+		header := devicesec.Header{Kind: uint32(h.Kind), Purpose: devicesec.Purpose(h.Kind), Machine: h.MachineId, Session: h.SessionId, Request: h.RequestId, Seq: h.Seq, Deadline: uint64(h.DeadlineMs), Compression: uint32(h.Compression)}
 		wire, err := m.endpoint.Prepare(header, q.SessionSeed, q.Plain)
 		if err != nil {
 			return response{}, err
 		}
-		env, err := wire.Envelope()
+		env, err := deviceauth.Envelope(wire)
 		if err != nil {
 			return response{}, err
 		}
@@ -425,7 +426,7 @@ func (f *fixture) run(q request) (response, error) {
 		if err != nil {
 			return response{}, err
 		}
-		header, err := deviceauth.ParseHeader(wire.Header)
+		header, err := devicesec.ParseHeader(wire.Header)
 		if err != nil {
 			return response{}, err
 		}
@@ -434,7 +435,7 @@ func (f *fixture) run(q request) (response, error) {
 		if err != nil {
 			return response{}, err
 		}
-		projection, err := proto.Marshal(header.Projection())
+		projection, err := proto.Marshal(deviceauth.Projection(header))
 		return response{Header: projection, Plain: plain}, err
 	}
 	return response{}, errors.New("unknown fixture operation")

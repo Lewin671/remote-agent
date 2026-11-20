@@ -1,12 +1,12 @@
 package main
 
-import "github.com/Lewin671/remote-agent/internal/deviceauth"
+import "github.com/Lewin671/remote-agent/shared/devicesec"
 
 // A retained response is scoped to the authority and logical owner that
 // admitted it. Physical relay/direct legs do not change that owner.
 type authorization struct {
-	client, machine      deviceauth.Member
-	head                 deviceauth.Hash
+	client, machine      devicesec.Member
+	head                 devicesec.Hash
 	instance             string
 	generation, deadline uint64
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"net/http"
@@ -26,7 +27,7 @@ func TestWireIdentityConflictPreservesOriginalAndBodyEviction(t *testing.T) {
 			e.backend.add(t, "session")
 			if missing {
 				e.backend.sendResult = func(context.Context) error {
-					return outcome.FinalError(connect.NewError(connect.CodeInternal, errors.New(strings.Repeat("x", deviceauth.MaxCipherBytes))))
+					return outcome.FinalError(connect.NewError(connect.CodeInternal, errors.New(strings.Repeat("x", devicesec.MaxCipherBytes))))
 				}
 			}
 			e.startRelay()

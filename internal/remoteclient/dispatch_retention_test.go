@@ -8,6 +8,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // A deterministic wall/elapsed clock and idle scheduler. All accesses occur
@@ -113,7 +114,7 @@ func TestDispatchHistoryCleanupRequiresBothClocks(t *testing.T) {
 	start := *wall
 	window := (time.Minute + deviceauth.ResultRetention).Milliseconds()
 	original := pollEnvelope(t, c, mid, start+60_000)
-	header, err := deviceauth.ParseHeader(original.SecurityHeader)
+	header, err := devicesec.ParseHeader(original.SecurityHeader)
 	if err != nil {
 		t.Fatal(err)
 	}

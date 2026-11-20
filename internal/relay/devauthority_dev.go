@@ -8,6 +8,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // DevInit creates a development account with a synthetic client authority and
@@ -30,7 +31,7 @@ func DevInit(ctx context.Context, server, setupToken string) (*Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	enrolled, err := authority.Enroll(ctx, ed, x, deviceauth.Machine)
+	enrolled, err := authority.Enroll(ctx, ed, x, devicesec.Machine)
 	if err != nil {
 		return nil, err
 	}

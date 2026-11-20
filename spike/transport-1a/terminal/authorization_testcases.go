@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func authorizationCases(results map[string]any) {
@@ -13,7 +14,7 @@ func authorizationCases(results map[string]any) {
 				s.now = sec.lease.NotAfter - 1
 				s.hold = true
 				s.failInput = failure
-				must(send(s, "relay", sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("once")), false))
+				must(send(s, "relay", sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("once")), false))
 				var status Status
 				s.secureStatus("relay", final, func(st Status) { status = st })
 				packets, acks := s.controlPackets, s.acks
@@ -37,12 +38,12 @@ func authorizationCases(results map[string]any) {
 		}
 		results["audit_deferred_reply_and_ack_"+reason] = true
 	}
-	for _, direction := range []deviceauth.Purpose{deviceauth.TerminalInput, deviceauth.TerminalOutput} {
+	for _, direction := range []devicesec.Purpose{devicesec.TerminalInput, devicesec.TerminalOutput} {
 		sec := security()
 		s := newStream(sec, "auth-batch-ack-001")
 		s.now = sec.lease.NotAfter - 1
 		must(send(s, "relay", sec.seal(s.id, 1, s.now, direction, []byte("once")), false))
-		if direction == deviceauth.TerminalOutput {
+		if direction == devicesec.TerminalOutput {
 			s.render()
 		}
 		s.now++
@@ -53,7 +54,7 @@ func authorizationCases(results map[string]any) {
 	sec := security()
 	s := newStream(sec, "auth-pages-000001")
 	for n := uint64(1); n <= 2; n++ {
-		must(send(s, "relay", sec.seal(s.id, n, s.now, deviceauth.TerminalInput, []byte("once")), false))
+		must(send(s, "relay", sec.seal(s.id, n, s.now, devicesec.TerminalInput, []byte("once")), false))
 	}
 	calls := 0
 	s.replyHook = func() {
@@ -70,7 +71,7 @@ func authorizationCases(results map[string]any) {
 	sec = security()
 	s = newStream(sec, "auth-renewed-0001")
 	s.hold = true
-	must(send(s, "relay", sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("once")), false))
+	must(send(s, "relay", sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("once")), false))
 	s.secureStatus("relay", false, func(st Status) { status = st })
 	var err error
 	sec.lease, err = deviceauth.BuildLease(sec.state, sec.clientEd, s.now+1)

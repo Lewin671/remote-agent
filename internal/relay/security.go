@@ -18,14 +18,15 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
 // SecurityConfig is initialized by pairing. It is never reconstructed from
 // root possession, a relay list or a missing security database.
 type SecurityConfig struct {
-	Pin      deviceauth.Pin `json:"pin"`
-	XPrivate []byte         `json:"x_private"`
+	Pin      devicesec.Pin `json:"pin"`
+	XPrivate []byte        `json:"x_private"`
 }
 
 // securityPath is daemon storage generation 4.
@@ -93,9 +94,9 @@ func openSecuritySession(acct *Account, client remoteagentv1connect.ClientServic
 	pin, _, id := endpoint.Snapshot()
 	if pin != acct.Security.Pin || id != acct.DeviceID {
 		endpoint.Close()
-		return nil, deviceauth.ErrUntrusted
+		return nil, devicesec.ErrUntrusted
 	}
-	if floor := endpoint.Floor(); floor > uint64(time.Now().UnixMilli())+deviceauth.MaxClockSkew {
+	if floor := endpoint.Floor(); floor > uint64(time.Now().UnixMilli())+devicesec.MaxClockSkew {
 		slog.Warn("relay: this computer's clock is behind the last seen time; remote control stays paused until it catches up", "behind_ms", floor-uint64(time.Now().UnixMilli()))
 	}
 	return &securitySession{endpoint: endpoint, client: client, syncNow: make(chan struct{}, 1)}, nil
@@ -116,8 +117,8 @@ func (s *securitySession) Close() {
 	}
 }
 
-func securityHeader(h *pb.Header, purpose deviceauth.Purpose) deviceauth.Header {
-	return deviceauth.Header{Kind: uint32(h.Kind), Purpose: purpose, Machine: h.MachineId, Session: h.SessionId, Request: h.RequestId, Seq: h.Seq, Deadline: uint64(h.DeadlineMs), Compression: uint32(h.Compression)}
+func securityHeader(h *pb.Header, purpose devicesec.Purpose) devicesec.Header {
+	return devicesec.Header{Kind: uint32(h.Kind), Purpose: purpose, Machine: h.MachineId, Session: h.SessionId, Request: h.RequestId, Seq: h.Seq, Deadline: uint64(h.DeadlineMs), Compression: uint32(h.Compression)}
 }
 
 func (s *securitySession) now() uint64 {
@@ -129,19 +130,19 @@ func (s *securitySession) now() uint64 {
 
 // seal is local: the signed head and the content grant are already here, so
 // there is no authority round trip.
-func (s *securitySession) seal(h *pb.Header, purpose deviceauth.Purpose, seed, plain []byte) (*pb.Envelope, error) {
+func (s *securitySession) seal(h *pb.Header, purpose devicesec.Purpose, seed, plain []byte) (*pb.Envelope, error) {
 	return s.sealWith(s.endpoint.Prepare, h, purpose, seed, plain)
 }
 
 // sealRaw seals without compression, for payloads whose length must not
 // depend on their content.
-func (s *securitySession) sealRaw(h *pb.Header, purpose deviceauth.Purpose, seed, plain []byte) (*pb.Envelope, error) {
+func (s *securitySession) sealRaw(h *pb.Header, purpose devicesec.Purpose, seed, plain []byte) (*pb.Envelope, error) {
 	return s.sealWith(s.endpoint.PrepareUncompressed, h, purpose, seed, plain)
 }
 
-func (s *securitySession) sealWith(prepare func(deviceauth.Header, []byte, []byte) (deviceauth.Ciphertext, error), h *pb.Header, purpose deviceauth.Purpose, seed, plain []byte) (*pb.Envelope, error) {
+func (s *securitySession) sealWith(prepare func(devicesec.Header, []byte, []byte) (devicesec.Ciphertext, error), h *pb.Header, purpose devicesec.Purpose, seed, plain []byte) (*pb.Envelope, error) {
 	if s.blocked.Load() {
-		return nil, deviceauth.ErrUntrusted
+		return nil, devicesec.ErrUntrusted
 	}
 	if err := s.endpoint.CheckLease(s.now()); err != nil {
 		return nil, err
@@ -150,10 +151,10 @@ func (s *securitySession) sealWith(prepare func(deviceauth.Header, []byte, []byt
 	if err != nil {
 		return nil, err
 	}
-	return wire.Envelope()
+	return deviceauth.Envelope(wire)
 }
 
-func (s *securitySession) sealMessage(h *pb.Header, purpose deviceauth.Purpose, seed []byte, m proto.Message) (*pb.Envelope, error) {
+func (s *securitySession) sealMessage(h *pb.Header, purpose devicesec.Purpose, seed []byte, m proto.Message) (*pb.Envelope, error) {
 	b, err := proto.Marshal(m)
 	if err != nil {
 		return nil, err
@@ -170,10 +171,10 @@ func (s *securitySession) requestSync() {
 
 // accept is the at-most-once control gate. An unknown state is fetched first
 // and the whole gate is retried once.
-func (s *securitySession) accept(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
+func (s *securitySession) accept(ctx context.Context, w devicesec.Wire, seed []byte, now uint64, fn func(devicesec.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
 	return s.acceptWith(ctx, w, seed, now, nil, fn)
 }
-func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, seed []byte, now uint64, acquire func(context.Context) (func(), error), fn func(deviceauth.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
+func (s *securitySession) acceptWith(ctx context.Context, w devicesec.Wire, seed []byte, now uint64, acquire func(context.Context) (func(), error), fn func(devicesec.Header, []byte) (deviceauth.Completion, error)) ([]byte, error) {
 	options := s.acceptOptions()
 	options.Acquire = acquire
 	out, err := s.endpoint.AcceptWith(ctx, w, seed, now, options, fn)
@@ -188,24 +189,24 @@ func (s *securitySession) acceptWith(ctx context.Context, w deviceauth.Wire, see
 
 func (s *securitySession) acceptOptions() deviceauth.AcceptOptions {
 	_, _, machine := s.endpoint.Snapshot()
-	options := deviceauth.AcceptOptions{Evidence: true, AllowNew: func() bool { return !s.blocked.Load() }, Validate: func(h deviceauth.Header, plain []byte) error {
-		if h.Purpose != deviceauth.Command {
+	options := deviceauth.AcceptOptions{Evidence: true, AllowNew: func() bool { return !s.blocked.Load() }, Validate: func(h devicesec.Header, plain []byte) error {
+		if h.Purpose != devicesec.Command {
 			return nil
 		}
 		if h.Machine != machine || len(h.Request) < minRequestID {
-			return deviceauth.RejectedEntry("invalid_scope", deviceauth.ErrInvalid)
+			return deviceauth.RejectedEntry("invalid_scope", devicesec.ErrInvalid)
 		}
 		plain, err := deviceauth.Unpack(h, plain)
 		cmd := &pb.Command{}
 		if err != nil || proto.Unmarshal(plain, cmd) != nil {
-			return deviceauth.RejectedEntry("invalid_body", deviceauth.ErrInvalid)
+			return deviceauth.RejectedEntry("invalid_body", devicesec.ErrInvalid)
 		}
 		if cmd.ProtocolVersion != protocol.Version {
 			return deviceauth.RejectedEntry("protocol_mismatch", protocol.Mismatch("the client", cmd.ProtocolVersion))
 		}
 		kind := cmd.ProtoReflect().WhichOneof(cmd.ProtoReflect().Descriptor().Oneofs().ByName("kind"))
 		if kind == nil {
-			return deviceauth.RejectedEntry("invalid_body", deviceauth.ErrInvalid)
+			return deviceauth.RejectedEntry("invalid_body", devicesec.ErrInvalid)
 		}
 		body := cmd.ProtoReflect().Get(kind).Message()
 		session := body.Descriptor().Fields().ByName("session_id")
@@ -213,7 +214,7 @@ func (s *securitySession) acceptOptions() deviceauth.AcceptOptions {
 			session = nil
 		}
 		if session == nil && h.Session != "" || session != nil && body.Get(session).String() != h.Session {
-			return deviceauth.RejectedEntry("invalid_scope", deviceauth.ErrInvalid)
+			return deviceauth.RejectedEntry("invalid_scope", devicesec.ErrInvalid)
 		}
 		return nil
 	}}
@@ -227,11 +228,11 @@ func (s *securitySession) sealResult(h *pb.Header, seed, plain []byte, raw bool)
 	if raw {
 		prepare = s.endpoint.PrepareUncompressed
 	}
-	wire, err := prepare(securityHeader(h, deviceauth.Result), seed, plain)
+	wire, err := prepare(securityHeader(h, devicesec.Result), seed, plain)
 	if err != nil {
 		return nil, err
 	}
-	return wire.Envelope()
+	return deviceauth.Envelope(wire)
 }
 
 // syncOnce pulls states after the local head, verifies and installs them.
@@ -344,7 +345,7 @@ func (s *securitySession) syncOnce(ctx context.Context) (result error) {
 	} else if err == nil {
 		_, head, _ := s.endpoint.Snapshot()
 		if head.Core.Epoch != epoch {
-			return deviceauth.ErrStale
+			return devicesec.ErrStale
 		}
 		hash, hashErr := head.Hash()
 		if hashErr != nil {
@@ -357,7 +358,7 @@ func (s *securitySession) syncOnce(ctx context.Context) (result error) {
 }
 
 func (s *securitySession) pull(ctx context.Context) (uint64, error) {
-	for page := 0; page < deviceauth.MaxStates; page++ {
+	for page := 0; page < devicesec.MaxStates; page++ {
 		after := s.endpoint.HeadEpoch()
 		now := s.now()
 		if err := s.endpoint.Touch(now); err != nil {
@@ -371,18 +372,18 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 			return 0, err
 		}
 		if res.Msg.HeadEpoch < after {
-			return 0, deviceauth.ErrStale
+			return 0, devicesec.ErrStale
 		}
-		states := make([]deviceauth.State, 0, len(res.Msg.States))
-		proofs := make([]*deviceauth.RecoveryStatement, 0, len(res.Msg.States))
+		states := make([]devicesec.State, 0, len(res.Msg.States))
+		proofs := make([]*devicesec.RecoveryStatement, 0, len(res.Msg.States))
 		for _, in := range res.Msg.States {
-			st, err := deviceauth.ParseState(in.State)
+			st, err := devicesec.ParseState(in.State)
 			if err != nil {
 				return 0, err
 			}
-			var proof *deviceauth.RecoveryStatement
+			var proof *devicesec.RecoveryStatement
 			if len(in.Recovery) > 0 {
-				p, err := deviceauth.ParseRecoveryStatement(in.Recovery)
+				p, err := devicesec.ParseRecoveryStatement(in.Recovery)
 				if err != nil {
 					return 0, err
 				}
@@ -401,7 +402,7 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 		head := s.endpoint.HeadEpoch()
 		if head >= res.Msg.HeadEpoch {
 			if len(res.Msg.Lease) > 0 {
-				l, err := deviceauth.ParseLease(res.Msg.Lease)
+				l, err := devicesec.ParseLease(res.Msg.Lease)
 				if err != nil {
 					return 0, err
 				}
@@ -412,10 +413,10 @@ func (s *securitySession) pull(ctx context.Context) (uint64, error) {
 			return head, nil
 		}
 		if head <= after {
-			return 0, deviceauth.ErrStale
+			return 0, devicesec.ErrStale
 		}
 	}
-	return 0, deviceauth.ErrCapacity
+	return 0, devicesec.ErrCapacity
 }
 
 // Authentication loss on the WS login is reported by Relay.Run. Independent
@@ -471,11 +472,11 @@ func headerOfSecurity(env *pb.Envelope) *pb.Header {
 	if err != nil {
 		return &pb.Header{}
 	}
-	h, err := deviceauth.ParseHeader(w.Header)
+	h, err := devicesec.ParseHeader(w.Header)
 	if err != nil {
 		return &pb.Header{}
 	}
-	return h.Projection()
+	return deviceauth.Projection(h)
 }
 
 // Authentication loss pauses control and existing streams without stopping
@@ -496,15 +497,15 @@ func (s *securitySession) setAuthorized(valid bool) {
 }
 
 type authorizedStream struct {
-	peer   deviceauth.Member
+	peer   devicesec.Member
 	cancel context.CancelFunc
 }
 type streamAuthorizationKey struct{}
 
-func (s *securitySession) peerCurrent(peer deviceauth.Member) bool {
+func (s *securitySession) peerCurrent(peer devicesec.Member) bool {
 	_, head, _ := s.endpoint.Snapshot()
 	current, ok := head.Core.Member(peer.ID)
-	return ok && current.Kind == deviceauth.Client && current == peer
+	return ok && current.Kind == devicesec.Client && current == peer
 }
 func (s *securitySession) revalidateStreams() {
 	s.authMu.Lock()
@@ -520,14 +521,14 @@ func (s *securitySession) confirmStream(ctx context.Context) error {
 	s.authMu.Lock()
 	defer s.authMu.Unlock()
 	if s.blocked.Load() {
-		return deviceauth.ErrUntrusted
+		return devicesec.ErrUntrusted
 	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	peer, ok := ctx.Value(streamAuthorizationKey{}).(deviceauth.Member)
+	peer, ok := ctx.Value(streamAuthorizationKey{}).(devicesec.Member)
 	if !ok || !s.peerCurrent(peer) {
-		return deviceauth.ErrUntrusted
+		return devicesec.ErrUntrusted
 	}
 	return s.endpoint.CheckLease(s.now())
 }
@@ -535,15 +536,15 @@ func (s *securitySession) streamContext(parent context.Context, peerID string) (
 	s.authMu.Lock()
 	defer s.authMu.Unlock()
 	if s.blocked.Load() {
-		return nil, nil, deviceauth.ErrUntrusted
+		return nil, nil, devicesec.ErrUntrusted
 	}
 	if err := s.endpoint.CheckLease(s.now()); err != nil {
 		return nil, nil, err
 	}
 	_, head, _ := s.endpoint.Snapshot()
 	peer, ok := head.Core.Member(peerID)
-	if !ok || peer.Kind != deviceauth.Client {
-		return nil, nil, deviceauth.ErrUntrusted
+	if !ok || peer.Kind != devicesec.Client {
+		return nil, nil, devicesec.ErrUntrusted
 	}
 	if s.authorization == nil {
 		s.authorization, s.revoke = context.WithCancel(context.Background())
@@ -564,7 +565,7 @@ func (s *securitySession) streamContext(parent context.Context, peerID string) (
 // incomplete sync pauses direct immediately; a stalled round expires at the
 // fixed 12-second start interval plus the 5-second whole-round budget.
 type directFreshness struct {
-	head       deviceauth.Hash
+	head       devicesec.Hash
 	until      uint64
 	leaseUntil uint64
 }
@@ -576,7 +577,7 @@ func (s *securitySession) invalidateDirect() {
 	s.directInvalidations.Add(1)
 	s.directMu.Unlock()
 }
-func (s *securitySession) directCurrent(self, peer deviceauth.Member, head deviceauth.Hash) bool {
+func (s *securitySession) directCurrent(self, peer devicesec.Member, head devicesec.Hash) bool {
 	inv := s.directInvalidations.Load()
 	fresh := s.directFresh.Load()
 	if fresh == nil || fresh.head != head || s.blocked.Load() || s.now() >= min(fresh.until, fresh.leaseUntil) {

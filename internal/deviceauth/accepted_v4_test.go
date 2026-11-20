@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestV4BodyCountBudgetIncludesEmptyResults(t *testing.T) {
@@ -20,7 +22,7 @@ func TestV4BodyCountBudgetIncludesEmptyResults(t *testing.T) {
 		t.Fatal("entry overhead missing")
 	}
 	k := testKey("overflow")
-	if err := e.startAccepted(k, Hash{}, 100, 1, true); err != nil {
+	if err := e.startAccepted(k, devicesec.Hash{}, 100, 1, true); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.finishAccepted(k, Final(nil), 2); err != nil {
@@ -37,7 +39,7 @@ func TestV4MissingEmptyBodyIsUnavailable(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "security.db")
 	e := newCurrentChain(t).machineEndpoint(t, path)
 	k := testKey("empty")
-	if err := e.startAccepted(k, Hash{}, 100, 1, true); err != nil {
+	if err := e.startAccepted(k, devicesec.Hash{}, 100, 1, true); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.finishAccepted(k, Final(nil), 2); err != nil {
@@ -78,13 +80,16 @@ func TestV4IdentityConflictAndExpiredMissing(t *testing.T) {
 	client := c.clientEndpoint(t)
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "immutable-request", Deadline: now + 1000}
+	h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "immutable-request", Deadline: now + 1000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	count := 0
-	fn := func(Header, []byte) (Completion, error) { count++; return Final([]byte("secret result")), nil }
+	fn := func(devicesec.Header, []byte) (Completion, error) {
+		count++
+		return Final([]byte("secret result")), nil
+	}
 	if _, err = e.Accept(w, nil, now, fn); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +111,7 @@ func TestV4IdentityConflictAndExpiredMissing(t *testing.T) {
 	if _, err = e.Accept(expired, nil, h.Deadline, nil); err != ErrExpired {
 		t.Fatal("expired missing confused with invalid", err)
 	}
-	if _, err = e.Accept(Wire{}, nil, now, nil); err != ErrInvalid {
+	if _, err = e.Accept(devicesec.Wire{}, nil, now, nil); err != devicesec.ErrInvalid {
 		t.Fatal("invalid envelope", err)
 	}
 	if count != 1 {
@@ -136,7 +141,7 @@ func TestV4RestartRunningDoesNotWaitOrAcquire(t *testing.T) {
 	client := c.clientEndpoint(t)
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "restart-running-id", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "restart-running-id", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +175,7 @@ func TestVolatileBodiesCannotConsumePersistentBudget(t *testing.T) {
 	defer func() { e.Close() }()
 	for i := range maxVolatileAccepted {
 		k := testKey(string(rune(i)))
-		if err := e.startAccepted(k, Hash{}, 100, 1, false); err != nil {
+		if err := e.startAccepted(k, devicesec.Hash{}, 100, 1, false); err != nil {
 			t.Fatal(err)
 		}
 		var body []byte
@@ -186,7 +191,7 @@ func TestVolatileBodiesCannotConsumePersistentBudget(t *testing.T) {
 		t.Fatal("volatile bodies charged to durable budget")
 	}
 	k := testKey("durable-after-terminal-flood")
-	if err := e.startAccepted(k, Hash{}, 200, 2, true); err != nil {
+	if err := e.startAccepted(k, devicesec.Hash{}, 200, 2, true); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.finishAccepted(k, Final([]byte("saved")), 3); err != nil {
@@ -217,7 +222,7 @@ func TestVolatileBodiesCannotConsumePersistentBudget(t *testing.T) {
 	e.acceptedBytes = maxAcceptedBytes
 	e.acceptedBodies = maxAcceptedBodies
 	v := testKey("volatile-after-durable-full")
-	if err := e.startAccepted(v, Hash{}, 300, 101, false); err != nil {
+	if err := e.startAccepted(v, devicesec.Hash{}, 300, 101, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.finishAccepted(v, Final(nil), 102); err != nil {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func fixture(t *testing.T) (string, []byte) {
@@ -27,13 +28,13 @@ func fixture(t *testing.T) (string, []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
+	m, err := devicesec.NewMember(ed.Public().(ed25519.PublicKey), xpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var recovery [32]byte
 	recovery[0] = 1
-	genesis, err := deviceauth.BuildGenesis("0123456789abcdef0123456789abcdef", deviceauth.Hash{1}, m, recovery, bytes.Repeat([]byte{2}, 32), ed, uint64(time.Now().UnixMilli())-1000)
+	genesis, err := deviceauth.BuildGenesis("0123456789abcdef0123456789abcdef", devicesec.Hash{1}, m, recovery, bytes.Repeat([]byte{2}, 32), ed, uint64(time.Now().UnixMilli())-1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +47,7 @@ func fixture(t *testing.T) (string, []byte) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(home, "security-v3.db")
-	ep, err := deviceauth.InitEndpoint(path, pin, []deviceauth.State{genesis}, []*deviceauth.RecoveryStatement{nil}, m.ID, ed.Seed(), x, lease)
+	ep, err := deviceauth.InitEndpoint(path, pin, []devicesec.State{genesis}, []*devicesec.RecoveryStatement{nil}, m.ID, ed.Seed(), x, lease)
 	if err != nil {
 		t.Fatal(err)
 	}

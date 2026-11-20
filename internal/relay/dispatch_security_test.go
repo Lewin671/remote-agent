@@ -12,6 +12,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
@@ -22,12 +23,12 @@ func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
 	entered := make(chan struct{}, 2)
 	release := make(chan struct{})
 	var starts atomic.Int32
-	a.authenticate = func(w deviceauth.Wire) (*deviceauth.Authenticated, error) {
+	a.authenticate = func(w devicesec.Wire) (*deviceauth.Authenticated, error) {
 		if starts.Add(1) <= 2 {
 			entered <- struct{}{}
 		}
 		<-release
-		return nil, deviceauth.ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	defer func() { close(release); a.close() }()
 	for range 2 {
@@ -97,7 +98,7 @@ func TestAuthenticationFrameAndByteBudgets(t *testing.T) {
 				t.Fatal(err)
 			}
 			wire.Cipher = make([]byte, scenario.cipher)
-			header, err := deviceauth.ParseHeader(wire.Header)
+			header, err := devicesec.ParseHeader(wire.Header)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -105,12 +106,12 @@ func TestAuthenticationFrameAndByteBudgets(t *testing.T) {
 			entered := make(chan struct{}, 2)
 			release := make(chan struct{})
 			var calls atomic.Int32
-			a.authenticate = func(deviceauth.Wire) (*deviceauth.Authenticated, error) {
+			a.authenticate = func(devicesec.Wire) (*deviceauth.Authenticated, error) {
 				if calls.Add(1) <= 2 {
 					entered <- struct{}{}
 				}
 				<-release
-				return nil, deviceauth.ErrInvalid
+				return nil, devicesec.ErrInvalid
 			}
 			defer func() { close(release); a.close() }()
 			for range 2 {
@@ -126,7 +127,7 @@ func TestAuthenticationFrameAndByteBudgets(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				forged, err := wire.Envelope()
+				forged, err := deviceauth.Envelope(wire)
 				if err != nil {
 					t.Fatal(err)
 				}

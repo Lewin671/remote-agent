@@ -8,8 +8,8 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func (c *clientService) DeleteAccount(ctx context.Context, req *connect.Request[pb.DeleteAccountRequest]) (*connect.Response[pb.DeleteAccountResponse], error) {
@@ -33,7 +33,7 @@ func (c *clientService) DeleteAccount(ctx context.Context, req *connect.Request[
 	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id=? ORDER BY epoch DESC LIMIT 1`, d.account).Scan(&raw); err != nil {
 		return nil, internal(err)
 	}
-	head, err := deviceauth.ParseState(raw)
+	head, err := devicesec.ParseState(raw)
 	if err != nil {
 		return nil, internal(err)
 	}

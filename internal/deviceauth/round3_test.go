@@ -3,6 +3,7 @@ package deviceauth
 import (
 	"bytes"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"testing"
 	"time"
@@ -15,13 +16,13 @@ func TestInstallDoesNotWaitForAcceptedBackendIO(t *testing.T) {
 	client := c.clientEndpoint(t)
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "gate-request-123456", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "gate-request-123456", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	entered, release, finished := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		_, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		_, err := machine.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 			close(entered)
 			<-release
 			return Final([]byte("done")), nil
@@ -30,9 +31,9 @@ func TestInstallDoesNotWaitForAcceptedBackendIO(t *testing.T) {
 	}()
 	<-entered
 	phone, _ := c.genesis.Core.Member(c.genesis.Core.AuthorityID)
-	next := mustBuildCurrent(t, c.withClient, []Member{phone, c.machine}, []string{c.client.ID}, bytes.Repeat([]byte{9}, 32), bytes.Repeat([]byte{0x77}, 32), c.phoneEd, now)
+	next := mustBuildCurrent(t, c.withClient, []devicesec.Member{phone, c.machine}, []string{c.client.ID}, bytes.Repeat([]byte{9}, 32), bytes.Repeat([]byte{0x77}, 32), c.phoneEd, now)
 	installed := make(chan error, 1)
-	go func() { installed <- machine.Install([]State{next}, []*RecoveryStatement{nil}) }()
+	go func() { installed <- machine.Install([]devicesec.State{next}, []*devicesec.RecoveryStatement{nil}) }()
 	select {
 	case err := <-installed:
 		if err != nil {
@@ -47,7 +48,7 @@ func TestInstallDoesNotWaitForAcceptedBackendIO(t *testing.T) {
 	if err := <-finished; err != nil {
 		t.Fatal(err)
 	}
-	if _, err := machine.Accept(w, nil, now+1, func(Header, []byte) (Completion, error) {
+	if _, err := machine.Accept(w, nil, now+1, func(devicesec.Header, []byte) (Completion, error) {
 		t.Fatal("removed sender executed")
 		return Final(nil), nil
 	}); err != nil {
@@ -61,16 +62,16 @@ func TestRecordedResultAfterLeaseExpires(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "lease-request-12345", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "lease-request-12345", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	if _, err = m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		return Final([]byte("done")), nil
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := m.Accept(w, nil, (c.withClient.Core.IssuedAt+Lease)+1, func(Header, []byte) (Completion, error) {
+	if out, err := m.Accept(w, nil, (c.withClient.Core.IssuedAt+devicesec.Lease)+1, func(devicesec.Header, []byte) (Completion, error) {
 		t.Fatal("ran twice")
 		return Final(nil), nil
 	}); err != nil || string(out) != "done" {
@@ -85,12 +86,12 @@ func TestReadOnlyResultsDoNotFillAcceptedLog(t *testing.T) {
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
 	body, _ := proto.Marshal(&pb.Command{Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}})
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "readonly-request-123", Deadline: now + 60000}, nil, body)
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "readonly-request-123", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 5; i++ {
-		if _, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		if _, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 			return Final(bytes.Repeat([]byte{1}, 4<<20)), nil
 		}); err != nil {
 			t.Fatal(err)
@@ -112,8 +113,8 @@ func TestRePairChainMustExtendEveryLocalEpoch(t *testing.T) {
 		t.Fatal("truncated chain replaced local head")
 	}
 	phone, _ := c.genesis.Core.Member(c.genesis.Core.AuthorityID)
-	fork := mustBuildCurrent(t, c.added, []Member{phone, c.machine, c.client}, nil, bytes.Repeat([]byte{0x88}, 32), bytes.Repeat([]byte{0x55}, 32), c.phoneEd, c.withClient.Core.IssuedAt)
-	if err := ep.CheckExtension([]State{c.genesis, c.added, fork}); err == nil {
+	fork := mustBuildCurrent(t, c.added, []devicesec.Member{phone, c.machine, c.client}, nil, bytes.Repeat([]byte{0x88}, 32), bytes.Repeat([]byte{0x55}, 32), c.phoneEd, c.withClient.Core.IssuedAt)
+	if err := ep.CheckExtension([]devicesec.State{c.genesis, c.added, fork}); err == nil {
 		t.Fatal("same-pin fork replaced local chain")
 	}
 }
@@ -128,12 +129,12 @@ func TestScheduleQueriesDoNotPersistResultsButMutationsDo(t *testing.T) {
 			defer cl.Close()
 			now := uint64(time.Now().UnixMilli())
 			body, _ := proto.Marshal(&pb.Command{Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: operation}}})
-			w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "schedule-query-12345", Deadline: now + 60000}, nil, body)
+			w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "schedule-query-12345", Deadline: now + 60000}, nil, body)
 			if err != nil {
 				t.Fatal(err)
 			}
 			calls := 0
-			fn := func(Header, []byte) (Completion, error) {
+			fn := func(devicesec.Header, []byte) (Completion, error) {
 				calls++
 				return Final([]byte("result")), nil
 			}
@@ -161,12 +162,12 @@ func TestMachineStatusResultsDoNotFillAcceptedLog(t *testing.T) {
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
 	body, _ := proto.Marshal(&pb.Command{Kind: &pb.Command_GetMachineStatus{GetMachineStatus: &pb.GetMachineStatusRequest{}}})
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "readonly-request-123", Deadline: now + 60000}, nil, body)
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "readonly-request-123", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 5; i++ {
-		if _, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) { return Final(bytes.Repeat([]byte{1}, 4<<20)), nil }); err != nil {
+		if _, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) { return Final(bytes.Repeat([]byte{1}, 4<<20)), nil }); err != nil {
 			t.Fatal(err)
 		}
 	}

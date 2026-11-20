@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func checkAcceptedIndex(t *testing.T, e *Endpoint) {
@@ -33,38 +35,38 @@ func checkAcceptedIndex(t *testing.T, e *Endpoint) {
 	}
 
 }
-func testKey(s string) string { h := digest("test/key", []byte(s)); return string(h[:]) }
+func testKey(s string) string { h := devicesec.Digest("test/key", []byte(s)); return string(h[:]) }
 
 func TestAcceptedRetentionAndIndependentBudgets(t *testing.T) {
 	e := newCurrentChain(t).machineEndpoint(t, "")
 	defer e.Close()
 	k := testKey("durable")
-	if err := e.startAccepted(k, Hash{1}, 20, 10, true); err != nil {
+	if err := e.startAccepted(k, devicesec.Hash{1}, 20, 10, true); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.finishAccepted(k, Final([]byte("saved")), 21); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.startAccepted(testKey("transient"), Hash{}, 40, 20, false); err != nil {
+	if err := e.startAccepted(testKey("transient"), devicesec.Hash{}, 40, 20, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := e.data.Accepted[k]; !ok {
 		t.Fatal("transient pruned durable")
 	}
 	// Exact grace boundary: only a fresh durable admission may prune history.
-	if err := e.startAccepted(testKey("before"), Hash{}, 20+acceptedGrace+10, 20+acceptedGrace-1, true); err != nil {
+	if err := e.startAccepted(testKey("before"), devicesec.Hash{}, 20+acceptedGrace+10, 20+acceptedGrace-1, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := e.data.Accepted[k]; !ok {
 		t.Fatal("history removed early")
 	}
-	if err := e.startAccepted(testKey("at"), Hash{}, 20+acceptedGrace+10, 20+acceptedGrace, true); err != nil {
+	if err := e.startAccepted(testKey("at"), devicesec.Hash{}, 20+acceptedGrace+10, 20+acceptedGrace, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := e.data.Accepted[k]; ok {
 		t.Fatal("history not pruned at boundary")
 	}
-	if err := e.startAccepted(k, Hash{}, 20, 10, true); err != ErrExpired {
+	if err := e.startAccepted(k, devicesec.Hash{}, 20, 10, true); err != ErrExpired {
 		t.Fatalf("rollback resurrected request: %v", err)
 	}
 	checkAcceptedIndex(t, e)
@@ -76,10 +78,10 @@ func TestAcceptedSummaryCapacityAndBodyLimit(t *testing.T) {
 		e.data.Accepted[testKey(fmt.Sprint(i))] = accepted{Deadline: 20, RetainUntil: 20 + acceptedGrace, Persisted: true}
 	}
 	e.indexAccepted()
-	if err := e.startAccepted(testKey("extra"), Hash{}, 30, 10, true); err != ErrCapacity {
+	if err := e.startAccepted(testKey("extra"), devicesec.Hash{}, 30, 10, true); err != devicesec.ErrCapacity {
 		t.Fatalf("summary cap: %v", err)
 	}
-	if err := e.startAccepted(testKey("extra"), Hash{}, acceptedGrace+40, acceptedGrace+20, true); err != nil {
+	if err := e.startAccepted(testKey("extra"), devicesec.Hash{}, acceptedGrace+40, acceptedGrace+20, true); err != nil {
 		t.Fatal(err)
 	}
 	// Body budget is entirely separate from summary admission.
@@ -93,7 +95,7 @@ func TestAcceptedSummaryCapacityAndBodyLimit(t *testing.T) {
 	if !errors.As(err, &missing) || missing.Category != Executed || a.State != final {
 		t.Fatalf("lost category: %+v %v", a, err)
 	}
-	if err := e.startAccepted(testKey("next"), Hash{}, acceptedGrace+50, acceptedGrace+20, true); err != nil {
+	if err := e.startAccepted(testKey("next"), devicesec.Hash{}, acceptedGrace+50, acceptedGrace+20, true); err != nil {
 		t.Fatalf("body cap blocked summary: %v", err)
 	}
 }
@@ -110,7 +112,7 @@ func TestAcceptedWriteFailures(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if e.startAccepted(k, Hash{}, 100, 10, true) == nil {
+				if e.startAccepted(k, devicesec.Hash{}, 100, 10, true) == nil {
 					t.Fatal("admission succeeded")
 				}
 				if len(e.data.Accepted) != 0 || e.data.AcceptedFloor != before {
@@ -118,7 +120,7 @@ func TestAcceptedWriteFailures(t *testing.T) {
 				}
 				return
 			}
-			if err := e.startAccepted(k, Hash{1}, 100, 10, true); err != nil {
+			if err := e.startAccepted(k, devicesec.Hash{1}, 100, 10, true); err != nil {
 				t.Fatal(err)
 			}
 			if failure == "body" || failure == "both" {
@@ -171,7 +173,7 @@ func TestAcceptedChecksumAndBodyDamage(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "security.db")
 			e := newCurrentChain(t).machineEndpoint(t, path)
 			k := testKey("request")
-			if err := e.startAccepted(k, Hash{1}, 100, 10, true); err != nil {
+			if err := e.startAccepted(k, devicesec.Hash{1}, 100, 10, true); err != nil {
 				t.Fatal(err)
 			}
 			if err := e.finishAccepted(k, Final([]byte("saved")), 20); err != nil {
@@ -214,7 +216,7 @@ func TestAcceptedHotPathAllocationsIndependentOfTableSize(t *testing.T) {
 		e.indexAccepted()
 		k := testKey("frame")
 		return testing.AllocsPerRun(20, func() {
-			if err := e.startAccepted(k, Hash{}, 100, 1, false); err != nil {
+			if err := e.startAccepted(k, devicesec.Hash{}, 100, 1, false); err != nil {
 				t.Fatal(err)
 			}
 			if err := e.finishAccepted(k, Final(nil), 2); err != nil {
@@ -237,14 +239,14 @@ func TestIdentityConflictUsesOriginalUnpackedPayload(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "payload-identity", Deadline: now + 60000}
+	h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "payload-identity", Deadline: now + 60000}
 	plain := commandBody(t)
 	w, err := cl.Prepare(h, nil, plain)
 	if err != nil {
 		t.Fatal(err)
 	}
 	called := 0
-	fn := func(_ Header, p []byte) (Completion, error) {
+	fn := func(_ devicesec.Header, p []byte) (Completion, error) {
 		called++
 		p[0] ^= 1
 		return Final([]byte("original")), nil
@@ -278,7 +280,7 @@ func TestConcurrentDuplicateWaitsWithoutAcquiring(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "wait-request-0001", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "wait-request-0001", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +290,7 @@ func TestConcurrentDuplicateWaitsWithoutAcquiring(t *testing.T) {
 	defer unblock.Do(func() { close(release) })
 	waiting := make(chan struct{}, 16)
 	options := AcceptOptions{Acquire: func(context.Context) (func(), error) { slots.Add(1); return func() {}, nil }}
-	fn := func(Header, []byte) (Completion, error) {
+	fn := func(devicesec.Header, []byte) (Completion, error) {
 		callbacks.Add(1)
 		close(entered)
 		<-release
@@ -350,14 +352,18 @@ func TestWaitFullTimeoutAndEndedUnknown(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "bounded-wait-request", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "bounded-wait-request", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	entered, release := make(chan struct{}), make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) { close(entered); <-release; return Undetermined(), nil })
+		_, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
+			close(entered)
+			<-release
+			return Undetermined(), nil
+		})
 		done <- err
 	}()
 	<-entered
@@ -380,7 +386,7 @@ func TestWaitFullTimeoutAndEndedUnknown(t *testing.T) {
 	close(release)
 	<-done
 	m.mu.Lock()
-	h, _ := ParseHeader(w.Header)
+	h, _ := devicesec.ParseHeader(w.Header)
 	a := m.data.Accepted[acceptedKey(h)]
 	m.mu.Unlock()
 	if a.State != endedUnknown {
@@ -398,7 +404,7 @@ func TestCallbackPastRetentionNeverRebuilds(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "late-request-0001", Deadline: now + 1000}
+	h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "late-request-0001", Deadline: now + 1000}
 	w, err := cl.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
@@ -406,7 +412,11 @@ func TestCallbackPastRetentionNeverRebuilds(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) { close(entered); <-release; return Final([]byte("late")), nil })
+		_, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
+			close(entered)
+			<-release
+			return Final([]byte("late")), nil
+		})
 		done <- err
 	}()
 	<-entered
@@ -417,7 +427,7 @@ func TestCallbackPastRetentionNeverRebuilds(t *testing.T) {
 	m.pruneAccepted(&m.durableExpiry, h.Deadline+acceptedGrace)
 	m.waitTimeout = time.Millisecond
 	m.mu.Unlock()
-	if _, err := m.Accept(w, nil, h.Deadline+acceptedGrace, func(Header, []byte) (Completion, error) { t.Error("executed twice"); return Final(nil), nil }); err != ErrOutcomeUnknown {
+	if _, err := m.Accept(w, nil, h.Deadline+acceptedGrace, func(devicesec.Header, []byte) (Completion, error) { t.Error("executed twice"); return Final(nil), nil }); err != ErrOutcomeUnknown {
 		t.Fatal(err)
 	}
 	close(release)
@@ -439,7 +449,7 @@ func testKilledAcceptedRecovery(t *testing.T, completed bool) {
 		if err != nil {
 			panic(err)
 		}
-		if err = e.startAccepted(testKey("killed"), Hash{1}, 100, 10, true); err != nil {
+		if err = e.startAccepted(testKey("killed"), devicesec.Hash{1}, 100, 10, true); err != nil {
 			panic(err)
 		}
 		if os.Getenv("RA_KILL_COMPLETED") == "1" {
@@ -512,7 +522,7 @@ func TestAcceptedAdmissionFailureLeavesOriginalHistory(t *testing.T) {
 	e := newCurrentChain(t).machineEndpoint(t, "")
 	defer e.Close()
 	old := testKey("old")
-	if err := e.startAccepted(old, Hash{}, 20, 10, true); err != nil {
+	if err := e.startAccepted(old, devicesec.Hash{}, 20, 10, true); err != nil {
 		t.Fatal(err)
 	}
 	before := e.data.Accepted[old]
@@ -520,7 +530,7 @@ func TestAcceptedAdmissionFailureLeavesOriginalHistory(t *testing.T) {
 	if _, err := e.db.Exec(`CREATE TRIGGER fail BEFORE INSERT ON accepted BEGIN SELECT RAISE(ABORT,'test');END`); err != nil {
 		t.Fatal(err)
 	}
-	if err := e.startAccepted(testKey("next"), Hash{}, acceptedGrace+40, acceptedGrace+20, true); err == nil {
+	if err := e.startAccepted(testKey("next"), devicesec.Hash{}, acceptedGrace+40, acceptedGrace+20, true); err == nil {
 		t.Fatal("admission succeeded")
 	}
 	if !reflect.DeepEqual(e.data.Accepted[old], before) || !reflect.DeepEqual(e.durableExpiry, beforeHeap) {

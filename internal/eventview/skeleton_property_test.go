@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -139,19 +140,19 @@ func TestSkeletonSizePropertyForEveryKind(t *testing.T) {
 						t.Fatal("local log event changed")
 					}
 					writer := ed25519.NewKeyFromSeed(make([]byte, 32))
-					id := deviceauth.ID(writer.Public().(ed25519.PublicKey))
+					id := devicesec.ID(writer.Public().(ed25519.PublicKey))
 					plain, err := proto.Marshal(got)
 					if err != nil {
 						t.Fatal(err)
 					}
-					cipher, err := deviceauth.Seal(make([]byte, 32), make([]byte, 32), deviceauth.Header{
-						Account: id, Domain: deviceauth.Hash{1}, Epoch: 1, State: deviceauth.Hash{2}, ContentEpoch: 1,
-						Sender: id, Machine: id, Kind: 1, Purpose: deviceauth.Event, Session: "session", Seq: 17,
+					cipher, err := deviceauth.Seal(make([]byte, 32), make([]byte, 32), devicesec.Header{
+						Account: id, Domain: devicesec.Hash{1}, Epoch: 1, State: devicesec.Hash{2}, ContentEpoch: 1,
+						Sender: id, Machine: id, Kind: 1, Purpose: devicesec.Event, Session: "session", Seq: 17,
 					}, plain, writer)
 					if err != nil {
 						t.Fatal(err)
 					}
-					env, err := (deviceauth.Wire{Header: cipher.Header, Nonce: cipher.Nonce, Cipher: cipher.Cipher, Origin: cipher.Origin}).Envelope()
+					env, err := deviceauth.Envelope(devicesec.Wire{Header: cipher.Header, Nonce: cipher.Nonce, Cipher: cipher.Cipher, Origin: cipher.Origin})
 					if err != nil || proto.Size(env) > 1<<20 {
 						t.Fatalf("envelope bound: %v", err)
 					}

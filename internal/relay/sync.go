@@ -18,8 +18,8 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/eventview"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -483,7 +483,7 @@ func (c *conn) sealFittedEvent(ctx context.Context, key []byte, sessionID string
 	env, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		Seq: fitted.Seq, Sender: c.acct.DeviceID,
-	}, deviceauth.Event, key, fitted)
+	}, devicesec.Event, key, fitted)
 	if err != nil {
 		return nil, localSyncError("encryption", err)
 	}
@@ -522,7 +522,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 			info.MachineReplacements = c.acct.Replacements
 		}
 	}
-	if checkpointErr == nil && proto.Size(info) > deviceauth.MaxMutableBytes {
+	if checkpointErr == nil && proto.Size(info) > devicesec.MaxMutableBytes {
 		checkpointErr = errors.New("current checkpoint exceeds combined session metadata capacity")
 	}
 	if checkpointErr != nil {
@@ -530,13 +530,13 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	}
 	keyEnv, err := c.security.seal(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, Seq: 1, MachineId: c.acct.DeviceID, SessionId: id, Sender: c.acct.DeviceID,
-	}, deviceauth.SessionKey, nil, key)
+	}, devicesec.SessionKey, nil, key)
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
 	// The caller fetched this object's floor once for its sync batch.
 	if floor == ^uint64(0) {
-		return 0, localSyncError("revision", deviceauth.ErrCapacity)
+		return 0, localSyncError("revision", devicesec.ErrCapacity)
 	}
 	revMu.Lock()
 	lastRev = max(lastRev+1, floor+1, uint64(time.Now().UnixMicro()))
@@ -545,7 +545,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 	meta, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID, SessionId: id,
 		Seq: rev, Sender: c.acct.DeviceID,
-	}, deviceauth.SessionMeta, nil, info)
+	}, devicesec.SessionMeta, nil, info)
 	if err != nil {
 		return 0, localSyncError("encryption", err)
 	}
@@ -558,7 +558,7 @@ func (c *conn) putSession(ctx context.Context, id string, key []byte, info *pb.S
 			request.Meta, err = c.security.sealMessage(&pb.Header{
 				Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID,
 				SessionId: id, Seq: rev, Sender: c.acct.DeviceID,
-			}, deviceauth.SessionMeta, nil, base)
+			}, devicesec.SessionMeta, nil, base)
 			if err != nil {
 				return 0, localSyncError("encryption", err)
 			}
@@ -663,7 +663,7 @@ func (c *conn) notifyRequest(ctx context.Context, sessionID string, info *pb.Ses
 	env, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, SessionId: sessionID,
 		RequestId: routingID, Sender: c.acct.DeviceID,
-	}, deviceauth.Notify, nil, nc)
+	}, devicesec.Notify, nil, nc)
 	if err != nil {
 		return nil, err
 	}

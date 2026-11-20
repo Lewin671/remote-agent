@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestMigrationRefusesNonStateHomeWithoutCreatingFiles(t *testing.T) {
@@ -105,7 +106,7 @@ func TestMigrationRejectsClockBehindExistingWatermarks(t *testing.T) {
 				t.Fatal(err)
 			}
 			now := time.Now()
-			future := uint64(now.UnixMilli()) + deviceauth.MaxClockSkew + 1
+			future := uint64(now.UnixMilli()) + devicesec.MaxClockSkew + 1
 			table := "security"
 			if column == "cutoff" {
 				table = "accepted_meta"

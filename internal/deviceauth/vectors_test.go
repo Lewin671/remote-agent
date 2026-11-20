@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 type vectors struct {
@@ -46,9 +48,9 @@ func buildVectors(t *testing.T) vectors {
 	g, pin, phoneEd, phoneX, recovery := testGenesis(t)
 	secret1 := bytes.Repeat([]byte{0x33}, 32)
 	phone, _ := g.Core.Member(g.Core.AuthorityID)
-	machine, machineEd, machineX := testMember(t, 0x44, Machine)
+	machine, machineEd, machineX := testMember(t, 0x44, devicesec.Machine)
 	secret2 := bytes.Repeat([]byte{0x55}, 32)
-	added, err := BuildState(g, []Member{phone, machine}, nil, secret2, mustPrev(t, secret2, secret1), phoneEd, 1_700_000_100_000)
+	added, err := BuildState(g, []devicesec.Member{phone, machine}, nil, secret2, mustPrev(t, secret2, secret1), phoneEd, 1_700_000_100_000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,17 +61,17 @@ func buildVectors(t *testing.T) vectors {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newPhone, newPhoneEd, newPhoneX := testMember(t, 0x77, Client)
+	newPhone, newPhoneEd, newPhoneX := testMember(t, 0x77, devicesec.Client)
 	var newRecoveryPub [32]byte
 	newRecoveryPub[0] = 0x88
-	rec, stmt, err := BuildRecovery(renewed, newPhone, []Member{machine, newPhone}, bytes.Repeat([]byte{0x99}, 32), newPhoneEd, rotationKey, newRecoveryPub, 1_700_000_300_000)
+	rec, stmt, err := BuildRecovery(renewed, newPhone, []devicesec.Member{machine, newPhone}, bytes.Repeat([]byte{0x99}, 32), newPhoneEd, rotationKey, newRecoveryPub, 1_700_000_300_000)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = pin
 	_ = machineEd
 	_ = newPhoneX
-	b := func(s State) vectorState {
+	b := func(s devicesec.State) vectorState {
 		raw, err := s.MarshalBinary()
 		if err != nil {
 			t.Fatal(err)
@@ -77,13 +79,13 @@ func buildVectors(t *testing.T) vectors {
 		h, _ := s.Hash()
 		return vectorState{State: base64.StdEncoding.EncodeToString(raw), Hash: hex.EncodeToString(h[:])}
 	}
-	stmtRaw, err := stmtBytes(stmt)
+	stmtRaw, err := stmt.MarshalBinary()
 	if err != nil {
 		t.Fatal(err)
 	}
 	l, _ := BuildLease(added, phoneEd, added.Core.IssuedAt)
 	lr, _ := l.MarshalBinary()
-	l2, _ := BuildLease(added, phoneEd, added.Core.IssuedAt+Lease/2)
+	l2, _ := BuildLease(added, phoneEd, added.Core.IssuedAt+devicesec.Lease/2)
 	l2r, _ := l2.MarshalBinary()
 	handoffParent, err := BuildPairState(added, newPhone, newPhone.XPublic[:], secret2, bytes.Repeat([]byte{0xaa}, 32), phoneEd, 1_700_000_250_000)
 	if err != nil {
@@ -106,47 +108,6 @@ func buildVectors(t *testing.T) vectors {
 	}
 }
 
-func stmtBytes(r RecoveryStatement) ([]byte, error) {
-	b, err := r.signBytes()
-	if err != nil {
-		return nil, err
-	}
-	e := encoder{}
-	e.lp(b)
-	e.lp(r.Signature)
-	return e.b, nil
-}
-func parseStmt(raw []byte) (RecoveryStatement, error) {
-	var r RecoveryStatement
-	d := decoder{b: raw}
-	b := d.lp(MaxStateBytes)
-	r.Signature = d.lp(64)
-	if d.done() != nil || len(r.Signature) != 64 {
-		return r, ErrInvalid
-	}
-	const label = "ra3/recovery\x00"
-	if len(b) < len(label) || string(b[:len(label)]) != label {
-		return r, ErrInvalid
-	}
-	dd := decoder{b: b[len(label):]}
-	r.Account = dd.str()
-	r.Domain = dd.hash()
-	r.Parent = dd.hash()
-	r.NewAuthorityID = dd.str()
-	copy(r.NewRecoveryEd[:], dd.raw(32))
-	r.NewMember.ID = dd.str()
-	copy(r.NewMember.EdPublic[:], dd.raw(32))
-	copy(r.NewMember.XPublic[:], dd.raw(32))
-	r.NewMember.Kind = Kind(dd.u32())
-	r.IssuedAt = dd.u64()
-	r.StateHash = dd.hash()
-	r.Nonce = dd.hash()
-	if dd.done() != nil {
-		return r, ErrInvalid
-	}
-	return r, nil
-}
-
 func TestVectors(t *testing.T) {
 	path := filepath.Join("testdata", "domain-v3.json")
 	raw, err := os.ReadFile(path)
@@ -157,12 +118,12 @@ func TestVectors(t *testing.T) {
 	if err := json.Unmarshal(raw, &v); err != nil {
 		t.Fatal(err)
 	}
-	decodeState := func(s vectorState) State {
+	decodeState := func(s vectorState) devicesec.State {
 		b, err := base64.StdEncoding.DecodeString(s.State)
 		if err != nil {
 			t.Fatal(err)
 		}
-		st, err := ParseState(b)
+		st, err := devicesec.ParseState(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -176,18 +137,18 @@ func TestVectors(t *testing.T) {
 	added := decodeState(v.Added)
 	renewed := decodeState(v.Renewal)
 	rec := decodeState(v.Recovery)
-	if err := VerifyTransition(g, added, nil); err != nil {
+	if err := devicesec.VerifyTransition(g, added, nil); err != nil {
 		t.Fatalf("added: %v", err)
 	}
-	if err := VerifyTransition(added, renewed, nil); err != nil {
+	if err := devicesec.VerifyTransition(added, renewed, nil); err != nil {
 		t.Fatalf("renewal: %v", err)
 	}
 	stmtRaw, _ := base64.StdEncoding.DecodeString(v.RecoveryStatement)
-	stmt, err := parseStmt(stmtRaw)
+	stmt, err := devicesec.ParseRecoveryStatement(stmtRaw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := VerifyTransition(renewed, rec, &stmt); err != nil {
+	if err := devicesec.VerifyTransition(renewed, rec, &stmt); err != nil {
 		t.Fatalf("recovery: %v", err)
 	}
 	if len(rec.PrevSecret) != 0 {
@@ -195,10 +156,10 @@ func TestVectors(t *testing.T) {
 	}
 	pin, _ := g.Pin()
 	phoneX, _ := hex.DecodeString(v.PhoneX)
-	if got, err := pin.OpenGrant(added, g.Core.AuthorityID, phoneX); err != nil || !bytes.Equal(got, mustHex(t, v.ContentSecret2)) {
+	if got, err := OpenGrant(pin, added, g.Core.AuthorityID, phoneX); err != nil || !bytes.Equal(got, mustHex(t, v.ContentSecret2)) {
 		t.Fatalf("phone grant: %v", err)
 	}
-	if _, err := pin.OpenGrant(rec, g.Core.AuthorityID, phoneX); err == nil {
+	if _, err := OpenGrant(pin, rec, g.Core.AuthorityID, phoneX); err == nil {
 		t.Fatal("removed authority still has a grant in the recovery state")
 	}
 }
@@ -245,13 +206,13 @@ func TestGenerateEnvelopeVector(t *testing.T) {
 	g, _, phoneEd, _, _ := testGenesis(t)
 	secret1 := bytes.Repeat([]byte{0x33}, 32)
 	phone, _ := g.Core.Member(g.Core.AuthorityID)
-	machine, _, _ := testMember(t, 0x44, Machine)
+	machine, _, _ := testMember(t, 0x44, devicesec.Machine)
 	secret2 := bytes.Repeat([]byte{0x55}, 32)
-	added, err := BuildState(g, []Member{phone, machine}, nil, secret2, mustPrev(t, secret2, secret1), phoneEd, 1_700_000_100_000)
+	added, err := BuildState(g, []devicesec.Member{phone, machine}, nil, secret2, mustPrev(t, secret2, secret1), phoneEd, 1_700_000_100_000)
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := Header{Account: added.Core.Account, Domain: added.Core.Domain, Epoch: added.Core.Epoch, State: mustHash(t, added), ContentEpoch: added.Core.ContentEpoch, Sender: phone.ID, Kind: 5, Purpose: Command, Machine: machine.ID, Request: "0123456789abcdef", Deadline: 1_700_000_200_000}
+	h := devicesec.Header{Account: added.Core.Account, Domain: added.Core.Domain, Epoch: added.Core.Epoch, State: mustHash(t, added), ContentEpoch: added.Core.ContentEpoch, Sender: phone.ID, Kind: 5, Purpose: devicesec.Command, Machine: machine.ID, Request: "0123456789abcdef", Deadline: 1_700_000_200_000}
 	plain := []byte("protocol-10 vector")
 	w, err := Seal(secret2, nil, h, plain, phoneEd)
 	if err != nil {
@@ -266,7 +227,7 @@ func TestGenerateEnvelopeVector(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-func mustRawState(t *testing.T, s State) []byte {
+func mustRawState(t *testing.T, s devicesec.State) []byte {
 	t.Helper()
 	b, err := s.MarshalBinary()
 	if err != nil {

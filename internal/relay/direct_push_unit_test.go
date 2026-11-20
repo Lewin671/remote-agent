@@ -13,6 +13,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
@@ -132,7 +133,7 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c2, err := deviceauth.NewMember(c2Ed.Public().(ed25519.PublicKey), c2XPub, deviceauth.Client)
+	c2, err := devicesec.NewMember(c2Ed.Public().(ed25519.PublicKey), c2XPub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.security.endpoint.Install([]deviceauth.State{addedState}, []*deviceauth.RecoveryStatement{nil}); err != nil {
+	if err := c.security.endpoint.Install([]devicesec.State{addedState}, []*devicesec.RecoveryStatement{nil}); err != nil {
 		t.Fatal(err)
 	}
 	addedLease, err := deviceauth.BuildLease(addedState, keys.phone, addedState.Core.IssuedAt)
@@ -196,7 +197,7 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.security.endpoint.Install([]deviceauth.State{revokedState}, []*deviceauth.RecoveryStatement{nil}); err != nil {
+	if err := c.security.endpoint.Install([]devicesec.State{revokedState}, []*devicesec.RecoveryStatement{nil}); err != nil {
 		t.Fatal(err)
 	}
 	revokedLease, err := deviceauth.BuildLease(revokedState, keys.phone, revokedState.Core.IssuedAt)

@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestPairDomainTrustIsCommittedBeforeReveal(t *testing.T) {
-	p := deviceauth.Pin{Account: "0123456789abcdef0123456789abcdef"}
+	p := devicesec.Pin{Account: "0123456789abcdef0123456789abcdef"}
 	p.Domain[0] = 1
 	p.Genesis[0] = 2
 	approver := "22222222222222222222222222222222"
-	trust, err := deviceauth.PairTrustDescriptor(p, approver)
+	trust, err := devicesec.PairTrustDescriptor(p, approver)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestPairDomainTrustIsCommittedBeforeReveal(t *testing.T) {
 
 	other := p
 	other.Genesis[0] ^= 1
-	changedTrust, err := deviceauth.PairTrustDescriptor(other, approver)
+	changedTrust, err := devicesec.PairTrustDescriptor(other, approver)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
@@ -48,7 +49,7 @@ func openDirectPolicy(path string) (*directPolicyStore, error) {
 		return nil, deviceauth.ErrStorage
 	}
 	var data directPolicyData
-	if json.Unmarshal(raw, &data) != nil || data.Version != 1 || data.Peers == nil || len(data.Peers) > deviceauth.MaxMembers {
+	if json.Unmarshal(raw, &data) != nil || data.Version != 1 || data.Peers == nil || len(data.Peers) > devicesec.MaxMembers {
 		return nil, deviceauth.ErrStorage
 	}
 	for id := range data.Peers {
@@ -85,7 +86,7 @@ func (p *directPolicyStore) commit(data directPolicyData) error {
 // head. Roles come from that head; policy payloads cannot name an authority.
 func (p *directPolicyStore) apply(o peerwire.Opened, authority string) ([]byte, error) {
 	if o.Type != 9 || o.Context.Class != 2 || o.Context.FromRole != 1 || o.Context.ToRole != 2 {
-		return nil, deviceauth.ErrUntrusted
+		return nil, devicesec.ErrUntrusted
 	}
 	if _, err := peerwire.KnownPayload(2, 9, o.Payload); err != nil {
 		return nil, err
@@ -97,7 +98,7 @@ func (p *directPolicyStore) apply(o peerwire.Opened, authority string) ([]byte, 
 	scope, revision, enabled := f[4].U, f[2].U, f[3].U == 1
 	peer := string(f[1].B)
 	if scope == 1 && string(o.Context.From) != authority || scope == 2 && (peer != string(o.Context.From) || enabled) {
-		return nil, deviceauth.ErrUntrusted
+		return nil, devicesec.ErrUntrusted
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -123,8 +124,8 @@ func (p *directPolicyStore) apply(o peerwire.Opened, authority string) ([]byte, 
 		if scope == 1 {
 			data.Machine = updated
 		} else {
-			if _, exists := data.Peers[peer]; !exists && len(data.Peers) >= deviceauth.MaxMembers {
-				return nil, deviceauth.ErrCapacity
+			if _, exists := data.Peers[peer]; !exists && len(data.Peers) >= devicesec.MaxMembers {
+				return nil, devicesec.ErrCapacity
 			}
 			data.Peers[peer] = updated
 		}
@@ -151,7 +152,7 @@ func (p *directPolicyStore) setLocal(enabled bool) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.data.Machine.Revision == ^uint64(0) {
-		return deviceauth.ErrCapacity
+		return devicesec.ErrCapacity
 	}
 	data := p.data
 	data.Machine = directSetting{p.data.Machine.Revision + 1, enabled}

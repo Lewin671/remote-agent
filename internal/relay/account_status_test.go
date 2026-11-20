@@ -1,8 +1,10 @@
 package relay
 
 import (
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"testing"
+
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestAccountStatusReportsInstalledLease(t *testing.T) {
@@ -14,7 +16,7 @@ func TestAccountStatusReportsInstalledLease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, err := deviceauth.InitEndpoint(securityPath(), pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, id, c.acct.DeviceSeed, keys.x, cert)
+	endpoint, err := deviceauth.InitEndpoint(securityPath(), pin, keys.states, []*devicesec.RecoveryStatement{nil, nil}, id, c.acct.DeviceSeed, keys.x, cert)
 	if err != nil {
 		t.Fatal(err)
 	}

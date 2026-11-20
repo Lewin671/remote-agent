@@ -17,6 +17,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/i18n"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	_ "modernc.org/sqlite"
 )
 
@@ -343,7 +344,7 @@ func migrationCutoff(db *sql.DB, now time.Time) (uint64, error) {
 	if db.QueryRow(`SELECT floor_ms,floor_saved_ms FROM security WHERE id=1`).Scan(&floor, &saved) != nil {
 		return 0, errMigration
 	}
-	if max(cutoff, floor, saved) > clock+deviceauth.MaxClockSkew {
+	if max(cutoff, floor, saved) > clock+devicesec.MaxClockSkew {
 		return 0, errMigration
 	}
 	return max(cutoff, deadline), nil

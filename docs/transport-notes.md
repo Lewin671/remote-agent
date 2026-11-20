@@ -81,7 +81,7 @@ Forward 用已执行的 RenameSession 截断回复，结果验证的是未知与
 - `finishAccepted` 结果超限保留 in-progress；其他新准入触发的到期剪枝可删除尚在运行的条目，此后完成返回 ErrInvalid。不是无限保存 unknown：过期后缺少记录的原请求不能再获准执行，但也没有过去未执行的证据。
 - `session()` 打开安全 endpoint，其 defer 等 workers/terminals 再关闭；执行和终端挂在 conn 上。四端终端重复序号会关流，但只检查递增，未保证连续（跳过缺口仍能被接受）。计数器初始化为 0，发送前自增，首帧为 1。终端 Input 按 256 字节送 tmux，`TermStream.command` 单次期限 5 秒，超时/管道写失败会 end 流，不能推导整帧原子性。普通 tmux 命令错误返回给 Input；`readTerminal` 对 Input/Resize/History 回调错误只记日志并继续读，只有成功才推进 last。不能把普通命令失败、超时、History 容量拒绝都写成同一种关流行为。
 - `ParseHeader → Header.validate` 已检查 Purpose/kind、ID 格式、请求 ID 最短 16 字节；`codec.validID` 已限最长 128 字节。`Header.Scope` 也已核对角色与目标 Machine 成员。缺的是本机 Machine 等值及特定流 Session/Request/绑定 Sender 的上下文检查，不是所有范围检查都在 Accept 外。共享入口要保留这些已有检查并补齐上下文。
-- `internal/deviceauth/codec.go` 的 MaxClockSkew 是 **5 分钟**；Accept 允许的最大未来截止时间是 **10 分钟**，二者不是同一参数。接受日志开销为 key 长度 + 结果长度 + 128 字节；16 MiB 不全是结果空间。
+- `shared/devicesec/codec.go` 的 MaxClockSkew 是 **5 分钟**；Accept 允许的最大未来截止时间是 **10 分钟**，二者不是同一参数。接受日志开销为 key 长度 + 结果长度 + 128 字节；16 MiB 不全是结果空间。
 - agent 发文件任务分支 `wt/send-file`（核对提交 `7766a145`）已有 `Command_GetSharedFileChunk`：`readOnlyCommand` 白名单、relay handler 和共享副本设计。它不缓存块结果；“约 21 块填满日志”只适用于错误地将下载接成普通持久指令的假设，不能当成该分支的实际瓶颈。当前设计 checkout 没有该接口，不能说产品已经具备。
 - 上传 `uploads.put` 在 RECEIVING 状态核对归属、重叠字节并 fsync 后保存进度；完成后的晚到块在范围内直接回状态，不重新比较每个字节。因此“所有重叠重复都比较”过宽；已完成对象的最终哈希及不再写入仍保护内容。Put 仍持全局锁，fsync 对交互公平性的影响未测。
 - `CommandResult`（`proto/remoteagent/v1/remote.proto`）只有 error_code/error_message 与结果 oneof，`ForwardReply` 只有 result/error；两者都没有显式结果类别。`rpcErr` 默认 unknown；网页 `uncertain()` 接受字符串 unknown/aborted，Android/iOS 只将 unknown_outcome 或来自 daemon 的 aborted 识别为 unknown。`schedule.go` 的 expected revision、`files.go` 的 generation/文件身份冲突确实使用 aborted；Android `core/Schedules.kt` 单独按该码恢复编辑冲突，不能统一抹成 unknown。

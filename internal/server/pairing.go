@@ -10,8 +10,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"math/big"
 	"net/http"
 	"strings"
@@ -300,7 +300,7 @@ func (ps *pairingService) RevealPairing(ctx context.Context, req *connect.Reques
 	if len(req.Msg.Trust) == 0 || len(req.Msg.Trust) > 8<<10 {
 		return nil, invalid("missing or oversized trust descriptor")
 	}
-	pin, approver, err := deviceauth.ParsePairTrustDescriptor(req.Msg.Trust)
+	pin, approver, err := devicesec.ParsePairTrustDescriptor(req.Msg.Trust)
 	if err != nil || pin.Account != p.account || approver != p.initiator || !bytes.Equal(e2e.PairDomainCommit(req.Msg.InitiatorPublic, req.Msg.Trust), p.commit) {
 		return nil, invalid("the trust descriptor does not match the commitment")
 	}

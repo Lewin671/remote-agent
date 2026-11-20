@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -38,7 +39,7 @@ func TestCheckpointIsDurableEncryptedAndIndependentOfHistory(t *testing.T) {
 	if snapshot.Session.LastSeq != 99 || !snapshot.Running {
 		t.Fatal("current snapshot needs historical prefix")
 	}
-	env, err := c.security.sealMessage(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID, SessionId: "session-checkpoint", Seq: 1}, deviceauth.SessionMeta, nil, &pb.Session{Id: "session-checkpoint", CurrentCheckpoint: raw})
+	env, err := c.security.sealMessage(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_META, MachineId: c.acct.DeviceID, SessionId: "session-checkpoint", Seq: 1}, devicesec.SessionMeta, nil, &pb.Session{Id: "session-checkpoint", CurrentCheckpoint: raw})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +81,7 @@ func TestExpiredLeasePausesEveryContentPublisherUntilRenewed(t *testing.T) {
 	if err := endpoint.Touch(expired); err != nil {
 		t.Fatal(err)
 	}
-	for _, purpose := range []deviceauth.Purpose{deviceauth.Event, deviceauth.Image, deviceauth.Notify, deviceauth.TerminalOutput, deviceauth.SessionMeta, deviceauth.Result} {
+	for _, purpose := range []devicesec.Purpose{devicesec.Event, devicesec.Image, devicesec.Notify, devicesec.TerminalOutput, devicesec.SessionMeta, devicesec.Result} {
 		if _, err := c.security.seal(&pb.Header{}, purpose, nil, []byte("buffered")); err == nil {
 			t.Fatalf("purpose %v published after expiry", purpose)
 		}
@@ -97,7 +98,7 @@ func TestExpiredLeasePausesEveryContentPublisherUntilRenewed(t *testing.T) {
 	if err := endpoint.InstallLease(renewed, expired); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.security.seal(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_MACHINE_META, MachineId: c.acct.DeviceID, Seq: 1}, deviceauth.MachineMeta, nil, []byte("buffered")); err != nil {
+	if _, err := c.security.seal(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_MACHINE_META, MachineId: c.acct.DeviceID, Seq: 1}, devicesec.MachineMeta, nil, []byte("buffered")); err != nil {
 		t.Fatalf("renewal did not resume buffered publishing: %v", err)
 	}
 }

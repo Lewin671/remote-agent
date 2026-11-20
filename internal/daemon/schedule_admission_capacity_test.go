@@ -14,8 +14,8 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/schedule"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -261,7 +261,7 @@ func TestScheduleListPayloadSizes(t *testing.T) {
 		}
 		t.Logf("tasks=%d JSON=%d protobuf=%d DEFLATE=%d", count, len(data), len(plain), packed.Len())
 		exceedsFrame = exceedsFrame || packed.Len() > 2<<20 // server maxFrameBytes, before envelope overhead
-		exceedsPlain = exceedsPlain || len(plain) > deviceauth.MaxCipherBytes-16
+		exceedsPlain = exceedsPlain || len(plain) > devicesec.MaxCipherBytes-16
 	}
 	if !exceedsFrame || !exceedsPlain {
 		t.Fatal("fixture did not demonstrate both existing transport limits")

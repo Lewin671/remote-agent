@@ -11,7 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
@@ -535,7 +535,7 @@ func (a accountHub) forward(ctx context.Context, machineID string, fc *pb.Forwar
 		case r == nil:
 			return nil, errUnknown("the machine disconnected")
 		case r.EntryFailure:
-			return nil, connect.NewError(connect.CodeAborted, deviceauth.ErrInvalid)
+			return nil, connect.NewError(connect.CodeAborted, devicesec.ErrInvalid)
 		case r.Result == nil:
 			return nil, errUnknown("the machine sent no result")
 		}

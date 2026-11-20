@@ -14,8 +14,8 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestRPCAccountAdmissionBeforeBodyRead(t *testing.T) {
@@ -98,7 +98,7 @@ func TestWaitingForwardsHaveSeparateAdmission(t *testing.T) {
 	defer cancel()
 	done := make(chan error, maxAccountForwardRequests)
 	forward := func(a *testAccount) error {
-		env, err := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
+		env, err := opaqueEnvelope(&pb.Header{Version: devicesec.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
 			MachineId: a.mid, RequestId: "0123456789abcdef0123456789abcdef", DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: a.cid}, []byte("cmd"))
 		if err != nil {
 			return err
@@ -183,7 +183,7 @@ func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
 	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, hs.URL, withToken(a.ctok), connect.WithSendGzip())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env, err := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
+	env, err := opaqueEnvelope(&pb.Header{Version: devicesec.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
 		MachineId: a.mid, RequestId: "0123456789abcdef0123456789abcdef", DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: a.cid}, []byte("cmd"))
 	if err != nil {
 		t.Fatal(err)

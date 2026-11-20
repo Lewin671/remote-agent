@@ -3,13 +3,14 @@ package deviceauth
 import (
 	"errors"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // EntryDecision is produced only after authenticating and hashing the original
 // payload. It carries no cached body on identity conflict.
 type EntryDecision struct {
 	Outcome, Reason, ConflictKind string
-	Key, Payload                  Hash
+	Key, Payload                  devicesec.Hash
 	cause                         error
 }
 
@@ -25,8 +26,8 @@ func notAdmitted(reason string, err error) error {
 }
 
 // RequestIdentity uses the original unpacked bytes, never a reserialized Command.
-func RequestIdentity(h Header, plain []byte) (Hash, Hash, error) {
-	var key Hash
+func RequestIdentity(h devicesec.Header, plain []byte) (devicesec.Hash, devicesec.Hash, error) {
+	var key devicesec.Hash
 	copy(key[:], acceptedKey(h))
 	payload, err := payloadHash(h, plain)
 	return key, payload, err

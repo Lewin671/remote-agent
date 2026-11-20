@@ -6,8 +6,9 @@ import (
 	"errors"
 	"example.com/transport-sdk-lab/labwire"
 	"fmt"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"google.golang.org/protobuf/encoding/protowire"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // Encode one immutable status page at a time. Every page carries the same
@@ -197,8 +198,8 @@ func (r *registry) prune(now uint64) {
 
 func recoveryCases(sec *Security, results map[string]any) {
 	s := newStream(sec, "stream-recovery-01")
-	first := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("applied"))
-	second := sec.seal(s.id, 2, s.now, deviceauth.TerminalInput, []byte("lost before admission"))
+	first := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("applied"))
+	second := sec.seal(s.id, 2, s.now, devicesec.TerminalInput, []byte("lost before admission"))
 	must(s.cacheInput(first))
 	must(s.cacheInput(second))
 	must(send(s, "direct", first, false))
@@ -214,8 +215,8 @@ func recoveryCases(sec *Security, results map[string]any) {
 	results["status_reply_and_old_stream_resend"] = map[string]int{"control_packets": s.controlPackets, "control_bytes": s.controlBytes}
 	s = newStream(sec, "stream-recovery-02")
 	s.hold = true
-	one := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("inflight"))
-	two := sec.seal(s.id, 2, s.now, deviceauth.TerminalInput, []byte("never sent"))
+	one := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("inflight"))
+	two := sec.seal(s.id, 2, s.now, devicesec.TerminalInput, []byte("never sent"))
 	must(send(s, "direct", one, false))
 	var final *Status
 	s.secureStatus("relay", true, func(x Status) { final = &x })
@@ -224,13 +225,13 @@ func recoveryCases(sec *Security, results map[string]any) {
 	check(final != nil && final.Final && final.Processed == 1 && s.stopped, "barrier final reply")
 	check(send(s, "relay", two, false) != nil, "old authorized late copy admitted")
 	fresh := newStream(sec, "stream-recovery-03")
-	reauthorized := sec.seal(fresh.id, 1, fresh.now, deviceauth.TerminalInput, two.plainInput())
+	reauthorized := sec.seal(fresh.id, 1, fresh.now, devicesec.TerminalInput, two.plainInput())
 	must(send(fresh, "relay", reauthorized, false))
 	check(fresh.injectedChunks == 1 && s.injectedChunks == 1, "new stream duplicated known input")
 	results["final_barrier_before_new_authorization"] = true
 	s = newStream(sec, "stream-recovery-04")
 	for n := uint64(1); n <= 17; n++ {
-		must(send(s, "direct", sec.seal(s.id, n, s.now, deviceauth.TerminalOutput, []byte("render")), false))
+		must(send(s, "direct", sec.seal(s.id, n, s.now, devicesec.TerminalOutput, []byte("render")), false))
 		s.render()
 	}
 	check(s.acks == 1, "16-frame ACK")

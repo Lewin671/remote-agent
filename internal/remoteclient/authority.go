@@ -17,6 +17,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/netpolicy"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,12 +30,12 @@ type Authority struct {
 	AccountPublicKey []byte
 	Ed               ed25519.PrivateKey
 	X                []byte
-	Member           deviceauth.Member
+	Member           devicesec.Member
 	Recovery         ed25519.PrivateKey
-	Pin              deviceauth.Pin
-	States           []deviceauth.State
-	Proofs           []*deviceauth.RecoveryStatement
-	Lease            deviceauth.LeaseCertificate
+	Pin              devicesec.Pin
+	States           []devicesec.State
+	Proofs           []*devicesec.RecoveryStatement
+	Lease            devicesec.LeaseCertificate
 	Secret           []byte
 	Token            string
 
@@ -47,7 +48,7 @@ type Enrolled struct {
 	ID       string
 	Token    string
 	Endpoint *deviceauth.Endpoint
-	State    deviceauth.State
+	State    devicesec.State
 }
 
 // NewAuthority creates an account with a phone client as its first device,
@@ -72,7 +73,7 @@ func NewAuthority(ctx context.Context, server, setupToken string) (*Authority, e
 	if err != nil {
 		return nil, err
 	}
-	phone, err := deviceauth.NewMember(phoneEd.Public().(ed25519.PublicKey), phoneXPub, deviceauth.Client)
+	phone, err := devicesec.NewMember(phoneEd.Public().(ed25519.PublicKey), phoneXPub, devicesec.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func NewAuthority(ctx context.Context, server, setupToken string) (*Authority, e
 	}
 	var recoveryPub [32]byte
 	copy(recoveryPub[:], recovery.Public().(ed25519.PublicKey))
-	domain := deviceauth.Hash{}
+	domain := devicesec.Hash{}
 	if _, err := rand.Read(domain[:]); err != nil {
 		return nil, err
 	}
@@ -126,24 +127,24 @@ func NewAuthority(ctx context.Context, server, setupToken string) (*Authority, e
 	return &Authority{
 		Server: server, Root: root, AccountPublicKey: keys.AccountPublicKey(),
 		Ed: phoneEd, X: phoneX, Member: phone, Recovery: recovery, Pin: pin,
-		States: []deviceauth.State{genesis}, Proofs: []*deviceauth.RecoveryStatement{nil},
+		States: []devicesec.State{genesis}, Proofs: []*devicesec.RecoveryStatement{nil},
 		Lease: lease, Secret: secret, Token: token, api: api, auth: auth,
 	}, nil
 }
 
 // Enroll registers a new device with a phone-signed approval, adds it to the
 // chain and returns its endpoint and login token.
-func (a *Authority) Enroll(ctx context.Context, ed ed25519.PrivateKey, x []byte, kind deviceauth.Kind) (*Enrolled, error) {
+func (a *Authority) Enroll(ctx context.Context, ed ed25519.PrivateKey, x []byte, kind devicesec.Kind) (*Enrolled, error) {
 	xpub, err := deviceauth.XPublic(x)
 	if err != nil {
 		return nil, err
 	}
-	member, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, kind)
+	member, err := devicesec.NewMember(ed.Public().(ed25519.PublicKey), xpub, kind)
 	if err != nil {
 		return nil, err
 	}
 	pbKind := pb.DeviceKind_DEVICE_KIND_MACHINE
-	if kind == deviceauth.Client {
+	if kind == devicesec.Client {
 		pbKind = pb.DeviceKind_DEVICE_KIND_CLIENT
 	}
 	approval, sig, err := e2e.NewPairApproval(a.Pin.Account, randomID(), a.Ed, member.EdPublic[:], pbKind, time.Now().Add(time.Minute).UnixMilli())
@@ -173,24 +174,24 @@ func (a *Authority) Enroll(ctx context.Context, ed ed25519.PrivateKey, x []byte,
 	return &Enrolled{ID: res.Msg.DeviceId, Token: token, Endpoint: endpoint, State: state}, nil
 }
 
-func (a *Authority) addMember(ctx context.Context, member deviceauth.Member, xpub []byte) (deviceauth.State, error) {
+func (a *Authority) addMember(ctx context.Context, member devicesec.Member, xpub []byte) (devicesec.State, error) {
 	newSecret := make([]byte, 32)
 	if _, err := rand.Read(newSecret); err != nil {
-		return deviceauth.State{}, err
+		return devicesec.State{}, err
 	}
 	parent := a.States[len(a.States)-1]
 	state, err := deviceauth.BuildPairState(parent, member, xpub, a.Secret, newSecret, a.Ed, uint64(time.Now().UnixMilli()))
 	if err != nil {
-		return deviceauth.State{}, err
+		return devicesec.State{}, err
 	}
 	raw, _ := state.MarshalBinary()
 	lease, err := deviceauth.BuildLease(state, a.Ed, uint64(time.Now().UnixMilli()))
 	if err != nil {
-		return deviceauth.State{}, err
+		return devicesec.State{}, err
 	}
 	lr, _ := lease.MarshalBinary()
 	if _, err := a.api.PutSecurityState(ctx, connect.NewRequest(&pb.PutSecurityStateRequest{States: []*pb.SecurityState{{State: raw}}, Lease: lr})); err != nil {
-		return deviceauth.State{}, err
+		return devicesec.State{}, err
 	}
 	a.States = append(a.States, state)
 	a.Proofs = append(a.Proofs, nil)
@@ -200,7 +201,7 @@ func (a *Authority) addMember(ctx context.Context, member deviceauth.Member, xpu
 }
 
 // AddMember adds an already registered member to the signed chain.
-func (a *Authority) AddMember(ctx context.Context, member deviceauth.Member, xpub []byte) (deviceauth.State, error) {
+func (a *Authority) AddMember(ctx context.Context, member devicesec.Member, xpub []byte) (devicesec.State, error) {
 	return a.addMember(ctx, member, xpub)
 }
 

@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"testing"
 	"testing/cryptotest"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // TestSignedBytesGolden pins the exact bytes the daemon's signing and sealing
@@ -18,12 +20,12 @@ import (
 func TestSignedBytesGolden(t *testing.T) {
 	cryptotest.SetGlobalRandom(t, 20261120)
 	key := func(b byte) ed25519.PrivateKey { return ed25519.NewKeyFromSeed(bytes.Repeat([]byte{b}, 32)) }
-	member := func(ed, x byte, kind Kind) Member {
+	member := func(ed, x byte, kind devicesec.Kind) devicesec.Member {
 		pub, err := XPublic(bytes.Repeat([]byte{x}, 32))
 		if err != nil {
 			t.Fatal(err)
 		}
-		m, err := NewMember(key(ed).Public().(ed25519.PublicKey), pub, kind)
+		m, err := devicesec.NewMember(key(ed).Public().(ed25519.PublicKey), pub, kind)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -32,10 +34,10 @@ func TestSignedBytesGolden(t *testing.T) {
 	recovery := func(b byte) [32]byte { return [32]byte(key(b).Public().(ed25519.PublicKey)) }
 	secret := func(b byte) []byte { return bytes.Repeat([]byte{b}, 32) }
 	const t0 = 1_800_000_000_000
-	phone, machine, tablet, laptop := member(0x11, 0x21, Client), member(0x12, 0x22, Machine), member(0x13, 0x23, Client), member(0x14, 0x24, Client)
+	phone, machine, tablet, laptop := member(0x11, 0x21, devicesec.Client), member(0x12, 0x22, devicesec.Machine), member(0x13, 0x23, devicesec.Client), member(0x14, 0x24, devicesec.Client)
 	got := map[string][]byte{}
-	state := func(name string) func(State, error) State {
-		return func(s State, err error) State {
+	state := func(name string) func(devicesec.State, error) devicesec.State {
+		return func(s devicesec.State, err error) devicesec.State {
 			t.Helper()
 			if err != nil {
 				t.Fatalf("%s: %v", name, err)
@@ -49,9 +51,9 @@ func TestSignedBytesGolden(t *testing.T) {
 		}
 	}
 
-	genesis := state("genesis")(BuildGenesis("0123456789abcdef0123456789abcdef", Hash(secret(0x41)), phone, recovery(0x31), secret(0x51), key(0x11), t0))
+	genesis := state("genesis")(BuildGenesis("0123456789abcdef0123456789abcdef", devicesec.Hash(secret(0x41)), phone, recovery(0x31), secret(0x51), key(0x11), t0))
 	paired := state("paired")(BuildPairState(genesis, machine, machine.XPublic[:], secret(0x51), secret(0x52), key(0x11), t0+1_000))
-	added := state("added")(BuildMembershipState(paired, []Member{phone, machine, tablet}, nil, secret(0x52), secret(0x53), key(0x11), t0+2_000))
+	added := state("added")(BuildMembershipState(paired, []devicesec.Member{phone, machine, tablet}, nil, secret(0x52), secret(0x53), key(0x11), t0+2_000))
 	rotated := state("rotated")(BuildRecoveryKeyRotation(added, secret(0x53), recovery(0x32), key(0x11), t0+3_000))
 	lease, err := BuildLease(rotated, key(0x11), t0+4_000)
 	if err != nil {
@@ -61,11 +63,11 @@ func TestSignedBytesGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	head, _ := rotated.Hash()
-	command := Header{Account: rotated.Core.Account, Domain: rotated.Core.Domain, Epoch: rotated.Core.Epoch, State: head, ContentEpoch: rotated.Core.ContentEpoch, Sender: phone.ID, Kind: 5, Purpose: Command, Machine: machine.ID, Request: "0123456789abcdef", Deadline: t0 + 60_000}
-	event := Header{Account: rotated.Core.Account, Domain: rotated.Core.Domain, Epoch: rotated.Core.Epoch, State: head, ContentEpoch: rotated.Core.ContentEpoch, Sender: machine.ID, Kind: 1, Purpose: Event, Machine: machine.ID, Session: "session-1", Seq: 7}
+	command := devicesec.Header{Account: rotated.Core.Account, Domain: rotated.Core.Domain, Epoch: rotated.Core.Epoch, State: head, ContentEpoch: rotated.Core.ContentEpoch, Sender: phone.ID, Kind: 5, Purpose: devicesec.Command, Machine: machine.ID, Request: "0123456789abcdef", Deadline: t0 + 60_000}
+	event := devicesec.Header{Account: rotated.Core.Account, Domain: rotated.Core.Domain, Epoch: rotated.Core.Epoch, State: head, ContentEpoch: rotated.Core.ContentEpoch, Sender: machine.ID, Kind: 1, Purpose: devicesec.Event, Machine: machine.ID, Session: "session-1", Seq: 7}
 	for _, c := range []struct {
 		name   string
-		h      Header
+		h      devicesec.Header
 		seed   []byte
 		signer ed25519.PrivateKey
 	}{{"command", command, nil, key(0x11)}, {"event", event, secret(0x61), key(0x12)}} {
@@ -78,16 +80,16 @@ func TestSignedBytesGolden(t *testing.T) {
 		}
 	}
 	handoff := state("handoff")(BuildHandoff(rotated, tablet.ID, recovery(0x33), secret(0x53), secret(0x54), key(0x11), t0+5_000))
-	recovered, statement, err := BuildRecovery(handoff, laptop, []Member{machine, laptop}, secret(0x55), key(0x14), key(0x33), recovery(0x34), t0+6_000)
+	recovered, statement, err := BuildRecovery(handoff, laptop, []devicesec.Member{machine, laptop}, secret(0x55), key(0x14), key(0x33), recovery(0x34), t0+6_000)
 	state("recovered")(recovered, err)
 	if got["statement"], err = statement.MarshalBinary(); err != nil {
 		t.Fatal(err)
 	}
 	for _, step := range []struct {
-		parent, next State
-		proof        *RecoveryStatement
+		parent, next devicesec.State
+		proof        *devicesec.RecoveryStatement
 	}{{genesis, paired, nil}, {paired, added, nil}, {added, rotated, nil}, {rotated, handoff, nil}, {handoff, recovered, &statement}} {
-		if err := VerifyTransition(step.parent, step.next, step.proof); err != nil {
+		if err := devicesec.VerifyTransition(step.parent, step.next, step.proof); err != nil {
 			t.Fatalf("epoch %d: %v", step.next.Core.Epoch, err)
 		}
 	}

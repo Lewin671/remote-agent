@@ -20,11 +20,11 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // TestJoinByPairingAgainstRealServer exercises the Go join path end to end:
@@ -102,7 +102,7 @@ func testJoinRegistration(t *testing.T, refused bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	trust, err := deviceauth.PairTrustDescriptor(phone.Pin, phone.Member.ID)
+	trust, err := devicesec.PairTrustDescriptor(phone.Pin, phone.Member.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func testJoinRegistration(t *testing.T, refused bool) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	candidate, err := deviceauth.NewMember(st.DevicePublicKey, st.DeviceHpkePublicKey, deviceauth.Kind(st.JoinerKind))
+	candidate, err := devicesec.NewMember(st.DevicePublicKey, st.DeviceHpkePublicKey, devicesec.Kind(st.JoinerKind))
 	if err != nil {
 		t.Fatal(err)
 	}

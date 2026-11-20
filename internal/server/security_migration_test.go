@@ -11,6 +11,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // TestUpgradedAccountCannotPinOverTheNetwork is finding S11: the 5→6
@@ -33,13 +34,13 @@ func TestUpgradedAccountCannotPinOverTheNetwork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := deviceauth.NewMember(priv.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
+	m, err := devicesec.NewMember(priv.Public().(ed25519.PublicKey), xpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var recovery [32]byte
 	recovery[0] = 5
-	var domain deviceauth.Hash
+	var domain devicesec.Hash
 	domain[0] = 6
 	secret := make([]byte, 32)
 	secret[0] = 7
@@ -83,13 +84,13 @@ func TestSeededGenesisMustBelongToItsAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, xpub, _ := deviceauth.NewXKey()
-	m, err := deviceauth.NewMember(priv.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
+	m, err := devicesec.NewMember(priv.Public().(ed25519.PublicKey), xpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var recovery [32]byte
 	recovery[0] = 1
-	var domain deviceauth.Hash
+	var domain devicesec.Hash
 	domain[0] = 2
 	secret := make([]byte, 32)
 	secret[0] = 3

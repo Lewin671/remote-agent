@@ -8,6 +8,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -42,8 +43,8 @@ func TestReadOnlyAcceptAuthenticatedSkipsSecurityWritesAcrossFloorInterval(t *te
 	ctx := context.Background()
 	for i, offset := range []uint64{500, 1000, 1500, 2500, 5000} {
 		at := now + offset
-		w, err := cl.Prepare(Header{
-			Purpose:  Command,
+		w, err := cl.Prepare(devicesec.Header{
+			Purpose:  devicesec.Command,
 			Kind:     5,
 			Machine:  c.machine.ID,
 			Session:  "session-1",
@@ -57,7 +58,7 @@ func TestReadOnlyAcceptAuthenticatedSkipsSecurityWritesAcrossFloorInterval(t *te
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := m.AcceptAuthenticated(ctx, auth, at, AcceptOptions{}, func(Header, []byte) (Completion, error) {
+		if _, err := m.AcceptAuthenticated(ctx, auth, at, AcceptOptions{}, func(devicesec.Header, []byte) (Completion, error) {
 			return Final([]byte("ok")), nil
 		}); err != nil {
 			t.Fatal(err)
@@ -87,8 +88,8 @@ func TestReadOnlyAcceptAuthenticatedSkipsSecurityWritesAcrossFloorInterval(t *te
 
 	// A mutating command past floorWriteInterval coalesces the security update into persistAccepted.
 	writeAt := now + 7000
-	w, err := cl.Prepare(Header{
-		Purpose:  Command,
+	w, err := cl.Prepare(devicesec.Header{
+		Purpose:  devicesec.Command,
 		Kind:     5,
 		Machine:  c.machine.ID,
 		Request:  "write-floor-coalesce-01",
@@ -101,7 +102,7 @@ func TestReadOnlyAcceptAuthenticatedSkipsSecurityWritesAcrossFloorInterval(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := m.AcceptAuthenticated(ctx, auth, writeAt, AcceptOptions{}, func(Header, []byte) (Completion, error) {
+	if _, err := m.AcceptAuthenticated(ctx, auth, writeAt, AcceptOptions{}, func(devicesec.Header, []byte) (Completion, error) {
 		return Final(nil), nil
 	}); err != nil {
 		t.Fatal(err)

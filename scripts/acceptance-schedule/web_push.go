@@ -11,6 +11,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -41,7 +42,7 @@ func verifyWebPush(ctx context.Context, client *remoteclient.Client, phone *devi
 	must(err)
 	var c pb.NotifyContent
 	must(proto.Unmarshal(p, &c))
-	if h.Purpose != deviceauth.Notify || c.Kind != pb.NotifyKind_NOTIFY_KIND_SCHEDULED ||
+	if h.Purpose != devicesec.Notify || c.Kind != pb.NotifyKind_NOTIFY_KIND_SCHEDULED ||
 		c.Title != "Completion notification acceptance" || c.Text != "Completion fallback verified." ||
 		c.SessionId != data["session"] || c.SourceEventSeq == 0 {
 		panic("Web Push ciphertext lost authenticated task title or summary")

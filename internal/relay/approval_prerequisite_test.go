@@ -16,9 +16,9 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -82,7 +82,7 @@ func TestApprovalSnapshotPrerequisiteSurvivesOrdinaryAndBulkSaturation(t *testin
 				r.Body = io.NopCloser(bytes.NewReader(raw))
 				req := &pb.ForwardRequest{}
 				if proto.Unmarshal(raw, req) == nil && req.Command != nil {
-					if h, err := deviceauth.ParseHeader(req.Command.SecurityHeader); err == nil && h.Request == freshID {
+					if h, err := devicesec.ParseHeader(req.Command.SecurityHeader); err == nil && h.Request == freshID {
 						arrivedOnce.Do(func() { close(arrived) })
 					}
 				}

@@ -3,7 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // These named cases join the language-independent expected.json contract.
@@ -46,15 +47,15 @@ func reviewCases(sec *Security, results map[string]any) {
 	results["review_fragment_actual_peer_budget"] = map[string]int{"peak_retained_bytes": 2 << 20, "after_expiry": s.assemblyBytes}
 
 	s = newStream(sec, "stream-review-003")
-	second := sec.seal(s.id, 2, s.now, deviceauth.TerminalOutput, []byte("second"))
-	conflict := sec.seal(s.id, 2, s.now, deviceauth.TerminalOutput, []byte("changed"))
+	second := sec.seal(s.id, 2, s.now, devicesec.TerminalOutput, []byte("second"))
+	conflict := sec.seal(s.id, 2, s.now, devicesec.TerminalOutput, []byte("changed"))
 	must(send(s, "direct", second, false))
 	check(send(s, "relay", conflict, false) != nil && s.rendered == 0 && s.dirtyACK == 0, "pending output conflict accepted")
-	same := sec.seal(s.id, 2, s.now, deviceauth.TerminalOutput, []byte("second"))
+	same := sec.seal(s.id, 2, s.now, devicesec.TerminalOutput, []byte("second"))
 	check(same.identity == second.identity && !bytes.Equal(same.raw, second.raw), "output fixture not reencrypted")
 	must(send(s, "relay", same, false))
 	check(len(s.output) == 1, "pending output repeated")
-	firstOutput := sec.seal(s.id, 1, s.now, deviceauth.TerminalOutput, []byte("first"))
+	firstOutput := sec.seal(s.id, 1, s.now, devicesec.TerminalOutput, []byte("first"))
 	must(send(s, "relay", firstOutput, false))
 	s.render()
 	s.render()
@@ -74,19 +75,19 @@ func reviewCases(sec *Security, results map[string]any) {
 
 	s = newStream(sec, "stream-review-004")
 	for seq := uint64(1); seq <= 512; seq++ {
-		must(send(s, "relay", sec.seal(s.id, seq, s.now, deviceauth.TerminalOutput, []byte{1}), false))
+		must(send(s, "relay", sec.seal(s.id, seq, s.now, devicesec.TerminalOutput, []byte{1}), false))
 		s.render()
 	}
-	overflow := sec.seal(s.id, 513, s.now, deviceauth.TerminalOutput, []byte{2})
+	overflow := sec.seal(s.id, 513, s.now, devicesec.TerminalOutput, []byte{2})
 	check(send(s, "direct", overflow, false) != nil && s.rendered == 512 && len(s.renderedIdentity) == 512, "output identity budget silently evicted")
 	s.advance(60000)
 	check(len(s.renderedIdentity) == 512, "identity expired before original deadline")
 	s.advance(60001)
 	check(len(s.renderedIdentity) == 0, "expired identity leak")
-	late := sec.seal(s.id, 1, s.now, deviceauth.TerminalOutput, []byte("new authorization for old sequence"))
+	late := sec.seal(s.id, 1, s.now, devicesec.TerminalOutput, []byte("new authorization for old sequence"))
 	dirty = s.dirtyACK
 	check(send(s, "relay", late, false) != nil && s.dirtyACK == dirty, "unknown old output ACKed after identity expiry")
-	must(send(s, "relay", sec.seal(s.id, 513, s.now, deviceauth.TerminalOutput, []byte{3}), false))
+	must(send(s, "relay", sec.seal(s.id, 513, s.now, devicesec.TerminalOutput, []byte{3}), false))
 	s.render()
 	check(s.rendered == 513 && len(s.renderedIdentity) == 1, "output identity capacity not recovered")
 	results["review_output_identity_retention_and_backpressure"] = true

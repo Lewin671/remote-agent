@@ -13,6 +13,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	da "github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func must[T any](v T, err error) T {
@@ -29,8 +30,8 @@ func check(err error) {
 func fill(n, b int) []byte         { return bytes.Repeat([]byte{byte(b)}, n) }
 func key(b int) ed25519.PrivateKey { return ed25519.NewKeyFromSeed(fill(32, b)) }
 func public(b int) [32]byte        { return [32]byte(key(b).Public().(ed25519.PublicKey)) }
-func member(b, x int, kind da.Kind) da.Member {
-	return must(da.NewMember(key(b).Public().(ed25519.PublicKey), must(da.XPublic(fill(32, x))), kind))
+func member(b, x int, kind devicesec.Kind) devicesec.Member {
+	return must(devicesec.NewMember(key(b).Public().(ed25519.PublicKey), must(da.XPublic(fill(32, x))), kind))
 }
 func u16(n int) []byte            { return binary.BigEndian.AppendUint16(nil, uint16(n)) }
 func u64(n uint64) []byte         { return binary.BigEndian.AppendUint64(nil, n) }
@@ -48,7 +49,7 @@ func previousSecret(newSecret, oldSecret, nonce []byte) []byte {
 	return append(nonce, gcm(newSecret).Seal(nil, nonce, oldSecret, []byte("ra3/prev-secret\x00"))...)
 }
 
-func grant(c da.Core, ch []byte, m da.Member, secret, ephemeral []byte) da.Grant {
+func grant(c devicesec.Core, ch []byte, m devicesec.Member, secret, ephemeral []byte) devicesec.Grant {
 	priv := must(ecdh.X25519().NewPrivateKey(ephemeral))
 	enc := priv.PublicKey().Bytes()
 	dh := must(priv.ECDH(must(ecdh.X25519().NewPublicKey(m.XPublic[:]))))
@@ -61,9 +62,9 @@ func grant(c da.Core, ch []byte, m da.Member, secret, ephemeral []byte) da.Grant
 	root := extract(suite, shared, "secret", nil)
 	k := expand(suite, root, "key", ks, 32)
 	nonce := expand(suite, root, "base_nonce", ks, 12)
-	return da.Grant{Recipient: m.ID, Enc: [32]byte(enc), Cipher: gcm(k).Seal(nil, nonce, secret, join([]byte("ra3/grant-aad\x00"), ctx))}
+	return devicesec.Grant{Recipient: m.ID, Enc: [32]byte(enc), Cipher: gcm(k).Seal(nil, nonce, secret, join([]byte("ra3/grant-aad\x00"), ctx))}
 }
-func fixedState(s da.State, secret, previous []byte, signer ed25519.PrivateKey, ephemeral []byte) da.State {
+func fixedState(s devicesec.State, secret, previous []byte, signer ed25519.PrivateKey, ephemeral []byte) devicesec.State {
 	s.PrevSecret = previous
 	ch := hash([]byte("ra3/core\x00"), must(s.Core.MarshalBinary()))
 	s.Grants = nil

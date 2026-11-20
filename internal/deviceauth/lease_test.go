@@ -6,22 +6,24 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
-func rotateForTest(parent State, secret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
+func rotateForTest(parent devicesec.State, secret []byte, signer ed25519.PrivateKey, now uint64) (devicesec.State, error) {
 	h, _ := parent.Hash()
-	seed := digest("test/recovery-rotation", h[:])
+	seed := devicesec.Digest("test/recovery-rotation", h[:])
 	pub := ed25519.NewKeyFromSeed(seed[:]).Public().(ed25519.PublicKey)
 	var next [32]byte
 	copy(next[:], pub)
 	return BuildRecoveryKeyRotation(parent, secret, next, signer, now)
 }
 
-func initTestEndpoint(path string, pin Pin, states []State, proofs []*RecoveryStatement, id string, edSeed, x []byte) (*Endpoint, error) {
+func initTestEndpoint(path string, pin devicesec.Pin, states []devicesec.State, proofs []*devicesec.RecoveryStatement, id string, edSeed, x []byte) (*Endpoint, error) {
 	head := states[len(states)-1]
 	for n := 0; n < 256; n++ {
 		signer := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{byte(n)}, 32))
-		if ID(signer.Public().(ed25519.PublicKey)) == head.Core.AuthorityID {
+		if devicesec.ID(signer.Public().(ed25519.PublicKey)) == head.Core.AuthorityID {
 			l, err := BuildLease(head, signer, head.Core.IssuedAt)
 			if err != nil {
 				return nil, err
@@ -29,13 +31,13 @@ func initTestEndpoint(path string, pin Pin, states []State, proofs []*RecoverySt
 			return InitEndpoint(path, pin, states, proofs, id, edSeed, x, l)
 		}
 	}
-	return nil, ErrInvalid
+	return nil, devicesec.ErrInvalid
 }
 
 func TestLeaseIndependentDurableAndBounded(t *testing.T) {
 	g, pin, ed, x, _ := testGenesis(t)
 	original, _ := g.MarshalBinary()
-	ep, err := InitEndpoint(filepath.Join(t.TempDir(), "security.db"), pin, []State{g}, []*RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x)
+	ep, err := InitEndpoint(filepath.Join(t.TempDir(), "security.db"), pin, []devicesec.State{g}, []*devicesec.RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +46,7 @@ func TestLeaseIndependentDurableAndBounded(t *testing.T) {
 		t.Fatal("missing lease accepted")
 	}
 	for i := uint64(0); i < 300; i++ {
-		l, err := BuildLease(g, ed, now+i*Lease/2)
+		l, err := BuildLease(g, ed, now+i*devicesec.Lease/2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,10 +72,10 @@ func TestLeaseIndependentDurableAndBounded(t *testing.T) {
 	if !bytes.Equal(ep.Lease().Signature, last.Signature) {
 		t.Fatal("lease lost after restart")
 	}
-	if err := ep.CheckLease(last.NotAfter); !errors.Is(err, ErrStale) {
+	if err := ep.CheckLease(last.NotAfter); !errors.Is(err, devicesec.ErrStale) {
 		t.Fatalf("expired = %v", err)
 	}
-	if err := ep.Touch(last.NotAfter + MaxClockSkew + 1); err != nil {
+	if err := ep.Touch(last.NotAfter + devicesec.MaxClockSkew + 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := ep.CheckLease(last.NotAfter - 1); err == nil {
@@ -84,8 +86,8 @@ func TestLeaseIndependentDurableAndBounded(t *testing.T) {
 		t.Fatal("lease rollback accepted")
 	}
 	bad := *last
-	bad.NotAfter = bad.IssuedAt + Lease + 1
-	b, _ := bad.signBytes()
+	bad.NotAfter = bad.IssuedAt + devicesec.Lease + 1
+	b, _ := bad.SigningBytes()
 	bad.Signature = ed25519.Sign(ed, b)
 	if err := ep.InstallLease(bad, last.NotAfter); err == nil {
 		t.Fatal("overlong lease accepted")
@@ -105,17 +107,17 @@ func TestHandoffKeepsHistoryAndRemovesRetiringAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := VerifyTransition(c.withClient, s, nil); err != nil {
+	if err := devicesec.VerifyTransition(c.withClient, s, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := s.Core.Member(c.withClient.Core.AuthorityID); ok {
 		t.Fatal("retiring phone retained")
 	}
-	key, err := c.pin.OpenGrant(s, c.client.ID, c.clientX)
+	key, err := OpenGrant(c.pin, s, c.client.ID, c.clientX)
 	if err != nil {
 		t.Fatal(err)
 	}
-	old, err := openPrevSecret(key, s.PrevSecret)
+	old, err := devicesec.OpenPrevSecret(key, s.PrevSecret)
 	if err != nil || !bytes.Equal(old, bytes.Repeat([]byte{0x77}, 32)) {
 		t.Fatal("handoff lost history")
 	}
@@ -145,7 +147,7 @@ func TestLeaseClockRollbackBindsToStateTime(t *testing.T) {
 func TestIndependentEndpointHandlesCannotRollbackLeaseOrFloor(t *testing.T) {
 	g, pin, ed, x, _ := testGenesis(t)
 	path := filepath.Join(t.TempDir(), "security.db")
-	a, err := InitEndpoint(path, pin, []State{g}, []*RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x)
+	a, err := InitEndpoint(path, pin, []devicesec.State{g}, []*devicesec.RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +159,7 @@ func TestIndependentEndpointHandlesCannotRollbackLeaseOrFloor(t *testing.T) {
 	defer b.Close()
 	newer, _ := BuildLease(g, ed, g.Core.IssuedAt+2000)
 	newer.NotAfter = newer.IssuedAt + 2000
-	body, _ := newer.signBytes()
+	body, _ := newer.SigningBytes()
 	newer.Signature = ed25519.Sign(ed, body)
 	older, _ := BuildLease(g, ed, g.Core.IssuedAt+1000)
 	if err := a.InstallLease(newer, newer.IssuedAt); err != nil {

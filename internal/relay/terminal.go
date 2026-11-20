@@ -11,6 +11,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -106,7 +107,7 @@ func (c *endpoint) serveTerminal(ctx context.Context, path transport.Path, t Ter
 		env, err := c.security.sealMessage(&pb.Header{
 			Kind: pb.PayloadKind_PAYLOAD_KIND_TERMINAL_OUTPUT, MachineId: c.acct.DeviceID, SessionId: sessionID,
 			RequestId: streamID, Seq: seq, Sender: c.acct.DeviceID,
-		}, deviceauth.TerminalOutput, key, f)
+		}, devicesec.TerminalOutput, key, f)
 		if err != nil {
 			return err
 		}
@@ -205,18 +206,18 @@ func (c *endpoint) readTerminal(ctx context.Context, path transport.Path, t Term
 		if err != nil {
 			return
 		}
-		h, err := deviceauth.ParseHeader(wire.Header)
-		if err != nil || h.Machine != c.acct.DeviceID || h.Session != sessionID || h.Request != streamID || h.Seq <= last || !h.Purpose.Control() || h.Purpose == deviceauth.Command {
+		h, err := devicesec.ParseHeader(wire.Header)
+		if err != nil || h.Machine != c.acct.DeviceID || h.Session != sessionID || h.Request != streamID || h.Seq <= last || !h.Purpose.Control() || h.Purpose == devicesec.Command {
 			return
 		}
-		_, err = c.security.accept(ctx, wire, key, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
+		_, err = c.security.accept(ctx, wire, key, uint64(time.Now().UnixMilli()), func(h devicesec.Header, plain []byte) (deviceauth.Completion, error) {
 			plain, err := deviceauth.Unpack(h, plain)
 			if err != nil {
 				return deviceauth.Undetermined(), err
 			}
 			f := &pb.TerminalFrame{}
 			if proto.Unmarshal(plain, f) != nil {
-				return deviceauth.Undetermined(), deviceauth.ErrInvalid
+				return deviceauth.Undetermined(), devicesec.ErrInvalid
 			}
 			switch k := f.Kind.(type) {
 			case *pb.TerminalFrame_Input:
@@ -231,16 +232,16 @@ func (c *endpoint) readTerminal(ctx context.Context, path transport.Path, t Term
 				return deviceauth.Final(nil), nil
 			case *pb.TerminalFrame_HistoryRequest:
 				if k.HistoryRequest == nil || len(k.HistoryRequest.RequestId) == 0 || len(k.HistoryRequest.RequestId) > 128 || len(k.HistoryRequest.Cursor) > 128 {
-					return deviceauth.Undetermined(), deviceauth.ErrInvalid
+					return deviceauth.Undetermined(), devicesec.ErrInvalid
 				}
 				select {
 				case historyRequests <- k.HistoryRequest:
 					return deviceauth.Final(nil), nil
 				default:
-					return deviceauth.Undetermined(), deviceauth.ErrCapacity
+					return deviceauth.Undetermined(), devicesec.ErrCapacity
 				}
 			default:
-				return deviceauth.Undetermined(), deviceauth.ErrInvalid
+				return deviceauth.Undetermined(), devicesec.ErrInvalid
 			}
 		})
 		if err == nil {

@@ -10,6 +10,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	da "github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -23,43 +24,43 @@ type webVector struct {
 var order = []string{"genesis", "pairMachine", "pairClient", "remove", "rotateX", "veto", "handoff", "recovery"}
 
 func generateWeb() webVector {
-	authority := member(0x11, 0x21, da.Client)
-	machine := member(0x12, 0x22, da.Machine)
-	client := member(0x13, 0x23, da.Client)
-	incoming := member(0x14, 0x24, da.Client)
+	authority := member(0x11, 0x21, devicesec.Client)
+	machine := member(0x12, 0x22, devicesec.Machine)
+	client := member(0x13, 0x23, devicesec.Client)
+	incoming := member(0x14, 0x24, devicesec.Client)
 	signer := key(0x11)
-	var domain da.Hash
+	var domain devicesec.Hash
 	copy(domain[:], fill(32, 0x51))
 	now := uint64(1700000000000)
-	account := da.ID(publicBytes(0x61))
-	states := map[string]da.State{}
+	account := devicesec.ID(publicBytes(0x61))
+	states := map[string]devicesec.State{}
 	g := canonical(must(da.BuildGenesis(account, domain, authority, public(0x31), fill(32, 0x41), signer, now)), fill(32, 0x41), nil, signer)
 	states["genesis"] = g
 	p := canonical(must(da.BuildPairState(g, machine, machine.XPublic[:], fill(32, 0x41), fill(32, 0x42), signer, now+1)), fill(32, 0x42), webPrev(fill(32, 0x42), fill(32, 0x41)), signer)
 	states["pairMachine"] = p
 	p2 := canonical(must(da.BuildPairState(p, client, client.XPublic[:], fill(32, 0x42), fill(32, 0x43), signer, now+2)), fill(32, 0x43), webPrev(fill(32, 0x43), fill(32, 0x42)), signer)
 	states["pairClient"] = p2
-	members := []da.Member{client, authority}
+	members := []devicesec.Member{client, authority}
 	removed := []string{machine.ID}
 	r := canonical(must(da.BuildMembershipState(p2, members, removed, fill(32, 0x43), fill(32, 0x44), signer, now+3)), fill(32, 0x44), webPrev(fill(32, 0x44), fill(32, 0x43)), signer)
 	states["remove"] = r
 	rotated := client
 	copy(rotated.XPublic[:], must(da.XPublic(fill(32, 0x25))))
-	rot := canonical(must(da.BuildMembershipState(r, []da.Member{rotated, authority}, removed, fill(32, 0x44), fill(32, 0x45), signer, 1)), fill(32, 0x45), webPrev(fill(32, 0x45), fill(32, 0x44)), signer)
+	rot := canonical(must(da.BuildMembershipState(r, []devicesec.Member{rotated, authority}, removed, fill(32, 0x44), fill(32, 0x45), signer, 1)), fill(32, 0x45), webPrev(fill(32, 0x45), fill(32, 0x44)), signer)
 	states["rotateX"] = rot
 	v := canonical(must(da.BuildRecoveryKeyRotation(rot, fill(32, 0x45), public(0x32), signer, 1)), fill(32, 0x45), nil, signer)
 	states["veto"] = v
 	h := canonical(must(da.BuildHandoff(v, client.ID, public(0x33), fill(32, 0x45), fill(32, 0x46), signer, now+4)), fill(32, 0x46), webPrev(fill(32, 0x46), fill(32, 0x45)), signer)
 	states["handoff"] = h
-	rec, _, err := da.BuildRecovery(v, incoming, []da.Member{rotated, incoming}, fill(32, 0x47), key(0x14), key(0x32), public(0x33), 1)
+	rec, _, err := da.BuildRecovery(v, incoming, []devicesec.Member{rotated, incoming}, fill(32, 0x47), key(0x14), key(0x32), public(0x33), 1)
 	check(err)
 	rec = canonical(rec, fill(32, 0x47), nil, key(0x14))
 	states["recovery"] = rec
 	ph := must(v.Hash())
 	rh := must(rec.Hash())
-	nonce := da.Hash(fill(32, 0x73))
-	statement := da.RecoveryStatement{Account: account, Domain: domain, Parent: ph, NewAuthorityID: incoming.ID, NewRecoveryEd: public(0x33), NewMember: incoming, IssuedAt: rec.Core.IssuedAt, StateHash: rh, Nonce: nonce}
-	check(statement.Sign(key(0x32)))
+	nonce := devicesec.Hash(fill(32, 0x73))
+	statement := devicesec.RecoveryStatement{Account: account, Domain: domain, Parent: ph, NewAuthorityID: incoming.ID, NewRecoveryEd: public(0x33), NewMember: incoming, IssuedAt: rec.Core.IssuedAt, StateHash: rh, Nonce: nonce}
+	check(da.SignRecoveryStatement(&statement, key(0x32)))
 	lease := must(da.BuildLease(v, signer, now+100))
 	hl := must(da.BuildLease(h, key(0x13), now+4))
 	a := &pb.PairApproval{AccountId: account, PairingId: "0123456789abcdef0123456789abcdef", ApproverDeviceId: authority.ID, ApproverPublicKey: authority.EdPublic[:], CandidateDevicePublicKey: machine.EdPublic[:], CandidateKind: pb.DeviceKind_DEVICE_KIND_MACHINE, ExpiresMs: int64(now + 300000), Nonce: fill(16, 0x74), ReplacesDeviceId: machine.ID}
@@ -84,9 +85,9 @@ func generateWeb() webVector {
 }
 func publicBytes(b int) []byte { p := public(b); return p[:] }
 func verifyWeb(v webVector) {
-	states := map[string]da.State{}
+	states := map[string]devicesec.State{}
 	for name, raw := range v.States {
-		s := must(da.ParseState(raw))
+		s := must(devicesec.ParseState(raw))
 		if !bytes.Equal(raw, must(s.MarshalBinary())) {
 			panic("noncanonical state")
 		}
@@ -96,12 +97,12 @@ func verifyWeb(v webVector) {
 	pin := must(genesis.Pin())
 	check(pin.VerifyGenesis(genesis))
 	for i := 1; i < len(order)-1; i++ {
-		check(da.VerifyTransition(states[order[i-1]], states[order[i]], nil))
+		check(devicesec.VerifyTransition(states[order[i-1]], states[order[i]], nil))
 	}
-	statement := must(da.ParseRecoveryStatement(v.Recovery))
-	check(da.VerifyTransition(states["veto"], states["recovery"], &statement))
-	check(must(da.ParseLease(v.Lease)).Verify(states["veto"]))
-	check(must(da.ParseLease(v.HandoffLease)).Verify(states["handoff"]))
+	statement := must(devicesec.ParseRecoveryStatement(v.Recovery))
+	check(devicesec.VerifyTransition(states["veto"], states["recovery"], &statement))
+	check(must(devicesec.ParseLease(v.Lease)).Verify(states["veto"]))
+	check(must(devicesec.ParseLease(v.HandoffLease)).Verify(states["handoff"]))
 	_, err := e2e.VerifyPairApproval(v.Approval, v.ApprovalSignature)
 	check(err)
 	_, err = e2e.VerifyPairApproval(v.NormalApproval, v.NormalApprovalSignature)
@@ -120,11 +121,11 @@ func verifyWeb(v webVector) {
 			secretByte = 0x47
 		}
 		for _, m := range s.Core.Members {
-			x := map[string]int{member(0x11, 0x21, da.Client).ID: 0x21, member(0x12, 0x22, da.Machine).ID: 0x22, member(0x13, 0x23, da.Client).ID: 0x23, member(0x14, 0x24, da.Client).ID: 0x24}[m.ID]
-			if m.ID == member(0x13, 0x23, da.Client).ID && i >= 4 {
+			x := map[string]int{member(0x11, 0x21, devicesec.Client).ID: 0x21, member(0x12, 0x22, devicesec.Machine).ID: 0x22, member(0x13, 0x23, devicesec.Client).ID: 0x23, member(0x14, 0x24, devicesec.Client).ID: 0x24}[m.ID]
+			if m.ID == member(0x13, 0x23, devicesec.Client).ID && i >= 4 {
 				x = 0x25
 			}
-			if !bytes.Equal(must(pin.OpenGrant(s, m.ID, fill(32, x))), fill(32, secretByte)) {
+			if !bytes.Equal(must(da.OpenGrant(pin, s, m.ID, fill(32, x))), fill(32, secretByte)) {
 				panic("grant plaintext mismatch")
 			}
 		}
@@ -151,7 +152,7 @@ func verifyWeb(v webVector) {
 func webPrev(newSecret, oldSecret []byte) []byte {
 	return previousSecret(newSecret, oldSecret, fill(12, 0x72))
 }
-func canonical(s da.State, secret, previous []byte, signer ed25519.PrivateKey) da.State {
+func canonical(s devicesec.State, secret, previous []byte, signer ed25519.PrivateKey) devicesec.State {
 	ek := must(hpke.DHKEM(ecdh.X25519()).DeriveKeyPair(fill(32, 0x71)))
 	return fixedState(s, secret, previous, signer, must(ek.Bytes()))
 }

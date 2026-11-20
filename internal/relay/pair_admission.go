@@ -18,6 +18,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/paths"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,9 +30,9 @@ type pairAdmission struct {
 	Request        []byte
 	PairingID      string
 	CandidateToken string
-	States         []deviceauth.State
-	Proofs         []*deviceauth.RecoveryStatement
-	Lease          deviceauth.LeaseCertificate
+	States         []devicesec.State
+	Proofs         []*devicesec.RecoveryStatement
+	Lease          devicesec.LeaseCertificate
 }
 
 func pairAdmissionPath(server, id string) string {
@@ -75,7 +76,7 @@ func DiscardRegistration() error {
 		}
 		var a pairAdmission
 		if json.Unmarshal(raw, &a) != nil || a.Account == nil {
-			return deviceauth.ErrInvalid
+			return devicesec.ErrInvalid
 		}
 		owned := filepath.Join(filepath.Dir(path), strings.Replace(filepath.Base(path), "pair-admission-", "pair-owned-", 1))
 		if err := saveExclusivePrivate(owned, raw); err != nil {
@@ -104,7 +105,7 @@ func ResumeRegistration(ctx context.Context) error {
 		}
 		var pending pairAdmission
 		if len(raw) > 16<<20 || json.Unmarshal(raw, &pending) != nil || pending.Account == nil {
-			return deviceauth.ErrInvalid
+			return devicesec.ErrInvalid
 		}
 		if _, _, err := resumePairAdmissions(ctx, pending.Account.Server); err != nil {
 			return err
@@ -118,7 +119,7 @@ func bootstrapAdmission(pending pairAdmission) error {
 	}
 	a := pending.Account
 	if a == nil || a.Security == nil || len(pending.States) == 0 {
-		return deviceauth.ErrInvalid
+		return devicesec.ErrInvalid
 	}
 	if _, err := os.Stat(securityPath()); err == nil {
 		ep, err := deviceauth.OpenEndpoint(securityPath())
@@ -128,7 +129,7 @@ func bootstrapAdmission(pending pairAdmission) error {
 		pin, head, _ := ep.Snapshot()
 		ep.Close()
 		if pin != a.Security.Pin {
-			return deviceauth.ErrUntrusted
+			return devicesec.ErrUntrusted
 		}
 		if head.Core.Epoch >= pending.States[len(pending.States)-1].Core.Epoch {
 			return nil
@@ -165,7 +166,7 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 		}
 		var pending pairAdmission
 		if len(raw) > 16<<20 || json.Unmarshal(raw, &pending) != nil || pending.Account == nil {
-			return nil, owned, deviceauth.ErrInvalid
+			return nil, owned, devicesec.ErrInvalid
 		}
 		if pending.Account.Server == server && (!strings.HasPrefix(filepath.Base(path), "pair-owned-") || func() bool { _, e := os.Stat(securityPath()); return errors.Is(e, os.ErrNotExist) }()) {
 			if err := bootstrapAdmission(pending); err != nil {
@@ -187,7 +188,7 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 		}
 		var pending pairAdmission
 		if len(raw) > 16<<20 || json.Unmarshal(raw, &pending) != nil || pending.Account == nil {
-			return nil, owned, deviceauth.ErrInvalid
+			return nil, owned, devicesec.ErrInvalid
 		}
 		a := pending.Account
 		if a.Server != server {
@@ -197,32 +198,32 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 			continue
 		}
 		if a.Security == nil || a.Security.Pin != pin || len(a.DeviceSeed) != 32 {
-			return nil, owned, deviceauth.ErrUntrusted
+			return nil, owned, devicesec.ErrUntrusted
 		}
 		ed := ed25519.NewKeyFromSeed(a.DeviceSeed)
 		if e2e.DeviceID(ed.Public().(ed25519.PublicKey)) != a.DeviceID {
-			return nil, owned, deviceauth.ErrUntrusted
+			return nil, owned, devicesec.ErrUntrusted
 		}
 		var req pb.RegisterDeviceRequest
 		var registration pb.DeviceRegistration
 		var approval pb.PairApproval
 		if proto.Unmarshal(pending.Request, &req) != nil || proto.Unmarshal(req.Registration, &registration) != nil || proto.Unmarshal(req.Approval, &approval) != nil {
-			return nil, owned, deviceauth.ErrInvalid
+			return nil, owned, devicesec.ErrInvalid
 		}
 		if registration.Kind != pb.DeviceKind_DEVICE_KIND_MACHINE || e2e.AccountID(registration.AccountPublicKey) != pin.Account || !bytes.Equal(registration.DevicePublicKey, ed.Public().(ed25519.PublicKey)) || approval.PairingId != pending.PairingID || !bytes.Equal(approval.CandidateDevicePublicKey, registration.DevicePublicKey) {
-			return nil, owned, deviceauth.ErrUntrusted
+			return nil, owned, devicesec.ErrUntrusted
 		}
 		signerKnown := false
 		for _, state := range states {
 			member, ok := state.Core.Member(a.DeviceID)
 			signer, issuer := state.Core.Member(approval.ApproverDeviceId)
-			if ok && issuer && member.Kind == deviceauth.Machine && state.Core.AuthorityID == approval.ApproverDeviceId && bytes.Equal(member.EdPublic[:], registration.DevicePublicKey) && bytes.Equal(signer.EdPublic[:], approval.ApproverPublicKey) && ed25519.Verify(signer.EdPublic[:], append([]byte(e2e.PairApprovalContext), req.Approval...), req.ApprovalSignature) {
+			if ok && issuer && member.Kind == devicesec.Machine && state.Core.AuthorityID == approval.ApproverDeviceId && bytes.Equal(member.EdPublic[:], registration.DevicePublicKey) && bytes.Equal(signer.EdPublic[:], approval.ApproverPublicKey) && ed25519.Verify(signer.EdPublic[:], append([]byte(e2e.PairApprovalContext), req.Approval...), req.ApprovalSignature) {
 				signerKnown = true
 				break
 			}
 		}
 		if !signerKnown {
-			return nil, owned, deviceauth.ErrUntrusted
+			return nil, owned, devicesec.ErrUntrusted
 		}
 		owned[a.DeviceID] = a
 		if strings.HasPrefix(filepath.Base(path), "pair-owned-") {
@@ -255,7 +256,7 @@ func resumePairAdmissions(ctx context.Context, server string) (*Account, map[str
 				}
 			}
 			if res.Msg.DeviceId != a.DeviceID {
-				return nil, owned, deviceauth.ErrUntrusted
+				return nil, owned, devicesec.ErrUntrusted
 			}
 		}
 		_ = token

@@ -7,7 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 var errV3Acceptance = errors.New("v3_acceptance_corrupt")
@@ -41,7 +41,7 @@ func validatedV3Deadline(db *sql.DB) (uint64, error) {
 		var key, result, checksum []byte
 		var deadline int64
 		var done, failed int
-		if err := rows.Scan(&key, &deadline, &done, &result, &failed, &checksum); err != nil || len(key) > 1024 || deadline <= 0 || done < 0 || done > 1 || failed < 0 || failed > 1 || len(result) > deviceauth.MaxCipherBytes || len(checksum) != sha256.Size {
+		if err := rows.Scan(&key, &deadline, &done, &result, &failed, &checksum); err != nil || len(key) > 1024 || deadline <= 0 || done < 0 || done > 1 || failed < 0 || failed > 1 || len(result) > devicesec.MaxCipherBytes || len(checksum) != sha256.Size {
 			return 0, errV3Acceptance
 		}
 		if !bytes.Equal(checksum, v3AcceptedChecksum(key, uint64(deadline), done, result, failed)) {

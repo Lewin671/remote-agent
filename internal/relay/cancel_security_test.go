@@ -13,6 +13,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,21 +26,21 @@ func TestInFlightDuplicateDoesNotSynchronizeSecurityState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, phone.ID, keys.phone.Seed(), keys.phoneX, lease)
+	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*devicesec.RecoveryStatement{nil, nil}, phone.ID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
 	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "test-session"}}})
-	wire, err := client.Prepare(deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: c.acct.DeviceID, Session: "test-session", Request: "concurrent-request", Deadline: now + 60000}, nil, body)
+	wire, err := client.Prepare(devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: c.acct.DeviceID, Session: "test-session", Request: "concurrent-request", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	entered, release := make(chan struct{}), make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := c.security.accept(context.Background(), wire, nil, now, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+		_, err := c.security.accept(context.Background(), wire, nil, now, func(devicesec.Header, []byte) (deviceauth.Completion, error) {
 			close(entered)
 			<-release
 			return deviceauth.Final([]byte("done")), nil
@@ -57,7 +58,7 @@ func TestInFlightDuplicateDoesNotSynchronizeSecurityState(t *testing.T) {
 	}()
 	duplicateCtx, cancelDuplicate := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancelDuplicate()
-	_, err = c.security.accept(duplicateCtx, wire, nil, now, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+	_, err = c.security.accept(duplicateCtx, wire, nil, now, func(devicesec.Header, []byte) (deviceauth.Completion, error) {
 		t.Error("duplicate executed")
 		return deviceauth.Final(nil), nil
 	})

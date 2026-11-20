@@ -24,6 +24,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
@@ -245,12 +246,12 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 		_, _ = rand.Read(nonce[:])
 		id := hex.EncodeToString(nonce[:])
 		now := uint64(time.Now().UnixMilli())
-		h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: e.acct.DeviceID, Session: session, Request: id, Deadline: now + 60000}
+		h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: e.acct.DeviceID, Session: session, Request: id, Deadline: now + 60000}
 		sealed, err := endpoint.Prepare(h, nil, plain)
 		if err != nil {
 			t.Fatal(err)
 		}
-		env, err := sealed.Envelope()
+		env, err := deviceauth.Envelope(sealed)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -282,7 +283,7 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 		if err = proto.Unmarshal(body, result); err != nil {
 			t.Fatal(err)
 		}
-		original, _ := deviceauth.ParseHeader(sealed.Header)
+		original, _ := devicesec.ParseHeader(sealed.Header)
 		key, payload, err := deviceauth.RequestIdentity(original, plain)
 		if err != nil {
 			t.Fatal(err)

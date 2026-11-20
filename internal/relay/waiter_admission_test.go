@@ -10,6 +10,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -33,7 +34,7 @@ func endpointClient(t *testing.T, e *endpoint) *deviceauth.Endpoint {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
+	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*devicesec.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,11 +55,11 @@ func commandEnvelope(t *testing.T, client *deviceauth.Endpoint, machine, id stri
 			session = message.Get(field).String()
 		}
 	}
-	wire, err := client.Prepare(deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: machine, Session: session, Request: id, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, nil, body)
+	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: machine, Session: session, Request: id, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, nil, body)
 	if err != nil {
 		t.Fatal(err)
 	}
-	env, err := wire.Envelope()
+	env, err := deviceauth.Envelope(wire)
 	if err != nil {
 		t.Fatal(err)
 	}

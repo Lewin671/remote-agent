@@ -6,7 +6,7 @@ import (
 	"errors"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"net/http"
@@ -126,7 +126,7 @@ func TestScheduledOwnershipHeadMismatchRepublishes(t *testing.T) {
 	if service.puts != 1 || !service.last.TaskOwned {
 		t.Fatal("did not publish ownership")
 	}
-	header, err := deviceauth.ParseHeader(service.last.Meta.SecurityHeader)
+	header, err := devicesec.ParseHeader(service.last.Meta.SecurityHeader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestScheduledOwnershipHeadMismatchRepublishes(t *testing.T) {
 	if service.puts != 2 || !service.last.TaskOwned {
 		t.Fatal("ownership mismatch was not repaired")
 	}
-	header, err = deviceauth.ParseHeader(service.last.Meta.SecurityHeader)
+	header, err = devicesec.ParseHeader(service.last.Meta.SecurityHeader)
 	if err != nil {
 		t.Fatal(err)
 	}

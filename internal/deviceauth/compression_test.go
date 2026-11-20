@@ -2,6 +2,8 @@ package deviceauth
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
@@ -10,8 +12,38 @@ import (
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
+
+// openCipher decrypts without checking the origin, to inspect packed or
+// forged bodies.
+func openCipher(secret, sessionSeed []byte, w devicesec.Ciphertext) (devicesec.Header, []byte, error) {
+	h, err := devicesec.ParseHeader(w.Header)
+	if err != nil {
+		return h, nil, err
+	}
+	if _, err := w.Commitment(); err != nil {
+		return h, nil, err
+	}
+	key, err := devicesec.DeriveKey(secret, sessionSeed, h)
+	if err != nil {
+		return h, nil, err
+	}
+	b, err := aes.NewCipher(key)
+	if err != nil {
+		return h, nil, err
+	}
+	aead, err := cipher.NewGCM(b)
+	if err != nil {
+		return h, nil, err
+	}
+	plain, err := aead.Open(nil, w.Nonce, w.Cipher, w.Header)
+	if err != nil {
+		return h, nil, devicesec.ErrUntrusted
+	}
+	return h, plain, nil
+}
 
 func TestPrepareCompression(t *testing.T) {
 	c := newCurrentChain(t)
@@ -28,51 +60,51 @@ func TestPrepareCompression(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name       string
-		p          Purpose
+		p          devicesec.Purpose
 		body       []byte
 		compressed bool
 	}{
-		{"threshold", Event, bytes.Repeat([]byte("x"), 256), false},
-		{"over-threshold", Event, bytes.Repeat([]byte("x"), 257), true},
-		{"incompressible", Event, random, false},
-		{"session-key", SessionKey, bytes.Repeat([]byte("x"), 1024), false},
-		{"image", Image, bytes.Repeat([]byte("x"), 1024), false},
+		{"threshold", devicesec.Event, bytes.Repeat([]byte("x"), 256), false},
+		{"over-threshold", devicesec.Event, bytes.Repeat([]byte("x"), 257), true},
+		{"incompressible", devicesec.Event, random, false},
+		{"session-key", devicesec.SessionKey, bytes.Repeat([]byte("x"), 1024), false},
+		{"image", devicesec.Image, bytes.Repeat([]byte("x"), 1024), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) { checkPreparedCompression(t, machine, c.machineEd, tc.p, tc.body, tc.compressed) })
 	}
-	for _, p := range []Purpose{Event, SessionMeta, MachineMeta, Result, TerminalOutput, Notify} {
+	for _, p := range []devicesec.Purpose{devicesec.Event, devicesec.SessionMeta, devicesec.MachineMeta, devicesec.Result, devicesec.TerminalOutput, devicesec.Notify} {
 		checkPreparedCompression(t, machine, c.machineEd, p, bytes.Repeat([]byte("payload"), 100), true)
 	}
-	for _, p := range []Purpose{Command, TerminalInput, TerminalResize, TerminalHistory, Prefs, DeviceMeta} {
+	for _, p := range []devicesec.Purpose{devicesec.Command, devicesec.TerminalInput, devicesec.TerminalResize, devicesec.TerminalHistory, devicesec.Prefs, devicesec.DeviceMeta} {
 		checkPreparedCompression(t, client, c.clientEd, p, bytes.Repeat([]byte("payload"), 100), true)
 	}
 }
 
-func checkPreparedCompression(t *testing.T, ep *Endpoint, ed ed25519.PrivateKey, p Purpose, body []byte, compressed bool) {
+func checkPreparedCompression(t *testing.T, ep *Endpoint, ed ed25519.PrivateKey, p devicesec.Purpose, body []byte, compressed bool) {
 	t.Helper()
 	_, head, _ := ep.Snapshot()
 	var machine string
 	for _, m := range head.Core.Members {
-		if m.Kind == Machine {
+		if m.Kind == devicesec.Machine {
 			machine = m.ID
 		}
 	}
-	h := Header{Kind: p.kind(), Purpose: p, Machine: machine, Session: "session", Seq: 1}
+	h := devicesec.Header{Kind: p.Kind(), Purpose: p, Machine: machine, Session: "session", Seq: 1}
 	switch p {
-	case MachineMeta:
+	case devicesec.MachineMeta:
 		h.Session = ""
-	case Command, Result:
+	case devicesec.Command, devicesec.Result:
 		h.Request = "request-1234567890"
-	case TerminalInput, TerminalOutput, TerminalResize, TerminalHistory, Image, Notify:
+	case devicesec.TerminalInput, devicesec.TerminalOutput, devicesec.TerminalResize, devicesec.TerminalHistory, devicesec.Image, devicesec.Notify:
 		h.Request = "request-1234567890"
-	case Prefs:
+	case devicesec.Prefs:
 		h.Machine = ""
 		h.Session = ""
 		h.Request = "project-prefs"
-	case DeviceMeta:
+	case devicesec.DeviceMeta:
 		h.Machine = ""
 		h.Session = ""
-		h.Request = ID(ed.Public().(ed25519.PublicKey))
+		h.Request = devicesec.ID(ed.Public().(ed25519.PublicKey))
 	}
 	if p.Control() {
 		h.Deadline = head.Core.IssuedAt + 60000
@@ -125,12 +157,12 @@ func TestCompressedProtocol10Vectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	stateRaw, _ := base64.StdEncoding.DecodeString(v.Added.State)
-	head, err := ParseState(stateRaw)
+	head, err := devicesec.ParseState(stateRaw)
 	if err != nil {
 		t.Fatal(err)
 	}
 	genesisRaw, _ := base64.StdEncoding.DecodeString(v.Genesis.State)
-	genesis, err := ParseState(genesisRaw)
+	genesis, err := devicesec.ParseState(genesisRaw)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,12 +175,12 @@ func TestCompressedProtocol10Vectors(t *testing.T) {
 	secret := mustHex(t, v.ContentSecret2)
 	for _, v := range v.CompressedEnvelopes {
 		raw, _ := base64.StdEncoding.DecodeString(v.Wire)
-		w, err := ParseWire(raw)
+		w, err := devicesec.ParseWire(raw)
 		if err != nil {
 			t.Fatal(err)
 		}
 		seed, _ := base64.StdEncoding.DecodeString(v.Seed)
-		h, p, err := w.Open(secret, seed, head, head, false, head.Core.IssuedAt)
+		h, p, err := OpenEnvelope(w, secret, seed, head, head, false, head.Core.IssuedAt)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -163,10 +195,10 @@ func TestCompressedProtocol10Vectors(t *testing.T) {
 	}
 }
 
-func buildCompressedVectors(t *testing.T, pin Pin, genesis, head State, ed ed25519.PrivateKey, machineX []byte) []compressedVector {
+func buildCompressedVectors(t *testing.T, pin devicesec.Pin, genesis, head devicesec.State, ed ed25519.PrivateKey, machineX []byte) []compressedVector {
 	t.Helper()
-	id := ID(ed.Public().(ed25519.PublicKey))
-	ep, err := initTestEndpoint("", pin, []State{genesis, head}, []*RecoveryStatement{nil, nil}, id, ed.Seed(), machineX)
+	id := devicesec.ID(ed.Public().(ed25519.PublicKey))
+	ep, err := initTestEndpoint("", pin, []devicesec.State{genesis, head}, []*devicesec.RecoveryStatement{nil, nil}, id, ed.Seed(), machineX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,15 +207,15 @@ func buildCompressedVectors(t *testing.T, pin Pin, genesis, head State, ed ed255
 	seed := bytes.Repeat([]byte{0x91}, 32)
 	var fixtures []compressedVector
 	for _, tc := range []struct {
-		p    Purpose
+		p    devicesec.Purpose
 		body proto.Message
 	}{
-		{Event, &pb.Event{SessionId: "session", Seq: 1, Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: text}}}},
-		{SessionMeta, &pb.Session{Id: "session", Title: text}},
-		{TerminalOutput, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Output{Output: []byte(text)}}},
+		{devicesec.Event, &pb.Event{SessionId: "session", Seq: 1, Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: text}}}},
+		{devicesec.SessionMeta, &pb.Session{Id: "session", Title: text}},
+		{devicesec.TerminalOutput, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Output{Output: []byte(text)}}},
 	} {
-		h := Header{Kind: tc.p.kind(), Purpose: tc.p, Machine: id, Session: "session", Seq: 1}
-		if tc.p == TerminalOutput {
+		h := devicesec.Header{Kind: tc.p.Kind(), Purpose: tc.p, Machine: id, Session: "session", Seq: 1}
+		if tc.p == devicesec.TerminalOutput {
 			h.Request = "terminal-1234567890"
 		}
 		body, err := proto.Marshal(tc.body)

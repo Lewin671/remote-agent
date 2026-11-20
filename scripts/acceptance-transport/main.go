@@ -35,6 +35,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/updater"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -558,7 +559,7 @@ func main() {
 	must(e)
 	x, _, e := deviceauth.NewXKey()
 	must(e)
-	machine, e := auth.Enroll(ctx, ed, x, deviceauth.Machine)
+	machine, e := auth.Enroll(ctx, ed, x, devicesec.Machine)
 	must(e)
 	usingV3 := os.Getenv("RA_TRANSPORT_V3_BINARY") != ""
 	migrateV3 := os.Getenv("RA_TRANSPORT_INIT_V3") == "1"

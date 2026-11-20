@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -62,8 +62,8 @@ func (c *conn) uploadImage(ctx context.Context, key []byte, sessionID, imageID s
 		env, err := c.security.sealMessage(&pb.Header{
 			Kind: pb.PayloadKind_PAYLOAD_KIND_IMAGE, MachineId: c.acct.DeviceID, SessionId: sessionID,
 			RequestId: imageID, Sender: c.acct.DeviceID,
-		}, deviceauth.Image, key, payload)
-		if errors.Is(err, deviceauth.ErrStale) || errors.Is(err, deviceauth.ErrClock) {
+		}, devicesec.Image, key, payload)
+		if errors.Is(err, devicesec.ErrStale) || errors.Is(err, devicesec.ErrClock) {
 			return err
 		}
 		if err != nil || proto.Size(env) > 1<<20 {

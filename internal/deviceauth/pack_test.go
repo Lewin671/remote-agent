@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -65,7 +66,7 @@ func TestPackMatchesFreshWriter(t *testing.T) {
 					t.Fatal("pooled output differs from a fresh writer")
 				}
 				if got != nil {
-					decoded, err := Unpack(Header{Purpose: Event, Compression: 1}, got)
+					decoded, err := Unpack(devicesec.Header{Purpose: devicesec.Event, Compression: 1}, got)
 					if err != nil || !bytes.Equal(decoded, plain) {
 						t.Fatalf("round trip: %v", err)
 					}

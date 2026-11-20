@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestPeerBindingIsRecheckedAfterExecutionSlotWait(t *testing.T) {
@@ -16,7 +18,7 @@ func TestPeerBindingIsRecheckedAfterExecutionSlotWait(t *testing.T) {
 	now := uint64(time.Now().UnixMilli())
 	hash, _ := chain.withClient.Hash()
 	binding := PeerBinding{chain.machine, chain.client, hash}
-	wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: chain.machine.ID, Request: "direct-original-identity", Deadline: now + 60000}, nil, commandBody(t))
+	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: chain.machine.ID, Request: "direct-original-identity", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +34,7 @@ func TestPeerBindingIsRecheckedAfterExecutionSlotWait(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err = endpoint.Install([]State{next}, []*RecoveryStatement{nil}); err != nil {
+		if err = endpoint.Install([]devicesec.State{next}, []*devicesec.RecoveryStatement{nil}); err != nil {
 			t.Fatal(err)
 		}
 		lease, err := BuildLease(next, chain.phoneEd, now)
@@ -44,7 +46,7 @@ func TestPeerBindingIsRecheckedAfterExecutionSlotWait(t *testing.T) {
 		}
 		return func() {}, nil
 	}}
-	_, err = endpoint.AcceptAuthenticated(context.Background(), authenticated, now, opts, func(Header, []byte) (Completion, error) { calls++; return Final([]byte("done")), nil })
+	_, err = endpoint.AcceptAuthenticated(context.Background(), authenticated, now, opts, func(devicesec.Header, []byte) (Completion, error) { calls++; return Final([]byte("done")), nil })
 	if err == nil || !waited || calls != 0 {
 		t.Fatal("retired peer binding entered execution after slot wait", err)
 	}
@@ -53,7 +55,7 @@ func TestPeerBindingIsRecheckedAfterExecutionSlotWait(t *testing.T) {
 	}
 	// A direct path refusal is not a durable not-sent or rejected result. The
 	// unchanged original authorization can still be admitted over healthy relay.
-	if _, err = endpoint.AcceptAuthenticated(context.Background(), authenticated, now, AcceptOptions{}, func(Header, []byte) (Completion, error) { calls++; return Final([]byte("done")), nil }); err != nil || calls != 1 {
+	if _, err = endpoint.AcceptAuthenticated(context.Background(), authenticated, now, AcceptOptions{}, func(devicesec.Header, []byte) (Completion, error) { calls++; return Final([]byte("done")), nil }); err != nil || calls != 1 {
 		t.Fatal("path refusal changed original request semantics", err, calls)
 	}
 }

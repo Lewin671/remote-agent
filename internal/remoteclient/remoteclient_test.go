@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -93,7 +94,7 @@ func TestTermSendKeepsSeqOrderAcrossGoroutines(t *testing.T) {
 				return
 			}
 			secureHeader, _, err := machine.Open(wire, key, true, uint64(time.Now().UnixMilli()))
-			h := secureHeader.Projection()
+			h := deviceauth.Projection(secureHeader)
 			if err == nil {
 				err = e2e.Expect(h, want)
 			}
@@ -134,7 +135,7 @@ func TestTermSendKeepsSeqOrderAcrossGoroutines(t *testing.T) {
 	}
 }
 
-func syntheticTerminalSecurity(t *testing.T, inspect ...func(deviceauth.State, []byte, ed25519.PrivateKey)) (*Client, *deviceauth.Endpoint, string) {
+func syntheticTerminalSecurity(t *testing.T, inspect ...func(devicesec.State, []byte, ed25519.PrivateKey)) (*Client, *deviceauth.Endpoint, string) {
 	t.Helper()
 	_, phoneEd, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -144,7 +145,7 @@ func syntheticTerminalSecurity(t *testing.T, inspect ...func(deviceauth.State, [
 	if err != nil {
 		t.Fatal(err)
 	}
-	phone, err := deviceauth.NewMember(phoneEd.Public().(ed25519.PublicKey), pxpub, deviceauth.Client)
+	phone, err := devicesec.NewMember(phoneEd.Public().(ed25519.PublicKey), pxpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +153,7 @@ func syntheticTerminalSecurity(t *testing.T, inspect ...func(deviceauth.State, [
 	recPub[0] = 1
 	secret := make([]byte, 32)
 	secret[0] = 1
-	var domain deviceauth.Hash
+	var domain devicesec.Hash
 	domain[0] = 1
 	now := uint64(time.Now().UnixMilli())
 	genesis, err := deviceauth.BuildGenesis("0123456789abcdef0123456789abcdef", domain, phone, recPub, secret, phoneEd, now)
@@ -168,7 +169,7 @@ func syntheticTerminalSecurity(t *testing.T, inspect ...func(deviceauth.State, [
 	if err != nil {
 		t.Fatal(err)
 	}
-	mm, err := deviceauth.NewMember(med.Public().(ed25519.PublicKey), mxpub, deviceauth.Machine)
+	mm, err := devicesec.NewMember(med.Public().(ed25519.PublicKey), mxpub, devicesec.Machine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +187,7 @@ func syntheticTerminalSecurity(t *testing.T, inspect ...func(deviceauth.State, [
 	if err != nil {
 		t.Fatal(err)
 	}
-	cm, err := deviceauth.NewMember(ced.Public().(ed25519.PublicKey), cxpub, deviceauth.Client)
+	cm, err := devicesec.NewMember(ced.Public().(ed25519.PublicKey), cxpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,8 +197,8 @@ func syntheticTerminalSecurity(t *testing.T, inspect ...func(deviceauth.State, [
 	if err != nil {
 		t.Fatal(err)
 	}
-	states := []deviceauth.State{genesis, withMachine, withClient}
-	proofs := []*deviceauth.RecoveryStatement{nil, nil, nil}
+	states := []devicesec.State{genesis, withMachine, withClient}
+	proofs := []*devicesec.RecoveryStatement{nil, nil, nil}
 	lease, _ := deviceauth.BuildLease(withClient, phoneEd, withClient.Core.IssuedAt)
 	machineEndpoint, err := deviceauth.InitEndpoint("", pin, states, proofs, mm.ID, med.Seed(), mx, lease)
 	if err != nil {

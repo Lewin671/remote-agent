@@ -23,6 +23,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/updater"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func must(err error) {
@@ -81,7 +82,7 @@ func run() (runErr error) {
 	if err != nil {
 		return err
 	}
-	machine, err := auth.Enroll(ctx, ed, x, deviceauth.Machine)
+	machine, err := auth.Enroll(ctx, ed, x, devicesec.Machine)
 	if err != nil {
 		return err
 	}

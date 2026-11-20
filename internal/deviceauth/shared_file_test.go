@@ -8,6 +8,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,9 +26,9 @@ func TestSharedFileChunkOnlyFromClients(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Session: "session", Request: "0123456789abcdef", Deadline: now + 60_000}
+	h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Session: "session", Request: "0123456789abcdef", Deadline: now + 60_000}
 	calls := 0
-	fn := func(Header, []byte) (Completion, error) { calls++; return Final([]byte("block")), nil }
+	fn := func(devicesec.Header, []byte) (Completion, error) { calls++; return Final([]byte("block")), nil }
 	for i := 0; i < 2; i++ {
 		w, err := client.Prepare(h, nil, body)
 		if err != nil {
@@ -41,7 +42,7 @@ func TestSharedFileChunkOnlyFromClients(t *testing.T) {
 	if calls != 2 || len(machine.data.Accepted) != 0 {
 		t.Fatalf("calls=%d accepted=%d", calls, len(machine.data.Accepted))
 	}
-	if _, err := machine.Prepare(h, nil, body); !errors.Is(err, ErrUntrusted) {
+	if _, err := machine.Prepare(h, nil, body); !errors.Is(err, devicesec.ErrUntrusted) {
 		t.Fatalf("machine sealed a command: %v", err)
 	}
 	head := chainHead(machine.data)
@@ -63,7 +64,7 @@ func TestPrepareUncompressed(t *testing.T) {
 	c := newCurrentChain(t)
 	machine := c.machineEndpoint(t, filepath.Join(t.TempDir(), "machine.db"))
 	defer machine.Close()
-	h := Header{Kind: Result.kind(), Purpose: Result, Machine: c.machine.ID, Session: "session", Request: "request-1234567890"}
+	h := devicesec.Header{Kind: devicesec.Result.Kind(), Purpose: devicesec.Result, Machine: c.machine.ID, Session: "session", Request: "request-1234567890"}
 	zeros := bytes.Repeat([]byte{0}, 4096)
 	random := bytes.Repeat([]byte("abcdefghijklmnopqrstuvwxyz0123456789"), 114)[:4096]
 	var sizes []int

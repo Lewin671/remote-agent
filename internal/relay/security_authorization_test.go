@@ -7,6 +7,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"testing"
 	"time"
@@ -30,14 +31,14 @@ func TestAuthorizationPauseRetiresStreamsButNotEndpoint(t *testing.T) {
 	if !s.blocked.Load() {
 		t.Fatal("control was not paused")
 	}
-	if _, err := s.accept(context.Background(), deviceauth.Wire{}, nil, s.now(), func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+	if _, err := s.accept(context.Background(), devicesec.Wire{}, nil, s.now(), func(devicesec.Header, []byte) (deviceauth.Completion, error) {
 		t.Fatal("paused callback ran")
 		return deviceauth.Final(nil), nil
-	}); !errors.Is(err, deviceauth.ErrInvalid) {
+	}); !errors.Is(err, devicesec.ErrInvalid) {
 		t.Fatal(err)
 	}
-	for _, seal := range []func(*pb.Header, deviceauth.Purpose, []byte, []byte) (*pb.Envelope, error){s.seal, s.sealRaw} {
-		if _, err := seal(&pb.Header{}, deviceauth.Result, nil, []byte("fixture")); !errors.Is(err, deviceauth.ErrUntrusted) {
+	for _, seal := range []func(*pb.Header, devicesec.Purpose, []byte, []byte) (*pb.Envelope, error){s.seal, s.sealRaw} {
+		if _, err := seal(&pb.Header{}, devicesec.Result, nil, []byte("fixture")); !errors.Is(err, devicesec.ErrUntrusted) {
 			t.Fatalf("paused output path: %v", err)
 		}
 	}
@@ -70,13 +71,13 @@ func TestAuthorizationPauseStillReturnsAcceptedResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
+	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*devicesec.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
 	now := c.security.now()
-	h := deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "pause-query-result", Deadline: now + 60000}
+	h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "pause-query-result", Deadline: now + 60000}
 	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
 	saved, _ := proto.Marshal(&pb.CommandResult{ErrorCode: "not_found"})
 	w, err := client.Prepare(h, nil, body)
@@ -84,7 +85,7 @@ func TestAuthorizationPauseStillReturnsAcceptedResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	fn := func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+	fn := func(devicesec.Header, []byte) (deviceauth.Completion, error) {
 		calls++
 		return deviceauth.Final(saved), nil
 	}
@@ -113,7 +114,7 @@ func TestAuthorizationPauseStillReturnsAcceptedResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = c.security.accept(context.Background(), w, nil, now, fn); !errors.Is(err, deviceauth.ErrUntrusted) || calls != 1 {
+	if _, err = c.security.accept(context.Background(), w, nil, now, fn); !errors.Is(err, devicesec.ErrUntrusted) || calls != 1 {
 		t.Fatal("pause admitted new operation", err)
 	}
 }
@@ -127,19 +128,19 @@ func TestTransientAdmissionRefusalDoesNotBecomeRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
+	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*devicesec.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
 	now := c.security.now()
 	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
-	wire, err := client.Prepare(deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "transient-same-request", Deadline: now + 60000}, nil, body)
+	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "transient-same-request", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	calls := 0
-	fn := func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+	fn := func(devicesec.Header, []byte) (deviceauth.Completion, error) {
 		calls++
 		return deviceauth.Final([]byte("settled")), nil
 	}
@@ -169,18 +170,18 @@ func TestMalformedCommandHasBoundProofOnlyAfterAuthentication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
+	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*devicesec.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
 	now := c.security.now()
 	id := "malformed-command-request"
-	wire, err := client.Prepare(deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: c.acct.DeviceID, Request: id, Deadline: now + 60000}, nil, []byte{0xff})
+	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.acct.DeviceID, Request: id, Deadline: now + 60000}, nil, []byte{0xff})
 	if err != nil {
 		t.Fatal(err)
 	}
-	fn := func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+	fn := func(devicesec.Header, []byte) (deviceauth.Completion, error) {
 		t.Fatal("malformed Command executed")
 		return deviceauth.Undetermined(), nil
 	}
@@ -218,25 +219,25 @@ func TestExpiredPreviousProtocolRemainsSignedUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
+	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*devicesec.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
 	now := c.security.now()
-	h := deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "expired-previous-protocol", Deadline: now - 1000}
+	h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "expired-previous-protocol", Deadline: now - 1000}
 	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: 14, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
 	wire, err := client.Prepare(h, nil, body)
 	if err != nil {
 		t.Fatal(err)
 	}
-	header, _ := deviceauth.ParseHeader(wire.Header)
+	header, _ := devicesec.ParseHeader(wire.Header)
 	key, payload, err := deviceauth.RequestIdentity(header, body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
-		result, err := c.security.accept(context.Background(), wire, nil, now, func(deviceauth.Header, []byte) (deviceauth.Completion, error) {
+		result, err := c.security.accept(context.Background(), wire, nil, now, func(devicesec.Header, []byte) (deviceauth.Completion, error) {
 			t.Fatal("expired old authorization executed")
 			return deviceauth.Undetermined(), nil
 		})

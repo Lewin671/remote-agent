@@ -3,8 +3,8 @@ package relay
 import (
 	"time"
 
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
@@ -45,7 +45,7 @@ func (m *directManager) reserveAuthentication(peer string, o peerwire.Opened, no
 	if m.authCounts[peer] >= 2048 || len(m.authReservations) >= 16384 {
 		return false
 	}
-	until := o.Context.Deadline + deviceauth.MaxClockSkew
+	until := o.Context.Deadline + devicesec.MaxClockSkew
 	if wall >= until {
 		return false
 	}
@@ -67,7 +67,7 @@ func (m *directManager) allowIncoming(peer string, class, n int, now time.Time) 
 	}
 	rates := m.inboundPeers[peer]
 	if rates == nil {
-		if len(m.inboundPeers) >= deviceauth.MaxMembers {
+		if len(m.inboundPeers) >= devicesec.MaxMembers {
 			return false
 		}
 		rates = &peerRates{}

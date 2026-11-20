@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -57,25 +58,25 @@ func pack(plain []byte) []byte {
 
 // Unpack has an independent expansion limit. Authority metadata verification
 // uses the smaller mutable cap, not the bulk payload's allowance.
-func Unpack(h Header, p []byte) ([]byte, error) {
-	limit := MaxCipherBytes
+func Unpack(h devicesec.Header, p []byte) ([]byte, error) {
+	limit := devicesec.MaxCipherBytes
 	if h.Purpose.Mutable() {
-		limit = MaxMutableBytes
+		limit = devicesec.MaxMutableBytes
 	}
 	if h.Compression == 0 {
 		if len(p) > limit {
-			return nil, ErrCapacity
+			return nil, devicesec.ErrCapacity
 		}
 		return p, nil
 	}
 	if h.Compression != 1 {
-		return nil, ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	r := flate.NewReader(bytes.NewReader(p))
 	defer r.Close()
 	out, err := io.ReadAll(io.LimitReader(r, int64(limit)+1))
 	if err != nil || len(out) > limit {
-		return nil, ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	return out, nil
 }
@@ -106,92 +107,92 @@ func known(m protoreflect.Message) bool {
 
 // ValidateBody binds the decrypted frame direction/type/object to the signed
 // purpose. Ownership is checked by Header.Scope, independently of the relay.
-func ValidateBody(h Header, p []byte) error {
+func ValidateBody(h devicesec.Header, p []byte) error {
 	plain, err := Unpack(h, p)
 	if err != nil {
 		return err
 	}
 	var m proto.Message
 	switch h.Purpose {
-	case Event:
+	case devicesec.Event:
 		m = &pb.Event{}
-	case SessionMeta:
+	case devicesec.SessionMeta:
 		m = &pb.Session{}
-	case SessionKey:
+	case devicesec.SessionKey:
 		if len(plain) != 32 {
-			return ErrInvalid
+			return devicesec.ErrInvalid
 		}
 		return nil
-	case MachineMeta:
+	case devicesec.MachineMeta:
 		m = &pb.MachineMeta{}
-	case Command:
+	case devicesec.Command:
 		m = &pb.Command{}
-	case Result:
+	case devicesec.Result:
 		m = &pb.CommandResult{}
-	case TerminalInput, TerminalResize, TerminalHistory, TerminalOutput:
+	case devicesec.TerminalInput, devicesec.TerminalResize, devicesec.TerminalHistory, devicesec.TerminalOutput:
 		m = &pb.TerminalFrame{}
-	case Notify:
+	case devicesec.Notify:
 		m = &pb.NotifyContent{}
-	case Image:
+	case devicesec.Image:
 		m = &pb.ImagePayload{}
-	case Prefs:
+	case devicesec.Prefs:
 		m = &pb.ProjectPrefs{}
-	case DeviceMeta:
+	case devicesec.DeviceMeta:
 		m = &pb.DeviceMeta{}
 	default:
-		return ErrInvalid
+		return devicesec.ErrInvalid
 	}
 	if proto.Unmarshal(plain, m) != nil || !known(m.ProtoReflect()) {
-		return ErrInvalid
+		return devicesec.ErrInvalid
 	}
 	switch v := m.(type) {
 	case *pb.Event:
 		if v.SessionId != h.Session || v.Seq != h.Seq || v.Kind == nil {
-			return ErrInvalid
+			return devicesec.ErrInvalid
 		}
 	case *pb.Session:
 		if v.Id != h.Session {
-			return ErrInvalid
+			return devicesec.ErrInvalid
 		}
 	case *pb.Command:
 		if v.Kind == nil {
-			return ErrInvalid
+			return devicesec.ErrInvalid
 		}
 	case *pb.TerminalFrame:
 		switch h.Purpose {
-		case TerminalInput:
+		case devicesec.TerminalInput:
 			if _, ok := v.Kind.(*pb.TerminalFrame_Input); !ok {
-				return ErrInvalid
+				return devicesec.ErrInvalid
 			}
-		case TerminalResize:
+		case devicesec.TerminalResize:
 			if _, ok := v.Kind.(*pb.TerminalFrame_Resize); !ok {
-				return ErrInvalid
+				return devicesec.ErrInvalid
 			}
-		case TerminalHistory:
+		case devicesec.TerminalHistory:
 			if _, ok := v.Kind.(*pb.TerminalFrame_HistoryRequest); !ok {
-				return ErrInvalid
+				return devicesec.ErrInvalid
 			}
-		case TerminalOutput:
+		case devicesec.TerminalOutput:
 			switch v.Kind.(type) {
 			case *pb.TerminalFrame_Snapshot, *pb.TerminalFrame_Output, *pb.TerminalFrame_HistoryPage, *pb.TerminalFrame_Closed:
 			default:
-				return ErrInvalid
+				return devicesec.ErrInvalid
 			}
 		}
 	case *pb.NotifyContent:
 		if v.MachineId != h.Machine || v.SessionId != h.Session || (v.Kind != pb.NotifyKind_NOTIFY_KIND_ATTENTION && v.Kind != pb.NotifyKind_NOTIFY_KIND_TURN_ENDED && v.Kind != pb.NotifyKind_NOTIFY_KIND_SCHEDULED && v.Kind != pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK) {
-			return ErrInvalid
+			return devicesec.ErrInvalid
 		}
 		if v.Kind == pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK {
 			if h.Session != "" || v.DiskStatus == nil || v.MachineName == "" || v.Title != "" || v.Text != "" || v.Approval != nil {
-				return ErrInvalid
+				return devicesec.ErrInvalid
 			}
 		} else if h.Session == "" {
-			return ErrInvalid
+			return devicesec.ErrInvalid
 		}
 	case *pb.ProjectPrefs:
 		if v.Schema != 1 {
-			return ErrInvalid
+			return devicesec.ErrInvalid
 		}
 	}
 	return nil
@@ -199,7 +200,7 @@ func ValidateBody(h Header, p []byte) error {
 
 // Read-only commands can be retried without an acceptance log or stored results.
 // Everything else, including unknown future command types, stays at-most-once.
-func ReadOnlyCommand(h Header, plain []byte) bool {
+func ReadOnlyCommand(h devicesec.Header, plain []byte) bool {
 	p, err := Unpack(h, plain)
 	if err != nil {
 		return false

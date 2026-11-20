@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestPersistedFloorTimestampThrottlesTouchAndAccept(t *testing.T) {
@@ -25,11 +27,11 @@ func TestPersistedFloorTimestampThrottlesTouchAndAccept(t *testing.T) {
 						t.Fatal(err)
 					}
 				} else {
-					w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: fmt.Sprintf("floor-request-%016d", i), Deadline: now + 60000}, nil, commandBody(t))
+					w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: fmt.Sprintf("floor-request-%016d", i), Deadline: now + 60000}, nil, commandBody(t))
 					if err != nil {
 						t.Fatal(err)
 					}
-					if _, err := m.Accept(w, nil, at, func(Header, []byte) (Completion, error) {
+					if _, err := m.Accept(w, nil, at, func(devicesec.Header, []byte) (Completion, error) {
 						return Final(nil), nil
 					}); err != nil {
 						t.Fatal(err)

@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"net/http"
 	"testing"
 
@@ -38,7 +38,7 @@ func TestMachineDiskNotificationScopeValidation(t *testing.T) {
 	m := remoteagentv1connect.NewMachineServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, priv, mid)))
 	ctx := context.Background()
 	envelope := func(machine, session string) *pb.Envelope {
-		env, e := opaqueMessage(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: machine, SessionId: session, RequestId: "disk:1:2", Sender: mid}, &pb.NotifyContent{MachineId: machine, Kind: pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK})
+		env, e := opaqueMessage(&pb.Header{Version: devicesec.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: machine, SessionId: session, RequestId: "disk:1:2", Sender: mid}, &pb.NotifyContent{MachineId: machine, Kind: pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK})
 		if e != nil {
 			t.Fatal(e)
 		}

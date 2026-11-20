@@ -19,6 +19,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // Cancel the real daemon RPC after the native adapter's first terminal write.
@@ -99,14 +100,14 @@ func startCancellationTestRelayWithOptions(t *testing.T, backend relay.Backend, 
 	}
 	_, ed, _ := ed25519.GenerateKey(nil)
 	x, _, _ := deviceauth.NewXKey()
-	machine, err := authority.Enroll(ctx, ed, x, deviceauth.Machine)
+	machine, err := authority.Enroll(ctx, ed, x, devicesec.Machine)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Save after enrolling the client so the daemon starts on the current head.
 	_, phoneEd, _ := ed25519.GenerateKey(nil)
 	phoneX, _, _ := deviceauth.NewXKey()
-	phone, err := authority.Enroll(ctx, phoneEd, phoneX, deviceauth.Client)
+	phone, err := authority.Enroll(ctx, phoneEd, phoneX, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}

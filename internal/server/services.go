@@ -7,15 +7,16 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"log/slog"
 	"time"
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -45,7 +46,7 @@ func checkEnvelope(env *pb.Envelope, want *pb.Header) (*pb.Header, error) {
 	if err := proto.Unmarshal(env.Header, h); err != nil {
 		return nil, invalid("malformed envelope header")
 	}
-	version := uint32(deviceauth.Version)
+	version := uint32(devicesec.Version)
 	if want.Kind == pb.PayloadKind_PAYLOAD_KIND_PAIRING {
 		version = e2e.Version
 	}
@@ -280,7 +281,7 @@ func (c *clientService) Forward(ctx context.Context, req *connect.Request[pb.For
 		return nil, attemptUnknown("attempt_unsealed")
 	}
 	if !validAttempt(req.Msg.AttemptId) || req.Header().Get(attemptHeader) != req.Msg.AttemptId {
-		return nil, connect.NewError(connect.CodeInvalidArgument, deviceauth.ErrInvalid)
+		return nil, connect.NewError(connect.CodeInvalidArgument, devicesec.ErrInvalid)
 	}
 	// The sender in the sealed header must be the device that is logged
 	// in. The daemon checks the device's signature itself; this catches a
@@ -354,7 +355,7 @@ func (m *machineService) PutSession(ctx context.Context, req *connect.Request[pb
 			return nil, err
 		}
 		if wire, err := deviceauth.FromEnvelope(req.Msg.Key); err == nil {
-			if h, err := deviceauth.ParseHeader(wire.Header); err == nil {
+			if h, err := devicesec.ParseHeader(wire.Header); err == nil {
 				keyEpoch = h.ContentEpoch
 			}
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"net/http"
 	"sync/atomic"
 	"testing"
@@ -50,7 +51,7 @@ func TestInstalledMemberRemovalClosesOnlyThatOutputStream(t *testing.T) {
 	a := e.authority
 	_, ed, _ := ed25519.GenerateKey(nil)
 	x, _, _ := deviceauth.NewXKey()
-	enrolled, err := a.Enroll(context.Background(), ed, x, deviceauth.Client)
+	enrolled, err := a.Enroll(context.Background(), ed, x, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +94,7 @@ func TestInstalledMemberRemovalClosesOnlyThatOutputStream(t *testing.T) {
 	native2 := e.backend.term
 	e.backend.mu.Unlock()
 	parent := a.States[len(a.States)-1]
-	var members []deviceauth.Member
+	var members []devicesec.Member
 	for _, m := range parent.Core.Members {
 		if m.ID != e.client.DeviceID {
 			members = append(members, m)

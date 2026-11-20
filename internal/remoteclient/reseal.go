@@ -3,6 +3,7 @@ package remoteclient
 import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"time"
 )
 
@@ -20,8 +21,8 @@ func (c *Client) Reseal(envelope *pb.Envelope) (*pb.Envelope, error) {
 	if err != nil {
 		return nil, err
 	}
-	if header.Sender != c.DeviceID || header.Purpose != deviceauth.Command {
-		return nil, deviceauth.ErrInvalid
+	if header.Sender != c.DeviceID || header.Purpose != devicesec.Command {
+		return nil, devicesec.ErrInvalid
 	}
 	plain, err := deviceauth.Unpack(header, packed)
 	if err != nil {
@@ -32,5 +33,5 @@ func (c *Client) Reseal(envelope *pb.Envelope) (*pb.Envelope, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sealed.Envelope()
+	return deviceauth.Envelope(sealed)
 }

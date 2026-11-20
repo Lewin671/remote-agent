@@ -15,10 +15,10 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -389,7 +389,7 @@ func (c *conn) ensurePublished(ctx context.Context) error {
 func (c *conn) putMachine(ctx context.Context, meta *pb.MachineMeta) error {
 	env, err := c.security.sealMessage(&pb.Header{
 		Kind: pb.PayloadKind_PAYLOAD_KIND_MACHINE_META, MachineId: c.acct.DeviceID, Seq: revision(), Sender: c.acct.DeviceID,
-	}, deviceauth.MachineMeta, nil, meta)
+	}, devicesec.MachineMeta, nil, meta)
 	if err != nil {
 		return err
 	}

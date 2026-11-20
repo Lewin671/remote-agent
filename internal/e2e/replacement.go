@@ -5,15 +5,15 @@ import (
 	"slices"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // MachineReplacementOrigins authenticates a contiguous archive lineage against
 // an already verified chain. Expiry is checked at the candidate's first signed
 // membership, not at historical-read time. This never authorizes live control.
-func MachineReplacementOrigins(account, target string, states []deviceauth.State, proofs []*pb.MachineReplacementProof) (map[string]bool, error) {
+func MachineReplacementOrigins(account, target string, states []devicesec.State, proofs []*pb.MachineReplacementProof) (map[string]bool, error) {
 	origins := map[string]bool{}
-	if len(proofs) > deviceauth.MaxPairStates {
+	if len(proofs) > devicesec.MaxPairStates {
 		return nil, ErrPairApproval
 	}
 	cursor := target
@@ -26,22 +26,22 @@ func MachineReplacementOrigins(account, target string, states []deviceauth.State
 		if a.AccountId != account || a.ReplacesDeviceId == "" || a.CandidateKind != pb.DeviceKind_DEVICE_KIND_MACHINE || DeviceID(a.CandidateDevicePublicKey) != cursor {
 			return nil, ErrPairApproval
 		}
-		var first *deviceauth.State
+		var first *devicesec.State
 		oldMachine := false
 		for j := range states {
 			s := &states[j]
 			if m, ok := s.Core.Member(cursor); ok {
-				if m.Kind != deviceauth.Machine || !bytes.Equal(m.EdPublic[:], a.CandidateDevicePublicKey) {
+				if m.Kind != devicesec.Machine || !bytes.Equal(m.EdPublic[:], a.CandidateDevicePublicKey) {
 					return nil, ErrPairApproval
 				}
 				first = s
 				break
 			}
-			if m, ok := s.Core.Member(a.ReplacesDeviceId); ok && m.Kind == deviceauth.Machine {
+			if m, ok := s.Core.Member(a.ReplacesDeviceId); ok && m.Kind == devicesec.Machine {
 				oldMachine = true
 			}
 		}
-		if first == nil || !oldMachine || first.Core.AuthorityID != a.ApproverDeviceId || !slices.Contains(first.Core.Removed, a.ReplacesDeviceId) || uint64(a.ExpiresMs)+deviceauth.MaxClockSkew < first.Core.IssuedAt {
+		if first == nil || !oldMachine || first.Core.AuthorityID != a.ApproverDeviceId || !slices.Contains(first.Core.Removed, a.ReplacesDeviceId) || uint64(a.ExpiresMs)+devicesec.MaxClockSkew < first.Core.IssuedAt {
 			return nil, ErrPairApproval
 		}
 		signer, ok := first.Core.Member(a.ApproverDeviceId)

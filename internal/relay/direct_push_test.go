@@ -19,6 +19,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
@@ -285,12 +286,12 @@ func TestDirectEventPushSubscriptionPrioritySizeImageAndRevocation(t *testing.T)
 	// Verify use=1 is open and Ready(1) has completed on the daemon before appending live events.
 	warmCmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
 	warmPlain, _ := proto.Marshal(warmCmd)
-	warmHeader := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: e.acct.DeviceID, Request: "req-direct-push-warmup-check", Deadline: uint64(nowFn().UnixMilli()) + 15000}
+	warmHeader := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: e.acct.DeviceID, Request: "req-direct-push-warmup-check", Deadline: uint64(nowFn().UnixMilli()) + 15000}
 	warmSealed, err := endpoint.Prepare(warmHeader, nil, warmPlain)
 	if err != nil {
 		t.Fatal(err)
 	}
-	warmEnv, _ := warmSealed.Envelope()
+	warmEnv, _ := deviceauth.Envelope(warmSealed)
 	warmBytes, _ := proto.Marshal(warmEnv)
 	if err := use1.Write(ctx, warmBytes); err != nil {
 		t.Fatal(err)
@@ -313,11 +314,11 @@ func TestDirectEventPushSubscriptionPrioritySizeImageAndRevocation(t *testing.T)
 			if err != nil {
 				continue
 			}
-			h, err := deviceauth.ParseHeader(wire.Header)
+			h, err := devicesec.ParseHeader(wire.Header)
 			if err != nil {
 				continue
 			}
-			if h.Purpose == deviceauth.Event {
+			if h.Purpose == devicesec.Event {
 				got, body, err := endpoint.Open(wire, key1, true, uint64(nowFn().UnixMilli()))
 				if err != nil {
 					t.Errorf("open direct event: %v", err)
@@ -333,7 +334,7 @@ func TestDirectEventPushSubscriptionPrioritySizeImageAndRevocation(t *testing.T)
 					continue
 				}
 				directEvents <- &ev
-			} else if h.Purpose == deviceauth.Result {
+			} else if h.Purpose == devicesec.Result {
 				got, body, err := endpoint.Open(wire, nil, true, uint64(nowFn().UnixMilli()))
 				if err != nil {
 					continue
@@ -439,12 +440,12 @@ gotSmall:
 	}
 	cmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
 	plain, _ := proto.Marshal(cmd)
-	h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: e.acct.DeviceID, Request: "req-direct-push-priority-check", Deadline: uint64(nowFn().UnixMilli()) + 15000}
+	h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: e.acct.DeviceID, Request: "req-direct-push-priority-check", Deadline: uint64(nowFn().UnixMilli()) + 15000}
 	sealed, err := endpoint.Prepare(h, nil, plain)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmdEnv, _ := sealed.Envelope()
+	cmdEnv, _ := deviceauth.Envelope(sealed)
 	cmdBytes, _ := proto.Marshal(cmdEnv)
 	if err := use1.Write(ctx, cmdBytes); err != nil {
 		t.Fatal(err)

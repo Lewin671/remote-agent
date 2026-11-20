@@ -10,18 +10,19 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
 type currentChain struct {
-	genesis, added, withClient State
-	pin                        Pin
+	genesis, added, withClient devicesec.State
+	pin                        devicesec.Pin
 	phoneEd                    ed25519.PrivateKey
 	phoneX                     []byte
-	machine                    Member
+	machine                    devicesec.Member
 	machineEd                  ed25519.PrivateKey
 	machineX                   []byte
-	client                     Member
+	client                     devicesec.Member
 	clientEd                   ed25519.PrivateKey
 	clientX                    []byte
 }
@@ -29,11 +30,11 @@ type currentChain struct {
 func newCurrentChain(t *testing.T) *currentChain {
 	t.Helper()
 	now := uint64(time.Now().UnixMilli())
-	phone, phoneEd, phoneX := testMember(t, 0x11, Client)
+	phone, phoneEd, phoneX := testMember(t, 0x11, devicesec.Client)
 	var rec [32]byte
 	rec[0] = 0x22
 	secret1 := bytes.Repeat([]byte{0x33}, 32)
-	genesis, err := BuildGenesis("0123456789abcdef0123456789abcdef", digest("test/domain", []byte("current")), phone, rec, secret1, phoneEd, now-3000)
+	genesis, err := BuildGenesis("0123456789abcdef0123456789abcdef", devicesec.Digest("test/domain", []byte("current")), phone, rec, secret1, phoneEd, now-3000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,18 +42,18 @@ func newCurrentChain(t *testing.T) *currentChain {
 	if err != nil {
 		t.Fatal(err)
 	}
-	machine, machineEd, machineX := testMember(t, 0x44, Machine)
+	machine, machineEd, machineX := testMember(t, 0x44, devicesec.Machine)
 	secret2 := bytes.Repeat([]byte{0x55}, 32)
-	added := mustBuildCurrent(t, genesis, []Member{phone, machine}, nil, secret2, secret1, phoneEd, now-2000)
-	client, clientEd, clientX := testMember(t, 0x66, Client)
+	added := mustBuildCurrent(t, genesis, []devicesec.Member{phone, machine}, nil, secret2, secret1, phoneEd, now-2000)
+	client, clientEd, clientX := testMember(t, 0x66, devicesec.Client)
 	secret3 := bytes.Repeat([]byte{0x77}, 32)
-	withClient := mustBuildCurrent(t, added, []Member{phone, machine, client}, nil, secret3, secret2, phoneEd, now-1000)
+	withClient := mustBuildCurrent(t, added, []devicesec.Member{phone, machine, client}, nil, secret3, secret2, phoneEd, now-1000)
 	return &currentChain{genesis: genesis, added: added, withClient: withClient, pin: pin, phoneEd: phoneEd, phoneX: phoneX,
 		machine: machine, machineEd: machineEd, machineX: machineX,
 		client: client, clientEd: clientEd, clientX: clientX}
 }
 
-func mustBuildCurrent(t *testing.T, parent State, members []Member, removed []string, newSecret, oldSecret []byte, signer ed25519.PrivateKey, now uint64) State {
+func mustBuildCurrent(t *testing.T, parent devicesec.State, members []devicesec.Member, removed []string, newSecret, oldSecret []byte, signer ed25519.PrivateKey, now uint64) devicesec.State {
 	t.Helper()
 	s, err := BuildState(parent, members, removed, newSecret, mustPrev(t, newSecret, oldSecret), signer, now)
 	if err != nil {
@@ -61,9 +62,11 @@ func mustBuildCurrent(t *testing.T, parent State, members []Member, removed []st
 	return s
 }
 
-func (c *currentChain) states() []State { return []State{c.genesis, c.added, c.withClient} }
-func (c *currentChain) proofs() []*RecoveryStatement {
-	return []*RecoveryStatement{nil, nil, nil}
+func (c *currentChain) states() []devicesec.State {
+	return []devicesec.State{c.genesis, c.added, c.withClient}
+}
+func (c *currentChain) proofs() []*devicesec.RecoveryStatement {
+	return []*devicesec.RecoveryStatement{nil, nil, nil}
 }
 
 func (c *currentChain) machineEndpoint(t *testing.T, path string) *Endpoint {
@@ -77,7 +80,7 @@ func (c *currentChain) machineEndpoint(t *testing.T, path string) *Endpoint {
 
 func (c *currentChain) phoneEndpoint(t *testing.T) *Endpoint {
 	t.Helper()
-	ep, err := initTestEndpoint("", c.pin, []State{c.genesis}, []*RecoveryStatement{nil}, c.genesis.Core.AuthorityID, c.phoneEd.Seed(), c.phoneX)
+	ep, err := initTestEndpoint("", c.pin, []devicesec.State{c.genesis}, []*devicesec.RecoveryStatement{nil}, c.genesis.Core.AuthorityID, c.phoneEd.Seed(), c.phoneX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,13 +112,13 @@ func TestCommandAcceptedLogSurvivesRestartAndExpiredRetry(t *testing.T) {
 	client := c.clientEndpoint(t)
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
+	h := devicesec.Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	calls := 0
-	fn := func(Header, []byte) (Completion, error) {
+	fn := func(devicesec.Header, []byte) (Completion, error) {
 		calls++
 		return Final([]byte("result")), nil
 	}
@@ -159,7 +162,7 @@ func TestTwoEpochChangesInOneInstall(t *testing.T) {
 	c := newCurrentChain(t)
 	ep := c.phoneEndpoint(t)
 	defer ep.Close()
-	if err := ep.Install([]State{c.added, c.withClient}, []*RecoveryStatement{nil, nil}); err != nil {
+	if err := ep.Install([]devicesec.State{c.added, c.withClient}, []*devicesec.RecoveryStatement{nil, nil}); err != nil {
 		t.Fatalf("two content epochs in one batch: %v", err)
 	}
 	if _, err := ep.ContentSecret(1); err != nil {
@@ -177,7 +180,7 @@ func TestCommandsFromOneDeviceMayArriveOutOfOrder(t *testing.T) {
 	defer machine.Close()
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
+	h := devicesec.Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	first, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
@@ -188,7 +191,7 @@ func TestCommandsFromOneDeviceMayArriveOutOfOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	fn := func(Header, []byte) (Completion, error) {
+	fn := func(devicesec.Header, []byte) (Completion, error) {
 		calls++
 		return Final([]byte("ok")), nil
 	}
@@ -212,30 +215,30 @@ func TestAcceptedRequestSurvivesAContentEpochChange(t *testing.T) {
 	defer machine.Close()
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 600_000}
+	h := devicesec.Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 600_000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	calls := 0
-	fn := func(Header, []byte) (Completion, error) {
+	fn := func(devicesec.Header, []byte) (Completion, error) {
 		calls++
 		return Final([]byte("ok")), nil
 	}
 	if _, err := machine.Accept(w, nil, now, fn); err != nil {
 		t.Fatal(err)
 	}
-	extra, _, _ := testMember(t, 0x88, Machine)
+	extra, _, _ := testMember(t, 0x88, devicesec.Machine)
 	secret4 := bytes.Repeat([]byte{0x99}, 32)
 	phone, _ := c.genesis.Core.Member(c.genesis.Core.AuthorityID)
-	next, err := BuildState(c.withClient, []Member{c.machine, c.client, extra, phone}, nil, secret4, mustPrev(t, secret4, bytes.Repeat([]byte{0x77}, 32)), c.phoneEd, uint64(time.Now().UnixMilli()))
+	next, err := BuildState(c.withClient, []devicesec.Member{c.machine, c.client, extra, phone}, nil, secret4, mustPrev(t, secret4, bytes.Repeat([]byte{0x77}, 32)), c.phoneEd, uint64(time.Now().UnixMilli()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := machine.Install([]State{next}, []*RecoveryStatement{nil}); err != nil {
+	if err := machine.Install([]devicesec.State{next}, []*devicesec.RecoveryStatement{nil}); err != nil {
 		t.Fatal(err)
 	}
-	if err := client.Install([]State{next}, []*RecoveryStatement{nil}); err != nil {
+	if err := client.Install([]devicesec.State{next}, []*devicesec.RecoveryStatement{nil}); err != nil {
 		t.Fatal(err)
 	}
 	// The web retries with the same request ID after the key change: the
@@ -273,13 +276,13 @@ func TestAcceptedLogFullDoesNotEvictLiveEntries(t *testing.T) {
 	filler := bytes.Repeat([]byte{0x5a}, maxAcceptedBytes-300)
 	machine.data.Accepted["filler"] = accepted{Deadline: now + 600_000, RetainUntil: now + 1_200_000, State: final, Category: Executed, Available: true, Result: filler, Persisted: true}
 	machine.indexAccepted()
-	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
+	h := devicesec.Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	result := bytes.Repeat([]byte{0x6b}, 400)
-	_, err = machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) { return Final(result), nil })
+	_, err = machine.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) { return Final(result), nil })
 	var missing *ResultUnavailable
 	if !errors.As(err, &missing) || missing.Category != Executed {
 		t.Fatalf("finish over byte cap lost Executed category: %v", err)
@@ -299,16 +302,16 @@ func TestClockBehindTheFloorPausesControl(t *testing.T) {
 	if err := machine.Touch(now + 10*60*1000); err != nil {
 		t.Fatal(err)
 	}
-	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 24*60*60*1000}
+	h := devicesec.Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 24*60*60*1000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	called := false
-	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	if _, err := machine.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		called = true
 		return Final(nil), nil
-	}); !errors.Is(err, ErrStale) {
+	}); !errors.Is(err, devicesec.ErrStale) {
 		t.Fatalf("control with a clock behind the floor: %v", err)
 	}
 	if called {
@@ -323,12 +326,12 @@ func TestAuthenticatedOnlyLookupDoesNotAnswerForgedRequests(t *testing.T) {
 	defer machine.Close()
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
+	h := devicesec.Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	if _, err := machine.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		return Final([]byte("secret-result")), nil
 	}); err != nil {
 		t.Fatal(err)
@@ -338,7 +341,7 @@ func TestAuthenticatedOnlyLookupDoesNotAnswerForgedRequests(t *testing.T) {
 	forged := w
 	forged.Cipher = bytes.Clone(w.Cipher)
 	forged.Cipher[0] ^= 1
-	if out, err := machine.Accept(forged, nil, now, func(Header, []byte) (Completion, error) {
+	if out, err := machine.Accept(forged, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		return Final(nil), nil
 	}); err == nil || string(out) == "secret-result" {
 		t.Fatalf("forged request got a cached answer: %q %v", out, err)
@@ -356,16 +359,16 @@ func TestAcceptedLogCapsBeforeExecution(t *testing.T) {
 		machine.data.Accepted[testKey(fmt.Sprint(i))] = accepted{Deadline: now + 600_000, RetainUntil: now + 1_200_000, State: final, Category: Executed, Persisted: true}
 	}
 	machine.indexAccepted()
-	h := Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
+	h := devicesec.Header{Account: c.genesis.Core.Account, Domain: c.genesis.Core.Domain, Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	w, err := client.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	called := false
-	if _, err := machine.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	if _, err := machine.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		called = true
 		return Final(nil), nil
-	}); err != ErrCapacity {
+	}); err != devicesec.ErrCapacity {
 		t.Fatalf("cap: %v", err)
 	}
 	if called {
@@ -378,11 +381,11 @@ func TestPrepareScopeFailureDoesNotReserve(t *testing.T) {
 	client := c.clientEndpoint(t)
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	bad := Header{Purpose: Command, Kind: 5, Machine: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Request: "0123456789abcdef", Deadline: now + 60_000}
+	bad := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Request: "0123456789abcdef", Deadline: now + 60_000}
 	if _, err := client.Prepare(bad, nil, []byte("x")); err == nil {
 		t.Fatal("bad scope accepted")
 	}
-	good := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
+	good := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "0123456789abcdef", Deadline: now + 60_000}
 	if _, err := client.Prepare(good, nil, []byte("x")); err != nil {
 		t.Fatal(err)
 	}
@@ -391,14 +394,14 @@ func TestPrepareScopeFailureDoesNotReserve(t *testing.T) {
 func TestNonCanonicalStateRejected(t *testing.T) {
 	c := newCurrentChain(t)
 	raw, _ := c.genesis.MarshalBinary()
-	if _, err := ParseState(append(raw, 0)); err == nil {
+	if _, err := devicesec.ParseState(append(raw, 0)); err == nil {
 		t.Fatal("trailing state bytes accepted")
 	}
-	if _, err := ParseState(append([]byte{0}, raw...)); err == nil {
+	if _, err := devicesec.ParseState(append([]byte{0}, raw...)); err == nil {
 		t.Fatal("prefixed state accepted")
 	}
 	core, _ := c.genesis.Core.MarshalBinary()
-	if _, err := ParseCore(append(core, 0)); err == nil {
+	if _, err := devicesec.ParseCore(append(core, 0)); err == nil {
 		t.Fatal("trailing core bytes accepted")
 	}
 }
@@ -408,7 +411,7 @@ func TestNonCanonicalStateRejected(t *testing.T) {
 // still open.
 func TestRecoveryKeepsEveryDerivableContentKey(t *testing.T) {
 	now := uint64(time.Now().UnixMilli())
-	phone, phoneEd, _ := testMember(t, 0x21, Client)
+	phone, phoneEd, _ := testMember(t, 0x21, devicesec.Client)
 	_, recKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -416,12 +419,12 @@ func TestRecoveryKeepsEveryDerivableContentKey(t *testing.T) {
 	var recPub [32]byte
 	copy(recPub[:], recKey.Public().(ed25519.PublicKey))
 	secret1 := bytes.Repeat([]byte{0x31}, 32)
-	genesis, err := BuildGenesis("0123456789abcdef0123456789abcdef", digest("test/domain", []byte("keys")), phone, recPub, secret1, phoneEd, now-4000)
+	genesis, err := BuildGenesis("0123456789abcdef0123456789abcdef", devicesec.Digest("test/domain", []byte("keys")), phone, recPub, secret1, phoneEd, now-4000)
 	if err != nil {
 		t.Fatal(err)
 	}
 	pin, _ := genesis.Pin()
-	machine, machineEd, machineX := testMember(t, 0x41, Machine)
+	machine, machineEd, machineX := testMember(t, 0x41, devicesec.Machine)
 	secret2 := bytes.Repeat([]byte{0x32}, 32)
 	machineXPub, err := XPublic(machineX)
 	if err != nil {
@@ -431,13 +434,13 @@ func TestRecoveryKeepsEveryDerivableContentKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, _, _ := testMember(t, 0x51, Client)
+	client, _, _ := testMember(t, 0x51, devicesec.Client)
 	secret3 := bytes.Repeat([]byte{0x33}, 32)
-	withClient, err := BuildState(added, []Member{phone, machine, client}, nil, secret3, mustPrev(t, secret3, secret2), phoneEd, now-2000)
+	withClient, err := BuildState(added, []devicesec.Member{phone, machine, client}, nil, secret3, mustPrev(t, secret3, secret2), phoneEd, now-2000)
 	if err != nil {
 		t.Fatal(err)
 	}
-	machineEp, err := initTestEndpoint("", pin, []State{genesis, added, withClient}, []*RecoveryStatement{nil, nil, nil}, machine.ID, machineEd.Seed(), machineX)
+	machineEp, err := initTestEndpoint("", pin, []devicesec.State{genesis, added, withClient}, []*devicesec.RecoveryStatement{nil, nil, nil}, machine.ID, machineEd.Seed(), machineX)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -445,16 +448,16 @@ func TestRecoveryKeepsEveryDerivableContentKey(t *testing.T) {
 	// Simulate a running device that has not asked for the older keys yet.
 	machineEp.data.ContentKeys = map[uint64][]byte{withClient.Core.ContentEpoch: secret3}
 
-	newPhone, newPhoneEd, _ := testMember(t, 0x61, Client)
+	newPhone, newPhoneEd, _ := testMember(t, 0x61, devicesec.Client)
 	secret4 := bytes.Repeat([]byte{0x34}, 32)
-	_, newRecKey, _ := testMember(t, 0x71, Client)
+	_, newRecKey, _ := testMember(t, 0x71, devicesec.Client)
 	var newRecovery [32]byte
 	copy(newRecovery[:], newRecKey.Public().(ed25519.PublicKey))
-	rec, stmt, err := BuildRecovery(withClient, newPhone, []Member{machine, client, newPhone}, secret4, newPhoneEd, recKey, newRecovery, now-1000)
+	rec, stmt, err := BuildRecovery(withClient, newPhone, []devicesec.Member{machine, client, newPhone}, secret4, newPhoneEd, recKey, newRecovery, now-1000)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := machineEp.Install([]State{rec}, []*RecoveryStatement{&stmt}); err != nil {
+	if err := machineEp.Install([]devicesec.State{rec}, []*devicesec.RecoveryStatement{&stmt}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := machineEp.ContentSecret(1); err != nil {

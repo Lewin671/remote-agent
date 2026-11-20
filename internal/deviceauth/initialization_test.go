@@ -5,13 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestFailedFirstInitializationCanRetry(t *testing.T) {
 	g, pin, ed, x, _ := testGenesis(t)
 	path := filepath.Join(t.TempDir(), "security.db")
 	// An invalid lease fails after the schema and placeholder have been committed.
-	if ep, err := InitEndpoint(path, pin, []State{g}, []*RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x, LeaseCertificate{}); err == nil {
+	if ep, err := InitEndpoint(path, pin, []devicesec.State{g}, []*devicesec.RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x, devicesec.LeaseCertificate{}); err == nil {
 		ep.Close()
 		t.Fatal("invalid lease accepted")
 	}
@@ -25,7 +27,7 @@ func TestFailedFirstInitializationCanRetry(t *testing.T) {
 	if len(entries) != 0 {
 		t.Fatalf("failed initialization left private files: %v", entries)
 	}
-	ep, err := initTestEndpoint(path, pin, []State{g}, []*RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x)
+	ep, err := initTestEndpoint(path, pin, []devicesec.State{g}, []*devicesec.RecoveryStatement{nil}, g.Core.AuthorityID, ed.Seed(), x)
 	if err != nil {
 		t.Fatalf("retry failed: %v", err)
 	}

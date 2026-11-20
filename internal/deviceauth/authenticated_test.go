@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 	"path/filepath"
 	"runtime"
@@ -27,7 +28,7 @@ func TestAuthenticatedCapabilityKeepsOriginalBytesAndOwner(t *testing.T) {
 	// decoding and reserializing. The wire authorization binds all these bytes.
 	original := bytes.Repeat(commandBody(t), 512)
 	now := uint64(time.Now().UnixMilli())
-	wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "authenticated-byte-identity", Deadline: now + 60000}, nil, original)
+	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "authenticated-byte-identity", Deadline: now + 60000}, nil, original)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,7 @@ func TestAuthenticatedCapabilityKeepsOriginalBytesAndOwner(t *testing.T) {
 		t.Fatal("caller mutated authenticated bytes")
 	}
 	calls := 0
-	fn := func(h Header, plain []byte) (Completion, error) {
+	fn := func(h devicesec.Header, plain []byte) (Completion, error) {
 		calls++
 		decoded, err := Unpack(h, plain)
 		if err != nil || !bytes.Equal(decoded, original) {
@@ -49,7 +50,7 @@ func TestAuthenticatedCapabilityKeepsOriginalBytesAndOwner(t *testing.T) {
 		}
 		return Final([]byte("done")), nil
 	}
-	if _, err := other.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{}, fn); !errors.Is(err, ErrInvalid) {
+	if _, err := other.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{}, fn); !errors.Is(err, devicesec.ErrInvalid) {
 		t.Fatal("capability crossed endpoint ownership")
 	}
 	if calls != 0 {
@@ -69,7 +70,7 @@ func TestAbandonedCallbackCannotPublishLateFinalResult(t *testing.T) {
 	client := c.clientEndpoint(t)
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "overdue-mutation-identity", Deadline: now + 60000}, nil, commandBody(t))
+	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "overdue-mutation-identity", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +82,10 @@ func TestAbandonedCallbackCannotPublishLateFinalResult(t *testing.T) {
 	release := make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		_, err := e.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{Running: func(fn func()) { abandon <- fn }}, func(Header, []byte) (Completion, error) { <-release; return Final([]byte("late success")), nil })
+		_, err := e.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{Running: func(fn func()) { abandon <- fn }}, func(devicesec.Header, []byte) (Completion, error) {
+			<-release
+			return Final([]byte("late success")), nil
+		})
 		done <- err
 	}()
 	mark := <-abandon
@@ -113,7 +117,7 @@ func TestReadOnlyDuplicatesShareInflightResultWithoutAcceptanceLog(t *testing.T)
 		t.Fatal(err)
 	}
 	now := uint64(time.Now().UnixMilli())
-	wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Session: "session", Request: "readonly-inflight-request", Deadline: now + 60000}, nil, body)
+	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Session: "session", Request: "readonly-inflight-request", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +131,7 @@ func TestReadOnlyDuplicatesShareInflightResultWithoutAcceptanceLog(t *testing.T)
 	result := make(chan error, 1)
 	calls := 0
 	go func() {
-		_, err := e.AcceptWith(context.Background(), wire, nil, now, AcceptOptions{}, func(Header, []byte) (Completion, error) {
+		_, err := e.AcceptWith(context.Background(), wire, nil, now, AcceptOptions{}, func(devicesec.Header, []byte) (Completion, error) {
 			calls++
 			close(entered)
 			<-release
@@ -159,7 +163,7 @@ func TestReadOnlyDuplicatesShareInflightResultWithoutAcceptanceLog(t *testing.T)
 	if err != nil || string(got) != "block" {
 		t.Fatalf("duplicate result=%q err=%v", got, err)
 	}
-	if _, err = e.Accept(wire, nil, now, func(Header, []byte) (Completion, error) { calls++; return Final([]byte("fresh")), nil }); err != nil {
+	if _, err = e.Accept(wire, nil, now, func(devicesec.Header, []byte) (Completion, error) { calls++; return Final([]byte("fresh")), nil }); err != nil {
 		t.Fatal(err)
 	}
 	if calls != 2 {
@@ -193,7 +197,7 @@ func TestWaiterGlobalBudgetAcrossIndependentKeys(t *testing.T) {
 	}()
 	prepared := make([]*Authenticated, 9)
 	for i := range 9 {
-		wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: fmt.Sprintf("global-wait-key-%04d", i), Deadline: now + 60000}, nil, commandBody(t))
+		wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: fmt.Sprintf("global-wait-key-%04d", i), Deadline: now + 60000}, nil, commandBody(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -202,7 +206,11 @@ func TestWaiterGlobalBudgetAcrossIndependentKeys(t *testing.T) {
 			t.Fatal(err)
 		}
 		go func() {
-			_, err := e.Accept(wire, nil, now, func(Header, []byte) (Completion, error) { entered <- struct{}{}; <-release; return Final(nil), nil })
+			_, err := e.Accept(wire, nil, now, func(devicesec.Header, []byte) (Completion, error) {
+				entered <- struct{}{}
+				<-release
+				return Final(nil), nil
+			})
 			done <- err
 		}()
 	}
@@ -252,7 +260,7 @@ func TestAbandonWhileFinalizationWaitsOnEndpointLock(t *testing.T) {
 				}
 			}
 			now := uint64(time.Now().UnixMilli())
-			wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Session: session, Request: "contended-final-publication", Deadline: now + 60000}, nil, body)
+			wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Session: session, Request: "contended-final-publication", Deadline: now + 60000}, nil, body)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -264,7 +272,7 @@ func TestAbandonWhileFinalizationWaitsOnEndpointLock(t *testing.T) {
 			release := make(chan struct{})
 			result := make(chan error, 1)
 			go func() {
-				_, err := e.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{Running: func(f func()) { ready <- f }}, func(Header, []byte) (Completion, error) { <-release; return Final([]byte("success")), nil })
+				_, err := e.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{Running: func(f func()) { ready <- f }}, func(devicesec.Header, []byte) (Completion, error) { <-release; return Final([]byte("success")), nil })
 				result <- err
 			}()
 			abandon := <-ready
@@ -325,7 +333,7 @@ func TestPublishedResultWinsBeforeLateAbandonment(t *testing.T) {
 	client := c.clientEndpoint(t)
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "publication-wins-decision", Deadline: now + 60000}, nil, commandBody(t))
+	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "publication-wins-decision", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +345,7 @@ func TestPublishedResultWinsBeforeLateAbandonment(t *testing.T) {
 	release := make(chan struct{})
 	result := make(chan error, 1)
 	go func() {
-		_, err := e.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{Running: func(f func()) { ready <- f }}, func(Header, []byte) (Completion, error) { <-release; return Final([]byte("success")), nil })
+		_, err := e.AcceptAuthenticated(context.Background(), a, now, AcceptOptions{Running: func(f func()) { ready <- f }}, func(devicesec.Header, []byte) (Completion, error) { <-release; return Final([]byte("success")), nil })
 		result <- err
 	}()
 	abandon := <-ready

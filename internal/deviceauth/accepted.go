@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/i18n"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 //go:generate go run ../../scripts/gen-result-retention -output ../../web/src/result-retention.gen.ts
@@ -51,11 +52,11 @@ const (
 
 type accepted struct {
 	Deadline, RetainUntil uint64
-	PayloadHash           Hash
+	PayloadHash           devicesec.Hash
 	State                 acceptanceState
 	Category              Category
 	Available             bool
-	BodyHash              Hash
+	BodyHash              devicesec.Hash
 	Result                []byte
 	Persisted             bool
 }
@@ -72,7 +73,7 @@ type runningCall struct {
 	resultErr           error
 	notify              sync.Once
 	done                chan struct{}
-	payload             Hash
+	payload             devicesec.Hash
 	retainUntil         uint64
 	deadline            uint64
 	waiters             int
@@ -123,7 +124,7 @@ type AcceptOptions struct {
 
 	AllowNew func() bool
 	Acquire  func(ctx context.Context) (release func(), err error)
-	Validate func(Header, []byte) error
+	Validate func(devicesec.Header, []byte) error
 	Evidence bool
 	NoWait   bool                 // scheduler transfers duplicates to the independent waiter table
 	Running  func(abandon func()) // callback lifetime, independent of the path
@@ -194,16 +195,16 @@ func (e *Endpoint) pruneAccepted(h *acceptedHeap, now uint64) {
 	}
 }
 func acceptedChecksum(key string, a accepted) []byte {
-	e := encoder{}
-	e.lp([]byte(key))
-	e.raw(a.PayloadHash[:])
-	e.u64(a.Deadline)
-	e.u64(a.RetainUntil)
-	e.u32(uint32(a.State))
-	e.u32(uint32(a.Category))
-	e.u32(uint32(boolInt(a.Available)))
-	e.raw(a.BodyHash[:])
-	h := digest("ra4/accepted-entry\x00", e.b)
+	e := devicesec.Encoder{}
+	e.LP([]byte(key))
+	e.Raw(a.PayloadHash[:])
+	e.U64(a.Deadline)
+	e.U64(a.RetainUntil)
+	e.U32(uint32(a.State))
+	e.U32(uint32(a.Category))
+	e.U32(uint32(boolInt(a.Available)))
+	e.Raw(a.BodyHash[:])
+	h := devicesec.Digest("ra4/accepted-entry\x00", e.B)
 	return h[:]
 }
 func writeSummary(tx *sql.Tx, key string, a accepted) error {
@@ -301,7 +302,7 @@ func loadAccepted(db *sql.DB, r *record) error {
 		if !ok || !a.Available {
 			continue
 		}
-		if len(b) > MaxCipherBytes || digest("ra4/result\x00", b) != a.BodyHash {
+		if len(b) > devicesec.MaxCipherBytes || devicesec.Digest("ra4/result\x00", b) != a.BodyHash {
 			continue
 		}
 		total += len(b) + bodyOverhead
@@ -330,8 +331,8 @@ func loadAccepted(db *sql.DB, r *record) error {
 	}
 	return nil
 }
-func (e *Endpoint) startAccepted(key string, payload Hash, deadline, now uint64, persist bool) error {
-	now = maxU64(now, e.data.AcceptedFloor)
+func (e *Endpoint) startAccepted(key string, payload devicesec.Hash, deadline, now uint64, persist bool) error {
+	now = max(now, e.data.AcceptedFloor)
 	if deadline <= now {
 		return ErrExpired
 	}
@@ -348,7 +349,7 @@ func (e *Endpoint) startAccepted(key string, payload Hash, deadline, now uint64,
 		limit = maxAccepted
 	}
 	if n-len(pruned) >= limit {
-		return ErrCapacity
+		return devicesec.ErrCapacity
 	}
 	retain := deadline
 	if persist {
@@ -362,8 +363,8 @@ func (e *Endpoint) startAccepted(key string, payload Hash, deadline, now uint64,
 			return err
 		}
 		if saveFloor {
-			e.data.Floor = maxU64(e.data.Floor, floorMs)
-			e.data.FloorSaved = maxU64(e.data.FloorSaved, floorSavedMs)
+			e.data.Floor = max(e.data.Floor, floorMs)
+			e.data.FloorSaved = max(e.data.FloorSaved, floorSavedMs)
 		}
 	}
 	e.pruneAccepted(h, now)
@@ -406,14 +407,14 @@ func (e *Endpoint) finishAccepted(key string, c Completion, now uint64) error {
 	if c.final {
 		a.State = final
 		a.Category = c.category
-		a.BodyHash = digest("ra4/result\x00", c.result)
+		a.BodyHash = devicesec.Digest("ra4/result\x00", c.result)
 	}
 	size := bodyOverhead + len(c.result)
 	fits := e.volatileBytes+size <= maxVolatileBytes
 	if a.Persisted {
 		fits = e.acceptedBodies < maxAcceptedBodies && e.acceptedBytes+size <= maxAcceptedBytes
 	}
-	if c.final && len(c.result) <= MaxCipherBytes-16 && fits {
+	if c.final && len(c.result) <= devicesec.MaxCipherBytes-16 && fits {
 		a.Available = true
 		a.Result = bytes.Clone(c.result)
 	}
@@ -435,30 +436,30 @@ func (e *Endpoint) finishAccepted(key string, c Completion, now uint64) error {
 	e.data.Accepted[key] = a
 	return nil
 }
-func acceptedKey(h Header) string {
-	e := encoder{}
-	e.str(h.Account)
-	e.raw(h.Domain[:])
-	e.str(h.Sender)
-	e.u32(uint32(h.Purpose))
-	e.str(h.Machine)
-	e.str(h.Session)
-	e.str(h.Request)
-	e.u64(h.Seq)
-	hash := digest("ra4/request-key\x00", e.b)
+func acceptedKey(h devicesec.Header) string {
+	e := devicesec.Encoder{}
+	e.Str(h.Account)
+	e.Raw(h.Domain[:])
+	e.Str(h.Sender)
+	e.U32(uint32(h.Purpose))
+	e.Str(h.Machine)
+	e.Str(h.Session)
+	e.Str(h.Request)
+	e.U64(h.Seq)
+	hash := devicesec.Digest("ra4/request-key\x00", e.B)
 	return string(hash[:])
 }
-func payloadHash(h Header, plain []byte) (Hash, error) {
+func payloadHash(h devicesec.Header, plain []byte) (devicesec.Hash, error) {
 	plain, err := Unpack(h, plain)
 	if err != nil {
-		return Hash{}, err
+		return devicesec.Hash{}, err
 	}
-	e := encoder{}
-	e.lp([]byte(acceptedKey(h)))
-	e.u32(h.Kind)
-	e.u64(h.Deadline)
-	e.lp(plain)
-	return digest("ra4/authorized-payload\x00", e.b), nil
+	e := devicesec.Encoder{}
+	e.LP([]byte(acceptedKey(h)))
+	e.U32(h.Kind)
+	e.U64(h.Deadline)
+	e.LP(plain)
+	return devicesec.Digest("ra4/authorized-payload\x00", e.B), nil
 }
 func acceptedResult(a accepted) ([]byte, error) {
 	if a.State != final {
@@ -469,7 +470,7 @@ func acceptedResult(a accepted) ([]byte, error) {
 	}
 	return bytes.Clone(a.Result), nil
 }
-func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint64, options AcceptOptions, fn func(Header, []byte) (Completion, error)) (result []byte, failure error) {
+func (e *Endpoint) AcceptWith(ctx context.Context, w devicesec.Wire, seed []byte, now uint64, options AcceptOptions, fn func(devicesec.Header, []byte) (Completion, error)) (result []byte, failure error) {
 	a, err := e.Authenticate(w, seed, now)
 	if err != nil {
 		return nil, err
@@ -479,14 +480,14 @@ func (e *Endpoint) AcceptWith(ctx context.Context, w Wire, seed []byte, now uint
 
 // AcceptAuthenticated rechecks current authority and durable identity after the
 // scheduler grants a slot. Only this endpoint can issue the capability.
-func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, now uint64, options AcceptOptions, fn func(Header, []byte) (Completion, error)) (result []byte, failure error) {
+func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, now uint64, options AcceptOptions, fn func(devicesec.Header, []byte) (Completion, error)) (result []byte, failure error) {
 	if a == nil || a.owner != e {
-		return nil, ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	started := time.Now()
 	h, plain, payload, key := a.header, a.body, a.payload, a.key
 	if !h.Purpose.Control() {
-		return nil, ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	var err error
 	// Every decision below is authenticated and bound, including invalid Command bodies.
@@ -569,10 +570,10 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 			return e.waitLocked(ctx, key, run, observed)
 		}
 		// An expired missing identity may have executed before pruning or migration.
-		clock = maxU64(maxU64(observed, e.data.Floor), e.data.AcceptedFloor)
-		if observed+MaxClockSkew < e.data.Floor {
+		clock = max(max(observed, e.data.Floor), e.data.AcceptedFloor)
+		if observed+devicesec.MaxClockSkew < e.data.Floor {
 			e.mu.Unlock()
-			return nil, ErrStale
+			return nil, devicesec.ErrStale
 		}
 		if h.Deadline <= clock {
 			e.mu.Unlock()
@@ -590,7 +591,7 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 		}
 		if options.AllowNew != nil && !options.AllowNew() {
 			e.mu.Unlock()
-			return nil, notAdmitted("authorization_unavailable", ErrUntrusted)
+			return nil, notAdmitted("authorization_unavailable", devicesec.ErrUntrusted)
 		}
 		binding := options.PeerBinding
 		if options.DynamicPeerBinding != nil {
@@ -598,7 +599,7 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 			binding, ok = options.DynamicPeerBinding()
 			if !ok {
 				e.mu.Unlock()
-				return nil, notAdmitted("authorization_unavailable", ErrUntrusted)
+				return nil, notAdmitted("authorization_unavailable", devicesec.ErrUntrusted)
 			}
 		}
 		if binding != nil {
@@ -609,17 +610,17 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 		}
 		if h.Deadline-clock > 10*60*1000 {
 			e.mu.Unlock()
-			return nil, notAdmitted("clock", ErrInvalid)
+			return nil, notAdmitted("clock", devicesec.ErrInvalid)
 		}
 		if _, member := chainHead(e.data).Core.Member(h.Sender); !member {
 			e.mu.Unlock()
-			return nil, RejectedEntry("member_removed", ErrUntrusted)
+			return nil, RejectedEntry("member_removed", devicesec.ErrUntrusted)
 		}
 		if err := leaseValid(e.data, clock); err != nil {
 			e.mu.Unlock()
 			return nil, notAdmitted("lease", err)
 		}
-		if err := h.scopeAt(e.data.States[h.Epoch], chainHead(e.data), true, clock); err != nil {
+		if err := h.ScopeAt(e.data.States[h.Epoch], chainHead(e.data), true, clock); err != nil {
 			e.mu.Unlock()
 			return nil, err
 		}
@@ -645,14 +646,14 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 		acquired = true
 	}
 	e.data.Floor = clock
-	readOnly := h.Purpose == Command && ReadOnlyCommand(h, plain)
+	readOnly := h.Purpose == devicesec.Command && ReadOnlyCommand(h, plain)
 	if !readOnly {
-		if err = e.startAccepted(key, payload, h.Deadline, clock, h.Purpose == Command); err != nil {
+		if err = e.startAccepted(key, payload, h.Deadline, clock, h.Purpose == devicesec.Command); err != nil {
 			if e.data.Floor > e.data.FloorSaved {
 				e.ensureFloorFlusherLocked()
 			}
 			e.mu.Unlock()
-			if errors.Is(err, ErrCapacity) {
+			if errors.Is(err, devicesec.ErrCapacity) {
 				return nil, notAdmitted("busy", err)
 			}
 			return nil, err
@@ -680,7 +681,7 @@ func (e *Endpoint) AcceptAuthenticated(ctx context.Context, a *Authenticated, no
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	c = run.decide(c)
-	finished := maxU64(clock+uint64(time.Since(clockAt)/time.Millisecond), e.data.Floor)
+	finished := max(clock+uint64(time.Since(clockAt)/time.Millisecond), e.data.Floor)
 	if e.closed {
 		return nil, ErrOutcomeUnknown
 	}
@@ -738,7 +739,7 @@ func (e *Endpoint) ReserveWaiter(key string) (func(), bool) {
 }
 
 func (e *Endpoint) registerWaitLocked(ctx context.Context, key string, run *runningCall, now uint64) (*ResultWaiter, error) {
-	now = maxU64(maxU64(now, e.data.Floor), e.data.AcceptedFloor)
+	now = max(max(now, e.data.Floor), e.data.AcceptedFloor)
 	if run.isAbandoned() || now >= run.deadline || now >= run.retainUntil {
 		return nil, ErrOutcomeUnknown
 	}

@@ -2,13 +2,14 @@ package remoteclient
 
 import (
 	"crypto/sha256"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"math"
 	"sync"
 	"time"
 	"weak"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // DispatchEvidence describes the caller's knowledge before this Forward.
@@ -152,7 +153,7 @@ func (c *Client) openCall(env *pb.Envelope, prior []DispatchEvidence) *dispatchC
 	identity := ""
 	var deadline uint64
 	if env != nil {
-		if h, err := deviceauth.ParseHeader(env.SecurityHeader); err == nil {
+		if h, err := devicesec.ParseHeader(env.SecurityHeader); err == nil {
 			h.Compression = 0
 			key, _, _ := deviceauth.RequestIdentity(h, nil)
 			identity = string(key[:])

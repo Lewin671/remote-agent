@@ -1,8 +1,8 @@
-package deviceauth
+package devicesec
 
 import (
 	"bytes"
-	"crypto/ed25519"
+	"io"
 	"slices"
 )
 
@@ -13,23 +13,23 @@ func PairTrustDescriptor(p Pin, approver string) ([]byte, error) {
 	if !deviceID(p.Account) || p.Domain == (Hash{}) || p.Genesis == (Hash{}) || !deviceID(approver) {
 		return nil, ErrInvalid
 	}
-	e := encoder{b: []byte("ra3/pair-trust\x00")}
-	e.str(p.Account)
-	e.raw(p.Domain[:])
-	e.raw(p.Genesis[:])
-	e.str(approver)
-	return e.b, nil
+	e := Encoder{B: []byte("ra3/pair-trust\x00")}
+	e.Str(p.Account)
+	e.Raw(p.Domain[:])
+	e.Raw(p.Genesis[:])
+	e.Str(approver)
+	return e.B, nil
 }
 
 // ParsePairTrustDescriptor reads the public descriptor bound by the pairing
 // commitment and the SAS transcript. It carries no secret.
 func ParsePairTrustDescriptor(b []byte) (Pin, string, error) {
 	var p Pin
-	e := encoder{b: []byte("ra3/pair-trust\x00")}
-	if len(e.b) > len(b) || !bytes.Equal(b[:len(e.b)], e.b) {
+	e := Encoder{B: []byte("ra3/pair-trust\x00")}
+	if len(e.B) > len(b) || !bytes.Equal(b[:len(e.B)], e.B) {
 		return p, "", ErrInvalid
 	}
-	d := decoder{b: b[len(e.b):]}
+	d := decoder{b: b[len(e.B):]}
 	p.Account = d.str()
 	p.Domain = d.hash()
 	p.Genesis = d.hash()
@@ -40,23 +40,23 @@ func ParsePairTrustDescriptor(b []byte) (Pin, string, error) {
 	return p, approver, nil
 }
 
-// BuildMembershipState builds a normal state that changes the member list
-// (add, remove, or X rotation) and seals the previous content key.
-func BuildMembershipState(parent State, members []Member, removed []string, oldSecret, newSecret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
+// NewMembershipState builds the unsigned normal state that changes the member
+// list (add, remove, or X rotation) and seals the previous content key with a
+// nonce from random.
+func NewMembershipState(parent State, members []Member, removed []string, oldSecret, newSecret []byte, now uint64, hpke HPKESender, random io.Reader) (State, error) {
 	if len(oldSecret) != 32 || len(newSecret) != 32 {
 		return State{}, ErrInvalid
 	}
-	prev, err := sealPrevSecret(newSecret, oldSecret)
+	prev, err := SealPrevSecret(newSecret, oldSecret, random)
 	if err != nil {
 		return State{}, err
 	}
-	return BuildState(parent, members, removed, newSecret, prev, signer, now)
+	return NewState(parent, members, removed, newSecret, prev, now, hpke)
 }
 
-// BuildPairState adds one candidate. The caller (Android) has its own builder;
-// this is the Go test/helper path.
-func BuildPairState(parent State, candidate Member, candidateX []byte, oldSecret, secret []byte, signer ed25519.PrivateKey, now uint64) (State, error) {
-	if candidate.validate() != nil || len(candidateX) != 32 || !bytes.Equal(candidate.XPublic[:], candidateX) || len(oldSecret) != 32 || len(secret) != 32 || len(signer) != 64 {
+// NewPairState builds the unsigned state that adds one candidate.
+func NewPairState(parent State, candidate Member, candidateX []byte, oldSecret, secret []byte, now uint64, hpke HPKESender, random io.Reader) (State, error) {
+	if candidate.validate() != nil || len(candidateX) != 32 || !bytes.Equal(candidate.XPublic[:], candidateX) || len(oldSecret) != 32 || len(secret) != 32 {
 		return State{}, ErrInvalid
 	}
 	if _, ok := parent.Core.Member(candidate.ID); ok {
@@ -72,9 +72,9 @@ func BuildPairState(parent State, candidate Member, candidateX []byte, oldSecret
 		}
 		return 0
 	})
-	prev, err := sealPrevSecret(secret, oldSecret)
+	prev, err := SealPrevSecret(secret, oldSecret, random)
 	if err != nil {
 		return State{}, err
 	}
-	return BuildState(parent, members, parent.Core.Removed, secret, prev, signer, now)
+	return NewState(parent, members, parent.Core.Removed, secret, prev, now, hpke)
 }

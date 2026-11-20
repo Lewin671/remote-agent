@@ -14,6 +14,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -111,7 +112,7 @@ func TestReadLoopPathCancelLeavesAdmittedExecutionDurable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*deviceauth.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
+	client, err := deviceauth.InitEndpoint("", pin, keys.states, []*devicesec.RecoveryStatement{nil, nil}, member.ID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,11 +120,11 @@ func TestReadLoopPathCancelLeavesAdmittedExecutionDurable(t *testing.T) {
 
 	now := uint64(time.Now().UnixMilli())
 	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "pause"}}})
-	wire, err := client.Prepare(deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: ep.acct.DeviceID, Request: "link-path-disconnect-regression", Deadline: now + 60000}, nil, body)
+	wire, err := client.Prepare(devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: ep.acct.DeviceID, Request: "link-path-disconnect-regression", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)
 	}
-	env, err := wire.Envelope()
+	env, err := deviceauth.Envelope(wire)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestCloseDoesNotWaitForAcceptedIOAndRetainsUnknownOutcome(t *testing.T) {
@@ -17,14 +19,14 @@ func TestCloseDoesNotWaitForAcceptedIOAndRetainsUnknownOutcome(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "close-gate-request", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "close-gate-request", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	entered, release := make(chan struct{}), make(chan struct{})
 	finished := make(chan error, 1)
 	go func() {
-		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		_, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 			close(entered)
 			<-release
 			return Final([]byte("done")), nil
@@ -57,7 +59,7 @@ func TestCloseDoesNotWaitForAcceptedIOAndRetainsUnknownOutcome(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if _, err := reopened.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	if _, err := reopened.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		t.Fatal("executed twice")
 		return Final(nil), nil
 	}); !errors.Is(err, ErrOutcomeUnknown) {
@@ -72,12 +74,12 @@ func TestRePairPreservesAcceptanceAndTimeFloor(t *testing.T) {
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	h := Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "repair-request-123", Deadline: now + 60000}
+	h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "repair-request-123", Deadline: now + 60000}
 	w, err := cl.Prepare(h, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	if _, err = m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		return Final([]byte("original")), nil
 	}); err != nil {
 		t.Fatal(err)
@@ -92,7 +94,7 @@ func TestRePairPreservesAcceptanceAndTimeFloor(t *testing.T) {
 	machine := c.machine
 	copy(machine.XPublic[:], xpub)
 	phone, _ := c.genesis.Core.Member(c.genesis.Core.AuthorityID)
-	next := mustBuildCurrent(t, c.withClient, []Member{phone, machine, c.client}, nil, bytes.Repeat([]byte{0x89}, 32), bytes.Repeat([]byte{0x77}, 32), c.phoneEd, now)
+	next := mustBuildCurrent(t, c.withClient, []devicesec.Member{phone, machine, c.client}, nil, bytes.Repeat([]byte{0x89}, 32), bytes.Repeat([]byte{0x77}, 32), c.phoneEd, now)
 	states := append(c.states(), next)
 	proofs := append(c.proofs(), nil)
 	lease, err := BuildLease(next, c.phoneEd, now)
@@ -112,7 +114,7 @@ func TestRePairPreservesAcceptanceAndTimeFloor(t *testing.T) {
 	if m.Floor() < floor || m.data.AcceptedFloor < cutoff {
 		t.Fatalf("time floors lost: %d/%d want %d/%d", m.Floor(), m.data.AcceptedFloor, floor, cutoff)
 	}
-	if err = cl.Install([]State{next}, []*RecoveryStatement{nil}); err != nil {
+	if err = cl.Install([]devicesec.State{next}, []*devicesec.RecoveryStatement{nil}); err != nil {
 		t.Fatal(err)
 	}
 	if err = cl.InstallLease(lease, now); err != nil {
@@ -122,7 +124,7 @@ func TestRePairPreservesAcceptanceAndTimeFloor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+	out, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 		t.Fatal("re-pair ran the command twice")
 		return Final(nil), nil
 	})
@@ -146,8 +148,8 @@ func TestRePairRejectsUnverifiedOrNonextendingStore(t *testing.T) {
 			states, proofs := c.states(), c.proofs()
 			if mode == "fork" {
 				phone, _ := c.genesis.Core.Member(c.genesis.Core.AuthorityID)
-				fork := mustBuildCurrent(t, c.added, []Member{phone, c.machine, c.client}, nil, bytes.Repeat([]byte{0x88}, 32), bytes.Repeat([]byte{0x55}, 32), c.phoneEd, c.withClient.Core.IssuedAt)
-				states = []State{c.genesis, c.added, fork}
+				fork := mustBuildCurrent(t, c.added, []devicesec.Member{phone, c.machine, c.client}, nil, bytes.Repeat([]byte{0x88}, 32), bytes.Repeat([]byte{0x55}, 32), c.phoneEd, c.withClient.Core.IssuedAt)
+				states = []devicesec.State{c.genesis, c.added, fork}
 			}
 			if ep, err := initTestEndpoint(path, c.pin, states, proofs, c.machine.ID, c.machineEd.Seed(), c.machineX); err == nil {
 				ep.Close()
@@ -185,8 +187,8 @@ func TestRePairRevokedMachineUsesNewIdentityAndKeepsLocalFloor(t *testing.T) {
 	}
 	m.Close()
 	phone, _ := c.genesis.Core.Member(c.genesis.Core.AuthorityID)
-	removed := mustBuildCurrent(t, c.withClient, []Member{phone, c.client}, []string{c.machine.ID}, bytes.Repeat([]byte{0x88}, 32), bytes.Repeat([]byte{0x77}, 32), c.phoneEd, now)
-	replacement, ed, x := testMember(t, 0x99, Machine)
+	removed := mustBuildCurrent(t, c.withClient, []devicesec.Member{phone, c.client}, []string{c.machine.ID}, bytes.Repeat([]byte{0x88}, 32), bytes.Repeat([]byte{0x77}, 32), c.phoneEd, now)
+	replacement, ed, x := testMember(t, 0x99, devicesec.Machine)
 	paired, err := BuildPairState(removed, replacement, replacement.XPublic[:], bytes.Repeat([]byte{0x88}, 32), bytes.Repeat([]byte{0xaa}, 32), c.phoneEd, now)
 	if err != nil {
 		t.Fatal(err)
@@ -208,13 +210,13 @@ func TestRePairSnapshotCannotOverwriteFinishedAcceptanceOrNewerFloor(t *testing.
 	cl := c.clientEndpoint(t)
 	defer cl.Close()
 	now := uint64(time.Now().UnixMilli())
-	w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "repair-inflight-123", Deadline: now + 60000}, nil, commandBody(t))
+	w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "repair-inflight-123", Deadline: now + 60000}, nil, commandBody(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		_, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+		_, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 			close(entered)
 			<-release
 			return Final([]byte("completed")), nil
@@ -251,7 +253,7 @@ func TestRePairSnapshotCannotOverwriteFinishedAcceptanceOrNewerFloor(t *testing.
 	if reopened.Floor() < now+2000 {
 		t.Error("re-pair snapshot rolled back receive time")
 	}
-	out, err := reopened.Accept(w, nil, now+2000, func(Header, []byte) (Completion, error) {
+	out, err := reopened.Accept(w, nil, now+2000, func(devicesec.Header, []byte) (Completion, error) {
 		t.Fatal("executed twice")
 		return Final(nil), nil
 	})

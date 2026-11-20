@@ -16,7 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -109,8 +109,8 @@ func recoveryContextBytes(challenge, recoveryEd []byte, recoveryID string) []byt
 type recoveryRow struct {
 	account    string
 	recoveryID string
-	statement  deviceauth.RecoveryStatement
-	state      deviceauth.State
+	statement  devicesec.RecoveryStatement
+	state      devicesec.State
 	submitted  int64
 	ready      int64
 	completed  int64
@@ -126,11 +126,11 @@ func scanRecovery(sc interface{ Scan(...any) error }) (*recoveryRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	st, err := deviceauth.ParseRecoveryStatement(stmtRaw)
+	st, err := devicesec.ParseRecoveryStatement(stmtRaw)
 	if err != nil {
 		return nil, err
 	}
-	s, err := deviceauth.ParseState(stateRaw)
+	s, err := devicesec.ParseState(stateRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -142,18 +142,18 @@ func (rs *recoveryService) rowByID(ctx context.Context, id string) (*recoveryRow
 	return scanRecovery(rs.s.store.db.QueryRowContext(ctx, `SELECT `+recoveryColumns+` FROM security_recovery WHERE recovery_id = ? UNION ALL SELECT `+recoveryColumns+` FROM security_recovery_completed WHERE recovery_id = ? LIMIT 1`, id, id))
 }
 
-func (rs *recoveryService) headHash(ctx context.Context, account string) (deviceauth.Hash, bool) {
+func (rs *recoveryService) headHash(ctx context.Context, account string) (devicesec.Hash, bool) {
 	var raw []byte
 	if err := rs.s.store.db.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, account).Scan(&raw); err != nil {
-		return deviceauth.Hash{}, false
+		return devicesec.Hash{}, false
 	}
-	head, err := deviceauth.ParseState(raw)
+	head, err := devicesec.ParseState(raw)
 	if err != nil {
-		return deviceauth.Hash{}, false
+		return devicesec.Hash{}, false
 	}
 	h, err := head.Hash()
 	if err != nil {
-		return deviceauth.Hash{}, false
+		return devicesec.Hash{}, false
 	}
 	return h, true
 }
@@ -322,12 +322,12 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 	if !rs.allow(rs.s.clientAddr(req.Peer().Addr, req.Header())) {
 		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("too many recovery submissions; try again in a minute"))
 	}
-	stmt, err := deviceauth.ParseRecoveryStatement(req.Msg.Statement)
+	stmt, err := devicesec.ParseRecoveryStatement(req.Msg.Statement)
 	if err != nil {
 		return nil, invalid("invalid recovery statement")
 	}
-	state, err := deviceauth.ParseState(req.Msg.State)
-	if err != nil || state.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
+	state, err := devicesec.ParseState(req.Msg.State)
+	if err != nil || state.Core.IssuedAt > uint64(nowMs())+devicesec.MaxClockSkew {
 		return nil, invalid("invalid recovery state")
 	}
 	acct, err := rs.s.store.account(ctx, stmt.Account)
@@ -366,11 +366,11 @@ func (rs *recoveryService) SubmitRecovery(ctx context.Context, req *connect.Requ
 	} else if err != nil {
 		return nil, internal(err)
 	}
-	head, err := deviceauth.ParseState(headRaw)
+	head, err := devicesec.ParseState(headRaw)
 	if err != nil {
 		return nil, internal(err)
 	}
-	if err := deviceauth.VerifyTransition(head, state, &stmt); err != nil {
+	if err := devicesec.VerifyTransition(head, state, &stmt); err != nil {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the recovery statement does not match the current head"))
 	}
 	if err := checkRecoveryEpoch(state.Core.Epoch); err != nil {
@@ -440,7 +440,7 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 	if nowMs() < row.ready {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is not ready yet"))
 	}
-	if row.state.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
+	if row.state.Core.IssuedAt > uint64(nowMs())+devicesec.MaxClockSkew {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery state's clock is ahead"))
 	}
 	t := rs.s.store.tenant(row.account)
@@ -465,12 +465,12 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, row.account).Scan(&headRaw); err != nil {
 		return nil, internal(err)
 	}
-	head, err := deviceauth.ParseState(headRaw)
+	head, err := devicesec.ParseState(headRaw)
 	if err != nil {
 		return nil, internal(err)
 	}
 	headHash, _ := head.Hash()
-	verifyErr := deviceauth.VerifyTransition(head, row.state, &row.statement)
+	verifyErr := devicesec.VerifyTransition(head, row.state, &row.statement)
 	if row.statement.Parent != headHash || verifyErr != nil {
 		if _, err := tx.ExecContext(ctx, `UPDATE security_recovery SET rejected_ms = ? WHERE recovery_id = ? AND completed_ms = 0`, nowMs(), req.Msg.RecoveryId); err != nil {
 			return nil, internal(err)
@@ -544,22 +544,22 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 }
 
 func checkRecoveryEpoch(epoch uint64) error {
-	if epoch > deviceauth.MaxStates {
+	if epoch > devicesec.MaxStates {
 		return connect.NewError(connect.CodeResourceExhausted, errors.New("security chain is full"))
 	}
 	return nil
 }
 
-func reqStateRaw(s deviceauth.State) []byte {
+func reqStateRaw(s devicesec.State) []byte {
 	b, _ := s.MarshalBinary()
 	return b
 }
-func reqStatementRaw(s deviceauth.RecoveryStatement) []byte {
+func reqStatementRaw(s devicesec.RecoveryStatement) []byte {
 	b, _ := s.MarshalBinary()
 	return b
 }
 
-func registerRecoveredDevice(ctx context.Context, tx *sql.Tx, account string, m deviceauth.Member) error {
+func registerRecoveredDevice(ctx context.Context, tx *sql.Tx, account string, m devicesec.Member) error {
 	var revoked int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM revoked_devices WHERE id = ?`, m.ID).Scan(&revoked); err != nil {
 		return err

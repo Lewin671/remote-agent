@@ -1,11 +1,17 @@
-// Package deviceauth implements the protocol-10 signed membership chain and
-// the device-signed envelopes that carry account data.
-package deviceauth
+// Package devicesec is the pure half of the protocol-10 device security: the
+// signed membership chain, content grants, leases, recovery statements,
+// device-signed envelopes and the pairing transcripts.
+//
+// It depends only on the standard library and never reads the clock, draws
+// randomness, holds a private key or starts a goroutine. Callers pass the time
+// in milliseconds, an io.Reader for every nonce, an HPKE implementation for
+// content grants, and sign the bytes a builder returns before setting the
+// Signature or Origin field. The daemon's synchronous adapter lives in
+// internal/deviceauth.
+package devicesec
 
 import (
 	"crypto/sha256"
-	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"math"
 )
@@ -37,23 +43,18 @@ const (
 )
 
 var (
-	ErrInvalid        = errors.New("security: invalid authenticated object")
-	ErrUntrusted      = errors.New("security: untrusted domain or signature")
-	ErrStale          = errors.New("security: trusted state must be synchronized")
-	ErrClock          = errors.New("security: state is from the future; check this device's clock")
-	ErrUnknown        = errors.New("security: unknown state")
-	ErrOutcomeUnknown = errors.New("security: accepted operation has no trustworthy result")
-	ErrUnavailable    = errors.New("security: content is unavailable before the recovery boundary")
-	ErrExpired        = errors.New("security: expired control was not newly accepted")
-	ErrBackend        = errors.New("security: previously accepted operation failed")
-	ErrStorage        = errors.New("security: local security state unavailable")
-	ErrCapacity       = errors.New("security: capacity exceeded")
-	ErrChainTooLarge  = errors.New("security: security chain is too large to pair; rebuild the account")
+	ErrInvalid       = errors.New("security: invalid authenticated object")
+	ErrUntrusted     = errors.New("security: untrusted domain or signature")
+	ErrStale         = errors.New("security: trusted state must be synchronized")
+	ErrClock         = errors.New("security: state is from the future; check this device's clock")
+	ErrCapacity      = errors.New("security: capacity exceeded")
+	ErrChainTooLarge = errors.New("security: security chain is too large to pair; rebuild the account")
 )
 
 type Hash [32]byte
 
-func digest(label string, parts ...[]byte) Hash {
+// Digest is SHA-256 over label followed by parts.
+func Digest(label string, parts ...[]byte) Hash {
 	h := sha256.New()
 	h.Write([]byte(label))
 	for _, p := range parts {
@@ -63,15 +64,34 @@ func digest(label string, parts ...[]byte) Hash {
 	copy(out[:], h.Sum(nil))
 	return out
 }
-func (h Hash) String() string { return hex.EncodeToString(h[:]) }
 
-type encoder struct{ b []byte }
+// String is lowercase hex.
+func (h Hash) String() string { return hexString(h[:]) }
 
-func (e *encoder) u32(n uint32) { e.b = binary.BigEndian.AppendUint32(e.b, n) }
-func (e *encoder) u64(n uint64) { e.b = binary.BigEndian.AppendUint64(e.b, n) }
-func (e *encoder) raw(b []byte) { e.b = append(e.b, b...) }
-func (e *encoder) lp(b []byte)  { e.u32(uint32(len(b))); e.raw(b) }
-func (e *encoder) str(s string) { e.lp([]byte(s)) }
+func hexString(b []byte) string {
+	const digits = "0123456789abcdef"
+	out := make([]byte, 2*len(b))
+	for i, c := range b {
+		out[2*i], out[2*i+1] = digits[c>>4], digits[c&15]
+	}
+	return string(out)
+}
+
+// Encoder appends the big-endian, length-prefixed fields every signed object
+// in this package is made of.
+type Encoder struct{ B []byte }
+
+func (e *Encoder) U32(n uint32) { e.B = appendU32(e.B, n) }
+func (e *Encoder) U64(n uint64) {
+	e.B = append(e.B, byte(n>>56), byte(n>>48), byte(n>>40), byte(n>>32), byte(n>>24), byte(n>>16), byte(n>>8), byte(n))
+}
+func (e *Encoder) Raw(b []byte) { e.B = append(e.B, b...) }
+func (e *Encoder) LP(b []byte)  { e.U32(uint32(len(b))); e.Raw(b) }
+func (e *Encoder) Str(s string) { e.LP([]byte(s)) }
+
+func appendU32(b []byte, n uint32) []byte {
+	return append(b, byte(n>>24), byte(n>>16), byte(n>>8), byte(n))
+}
 
 type decoder struct {
 	b   []byte
@@ -83,7 +103,7 @@ func (d *decoder) u32() uint32 {
 		d.err = ErrInvalid
 		return 0
 	}
-	n := binary.BigEndian.Uint32(d.b)
+	n := uint32(d.b[0])<<24 | uint32(d.b[1])<<16 | uint32(d.b[2])<<8 | uint32(d.b[3])
 	d.b = d.b[4:]
 	return n
 }
@@ -92,7 +112,10 @@ func (d *decoder) u64() uint64 {
 		d.err = ErrInvalid
 		return 0
 	}
-	n := binary.BigEndian.Uint64(d.b)
+	var n uint64
+	for _, c := range d.b[:8] {
+		n = n<<8 | uint64(c)
+	}
 	d.b = d.b[8:]
 	return n
 }
@@ -149,12 +172,6 @@ func deviceID(s string) bool {
 		}
 	}
 	return true
-}
-func maxU64(a, b uint64) uint64 {
-	if a > b {
-		return a
-	}
-	return b
 }
 func addLease(now uint64) uint64 {
 	if now > math.MaxUint64-Lease {

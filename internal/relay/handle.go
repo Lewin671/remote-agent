@@ -12,6 +12,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -20,12 +21,12 @@ import (
 const minRequestID = 16
 
 // commandCompletion preserves the raw decoded protobuf for v4 identity.
-func (c *endpoint) commandCompletion(ctx context.Context, h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
+func (c *endpoint) commandCompletion(ctx context.Context, h devicesec.Header, plain []byte) (deviceauth.Completion, error) {
 	cmd := &pb.Command{}
 	original := plain
 	plain, err := deviceauth.Unpack(h, plain)
 	if err != nil || proto.Unmarshal(plain, cmd) != nil {
-		return deviceauth.Undetermined(), deviceauth.ErrInvalid
+		return deviceauth.Undetermined(), devicesec.ErrInvalid
 	}
 	var res *pb.CommandResult
 	category := deviceauth.Executed
@@ -71,7 +72,7 @@ func (c *endpoint) commandCompletion(ctx context.Context, h deviceauth.Header, p
 	return deviceauth.Final(body), nil
 }
 
-func (c *endpoint) replyResult(route *callRoute, header deviceauth.Header, raw bool, result []byte, err error) {
+func (c *endpoint) replyResult(route *callRoute, header devicesec.Header, raw bool, result []byte, err error) {
 	fail := func(reason string) {
 		route.reply(&pb.ForwardReply{CallId: route.callID, AttemptId: route.attemptID, Outcome: "unknown", Reason: reason, EntryFailure: true})
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -96,7 +97,7 @@ func TestRecoveryPendingCanBeReplacedForANewPhone(t *testing.T) {
 	c := ts.authority(t)
 	pc := remoteagentv1connect.NewRecoveryServiceClient(http.DefaultClient, ts.url)
 	head := c.states[len(c.states)-1]
-	build := func() (deviceauth.State, deviceauth.RecoveryStatement, ed25519.PrivateKey, deviceauth.Member) {
+	build := func() (devicesec.State, devicesec.RecoveryStatement, ed25519.PrivateKey, devicesec.Member) {
 		_, ed, err := ed25519.GenerateKey(nil)
 		if err != nil {
 			t.Fatal(err)
@@ -105,11 +106,11 @@ func TestRecoveryPendingCanBeReplacedForANewPhone(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		m, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
+		m, err := devicesec.NewMember(ed.Public().(ed25519.PublicKey), xpub, devicesec.Client)
 		if err != nil {
 			t.Fatal(err)
 		}
-		members := []deviceauth.Member{m}
+		members := []devicesec.Member{m}
 		for _, old := range head.Core.Members {
 			if old.ID != head.Core.AuthorityID {
 				members = append(members, old)
@@ -125,7 +126,7 @@ func TestRecoveryPendingCanBeReplacedForANewPhone(t *testing.T) {
 		}
 		return state, stmt, ed, m
 	}
-	submit := func(state deviceauth.State, stmt deviceauth.RecoveryStatement) string {
+	submit := func(state devicesec.State, stmt devicesec.RecoveryStatement) string {
 		sraw, _ := state.MarshalBinary()
 		stmtRaw, _ := stmt.MarshalBinary()
 		res, err := pc.SubmitRecovery(ctx, connect.NewRequest(&pb.SubmitRecoveryRequest{Statement: stmtRaw, State: sraw}))
@@ -155,10 +156,10 @@ func TestRecoveryPendingCanBeReplacedForANewPhone(t *testing.T) {
 }
 
 func TestRecoveryChainCap(t *testing.T) {
-	if err := checkRecoveryEpoch(deviceauth.MaxStates); err != nil {
+	if err := checkRecoveryEpoch(devicesec.MaxStates); err != nil {
 		t.Fatal(err)
 	}
-	if err := checkRecoveryEpoch(deviceauth.MaxStates + 1); err == nil {
+	if err := checkRecoveryEpoch(devicesec.MaxStates + 1); err == nil {
 		t.Fatal("recovery past the chain cap allowed")
 	}
 }
@@ -182,13 +183,13 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newMember, err := deviceauth.NewMember(newEd.Public().(ed25519.PublicKey), nxpub, deviceauth.Client)
+	newMember, err := devicesec.NewMember(newEd.Public().(ed25519.PublicKey), nxpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
-	build := func() (deviceauth.State, deviceauth.RecoveryStatement) {
+	build := func() (devicesec.State, devicesec.RecoveryStatement) {
 		head := c.states[len(c.states)-1]
-		members := []deviceauth.Member{newMember}
+		members := []devicesec.Member{newMember}
 		for _, m := range head.Core.Members {
 			if m.ID != c.phoneID {
 				members = append(members, m)
@@ -204,13 +205,13 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 		}
 		return state, stmt
 	}
-	submit := func(state deviceauth.State, stmt deviceauth.RecoveryStatement) (*connect.Response[pb.SubmitRecoveryResponse], error) {
+	submit := func(state devicesec.State, stmt devicesec.RecoveryStatement) (*connect.Response[pb.SubmitRecoveryResponse], error) {
 		sraw, _ := state.MarshalBinary()
 		stmtRaw, err := stmt.MarshalBinary()
 		if err != nil {
 			t.Fatalf("marshal statement: %v", err)
 		}
-		if _, err := deviceauth.ParseRecoveryStatement(stmtRaw); err != nil {
+		if _, err := devicesec.ParseRecoveryStatement(stmtRaw); err != nil {
 			t.Fatalf("round trip statement: %v", err)
 		}
 		return pc.SubmitRecovery(ctx, connect.NewRequest(&pb.SubmitRecoveryRequest{Statement: stmtRaw, State: sraw}))
@@ -306,7 +307,7 @@ func TestRecoveryPendingVetoAndComplete(t *testing.T) {
 	}
 }
 
-func (ts *testServer) putState(t *testing.T, states ...deviceauth.State) error {
+func (ts *testServer) putState(t *testing.T, states ...devicesec.State) error {
 	t.Helper()
 	c := ts.authority(t)
 	var in []*pb.SecurityState
@@ -395,7 +396,7 @@ func TestRemovedHalfAddedMemberIsTombstoned(t *testing.T) {
 	c := ts.authority(t)
 	pub, _, _ := ed25519.GenerateKey(nil)
 	_, xpub, _ := deviceauth.NewXKey()
-	ghost, err := deviceauth.NewMember(pub, xpub, deviceauth.Machine)
+	ghost, err := devicesec.NewMember(pub, xpub, devicesec.Machine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,7 +415,7 @@ func TestRemovedHalfAddedMemberIsTombstoned(t *testing.T) {
 	}
 	newSecret2 := make([]byte, 32)
 	newSecret2[0] = 0x92
-	members := []deviceauth.Member{}
+	members := []devicesec.Member{}
 	for _, m := range added.Core.Members {
 		if m.ID != ghost.ID {
 			members = append(members, m)
@@ -426,7 +427,7 @@ func TestRemovedHalfAddedMemberIsTombstoned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := deviceauth.VerifyTransition(added, removed, nil); err != nil {
+	if err := devicesec.VerifyTransition(added, removed, nil); err != nil {
 		t.Fatalf("local removal transition: %v", err)
 	}
 	if err := ts.putState(t, removed); err != nil {
@@ -451,7 +452,7 @@ func TestRecoveryTombstoneStopsCompletion(t *testing.T) {
 	pc := remoteagentv1connect.NewRecoveryServiceClient(http.DefaultClient, ts.url)
 	_, newEd, _ := ed25519.GenerateKey(nil)
 	_, nxpub, _ := deviceauth.NewXKey()
-	newMember, err := deviceauth.NewMember(newEd.Public().(ed25519.PublicKey), nxpub, deviceauth.Client)
+	newMember, err := devicesec.NewMember(newEd.Public().(ed25519.PublicKey), nxpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +461,7 @@ func TestRecoveryTombstoneStopsCompletion(t *testing.T) {
 	secret := make([]byte, 32)
 	secret[0] = 4
 	head := c.states[len(c.states)-1]
-	members := []deviceauth.Member{newMember}
+	members := []devicesec.Member{newMember}
 	for _, m := range head.Core.Members {
 		if m.ID != head.Core.AuthorityID {
 			members = append(members, m)

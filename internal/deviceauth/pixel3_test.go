@@ -7,6 +7,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -24,14 +25,14 @@ func TestUserIOCallbackDoesNotHoldSecurityGate(t *testing.T) {
 				body, _ = proto.Marshal(&pb.Command{Kind: &pb.Command_ListDirectories{ListDirectories: &pb.ListDirectoriesRequest{Path: "/synthetic/blocked"}}})
 			}
 			now := uint64(time.Now().UnixMilli())
-			wire, err := client.Prepare(Header{Purpose: Command, Kind: 5, Machine: chain.machine.ID, Request: "blocked-io-request", Deadline: now + 60000}, nil, body)
+			wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: chain.machine.ID, Request: "blocked-io-request", Deadline: now + 60000}, nil, body)
 			if err != nil {
 				t.Fatal(err)
 			}
 			entered, release := make(chan struct{}), make(chan struct{})
 			finished := make(chan error, 1)
 			go func() {
-				_, err := endpoint.Accept(wire, nil, now, func(Header, []byte) (Completion, error) {
+				_, err := endpoint.Accept(wire, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 					close(entered)
 					<-release
 					return Final([]byte("done")), nil
@@ -74,7 +75,7 @@ func TestUserIOCallbackDoesNotHoldSecurityGate(t *testing.T) {
 					t.Fatal(err)
 				}
 				defer reopened.Close()
-				_, err = reopened.Accept(wire, nil, now, func(Header, []byte) (Completion, error) {
+				_, err = reopened.Accept(wire, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 					t.Error("accepted request executed twice")
 					return Final(nil), nil
 				})

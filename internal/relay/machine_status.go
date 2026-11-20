@@ -7,7 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func (c *conn) syncDiskAlerts(ctx context.Context) (retErr error) {
@@ -34,7 +34,7 @@ func (c *conn) syncDiskAlerts(ctx context.Context) (retErr error) {
 		meta := c.r.backend.MachineMeta()
 		id := fmt.Sprintf("disk:%d:%d", s.ObservedMs, s.Pressure)
 		content := &pb.NotifyContent{MachineId: c.acct.DeviceID, Kind: pb.NotifyKind_NOTIFY_KIND_MACHINE_DISK, MachineName: meta.Hostname, DiskStatus: s}
-		env, e := c.security.sealMessage(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, RequestId: id, Sender: c.acct.DeviceID}, deviceauth.Notify, nil, content)
+		env, e := c.security.sealMessage(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_NOTIFY, MachineId: c.acct.DeviceID, RequestId: id, Sender: c.acct.DeviceID}, devicesec.Notify, nil, content)
 		if e != nil {
 			return e
 		}

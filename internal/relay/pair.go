@@ -24,6 +24,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -137,7 +138,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		return nil, err
 	}
 	if len(peek.Msg.Commit) != 32 || peek.Msg.PairingId == "" {
-		return nil, deviceauth.ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	if link.Commit != nil && !bytes.Equal(link.Commit, peek.Msg.Commit) {
 		return nil, errors.New("the server returned another device's commitment; pairing stopped")
@@ -149,7 +150,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		}
 		saved := ed25519.NewKeyFromSeed(draft.Seed)
 		if existing != nil && !localRemoved && !bytes.Equal(saved.Public().(ed25519.PublicKey), pub) {
-			return nil, deviceauth.ErrUntrusted
+			return nil, devicesec.ErrUntrusted
 		}
 		priv = saved
 		pub = saved.Public().(ed25519.PublicKey)
@@ -200,7 +201,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	pin, approver, err := deviceauth.ParsePairTrustDescriptor(st.Trust)
+	pin, approver, err := devicesec.ParsePairTrustDescriptor(st.Trust)
 	if err != nil || !bytes.Equal(e2e.PairDomainCommit(st.InitiatorPublic, st.Trust), commit) {
 		return nil, errors.New("the existing device's trust descriptor does not match its commitment; pairing stopped")
 	}
@@ -228,7 +229,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		return nil, errors.New("the account belongs to another server")
 	}
 	if len(payload.AccountPublicKey) != ed25519.PublicKeySize || e2e.AccountID(payload.AccountPublicKey) != pin.Account {
-		return nil, deviceauth.ErrUntrusted
+		return nil, devicesec.ErrUntrusted
 	}
 	approval, err := e2e.VerifyPairApproval(payload.Approval, payload.ApprovalSignature)
 	if err != nil || approval.AccountId != pin.Account || approval.PairingId != id || !bytes.Equal(approval.CandidateDevicePublicKey, pub) || approval.CandidateKind != pb.DeviceKind_DEVICE_KIND_MACHINE || approval.ExpiresMs <= time.Now().UnixMilli() || e2e.DeviceID(approval.ApproverPublicKey) != approver {
@@ -261,12 +262,12 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		}
 	}
 	if candidate.ID != e2e.DeviceID(approval.CandidateDevicePublicKey) {
-		return nil, deviceauth.ErrUntrusted
+		return nil, devicesec.ErrUntrusted
 	}
 	if last := states[len(states)-1]; last.Core.AuthorityID != approver {
-		return nil, deviceauth.ErrUntrusted
+		return nil, devicesec.ErrUntrusted
 	}
-	if _, err := pin.OpenGrant(states[len(states)-1], candidate.ID, x); err != nil {
+	if _, err := deviceauth.OpenGrant(pin, states[len(states)-1], candidate.ID, x); err != nil {
 		return nil, err
 	}
 
@@ -283,7 +284,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	lease, err := deviceauth.ParseLease(payload.Lease)
+	lease, err := devicesec.ParseLease(payload.Lease)
 	if err != nil {
 		return nil, err
 	}
@@ -334,32 +335,32 @@ func pairingReplacements(existing *Account, removed bool, approval *pb.PairAppro
 
 // verifyPairChain checks every state from the pinned genesis and returns the
 // new device's member.
-func verifyPairChain(pin deviceauth.Pin, in []*pb.SecurityState, devicePub, deviceX []byte) ([]deviceauth.State, []*deviceauth.RecoveryStatement, deviceauth.Member, error) {
-	if len(in) == 0 || len(in) > deviceauth.MaxStates {
-		return nil, nil, deviceauth.Member{}, deviceauth.ErrInvalid
+func verifyPairChain(pin devicesec.Pin, in []*pb.SecurityState, devicePub, deviceX []byte) ([]devicesec.State, []*devicesec.RecoveryStatement, devicesec.Member, error) {
+	if len(in) == 0 || len(in) > devicesec.MaxStates {
+		return nil, nil, devicesec.Member{}, devicesec.ErrInvalid
 	}
-	if len(in) > deviceauth.MaxPairStates {
-		return nil, nil, deviceauth.Member{}, deviceauth.ErrChainTooLarge
+	if len(in) > devicesec.MaxPairStates {
+		return nil, nil, devicesec.Member{}, devicesec.ErrChainTooLarge
 	}
 	size := 0
 	for _, raw := range in {
 		size += len(raw.State) + len(raw.Recovery)
 	}
-	if size > deviceauth.MaxPairChainBytes {
-		return nil, nil, deviceauth.Member{}, deviceauth.ErrChainTooLarge
+	if size > devicesec.MaxPairChainBytes {
+		return nil, nil, devicesec.Member{}, devicesec.ErrChainTooLarge
 	}
-	states := make([]deviceauth.State, 0, len(in))
-	proofs := make([]*deviceauth.RecoveryStatement, 0, len(in))
+	states := make([]devicesec.State, 0, len(in))
+	proofs := make([]*devicesec.RecoveryStatement, 0, len(in))
 	for _, raw := range in {
-		s, err := deviceauth.ParseState(raw.State)
+		s, err := devicesec.ParseState(raw.State)
 		if err != nil {
-			return nil, nil, deviceauth.Member{}, err
+			return nil, nil, devicesec.Member{}, err
 		}
-		var proof *deviceauth.RecoveryStatement
+		var proof *devicesec.RecoveryStatement
 		if len(raw.Recovery) > 0 {
-			p, err := deviceauth.ParseRecoveryStatement(raw.Recovery)
+			p, err := devicesec.ParseRecoveryStatement(raw.Recovery)
 			if err != nil {
-				return nil, nil, deviceauth.Member{}, err
+				return nil, nil, devicesec.Member{}, err
 			}
 			proof = &p
 		}
@@ -367,16 +368,16 @@ func verifyPairChain(pin deviceauth.Pin, in []*pb.SecurityState, devicePub, devi
 		proofs = append(proofs, proof)
 	}
 	if pin.VerifyGenesis(states[0]) != nil {
-		return nil, nil, deviceauth.Member{}, deviceauth.ErrUntrusted
+		return nil, nil, devicesec.Member{}, devicesec.ErrUntrusted
 	}
 	for i := 1; i < len(states); i++ {
-		if err := deviceauth.VerifyTransition(states[i-1], states[i], proofs[i]); err != nil {
-			return nil, nil, deviceauth.Member{}, err
+		if err := devicesec.VerifyTransition(states[i-1], states[i], proofs[i]); err != nil {
+			return nil, nil, devicesec.Member{}, err
 		}
 	}
-	candidate, err := deviceauth.NewMember(devicePub, deviceX, deviceauth.Machine)
+	candidate, err := devicesec.NewMember(devicePub, deviceX, devicesec.Machine)
 	if err != nil {
-		return nil, nil, deviceauth.Member{}, err
+		return nil, nil, devicesec.Member{}, err
 	}
 	return states, proofs, candidate, nil
 }
@@ -397,7 +398,7 @@ func joiningIdentity(existing *Account, removed bool) (ed25519.PublicKey, ed2551
 // relay could reply with a forged genesis for the same account. Only a
 // protocol 9 account has no such anchor yet: its upgrade rebuilds the domain,
 // so just the account identity has to match.
-func checkJoiningAccount(existing *Account, pin deviceauth.Pin, localStore bool) error {
+func checkJoiningAccount(existing *Account, pin devicesec.Pin, localStore bool) error {
 	if existing == nil || existing.Security == nil {
 		return nil
 	}

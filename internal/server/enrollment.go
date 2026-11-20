@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 var errAdmissionRequired = errors.New("adding a device requires a fresh pairing approved by a currently enrolled device")
@@ -54,7 +54,7 @@ func checkApprover(ctx context.Context, tx *sql.Tx, a *pb.PairApproval) error {
 	if err != nil {
 		return err
 	}
-	head, err := deviceauth.ParseState(headRaw)
+	head, err := devicesec.ParseState(headRaw)
 	if err != nil || head.Core.AuthorityID != a.ApproverDeviceId {
 		return errAdmissionRequired
 	}
@@ -210,7 +210,7 @@ func transferRevokedMachine(ctx context.Context, tx *sql.Tx, account, old, next 
 	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, account).Scan(&raw); err != nil {
 		return errAdmissionRequired
 	}
-	head, err := deviceauth.ParseState(raw)
+	head, err := devicesec.ParseState(raw)
 	if err != nil {
 		return err
 	}

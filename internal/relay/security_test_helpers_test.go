@@ -10,6 +10,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -20,9 +21,9 @@ type testSecurityKeys struct {
 	phone    ed25519.PrivateKey
 	phoneX   []byte
 	recovery ed25519.PrivateKey
-	machine  deviceauth.Member
+	machine  devicesec.Member
 	secret   []byte
-	states   []deviceauth.State
+	states   []devicesec.State
 }
 
 // initializeTestSecurity gives the test conn a local v3 chain with a phone
@@ -41,7 +42,7 @@ func initializeTestSecurityKeys(t *testing.T, c *conn) *testSecurityKeys {
 	if err != nil {
 		t.Fatal(err)
 	}
-	phone, err := deviceauth.NewMember(phoneEd.Public().(ed25519.PublicKey), phoneXPub, deviceauth.Client)
+	phone, err := devicesec.NewMember(phoneEd.Public().(ed25519.PublicKey), phoneXPub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +54,7 @@ func initializeTestSecurityKeys(t *testing.T, c *conn) *testSecurityKeys {
 	if err != nil {
 		t.Fatal(err)
 	}
-	machine, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, deviceauth.Machine)
+	machine, err := devicesec.NewMember(ed.Public().(ed25519.PublicKey), xpub, devicesec.Machine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +66,7 @@ func initializeTestSecurityKeys(t *testing.T, c *conn) *testSecurityKeys {
 	copy(recPub[:], rec.Public().(ed25519.PublicKey))
 	secret1 := make([]byte, 32)
 	secret1[0] = 1
-	var domain deviceauth.Hash
+	var domain devicesec.Hash
 	domain[0] = 1
 	now := uint64(time.Now().UnixMilli())
 	genesis, err := deviceauth.BuildGenesis("0123456789abcdef0123456789abcdef", domain, phone, recPub, secret1, phoneEd, now)
@@ -79,9 +80,9 @@ func initializeTestSecurityKeys(t *testing.T, c *conn) *testSecurityKeys {
 		t.Fatal(err)
 	}
 	pin, _ := genesis.Pin()
-	states := []deviceauth.State{genesis, withMachine}
+	states := []devicesec.State{genesis, withMachine}
 	lease, _ := deviceauth.BuildLease(withMachine, phoneEd, withMachine.Core.IssuedAt)
-	endpoint, err := deviceauth.InitEndpoint("", pin, states, []*deviceauth.RecoveryStatement{nil, nil}, machine.ID, ed.Seed(), x, lease)
+	endpoint, err := deviceauth.InitEndpoint("", pin, states, []*devicesec.RecoveryStatement{nil, nil}, machine.ID, ed.Seed(), x, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,14 +105,14 @@ func openTestSecureMessage(c *conn, seed []byte, env *pb.Envelope, want *pb.Head
 	if err != nil {
 		return nil, err
 	}
-	if err = e2e.Expect(h.Projection(), want); err != nil {
+	if err = e2e.Expect(deviceauth.Projection(h), want); err != nil {
 		return nil, err
 	}
 	plain, err = deviceauth.Unpack(h, plain)
 	if err != nil {
 		return nil, err
 	}
-	return h.Projection(), proto.Unmarshal(plain, m)
+	return deviceauth.Projection(h), proto.Unmarshal(plain, m)
 }
 
 func testEndpoint(t *testing.T, r *Relay) *endpoint {

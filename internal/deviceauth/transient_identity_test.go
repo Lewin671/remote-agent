@@ -8,6 +8,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -21,7 +22,7 @@ func TestTransientRefusalCannotReleaseReplayableCreateIdentity(t *testing.T) {
 			client := chain.clientEndpoint(t)
 			defer client.Close()
 			now := uint64(time.Now().UnixMilli())
-			h := Header{Kind: 5, Purpose: Command, Machine: chain.machine.ID, Request: "original-create-request", Deadline: now + 60_000}
+			h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: chain.machine.ID, Request: "original-create-request", Deadline: now + 60_000}
 			if reason == "clock" {
 				h.Deadline = now + 11*60_000
 			}
@@ -46,7 +47,7 @@ func TestTransientRefusalCannotReleaseReplayableCreateIdentity(t *testing.T) {
 				}
 			}
 			calls := 0
-			create := func(Header, []byte) (Completion, error) { calls++; return Final([]byte("created")), nil }
+			create := func(devicesec.Header, []byte) (Completion, error) { calls++; return Final([]byte("created")), nil }
 			_, refused := machine.AcceptWith(context.Background(), original, nil, now, options, create)
 			proof, ok := CommandResult(nil, refused)
 			if !ok || proof.Reason != reason || calls != 0 {
@@ -77,7 +78,7 @@ func TestTransientRefusalCannotReleaseReplayableCreateIdentity(t *testing.T) {
 			if reason == "clock" {
 				now += 2 * 60_000
 			}
-			for _, wire := range []Wire{retry, original} {
+			for _, wire := range []devicesec.Wire{retry, original} {
 				if _, err = machine.AcceptWith(context.Background(), wire, nil, now, options, create); err != nil {
 					t.Fatal(err)
 				}

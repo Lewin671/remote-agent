@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // The server stores the authority-signed membership chain and enforces it on
@@ -25,36 +25,36 @@ var errNoSecurityChain = errors.New("account has no security domain yet")
 
 type securityRow struct {
 	epoch    uint64
-	state    deviceauth.State
+	state    devicesec.State
 	raw      []byte
-	hash     deviceauth.Hash
-	recovery *deviceauth.RecoveryStatement
+	hash     devicesec.Hash
+	recovery *devicesec.RecoveryStatement
 	recRaw   []byte
 }
 
 // securityGenesis returns the pinned genesis bytes and parsed state.
-func (t *tstore) securityGenesis(ctx context.Context) ([]byte, deviceauth.State, error) {
+func (t *tstore) securityGenesis(ctx context.Context) ([]byte, devicesec.State, error) {
 	var raw []byte
 	if err := t.db.QueryRowContext(ctx, `SELECT security_genesis FROM accounts WHERE id = ?`, t.acct).Scan(&raw); err != nil {
-		return nil, deviceauth.State{}, err
+		return nil, devicesec.State{}, err
 	}
 	if len(raw) == 0 {
-		return nil, deviceauth.State{}, errNoRows
+		return nil, devicesec.State{}, errNoRows
 	}
-	s, err := deviceauth.ParseState(raw)
+	s, err := devicesec.ParseState(raw)
 	return raw, s, err
 }
 
 // securityHead returns the current head state and hash, or errNoRows.
-func (t *tstore) securityHead(ctx context.Context) (deviceauth.State, deviceauth.Hash, error) {
+func (t *tstore) securityHead(ctx context.Context) (devicesec.State, devicesec.Hash, error) {
 	var raw []byte
 	err := t.db.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, t.acct).Scan(&raw)
 	if err != nil {
-		return deviceauth.State{}, deviceauth.Hash{}, err
+		return devicesec.State{}, devicesec.Hash{}, err
 	}
-	s, err := deviceauth.ParseState(raw)
+	s, err := devicesec.ParseState(raw)
 	if err != nil {
-		return deviceauth.State{}, deviceauth.Hash{}, err
+		return devicesec.State{}, devicesec.Hash{}, err
 	}
 	h, err := s.Hash()
 	return s, h, err
@@ -74,14 +74,14 @@ func (t *tstore) securityStates(ctx context.Context, after uint64, limit int) ([
 		if err := rows.Scan(&r.epoch, &raw, &hash, &rec); err != nil {
 			return nil, 0, err
 		}
-		s, err := deviceauth.ParseState(raw)
+		s, err := devicesec.ParseState(raw)
 		if err != nil {
 			return nil, 0, err
 		}
 		r.state, r.raw = s, raw
 		copy(r.hash[:], hash)
 		if len(rec) > 0 {
-			st, err := deviceauth.ParseRecoveryStatement(rec)
+			st, err := devicesec.ParseRecoveryStatement(rec)
 			if err != nil {
 				return nil, 0, err
 			}
@@ -107,14 +107,14 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 		return nil, err
 	}
 	raw := req.Msg.GenesisState
-	if len(raw) == 0 || len(raw) > deviceauth.MaxStateBytes {
+	if len(raw) == 0 || len(raw) > devicesec.MaxStateBytes {
 		return nil, invalid("invalid security genesis")
 	}
-	state, err := deviceauth.ParseState(raw)
+	state, err := devicesec.ParseState(raw)
 	if err != nil {
 		return nil, invalid("invalid security genesis")
 	}
-	if state.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
+	if state.Core.IssuedAt > uint64(nowMs())+devicesec.MaxClockSkew {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the security genesis is from the future; check this device's clock"))
 	}
 	pin, err := state.Pin()
@@ -122,7 +122,7 @@ func (c *clientService) PinSecurityDomain(ctx context.Context, req *connect.Requ
 		return nil, invalid("invalid security genesis")
 	}
 	m, ok := state.Core.Member(state.Core.AuthorityID)
-	if !ok || state.Core.AuthorityID != d.id || m.Kind != deviceauth.Client || len(state.Core.Members) != 1 || !bytes.Equal(m.EdPublic[:], d.publicKey) || state.Core.RecoveryEd == [32]byte{} {
+	if !ok || state.Core.AuthorityID != d.id || m.Kind != devicesec.Client || len(state.Core.Members) != 1 || !bytes.Equal(m.EdPublic[:], d.publicKey) || state.Core.RecoveryEd == [32]byte{} {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the new authority client installs its genesis"))
 	}
 	t := c.s.tenantFrom(ctx)
@@ -183,7 +183,7 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	head, _, err := t.store.securityHead(ctx)
 	if errors.Is(err, errNoRows) {
 		// Only the pinned genesis itself may start the chain.
-		head = deviceauth.State{}
+		head = devicesec.State{}
 	} else if err != nil {
 		return nil, internal(err)
 	}
@@ -192,15 +192,15 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	prev := head
 	haveHead := head.Core.Epoch != 0
 	for _, in := range req.Msg.States {
-		s, err := deviceauth.ParseState(in.State)
+		s, err := devicesec.ParseState(in.State)
 		if err != nil {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("invalid security state"))
 		}
-		if s.Core.IssuedAt > uint64(nowMs())+deviceauth.MaxClockSkew {
+		if s.Core.IssuedAt > uint64(nowMs())+devicesec.MaxClockSkew {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("the security state is from the future; check this device's clock"))
 		}
 		raw := in.State
-		var proof *deviceauth.RecoveryStatement
+		var proof *devicesec.RecoveryStatement
 		if len(in.Recovery) > 0 {
 			// The 48-hour delay is enforced by the recovery service; letting a
 			// current member publish a recovery transition here would bypass it.
@@ -233,13 +233,13 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("security chain gap"))
 		}
 		if haveHead {
-			if err := deviceauth.VerifyTransition(prev, s, proof); err != nil {
+			if err := devicesec.VerifyTransition(prev, s, proof); err != nil {
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("security transition rejected"))
 			}
 		} else if s.Core.Epoch != 1 {
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("security chain must start at the genesis"))
 		}
-		if s.Core.Epoch > deviceauth.MaxStates {
+		if s.Core.Epoch > devicesec.MaxStates {
 			return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("security chain is full"))
 		}
 		accepted = append(accepted, securityRow{epoch: s.Core.Epoch, state: s, raw: raw, hash: h, recovery: proof, recRaw: in.Recovery})
@@ -248,7 +248,7 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	}
 
 	if len(req.Msg.Lease) > 0 {
-		l, err := deviceauth.ParseLease(req.Msg.Lease)
+		l, err := devicesec.ParseLease(req.Msg.Lease)
 		if err != nil || l.Valid(prev, uint64(nowMs())) != nil {
 			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("invalid head lease"))
 		}
@@ -292,7 +292,7 @@ func (t *tstore) commitSecurityStates(ctx context.Context, accepted []securityRo
 		return securityRow{}, nil, internal(err)
 	}
 	if last.epoch > 0 {
-		last.state, err = deviceauth.ParseState(last.raw)
+		last.state, err = devicesec.ParseState(last.raw)
 		if err != nil {
 			return securityRow{}, nil, internal(err)
 		}
@@ -311,7 +311,7 @@ func (t *tstore) commitSecurityStates(ctx context.Context, accepted []securityRo
 			return securityRow{}, nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("security chain gap"))
 		}
 		if last.epoch > 0 {
-			if err := deviceauth.VerifyTransition(last.state, r.state, r.recovery); err != nil {
+			if err := devicesec.VerifyTransition(last.state, r.state, r.recovery); err != nil {
 				return securityRow{}, nil, connect.NewError(connect.CodePermissionDenied, errors.New("security transition rejected"))
 			}
 			for _, m := range last.state.Core.Members {
@@ -370,7 +370,7 @@ func (c *clientService) GetSecurityStates(ctx context.Context, req *connect.Requ
 		return nil, internal(err)
 	}
 	if len(lease) > 0 {
-		l, err := deviceauth.ParseLease(lease)
+		l, err := devicesec.ParseLease(lease)
 		if err != nil {
 			return nil, internal(err)
 		}
@@ -459,7 +459,7 @@ func (s *Server) seedSecurityChains(ctx context.Context) error {
 		if len(e.raw) == 0 {
 			continue
 		}
-		st, err := deviceauth.ParseState(e.raw)
+		st, err := devicesec.ParseState(e.raw)
 		if err != nil {
 			slog.Error("pinned security genesis is invalid", "account", e.acct)
 			continue

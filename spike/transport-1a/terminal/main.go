@@ -18,6 +18,7 @@ import (
 	"example.com/transport-sdk-lab/labwire"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -36,37 +37,37 @@ func check(ok bool, label string) {
 func digest(raw []byte) string { h := sha256.Sum256(raw); return hex.EncodeToString(h[:]) }
 
 type Security struct {
-	state                   deviceauth.State
-	lease                   deviceauth.LeaseCertificate
+	state                   devicesec.State
+	lease                   devicesec.LeaseCertificate
 	secret, seed            []byte
-	client, machine         deviceauth.Member
+	client, machine         devicesec.Member
 	clientEd, machineEd     ed25519.PrivateKey
 	clientWire, machineWire labwire.Identity
 }
 
 func security() *Security {
 	s := &Security{secret: bytes.Repeat([]byte{0x55}, 32), seed: bytes.Repeat([]byte{0x66}, 32)}
-	makeMember := func(seed byte, kind deviceauth.Kind) (deviceauth.Member, ed25519.PrivateKey, *ecdh.PrivateKey) {
+	makeMember := func(seed byte, kind devicesec.Kind) (devicesec.Member, ed25519.PrivateKey, *ecdh.PrivateKey) {
 		ed := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{seed}, 32))
 		x, e := ecdh.X25519().NewPrivateKey(bytes.Repeat([]byte{seed + 1}, 32))
 		must(e)
-		m, e := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), x.PublicKey().Bytes(), kind)
+		m, e := devicesec.NewMember(ed.Public().(ed25519.PublicKey), x.PublicKey().Bytes(), kind)
 		must(e)
 		return m, ed, x
 	}
 	var cx, mx *ecdh.PrivateKey
-	s.client, s.clientEd, cx = makeMember(0x11, deviceauth.Client)
-	s.machine, s.machineEd, mx = makeMember(0x44, deviceauth.Machine)
-	domain := deviceauth.Hash(sha256.Sum256([]byte("lab/terminal-domain")))
+	s.client, s.clientEd, cx = makeMember(0x11, devicesec.Client)
+	s.machine, s.machineEd, mx = makeMember(0x44, devicesec.Machine)
+	domain := devicesec.Hash(sha256.Sum256([]byte("lab/terminal-domain")))
 	recovery := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x22}, 32))
 	var recoveryPublic [32]byte
 	copy(recoveryPublic[:], recovery.Public().(ed25519.PublicKey))
 	old := bytes.Repeat([]byte{0x33}, 32)
 	g, e := deviceauth.BuildGenesis("0123456789abcdef0123456789abcdef", domain, s.client, recoveryPublic, old, s.clientEd, base-10)
 	must(e)
-	s.state, e = deviceauth.BuildMembershipState(g, []deviceauth.Member{s.client, s.machine}, nil, old, s.secret, s.clientEd, base-1)
+	s.state, e = deviceauth.BuildMembershipState(g, []devicesec.Member{s.client, s.machine}, nil, old, s.secret, s.clientEd, base-1)
 	must(e)
-	must(deviceauth.VerifyTransition(g, s.state, nil))
+	must(devicesec.VerifyTransition(g, s.state, nil))
 	s.clientWire = labwire.Identity{ID: []byte(s.client.ID), Instance: bytes.Repeat([]byte{1}, 16), Boot: bytes.Repeat([]byte{2}, 32), Role: 1, Sign: s.clientEd, Box: cx}
 	s.lease, e = deviceauth.BuildLease(s.state, s.clientEd, base)
 	must(e)
@@ -84,22 +85,22 @@ type Envelope struct {
 	ownerInstance string
 	seq, deadline uint64
 	raw, plain    []byte
-	header        deviceauth.Header
+	header        devicesec.Header
 	identity      string
-	purpose       deviceauth.Purpose
+	purpose       devicesec.Purpose
 	bytes         int
 }
 
-func (s *Security) seal(stream string, seq, now uint64, purpose deviceauth.Purpose, data []byte) Envelope {
+func (s *Security) seal(stream string, seq, now uint64, purpose devicesec.Purpose, data []byte) Envelope {
 	message := &pb.TerminalFrame{}
 	switch purpose {
-	case deviceauth.TerminalInput:
+	case devicesec.TerminalInput:
 		message.Kind = &pb.TerminalFrame_Input{Input: data}
-	case deviceauth.TerminalResize:
+	case devicesec.TerminalResize:
 		message.Kind = &pb.TerminalFrame_Resize{Resize: &pb.TerminalResize{Cols: 80, Rows: 24, Fit: true}}
-	case deviceauth.TerminalHistory:
+	case devicesec.TerminalHistory:
 		message.Kind = &pb.TerminalFrame_HistoryRequest{HistoryRequest: &pb.TerminalHistoryRequest{}}
-	case deviceauth.TerminalOutput:
+	case devicesec.TerminalOutput:
 		message.Kind = &pb.TerminalFrame_Output{Output: data}
 	default:
 		panic("purpose")
@@ -109,14 +110,14 @@ func (s *Security) seal(stream string, seq, now uint64, purpose deviceauth.Purpo
 	head, e := s.state.Hash()
 	must(e)
 	sender, writer := s.client.ID, s.clientEd
-	if purpose == deviceauth.TerminalOutput {
+	if purpose == devicesec.TerminalOutput {
 		sender, writer = s.machine.ID, s.machineEd
 	}
 	kind := uint32(purpose)
-	if purpose == deviceauth.TerminalResize || purpose == deviceauth.TerminalHistory {
+	if purpose == devicesec.TerminalResize || purpose == devicesec.TerminalHistory {
 		kind = 8
 	}
-	h := deviceauth.Header{Account: s.state.Core.Account, Domain: s.state.Core.Domain, Epoch: s.state.Core.Epoch, State: head, ContentEpoch: s.state.Core.ContentEpoch, Sender: sender, Kind: kind, Purpose: purpose, Machine: s.machine.ID, Session: "session-lab-00001", Request: stream, Seq: seq, Deadline: now + 60000}
+	h := devicesec.Header{Account: s.state.Core.Account, Domain: s.state.Core.Domain, Epoch: s.state.Core.Epoch, State: head, ContentEpoch: s.state.Core.ContentEpoch, Sender: sender, Kind: kind, Purpose: purpose, Machine: s.machine.ID, Session: "session-lab-00001", Request: stream, Seq: seq, Deadline: now + 60000}
 	c, e := deviceauth.Seal(s.secret, s.seed, h, raw, writer)
 	must(e)
 	encoded, e := c.MarshalBinary()
@@ -125,16 +126,16 @@ func (s *Security) seal(stream string, seq, now uint64, purpose deviceauth.Purpo
 	must(e)
 	return Envelope{"", seq, h.Deadline, encoded, raw, h, identity.String(), purpose, len(data)}
 }
-func (s *Security) open(raw []byte, stream string, now uint64) (deviceauth.Header, *pb.TerminalFrame, error) {
+func (s *Security) open(raw []byte, stream string, now uint64) (devicesec.Header, *pb.TerminalFrame, error) {
 	if e := s.lease.Valid(s.state, now); e != nil {
-		return deviceauth.Header{}, nil, e
+		return devicesec.Header{}, nil, e
 	}
-	w, e := deviceauth.ParseWire(raw)
+	w, e := devicesec.ParseWire(raw)
 	if e != nil {
-		return deviceauth.Header{}, nil, e
+		return devicesec.Header{}, nil, e
 	}
-	c := deviceauth.Ciphertext(w)
-	h, plain, e := c.Open(s.secret, s.seed, s.state, s.state, true, now)
+	c := devicesec.Ciphertext(w)
+	h, plain, e := deviceauth.OpenEnvelope(c, s.secret, s.seed, s.state, s.state, true, now)
 	if e != nil {
 		return h, nil, e
 	}
@@ -142,7 +143,7 @@ func (s *Security) open(raw []byte, stream string, now uint64) (deviceauth.Heade
 		return h, nil, errors.New("scope/expiry")
 	}
 	expected := s.client.ID
-	if h.Purpose == deviceauth.TerminalOutput {
+	if h.Purpose == devicesec.TerminalOutput {
 		expected = s.machine.ID
 	}
 	if h.Sender != expected {
@@ -199,7 +200,7 @@ type queued struct {
 	authorization authorization
 	raw           []byte
 	instance      string
-	header        deviceauth.Header
+	header        devicesec.Header
 	body          *pb.TerminalFrame
 	hash          string
 	rawBytes      int
@@ -313,9 +314,9 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 	if e != nil {
 		return e
 	}
-	w, e := deviceauth.ParseWire(raw)
+	w, e := devicesec.ParseWire(raw)
 	must(e)
-	_, plain, e := deviceauth.Ciphertext(w).Open(s.sec.secret, s.sec.seed, s.sec.state, s.sec.state, true, s.now)
+	_, plain, e := deviceauth.OpenEnvelope(devicesec.Ciphertext(w), s.sec.secret, s.sec.seed, s.sec.state, s.sec.state, true, s.now)
 	must(e)
 	_, identity, e := deviceauth.RequestIdentity(h, plain)
 	must(e)
@@ -325,7 +326,7 @@ func (s *Stream) receive(path, instance string, f Fragment) error {
 	if s.fresh(q) != nil {
 		return errors.New("expired or stale completed envelope")
 	}
-	if h.Purpose == deviceauth.TerminalOutput {
+	if h.Purpose == devicesec.TerminalOutput {
 		return s.outputFrame(q)
 	}
 	if old, ok := s.details[h.Seq]; ok {
@@ -376,7 +377,7 @@ func (s *Stream) apply(q queued) error {
 	// This is the first point at which Accept/backend may be called.
 	s.accepted = append(s.accepted, q.header.Seq)
 	d := s.execute(q)
-	if s.hold && q.header.Purpose == deviceauth.TerminalInput {
+	if s.hold && q.header.Purpose == devicesec.TerminalInput {
 		s.inflight = &q
 		s.inflightDetail = &d
 		return nil
@@ -390,7 +391,7 @@ func (s *Stream) apply(q queued) error {
 func (s *Stream) execute(q queued) Detail {
 	d := Detail{Seq: q.header.Seq, Hash: q.hash, Outcome: "applied", Total: len(q.body.GetInput())}
 	switch q.header.Purpose {
-	case deviceauth.TerminalInput:
+	case devicesec.TerminalInput:
 		if s.failed != 0 {
 			d.Outcome = "blocked"
 		} else if s.failInput {
@@ -404,7 +405,7 @@ func (s *Stream) execute(q queued) Detail {
 			d.Known = len(q.body.GetInput())
 			d.Possible = d.Known
 		}
-	case deviceauth.TerminalResize, deviceauth.TerminalHistory:
+	case devicesec.TerminalResize, devicesec.TerminalHistory:
 		if s.failResize {
 			d.Outcome = "non_input_failed"
 		}
@@ -428,7 +429,7 @@ func (s *Stream) finish(q queued, d Detail) {
 		s.failed = q.header.Seq
 		s.immediateACK(q.authorization)
 	}
-	if q.header.Purpose == deviceauth.TerminalInput && d.Outcome == "applied" {
+	if q.header.Purpose == devicesec.TerminalInput && d.Outcome == "applied" {
 		s.inputSuccess = q.header.Seq
 	}
 
@@ -778,7 +779,7 @@ func (s *Stream) reseal(e Envelope) Envelope {
 	h.ContentEpoch = s.sec.state.Core.ContentEpoch
 	h.State = head
 	signer := s.sec.clientEd
-	if h.Purpose == deviceauth.TerminalOutput {
+	if h.Purpose == devicesec.TerminalOutput {
 		signer = s.sec.machineEd
 	}
 	c, err := deviceauth.Seal(s.sec.secret, s.sec.seed, h, e.plain, signer)
@@ -798,36 +799,36 @@ func main() {
 	sec := security()
 	results := map[string]any{}
 	s := newStream(sec, "stream-lab-000001")
-	one := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("first"))
-	two := sec.seal(s.id, 2, s.now, deviceauth.TerminalInput, []byte("second"))
+	one := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("first"))
+	two := sec.seal(s.id, 2, s.now, devicesec.TerminalInput, []byte("second"))
 	must(send(s, "direct", two, true))
 	check(len(s.accepted) == 0, "Accept before missing seq")
 	must(send(s, "relay", one, false))
 	must(send(s, "direct", one, false))
 	check(s.processed == 2 && s.injectedChunks == 2 && len(s.accepted) == 2, "duplicate input")
 	results["reorder_and_duplicate"] = s.status(false)
-	conflict := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("different"))
+	conflict := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("different"))
 	check(send(s, "relay", conflict, false) != nil && s.injectedChunks == 2, "conflict")
 	results["conflict_no_inject"] = true
 	s = newStream(sec, "stream-lab-000002")
 	s.failResize = true
-	resize := sec.seal(s.id, 1, s.now, deviceauth.TerminalResize, nil)
-	input := sec.seal(s.id, 2, s.now, deviceauth.TerminalInput, []byte("after resize"))
+	resize := sec.seal(s.id, 1, s.now, devicesec.TerminalResize, nil)
+	input := sec.seal(s.id, 2, s.now, devicesec.TerminalInput, []byte("after resize"))
 	must(send(s, "relay", resize, false))
 	must(send(s, "direct", input, false))
 	check(s.failed == 0 && s.inputSuccess == 2 && s.details[1].Outcome == "non_input_failed", "resize fail stop")
 	results["non_input_failure"] = s.status(false)
 	s = newStream(sec, "stream-lab-000003")
 	s.failInput = true
-	partial := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, bytes.Repeat([]byte{'x'}, 600))
+	partial := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, bytes.Repeat([]byte{'x'}, 600))
 	must(send(s, "relay", partial, true))
 	must(send(s, "direct", partial, false))
-	must(send(s, "direct", sec.seal(s.id, 2, s.now, deviceauth.TerminalInput, []byte("blocked")), false))
+	must(send(s, "direct", sec.seal(s.id, 2, s.now, devicesec.TerminalInput, []byte("blocked")), false))
 	check(s.failed == 1 && s.processed == 2 && s.inputSuccess == 0 && s.injectedChunks == 1 && s.details[2].Outcome == "blocked", "partial input")
 	results["partial_fail_stop"] = s.status(false)
 	s = newStream(sec, "stream-lab-000004")
 	s.hold = true
-	must(send(s, "relay", sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("held")), false))
+	must(send(s, "relay", sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("held")), false))
 	var observed *Status
 	s.query(func(v Status) { observed = &v })
 	early := s.barrier()
@@ -844,7 +845,7 @@ func main() {
 	check(s.networkRecovery && s.failed == 0, "network fail stop")
 	results["attach_no_new_tmux"] = true
 	s = newStream(sec, "stream-lab-000006")
-	big := sec.seal(s.id, 1, s.now, deviceauth.TerminalOutput, bytes.Repeat([]byte{'o'}, 64<<10))
+	big := sec.seal(s.id, 1, s.now, devicesec.TerminalOutput, bytes.Repeat([]byte{'o'}, 64<<10))
 	must(send(s, "direct", big, true))
 	check(s.rendered == 0 && s.acks == 0, "output ACK before render")
 	s.render()
@@ -858,22 +859,22 @@ func main() {
 	check(len(s.assemblies) == 0 && s.assemblyBytes == 0 && s.processed == 0, "reassembly expiry")
 	results["fragment_expiry"] = true
 	s = newStream(sec, "stream-lab-000008")
-	gap := sec.seal(s.id, 2, s.now, deviceauth.TerminalInput, []byte("gap"))
+	gap := sec.seal(s.id, 2, s.now, devicesec.TerminalInput, []byte("gap"))
 	must(send(s, "relay", gap, false))
 	s.advance(10000)
 	check(s.networkRecovery && s.failed == 0 && len(s.accepted) == 0, "gap caused fail stop")
 	results["gap_network_recovery"] = true
 	s = newStream(sec, "stream-lab-000009")
-	pending := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, bytes.Repeat([]byte{'u'}, 1024))
+	pending := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, bytes.Repeat([]byte{'u'}, 1024))
 	must(s.cacheInput(pending))
-	s.rememberOutput(sec.seal(s.id, 1, s.now, deviceauth.TerminalOutput, []byte("old output")))
+	s.rememberOutput(sec.seal(s.id, 1, s.now, devicesec.TerminalOutput, []byte("old output")))
 	s.advance(30000)
 	_, err := s.replayFrom(1)
 	check(err != nil && s.failed == 0 && len(s.inputCache) == 1 && s.paused, "output eviction lost input evidence")
 	results["separate_replay_and_input_audit"] = true
 	s = newStream(sec, "stream-lab-000010")
 	for n := uint64(1); n < 100; n++ {
-		e := sec.seal(s.id, n, s.now, deviceauth.TerminalInput, bytes.Repeat([]byte{'b'}, 2048))
+		e := sec.seal(s.id, n, s.now, devicesec.TerminalInput, bytes.Repeat([]byte{'b'}, 2048))
 		if s.cacheInput(e) != nil {
 			break
 		}
@@ -881,30 +882,30 @@ func main() {
 	check(s.paused && s.inputCacheBytes <= 64<<10, "input budget")
 	results["input_cache_backpressure"] = map[string]int{"bytes": s.inputCacheBytes, "frames": len(s.inputCache)}
 	s = newStream(sec, "stream-lab-000011")
-	e := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("retired"))
+	e := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("retired"))
 	s.instance = "daemon-instance-b"
 	old := fragments(e, 1)[0]
 	check(s.receive("relay", "daemon-instance-a", old) != nil && s.injectedChunks == 0, "old instance applied")
 	s.paused = true
 	results["instance_change_requires_confirmation"] = true
 	s = newStream(sec, "stream-lab-000012")
-	tampered := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("tamper"))
+	tampered := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("tamper"))
 	tampered.raw[len(tampered.raw)-1] ^= 1
 	check(send(s, "direct", tampered, false) != nil && s.processed == 0 && len(s.accepted) == 0, "unauthenticated watermark")
 	results["authentication_before_accept"] = true
 	s = newStream(sec, "stream-lab-000013")
-	original := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("rekey once"))
+	original := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("rekey once"))
 	must(send(s, "relay", original, false))
 	oldState := sec.state
 	nextSecret := bytes.Repeat([]byte{0x77}, 32)
 	extraEd := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x88}, 32))
 	extraX, _ := ecdh.X25519().NewPrivateKey(bytes.Repeat([]byte{0x89}, 32))
-	extraMember, makeErr := deviceauth.NewMember(extraEd.Public().(ed25519.PublicKey), extraX.PublicKey().Bytes(), deviceauth.Client)
+	extraMember, makeErr := devicesec.NewMember(extraEd.Public().(ed25519.PublicKey), extraX.PublicKey().Bytes(), devicesec.Client)
 	must(makeErr)
-	members := append(append([]deviceauth.Member(nil), sec.state.Core.Members...), extraMember)
+	members := append(append([]devicesec.Member(nil), sec.state.Core.Members...), extraMember)
 	sec.state, err = deviceauth.BuildMembershipState(sec.state, members, nil, sec.secret, nextSecret, sec.clientEd, s.now)
 	must(err)
-	must(deviceauth.VerifyTransition(oldState, sec.state, nil))
+	must(devicesec.VerifyTransition(oldState, sec.state, nil))
 	sec.secret = nextSecret
 	sec.lease, err = deviceauth.BuildLease(sec.state, sec.clientEd, s.now)
 	must(err)
@@ -920,7 +921,7 @@ func main() {
 	results["rekey_same_authorized_hash"] = true
 	s = newStream(sec, "stream-lab-000014")
 	s.hold = true
-	held := sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("network cannot cancel injection"))
+	held := sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("network cannot cancel injection"))
 	must(send(s, "relay", held, false))
 	s.closeLeg("relay", 1)
 	s.closeLeg("direct", 1)
@@ -929,7 +930,7 @@ func main() {
 	check(s.failed == 0 && s.inputSuccess == 1, "network made input unknown")
 	results["physical_loss_preserves_execution"] = true
 	s = newStream(sec, "stream-lab-000015")
-	e = sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("status on new relay"))
+	e = sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("status on new relay"))
 	must(s.cacheInput(e))
 	must(send(s, "direct", e, false))
 	var status Status
@@ -953,7 +954,7 @@ func main() {
 		return nil
 	}))
 	check(status.Final && s.stopped, "authenticated barrier")
-	check(send(s, "relay", sec.seal(s.id, 2, s.now, deviceauth.TerminalInput, []byte("late")), false) != nil, "closed stream admitted late input")
+	check(send(s, "relay", sec.seal(s.id, 2, s.now, devicesec.TerminalInput, []byte("late")), false) != nil, "closed stream admitted late input")
 	results["authenticated_controls"] = map[string]int{"packets": s.controlPackets, "bytes": s.controlBytes}
 	recoveryCases(sec, results)
 	reviewCases(sec, results)

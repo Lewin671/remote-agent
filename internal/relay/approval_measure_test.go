@@ -16,6 +16,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -90,11 +91,11 @@ func TestApprovalAdmissionMeasurements(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		wire, err := client.Prepare(deviceauth.Header{Purpose: deviceauth.Command, Kind: 5, Machine: e.acct.DeviceID, Session: session, Request: id, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, nil, body)
+		wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: e.acct.DeviceID, Session: session, Request: id, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, nil, body)
 		if err != nil {
 			t.Fatal(err)
 		}
-		env, err := wire.Envelope()
+		env, err := deviceauth.Envelope(wire)
 		if err != nil {
 			t.Fatal(err)
 		}

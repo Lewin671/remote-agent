@@ -19,6 +19,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/updater"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"image"
 	"image/color"
 	"image/png"
@@ -80,7 +81,7 @@ func main() {
 	must(err)
 	x, _, err := deviceauth.NewXKey()
 	must(err)
-	machine, err := auth.Enroll(ctx, ed, x, deviceauth.Machine)
+	machine, err := auth.Enroll(ctx, ed, x, devicesec.Machine)
 	must(err)
 	home, err := os.MkdirTemp(dir, "files-home-")
 	must(err)

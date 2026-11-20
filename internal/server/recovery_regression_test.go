@@ -15,6 +15,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,7 +30,7 @@ func newRecoveryKey(t *testing.T, fill byte) (ed25519.PrivateKey, [32]byte) {
 
 // recoveryFixture makes the test account's recovery key one this test knows,
 // so it can play the phone that lost the old one.
-func recoveryFixture(t *testing.T) (*testServer, deviceauth.State, ed25519.PrivateKey, *testChain) {
+func recoveryFixture(t *testing.T) (*testServer, devicesec.State, ed25519.PrivateKey, *testChain) {
 	t.Helper()
 	ts := newTestServer(t)
 	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); err != nil {
@@ -48,13 +49,13 @@ func recoveryFixture(t *testing.T) (*testServer, deviceauth.State, ed25519.Priva
 }
 
 type recoveryBuild struct {
-	state  deviceauth.State
-	stmt   deviceauth.RecoveryStatement
+	state  devicesec.State
+	stmt   devicesec.RecoveryStatement
 	ed     ed25519.PrivateKey
-	member deviceauth.Member
+	member devicesec.Member
 }
 
-func buildRecovery(t *testing.T, parent deviceauth.State, oldRecovery ed25519.PrivateKey, fill byte) recoveryBuild {
+func buildRecovery(t *testing.T, parent devicesec.State, oldRecovery ed25519.PrivateKey, fill byte) recoveryBuild {
 	t.Helper()
 	_, ed, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -64,11 +65,11 @@ func buildRecovery(t *testing.T, parent deviceauth.State, oldRecovery ed25519.Pr
 	if err != nil {
 		t.Fatal(err)
 	}
-	member, err := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, deviceauth.Client)
+	member, err := devicesec.NewMember(ed.Public().(ed25519.PublicKey), xpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
-	members := []deviceauth.Member{member}
+	members := []devicesec.Member{member}
 	for _, m := range parent.Core.Members {
 		if m.ID != parent.Core.AuthorityID {
 			members = append(members, m)

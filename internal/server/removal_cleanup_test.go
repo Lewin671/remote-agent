@@ -6,6 +6,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"net/http"
 	"testing"
 	"time"
@@ -19,7 +20,7 @@ func TestCommittedRemovalRevokesStreamsWhenLeaseWriteFails(t *testing.T) {
 	}
 	c := ts.authority(t)
 	parent := c.states[len(c.states)-1]
-	members := []deviceauth.Member{}
+	members := []devicesec.Member{}
 	for _, m := range parent.Core.Members {
 		if m.ID != mid {
 			members = append(members, m)

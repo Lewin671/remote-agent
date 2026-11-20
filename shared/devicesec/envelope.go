@@ -1,12 +1,10 @@
-package deviceauth
+package devicesec
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/ed25519"
 	"crypto/hkdf"
-	"crypto/rand"
 	"crypto/sha256"
+	"io"
 	"strings"
 )
 
@@ -30,7 +28,8 @@ const (
 	TerminalHistory Purpose = 15
 )
 
-func (p Purpose) kind() uint32 {
+// Kind is the payload kind a header with this purpose must carry.
+func (p Purpose) Kind() uint32 {
 	switch p {
 	case TerminalResize, TerminalHistory:
 		return 8
@@ -67,7 +66,7 @@ type Header struct {
 }
 
 func (h Header) validate() error {
-	if !deviceID(h.Account) || h.Domain == (Hash{}) || h.Epoch == 0 || h.State == (Hash{}) || h.ContentEpoch == 0 || h.ContentEpoch > h.Epoch || !deviceID(h.Sender) || h.Kind == 0 || h.Kind != h.Purpose.kind() || h.Compression > 1 || h.Machine != "" && !deviceID(h.Machine) || h.Session != "" && !validID(h.Session) || h.Request != "" && !validID(h.Request) {
+	if !deviceID(h.Account) || h.Domain == (Hash{}) || h.Epoch == 0 || h.State == (Hash{}) || h.ContentEpoch == 0 || h.ContentEpoch > h.Epoch || !deviceID(h.Sender) || h.Kind == 0 || h.Kind != h.Purpose.Kind() || h.Compression > 1 || h.Machine != "" && !deviceID(h.Machine) || h.Session != "" && !validID(h.Session) || h.Request != "" && !validID(h.Request) {
 		return ErrInvalid
 	}
 	switch h.Purpose {
@@ -115,23 +114,23 @@ func (h Header) MarshalBinary() ([]byte, error) {
 	if err := h.validate(); err != nil {
 		return nil, err
 	}
-	e := encoder{}
-	e.u32(Version)
-	e.str(h.Account)
-	e.raw(h.Domain[:])
-	e.u64(h.Epoch)
-	e.raw(h.State[:])
-	e.u64(h.ContentEpoch)
-	e.str(h.Sender)
-	e.u32(h.Kind)
-	e.u32(uint32(h.Purpose))
-	e.str(h.Machine)
-	e.str(h.Session)
-	e.str(h.Request)
-	e.u64(h.Seq)
-	e.u64(h.Deadline)
-	e.u32(h.Compression)
-	return e.b, nil
+	e := Encoder{}
+	e.U32(Version)
+	e.Str(h.Account)
+	e.Raw(h.Domain[:])
+	e.U64(h.Epoch)
+	e.Raw(h.State[:])
+	e.U64(h.ContentEpoch)
+	e.Str(h.Sender)
+	e.U32(h.Kind)
+	e.U32(uint32(h.Purpose))
+	e.Str(h.Machine)
+	e.Str(h.Session)
+	e.Str(h.Request)
+	e.U64(h.Seq)
+	e.U64(h.Deadline)
+	e.U32(h.Compression)
+	return e.B, nil
 }
 func ParseHeader(b []byte) (h Header, err error) {
 	if len(b) > MaxHeaderBytes {
@@ -216,33 +215,23 @@ func DeriveKey(secret, sessionSeed []byte, h Header) ([]byte, error) {
 		}
 		salt = sessionSeed
 	}
-	e := encoder{b: []byte("ra3/content-key\x00")}
-	e.str(h.Account)
-	e.raw(h.Domain[:])
-	e.u64(h.Epoch)
-	e.raw(h.State[:])
-	e.u64(h.ContentEpoch)
-	e.u32(uint32(h.Purpose))
-	e.str(h.Sender)
-	e.str(h.Machine)
-	e.str(h.Session)
-	e.str(h.Request)
-	e.u64(h.Seq)
+	e := Encoder{B: []byte("ra3/content-key\x00")}
+	e.Str(h.Account)
+	e.Raw(h.Domain[:])
+	e.U64(h.Epoch)
+	e.Raw(h.State[:])
+	e.U64(h.ContentEpoch)
+	e.U32(uint32(h.Purpose))
+	e.Str(h.Sender)
+	e.Str(h.Machine)
+	e.Str(h.Session)
+	e.Str(h.Request)
+	e.U64(h.Seq)
 	purposeKey, err := DerivePurposeKey(secret, h)
 	if err != nil {
 		return nil, err
 	}
-	return hkdf.Key(sha256.New, purposeKey, salt, string(e.b), 32)
-}
-func gcm(key []byte) (cipher.AEAD, error) {
-	if len(key) != 32 {
-		return nil, ErrInvalid
-	}
-	b, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	return cipher.NewGCM(b)
+	return hkdf.Key(sha256.New, purposeKey, salt, string(e.B), 32)
 }
 
 type Ciphertext struct {
@@ -261,28 +250,28 @@ func (c Ciphertext) Commitment() (Hash, error) {
 	if _, err := ParseHeader(c.Header); err != nil {
 		return Hash{}, err
 	}
-	e := encoder{}
-	e.lp(c.Header)
-	e.lp(c.Nonce)
-	e.lp(c.Cipher)
-	return digest("ra3/ciphertext\x00", e.b), nil
+	e := Encoder{}
+	e.LP(c.Header)
+	e.LP(c.Nonce)
+	e.LP(c.Cipher)
+	return Digest("ra3/ciphertext\x00", e.B), nil
 }
 func originBytes(h Header, hh, commit Hash) []byte {
-	e := encoder{b: []byte("ra3/cipher-origin\x00")}
-	e.str(h.Account)
-	e.raw(h.Domain[:])
-	e.raw(h.State[:])
-	e.str(h.Sender)
-	e.raw(hh[:])
-	e.raw(commit[:])
-	return e.b
+	e := Encoder{B: []byte("ra3/cipher-origin\x00")}
+	e.Str(h.Account)
+	e.Raw(h.Domain[:])
+	e.Raw(h.State[:])
+	e.Str(h.Sender)
+	e.Raw(hh[:])
+	e.Raw(commit[:])
+	return e.B
 }
 func (c Ciphertext) verifyOrigin(s State, head State, live bool, now uint64) (Header, Hash, error) {
 	h, err := ParseHeader(c.Header)
 	if err != nil {
 		return h, Hash{}, err
 	}
-	if err := h.scopeAt(s, head, live, now); err != nil {
+	if err := h.ScopeAt(s, head, live, now); err != nil {
 		return h, Hash{}, err
 	}
 	commit, err := c.Commitment()
@@ -290,15 +279,15 @@ func (c Ciphertext) verifyOrigin(s State, head State, live bool, now uint64) (He
 		return h, commit, err
 	}
 	m, _ := s.Core.Member(h.Sender)
-	hh := digest("", c.Header)
+	hh := Digest("", c.Header)
 	if !ed25519.Verify(m.EdPublic[:], originBytes(h, hh, commit), c.Origin) {
 		return h, commit, ErrUntrusted
 	}
 	return h, commit, nil
 }
 
-// scopeAt is the live authority recheck for already authenticated bytes.
-func (h Header) scopeAt(s State, head State, live bool, now uint64) error {
+// ScopeAt is the live authority recheck for already authenticated bytes.
+func (h Header) ScopeAt(s State, head State, live bool, now uint64) error {
 	if err := h.Scope(s); err != nil {
 		return err
 	}
@@ -314,8 +303,12 @@ func (h Header) scopeAt(s State, head State, live bool, now uint64) error {
 	}
 	return nil
 }
-func Seal(secret, sessionSeed []byte, h Header, plain []byte, writer ed25519.PrivateKey) (c Ciphertext, err error) {
-	if len(plain) > MaxCipherBytes-16 || len(writer) != 64 || ID(writer.Public().(ed25519.PublicKey)) != h.Sender {
+
+// NewCiphertext encrypts plain under the key derived for h, with a 12-byte
+// nonce read from random. Origin is left empty: the sender named in h signs
+// OriginBytes.
+func NewCiphertext(secret, sessionSeed []byte, h Header, plain []byte, random io.Reader) (c Ciphertext, err error) {
+	if len(plain) > MaxCipherBytes-16 {
 		return c, ErrInvalid
 	}
 	c.Header, err = h.MarshalBinary()
@@ -331,13 +324,24 @@ func Seal(secret, sessionSeed []byte, h Header, plain []byte, writer ed25519.Pri
 		return c, err
 	}
 	c.Nonce = make([]byte, 12)
-	if _, err = rand.Read(c.Nonce); err != nil {
+	if _, err = io.ReadFull(random, c.Nonce); err != nil {
 		return c, err
 	}
 	c.Cipher = aead.Seal(nil, c.Nonce, plain, c.Header)
-	commit, _ := c.Commitment()
-	c.Origin = ed25519.Sign(writer, originBytes(h, digest("", c.Header), commit))
 	return c, nil
+}
+
+// OriginBytes is what the sender named in the header signs into Origin.
+func (c Ciphertext) OriginBytes() ([]byte, error) {
+	commit, err := c.Commitment()
+	if err != nil {
+		return nil, err
+	}
+	h, err := ParseHeader(c.Header)
+	if err != nil {
+		return nil, err
+	}
+	return originBytes(h, Digest("", c.Header), commit), nil
 }
 func openCipher(secret, sessionSeed []byte, c Ciphertext) (Header, []byte, error) {
 	h, err := ParseHeader(c.Header)
@@ -368,30 +372,27 @@ func (c Ciphertext) VerifyOrigin(s State, head State, live bool, now uint64) (He
 	h, _, err := c.verifyOrigin(s, head, live, now)
 	return h, err
 }
+
+// Open verifies the origin like VerifyOrigin and decrypts. It does not check
+// that the plaintext is a well-formed body for the header: the caller must do
+// that before acting on it.
 func (c Ciphertext) Open(secret, sessionSeed []byte, s State, head State, live bool, now uint64) (Header, []byte, error) {
 	h, err := c.VerifyOrigin(s, head, live, now)
 	if err != nil {
 		return h, nil, err
 	}
-	h, plain, err := openCipher(secret, sessionSeed, c)
-	if err != nil {
-		return h, nil, err
-	}
-	if err := ValidateBody(h, plain); err != nil {
-		return h, nil, err
-	}
-	return h, plain, nil
+	return openCipher(secret, sessionSeed, c)
 }
 func (c Ciphertext) MarshalBinary() ([]byte, error) {
 	if _, err := c.Commitment(); err != nil || len(c.Origin) != 64 {
 		return nil, ErrInvalid
 	}
-	e := encoder{}
-	e.lp(c.Header)
-	e.lp(c.Nonce)
-	e.lp(c.Cipher)
-	e.lp(c.Origin)
-	return e.b, nil
+	e := Encoder{}
+	e.LP(c.Header)
+	e.LP(c.Nonce)
+	e.LP(c.Cipher)
+	e.LP(c.Origin)
+	return e.B, nil
 }
 func ParseWire(b []byte) (w Wire, err error) {
 	if len(b) > MaxCipherBytes+4096 {
@@ -412,10 +413,10 @@ func DerivePurposeKey(secret []byte, h Header) ([]byte, error) {
 	if len(secret) != 32 || h.validate() != nil {
 		return nil, ErrInvalid
 	}
-	e := encoder{b: []byte("ra3/purpose-key\x00")}
-	e.str(h.Account)
-	e.raw(h.Domain[:])
-	e.u64(h.ContentEpoch)
-	e.u32(uint32(h.Purpose))
-	return hkdf.Key(sha256.New, secret, nil, string(e.b), 32)
+	e := Encoder{B: []byte("ra3/purpose-key\x00")}
+	e.Str(h.Account)
+	e.Raw(h.Domain[:])
+	e.U64(h.ContentEpoch)
+	e.U32(uint32(h.Purpose))
+	return hkdf.Key(sha256.New, secret, nil, string(e.B), 32)
 }

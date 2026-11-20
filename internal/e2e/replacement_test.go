@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 type replacementVector struct {
@@ -37,12 +38,12 @@ func TestMachineReplacementProofVectors(t *testing.T) {
 		}
 		field := func(k string) string { var s string; json.Unmarshal(input[k], &s); return s }
 		key := func(k string) []byte { b, _ := hex.DecodeString(field(k)); return b }
-		decode := func(k string) deviceauth.State {
+		decode := func(k string) devicesec.State {
 			var v struct {
 				State []byte `json:"state"`
 			}
 			json.Unmarshal(input[k], &v)
-			s, e := deviceauth.ParseState(v.State)
+			s, e := devicesec.ParseState(v.State)
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -53,14 +54,14 @@ func TestMachineReplacementProofVectors(t *testing.T) {
 		secret := key("content_secret_2")
 		var old string
 		for _, m := range head.Core.Members {
-			if m.Kind == deviceauth.Machine {
+			if m.Kind == devicesec.Machine {
 				old = m.ID
 			}
 		}
 		v := replacementVector{Account: head.Core.Account, Old: old}
-		states := []deviceauth.State{genesis, head}
+		states := []devicesec.State{genesis, head}
 		for i := byte(0); i < 2; i++ {
-			keep := []deviceauth.Member{}
+			keep := []devicesec.Member{}
 			for _, m := range head.Core.Members {
 				if m.ID != old {
 					keep = append(keep, m)
@@ -78,7 +79,7 @@ func TestMachineReplacementProofVectors(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			member, e := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xpub, deviceauth.Machine)
+			member, e := devicesec.NewMember(ed.Public().(ed25519.PublicKey), xpub, devicesec.Machine)
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -97,7 +98,7 @@ func TestMachineReplacementProofVectors(t *testing.T) {
 				into   *[]*pb.MachineReplacementProof
 			}{
 				{int64(next.Core.IssuedAt) - 1, &v.ClockSkewProofs},
-				{int64(next.Core.IssuedAt) - deviceauth.MaxClockSkew - 1, &v.ExpiredProofs},
+				{int64(next.Core.IssuedAt) - devicesec.MaxClockSkew - 1, &v.ExpiredProofs},
 			} {
 				raw, sig, err := NewPairApprovalReplacing(v.Account, "11111111111111111111111111111111", signer, member.EdPublic[:], pb.DeviceKind_DEVICE_KIND_MACHINE, variant.expiry, old)
 				if err != nil {
@@ -128,9 +129,9 @@ func TestMachineReplacementProofVectors(t *testing.T) {
 	if err := json.Unmarshal(b, &v); err != nil {
 		t.Fatal(err)
 	}
-	states := []deviceauth.State{}
+	states := []devicesec.State{}
 	for _, raw := range v.States {
-		s, e := deviceauth.ParseState(raw)
+		s, e := devicesec.ParseState(raw)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -141,7 +142,7 @@ func TestMachineReplacementProofVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 1; i < len(states); i++ {
-		if err := deviceauth.VerifyTransition(states[i-1], states[i], nil); err != nil {
+		if err := devicesec.VerifyTransition(states[i-1], states[i], nil); err != nil {
 			t.Fatal(err)
 		}
 	}

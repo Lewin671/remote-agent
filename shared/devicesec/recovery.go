@@ -1,9 +1,9 @@
-package deviceauth
+package devicesec
 
 import (
 	"bytes"
 	"crypto/ed25519"
-	"crypto/rand"
+	"io"
 	"slices"
 )
 
@@ -23,38 +23,39 @@ type RecoveryStatement struct {
 	Signature []byte
 }
 
-func (r RecoveryStatement) signBytes() ([]byte, error) {
+// SigningBytes is what the parent's recovery key signs into Signature.
+func (r RecoveryStatement) SigningBytes() ([]byte, error) {
 	if !deviceID(r.Account) || r.Domain == (Hash{}) || r.Parent == (Hash{}) || !deviceID(r.NewAuthorityID) || r.NewAuthorityID != r.NewMember.ID || r.NewMember.Kind != Client || r.NewMember.validate() != nil || r.NewRecoveryEd == [32]byte{} || r.IssuedAt == 0 || r.StateHash == (Hash{}) || r.Nonce == (Hash{}) {
 		return nil, ErrInvalid
 	}
-	e := encoder{b: []byte("ra3/recovery\x00")}
-	e.str(r.Account)
-	e.raw(r.Domain[:])
-	e.raw(r.Parent[:])
-	e.str(r.NewAuthorityID)
-	e.raw(r.NewRecoveryEd[:])
-	e.str(r.NewMember.ID)
-	e.raw(r.NewMember.EdPublic[:])
-	e.raw(r.NewMember.XPublic[:])
-	e.u32(uint32(r.NewMember.Kind))
-	e.u64(r.IssuedAt)
+	e := Encoder{B: []byte("ra3/recovery\x00")}
+	e.Str(r.Account)
+	e.Raw(r.Domain[:])
+	e.Raw(r.Parent[:])
+	e.Str(r.NewAuthorityID)
+	e.Raw(r.NewRecoveryEd[:])
+	e.Str(r.NewMember.ID)
+	e.Raw(r.NewMember.EdPublic[:])
+	e.Raw(r.NewMember.XPublic[:])
+	e.U32(uint32(r.NewMember.Kind))
+	e.U64(r.IssuedAt)
 
-	e.raw(r.StateHash[:])
-	e.raw(r.Nonce[:])
-	return e.b, nil
+	e.Raw(r.StateHash[:])
+	e.Raw(r.Nonce[:])
+	return e.B, nil
 }
 func (r RecoveryStatement) MarshalBinary() ([]byte, error) {
-	b, err := r.signBytes()
+	b, err := r.SigningBytes()
 	if err != nil || len(r.Signature) != ed25519.SignatureSize {
 		return nil, ErrInvalid
 	}
-	e := encoder{}
-	e.lp(b)
-	e.lp(r.Signature)
-	if len(e.b) > MaxStateBytes {
+	e := Encoder{}
+	e.LP(b)
+	e.LP(r.Signature)
+	if len(e.B) > MaxStateBytes {
 		return nil, ErrCapacity
 	}
-	return e.b, nil
+	return e.B, nil
 }
 
 func ParseRecoveryStatement(b []byte) (r RecoveryStatement, err error) {
@@ -94,23 +95,15 @@ func ParseRecoveryStatement(b []byte) (r RecoveryStatement, err error) {
 	r.Signature = sig
 	// Re-encoding must reproduce the transmitted bytes exactly; anything
 	// else would let a signature cover different content than the fields.
-	again, err := r.signBytes()
+	again, err := r.SigningBytes()
 	if err != nil || !bytes.Equal(again, body) {
 		return RecoveryStatement{}, ErrInvalid
 	}
 	return r, nil
 }
 
-func (r *RecoveryStatement) Sign(oldRecovery ed25519.PrivateKey) error {
-	b, err := r.signBytes()
-	if err != nil || len(oldRecovery) != 64 {
-		return ErrInvalid
-	}
-	r.Signature = ed25519.Sign(oldRecovery, b)
-	return nil
-}
 func (r RecoveryStatement) Verify(parent, next State) error {
-	b, err := r.signBytes()
+	b, err := r.SigningBytes()
 	if err != nil || len(r.Signature) != 64 {
 		return ErrInvalid
 	}
@@ -129,15 +122,15 @@ func memberOf(s State, id string) Member {
 	return m
 }
 
-// BuildRecovery builds the recovery state and its statement. The new state
-// removes the old authority client and never re-adds it.
-func BuildRecovery(parent State, newMember Member, members []Member, secret []byte, newSigner ed25519.PrivateKey, oldRecovery ed25519.PrivateKey, newRecoveryEd [32]byte, now uint64) (State, RecoveryStatement, error) {
-	var st RecoveryStatement
-	if newMember.validate() != nil || newMember.Kind != Client || len(newSigner) != 64 || !bytes.Equal(newSigner.Public().(ed25519.PublicKey), newMember.EdPublic[:]) || newRecoveryEd == [32]byte{} || len(secret) != 32 {
-		return State{}, st, ErrInvalid
+// NewRecovery builds the unsigned recovery state; the new authority signs its
+// SigningBytes. The new state removes the old authority client and never
+// re-adds it.
+func NewRecovery(parent State, newMember Member, members []Member, secret []byte, newRecoveryEd [32]byte, now uint64, hpke HPKESender) (State, error) {
+	if newMember.validate() != nil || newMember.Kind != Client || newRecoveryEd == [32]byte{} || len(secret) != 32 {
+		return State{}, ErrInvalid
 	}
 	if slices.ContainsFunc(members, func(m Member) bool { return m.ID == parent.Core.AuthorityID }) {
-		return State{}, st, ErrInvalid
+		return State{}, ErrInvalid
 	}
 	removed := append(slices.Clone(parent.Core.Removed), parent.Core.AuthorityID)
 	slices.Sort(removed)
@@ -148,7 +141,7 @@ func BuildRecovery(parent State, newMember Member, members []Member, secret []by
 	c.ContentEpoch++
 	c.AuthorityID = newMember.ID
 	c.RecoveryEd = newRecoveryEd
-	c.IssuedAt = maxU64(now, c.IssuedAt)
+	c.IssuedAt = max(now, c.IssuedAt)
 
 	c.Members = slices.Clone(members)
 	slices.SortFunc(c.Members, func(a, b Member) int {
@@ -161,18 +154,29 @@ func BuildRecovery(parent State, newMember Member, members []Member, secret []by
 		return 0
 	})
 	c.Removed = removed
-	s, err := build(c, secret, nil, newSigner)
+	return NewStateForCore(c, secret, nil, hpke)
+}
+
+// NewRecoveryStatement builds the unsigned statement authorizing exactly next
+// (signed) after parent, with a 32-byte nonce read from random. The parent's
+// recovery key signs its SigningBytes.
+func NewRecoveryStatement(parent, next State, random io.Reader) (RecoveryStatement, error) {
+	ph, err := parent.Hash()
 	if err != nil {
-		return State{}, st, err
+		return RecoveryStatement{}, err
 	}
-	h, _ := s.Hash()
+	h, err := next.Hash()
+	if err != nil {
+		return RecoveryStatement{}, err
+	}
 	var nonce Hash
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return State{}, st, err
+	if _, err := io.ReadFull(random, nonce[:]); err != nil {
+		return RecoveryStatement{}, err
 	}
-	st = RecoveryStatement{Account: c.Account, Domain: c.Domain, Parent: ph, NewAuthorityID: newMember.ID, NewRecoveryEd: newRecoveryEd, NewMember: newMember, IssuedAt: c.IssuedAt, StateHash: h, Nonce: nonce}
-	if err := st.Sign(oldRecovery); err != nil {
-		return State{}, st, err
+	c := next.Core
+	r := RecoveryStatement{Account: c.Account, Domain: c.Domain, Parent: ph, NewAuthorityID: c.AuthorityID, NewRecoveryEd: c.RecoveryEd, NewMember: memberOf(next, c.AuthorityID), IssuedAt: c.IssuedAt, StateHash: h, Nonce: nonce}
+	if _, err := r.SigningBytes(); err != nil {
+		return RecoveryStatement{}, err
 	}
-	return s, st, nil
+	return r, nil
 }

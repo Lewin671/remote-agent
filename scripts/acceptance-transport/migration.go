@@ -7,17 +7,17 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 type v3Identity struct {
-	Pin              deviceauth.Pin
-	States           []deviceauth.State
-	Proofs           []*deviceauth.RecoveryStatement
+	Pin              devicesec.Pin
+	States           []devicesec.State
+	Proofs           []*devicesec.RecoveryStatement
 	ID               string
 	EdSeed, XPrivate []byte
-	Lease            deviceauth.LeaseCertificate
+	Lease            devicesec.LeaseCertificate
 }
 
 func (r *run) upgrade(ctx context.Context) response {

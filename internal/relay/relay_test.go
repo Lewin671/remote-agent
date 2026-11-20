@@ -30,6 +30,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -332,7 +333,7 @@ func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler, config
 	if err != nil {
 		t.Fatal(err)
 	}
-	machine, err := authority.Enroll(ctx, med, mx, deviceauth.Machine)
+	machine, err := authority.Enroll(ctx, med, mx, devicesec.Machine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,7 +353,7 @@ func setupWithHandler(t *testing.T, wrap func(http.Handler) http.Handler, config
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := authority.Enroll(ctx, ced, cx, deviceauth.Client)
+	client, err := authority.Enroll(ctx, ced, cx, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}

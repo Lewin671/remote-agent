@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // AccountStatus is what `remote-agent account status` prints.
@@ -32,14 +33,14 @@ func AccountStatusInfo(a *Account) (AccountStatus, error) {
 	defer endpoint.Close()
 	pin, head, id := endpoint.Snapshot()
 	if pin != a.Security.Pin || id != a.DeviceID {
-		return out, deviceauth.ErrUntrusted
+		return out, devicesec.ErrUntrusted
 	}
 	m, ok := head.Core.Member(id)
 	if !ok {
-		return out, deviceauth.ErrUntrusted
+		return out, devicesec.ErrUntrusted
 	}
 	kind := "machine"
-	if m.Kind == deviceauth.Client {
+	if m.Kind == devicesec.Client {
 		kind = "client"
 	}
 	return AccountStatus{

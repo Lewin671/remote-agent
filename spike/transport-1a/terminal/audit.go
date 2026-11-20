@@ -2,13 +2,14 @@ package main
 
 import (
 	"bytes"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func auditCases(sec *Security, results map[string]any) {
-	for _, direction := range []deviceauth.Purpose{deviceauth.TerminalInput, deviceauth.TerminalOutput} {
+	for _, direction := range []devicesec.Purpose{devicesec.TerminalInput, devicesec.TerminalOutput} {
 		name := "input"
-		if direction == deviceauth.TerminalOutput {
+		if direction == devicesec.TerminalOutput {
 			name = "output"
 		}
 		s := newStream(sec, "audit-expiry-"+name+"-001")
@@ -16,7 +17,7 @@ func auditCases(sec *Security, results map[string]any) {
 		s.advance(59000)
 		must(send(s, "relay", late, false))
 		deadline := s.gap
-		if direction == deviceauth.TerminalOutput {
+		if direction == devicesec.TerminalOutput {
 			deadline = s.outputGapDeadline
 		}
 		check(deadline == base+60000, "gap outlived authorization")
@@ -27,7 +28,7 @@ func auditCases(sec *Security, results map[string]any) {
 		s.advance(60001)
 		first := sec.seal(s.id, 1, s.now, direction, []byte("first"))
 		must(send(s, "relay", first, false))
-		if direction == deviceauth.TerminalInput {
+		if direction == devicesec.TerminalInput {
 			check(s.processed == 1 && s.injectedChunks == 1, "expired buffered input applied")
 		} else {
 			s.render()
@@ -56,7 +57,7 @@ func auditCases(sec *Security, results map[string]any) {
 				want = base + 10000
 			}
 			deadline = s.gap
-			if direction == deviceauth.TerminalOutput {
+			if direction == devicesec.TerminalOutput {
 				deadline = s.outputGapDeadline
 			}
 			check(deadline == want, "successive/split gap age")
@@ -68,7 +69,7 @@ func auditCases(sec *Security, results map[string]any) {
 		s.instance = "daemon-instance-new"
 		first = sec.seal(s.id, 1, s.now, direction, []byte("new"))
 		must(send(s, "direct", first, false))
-		if direction == deviceauth.TerminalInput {
+		if direction == devicesec.TerminalInput {
 			check(s.processed == 1 && s.injectedChunks == 1, "old instance input delivered")
 		} else {
 			s.render()
@@ -79,13 +80,13 @@ func auditCases(sec *Security, results map[string]any) {
 		results["audit_"+name+"_buffer_identity"] = true
 	}
 	s := newStream(sec, "audit-assembly-0001")
-	large := sec.seal(s.id, 1, s.now, deviceauth.TerminalOutput, bytes.Repeat([]byte{'f'}, 32<<10))
+	large := sec.seal(s.id, 1, s.now, devicesec.TerminalOutput, bytes.Repeat([]byte{'f'}, 32<<10))
 	parts := fragments(large, 1)
 	must(s.receive("relay", s.instance, parts[0]))
 	s.now = base + 5000
 	check(s.receive("relay", s.instance, parts[1]) != nil && s.assemblyBytes == 0 && len(s.accepted) == 0, "assembly expiry bypassed by late tick")
 	s = newStream(sec, "audit-assembly-0002")
-	large = sec.seal(s.id, 1, base, deviceauth.TerminalOutput, bytes.Repeat([]byte{'f'}, 32<<10))
+	large = sec.seal(s.id, 1, base, devicesec.TerminalOutput, bytes.Repeat([]byte{'f'}, 32<<10))
 	s.advance(59000)
 	parts = fragments(large, 1)
 	must(s.receive("relay", s.instance, parts[0]))
@@ -95,7 +96,7 @@ func auditCases(sec *Security, results map[string]any) {
 	}
 	check(s.rendered == 0 && s.renderReady == nil, "late assembled envelope applied")
 	s = newStream(sec, "audit-leg-00000001")
-	large = sec.seal(s.id, 1, base, deviceauth.TerminalOutput, bytes.Repeat([]byte{'f'}, 32<<10))
+	large = sec.seal(s.id, 1, base, devicesec.TerminalOutput, bytes.Repeat([]byte{'f'}, 32<<10))
 	parts = fragments(large, 1)
 	must(s.receive("relay", s.instance, parts[0]))
 	must(s.attach("relay", s.instance, 2))
@@ -103,34 +104,34 @@ func auditCases(sec *Security, results map[string]any) {
 	results["audit_assembly_expiry_identity_and_leg"] = true
 
 	s = newStream(sec, "audit-render-00001")
-	must(send(s, "relay", sec.seal(s.id, 1, base, deviceauth.TerminalOutput, []byte("render later")), false))
+	must(send(s, "relay", sec.seal(s.id, 1, base, devicesec.TerminalOutput, []byte("render later")), false))
 	s.advance(60000)
 	s.render()
 	check(s.rendered == 0 && s.networkRecovery, "late UI consumed expired frame")
 	results["audit_contiguous_render_deadline"] = true
 
 	s = newStream(sec, "audit-replay-00001")
-	e := sec.seal(s.id, 1, base, deviceauth.TerminalOutput, []byte("cached"))
+	e := sec.seal(s.id, 1, base, devicesec.TerminalOutput, []byte("cached"))
 	s.advance(59000)
 	s.rememberOutput(e)
 	s.advance(60000)
 	_, err := s.replayFrom(1)
 	check(err != nil, "replay extended original expiry")
 	s = newStream(sec, "audit-replay-00002")
-	e = sec.seal(s.id, 1, base, deviceauth.TerminalOutput, []byte("cached"))
+	e = sec.seal(s.id, 1, base, devicesec.TerminalOutput, []byte("cached"))
 	s.rememberOutput(e)
 	s.instance = "daemon-instance-new"
 	_, err = s.replayFrom(1)
 	check(err != nil, "replay crossed instance")
 	s = newStream(sec, "audit-input-cache1")
-	e = sec.seal(s.id, 1, base, deviceauth.TerminalInput, []byte("cached"))
+	e = sec.seal(s.id, 1, base, devicesec.TerminalInput, []byte("cached"))
 	must(s.cacheInput(e))
 	s.instance = "daemon-instance-new"
 	check(send(s, "relay", s.inputCache[1], false) != nil && s.injectedChunks == 0, "input cache crossed instance")
 	results["audit_replay_and_send_cache_bounds"] = true
 
 	s = newStream(sec, "audit-membership-01")
-	e = sec.seal(s.id, 2, base, deviceauth.TerminalInput, []byte("queued"))
+	e = sec.seal(s.id, 2, base, devicesec.TerminalInput, []byte("queued"))
 	must(send(s, "relay", e, false))
 	other := *sec
 	other.client.ID = "different-client-member"
@@ -141,7 +142,7 @@ func auditCases(sec *Security, results map[string]any) {
 
 	s = newStream(sec, "audit-completion-01")
 	s.hold = true
-	must(send(s, "relay", sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("once")), false))
+	must(send(s, "relay", sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("once")), false))
 	check(s.injectedChunks == 1, "backend not started at admission")
 	var reply Status
 	s.secureStatus("relay", false, func(st Status) { reply = st })
@@ -150,7 +151,7 @@ func auditCases(sec *Security, results map[string]any) {
 	check(!reply.Available && s.processed == 1 && s.injectedChunks == 1, "late query lost execution evidence or redelivered")
 	s = newStream(sec, "audit-completion-02")
 	s.hold = true
-	must(send(s, "relay", sec.seal(s.id, 1, s.now, deviceauth.TerminalInput, []byte("once")), false))
+	must(send(s, "relay", sec.seal(s.id, 1, s.now, devicesec.TerminalInput, []byte("once")), false))
 	s.instance = "daemon-instance-new"
 	s.release()
 	check(s.processed == 0 && s.retiredCompletion != nil && s.injectedChunks == 1, "completion crossed owner instance")

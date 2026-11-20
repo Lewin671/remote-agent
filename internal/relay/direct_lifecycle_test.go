@@ -24,6 +24,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/coder/websocket"
@@ -397,7 +398,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clientEndpoint, err := deviceauth.InitEndpoint("", pin, keys.states, make([]*deviceauth.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
+			clientEndpoint, err := deviceauth.InitEndpoint("", pin, keys.states, make([]*devicesec.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -518,12 +519,12 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 				var nonce [16]byte
 				_, _ = rand.Read(nonce[:])
 				reqNow := fakeNowUint()
-				h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: selfID, Request: hex.EncodeToString(nonce[:]), Deadline: reqNow + 5000}
+				h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: selfID, Request: hex.EncodeToString(nonce[:]), Deadline: reqNow + 5000}
 				sealed, err := clientEndpoint.Prepare(h, nil, plain)
 				if err != nil {
 					return err
 				}
-				env, err := sealed.Envelope()
+				env, err := deviceauth.Envelope(sealed)
 				if err != nil {
 					return err
 				}
@@ -770,7 +771,7 @@ func TestDirectDualSentInteractiveDeduplicatesAndSharesResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clientEndpoint, err := deviceauth.InitEndpoint("", pin, keys.states, make([]*deviceauth.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
+	clientEndpoint, err := deviceauth.InitEndpoint("", pin, keys.states, make([]*devicesec.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -784,12 +785,12 @@ func TestDirectDualSentInteractiveDeduplicatesAndSharesResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: selfID, Request: hex.EncodeToString(nonce[:]), Session: "s-dual", Deadline: reqNow + 5000}
+	h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: selfID, Request: hex.EncodeToString(nonce[:]), Session: "s-dual", Deadline: reqNow + 5000}
 	sealed, err := clientEndpoint.Prepare(h, nil, plain)
 	if err != nil {
 		t.Fatal(err)
 	}
-	env, err := sealed.Envelope()
+	env, err := deviceauth.Envelope(sealed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -932,7 +933,7 @@ func setupDualAdmissionFixture(t *testing.T) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	clientEndpoint, err = deviceauth.InitEndpoint("", pin, keys.states, make([]*deviceauth.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
+	clientEndpoint, err = deviceauth.InitEndpoint("", pin, keys.states, make([]*devicesec.RecoveryStatement, len(keys.states)), clientID, keys.phone.Seed(), keys.phoneX, lease)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -948,12 +949,12 @@ func setupDualAdmissionFixture(t *testing.T) (
 		if err != nil {
 			t.Fatal(err)
 		}
-		h := deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: selfID, Request: reqID, Session: "s-dual", Deadline: uint64(time.Now().Add(5 * time.Second).UnixMilli())}
+		h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: selfID, Request: reqID, Session: "s-dual", Deadline: uint64(time.Now().Add(5 * time.Second).UnixMilli())}
 		sealed, err := clientEndpoint.Prepare(h, nil, plain)
 		if err != nil {
 			t.Fatal(err)
 		}
-		env, err := sealed.Envelope()
+		env, err := deviceauth.Envelope(sealed)
 		if err != nil {
 			t.Fatal(err)
 		}

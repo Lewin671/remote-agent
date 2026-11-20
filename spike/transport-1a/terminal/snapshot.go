@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"example.com/transport-sdk-lab/labwire"
 	"fmt"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 // Shared expected.json records the observed page sequence, not only a bool.
@@ -14,9 +15,9 @@ func snapshotCases(results map[string]any) {
 		sec := security()
 		s := newStream(sec, "snapshot-duplex-01")
 		for seq := uint64(1); seq <= 2; seq++ {
-			must(send(s, "relay", sec.seal(s.id, seq, s.now, deviceauth.TerminalInput, []byte("once")), false))
+			must(send(s, "relay", sec.seal(s.id, seq, s.now, devicesec.TerminalInput, []byte("once")), false))
 		}
-		must(send(s, "direct", sec.seal(s.id, 1, s.now, deviceauth.TerminalOutput, []byte("render later")), false))
+		must(send(s, "direct", sec.seal(s.id, 1, s.now, devicesec.TerminalOutput, []byte("render later")), false))
 		frozenOutput := uint64(0)
 		if final {
 			s.render()

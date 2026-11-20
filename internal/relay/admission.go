@@ -11,6 +11,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"google.golang.org/protobuf/proto"
 )
@@ -29,7 +30,7 @@ type callRoute struct {
 func (r *callRoute) reply(v *pb.ForwardReply) { r.once.Do(func() { r.send(v) }) }
 
 type authFrame struct {
-	wire    deviceauth.Wire
+	wire    devicesec.Wire
 	peer    string
 	size    int
 	waiting context.Context
@@ -38,7 +39,7 @@ type authFrame struct {
 }
 type callResult struct {
 	route  *callRoute
-	header deviceauth.Header
+	header devicesec.Header
 	body   []byte
 	err    error
 	raw    bool
@@ -53,7 +54,7 @@ type inflightLeg struct {
 
 type pendingExecution struct {
 	key       string
-	payload   deviceauth.Hash
+	payload   devicesec.Hash
 	raw       bool
 	done      chan struct{}
 	cancel    context.CancelFunc
@@ -69,7 +70,7 @@ type pendingExecution struct {
 }
 
 type commandAdmission struct {
-	authenticate     func(deviceauth.Wire) (*deviceauth.Authenticated, error)
+	authenticate     func(devicesec.Wire) (*deviceauth.Authenticated, error)
 	reserveWaiter    func(string) (func(), bool)
 	testBeforeFinish func(*pendingExecution)
 	endpoint         *endpoint
@@ -93,7 +94,7 @@ func (c *endpoint) admissionOwner() *commandAdmission {
 		a := &commandAdmission{endpoint: c, ctx: ctx, cancel: cancel, wake: make(chan struct{}, 2), replies: make(chan struct{}, 2), syncing: map[string]bool{}, inflight: map[string]*pendingExecution{}, scheduler: transport.NewSchedulerWithClock(c.link, c.r.SchedulerNow, c.r.SchedulerAfter)}
 		a.frames = linkcore.FairQueue[*authFrame]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
 		a.results = linkcore.FairQueue[*callResult]{Entries: 64, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 4 << 20}
-		a.authenticate = func(w deviceauth.Wire) (*deviceauth.Authenticated, error) {
+		a.authenticate = func(w devicesec.Wire) (*deviceauth.Authenticated, error) {
 			return c.security.endpoint.Authenticate(w, nil, uint64(time.Now().UnixMilli()))
 		}
 		a.reserveWaiter = c.security.endpoint.ReserveWaiter
@@ -130,8 +131,8 @@ func (c *endpoint) dispatchRoute(waiting context.Context, call *pb.ForwardCall, 
 		refuse("invalid_envelope")
 		return
 	}
-	h, err := deviceauth.ParseHeader(wire.Header)
-	if err != nil || h.Purpose != deviceauth.Command {
+	h, err := devicesec.ParseHeader(wire.Header)
+	if err != nil || h.Purpose != devicesec.Command {
 		refuse("invalid_scope")
 		return
 	}
@@ -198,7 +199,7 @@ func (a *commandAdmission) authenticateLoop() {
 			continue
 		}
 		// Do not retain ciphertext in an execution closure or an auxiliary map.
-		frame.wire = deviceauth.Wire{}
+		frame.wire = devicesec.Wire{}
 		a.classify(frame.waiting, frame.route, p)
 	}
 }
@@ -296,7 +297,7 @@ func controlPriority(cmd *pb.Command) uint8 {
 	}
 }
 
-func commandResources(h deviceauth.Header, cmd *pb.Command) []string {
+func commandResources(h devicesec.Header, cmd *pb.Command) []string {
 	var resources []string
 	if h.Session != "" {
 		resources = append(resources, "session:"+h.Session)
@@ -335,7 +336,7 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	h, body := p.Header(), p.Body()
 	cmd := &pb.Command{}
 	if err = proto.Unmarshal(body, cmd); err != nil {
-		a.result(route, p, nil, p.Decision("outcome_unknown", deviceauth.ErrInvalid), false)
+		a.result(route, p, nil, p.Decision("outcome_unknown", devicesec.ErrInvalid), false)
 		return
 	}
 	class, approval := classifyCommand(cmd)
@@ -343,7 +344,7 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 		bulk := cmd.GetPutImageChunk() != nil || cmd.GetGetSharedFileChunk() != nil
 		allowed := route.directUse == 2 && bulk || route.directUse == 1 && (deviceauth.IsReadOnlyCommand(cmd) || isInteractiveCommand(cmd)) && !bulk
 		if !allowed {
-			a.result(route, p, nil, p.Decision("path_unavailable", deviceauth.ErrUntrusted), false)
+			a.result(route, p, nil, p.Decision("path_unavailable", devicesec.ErrUntrusted), false)
 			return
 		}
 	}
@@ -365,7 +366,7 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	}
 	j.Reject = func() {
 		observe(false, time.Now())
-		err := p.Decision("busy", deviceauth.ErrCapacity)
+		err := p.Decision("busy", devicesec.ErrCapacity)
 		a.finishInflight(pc, nil, err, raw, false)
 		a.result(route, p, nil, err, raw)
 	}
@@ -585,7 +586,7 @@ func (a *commandAdmission) execute(ctx, waitCtx, waiting context.Context, route 
 			}
 			runningMu.Unlock()
 		}
-		b, err := a.endpoint.security.endpoint.AcceptAuthenticated(admitting, p, uint64(time.Now().UnixMilli()), options, func(h deviceauth.Header, plain []byte) (deviceauth.Completion, error) {
+		b, err := a.endpoint.security.endpoint.AcceptAuthenticated(admitting, p, uint64(time.Now().UnixMilli()), options, func(h devicesec.Header, plain []byte) (deviceauth.Completion, error) {
 			completion, err := a.endpoint.commandCompletion(ctx, h, plain)
 			work.Wait()
 			select {
@@ -698,7 +699,7 @@ func (a *commandAdmission) close() {
 // Internal handoff only; never sent as a new wire reason or user message.
 type awaitExecution struct{}
 
-func (*awaitExecution) Error() string { return deviceauth.ErrCapacity.Error() }
+func (*awaitExecution) Error() string { return devicesec.ErrCapacity.Error() }
 
 var errAwaitExecution error = &awaitExecution{}
 

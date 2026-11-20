@@ -30,6 +30,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/updater"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -486,7 +487,7 @@ func main() {
 			must(err)
 			x, _, err := deviceauth.NewXKey()
 			must(err)
-			machine, err := auth.Enroll(ctx, ed, x, deviceauth.Machine)
+			machine, err := auth.Enroll(ctx, ed, x, devicesec.Machine)
 			must(err)
 			must(machine.Endpoint.Save(filepath.Join(e["REMOTE_AGENT_HOME"], "security-v4.db")))
 			machine.Endpoint.Close()

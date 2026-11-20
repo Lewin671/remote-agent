@@ -7,7 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -96,7 +96,7 @@ func TestSessionEnvelopePurposeLimits(t *testing.T) {
 	} {
 		want := &pb.Header{Kind: tc.kind, MachineId: "machine", SessionId: "session"}
 		h := proto.CloneOf(want)
-		h.Version = deviceauth.Version
+		h.Version = devicesec.Version
 		raw, _ := proto.Marshal(h)
 		env := &pb.Envelope{Header: raw, Ciphertext: make([]byte, tc.limit-512)}
 		if _, err := checkEnvelope(env, want); err != nil {

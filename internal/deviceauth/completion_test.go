@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func TestCompletionEvidenceIndependentOfCancellation(t *testing.T) {
@@ -20,7 +22,7 @@ func TestCompletionEvidenceIndependentOfCancellation(t *testing.T) {
 					cl := c.clientEndpoint(t)
 					defer cl.Close()
 					now := uint64(time.Now().UnixMilli())
-					w, err := cl.Prepare(Header{Purpose: Command, Kind: 5, Machine: c.machine.ID, Request: "completion-order-test", Deadline: now + 60000}, nil, commandBody(t))
+					w, err := cl.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.machine.ID, Request: "completion-order-test", Deadline: now + 60000}, nil, commandBody(t))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -29,7 +31,7 @@ func TestCompletionEvidenceIndependentOfCancellation(t *testing.T) {
 					var first []byte
 					go func() {
 						var e error
-						first, e = m.Accept(w, nil, now, func(Header, []byte) (Completion, error) {
+						first, e = m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) {
 							close(entered)
 							<-release
 							// This body could have been marshalled successfully in either case.
@@ -63,7 +65,7 @@ func TestCompletionEvidenceIndependentOfCancellation(t *testing.T) {
 						t.Fatal(err)
 					}
 					defer m.Close()
-					out, err := m.Accept(w, nil, now, func(Header, []byte) (Completion, error) { t.Fatal("executed twice"); return Final(nil), nil })
+					out, err := m.Accept(w, nil, now, func(devicesec.Header, []byte) (Completion, error) { t.Fatal("executed twice"); return Final(nil), nil })
 					if wantFinal {
 						if err != nil || string(out) != "settled" {
 							t.Fatalf("retry %q %v", out, err)

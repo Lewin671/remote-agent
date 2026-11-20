@@ -16,6 +16,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 type publishBackend struct{ Backend }
@@ -94,7 +95,7 @@ func TestEnsurePublishedAfterRecoveryMarker(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newMember, err := deviceauth.NewMember(newEd.Public().(ed25519.PublicKey), nxpub, deviceauth.Client)
+	newMember, err := devicesec.NewMember(newEd.Public().(ed25519.PublicKey), nxpub, devicesec.Client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,11 +103,11 @@ func TestEnsurePublishedAfterRecoveryMarker(t *testing.T) {
 	secret[0] = 9
 	var newRecovery [32]byte
 	newRecovery[0] = 8
-	state, stmt, err := deviceauth.BuildRecovery(head, newMember, []deviceauth.Member{keys.machine, newMember}, secret, newEd, keys.recovery, newRecovery, uint64(time.Now().UnixMilli()))
+	state, stmt, err := deviceauth.BuildRecovery(head, newMember, []devicesec.Member{keys.machine, newMember}, secret, newEd, keys.recovery, newRecovery, uint64(time.Now().UnixMilli()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.security.endpoint.Install([]deviceauth.State{state}, []*deviceauth.RecoveryStatement{&stmt}); err != nil {
+	if err := c.security.endpoint.Install([]devicesec.State{state}, []*devicesec.RecoveryStatement{&stmt}); err != nil {
 		t.Fatal(err)
 	}
 	lease, _ := deviceauth.BuildLease(state, newEd, state.Core.IssuedAt)
@@ -135,17 +136,17 @@ func TestPublishMarkerCapturesStartingHead(t *testing.T) {
 	_, head, _ := c.security.endpoint.Snapshot()
 	_, ed, _ := ed25519.GenerateKey(nil)
 	_, xp, _ := deviceauth.NewXKey()
-	member, _ := deviceauth.NewMember(ed.Public().(ed25519.PublicKey), xp, deviceauth.Client)
+	member, _ := devicesec.NewMember(ed.Public().(ed25519.PublicKey), xp, devicesec.Client)
 	secret := make([]byte, 32)
 	secret[0] = 9
 	var rec [32]byte
 	rec[0] = 8
-	next, proof, err := deviceauth.BuildRecovery(head, member, []deviceauth.Member{keys.machine, member}, secret, ed, keys.recovery, rec, uint64(time.Now().UnixMilli()))
+	next, proof, err := deviceauth.BuildRecovery(head, member, []devicesec.Member{keys.machine, member}, secret, ed, keys.recovery, rec, uint64(time.Now().UnixMilli()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	service := &publishMachine{onPut: func() {
-		if err := c.security.endpoint.Install([]deviceauth.State{next}, []*deviceauth.RecoveryStatement{&proof}); err != nil {
+		if err := c.security.endpoint.Install([]devicesec.State{next}, []*devicesec.RecoveryStatement{&proof}); err != nil {
 			t.Error(err)
 		}
 	}}
@@ -190,7 +191,7 @@ func (m *sessionRevisionMachine) ListSessionHeads(context.Context, *connect.Requ
 	return connect.NewResponse(&pb.ListSessionHeadsResponse{Sessions: []*pb.SessionHead{{SessionId: "synthetic-session", MetaRevision: floor}}}), nil
 }
 func (m *sessionRevisionMachine) PutSession(_ context.Context, r *connect.Request[pb.PutSessionRequest]) (*connect.Response[pb.PutSessionResponse], error) {
-	h, err := deviceauth.ParseHeader(r.Msg.Meta.SecurityHeader)
+	h, err := devicesec.ParseHeader(r.Msg.Meta.SecurityHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +252,7 @@ func (m *batchPublishMachine) ListSessionHeads(context.Context, *connect.Request
 	return connect.NewResponse(&pb.ListSessionHeadsResponse{Sessions: heads}), nil
 }
 func (m *batchPublishMachine) PutSession(_ context.Context, r *connect.Request[pb.PutSessionRequest]) (*connect.Response[pb.PutSessionResponse], error) {
-	h, err := deviceauth.ParseHeader(r.Msg.Meta.SecurityHeader)
+	h, err := devicesec.ParseHeader(r.Msg.Meta.SecurityHeader)
 	if err != nil {
 		return nil, err
 	}

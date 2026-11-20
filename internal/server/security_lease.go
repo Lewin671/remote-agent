@@ -7,11 +7,11 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 func (t *tstore) putSecurityLease(ctx context.Context, raw []byte) error {
-	l, err := deviceauth.ParseLease(raw)
+	l, err := devicesec.ParseLease(raw)
 	if err != nil {
 		return invalid("invalid lease")
 	}
@@ -24,13 +24,13 @@ func (t *tstore) putSecurityLease(ctx context.Context, raw []byte) error {
 	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id=? ORDER BY epoch DESC LIMIT 1`, t.acct).Scan(&stateRaw); err != nil {
 		return internal(err)
 	}
-	head, err := deviceauth.ParseState(stateRaw)
+	head, err := devicesec.ParseState(stateRaw)
 	if err != nil || l.Valid(head, uint64(nowMs())) != nil {
 		return connect.NewError(connect.CodePermissionDenied, errors.New("lease does not bind the current head"))
 	}
 	var oldRaw []byte
 	if err := tx.QueryRowContext(ctx, `SELECT certificate FROM security_leases WHERE account_id=?`, t.acct).Scan(&oldRaw); err == nil {
-		old, err := deviceauth.ParseLease(oldRaw)
+		old, err := devicesec.ParseLease(oldRaw)
 		if err != nil {
 			return internal(err)
 		}
@@ -93,7 +93,7 @@ func (t *tstore) deleteMachineRecords(ctx context.Context, id string) error {
 	}
 	var raw []byte
 	if err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id=? ORDER BY epoch DESC LIMIT 1`, t.acct).Scan(&raw); err == nil {
-		head, err := deviceauth.ParseState(raw)
+		head, err := devicesec.ParseState(raw)
 		if err != nil {
 			return err
 		}

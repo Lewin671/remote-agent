@@ -24,6 +24,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/outcome"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -161,7 +162,7 @@ func (c *Client) OpenEvent(s Session, se *pb.StoredEvent) (*pb.Event, error) {
 	e := &pb.Event{}
 	source := s.MachineID
 	if c.endpoint != nil && s.Info != nil && len(se.Envelope.SecurityHeader) > 0 {
-		h, err := deviceauth.ParseHeader(se.Envelope.SecurityHeader)
+		h, err := devicesec.ParseHeader(se.Envelope.SecurityHeader)
 		if err != nil {
 			return nil, err
 		}
@@ -229,15 +230,15 @@ func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time
 	if err != nil {
 		return nil, err
 	}
-	wire, err := c.endpoint.Prepare(deviceauth.Header{Kind: 5, Purpose: deviceauth.Command, Machine: machineID, Session: sessionID, Request: requestID, Deadline: uint64(deadline.UnixMilli())}, nil, plain)
+	wire, err := c.endpoint.Prepare(devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: machineID, Session: sessionID, Request: requestID, Deadline: uint64(deadline.UnixMilli())}, nil, plain)
 	if err != nil {
 		return nil, err
 	}
-	env, err := wire.Envelope()
+	env, err := deviceauth.Envelope(wire)
 	if err != nil {
 		return nil, err
 	}
-	header, err := deviceauth.ParseHeader(wire.Header)
+	header, err := devicesec.ParseHeader(wire.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -288,10 +289,10 @@ func (c *Client) Forward(ctx context.Context, machineID string, env *pb.Envelope
 		}
 	}()
 	if len(prior) > 1 || len(prior) == 1 && prior[0] != MayHaveBeenDispatched && prior[0] != NeverDispatched {
-		return nil, deviceauth.ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	if env == nil {
-		return nil, deviceauth.ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	h := &pb.Header{}
 	if err := proto.Unmarshal(env.Header, h); err != nil {
@@ -508,22 +509,22 @@ func (t *Term) SendRaw(ctx context.Context, seq uint64, f *pb.TerminalFrame) err
 }
 
 func (t *Term) send(ctx context.Context, seq uint64, f *pb.TerminalFrame) error {
-	purpose := deviceauth.TerminalInput
+	purpose := devicesec.TerminalInput
 	switch f.Kind.(type) {
 	case *pb.TerminalFrame_Resize:
-		purpose = deviceauth.TerminalResize
+		purpose = devicesec.TerminalResize
 	case *pb.TerminalFrame_HistoryRequest:
-		purpose = deviceauth.TerminalHistory
+		purpose = devicesec.TerminalHistory
 	}
 	plain, err := proto.Marshal(f)
 	if err != nil {
 		return err
 	}
-	wire, err := t.c.endpoint.Prepare(deviceauth.Header{Kind: 8, Purpose: purpose, Machine: t.s.MachineID, Session: t.s.ID, Request: t.stream, Seq: seq, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, t.s.Key, plain)
+	wire, err := t.c.endpoint.Prepare(devicesec.Header{Kind: 8, Purpose: purpose, Machine: t.s.MachineID, Session: t.s.ID, Request: t.stream, Seq: seq, Deadline: uint64(time.Now().Add(time.Minute).UnixMilli())}, t.s.Key, plain)
 	if err != nil {
 		return err
 	}
-	env, err := wire.Envelope()
+	env, err := deviceauth.Envelope(wire)
 	if err != nil {
 		return err
 	}
@@ -587,7 +588,7 @@ func (c *Client) Sync(ctx context.Context) error {
 		if len(res.Msg.Lease) == 0 {
 			return nil
 		}
-		l, err := deviceauth.ParseLease(res.Msg.Lease)
+		l, err := devicesec.ParseLease(res.Msg.Lease)
 		if err != nil {
 			return err
 		}
@@ -596,16 +597,16 @@ func (c *Client) Sync(ctx context.Context) error {
 	if len(res.Msg.States) == 0 {
 		return installLease()
 	}
-	states := make([]deviceauth.State, 0, len(res.Msg.States))
-	proofs := make([]*deviceauth.RecoveryStatement, 0, len(res.Msg.States))
+	states := make([]devicesec.State, 0, len(res.Msg.States))
+	proofs := make([]*devicesec.RecoveryStatement, 0, len(res.Msg.States))
 	for _, in := range res.Msg.States {
-		st, err := deviceauth.ParseState(in.State)
+		st, err := devicesec.ParseState(in.State)
 		if err != nil {
 			return err
 		}
-		var proof *deviceauth.RecoveryStatement
+		var proof *devicesec.RecoveryStatement
 		if len(in.Recovery) > 0 {
-			p, err := deviceauth.ParseRecoveryStatement(in.Recovery)
+			p, err := devicesec.ParseRecoveryStatement(in.Recovery)
 			if err != nil {
 				return err
 			}
@@ -642,7 +643,7 @@ func (c *Client) openEnvelope(ctx context.Context, seed []byte, env *pb.Envelope
 	if err != nil {
 		return nil, nil, err
 	}
-	return h.Projection(), plain, nil
+	return deviceauth.Projection(h), plain, nil
 }
 func (c *Client) openMessage(ctx context.Context, seed []byte, env *pb.Envelope, want *pb.Header, m proto.Message) (*pb.Header, error) {
 	history := true // Delayed results keep exact request/stream/sequence provenance.
@@ -654,7 +655,7 @@ func (c *Client) openMessage(ctx context.Context, seed []byte, env *pb.Envelope,
 		return nil, err
 	}
 	if proto.Unmarshal(plain, m) != nil {
-		return nil, deviceauth.ErrInvalid
+		return nil, devicesec.ErrInvalid
 	}
 	return h, nil
 }
