@@ -128,6 +128,7 @@ type fakeEnd struct {
 	roundDone bool
 	control   func(peerwire.Opened, uint64) (uint64, []byte)
 	controls  int
+	observe   func(Effect) // sees every effect, in the order performed
 }
 
 func newFakeEnd(t *testing.T, which int, key *testKey, peer peerwire.Public, codec *peerwire.Codec, connection []byte, now *uint64, deadline uint64, initiate bool, policy func() bool) *fakeEnd {
@@ -154,6 +155,9 @@ func (e *fakeEnd) release() {
 
 func (e *fakeEnd) apply(fx []Effect) {
 	for _, f := range fx {
+		if e.observe != nil {
+			e.observe(f)
+		}
 		switch f := f.(type) {
 		case SignFrame:
 			e.signs++
@@ -581,6 +585,63 @@ func TestControlReplyIsCachedOnlyOnceSigned(t *testing.T) {
 	e.handle(FrameReceived{raw})
 	if e.signs != 1 || len(e.sent) != 2 || !bytes.Equal(e.sent[0].Raw, e.sent[1].Raw) || e.sent[0].Type != 10 {
 		t.Fatal("the cached reply was not resent unchanged")
+	}
+}
+
+// The answerer's Candidates(seq 1), Confirm(seq 2) and Restart(seq 3) reach
+// the offerer with seq 1 last. The PC waits on the SDK for the candidates
+// while Confirm and Restart are still queued; the Restart must replace the PC
+// before readiness is judged, so the old PC is never confirmed.
+func TestQueuedRestartWinsOverReadinessWhileTheSDKIsBusy(t *testing.T) {
+	a, b := orderedKeys(t)
+	codec := testCodec(t)
+	var now uint64 = 1_700_000_000_000
+	conn := make([]byte, 16)
+	_, _ = rand.Read(conn)
+	e := newFakeEnd(t, 0, a, b.pub, codec, conn, &now, now+10000, false, nil)
+	var log []string
+	e.observe = func(f Effect) {
+		switch f := f.(type) {
+		case CreatePC:
+			log = append(log, fmt.Sprintf("create%d", f.ID))
+		case AddCandidatesPC:
+			log = append(log, fmt.Sprintf("addcand%d", f.ID))
+		case ConfirmPC:
+			log = append(log, fmt.Sprintf("confirm%d", f.ID))
+		case ClosePC:
+			log = append(log, fmt.Sprintf("close%d:%s", f.ID, f.Reason))
+		}
+	}
+	s := e.s
+	for i := range s.pcs {
+		s.pcs[i].signal.Peer = b.pub
+	}
+	p := &s.pcs[0]
+	g := p.signal
+	h := func(v byte) []byte { return bytes.Repeat([]byte{v}, 32) }
+	g.BootReady, g.LocalSDP, g.RemoteSDP, g.DTLS = true, true, true, true
+	g.LocalHash, g.RemoteHash, g.LocalFingerprint, g.RemoteFingerprint = h(1), h(2), h(3), h(4)
+	g.RemoteUfrag, g.RemoteMid = []byte("ufBB"), []byte("0")
+	e.pcs[7] = &fakePC{id: 7, use: 1, gen: 1}
+	p.pc, p.confirmed = 7, true
+	s.nextPC = 7
+	frame := func(seq, typ uint64, body []byte) []byte {
+		c := peerwire.NewContext(b.pub, a.pub, conn, 1, 1, seq, now, 1, false)
+		c.Deadline = now + 9000
+		return b.seal(t, codec, a.pub, c, typ, body)
+	}
+	candidates := frame(1, 5, peerwire.CandidateBody([]peerwire.Candidate{{Original: []byte("candidate:1 1 udp 2130706431 127.0.0.1 50000 typ host"), Ufrag: g.RemoteUfrag, Mid: g.RemoteMid, Generation: 1}}, 0))
+	confirm := frame(2, 7, g.ConfirmBody())
+	restart := frame(3, 8, peerwire.PB(peerwire.B(1, peerwire.PB(peerwire.U(1, 1), peerwire.U(2, 1)))))
+	e.handle(FrameReceived{confirm})
+	e.handle(FrameReceived{restart})
+	log = nil
+	e.handle(FrameReceived{candidates})
+	if want := "[addcand7 close7:generation_reset create8]"; fmt.Sprint(log) != want {
+		t.Fatalf("effects %v, want %s", log, want)
+	}
+	if p.announced || p.business || s.established || p.generation != 2 {
+		t.Fatalf("a replaced PC was confirmed: announced=%v established=%v generation=%d", p.announced, s.established, p.generation)
 	}
 }
 

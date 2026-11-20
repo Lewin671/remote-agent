@@ -697,7 +697,6 @@ func (s *Session) receive(raw []byte, now uint64) {
 		}
 	}
 	s.drainActions(i, now)
-	s.maybeReady(i, now)
 }
 
 // receiveACK settles only a recorded immutable sender packet.
@@ -875,8 +874,17 @@ func (s *Session) validPeerScope(o peerwire.Opened) bool {
 }
 
 // drainActions runs accepted PC messages in order, one SDK call at a time;
-// the call's result event resumes it.
+// the call's result event resumes it. Readiness is judged only when no SDK
+// call is outstanding: an action still queued behind it, such as a Restart,
+// may yet replace the PC.
 func (s *Session) drainActions(i int, now uint64) {
+	s.runActions(i, now)
+	if s.pcs[i].busy == opNone {
+		s.maybeReady(i, now)
+	}
+}
+
+func (s *Session) runActions(i int, now uint64) {
 	p := &s.pcs[i]
 	for len(p.actions) > 0 && s.active() && p.busy == opNone {
 		a := p.actions[0]
@@ -1073,7 +1081,7 @@ func (s *Session) maybeOffer(i int, now uint64) {
 
 func (s *Session) maybeReady(i int, now uint64) {
 	p := &s.pcs[i]
-	if p.pc == 0 {
+	if p.pc == 0 || p.busy != opNone {
 		return
 	}
 	if !p.confirmed && !p.confirming && p.signal.LocalSDP && p.signal.RemoteSDP && p.signal.DTLS {
