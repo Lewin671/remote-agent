@@ -154,6 +154,11 @@ func NewRecovery(parent State, newMember Member, members []Member, secret []byte
 		return 0
 	})
 	c.Removed = removed
+	// The statement names newMember; the state must carry exactly that
+	// member (same Ed and X keys), or the grant goes to another X key.
+	if m, ok := c.Member(newMember.ID); !ok || m != newMember {
+		return State{}, ErrInvalid
+	}
 	return NewStateForCore(c, secret, nil, hpke)
 }
 

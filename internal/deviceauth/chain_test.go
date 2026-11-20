@@ -48,6 +48,12 @@ func TestRecoveryCannotKeepOrReAddOldAuthority(t *testing.T) {
 	if _, _, err := BuildRecovery(added, newPhone, []devicesec.Member{phone, machine, newPhone}, bytes.Repeat([]byte{0x99}, 32), newPhoneEd, recovery, newRecovery, 1_700_000_200_000); err == nil {
 		t.Fatal("recovery kept the old authority")
 	}
+	// Nor does it seal the grant to another X key than the one the statement names.
+	otherX := newPhone
+	otherX.XPublic[0] ^= 1
+	if _, _, err := BuildRecovery(added, newPhone, []devicesec.Member{machine, otherX}, bytes.Repeat([]byte{0x99}, 32), newPhoneEd, recovery, newRecovery, 1_700_000_200_000); err == nil {
+		t.Fatal("recovery accepted a new authority whose X key differs from the named member")
+	}
 
 	// A hand-built recovery state that re-adds the old authority must fail
 	// transition verification even with a valid recovery statement.
