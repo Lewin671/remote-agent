@@ -373,9 +373,14 @@ func (c Ciphertext) VerifyOrigin(s State, head State, live bool, now uint64) (He
 	return h, err
 }
 
-// Open verifies the origin like VerifyOrigin and decrypts. It does not check
-// that the plaintext is a well-formed body for the header: the caller must do
-// that before acting on it.
+// Open only authenticates and decrypts: it verifies the origin like
+// VerifyOrigin and opens the AEAD. It does NOT validate the body. The
+// plaintext may still be a payload of the wrong type for the header, carry
+// unknown fields, or not match the header's routing, so the caller must check
+// the body against the header before using the plaintext in any way. That
+// check needs the protobuf message types, which this package does not have:
+// the daemon uses deviceauth.OpenEnvelope (Open followed by
+// deviceauth.ValidateBody); a client core must apply its own equivalent.
 func (c Ciphertext) Open(secret, sessionSeed []byte, s State, head State, live bool, now uint64) (Header, []byte, error) {
 	h, err := c.VerifyOrigin(s, head, live, now)
 	if err != nil {
