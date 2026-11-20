@@ -639,6 +639,8 @@ func (e *Engine) closed(now int64, p *round, u Use) {
 }
 
 // delay is this round's retry delay, drawn once however many of its paths close.
+// TODO(S4): the full-jitter ceiling is linkcore.Recovery.Failed's formula
+// without its token buckets; use a linkcore export once linkcore settles.
 func (e *Engine) delay(now int64, p *round) int64 {
 	if p.hasRetryDelay {
 		return p.retryDelay
