@@ -96,11 +96,11 @@ func TestAgyQuotaStartupAndNoSelfExcitation(t *testing.T) {
 	h.d.agents[pb.Agent_AGENT_ANTIGRAVITY] = antigravity.New(script, home)
 
 	clk := &fakeClock{now: time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)}
-	m := &agyQuotaMonitor{now: clk.Now}
+	m := &probeMonitor{now: clk.Now}
 
 	// Startup with no saved agy quota probes once, even though the probe
 	// itself creates cli-probe-1.log inside logDir.
-	h.d.stepAgyQuota(context.Background(), m)
+	h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	if got := readProbeCount(t, countFile); got != 1 {
 		t.Fatalf("startup probe count = %d, want 1", got)
 	}
@@ -115,7 +115,7 @@ func TestAgyQuotaStartupAndNoSelfExcitation(t *testing.T) {
 	// Subsequent ticks across 10 minutes must NOT self-trigger on cli-probe-1.log.
 	for i := 0; i < 30; i++ {
 		clk.Advance(20 * time.Second)
-		h.d.stepAgyQuota(context.Background(), m)
+		h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	}
 	if got := readProbeCount(t, countFile); got != 1 {
 		t.Fatalf("self-excitation occurred: probe count = %d, want 1", got)
@@ -152,8 +152,8 @@ func TestAgyQuotaSkipsStartupWhenSavedAndDebouncesActivity(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m := &agyQuotaMonitor{now: clk.Now}
-	h.d.stepAgyQuota(context.Background(), m)
+	m := &probeMonitor{now: clk.Now}
+	h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	if got := readProbeCount(t, countFile); got != 0 {
 		t.Fatalf("expected 0 probes when saved quota exists, got %d", got)
 	}
@@ -168,7 +168,7 @@ func TestAgyQuotaSkipsStartupWhenSavedAndDebouncesActivity(t *testing.T) {
 		if err := os.Chtimes(extLog, clk.now, clk.now); err != nil {
 			t.Fatal(err)
 		}
-		h.d.stepAgyQuota(context.Background(), m)
+		h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 		// Before 3m (step 11 is +165s after step 0), it must not probe.
 		if step < 11 && readProbeCount(t, countFile) != 0 {
 			t.Fatalf("probed too early during continuous activity at step %d", step)
@@ -176,7 +176,7 @@ func TestAgyQuotaSkipsStartupWhenSavedAndDebouncesActivity(t *testing.T) {
 	}
 	// Step 11 is 165s after firstActivity (step 0). Advance 15s more -> 180s (3m).
 	clk.Advance(15 * time.Second)
-	h.d.stepAgyQuota(context.Background(), m)
+	h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	if got := readProbeCount(t, countFile); got != 1 {
 		t.Fatalf("expected 1 probe at 3m max continuous interval, got %d", got)
 	}
@@ -184,7 +184,7 @@ func TestAgyQuotaSkipsStartupWhenSavedAndDebouncesActivity(t *testing.T) {
 	// Idle after probe -> must not re-trigger.
 	for i := 0; i < 6; i++ {
 		clk.Advance(10 * time.Second)
-		h.d.stepAgyQuota(context.Background(), m)
+		h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	}
 	if got := readProbeCount(t, countFile); got != 1 {
 		t.Fatalf("unexpected probe while idle: %d", got)
@@ -198,14 +198,14 @@ func TestAgyQuotaSkipsStartupWhenSavedAndDebouncesActivity(t *testing.T) {
 	if err := os.Chtimes(shortLog, clk.now, clk.now); err != nil {
 		t.Fatal(err)
 	}
-	h.d.stepAgyQuota(context.Background(), m)
+	h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	clk.Advance(19 * time.Second)
-	h.d.stepAgyQuota(context.Background(), m)
+	h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	if got := readProbeCount(t, countFile); got != 1 {
 		t.Fatalf("probed before 20s quiet debounce: %d", got)
 	}
 	clk.Advance(1 * time.Second)
-	h.d.stepAgyQuota(context.Background(), m)
+	h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	if got := readProbeCount(t, countFile); got != 2 {
 		t.Fatalf("expected probe after 20s quiet, got %d", got)
 	}
@@ -227,8 +227,8 @@ func TestAgyQuotaUninstalledDoesNotProbe(t *testing.T) {
 
 	h := newHarness(t, Config{})
 	h.d.agents[pb.Agent_AGENT_ANTIGRAVITY] = antigravity.New("", home)
-	m := newAgyQuotaMonitor()
-	h.d.stepAgyQuota(context.Background(), m)
+	m := newProbeMonitor()
+	h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	if m.baselineReady || m.startupChecked {
 		t.Fatal("uninstalled agy should not scan or start monitoring")
 	}
@@ -252,10 +252,10 @@ func TestAgyQuotaErrorsPreserveLastDataAndDistinguishReasons(t *testing.T) {
 	}
 
 	clk := &fakeClock{now: time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)}
-	m := &agyQuotaMonitor{now: clk.Now}
+	m := &probeMonitor{now: clk.Now}
 
 	// Startup probe succeeds (40% used on gemini-5h).
-	h.d.stepAgyQuota(context.Background(), m)
+	h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	okObs := agyQuota(h.d)[0].ObservedMs
 
 	trigger := func(mode string) {
@@ -267,9 +267,9 @@ func TestAgyQuotaErrorsPreserveLastDataAndDistinguishReasons(t *testing.T) {
 		if err := os.WriteFile(logPath, []byte("I1117 10:01:00.000 server_oauth.go:221] applyAuthResult: email=err@example.com\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		h.d.stepAgyQuota(context.Background(), m)
-		clk.Advance(agyLogQuietDebounce)
-		h.d.stepAgyQuota(context.Background(), m)
+		h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
+		clk.Advance(probeLogQuietDebounce)
+		h.d.quota.probeStep(context.Background(), pb.Agent_AGENT_ANTIGRAVITY, m)
 	}
 
 	trigger("not_logged_in")

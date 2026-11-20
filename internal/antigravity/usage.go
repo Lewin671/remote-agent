@@ -17,7 +17,12 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 )
+
+// usageProbeSource keys the probe's limits until a log names the account.
+const usageProbeSource = "agy-usage-probe"
 
 const (
 	usageProbeTimeout   = 60 * time.Second
@@ -253,6 +258,60 @@ func (a *Adapter) ProbeUsage(ctx context.Context) (*pb.AgentQuota, error) {
 		return nil, waitErr
 	}
 	return nil, errors.New("agy /usage returned empty output")
+}
+
+// ProbeSourceID implements agent.UsageProbeSource.
+func (a *Adapter) ProbeSourceID() string { return usageProbeSource }
+
+// QuotaWaitingDetail implements agent.QuotaWaitingNote.
+func (a *Adapter) QuotaWaitingDetail() string { return i18n.QuotaAgyWaiting("zh-CN") }
+
+// ClassifyProbeError implements agent.UsageProbeSource.
+func (a *Adapter) ClassifyProbeError(err error) (reasonClass, detail string) {
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return "timeout", i18n.QuotaAgyProbeTimeout("zh-CN")
+	case errors.Is(err, ErrUsageNotLoggedIn):
+		return "not_logged_in", i18n.QuotaAgyProbeNotLoggedIn("zh-CN")
+	case errors.Is(err, ErrUsageUnsupported):
+		return "unsupported", i18n.QuotaAgyProbeUnsupported("zh-CN")
+	case errors.Is(err, ErrUsageOutputLimit):
+		return "output_too_large", i18n.QuotaAgyProbeFailed("zh-CN")
+	default:
+		return "failed", i18n.QuotaAgyProbeFailed("zh-CN")
+	}
+}
+
+// ScanLogs implements agent.UsageProbeSource: it stamps agy's per-run logs by
+// name, time and size only and never reads them.
+func (a *Adapter) ScanLogs(prev agent.LogSnapshot) (snap agent.LogSnapshot, changed bool) {
+	snap = agent.LogSnapshot{}
+	logDir := a.LogDir()
+	if logDir == "" {
+		return snap, false
+	}
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		return snap, false
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasPrefix(name, "cli-") || !strings.HasSuffix(name, ".log") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		st := agent.LogStamp{ModTime: info.ModTime(), Size: info.Size()}
+		snap[name] = st
+		if prev != nil {
+			if old, ok := prev[name]; !ok || !old.ModTime.Equal(st.ModTime) || old.Size != st.Size {
+				changed = true
+			}
+		}
+	}
+	return snap, changed
 }
 
 // cliLogNames lists agy's per-run log files.

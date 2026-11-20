@@ -208,8 +208,11 @@ func (q *quotaService) record(sessionID string, e *pb.AgentQuota, now time.Time,
 				dropped = true
 			}
 		}
-		if e.Agent == pb.Agent_AGENT_ANTIGRAVITY {
-			delete(q.store, quotaKey(&pb.AgentQuota{Agent: e.Agent, SourceSessionId: agyUsageProbeSource}))
+		// A probe's record carries no account; the login now is newer.
+		if a, ok := q.byKind(e.Agent); ok {
+			if probe, ok := a.(agent.UsageProbeSource); ok {
+				delete(q.store, quotaKey(&pb.AgentQuota{Agent: e.Agent, SourceSessionId: probe.ProbeSourceID()}))
+			}
 		}
 	}
 	// The status line does not say whose limits it shows, and a session
@@ -416,8 +419,8 @@ func (q *quotaService) entries() []*pb.AgentQuota {
 				out = append(out, agentQuotas...)
 			} else {
 				e := &pb.AgentQuota{Agent: ag.Kind(), State: pb.QuotaState_QUOTA_STATE_WAITING}
-				if ag.Kind() == pb.Agent_AGENT_ANTIGRAVITY {
-					e.Detail = i18n.QuotaAgyWaiting("zh-CN")
+				if w, ok := ag.(agent.QuotaWaitingNote); ok {
+					e.Detail = w.QuotaWaitingDetail()
 				}
 				if detail := q.errors[ag.Kind()]; detail != "" {
 					e.State, e.Detail = pb.QuotaState_QUOTA_STATE_FAILED, detail

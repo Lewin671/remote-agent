@@ -294,7 +294,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	background.Go(func() { d.diskLoop(ctx) })
 	background.Go(func() { d.quota.accountLimitsLoop(ctx) })
-	background.Go(func() { d.agyQuotaLoop(ctx) })
+	background.Go(func() { d.quota.probeLoop(ctx) })
 	// Finish transfer intents before restoring queue refs, without treating
 	// persisted Exited as final: tmux may still be alive and reattach below.
 	d.uploads.reconcile()

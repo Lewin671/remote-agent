@@ -115,11 +115,35 @@ type AccountLimitsSource interface {
 	AccountLimits(since time.Time) (limits *pb.TokenUsage, at, seen time.Time)
 }
 
+// LogStamp is what is known of one CLI log file without reading it.
+type LogStamp struct {
+	ModTime time.Time
+	Size    int64
+}
+
+// LogSnapshot stamps a CLI's per-run logs by file name.
+type LogSnapshot map[string]LogStamp
+
 // UsageProbeSource is optionally implemented by adapters whose CLI quota can be
 // actively probed via a non-model command after passive log-directory activity.
 type UsageProbeSource interface {
-	LogDir() string
+	// ScanLogs stamps the CLI's per-run logs by name, time and size only; it
+	// never reads them. changed reports a difference from prev, and is false
+	// when prev is nil.
+	ScanLogs(prev LogSnapshot) (snap LogSnapshot, changed bool)
 	ProbeUsage(ctx context.Context) (*pb.AgentQuota, error)
+	// ProbeSourceID names the record a probe's limits are kept under while
+	// they carry no account.
+	ProbeSourceID() string
+	// ClassifyProbeError names a probe failure's reason for the log and
+	// words it for the client, never including private data.
+	ClassifyProbeError(err error) (reasonClass, detail string)
+}
+
+// QuotaWaitingNote is optionally implemented by adapters that tell the client
+// what a quota still waiting for its first report is waiting for.
+type QuotaWaitingNote interface {
+	QuotaWaitingDetail() string
 }
 
 // QuotaWindowOrder orders a provider's merged windows for all clients.
