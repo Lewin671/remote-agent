@@ -29,15 +29,36 @@ func TestCoreWasmDependencies(t *testing.T) {
 	}
 }
 
-// Core layers depend only downward: app → screens → sync → domain → wire
-// (architecture.md, 分层). Deps covers non-test imports only, so tests may
-// still reach across layers.
+// The direct-path engine is sans-IO (architecture.md, 分层): it imports only
+// shared code, domain rules and standard packages that neither read clocks,
+// draw randomness, start goroutines, log nor bloat the wasm build.
+func TestTransportImports(t *testing.T) {
+	const module = "github.com/Lewin671/remote-agent/"
+	std := map[string]bool{"math": true, "slices": true, "strconv": true, "strings": true, "errors": true, "bytes": true, "sort": true, "unicode/utf8": true}
+	cmd := exec.Command("go", "list", "-f", "{{join .Imports \" \"}}", "./transport/...")
+	cmd.Dir = ".."
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list: %v", err)
+	}
+	for _, dep := range strings.Fields(string(out)) {
+		if !std[dep] && !strings.HasPrefix(dep, module+"shared/") && !strings.HasPrefix(dep, module+"clientcore/domain/") {
+			t.Errorf("clientcore/transport imports %s", dep)
+		}
+	}
+}
+
+// Core layers depend only downward: app → screens → sync / transport →
+// domain → wire (architecture.md, 分层). transport sits beside sync: sync and
+// app may use it, it uses neither. Deps covers non-test imports only, so tests
+// may still reach across layers.
 func TestCoreLayerDependencies(t *testing.T) {
 	const core = "github.com/Lewin671/remote-agent/clientcore/"
 	forbidden := map[string][]string{
-		"sync":    {"screens", "app"},
-		"domain":  {"sync", "screens", "app"},
-		"screens": {"app"},
+		"sync":      {"screens", "app"},
+		"transport": {"sync", "screens", "app"},
+		"domain":    {"sync", "transport", "screens", "app"},
+		"screens":   {"app"},
 	}
 	cmd := exec.Command("go", "list", "-f", "{{.ImportPath}} {{join .Deps \" \"}}", "./...")
 	cmd.Dir = ".."
