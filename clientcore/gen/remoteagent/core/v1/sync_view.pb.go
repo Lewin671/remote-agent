@@ -26,25 +26,10 @@ func (m *SyncPendingQuestionOption) GetDescription() string {
 	return ""
 }
 
-func (m *SyncPendingQuestionOption) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Label)
-	n += litewire.SizeString(2, m.Description)
-	return n
-}
+func (m *SyncPendingQuestionOption) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SyncPendingQuestionOption) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SyncPendingQuestionOption) AppendMarshal(b []byte) []byte {
@@ -137,38 +122,10 @@ func (m *SyncPendingQuestion) GetAskedAtMs() int64 {
 	return 0
 }
 
-func (m *SyncPendingQuestion) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.QuestionId)
-	n += litewire.SizeString(2, m.QuestionKey)
-	n += litewire.SizeString(3, m.Header)
-	n += litewire.SizeString(4, m.Text)
-	n += litewire.SizeBool(5, m.MultiSelect)
-	n += litewire.SizeInt32(6, int32(m.QuestionCount))
-	for _, v := range m.Options {
-		if v != nil {
-			n += litewire.SizeMessage(7, v.Size())
-		}
-	}
-	n += litewire.SizeBool(8, m.CanFreeText)
-	n += litewire.SizeBool(9, m.Async)
-	n += litewire.SizeVarintField(10, uint64(m.ObservedEventSeq))
-	n += litewire.SizeVarintField(11, uint64(m.AskedAtMs))
-	return n
-}
+func (m *SyncPendingQuestion) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SyncPendingQuestion) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SyncPendingQuestion) AppendMarshal(b []byte) []byte {
@@ -281,37 +238,10 @@ func (m *SyncPendingAction) GetQuestion() *SyncPendingQuestion {
 	return nil
 }
 
-func (m *SyncPendingAction) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.HasApproval)
-	n += litewire.SizeString(2, m.ApprovalId)
-	n += litewire.SizeString(3, m.ApprovalToolName)
-	n += litewire.SizeString(4, m.ApprovalCommand)
-	n += litewire.SizeString(5, m.ApprovalToolInput)
-	n += litewire.SizeBool(6, m.ApprovalTruncated)
-	n += litewire.SizeVarintField(7, uint64(m.ApprovalDeadlineMs))
-	n += litewire.SizeBool(8, m.HasQuestion)
-	n += litewire.SizeBool(9, m.HasPlan)
-	n += litewire.SizeBool(10, m.HasPopup)
-	n += litewire.SizeString(11, m.PopupPreview)
-	if m.Question != nil {
-		n += litewire.SizeMessage(12, m.Question.Size())
-	}
-	return n
-}
+func (m *SyncPendingAction) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SyncPendingAction) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SyncPendingAction) AppendMarshal(b []byte) []byte {
@@ -430,38 +360,10 @@ func (m *SyncMachineView) GetReachabilityUnknown() bool {
 	return false
 }
 
-func (m *SyncMachineView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeBool(2, m.Online)
-	n += litewire.SizeVarintField(3, uint64(m.LastSeenMs))
-	if m.Meta != nil {
-		n += litewire.SizeMessage(4, m.Meta.Size())
-	}
-	n += litewire.SizeVarintField(5, uint64(m.MetaRev))
-	n += litewire.SizeBool(6, m.MetaBroken)
-	n += litewire.SizeBool(7, m.Reachable)
-	n += litewire.SizeBool(8, m.Unlinked)
-	n += litewire.SizeBool(9, m.DirectReady)
-	n += litewire.SizeVarintField(10, uint64(m.ProtocolVersion))
-	n += litewire.SizeBool(11, m.DaemonOutOfDate)
-	n += litewire.SizeBool(12, m.ClientOutOfDate)
-	n += litewire.SizeBool(13, m.ReachabilityUnknown)
-	return n
-}
+func (m *SyncMachineView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SyncMachineView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SyncMachineView) AppendMarshal(b []byte) []byte {
@@ -602,45 +504,10 @@ func (m *SyncSessionView) GetPending() *SyncPendingAction {
 	return nil
 }
 
-func (m *SyncSessionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.MachineId)
-	if m.Info != nil {
-		n += litewire.SizeMessage(3, m.Info.Size())
-	}
-	n += litewire.SizeVarintField(4, uint64(m.MetaRev))
-	n += litewire.SizeVarintField(5, uint64(m.LastSeq))
-	n += litewire.SizeVarintField(6, uint64(m.CreatedMs))
-	n += litewire.SizeVarintField(7, uint64(m.UpdatedMs))
-	n += litewire.SizeVarintField(8, uint64(m.ListedEndedMs))
-	n += litewire.SizeBool(9, m.Listed)
-	if m.Checkpoint != nil {
-		n += litewire.SizeMessage(10, m.Checkpoint.Size())
-	}
-	n += litewire.SizeBool(11, m.CheckpointInvalid)
-	n += litewire.SizeBool(12, m.RetiredHistory)
-	n += litewire.SizeBool(13, m.OpenFailed)
-	n += litewire.SizeString(14, m.ScheduleName)
-	n += litewire.SizeBool(15, m.ScheduleUnread)
-	if m.Pending != nil {
-		n += litewire.SizeMessage(16, m.Pending.Size())
-	}
-	return n
-}
+func (m *SyncSessionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SyncSessionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SyncSessionView) AppendMarshal(b []byte) []byte {
@@ -732,33 +599,10 @@ func (m *SyncDeviceView) GetTrusted() bool {
 	return false
 }
 
-func (m *SyncDeviceView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.DeviceId)
-	n += litewire.SizeInt32(2, int32(m.Kind))
-	n += litewire.SizeVarintField(3, uint64(m.CreatedMs))
-	n += litewire.SizeVarintField(4, uint64(m.LastSeenMs))
-	if m.Meta != nil {
-		n += litewire.SizeMessage(5, m.Meta.Size())
-	}
-	n += litewire.SizeVarintField(6, uint64(m.MetaRev))
-	n += litewire.SizeBool(7, m.MetaBroken)
-	n += litewire.SizeBool(8, m.Trusted)
-	return n
-}
+func (m *SyncDeviceView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SyncDeviceView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SyncDeviceView) AppendMarshal(b []byte) []byte {
@@ -1055,86 +899,10 @@ func (m *SyncStateView) GetReachabilityUnknown() bool {
 	return false
 }
 
-func (m *SyncStateView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Connection))
-	if m.ConnectionReason != nil {
-		n += litewire.SizeMessage(2, m.ConnectionReason.Size())
-	}
-	if m.ConnectionStep != nil {
-		n += litewire.SizeMessage(3, m.ConnectionStep.Size())
-	}
-	n += litewire.SizeVarintField(4, uint64(m.DisconnectedAtMs))
-	n += litewire.SizeBool(5, m.LivePushConnected)
-	n += litewire.SizeBool(6, m.Unlinked)
-	n += litewire.SizeBool(7, m.IsManager)
-	n += litewire.SizeString(8, m.SelfDeviceId)
-	n += litewire.SizeString(9, m.AuthorityDeviceId)
-	if m.ManagerName != nil {
-		n += litewire.SizeMessage(10, m.ManagerName.Size())
-	}
-	n += litewire.SizeBool(11, m.AccountControlLost)
-	n += litewire.SizeBool(12, m.AccountClockSkewed)
-	n += litewire.SizeBool(13, m.Removed)
-	n += litewire.SizeBool(14, m.SecurityLoaded)
-	n += litewire.SizeBool(15, m.IsMember)
-	n += litewire.SizeVarintField(16, uint64(m.LeaseEndMs))
-	n += litewire.SizeBool(17, m.RecoveryPending)
-	n += litewire.SizeVarintField(18, uint64(m.RecoveryReadyMs))
-	n += litewire.SizeBool(19, m.RecoveryObjectsPending)
-	n += litewire.SizeVarintField(20, uint64(m.ClientProtocolVersion))
-	for _, v := range m.Machines {
-		if v != nil {
-			n += litewire.SizeMessage(21, v.Size())
-		}
-	}
-	n += litewire.SizeBool(22, m.MachinesListed)
-	for _, v := range m.Sessions {
-		if v != nil {
-			n += litewire.SizeMessage(23, v.Size())
-		}
-	}
-	n += litewire.SizeBool(24, m.SessionsListed)
-	n += litewire.SizeBool(25, m.LiveLoaded)
-	n += litewire.SizeBool(26, m.HasMoreSessions)
-	if m.NextCursor != nil {
-		n += litewire.SizeMessage(27, m.NextCursor.Size())
-	}
-	n += litewire.SizeBool(28, m.LoadingMoreSessions)
-	n += litewire.SizeBool(29, m.SessionListFailed)
-	if m.SessionListError != nil {
-		n += litewire.SizeMessage(30, m.SessionListError.Size())
-	}
-	n += litewire.SizeBool(31, m.PrefsLoaded)
-	n += litewire.SizeBool(32, m.PrefsLoadFailed)
-	n += litewire.SizeBool(33, m.PrefsBroken)
-	n += litewire.SizeVarintField(34, uint64(m.PrefsRevision))
-	n += litewire.SizeBool(35, m.PrefsSyncing)
-	if m.Prefs != nil {
-		n += litewire.SizeMessage(36, m.Prefs.Size())
-	}
-	for _, v := range m.Devices {
-		if v != nil {
-			n += litewire.SizeMessage(37, v.Size())
-		}
-	}
-	n += litewire.SizeBool(38, m.DisplayGrace)
-	n += litewire.SizeBool(39, m.ReachabilityUnknown)
-	return n
-}
+func (m *SyncStateView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SyncStateView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SyncStateView) AppendMarshal(b []byte) []byte {
@@ -1372,68 +1140,10 @@ func (m *SessionDataView) GetEvents() []*v1.Event {
 	return nil
 }
 
-func (m *SessionDataView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeBool(2, m.Found)
-	if m.Session != nil {
-		n += litewire.SizeMessage(3, m.Session.Size())
-	}
-	n += litewire.SizeBool(4, m.Loading)
-	n += litewire.SizeBool(5, m.Loaded)
-	n += litewire.SizeBool(6, m.AwaitingCache)
-	n += litewire.SizeBool(7, m.Backfilling)
-	n += litewire.SizeBool(8, m.Fetching)
-	n += litewire.SizeBool(9, m.HasGap)
-	n += litewire.SizeBool(10, m.TailRequested)
-	n += litewire.SizeBool(11, m.Retired)
-	n += litewire.SizeBool(12, m.RetryingCorruptCache)
-	if m.Error != nil {
-		n += litewire.SizeMessage(13, m.Error.Size())
-	}
-	if m.FetchError != nil {
-		n += litewire.SizeMessage(14, m.FetchError.Size())
-	}
-	n += litewire.SizeVarintField(15, uint64(m.PrefixLen))
-	n += litewire.SizeInt32(16, int32(m.PendingCount))
-	n += litewire.SizeVarintField(17, uint64(m.LastSeq))
-	if len(m.UnavailableSeqs) > 0 {
-		psz := 0
-		for _, v := range m.UnavailableSeqs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		n += litewire.SizeMessage(18, psz)
-	}
-	n += litewire.SizeVarintField(19, uint64(m.UnavailableCount))
-	if m.Projection != nil {
-		n += litewire.SizeMessage(20, m.Projection.Size())
-	}
-	if m.LiveSnapshot != nil {
-		n += litewire.SizeMessage(21, m.LiveSnapshot.Size())
-	}
-	if m.Pending != nil {
-		n += litewire.SizeMessage(22, m.Pending.Size())
-	}
-	for _, v := range m.Events {
-		if v != nil {
-			n += litewire.SizeMessage(23, v.Size())
-		}
-	}
-	return n
-}
+func (m *SessionDataView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SessionDataView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionDataView) AppendMarshal(b []byte) []byte {
@@ -1464,14 +1174,12 @@ func (m *SessionDataView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendInt32(b, 16, int32(m.PendingCount))
 	b = litewire.AppendVarint(b, 17, uint64(m.LastSeq))
 	if len(m.UnavailableSeqs) > 0 {
-		psz := 0
-		for _, v := range m.UnavailableSeqs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		b = litewire.AppendMessagePrefix(b, 18, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 18)
 		for _, v := range m.UnavailableSeqs {
 			b = litewire.AppendRawVarint(b, uint64(v))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	b = litewire.AppendVarint(b, 19, uint64(m.UnavailableCount))
 	if m.Projection != nil {

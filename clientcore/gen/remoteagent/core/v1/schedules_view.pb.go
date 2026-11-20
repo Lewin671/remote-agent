@@ -392,29 +392,10 @@ func (m *ScheduleTakeoverView) GetLabel() *Text {
 	return nil
 }
 
-func (m *ScheduleTakeoverView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.HasTakeover)
-	n += litewire.SizeString(2, m.SessionId)
-	n += litewire.SizeInt32(3, int32(m.Via))
-	if m.Label != nil {
-		n += litewire.SizeMessage(4, m.Label.Size())
-	}
-	return n
-}
+func (m *ScheduleTakeoverView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleTakeoverView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTakeoverView) AppendMarshal(b []byte) []byte {
@@ -553,54 +534,10 @@ func (m *ScheduleTaskActionsView) GetNotifyDisabledReason() *Text {
 	return nil
 }
 
-func (m *ScheduleTaskActionsView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.CanRunNow)
-	if m.RunNowDisabledReason != nil {
-		n += litewire.SizeMessage(2, m.RunNowDisabledReason.Size())
-	}
-	n += litewire.SizeBool(3, m.ShowToggleAction)
-	n += litewire.SizeBool(4, m.IsResumeAction)
-	if m.ToggleLabel != nil {
-		n += litewire.SizeMessage(5, m.ToggleLabel.Size())
-	}
-	n += litewire.SizeBool(6, m.CanToggle)
-	if m.ToggleDisabledReason != nil {
-		n += litewire.SizeMessage(7, m.ToggleDisabledReason.Size())
-	}
-	n += litewire.SizeBool(8, m.CanDelete)
-	if m.DeleteDisabledReason != nil {
-		n += litewire.SizeMessage(9, m.DeleteDisabledReason.Size())
-	}
-	n += litewire.SizeBool(10, m.CanMarkRead)
-	n += litewire.SizeBool(11, m.CanMarkUnread)
-	n += litewire.SizeBool(12, m.CanRename)
-	if m.RenameDisabledReason != nil {
-		n += litewire.SizeMessage(13, m.RenameDisabledReason.Size())
-	}
-	n += litewire.SizeBool(14, m.CanEditDefinition)
-	if m.EditDefinitionDisabledReason != nil {
-		n += litewire.SizeMessage(15, m.EditDefinitionDisabledReason.Size())
-	}
-	n += litewire.SizeBool(16, m.CanToggleNotify)
-	if m.NotifyDisabledReason != nil {
-		n += litewire.SizeMessage(17, m.NotifyDisabledReason.Size())
-	}
-	return n
-}
+func (m *ScheduleTaskActionsView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleTaskActionsView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTaskActionsView) AppendMarshal(b []byte) []byte {
@@ -701,37 +638,10 @@ func (m *ScheduleMutationView) GetFrozenHint() *Text {
 	return nil
 }
 
-func (m *ScheduleMutationView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.Busy)
-	n += litewire.SizeBool(2, m.Frozen)
-	n += litewire.SizeBool(3, m.Expired)
-	if m.Error != nil {
-		n += litewire.SizeMessage(4, m.Error.Size())
-	}
-	if m.Notice != nil {
-		n += litewire.SizeMessage(5, m.Notice.Size())
-	}
-	n += litewire.SizeBool(6, m.CanRetry)
-	n += litewire.SizeBool(7, m.CanAbandon)
-	if m.FrozenHint != nil {
-		n += litewire.SizeMessage(8, m.FrozenHint.Size())
-	}
-	return n
-}
+func (m *ScheduleMutationView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleMutationView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleMutationView) AppendMarshal(b []byte) []byte {
@@ -787,31 +697,10 @@ func (m *ScheduleHeadlineView) GetSub() *Text {
 	return nil
 }
 
-func (m *ScheduleHeadlineView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Kind))
-	n += litewire.SizeInt32(2, int32(m.HighlightCount))
-	if m.Title != nil {
-		n += litewire.SizeMessage(3, m.Title.Size())
-	}
-	if m.Sub != nil {
-		n += litewire.SizeMessage(4, m.Sub.Size())
-	}
-	return n
-}
+func (m *ScheduleHeadlineView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleHeadlineView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleHeadlineView) AppendMarshal(b []byte) []byte {
@@ -861,29 +750,10 @@ func (m *ScheduleMachineErrorView) GetCanRetry() bool {
 	return false
 }
 
-func (m *ScheduleMachineErrorView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeString(2, m.MachineName)
-	if m.Error != nil {
-		n += litewire.SizeMessage(3, m.Error.Size())
-	}
-	n += litewire.SizeBool(4, m.CanRetry)
-	return n
-}
+func (m *ScheduleMachineErrorView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleMachineErrorView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleMachineErrorView) AppendMarshal(b []byte) []byte {
@@ -1092,72 +962,10 @@ func (m *ScheduleTaskItemView) GetMenuSubtitle() *Text {
 	return nil
 }
 
-func (m *ScheduleTaskItemView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeString(2, m.TaskId)
-	n += litewire.SizeString(3, m.Title)
-	n += litewire.SizeInt32(4, int32(m.Group))
-	n += litewire.SizeInt32(5, int32(m.Status))
-	n += litewire.SizeInt32(6, int32(m.Tone))
-	n += litewire.SizeBool(7, m.HasUnread)
-	n += litewire.SizeBool(8, m.InProgress)
-	n += litewire.SizeBool(9, m.Paused)
-	n += litewire.SizeBool(10, m.MachineOffline)
-	n += litewire.SizeBool(11, m.Selected)
-	if m.TimeText != nil {
-		n += litewire.SizeMessage(12, m.TimeText.Size())
-	}
-	if m.AttentionLead != nil {
-		n += litewire.SizeMessage(13, m.AttentionLead.Size())
-	}
-	if m.AttentionReason != nil {
-		n += litewire.SizeMessage(14, m.AttentionReason.Size())
-	}
-	if m.Preview != nil {
-		n += litewire.SizeMessage(15, m.Preview.Size())
-	}
-	n += litewire.SizeBool(16, m.PreviewIsPlaceholder)
-	if m.Metadata != nil {
-		n += litewire.SizeMessage(17, m.Metadata.Size())
-	}
-	if m.TimingText != nil {
-		n += litewire.SizeMessage(18, m.TimingText.Size())
-	}
-	if m.NextRunText != nil {
-		n += litewire.SizeMessage(19, m.NextRunText.Size())
-	}
-	n += litewire.SizeVarintField(20, uint64(m.NextRunMs))
-	n += litewire.SizeBool(21, m.HasNotification)
-	n += litewire.SizeBool(22, m.IsAgentCreated)
-	if m.Takeover != nil {
-		n += litewire.SizeMessage(23, m.Takeover.Size())
-	}
-	n += litewire.SizeBool(24, m.ReadOnly)
-	if m.ReadOnlyReason != nil {
-		n += litewire.SizeMessage(25, m.ReadOnlyReason.Size())
-	}
-	if m.Actions != nil {
-		n += litewire.SizeMessage(26, m.Actions.Size())
-	}
-	if m.MenuSubtitle != nil {
-		n += litewire.SizeMessage(27, m.MenuSubtitle.Size())
-	}
-	return n
-}
+func (m *ScheduleTaskItemView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleTaskItemView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTaskItemView) AppendMarshal(b []byte) []byte {
@@ -1395,82 +1203,10 @@ func (m *SchedulesViewModel) GetSelectedTaskId() string {
 	return ""
 }
 
-func (m *SchedulesViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.AttentionCount))
-	n += litewire.SizeBool(2, m.HasNewResults)
-	n += litewire.SizeString(3, m.AttentionBadgeText)
-	n += litewire.SizeBool(4, m.CanCreate)
-	if m.Connection != nil {
-		n += litewire.SizeMessage(5, m.Connection.Size())
-	}
-	if m.Headline != nil {
-		n += litewire.SizeMessage(6, m.Headline.Size())
-	}
-	n += litewire.SizeBool(7, m.AnyMachineSupported)
-	if m.UnsupportedNotice != nil {
-		n += litewire.SizeMessage(8, m.UnsupportedNotice.Size())
-	}
-	if m.OfflineNotice != nil {
-		n += litewire.SizeMessage(9, m.OfflineNotice.Size())
-	}
-	for _, v := range m.MachineErrors {
-		if v != nil {
-			n += litewire.SizeMessage(10, v.Size())
-		}
-	}
-	n += litewire.SizeBool(11, m.Loading)
-	n += litewire.SizeBool(12, m.ShowEmptyHint)
-	if m.EmptyHint != nil {
-		n += litewire.SizeMessage(13, m.EmptyHint.Size())
-	}
-	for _, v := range m.Attention {
-		if v != nil {
-			n += litewire.SizeMessage(14, v.Size())
-		}
-	}
-	for _, v := range m.Fresh {
-		if v != nil {
-			n += litewire.SizeMessage(15, v.Size())
-		}
-	}
-	for _, v := range m.Others {
-		if v != nil {
-			n += litewire.SizeMessage(16, v.Size())
-		}
-	}
-	for _, v := range m.Ended {
-		if v != nil {
-			n += litewire.SizeMessage(17, v.Size())
-		}
-	}
-	n += litewire.SizeInt32(18, int32(m.TotalEnded))
-	n += litewire.SizeBool(19, m.HasMoreEnded)
-	n += litewire.SizeBool(20, m.EndedExpanded)
-	if m.EndedLabel != nil {
-		n += litewire.SizeMessage(21, m.EndedLabel.Size())
-	}
-	if m.OthersSectionTitle != nil {
-		n += litewire.SizeMessage(22, m.OthersSectionTitle.Size())
-	}
-	n += litewire.SizeBool(23, m.CanMarkAllRead)
-	n += litewire.SizeString(24, m.SelectedMachineId)
-	n += litewire.SizeString(25, m.SelectedTaskId)
-	return n
-}
+func (m *SchedulesViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SchedulesViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SchedulesViewModel) AppendMarshal(b []byte) []byte {
@@ -1592,36 +1328,10 @@ func (m *ScheduleAttentionView) GetPrimaryActionDisabledReason() *Text {
 	return nil
 }
 
-func (m *ScheduleAttentionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.Show)
-	if m.Message != nil {
-		n += litewire.SizeMessage(2, m.Message.Size())
-	}
-	n += litewire.SizeBool(3, m.ShowPrimaryAction)
-	if m.PrimaryActionLabel != nil {
-		n += litewire.SizeMessage(4, m.PrimaryActionLabel.Size())
-	}
-	n += litewire.SizeInt32(5, int32(m.PrimaryActionKind))
-	n += litewire.SizeBool(6, m.PrimaryActionEnabled)
-	if m.PrimaryActionDisabledReason != nil {
-		n += litewire.SizeMessage(7, m.PrimaryActionDisabledReason.Size())
-	}
-	return n
-}
+func (m *ScheduleAttentionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleAttentionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleAttentionView) AppendMarshal(b []byte) []byte {
@@ -1697,32 +1407,10 @@ func (m *ScheduleActiveRunView) GetCanOpenSession() bool {
 	return false
 }
 
-func (m *ScheduleActiveRunView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.HasActive)
-	n += litewire.SizeString(2, m.RunId)
-	n += litewire.SizeString(3, m.SessionId)
-	n += litewire.SizeVarintField(4, uint64(m.FirstSeq))
-	n += litewire.SizeInt32(5, int32(m.Status))
-	if m.StatusText != nil {
-		n += litewire.SizeMessage(6, m.StatusText.Size())
-	}
-	n += litewire.SizeBool(7, m.CanOpenSession)
-	return n
-}
+func (m *ScheduleActiveRunView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleActiveRunView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleActiveRunView) AppendMarshal(b []byte) []byte {
@@ -1829,39 +1517,10 @@ func (m *ScheduleResultCardView) GetShowConversationAction() bool {
 	return false
 }
 
-func (m *ScheduleResultCardView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.HasResult)
-	n += litewire.SizeString(2, m.RunId)
-	n += litewire.SizeString(3, m.SessionId)
-	n += litewire.SizeVarintField(4, uint64(m.FirstSeq))
-	n += litewire.SizeBool(5, m.UnreadOnEntry)
-	n += litewire.SizeBool(6, m.HasNewerResult)
-	if m.TimeText != nil {
-		n += litewire.SizeMessage(7, m.TimeText.Size())
-	}
-	n += litewire.SizeString(8, m.ResultTitle)
-	n += litewire.SizeString(9, m.MarkdownBody)
-	if m.FallbackReasonText != nil {
-		n += litewire.SizeMessage(10, m.FallbackReasonText.Size())
-	}
-	n += litewire.SizeBool(11, m.ResultLoading)
-	n += litewire.SizeBool(12, m.ShowConversationAction)
-	return n
-}
+func (m *ScheduleResultCardView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleResultCardView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleResultCardView) AppendMarshal(b []byte) []byte {
@@ -1968,40 +1627,10 @@ func (m *ScheduleRunRowView) GetCanOpenSession() bool {
 	return false
 }
 
-func (m *ScheduleRunRowView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.RunId)
-	n += litewire.SizeString(2, m.SessionId)
-	n += litewire.SizeVarintField(3, uint64(m.FirstSeq))
-	n += litewire.SizeInt32(4, int32(m.Status))
-	n += litewire.SizeBool(5, m.UnreadOnEntry)
-	n += litewire.SizeBool(6, m.Manual)
-	n += litewire.SizeBool(7, m.Notified)
-	if m.NotificationSourceText != nil {
-		n += litewire.SizeMessage(8, m.NotificationSourceText.Size())
-	}
-	if m.TimeText != nil {
-		n += litewire.SizeMessage(9, m.TimeText.Size())
-	}
-	if m.SummaryText != nil {
-		n += litewire.SizeMessage(10, m.SummaryText.Size())
-	}
-	n += litewire.SizeBool(11, m.CanOpenSession)
-	return n
-}
+func (m *ScheduleRunRowView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleRunRowView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleRunRowView) AppendMarshal(b []byte) []byte {
@@ -2074,37 +1703,10 @@ func (m *ScheduleHistoryGroupView) GetRuns() []*ScheduleRunRowView {
 	return nil
 }
 
-func (m *ScheduleHistoryGroupView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.GroupKey)
-	n += litewire.SizeBool(2, m.FoldedQuiet)
-	n += litewire.SizeBool(3, m.Expanded)
-	if m.FoldedTitle != nil {
-		n += litewire.SizeMessage(4, m.FoldedTitle.Size())
-	}
-	if m.FoldedSummary != nil {
-		n += litewire.SizeMessage(5, m.FoldedSummary.Size())
-	}
-	for _, v := range m.Runs {
-		if v != nil {
-			n += litewire.SizeMessage(6, v.Size())
-		}
-	}
-	return n
-}
+func (m *ScheduleHistoryGroupView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleHistoryGroupView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleHistoryGroupView) AppendMarshal(b []byte) []byte {
@@ -2475,120 +2077,10 @@ func (m *ScheduleDetailViewModel) GetMenuSubtitle() *Text {
 	return nil
 }
 
-func (m *ScheduleDetailViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.Found)
-	n += litewire.SizeBool(2, m.Loading)
-	if m.NotFoundText != nil {
-		n += litewire.SizeMessage(3, m.NotFoundText.Size())
-	}
-	n += litewire.SizeString(4, m.MachineId)
-	n += litewire.SizeString(5, m.TaskId)
-	n += litewire.SizeVarintField(6, uint64(m.Revision))
-	n += litewire.SizeString(7, m.Title)
-	if m.Subtitle != nil {
-		n += litewire.SizeMessage(8, m.Subtitle.Size())
-	}
-	if m.Connection != nil {
-		n += litewire.SizeMessage(9, m.Connection.Size())
-	}
-	n += litewire.SizeBool(10, m.MachineOnline)
-	n += litewire.SizeBool(11, m.MachineSupported)
-	n += litewire.SizeBool(12, m.ReadOnly)
-	if m.ReadOnlyNotice != nil {
-		n += litewire.SizeMessage(13, m.ReadOnlyNotice.Size())
-	}
-	if m.MachineError != nil {
-		n += litewire.SizeMessage(14, m.MachineError.Size())
-	}
-	n += litewire.SizeBool(15, m.CanRetryMachineList)
-	if m.Mutation != nil {
-		n += litewire.SizeMessage(16, m.Mutation.Size())
-	}
-	if m.Attention != nil {
-		n += litewire.SizeMessage(17, m.Attention.Size())
-	}
-	if m.ActiveRun != nil {
-		n += litewire.SizeMessage(18, m.ActiveRun.Size())
-	}
-	if m.ResultCard != nil {
-		n += litewire.SizeMessage(19, m.ResultCard.Size())
-	}
-	for _, v := range m.EarlierGroups {
-		if v != nil {
-			n += litewire.SizeMessage(20, v.Size())
-		}
-	}
-	n += litewire.SizeInt32(21, int32(m.TotalEarlierRuns))
-	n += litewire.SizeBool(22, m.HasMoreEarlierRuns)
-	n += litewire.SizeBool(23, m.ShowAllRuns)
-	if m.EarlierCountText != nil {
-		n += litewire.SizeMessage(24, m.EarlierCountText.Size())
-	}
-	if m.ViewAllText != nil {
-		n += litewire.SizeMessage(25, m.ViewAllText.Size())
-	}
-	n += litewire.SizeBool(26, m.EmptyHistory)
-	if m.EmptyHistoryText != nil {
-		n += litewire.SizeMessage(27, m.EmptyHistoryText.Size())
-	}
-	n += litewire.SizeString(28, m.Message)
-	if m.TimingText != nil {
-		n += litewire.SizeMessage(29, m.TimingText.Size())
-	}
-	n += litewire.SizeBool(30, m.NotifyOnFinish)
-	n += litewire.SizeBool(31, m.HasLimits)
-	if m.LimitsText != nil {
-		n += litewire.SizeMessage(32, m.LimitsText.Size())
-	}
-	n += litewire.SizeInt32(33, int32(m.TargetType))
-	n += litewire.SizeString(34, m.TargetSessionId)
-	if m.TargetLabel != nil {
-		n += litewire.SizeMessage(35, m.TargetLabel.Size())
-	}
-	if m.TargetValue != nil {
-		n += litewire.SizeMessage(36, m.TargetValue.Size())
-	}
-	n += litewire.SizeBool(37, m.CanOpenTargetSession)
-	if m.PermissionsText != nil {
-		n += litewire.SizeMessage(38, m.PermissionsText.Size())
-	}
-	n += litewire.SizeBool(39, m.PermissionsIsDanger)
-	n += litewire.SizeBool(40, m.CanEditPermissions)
-	n += litewire.SizeString(41, m.TaskName)
-	if m.CreationFooter != nil {
-		n += litewire.SizeMessage(42, m.CreationFooter.Size())
-	}
-	if m.RunOnceFooter != nil {
-		n += litewire.SizeMessage(43, m.RunOnceFooter.Size())
-	}
-	n += litewire.SizeInt32(44, int32(m.Source))
-	if m.Takeover != nil {
-		n += litewire.SizeMessage(45, m.Takeover.Size())
-	}
-	n += litewire.SizeString(46, m.ScopedSessionId)
-	n += litewire.SizeString(47, m.ScopedMode)
-	if m.Actions != nil {
-		n += litewire.SizeMessage(48, m.Actions.Size())
-	}
-	if m.MenuSubtitle != nil {
-		n += litewire.SizeMessage(49, m.MenuSubtitle.Size())
-	}
-	return n
-}
+func (m *ScheduleDetailViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleDetailViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleDetailViewModel) AppendMarshal(b []byte) []byte {
@@ -2832,54 +2324,10 @@ func (m *ScheduleTimingDraftView) GetTimingApplied() bool {
 	return false
 }
 
-func (m *ScheduleTimingDraftView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Kind))
-	n += litewire.SizeBool(2, m.AfterTurnUnselected)
-	if m.AfterTurnHint != nil {
-		n += litewire.SizeMessage(3, m.AfterTurnHint.Size())
-	}
-	n += litewire.SizeString(4, m.Date)
-	n += litewire.SizeString(5, m.Time)
-	n += litewire.SizeString(6, m.Zone)
-	n += litewire.SizeBool(7, m.Workdays)
-	if len(m.Weekdays) > 0 {
-		psz := 0
-		for _, v := range m.Weekdays {
-			psz += litewire.SizeVarint(uint64(int64(v)))
-		}
-		n += litewire.SizeMessage(8, psz)
-	}
-	n += litewire.SizeString(9, m.Interval)
-	n += litewire.SizeInt32(10, int32(m.Unit))
-	n += litewire.SizeInt32(11, int32(m.End))
-	n += litewire.SizeString(12, m.Count)
-	n += litewire.SizeString(13, m.UntilDate)
-	n += litewire.SizeVarintField(14, uint64(m.UntilMs))
-	n += litewire.SizeBool(15, m.ShowIntervalHint)
-	if m.IntervalHint != nil {
-		n += litewire.SizeMessage(16, m.IntervalHint.Size())
-	}
-	if m.TimingError != nil {
-		n += litewire.SizeMessage(17, m.TimingError.Size())
-	}
-	n += litewire.SizeBool(18, m.TimingDoneEnabled)
-	n += litewire.SizeBool(19, m.TimingApplied)
-	return n
-}
+func (m *ScheduleTimingDraftView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleTimingDraftView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTimingDraftView) AppendMarshal(b []byte) []byte {
@@ -2896,14 +2344,12 @@ func (m *ScheduleTimingDraftView) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 6, m.Zone)
 	b = litewire.AppendBool(b, 7, m.Workdays)
 	if len(m.Weekdays) > 0 {
-		psz := 0
-		for _, v := range m.Weekdays {
-			psz += litewire.SizeVarint(uint64(int64(v)))
-		}
-		b = litewire.AppendMessagePrefix(b, 8, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 8)
 		for _, v := range m.Weekdays {
 			b = litewire.AppendRawVarint(b, uint64(int64(v)))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	b = litewire.AppendString(b, 9, m.Interval)
 	b = litewire.AppendInt32(b, 10, int32(m.Unit))
@@ -2955,29 +2401,10 @@ func (m *ScheduleProjectOptionView) GetSelected() bool {
 	return false
 }
 
-func (m *ScheduleProjectOptionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.ProjectKey)
-	if m.Name != nil {
-		n += litewire.SizeMessage(2, m.Name.Size())
-	}
-	n += litewire.SizeString(3, m.ShortPath)
-	n += litewire.SizeBool(4, m.Selected)
-	return n
-}
+func (m *ScheduleProjectOptionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleProjectOptionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleProjectOptionView) AppendMarshal(b []byte) []byte {
@@ -3039,31 +2466,10 @@ func (m *ScheduleMachineOptionView) GetNote() *Text {
 	return nil
 }
 
-func (m *ScheduleMachineOptionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeString(2, m.Name)
-	n += litewire.SizeBool(3, m.Online)
-	n += litewire.SizeBool(4, m.Supported)
-	n += litewire.SizeBool(5, m.Selected)
-	if m.Note != nil {
-		n += litewire.SizeMessage(6, m.Note.Size())
-	}
-	return n
-}
+func (m *ScheduleMachineOptionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleMachineOptionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleMachineOptionView) AppendMarshal(b []byte) []byte {
@@ -3127,33 +2533,10 @@ func (m *ScheduleModeOptionView) GetDisabledReason() *Text {
 	return nil
 }
 
-func (m *ScheduleModeOptionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Mode))
-	if m.Label != nil {
-		n += litewire.SizeMessage(2, m.Label.Size())
-	}
-	n += litewire.SizeBool(3, m.IsDanger)
-	n += litewire.SizeBool(4, m.Selected)
-	n += litewire.SizeBool(5, m.Enabled)
-	if m.DisabledReason != nil {
-		n += litewire.SizeMessage(6, m.DisabledReason.Size())
-	}
-	return n
-}
+func (m *ScheduleModeOptionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleModeOptionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleModeOptionView) AppendMarshal(b []byte) []byte {
@@ -3233,41 +2616,10 @@ func (m *ScheduleModelPanelView) GetPanelEnabled() bool {
 	return false
 }
 
-func (m *ScheduleModelPanelView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.ModelsLoading)
-	if m.ModelsError != nil {
-		n += litewire.SizeMessage(2, m.ModelsError.Size())
-	}
-	if m.DefaultModelLabel != nil {
-		n += litewire.SizeMessage(3, m.DefaultModelLabel.Size())
-	}
-	n += litewire.SizeBool(4, m.DefaultModelChecked)
-	for _, v := range m.Models {
-		if v != nil {
-			n += litewire.SizeMessage(5, v.Size())
-		}
-	}
-	for _, v := range m.EffortChoices {
-		n += litewire.SizeStringAlways(6, v)
-	}
-	n += litewire.SizeString(7, m.SelectedEffort)
-	n += litewire.SizeBool(8, m.PanelEnabled)
-	return n
-}
+func (m *ScheduleModelPanelView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleModelPanelView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleModelPanelView) AppendMarshal(b []byte) []byte {
@@ -3320,28 +2672,10 @@ func (m *ScheduleFormNoticeView) GetText() *Text {
 	return nil
 }
 
-func (m *ScheduleFormNoticeView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Kind))
-	n += litewire.SizeInt32(2, int32(m.Severity))
-	if m.Text != nil {
-		n += litewire.SizeMessage(3, m.Text.Size())
-	}
-	return n
-}
+func (m *ScheduleFormNoticeView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleFormNoticeView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleFormNoticeView) AppendMarshal(b []byte) []byte {
@@ -3682,113 +3016,10 @@ func (m *ScheduleFormViewModel) GetMutation() *ScheduleMutationView {
 	return nil
 }
 
-func (m *ScheduleFormViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.FormKey)
-	n += litewire.SizeInt32(2, int32(m.Mode))
-	n += litewire.SizeBool(3, m.Open)
-	n += litewire.SizeString(4, m.MachineId)
-	n += litewire.SizeString(5, m.TaskId)
-	n += litewire.SizeString(6, m.SessionId)
-	n += litewire.SizeString(7, m.ProjectKey)
-	n += litewire.SizeBool(8, m.LockMachine)
-	n += litewire.SizeString(9, m.Message)
-	n += litewire.SizeBool(10, m.MessageValid)
-	n += litewire.SizeBool(11, m.MessageTooLong)
-	if m.MessageError != nil {
-		n += litewire.SizeMessage(12, m.MessageError.Size())
-	}
-	n += litewire.SizeString(13, m.Title)
-	if m.TitlePlaceholder != nil {
-		n += litewire.SizeMessage(14, m.TitlePlaceholder.Size())
-	}
-	n += litewire.SizeString(15, m.AutoTitle)
-	n += litewire.SizeBool(16, m.NotifyOnFinish)
-	if m.TimingSummary != nil {
-		n += litewire.SizeMessage(17, m.TimingSummary.Size())
-	}
-	if m.Timing != nil {
-		n += litewire.SizeMessage(18, m.Timing.Size())
-	}
-	if m.ProjectName != nil {
-		n += litewire.SizeMessage(19, m.ProjectName.Size())
-	}
-	n += litewire.SizeString(20, m.ProjectShortPath)
-	n += litewire.SizeBool(21, m.HasProject)
-	for _, v := range m.ProjectChoices {
-		if v != nil {
-			n += litewire.SizeMessage(22, v.Size())
-		}
-	}
-	n += litewire.SizeString(23, m.MachineName)
-	n += litewire.SizeBool(24, m.MachineSelectable)
-	for _, v := range m.MachineChoices {
-		if v != nil {
-			n += litewire.SizeMessage(25, v.Size())
-		}
-	}
-	n += litewire.SizeInt32(26, int32(m.Agent))
-	n += litewire.SizeString(27, m.AgentName)
-	for _, v := range m.AvailableAgents {
-		if v != nil {
-			n += litewire.SizeMessage(28, v.Size())
-		}
-	}
-	n += litewire.SizeString(29, m.Model)
-	n += litewire.SizeString(30, m.Effort)
-	if m.ModelLabel != nil {
-		n += litewire.SizeMessage(31, m.ModelLabel.Size())
-	}
-	n += litewire.SizeString(32, m.EffortLabel)
-	if m.ModelPanel != nil {
-		n += litewire.SizeMessage(33, m.ModelPanel.Size())
-	}
-	n += litewire.SizeInt32(34, int32(m.ApprovalMode))
-	if m.ApprovalModeLabel != nil {
-		n += litewire.SizeMessage(35, m.ApprovalModeLabel.Size())
-	}
-	n += litewire.SizeBool(36, m.ApprovalModeIsDanger)
-	for _, v := range m.ModeChoices {
-		if v != nil {
-			n += litewire.SizeMessage(37, v.Size())
-		}
-	}
-	n += litewire.SizeBool(38, m.RequiresFullAccessConfirm)
-	if m.LocationText != nil {
-		n += litewire.SizeMessage(39, m.LocationText.Size())
-	}
-	n += litewire.SizeBool(40, m.Editable)
-	n += litewire.SizeBool(41, m.CanSubmit)
-	if m.SubmitLabel != nil {
-		n += litewire.SizeMessage(42, m.SubmitLabel.Size())
-	}
-	if m.SubmitDisabledReason != nil {
-		n += litewire.SizeMessage(43, m.SubmitDisabledReason.Size())
-	}
-	n += litewire.SizeBool(44, m.HasUnsavedChanges)
-	for _, v := range m.Notices {
-		if v != nil {
-			n += litewire.SizeMessage(45, v.Size())
-		}
-	}
-	if m.Mutation != nil {
-		n += litewire.SizeMessage(46, m.Mutation.Size())
-	}
-	return n
-}
+func (m *ScheduleFormViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleFormViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleFormViewModel) AppendMarshal(b []byte) []byte {
@@ -3941,34 +3172,10 @@ func (m *ScheduleSessionStripTaskView) GetStatus() ScheduleTaskStatus {
 	return 0
 }
 
-func (m *ScheduleSessionStripTaskView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeString(2, m.TaskId)
-	n += litewire.SizeString(3, m.Title)
-	if m.TimingText != nil {
-		n += litewire.SizeMessage(4, m.TimingText.Size())
-	}
-	if m.NextRunText != nil {
-		n += litewire.SizeMessage(5, m.NextRunText.Size())
-	}
-	n += litewire.SizeBool(6, m.HasUnread)
-	n += litewire.SizeInt32(7, int32(m.Status))
-	return n
-}
+func (m *ScheduleSessionStripTaskView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleSessionStripTaskView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleSessionStripTaskView) AppendMarshal(b []byte) []byte {
@@ -4035,35 +3242,10 @@ func (m *ScheduleSessionStripViewModel) GetMachineOffline() bool {
 	return false
 }
 
-func (m *ScheduleSessionStripViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeBool(2, m.Visible)
-	n += litewire.SizeInt32(3, int32(m.Count))
-	if m.SummaryText != nil {
-		n += litewire.SizeMessage(4, m.SummaryText.Size())
-	}
-	for _, v := range m.Tasks {
-		if v != nil {
-			n += litewire.SizeMessage(5, v.Size())
-		}
-	}
-	n += litewire.SizeBool(6, m.MachineOffline)
-	return n
-}
+func (m *ScheduleSessionStripViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleSessionStripViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleSessionStripViewModel) AppendMarshal(b []byte) []byte {
@@ -4103,25 +3285,10 @@ func (m *ScheduleReadCacheEffect) GetMachineId() string {
 	return ""
 }
 
-func (m *ScheduleReadCacheEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.OpId))
-	n += litewire.SizeString(2, m.MachineId)
-	return n
-}
+func (m *ScheduleReadCacheEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleReadCacheEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleReadCacheEffect) AppendMarshal(b []byte) []byte {
@@ -4144,24 +3311,10 @@ func (m *ScheduleDeleteCacheEffect) GetMachineId() string {
 	return ""
 }
 
-func (m *ScheduleDeleteCacheEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	return n
-}
+func (m *ScheduleDeleteCacheEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleDeleteCacheEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleDeleteCacheEffect) AppendMarshal(b []byte) []byte {
@@ -4190,25 +3343,10 @@ func (m *ScheduleSeenToken) GetRunId() string {
 	return ""
 }
 
-func (m *ScheduleSeenToken) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.TaskId)
-	n += litewire.SizeString(2, m.RunId)
-	return n
-}
+func (m *ScheduleSeenToken) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleSeenToken) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleSeenToken) AppendMarshal(b []byte) []byte {
@@ -4264,24 +3402,10 @@ func (m *ScheduleLoadSeenEffect) GetMachineId() string {
 	return ""
 }
 
-func (m *ScheduleLoadSeenEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	return n
-}
+func (m *ScheduleLoadSeenEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleLoadSeenEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleLoadSeenEffect) AppendMarshal(b []byte) []byte {
@@ -4310,29 +3434,10 @@ func (m *ScheduleSaveSeenEffect) GetTokens() []*ScheduleSeenToken {
 	return nil
 }
 
-func (m *ScheduleSaveSeenEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	for _, v := range m.Tokens {
-		if v != nil {
-			n += litewire.SizeMessage(2, v.Size())
-		}
-	}
-	return n
-}
+func (m *ScheduleSaveSeenEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleSaveSeenEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleSaveSeenEffect) AppendMarshal(b []byte) []byte {
@@ -4387,28 +3492,10 @@ func (m *ScheduleNotificationRef) GetNotificationSeq() uint64 {
 	return 0
 }
 
-func (m *ScheduleNotificationRef) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeString(2, m.TaskId)
-	n += litewire.SizeString(3, m.RunId)
-	n += litewire.SizeString(4, m.SessionId)
-	n += litewire.SizeVarintField(5, uint64(m.NotificationSeq))
-	return n
-}
+func (m *ScheduleNotificationRef) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleNotificationRef) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleNotificationRef) AppendMarshal(b []byte) []byte {
@@ -4434,28 +3521,10 @@ func (m *ScheduleDismissNotificationsEffect) GetRuns() []*ScheduleNotificationRe
 	return nil
 }
 
-func (m *ScheduleDismissNotificationsEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	for _, v := range m.Runs {
-		if v != nil {
-			n += litewire.SizeMessage(1, v.Size())
-		}
-	}
-	return n
-}
+func (m *ScheduleDismissNotificationsEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleDismissNotificationsEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleDismissNotificationsEffect) AppendMarshal(b []byte) []byte {
@@ -4523,30 +3592,10 @@ func (m *ScheduleNavigateEffect) GetFormKey() string {
 	return ""
 }
 
-func (m *ScheduleNavigateEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Route))
-	n += litewire.SizeString(2, m.MachineId)
-	n += litewire.SizeString(3, m.TaskId)
-	n += litewire.SizeString(4, m.SessionId)
-	n += litewire.SizeString(5, m.RunId)
-	n += litewire.SizeVarintField(6, uint64(m.FirstSeq))
-	n += litewire.SizeString(7, m.FormKey)
-	return n
-}
+func (m *ScheduleNavigateEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleNavigateEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleNavigateEffect) AppendMarshal(b []byte) []byte {

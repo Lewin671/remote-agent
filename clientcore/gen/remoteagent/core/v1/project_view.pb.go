@@ -54,32 +54,10 @@ func (m *HiddenProjectNoticeView) GetError() *Text {
 	return nil
 }
 
-func (m *HiddenProjectNoticeView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.Active)
-	if m.Text != nil {
-		n += litewire.SizeMessage(2, m.Text.Size())
-	}
-	n += litewire.SizeBool(3, m.ActionEnabled)
-	n += litewire.SizeBool(4, m.Busy)
-	if m.Error != nil {
-		n += litewire.SizeMessage(5, m.Error.Size())
-	}
-	return n
-}
+func (m *HiddenProjectNoticeView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *HiddenProjectNoticeView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *HiddenProjectNoticeView) AppendMarshal(b []byte) []byte {
@@ -270,73 +248,10 @@ func (m *ProjectDetailView) GetHasMoreEnded() bool {
 	return false
 }
 
-func (m *ProjectDetailView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Key)
-	if m.Name != nil {
-		n += litewire.SizeMessage(2, m.Name.Size())
-	}
-	n += litewire.SizeString(3, m.ShortPath)
-	if m.Subtitle != nil {
-		n += litewire.SizeMessage(4, m.Subtitle.Size())
-	}
-	for _, v := range m.MachineIds {
-		n += litewire.SizeStringAlways(5, v)
-	}
-	for _, v := range m.MachineNames {
-		n += litewire.SizeStringAlways(6, v)
-	}
-	n += litewire.SizeBool(7, m.AnyOnline)
-	n += litewire.SizeInt32(8, int32(m.ActiveCount))
-	n += litewire.SizeInt32(9, int32(m.EndedTotal))
-	for _, v := range m.Active {
-		if v != nil {
-			n += litewire.SizeMessage(10, v.Size())
-		}
-	}
-	for _, v := range m.Ended {
-		if v != nil {
-			n += litewire.SizeMessage(11, v.Size())
-		}
-	}
-	n += litewire.SizeBool(12, m.CanLoadEarlier)
-	if m.Tail != nil {
-		n += litewire.SizeMessage(13, m.Tail.Size())
-	}
-	if m.EmptyNote != nil {
-		n += litewire.SizeMessage(14, m.EmptyNote.Size())
-	}
-	n += litewire.SizeBool(15, m.IsHidden)
-	n += litewire.SizeBool(16, m.IsPinned)
-	if m.HiddenNotice != nil {
-		n += litewire.SizeMessage(17, m.HiddenNotice.Size())
-	}
-	n += litewire.SizeBool(18, m.SavingSettings)
-	if m.SettingsError != nil {
-		n += litewire.SizeMessage(19, m.SettingsError.Size())
-	}
-	n += litewire.SizeBool(20, m.CanStart)
-	n += litewire.SizeBool(21, m.CanPin)
-	n += litewire.SizeBool(22, m.CanRemove)
-	if m.SaveStatus != nil {
-		n += litewire.SizeMessage(23, m.SaveStatus.Size())
-	}
-	n += litewire.SizeBool(24, m.HasMoreEnded)
-	return n
-}
+func (m *ProjectDetailView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ProjectDetailView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectDetailView) AppendMarshal(b []byte) []byte {
@@ -435,30 +350,10 @@ func (m *DirPickerMachineView) GetHome() string {
 	return ""
 }
 
-func (m *DirPickerMachineView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeString(2, m.Name)
-	n += litewire.SizeBool(3, m.Online)
-	if m.StatusText != nil {
-		n += litewire.SizeMessage(4, m.StatusText.Size())
-	}
-	n += litewire.SizeString(5, m.Home)
-	return n
-}
+func (m *DirPickerMachineView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DirPickerMachineView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirPickerMachineView) AppendMarshal(b []byte) []byte {
@@ -493,27 +388,10 @@ func (m *DirCrumbView) GetPath() string {
 	return ""
 }
 
-func (m *DirCrumbView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	if m.Label != nil {
-		n += litewire.SizeMessage(1, m.Label.Size())
-	}
-	n += litewire.SizeString(2, m.Path)
-	return n
-}
+func (m *DirCrumbView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DirCrumbView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirCrumbView) AppendMarshal(b []byte) []byte {
@@ -545,25 +423,10 @@ func (m *DirEntryView) GetPath() string {
 	return ""
 }
 
-func (m *DirEntryView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Name)
-	n += litewire.SizeString(2, m.Path)
-	return n
-}
+func (m *DirEntryView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DirEntryView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirEntryView) AppendMarshal(b []byte) []byte {
@@ -663,51 +526,10 @@ func (m *DirPickerView) GetCanConfirm() bool {
 	return false
 }
 
-func (m *DirPickerView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.Open)
-	n += litewire.SizeBool(2, m.ForNewTask)
-	for _, v := range m.Machines {
-		if v != nil {
-			n += litewire.SizeMessage(3, v.Size())
-		}
-	}
-	n += litewire.SizeString(4, m.MachineId)
-	n += litewire.SizeString(5, m.CurrentPath)
-	for _, v := range m.Crumbs {
-		if v != nil {
-			n += litewire.SizeMessage(6, v.Size())
-		}
-	}
-	n += litewire.SizeString(7, m.ParentPath)
-	for _, v := range m.Dirs {
-		if v != nil {
-			n += litewire.SizeMessage(8, v.Size())
-		}
-	}
-	n += litewire.SizeBool(9, m.Loading)
-	if m.Error != nil {
-		n += litewire.SizeMessage(10, m.Error.Size())
-	}
-	if m.ConfirmLabel != nil {
-		n += litewire.SizeMessage(11, m.ConfirmLabel.Size())
-	}
-	n += litewire.SizeBool(12, m.CanConfirm)
-	return n
-}
+func (m *DirPickerView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DirPickerView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirPickerView) AppendMarshal(b []byte) []byte {
@@ -819,41 +641,10 @@ func (m *ManageProjectsView) GetFilterMachineName() string {
 	return ""
 }
 
-func (m *ManageProjectsView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	if m.Listing != nil {
-		n += litewire.SizeMessage(1, m.Listing.Size())
-	}
-	n += litewire.SizeBool(2, m.CanEdit)
-	if m.BlockedReason != nil {
-		n += litewire.SizeMessage(3, m.BlockedReason.Size())
-	}
-	n += litewire.SizeBool(4, m.ChangedElsewhere)
-	n += litewire.SizeBool(5, m.Syncing)
-	if m.SaveError != nil {
-		n += litewire.SizeMessage(6, m.SaveError.Size())
-	}
-	if m.DirPicker != nil {
-		n += litewire.SizeMessage(7, m.DirPicker.Size())
-	}
-	n += litewire.SizeInt32(8, int32(m.ProjectCount))
-	n += litewire.SizeString(9, m.FilterMachineId)
-	n += litewire.SizeString(10, m.FilterMachineName)
-	return n
-}
+func (m *ManageProjectsView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ManageProjectsView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ManageProjectsView) AppendMarshal(b []byte) []byte {
@@ -906,30 +697,10 @@ func (m *ProjectViewModel) GetManage() *ManageProjectsView {
 	return nil
 }
 
-func (m *ProjectViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Kind))
-	if m.Detail != nil {
-		n += litewire.SizeMessage(2, m.Detail.Size())
-	}
-	if m.Manage != nil {
-		n += litewire.SizeMessage(3, m.Manage.Size())
-	}
-	return n
-}
+func (m *ProjectViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ProjectViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectViewModel) AppendMarshal(b []byte) []byte {

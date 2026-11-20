@@ -172,28 +172,10 @@ func (m *UsageCompositionView) GetReasoningOutputTokens() uint64 {
 	return 0
 }
 
-func (m *UsageCompositionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.UncachedInputTokens))
-	n += litewire.SizeVarintField(2, uint64(m.CacheReadTokens))
-	n += litewire.SizeVarintField(3, uint64(m.CacheWriteTokens))
-	n += litewire.SizeVarintField(4, uint64(m.OutputTokens))
-	n += litewire.SizeVarintField(5, uint64(m.ReasoningOutputTokens))
-	return n
-}
+func (m *UsageCompositionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageCompositionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageCompositionView) AppendMarshal(b []byte) []byte {
@@ -345,44 +327,10 @@ func (m *UsageHeroView) GetPeriodCompositionRows() int32 {
 	return 0
 }
 
-func (m *UsageHeroView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.Scrubbing)
-	n += litewire.SizeInt32(2, int32(m.ScrubBucketIndex))
-	n += litewire.SizeVarintField(3, uint64(m.ScrubStartMs))
-	n += litewire.SizeVarintField(4, uint64(m.ScrubEndMs))
-	n += litewire.SizeBool(5, m.HasSelectedModel)
-	n += litewire.SizeInt32(6, int32(m.SelectedAgent))
-	n += litewire.SizeString(7, m.SelectedAgentName)
-	n += litewire.SizeString(8, m.SelectedModel)
-	n += litewire.SizeString(9, m.SelectedSeriesKey)
-	n += litewire.SizeInt32(10, int32(m.TotalModelCount))
-	n += litewire.SizeVarintField(11, uint64(m.TotalTokens))
-	n += litewire.SizeVarintField(12, uint64(m.RequestCount))
-	n += litewire.SizeBool(13, m.HasSharePercent)
-	n += litewire.SizeDouble(14, m.ShareRatio)
-	n += litewire.SizeBool(15, m.HasTokensDelta)
-	n += litewire.SizeDouble(16, m.TokensDeltaPercent)
-	n += litewire.SizeBool(17, m.PreviousBackfilling)
-	if m.Composition != nil {
-		n += litewire.SizeMessage(18, m.Composition.Size())
-	}
-	n += litewire.SizeInt32(19, int32(m.PeriodCompositionRows))
-	return n
-}
+func (m *UsageHeroView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageHeroView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageHeroView) AppendMarshal(b []byte) []byte {
@@ -452,28 +400,10 @@ func (m *UsageBarBucketView) GetHasData() bool {
 	return false
 }
 
-func (m *UsageBarBucketView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.StartMs))
-	n += litewire.SizeVarintField(2, uint64(m.EndMs))
-	n += litewire.SizeVarintField(3, uint64(m.AllTokens))
-	n += litewire.SizeVarintField(4, uint64(m.SelectedTokens))
-	n += litewire.SizeBool(5, m.HasData)
-	return n
-}
+func (m *UsageBarBucketView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageBarBucketView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageBarBucketView) AppendMarshal(b []byte) []byte {
@@ -513,30 +443,10 @@ func (m *UsageBarChartView) GetBuckets() []*UsageBarBucketView {
 	return nil
 }
 
-func (m *UsageBarChartView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.YMax))
-	n += litewire.SizeVarintField(2, uint64(m.YMid))
-	for _, v := range m.Buckets {
-		if v != nil {
-			n += litewire.SizeMessage(3, v.Size())
-		}
-	}
-	return n
-}
+func (m *UsageBarChartView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageBarChartView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageBarChartView) AppendMarshal(b []byte) []byte {
@@ -571,25 +481,10 @@ func (m *UsageStripPointView) GetValue() float64 {
 	return 0
 }
 
-func (m *UsageStripPointView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.HasValue)
-	n += litewire.SizeDouble(2, m.Value)
-	return n
-}
+func (m *UsageStripPointView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageStripPointView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageStripPointView) AppendMarshal(b []byte) []byte {
@@ -675,41 +570,10 @@ func (m *UsageMetricStripView) GetSelectedPoints() []*UsageStripPointView {
 	return nil
 }
 
-func (m *UsageMetricStripView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.HasValue)
-	n += litewire.SizeDouble(2, m.CurrentValue)
-	n += litewire.SizeBool(3, m.HasRange)
-	n += litewire.SizeDouble(4, m.MinValue)
-	n += litewire.SizeDouble(5, m.MaxValue)
-	n += litewire.SizeDouble(6, m.ScaleMin)
-	n += litewire.SizeDouble(7, m.ScaleMax)
-	n += litewire.SizeInt32(8, int32(m.LastValidIndex))
-	for _, v := range m.AllPoints {
-		if v != nil {
-			n += litewire.SizeMessage(9, v.Size())
-		}
-	}
-	for _, v := range m.SelectedPoints {
-		if v != nil {
-			n += litewire.SizeMessage(10, v.Size())
-		}
-	}
-	return n
-}
+func (m *UsageMetricStripView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageMetricStripView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageMetricStripView) AppendMarshal(b []byte) []byte {
@@ -867,41 +731,10 @@ func (m *UsageModelRowView) GetSpeedRequestCount() uint64 {
 	return 0
 }
 
-func (m *UsageModelRowView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Agent))
-	n += litewire.SizeString(2, m.AgentName)
-	n += litewire.SizeString(3, m.Model)
-	n += litewire.SizeString(4, m.SeriesKey)
-	n += litewire.SizeBool(5, m.Selected)
-	n += litewire.SizeDouble(6, m.ShareRatio)
-	n += litewire.SizeVarintField(7, uint64(m.TotalTokens))
-	n += litewire.SizeBool(8, m.HasCacheHit)
-	n += litewire.SizeDouble(9, m.CacheHitRate)
-	n += litewire.SizeBool(10, m.HasSpeed)
-	n += litewire.SizeDouble(11, m.SpeedP50)
-	n += litewire.SizeBool(12, m.HasTtft)
-	n += litewire.SizeDouble(13, m.TtftP50Ms)
-	n += litewire.SizeBool(14, m.HasTokensDelta)
-	n += litewire.SizeDouble(15, m.TokensDeltaPercent)
-	n += litewire.SizeBool(16, m.PreviousBackfilling)
-	n += litewire.SizeVarintField(17, uint64(m.UsageRequestCount))
-	n += litewire.SizeVarintField(18, uint64(m.SpeedRequestCount))
-	return n
-}
+func (m *UsageModelRowView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageModelRowView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageModelRowView) AppendMarshal(b []byte) []byte {
@@ -1129,73 +962,10 @@ func (m *UsageViewModel) GetUnsupportedFootnote() *Text {
 	return nil
 }
 
-func (m *UsageViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeString(2, m.MachineName)
-	n += litewire.SizeBool(3, m.Found)
-	n += litewire.SizeBool(4, m.Supported)
-	n += litewire.SizeBool(5, m.Online)
-	n += litewire.SizeBool(6, m.Loading)
-	if m.ErrorText != nil {
-		n += litewire.SizeMessage(7, m.ErrorText.Size())
-	}
-	n += litewire.SizeBool(8, m.CachedOffline)
-	n += litewire.SizeVarintField(9, uint64(m.CachedAtMs))
-	n += litewire.SizeBool(10, m.Backfilling)
-	n += litewire.SizeInt32(11, int32(m.BackfillScannedDays))
-	n += litewire.SizeInt32(12, int32(m.BackfillTotalDays))
-	n += litewire.SizeBool(13, m.PreviousPeriodBackfilling)
-	n += litewire.SizeInt32(14, int32(m.Preset))
-	n += litewire.SizeInt32(15, int32(m.Granularity))
-	n += litewire.SizeVarintField(16, uint64(m.StartMs))
-	n += litewire.SizeVarintField(17, uint64(m.EndMs))
-	n += litewire.SizeInt32(18, int32(m.RangeDays))
-	n += litewire.SizeInt32(19, int32(m.SortBy))
-	for _, v := range m.Sources {
-		if v != nil {
-			n += litewire.SizeMessage(20, v.Size())
-		}
-	}
-	n += litewire.SizeBool(21, m.HasAnyUsage)
-	if m.Hero != nil {
-		n += litewire.SizeMessage(22, m.Hero.Size())
-	}
-	if m.BarChart != nil {
-		n += litewire.SizeMessage(23, m.BarChart.Size())
-	}
-	if m.CacheHitStrip != nil {
-		n += litewire.SizeMessage(24, m.CacheHitStrip.Size())
-	}
-	if m.OutputSpeedStrip != nil {
-		n += litewire.SizeMessage(25, m.OutputSpeedStrip.Size())
-	}
-	if m.TtftStrip != nil {
-		n += litewire.SizeMessage(26, m.TtftStrip.Size())
-	}
-	for _, v := range m.Rows {
-		if v != nil {
-			n += litewire.SizeMessage(27, v.Size())
-		}
-	}
-	if m.UnsupportedFootnote != nil {
-		n += litewire.SizeMessage(28, m.UnsupportedFootnote.Size())
-	}
-	return n
-}
+func (m *UsageViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageViewModel) AppendMarshal(b []byte) []byte {
@@ -1754,27 +1524,10 @@ func (m *UsageCacheWriteEffect) GetSnapshot() *v1.UsageStatsResponse {
 	return nil
 }
 
-func (m *UsageCacheWriteEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	if m.Snapshot != nil {
-		n += litewire.SizeMessage(2, m.Snapshot.Size())
-	}
-	return n
-}
+func (m *UsageCacheWriteEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageCacheWriteEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageCacheWriteEffect) AppendMarshal(b []byte) []byte {

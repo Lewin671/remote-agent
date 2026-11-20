@@ -37,25 +37,10 @@ func (m *TimestampArg) GetStyle() TimestampStyle {
 	return 0
 }
 
-func (m *TimestampArg) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.UnixMs))
-	n += litewire.SizeInt32(2, int32(m.Style))
-	return n
-}
+func (m *TimestampArg) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *TimestampArg) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *TimestampArg) AppendMarshal(b []byte) []byte {
@@ -120,40 +105,10 @@ func (m *Text) GetTimestamp() *TimestampArg {
 	return nil
 }
 
-func (m *Text) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Key)
-	for _, v := range m.Args {
-		if v != nil {
-			n += litewire.SizeMessage(2, v.Size())
-		}
-	}
-	n += litewire.SizeString(3, m.Literal)
-	for _, v := range m.Join {
-		if v != nil {
-			n += litewire.SizeMessage(4, v.Size())
-		}
-	}
-	n += litewire.SizeString(5, m.SeparatorKey)
-	n += litewire.SizeString(6, m.SeparatorLiteral)
-	if m.Timestamp != nil {
-		n += litewire.SizeMessage(7, m.Timestamp.Size())
-	}
-	return n
-}
+func (m *Text) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *Text) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *Text) AppendMarshal(b []byte) []byte {
@@ -249,50 +204,10 @@ func (m *TextArg) GetTimestampValue() *TimestampArg {
 	return nil
 }
 
-func (m *TextArg) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Name)
-	switch x := m.Value.(type) {
-	case *TextArg_StrValue:
-		if x != nil {
-			n += litewire.SizeStringAlways(2, x.StrValue)
-		}
-	case *TextArg_IntValue:
-		if x != nil {
-			n += litewire.SizeVarintFieldAlways(3, uint64(x.IntValue))
-		}
-	case *TextArg_FloatValue:
-		if x != nil {
-			n += litewire.SizeFixed64Always(4)
-		}
-	case *TextArg_TextValue:
-		if x != nil {
-			if x.TextValue != nil {
-				n += litewire.SizeMessage(5, x.TextValue.Size())
-			}
-		}
-	case *TextArg_TimestampValue:
-		if x != nil {
-			if x.TimestampValue != nil {
-				n += litewire.SizeMessage(6, x.TimestampValue.Size())
-			}
-		}
-	}
-	return n
-}
+func (m *TextArg) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *TextArg) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *TextArg) AppendMarshal(b []byte) []byte {

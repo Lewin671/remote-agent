@@ -33,25 +33,10 @@ func (m *SessionCursor) GetSessionId() string {
 	return ""
 }
 
-func (m *SessionCursor) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.EndedMs))
-	n += litewire.SizeString(2, m.SessionId)
-	return n
-}
+func (m *SessionCursor) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SessionCursor) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionCursor) AppendMarshal(b []byte) []byte {

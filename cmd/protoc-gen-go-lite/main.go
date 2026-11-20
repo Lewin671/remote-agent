@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
@@ -527,175 +526,23 @@ func genClone(g *protogen.GeneratedFile, msg *protogen.Message) {
 	g.P()
 }
 
-func fieldSizeExpr(g *protogen.GeneratedFile, f *protogen.Field, num protoreflect.FieldNumber, expr string, always bool) string {
-	suffix := ""
-	if always {
-		suffix = "Always"
-	}
-	numStr := strconv.FormatInt(int64(num), 10)
-	call1 := func(fnName string) string {
-		return g.QualifiedGoIdent(litewirePkg.Ident(fnName)) + "(" + numStr + ")"
-	}
-	call2 := func(fnName, arg string) string {
-		return g.QualifiedGoIdent(litewirePkg.Ident(fnName)) + "(" + numStr + ", " + arg + ")"
-	}
-	switch f.Desc.Kind() {
-	case protoreflect.BytesKind:
-		return call2("SizeBytesField"+suffix, expr)
-	case protoreflect.StringKind:
-		return call2("SizeString"+suffix, expr)
-	case protoreflect.BoolKind:
-		if always {
-			return call1("SizeBoolAlways")
-		}
-		return call2("SizeBool", expr)
-	case protoreflect.EnumKind, protoreflect.Int32Kind:
-		return call2("SizeInt32"+suffix, "int32("+expr+")")
-	case protoreflect.Int64Kind, protoreflect.Uint32Kind, protoreflect.Uint64Kind:
-		return call2("SizeVarintField"+suffix, "uint64("+expr+")")
-	case protoreflect.Sint32Kind, protoreflect.Sint64Kind:
-		return call2("SizeZigZag"+suffix, "int64("+expr+")")
-	case protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind:
-		if always {
-			return call1("SizeFixed32Always")
-		}
-		return call2("SizeFixed32", "uint32("+expr+")")
-	case protoreflect.FloatKind:
-		if always {
-			return call1("SizeFixed32Always")
-		}
-		return call2("SizeFloat", expr)
-	case protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
-		if always {
-			return call1("SizeFixed64Always")
-		}
-		return call2("SizeFixed64", "uint64("+expr+")")
-	case protoreflect.DoubleKind:
-		if always {
-			return call1("SizeFixed64Always")
-		}
-		return call2("SizeDouble", expr)
-	default:
-		panic(fmt.Sprintf("unsupported kind: %v", f.Desc.Kind()))
-	}
-}
-
-func emitSizeField(g *protogen.GeneratedFile, indent, acc string, f *protogen.Field, expr string, always bool) {
-	num := f.Desc.Number()
-	if f.Desc.Kind() == protoreflect.MessageKind {
-		fn := g.QualifiedGoIdent(litewirePkg.Ident("SizeMessage"))
-		g.P(indent, "if ", expr, " != nil { ", acc, " += ", fn, "(", num, ", ", expr, ".Size()) }")
-		return
-	}
-	g.P(indent, acc, " += ", fieldSizeExpr(g, f, num, expr, always))
-}
-
-func packedElemSizeExpr(g *protogen.GeneratedFile, f *protogen.Field, expr string) string {
-	sizeVarint := g.QualifiedGoIdent(litewirePkg.Ident("SizeVarint"))
-	switch f.Desc.Kind() {
-	case protoreflect.EnumKind, protoreflect.Int32Kind:
-		return sizeVarint + "(uint64(int64(" + expr + ")))"
-	case protoreflect.Int64Kind, protoreflect.Uint32Kind, protoreflect.Uint64Kind:
-		return sizeVarint + "(uint64(" + expr + "))"
-	case protoreflect.Sint32Kind, protoreflect.Sint64Kind:
-		encodeZigZag := g.QualifiedGoIdent(litewirePkg.Ident("EncodeZigZag"))
-		return sizeVarint + "(" + encodeZigZag + "(int64(" + expr + ")))"
-	default:
-		panic(fmt.Sprintf("unsupported kind: %v", f.Desc.Kind()))
-	}
-}
-
+// genSize emits Size for callers that want the encoded length; encoding itself fills
+// lengths in after the fact (litewire.BeginMessage/EndMessage) and never calls it.
 func genSize(g *protogen.GeneratedFile, msg *protogen.Message) {
 	name := msg.GoIdent.GoName
-	sizeMessage := g.QualifiedGoIdent(litewirePkg.Ident("SizeMessage"))
-
-	g.P("func (m *", name, ") Size() int {")
-	g.P("\tif m == nil { return 0 }")
-	if len(msg.Fields) == 0 {
-		g.P("\treturn 0")
-		g.P("}")
-		g.P()
-		return
-	}
-	g.P("\tn := 0")
-	emittedOneofs := make(map[string]bool)
-	for _, f := range msg.Fields {
-		if isRealOneof(f) {
-			if emittedOneofs[f.Oneof.GoName] {
-				continue
-			}
-			emittedOneofs[f.Oneof.GoName] = true
-			g.P("\tswitch x := m.", f.Oneof.GoName, ".(type) {")
-			for _, of := range f.Oneof.Fields {
-				wrap := of.GoIdent.GoName
-				g.P("\tcase *", wrap, ":")
-				g.P("\t\tif x != nil {")
-				emitSizeField(g, "\t\t\t", "n", of, "x."+of.GoName, true)
-				g.P("\t\t}")
-			}
-			g.P("\t}")
-			continue
-		}
-		num := f.Desc.Number()
-		switch {
-		case f.Desc.IsMap():
-			kf := f.Message.Fields[0]
-			vf := f.Message.Fields[1]
-			kSize := fieldSizeExpr(g, kf, 1, "k", true)
-			var vSize string
-			if vf.Desc.Kind() == protoreflect.MessageKind {
-				vSize = sizeMessage + "(2, v.Size())"
-			} else {
-				vSize = fieldSizeExpr(g, vf, 2, "v", true)
-			}
-			g.P("\tfor k, v := range m.", f.GoName, " {")
-			g.P("\t\tn += ", sizeMessage, "(", num, ", ", kSize, " + ", vSize, ")")
-			g.P("\t}")
-		case f.Desc.IsList():
-			if isPackable(f) {
-				if elemSz, fixed := fixedPackedElemSize(f.Desc.Kind()); fixed {
-					g.P("\tif len(m.", f.GoName, ") > 0 {")
-					if elemSz == 1 {
-						g.P("\t\tn += ", sizeMessage, "(", num, ", len(m.", f.GoName, "))")
-					} else {
-						g.P("\t\tn += ", sizeMessage, "(", num, ", len(m.", f.GoName, ")*", elemSz, ")")
-					}
-					g.P("\t}")
-				} else {
-					g.P("\tif len(m.", f.GoName, ") > 0 {")
-					g.P("\t\tpsz := 0")
-					g.P("\t\tfor _, v := range m.", f.GoName, " { psz += ", packedElemSizeExpr(g, f, "v"), " }")
-					g.P("\t\tn += ", sizeMessage, "(", num, ", psz)")
-					g.P("\t}")
-				}
-			} else {
-				g.P("\tfor _, v := range m.", f.GoName, " {")
-				emitSizeField(g, "\t\t", "n", f, "v", true)
-				g.P("\t}")
-			}
-		case isOptionalPtr(f):
-			g.P("\tif m.", f.GoName, " != nil {")
-			emitSizeField(g, "\t\t", "n", f, "*m."+f.GoName, true)
-			g.P("\t}")
-		default:
-			emitSizeField(g, "\t", "n", f, "m."+f.GoName, false)
-		}
-	}
-	g.P("\treturn n")
-	g.P("}")
+	g.P("func (m *", name, ") Size() int { return len(m.AppendMarshal(nil)) }")
 	g.P()
 }
 
 func genMarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
 	name := msg.GoIdent.GoName
 	appendMsgPrefix := g.QualifiedGoIdent(litewirePkg.Ident("AppendMessagePrefix"))
-	sizeMessage := g.QualifiedGoIdent(litewirePkg.Ident("SizeMessage"))
+	appendMessage := g.QualifiedGoIdent(litewirePkg.Ident("AppendMessage"))
+	beginMessage := g.QualifiedGoIdent(litewirePkg.Ident("BeginMessage"))
+	endMessage := g.QualifiedGoIdent(litewirePkg.Ident("EndMessage"))
 
 	g.P("func (m *", name, ") Marshal() ([]byte, error) {")
-	g.P("\tif m == nil { return nil, nil }")
-	g.P("\tsz := m.Size()")
-	g.P("\tif sz == 0 { return nil, nil }")
-	g.P("\treturn m.AppendMarshal(make([]byte, 0, sz)), nil")
+	g.P("\treturn m.AppendMarshal(nil), nil")
 	g.P("}")
 	g.P()
 
@@ -724,40 +571,37 @@ func genMarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
 		case f.Desc.IsMap():
 			kf := f.Message.Fields[0]
 			vf := f.Message.Fields[1]
-			kSize := fieldSizeExpr(g, kf, 1, "k", true)
 			g.P("\tfor k, v := range m.", f.GoName, " {")
+			g.P("\t\tvar start int")
+			g.P("\t\tb, start = ", beginMessage, "(b, ", num, ")")
+			emitMarshalField(g, "\t\t", "b", kf, "k", true)
 			if vf.Desc.Kind() == protoreflect.MessageKind {
-				g.P("\t\tvsz := v.Size()")
-				g.P("\t\tesz := ", kSize, " + ", sizeMessage, "(2, vsz)")
-				g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", esz)")
-				emitMarshalField(g, "\t\t", "b", kf, "k", true)
-				g.P("\t\tb = ", appendMsgPrefix, "(b, 2, vsz)")
-				g.P("\t\tb = v.AppendMarshal(b)")
+				// A nil value is still written, as an empty message.
+				g.P("\t\tb = ", appendMessage, "(b, 2, v)")
 			} else {
-				vSize := fieldSizeExpr(g, vf, 2, "v", true)
-				g.P("\t\tesz := ", kSize, " + ", vSize)
-				g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", esz)")
-				emitMarshalField(g, "\t\t", "b", kf, "k", true)
 				emitMarshalField(g, "\t\t", "b", vf, "v", true)
 			}
+			g.P("\t\tb = ", endMessage, "(b, start)")
 			g.P("\t}")
 		case f.Desc.IsList():
 			if isPackable(f) {
 				g.P("\tif len(m.", f.GoName, ") > 0 {")
-				if elemSz, fixed := fixedPackedElemSize(f.Desc.Kind()); fixed {
-					if elemSz == 1 {
-						g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", len(m.", f.GoName, "))")
-					} else {
-						g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", len(m.", f.GoName, ")*", elemSz, ")")
-					}
-				} else {
-					g.P("\t\tpsz := 0")
-					g.P("\t\tfor _, v := range m.", f.GoName, " { psz += ", packedElemSizeExpr(g, f, "v"), " }")
-					g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", psz)")
+				elemSz, fixed := fixedPackedElemSize(f.Desc.Kind())
+				switch {
+				case fixed && elemSz == 1:
+					g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", len(m.", f.GoName, "))")
+				case fixed:
+					g.P("\t\tb = ", appendMsgPrefix, "(b, ", num, ", len(m.", f.GoName, ")*", elemSz, ")")
+				default:
+					g.P("\t\tvar start int")
+					g.P("\t\tb, start = ", beginMessage, "(b, ", num, ")")
 				}
 				g.P("\t\tfor _, v := range m.", f.GoName, " {")
 				emitMarshalPackedElem(g, "\t\t\t", "b", f, "v")
 				g.P("\t\t}")
+				if !fixed {
+					g.P("\t\tb = ", endMessage, "(b, start)")
+				}
 				g.P("\t}")
 			} else {
 				g.P("\tfor _, v := range m.", f.GoName, " {")

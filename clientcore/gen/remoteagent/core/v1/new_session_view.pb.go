@@ -96,29 +96,10 @@ func (m *DefaultModeInfo) GetLabel() *Text {
 	return nil
 }
 
-func (m *DefaultModeInfo) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Mode))
-	n += litewire.SizeBool(2, m.Known)
-	n += litewire.SizeBool(3, m.Varies)
-	if m.Label != nil {
-		n += litewire.SizeMessage(4, m.Label.Size())
-	}
-	return n
-}
+func (m *DefaultModeInfo) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DefaultModeInfo) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DefaultModeInfo) AppendMarshal(b []byte) []byte {
@@ -180,29 +161,10 @@ func (m *NewSessionConfig) GetMode() v1.ApprovalMode {
 	return 0
 }
 
-func (m *NewSessionConfig) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeInt32(2, int32(m.Agent))
-	n += litewire.SizeString(3, m.Model)
-	n += litewire.SizeString(4, m.Effort)
-	n += litewire.SizeBool(5, m.StandardContext)
-	n += litewire.SizeInt32(6, int32(m.Mode))
-	return n
-}
+func (m *NewSessionConfig) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *NewSessionConfig) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *NewSessionConfig) AppendMarshal(b []byte) []byte {
@@ -250,33 +212,10 @@ func (m *OfflineMachineChoiceView) GetConfig() *NewSessionConfig {
 	return nil
 }
 
-func (m *OfflineMachineChoiceView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	if m.Title != nil {
-		n += litewire.SizeMessage(2, m.Title.Size())
-	}
-	if m.Note != nil {
-		n += litewire.SizeMessage(3, m.Note.Size())
-	}
-	if m.Config != nil {
-		n += litewire.SizeMessage(4, m.Config.Size())
-	}
-	return n
-}
+func (m *OfflineMachineChoiceView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *OfflineMachineChoiceView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *OfflineMachineChoiceView) AppendMarshal(b []byte) []byte {
@@ -377,46 +316,10 @@ func (m *NewSessionNoticeView) GetTargetAgent() v1.Agent {
 	return 0
 }
 
-func (m *NewSessionNoticeView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Kind))
-	n += litewire.SizeInt32(2, int32(m.Severity))
-	if m.Text != nil {
-		n += litewire.SizeMessage(3, m.Text.Size())
-	}
-	n += litewire.SizeInt32(4, int32(m.Action))
-	n += litewire.SizeString(5, m.TargetMachineId)
-	n += litewire.SizeBool(6, m.HasDraftChoices)
-	if m.DraftTitle != nil {
-		n += litewire.SizeMessage(7, m.DraftTitle.Size())
-	}
-	if m.DraftSubtitle != nil {
-		n += litewire.SizeMessage(8, m.DraftSubtitle.Size())
-	}
-	for _, v := range m.DraftChoices {
-		if v != nil {
-			n += litewire.SizeMessage(9, v.Size())
-		}
-	}
-	if m.DraftNoneText != nil {
-		n += litewire.SizeMessage(10, m.DraftNoneText.Size())
-	}
-	n += litewire.SizeInt32(11, int32(m.TargetAgent))
-	return n
-}
+func (m *NewSessionNoticeView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *NewSessionNoticeView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *NewSessionNoticeView) AppendMarshal(b []byte) []byte {
@@ -481,27 +384,10 @@ func (m *AgentOptionView) GetSelected() bool {
 	return false
 }
 
-func (m *AgentOptionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Agent))
-	n += litewire.SizeString(2, m.DisplayName)
-	n += litewire.SizeBool(3, m.Installed)
-	n += litewire.SizeBool(4, m.Selected)
-	return n
-}
+func (m *AgentOptionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AgentOptionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AgentOptionView) AppendMarshal(b []byte) []byte {
@@ -561,31 +447,10 @@ func (m *ModelOptionView) GetSupports_1M() bool {
 	return false
 }
 
-func (m *ModelOptionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Slug)
-	n += litewire.SizeString(2, m.DisplayName)
-	if m.FixedEffortNote != nil {
-		n += litewire.SizeMessage(3, m.FixedEffortNote.Size())
-	}
-	n += litewire.SizeBool(4, m.Checked)
-	n += litewire.SizeBool(5, m.SupportsAuto)
-	n += litewire.SizeBool(6, m.Supports_1M)
-	return n
-}
+func (m *ModelOptionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ModelOptionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ModelOptionView) AppendMarshal(b []byte) []byte {
@@ -642,30 +507,10 @@ func (m *MachineChoiceView) GetNote() *Text {
 	return nil
 }
 
-func (m *MachineChoiceView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.MachineId)
-	n += litewire.SizeString(2, m.Name)
-	n += litewire.SizeBool(3, m.Online)
-	n += litewire.SizeBool(4, m.Selected)
-	if m.Note != nil {
-		n += litewire.SizeMessage(5, m.Note.Size())
-	}
-	return n
-}
+func (m *MachineChoiceView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *MachineChoiceView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *MachineChoiceView) AppendMarshal(b []byte) []byte {
@@ -791,56 +636,10 @@ func (m *NewSessionModelPanelView) GetCanSelectAutoMode() bool {
 	return false
 }
 
-func (m *NewSessionModelPanelView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.ModelsLoading)
-	if m.ModelsError != nil {
-		n += litewire.SizeMessage(2, m.ModelsError.Size())
-	}
-	if m.DefaultModelLabel != nil {
-		n += litewire.SizeMessage(3, m.DefaultModelLabel.Size())
-	}
-	n += litewire.SizeBool(4, m.DefaultModelChecked)
-	for _, v := range m.Models {
-		if v != nil {
-			n += litewire.SizeMessage(5, v.Size())
-		}
-	}
-	for _, v := range m.EffortChoices {
-		n += litewire.SizeStringAlways(6, v)
-	}
-	n += litewire.SizeString(7, m.SelectedEffort)
-	if m.EffortTitle != nil {
-		n += litewire.SizeMessage(8, m.EffortTitle.Size())
-	}
-	n += litewire.SizeBool(9, m.SupportsContextWindow)
-	n += litewire.SizeBool(10, m.ContextFixed)
-	n += litewire.SizeBool(11, m.StandardContext)
-	if m.ContextNote != nil {
-		n += litewire.SizeMessage(12, m.ContextNote.Size())
-	}
-	n += litewire.SizeBool(13, m.PanelEnabled)
-	for _, v := range m.MachineChoices {
-		if v != nil {
-			n += litewire.SizeMessage(14, v.Size())
-		}
-	}
-	n += litewire.SizeBool(15, m.CanSelectAutoMode)
-	return n
-}
+func (m *NewSessionModelPanelView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *NewSessionModelPanelView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *NewSessionModelPanelView) AppendMarshal(b []byte) []byte {
@@ -1062,70 +861,10 @@ func (m *NewSessionViewModel) GetAutoIssue() AutoIssueKind {
 	return 0
 }
 
-func (m *NewSessionViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.ProjectSelectable)
-	n += litewire.SizeString(2, m.ProjectKey)
-	if m.ProjectName != nil {
-		n += litewire.SizeMessage(3, m.ProjectName.Size())
-	}
-	n += litewire.SizeString(4, m.ShortPath)
-	n += litewire.SizeBool(5, m.HasProjects)
-	n += litewire.SizeString(6, m.Prompt)
-	n += litewire.SizeBool(7, m.Drafting)
-	n += litewire.SizeBool(8, m.Busy)
-	n += litewire.SizeBool(9, m.Settled)
-	n += litewire.SizeBool(10, m.Frozen)
-	if m.Config != nil {
-		n += litewire.SizeMessage(11, m.Config.Size())
-	}
-	n += litewire.SizeString(12, m.MachineName)
-	n += litewire.SizeBool(13, m.MachineSelectable)
-	n += litewire.SizeString(14, m.AgentName)
-	for _, v := range m.AvailableAgents {
-		if v != nil {
-			n += litewire.SizeMessage(15, v.Size())
-		}
-	}
-	if m.ModelLabel != nil {
-		n += litewire.SizeMessage(16, m.ModelLabel.Size())
-	}
-	n += litewire.SizeString(17, m.EffortLabel)
-	if m.DefaultMode != nil {
-		n += litewire.SizeMessage(18, m.DefaultMode.Size())
-	}
-	if m.LocationText != nil {
-		n += litewire.SizeMessage(19, m.LocationText.Size())
-	}
-	for _, v := range m.Notices {
-		if v != nil {
-			n += litewire.SizeMessage(20, v.Size())
-		}
-	}
-	n += litewire.SizeBool(21, m.CanStart)
-	if m.DisabledReason != nil {
-		n += litewire.SizeMessage(22, m.DisabledReason.Size())
-	}
-	if m.ModelPanel != nil {
-		n += litewire.SizeMessage(23, m.ModelPanel.Size())
-	}
-	n += litewire.SizeBool(24, m.ProjectRemoved)
-	n += litewire.SizeInt32(25, int32(m.AutoIssue))
-	return n
-}
+func (m *NewSessionViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *NewSessionViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *NewSessionViewModel) AppendMarshal(b []byte) []byte {

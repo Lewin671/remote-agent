@@ -61,27 +61,10 @@ func (m *PendingApproval) GetRequest() *v1.ApprovalRequested {
 	return nil
 }
 
-func (m *PendingApproval) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.ApprovalId)
-	if m.Request != nil {
-		n += litewire.SizeMessage(2, m.Request.Size())
-	}
-	return n
-}
+func (m *PendingApproval) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *PendingApproval) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *PendingApproval) AppendMarshal(b []byte) []byte {
@@ -120,28 +103,10 @@ func (m *ResolvedApproval) GetOrigin() *v1.Origin {
 	return nil
 }
 
-func (m *ResolvedApproval) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Decision))
-	n += litewire.SizeString(2, m.Message)
-	if m.Origin != nil {
-		n += litewire.SizeMessage(3, m.Origin.Size())
-	}
-	return n
-}
+func (m *ResolvedApproval) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ResolvedApproval) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ResolvedApproval) AppendMarshal(b []byte) []byte {
@@ -188,29 +153,10 @@ func (m *PendingQuestion) GetAskedAtMs() int64 {
 	return 0
 }
 
-func (m *PendingQuestion) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.QuestionId)
-	if m.Request != nil {
-		n += litewire.SizeMessage(2, m.Request.Size())
-	}
-	n += litewire.SizeVarintField(3, uint64(m.Seq))
-	n += litewire.SizeVarintField(4, uint64(m.AskedAtMs))
-	return n
-}
+func (m *PendingQuestion) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *PendingQuestion) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *PendingQuestion) AppendMarshal(b []byte) []byte {
@@ -244,29 +190,10 @@ func (m *AnsweredQuestion) GetOrigin() *v1.Origin {
 	return nil
 }
 
-func (m *AnsweredQuestion) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	for _, v := range m.Answers {
-		n += litewire.SizeStringAlways(1, v)
-	}
-	if m.Origin != nil {
-		n += litewire.SizeMessage(2, m.Origin.Size())
-	}
-	return n
-}
+func (m *AnsweredQuestion) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AnsweredQuestion) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AnsweredQuestion) AppendMarshal(b []byte) []byte {
@@ -328,37 +255,10 @@ func (m *AcceptedInput) GetTimeMs() int64 {
 	return 0
 }
 
-func (m *AcceptedInput) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Text)
-	for _, v := range m.ImageIds {
-		n += litewire.SizeStringAlways(2, v)
-	}
-	if m.Origin != nil {
-		n += litewire.SizeMessage(3, m.Origin.Size())
-	}
-	n += litewire.SizeInt32(4, int32(m.Stage))
-	for _, v := range m.Files {
-		if v != nil {
-			n += litewire.SizeMessage(5, v.Size())
-		}
-	}
-	n += litewire.SizeVarintField(6, uint64(m.TimeMs))
-	return n
-}
+func (m *AcceptedInput) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AcceptedInput) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AcceptedInput) AppendMarshal(b []byte) []byte {
@@ -428,35 +328,10 @@ func (m *InputProjection) GetFailureReason() string {
 	return ""
 }
 
-func (m *InputProjection) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.RequestId)
-	n += litewire.SizeInt32(2, int32(m.Status))
-	n += litewire.SizeVarintField(3, uint64(m.LastSeq))
-	if m.Detail != nil {
-		n += litewire.SizeMessage(4, m.Detail.Size())
-	}
-	if m.Accepted != nil {
-		n += litewire.SizeMessage(5, m.Accepted.Size())
-	}
-	if m.FailureReason != nil {
-		n += litewire.SizeStringAlways(6, *m.FailureReason)
-	}
-	return n
-}
+func (m *InputProjection) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *InputProjection) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *InputProjection) AppendMarshal(b []byte) []byte {
@@ -531,36 +406,10 @@ func (m *PendingInput) GetFiles() []*v1.SentFile {
 	return nil
 }
 
-func (m *PendingInput) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.RequestId)
-	n += litewire.SizeString(2, m.Text)
-	n += litewire.SizeInt32(3, int32(m.Mode))
-	n += litewire.SizeBool(4, m.Paused)
-	n += litewire.SizeBool(5, m.Held)
-	if m.Origin != nil {
-		n += litewire.SizeMessage(6, m.Origin.Size())
-	}
-	for _, v := range m.Files {
-		if v != nil {
-			n += litewire.SizeMessage(7, v.Size())
-		}
-	}
-	return n
-}
+func (m *PendingInput) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *PendingInput) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *PendingInput) AppendMarshal(b []byte) []byte {
@@ -601,25 +450,10 @@ func (m *UnsentInput) GetSeq() uint64 {
 	return 0
 }
 
-func (m *UnsentInput) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.RequestId)
-	n += litewire.SizeVarintField(2, uint64(m.Seq))
-	return n
-}
+func (m *UnsentInput) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UnsentInput) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UnsentInput) AppendMarshal(b []byte) []byte {
@@ -698,32 +532,10 @@ func (m *RunningTool) GetAwaitingApproval() bool {
 	return false
 }
 
-func (m *RunningTool) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Title)
-	n += litewire.SizeString(2, m.CallId)
-	n += litewire.SizeVarintField(3, uint64(m.SinceMs))
-	n += litewire.SizeInt32(4, int32(m.Kind))
-	n += litewire.SizeString(5, m.ItemType)
-	n += litewire.SizeVarintField(6, uint64(m.Seq))
-	n += litewire.SizeString(7, m.Input)
-	n += litewire.SizeString(8, m.InputDigest)
-	n += litewire.SizeBool(9, m.AwaitingApproval)
-	return n
-}
+func (m *RunningTool) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *RunningTool) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *RunningTool) AppendMarshal(b []byte) []byte {
@@ -774,29 +586,10 @@ func (m *BackgroundTool) GetBackgroundId() string {
 	return ""
 }
 
-func (m *BackgroundTool) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	if m.Tool != nil {
-		n += litewire.SizeMessage(1, m.Tool.Size())
-	}
-	n += litewire.SizeBool(2, m.Returned)
-	n += litewire.SizeInt32(3, int32(m.Background))
-	n += litewire.SizeString(4, m.BackgroundId)
-	return n
-}
+func (m *BackgroundTool) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *BackgroundTool) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *BackgroundTool) AppendMarshal(b []byte) []byte {
@@ -830,29 +623,10 @@ func (m *ContextCompaction) GetAfterPercent() int32 {
 	return 0
 }
 
-func (m *ContextCompaction) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	if m.BeforePercent != nil {
-		n += litewire.SizeInt32Always(1, int32(*m.BeforePercent))
-	}
-	if m.AfterPercent != nil {
-		n += litewire.SizeInt32Always(2, int32(*m.AfterPercent))
-	}
-	return n
-}
+func (m *ContextCompaction) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ContextCompaction) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ContextCompaction) AppendMarshal(b []byte) []byte {
@@ -900,37 +674,10 @@ func (m *TerminalChange) GetModel() *TerminalModelChange {
 	return nil
 }
 
-func (m *TerminalChange) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	switch x := m.Kind.(type) {
-	case *TerminalChange_Mode:
-		if x != nil {
-			if x.Mode != nil {
-				n += litewire.SizeMessage(1, x.Mode.Size())
-			}
-		}
-	case *TerminalChange_Model:
-		if x != nil {
-			if x.Model != nil {
-				n += litewire.SizeMessage(2, x.Model.Size())
-			}
-		}
-	}
-	return n
-}
+func (m *TerminalChange) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *TerminalChange) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalChange) AppendMarshal(b []byte) []byte {
@@ -972,25 +719,10 @@ func (m *TerminalModeChange) GetRawMode() string {
 	return ""
 }
 
-func (m *TerminalModeChange) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Mode))
-	n += litewire.SizeString(2, m.RawMode)
-	return n
-}
+func (m *TerminalModeChange) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *TerminalModeChange) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalModeChange) AppendMarshal(b []byte) []byte {
@@ -1020,25 +752,10 @@ func (m *TerminalModelChange) GetEffort() string {
 	return ""
 }
 
-func (m *TerminalModelChange) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Model)
-	n += litewire.SizeString(2, m.Effort)
-	return n
-}
+func (m *TerminalModelChange) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *TerminalModelChange) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalModelChange) AppendMarshal(b []byte) []byte {
@@ -1061,28 +778,10 @@ func (m *TerminalChangeList) GetChanges() []*TerminalChange {
 	return nil
 }
 
-func (m *TerminalChangeList) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	for _, v := range m.Changes {
-		if v != nil {
-			n += litewire.SizeMessage(1, v.Size())
-		}
-	}
-	return n
-}
+func (m *TerminalChangeList) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *TerminalChangeList) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalChangeList) AppendMarshal(b []byte) []byte {
@@ -1255,107 +954,10 @@ func (m *ProjectionState) GetApprovalCallIds() map[uint64]string {
 	return nil
 }
 
-func (m *ProjectionState) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	for _, v := range m.Approvals {
-		if v != nil {
-			n += litewire.SizeMessage(1, v.Size())
-		}
-	}
-	for k, v := range m.Resolved {
-		n += litewire.SizeMessage(2, litewire.SizeStringAlways(1, k)+litewire.SizeMessage(2, v.Size()))
-	}
-	for _, v := range m.Questions {
-		if v != nil {
-			n += litewire.SizeMessage(3, v.Size())
-		}
-	}
-	for k, v := range m.Answered {
-		n += litewire.SizeMessage(4, litewire.SizeStringAlways(1, k)+litewire.SizeMessage(2, v.Size()))
-	}
-	for _, v := range m.Inputs {
-		if v != nil {
-			n += litewire.SizeMessage(5, v.Size())
-		}
-	}
-	for _, v := range m.PendingInputs {
-		if v != nil {
-			n += litewire.SizeMessage(6, v.Size())
-		}
-	}
-	for _, v := range m.Unsent {
-		if v != nil {
-			n += litewire.SizeMessage(7, v.Size())
-		}
-	}
-	n += litewire.SizeBool(8, m.Running)
-	n += litewire.SizeVarintField(9, uint64(m.RunningSeq))
-	n += litewire.SizeBool(10, m.ScheduledClosed)
-	n += litewire.SizeBool(11, m.IdleClosed)
-	if m.Usage != nil {
-		n += litewire.SizeMessage(12, m.Usage.Size())
-	}
-	for k, v := range m.Compactions {
-		n += litewire.SizeMessage(13, litewire.SizeVarintFieldAlways(1, uint64(k))+litewire.SizeMessage(2, v.Size()))
-	}
-	if m.Plan != nil {
-		n += litewire.SizeMessage(14, m.Plan.Size())
-	}
-	for _, v := range m.Tools {
-		if v != nil {
-			n += litewire.SizeMessage(15, v.Size())
-		}
-	}
-	for _, v := range m.Background {
-		if v != nil {
-			n += litewire.SizeMessage(16, v.Size())
-		}
-	}
-	for k, v := range m.CompletedAt {
-		n += litewire.SizeMessage(17, litewire.SizeVarintFieldAlways(1, uint64(k))+litewire.SizeVarintFieldAlways(2, uint64(v)))
-	}
-	if len(m.UnfinishedSeqs) > 0 {
-		psz := 0
-		for _, v := range m.UnfinishedSeqs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		n += litewire.SizeMessage(18, psz)
-	}
-	if len(m.NoResultSeqs) > 0 {
-		psz := 0
-		for _, v := range m.NoResultSeqs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		n += litewire.SizeMessage(19, psz)
-	}
-	if len(m.TypedLocallySeqs) > 0 {
-		psz := 0
-		for _, v := range m.TypedLocallySeqs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		n += litewire.SizeMessage(20, psz)
-	}
-	for k, v := range m.TerminalChanges {
-		n += litewire.SizeMessage(21, litewire.SizeVarintFieldAlways(1, uint64(k))+litewire.SizeMessage(2, v.Size()))
-	}
-	for k, v := range m.ApprovalCallIds {
-		n += litewire.SizeMessage(22, litewire.SizeVarintFieldAlways(1, uint64(k))+litewire.SizeStringAlways(2, v))
-	}
-	return n
-}
+func (m *ProjectionState) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ProjectionState) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectionState) AppendMarshal(b []byte) []byte {
@@ -1368,12 +970,11 @@ func (m *ProjectionState) AppendMarshal(b []byte) []byte {
 		}
 	}
 	for k, v := range m.Resolved {
-		vsz := v.Size()
-		esz := litewire.SizeStringAlways(1, k) + litewire.SizeMessage(2, vsz)
-		b = litewire.AppendMessagePrefix(b, 2, esz)
+		var start int
+		b, start = litewire.BeginMessage(b, 2)
 		b = litewire.AppendStringAlways(b, 1, k)
-		b = litewire.AppendMessagePrefix(b, 2, vsz)
-		b = v.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, v)
+		b = litewire.EndMessage(b, start)
 	}
 	for _, v := range m.Questions {
 		if v != nil {
@@ -1381,12 +982,11 @@ func (m *ProjectionState) AppendMarshal(b []byte) []byte {
 		}
 	}
 	for k, v := range m.Answered {
-		vsz := v.Size()
-		esz := litewire.SizeStringAlways(1, k) + litewire.SizeMessage(2, vsz)
-		b = litewire.AppendMessagePrefix(b, 4, esz)
+		var start int
+		b, start = litewire.BeginMessage(b, 4)
 		b = litewire.AppendStringAlways(b, 1, k)
-		b = litewire.AppendMessagePrefix(b, 2, vsz)
-		b = v.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, v)
+		b = litewire.EndMessage(b, start)
 	}
 	for _, v := range m.Inputs {
 		if v != nil {
@@ -1411,12 +1011,11 @@ func (m *ProjectionState) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 12, m.Usage)
 	}
 	for k, v := range m.Compactions {
-		vsz := v.Size()
-		esz := litewire.SizeVarintFieldAlways(1, uint64(k)) + litewire.SizeMessage(2, vsz)
-		b = litewire.AppendMessagePrefix(b, 13, esz)
+		var start int
+		b, start = litewire.BeginMessage(b, 13)
 		b = litewire.AppendVarintAlways(b, 1, uint64(k))
-		b = litewire.AppendMessagePrefix(b, 2, vsz)
-		b = v.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, v)
+		b = litewire.EndMessage(b, start)
 	}
 	if m.Plan != nil {
 		b = litewire.AppendMessage(b, 14, m.Plan)
@@ -1432,54 +1031,49 @@ func (m *ProjectionState) AppendMarshal(b []byte) []byte {
 		}
 	}
 	for k, v := range m.CompletedAt {
-		esz := litewire.SizeVarintFieldAlways(1, uint64(k)) + litewire.SizeVarintFieldAlways(2, uint64(v))
-		b = litewire.AppendMessagePrefix(b, 17, esz)
+		var start int
+		b, start = litewire.BeginMessage(b, 17)
 		b = litewire.AppendVarintAlways(b, 1, uint64(k))
 		b = litewire.AppendVarintAlways(b, 2, uint64(v))
+		b = litewire.EndMessage(b, start)
 	}
 	if len(m.UnfinishedSeqs) > 0 {
-		psz := 0
-		for _, v := range m.UnfinishedSeqs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		b = litewire.AppendMessagePrefix(b, 18, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 18)
 		for _, v := range m.UnfinishedSeqs {
 			b = litewire.AppendRawVarint(b, uint64(v))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	if len(m.NoResultSeqs) > 0 {
-		psz := 0
-		for _, v := range m.NoResultSeqs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		b = litewire.AppendMessagePrefix(b, 19, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 19)
 		for _, v := range m.NoResultSeqs {
 			b = litewire.AppendRawVarint(b, uint64(v))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	if len(m.TypedLocallySeqs) > 0 {
-		psz := 0
-		for _, v := range m.TypedLocallySeqs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		b = litewire.AppendMessagePrefix(b, 20, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 20)
 		for _, v := range m.TypedLocallySeqs {
 			b = litewire.AppendRawVarint(b, uint64(v))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	for k, v := range m.TerminalChanges {
-		vsz := v.Size()
-		esz := litewire.SizeVarintFieldAlways(1, uint64(k)) + litewire.SizeMessage(2, vsz)
-		b = litewire.AppendMessagePrefix(b, 21, esz)
+		var start int
+		b, start = litewire.BeginMessage(b, 21)
 		b = litewire.AppendVarintAlways(b, 1, uint64(k))
-		b = litewire.AppendMessagePrefix(b, 2, vsz)
-		b = v.AppendMarshal(b)
+		b = litewire.AppendMessage(b, 2, v)
+		b = litewire.EndMessage(b, start)
 	}
 	for k, v := range m.ApprovalCallIds {
-		esz := litewire.SizeVarintFieldAlways(1, uint64(k)) + litewire.SizeStringAlways(2, v)
-		b = litewire.AppendMessagePrefix(b, 22, esz)
+		var start int
+		b, start = litewire.BeginMessage(b, 22)
 		b = litewire.AppendVarintAlways(b, 1, uint64(k))
 		b = litewire.AppendStringAlways(b, 2, v)
+		b = litewire.EndMessage(b, start)
 	}
 	return b
 }

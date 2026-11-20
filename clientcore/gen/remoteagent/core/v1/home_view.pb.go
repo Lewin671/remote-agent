@@ -147,33 +147,10 @@ func (m *ConnectionStatusView) GetDisconnectedAtMs() int64 {
 	return 0
 }
 
-func (m *ConnectionStatusView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.State))
-	if m.BadgeText != nil {
-		n += litewire.SizeMessage(2, m.BadgeText.Size())
-	}
-	if m.DetailText != nil {
-		n += litewire.SizeMessage(3, m.DetailText.Size())
-	}
-	n += litewire.SizeBool(4, m.LivePushConnected)
-	n += litewire.SizeString(5, m.Reason)
-	n += litewire.SizeVarintField(6, uint64(m.DisconnectedAtMs))
-	return n
-}
+func (m *ConnectionStatusView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ConnectionStatusView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ConnectionStatusView) AppendMarshal(b []byte) []byte {
@@ -260,36 +237,10 @@ func (m *HomeHeadlineView) GetHighlightArg() string {
 	return ""
 }
 
-func (m *HomeHeadlineView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Kind))
-	if m.Title != nil {
-		n += litewire.SizeMessage(2, m.Title.Size())
-	}
-	n += litewire.SizeInt32(3, int32(m.HighlightCount))
-	if m.Sub != nil {
-		n += litewire.SizeMessage(4, m.Sub.Size())
-	}
-	n += litewire.SizeBool(5, m.SubError)
-	n += litewire.SizeBool(6, m.SubPath)
-	n += litewire.SizeBool(7, m.DetailsAction)
-	n += litewire.SizeBool(8, m.Unlinked)
-	n += litewire.SizeString(9, m.HighlightArg)
-	return n
-}
+func (m *HomeHeadlineView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *HomeHeadlineView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeHeadlineView) AppendMarshal(b []byte) []byte {
@@ -372,33 +323,10 @@ func (m *HomeEmptyView) GetCanRetry() bool {
 	return false
 }
 
-func (m *HomeEmptyView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Kind))
-	if m.Message != nil {
-		n += litewire.SizeMessage(2, m.Message.Size())
-	}
-	n += litewire.SizeString(3, m.Command)
-	n += litewire.SizeString(4, m.ReadyMachineId)
-	n += litewire.SizeString(5, m.ReadyMachineName)
-	n += litewire.SizeBool(6, m.CanAddDevice)
-	n += litewire.SizeBool(7, m.CanStartFirst)
-	n += litewire.SizeBool(8, m.CanRetry)
-	return n
-}
+func (m *HomeEmptyView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *HomeEmptyView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeEmptyView) AppendMarshal(b []byte) []byte {
@@ -527,48 +455,10 @@ func (m *AttentionCardView) GetAlwaysLabel() *Text {
 	return nil
 }
 
-func (m *AttentionCardView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.MachineId)
-	n += litewire.SizeString(3, m.ApprovalId)
-	if m.Title != nil {
-		n += litewire.SizeMessage(4, m.Title.Size())
-	}
-	if m.KindText != nil {
-		n += litewire.SizeMessage(5, m.KindText.Size())
-	}
-	if m.Where != nil {
-		n += litewire.SizeMessage(6, m.Where.Size())
-	}
-	if m.Time != nil {
-		n += litewire.SizeMessage(7, m.Time.Size())
-	}
-	n += litewire.SizeBool(8, m.Hot)
-	n += litewire.SizeString(9, m.Body)
-	n += litewire.SizeString(10, m.ToolName)
-	n += litewire.SizeBool(11, m.IsCommand)
-	n += litewire.SizeBool(12, m.Truncated)
-	n += litewire.SizeInt32(13, int32(m.AlwaysKind))
-	n += litewire.SizeString(14, m.AlwaysArg)
-	if m.AlwaysLabel != nil {
-		n += litewire.SizeMessage(15, m.AlwaysLabel.Size())
-	}
-	return n
-}
+func (m *AttentionCardView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AttentionCardView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AttentionCardView) AppendMarshal(b []byte) []byte {
@@ -656,38 +546,10 @@ func (m *AttentionRowView) GetDetail() *Text {
 	return nil
 }
 
-func (m *AttentionRowView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.MachineId)
-	if m.Title != nil {
-		n += litewire.SizeMessage(3, m.Title.Size())
-	}
-	if m.KindText != nil {
-		n += litewire.SizeMessage(4, m.KindText.Size())
-	}
-	if m.Summary != nil {
-		n += litewire.SizeMessage(5, m.Summary.Size())
-	}
-	n += litewire.SizeBool(6, m.OutsideScope)
-	if m.Detail != nil {
-		n += litewire.SizeMessage(7, m.Detail.Size())
-	}
-	return n
-}
+func (m *AttentionRowView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AttentionRowView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AttentionRowView) AppendMarshal(b []byte) []byte {
@@ -814,49 +676,10 @@ func (m *SessionRowView) GetPendingAction() bool {
 	return false
 }
 
-func (m *SessionRowView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.MachineId)
-	if m.Title != nil {
-		n += litewire.SizeMessage(3, m.Title.Size())
-	}
-	if m.Time != nil {
-		n += litewire.SizeMessage(4, m.Time.Size())
-	}
-	n += litewire.SizeInt32(5, int32(m.Status))
-	n += litewire.SizeInt32(6, int32(m.Tone))
-	if m.StatusText != nil {
-		n += litewire.SizeMessage(7, m.StatusText.Size())
-	}
-	if m.Preview != nil {
-		n += litewire.SizeMessage(8, m.Preview.Size())
-	}
-	if m.SecondLine != nil {
-		n += litewire.SizeMessage(9, m.SecondLine.Size())
-	}
-	n += litewire.SizeInt32(10, int32(m.Agent))
-	n += litewire.SizeBool(11, m.MultipleAgents)
-	if m.MetaLine != nil {
-		n += litewire.SizeMessage(12, m.MetaLine.Size())
-	}
-	n += litewire.SizeBool(13, m.Selected)
-	n += litewire.SizeBool(14, m.PendingAction)
-	return n
-}
+func (m *SessionRowView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SessionRowView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionRowView) AppendMarshal(b []byte) []byte {
@@ -931,32 +754,10 @@ func (m *EndedRowView) GetSelected() bool {
 	return false
 }
 
-func (m *EndedRowView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.MachineId)
-	if m.Title != nil {
-		n += litewire.SizeMessage(3, m.Title.Size())
-	}
-	if m.Right != nil {
-		n += litewire.SizeMessage(4, m.Right.Size())
-	}
-	n += litewire.SizeBool(5, m.Selected)
-	return n
-}
+func (m *EndedRowView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *EndedRowView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *EndedRowView) AppendMarshal(b []byte) []byte {
@@ -1007,33 +808,10 @@ func (m *EndedGroupView) GetItems() []*EndedRowView {
 	return nil
 }
 
-func (m *EndedGroupView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.GroupKey)
-	n += litewire.SizeInt32(2, int32(m.GroupKind))
-	if m.Label != nil {
-		n += litewire.SizeMessage(3, m.Label.Size())
-	}
-	for _, v := range m.Items {
-		if v != nil {
-			n += litewire.SizeMessage(4, v.Size())
-		}
-	}
-	return n
-}
+func (m *EndedGroupView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *EndedGroupView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *EndedGroupView) AppendMarshal(b []byte) []byte {
@@ -1078,28 +856,10 @@ func (m *TailRowView) GetRetry() bool {
 	return false
 }
 
-func (m *TailRowView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Kind))
-	if m.Text != nil {
-		n += litewire.SizeMessage(2, m.Text.Size())
-	}
-	n += litewire.SizeBool(3, m.Retry)
-	return n
-}
+func (m *TailRowView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *TailRowView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *TailRowView) AppendMarshal(b []byte) []byte {
@@ -1181,36 +941,10 @@ func (m *ScopeRowView) GetAllProjects() bool {
 	return false
 }
 
-func (m *ScopeRowView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Key)
-	if m.Name != nil {
-		n += litewire.SizeMessage(2, m.Name.Size())
-	}
-	n += litewire.SizeString(3, m.ShortPath)
-	if m.Subtitle != nil {
-		n += litewire.SizeMessage(4, m.Subtitle.Size())
-	}
-	n += litewire.SizeInt32(5, int32(m.WaitingCount))
-	n += litewire.SizeInt32(6, int32(m.LiveCount))
-	n += litewire.SizeBool(7, m.AllOffline)
-	n += litewire.SizeBool(8, m.Checked)
-	n += litewire.SizeBool(9, m.AllProjects)
-	return n
-}
+func (m *ScopeRowView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScopeRowView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScopeRowView) AppendMarshal(b []byte) []byte {
@@ -1314,40 +1048,10 @@ func (m *ProjectRowView) GetSaveError() *Text {
 	return nil
 }
 
-func (m *ProjectRowView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Key)
-	if m.Name != nil {
-		n += litewire.SizeMessage(2, m.Name.Size())
-	}
-	n += litewire.SizeString(3, m.ShortPath)
-	if m.Subtitle != nil {
-		n += litewire.SizeMessage(4, m.Subtitle.Size())
-	}
-	n += litewire.SizeInt32(5, int32(m.WaitingCount))
-	n += litewire.SizeInt32(6, int32(m.LiveCount))
-	n += litewire.SizeBool(7, m.AllOffline)
-	n += litewire.SizeBool(8, m.Pinned)
-	n += litewire.SizeBool(9, m.Hidden)
-	n += litewire.SizeBool(10, m.Syncing)
-	if m.SaveError != nil {
-		n += litewire.SizeMessage(11, m.SaveError.Size())
-	}
-	return n
-}
+func (m *ProjectRowView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ProjectRowView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectRowView) AppendMarshal(b []byte) []byte {
@@ -1455,44 +1159,10 @@ func (m *ProjectListingView) GetLoadFailed() bool {
 	return false
 }
 
-func (m *ProjectListingView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	for _, v := range m.Pinned {
-		if v != nil {
-			n += litewire.SizeMessage(1, v.Size())
-		}
-	}
-	for _, v := range m.Others {
-		if v != nil {
-			n += litewire.SizeMessage(2, v.Size())
-		}
-	}
-	n += litewire.SizeBool(3, m.Titled)
-	n += litewire.SizeBool(4, m.CanSearch)
-	n += litewire.SizeBool(5, m.Searching)
-	n += litewire.SizeString(6, m.SearchQuery)
-	if m.EmptyMatch != nil {
-		n += litewire.SizeMessage(7, m.EmptyMatch.Size())
-	}
-	n += litewire.SizeInt32(8, int32(m.WaitingTotal))
-	n += litewire.SizeBool(9, m.Loading)
-	n += litewire.SizeBool(10, m.Syncing)
-	n += litewire.SizeBool(11, m.LoadFailed)
-	return n
-}
+func (m *ProjectListingView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ProjectListingView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectListingView) AppendMarshal(b []byte) []byte {
@@ -1723,85 +1393,10 @@ func (m *HomeViewModel) GetTopAttentionQuestion() *HomeQuestionCardView {
 	return nil
 }
 
-func (m *HomeViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(2, m.ScopeSelectable)
-	n += litewire.SizeString(3, m.ScopeKey)
-	if m.ScopeTitle != nil {
-		n += litewire.SizeMessage(4, m.ScopeTitle.Size())
-	}
-	n += litewire.SizeString(5, m.ScopeShortPath)
-	if m.Connection != nil {
-		n += litewire.SizeMessage(6, m.Connection.Size())
-	}
-	if m.Headline != nil {
-		n += litewire.SizeMessage(7, m.Headline.Size())
-	}
-	if m.Empty != nil {
-		n += litewire.SizeMessage(8, m.Empty.Size())
-	}
-	n += litewire.SizeBool(9, m.CanFilter)
-	n += litewire.SizeString(10, m.FilterQuery)
-	if m.FilterSummary != nil {
-		n += litewire.SizeMessage(11, m.FilterSummary.Size())
-	}
-	n += litewire.SizeBool(12, m.NoMatches)
-	n += litewire.SizeInt32(13, int32(m.WaitingTotal))
-	n += litewire.SizeInt32(14, int32(m.LiveTotal))
-	n += litewire.SizeInt32(15, int32(m.EndedTotal))
-	n += litewire.SizeInt32(16, int32(m.TimelineTotal))
-	n += litewire.SizeString(17, m.TopAttentionSessionId)
-	n += litewire.SizeBool(18, m.TopAttentionActionable)
-	if m.TopAttentionCard != nil {
-		n += litewire.SizeMessage(19, m.TopAttentionCard.Size())
-	}
-	for _, v := range m.Attention {
-		if v != nil {
-			n += litewire.SizeMessage(20, v.Size())
-		}
-	}
-	for _, v := range m.Running {
-		if v != nil {
-			n += litewire.SizeMessage(21, v.Size())
-		}
-	}
-	for _, v := range m.EndedGroups {
-		if v != nil {
-			n += litewire.SizeMessage(22, v.Size())
-		}
-	}
-	if m.EndedTail != nil {
-		n += litewire.SizeMessage(23, m.EndedTail.Size())
-	}
-	for _, v := range m.ScopeMenu {
-		if v != nil {
-			n += litewire.SizeMessage(24, v.Size())
-		}
-	}
-	if m.SidebarProjects != nil {
-		n += litewire.SizeMessage(25, m.SidebarProjects.Size())
-	}
-	n += litewire.SizeBool(26, m.CanStart)
-	n += litewire.SizeString(27, m.SelectedSessionId)
-	n += litewire.SizeBool(28, m.HasMoreEnded)
-	if m.TopAttentionQuestion != nil {
-		n += litewire.SizeMessage(29, m.TopAttentionQuestion.Size())
-	}
-	return n
-}
+func (m *HomeViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *HomeViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeViewModel) AppendMarshal(b []byte) []byte {
@@ -1905,27 +1500,10 @@ func (m *HomeQuestionOptionView) GetRecommended() bool {
 	return false
 }
 
-func (m *HomeQuestionOptionView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.OptionNum))
-	n += litewire.SizeString(2, m.Label)
-	n += litewire.SizeString(3, m.Description)
-	n += litewire.SizeBool(4, m.Recommended)
-	return n
-}
+func (m *HomeQuestionOptionView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *HomeQuestionOptionView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeQuestionOptionView) AppendMarshal(b []byte) []byte {
@@ -2034,50 +1612,10 @@ func (m *HomeQuestionCardView) GetOfflineNote() *Text {
 	return nil
 }
 
-func (m *HomeQuestionCardView) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.MachineId)
-	n += litewire.SizeString(3, m.QuestionId)
-	n += litewire.SizeVarintField(4, uint64(m.ObservedEventSeq))
-	if m.BadgeText != nil {
-		n += litewire.SizeMessage(5, m.BadgeText.Size())
-	}
-	if m.TimeText != nil {
-		n += litewire.SizeMessage(6, m.TimeText.Size())
-	}
-	if m.Title != nil {
-		n += litewire.SizeMessage(7, m.Title.Size())
-	}
-	if m.Where != nil {
-		n += litewire.SizeMessage(8, m.Where.Size())
-	}
-	n += litewire.SizeString(9, m.Header)
-	n += litewire.SizeString(10, m.QuestionText)
-	for _, v := range m.Options {
-		if v != nil {
-			n += litewire.SizeMessage(11, v.Size())
-		}
-	}
-	n += litewire.SizeBool(12, m.CanAnswer)
-	if m.OfflineNote != nil {
-		n += litewire.SizeMessage(13, m.OfflineNote.Size())
-	}
-	return n
-}
+func (m *HomeQuestionCardView) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *HomeQuestionCardView) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeQuestionCardView) AppendMarshal(b []byte) []byte {

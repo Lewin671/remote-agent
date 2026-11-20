@@ -346,70 +346,10 @@ func (m *Session) Clone() *Session {
 	return &cp
 }
 
-func (m *Session) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Id)
-	n += litewire.SizeString(2, m.Cwd)
-	n += litewire.SizeString(3, m.TmuxSession)
-	n += litewire.SizeInt32(4, int32(m.Status))
-	n += litewire.SizeString(5, m.StatusDetail)
-	n += litewire.SizeString(6, m.CodexSessionId)
-	n += litewire.SizeString(7, m.RolloutPath)
-	if m.CreatedAt != nil {
-		n += litewire.SizeMessage(8, m.CreatedAt.Size())
-	}
-	n += litewire.SizeVarintField(9, uint64(m.LastSeq))
-	n += litewire.SizeString(10, m.Model)
-	n += litewire.SizeString(11, m.Effort)
-	n += litewire.SizeInt32(12, int32(m.PendingApprovals))
-	n += litewire.SizeInt32(13, int32(m.PendingQuestions))
-	n += litewire.SizeInt32(14, int32(m.QueuedInputs))
-	n += litewire.SizeString(15, m.Title)
-	n += litewire.SizeString(16, m.Preview)
-	n += litewire.SizeString(17, m.ApprovalsReviewer)
-	n += litewire.SizeString(18, m.ApprovalPolicy)
-	n += litewire.SizeString(19, m.Sandbox)
-	n += litewire.SizeString(20, m.CollaborationMode)
-	n += litewire.SizeVarintField(21, uint64(m.ContextTokens))
-	n += litewire.SizeVarintField(22, uint64(m.ContextWindow))
-	n += litewire.SizeBool(23, m.PlanOpen)
-	n += litewire.SizeString(24, m.InputWait)
-	n += litewire.SizeInt32(25, int32(m.Agent))
-	n += litewire.SizeInt32(26, int32(m.Mode))
-	n += litewire.SizeString(27, m.PermissionMode)
-	n += litewire.SizeBool(28, m.FullAccessUnavailable)
-	if m.AttentionSince != nil {
-		n += litewire.SizeMessage(29, m.AttentionSince.Size())
-	}
-	if m.EndedAt != nil {
-		n += litewire.SizeMessage(30, m.EndedAt.Size())
-	}
-	n += litewire.SizeString(31, m.ForkedFrom)
-	n += litewire.SizeVarintField(32, uint64(m.ForkedSeq))
-	n += litewire.SizeBytesField(33, m.CurrentCheckpoint)
-	for _, v := range m.MachineReplacements {
-		if v != nil {
-			n += litewire.SizeMessage(34, v.Size())
-		}
-	}
-	n += litewire.SizeString(35, m.ScheduledTaskId)
-	n += litewire.SizeBool(36, m.TaskOwned)
-	n += litewire.SizeBool(37, m.ModeLocked)
-	return n
-}
+func (m *Session) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *Session) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *Session) AppendMarshal(b []byte) []byte {
@@ -845,25 +785,10 @@ func (m *MachineReplacementProof) Clone() *MachineReplacementProof {
 	return &cp
 }
 
-func (m *MachineReplacementProof) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBytesField(1, m.Approval)
-	n += litewire.SizeBytesField(2, m.Signature)
-	return n
-}
+func (m *MachineReplacementProof) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *MachineReplacementProof) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *MachineReplacementProof) AppendMarshal(b []byte) []byte {
@@ -1006,42 +931,10 @@ func (m *CreateSessionRequest) Clone() *CreateSessionRequest {
 	return &cp
 }
 
-func (m *CreateSessionRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Cwd)
-	for _, v := range m.Args {
-		n += litewire.SizeStringAlways(2, v)
-	}
-	for k, v := range m.Env {
-		n += litewire.SizeMessage(3, litewire.SizeStringAlways(1, k)+litewire.SizeStringAlways(2, v))
-	}
-	n += litewire.SizeString(4, m.Prompt)
-	n += litewire.SizeString(5, m.Model)
-	n += litewire.SizeString(6, m.Effort)
-	n += litewire.SizeInt32(7, int32(m.Mode))
-	n += litewire.SizeInt32(8, int32(m.Agent))
-	for _, v := range m.ImageIds {
-		n += litewire.SizeStringAlways(9, v)
-	}
-	n += litewire.SizeBool(11, m.StandardContext)
-	for _, v := range m.FileIds {
-		n += litewire.SizeStringAlways(12, v)
-	}
-	return n
-}
+func (m *CreateSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CreateSessionRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CreateSessionRequest) AppendMarshal(b []byte) []byte {
@@ -1053,10 +946,11 @@ func (m *CreateSessionRequest) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendStringAlways(b, 2, v)
 	}
 	for k, v := range m.Env {
-		esz := litewire.SizeStringAlways(1, k) + litewire.SizeStringAlways(2, v)
-		b = litewire.AppendMessagePrefix(b, 3, esz)
+		var start int
+		b, start = litewire.BeginMessage(b, 3)
 		b = litewire.AppendStringAlways(b, 1, k)
 		b = litewire.AppendStringAlways(b, 2, v)
+		b = litewire.EndMessage(b, start)
 	}
 	b = litewire.AppendString(b, 4, m.Prompt)
 	b = litewire.AppendString(b, 5, m.Model)
@@ -1313,33 +1207,10 @@ func (m *SendRequest) Clone() *SendRequest {
 	return &cp
 }
 
-func (m *SendRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.Text)
-	n += litewire.SizeString(3, m.RequestId)
-	for _, v := range m.ImageIds {
-		n += litewire.SizeStringAlways(4, v)
-	}
-	n += litewire.SizeInt32(5, int32(m.Mode))
-	for _, v := range m.FileIds {
-		n += litewire.SizeStringAlways(6, v)
-	}
-	return n
-}
+func (m *SendRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SendRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SendRequest) AppendMarshal(b []byte) []byte {
@@ -1482,24 +1353,10 @@ func (m *InterruptRequest) Clone() *InterruptRequest {
 	return &cp
 }
 
-func (m *InterruptRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	return n
-}
+func (m *InterruptRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *InterruptRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *InterruptRequest) AppendMarshal(b []byte) []byte {
@@ -1588,24 +1445,10 @@ func (m *StopSessionRequest) Clone() *StopSessionRequest {
 	return &cp
 }
 
-func (m *StopSessionRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	return n
-}
+func (m *StopSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *StopSessionRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *StopSessionRequest) AppendMarshal(b []byte) []byte {
@@ -1682,25 +1525,10 @@ func (m *CancelInputRequest) Clone() *CancelInputRequest {
 	return &cp
 }
 
-func (m *CancelInputRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.RequestId)
-	return n
-}
+func (m *CancelInputRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CancelInputRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CancelInputRequest) AppendMarshal(b []byte) []byte {
@@ -1787,25 +1615,10 @@ func (m *ResumeInputRequest) Clone() *ResumeInputRequest {
 	return &cp
 }
 
-func (m *ResumeInputRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.RequestId)
-	return n
-}
+func (m *ResumeInputRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ResumeInputRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ResumeInputRequest) AppendMarshal(b []byte) []byte {
@@ -1920,29 +1733,10 @@ func (m *ResolveApprovalRequest) Clone() *ResolveApprovalRequest {
 	return &cp
 }
 
-func (m *ResolveApprovalRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.ApprovalId)
-	n += litewire.SizeBool(3, m.Allow)
-	n += litewire.SizeString(4, m.Message)
-	n += litewire.SizeBool(5, m.Always)
-	n += litewire.SizeVarintField(6, uint64(m.ObservedEventSeq))
-	return n
-}
+func (m *ResolveApprovalRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ResolveApprovalRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ResolveApprovalRequest) AppendMarshal(b []byte) []byte {
@@ -2102,37 +1896,10 @@ func (m *AnswerQuestionRequest) Clone() *AnswerQuestionRequest {
 	return &cp
 }
 
-func (m *AnswerQuestionRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.QuestionId)
-	n += litewire.SizeInt32(3, int32(m.Option))
-	if m.QuestionIndex != nil {
-		n += litewire.SizeInt32Always(4, int32(*m.QuestionIndex))
-	}
-	if len(m.Options) > 0 {
-		psz := 0
-		for _, v := range m.Options {
-			psz += litewire.SizeVarint(uint64(int64(v)))
-		}
-		n += litewire.SizeMessage(5, psz)
-	}
-	n += litewire.SizeVarintField(6, uint64(m.ObservedEventSeq))
-	return n
-}
+func (m *AnswerQuestionRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AnswerQuestionRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AnswerQuestionRequest) AppendMarshal(b []byte) []byte {
@@ -2146,14 +1913,12 @@ func (m *AnswerQuestionRequest) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendInt32Always(b, 4, int32(*m.QuestionIndex))
 	}
 	if len(m.Options) > 0 {
-		psz := 0
-		for _, v := range m.Options {
-			psz += litewire.SizeVarint(uint64(int64(v)))
-		}
-		b = litewire.AppendMessagePrefix(b, 5, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 5)
 		for _, v := range m.Options {
 			b = litewire.AppendRawVarint(b, uint64(int64(v)))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	b = litewire.AppendVarint(b, 6, uint64(m.ObservedEventSeq))
 	return b
@@ -2292,26 +2057,10 @@ func (m *SetModelRequest) Clone() *SetModelRequest {
 	return &cp
 }
 
-func (m *SetModelRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.Model)
-	n += litewire.SizeString(3, m.Effort)
-	return n
-}
+func (m *SetModelRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SetModelRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SetModelRequest) AppendMarshal(b []byte) []byte {
@@ -2401,24 +2150,10 @@ func (m *ListModelsRequest) Clone() *ListModelsRequest {
 	return &cp
 }
 
-func (m *ListModelsRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Agent))
-	return n
-}
+func (m *ListModelsRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ListModelsRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ListModelsRequest) AppendMarshal(b []byte) []byte {
@@ -2684,25 +2419,10 @@ func (m *SetApprovalModeRequest) Clone() *SetApprovalModeRequest {
 	return &cp
 }
 
-func (m *SetApprovalModeRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeInt32(2, int32(m.Mode))
-	return n
-}
+func (m *SetApprovalModeRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SetApprovalModeRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SetApprovalModeRequest) AppendMarshal(b []byte) []byte {
@@ -2789,25 +2509,10 @@ func (m *RenameSessionRequest) Clone() *RenameSessionRequest {
 	return &cp
 }
 
-func (m *RenameSessionRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.Title)
-	return n
-}
+func (m *RenameSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *RenameSessionRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *RenameSessionRequest) AppendMarshal(b []byte) []byte {
@@ -2887,24 +2592,10 @@ func (m *CompactRequest) Clone() *CompactRequest {
 	return &cp
 }
 
-func (m *CompactRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	return n
-}
+func (m *CompactRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CompactRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CompactRequest) AppendMarshal(b []byte) []byte {
@@ -2996,27 +2687,10 @@ func (m *AnswerPlanRequest) Clone() *AnswerPlanRequest {
 	return &cp
 }
 
-func (m *AnswerPlanRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeInt32(2, int32(m.Choice))
-	n += litewire.SizeVarintField(3, uint64(m.ObservedEventSeq))
-	n += litewire.SizeBytesField(4, m.ObservedScreenHash)
-	return n
-}
+func (m *AnswerPlanRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AnswerPlanRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AnswerPlanRequest) AppendMarshal(b []byte) []byte {
@@ -3116,24 +2790,10 @@ func (m *ListDirectoriesRequest) Clone() *ListDirectoriesRequest {
 	return &cp
 }
 
-func (m *ListDirectoriesRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Path)
-	return n
-}
+func (m *ListDirectoriesRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ListDirectoriesRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ListDirectoriesRequest) AppendMarshal(b []byte) []byte {
@@ -3336,43 +2996,10 @@ func (m *DaemonSettings) Clone() *DaemonSettings {
 	return &cp
 }
 
-func (m *DaemonSettings) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.ApprovalTimeoutSeconds))
-	n += litewire.SizeString(2, m.DefaultModel)
-	n += litewire.SizeString(3, m.DefaultEffort)
-	n += litewire.SizeInt32(4, int32(m.DefaultMode))
-	if m.Claude != nil {
-		n += litewire.SizeMessage(5, m.Claude.Size())
-	}
-	n += litewire.SizeVarintField(6, uint64(m.ImageUploadQuotaBytes))
-	if m.Antigravity != nil {
-		n += litewire.SizeMessage(7, m.Antigravity.Size())
-	}
-	n += litewire.SizeInt32(8, int32(m.IdleCloseMinutes))
-	if len(m.DisabledAgents) > 0 {
-		psz := 0
-		for _, v := range m.DisabledAgents {
-			psz += litewire.SizeVarint(uint64(int64(v)))
-		}
-		n += litewire.SizeMessage(9, psz)
-	}
-	n += litewire.SizeVarintField(10, uint64(m.Revision))
-	return n
-}
+func (m *DaemonSettings) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DaemonSettings) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DaemonSettings) AppendMarshal(b []byte) []byte {
@@ -3392,14 +3019,12 @@ func (m *DaemonSettings) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendInt32(b, 8, int32(m.IdleCloseMinutes))
 	if len(m.DisabledAgents) > 0 {
-		psz := 0
-		for _, v := range m.DisabledAgents {
-			psz += litewire.SizeVarint(uint64(int64(v)))
-		}
-		b = litewire.AppendMessagePrefix(b, 9, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 9)
 		for _, v := range m.DisabledAgents {
 			b = litewire.AppendRawVarint(b, uint64(int64(v)))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	b = litewire.AppendVarint(b, 10, uint64(m.Revision))
 	return b
@@ -3559,26 +3184,10 @@ func (m *AgentDefaults) Clone() *AgentDefaults {
 	return &cp
 }
 
-func (m *AgentDefaults) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Model)
-	n += litewire.SizeString(2, m.Effort)
-	n += litewire.SizeInt32(3, int32(m.Mode))
-	return n
-}
+func (m *AgentDefaults) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AgentDefaults) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AgentDefaults) AppendMarshal(b []byte) []byte {
@@ -3644,22 +3253,10 @@ func (m *GetSettingsRequest) Clone() *GetSettingsRequest {
 	return &cp
 }
 
-func (m *GetSettingsRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	return 0
-}
+func (m *GetSettingsRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *GetSettingsRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetSettingsRequest) AppendMarshal(b []byte) []byte {
@@ -3784,33 +3381,10 @@ func (m *UpdateSettingsRequest) Clone() *UpdateSettingsRequest {
 	return &cp
 }
 
-func (m *UpdateSettingsRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	if m.Settings != nil {
-		n += litewire.SizeMessage(1, m.Settings.Size())
-	}
-	n += litewire.SizeBool(2, m.CleanImages)
-	if m.ToggleAgent != nil {
-		n += litewire.SizeInt32Always(3, int32(*m.ToggleAgent))
-	}
-	if m.ToggleEnabled != nil {
-		n += litewire.SizeBoolAlways(4)
-	}
-	return n
-}
+func (m *UpdateSettingsRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UpdateSettingsRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UpdateSettingsRequest) AppendMarshal(b []byte) []byte {
@@ -3956,24 +3530,10 @@ func (m *ResumeSessionRequest) Clone() *ResumeSessionRequest {
 	return &cp
 }
 
-func (m *ResumeSessionRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	return n
-}
+func (m *ResumeSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ResumeSessionRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ResumeSessionRequest) AppendMarshal(b []byte) []byte {
@@ -4063,24 +3623,10 @@ func (m *ForkSessionRequest) Clone() *ForkSessionRequest {
 	return &cp
 }
 
-func (m *ForkSessionRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	return n
-}
+func (m *ForkSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ForkSessionRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ForkSessionRequest) AppendMarshal(b []byte) []byte {
@@ -4378,28 +3924,10 @@ func (m *BeginImageUploadRequest) Clone() *BeginImageUploadRequest {
 	return &cp
 }
 
-func (m *BeginImageUploadRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.TransferId)
-	n += litewire.SizeInt32(2, int32(m.Format))
-	n += litewire.SizeVarintField(3, uint64(m.TotalBytes))
-	n += litewire.SizeBytesField(4, m.Sha256)
-	n += litewire.SizeString(5, m.FileName)
-	return n
-}
+func (m *BeginImageUploadRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *BeginImageUploadRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *BeginImageUploadRequest) AppendMarshal(b []byte) []byte {
@@ -4544,26 +4072,10 @@ func (m *PutImageChunkRequest) Clone() *PutImageChunkRequest {
 	return &cp
 }
 
-func (m *PutImageChunkRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.TransferId)
-	n += litewire.SizeVarintField(2, uint64(m.Offset))
-	n += litewire.SizeBytesField(3, m.Data)
-	return n
-}
+func (m *PutImageChunkRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *PutImageChunkRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *PutImageChunkRequest) AppendMarshal(b []byte) []byte {
@@ -4673,24 +4185,10 @@ func (m *GetImageUploadStatusRequest) Clone() *GetImageUploadStatusRequest {
 	return &cp
 }
 
-func (m *GetImageUploadStatusRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.TransferId)
-	return n
-}
+func (m *GetImageUploadStatusRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *GetImageUploadStatusRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetImageUploadStatusRequest) AppendMarshal(b []byte) []byte {
@@ -4758,26 +4256,10 @@ func (m *GetSharedFileChunkRequest) Clone() *GetSharedFileChunkRequest {
 	return &cp
 }
 
-func (m *GetSharedFileChunkRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeString(2, m.FileId)
-	n += litewire.SizeVarintField(3, uint64(m.Offset))
-	return n
-}
+func (m *GetSharedFileChunkRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *GetSharedFileChunkRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetSharedFileChunkRequest) AppendMarshal(b []byte) []byte {
@@ -4939,24 +4421,10 @@ func (m *CompleteImageUploadRequest) Clone() *CompleteImageUploadRequest {
 	return &cp
 }
 
-func (m *CompleteImageUploadRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.TransferId)
-	return n
-}
+func (m *CompleteImageUploadRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CompleteImageUploadRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CompleteImageUploadRequest) AppendMarshal(b []byte) []byte {
@@ -5046,24 +4514,10 @@ func (m *AbortImageUploadRequest) Clone() *AbortImageUploadRequest {
 	return &cp
 }
 
-func (m *AbortImageUploadRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.TransferId)
-	return n
-}
+func (m *AbortImageUploadRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AbortImageUploadRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AbortImageUploadRequest) AppendMarshal(b []byte) []byte {
@@ -5389,29 +4843,10 @@ func (m *ScheduleRequest) Clone() *ScheduleRequest {
 	return &cp
 }
 
-func (m *ScheduleRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Operation)
-	n += litewire.SizeString(2, m.TaskId)
-	n += litewire.SizeString(3, m.SessionId)
-	n += litewire.SizeBytesField(4, m.SpecJson)
-	n += litewire.SizeVarintField(5, uint64(m.ExpectedRevision))
-	n += litewire.SizeString(6, m.RequestId)
-	return n
-}
+func (m *ScheduleRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleRequest) AppendMarshal(b []byte) []byte {
@@ -5542,22 +4977,10 @@ func (m *GetMachineStatusRequest) Clone() *GetMachineStatusRequest {
 	return &cp
 }
 
-func (m *GetMachineStatusRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	return 0
-}
+func (m *GetMachineStatusRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *GetMachineStatusRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetMachineStatusRequest) AppendMarshal(b []byte) []byte {
@@ -5634,29 +5057,10 @@ func (m *DiskStatus) Clone() *DiskStatus {
 	return &cp
 }
 
-func (m *DiskStatus) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.ObservedMs))
-	n += litewire.SizeVarintField(2, uint64(m.TotalBytes))
-	n += litewire.SizeVarintField(3, uint64(m.AvailableBytes))
-	n += litewire.SizeInt32(4, int32(m.Pressure))
-	n += litewire.SizeVarintField(5, uint64(m.EmergencyReserveBytes))
-	n += litewire.SizeBool(6, m.DeferredWritesPaused)
-	return n
-}
+func (m *DiskStatus) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DiskStatus) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DiskStatus) AppendMarshal(b []byte) []byte {
@@ -6376,37 +5780,10 @@ func (m *GetUsageStatsRequest) Clone() *GetUsageStatsRequest {
 	return &cp
 }
 
-func (m *GetUsageStatsRequest) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Preset))
-	n += litewire.SizeVarintField(2, uint64(m.CustomStartMs))
-	n += litewire.SizeVarintField(3, uint64(m.CustomEndMs))
-	n += litewire.SizeString(4, m.Timezone)
-	n += litewire.SizeInt32(5, int32(m.TzOffsetMinutes))
-	if len(m.BucketBoundsMs) > 0 {
-		psz := 0
-		for _, v := range m.BucketBoundsMs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		n += litewire.SizeMessage(6, psz)
-	}
-	n += litewire.SizeVarintField(7, uint64(m.PrevStartMs))
-	n += litewire.SizeBool(8, m.IncludeDisabled)
-	return n
-}
+func (m *GetUsageStatsRequest) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *GetUsageStatsRequest) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetUsageStatsRequest) AppendMarshal(b []byte) []byte {
@@ -6419,14 +5796,12 @@ func (m *GetUsageStatsRequest) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 4, m.Timezone)
 	b = litewire.AppendInt32(b, 5, int32(m.TzOffsetMinutes))
 	if len(m.BucketBoundsMs) > 0 {
-		psz := 0
-		for _, v := range m.BucketBoundsMs {
-			psz += litewire.SizeVarint(uint64(v))
-		}
-		b = litewire.AppendMessagePrefix(b, 6, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 6)
 		for _, v := range m.BucketBoundsMs {
 			b = litewire.AppendRawVarint(b, uint64(v))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	b = litewire.AppendVarint(b, 7, uint64(m.PrevStartMs))
 	b = litewire.AppendBool(b, 8, m.IncludeDisabled)
@@ -6567,26 +5942,10 @@ func (m *UsageAgentSource) Clone() *UsageAgentSource {
 	return &cp
 }
 
-func (m *UsageAgentSource) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Agent))
-	n += litewire.SizeInt32(2, int32(m.State))
-	n += litewire.SizeString(3, m.Detail)
-	return n
-}
+func (m *UsageAgentSource) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageAgentSource) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageAgentSource) AppendMarshal(b []byte) []byte {
@@ -6758,38 +6117,10 @@ func (m *UsageBucketPoint) Clone() *UsageBucketPoint {
 	return &cp
 }
 
-func (m *UsageBucketPoint) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.StartMs))
-	n += litewire.SizeVarintField(2, uint64(m.EndMs))
-	n += litewire.SizeVarintField(3, uint64(m.UncachedInputTokens))
-	n += litewire.SizeVarintField(4, uint64(m.CacheReadTokens))
-	n += litewire.SizeVarintField(5, uint64(m.CacheWriteTokens))
-	n += litewire.SizeVarintField(6, uint64(m.OutputTokens))
-	n += litewire.SizeVarintField(7, uint64(m.ReasoningOutputTokens))
-	n += litewire.SizeVarintField(8, uint64(m.UsageRequestCount))
-	n += litewire.SizeVarintField(9, uint64(m.SpeedRequestCount))
-	n += litewire.SizeDouble(10, m.SpeedP10)
-	n += litewire.SizeDouble(11, m.SpeedP50)
-	n += litewire.SizeDouble(12, m.SpeedP90)
-	n += litewire.SizeDouble(13, m.TtftP10Ms)
-	n += litewire.SizeDouble(14, m.TtftP50Ms)
-	n += litewire.SizeDouble(15, m.TtftP90Ms)
-	return n
-}
+func (m *UsageBucketPoint) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageBucketPoint) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageBucketPoint) AppendMarshal(b []byte) []byte {
@@ -7109,42 +6440,10 @@ func (m *UsagePeriodSummary) Clone() *UsagePeriodSummary {
 	return &cp
 }
 
-func (m *UsagePeriodSummary) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.UncachedInputTokens))
-	n += litewire.SizeVarintField(2, uint64(m.CacheReadTokens))
-	n += litewire.SizeVarintField(3, uint64(m.CacheWriteTokens))
-	n += litewire.SizeVarintField(4, uint64(m.OutputTokens))
-	n += litewire.SizeVarintField(5, uint64(m.ReasoningOutputTokens))
-	n += litewire.SizeVarintField(6, uint64(m.UsageRequestCount))
-	n += litewire.SizeVarintField(7, uint64(m.SpeedRequestCount))
-	n += litewire.SizeBool(8, m.HasCacheHitRate)
-	n += litewire.SizeDouble(9, m.CacheHitRate)
-	n += litewire.SizeBool(10, m.HasSpeed)
-	n += litewire.SizeDouble(11, m.SpeedP10)
-	n += litewire.SizeDouble(12, m.SpeedP50)
-	n += litewire.SizeDouble(13, m.SpeedP90)
-	n += litewire.SizeBool(14, m.HasTtft)
-	n += litewire.SizeDouble(15, m.TtftP10Ms)
-	n += litewire.SizeDouble(16, m.TtftP50Ms)
-	n += litewire.SizeDouble(17, m.TtftP90Ms)
-	n += litewire.SizeVarintField(18, uint64(m.Recent10SpeedCount))
-	n += litewire.SizeDouble(19, m.Recent10SpeedP50)
-	return n
-}
+func (m *UsagePeriodSummary) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsagePeriodSummary) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsagePeriodSummary) AppendMarshal(b []byte) []byte {
@@ -7421,37 +6720,10 @@ func (m *UsageSeries) Clone() *UsageSeries {
 	return &cp
 }
 
-func (m *UsageSeries) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Agent))
-	n += litewire.SizeString(2, m.Model)
-	n += litewire.SizeBool(3, m.CacheWriteSupported)
-	if m.Current != nil {
-		n += litewire.SizeMessage(4, m.Current.Size())
-	}
-	if m.Previous != nil {
-		n += litewire.SizeMessage(5, m.Previous.Size())
-	}
-	for _, v := range m.Buckets {
-		if v != nil {
-			n += litewire.SizeMessage(6, v.Size())
-		}
-	}
-	return n
-}
+func (m *UsageSeries) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageSeries) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageSeries) AppendMarshal(b []byte) []byte {
@@ -7647,42 +6919,10 @@ func (m *UsageStatsResponse) Clone() *UsageStatsResponse {
 	return &cp
 }
 
-func (m *UsageStatsResponse) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Preset))
-	n += litewire.SizeInt32(2, int32(m.Granularity))
-	n += litewire.SizeVarintField(3, uint64(m.StartMs))
-	n += litewire.SizeVarintField(4, uint64(m.EndMs))
-	n += litewire.SizeVarintField(5, uint64(m.GeneratedAtMs))
-	n += litewire.SizeBool(6, m.Backfilling)
-	n += litewire.SizeInt32(7, int32(m.BackfillScannedDays))
-	n += litewire.SizeInt32(8, int32(m.BackfillTotalDays))
-	n += litewire.SizeBool(9, m.PreviousPeriodBackfilling)
-	for _, v := range m.Sources {
-		if v != nil {
-			n += litewire.SizeMessage(10, v.Size())
-		}
-	}
-	for _, v := range m.Series {
-		if v != nil {
-			n += litewire.SizeMessage(11, v.Size())
-		}
-	}
-	return n
-}
+func (m *UsageStatsResponse) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *UsageStatsResponse) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageStatsResponse) AppendMarshal(b []byte) []byte {

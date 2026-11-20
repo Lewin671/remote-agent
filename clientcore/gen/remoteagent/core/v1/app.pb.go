@@ -932,127 +932,10 @@ func (m *ViewModel) GetScheduleSessionStrip() *ScheduleSessionStripViewModel {
 	return nil
 }
 
-func (m *ViewModel) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	switch x := m.View.(type) {
-	case *ViewModel_Home:
-		if x != nil {
-			if x.Home != nil {
-				n += litewire.SizeMessage(1, x.Home.Size())
-			}
-		}
-	case *ViewModel_Project:
-		if x != nil {
-			if x.Project != nil {
-				n += litewire.SizeMessage(2, x.Project.Size())
-			}
-		}
-	case *ViewModel_NewSession:
-		if x != nil {
-			if x.NewSession != nil {
-				n += litewire.SizeMessage(3, x.NewSession.Size())
-			}
-		}
-	case *ViewModel_SyncState:
-		if x != nil {
-			if x.SyncState != nil {
-				n += litewire.SizeMessage(4, x.SyncState.Size())
-			}
-		}
-	case *ViewModel_SessionData:
-		if x != nil {
-			if x.SessionData != nil {
-				n += litewire.SizeMessage(5, x.SessionData.Size())
-			}
-		}
-	case *ViewModel_Settings:
-		if x != nil {
-			if x.Settings != nil {
-				n += litewire.SizeMessage(30, x.Settings.Size())
-			}
-		}
-	case *ViewModel_MachineStatus:
-		if x != nil {
-			if x.MachineStatus != nil {
-				n += litewire.SizeMessage(31, x.MachineStatus.Size())
-			}
-		}
-	case *ViewModel_MachineSettings:
-		if x != nil {
-			if x.MachineSettings != nil {
-				n += litewire.SizeMessage(32, x.MachineSettings.Size())
-			}
-		}
-	case *ViewModel_Quota:
-		if x != nil {
-			if x.Quota != nil {
-				n += litewire.SizeMessage(33, x.Quota.Size())
-			}
-		}
-	case *ViewModel_Devices:
-		if x != nil {
-			if x.Devices != nil {
-				n += litewire.SizeMessage(34, x.Devices.Size())
-			}
-		}
-	case *ViewModel_ClientDetail:
-		if x != nil {
-			if x.ClientDetail != nil {
-				n += litewire.SizeMessage(35, x.ClientDetail.Size())
-			}
-		}
-	case *ViewModel_Usage:
-		if x != nil {
-			if x.Usage != nil {
-				n += litewire.SizeMessage(36, x.Usage.Size())
-			}
-		}
-	case *ViewModel_Session:
-		if x != nil {
-			if x.Session != nil {
-				n += litewire.SizeMessage(10, x.Session.Size())
-			}
-		}
-	case *ViewModel_Schedules:
-		if x != nil {
-			if x.Schedules != nil {
-				n += litewire.SizeMessage(20, x.Schedules.Size())
-			}
-		}
-	case *ViewModel_ScheduleDetail:
-		if x != nil {
-			if x.ScheduleDetail != nil {
-				n += litewire.SizeMessage(21, x.ScheduleDetail.Size())
-			}
-		}
-	case *ViewModel_ScheduleForm:
-		if x != nil {
-			if x.ScheduleForm != nil {
-				n += litewire.SizeMessage(22, x.ScheduleForm.Size())
-			}
-		}
-	case *ViewModel_ScheduleSessionStrip:
-		if x != nil {
-			if x.ScheduleSessionStrip != nil {
-				n += litewire.SizeMessage(23, x.ScheduleSessionStrip.Size())
-			}
-		}
-	}
-	return n
-}
+func (m *ViewModel) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ViewModel) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ViewModel) AppendMarshal(b []byte) []byte {
@@ -8686,30 +8569,10 @@ func (m *RenderEffect) GetScreens() []ScreenTarget {
 	return nil
 }
 
-func (m *RenderEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	if len(m.Screens) > 0 {
-		psz := 0
-		for _, v := range m.Screens {
-			psz += litewire.SizeVarint(uint64(int64(v)))
-		}
-		n += litewire.SizeMessage(1, psz)
-	}
-	return n
-}
+func (m *RenderEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *RenderEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *RenderEffect) AppendMarshal(b []byte) []byte {
@@ -8717,14 +8580,12 @@ func (m *RenderEffect) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	if len(m.Screens) > 0 {
-		psz := 0
-		for _, v := range m.Screens {
-			psz += litewire.SizeVarint(uint64(int64(v)))
-		}
-		b = litewire.AppendMessagePrefix(b, 1, psz)
+		var start int
+		b, start = litewire.BeginMessage(b, 1)
 		for _, v := range m.Screens {
 			b = litewire.AppendRawVarint(b, uint64(int64(v)))
 		}
+		b = litewire.EndMessage(b, start)
 	}
 	return b
 }
@@ -8754,26 +8615,10 @@ func (m *OpenStreamEffect) GetTimeoutMs() int64 {
 	return 0
 }
 
-func (m *OpenStreamEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.LegId))
-	n += litewire.SizeString(2, m.Token)
-	n += litewire.SizeVarintField(3, uint64(m.TimeoutMs))
-	return n
-}
+func (m *OpenStreamEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *OpenStreamEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *OpenStreamEffect) AppendMarshal(b []byte) []byte {
@@ -8797,24 +8642,10 @@ func (m *CloseStreamEffect) GetLegId() uint64 {
 	return 0
 }
 
-func (m *CloseStreamEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.LegId))
-	return n
-}
+func (m *CloseStreamEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CloseStreamEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CloseStreamEffect) AppendMarshal(b []byte) []byte {
@@ -8850,26 +8681,10 @@ func (m *EnsureTokenEffect) GetTimeoutMs() int64 {
 	return 0
 }
 
-func (m *EnsureTokenEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.OpId))
-	n += litewire.SizeBool(2, m.ForceLogin)
-	n += litewire.SizeVarintField(3, uint64(m.TimeoutMs))
-	return n
-}
+func (m *EnsureTokenEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *EnsureTokenEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *EnsureTokenEffect) AppendMarshal(b []byte) []byte {
@@ -8893,24 +8708,10 @@ func (m *DiscardTokenEffect) GetToken() string {
 	return ""
 }
 
-func (m *DiscardTokenEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.Token)
-	return n
-}
+func (m *DiscardTokenEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DiscardTokenEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DiscardTokenEffect) AppendMarshal(b []byte) []byte {
@@ -8946,26 +8747,10 @@ func (m *SyncSecurityEffect) GetTouch() bool {
 	return false
 }
 
-func (m *SyncSecurityEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.OpId))
-	n += litewire.SizeVarintField(2, uint64(m.NetworkGeneration))
-	n += litewire.SizeBool(3, m.Touch)
-	return n
-}
+func (m *SyncSecurityEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SyncSecurityEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SyncSecurityEffect) AppendMarshal(b []byte) []byte {
@@ -9010,27 +8795,10 @@ func (m *ScheduleTimerEffect) GetDelayMs() int64 {
 	return 0
 }
 
-func (m *ScheduleTimerEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.TimerId))
-	n += litewire.SizeInt32(2, int32(m.Kind))
-	n += litewire.SizeString(3, m.Key)
-	n += litewire.SizeVarintField(4, uint64(m.DelayMs))
-	return n
-}
+func (m *ScheduleTimerEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *ScheduleTimerEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTimerEffect) AppendMarshal(b []byte) []byte {
@@ -9069,26 +8837,10 @@ func (m *CancelTimerEffect) GetKey() string {
 	return ""
 }
 
-func (m *CancelTimerEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.TimerId))
-	n += litewire.SizeInt32(2, int32(m.Kind))
-	n += litewire.SizeString(3, m.Key)
-	return n
-}
+func (m *CancelTimerEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CancelTimerEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CancelTimerEffect) AppendMarshal(b []byte) []byte {
@@ -9112,24 +8864,10 @@ func (m *CacheReadBootstrap) GetOpId() uint64 {
 	return 0
 }
 
-func (m *CacheReadBootstrap) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.OpId))
-	return n
-}
+func (m *CacheReadBootstrap) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CacheReadBootstrap) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CacheReadBootstrap) AppendMarshal(b []byte) []byte {
@@ -9179,28 +8917,10 @@ func (m *CacheReadEvents) GetLimit() int32 {
 	return 0
 }
 
-func (m *CacheReadEvents) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.OpId))
-	n += litewire.SizeString(2, m.SessionId)
-	n += litewire.SizeBool(3, m.Newest)
-	n += litewire.SizeVarintField(4, uint64(m.AfterSeq))
-	n += litewire.SizeInt32(5, int32(m.Limit))
-	return n
-}
+func (m *CacheReadEvents) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CacheReadEvents) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CacheReadEvents) AppendMarshal(b []byte) []byte {
@@ -9247,37 +8967,10 @@ func (m *CacheReadEffect) GetEvents() *CacheReadEvents {
 	return nil
 }
 
-func (m *CacheReadEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	switch x := m.Kind.(type) {
-	case *CacheReadEffect_Bootstrap:
-		if x != nil {
-			if x.Bootstrap != nil {
-				n += litewire.SizeMessage(1, x.Bootstrap.Size())
-			}
-		}
-	case *CacheReadEffect_Events:
-		if x != nil {
-			if x.Events != nil {
-				n += litewire.SizeMessage(2, x.Events.Size())
-			}
-		}
-	}
-	return n
-}
+func (m *CacheReadEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CacheReadEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CacheReadEffect) AppendMarshal(b []byte) []byte {
@@ -9319,27 +9012,10 @@ func (m *CacheWriteEvents) GetCacheRefs() []string {
 	return nil
 }
 
-func (m *CacheWriteEvents) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	for _, v := range m.CacheRefs {
-		n += litewire.SizeStringAlways(2, v)
-	}
-	return n
-}
+func (m *CacheWriteEvents) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CacheWriteEvents) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CacheWriteEvents) AppendMarshal(b []byte) []byte {
@@ -9371,25 +9047,10 @@ func (m *CacheSessionOpen) GetOpen() bool {
 	return false
 }
 
-func (m *CacheSessionOpen) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeBool(2, m.Open)
-	return n
-}
+func (m *CacheSessionOpen) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CacheSessionOpen) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CacheSessionOpen) AppendMarshal(b []byte) []byte {
@@ -9473,53 +9134,10 @@ func (m *CacheWriteEffect) GetSetSessionOpen() *CacheSessionOpen {
 	return nil
 }
 
-func (m *CacheWriteEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	switch x := m.Kind.(type) {
-	case *CacheWriteEffect_WriteMachineRef:
-		if x != nil {
-			n += litewire.SizeStringAlways(1, x.WriteMachineRef)
-		}
-	case *CacheWriteEffect_WriteSessionRef:
-		if x != nil {
-			n += litewire.SizeStringAlways(2, x.WriteSessionRef)
-		}
-	case *CacheWriteEffect_KeepSessionOwnerRef:
-		if x != nil {
-			n += litewire.SizeStringAlways(3, x.KeepSessionOwnerRef)
-		}
-	case *CacheWriteEffect_WriteEvents:
-		if x != nil {
-			if x.WriteEvents != nil {
-				n += litewire.SizeMessage(4, x.WriteEvents.Size())
-			}
-		}
-	case *CacheWriteEffect_WritePrefsRef:
-		if x != nil {
-			n += litewire.SizeStringAlways(5, x.WritePrefsRef)
-		}
-	case *CacheWriteEffect_SetSessionOpen:
-		if x != nil {
-			if x.SetSessionOpen != nil {
-				n += litewire.SizeMessage(6, x.SetSessionOpen.Size())
-			}
-		}
-	}
-	return n
-}
+func (m *CacheWriteEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CacheWriteEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CacheWriteEffect) AppendMarshal(b []byte) []byte {
@@ -9611,41 +9229,10 @@ func (m *CacheDeleteEffect) GetRemoveMachineId() string {
 	return ""
 }
 
-func (m *CacheDeleteEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	switch x := m.Kind.(type) {
-	case *CacheDeleteEffect_DropEventsSessionId:
-		if x != nil {
-			n += litewire.SizeStringAlways(1, x.DropEventsSessionId)
-		}
-	case *CacheDeleteEffect_RemoveSessionId:
-		if x != nil {
-			n += litewire.SizeStringAlways(2, x.RemoveSessionId)
-		}
-	case *CacheDeleteEffect_UnlistSessionId:
-		if x != nil {
-			n += litewire.SizeStringAlways(3, x.UnlistSessionId)
-		}
-	case *CacheDeleteEffect_RemoveMachineId:
-		if x != nil {
-			n += litewire.SizeStringAlways(4, x.RemoveMachineId)
-		}
-	}
-	return n
-}
+func (m *CacheDeleteEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *CacheDeleteEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *CacheDeleteEffect) AppendMarshal(b []byte) []byte {
@@ -9684,24 +9271,10 @@ func (m *FetchListsRpc) GetLimit() uint32 {
 	return 0
 }
 
-func (m *FetchListsRpc) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.Limit))
-	return n
-}
+func (m *FetchListsRpc) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *FetchListsRpc) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *FetchListsRpc) AppendMarshal(b []byte) []byte {
@@ -9730,27 +9303,10 @@ func (m *FetchSessionsPageRpc) GetLimit() uint32 {
 	return 0
 }
 
-func (m *FetchSessionsPageRpc) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	if m.After != nil {
-		n += litewire.SizeMessage(1, m.After.Size())
-	}
-	n += litewire.SizeVarintField(2, uint64(m.Limit))
-	return n
-}
+func (m *FetchSessionsPageRpc) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *FetchSessionsPageRpc) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *FetchSessionsPageRpc) AppendMarshal(b []byte) []byte {
@@ -9775,24 +9331,10 @@ func (m *FetchSessionByIdRpc) GetSessionId() string {
 	return ""
 }
 
-func (m *FetchSessionByIdRpc) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	return n
-}
+func (m *FetchSessionByIdRpc) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *FetchSessionByIdRpc) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *FetchSessionByIdRpc) AppendMarshal(b []byte) []byte {
@@ -9828,26 +9370,10 @@ func (m *GetEventsRpc) GetLimit() uint32 {
 	return 0
 }
 
-func (m *GetEventsRpc) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.SessionId)
-	n += litewire.SizeVarintField(2, uint64(m.AfterSeq))
-	n += litewire.SizeVarintField(3, uint64(m.Limit))
-	return n
-}
+func (m *GetEventsRpc) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *GetEventsRpc) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetEventsRpc) AppendMarshal(b []byte) []byte {
@@ -9871,24 +9397,10 @@ func (m *GetAccountPrefsRpc) GetObjectId() string {
 	return ""
 }
 
-func (m *GetAccountPrefsRpc) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.ObjectId)
-	return n
-}
+func (m *GetAccountPrefsRpc) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *GetAccountPrefsRpc) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetAccountPrefsRpc) AppendMarshal(b []byte) []byte {
@@ -9924,28 +9436,10 @@ func (m *PutAccountPrefsRpc) GetNextPrefs() *v1.ProjectPrefs {
 	return nil
 }
 
-func (m *PutAccountPrefsRpc) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.ObjectId)
-	n += litewire.SizeVarintField(2, uint64(m.ExpectedRevision))
-	if m.NextPrefs != nil {
-		n += litewire.SizeMessage(3, m.NextPrefs.Size())
-	}
-	return n
-}
+func (m *PutAccountPrefsRpc) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *PutAccountPrefsRpc) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *PutAccountPrefsRpc) AppendMarshal(b []byte) []byte {
@@ -9971,24 +9465,10 @@ func (m *FetchDevicesRpc) GetForce() bool {
 	return false
 }
 
-func (m *FetchDevicesRpc) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeBool(1, m.Force)
-	return n
-}
+func (m *FetchDevicesRpc) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *FetchDevicesRpc) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *FetchDevicesRpc) AppendMarshal(b []byte) []byte {
@@ -10088,68 +9568,10 @@ func (m *RpcEffect) GetFetchDevices() *FetchDevicesRpc {
 	return nil
 }
 
-func (m *RpcEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeVarintField(1, uint64(m.OpId))
-	switch x := m.Kind.(type) {
-	case *RpcEffect_FetchLists:
-		if x != nil {
-			if x.FetchLists != nil {
-				n += litewire.SizeMessage(2, x.FetchLists.Size())
-			}
-		}
-	case *RpcEffect_FetchSessionsPage:
-		if x != nil {
-			if x.FetchSessionsPage != nil {
-				n += litewire.SizeMessage(3, x.FetchSessionsPage.Size())
-			}
-		}
-	case *RpcEffect_FetchSessionById:
-		if x != nil {
-			if x.FetchSessionById != nil {
-				n += litewire.SizeMessage(4, x.FetchSessionById.Size())
-			}
-		}
-	case *RpcEffect_GetEvents:
-		if x != nil {
-			if x.GetEvents != nil {
-				n += litewire.SizeMessage(5, x.GetEvents.Size())
-			}
-		}
-	case *RpcEffect_GetAccountPrefs:
-		if x != nil {
-			if x.GetAccountPrefs != nil {
-				n += litewire.SizeMessage(6, x.GetAccountPrefs.Size())
-			}
-		}
-	case *RpcEffect_PutAccountPrefs:
-		if x != nil {
-			if x.PutAccountPrefs != nil {
-				n += litewire.SizeMessage(7, x.PutAccountPrefs.Size())
-			}
-		}
-	case *RpcEffect_FetchDevices:
-		if x != nil {
-			if x.FetchDevices != nil {
-				n += litewire.SizeMessage(8, x.FetchDevices.Size())
-			}
-		}
-	}
-	return n
-}
+func (m *RpcEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *RpcEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *RpcEffect) AppendMarshal(b []byte) []byte {
@@ -10292,35 +9714,10 @@ func (m *DispatchCommandEffect) GetBulkUpload() bool {
 	return false
 }
 
-func (m *DispatchCommandEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.RequestId)
-	n += litewire.SizeString(2, m.AttemptId)
-	n += litewire.SizeString(3, m.MachineId)
-	n += litewire.SizeString(4, m.SessionId)
-	n += litewire.SizeVarintField(5, uint64(m.DeadlineMs))
-	n += litewire.SizeBytesField(6, m.CommandBytes)
-	n += litewire.SizeInt32(7, int32(m.RouteHint))
-	n += litewire.SizeBool(8, m.RetryOfUnknown)
-	n += litewire.SizeBool(9, m.ForceRelay)
-	n += litewire.SizeString(10, m.BulkFileKey)
-	n += litewire.SizeVarintField(11, uint64(m.BulkBytes))
-	n += litewire.SizeBool(12, m.BulkUpload)
-	return n
-}
+func (m *DispatchCommandEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *DispatchCommandEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *DispatchCommandEffect) AppendMarshal(b []byte) []byte {
@@ -10360,25 +9757,10 @@ func (m *SaveHomeScopeEffect) GetScopeToken() string {
 	return ""
 }
 
-func (m *SaveHomeScopeEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.ScopeKey)
-	n += litewire.SizeString(2, m.ScopeToken)
-	return n
-}
+func (m *SaveHomeScopeEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *SaveHomeScopeEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *SaveHomeScopeEffect) AppendMarshal(b []byte) []byte {
@@ -10422,27 +9804,10 @@ func (m *NavigateEffect) GetMachineId() string {
 	return ""
 }
 
-func (m *NavigateEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.Route))
-	n += litewire.SizeString(2, m.ProjectKey)
-	n += litewire.SizeString(3, m.SessionId)
-	n += litewire.SizeString(4, m.MachineId)
-	return n
-}
+func (m *NavigateEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *NavigateEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *NavigateEffect) AppendMarshal(b []byte) []byte {
@@ -10481,26 +9846,10 @@ func (m *AttachmentsSettledEffect) GetConsumed() bool {
 	return false
 }
 
-func (m *AttachmentsSettledEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeString(1, m.ProjectKey)
-	n += litewire.SizeString(2, m.RequestId)
-	n += litewire.SizeBool(3, m.Consumed)
-	return n
-}
+func (m *AttachmentsSettledEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *AttachmentsSettledEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *AttachmentsSettledEffect) AppendMarshal(b []byte) []byte {
@@ -10531,25 +9880,10 @@ func (m *RequestEntropyEffect) GetMinFloats() int32 {
 	return 0
 }
 
-func (m *RequestEntropyEffect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	n += litewire.SizeInt32(1, int32(m.MinIds))
-	n += litewire.SizeInt32(2, int32(m.MinFloats))
-	return n
-}
+func (m *RequestEntropyEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *RequestEntropyEffect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *RequestEntropyEffect) AppendMarshal(b []byte) []byte {
@@ -10897,217 +10231,10 @@ func (m *Effect) GetScheduleNavigate() *ScheduleNavigateEffect {
 	return nil
 }
 
-func (m *Effect) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	switch x := m.Effect.(type) {
-	case *Effect_Render:
-		if x != nil {
-			if x.Render != nil {
-				n += litewire.SizeMessage(1, x.Render.Size())
-			}
-		}
-	case *Effect_OpenStream:
-		if x != nil {
-			if x.OpenStream != nil {
-				n += litewire.SizeMessage(2, x.OpenStream.Size())
-			}
-		}
-	case *Effect_CloseStream:
-		if x != nil {
-			if x.CloseStream != nil {
-				n += litewire.SizeMessage(3, x.CloseStream.Size())
-			}
-		}
-	case *Effect_EnsureToken:
-		if x != nil {
-			if x.EnsureToken != nil {
-				n += litewire.SizeMessage(4, x.EnsureToken.Size())
-			}
-		}
-	case *Effect_DiscardToken:
-		if x != nil {
-			if x.DiscardToken != nil {
-				n += litewire.SizeMessage(5, x.DiscardToken.Size())
-			}
-		}
-	case *Effect_SyncSecurity:
-		if x != nil {
-			if x.SyncSecurity != nil {
-				n += litewire.SizeMessage(6, x.SyncSecurity.Size())
-			}
-		}
-	case *Effect_ScheduleTimer:
-		if x != nil {
-			if x.ScheduleTimer != nil {
-				n += litewire.SizeMessage(7, x.ScheduleTimer.Size())
-			}
-		}
-	case *Effect_CancelTimer:
-		if x != nil {
-			if x.CancelTimer != nil {
-				n += litewire.SizeMessage(8, x.CancelTimer.Size())
-			}
-		}
-	case *Effect_CacheRead:
-		if x != nil {
-			if x.CacheRead != nil {
-				n += litewire.SizeMessage(9, x.CacheRead.Size())
-			}
-		}
-	case *Effect_CacheWrite:
-		if x != nil {
-			if x.CacheWrite != nil {
-				n += litewire.SizeMessage(10, x.CacheWrite.Size())
-			}
-		}
-	case *Effect_CacheDelete:
-		if x != nil {
-			if x.CacheDelete != nil {
-				n += litewire.SizeMessage(11, x.CacheDelete.Size())
-			}
-		}
-	case *Effect_Rpc:
-		if x != nil {
-			if x.Rpc != nil {
-				n += litewire.SizeMessage(12, x.Rpc.Size())
-			}
-		}
-	case *Effect_DispatchCommand:
-		if x != nil {
-			if x.DispatchCommand != nil {
-				n += litewire.SizeMessage(13, x.DispatchCommand.Size())
-			}
-		}
-	case *Effect_SaveHomeScope:
-		if x != nil {
-			if x.SaveHomeScope != nil {
-				n += litewire.SizeMessage(14, x.SaveHomeScope.Size())
-			}
-		}
-	case *Effect_Navigate:
-		if x != nil {
-			if x.Navigate != nil {
-				n += litewire.SizeMessage(15, x.Navigate.Size())
-			}
-		}
-	case *Effect_AttachmentsSettled:
-		if x != nil {
-			if x.AttachmentsSettled != nil {
-				n += litewire.SizeMessage(16, x.AttachmentsSettled.Size())
-			}
-		}
-	case *Effect_RequestEntropy:
-		if x != nil {
-			if x.RequestEntropy != nil {
-				n += litewire.SizeMessage(17, x.RequestEntropy.Size())
-			}
-		}
-	case *Effect_ScheduleMachinePoll:
-		if x != nil {
-			if x.ScheduleMachinePoll != nil {
-				n += litewire.SizeMessage(70, x.ScheduleMachinePoll.Size())
-			}
-		}
-	case *Effect_DirectPreference:
-		if x != nil {
-			if x.DirectPreference != nil {
-				n += litewire.SizeMessage(71, x.DirectPreference.Size())
-			}
-		}
-	case *Effect_RenameClient:
-		if x != nil {
-			if x.RenameClient != nil {
-				n += litewire.SizeMessage(72, x.RenameClient.Size())
-			}
-		}
-	case *Effect_CheckUpdates:
-		if x != nil {
-			if x.CheckUpdates != nil {
-				n += litewire.SizeMessage(73, x.CheckUpdates.Size())
-			}
-		}
-	case *Effect_PersistClientPrefs:
-		if x != nil {
-			if x.PersistClientPrefs != nil {
-				n += litewire.SizeMessage(74, x.PersistClientPrefs.Size())
-			}
-		}
-	case *Effect_PrepareCleanupSession:
-		if x != nil {
-			if x.PrepareCleanupSession != nil {
-				n += litewire.SizeMessage(75, x.PrepareCleanupSession.Size())
-			}
-		}
-	case *Effect_UsageCacheWrite:
-		if x != nil {
-			if x.UsageCacheWrite != nil {
-				n += litewire.SizeMessage(76, x.UsageCacheWrite.Size())
-			}
-		}
-	case *Effect_SessionRestoreComposer:
-		if x != nil {
-			if x.SessionRestoreComposer != nil {
-				n += litewire.SizeMessage(40, x.SessionRestoreComposer.Size())
-			}
-		}
-	case *Effect_SessionResendAttachments:
-		if x != nil {
-			if x.SessionResendAttachments != nil {
-				n += litewire.SizeMessage(41, x.SessionResendAttachments.Size())
-			}
-		}
-	case *Effect_ScheduleReadCache:
-		if x != nil {
-			if x.ScheduleReadCache != nil {
-				n += litewire.SizeMessage(60, x.ScheduleReadCache.Size())
-			}
-		}
-	case *Effect_ScheduleDeleteCache:
-		if x != nil {
-			if x.ScheduleDeleteCache != nil {
-				n += litewire.SizeMessage(61, x.ScheduleDeleteCache.Size())
-			}
-		}
-	case *Effect_ScheduleLoadSeen:
-		if x != nil {
-			if x.ScheduleLoadSeen != nil {
-				n += litewire.SizeMessage(62, x.ScheduleLoadSeen.Size())
-			}
-		}
-	case *Effect_ScheduleSaveSeen:
-		if x != nil {
-			if x.ScheduleSaveSeen != nil {
-				n += litewire.SizeMessage(63, x.ScheduleSaveSeen.Size())
-			}
-		}
-	case *Effect_ScheduleDismissNotifications:
-		if x != nil {
-			if x.ScheduleDismissNotifications != nil {
-				n += litewire.SizeMessage(64, x.ScheduleDismissNotifications.Size())
-			}
-		}
-	case *Effect_ScheduleNavigate:
-		if x != nil {
-			if x.ScheduleNavigate != nil {
-				n += litewire.SizeMessage(65, x.ScheduleNavigate.Size())
-			}
-		}
-	}
-	return n
-}
+func (m *Effect) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *Effect) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *Effect) AppendMarshal(b []byte) []byte {
@@ -11322,28 +10449,10 @@ func (m *EffectBatch) GetEffects() []*Effect {
 	return nil
 }
 
-func (m *EffectBatch) Size() int {
-	if m == nil {
-		return 0
-	}
-	n := 0
-	for _, v := range m.Effects {
-		if v != nil {
-			n += litewire.SizeMessage(1, v.Size())
-		}
-	}
-	return n
-}
+func (m *EffectBatch) Size() int { return len(m.AppendMarshal(nil)) }
 
 func (m *EffectBatch) Marshal() ([]byte, error) {
-	if m == nil {
-		return nil, nil
-	}
-	sz := m.Size()
-	if sz == 0 {
-		return nil, nil
-	}
-	return m.AppendMarshal(make([]byte, 0, sz)), nil
+	return m.AppendMarshal(nil), nil
 }
 
 func (m *EffectBatch) AppendMarshal(b []byte) []byte {

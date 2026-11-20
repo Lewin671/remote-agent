@@ -85,10 +85,6 @@ type fakeMsg struct {
 	text string
 }
 
-func (m *fakeMsg) Size() int {
-	return SizeString(1, m.text)
-}
-
 func (m *fakeMsg) AppendMarshal(b []byte) []byte {
 	return AppendString(b, 1, m.text)
 }
@@ -127,6 +123,17 @@ func TestAppendAndReadMessage(t *testing.T) {
 	}
 	if out.text != "hello" || len(wire) != 0 {
 		t.Fatalf("got %q rem=%d", out.text, len(wire))
+	}
+
+	// The length placeholder widens to the minimal varint, whatever precedes the message.
+	for _, n := range []int{0, 125, 126, 127, 16380, 16381, 16382, 2097150} {
+		prefix := []byte{0xaa, 0xbb}
+		body := &fakeMsg{text: string(make([]byte, n))}
+		got := AppendMessage(prefix, 4, body)
+		want := protowire.AppendBytes(protowire.AppendTag([]byte{0xaa, 0xbb}, 4, protowire.BytesType), AppendString(nil, 1, body.text))
+		if string(got) != string(want) {
+			t.Fatalf("AppendMessage with %d-byte text: got %d bytes, want %d", n, len(got), len(want))
+		}
 	}
 
 	trunc := []byte{0x05, 'a', 'b'}

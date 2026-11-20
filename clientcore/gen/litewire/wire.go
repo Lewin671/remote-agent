@@ -120,7 +120,6 @@ func AppendRawFixed64(b []byte, v uint64) []byte {
 
 // Marshaler is implemented by outbound generated protobuf messages.
 type Marshaler interface {
-	Size() int
 	AppendMarshal([]byte) []byte
 }
 
@@ -135,10 +134,38 @@ func AppendMessagePrefix(b []byte, num Number, size int) []byte {
 	return AppendRawVarint(b, uint64(size))
 }
 
+// BeginMessage appends the tag of a length-delimited field and a one-byte length
+// placeholder; pass the returned offset to EndMessage once the body is appended. Lengths are
+// filled in afterwards so encoding needs no separate size pass.
+//
+//go:noinline
+func BeginMessage(b []byte, num Number) ([]byte, int) {
+	b = append(AppendTag(b, num, BytesType), 0)
+	return b, len(b)
+}
+
+// EndMessage writes the length of the body appended since BeginMessage into its placeholder,
+// widening it (and moving the body) when the length needs more than one byte, so the result
+// is the same minimal varint encoding a precomputed size would give.
+//
+//go:noinline
+func EndMessage(b []byte, start int) []byte {
+	n := uint64(len(b) - start)
+	if n < 0x80 {
+		b[start-1] = byte(n)
+		return b
+	}
+	extra := SizeVarint(n) - 1
+	b = append(b, make([]byte, extra)...)
+	copy(b[start+extra:], b[start:len(b)-extra])
+	AppendRawVarint(b[:start-1], n)
+	return b
+}
+
 //go:noinline
 func AppendMessage(b []byte, num Number, m Marshaler) []byte {
-	b = AppendMessagePrefix(b, num, m.Size())
-	return m.AppendMarshal(b)
+	b, start := BeginMessage(b, num)
+	return EndMessage(m.AppendMarshal(b), start)
 }
 
 //go:noinline
