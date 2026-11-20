@@ -1,8 +1,9 @@
 package direct
 
 import (
-	"bytes"
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -15,10 +16,11 @@ import (
 	"github.com/pion/webrtc/v4"
 )
 
-// Session owns one authenticated connection round and both PC uses. Its I/O
-// callbacks are nonblocking queue admission, never socket writes or business
-// execution. A process owner keeps retired sessions until their replay window
-// ends, and owns membership, persistent policy and resource limits above it.
+// SessionConfig configures one authenticated connection round and both PC
+// uses. Its callbacks are nonblocking queue admission, never socket writes or
+// business execution. A process owner keeps retired sessions until their
+// replay window ends, and owns membership, persistent policy and resource
+// limits above it.
 type SessionConfig struct {
 	Chosen      func()
 	BeforeOffer func()
@@ -43,69 +45,59 @@ type SessionConfig struct {
 	Port         *PortMux
 	Now          func() time.Time
 }
-type sessionEvent struct {
-	use         uint64
-	generation  uint64
-	path        *Path
-	candidate   *webrtc.ICECandidateInit
-	state       webrtc.PeerConnectionState
-	kind        int
-	controlType uint64
-	body        []byte
-}
-type sessionPC struct {
-	business                    atomic.Bool
-	generation                  uint64
-	currentGeneration           atomic.Uint64
-	currentPath                 atomic.Pointer[Path]
-	actions                     []peerwire.Action
-	restartSent                 bool
-	signal                      *peerwire.Signal
-	sender                      *peerwire.Sender
-	seq                         uint64
-	path                        *Path
-	batch                       peerwire.CandidateBatcher
-	localUfrag, localMid        []byte
-	confirmed, announced, ended bool
-}
-type cachedBytes struct {
-	bytes []byte
-	until uint64
-}
+
+// Session executes a linkcore.Session with Pion: one goroutine owns the core,
+// feeds it inputs, timer ticks and SDK callbacks as events, and performs its
+// effects (signing with the device key at once, SDK calls, sends to the main
+// connection, owner callbacks), handing each result straight back. Other
+// goroutines read only the View mirrored after every step.
 type Session struct {
+	cfg       SessionConfig
+	core      *linkcore.Session // run goroutine only
+	ctx       context.Context
+	cancel    context.CancelFunc
+	finished  chan struct{}
+	roundDone chan struct{}
+	roundOnce sync.Once
+	born      time.Time
+	endReason atomic.Value // first reason the round ended, a fixed word
+
+	input    chan []byte
+	held     atomic.Int64
+	events   chan linkcore.Event
+	delivery chan deliveryResult
+
+	// The core's View after the latest step, for SDK callbacks, the owner and
+	// frames queued on the main connection. retired is also set by Retire.
 	retired     atomic.Bool
 	established atomic.Bool
 	retainUntil atomic.Uint64
-	finished    chan struct{}
-	roundDone   chan struct{}
-	roundOnce   sync.Once
-	closedPaths []*Path
-	born        time.Time
-	endReason   atomic.Value // first reason the round ended, a fixed word
-	traceMu     sync.Mutex
-	trace       []string // signal messages by kind and use, with ms since the round began (bounded)
+	generation  [2]atomic.Uint64
+	business    [2]atomic.Bool
+	current     [2]atomic.Uint64
 
-	cfg           SessionConfig
-	ctx           context.Context
-	cancel        context.CancelFunc
-	input         chan []byte
-	held          atomic.Int64
-	events        chan sessionEvent
-	delivery      chan deliveryResult
-	boot          *peerwire.Sender
-	controlWindow *peerwire.Sender
-	pcs           [2]sessionPC
-	controlSeq    uint64
-	challenge     []byte
-	receipts      map[string]cachedBytes
-	controlSeen   map[string]cachedBytes
-	peerScope     linkcore.PeerScope
+	paths   map[uint64]*Path // every PC created, by ID; run goroutine only
+	open    map[uint64]*Path // PCs not yet reported closed
+	stopped bool
+
+	traceMu sync.Mutex
+	trace   []string // signal messages by kind and use, with ms since the round began (bounded)
 }
+
 type deliveryResult struct {
 	current func() bool
 	id      []byte
 	status  uint32
 	retry   uint64
+}
+
+// Outbound freezes the original authorization and deadline alongside queue
+// ownership. The main-WS writer must validate it again at actual dispatch.
+type Outbound struct {
+	Raw      []byte
+	Deadline uint64
+	Critical bool
+	Valid    func() bool
 }
 
 func (s *Session) nowTime() time.Time {
@@ -115,74 +107,45 @@ func (s *Session) nowTime() time.Time {
 	return time.Now()
 }
 
-func (s *Session) nowMs() uint64 {
-	return uint64(s.nowTime().UnixMilli())
-}
+func (s *Session) nowMs() uint64 { return uint64(s.nowTime().UnixMilli()) }
 
 func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Session, error) {
-	if cfg.Codec == nil || cfg.Self == nil || cfg.Allow == nil || cfg.Send == nil || !cfg.Allow() || len(cfg.Connection) != 16 || len(cfg.Self.Instance) != 16 || len(cfg.Self.Boot) != 32 {
-		return nil, ErrClosed
+	s, initial, err := newSession(parent, cfg, initiate)
+	if err != nil {
+		return nil, err
 	}
-	nowFn := cfg.Now
-	if nowFn == nil {
-		nowFn = time.Now
-	}
-	now := uint64(nowFn().UnixMilli())
-	if cfg.Deadline <= now || cfg.Deadline > now+10000 {
-		return nil, ErrClosed
-	}
-	ctx, cancel := context.WithCancel(parent)
-	s := &Session{born: nowFn(), finished: make(chan struct{}), roundDone: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 128), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string]cachedBytes{}, controlSeen: map[string]cachedBytes{}}
-	s.retainUntil.Store(cfg.Deadline + 300000)
-	for i := range s.pcs {
-		g, err := cfg.Self.NewSignal(cfg.Codec, cfg.Peer, cfg.Connection, uint64(i+1), now)
-		if err != nil {
-			cancel()
-			return nil, ErrClosed
-		}
-		g.RoundDeadline = cfg.Deadline
-		g.Current = cfg.Allow
-		g.LeaseUntil = ^uint64(0)
-		s.pcs[i] = sessionPC{generation: 1, signal: g, sender: peerwire.NewSender(cfg.Deadline), batch: peerwire.CandidateBatcher{Generation: 1, Deadline: cfg.Deadline, Binding: 1}}
-		s.pcs[i].currentGeneration.Store(1)
-	}
-	if initiate {
-		c := peerwire.NewProbeContext(cfg.Self.Public(), cfg.Peer, cfg.Connection, 1, now)
-		c.Deadline = cfg.Deadline
-		raw, err := cfg.Self.Seal(cfg.Codec, cfg.Peer, c, 1, peerwire.PB(peerwire.B(1, cfg.Connection), peerwire.B(2, cfg.Self.Instance), peerwire.B(3, cfg.Self.Boot)))
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		opened, err := cfg.Self.OpenSent(cfg.Codec, raw, cfg.Peer, now)
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		for i := range s.pcs {
-			if err = s.pcs[i].signal.RememberProbe(opened); err != nil {
-				cancel()
-				return nil, err
-			}
-		}
-		if !s.boot.Enqueue(raw, now, cfg.Deadline, 1) {
-			cancel()
-			return nil, ErrLimit
-		}
-	}
-	go s.run()
+	go s.run(initial)
 	return s, nil
 }
+
+// newSession builds the session without starting it; initial are the
+// core's first effects.
+func newSession(parent context.Context, cfg SessionConfig, initiate bool) (*Session, []linkcore.Effect, error) {
+	if cfg.Self == nil || cfg.Allow == nil || cfg.Send == nil {
+		return nil, nil, ErrClosed
+	}
+	shared, err := cfg.Self.Shared(cfg.Peer)
+	if err != nil {
+		return nil, nil, ErrClosed
+	}
+	s := &Session{cfg: cfg, finished: make(chan struct{}), roundDone: make(chan struct{}), input: make(chan []byte, 128), events: make(chan linkcore.Event, 160), delivery: make(chan deliveryResult, 64), paths: map[uint64]*Path{}, open: map[uint64]*Path{}}
+	s.born = s.nowTime()
+	core, initial, err := linkcore.NewSession(linkcore.SessionConfig{Self: cfg.Self.Public(), Peer: cfg.Peer, Shared: shared, Codec: cfg.Codec, Connection: cfg.Connection, Deadline: cfg.Deadline, Entropy: rand.Reader, Allow: cfg.Allow, Policy: cfg.Policy}, initiate, s.nowMs())
+	if err != nil {
+		return nil, nil, ErrClosed
+	}
+	s.core = core
+	s.ctx, s.cancel = context.WithCancel(parent)
+	s.publish()
+	return s, initial, nil
+}
+
 func (s *Session) Close()                     { s.endFor("closed_by_owner"); s.cancel() }
 func (s *Session) Done() <-chan struct{}      { return s.finished }
 func (s *Session) RoundDone() <-chan struct{} { return s.roundDone }
 func (s *Session) Wait()                      { <-s.finished }
 
-func (s *Session) finishRound() {
-	if s.roundDone != nil {
-		s.roundOnce.Do(func() { close(s.roundDone) })
-	}
-}
+func (s *Session) finishRound() { s.roundOnce.Do(func() { close(s.roundDone) }) }
 
 func pathAlive(p *Path) bool {
 	if p == nil {
@@ -201,10 +164,7 @@ func (s *Session) Established() bool   { return s.established.Load() }
 func (s *Session) Retire() {
 	s.retired.Store(true)
 	s.finishRound()
-	select {
-	case s.events <- sessionEvent{kind: 5}:
-	default:
-	}
+	s.post(linkcore.RetireRound{})
 }
 func (s *Session) Receive(raw []byte) bool {
 	if len(raw) > 64<<10 || s.ctx.Err() != nil {
@@ -223,775 +183,304 @@ func (s *Session) Receive(raw []byte) bool {
 		return false
 	}
 }
+
+// Delivery reports the server's result for a relayed frame. current is
+// checked when the result is applied, so a main connection replaced in
+// between cannot pause or delay the session's senders.
 func (s *Session) Delivery(id []byte, status uint32, retry uint64, current func() bool) {
 	select {
 	case s.delivery <- deliveryResult{current, append([]byte(nil), id...), status, retry}:
 	default:
 	}
 }
-func (s *Session) run() {
+func (s *Session) Discovered() { s.post(linkcore.PeerDiscovered{}) }
+func (s *Session) SendControl(typ uint64, body []byte) bool {
+	if len(body) > 14<<10 || !s.Active() {
+		return false
+	}
+	return s.post(linkcore.QueueControl{Type: typ, Body: append([]byte(nil), body...)})
+}
+
+func (s *Session) post(e linkcore.Event) bool {
+	select {
+	case s.events <- e:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Session) run(initial []linkcore.Effect) {
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
-	defer func() {
-		s.endFor("ctx_done")
-		s.logEnd()
-		s.cancel()
-		s.finishRound()
-		defer close(s.finished)
-		for i := range s.pcs {
-			if p := s.pcs[i].path; p != nil {
-				p.Close()
-			}
-		}
-		for i := range s.pcs {
-			if p := s.pcs[i].path; p != nil {
-				p.Wait()
-			}
-		}
-		for _, p := range s.closedPaths {
-			p.Wait()
-		}
-		if s.cfg.End != nil {
-			s.cfg.End()
-		}
-	}()
-	for {
-		now := s.nowMs()
-		if !s.cfg.Allow() {
-			s.endFor("not_allowed")
-			return
-		}
-		if s.retired.Load() && now >= s.retainUntil.Load() {
-			s.endFor("retired_replay_window_over")
-			return
-		}
+	defer s.finish()
+	s.apply(initial)
+	for !s.stopped {
 		select {
 		case <-s.ctx.Done():
 			return
 		case raw := <-s.input:
 			s.held.Add(-int64(len(raw)))
-			s.receive(raw, s.nowMs())
+			s.handle(linkcore.FrameReceived{Raw: raw})
 		case e := <-s.events:
-			s.event(e, s.nowMs())
+			s.handle(s.admit(e))
 		case r := <-s.delivery:
-			s.result(r, s.nowMs())
+			s.deliver(r)
 		case <-ticker.C:
-			now = s.nowMs()
-			if now >= s.cfg.Deadline {
-				complete := false
-				live := false
-				for i := range s.pcs {
-					if s.pcs[i].announced {
-						complete = true
-						if pathAlive(s.pcs[i].path) {
-							live = true
-						} else if s.pcs[i].path != nil {
-							s.closedPaths = append(s.closedPaths, s.pcs[i].path)
-							s.pcs[i].path = nil
-						}
-					} else if s.pcs[i].path != nil {
-						s.pcs[i].path.closeWhy("round_deadline")
-						s.closedPaths = append(s.closedPaths, s.pcs[i].path)
-						s.pcs[i].path = nil
-					}
-				}
-				s.finishRound()
-				if !complete {
-					s.endFor("round_deadline")
-					return
-				}
-				if !live && !s.retired.Load() {
-					s.endFor("paths_closed")
-					return
-				}
-			}
-			s.flush(now)
-		}
-	}
-}
-func (s *Session) pruneControl(now uint64) {
-	for key, item := range s.controlSeen {
-		if now > item.until {
-			delete(s.controlSeen, key)
-		}
-	}
-	for key, item := range s.receipts {
-		if now > item.until {
-			delete(s.receipts, key)
-		}
-	}
-}
-func (s *Session) flush(now uint64) {
-	s.pruneControl(now)
-	if s.peerScope.Expired(now) {
-		s.Retire()
-		return
-	}
-	if s.controlWindow != nil {
-		for _, raw := range s.controlWindow.Tick(now) {
-			s.transmit(raw)
-		}
-	}
-	for _, raw := range s.boot.Tick(now) {
-		if s.cfg.Allow() {
-			s.transmit(raw)
-		}
-	}
-	for i := range s.pcs {
-		p := &s.pcs[i]
-		p.signal.Prune(now)
-		s.maybeReady(i, now)
-		if !p.announced {
-			p.signal.Tick(now)
-		}
-		if p.path != nil && !p.announced && p.signal.Closed {
-			p.path.closeWhy("signal_closed")
-			s.closedPaths = append(s.closedPaths, p.path)
-			p.path = nil
-		}
-		if !p.announced && p.signal.Retired && now < s.cfg.Deadline {
-			s.restartPC(i, now)
-		}
-		if !p.signal.Closed {
-			s.maybeOffer(i, now)
-			s.drainActions(i, now)
-		}
-		batchIndex := p.batch.Batches
-		for _, group := range p.batch.Flush(now, p.ended, p.signal.Generation, 1) {
-			candidates := make([]peerwire.Candidate, len(group))
-			for j, raw := range group {
-				candidates[j] = peerwire.Candidate{Original: raw, Ufrag: p.localUfrag, Mid: p.localMid, Generation: p.signal.Generation}
-			}
-			if !s.sendSignal(i, 5, peerwire.CandidateBody(candidates, uint64(batchIndex)), now) {
-				return
-			}
-			batchIndex++
-		}
-		// EndCandidates is sent only after all full/tail candidate batches.
-		if p.ended && p.batch.Ended && len(p.batch.Pending) == 0 && p.path != nil {
-			p.ended = false
-			s.sendSignal(i, 6, peerwire.EndBody(p.localUfrag, uint64(p.batch.Count), uint64(p.batch.Batches)), now)
-		}
-		for _, raw := range p.sender.Tick(now) {
-			if s.cfg.Allow() {
-				s.transmit(raw)
-			}
-		}
-	}
-}
-func (s *Session) sendSignal(i int, typ uint64, body []byte, now uint64) bool {
-	p := &s.pcs[i]
-	p.seq++
-	c := peerwire.NewContext(s.cfg.Self.Public(), p.signal.Peer, s.cfg.Connection, uint64(i+1), p.signal.Generation, p.seq, now, 1, false)
-	c.Deadline = s.cfg.Deadline
-	raw, err := s.cfg.Self.Seal(s.cfg.Codec, p.signal.Peer, c, typ, body)
-	return err == nil && p.sender.Enqueue(raw, now, c.Deadline, 1)
-}
-func (s *Session) control(typ uint64, body []byte, now uint64) []byte {
-	return s.controlUntil(typ, body, now, now+10000)
-}
-func (s *Session) controlUntil(typ uint64, body []byte, now, deadline uint64) []byte {
-	s.controlSeq++
-	peer := s.pcs[0].signal.Peer
-	c := peerwire.NewContext(s.cfg.Self.Public(), peer, s.cfg.Connection, 0, 1, s.controlSeq, now, 2, false)
-	c.Deadline = min(c.Deadline, deadline)
-	raw, err := s.cfg.Self.Seal(s.cfg.Codec, peer, c, typ, body)
-	if err != nil {
-		return nil
-	}
-	return raw
-}
-func (s *Session) acknowledge(o peerwire.Opened, now uint64) {
-	if o.Context.Class == 1 && o.Type == 1 {
-		return
-	} // Challenge proves Probe receipt.
-	if o.Context.Class == 2 && (o.Type == 4 || o.Type == 10 || o.Type == 11 || o.Type == 12 || o.Type == 13) {
-		return
-	}
-	key := string(o.Hash)
-	entry, ok := s.receipts[key]
-	if !ok {
-		if len(s.receipts) >= 2048 {
-			s.pruneControl(now)
-		}
-		if len(s.receipts) >= 2048 {
-			return
-		}
-		raw := s.controlUntil(4, peerwire.PB(peerwire.U(4, o.Context.Class), peerwire.U(5, o.Context.Seq), peerwire.B(6, o.Hash), peerwire.U(7, o.Context.Generation), peerwire.U(8, o.Context.Use)), now, o.Context.Deadline)
-		if raw == nil {
-			return
-		}
-		entry = cachedBytes{bytes: raw, until: o.Context.Deadline + 300000}
-		s.receipts[key] = entry
-	}
-	if s.cfg.Allow() && now < o.Context.Deadline {
-		s.transmit(entry.bytes)
-	}
-}
-func (s *Session) receive(raw []byte, now uint64) {
-	if !s.cfg.Allow() {
-		return
-	}
-	peer := s.pcs[0].signal.Peer
-	o, err := s.cfg.Self.Open(s.cfg.Codec, raw, peer, now)
-	if err != nil || !bytes.Equal(o.Context.Connection, s.cfg.Connection) {
-		return
-	}
-	s.traceAdd("rx", o.Type, o.Context.Use, true)
-	if len(s.pcs[0].signal.Seen)+len(s.pcs[1].signal.Seen)+len(s.controlSeen) >= 2047 {
-		s.pruneControl(now)
-	}
-	if len(s.pcs[0].signal.Seen)+len(s.pcs[1].signal.Seen)+len(s.controlSeen) >= 2047 {
-		key := peerwire.Key(o.Context)
-		known := bytes.Equal(s.controlSeen[key].bytes, o.Hash)
-		for i := range s.pcs {
-			known = known || bytes.Equal(s.pcs[i].signal.Seen[key], o.Hash)
-		}
-		if !known {
-			return
-		}
-	}
-	c := o.Context
-	if s.retired.Load() {
-		key := peerwire.Key(c)
-		if bytes.Equal(s.controlSeen[key].bytes, o.Hash) {
-			if reply, ok := s.receipts[string(o.Hash)]; ok && now < c.Deadline {
-				s.transmit(reply.bytes)
-			}
-			return
-		}
-		for i := range s.pcs {
-			if s.pcs[i].signal.ReplyAllowed(raw, now) {
-				if c.Class == 1 && o.Type == 1 {
-					if s.challenge != nil {
-						s.transmit(s.challenge)
-					}
-				} else {
-					s.acknowledge(o, now)
-				}
-				break
-			}
-		}
-		return
-	}
-	if c.Class == 2 && o.Type == 4 {
-		if _, err := peerwire.KnownPayload(2, 4, o.Payload); err != nil {
-			return
-		}
-		f, err := peerwire.ParseMessage(o.Payload, "Ack")
-		if err != nil {
-			return
-		}
-		hash := f[6].B
-		// An authenticated ACK can settle only a recorded immutable sender packet.
-		matched := false
-		bootstrap := false
-		for _, sender := range s.senders() {
-			if pending := sender.Pending[string(hash)]; pending != nil {
-				original, err := s.cfg.Self.OpenSent(s.cfg.Codec, pending.Raw, peer, now)
-				if err != nil || original.Context.Seq != f[5].U || original.Context.Class != f[4].U || original.Context.Generation != f[7].U || original.Context.Use != f[8].U {
-					continue
-				}
-				matched = true
-				if original.Type == 2 && original.Context.Class == 1 && original.Context.Generation == 0 {
-					bootstrap = true
-				}
-			}
-		}
-		if !matched {
-			return
-		}
-		s.retainUntil.Store(max(s.retainUntil.Load(), c.Deadline+300000))
-		if bootstrap {
-			for i := range s.pcs {
-				if _, err = s.pcs[i].signal.Receive(raw, now); err != nil {
-					return
-				}
-			}
-		}
-		s.boot.Ack(hash)
-		if s.controlWindow != nil {
-			s.controlWindow.Ack(hash)
-		}
-		for i := range s.pcs {
-			s.pcs[i].sender.Ack(hash)
-			s.maybeOffer(i, now)
-		}
-		return
-	}
-	if c.Class == 1 && (o.Type == 1 || o.Type == 2) {
-		for i := range s.pcs {
-			if _, err = s.pcs[i].signal.Receive(raw, now); err != nil {
-				return
-			}
-		}
-		s.retainUntil.Store(max(s.retainUntil.Load(), c.Deadline+300000))
-		if o.Type == 1 {
-			if s.challenge == nil {
-				peer = s.pcs[0].signal.Peer
-				c := peerwire.NewContext(s.cfg.Self.Public(), peer, s.cfg.Connection, 0, 0, 1, now, 1, true)
-				c.Deadline = s.cfg.Deadline
-				body := peerwire.PB(peerwire.B(1, s.cfg.Connection), peerwire.B(2, s.cfg.Self.Instance), peerwire.B(3, s.cfg.Self.Boot), peerwire.B(4, peer.Boot), peerwire.B(6, o.Hash))
-				s.challenge, err = s.cfg.Self.Seal(s.cfg.Codec, peer, c, 2, body)
-				if err != nil {
-					return
-				}
-				sent, err := s.cfg.Self.OpenSent(s.cfg.Codec, s.challenge, peer, now)
-				if err != nil {
-					return
-				}
-				for i := range s.pcs {
-					if err = s.pcs[i].signal.RememberChallenge(sent); err != nil {
-						return
-					}
-				}
-				s.boot.Enqueue(s.challenge, now, c.Deadline, 1)
-			} else if s.pcs[0].signal.ReplyAllowed(raw, now) {
-				s.transmit(s.challenge)
-			}
-		} else {
-			if probe := s.pcs[0].signal.Probe; probe != nil {
-				s.boot.Ack(probe.Hash)
-			}
-			s.acknowledge(o, now)
-			for i := range s.pcs {
-				s.maybeOffer(i, now)
-			}
-		}
-		return
-	}
-	if c.Class == 2 {
-		if _, err := peerwire.KnownPayload(c.Class, o.Type, o.Payload); err != nil {
-			return
-		}
-		key := peerwire.Key(c)
-		if old, ok := s.controlSeen[key]; ok {
-			if !bytes.Equal(old.bytes, o.Hash) {
-				return
-			}
-			if reply, hasReply := s.receipts[string(o.Hash)]; hasReply && now < c.Deadline && s.cfg.Allow() {
-				s.transmit(reply.bytes)
-			}
-			return
-		}
-		s.controlSeen[key] = cachedBytes{bytes: append([]byte(nil), o.Hash...), until: c.Deadline + 300000}
-		s.retainUntil.Store(max(s.retainUntil.Load(), c.Deadline+300000))
-		if o.Type == 10 {
-			return
-		}
-		typ := uint64(0)
-		var body []byte
-		if s.cfg.Control != nil {
-			typ, body = s.cfg.Control(o, now)
-		}
-		if typ == 0 {
-			typ = 10
-			body = peerwire.PB(peerwire.U(1, c.Class), peerwire.U(2, o.Type), peerwire.U(3, c.Seq), peerwire.B(4, o.Hash))
-		}
-		if !s.cfg.Allow() || s.nowMs() >= c.Deadline {
-			return
-		}
-		if reply := s.controlUntil(typ, body, now, c.Deadline); reply != nil {
-			s.receipts[string(o.Hash)] = cachedBytes{bytes: reply, until: c.Deadline + 300000}
-			s.transmit(reply)
-		}
-		return
-	}
-	if c.Class == 1 && c.Use == 0 {
-		s.receivePeerScope(o, now)
-		return
-	}
-	if c.Use < 1 || c.Use > 2 {
-		return
-	}
-	i := int(c.Use) - 1
-	p := &s.pcs[i]
-	actions, err := p.signal.Receive(raw, now)
-	if err != nil {
-		return
-	}
-	s.retainUntil.Store(max(s.retainUntil.Load(), c.Deadline+300000))
-	if p.signal.ReplyAllowed(raw, now) {
-		s.acknowledge(o, now)
-	}
-
-	for _, a := range actions {
-		if a.Class == 2 && a.Type == 10 {
-			original, err := s.cfg.Self.Open(s.cfg.Codec, a.Original, p.signal.Peer, now)
-			if err == nil {
-				if reply := s.controlUntil(10, a.Payload, now, original.Context.Deadline); reply != nil {
-					s.receipts[string(original.Hash)] = cachedBytes{bytes: reply, until: original.Context.Deadline + 300000}
-					s.transmit(reply)
-				}
-			}
-		} else if a.Class == 1 {
-			if len(p.actions) >= 32 {
-				s.Retire()
-				return
-			}
-			p.actions = append(p.actions, a)
-		}
-	}
-	s.drainActions(i, now)
-	s.maybeReady(i, now)
-}
-func (s *Session) drainActions(i int, now uint64) {
-	p := &s.pcs[i]
-	for len(p.actions) > 0 && s.Active() {
-		a := p.actions[0]
-		if a.Generation != p.signal.Generation {
-			p.actions = p.actions[1:]
-			continue
-		}
-		if a.Type == 3 && s.cfg.BeforeOffer != nil {
-			s.cfg.BeforeOffer()
-		}
-		if a.Type >= 3 && a.Type <= 6 && !s.makePC(i, now) {
-			return
-		}
-		p.actions = p.actions[1:]
-		var err error
-		switch a.Type {
-		case 3, 4:
-			if !s.makePC(i, now) || !p.signal.Dispatch(a.Original, now) {
-				return
-			}
-			if err = p.path.Remote(a.Payload, a.Type == 3); err != nil {
-				p.path.closeWhy("remote_description_rejected")
-				return
-			}
-			if a.Type == 3 {
-				answer, err := p.path.Description(false, false)
-				if err != nil {
-					return
-				}
-				if err = p.signal.SetLocal(answer, false, p.signal.Generation); err != nil {
-					return
-				}
-				info, _ := peerwire.InspectSDP(answer)
-				p.localUfrag, p.localMid = info.Ufrag, info.Mid
-				s.sendSignal(i, 4, peerwire.SDPBody(answer), now)
-			}
-		case 5:
-			if p.path == nil || !p.signal.Dispatch(a.Original, now) {
-				return
-			}
-			cs, _, err := peerwire.ReadCandidates(a.Payload)
-			if err != nil {
-				return
-			}
-			for _, c := range cs {
-				mid, ufrag, index := string(c.Mid), string(c.Ufrag), uint16(c.Index)
-				if err = p.path.AddCandidate(webrtc.ICECandidateInit{Candidate: string(c.Original), SDPMid: &mid, SDPMLineIndex: &index, UsernameFragment: &ufrag}); err != nil {
-					return
-				}
-			}
-		case 6:
-			if p.path == nil || !p.signal.Dispatch(a.Original, now) {
-				return
-			}
-			_ = p.path.AddCandidate(webrtc.ICECandidateInit{})
-		case 8:
-			s.restartPC(i, now)
-		case 9:
-			if p.path != nil {
-				p.path.closeWhy("signal_close_action")
-			}
+			s.tick()
 		}
 	}
 }
 
-func (s *Session) makePC(i int, now uint64) bool {
-	p := &s.pcs[i]
-	if p.generation != p.signal.Generation {
-		s.resetPC(i)
+func (s *Session) deliver(r deliveryResult) {
+	if r.current != nil && r.current() {
+		s.handle(linkcore.DeliveryResult{ID: r.id, Status: r.status, Retry: r.retry})
 	}
-	if p.path != nil {
-		return true
+}
+
+// tick reports PCs that have closed since the last tick, then the tick.
+func (s *Session) tick() {
+	var closed []uint64
+	for id, p := range s.open {
+		if !pathAlive(p) {
+			closed = append(closed, id)
+		}
 	}
-	if s.retired.Load() || now >= s.cfg.Deadline || !s.cfg.Allow() || s.cfg.Policy != nil && !s.cfg.Policy() {
+	for _, id := range closed {
+		delete(s.open, id)
+		s.handle(linkcore.PCClosed{ID: id})
+	}
+	s.handle(linkcore.Tick{})
+}
+
+// admit adds the PC's own admission to an SDK callback as it is applied.
+func (s *Session) admit(e linkcore.Event) linkcore.Event {
+	switch v := e.(type) {
+	case linkcore.PCLocalCandidate:
+		v.Valid = s.paths[v.ID] != nil && s.paths[v.ID].valid()
+		return v
+	case linkcore.PCStateChanged:
+		v.Valid = s.paths[v.ID] != nil && s.paths[v.ID].valid()
+		return v
+	}
+	return e
+}
+
+// handle runs one core step and performs its effects.
+func (s *Session) handle(e linkcore.Event) {
+	if s.stopped {
+		return
+	}
+	if s.retired.Load() && !s.core.View().Retired {
+		// Retire ran on another goroutine: the core hears it first.
+		s.step(linkcore.RetireRound{})
+		if _, ok := e.(linkcore.RetireRound); ok || s.stopped {
+			return
+		}
+	}
+	s.step(e)
+}
+
+func (s *Session) step(e linkcore.Event) {
+	effects := s.core.Handle(e, s.nowMs())
+	s.publish()
+	s.apply(effects)
+}
+
+func (s *Session) publish() {
+	v := s.core.View()
+	if v.Retired {
+		s.retired.Store(true)
+	}
+	s.established.Store(v.Established)
+	s.retainUntil.Store(v.RetainUntil)
+	for i := range 2 {
+		s.generation[i].Store(v.Generation[i])
+		s.business[i].Store(v.Business[i])
+		s.current[i].Store(v.PC[i])
+	}
+}
+
+// view is the mirrored View, as other goroutines see it.
+func (s *Session) view() linkcore.View {
+	v := linkcore.View{Retired: s.retired.Load()}
+	for i := range 2 {
+		v.Generation[i] = s.generation[i].Load()
+		v.Business[i] = s.business[i].Load()
+	}
+	return v
+}
+
+// apply performs effects in order. A result goes back to the core at once,
+// before the next effect, as a synchronous call would have returned.
+func (s *Session) apply(effects []linkcore.Effect) {
+	for _, f := range effects {
+		if s.stopped {
+			return
+		}
+		switch f := f.(type) {
+		case linkcore.SignFrame:
+			s.handle(linkcore.FrameSigned{Op: f.Op, Signature: ed25519.Sign(s.cfg.Self.Sign, f.Message)})
+		case linkcore.TransmitFrame:
+			s.transmit(f)
+		case linkcore.HandleControl:
+			typ, body := uint64(0), []byte(nil)
+			if s.cfg.Control != nil {
+				typ, body = s.cfg.Control(f.Frame, f.Now)
+			}
+			s.handle(linkcore.ControlHandled{Op: f.Op, Type: typ, Body: body})
+		case linkcore.CreatePC:
+			s.handle(linkcore.PCCreated{ID: f.ID, OK: s.createPC(f)})
+		case linkcore.DescribePC:
+			var sdp []byte
+			err := ErrClosed
+			if p := s.paths[f.ID]; p != nil {
+				sdp, err = p.Description(f.Offer, false)
+			}
+			s.handle(linkcore.PCDescribed{ID: f.ID, SDP: sdp, OK: err == nil})
+		case linkcore.SetRemotePC:
+			err := ErrClosed
+			if p := s.paths[f.ID]; p != nil {
+				err = p.Remote(f.SDP, f.Offer)
+			}
+			s.handle(linkcore.PCRemoteSet{ID: f.ID, OK: err == nil})
+		case linkcore.AddCandidatesPC:
+			s.handle(linkcore.PCCandidatesAdded{ID: f.ID, OK: s.addCandidates(f)})
+		case linkcore.ConfirmPC:
+			if p := s.paths[f.ID]; p != nil {
+				p.Confirm()
+				if s.cfg.Ready != nil {
+					s.cfg.Ready(f.Use, p)
+				}
+			}
+		case linkcore.ClosePC:
+			if p := s.paths[f.ID]; p != nil {
+				p.closeWhy(f.Reason)
+			}
+		case linkcore.BeforeOffer:
+			if s.cfg.BeforeOffer != nil {
+				s.cfg.BeforeOffer()
+			}
+		case linkcore.PCChosen:
+			if s.cfg.Chosen != nil {
+				s.cfg.Chosen()
+			}
+		case linkcore.RoundDone:
+			s.finishRound()
+		case linkcore.FrameObserved:
+			s.traceAdd("rx", f.Type, f.Use, true)
+		case linkcore.SessionEnd:
+			s.endFor(f.Reason)
+			s.stopped = true
+		}
+	}
+}
+
+func (s *Session) addCandidates(f linkcore.AddCandidatesPC) bool {
+	p := s.paths[f.ID]
+	if p == nil {
 		return false
 	}
-	use := uint64(i + 1)
-	expires := s.cfg.Deadline
-	generation := p.signal.Generation
-	// gate names the first condition that refuses the path, "" if none does.
-	gate := func() string {
-		switch {
-		case s.retired.Load():
-			return "session_retired"
-		case p.currentGeneration.Load() != generation:
-			return "generation_retired"
-		case !p.business.Load() && s.nowMs() >= expires:
-			return "round_deadline"
-		case s.cfg.Policy != nil && !s.cfg.Policy():
-			return "policy"
-		case !s.cfg.Allow():
-			return "lease_or_process"
+	if f.End {
+		_ = p.AddCandidate(webrtc.ICECandidateInit{})
+		return true
+	}
+	for _, c := range f.Candidates {
+		mid, ufrag, index := string(c.Mid), string(c.Ufrag), uint16(c.Index)
+		if p.AddCandidate(webrtc.ICECandidateInit{Candidate: string(c.Original), SDPMid: &mid, SDPMLineIndex: &index, UsernameFragment: &ufrag}) != nil {
+			return false
 		}
-		return ""
+	}
+	return true
+}
+
+func (s *Session) createPC(f linkcore.CreatePC) bool {
+	use, generation, id := f.Use, f.Generation, f.ID
+	gate := func() string {
+		return s.view().PCGate(use, generation, s.nowMs(), s.cfg.Deadline, s.cfg.Policy, s.cfg.Allow)
 	}
 	var source atomic.Pointer[Path]
-	post := func(e sessionEvent) {
+	post := func(e linkcore.Event) {
 		path := source.Load()
-		if !s.Active() || path == nil || !path.valid() || p.currentPath.Load() != path || p.currentGeneration.Load() != generation || e.state == webrtc.PeerConnectionStateClosed {
+		if !s.Active() || path == nil || !path.valid() || s.current[use-1].Load() != id || s.generation[use-1].Load() != generation {
 			return
 		}
-		e.path = path
-		e.use = use
-		e.generation = generation
 		select {
 		case s.events <- e:
 		default:
 			// Closing the captured path cannot cancel a replacement, even if
-			// the actor changes generation between admission and this branch.
+			// the core changes generation between admission and this branch.
 			path.closeWhy("event_queue_full")
 		}
 	}
-	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: p.signal.Generation, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Port: s.cfg.Port, Allow: func() bool {
+	path, err := New(s.ctx, Config{Owner: string(s.cfg.Connection), Use: use, Peer: string(s.cfg.Peer.ID), Generation: generation, Pool: s.cfg.Pool, STUN: s.cfg.STUN, Port: s.cfg.Port, Allow: func() bool {
 		return gate() == ""
 	}, Why: gate, Ended: func() { s.logSignals(use) }, LoopbackOnly: s.cfg.LoopbackOnly,
-		Candidate: func(c *webrtc.ICECandidateInit) { post(sessionEvent{candidate: c, kind: 1}) },
-		State:     func(state webrtc.PeerConnectionState) { post(sessionEvent{state: state, kind: 2}) },
-	})
-	if err != nil {
-		return false
-	}
-	p.path = path
-	source.Store(path)
-	p.currentPath.Store(path)
-	if s.cfg.Chosen != nil {
-		s.cfg.Chosen()
-	}
-	return true
-}
-func (s *Session) maybeOffer(i int, now uint64) {
-	p := &s.pcs[i]
-	if !p.signal.BootReady || !p.signal.Offerer() || p.signal.LocalSDP || p.signal.Closed || !s.Active() || now >= s.cfg.Deadline || !s.cfg.Allow() || (s.cfg.Policy != nil && !s.cfg.Policy()) {
-		return
-	}
-	if p.path == nil && s.cfg.BeforeOffer != nil {
-		s.cfg.BeforeOffer()
-	}
-	if !s.makePC(i, now) {
-		return
-	}
-	offer, err := p.path.Description(true, false)
-	if err != nil {
-		return
-	}
-	if err = p.signal.SetLocal(offer, true, p.signal.Generation); err != nil {
-		return
-	}
-	info, _ := peerwire.InspectSDP(offer)
-	p.localUfrag, p.localMid = info.Ufrag, info.Mid
-	s.sendSignal(i, 3, peerwire.SDPBody(offer), now)
-}
-func (s *Session) event(e sessionEvent, now uint64) {
-	if e.kind == 6 {
-		if !s.Active() || len(s.pcs[0].signal.Peer.Boot) != 32 {
-			return
-		}
-		raw := s.control(e.controlType, e.body, now)
-		if raw == nil {
-			return
-		}
-		if s.controlWindow == nil || s.controlWindow.TimedOut || len(s.controlWindow.Pending) == 0 {
-			s.controlWindow = peerwire.NewSender(now + 10000)
-		}
-		s.controlWindow.Enqueue(raw, now, now+10000, 1)
-		return
-	}
-
-	if e.kind == 5 {
-		for i := range s.pcs {
-			p := &s.pcs[i]
-			p.signal.Closed = true
-			if p.path != nil {
-				p.path.closeWhy("peer_closed_round")
+		Candidate: func(c *webrtc.ICECandidateInit) {
+			e := linkcore.PCLocalCandidate{ID: id, End: c == nil}
+			if c != nil {
+				e.Candidate = []byte(c.Candidate)
 			}
-		}
-		return
-	}
-	if e.kind == 3 {
-		s.boot.Discovered()
-		for i := range s.pcs {
-			s.pcs[i].sender.Discovered()
-		}
-		return
-	}
-	if e.use < 1 || e.use > 2 {
-		return
-	}
-	i := int(e.use) - 1
-	p := &s.pcs[i]
-	if !s.Active() || p.path == nil || e.path != p.path || e.generation != p.signal.Generation {
-		return
-	}
-	if (e.kind == 1 || e.state == webrtc.PeerConnectionStateConnected) && !p.path.valid() {
-		return
-	}
-	if e.kind == 1 {
-		if e.candidate == nil {
-			p.ended = true
-		} else if !p.batch.Add([]byte(e.candidate.Candidate), p.signal.Generation, now, 1) {
-			p.path.closeWhy("candidate_budget")
-			return
-		}
-	} else if e.state == webrtc.PeerConnectionStateFailed || e.state == webrtc.PeerConnectionStateDisconnected {
-		s.restartPC(i, now)
-	} else if e.state == webrtc.PeerConnectionStateConnected {
-		p.signal.DTLS = true
-		s.maybeReady(i, now)
-	}
-}
-func (s *Session) maybeReady(i int, now uint64) {
-	p := &s.pcs[i]
-	if p.path == nil {
-		return
-	}
-	if !p.confirmed && p.signal.LocalSDP && p.signal.RemoteSDP && p.signal.DTLS {
-		p.confirmed = s.sendSignal(i, 7, p.signal.ConfirmBody(), now)
-	}
-	// A connected DTLS transport and the peer's confirmation are the proof that
-	// the pair works; a server-reflexive candidate is not required. Requiring
-	// one would keep a computer with a public address and no NAT, or any pair
-	// whose STUN is unreachable, on the relay although the path is up.
-	if p.confirmed && !p.announced && p.signal.Ready() {
-		p.announced = true
-		p.business.Store(true)
-		s.established.Store(true)
-		p.path.Confirm()
-		if s.cfg.Ready != nil {
-			s.cfg.Ready(uint64(i+1), p.path)
-		}
-		if s.pcs[0].announced && s.pcs[1].announced {
-			s.finishRound()
-		}
-	}
-}
-func (s *Session) result(r deliveryResult, now uint64) {
-	if r.current == nil || !r.current() {
-		return
-	}
-	for _, sender := range s.senders() {
-		for _, pending := range sender.Pending {
-			fields, err := peerwire.Parse(pending.Raw, 5)
-			if err != nil || !bytes.Equal(fields[4].B, r.id) {
-				continue
+			post(e)
+		},
+		State: func(state webrtc.PeerConnectionState) {
+			if state != webrtc.PeerConnectionStateClosed {
+				post(linkcore.PCStateChanged{ID: id, State: pcState(state)})
 			}
-			if r.status == 3 {
-				sender.Limited(pending.Hash, now, r.retry)
-			}
-			if r.status == 2 {
-				sender.Offline()
-			}
-		}
-	}
-}
-
-func (s *Session) Discovered() {
-	select {
-	case s.events <- sessionEvent{kind: 3}:
-	default:
-	}
-}
-
-// Outbound freezes the original authorization and deadline alongside queue
-// ownership. The main-WS writer must validate it again at actual dispatch.
-type Outbound struct {
-	Raw      []byte
-	Deadline uint64
-	Critical bool
-	Valid    func() bool
-}
-
-func (s *Session) transmit(raw []byte) bool {
-	now := s.nowMs()
-	peer := s.pcs[0].signal.Peer
-	original, err := s.cfg.Self.OpenSent(s.cfg.Codec, raw, peer, now)
-	if err != nil || !s.cfg.Allow() {
-		return false
-	}
-	deadline := original.Context.Deadline
-	sent := s.cfg.Send(Outbound{Raw: raw, Deadline: deadline, Critical: original.Context.Class == 2 || original.Type != 5 && original.Type != 6,
-		Valid: func() bool {
-			c := original.Context
-			if c.Class == 1 && (original.Type == 1 || original.Type >= 3 && original.Type <= 8) && s.retired.Load() {
-				return false
-			}
-			if c.Class == 1 && c.Use > 0 && c.Use <= 2 && c.Generation != s.pcs[c.Use-1].currentGeneration.Load() {
-				return false
-			}
-			if original.Context.Class == 1 && original.Type == 1 && !s.cfg.Pool.ownerAvailable(string(s.cfg.Peer.ID), string(s.cfg.Connection)) {
-				return false
-			}
-			return s.ctx.Err() == nil && s.cfg.Allow() && s.nowMs() < deadline
 		},
 	})
-	s.traceAdd("tx", original.Type, original.Context.Use, sent)
-	return sent
-}
-
-func (s *Session) senders() []*peerwire.Sender {
-	out := []*peerwire.Sender{s.boot, s.pcs[0].sender, s.pcs[1].sender}
-	if s.controlWindow != nil {
-		out = append(out, s.controlWindow)
-	}
-	return out
-}
-func (s *Session) SendControl(typ uint64, body []byte) bool {
-	if len(body) > 14<<10 || !s.Active() {
+	if err != nil {
 		return false
 	}
-	select {
-	case s.events <- sessionEvent{kind: 6, controlType: typ, body: append([]byte(nil), body...)}:
-		return true
-	default:
-		return false
-	}
+	source.Store(path)
+	s.paths[id] = path
+	s.open[id] = path
+	return true
 }
 
-// Replacement SDK objects are reserved only after the old PC actually closes.
-// The actor retries pending actions; neither a gap nor restart resets the round.
-func (s *Session) resetPC(i int) {
-	p := &s.pcs[i]
-	p.currentPath.Store(nil)
-	p.currentGeneration.Store(p.signal.Generation)
-	if p.path != nil {
-		p.path.closeWhy("generation_reset")
-		s.closedPaths = append(s.closedPaths, p.path)
-		p.path = nil
+func pcState(state webrtc.PeerConnectionState) linkcore.PCState {
+	switch state {
+	case webrtc.PeerConnectionStateConnected:
+		return linkcore.PCConnected
+	case webrtc.PeerConnectionStateDisconnected:
+		return linkcore.PCDisconnected
+	case webrtc.PeerConnectionStateFailed:
+		return linkcore.PCFailed
 	}
-	p.generation = p.signal.Generation
-	p.currentGeneration.Store(p.generation)
-	p.seq = 0
-	p.sender = peerwire.NewSender(s.cfg.Deadline)
-	p.batch = peerwire.CandidateBatcher{Generation: p.signal.Generation, Deadline: s.cfg.Deadline, Binding: 1}
-	p.business.Store(false)
-	p.confirmed = false
-	p.announced = false
-	p.ended = false
-	p.restartSent = false
-	p.localUfrag = nil
-	p.localMid = nil
+	return linkcore.PCOther
 }
-func (s *Session) restartPC(i int, now uint64) {
-	p := &s.pcs[i]
-	if now >= s.cfg.Deadline || !s.Active() {
-		return
+
+func (s *Session) transmit(f linkcore.TransmitFrame) {
+	sent := s.cfg.Send(Outbound{Raw: f.Raw, Deadline: f.Deadline, Critical: f.Critical,
+		Valid: func() bool {
+			if !f.Current(s.view()) {
+				return false
+			}
+			if f.Class == 1 && f.Type == 1 && !s.cfg.Pool.ownerAvailable(string(s.cfg.Peer.ID), string(s.cfg.Connection)) {
+				return false
+			}
+			return s.ctx.Err() == nil && s.cfg.Allow() && s.nowMs() < f.Deadline
+		},
+	})
+	s.traceAdd("tx", f.Type, f.Use, sent)
+}
+
+// finish ends the session: every PC closes and is waited for.
+func (s *Session) finish() {
+	s.endFor("ctx_done")
+	s.logEnd(s.core.View().Established, s.core.Steps())
+	s.cancel()
+	s.finishRound()
+	for _, p := range s.paths {
+		p.Close()
 	}
-	if p.signal.Offerer() {
-		if p.signal.NextGeneration(p.signal.Generation+1) != nil {
-			return
-		}
-		s.resetPC(i)
-		p.actions = nil
-		s.maybeOffer(i, now)
-	} else if !p.restartSent {
-		body := peerwire.PB(peerwire.B(1, peerwire.PB(peerwire.U(1, uint64(i+1)), peerwire.U(2, p.signal.Generation))))
-		p.restartSent = s.sendSignal(i, 8, body, now)
+	for _, p := range s.paths {
+		p.Wait()
 	}
+	if s.cfg.End != nil {
+		s.cfg.End()
+	}
+	close(s.finished)
 }
 
 const maxTrace = 64
@@ -1019,14 +508,9 @@ func (s *Session) endFor(reason string) { s.endReason.CompareAndSwap(nil, reason
 
 // logEnd writes one line about the round: its reason and which steps each
 // peer connection had reached. Fixed words and flags only.
-func (s *Session) logEnd() {
+func (s *Session) logEnd(established bool, steps [2]string) {
 	reason, _ := s.endReason.Load().(string)
-	args := []any{"peer", shortPeerID(string(s.cfg.Peer.ID)), "reason", reason, "at_ms", time.Since(s.born).Milliseconds(), "established", s.established.Load()}
-	for i := range s.pcs {
-		p := &s.pcs[i]
-		n := "pc" + string(rune('1'+i))
-		args = append(args, n+"_steps", fmtSteps(p.signal.BootReady, p.signal.LocalSDP, p.signal.RemoteSDP, p.signal.DTLS, p.confirmed, p.announced))
-	}
+	args := []any{"peer", shortPeerID(string(s.cfg.Peer.ID)), "reason", reason, "at_ms", time.Since(s.born).Milliseconds(), "established", established, "pc1_steps", steps[0], "pc2_steps", steps[1]}
 	s.traceMu.Lock()
 	args = append(args, "signals", strings.Join(s.trace, " "))
 	s.traceMu.Unlock()
@@ -1040,17 +524,4 @@ func (s *Session) logSignals(use uint64) {
 	t := strings.Join(s.trace, " ")
 	s.traceMu.Unlock()
 	slog.Info("direct signals at path end", "peer", shortPeerID(string(s.cfg.Peer.ID)), "use", use, "at_ms", time.Since(s.born).Milliseconds(), "signals", t)
-}
-
-// fmtSteps: boot, local SDP, remote SDP, DTLS, confirm sent, announced; one
-// letter each when reached, a dash when not.
-func fmtSteps(flags ...bool) string {
-	out := make([]byte, len(flags))
-	for i, ok := range flags {
-		out[i] = '-'
-		if ok {
-			out[i] = "blrdca"[i]
-		}
-	}
-	return string(out)
 }

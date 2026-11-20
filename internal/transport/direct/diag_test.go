@@ -9,8 +9,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
 type lockedBuffer struct {
@@ -72,10 +70,8 @@ func TestRoundEndIncludesShortPeerIDWithoutFullID(t *testing.T) {
 	buf := captureLog(t)
 	s := &Session{born: time.Now(), cfg: SessionConfig{}}
 	s.cfg.Peer.ID = []byte("client-device-secret-9f2a")
-	s.pcs[0].signal = &peerwire.Signal{}
-	s.pcs[1].signal = &peerwire.Signal{}
 	s.endFor("not_allowed")
-	s.logEnd()
+	s.logEnd(false, [2]string{"------", "------"})
 	out := buf.String()
 	if !strings.Contains(out, "direct round ended") || !strings.Contains(out, "peer=…9f2a") || !strings.Contains(out, "reason=not_allowed") {
 		t.Fatalf("log = %q", out)
@@ -101,15 +97,9 @@ func TestPathEndKeepsTheFirstReason(t *testing.T) {
 	}
 }
 
-// The round's log shows how far each peer connection got and a bounded trace
-// of signal kinds; acknowledgements are left out and the trace stops growing.
-func TestRoundTraceIsBoundedAndStepsAreWords(t *testing.T) {
-	if got := fmtSteps(true, true, true, false, false, false); got != "blr---" {
-		t.Fatalf("steps = %q", got)
-	}
-	if got := fmtSteps(true, true, true, true, true, true); got != "blrdca" {
-		t.Fatalf("steps = %q", got)
-	}
+// The round's log keeps a bounded trace of signal kinds; acknowledgements
+// are left out and the trace stops growing.
+func TestRoundTraceIsBounded(t *testing.T) {
 	s := &Session{born: time.Now()}
 	for i := 0; i < 3*maxTrace; i++ {
 		s.traceAdd("rx", 5, 1, true)

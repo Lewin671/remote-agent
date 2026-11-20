@@ -3,12 +3,9 @@ package direct
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
@@ -20,43 +17,34 @@ func TestHostOnlyPairIsHandedOverWithoutAnyServerReflexiveCandidate(t *testing.T
 	if len(localAddrs(false)) == 0 {
 		t.Skip("no routable local address on this machine")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	a, b := identity(t, 1), identity(t, 2)
-	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
-	if err != nil {
-		t.Fatal(err)
-	}
+	codec := testCodec(t)
+	clock := newTestClock()
 	connection := make([]byte, 16)
 	_, _ = rand.Read(connection)
-	var ar, br atomic.Pointer[Session]
+	slots := [2]*peerSlot{newPeerSlot(), newPeerSlot()}
 	ready := make(chan uint64, 4)
-	deadline := uint64(time.Now().Add(10 * time.Second).UnixMilli())
+	deadline := clock.Ms() + 10000
 	// No STUN server and no loopback filter: host candidates only.
 	cfg := func(self *Identity, other peerwire.Public, which int) SessionConfig {
-		return SessionConfig{Self: self, Peer: other.Member(), Codec: codec, Connection: connection, Deadline: deadline, Pool: NewPool(8), Allow: func() bool { return true },
+		return SessionConfig{Self: self, Peer: other.Member(), Codec: codec, Connection: connection, Deadline: deadline, Pool: NewPool(8), Allow: func() bool { return true }, Now: clock.Now,
 			Ready: func(use uint64, _ *Path) { ready <- use },
-			Send: func(out Outbound) bool {
-				target := ar.Load()
-				if which == 0 {
-					target = br.Load()
-				}
-				return target != nil && target.Receive(out.Raw)
-			}}
+			Send:  func(out Outbound) bool { return slots[1-which].deliver(ctx, out.Raw) }}
 	}
-	sa, err := NewSession(ctx, cfg(a, b.Public(), 0), true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ar.Store(sa)
-	defer sa.Close()
 	sb, err := NewSession(ctx, cfg(b, a.Public(), 1), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	br.Store(sb)
-	defer sb.Close()
+	slots[1].publish(sb)
+	defer func() { sb.Close(); sb.Wait() }()
+	sa, err := NewSession(ctx, cfg(a, b.Public(), 0), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slots[0].publish(sa)
+	defer func() { sa.Close(); sa.Wait() }()
 	for n := 0; n < 4; n++ {
 		select {
 		case <-ready:

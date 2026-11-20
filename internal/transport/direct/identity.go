@@ -88,12 +88,3 @@ func (id *Identity) OpenSent(codec *peerwire.Codec, raw []byte, to peerwire.Publ
 	}
 	return codec.OpenSent(raw, id.Public(), to, shared, now)
 }
-
-// NewSignal binds a receive gate to this identity's secret with peer.
-func (id *Identity) NewSignal(codec *peerwire.Codec, peer peerwire.Public, connection []byte, use, now uint64) (*peerwire.Signal, error) {
-	shared, err := id.Shared(peer)
-	if err != nil {
-		return nil, err
-	}
-	return peerwire.NewSignal(codec, id.Public(), peer, shared, connection, use, now), nil
-}
