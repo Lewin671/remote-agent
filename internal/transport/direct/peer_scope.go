@@ -2,7 +2,7 @@ package direct
 
 import (
 	"bytes"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
 type peerScopeWindow struct {
@@ -57,7 +57,7 @@ func (s *Session) receivePeerScope(o peerwire.Opened, now uint64) {
 		return
 	}
 	for {
-		fresh, err := s.cfg.Codec.Open(o.Raw, s.pcs[0].signal.Peer, s.cfg.Self, now)
+		fresh, err := s.cfg.Self.Open(s.cfg.Codec, o.Raw, s.pcs[0].signal.Peer, now)
 		if err != nil || !s.validPeerScope(fresh) {
 			s.Retire()
 			return

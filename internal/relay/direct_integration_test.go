@@ -24,7 +24,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
@@ -101,7 +101,7 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 	authority := e.authority
 	head := authority.States[len(authority.States)-1]
 	hash, _ := head.Hash()
-	codec, err := peerwire.NewCodec(authority.Pin.Account, authority.Pin.Domain, hash, head.Core.Epoch)
+	codec, err := peerwire.NewCodec(authority.Pin.Account, authority.Pin.Domain, hash, head.Core.Epoch, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,10 +114,10 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	self := peerwire.Identity{ID: []byte(authority.Member.ID), Role: 1, Sign: authority.Ed, Box: box, Instance: make([]byte, 16), Boot: make([]byte, 32)}
+	self := &direct.Identity{ID: []byte(authority.Member.ID), Role: 1, Sign: authority.Ed, Box: box, Instance: make([]byte, 16), Boot: make([]byte, 32)}
 	_, _ = rand.Read(self.Instance)
 	_, _ = rand.Read(self.Boot)
-	peer := peerwire.Public{ID: []byte(member.ID), Role: 2, Sign: member.EdPublic[:], Box: peerBox}
+	peer := peerwire.Public{ID: []byte(member.ID), Role: 2, Sign: member.EdPublic[:], Box: peerBox.Bytes()}
 	connection := make([]byte, 16)
 	_, _ = rand.Read(connection)
 	out := make(chan direct.Outbound, 128)

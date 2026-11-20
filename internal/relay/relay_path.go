@@ -4,7 +4,7 @@ import (
 	"context"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/transport"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"time"

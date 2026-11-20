@@ -9,7 +9,8 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -19,7 +20,7 @@ func TestPeerScopeRestartValidatesBothTargetsAndKeepsOriginalReceipt(t *testing.
 		a, b = b, a
 	}
 	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +29,7 @@ func TestPeerScopeRestartValidatesBothTargetsAndKeepsOriginalReceipt(t *testing.
 	var replies [][]byte
 	s := &Session{ctx: context.Background(), receipts: map[string]cachedBytes{}, controlSeen: map[string]cachedBytes{}, cfg: SessionConfig{Self: a, Peer: b.Public(), Codec: codec, Connection: conn, Deadline: now + 10000, Pool: NewPool(8), Allow: func() bool { return true }, Policy: func() bool { return false }, Send: func(out Outbound) bool { replies = append(replies, out.Raw); return true }}}
 	for i := range s.pcs {
-		g := peerwire.NewSignal(codec, a, b.Public(), conn, uint64(i+1), now)
+		g := mustSignal(a.NewSignal(codec, b.Public(), conn, uint64(i+1), now))
 		g.Peer = b.Public()
 		g.BootReady = true
 		s.pcs[i].signal = g
@@ -37,7 +38,7 @@ func TestPeerScopeRestartValidatesBothTargetsAndKeepsOriginalReceipt(t *testing.
 	}
 	makeFrame := func(seq, generation2 uint64) []byte {
 		body := peerwire.PB(peerwire.B(1, peerwire.PB(peerwire.U(1, 1), peerwire.U(2, 1))), peerwire.B(1, peerwire.PB(peerwire.U(1, 2), peerwire.U(2, generation2))))
-		raw, err := codec.Seal(b, a.Public(), peerwire.NewContext(b, a.Public(), conn, 0, 1, seq, now, 1, false), 8, body, nil, nil, nil)
+		raw, err := b.Seal(codec, a.Public(), peerwire.NewContext(b.Public(), a.Public(), conn, 0, 1, seq, now, 1, false), 8, body)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,7 +68,7 @@ func TestControlSeenAndReceiptsExpirePast2047ControlsWithInjectedClock(t *testin
 		a, b = b, a
 	}
 	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +107,7 @@ func TestControlSeenAndReceiptsExpirePast2047ControlsWithInjectedClock(t *testin
 	}
 	s.established.Store(true)
 	for i := range s.pcs {
-		g := peerwire.NewSignal(codec, a, b.Public(), conn, uint64(i+1), nowMs.Load())
+		g := mustSignal(a.NewSignal(codec, b.Public(), conn, uint64(i+1), nowMs.Load()))
 		g.Peer = b.Public()
 		g.BootReady = true
 		s.pcs[i].signal = g
@@ -126,7 +127,7 @@ func TestControlSeenAndReceiptsExpirePast2047ControlsWithInjectedClock(t *testin
 		t0 := nowMs.Load()
 		for range 500 {
 			seq++
-			raw, err := codec.Seal(b, a.Public(), peerwire.NewContext(b, a.Public(), conn, 0, 1, seq, t0, 2, false), 15, subBody, nil, nil, nil)
+			raw, err := b.Seal(codec, a.Public(), peerwire.NewContext(b.Public(), a.Public(), conn, 0, 1, seq, t0, 2, false), 15, subBody)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,7 +147,7 @@ func TestControlSeenAndReceiptsExpirePast2047ControlsWithInjectedClock(t *testin
 	// Send packet #2501 (> 2047 lifetime controls) and verify it is accepted and handled.
 	tFinal := nowMs.Load()
 	seq++
-	raw, err := codec.Seal(b, a.Public(), peerwire.NewContext(b, a.Public(), conn, 0, 1, seq, tFinal, 2, false), 15, subBody, nil, nil, nil)
+	raw, err := b.Seal(codec, a.Public(), peerwire.NewContext(b.Public(), a.Public(), conn, 0, 1, seq, tFinal, 2, false), 15, subBody)
 	if err != nil {
 		t.Fatal(err)
 	}

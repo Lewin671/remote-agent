@@ -66,7 +66,7 @@ TARGETS = [
            ignored=lambda p: "/gen/" in p,
            test=lambda p: p.endswith("_test.go")),
     # Root module (daemon, server, CLI): reference only, not part of the client total.
-    Target("root-go", ("cmd/", "internal/"), (".go",),
+    Target("root-go", ("cmd/", "internal/", "shared/"), (".go",),
            ignored=lambda p: "/gen/" in p or p.endswith(".pb.go") or _generated_name(p),
            test=lambda p: p.endswith("_test.go"), reference=True),
 ]

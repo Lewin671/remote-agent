@@ -3,7 +3,6 @@ package peerwire
 import (
 	"bytes"
 	"errors"
-	"fmt"
 )
 
 // Signal is a transport-independent receiver. SDK methods are invoked by its
@@ -22,8 +21,8 @@ type Signal struct {
 
 	LeaseUntil, AuthorizationRevision                                                  uint64
 	MembersAuthorized                                                                  bool
-	Self                                                                               Identity
-	Peer                                                                               Public
+	Self, Peer                                                                         Public
+	Shared                                                                             []byte // X25519 secret between Self and Peer members.
 	Connection                                                                         []byte
 	Use, Generation, Next                                                              uint64
 	BootReady, LocalSDP, RemoteSDP, DTLS, Confirmed, Closed, Retired, Ended            bool
@@ -43,8 +42,8 @@ type Signal struct {
 
 var ErrSignal = errors.New("invalid signal transition")
 
-func NewSignal(codec *Codec, self Identity, peer Public, connection []byte, use uint64, now uint64) *Signal {
-	return &Signal{Codec: codec, LeaseUntil: now + 10000, AuthorizationRevision: 1, MembersAuthorized: true, Self: self, Peer: peer.Member(), Clock: now, RoundDeadline: now + 10000, Allowed: map[string][]byte{}, Dispatched: map[string][]byte{}, Connection: connection, Use: use, Generation: 1, Next: 1, Seen: map[string][]byte{}, Pending: map[uint64]Opened{}, PendingAt: map[uint64]uint64{}, CacheUntil: map[string]uint64{}}
+func NewSignal(codec *Codec, self, peer Public, shared, connection []byte, use uint64, now uint64) *Signal {
+	return &Signal{Codec: codec, Shared: shared, LeaseUntil: now + 10000, AuthorizationRevision: 1, MembersAuthorized: true, Self: self, Peer: peer.Member(), Clock: now, RoundDeadline: now + 10000, Allowed: map[string][]byte{}, Dispatched: map[string][]byte{}, Connection: connection, Use: use, Generation: 1, Next: 1, Seen: map[string][]byte{}, Pending: map[uint64]Opened{}, PendingAt: map[uint64]uint64{}, CacheUntil: map[string]uint64{}}
 }
 func (s *Signal) Offerer() bool { return bytes.Compare(s.Self.ID, s.Peer.ID) < 0 }
 func (s *Signal) Ready() bool   { return !s.Closed && s.LocalSDP && s.RemoteSDP && s.DTLS && s.Confirmed }
@@ -85,7 +84,7 @@ func (s *Signal) NextGeneration(gen uint64) error {
 }
 func (s *Signal) Receive(packet []byte, now uint64) ([]Action, error) {
 	s.Tick(now)
-	opened, e := s.Codec.Open(packet, s.Peer, s.Self, s.Clock)
+	opened, e := s.Codec.Open(packet, s.Peer, s.Self, s.Shared, s.Clock)
 	if e != nil {
 		s.Rejected++
 		return nil, e
@@ -94,7 +93,7 @@ func (s *Signal) Receive(packet []byte, now uint64) ([]Action, error) {
 }
 func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 	s.Tick(now)
-	fresh, e := s.Codec.Open(o.Raw, s.Peer, s.Self, s.Clock)
+	fresh, e := s.Codec.Open(o.Raw, s.Peer, s.Self, s.Shared, s.Clock)
 	if e != nil {
 		return nil, e
 	}
@@ -163,7 +162,7 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 			}
 		} else {
 			if s.Probe != nil {
-				if _, err := s.Codec.OpenSent(s.Probe.Raw, s.Self, s.Peer, s.Clock); err != nil {
+				if _, err := s.Codec.OpenSent(s.Probe.Raw, s.Self, s.Peer, s.Shared, s.Clock); err != nil {
 					return nil, err
 				}
 			}
@@ -231,7 +230,7 @@ func (s *Signal) Accept(o Opened, now uint64) ([]Action, error) {
 	}
 	var actions []Action
 	for {
-		live, e := s.Codec.Open(o.Raw, s.Peer, s.Self, s.Clock)
+		live, e := s.Codec.Open(o.Raw, s.Peer, s.Self, s.Shared, s.Clock)
 		if e != nil || live.Context.Generation != s.Generation || live.Context.Use != s.Use || !bytes.Equal(live.Context.Connection, s.Connection) {
 			s.retire(true)
 			return nil, ErrSignal
@@ -377,10 +376,6 @@ func (s *Signal) Tick(now uint64) bool {
 	}
 	return false
 }
-func (s *Signal) String() string {
-	return fmt.Sprintf("gen=%d next=%d sdk=%d duplicate=%d conflict=%d rejected=%d unsupported=%d", s.Generation, s.Next, s.SDKCalls, s.Duplicates, s.Conflicts, s.Rejected, s.Unsupported)
-}
-
 func (s *Signal) ConfirmBody() []byte {
 	oh, ah, of, af := s.LocalHash, s.RemoteHash, s.LocalFingerprint, s.RemoteFingerprint
 	if !s.Offerer() {
@@ -407,7 +402,7 @@ func (s *Signal) RememberChallenge(sent Opened) error {
 	if s.Closed || !s.authorized() {
 		return ErrSignal
 	}
-	fresh, e := s.Codec.OpenSent(sent.Raw, s.Self, s.Peer, s.Clock)
+	fresh, e := s.Codec.OpenSent(sent.Raw, s.Self, s.Peer, s.Shared, s.Clock)
 	if e != nil {
 		return e
 	}
@@ -484,7 +479,7 @@ func (s *Signal) RememberProbe(sent Opened) error {
 	if s.Closed || !s.authorized() {
 		return ErrSignal
 	}
-	fresh, e := s.Codec.OpenSent(sent.Raw, s.Self, s.Peer, s.Clock)
+	fresh, e := s.Codec.OpenSent(sent.Raw, s.Self, s.Peer, s.Shared, s.Clock)
 	if e != nil {
 		return e
 	}
@@ -518,7 +513,7 @@ func (s *Signal) Dispatch(raw []byte, now uint64) bool {
 	if s.Closed || !s.authorized() {
 		return false
 	}
-	o, e := s.Codec.Open(raw, s.Peer, s.Self, s.Clock)
+	o, e := s.Codec.Open(raw, s.Peer, s.Self, s.Shared, s.Clock)
 	if e != nil || o.Context.Generation != s.Generation || o.Context.Use != s.Use || !bytes.Equal(o.Context.Connection, s.Connection) {
 		return false
 	}
@@ -616,7 +611,7 @@ func (s *Signal) ReplyAllowed(raw []byte, now uint64) bool {
 	if !s.authorized() {
 		return false
 	}
-	o, e := s.Codec.Open(raw, s.Peer, s.Self, s.Clock)
+	o, e := s.Codec.Open(raw, s.Peer, s.Self, s.Shared, s.Clock)
 	if e != nil {
 		return false
 	}

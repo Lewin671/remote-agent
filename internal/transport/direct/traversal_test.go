@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
 // A pair that only ever gathers host candidates, as a computer with a public
@@ -23,7 +24,7 @@ func TestHostOnlyPairIsHandedOverWithoutAnyServerReflexiveCandidate(t *testing.T
 	defer cancel()
 	a, b := identity(t, 1), identity(t, 2)
 	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,7 @@ func TestHostOnlyPairIsHandedOverWithoutAnyServerReflexiveCandidate(t *testing.T
 	ready := make(chan uint64, 4)
 	deadline := uint64(time.Now().Add(10 * time.Second).UnixMilli())
 	// No STUN server and no loopback filter: host candidates only.
-	cfg := func(self peerwire.Identity, other peerwire.Public, which int) SessionConfig {
+	cfg := func(self *Identity, other peerwire.Public, which int) SessionConfig {
 		return SessionConfig{Self: self, Peer: other.Member(), Codec: codec, Connection: connection, Deadline: deadline, Pool: NewPool(8), Allow: func() bool { return true },
 			Ready: func(use uint64, _ *Path) { ready <- use },
 			Send: func(out Outbound) bool {

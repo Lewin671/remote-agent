@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
 func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
@@ -54,10 +55,10 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 	self, _ := head.Core.Member(selfID)
 	peerMem, _ := head.Core.Member(head.Core.AuthorityID)
 	boxPub, _ := ecdh.X25519().NewPublicKey(peerMem.XPublic[:])
-	codec, _ := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch)
+	codec, _ := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.Version)
 	sess, err := direct.NewSession(ctx, direct.SessionConfig{
 		Self:       m.self,
-		Peer:       peerwire.Public{ID: []byte(peerMem.ID), Role: 1, Sign: peerMem.EdPublic[:], Box: boxPub},
+		Peer:       peerwire.Public{ID: []byte(peerMem.ID), Role: 1, Sign: peerMem.EdPublic[:], Box: boxPub.Bytes()},
 		Codec:      codec,
 		Connection: make([]byte, 16),
 		Deadline:   nowMs.Load() + 10_000,
@@ -152,7 +153,7 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	addedHash, _ := addedState.Hash()
-	addedCodec, err := peerwire.NewCodec(pin.Account, pin.Domain, addedHash, addedState.Core.Epoch)
+	addedCodec, err := peerwire.NewCodec(pin.Account, pin.Domain, addedHash, addedState.Core.Epoch, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +164,7 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 	})
 	sess2, err := direct.NewSession(ctx, direct.SessionConfig{
 		Self:       m.self,
-		Peer:       peerwire.Public{ID: []byte(c2.ID), Role: 1, Sign: c2.EdPublic[:], Box: c2BoxPub(t, c2XPub)},
+		Peer:       peerwire.Public{ID: []byte(c2.ID), Role: 1, Sign: c2.EdPublic[:], Box: c2BoxPub(t, c2XPub).Bytes()},
 		Codec:      addedCodec,
 		Connection: make([]byte, 16),
 		Deadline:   nowMs.Load() + 10_000,

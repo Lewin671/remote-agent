@@ -4,7 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/pion/webrtc/v4"
 	"testing"
 	"time"
@@ -15,12 +16,12 @@ func TestSDKCallbacksKeepTheirOriginalPCOwner(t *testing.T) {
 	defer cancel()
 	self, peer := identity(t, 1), identity(t, 2)
 	h := sha256.Sum256([]byte("fixture"))
-	codec, _ := peerwire.NewCodec("00000000000000000000000000000001", h, h, 1)
+	codec, _ := peerwire.NewCodec("00000000000000000000000000000001", h, h, 1, protocol.Version)
 	now := uint64(time.Now().UnixMilli())
 	connection := make([]byte, 16)
 	s := &Session{ctx: ctx, cancel: cancel, events: make(chan sessionEvent, 1), cfg: SessionConfig{Self: self, Peer: peer.Public(), Codec: codec, Connection: connection, Deadline: now + 10000, Pool: NewPool(1), LoopbackOnly: true, Allow: func() bool { return true }}}
 	p := &s.pcs[0]
-	p.signal = peerwire.NewSignal(codec, self, peer.Public(), connection, 1, now)
+	p.signal = mustSignal(self.NewSignal(codec, peer.Public(), connection, 1, now))
 	p.generation = 1
 	p.currentGeneration.Store(1)
 	if !s.makePC(0, now) {

@@ -8,13 +8,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func identity(t *testing.T, role uint64) peerwire.Identity {
+func identity(t *testing.T, role uint64) *Identity {
 	t.Helper()
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -28,7 +29,13 @@ func identity(t *testing.T, role uint64) peerwire.Identity {
 	instance, boot := make([]byte, 16), make([]byte, 32)
 	_, _ = rand.Read(instance)
 	_, _ = rand.Read(boot)
-	return peerwire.Identity{ID: []byte(hex.EncodeToString(hash[:16])), Role: role, Instance: instance, Boot: boot, Sign: private, Box: box}
+	return &Identity{ID: []byte(hex.EncodeToString(hash[:16])), Role: role, Instance: instance, Boot: boot, Sign: private, Box: box}
+}
+func mustSignal(s *peerwire.Signal, err error) *peerwire.Signal {
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
 func TestAuthenticatedSessionBothUsesAndLostBootstrap(t *testing.T) {
 	for _, lost := range []int32{0, 2, -1} {
@@ -37,7 +44,7 @@ func TestAuthenticatedSessionBothUsesAndLostBootstrap(t *testing.T) {
 			defer cancel()
 			a, b := identity(t, 1), identity(t, 2)
 			domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
-			codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+			codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,10 +61,10 @@ func TestAuthenticatedSessionBothUsesAndLostBootstrap(t *testing.T) {
 			}
 			paths := make(chan ready, 4)
 			deadline := uint64(time.Now().Add(10 * time.Second).UnixMilli())
-			cfg := func(self peerwire.Identity, other peerwire.Public, which int) SessionConfig {
+			cfg := func(self *Identity, other peerwire.Public, which int) SessionConfig {
 				return SessionConfig{Self: self, Peer: other.Member(), Codec: codec, Connection: connection, Deadline: deadline, Pool: NewPool(8), Allow: func() bool { return true }, LoopbackOnly: true, Ready: func(use uint64, p *Path) { paths <- ready{which, use, p} }, Send: func(out Outbound) bool {
 					raw := out.Raw
-					if packet, e := codec.OpenSent(raw, self, other, uint64(time.Now().UnixMilli())); e == nil && packet.Context.Class == 1 {
+					if packet, e := self.OpenSent(codec, raw, other, uint64(time.Now().UnixMilli())); e == nil && packet.Context.Class == 1 {
 						if packet.Context.Generation > highest.Load() {
 							highest.Store(packet.Context.Generation)
 						}
@@ -131,7 +138,7 @@ func TestEightPeersBothPCsLoseTwoCriticalFramesWithinRound(t *testing.T) {
 	defer cancel()
 	machine := identity(t, 2)
 	domain, head := sha256.Sum256([]byte("group-domain")), sha256.Sum256([]byte("group-head"))
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +213,7 @@ func TestPartialReadyRoundDoneAndSessionDoneWhenPathsClose(t *testing.T) {
 	defer cancel()
 	a, b := identity(t, 1), identity(t, 2)
 	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,14 +234,14 @@ func TestPartialReadyRoundDoneAndSessionDoneWhenPathsClose(t *testing.T) {
 		path  *Path
 	}
 	paths := make(chan readyEvent, 4)
-	makeCfg := func(self peerwire.Identity, other peerwire.Public, which int) SessionConfig {
+	makeCfg := func(self *Identity, other peerwire.Public, which int) SessionConfig {
 		return SessionConfig{
 			Self: self, Peer: other.Member(), Codec: codec, Connection: connection,
 			Deadline: deadline, Pool: NewPool(4), Allow: func() bool { return true },
 			LoopbackOnly: true, Now: fakeNow,
 			Ready: func(use uint64, p *Path) { paths <- readyEvent{which, use, p} },
 			Send: func(out Outbound) bool {
-				if packet, e := codec.OpenSent(out.Raw, self, other, uint64(fakeNow().UnixMilli())); e == nil && packet.Context.Use == 2 {
+				if packet, e := self.OpenSent(codec, out.Raw, other, uint64(fakeNow().UnixMilli())); e == nil && packet.Context.Use == 2 {
 					return true
 				}
 				target := ar.Load()
@@ -321,7 +328,7 @@ func TestRetireClosesRoundDoneImmediately(t *testing.T) {
 	defer cancel()
 	a, b := identity(t, 1), identity(t, 2)
 	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}

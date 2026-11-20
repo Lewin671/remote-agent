@@ -18,9 +18,10 @@ func n(s string) uint64   { v, e := strconv.ParseUint(s, 10, 64); must(e); retur
 func raw(s string) []byte { v, e := hex.DecodeString(s); must(e); return v }
 func TestFrozenSignalVectors(t *testing.T) {
 	codec := fixtureCodec()
-	data, e := os.ReadFile("../../../testdata/transport/signal/scenarios.tsv")
+	data, e := os.ReadFile("../../testdata/transport/signal/scenarios.tsv")
 	must(e)
 	var gates [2]*Signal
+	var ids [2]identity
 	var batch *CandidateBatcher
 	var sender *Sender
 	var queuedRaw []byte
@@ -56,7 +57,8 @@ func TestFrozenSignalVectors(t *testing.T) {
 		case "CASE":
 			a, b := fixture(p[2], n(p[3])), fixture(p[4], n(p[5]))
 			conn := Hash([]byte("signal/" + p[1]))[:16]
-			gates = [2]*Signal{NewSignal(codec, a, b.Public(), conn, n(p[6]), 1700000000000), NewSignal(codec, b, a.Public(), conn, n(p[6]), 1700000000000)}
+			ids = [2]identity{a, b}
+			gates = [2]*Signal{newTestSignal(codec, a, b.Public, conn, n(p[6]), 1700000000000), newTestSignal(codec, b, a.Public, conn, n(p[6]), 1700000000000)}
 			cases++
 		case "BATCH_CASE":
 			batch = &CandidateBatcher{Generation: n(p[2]), Deadline: n(p[3]), Binding: n(p[4])}
@@ -89,7 +91,7 @@ func TestFrozenSignalVectors(t *testing.T) {
 			gates[n(p[1])].ForgetPeer()
 		case "QUEUE":
 			queuedRaw = raw(p[2])
-			_, e := codec.Open(queuedRaw, gates[n(p[1])].Peer, gates[n(p[1])].Self, 1700000000000)
+			_, e := codec.open(queuedRaw, gates[n(p[1])].Peer, ids[n(p[1])], 1700000000000)
 			must(e)
 		case "DELIVER":
 			_, e := gates[n(p[1])].Receive(queuedRaw, 1700000000000+n(p[2]))
@@ -130,10 +132,10 @@ func TestFrozenSignalVectors(t *testing.T) {
 			}
 			assertions++
 		case "POLICY":
-			a, z := gates[0].Self, gates[1].Self
-			request, e := codec.Open(raw(p[3]), a.Public(), z, 1700000000000)
+			a, z := ids[0], ids[1]
+			request, e := codec.open(raw(p[3]), a.Public, z, 1700000000000)
 			must(e)
-			reply, e := codec.Open(raw(p[4]), z.Public(), a, 1700000000000)
+			reply, e := codec.open(raw(p[4]), z.Public, a, 1700000000000)
 			must(e)
 			if (ValidatePolicyReply(request, reply, 1700000000000+n(p[5])) == nil) != (p[2] == "1") {
 				panic(p[1])
@@ -142,7 +144,7 @@ func TestFrozenSignalVectors(t *testing.T) {
 		case "RECORD":
 			which := n(p[2])
 			gates[which].Tick(1700000000000 + n(p[3]))
-			sent, e := codec.Open(raw(p[4]), gates[which].Self.Public(), gates[1-which].Self, 1700000000000)
+			sent, e := codec.open(raw(p[4]), gates[which].Self, ids[1-which], 1700000000000)
 			must(e)
 			if p[1] == "probe" {
 				e = gates[which].RememberProbe(sent)
@@ -155,7 +157,7 @@ func TestFrozenSignalVectors(t *testing.T) {
 			assertions++
 		case "PROBE", "CHALLENGE":
 			which := n(p[1])
-			sent, e := codec.Open(raw(p[2]), gates[which].Self.Public(), gates[1-which].Self, 1700000000000)
+			sent, e := codec.open(raw(p[2]), gates[which].Self, ids[1-which], 1700000000000)
 			must(e)
 			if p[0] == "PROBE" {
 				must(gates[which].RememberProbe(sent))

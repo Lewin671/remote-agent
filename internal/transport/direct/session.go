@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -27,7 +27,7 @@ type SessionConfig struct {
 	Control func(peerwire.Opened, uint64) (uint64, []byte)
 	Policy  func() bool
 
-	Self         peerwire.Identity
+	Self         *Identity
 	Peer         peerwire.Public
 	Codec        *peerwire.Codec
 	Connection   []byte
@@ -119,7 +119,7 @@ func (s *Session) nowMs() uint64 {
 }
 
 func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Session, error) {
-	if cfg.Codec == nil || cfg.Allow == nil || cfg.Send == nil || !cfg.Allow() || len(cfg.Connection) != 16 || len(cfg.Self.Instance) != 16 || len(cfg.Self.Boot) != 32 {
+	if cfg.Codec == nil || cfg.Self == nil || cfg.Allow == nil || cfg.Send == nil || !cfg.Allow() || len(cfg.Connection) != 16 || len(cfg.Self.Instance) != 16 || len(cfg.Self.Boot) != 32 {
 		return nil, ErrClosed
 	}
 	nowFn := cfg.Now
@@ -134,7 +134,11 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 	s := &Session{born: nowFn(), finished: make(chan struct{}), roundDone: make(chan struct{}), cfg: cfg, ctx: ctx, cancel: cancel, input: make(chan []byte, 128), events: make(chan sessionEvent, 160), delivery: make(chan deliveryResult, 64), boot: peerwire.NewSender(cfg.Deadline), receipts: map[string]cachedBytes{}, controlSeen: map[string]cachedBytes{}}
 	s.retainUntil.Store(cfg.Deadline + 300000)
 	for i := range s.pcs {
-		g := peerwire.NewSignal(cfg.Codec, cfg.Self, cfg.Peer, cfg.Connection, uint64(i+1), now)
+		g, err := cfg.Self.NewSignal(cfg.Codec, cfg.Peer, cfg.Connection, uint64(i+1), now)
+		if err != nil {
+			cancel()
+			return nil, ErrClosed
+		}
 		g.RoundDeadline = cfg.Deadline
 		g.Current = cfg.Allow
 		g.LeaseUntil = ^uint64(0)
@@ -142,14 +146,14 @@ func NewSession(parent context.Context, cfg SessionConfig, initiate bool) (*Sess
 		s.pcs[i].currentGeneration.Store(1)
 	}
 	if initiate {
-		c := peerwire.NewProbeContext(cfg.Self, cfg.Peer, cfg.Connection, 1, now)
+		c := peerwire.NewProbeContext(cfg.Self.Public(), cfg.Peer, cfg.Connection, 1, now)
 		c.Deadline = cfg.Deadline
-		raw, err := cfg.Codec.Seal(cfg.Self, cfg.Peer, c, 1, peerwire.PB(peerwire.B(1, cfg.Connection), peerwire.B(2, cfg.Self.Instance), peerwire.B(3, cfg.Self.Boot)), nil, nil, nil)
+		raw, err := cfg.Self.Seal(cfg.Codec, cfg.Peer, c, 1, peerwire.PB(peerwire.B(1, cfg.Connection), peerwire.B(2, cfg.Self.Instance), peerwire.B(3, cfg.Self.Boot)))
 		if err != nil {
 			cancel()
 			return nil, err
 		}
-		opened, err := cfg.Codec.OpenSent(raw, cfg.Self, cfg.Peer, now)
+		opened, err := cfg.Self.OpenSent(cfg.Codec, raw, cfg.Peer, now)
 		if err != nil {
 			cancel()
 			return nil, err
@@ -379,9 +383,9 @@ func (s *Session) flush(now uint64) {
 func (s *Session) sendSignal(i int, typ uint64, body []byte, now uint64) bool {
 	p := &s.pcs[i]
 	p.seq++
-	c := peerwire.NewContext(s.cfg.Self, p.signal.Peer, s.cfg.Connection, uint64(i+1), p.signal.Generation, p.seq, now, 1, false)
+	c := peerwire.NewContext(s.cfg.Self.Public(), p.signal.Peer, s.cfg.Connection, uint64(i+1), p.signal.Generation, p.seq, now, 1, false)
 	c.Deadline = s.cfg.Deadline
-	raw, err := s.cfg.Codec.Seal(s.cfg.Self, p.signal.Peer, c, typ, body, nil, nil, nil)
+	raw, err := s.cfg.Self.Seal(s.cfg.Codec, p.signal.Peer, c, typ, body)
 	return err == nil && p.sender.Enqueue(raw, now, c.Deadline, 1)
 }
 func (s *Session) control(typ uint64, body []byte, now uint64) []byte {
@@ -390,9 +394,9 @@ func (s *Session) control(typ uint64, body []byte, now uint64) []byte {
 func (s *Session) controlUntil(typ uint64, body []byte, now, deadline uint64) []byte {
 	s.controlSeq++
 	peer := s.pcs[0].signal.Peer
-	c := peerwire.NewContext(s.cfg.Self, peer, s.cfg.Connection, 0, 1, s.controlSeq, now, 2, false)
+	c := peerwire.NewContext(s.cfg.Self.Public(), peer, s.cfg.Connection, 0, 1, s.controlSeq, now, 2, false)
 	c.Deadline = min(c.Deadline, deadline)
-	raw, err := s.cfg.Codec.Seal(s.cfg.Self, peer, c, typ, body, nil, nil, nil)
+	raw, err := s.cfg.Self.Seal(s.cfg.Codec, peer, c, typ, body)
 	if err != nil {
 		return nil
 	}
@@ -430,7 +434,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 		return
 	}
 	peer := s.pcs[0].signal.Peer
-	o, err := s.cfg.Codec.Open(raw, peer, s.cfg.Self, now)
+	o, err := s.cfg.Self.Open(s.cfg.Codec, raw, peer, now)
 	if err != nil || !bytes.Equal(o.Context.Connection, s.cfg.Connection) {
 		return
 	}
@@ -485,7 +489,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 		bootstrap := false
 		for _, sender := range s.senders() {
 			if pending := sender.Pending[string(hash)]; pending != nil {
-				original, err := s.cfg.Codec.OpenSent(pending.Raw, s.cfg.Self, peer, now)
+				original, err := s.cfg.Self.OpenSent(s.cfg.Codec, pending.Raw, peer, now)
 				if err != nil || original.Context.Seq != f[5].U || original.Context.Class != f[4].U || original.Context.Generation != f[7].U || original.Context.Use != f[8].U {
 					continue
 				}
@@ -526,14 +530,14 @@ func (s *Session) receive(raw []byte, now uint64) {
 		if o.Type == 1 {
 			if s.challenge == nil {
 				peer = s.pcs[0].signal.Peer
-				c := peerwire.NewContext(s.cfg.Self, peer, s.cfg.Connection, 0, 0, 1, now, 1, true)
+				c := peerwire.NewContext(s.cfg.Self.Public(), peer, s.cfg.Connection, 0, 0, 1, now, 1, true)
 				c.Deadline = s.cfg.Deadline
 				body := peerwire.PB(peerwire.B(1, s.cfg.Connection), peerwire.B(2, s.cfg.Self.Instance), peerwire.B(3, s.cfg.Self.Boot), peerwire.B(4, peer.Boot), peerwire.B(6, o.Hash))
-				s.challenge, err = s.cfg.Codec.Seal(s.cfg.Self, peer, c, 2, body, nil, nil, nil)
+				s.challenge, err = s.cfg.Self.Seal(s.cfg.Codec, peer, c, 2, body)
 				if err != nil {
 					return
 				}
-				sent, err := s.cfg.Codec.OpenSent(s.challenge, s.cfg.Self, peer, now)
+				sent, err := s.cfg.Self.OpenSent(s.cfg.Codec, s.challenge, peer, now)
 				if err != nil {
 					return
 				}
@@ -614,7 +618,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 
 	for _, a := range actions {
 		if a.Class == 2 && a.Type == 10 {
-			original, err := s.cfg.Codec.Open(a.Original, p.signal.Peer, s.cfg.Self, now)
+			original, err := s.cfg.Self.Open(s.cfg.Codec, a.Original, p.signal.Peer, now)
 			if err == nil {
 				if reply := s.controlUntil(10, a.Payload, now, original.Context.Deadline); reply != nil {
 					s.receipts[string(original.Hash)] = cachedBytes{bytes: reply, until: original.Context.Deadline + 300000}
@@ -906,7 +910,7 @@ type Outbound struct {
 func (s *Session) transmit(raw []byte) bool {
 	now := s.nowMs()
 	peer := s.pcs[0].signal.Peer
-	original, err := s.cfg.Codec.OpenSent(raw, s.cfg.Self, peer, now)
+	original, err := s.cfg.Self.OpenSent(s.cfg.Codec, raw, peer, now)
 	if err != nil || !s.cfg.Allow() {
 		return false
 	}

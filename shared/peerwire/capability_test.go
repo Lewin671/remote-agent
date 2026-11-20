@@ -19,12 +19,12 @@ func TestCapabilitySnapshotVectors(t *testing.T) {
 	const now = uint64(1700000000000)
 	a, b := fixture("machine", 2), fixture("client", 1)
 	codec := fixtureCodec()
-	file := "../../../testdata/transport/wire/capability-snapshot.json"
+	file := "../../testdata/transport/wire/capability-snapshot.json"
 	if os.Getenv("RA_WRITE_SNAPSHOT_VECTORS") == "1" {
 		caps := &pb.MachineCapabilities{ImageUpload: true, MaxImagesPerMessage: 8, MaxUploadBytes: 32 << 20, MaxChunkBytes: 768 << 10, UploadFormats: []pb.ImageFormat{1, 2, 3, 4}, ApprovalAlways: true, ScheduledTasks: true, FileUpload: true, MaxFileUploadBytes: 64 << 20, MaxFilesPerMessage: 8, SharedFiles: true, MaxSharedFileBytes: 512 << 20, SharedFileChunkBytes: 768 << 10, MachineStatus: true}
 		var rows []snapshotVector
 		for _, name := range []string{"full", "expired", "over_60_seconds", "wrong_head", "wrong_account", "old_instance", "missing_capabilities"} {
-			c := NewContext(a, b.Public(), Hash([]byte("snapshot-connection"))[:16], 0, 1, 14, now, 2, false)
+			c := NewContext(a.Public, b.Public, Hash([]byte("snapshot-connection"))[:16], 0, 1, 14, now, 2, false)
 			message := &pb.CapabilitySnapshot{CapabilityId: Hash([]byte("snapshot"))[:16], Capabilities: caps, ExpiresAtMs: int64(now + 60000)}
 			sender, scope := a, *codec
 			switch name {
@@ -46,7 +46,7 @@ func TestCapabilitySnapshotVectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			raw, err := scope.Seal(sender, b.Public(), c, 14, body, Hash([]byte("frame"))[:16], Hash([]byte("context nonce"))[:12], Hash([]byte("body nonce"))[:12])
+			raw, err := scope.seal(sender, b.Public, c, 14, body, append(append(Hash([]byte("frame"))[:16:16], Hash([]byte("context nonce"))[:12]...), Hash([]byte("body nonce"))[:12]...))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestCapabilitySnapshotVectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			o, err := codec.Open(raw, a.Public(), b, now)
+			o, err := codec.open(raw, a.Public, b, now)
 			if err == nil {
 				_, err = CapabilityExpiry(o, now)
 			}
@@ -92,7 +92,7 @@ func TestCapabilitiesRepeatedTypesRemainReadable(t *testing.T) {
 	const now = uint64(1700000000000)
 	a, b := fixture("machine", 2), fixture("client", 1)
 	body := PB(B(1, make([]byte, 16)), U(2, 1), U(2, 14), U(3, 1), U(3, 9), U(4, now+60000), U(5, 1), U(6, 1<<20))
-	opened := Opened{Context: NewContext(a, b.Public(), make([]byte, 16), 0, 1, 1, now, 2, false), Type: 1, Payload: body}
+	opened := Opened{Context: NewContext(a.Public, b.Public, make([]byte, 16), 0, 1, 1, now, 2, false), Type: 1, Payload: body}
 	if until, err := CapabilityExpiry(opened, now); err != nil || until != now+60000 {
 		t.Fatal("valid repeated capability list rejected", err)
 	}

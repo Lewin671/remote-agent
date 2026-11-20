@@ -1,22 +1,22 @@
 // Package peerwire implements the authenticated protocol 16 peer transport.
 // The owner supplies only current, verified membership and checks its lease
 // before both receipt and eventual dispatch. No account content key is used.
+//
+// The package is key-free and sans-IO: it never holds a private key, reads a
+// clock or draws randomness. The caller computes the X25519 shared secret with
+// the peer, supplies frame entropy, and signs the bytes Prepare returns.
 package peerwire
 
 import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/binary"
 	"errors"
-	"fmt"
-	"github.com/Lewin671/remote-agent/internal/protocol"
-	"sort"
+	"slices"
+	"strconv"
 )
 
 var ErrPacket = errors.New("invalid peer packet")
@@ -25,17 +25,17 @@ var ErrPacket = errors.New("invalid peer packet")
 // a new Codec; do not mutate an existing generation's cryptographic context.
 type Codec struct {
 	account, accountDomain, head []byte
-	memberEpoch                  uint64
+	memberEpoch, protocol        uint64
 }
 
-func NewCodec(account string, domain, head [32]byte, epoch uint64) (*Codec, error) {
-	if len(account) != 32 || domain == [32]byte{} || head == [32]byte{} || epoch == 0 {
+// NewCodec binds the protocol version the caller speaks; it is signed into
+// every context and AAD, so both ends must pass the same value.
+func NewCodec(account string, domain, head [32]byte, epoch, protocol uint64) (*Codec, error) {
+	if len(account) != 32 || domain == [32]byte{} || head == [32]byte{} || epoch == 0 || protocol == 0 {
 		return nil, ErrPacket
 	}
-	return &Codec{[]byte(account), append([]byte(nil), domain[:]...), append([]byte(nil), head[:]...), epoch}, nil
+	return &Codec{[]byte(account), append([]byte(nil), domain[:]...), append([]byte(nil), head[:]...), epoch, protocol}, nil
 }
-
-const Protocol uint64 = protocol.Version
 
 type Field struct {
 	N     uint64
@@ -46,9 +46,17 @@ type Field struct {
 
 func B(n uint64, b []byte) Field { return Field{N: n, B: b, Bytes: true} }
 func U(n, u uint64) Field        { return Field{N: n, U: u} }
-func varint(v uint64) []byte     { var b [10]byte; n := binary.PutUvarint(b[:], v); return b[:n] }
+func varint(v uint64) []byte     { return appendUvarint(nil, v) }
 func PB(fields ...Field) []byte {
-	sort.SliceStable(fields, func(i, j int) bool { return fields[i].N < fields[j].N })
+	slices.SortStableFunc(fields, func(a, b Field) int {
+		if a.N < b.N {
+			return -1
+		}
+		if a.N > b.N {
+			return 1
+		}
+		return 0
+	})
 	var out []byte
 	for _, f := range fields {
 		wire := uint64(0)
@@ -72,7 +80,7 @@ func ServerFrameBody(raw []byte, field byte) ([]byte, error) {
 	if len(raw) < 2 || len(raw) > 65540 || raw[0] != field<<3|2 {
 		return nil, ErrPacket
 	}
-	n, k := binary.Uvarint(raw[1:])
+	n, k := uvarint(raw[1:])
 	if k <= 0 || !bytes.Equal(raw[1:1+k], varint(n)) || n > 65536 || n != uint64(len(raw)-1-k) {
 		return nil, ErrPacket
 	}
@@ -88,7 +96,7 @@ func Parse(raw []byte, maxFields int) (map[uint64]Field, error) {
 	fields := map[uint64]Field{}
 	last := uint64(0)
 	read := func() (uint64, error) {
-		v, n := binary.Uvarint(raw)
+		v, n := uvarint(raw)
 		if n <= 0 || !bytes.Equal(raw[:n], varint(v)) {
 			return 0, ErrPacket
 		}
@@ -146,14 +154,12 @@ func Hash(b []byte) []byte { v := sha256.Sum256(b); return v[:] }
 func LP(values ...[]byte) []byte {
 	var out []byte
 	for _, v := range values {
-		var size [4]byte
-		binary.BigEndian.PutUint32(size[:], uint32(len(v)))
-		out = append(out, size[:]...)
+		out = appendBig(out, uint64(uint32(len(v))), 4)
 		out = append(out, v...)
 	}
 	return out
 }
-func Num(n uint64) []byte { var b [8]byte; binary.BigEndian.PutUint64(b[:], n); return b[:] }
+func Num(n uint64) []byte { return appendBig(nil, n, 8) }
 func KDF(secret, info []byte) []byte {
 	salt := Hash([]byte("remote-agent/peer-hkdf/v1"))
 	m := hmac.New(sha256.New, salt)
@@ -179,21 +185,14 @@ func GCM(key, nonce, aad, body []byte, seal bool) ([]byte, error) {
 	return a.Open(nil, nonce, body, aad)
 }
 
-type Identity struct {
-	ID, Instance, Boot []byte
-	Role               uint64
-	Sign               ed25519.PrivateKey
-	Box                *ecdh.PrivateKey
-}
+// Public names one device process: member ID and keys, plus the process
+// instance and boot nonce once known. Box is the X25519 public key; the
+// caller derives the shared secret from it with its own private key.
 type Public struct {
 	ID, Instance, Boot []byte
 	Role               uint64
 	Sign               ed25519.PublicKey
-	Box                *ecdh.PublicKey
-}
-
-func (i Identity) Public() Public {
-	return Public{i.ID, i.Instance, i.Boot, i.Role, i.Sign.Public().(ed25519.PublicKey), i.Box.PublicKey()}
+	Box                []byte
 }
 
 type Context struct {
@@ -205,7 +204,7 @@ type Context struct {
 	Use, Generation, Seq, Issued, Deadline, Class, RecipientUnknown        uint64
 }
 
-func NewContext(from Identity, to Public, connection []byte, use, generation, seq, now, class uint64, boot bool) Context {
+func NewContext(from, to Public, connection []byte, use, generation, seq, now, class uint64, boot bool) Context {
 	domain := []byte("signal")
 	if class == 2 {
 		domain = []byte("control")
@@ -220,14 +219,14 @@ func NewContext(from Identity, to Public, connection []byte, use, generation, se
 	return Context{domain, from.ID, to.ID, from.Role, to.Role, machine, from.Instance, to.Instance, from.Boot, to.Boot, connection, use, generation, seq, now, now + 10000, class, 0}
 }
 func (w *Codec) encode(c Context) []byte {
-	return PB(B(1, c.Domain), B(2, w.account), B(3, c.From), B(4, c.To), U(5, c.FromRole), U(6, c.ToRole), B(7, c.Machine), U(8, Protocol), U(9, w.memberEpoch), B(10, w.head), B(11, c.SenderInstance), B(12, c.ReceiverInstance), B(13, c.SenderBoot), B(14, c.ReceiverBoot), B(15, c.Connection), U(16, c.Use), U(17, c.Generation), U(18, c.Seq), U(19, c.Issued), U(20, c.Deadline), U(21, c.Class), B(22, c.From), B(23, w.accountDomain), U(24, c.RecipientUnknown))
+	return PB(B(1, c.Domain), B(2, w.account), B(3, c.From), B(4, c.To), U(5, c.FromRole), U(6, c.ToRole), B(7, c.Machine), U(8, w.protocol), U(9, w.memberEpoch), B(10, w.head), B(11, c.SenderInstance), B(12, c.ReceiverInstance), B(13, c.SenderBoot), B(14, c.ReceiverBoot), B(15, c.Connection), U(16, c.Use), U(17, c.Generation), U(18, c.Seq), U(19, c.Issued), U(20, c.Deadline), U(21, c.Class), B(22, c.From), B(23, w.accountDomain), U(24, c.RecipientUnknown))
 }
 func (w *Codec) parseContext(raw []byte) (Context, error) {
 	f, e := ParseMessage(raw, "Context")
 	if e != nil || need(f, "bbbbuubuubbbbbbuuuuuubbu") != nil {
 		return Context{}, ErrPacket
 	}
-	if !bytes.Equal(f[23].B, w.accountDomain) || !bytes.Equal(f[2].B, w.account) || f[8].U != Protocol || f[9].U != w.memberEpoch || !bytes.Equal(f[10].B, w.head) || !bytes.Equal(f[22].B, f[3].B) {
+	if !bytes.Equal(f[23].B, w.accountDomain) || !bytes.Equal(f[2].B, w.account) || f[8].U != w.protocol || f[9].U != w.memberEpoch || !bytes.Equal(f[10].B, w.head) || !bytes.Equal(f[22].B, f[3].B) {
 		return Context{}, ErrPacket
 	}
 	return Context{f[1].B, f[3].B, f[4].B, f[5].U, f[6].U, f[7].B, f[11].B, f[12].B, f[13].B, f[14].B, f[15].B, f[16].U, f[17].U, f[18].U, f[19].U, f[20].U, f[21].U, f[24].U}, nil
@@ -249,46 +248,55 @@ func (w *Codec) bodyInfo(c Context) []byte {
 	return LP([]byte("remote-agent/peer-body/v1"), w.account, w.accountDomain, c.From, c.To, c.SenderInstance, c.ReceiverInstance, c.SenderBoot, c.ReceiverBoot, c.Connection, Num(c.Use), Num(c.Generation), Num(c.Class))
 }
 func (w *Codec) aad(from, to []byte, class uint64, id []byte) []byte {
-	return LP([]byte("remote-agent/peer-aad/v1"), w.account, w.accountDomain, Num(Protocol), route(from, to, class, id))
+	return LP([]byte("remote-agent/peer-aad/v1"), w.account, w.accountDomain, Num(w.protocol), route(from, to, class, id))
 }
 func sigInput(a, nc, ec, nb, eb []byte) []byte {
 	return LP([]byte("remote-agent/peer-signature/v1"), a, nc, ec, nb, eb)
 }
-func (w *Codec) Seal(from Identity, to Public, c Context, typ uint64, payload, frameID, nonceC, nonceB []byte) ([]byte, error) {
-	if frameID == nil {
-		frameID = make([]byte, 16)
-		rand.Read(frameID)
+
+// SealEntropy is the random input a frame needs: a 16-byte frame ID, then
+// the 12-byte context nonce and the 12-byte body nonce.
+const SealEntropy = 40
+
+// Unsigned is an encrypted frame waiting for its sender's Ed25519 signature
+// over Message. Finish appends the signature and builds the delivery bytes.
+type Unsigned struct {
+	Message                []byte
+	from, to, frameID      []byte
+	nonceC, ec, nonceB, eb []byte
+	class                  uint64
+}
+
+// Prepare encrypts a frame from -> to. shared is the X25519 secret between
+// the two members; entropy supplies the frame ID and nonces (SealEntropy).
+func (w *Codec) Prepare(from, to Public, shared []byte, c Context, typ uint64, payload, entropy []byte) (Unsigned, error) {
+	if len(shared) != 32 || len(entropy) != SealEntropy || len(from.Sign) != ed25519.PublicKeySize || len(to.Sign) != ed25519.PublicKeySize {
+		return Unsigned{}, ErrPacket
 	}
-	if nonceC == nil {
-		nonceC = make([]byte, 12)
-		rand.Read(nonceC)
-	}
-	if nonceB == nil {
-		nonceB = make([]byte, 12)
-		rand.Read(nonceB)
-	}
-	if from.Box == nil || to.Box == nil || len(from.Sign) != ed25519.PrivateKeySize || len(to.Sign) != ed25519.PublicKeySize {
-		return nil, ErrPacket
-	}
-	shared, e := from.Box.ECDH(to.Box)
-	if e != nil {
-		return nil, e
-	}
+	entropy = append([]byte(nil), entropy...)
+	frameID, nonceC, nonceB := entropy[:16], entropy[16:28], entropy[28:40]
 	ad := w.aad(from.ID, to.ID, c.Class, frameID)
 	ec, e := GCM(KDF(shared, w.wrapInfo(from.ID, to.ID)), nonceC, ad, w.encode(c), true)
 	if e != nil {
-		return nil, e
+		return Unsigned{}, e
 	}
 	typed := PB(B(1, PB(U(1, typ), B(2, payload))))
 	eb, e := GCM(KDF(shared, w.bodyInfo(c)), nonceB, LP(ad, Hash(ec)), typed, true)
 	if e != nil {
-		return nil, e
+		return Unsigned{}, e
 	}
-	sig := ed25519.Sign(from.Sign, sigInput(ad, nonceC, ec, nonceB, eb))
-	sealed := PB(B(1, nonceC), B(2, ec), B(3, nonceB), B(4, eb), B(5, sig))
-	delivery := PB(B(1, from.ID), B(2, to.ID), U(3, c.Class), B(4, frameID), B(5, sealed))
+	return Unsigned{sigInput(ad, nonceC, ec, nonceB, eb), from.ID, to.ID, frameID, nonceC, ec, nonceB, eb, c.Class}, nil
+}
+
+// Finish attaches the signature over Message and enforces the frame limit.
+func (u Unsigned) Finish(sig []byte) ([]byte, error) {
+	if len(sig) != ed25519.SignatureSize || u.Message == nil {
+		return nil, ErrPacket
+	}
+	sealed := PB(B(1, u.nonceC), B(2, u.ec), B(3, u.nonceB), B(4, u.eb), B(5, sig))
+	delivery := PB(B(1, u.from), B(2, u.to), U(3, u.class), B(4, u.frameID), B(5, sealed))
 	limit := 65536
-	if c.Class == 2 {
+	if u.class == 2 {
 		limit = 16384
 	}
 	if len(delivery) > limit {
@@ -303,25 +311,15 @@ type Opened struct {
 	Payload, FrameID, Hash, Raw []byte
 }
 
-func (w *Codec) Open(raw []byte, from Public, to Identity, now uint64) (Opened, error) {
-	if to.Box == nil || from.Box == nil || len(from.Sign) != ed25519.PublicKeySize || len(to.Sign) != ed25519.PrivateKeySize {
-		return Opened{}, ErrPacket
-	}
-	shared, e := to.Box.ECDH(from.Box)
-	if e != nil {
-		return Opened{}, e
-	}
-	return w.openShared(raw, from, to.Public(), shared, now)
+// Open authenticates a frame from -> to (the local process). shared is the
+// X25519 secret between the two members.
+func (w *Codec) Open(raw []byte, from, to Public, shared []byte, now uint64) (Opened, error) {
+	return w.openShared(raw, from, to, shared, now)
 }
-func (w *Codec) OpenSent(raw []byte, from Identity, to Public, now uint64) (Opened, error) {
-	if from.Box == nil || to.Box == nil || len(from.Sign) != ed25519.PrivateKeySize || len(to.Sign) != ed25519.PublicKeySize {
-		return Opened{}, ErrPacket
-	}
-	shared, e := from.Box.ECDH(to.Box)
-	if e != nil {
-		return Opened{}, e
-	}
-	o, e := w.openShared(raw, from.Public(), to, shared, now)
+
+// OpenSent re-authenticates a frame this process sealed for to.
+func (w *Codec) OpenSent(raw []byte, from, to Public, shared []byte, now uint64) (Opened, error) {
+	o, e := w.openShared(raw, from, to, shared, now)
 	if e != nil {
 		return o, e
 	}
@@ -332,7 +330,7 @@ func (w *Codec) OpenSent(raw []byte, from Identity, to Public, now uint64) (Open
 }
 func (w *Codec) openShared(raw []byte, from, to Public, shared []byte, now uint64) (Opened, error) {
 	fail := func() (Opened, error) { return Opened{}, ErrPacket }
-	if len(raw) > 65536 {
+	if len(shared) != 32 || len(from.Sign) != ed25519.PublicKeySize || len(to.Sign) != ed25519.PublicKeySize || len(raw) > 65536 {
 		return fail()
 	}
 	raw = append([]byte(nil), raw...)
@@ -411,12 +409,21 @@ func (w *Codec) openShared(raw []byte, from, to Public, shared []byte, now uint6
 	}
 	return Opened{c, t[1].U, t[2].B, f[4].B, Hash(raw), append([]byte(nil), raw...)}, nil
 }
+
+// Key identifies a frame's sequence slot: hex sender, instance and connection,
+// then decimal use, generation, class and sequence, separated by '/'.
 func Key(c Context) string {
-	return fmt.Sprintf("%x/%x/%x/%d/%d/%d/%d", c.From, c.SenderInstance, c.Connection, c.Use, c.Generation, c.Class, c.Seq)
+	out := appendHex(nil, c.From)
+	out = appendHex(append(out, '/'), c.SenderInstance)
+	out = appendHex(append(out, '/'), c.Connection)
+	for _, n := range []uint64{c.Use, c.Generation, c.Class, c.Seq} {
+		out = strconv.AppendUint(append(out, '/'), n, 10)
+	}
+	return string(out)
 }
 
 func (p Public) Member() Public { p.Instance = nil; p.Boot = nil; return p }
-func NewProbeContext(from Identity, to Public, conn []byte, seq, now uint64) Context {
+func NewProbeContext(from, to Public, conn []byte, seq, now uint64) Context {
 	c := NewContext(from, to.Member(), conn, 0, 0, seq, now, 1, true)
 	c.RecipientUnknown = 1
 	return c

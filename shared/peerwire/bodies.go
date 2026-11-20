@@ -2,7 +2,6 @@ package peerwire
 
 import (
 	"bytes"
-	"encoding/binary"
 	"strings"
 	"unicode/utf8"
 )
@@ -44,7 +43,7 @@ func ReadCandidates(raw []byte) ([]Candidate, uint64, error) {
 	}
 	for len(raw) > 0 && raw[0] == 0x0a {
 		raw = raw[1:]
-		size, n := binary.Uvarint(raw)
+		size, n := uvarint(raw)
 		if n <= 0 || !bytes.Equal(raw[:n], varint(size)) || size > 1024 || size > uint64(len(raw)-n) || len(result) >= 16 {
 			return nil, 0, ErrPacket
 		}

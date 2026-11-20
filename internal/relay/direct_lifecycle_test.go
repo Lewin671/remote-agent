@@ -24,19 +24,19 @@ import (
 	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/proto"
 )
 
 func TestRetiredDirectChooserCannotReplaceCurrentPeer(t *testing.T) {
-	makeIdentity := func(role uint64) peerwire.Identity {
+	makeIdentity := func(role uint64) *direct.Identity {
 		pub, key, _ := ed25519.GenerateKey(rand.Reader)
 		box, _ := ecdh.X25519().GenerateKey(rand.Reader)
-		return peerwire.Identity{ID: []byte(hex.EncodeToString(peerwire.Hash(pub)[:16])), Role: role, Sign: key, Box: box, Instance: make([]byte, 16), Boot: make([]byte, 32)}
+		return &direct.Identity{ID: []byte(hex.EncodeToString(peerwire.Hash(pub)[:16])), Role: role, Sign: key, Box: box, Instance: make([]byte, 16), Boot: make([]byte, 32)}
 	}
 	self, peer := makeIdentity(2), makeIdentity(1)
-	codec, _ := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1)
+	codec, _ := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1, protocol.Version)
 	makePeer := func(value byte) *directPeer {
 		connection := make([]byte, 16)
 		connection[0] = value
@@ -369,7 +369,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clientSelf := peerwire.Identity{
+			clientSelf := &direct.Identity{
 				ID:       []byte(clientID),
 				Role:     1,
 				Instance: clientInstance,
@@ -386,9 +386,9 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 				ID:   []byte(selfID),
 				Role: 2,
 				Sign: daemonMember.EdPublic[:],
-				Box:  daemonBoxPub,
+				Box:  daemonBoxPub.Bytes(),
 			}
-			codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch)
+			codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.Version)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -433,7 +433,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 					return
 				}
 				packet := fields[11].B
-				if o, err := codec.Open(packet, m.self.Public(), clientSelf, fakeNowUint()); err == nil {
+				if o, err := clientSelf.Open(codec, packet, m.self.Public(), fakeNowUint()); err == nil {
 					if o.Context.Class == 1 && o.Type == 2 {
 						select {
 						case challengeSeen <- append([]byte(nil), o.Context.Connection...):
@@ -600,9 +600,9 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 			connB := make([]byte, 16)
 			_, _ = rand.Read(connB)
 			probeNow := fakeNowUint()
-			pc := peerwire.NewProbeContext(clientSelf, daemonPublic, connB, 1, probeNow)
+			pc := peerwire.NewProbeContext(clientSelf.Public(), daemonPublic, connB, 1, probeNow)
 			pc.Deadline = probeNow + 800
-			probeRaw, err := codec.Seal(clientSelf, daemonPublic, pc, 1, peerwire.PB(peerwire.B(1, connB), peerwire.B(2, clientInstance), peerwire.B(3, clientBoot)), nil, nil, nil)
+			probeRaw, err := clientSelf.Seal(codec, daemonPublic, pc, 1, peerwire.PB(peerwire.B(1, connB), peerwire.B(2, clientInstance), peerwire.B(3, clientBoot)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1618,14 +1618,14 @@ func TestDirectReceiveDoesNotDropFramesUnderManagerLockContention(t *testing.T) 
 	peerID := hex.EncodeToString(peerwire.Hash(peerPub)[:16])
 	selfBox, _ := ecdh.X25519().GenerateKey(rand.Reader)
 	peerBox, _ := ecdh.X25519().GenerateKey(rand.Reader)
-	self := peerwire.Identity{ID: []byte(selfID), Role: 2, Sign: selfEd, Box: selfBox, Instance: make([]byte, 16), Boot: make([]byte, 32)}
-	peer := peerwire.Identity{ID: []byte(peerID), Role: 1, Sign: peerEd, Box: peerBox, Instance: make([]byte, 16), Boot: make([]byte, 32)}
+	self := &direct.Identity{ID: []byte(selfID), Role: 2, Sign: selfEd, Box: selfBox, Instance: make([]byte, 16), Boot: make([]byte, 32)}
+	peer := &direct.Identity{ID: []byte(peerID), Role: 1, Sign: peerEd, Box: peerBox, Instance: make([]byte, 16), Boot: make([]byte, 32)}
 	_, _ = rand.Read(self.Instance)
 	_, _ = rand.Read(self.Boot)
 	_, _ = rand.Read(peer.Instance)
 	_, _ = rand.Read(peer.Boot)
 
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1, protocol.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1641,9 +1641,9 @@ func TestDirectReceiveDoesNotDropFramesUnderManagerLockContention(t *testing.T) 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for seq := uint64(1); seq <= 20; seq++ {
-		c := peerwire.NewContext(peer, self.Public(), conn, 1, 1, seq, now, 1, false)
+		c := peerwire.NewContext(peer.Public(), self.Public(), conn, 1, 1, seq, now, 1, false)
 		c.Deadline = now + 10000
-		raw, err := codec.Seal(peer, self.Public(), c, 3, peerwire.PB(peerwire.B(1, []byte("v=0\r\n"))), nil, nil, nil)
+		raw, err := peer.Seal(codec, self.Public(), c, 3, peerwire.PB(peerwire.B(1, []byte("v=0\r\n"))))
 		if err != nil {
 			t.Fatal(err)
 		}

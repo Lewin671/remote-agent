@@ -8,7 +8,7 @@ import (
 )
 
 func TestFrozenSDPVectors(t *testing.T) {
-	root := "../../../testdata/transport/sdp/"
+	root := "../../testdata/transport/sdp/"
 	b, err := os.ReadFile(root + "manifest.json")
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +38,7 @@ func TestFrozenSDPVectors(t *testing.T) {
 	}
 }
 func FuzzSDP(f *testing.F) {
-	raw, _ := os.ReadFile("../../../testdata/transport/sdp/pion-offer.sdp")
+	raw, _ := os.ReadFile("../../testdata/transport/sdp/pion-offer.sdp")
 	f.Add(raw)
 	f.Fuzz(func(t *testing.T, raw []byte) { _ = ValidateSDP(raw) })
 }

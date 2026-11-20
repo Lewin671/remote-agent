@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
 type directSetting struct {

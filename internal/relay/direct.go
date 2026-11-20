@@ -21,9 +21,10 @@ import (
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/eventview"
 	"github.com/Lewin671/remote-agent/internal/paths"
+	"github.com/Lewin671/remote-agent/internal/protocol"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/internal/transport/direct"
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -92,7 +93,7 @@ type directManager struct {
 	closeOnce sync.Once
 
 	d                   *dispatcher
-	self                peerwire.Identity
+	self                *direct.Identity
 	policy              *directPolicyStore
 	pool                *direct.Pool
 	ctx                 context.Context
@@ -142,7 +143,7 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	_, _ = rand.Read(instance)
 	_, _ = rand.Read(boot)
 	ctx, cancel := context.WithCancel(d.ctx)
-	m := &directManager{d: d, self: peerwire.Identity{ID: []byte(id), Role: 2, Sign: sign, Box: box, Instance: instance, Boot: boot}, policy: policy, pool: direct.NewPool(8), ctx: ctx, cancel: cancel, sessions: map[string]*directPeer{}, active: map[string]*directPeer{}, tailers: map[string]*directTailer{}, queued: map[string]*directedUsage{}, readWake: make(chan struct{}, 2), writeWake: make(chan struct{}, 1)}
+	m := &directManager{d: d, self: &direct.Identity{ID: []byte(id), Role: 2, Sign: sign, Box: box, Instance: instance, Boot: boot}, policy: policy, pool: direct.NewPool(8), ctx: ctx, cancel: cancel, sessions: map[string]*directPeer{}, active: map[string]*directPeer{}, tailers: map[string]*directTailer{}, queued: map[string]*directedUsage{}, readWake: make(chan struct{}, 2), writeWake: make(chan struct{}, 1)}
 	// The configured relay's own UDP service is the default. Deployments may
 	// explicitly select their own STUN host; no third-party service is used.
 	if address := os.Getenv("REMOTE_AGENT_STUN_URL"); address != "" {
@@ -271,15 +272,11 @@ func (m *directManager) scope(id string) (deviceauth.PeerBinding, *peerwire.Code
 	if err != nil || !own || !ok || peer.Kind != deviceauth.Client || !m.d.security.directCurrent(self, peer, hash) {
 		return binding, nil, peerwire.Public{}, false
 	}
-	codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch)
+	codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.Version)
 	if err != nil {
 		return binding, nil, peerwire.Public{}, false
 	}
-	box, err := ecdh.X25519().NewPublicKey(peer.XPublic[:])
-	if err != nil {
-		return binding, nil, peerwire.Public{}, false
-	}
-	return binding, codec, peerwire.Public{ID: []byte(peer.ID), Role: 1, Sign: append([]byte(nil), peer.EdPublic[:]...), Box: box}, true
+	return binding, codec, peerwire.Public{ID: []byte(peer.ID), Role: 1, Sign: append([]byte(nil), peer.EdPublic[:]...), Box: append([]byte(nil), peer.XPublic[:]...)}, true
 }
 func (m *directManager) readLoop() {
 	for {
@@ -308,7 +305,7 @@ func (m *directManager) readLoop() {
 		now := uint64(nowTime.UnixMilli())
 		// Bootstrap authenticates with member public keys; a formal packet also
 		// needs the process pair already learned by its connection's gate.
-		opened, err := codec.Open(input.raw, peer, m.self, now)
+		opened, err := m.self.Open(codec, input.raw, peer, now)
 		m.mu.Lock()
 		if m.closed {
 			m.mu.Unlock()
@@ -335,7 +332,7 @@ func (m *directManager) readLoop() {
 				if p.binding != binding {
 					continue
 				}
-				if candidate, e := codec.Open(input.raw, p.peer, m.self, now); e == nil && bytes.Equal(candidate.Context.Connection, p.connection) {
+				if candidate, e := m.self.Open(codec, input.raw, p.peer, now); e == nil && bytes.Equal(candidate.Context.Connection, p.connection) {
 					if _, err := peerwire.KnownPayload(candidate.Context.Class, candidate.Type, candidate.Payload); err == nil && m.reserveAuthentication(input.peer, candidate, nowTime) {
 						target = p
 					}

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Lewin671/remote-agent/internal/transport/peerwire"
+	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
 
 type lockedBuffer struct {

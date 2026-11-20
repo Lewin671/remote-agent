@@ -9,7 +9,7 @@ import (
 )
 
 func TestFrozenCryptoVectors(t *testing.T) {
-	raw, err := os.ReadFile("../../../testdata/transport/wire/vectors.json")
+	raw, err := os.ReadFile("../../testdata/transport/wire/vectors.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestFrozenCryptoVectors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			opened, err := codec.Open(raw, a.Public(), b, corpus.Now)
+			opened, err := codec.open(raw, a.Public, b, corpus.Now)
 			if (err == nil) != row.Accept {
 				t.Fatalf("authenticated=%v, expected=%v", err == nil, row.Accept)
 			}
@@ -49,12 +49,12 @@ func TestAccountAndHeadAreInstanceBound(t *testing.T) {
 	a, b := fixture("client", 1), fixture("machine", 2)
 	codec := fixtureCodec()
 	now := uint64(1700000000000)
-	c := NewContext(a, b.Public(), Hash([]byte("connection"))[:16], 1, 1, 1, now, 1, false)
-	raw, err := codec.Seal(a, b.Public(), c, 31337, []byte("unknown"), nil, nil, nil)
+	c := NewContext(a.Public, b.Public, Hash([]byte("connection"))[:16], 1, 1, 1, now, 1, false)
+	raw, err := codec.seal(a, b.Public, c, 31337, []byte("unknown"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = codec.Open(raw, a.Public(), b, now); err != nil {
+	if _, err = codec.open(raw, a.Public, b, now); err != nil {
 		t.Fatal(err)
 	}
 	for _, field := range []string{"account", "domain", "head", "epoch"} {
@@ -70,7 +70,7 @@ func TestAccountAndHeadAreInstanceBound(t *testing.T) {
 			case "epoch":
 				other.memberEpoch++
 			}
-			if _, err := other.Open(raw, a.Public(), b, now); err == nil {
+			if _, err := other.open(raw, a.Public, b, now); err == nil {
 				t.Fatal("different verified scope authenticated")
 			}
 		})
@@ -80,11 +80,11 @@ func FuzzPeerPacket(f *testing.F) {
 	a, b := fixture("client", 1), fixture("machine", 2)
 	codec := fixtureCodec()
 	now := uint64(1700000000000)
-	c := NewProbeContext(a, b.Public(), Hash([]byte("connection"))[:16], 1, now)
-	raw, _ := codec.Seal(a, b.Public(), c, 1, PB(B(1, c.Connection), B(2, a.Instance), B(3, a.Boot)), nil, nil, nil)
+	c := NewProbeContext(a.Public, b.Public, Hash([]byte("connection"))[:16], 1, now)
+	raw, _ := codec.seal(a, b.Public, c, 1, PB(B(1, c.Connection), B(2, a.Instance), B(3, a.Boot)), nil)
 	f.Add(raw)
 	f.Add([]byte{10, 255, 255, 255, 255, 255})
-	f.Fuzz(func(t *testing.T, raw []byte) { _, _ = codec.Open(raw, a.Public(), b, now) })
+	f.Fuzz(func(t *testing.T, raw []byte) { _, _ = codec.open(raw, a.Public, b, now) })
 }
 
 func TestServerWrapperDoesNotStealDeliveryBudget(t *testing.T) {

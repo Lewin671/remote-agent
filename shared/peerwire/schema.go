@@ -2,7 +2,6 @@ package peerwire
 
 import (
 	"bytes"
-	"encoding/binary"
 	"strconv"
 	"strings"
 )
@@ -70,7 +69,7 @@ func normalizeMessage(raw []byte, name string, depth int, shape bool) ([]byte, e
 	}
 	last := uint64(0)
 	read := func() (uint64, error) {
-		v, n := binary.Uvarint(raw)
+		v, n := uvarint(raw)
 		if n <= 0 || !bytes.Equal(raw[:n], varint(v)) {
 			return 0, ErrPacket
 		}
@@ -110,7 +109,7 @@ func normalizeMessage(raw []byte, name string, depth int, shape bool) ([]byte, e
 					if len(values[n]) >= schemaLimit(name, n) {
 						return nil, ErrPacket
 					}
-					v, k := binary.Uvarint(body)
+					v, k := uvarint(body)
 					if k <= 0 || !bytes.Equal(body[:k], varint(v)) || v > scalarLimit(r.Kind) {
 						return nil, ErrPacket
 					}
@@ -172,15 +171,15 @@ func ParseMessage(raw []byte, name string) (map[uint64]Field, error) {
 	// view returns the first occurrence; list consumers retain the original.
 	out := map[uint64]Field{}
 	for len(normalized) > 0 {
-		tag, n := binary.Uvarint(normalized)
+		tag, n := uvarint(normalized)
 		normalized = normalized[n:]
 		field := tag >> 3
 		f := U(field, 0)
 		if tag&7 == 0 {
-			f.U, n = binary.Uvarint(normalized)
+			f.U, n = uvarint(normalized)
 			normalized = normalized[n:]
 		} else {
-			size, k := binary.Uvarint(normalized)
+			size, k := uvarint(normalized)
 			normalized = normalized[k:]
 			f = B(field, normalized[:size])
 			normalized = normalized[size:]
@@ -217,7 +216,7 @@ func ReadRestart(raw []byte) (map[uint64]uint64, error) {
 	targets := map[uint64]uint64{}
 	for len(raw) > 0 && raw[0] == 10 {
 		raw = raw[1:]
-		size, n := binary.Uvarint(raw)
+		size, n := uvarint(raw)
 		if n <= 0 || size > uint64(len(raw)-n) {
 			return nil, ErrPacket
 		}
