@@ -4,9 +4,9 @@ import (
 	"cmp"
 	"unicode/utf16"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
-	"github.com/Lewin671/remote-agent/clientcore/projection"
 )
 
 // compareUTF16 compares two strings by UTF-16 code units, matching JS/Kotlin/Swift ordering.

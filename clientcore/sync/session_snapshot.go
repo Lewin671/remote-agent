@@ -3,7 +3,7 @@ package sync
 import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
 )
 

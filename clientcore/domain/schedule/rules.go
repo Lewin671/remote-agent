@@ -9,8 +9,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/projection"
 )
 
 const quietSpanPrefix = "quiet-"

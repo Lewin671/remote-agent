@@ -2,9 +2,9 @@
 package corebind
 
 import (
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/projection"
 )
 
 // Projection holds an incremental event projection reducer behind a gomobile-safe handle.

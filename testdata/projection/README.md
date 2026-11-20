@@ -6,7 +6,7 @@ values); no separate copies or generated expected states live in each client.
 `projectionVersion` versions this test contract, not the wire protocol.
 
 Each observation is the domain state after exactly `through` events. `cuts`
-are legal batch boundaries. The shared Go core (`clientcore/projection`), which
+are legal batch boundaries. The shared Go core (`clientcore/domain/projection`), which
 all three clients call, is tested for full replay and for incremental appends
 at every cut before the observation. These are in-memory replay tests, **not snapshot restore,
 encryption, transport, or real CLI tests**.

@@ -233,7 +233,7 @@ func normalizeForVectors(s *corev1.ProjectionState) map[string]any {
 }
 
 func TestSharedProjectionVectors(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "testdata", "projection", "vectors.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "projection", "vectors.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -322,7 +322,7 @@ func TestSharedProjectionVectors(t *testing.T) {
 }
 
 func TestSharedLiveInputVectors(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "testdata", "projection", "live-inputs.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "projection", "live-inputs.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,7 +417,7 @@ func TestSharedLiveInputVectors(t *testing.T) {
 }
 
 func TestSharedSkeletonContract(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "testdata", "projection", "skeletons.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "projection", "skeletons.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -857,7 +857,7 @@ func TestLiteWireCompatibility(t *testing.T) {
 }
 
 func BenchmarkDerive10K(b *testing.B) {
-	data, err := os.ReadFile(filepath.Join("..", "..", "testdata", "projection", "vectors.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "projection", "vectors.json"))
 	if err != nil {
 		b.Fatal(err)
 	}

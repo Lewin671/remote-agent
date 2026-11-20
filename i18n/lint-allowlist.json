@@ -2410,7 +2410,7 @@
     "reason": "Build-time code generator panic diagnostic, never shipped to end users."
   },
   {
-    "path": "clientcore/projection/helpers.go",
+    "path": "clientcore/domain/projection/helpers.go",
     "literal": "\\n…（remote-agent：内容过大，请在终端查看/回答）",
     "reason": "Relay wire marker suffix checked when classifying skeleton events; never emitted as UI copy."
   },
