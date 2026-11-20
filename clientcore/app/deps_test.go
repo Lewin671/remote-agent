@@ -28,3 +28,43 @@ func TestCoreWasmDependencies(t *testing.T) {
 		}
 	}
 }
+
+// Core layers depend only downward: app → screens → sync → domain → wire
+// (architecture.md, 分层). Deps covers non-test imports only, so tests may
+// still reach across layers.
+func TestCoreLayerDependencies(t *testing.T) {
+	const core = "github.com/Lewin671/remote-agent/clientcore/"
+	forbidden := map[string][]string{
+		"sync":    {"screens", "app"},
+		"domain":  {"sync", "screens", "app"},
+		"screens": {"app"},
+	}
+	cmd := exec.Command("go", "list", "-f", "{{.ImportPath}} {{join .Deps \" \"}}", "./...")
+	cmd.Dir = ".."
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list: %v", err)
+	}
+	inLayer := func(pkg, layer string) bool {
+		return pkg == core+layer || strings.HasPrefix(pkg, core+layer+"/")
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		pkg := fields[0]
+		for layer, banned := range forbidden {
+			if !inLayer(pkg, layer) {
+				continue
+			}
+			for _, dep := range fields[1:] {
+				for _, upper := range banned {
+					if inLayer(dep, upper) {
+						t.Errorf("%s depends on %s", strings.TrimPrefix(pkg, core), strings.TrimPrefix(dep, core))
+					}
+				}
+			}
+		}
+	}
+}
