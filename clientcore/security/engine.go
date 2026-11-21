@@ -119,7 +119,6 @@ type Engine struct {
 	isMember               bool
 	removed                bool
 	cleared                bool
-	clockSkewed            bool
 	recordErr              string
 	netGen                 uint64
 	verifiedNetGen         uint64
@@ -397,11 +396,6 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 
 	var lease devicesec.LeaseCertificate
 	var hasLease bool
-	var clockSkew bool
-	effNow := e.effectiveNow(nowMs)
-	if head.Core.IssuedAt > effNow+devicesec.MaxClockSkew {
-		clockSkew = true
-	}
 	if len(ev.Lease) > 0 {
 		lease, err = devicesec.ParseLease(ev.Lease)
 		if err != nil {
@@ -415,9 +409,6 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 			return e.DrainEffects()
 		}
 		hasLease = true
-		if err := lease.Valid(head, effNow); errors.Is(err, devicesec.ErrClock) {
-			clockSkew = true
-		}
 	}
 
 	samePin := e.hasHead && e.pin == pin
@@ -441,7 +432,6 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 	e.hasHead = true
 	e.hasLease = hasLease
 	e.lease = lease
-	e.clockSkewed = clockSkew
 	e.removed = false
 	e.cleared = false
 	e.recordErr = ""
@@ -723,7 +713,7 @@ func (e *Engine) Snapshot() Snapshot {
 		TrustedMachines:        make(map[string]bool),
 		TrustedClients:         make(map[string]bool),
 		ArchiveMachines:        make(map[string]bool),
-		ClockSkewed:            e.clockSkewed,
+		ClockSkewed:            e.isClockSkewed(e.lastNowMs),
 		RecoveryPending:        e.recoveryPending,
 		RecoveryReadyMs:        e.recoveryReadyMs,
 		RecoveryObjectsPending: e.recoveryObjectsPending,
@@ -862,8 +852,22 @@ func (e *Engine) checkEnvelopeVersion(env *v1.Envelope) error {
 	return nil
 }
 
+func (e *Engine) isClockSkewed(nowMs int64) bool {
+	if !e.hasHead {
+		return false
+	}
+	effNow := e.effectiveNow(nowMs)
+	if e.head.Core.IssuedAt > effNow+devicesec.MaxClockSkew {
+		return true
+	}
+	if e.hasLease && e.lease.IssuedAt > effNow+devicesec.MaxClockSkew {
+		return true
+	}
+	return false
+}
+
 func (e *Engine) checkLiveLease(nowMs int64) error {
-	if e.clockSkewed {
+	if e.isClockSkewed(nowMs) {
 		return ErrClockSkewed
 	}
 	if !e.hasLease {
@@ -904,7 +908,7 @@ func (e *Engine) CanSeal(nowMs int64) error {
 	if !e.isMember {
 		return ErrNotMember
 	}
-	if e.clockSkewed {
+	if e.isClockSkewed(nowMs) {
 		return ErrClockSkewed
 	}
 	if err := e.checkLiveLease(nowMs); err != nil {
@@ -963,6 +967,10 @@ func (e *Engine) OpenBatch(nowMs int64, items []OpenItem, onDone func(results []
 			}
 			if item.ExpectedPurpose != 0 && h.Purpose != item.ExpectedPurpose {
 				results[i].Err = devicesec.ErrInvalid
+				continue
+			}
+			if item.History && h.Purpose.Control() {
+				results[i].Err = devicesec.ErrUntrusted
 				continue
 			}
 			if item.SessionID != "" && h.Session != item.SessionID {
@@ -1263,6 +1271,10 @@ func (e *Engine) SealEnvelope(
 			Seq:          seq,
 			Deadline:     deadlineMs,
 			Compression:  0,
+		}
+		if err := h.Scope(e.head); err != nil {
+			onDone(SealResult{Err: err})
+			return
 		}
 		headerBytes, key, nonce, err := devicesec.PrepareCiphertext(sec[:], seed, h, len(plain), e.entropy)
 		if err != nil {

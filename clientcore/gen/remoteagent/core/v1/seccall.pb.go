@@ -967,6 +967,10 @@ type SecCallRequest_DerivePurposeKey struct{ DerivePurposeKey *SecDerivePurposeK
 
 func (*SecCallRequest_DerivePurposeKey) isSecCallRequest_Call() {}
 
+type SecCallRequest_VerifyTransition struct{ VerifyTransition *SecVerifyTransitionCall }
+
+func (*SecCallRequest_VerifyTransition) isSecCallRequest_Call() {}
+
 func (m *SecCallRequest) GetCall() isSecCallRequest_Call {
 	if m != nil {
 		return m.Call
@@ -1144,6 +1148,12 @@ func (m *SecCallRequest) GetOpenNotifyEnvelope() *SecOpenNotifyEnvelopeCall {
 func (m *SecCallRequest) GetDerivePurposeKey() *SecDerivePurposeKeyCall {
 	if x, ok := m.GetCall().(*SecCallRequest_DerivePurposeKey); ok && x != nil {
 		return x.DerivePurposeKey
+	}
+	return nil
+}
+func (m *SecCallRequest) GetVerifyTransition() *SecVerifyTransitionCall {
+	if x, ok := m.GetCall().(*SecCallRequest_VerifyTransition); ok && x != nil {
+		return x.VerifyTransition
 	}
 	return nil
 }
@@ -1558,6 +1568,21 @@ func (m *SecCallRequest) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Call = &SecCallRequest_DerivePurposeKey{DerivePurposeKey: sub}
+				continue
+			}
+		case 42:
+			if wtyp == litewire.BytesType {
+				var sub *SecVerifyTransitionCall
+				if cur, ok := m.Call.(*SecCallRequest_VerifyTransition); ok && cur != nil {
+					sub = cur.VerifyTransition
+				}
+				if sub == nil {
+					sub = &SecVerifyTransitionCall{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Call = &SecCallRequest_VerifyTransition{VerifyTransition: sub}
 				continue
 			}
 		}
@@ -3766,6 +3791,73 @@ func (m *SecDerivePurposeKeyCall) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Purpose = uint32(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecVerifyTransitionCall struct {
+	ParentState   []byte
+	NextState     []byte
+	RecoveryProof []byte
+}
+
+func (m *SecVerifyTransitionCall) GetParentState() []byte {
+	if m != nil {
+		return m.ParentState
+	}
+	return nil
+}
+func (m *SecVerifyTransitionCall) GetNextState() []byte {
+	if m != nil {
+		return m.NextState
+	}
+	return nil
+}
+func (m *SecVerifyTransitionCall) GetRecoveryProof() []byte {
+	if m != nil {
+		return m.RecoveryProof
+	}
+	return nil
+}
+
+func (m *SecVerifyTransitionCall) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.ParentState = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.NextState = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryProof = v
 				continue
 			}
 		}

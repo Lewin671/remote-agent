@@ -339,7 +339,6 @@ const KeyErrorsIosCannotOpenTheComputerSReplyCommandExecutionIs = "errors.ios_ca
 const KeyErrorsIosCliSOwnMode = "errors.ios_cli_s_own_mode"
 const KeyErrorsIosCouldNotReadThisPhoneSAccountStateManagement = "errors.ios_could_not_read_this_phone_s_account_state_management"
 const KeyErrorsIosCryptoBadKeyNonceSize = "errors.ios_crypto_bad_key_nonce_size"
-const KeyErrorsIosCryptoBadSessionKey = "errors.ios_crypto_bad_session_key"
 const KeyErrorsIosCryptoEnvelopeDoesNotOpen = "errors.ios_crypto_envelope_does_not_open"
 const KeyErrorsIosCryptoEnvelopeLocation = "errors.ios_crypto_envelope_location"
 const KeyErrorsIosCryptoMalformedContent = "errors.ios_crypto_malformed_content"

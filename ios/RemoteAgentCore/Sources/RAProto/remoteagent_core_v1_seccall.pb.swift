@@ -507,6 +507,14 @@ public struct PBSecCallRequest: Sendable {
     set {call = .derivePurposeKey(newValue)}
   }
 
+  public var verifyTransition: PBSecVerifyTransitionCall {
+    get {
+      if case .verifyTransition(let v)? = call {return v}
+      return PBSecVerifyTransitionCall()
+    }
+    set {call = .verifyTransition(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Call: Equatable, Sendable {
@@ -539,6 +547,7 @@ public struct PBSecCallRequest: Sendable {
     case inflateBounded(PBSecInflateBoundedCall)
     case openNotifyEnvelope(PBSecOpenNotifyEnvelopeCall)
     case derivePurposeKey(PBSecDerivePurposeKeyCall)
+    case verifyTransition(PBSecVerifyTransitionCall)
 
   }
 
@@ -1111,6 +1120,22 @@ public struct PBSecDerivePurposeKeyCall: Sendable {
   public var contentEpoch: UInt64 = 0
 
   public var purpose: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBSecVerifyTransitionCall: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var parentState: Data = Data()
+
+  public var nextState: Data = Data()
+
+  public var recoveryProof: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1808,7 +1833,7 @@ extension PBSecParsedApproval: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBSecCallRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecCallRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}parse_state\0\u{3}verify_chain\0\u{3}grant_challenge\0\u{3}open_grant_with_dh\0\u{4}\u{3}parse_lease\0\u{3}verify_lease\0\u{3}new_lease_unsigned\0\u{3}marshal_lease\0\u{3}parse_recovery_statement\0\u{3}verify_recovery_statement\0\u{3}new_recovery_statement_unsigned\0\u{3}marshal_recovery_statement\0\u{3}build_state\0\u{4}\u{7}marshal_state\0\u{4}\u{2}open_prev_secret\0\u{3}verify_pair_approval\0\u{3}machine_replacement_origins\0\u{3}pair_trust_descriptor\0\u{3}parse_pair_trust_descriptor\0\u{3}pair_domain_commit\0\u{3}pair_transcript\0\u{3}pair_identity_transcript\0\u{3}pair_domain_transcript\0\u{3}derive_pair_secrets\0\u{3}ed25519_seed_public\0\u{3}ed25519_seed_sign\0\u{4}\u{2}inflate_bounded\0\u{4}\u{3}open_notify_envelope\0\u{3}derive_purpose_key\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}parse_state\0\u{3}verify_chain\0\u{3}grant_challenge\0\u{3}open_grant_with_dh\0\u{4}\u{3}parse_lease\0\u{3}verify_lease\0\u{3}new_lease_unsigned\0\u{3}marshal_lease\0\u{3}parse_recovery_statement\0\u{3}verify_recovery_statement\0\u{3}new_recovery_statement_unsigned\0\u{3}marshal_recovery_statement\0\u{3}build_state\0\u{4}\u{7}marshal_state\0\u{4}\u{2}open_prev_secret\0\u{3}verify_pair_approval\0\u{3}machine_replacement_origins\0\u{3}pair_trust_descriptor\0\u{3}parse_pair_trust_descriptor\0\u{3}pair_domain_commit\0\u{3}pair_transcript\0\u{3}pair_identity_transcript\0\u{3}pair_domain_transcript\0\u{3}derive_pair_secrets\0\u{3}ed25519_seed_public\0\u{3}ed25519_seed_sign\0\u{4}\u{2}inflate_bounded\0\u{4}\u{3}open_notify_envelope\0\u{3}derive_purpose_key\0\u{3}verify_transition\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2168,6 +2193,19 @@ extension PBSecCallRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
           self.call = .derivePurposeKey(v)
         }
       }()
+      case 42: try {
+        var v: PBSecVerifyTransitionCall?
+        var hadOneofValue = false
+        if let current = self.call {
+          hadOneofValue = true
+          if case .verifyTransition(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.call = .verifyTransition(v)
+        }
+      }()
       default: break
       }
     }
@@ -2294,6 +2332,10 @@ extension PBSecCallRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     case .derivePurposeKey?: try {
       guard case .derivePurposeKey(let v)? = self.call else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
+    }()
+    case .verifyTransition?: try {
+      guard case .verifyTransition(let v)? = self.call else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 42)
     }()
     case nil: break
     }
@@ -3539,6 +3581,46 @@ extension PBSecDerivePurposeKeyCall: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.domain != rhs.domain {return false}
     if lhs.contentEpoch != rhs.contentEpoch {return false}
     if lhs.purpose != rhs.purpose {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSecVerifyTransitionCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SecVerifyTransitionCall"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}parent_state\0\u{3}next_state\0\u{3}recovery_proof\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.parentState) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.nextState) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.recoveryProof) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.parentState.isEmpty {
+      try visitor.visitSingularBytesField(value: self.parentState, fieldNumber: 1)
+    }
+    if !self.nextState.isEmpty {
+      try visitor.visitSingularBytesField(value: self.nextState, fieldNumber: 2)
+    }
+    if !self.recoveryProof.isEmpty {
+      try visitor.visitSingularBytesField(value: self.recoveryProof, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSecVerifyTransitionCall, rhs: PBSecVerifyTransitionCall) -> Bool {
+    if lhs.parentState != rhs.parentState {return false}
+    if lhs.nextState != rhs.nextState {return false}
+    if lhs.recoveryProof != rhs.recoveryProof {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -837,6 +837,31 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 		}
 		return &corev1.SecCallResponse{Data: out}
 
+	case *corev1.SecCallRequest_VerifyTransition:
+		if c.VerifyTransition == nil {
+			return errSecResp(devicesec.ErrInvalid)
+		}
+		parent, err := devicesec.ParseState(c.VerifyTransition.ParentState)
+		if err != nil {
+			return errSecResp(err)
+		}
+		next, err := devicesec.ParseState(c.VerifyTransition.NextState)
+		if err != nil {
+			return errSecResp(err)
+		}
+		var rec *devicesec.RecoveryStatement
+		if len(c.VerifyTransition.RecoveryProof) > 0 {
+			rs, err := devicesec.ParseRecoveryStatement(c.VerifyTransition.RecoveryProof)
+			if err != nil {
+				return errSecResp(err)
+			}
+			rec = &rs
+		}
+		if err := devicesec.VerifyTransition(parent, next, rec); err != nil {
+			return errSecResp(err)
+		}
+		return &corev1.SecCallResponse{ParsedState: stateToProto(next)}
+
 	default:
 		return errSecResp(devicesec.ErrInvalid)
 	}

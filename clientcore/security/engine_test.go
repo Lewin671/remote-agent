@@ -1028,3 +1028,120 @@ func TestEngineOverrideSessionSeedAndSecCallNotifyPurposeKey(t *testing.T) {
 		t.Fatalf("decoded NotifyContent mismatch: err=%v got=%+v", err, gotNotify)
 	}
 }
+
+func TestSecCallVerifyTransitionAndSecurityGates(t *testing.T) {
+	nowMs := int64(1_700_000_000_000)
+	acct, dom, gen, phone, machine, rec, _, sec2, rawStates, leaseRaw, states := makeGenesisAndTwoStateRecord(t, uint64(nowMs))
+
+	// 1. SecCall VerifyTransition across multi-epoch, bad signer, and recovery transitions.
+	extra := newTestIdentity(t, 5)
+	sec3 := bytes.Repeat([]byte{0x44}, 32)
+	s3U, err := devicesec.NewPairState(states[1], extra.member(devicesec.Client), extra.xPub[:], sec2, sec3, uint64(nowMs+20), stdHPKESender{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s3SB, _ := s3U.SigningBytes()
+	s3 := s3U
+	s3.Signature = ed25519.Sign(phone.ed, s3SB)
+	s3Raw, _ := s3.MarshalBinary()
+
+	okVT := SecCall(&corev1.SecCallRequest{
+		Call: &corev1.SecCallRequest_VerifyTransition{
+			VerifyTransition: &corev1.SecVerifyTransitionCall{
+				ParentState: rawStates[1],
+				NextState:   s3Raw,
+			},
+		},
+	})
+	if okVT.Error != "" || okVT.ParsedState == nil || okVT.ParsedState.Epoch != 3 {
+		t.Fatalf("expected multi-epoch VerifyTransition to succeed, got %+v", okVT)
+	}
+
+	badS3 := s3U
+	badS3.Signature = ed25519.Sign(machine.ed, s3SB)
+	badS3Raw, _ := badS3.MarshalBinary()
+	badVT := SecCall(&corev1.SecCallRequest{
+		Call: &corev1.SecCallRequest_VerifyTransition{
+			VerifyTransition: &corev1.SecVerifyTransitionCall{
+				ParentState: rawStates[1],
+				NextState:   badS3Raw,
+			},
+		},
+	})
+	if badVT.ErrorCode != "untrusted" {
+		t.Fatalf("expected untrusted error for unauthorized signer, got %+v", badVT)
+	}
+
+	newPhone := newTestIdentity(t, 6)
+	newRec := newTestIdentity(t, 7)
+	recU, err := devicesec.NewRecovery(states[1], newPhone.member(devicesec.Client), []devicesec.Member{machine.member(devicesec.Machine), newPhone.member(devicesec.Client)}, sec3, [32]byte(newRec.edP), uint64(nowMs+30), stdHPKESender{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recSB, _ := recU.SigningBytes()
+	recU.Signature = ed25519.Sign(newPhone.ed, recSB)
+	recRaw, _ := recU.MarshalBinary()
+	recParsed, _ := devicesec.ParseState(recRaw)
+	stmtU, _ := devicesec.NewRecoveryStatement(states[1], recParsed, rand.Reader)
+	stmtSB, _ := stmtU.SigningBytes()
+	stmtU.Signature = ed25519.Sign(rec.ed, stmtSB)
+	stmtRaw, _ := stmtU.MarshalBinary()
+
+	recVT := SecCall(&corev1.SecCallRequest{
+		Call: &corev1.SecCallRequest_VerifyTransition{
+			VerifyTransition: &corev1.SecVerifyTransitionCall{
+				ParentState:   rawStates[1],
+				NextState:     recRaw,
+				RecoveryProof: stmtRaw,
+			},
+		},
+	})
+	if recVT.Error != "" || recVT.ParsedState == nil || recVT.ParsedState.Epoch != 3 {
+		t.Fatalf("expected recovery VerifyTransition to succeed, got %+v", recVT)
+	}
+
+	// 2. Dynamic clock skew clearance + SealEnvelope scope check + OpenBatch(History: true) control rejection.
+	pool := &entropy.Pool{}
+	pool.Append(bytes.Repeat([]byte{0x55}, 256))
+	skewedNow := nowMs - int64(devicesec.MaxClockSkew) - 100
+	eng := NewEngine(pool)
+	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
+	executeHostEffects(t, eng, phone, skewedNow, eng.ApplyRecord(skewedNow, &corev1.SecurityRecordEvent{
+		Account: acct, Domain: dom[:], Genesis: gen[:], States: rawStates, Lease: leaseRaw,
+	}))
+	if !eng.Snapshot().ClockSkewed {
+		t.Fatalf("expected ClockSkewed=true in past window")
+	}
+	if err := eng.CanSeal(skewedNow); !errors.Is(err, ErrClockSkewed) {
+		t.Fatalf("expected ErrClockSkewed in past window, got %v", err)
+	}
+	if err := eng.CanSeal(nowMs + 100); err != nil {
+		t.Fatalf("expected clock skew to clear when nowMs advances, got %v", err)
+	}
+
+	metaPlain, _ := (&v1.DeviceMeta{Name: "phone"}).Marshal()
+	var metaSeal SealResult
+	executeHostEffects(t, eng, phone, nowMs+100, eng.SealEnvelope(nowMs+100, devicesec.DeviceMeta, "", "", machine.id, 1, 0, metaPlain, false, nil, func(sr SealResult) {
+		metaSeal = sr
+	}))
+	if !errors.Is(metaSeal.Err, devicesec.ErrUntrusted) {
+		t.Fatalf("expected DeviceMeta for another device to fail with ErrUntrusted on seal, got %+v", metaSeal)
+	}
+
+	cmdPlain, _ := (&v1.Command{Kind: &v1.Command_Interrupt{Interrupt: &v1.InterruptRequest{SessionId: "s"}}}).Marshal()
+	var cmdSeal SealResult
+	executeHostEffects(t, eng, phone, nowMs+100, eng.SealEnvelope(nowMs+100, devicesec.Command, machine.id, "s", "req-cmd-0123456789", 1, uint64(nowMs+devicesec.Lease), cmdPlain, false, nil, func(sr SealResult) {
+		cmdSeal = sr
+	}))
+	if cmdSeal.Err != nil || cmdSeal.Envelope == nil {
+		t.Fatalf("failed to seal command: %+v", cmdSeal.Err)
+	}
+
+	var histCmd []OpenResult
+	executeHostEffects(t, eng, phone, nowMs+100, eng.OpenBatch(nowMs+100, []OpenItem{{Env: cmdSeal.Envelope, History: true}}, func(r []OpenResult) {
+		histCmd = r
+	}))
+	if len(histCmd) != 1 || !errors.Is(histCmd[0].Err, devicesec.ErrUntrusted) {
+		t.Fatalf("expected History:true OpenBatch to reject Command with ErrUntrusted, got %+v", histCmd)
+	}
+}

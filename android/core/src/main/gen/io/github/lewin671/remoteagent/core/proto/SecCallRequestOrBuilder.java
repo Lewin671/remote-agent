@@ -329,5 +329,16 @@ public interface SecCallRequestOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.SecDerivePurposeKeyCall getDerivePurposeKey();
 
+  /**
+   * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+   * @return Whether the verifyTransition field is set.
+   */
+  boolean hasVerifyTransition();
+  /**
+   * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+   * @return The verifyTransition.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall getVerifyTransition();
+
   public io.github.lewin671.remoteagent.core.proto.SecCallRequest.CallCase getCallCase();
 }

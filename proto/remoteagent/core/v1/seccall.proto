@@ -128,6 +128,7 @@ message SecCallRequest {
     SecInflateBoundedCall inflate_bounded = 37;
     SecOpenNotifyEnvelopeCall open_notify_envelope = 40;
     SecDerivePurposeKeyCall derive_purpose_key = 41;
+    SecVerifyTransitionCall verify_transition = 42;
   }
 }
 
@@ -310,6 +311,12 @@ message SecDerivePurposeKeyCall {
   bytes domain = 3;
   uint64 content_epoch = 4;
   uint32 purpose = 5;
+}
+
+message SecVerifyTransitionCall {
+  bytes parent_state = 1;
+  bytes next_state = 2;
+  bytes recovery_proof = 3;
 }
 
 message SecCallResponse {

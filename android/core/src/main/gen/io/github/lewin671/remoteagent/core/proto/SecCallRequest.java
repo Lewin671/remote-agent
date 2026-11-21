@@ -48,6 +48,7 @@ public  final class SecCallRequest extends
     INFLATE_BOUNDED(37),
     OPEN_NOTIFY_ENVELOPE(40),
     DERIVE_PURPOSE_KEY(41),
+    VERIFY_TRANSITION(42),
     CALL_NOT_SET(0);
     private final int value;
     private CallCase(int value) {
@@ -92,6 +93,7 @@ public  final class SecCallRequest extends
         case 37: return INFLATE_BOUNDED;
         case 40: return OPEN_NOTIFY_ENVELOPE;
         case 41: return DERIVE_PURPOSE_KEY;
+        case 42: return VERIFY_TRANSITION;
         case 0: return CALL_NOT_SET;
         default: return null;
       }
@@ -1556,6 +1558,58 @@ public  final class SecCallRequest extends
     }
   }
 
+  public static final int VERIFY_TRANSITION_FIELD_NUMBER = 42;
+  /**
+   * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+   */
+  @java.lang.Override
+  public boolean hasVerifyTransition() {
+    return callCase_ == 42;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall getVerifyTransition() {
+    if (callCase_ == 42) {
+       return (io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall) call_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setVerifyTransition(io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall value) {
+    value.getClass();  // minimal bytecode null check
+    call_ = value;
+    callCase_ = 42;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeVerifyTransition(io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall value) {
+    value.getClass();  // minimal bytecode null check
+    if (callCase_ == 42 &&
+        call_ != io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall.getDefaultInstance()) {
+      call_ = io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall) call_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      call_ = value;
+    }
+    callCase_ = 42;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+   */
+  private void clearVerifyTransition() {
+    if (callCase_ == 42) {
+      callCase_ = 0;
+      call_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecCallRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2997,6 +3051,54 @@ public  final class SecCallRequest extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+     */
+    @java.lang.Override
+    public boolean hasVerifyTransition() {
+      return instance.hasVerifyTransition();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall getVerifyTransition() {
+      return instance.getVerifyTransition();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+     */
+    public Builder setVerifyTransition(io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall value) {
+      copyOnWrite();
+      instance.setVerifyTransition(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+     */
+    public Builder setVerifyTransition(
+        io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall.Builder builderForValue) {
+      copyOnWrite();
+      instance.setVerifyTransition(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+     */
+    public Builder mergeVerifyTransition(io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall value) {
+      copyOnWrite();
+      instance.mergeVerifyTransition(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecVerifyTransitionCall verify_transition = 42 [json_name = "verifyTransition"];</code>
+     */
+    public Builder clearVerifyTransition() {
+      copyOnWrite();
+      instance.clearVerifyTransition();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecCallRequest)
   }
   @java.lang.Override
@@ -3039,13 +3141,14 @@ public  final class SecCallRequest extends
             io.github.lewin671.remoteagent.core.proto.SecInflateBoundedCall.class,
             io.github.lewin671.remoteagent.core.proto.SecOpenNotifyEnvelopeCall.class,
             io.github.lewin671.remoteagent.core.proto.SecDerivePurposeKeyCall.class,
+            io.github.lewin671.remoteagent.core.proto.SecVerifyTransitionCall.class,
           };
           java.lang.String info =
-              "\u0000\u001d\u0001\u0000\u0001)\u001d\u0000\u0000\u0000\u0001=\u0000\u0002<\u0000" +
+              "\u0000\u001e\u0001\u0000\u0001*\u001e\u0000\u0000\u0000\u0001=\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0007=\u0000\b<\u0000\t<\u0000\n<\u0000\u000b=\u0000\f" +
               "<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0016<\u0000\u0018<\u0000\u0019<\u0000" +
               "\u001a<\u0000\u001b<\u0000\u001c=\u0000\u001d<\u0000\u001e<\u0000\u001f<\u0000 <" +
-              "\u0000!<\u0000\"=\u0000#<\u0000%<\u0000(<\u0000)<\u0000";
+              "\u0000!<\u0000\"=\u0000#<\u0000%<\u0000(<\u0000)<\u0000*<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
