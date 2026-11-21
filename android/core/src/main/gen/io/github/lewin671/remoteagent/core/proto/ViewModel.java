@@ -31,6 +31,7 @@ public  final class ViewModel extends
     DEVICES(34),
     CLIENT_DETAIL(35),
     USAGE(36),
+    DIRECT_DIAGNOSTICS(37),
     SESSION(10),
     SCHEDULES(20),
     SCHEDULE_DETAIL(21),
@@ -63,6 +64,7 @@ public  final class ViewModel extends
         case 34: return DEVICES;
         case 35: return CLIENT_DETAIL;
         case 36: return USAGE;
+        case 37: return DIRECT_DIAGNOSTICS;
         case 10: return SESSION;
         case 20: return SCHEDULES;
         case 21: return SCHEDULE_DETAIL;
@@ -748,6 +750,58 @@ public  final class ViewModel extends
    */
   private void clearUsage() {
     if (viewCase_ == 36) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int DIRECT_DIAGNOSTICS_FIELD_NUMBER = 37;
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectDiagnostics() {
+    return viewCase_ == 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel getDirectDiagnostics() {
+    if (viewCase_ == 37) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 37 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  private void clearDirectDiagnostics() {
+    if (viewCase_ == 37) {
       viewCase_ = 0;
       view_ = null;
     }
@@ -1747,6 +1801,54 @@ public  final class ViewModel extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectDiagnostics() {
+      return instance.hasDirectDiagnostics();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel getDirectDiagnostics() {
+      return instance.getDirectDiagnostics();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    public Builder setDirectDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel value) {
+      copyOnWrite();
+      instance.setDirectDiagnostics(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    public Builder setDirectDiagnostics(
+        io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectDiagnostics(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    public Builder mergeDirectDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel value) {
+      copyOnWrite();
+      instance.mergeDirectDiagnostics(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    public Builder clearDirectDiagnostics() {
+      copyOnWrite();
+      instance.clearDirectDiagnostics();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
      */
     @java.lang.Override
@@ -2021,12 +2123,13 @@ public  final class ViewModel extends
             io.github.lewin671.remoteagent.core.proto.DevicesViewModel.class,
             io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel.class,
             io.github.lewin671.remoteagent.core.proto.UsageViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel.class,
           };
           java.lang.String info =
-              "\u0000\u0011\u0001\u0000\u0001$\u0011\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u0012\u0001\u0000\u0001%\u0012\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
               "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000";
+              "<\u0000%<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

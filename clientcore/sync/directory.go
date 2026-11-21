@@ -325,6 +325,7 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 	e.w.World.HasMoreSessions = pageNext != nil
 
 	e.updateLivePollers(ctx)
+	e.syncDirectWatched(ctx)
 	if e.wantAllSessions && e.w.World.SessionsNext != nil {
 		e.RequestMoreSessions(ctx)
 	}
@@ -364,6 +365,7 @@ func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.Sessions
 		e.w.World.HasMoreSessions = false
 	}
 	e.updateLivePollers(ctx)
+	e.syncDirectWatched(ctx)
 	if e.wantAllSessions && e.w.World.SessionsNext != nil {
 		e.RequestMoreSessions(ctx)
 	}
@@ -512,7 +514,7 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 }
 
 func (e *Engine) handleMachineRouteStatus(ctx *StepContext, ev *corev1.MachineRouteStatusEvent) {
-	if ev == nil || ev.MachineId == "" {
+	if e.transportConfigured || ev == nil || ev.MachineId == "" {
 		return
 	}
 	if e.directReady[ev.MachineId] == ev.DirectReady {
@@ -634,6 +636,9 @@ func (e *Engine) putSession(ctx *StepContext, ps *corev1.PlainSession, writeCach
 	}
 	if e.watchedSessions[ps.SessionId] && e.buffers[ps.SessionId] == nil {
 		e.startLoadEvents(ctx, ps.SessionId)
+	}
+	if e.watchedSessions[ps.SessionId] {
+		e.syncDirectWatched(ctx)
 	}
 }
 

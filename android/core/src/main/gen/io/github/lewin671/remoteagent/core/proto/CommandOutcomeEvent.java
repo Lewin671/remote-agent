@@ -557,6 +557,110 @@ public  final class CommandOutcomeEvent extends
     routeWasDirect_ = false;
   }
 
+  public static final int ELAPSED_MS_FIELD_NUMBER = 15;
+  private double elapsedMs_;
+  /**
+   * <code>double elapsed_ms = 15 [json_name = "elapsedMs"];</code>
+   * @return The elapsedMs.
+   */
+  @java.lang.Override
+  public double getElapsedMs() {
+    return elapsedMs_;
+  }
+  /**
+   * <code>double elapsed_ms = 15 [json_name = "elapsedMs"];</code>
+   * @param value The elapsedMs to set.
+   */
+  private void setElapsedMs(double value) {
+    
+    elapsedMs_ = value;
+  }
+  /**
+   * <code>double elapsed_ms = 15 [json_name = "elapsedMs"];</code>
+   */
+  private void clearElapsedMs() {
+
+    elapsedMs_ = 0D;
+  }
+
+  public static final int OBSERVED_BYTES_FIELD_NUMBER = 16;
+  private long observedBytes_;
+  /**
+   * <code>int64 observed_bytes = 16 [json_name = "observedBytes"];</code>
+   * @return The observedBytes.
+   */
+  @java.lang.Override
+  public long getObservedBytes() {
+    return observedBytes_;
+  }
+  /**
+   * <code>int64 observed_bytes = 16 [json_name = "observedBytes"];</code>
+   * @param value The observedBytes to set.
+   */
+  private void setObservedBytes(long value) {
+    
+    observedBytes_ = value;
+  }
+  /**
+   * <code>int64 observed_bytes = 16 [json_name = "observedBytes"];</code>
+   */
+  private void clearObservedBytes() {
+
+    observedBytes_ = 0L;
+  }
+
+  public static final int HANDED_OFF_FIELD_NUMBER = 17;
+  private boolean handedOff_;
+  /**
+   * <code>bool handed_off = 17 [json_name = "handedOff"];</code>
+   * @return The handedOff.
+   */
+  @java.lang.Override
+  public boolean getHandedOff() {
+    return handedOff_;
+  }
+  /**
+   * <code>bool handed_off = 17 [json_name = "handedOff"];</code>
+   * @param value The handedOff to set.
+   */
+  private void setHandedOff(boolean value) {
+    
+    handedOff_ = value;
+  }
+  /**
+   * <code>bool handed_off = 17 [json_name = "handedOff"];</code>
+   */
+  private void clearHandedOff() {
+
+    handedOff_ = false;
+  }
+
+  public static final int DIRECT_TICKET_ID_FIELD_NUMBER = 18;
+  private long directTicketId_;
+  /**
+   * <code>uint64 direct_ticket_id = 18 [json_name = "directTicketId"];</code>
+   * @return The directTicketId.
+   */
+  @java.lang.Override
+  public long getDirectTicketId() {
+    return directTicketId_;
+  }
+  /**
+   * <code>uint64 direct_ticket_id = 18 [json_name = "directTicketId"];</code>
+   * @param value The directTicketId to set.
+   */
+  private void setDirectTicketId(long value) {
+    
+    directTicketId_ = value;
+  }
+  /**
+   * <code>uint64 direct_ticket_id = 18 [json_name = "directTicketId"];</code>
+   */
+  private void clearDirectTicketId() {
+
+    directTicketId_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.CommandOutcomeEvent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1209,6 +1313,118 @@ public  final class CommandOutcomeEvent extends
       return this;
     }
 
+    /**
+     * <code>double elapsed_ms = 15 [json_name = "elapsedMs"];</code>
+     * @return The elapsedMs.
+     */
+    @java.lang.Override
+    public double getElapsedMs() {
+      return instance.getElapsedMs();
+    }
+    /**
+     * <code>double elapsed_ms = 15 [json_name = "elapsedMs"];</code>
+     * @param value The elapsedMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setElapsedMs(double value) {
+      copyOnWrite();
+      instance.setElapsedMs(value);
+      return this;
+    }
+    /**
+     * <code>double elapsed_ms = 15 [json_name = "elapsedMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearElapsedMs() {
+      copyOnWrite();
+      instance.clearElapsedMs();
+      return this;
+    }
+
+    /**
+     * <code>int64 observed_bytes = 16 [json_name = "observedBytes"];</code>
+     * @return The observedBytes.
+     */
+    @java.lang.Override
+    public long getObservedBytes() {
+      return instance.getObservedBytes();
+    }
+    /**
+     * <code>int64 observed_bytes = 16 [json_name = "observedBytes"];</code>
+     * @param value The observedBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setObservedBytes(long value) {
+      copyOnWrite();
+      instance.setObservedBytes(value);
+      return this;
+    }
+    /**
+     * <code>int64 observed_bytes = 16 [json_name = "observedBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearObservedBytes() {
+      copyOnWrite();
+      instance.clearObservedBytes();
+      return this;
+    }
+
+    /**
+     * <code>bool handed_off = 17 [json_name = "handedOff"];</code>
+     * @return The handedOff.
+     */
+    @java.lang.Override
+    public boolean getHandedOff() {
+      return instance.getHandedOff();
+    }
+    /**
+     * <code>bool handed_off = 17 [json_name = "handedOff"];</code>
+     * @param value The handedOff to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHandedOff(boolean value) {
+      copyOnWrite();
+      instance.setHandedOff(value);
+      return this;
+    }
+    /**
+     * <code>bool handed_off = 17 [json_name = "handedOff"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHandedOff() {
+      copyOnWrite();
+      instance.clearHandedOff();
+      return this;
+    }
+
+    /**
+     * <code>uint64 direct_ticket_id = 18 [json_name = "directTicketId"];</code>
+     * @return The directTicketId.
+     */
+    @java.lang.Override
+    public long getDirectTicketId() {
+      return instance.getDirectTicketId();
+    }
+    /**
+     * <code>uint64 direct_ticket_id = 18 [json_name = "directTicketId"];</code>
+     * @param value The directTicketId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDirectTicketId(long value) {
+      copyOnWrite();
+      instance.setDirectTicketId(value);
+      return this;
+    }
+    /**
+     * <code>uint64 direct_ticket_id = 18 [json_name = "directTicketId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDirectTicketId() {
+      copyOnWrite();
+      instance.clearDirectTicketId();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.CommandOutcomeEvent)
   }
   @java.lang.Override
@@ -1240,11 +1456,16 @@ public  final class CommandOutcomeEvent extends
             "transportCode_",
             "transportDetail_",
             "routeWasDirect_",
+            "elapsedMs_",
+            "observedBytes_",
+            "handedOff_",
+            "directTicketId_",
           };
           java.lang.String info =
-              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0012\u0000\u0001\u0001\u0012\u0012\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\f\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u0208\n\u0208" +
-              "\u000b\u1009\u0000\f\u0208\r\u0208\u000e\u0007";
+              "\u000b\u1009\u0000\f\u0208\r\u0208\u000e\u0007\u000f\u0000\u0010\u0002\u0011\u0007" +
+              "\u0012\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

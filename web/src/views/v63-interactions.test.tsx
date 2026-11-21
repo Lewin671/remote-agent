@@ -9,6 +9,7 @@ import { localeStore, t as message } from "../i18n";
 import { CommandError } from "../remote";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import { getCoreHost } from "../core/host";
+import { setDemoDirect } from "../dev/direct-demo";
 import { Sheet } from "../ui";
 import { Home } from "./Home";
 import { SessionPage } from "./Session";
@@ -328,15 +329,7 @@ describe("Session header ⚡ 直连 chip & light popover", () => {
 
     // Simulate dropping to relay mid-open: popover must remain open and swap copy
     await act(async () => {
-      vi.spyOn(r.direct, "status").mockReturnValue({
-        state: "none",
-        file: "relay",
-        read: "relay",
-        reason: "failed",
-        fileMiBps: {},
-        readMs: {},
-      });
-      (r.direct as unknown as { notify(): void }).notify();
+      setDemoDirect(r, "mac", "failed");
     });
     expect(pop()).not.toBeNull();
     expect(pop()!.textContent).toContain(message("transport.popover_switched_relay"));

@@ -68,6 +68,32 @@ public  final class RequestEntropyEffect extends
     minFloats_ = 0;
   }
 
+  public static final int MIN_SEED_BYTES_FIELD_NUMBER = 3;
+  private int minSeedBytes_;
+  /**
+   * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+   * @return The minSeedBytes.
+   */
+  @java.lang.Override
+  public int getMinSeedBytes() {
+    return minSeedBytes_;
+  }
+  /**
+   * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+   * @param value The minSeedBytes to set.
+   */
+  private void setMinSeedBytes(int value) {
+    
+    minSeedBytes_ = value;
+  }
+  /**
+   * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+   */
+  private void clearMinSeedBytes() {
+
+    minSeedBytes_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -221,6 +247,34 @@ public  final class RequestEntropyEffect extends
       return this;
     }
 
+    /**
+     * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+     * @return The minSeedBytes.
+     */
+    @java.lang.Override
+    public int getMinSeedBytes() {
+      return instance.getMinSeedBytes();
+    }
+    /**
+     * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+     * @param value The minSeedBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMinSeedBytes(int value) {
+      copyOnWrite();
+      instance.setMinSeedBytes(value);
+      return this;
+    }
+    /**
+     * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMinSeedBytes() {
+      copyOnWrite();
+      instance.clearMinSeedBytes();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.RequestEntropyEffect)
   }
   @java.lang.Override
@@ -239,10 +293,11 @@ public  final class RequestEntropyEffect extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "minIds_",
             "minFloats_",
+            "minSeedBytes_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0004\u0002\u0004" +
-              "";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0004\u0002\u0004" +
+              "\u0003\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

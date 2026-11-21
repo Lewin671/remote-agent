@@ -477,6 +477,52 @@ message DevicesViewModel {
   Text client_count_text = 14;
 }
 
+enum DiagCheckMark {
+  DIAG_CHECK_MARK_UNSPECIFIED = 0;
+  DIAG_CHECK_MARK_ONLINE = 1;
+  DIAG_CHECK_MARK_OFF = 2;
+  DIAG_CHECK_MARK_RUN = 3;
+}
+
+message DirectDiagnosticsScreenRequest {
+  string machine_id = 1;
+}
+
+message PlainDiagCheckView {
+  DiagCheckMark mark = 1;
+  Text label_text = 2;
+  Text detail_text = 3;
+  Text status_text = 4;
+}
+
+message DiagRowView {
+  Text label_text = 1;
+  Text value_text = 2;
+}
+
+message DiagGroupView {
+  Text title_text = 1;
+  repeated DiagRowView rows = 2;
+}
+
+message DirectDiagnosticsViewModel {
+  string machine_id = 1;
+  bool supported = 2;
+  bool enabled = 3;
+  bool connected = 4;
+  bool peer_outdated = 5;
+  bool trying = 6;
+  bool can_retry = 7;
+  Text title_text = 8;
+  Text body_text = 9;
+  Text verdict_text = 10;
+  repeated PlainDiagCheckView checks = 11;
+  repeated DiagGroupView groups = 12;
+  DiagGroupView result_group = 13;
+  repeated Text report_lines = 14;
+  DirectRouteReport report = 15;
+}
+
 message ClientDetailScreenRequest {
   string device_id = 1;
 }

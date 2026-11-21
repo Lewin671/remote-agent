@@ -1696,6 +1696,42 @@ export class DemoRemote extends Remote {
     callbacks.onReady(legId, BigInt(Date.now()));
   }
   override closeStreamLeg(legId: bigint) { if (this.demoStream?.legId === legId) this.demoStream = undefined; }
+  override directAuthorize() {}
+
+  setDemoMainOnline(online: boolean) {
+    const stream = this.demoStream;
+    const host = getCoreHost(this);
+    if (online) {
+      this.opts.delete("conn");
+      this.syncTokenOpId = 0n;
+      this.syncRpcQueue = [];
+      this.demoSyncing = true;
+      try {
+        if (stream && !stream.ready) {
+          stream.ready = true;
+          stream.callbacks.onReady(stream.legId, BigInt(Date.now()));
+        } else {
+          host.reconnectNow();
+          if (this.syncTokenOpId > 0n) {
+            host.dispatch(create(CoreEventSchema, { event: { case: "tokenResult", value: this.demoToken(this.syncTokenOpId) } }));
+          }
+        }
+        while (this.syncRpcQueue.length > 0) {
+          host.dispatch(this.resolveSyncRpc(this.syncRpcQueue.shift()!));
+        }
+      } finally {
+        this.demoSyncing = false;
+        this.syncRpcQueue = [];
+      }
+      return;
+    }
+    this.opts.set("conn", "connecting");
+    if (stream) {
+      this.demoStream = undefined;
+      stream.ready = false;
+      stream.callbacks.onClosed(stream.legId, { policyViolation: false, errorCode: "unavailable", error: "", unresolvedHost: false });
+    }
+  }
   override readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent> {
     if (this.demoSyncing || this.demoBootConsumed) { this.syncBootOpId = opId; this.demoBootConsumed = false; return new Promise(() => {}); }
     return Promise.resolve(this.demoBoot(opId));
@@ -1844,7 +1880,7 @@ export class DemoRemote extends Remote {
     };
     r.seed();
     r.seedMachineStatus();
-    seedDirect(r.direct, q);
+    seedDirect(r, q);
     r.seedAuthority();
     if (q.has("tables"))
       r.evs.set("s-run", [

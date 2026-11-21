@@ -1364,6 +1364,248 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.ScheduleFormStringAction getScheduleFormRetryModels();
 
   /**
+   * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+   * @return Whether the transportConfig field is set.
+   */
+  boolean hasTransportConfig();
+  /**
+   * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+   * @return The transportConfig.
+   */
+  io.github.lewin671.remoteagent.core.proto.TransportConfigEvent getTransportConfig();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+   * @return Whether the directSecuritySnapshot field is set.
+   */
+  boolean hasDirectSecuritySnapshot();
+  /**
+   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+   * @return The directSecuritySnapshot.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent getDirectSecuritySnapshot();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+   * @return Whether the directSignalReceived field is set.
+   */
+  boolean hasDirectSignalReceived();
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+   * @return The directSignalReceived.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent getDirectSignalReceived();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+   * @return Whether the directSignalDelivery field is set.
+   */
+  boolean hasDirectSignalDelivery();
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+   * @return The directSignalDelivery.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent getDirectSignalDelivery();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+   * @return Whether the directKeySigned field is set.
+   */
+  boolean hasDirectKeySigned();
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+   * @return The directKeySigned.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent getDirectKeySigned();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+   * @return Whether the directKeyAgreed field is set.
+   */
+  boolean hasDirectKeyAgreed();
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+   * @return The directKeyAgreed.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent getDirectKeyAgreed();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+   * @return Whether the directPcCreated field is set.
+   */
+  boolean hasDirectPcCreated();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+   * @return The directPcCreated.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent getDirectPcCreated();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+   * @return Whether the directPcDescription field is set.
+   */
+  boolean hasDirectPcDescription();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+   * @return The directPcDescription.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent getDirectPcDescription();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+   * @return Whether the directPcRemoteSet field is set.
+   */
+  boolean hasDirectPcRemoteSet();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+   * @return The directPcRemoteSet.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent getDirectPcRemoteSet();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+   * @return Whether the directPcCandidatesAdded field is set.
+   */
+  boolean hasDirectPcCandidatesAdded();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+   * @return The directPcCandidatesAdded.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent getDirectPcCandidatesAdded();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+   * @return Whether the directPcLocalCandidate field is set.
+   */
+  boolean hasDirectPcLocalCandidate();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+   * @return The directPcLocalCandidate.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent getDirectPcLocalCandidate();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+   * @return Whether the directPcState field is set.
+   */
+  boolean hasDirectPcState();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+   * @return The directPcState.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent getDirectPcState();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+   * @return Whether the directPcStunError field is set.
+   */
+  boolean hasDirectPcStunError();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+   * @return The directPcStunError.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent getDirectPcStunError();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+   * @return Whether the directPcClosed field is set.
+   */
+  boolean hasDirectPcClosed();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+   * @return The directPcClosed.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent getDirectPcClosed();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+   * @return Whether the directDcState field is set.
+   */
+  boolean hasDirectDcState();
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+   * @return The directDcState.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent getDirectDcState();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+   * @return Whether the directDcStats field is set.
+   */
+  boolean hasDirectDcStats();
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+   * @return The directDcStats.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent getDirectDcStats();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+   * @return Whether the directRetryNow field is set.
+   */
+  boolean hasDirectRetryNow();
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+   * @return The directRetryNow.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction getDirectRetryNow();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+   * @return Whether the directRefreshDiagnostics field is set.
+   */
+  boolean hasDirectRefreshDiagnostics();
+  /**
+   * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+   * @return The directRefreshDiagnostics.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction getDirectRefreshDiagnostics();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+   * @return Whether the directBulkTransferBegin field is set.
+   */
+  boolean hasDirectBulkTransferBegin();
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+   * @return The directBulkTransferBegin.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent getDirectBulkTransferBegin();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+   * @return Whether the directBulkTransferDone field is set.
+   */
+  boolean hasDirectBulkTransferDone();
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+   * @return The directBulkTransferDone.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent getDirectBulkTransferDone();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+   * @return Whether the terminalStream field is set.
+   */
+  boolean hasTerminalStream();
+  /**
+   * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+   * @return The terminalStream.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent getTerminalStream();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+   * @return Whether the directPreferencesLoaded field is set.
+   */
+  boolean hasDirectPreferencesLoaded();
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+   * @return The directPreferencesLoaded.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent getDirectPreferencesLoaded();
+
+  /**
    * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
    * @return The nowMs.
    */

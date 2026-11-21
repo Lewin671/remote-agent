@@ -1,16 +1,32 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { t } from "../i18n";
 import { Swap, useGrow } from "../motion";
-import { useCoreHost, useDirectError, useMachineSettingsView } from "../core/host";
-import { renderText } from "../core/text";
-import { ConnectionGroupStage, type ConnectionGroupView } from "../gen/remoteagent/core/v1/settings_view_pb";
+import {
+  useCoreHost,
+  useDirectDiagnosticsView,
+  useDirectError,
+  useMachineSettingsView,
+} from "../core/host";
+import { renderText as renderCoreMsg } from "../core/text";
+import {
+  ConnectionGroupStage,
+  DiagCheckMark,
+  type ConnectionGroupView,
+} from "../gen/remoteagent/core/v1/settings_view_pb";
 import { Check, Copy, LoaderCircle } from "../icons";
-import { Banner, Sheet, StateMark, Switch, useRemote } from "../ui";
+import { Banner, Sheet, StateMark, Switch, useRemote, type Mark } from "../ui";
 import type { Remote } from "../remote";
-import { plainDiagView } from "./direct-diag-view";
 import { stageToMark } from "./direct-status";
 
 const TRYING_MS = 10_000;
+
+function checkMarkKind(mark: DiagCheckMark): Mark {
+  switch (mark) {
+    case DiagCheckMark.ONLINE: return "online";
+    case DiagCheckMark.RUN: return "run";
+    default: return "off";
+  }
+}
 
 function GroupRow({ className, enter, children }: { className: string; enter: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -24,7 +40,20 @@ function SubLine({ text, enter }: { text: string; enter: boolean }) {
   return <small ref={ref}><Swap k={text} tier="base">{text}</Swap></small>;
 }
 
-/** Unified Direct Settings Sheet: switch + route status + inline 3-row self-check diagnostics & retry/copy. */
+function DiagCheckItem({ mark, label, detail, status }: { mark: DiagCheckMark; label: string; detail: string; status: string }) {
+  return (
+    <div className="diag-check">
+      <StateMark kind={checkMarkKind(mark)} />
+      <div className="diag-check-b">
+        <b>{label}</b>
+        {detail && <small>{detail}</small>}
+      </div>
+      <span className="diag-check-st">{status}</span>
+    </div>
+  );
+}
+
+/** Unified Direct Settings Sheet: switch + route status + inline Core-driven self-check diagnostics & retry/copy. */
 export function DirectSettingsSheet({
   remote,
   id,
@@ -39,8 +68,8 @@ export function DirectSettingsSheet({
   useRemote(remote);
   const host = useCoreHost(remote);
   const vm = useMachineSettingsView(host, id);
+  const diagVm = useDirectDiagnosticsView(host, id);
   const error = useDirectError(host, id);
-  const [, tick] = useState(0);
   const [turnedOn, setTurnedOn] = useState<number>();
   const [copied, setCopied] = useState<"" | "ok" | "fail">("");
   const [cooldown, setCooldown] = useState(false);
@@ -54,8 +83,8 @@ export function DirectSettingsSheet({
   }, []);
 
   useEffect(() => {
-    remote.refreshDirectStatuses();
-  }, [remote, id]);
+    host.refreshDirectDiagnostics(id);
+  }, [host, id]);
 
   useEffect(() => {
     if (turnedOn === undefined) return;
@@ -64,27 +93,13 @@ export function DirectSettingsSheet({
   }, [turnedOn]);
 
   const cg = passed ?? vm.connection;
-  const engine = remote.direct;
-  const rawStatus = engine.status(id);
-  const data = engine.diagnostics(id);
-  const connectedDirect =
-    rawStatus.state === "connected" && (rawStatus.read === "direct" || rawStatus.file === "direct");
-  const running =
-    rawStatus.state === "connecting" || (data.rounds.length > 0 && data.rounds[0].end === undefined);
-  const diagView = plainDiagView({
-    ...data,
-    now: Date.now(),
-    browser: typeof navigator === "undefined" ? undefined : navigator.userAgent,
-    reason: rawStatus.reason,
-    connectedNow: connectedDirect,
-    trying: running,
-  });
+  const running = diagVm.trying || cg?.stage === ConnectionGroupStage.CONNECTING;
+  const diagTitle = renderCoreMsg(diagVm.titleText);
 
   useEffect(() => {
-    engine.refreshDiagnostics(id);
-    if (prevRunning.current && !running && !diagView.connected) {
+    if (prevRunning.current && !running && !diagVm.connected) {
       setCooldown(true);
-      setLiveMsg(diagView.title);
+      if (diagTitle) setLiveMsg(diagTitle);
       const cd = setTimeout(() => setCooldown(false), 2000);
       prevRunning.current = false;
       return () => clearTimeout(cd);
@@ -92,11 +107,10 @@ export function DirectSettingsSheet({
     prevRunning.current = running;
     if (!running) return;
     const timer = setInterval(() => {
-      engine.refreshDiagnostics(id);
-      tick((n) => n + 1);
+      host.refreshDirectDiagnostics(id);
     }, 1000);
     return () => clearInterval(timer);
-  }, [engine, id, running, diagView.connected, diagView.title]);
+  }, [host, id, running, diagVm.connected, diagTitle]);
 
   useEffect(() => {
     if (!copied) return;
@@ -106,14 +120,16 @@ export function DirectSettingsSheet({
 
   if (!cg) return null;
 
-  const browserUnsupported = rawStatus.state === "unsupported";
+  const browserUnsupported = !diagVm.supported || cg.stage === ConnectionGroupStage.UNSUPPORTED;
+  const rawDetailText = renderCoreMsg(cg.detailText);
+  const on = !browserUnsupported && cg.toggleChecked;
+  const daemonDisabled = cg.stage === ConnectionGroupStage.DISABLED && !on && !!rawDetailText;
   const tryingPending =
     turnedOn !== undefined &&
-    rawStatus.state === "none" &&
-    (!rawStatus.reason || rawStatus.reason === "starting" || rawStatus.reason === "security_pending");
-  const on = !browserUnsupported && cg.toggleChecked;
-  const rawDetailText = renderText(cg.detailText);
-  const daemonDisabled = cg.stage === ConnectionGroupStage.DISABLED && !on && !!rawDetailText;
+    on &&
+    !diagVm.connected &&
+    cg.stage === ConnectionGroupStage.RELAY &&
+    !cg.showDiagnosticsEntry;
   const showStatus =
     browserUnsupported ||
     daemonDisabled ||
@@ -125,15 +141,21 @@ export function DirectSettingsSheet({
     ? t("transport.status_unsupported")
     : tryingPending
       ? t("transport.status_connecting")
-      : renderText(cg.statusText);
+      : renderCoreMsg(cg.statusText);
   const detailText = browserUnsupported
     ? t("transport.detail_relay_only")
     : tryingPending
       ? ""
       : rawDetailText;
-  const metricText = browserUnsupported ? "" : renderText(cg.metricText);
-  const footer = renderText(cg.footerText) || t("transport.footer");
-  const canDiagNow = on && !tryingPending && (cg.showDiagnosticsEntry || (wasDiagRef.current && running && !diagView.connected));
+  const metricText = browserUnsupported ? "" : renderCoreMsg(cg.metricText);
+  const footer = renderCoreMsg(cg.footerText) || t("transport.footer");
+
+  const hasDiagChecks = diagVm.checks.length > 0;
+  const canDiagNow =
+    on &&
+    !tryingPending &&
+    hasDiagChecks &&
+    (cg.showDiagnosticsEntry || (wasDiagRef.current && running && !diagVm.connected));
   if (on && !tryingPending && cg.showDiagnosticsEntry) {
     wasDiagRef.current = true;
   } else if (!running && !cg.showDiagnosticsEntry) {
@@ -147,7 +169,8 @@ export function DirectSettingsSheet({
       setLiveMsg(t("transport.diag_copy_permission"));
       return;
     }
-    navigator.clipboard.writeText(diagView.report).then(
+    const report = diagVm.reportLines.map((line) => renderCoreMsg(line)).filter(Boolean).join("\n");
+    navigator.clipboard.writeText(report).then(
       () => {
         setCopied("ok");
         setLiveMsg(t("transport.row_diag_copied"));
@@ -160,13 +183,14 @@ export function DirectSettingsSheet({
   };
 
   const retryDirect = () => {
-    if (running || cooldown || diagView.connected || diagView.peerOutdated || browserUnsupported) return;
+    if (running || cooldown || diagVm.connected || diagVm.peerOutdated || browserUnsupported || !diagVm.canRetry) return;
     setLiveMsg(t("transport.diag_retrying"));
-    if (!engine.retryNow(id)) {
-      setCooldown(true);
-      setTimeout(() => setCooldown(false), 2000);
-    }
-    tick((n) => n + 1);
+    void host.retryDirectNow(id).then((started) => {
+      if (!started) {
+        setCooldown(true);
+        setTimeout(() => setCooldown(false), 2000);
+      }
+    });
   };
 
   return (
@@ -202,22 +226,21 @@ export function DirectSettingsSheet({
         <>
           <div className="fl">{t("transport.diag_section_auto")}</div>
           <div className="diag-checks">
-            {diagView.checks.map((c, i) => (
-              <div key={i} className="diag-check">
-                <StateMark kind={c.mark} />
-                <div className="diag-check-b">
-                  <b>{c.label}</b>
-                  {c.detail && <small>{c.detail}</small>}
-                </div>
-                <span className="diag-check-st">{c.status}</span>
-              </div>
+            {diagVm.checks.map((c, i) => (
+              <DiagCheckItem
+                key={i}
+                mark={c.mark}
+                label={renderCoreMsg(c.labelText)}
+                detail={renderCoreMsg(c.detailText)}
+                status={renderCoreMsg(c.statusText)}
+              />
             ))}
           </div>
           <div className="diag-actions">
             <button
               type="button"
               className="diag-retry"
-              disabled={running || cooldown || diagView.connected || diagView.peerOutdated || browserUnsupported}
+              disabled={running || cooldown || diagVm.connected || diagVm.peerOutdated || browserUnsupported || !diagVm.canRetry}
               onClick={retryDirect}
             >
               {running && <LoaderCircle />}

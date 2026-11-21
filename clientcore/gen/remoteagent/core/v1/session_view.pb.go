@@ -659,6 +659,7 @@ type SessionHeaderView struct {
 	Capabilities          *SessionCapabilitiesView
 	MissingText           *Text
 	ComputerReachability  ComputerReachability
+	DirectChip            *SessionDirectChipView
 }
 
 func (m *SessionHeaderView) GetFound() bool {
@@ -985,6 +986,12 @@ func (m *SessionHeaderView) GetComputerReachability() ComputerReachability {
 	}
 	return 0
 }
+func (m *SessionHeaderView) GetDirectChip() *SessionDirectChipView {
+	if m != nil {
+		return m.DirectChip
+	}
+	return nil
+}
 
 func (m *SessionHeaderView) Size() int { return len(m.AppendMarshal(nil)) }
 
@@ -1078,6 +1085,98 @@ func (m *SessionHeaderView) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendMessage(b, 53, m.MissingText)
 	}
 	b = litewire.AppendInt32(b, 54, int32(m.ComputerReachability))
+	if m.DirectChip != nil {
+		b = litewire.AppendMessage(b, 55, m.DirectChip)
+	}
+	return b
+}
+
+type SessionDirectChipView struct {
+	Visible      bool
+	Active       bool
+	ReadDirect   bool
+	FileDirect   bool
+	LabelText    *Text
+	PopoverTitle *Text
+	PopoverBody  *Text
+	PopoverFoot  *Text
+}
+
+func (m *SessionDirectChipView) GetVisible() bool {
+	if m != nil {
+		return m.Visible
+	}
+	return false
+}
+func (m *SessionDirectChipView) GetActive() bool {
+	if m != nil {
+		return m.Active
+	}
+	return false
+}
+func (m *SessionDirectChipView) GetReadDirect() bool {
+	if m != nil {
+		return m.ReadDirect
+	}
+	return false
+}
+func (m *SessionDirectChipView) GetFileDirect() bool {
+	if m != nil {
+		return m.FileDirect
+	}
+	return false
+}
+func (m *SessionDirectChipView) GetLabelText() *Text {
+	if m != nil {
+		return m.LabelText
+	}
+	return nil
+}
+func (m *SessionDirectChipView) GetPopoverTitle() *Text {
+	if m != nil {
+		return m.PopoverTitle
+	}
+	return nil
+}
+func (m *SessionDirectChipView) GetPopoverBody() *Text {
+	if m != nil {
+		return m.PopoverBody
+	}
+	return nil
+}
+func (m *SessionDirectChipView) GetPopoverFoot() *Text {
+	if m != nil {
+		return m.PopoverFoot
+	}
+	return nil
+}
+
+func (m *SessionDirectChipView) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SessionDirectChipView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionDirectChipView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.Visible)
+	b = litewire.AppendBool(b, 2, m.Active)
+	b = litewire.AppendBool(b, 3, m.ReadDirect)
+	b = litewire.AppendBool(b, 4, m.FileDirect)
+	if m.LabelText != nil {
+		b = litewire.AppendMessage(b, 5, m.LabelText)
+	}
+	if m.PopoverTitle != nil {
+		b = litewire.AppendMessage(b, 6, m.PopoverTitle)
+	}
+	if m.PopoverBody != nil {
+		b = litewire.AppendMessage(b, 7, m.PopoverBody)
+	}
+	if m.PopoverFoot != nil {
+		b = litewire.AppendMessage(b, 8, m.PopoverFoot)
+	}
 	return b
 }
 

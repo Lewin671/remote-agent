@@ -499,4 +499,15 @@ public interface SessionHeaderViewOrBuilder extends
    * @return The computerReachability.
    */
   io.github.lewin671.remoteagent.core.proto.ComputerReachability getComputerReachability();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+   * @return Whether the directChip field is set.
+   */
+  boolean hasDirectChip();
+  /**
+   * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+   * @return The directChip.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionDirectChipView getDirectChip();
 }

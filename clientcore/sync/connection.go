@@ -4,6 +4,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
 func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleAction) {
@@ -68,6 +69,11 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		if len(e.buffers) > 0 {
 			e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP, "", HistorySweepIntervalMs)
 		}
+		if e.transportConfigured {
+			c := e.ensureTransportCoord()
+			e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, true))
+			e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
+		}
 		e.beginConnect(ctx)
 		ctx.Dirty.MarkAll()
 
@@ -98,11 +104,19 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		clear(e.sessionByIDFailed)
 		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
+		if e.transportConfigured {
+			c := e.ensureTransportCoord()
+			e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
+			e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, false))
+		}
 		ctx.Dirty.MarkAll()
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND:
 		wasForeground := e.foreground
 		e.foreground = true
+		if e.transportConfigured {
+			e.emitCoordEffects(ctx, e.ensureTransportCoord().SetLifecycle(e.nowMs, true))
+		}
 		e.updateLivePollers(ctx)
 		if !wasForeground && e.everReady && !e.removed && e.running && e.w.World.Connection != lists.ConnConnected {
 			e.startDisplayGrace(ctx)
@@ -133,6 +147,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		e.clearColdStartGrace(ctx)
 		if len(e.directReady) > 0 {
 			clear(e.directReady)
+		}
+		if e.transportConfigured {
+			e.emitCoordEffects(ctx, e.ensureTransportCoord().SetLifecycle(e.nowMs, false))
 		}
 		e.updateLivePollers(ctx)
 		ctx.Dirty.MarkAll()
@@ -221,9 +238,18 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 			e.startDisplayGrace(ctx)
 		}
 		e.clearColdStartGrace(ctx)
+		if e.transportConfigured {
+			c := e.ensureTransportCoord()
+			e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
+			e.emitCoordEffects(ctx, c.SetNetworkChanged(e.nowMs))
+		}
 		e.updateLivePollers(ctx)
 		ctx.Dirty.MarkAll()
 		return
+	}
+
+	if e.transportConfigured && (sigChanged || !prevAvail) {
+		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetNetworkChanged(e.nowMs))
 	}
 
 	if e.w.World.Connection == lists.ConnNoNetwork {
@@ -254,8 +280,8 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 	if !e.running || e.removed || !e.networkAvailable || e.connecting || e.w.LivePushConnected || e.isTimerActive(corev1.TimerKind_TIMER_KIND_RECONNECT, "") {
 		return
 	}
-	wait := e.recovery.Delay(e.monoMs)
-	if wait > 0 || !e.recovery.Take(e.monoMs) {
+	wait := e.recovery.DelayMs(e.monoMs, &e.budget)
+	if wait > 0 || !e.recovery.Take(e.monoMs, &e.budget) {
 		if wait <= 0 {
 			wait = 1
 		}
@@ -377,7 +403,8 @@ func (e *Engine) handleStreamReady(ctx *StepContext, ev *corev1.StreamReadyEvent
 	e.everReady = true
 	e.wantedConn = false
 	e.recovery.Ready()
-	e.liveness = NewLegLiveness(e.monoMs)
+	l := linkcore.NewLiveness(e.monoMs)
+	e.liveness = &l
 	e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "", LivenessTickMs)
 
 	e.serverAhead = ev.ServerTimeMs > 0 && e.nowMs > 0 && (e.nowMs-ev.ServerTimeMs > MaxClockSkewMs)
@@ -401,6 +428,9 @@ func (e *Engine) handleStreamReady(ctx *StepContext, ev *corev1.StreamReadyEvent
 			e.startLoadEvents(ctx, sid)
 		}
 	}
+	if e.transportConfigured {
+		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetMainLeg(e.nowMs, true))
+	}
 	ctx.Dirty.MarkAll()
 }
 
@@ -421,6 +451,9 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 	e.liveness = nil
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_STREAM_OPEN, "")
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "")
+	if e.transportConfigured {
+		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetMainLeg(e.nowMs, false))
+	}
 
 	if policyViolation {
 		e.forceLogin = true

@@ -6608,6 +6608,20 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.detail_relay_only" -> {
             resources.getString(R.string.transport_detail_relay_only)
         }
+        "transport.diag_at" -> {
+            val seconds = message.args.getValue("seconds") as String
+            val state = message.args.getValue("state") as String
+            resources.getString(R.string.transport_diag_at, seconds, state)
+        }
+        "transport.diag_cand" -> {
+            val count = message.args.getValue("count") as Int
+            val kind = message.args.getValue("kind") as String
+            val scope = message.args.getValue("scope") as String
+            resources.getString(R.string.transport_diag_cand, count, kind, scope)
+        }
+        "transport.diag_channel" -> {
+            resources.getString(R.string.transport_diag_channel)
+        }
         "transport.diag_check_path" -> {
             resources.getString(R.string.transport_diag_check_path)
         }
@@ -6626,6 +6640,13 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.diag_copy_permission" -> {
             resources.getString(R.string.transport_diag_copy_permission)
         }
+        "transport.diag_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_count, count)
+        }
+        "transport.diag_dtls" -> {
+            resources.getString(R.string.transport_diag_dtls)
+        }
         "transport.diag_explain_generic" -> {
             resources.getString(R.string.transport_diag_explain_generic)
         }
@@ -6640,6 +6661,67 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         }
         "transport.diag_explain_probe_blocked" -> {
             resources.getString(R.string.transport_diag_explain_probe_blocked)
+        }
+        "transport.diag_family_unknown" -> {
+            resources.getString(R.string.transport_diag_family_unknown)
+        }
+        "transport.diag_g_checks" -> {
+            resources.getString(R.string.transport_diag_g_checks)
+        }
+        "transport.diag_g_local" -> {
+            resources.getString(R.string.transport_diag_g_local)
+        }
+        "transport.diag_g_peer" -> {
+            resources.getString(R.string.transport_diag_g_peer)
+        }
+        "transport.diag_g_result" -> {
+            resources.getString(R.string.transport_diag_g_result)
+        }
+        "transport.diag_gather" -> {
+            resources.getString(R.string.transport_diag_gather)
+        }
+        "transport.diag_hidden" -> {
+            resources.getString(R.string.transport_diag_hidden)
+        }
+        "transport.diag_ice" -> {
+            resources.getString(R.string.transport_diag_ice)
+        }
+        "transport.diag_ipv4" -> {
+            resources.getString(R.string.transport_diag_ipv4)
+        }
+        "transport.diag_ipv6" -> {
+            resources.getString(R.string.transport_diag_ipv6)
+        }
+        "transport.diag_no_attempt" -> {
+            resources.getString(R.string.transport_diag_no_attempt)
+        }
+        "transport.diag_none" -> {
+            resources.getString(R.string.transport_diag_none)
+        }
+        "transport.diag_not_sampled" -> {
+            resources.getString(R.string.transport_diag_not_sampled)
+        }
+        "transport.diag_pair" -> {
+            val local = message.args.getValue("local") as String
+            val remote = message.args.getValue("remote") as String
+            resources.getString(R.string.transport_diag_pair, local, remote)
+        }
+        "transport.diag_pair_failed" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_pair_failed, count)
+        }
+        "transport.diag_pair_ok" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_pair_ok, count)
+        }
+        "transport.diag_pair_traffic" -> {
+            val got = message.args.getValue("got") as Int
+            val sent = message.args.getValue("sent") as Int
+            resources.getString(R.string.transport_diag_pair_traffic, got, sent)
+        }
+        "transport.diag_pair_wait" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_pair_wait, count)
         }
         "transport.diag_path_failed" -> {
             resources.getString(R.string.transport_diag_path_failed)
@@ -6659,12 +6741,96 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.diag_privacy_footer" -> {
             resources.getString(R.string.transport_diag_privacy_footer)
         }
+        "transport.diag_range_cgnat" -> {
+            resources.getString(R.string.transport_diag_range_cgnat)
+        }
+        "transport.diag_range_global" -> {
+            resources.getString(R.string.transport_diag_range_global)
+        }
+        "transport.diag_range_link_local" -> {
+            resources.getString(R.string.transport_diag_range_link_local)
+        }
+        "transport.diag_range_loopback" -> {
+            resources.getString(R.string.transport_diag_range_loopback)
+        }
+        "transport.diag_range_other" -> {
+            resources.getString(R.string.transport_diag_range_other)
+        }
+        "transport.diag_range_private" -> {
+            resources.getString(R.string.transport_diag_range_private)
+        }
+        "transport.diag_range_public" -> {
+            resources.getString(R.string.transport_diag_range_public)
+        }
+        "transport.diag_range_ula" -> {
+            resources.getString(R.string.transport_diag_range_ula)
+        }
+        "transport.diag_rej_browser" -> {
+            resources.getString(R.string.transport_diag_rej_browser)
+        }
+        "transport.diag_rej_candidates" -> {
+            resources.getString(R.string.transport_diag_rej_candidates)
+        }
+        "transport.diag_rej_confirm" -> {
+            resources.getString(R.string.transport_diag_rej_confirm)
+        }
+        "transport.diag_rej_end" -> {
+            resources.getString(R.string.transport_diag_rej_end)
+        }
+        "transport.diag_rej_sdp" -> {
+            resources.getString(R.string.transport_diag_rej_sdp)
+        }
+        "transport.diag_rej_signal" -> {
+            resources.getString(R.string.transport_diag_rej_signal)
+        }
+        "transport.diag_rej_value" -> {
+            val count = message.args.getValue("count") as Int
+            val kind = message.args.getValue("kind") as String
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.transport_diag_rej_value, count, kind, reason)
+        }
+        "transport.diag_rejected" -> {
+            resources.getString(R.string.transport_diag_rejected)
+        }
+        "transport.diag_report_browser" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.transport_diag_report_browser, value)
+        }
+        "transport.diag_report_round" -> {
+            val age = message.args.getValue("age") as String
+            val n = message.args.getValue("n") as Int
+            resources.getString(R.string.transport_diag_report_round, age, n)
+        }
         "transport.diag_report_title" -> {
             resources.getString(R.string.transport_diag_report_title)
         }
         "transport.diag_report_verdict" -> {
             val verdict = message.args.getValue("verdict") as String
             resources.getString(R.string.transport_diag_report_verdict, verdict)
+        }
+        "transport.diag_result_cancelled" -> {
+            resources.getString(R.string.transport_diag_result_cancelled)
+        }
+        "transport.diag_result_lost" -> {
+            resources.getString(R.string.transport_diag_result_lost)
+        }
+        "transport.diag_result_no_response" -> {
+            resources.getString(R.string.transport_diag_result_no_response)
+        }
+        "transport.diag_result_ok" -> {
+            resources.getString(R.string.transport_diag_result_ok)
+        }
+        "transport.diag_result_refused" -> {
+            resources.getString(R.string.transport_diag_result_refused)
+        }
+        "transport.diag_result_retired" -> {
+            resources.getString(R.string.transport_diag_result_retired)
+        }
+        "transport.diag_result_timeout" -> {
+            resources.getString(R.string.transport_diag_result_timeout)
+        }
+        "transport.diag_result_trying" -> {
+            resources.getString(R.string.transport_diag_result_trying)
         }
         "transport.diag_retry_auto_desc" -> {
             resources.getString(R.string.transport_diag_retry_auto_desc)
@@ -6675,8 +6841,73 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.diag_retrying" -> {
             resources.getString(R.string.transport_diag_retrying)
         }
+        "transport.diag_round" -> {
+            val result = message.args.getValue("result") as String
+            val seconds = message.args.getValue("seconds") as String
+            resources.getString(R.string.transport_diag_round, result, seconds)
+        }
+        "transport.diag_rtt" -> {
+            val ms = message.args.getValue("ms") as Int
+            resources.getString(R.string.transport_diag_rtt, ms)
+        }
         "transport.diag_section_auto" -> {
             resources.getString(R.string.transport_diag_section_auto)
+        }
+        "transport.diag_sig_limited" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_sig_limited, count)
+        }
+        "transport.diag_sig_offline" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getString(R.string.transport_diag_sig_offline, count)
+        }
+        "transport.diag_sig_refused" -> {
+            resources.getString(R.string.transport_diag_sig_refused)
+        }
+        "transport.diag_signal" -> {
+            resources.getString(R.string.transport_diag_signal)
+        }
+        "transport.diag_stage" -> {
+            resources.getString(R.string.transport_diag_stage)
+        }
+        "transport.diag_stage_channel" -> {
+            resources.getString(R.string.transport_diag_stage_channel)
+        }
+        "transport.diag_stage_confirm" -> {
+            resources.getString(R.string.transport_diag_stage_confirm)
+        }
+        "transport.diag_stage_dtls" -> {
+            resources.getString(R.string.transport_diag_stage_dtls)
+        }
+        "transport.diag_stage_handshake" -> {
+            resources.getString(R.string.transport_diag_stage_handshake)
+        }
+        "transport.diag_stage_ice" -> {
+            resources.getString(R.string.transport_diag_stage_ice)
+        }
+        "transport.diag_stage_ready" -> {
+            resources.getString(R.string.transport_diag_stage_ready)
+        }
+        "transport.diag_stage_sdp" -> {
+            resources.getString(R.string.transport_diag_stage_sdp)
+        }
+        "transport.diag_state_closed" -> {
+            resources.getString(R.string.transport_diag_state_closed)
+        }
+        "transport.diag_state_doing" -> {
+            resources.getString(R.string.transport_diag_state_doing)
+        }
+        "transport.diag_state_dropped" -> {
+            resources.getString(R.string.transport_diag_state_dropped)
+        }
+        "transport.diag_state_failed" -> {
+            resources.getString(R.string.transport_diag_state_failed)
+        }
+        "transport.diag_state_none" -> {
+            resources.getString(R.string.transport_diag_state_none)
+        }
+        "transport.diag_state_ok" -> {
+            resources.getString(R.string.transport_diag_state_ok)
         }
         "transport.diag_status_blocked" -> {
             resources.getString(R.string.transport_diag_status_blocked)
@@ -6705,6 +6936,15 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.diag_status_wait_update" -> {
             resources.getString(R.string.transport_diag_status_wait_update)
         }
+        "transport.diag_stun_error" -> {
+            val code = message.args.getValue("code") as Int
+            val count = message.args.getValue("count") as Int
+            val family = message.args.getValue("family") as String
+            resources.getString(R.string.transport_diag_stun_error, code, count, family)
+        }
+        "transport.diag_stun_errors" -> {
+            resources.getString(R.string.transport_diag_stun_errors)
+        }
         "transport.diag_title_generic" -> {
             resources.getString(R.string.transport_diag_title_generic)
         }
@@ -6714,8 +6954,92 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.diag_title_probe_blocked" -> {
             resources.getString(R.string.transport_diag_title_probe_blocked)
         }
+        "transport.diag_type_host" -> {
+            resources.getString(R.string.transport_diag_type_host)
+        }
+        "transport.diag_type_other" -> {
+            resources.getString(R.string.transport_diag_type_other)
+        }
+        "transport.diag_type_prflx" -> {
+            resources.getString(R.string.transport_diag_type_prflx)
+        }
+        "transport.diag_type_relay" -> {
+            resources.getString(R.string.transport_diag_type_relay)
+        }
+        "transport.diag_type_srflx" -> {
+            resources.getString(R.string.transport_diag_type_srflx)
+        }
+        "transport.diag_use_file" -> {
+            resources.getString(R.string.transport_diag_use_file)
+        }
+        "transport.diag_use_read" -> {
+            resources.getString(R.string.transport_diag_use_read)
+        }
+        "transport.diag_verdict_all_failed" -> {
+            resources.getString(R.string.transport_diag_verdict_all_failed)
+        }
+        "transport.diag_verdict_budget" -> {
+            resources.getString(R.string.transport_diag_verdict_budget)
+        }
+        "transport.diag_verdict_cancelled" -> {
+            resources.getString(R.string.transport_diag_verdict_cancelled)
+        }
+        "transport.diag_verdict_channel" -> {
+            resources.getString(R.string.transport_diag_verdict_channel)
+        }
+        "transport.diag_verdict_confirm" -> {
+            resources.getString(R.string.transport_diag_verdict_confirm)
+        }
+        "transport.diag_verdict_connected" -> {
+            resources.getString(R.string.transport_diag_verdict_connected)
+        }
+        "transport.diag_verdict_create_failed" -> {
+            resources.getString(R.string.transport_diag_verdict_create_failed)
+        }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage14(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
+        "transport.diag_verdict_dtls" -> {
+            resources.getString(R.string.transport_diag_verdict_dtls)
+        }
+        "transport.diag_verdict_ipv6_silent" -> {
+            resources.getString(R.string.transport_diag_verdict_ipv6_silent)
+        }
+        "transport.diag_verdict_lost" -> {
+            resources.getString(R.string.transport_diag_verdict_lost)
+        }
+        "transport.diag_verdict_no_local" -> {
+            resources.getString(R.string.transport_diag_verdict_no_local)
+        }
+        "transport.diag_verdict_no_remote" -> {
+            resources.getString(R.string.transport_diag_verdict_no_remote)
+        }
+        "transport.diag_verdict_no_reply" -> {
+            resources.getString(R.string.transport_diag_verdict_no_reply)
+        }
+        "transport.diag_verdict_no_sdp" -> {
+            resources.getString(R.string.transport_diag_verdict_no_sdp)
+        }
+        "transport.diag_verdict_no_stun" -> {
+            resources.getString(R.string.transport_diag_verdict_no_stun)
+        }
         "transport.diag_verdict_none" -> {
             resources.getString(R.string.transport_diag_verdict_none)
+        }
+        "transport.diag_verdict_peer_refused" -> {
+            resources.getString(R.string.transport_diag_verdict_peer_refused)
+        }
+        "transport.diag_verdict_signal_limited" -> {
+            resources.getString(R.string.transport_diag_verdict_signal_limited)
+        }
+        "transport.diag_verdict_signal_offline" -> {
+            resources.getString(R.string.transport_diag_verdict_signal_offline)
+        }
+        "transport.diag_verdict_unknown" -> {
+            resources.getString(R.string.transport_diag_verdict_unknown)
         }
         "transport.direct" -> {
             resources.getString(R.string.transport_direct)
@@ -7013,12 +7337,6 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "usage.kpi_unit_toks" -> {
             resources.getString(R.string.usage_kpi_unit_toks)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage14(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "usage.load_error_title" -> {
             resources.getString(R.string.usage_load_error_title)
         }

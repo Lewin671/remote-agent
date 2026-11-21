@@ -20,18 +20,20 @@ const (
 )
 
 type settingsDirtyFlags struct {
-	Settings        bool
-	MachineStatus   bool
-	MachineSettings bool
-	Quota           bool
-	Devices         bool
-	ClientDetail    bool
+	Settings          bool
+	MachineStatus     bool
+	MachineSettings   bool
+	DirectDiagnostics bool
+	Quota             bool
+	Devices           bool
+	ClientDetail      bool
 }
 
 func (d *settingsDirtyFlags) markAll() {
 	d.Settings = true
 	d.MachineStatus = true
 	d.MachineSettings = true
+	d.DirectDiagnostics = true
 	d.Quota = true
 	d.Devices = true
 	d.ClientDetail = true
@@ -121,6 +123,28 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 			},
 		}, true, nil
 
+	case *corev1.Screen_DirectDiagnostics:
+		var id string
+		if s.DirectDiagnostics != nil {
+			id = s.DirectDiagnostics.MachineId
+		}
+		prefEnabled, daemonDisabled, status, rounds, blockedAt, blocked := c.m.sync.DirectMachineReport(id)
+		return &corev1.ViewModel{
+			View: &corev1.ViewModel_DirectDiagnostics{
+				DirectDiagnostics: screens.BuildDirectDiagnosticsView(
+					id,
+					status,
+					prefEnabled,
+					daemonDisabled,
+					rounds,
+					blockedAt,
+					blocked,
+					c.m.state.Cal.NowMs,
+					c.m.sync.PlatformAgent(),
+				),
+			},
+		}, true, nil
+
 	default:
 		return nil, false, nil
 	}
@@ -132,6 +156,11 @@ func (c *Core) appendSettingsRender(effects []*corev1.Effect, syncDirty sync.Dir
 	if (syncDirty.SyncState || syncDirty.Home) && c.m.settings != nil && c.m.settings.Active {
 		sd.markAll()
 	}
+	if syncDirty.Direct {
+		sd.Settings = true
+		sd.MachineSettings = true
+		sd.DirectDiagnostics = true
+	}
 
 	var targets []corev1.ScreenTarget
 	if sd.Settings {
@@ -142,6 +171,9 @@ func (c *Core) appendSettingsRender(effects []*corev1.Effect, syncDirty sync.Dir
 	}
 	if sd.MachineSettings {
 		targets = append(targets, corev1.ScreenTarget_SCREEN_TARGET_MACHINE_SETTINGS)
+	}
+	if sd.DirectDiagnostics && c.m.sync.TransportConfigured() {
+		targets = append(targets, corev1.ScreenTarget_SCREEN_TARGET_DIRECT_DIAGNOSTICS)
 	}
 	if sd.Quota {
 		targets = append(targets, corev1.ScreenTarget_SCREEN_TARGET_QUOTA)
@@ -160,7 +192,18 @@ func (c *Core) appendSettingsRender(effects []*corev1.Effect, syncDirty sync.Dir
 			continue
 		}
 		if r, ok := eff.Effect.(*corev1.Effect_Render); ok && r.Render != nil {
-			r.Render.Screens = append(r.Render.Screens, targets...)
+			for _, t := range targets {
+				found := false
+				for _, existing := range r.Render.Screens {
+					if existing == t {
+						found = true
+						break
+					}
+				}
+				if !found {
+					r.Render.Screens = append(r.Render.Screens, t)
+				}
+			}
 			return effects
 		}
 	}
@@ -778,6 +821,13 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 			return nil
 		}
 		u := a.UpdateDirectPreference
+		if c.m.sync.TransportConfigured() {
+			c.m.sync.SetDirectEnabled(ctx, u.MachineId, u.Enabled)
+			c.m.settingsDirty.MachineSettings = true
+			c.m.settingsDirty.Settings = true
+			c.m.settingsDirty.DirectDiagnostics = true
+			return effects
+		}
 		me := extra.EnsureMachine(u.MachineId)
 		me.DirectEnabled = u.Enabled
 		me.DirectHasPref = true

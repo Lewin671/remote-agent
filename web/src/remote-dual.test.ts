@@ -1,250 +1,225 @@
-// @vitest-environment happy-dom
+import { describe, expect, it, vi } from "vitest";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { expect, test, vi } from "vitest";
+import { SyntheticRemote } from "./test/remote-fixture";
+import { CommandError, newSlot } from "./remote";
+import { getCoreHost } from "./core/host";
 import { parseHeader, requestIdentity } from "./device-security";
-import { unpackSecurity } from "./device-security-client";
-import { EnvelopeSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
-import { DispatchCommandEffectSchema, OutcomeSource } from "./gen/remoteagent/core/v1/app_pb";
+import { EnvelopeSchema, PayloadKind, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { NotForwardedSchema } from "./gen/remoteagent/v1/relay_pb";
 import { CommandResultSchema, CommandSchema } from "./gen/remoteagent/v1/remote_pb";
-import { SyntheticRemote } from "./test/remote-fixture";
+import { DispatchCommandEffectSchema, OutcomeSource } from "./gen/remoteagent/core/v1/app_pb";
+import { CommandRouteLeg } from "./gen/remoteagent/core/v1/transport_pb";
 
-function sendAttemptEffect(machineId: string, requestId: string, text: string) {
-  return create(DispatchCommandEffectSchema, {
-    requestId,
-    attemptId: "att-" + requestId,
-    machineId,
-    sessionId: "s",
-    deadlineMs: BigInt(Date.now() + 60_000),
-    commandBytes: toBinary(
-      CommandSchema,
-      create(CommandSchema, { kind: { case: "send", value: { sessionId: "s", text, requestId } } }),
-    ),
-  });
-}
-
-function installDirectReadPath(
-  r: SyntheticRemote,
-  writeImpl: (raw: Uint8Array, handoff: () => void, signal?: AbortSignal) => Promise<void>,
-) {
-  const pathCtrl = new AbortController();
-  const peer = {
-    id: r.machine,
-    head: "synthetic-head",
-    live: true,
-    session: { active: true, close: vi.fn() },
-    paths: new Map([
-      [
-        1,
-        {
-          ready: true,
-          signal: pathCtrl.signal,
-          write: writeImpl,
-        },
-      ],
-    ]),
-    snapshotUntil: Date.now() + 60_000,
-    downloadUntil: Date.now() + 60_000,
-  };
-  const direct = (r as unknown as {
-    direct: {
-      self: unknown;
-      codec: unknown;
-      head: string;
-      freshUntil: number;
-      record: unknown;
-      peers: Map<string, unknown>;
-      pending: Map<string, { resolve: (env: Envelope) => void }>;
-      setEnabled: (id: string, enabled: boolean) => void;
-    };
-  }).direct;
-  direct.setEnabled(r.machine, true);
-  direct.self = {};
-  direct.codec = {};
-  direct.head = "synthetic-head";
-  direct.freshUntil = Date.now() + 60_000;
-  direct.record = { member: true };
-  direct.peers.set(r.machine, peer);
-  return {
-    abortPath: () => pathCtrl.abort(),
-    deliverDirectResult: (requestId: string, env: Envelope) => {
-      direct.pending.get(requestId)?.resolve(env);
-    },
-  };
-}
-
-async function sealExecutedDirectReply(r: SyntheticRemote, rawReq: Uint8Array, sessionId: string) {
-  const env = fromBinary(EnvelopeSchema, rawReq);
-  const h = parseHeader(new Uint8Array(env.securityHeader));
-  const original = await r.world.fixture.open(r.machine, env);
-  const binding = await requestIdentity(h, unpackSecurity(h, original.plaintext));
-  const reply = await r.seal(
-    { kind: 6, sessionId, requestId: h.request },
-    CommandResultSchema,
-    create(CommandResultSchema, {
-      outcome: "executed",
-      reason: "completed",
-      resultAvailable: true,
-      requestKeyHash: binding.key,
-      payloadHash: binding.payload,
+function makeCmdBytes(): Uint8Array<ArrayBuffer> {
+  return toBinary(
+    CommandSchema,
+    create(CommandSchema, {
+      kind: { case: "createSession", value: { cwd: "/work/example" } },
     }),
-  );
-  return { requestId: h.request, reply };
+  ) as Uint8Array<ArrayBuffer>;
 }
 
-test("Remote dual-sends interactive command with single seal, identical bytes, and fast direct win", async () => {
-  const r = await SyntheticRemote.create();
-  const sealSpy = vi.spyOn(r as unknown as { sealSecureMessage: (...args: unknown[]) => Promise<unknown> }, "sealSecureMessage");
-  let directBytes: Uint8Array | undefined;
-  let relayBytes: Uint8Array | undefined;
-  let relayAborted = false;
-
-  const directHandle = installDirectReadPath(r, async (raw, handoff) => {
-    directBytes = new Uint8Array(raw);
-    handoff();
-    const { requestId, reply } = await sealExecutedDirectReply(r, raw, "s");
-    queueMicrotask(() => directHandle.deliverDirectResult(requestId, reply));
-  });
-
-  Object.defineProperty(r, "api", {
-    configurable: true,
-    get: () => ({
-      forward: (req: { command: Envelope }, opts?: { signal?: AbortSignal }) =>
-        new Promise((_, reject) => {
-          relayBytes = new Uint8Array(toBinary(EnvelopeSchema, req.command));
-          opts?.signal?.addEventListener("abort", () => {
-            relayAborted = true;
-            reject(new DOMException("Aborted", "AbortError"));
-          });
-        }),
-    }),
-  });
-
-  try {
-    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000001", "dual-direct-wins"));
-    expect(out.source).toBe(OutcomeSource.DAEMON);
-    expect(out.outerOutcome).toBe("executed");
-    expect(sealSpy).toHaveBeenCalledTimes(1);
-    expect(directBytes).toBeDefined();
-    expect(relayBytes).toBeDefined();
-    expect(directBytes).toEqual(relayBytes);
-    await vi.waitFor(() => expect(relayAborted).toBe(true));
-  } finally {
-    sealSpy.mockRestore();
-    await r.dispose();
-  }
-});
-
-test("Remote dual-send falls back to Relay EXECUTED cleanly when Direct drops post-handoff", async () => {
-  const r = await SyntheticRemote.create();
-  installDirectReadPath(r, async (_raw, handoff) => {
-    handoff();
-    throw new Error("dc1 closed mid-flight");
-  });
-
-  let relayCalls = 0;
-  (r as unknown as { api: unknown }).api = {
-    forward: async (q: { command: Envelope }) => {
-      relayCalls++;
-      const h = parseHeader(new Uint8Array(q.command.securityHeader));
-      return {
-        result: await r.seal({ kind: 6, sessionId: "s", requestId: h.request }, CommandResultSchema, create(CommandResultSchema)),
+describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
+  it("routes CommandRouteLeg.DIRECT through DirectExecutor.sendRpc and validates sealed result hashes", async () => {
+    const r = await SyntheticRemote.create();
+    const holder = r as unknown as {
+      directExec: {
+        sendRpc: (
+          pcId: bigint,
+          requestId: string,
+          reqEnvBytes: Uint8Array<ArrayBuffer>,
+          timeoutMs: bigint,
+          handoff: () => void,
+          signal?: AbortSignal,
+        ) => Promise<Envelope>;
       };
-    },
-  };
-
-  try {
-    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000002", "relay-fallback-after-drop"));
-    expect(out.source).toBe(OutcomeSource.DAEMON);
-    expect(out.outerOutcome).toBe("executed");
-    expect(relayCalls).toBe(1);
-  } finally {
-    await r.dispose();
-  }
-});
-
-test("Remote dual-send never marks not_sent when Direct handed off and Relay returns NotForwarded", async () => {
-  const r = await SyntheticRemote.create();
-  installDirectReadPath(r, async (_raw, handoff) => {
-    handoff();
-    throw new Error("dc1 dropped after handoff");
-  });
-
-  (r as unknown as { api: unknown }).api = {
-    forward: async (q: { attemptId: string }) => {
-      throw new ConnectError("refused", Code.Unavailable, undefined, [
-        { desc: NotForwardedSchema, value: { attemptId: q.attemptId, relayEpoch: "fixture-epoch", reason: "machine_offline" } },
-      ]);
-    },
-  };
-
-  try {
-    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000003", "handoff-then-not-forwarded"));
-    expect(out.notForwarded).toBe(false);
-    expect(out.source).toBe(OutcomeSource.TRANSPORT);
-  } finally {
-    await r.dispose();
-  }
-});
-
-test("Remote dual-send ignores late Relay settlement after Direct already won", async () => {
-  const r = await SyntheticRemote.create();
-  let resolveLateRelay!: (v: unknown) => void;
-  let capturedReqId = "";
-
-  const directHandle = installDirectReadPath(r, async (raw, handoff) => {
-    handoff();
-    const { requestId, reply } = await sealExecutedDirectReply(r, raw, "s");
-    capturedReqId = requestId;
-    queueMicrotask(() => directHandle.deliverDirectResult(requestId, reply));
-  });
-
-  (r as unknown as { api: unknown }).api = {
-    forward: () =>
-      new Promise(resolve => {
-        resolveLateRelay = resolve;
-      }),
-  };
-
-  try {
-    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000004", "ignore-late-relay"));
-    expect(out.source).toBe(OutcomeSource.DAEMON);
-    expect(out.outerOutcome).toBe("executed");
-    resolveLateRelay({
-      result: await r.seal(
-        { kind: 6, sessionId: "s", requestId: capturedReqId },
+    };
+    const sendRpcSpy = vi.spyOn(holder.directExec, "sendRpc").mockImplementation(async (_pcId, _reqId, reqEnvBytes, _timeoutMs, handoff) => {
+      handoff();
+      const env = fromBinary(EnvelopeSchema, reqEnvBytes);
+      const h = parseHeader(new Uint8Array(env.securityHeader));
+      const binding = await requestIdentity(h, makeCmdBytes());
+      return await r.seal(
+        { kind: PayloadKind.COMMAND_RESULT, requestId: h.request },
         CommandResultSchema,
-        create(CommandResultSchema),
-      ),
+        create(CommandResultSchema, {
+          outcome: "executed",
+          requestKeyHash: binding.key,
+          payloadHash: binding.payload,
+        }),
+      );
     });
-    await new Promise(resolve => setTimeout(resolve, 20));
-    expect(out.outerOutcome).toBe("executed");
-  } finally {
-    await r.dispose();
-  }
-});
 
-test("Remote dual-send preserves not_sent (unknown=false) when Direct fails BEFORE handoff and Relay returns NotForwarded", async () => {
-  const r = await SyntheticRemote.create();
-  installDirectReadPath(r, async () => {
-    // Reject BEFORE calling handoff()
-    throw new Error("dc1 failed before handoff");
+    try {
+      const cmdBytes = makeCmdBytes();
+      const outcome = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
+        requestId: "req-direct-test-0001",
+        attemptId: "att-direct-1",
+        machineId: r.machine,
+        sessionId: "",
+        deadlineMs: BigInt(Date.now() + 30_000),
+        commandBytes: cmdBytes,
+        routeLeg: CommandRouteLeg.DIRECT,
+        directPcId: 7n,
+        directTimeoutMs: 5_000n,
+        directTicketId: 99n,
+      }));
+      expect(sendRpcSpy).toHaveBeenCalledTimes(1);
+      expect(outcome).toMatchObject({
+        source: OutcomeSource.DAEMON,
+        routeWasDirect: true,
+      });
+      expect(outcome.directTicketId).toBe(99n);
+      expect(outcome.signed).toBe(true);
+      expect(outcome.hashesMatch).toBe(true);
+      expect(outcome.attemptBound).toBe(true);
+      expect(outcome.handedOff).toBe(true);
+      expect(outcome.outerOutcome).toBe("executed");
+    } finally {
+      await r.dispose();
+    }
   });
 
-  (r as unknown as { api: unknown }).api = {
-    forward: async (q: { attemptId: string }) => {
-      throw new ConnectError("refused", Code.Unavailable, undefined, [
-        { desc: NotForwardedSchema, value: { attemptId: q.attemptId, relayEpoch: "fixture-epoch", reason: "machine_offline" } },
-      ]);
-    },
-  };
+  it("reports notForwarded=true before handoff and notForwarded=false after handoff when direct fails", async () => {
+    const r = await SyntheticRemote.create();
+    const holder = r as unknown as {
+      directExec: {
+        sendRpc: (
+          pcId: bigint,
+          requestId: string,
+          reqEnvBytes: Uint8Array<ArrayBuffer>,
+          timeoutMs: bigint,
+          handoff: () => void,
+          signal?: AbortSignal,
+        ) => Promise<Envelope>;
+      };
+    };
+    const spy = vi.spyOn(holder.directExec, "sendRpc");
+    try {
+      spy.mockRejectedValueOnce(new Error("dc closed before send"));
+      const pre = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
+        requestId: "req-direct-pre-0001",
+        attemptId: "att-direct-pre",
+        machineId: r.machine,
+        deadlineMs: BigInt(Date.now() + 30_000),
+        commandBytes: makeCmdBytes(),
+        routeLeg: CommandRouteLeg.DIRECT,
+        directPcId: 7n,
+        directTimeoutMs: 5_000n,
+        directTicketId: 10n,
+      }));
+      expect(pre).toMatchObject({
+        source: OutcomeSource.TRANSPORT,
+        routeWasDirect: true,
+        notForwarded: true,
+        handedOff: false,
+      });
 
-  try {
-    const out = await r.executeCommandAttempt(sendAttemptEffect(r.machine, "req-dual-000000005", "pre-handoff-not-forwarded"));
-    expect(out.notForwarded).toBe(true);
-    expect(out.source).toBe(OutcomeSource.SERVER);
-  } finally {
-    await r.dispose();
-  }
+      spy.mockImplementationOnce(async (_pcId, _reqId, _bytes, _timeout, handoff) => {
+        handoff();
+        throw new Error("dc dropped after write");
+      });
+      const post = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
+        requestId: "req-direct-post-0001",
+        attemptId: "att-direct-post",
+        machineId: r.machine,
+        deadlineMs: BigInt(Date.now() + 30_000),
+        commandBytes: makeCmdBytes(),
+        routeLeg: CommandRouteLeg.DIRECT,
+        directPcId: 7n,
+        directTimeoutMs: 5_000n,
+        directTicketId: 11n,
+      }));
+      expect(post.source).toBe(OutcomeSource.TRANSPORT);
+      expect(post.routeWasDirect).toBe(true);
+      expect(post.notForwarded).toBe(false);
+      expect(post.handedOff).toBe(true);
+    } finally {
+      await r.dispose();
+    }
+  });
+
+  it("routes CommandRouteLeg.RELAY via api.forward and distinguishes bound NotForwarded from stale epoch", async () => {
+    const r = await SyntheticRemote.create();
+    const holder = r as unknown as { api: unknown };
+    try {
+      holder.api = {
+        forward: async (q: { attemptId: string; relayEpoch: string }) => {
+          throw new ConnectError("offline", Code.Unavailable, undefined, [
+            {
+              desc: NotForwardedSchema,
+              value: { attemptId: q.attemptId, relayEpoch: q.relayEpoch, reason: "machine_offline" },
+            },
+          ]);
+        },
+      };
+      const bound = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
+        requestId: "req-relay-bound-0001",
+        attemptId: "att-relay-bound",
+        machineId: r.machine,
+        deadlineMs: BigInt(Date.now() + 30_000),
+        commandBytes: makeCmdBytes(),
+        routeLeg: CommandRouteLeg.RELAY,
+      }));
+      expect(bound).toMatchObject({
+        source: OutcomeSource.SERVER,
+        routeWasDirect: false,
+        notForwarded: true,
+      });
+      expect(bound.attemptBound).toBe(true);
+      expect(bound.outerReason).toBe("machine_offline");
+
+      holder.api = {
+        forward: async (q: { attemptId: string }) => {
+          throw new ConnectError("offline", Code.Unavailable, undefined, [
+            {
+              desc: NotForwardedSchema,
+              value: { attemptId: q.attemptId, relayEpoch: "stale-epoch", reason: "machine_offline" },
+            },
+          ]);
+        },
+      };
+      const stale = await r.executeCommandAttempt(create(DispatchCommandEffectSchema, {
+        requestId: "req-relay-stale-0001",
+        attemptId: "att-relay-stale",
+        machineId: r.machine,
+        deadlineMs: BigInt(Date.now() + 30_000),
+        commandBytes: makeCmdBytes(),
+        routeLeg: CommandRouteLeg.RELAY,
+      }));
+      expect(stale.source).toBe(OutcomeSource.SERVER);
+      expect(stale.notForwarded).toBe(false);
+      expect(stale.attemptBound).toBe(false);
+    } finally {
+      await r.dispose();
+    }
+  });
+
+  it("settles machineCommand through real CoreHost with NotForwarded not_sent and epoch verification", async () => {
+    const r = await SyntheticRemote.create();
+    const holder = r as unknown as { api: unknown };
+    try {
+      expect(getCoreHost(r)).toBeTruthy();
+      let forwarded = 0;
+      holder.api = {
+        forward: async (q: { attemptId: string; relayEpoch: string }) => {
+          forwarded++;
+          throw new ConnectError("offline", Code.Unavailable, undefined, [
+            {
+              desc: NotForwardedSchema,
+              value: { attemptId: q.attemptId, relayEpoch: q.relayEpoch, reason: "machine_offline" },
+            },
+          ]);
+        },
+      };
+      const slot = newSlot();
+      const err = await r.machineCommand(r.machine, { case: "createSession", value: { cwd: "/work/example" } }, slot).catch((e) => e);
+      expect(forwarded).toBe(1);
+      expect(err).toBeInstanceOf(CommandError);
+      expect(err.outcome).toBe("not_sent");
+    } finally {
+      await r.dispose();
+    }
+  });
 });

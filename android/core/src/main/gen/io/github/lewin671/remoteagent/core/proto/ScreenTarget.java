@@ -72,6 +72,10 @@ public enum ScreenTarget
    */
   SCREEN_TARGET_USAGE(36),
   /**
+   * <code>SCREEN_TARGET_DIRECT_DIAGNOSTICS = 37;</code>
+   */
+  SCREEN_TARGET_DIRECT_DIAGNOSTICS(37),
+  /**
    * <code>SCREEN_TARGET_SESSION = 10;</code>
    */
   SCREEN_TARGET_SESSION(10),
@@ -155,6 +159,10 @@ public enum ScreenTarget
    */
   public static final int SCREEN_TARGET_USAGE_VALUE = 36;
   /**
+   * <code>SCREEN_TARGET_DIRECT_DIAGNOSTICS = 37;</code>
+   */
+  public static final int SCREEN_TARGET_DIRECT_DIAGNOSTICS_VALUE = 37;
+  /**
    * <code>SCREEN_TARGET_SESSION = 10;</code>
    */
   public static final int SCREEN_TARGET_SESSION_VALUE = 10;
@@ -210,6 +218,7 @@ public enum ScreenTarget
       case 34: return SCREEN_TARGET_DEVICES;
       case 35: return SCREEN_TARGET_CLIENT_DETAIL;
       case 36: return SCREEN_TARGET_USAGE;
+      case 37: return SCREEN_TARGET_DIRECT_DIAGNOSTICS;
       case 10: return SCREEN_TARGET_SESSION;
       case 20: return SCREEN_TARGET_SCHEDULES;
       case 21: return SCREEN_TARGET_SCHEDULE_DETAIL;

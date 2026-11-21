@@ -1,176 +1,513 @@
-// Made-up direct-path states of the computers for ?demo (never compiled into a build).
-//   direct=direct          Using direct, both purposes (no second line)
-//   direct=file | read     Using direct, only for files / only for loading
-//   direct=measuring       Direct connected, measuring speed (the first seconds; only the relay measured so far)
-//   direct=relay           connected, Using relay, "Direct isn't clearly faster" (48 vs 160 would not qualify)
-//   direct=relay-faster    connected, Using relay, "Relay is faster"
-//   direct=trying          Setting up direct
-//   direct=none            Using relay, no reason known
-//   direct=peer_unsupported | no_response | no_traversal | failed   Using relay, "Direct unavailable: <reason>"
-//   direct=off             the switch is off, no status row
-//   direct=unsupported     this browser has no WebRTC
-//   direct=mix             the MacBook direct, VPS-dev unreachable by the networks, the rest on the relay
-//   speeds=both | direct | relay | none   what was measured, for every state that has a path
-//   (without speeds the state's own sample is shown; a file nobody has transferred says
-//   "Compared on the next transfer")
-//   diag=ipv6|all|nolocal|nostun|noremote|dtls|channel|refused|noreply|limited|budget|connected|trying
-//                          the 「诊断信息」 sheet of the 「连接」 group: one failure class per value, three recorded rounds
-//                          where the class is a repeating one (ipv6, all). Built with the real collector from made-up
-//                          candidates (documentation addresses). Without direct= the page's status follows the class.
-//                          「重新尝试」 shows a new round in progress for three seconds, then the old list again.
-// The switch works: turning it on shows Setting up direct for a moment, then measuring for two
-// seconds (when the state it was opened with is connected), then that state.
+// Showcase presets for the direct-connection views in demo mode (?demo&direct=...).
+// Only activates when ?direct, ?diag, or ?speeds is specified, or when installDemoDirect is invoked in tests.
 
-import type { DirectEngine, DirectStatus } from "../transport/direct-engine";
-import { RoundDiag, type PcDiag, type RoundData, type StatsLike } from "../transport/direct-diag";
+import { create } from "@bufbuild/protobuf";
+import { getCoreHost, type CoreHost } from "../core/host";
+import { EventSchema as CoreEventSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { MachineStatusDot } from "../gen/remoteagent/core/v1/machine_view_pb";
+import { SessionDirectChipViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
+import {
+  ConnCheckDirectRowViewSchema,
+  ConnectionGroupStage,
+  ConnectionGroupTone,
+  ConnectionGroupViewSchema,
+  DiagCheckMark,
+  DirectDiagnosticsViewModelSchema,
+  PlainDiagCheckViewSchema,
+  type ConnCheckDirectRowView,
+  type ConnectionGroupView,
+  type DirectDiagnosticsViewModel,
+} from "../gen/remoteagent/core/v1/settings_view_pb";
+import { DirectPreferencesLoadedEventSchema } from "../gen/remoteagent/core/v1/transport_pb";
+import { TextArgSchema, TextSchema, type Text } from "../gen/remoteagent/core/v1/text_pb";
+import type { Remote } from "../remote";
 
-type Scenario = Omit<DirectStatus, "fileMiBps" | "readMs"> & { off?: boolean };
-const relay = { file: "relay", read: "relay" } as const;
+export type DemoPreset =
+  | "direct"
+  | "file"
+  | "read"
+  | "file-fallback"
+  | "measuring"
+  | "relay"
+  | "relay-faster"
+  | "trying"
+  | "none"
+  | "peer_unsupported"
+  | "no_response"
+  | "no_traversal"
+  | "failed"
+  | "off"
+  | "unsupported";
 
-function scenario(name: string): Scenario {
-  switch (name) {
-    case "direct": return { state: "connected", file: "direct", read: "direct" };
-    case "file": return { state: "connected", file: "direct", read: "relay" };
-    case "read": return { state: "connected", file: "relay", read: "direct" };
-    case "file-fallback": return { state: "connected", file: "relay", read: "direct", fileSlow: true };
-    case "relay": return { state: "connected", ...relay, readSlow: true, fileSlow: true };
-    case "trying": return { state: "connecting", ...relay };
-    case "peer_unsupported": case "no_response": case "no_traversal": case "failed": return { state: "none", reason: name, ...relay };
-    case "off": return { state: "none", reason: "disabled", ...relay, off: true };
-    case "unsupported": return { state: "unsupported", ...relay };
-    default: return { state: "none", ...relay };
-  }
+export interface DemoDirectSpec {
+  preset: DemoPreset;
+  rttMs?: number;
+  speeds?: string;
+  diag?: string;
+  offline?: boolean;
 }
 
-function measured(name: string, speeds: string | null): Pick<DirectStatus, "fileMiBps" | "readMs"> {
-  if (speeds === "none") return { fileMiBps: {}, readMs: {} };
-  if (speeds === "both") return { fileMiBps: { direct: 6.3, relay: 4.1 }, readMs: { direct: 48, relay: 175 } };
-  if (speeds === "direct") return { fileMiBps: { direct: 6.3 }, readMs: { direct: 48 } };
-  if (speeds === "relay") return { fileMiBps: { relay: 4.1 }, readMs: { relay: 217 } };
-  switch (name) {
-    case "direct": return { fileMiBps: { direct: 6.3, relay: 4.1 }, readMs: { direct: 48, relay: 175 } };
-    case "file": return { fileMiBps: { direct: 6.3, relay: 4.1 }, readMs: { relay: 175 } };
-    case "read": return { fileMiBps: {}, readMs: { direct: 48, relay: 175 } };
-    case "file-fallback": return { fileMiBps: { direct: 2.1, relay: 4.1 }, readMs: { direct: 48, relay: 175 } };
-    case "relay": return { fileMiBps: { direct: 2.1, relay: 4.1 }, readMs: { direct: 320, relay: 175 } };
-    default: return { fileMiBps: {}, readMs: {} };
-  }
+const DIAG_VERDICT_KEYS: Record<string, string> = {
+  connected: "transport.diag_verdict_connected",
+  lost: "transport.diag_verdict_lost",
+  cancelled: "transport.diag_verdict_cancelled",
+  no_reply: "transport.diag_verdict_no_reply",
+  peer_refused: "transport.diag_verdict_peer_refused",
+  signal_limited: "transport.diag_verdict_signal_limited",
+  signal_offline: "transport.diag_verdict_signal_offline",
+  no_local: "transport.diag_verdict_no_local",
+  no_stun: "transport.diag_verdict_no_stun",
+  no_remote: "transport.diag_verdict_no_remote",
+  no_sdp: "transport.diag_verdict_no_sdp",
+  ipv6_silent: "transport.diag_verdict_ipv6_silent",
+  all_failed: "transport.diag_verdict_all_failed",
+  dtls: "transport.diag_verdict_dtls",
+  channel: "transport.diag_verdict_channel",
+  confirm: "transport.diag_verdict_confirm",
+  budget: "transport.diag_verdict_budget",
+  create_failed: "transport.diag_verdict_create_failed",
+  unknown: "transport.diag_verdict_unknown",
+};
+
+function tk(key: string, params?: Record<string, string | number | Text>): Text {
+  const args = params
+    ? Object.entries(params).map(([name, val]) =>
+        create(TextArgSchema, {
+          name,
+          value: typeof val === "object"
+            ? { case: "textValue", value: val }
+            : typeof val === "number"
+              ? { case: "intValue", value: BigInt(val) }
+              : { case: "strValue", value: val },
+        }),
+      )
+    : [];
+  return create(TextSchema, { key, args });
 }
 
-// ---- diag= -------------------------------------------------------------------
-
-type Entry = Record<string, unknown>;
-const cand = (ip: string, type: string, n = 1) => `candidate:${n} 1 udp 2113937151 ${ip} 5000 typ ${type}`;
-const L6 = "2001:db8:1::5", L4 = "192.168.1.20", LS = "203.0.113.7", R6 = "2001:db8:2::9", R4 = "192.168.50.3", RS = "198.51.100.4";
-const stats = (entries: Entry[]): StatsLike => ({ forEach: (cb) => entries.forEach(cb) });
-const pair = (l: string, r: string, state: string, sent: number, got: number, rtt?: number): Entry => ({ type: "candidate-pair", localCandidateId: l, remoteCandidateId: r, state, requestsSent: sent, responsesReceived: got, nominated: state === "succeeded", currentRoundTripTime: rtt });
-const cands: Entry[] = [
-  { type: "local-candidate", id: "L6", candidateType: "host", address: L6 }, { type: "local-candidate", id: "L4", candidateType: "host", address: L4 }, { type: "local-candidate", id: "LS", candidateType: "srflx", address: LS },
-  { type: "remote-candidate", id: "R6", candidateType: "host", address: R6 }, { type: "remote-candidate", id: "R4", candidateType: "host", address: R4 }, { type: "remote-candidate", id: "RS", candidateType: "srflx", address: RS },
-];
-
-interface Shape { local?: string[]; remote?: string[]; stun?: [number, string][]; checks?: Entry[]; ice?: [number, string][]; dtls?: string; dc?: string; marks?: string[] }
-/** One path's attempt, played through the real collector with a clock the demo moves. */
-function play(pc: PcDiag, clock: { t: number }, s: Shape) {
-  const marks = new Set(s.marks ?? ["boot", "sdp"]);
-  pc.observe({ boot: marks.has("boot"), sdpLocal: marks.has("sdp"), sdpRemote: marks.has("sdp"), peerConfirm: marks.has("confirm") });
-  if (!marks.has("boot")) return;
-  const a = pc.begin();
-  clock.t += 20; a.state("gather", "gathering");
-  for (const line of s.local ?? []) a.local(line);
-  for (const [code, address] of s.stun ?? []) a.stunError(code, address);
-  for (const line of s.remote ?? []) a.remote(line);
-  clock.t += 350; a.state("gather", "complete");
-  for (const [at, state] of s.ice ?? []) { clock.t += at; a.state("ice", state); }
-  if (s.dtls) a.state("dtls", s.dtls);
-  if (s.dc) a.state("dc", s.dc);
-  if (s.checks) a.take(stats([...cands, ...s.checks]));
-}
-const v6all = [cand(L6, "host"), cand(L4, "host", 2), cand("abcd1234-0000.local", "host", 3), cand(LS, "srflx", 4)];
-const v6checks = [pair("L6", "R6", "failed", 14, 0), pair("L4", "R4", "failed", 12, 0), pair("LS", "RS", "failed", 12, 0)];
-const failedIce: [number, string][] = [[80, "checking"], [8400, "failed"]];
-
-/** Rounds of a scenario, newest first; the clock ends at `now`. */
-function rounds(name: string, now: number): { rounds: RoundData[]; blocked: boolean } {
-  const make = (n: number, ageMs: number, lasted: number, shape: (r: RoundDiag, c: { t: number }) => void, end?: Parameters<RoundDiag["finish"]>[0]) => {
-    const c = { t: now - ageMs }, r = new RoundDiag(n, () => c.t);
-    shape(r, c); c.t = now - ageMs + lasted; if (end) r.finish(end);
-    return r.data;
-  };
-  // Both paths run in the same stretch of time: the second starts where the first did.
-  const both = (s: Shape, bulk: Shape = s) => (r: RoundDiag, c: { t: number }) => { const start = c.t; play(r.pc(1), c, s); const end = c.t; c.t = start; play(r.pc(2), c, bulk); c.t = Math.max(c.t, end); };
-  const ipv6 = both({ local: v6all, remote: [cand(R6, "host"), cand(R4, "host", 2), cand(RS, "srflx", 3)], checks: v6checks, ice: failedIce });
-  const silent = (n: number, age: number) => make(n, age, 9900, ipv6, "timeout");
-  const none: [] = [];
-  switch (name) {
-    case "ipv6": return { rounds: [silent(5, 20_000), silent(4, 70_000), make(3, 190_000, 10_000, () => undefined, "no_response")], blocked: false };
-    case "all": return { rounds: [1, 2, 3].map((i) => make(6 - i, i * 60_000, 9900, both({ local: [cand(L4, "host"), cand(LS, "srflx", 2)], remote: [cand(R4, "host"), cand(RS, "srflx", 2)], checks: [pair("L4", "R4", "failed", 12, 0), pair("LS", "RS", "failed", 12, 0)], ice: failedIce }), "timeout")), blocked: false };
-    case "nolocal": return { rounds: [make(1, 30_000, 9900, both({ local: none, remote: [cand(R4, "host")], ice: none }), "timeout")], blocked: false };
-    case "nostun": return { rounds: [make(1, 30_000, 9900, both({ local: [cand(L4, "host"), cand("abcd1234-0000.local", "host", 2)], stun: [[701, L4], [701, L4]], remote: [cand(R4, "host"), cand(RS, "srflx", 2)], ice: failedIce }), "no_traversal")], blocked: false };
-    case "noremote": return { rounds: [make(1, 30_000, 9900, both({ local: v6all, remote: none, ice: none }), "timeout")], blocked: false };
-    case "dtls": return { rounds: [make(1, 30_000, 9900, both({ local: v6all, remote: [cand(R4, "host"), cand(RS, "srflx", 2)], checks: [pair("L4", "R4", "succeeded", 6, 5, 0.048)], ice: [[60, "checking"], [90, "connected"]], dtls: "failed" }), "timeout")], blocked: false };
-    case "channel": return { rounds: [make(1, 30_000, 9900, both({ local: v6all, remote: [cand(R4, "host"), cand(RS, "srflx", 2)], checks: [pair("L4", "R4", "succeeded", 6, 5, 0.048)], ice: [[60, "checking"], [90, "connected"]], dtls: "connected", dc: "connecting" }), "timeout")], blocked: false };
-    case "refused": return { rounds: [make(1, 30_000, 1200, (r, c) => { play(r.pc(1), c, { marks: [] }); r.note("unsupported"); }, "peer_unsupported")], blocked: false };
-    case "noreply": return { rounds: [make(1, 30_000, 10_000, () => undefined, "no_response")], blocked: false };
-    case "limited": return { rounds: [make(1, 30_000, 10_000, (r) => { r.note("limited"); r.note("limited"); }, "timeout")], blocked: false };
-    case "budget": return { rounds: [], blocked: true };
-    case "connected": return { rounds: [make(1, 40_000, 3000, (r, c) => { play(r.pc(1), c, { local: v6all, remote: [cand(R4, "host"), cand(RS, "srflx", 2)], checks: [pair("L4", "R4", "succeeded", 6, 6, 0.012)], ice: [[40, "checking"], [60, "connected"]], dtls: "connected", dc: "open", marks: ["boot", "sdp", "confirm"] }); r.pc(1).observe({ ready: true }); r.establish(); })], blocked: false };
-    case "trying": return { rounds: [make(1, 4000, 4000, (r, c) => play(r.pc(1), c, { local: [cand(L4, "host"), cand(LS, "srflx", 2)], remote: none, ice: none }))], blocked: false };
-    default: return { rounds: [], blocked: false };
-  }
-}
-const diagStatus = (name: string) => name === "connected" ? "direct" : name === "trying" ? "trying" : name === "noreply" ? "no_response" : name === "refused" ? "peer_unsupported" : name === "nostun" ? "no_traversal" : "failed";
-
-export function seedDirect(engine: DirectEngine, opts: URLSearchParams) {
-  const diagName = opts.get("diag");
-  let againOf: Map<string, number> | undefined;
-  const asked = opts.get("direct") ?? (diagName ? diagStatus(diagName) : null);
-  if (!asked) return;
-  if (diagName) {
-    const again = new Map<string, number>();
-    againOf = again;
-    const notifyLater = () => (engine as unknown as { notify(): void }).notify();
-    engine.diagnostics = (id) => {
-      const base = rounds(diagName, Date.now()), at = again.get(id);
-      if (at === undefined || Date.now() - at > 3000) return { rounds: base.rounds, blockedAt: base.blocked ? Date.now() : undefined };
-      const fresh = rounds("trying", Date.now()).rounds[0];
-      return { rounds: [{ ...fresh, n: (base.rounds[0]?.n ?? 0) + 1 }, ...base.rounds].slice(0, 3) };
+function buildSpeedMetrics(preset: DemoPreset, speeds: string, rttMs?: number): { file?: Text; read?: Text; metric?: Text } {
+  const metric = rttMs !== undefined ? tk("transport.rtt_ms", { ms: rttMs }) : undefined;
+  if (speeds === "none") return { metric };
+  if (preset === "direct") {
+    return {
+      metric,
+      file: speeds === "relay" ? tk("transport.file_speed_relay", { relay: "9.8" }) : speeds === "direct" ? tk("transport.file_speed_direct", { direct: "24" }) : tk("transport.file_speed_both", { direct: "24", relay: "9.8" }),
+      read: speeds === "relay" ? tk("transport.read_latency_relay", { relay: rttMs ?? 185 }) : speeds === "direct" ? tk("transport.read_latency_direct", { direct: rttMs ?? 12 }) : tk("transport.read_latency_both", { direct: String(rttMs ?? 12), relay: "185" }),
     };
-    engine.refreshDiagnostics = () => undefined;
-    engine.retryNow = (id) => { again.set(id, Date.now()); notifyLater(); setTimeout(notifyLater, 3100); return true; };
   }
-  const speeds = opts.get("speeds");
-  const nameFor = (id: string) => (asked === "mix" ? (id === "mac" ? "direct" : id === "vps" ? "no_traversal" : "relay") : asked);
-  const switched = new Map<string, boolean>();
-  const since = new Map<string, number>();
-  const notify = () => (engine as unknown as { notify(): void }).notify();
-  engine.enabled = (id) => switched.get(id) ?? !scenario(nameFor(id)).off;
-  engine.setEnabled = (id, on) => {
-    switched.set(id, on);
-    since.set(id, Date.now());
-    notify();
-    // Nothing reported for a moment, then trying, then the state the page was opened with.
-    setTimeout(notify, 600);
-    setTimeout(notify, 2600);
-    setTimeout(notify, 4600);
-  };
-  engine.status = (id): DirectStatus => {
-    const name = nameFor(id), base = scenario(name);
-    const sample = measured(name, speeds);
-    if (base.state === "unsupported") return { ...base, ...sample };
-    if (!engine.enabled(id)) return { state: "none", reason: "disabled", ...relay, fileMiBps: {}, readMs: {} };
-    const turnedOn = switched.get(id);
-    const age = Date.now() - (since.get(id) ?? -Infinity);
-    if (turnedOn && age < 600) return { state: "none", ...relay, fileMiBps: {}, readMs: {} };
-    if (turnedOn && age < 2600) return { state: "connecting", ...relay, fileMiBps: {}, readMs: {} };
-    // Turned on: setting up, measuring for a moment, then the state the page was opened with
-    // (from off, that is direct).
-    const final = base.off ? scenario("direct") : base, finalName = base.off ? "direct" : name;
-    return { ...final, ...measured(finalName, speeds) };
-  };
-  // 「重新尝试」 in the sheet: for three seconds the computer is being tried again.
-  if (againOf) {
-    const again = againOf, status = engine.status;
-    engine.status = (id) => (Date.now() - (again.get(id) ?? -Infinity) < 3000 ? { ...status.call(engine, id), state: "connecting", reason: undefined } : status.call(engine, id));
+  if (preset === "relay" || preset === "relay-faster") {
+    return {
+      metric,
+      file: tk("transport.file_speed_both", { direct: "1.2", relay: "8.4" }),
+      read: tk("transport.read_latency_both", { direct: "180", relay: String(rttMs ?? 42) }),
+    };
   }
+  if (preset === "file" || preset === "read" || preset === "file-fallback") {
+    return {
+      metric,
+      file: tk("transport.file_speed_both", { direct: preset === "file" ? "21" : "1.8", relay: "8.4" }),
+      read: tk("transport.read_latency_both", { direct: preset === "file" ? "180" : String(rttMs ?? 14), relay: "42" }),
+    };
+  }
+  return { metric };
+}
+
+function buildConnectionGroup(spec: DemoDirectSpec): ConnectionGroupView {
+  const { preset, speeds = "", rttMs, offline } = spec;
+  const m = buildSpeedMetrics(preset, speeds, rttMs);
+  const footer = tk("transport.footer");
+  if (offline) {
+    return create(ConnectionGroupViewSchema, {
+      toggleVisible: true,
+      toggleEnabled: true,
+      toggleChecked: preset !== "off",
+      stage: ConnectionGroupStage.OFFLINE,
+      tone: ConnectionGroupTone.MUTED,
+      rowDot: MachineStatusDot.GRAY_STATIC,
+      rowValueText: tk("common.ios_offline"),
+      footerText: footer,
+    });
+  }
+  switch (preset) {
+    case "unsupported":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: false,
+        toggleChecked: false,
+        stage: ConnectionGroupStage.UNSUPPORTED,
+        tone: ConnectionGroupTone.MUTED,
+        statusText: tk("transport.status_unsupported"),
+        detailText: tk("transport.detail_relay_only"),
+        footerText: tk("transport.conn_footer_unsupported_browser"),
+        rowDot: MachineStatusDot.ORANGE_STATIC,
+        rowValueText: tk("transport.row_unavailable"),
+        rowSubtitleText: tk("transport.status_unsupported"),
+      });
+    case "off":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: false,
+        stage: ConnectionGroupStage.DISABLED,
+        tone: ConnectionGroupTone.MUTED,
+        statusText: tk("transport.summary_off"),
+        footerText: footer,
+        rowDot: MachineStatusDot.GRAY_STATIC,
+        rowValueText: tk("transport.row_off"),
+      });
+    case "trying":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: true,
+        stage: ConnectionGroupStage.CONNECTING,
+        tone: ConnectionGroupTone.LIVE,
+        statusText: tk("transport.status_connecting"),
+        footerText: footer,
+        rowDot: MachineStatusDot.ORANGE_STATIC,
+        rowSpinning: true,
+        rowValueText: tk("transport.status_connecting"),
+      });
+    case "none":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: true,
+        stage: ConnectionGroupStage.RELAY,
+        tone: ConnectionGroupTone.MUTED,
+        statusText: tk("transport.status_relay"),
+        detailText: tk("transport.reason_starting"),
+        footerText: footer,
+        rowDot: MachineStatusDot.ORANGE_STATIC,
+        rowValueText: tk("transport.row_relay"),
+        rowSubtitleText: tk("transport.reason_starting"),
+      });
+    case "direct":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: true,
+        stage: ConnectionGroupStage.DIRECT,
+        tone: ConnectionGroupTone.LIVE,
+        statusText: tk("transport.status_direct"),
+        metricText: m.metric,
+        fileSpeedText: m.file,
+        readLatencyText: m.read,
+        footerText: footer,
+        rowDot: MachineStatusDot.GREEN_LIVE,
+        rowValueText: rttMs !== undefined ? tk("transport.row_using_direct_ms", { ms: rttMs }) : tk("transport.row_using_direct"),
+      });
+    case "file":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: true,
+        stage: ConnectionGroupStage.DIRECT,
+        tone: ConnectionGroupTone.LIVE,
+        statusText: tk("transport.status_direct"),
+        detailText: tk("transport.use_file"),
+        metricText: m.metric,
+        fileSpeedText: m.file,
+        readLatencyText: m.read,
+        footerText: footer,
+        rowDot: MachineStatusDot.GREEN_LIVE,
+        rowValueText: rttMs !== undefined ? tk("transport.row_using_direct_ms", { ms: rttMs }) : tk("transport.row_using_direct"),
+        rowSubtitleText: tk("transport.use_file"),
+      });
+    case "read":
+    case "file-fallback":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: true,
+        stage: ConnectionGroupStage.DIRECT,
+        tone: ConnectionGroupTone.LIVE,
+        statusText: tk("transport.status_direct"),
+        detailText: tk("transport.use_read"),
+        metricText: m.metric,
+        fileSpeedText: m.file,
+        readLatencyText: m.read,
+        footerText: footer,
+        rowDot: MachineStatusDot.GREEN_LIVE,
+        rowValueText: rttMs !== undefined ? tk("transport.row_using_direct_ms", { ms: rttMs }) : tk("transport.row_using_direct"),
+        rowSubtitleText: tk("transport.use_read"),
+      });
+    case "measuring":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: true,
+        stage: ConnectionGroupStage.MEASURING,
+        tone: ConnectionGroupTone.LIVE,
+        statusText: tk("transport.status_connecting"),
+        footerText: footer,
+        rowDot: MachineStatusDot.ORANGE_STATIC,
+        rowSpinning: true,
+        rowValueText: tk("transport.status_connecting"),
+      });
+    case "relay":
+    case "relay-faster":
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: true,
+        stage: ConnectionGroupStage.RELAY,
+        tone: ConnectionGroupTone.WARN,
+        statusText: tk("transport.status_relay"),
+        detailText: tk("transport.direct_slow"),
+        metricText: m.metric,
+        fileSpeedText: m.file,
+        readLatencyText: m.read,
+        footerText: footer,
+        rowDot: MachineStatusDot.GRAY_STATIC,
+        rowValueText: rttMs !== undefined ? tk("transport.row_relay_ms", { ms: rttMs }) : tk("transport.row_relay"),
+        rowSubtitleText: tk("transport.direct_slow"),
+      });
+    default: {
+      const reasonKey =
+        preset === "peer_unsupported"
+          ? "transport.reason_peer_unsupported"
+          : preset === "no_response"
+            ? "transport.reason_no_response"
+            : preset === "no_traversal"
+              ? "transport.reason_no_traversal"
+              : "transport.reason_failed";
+      return create(ConnectionGroupViewSchema, {
+        toggleVisible: true,
+        toggleEnabled: true,
+        toggleChecked: true,
+        stage: ConnectionGroupStage.RELAY,
+        tone: ConnectionGroupTone.FAIL,
+        statusText: tk("transport.status_relay"),
+        detailText: tk(reasonKey),
+        showDiagnosticsEntry: true,
+        footerText: footer,
+        rowDot: MachineStatusDot.ORANGE_STATIC,
+        rowValueText: rttMs !== undefined ? tk("transport.row_relay_ms", { ms: rttMs }) : tk("transport.row_relay"),
+        rowSubtitleText: tk(reasonKey),
+      });
+    }
+  }
+}
+
+function buildConnCheckRow(cg: ConnectionGroupView): ConnCheckDirectRowView {
+  if (cg.stage === ConnectionGroupStage.UNSUPPORTED) {
+    return create(ConnCheckDirectRowViewSchema, {
+      visible: false,
+      stage: cg.stage,
+      tone: cg.tone,
+    });
+  }
+  return create(ConnCheckDirectRowViewSchema, {
+    visible: true,
+    stage: cg.stage,
+    tone: cg.tone,
+    labelText: tk("transport.direct"),
+    statusText: cg.stage === ConnectionGroupStage.OFFLINE ? tk("transport.row_unavailable") : cg.statusText,
+    detailText: cg.detailText,
+    metricText: cg.metricText,
+  });
+}
+
+function buildDiagnostics(machineId: string, spec: DemoDirectSpec): DirectDiagnosticsViewModel {
+  const { preset, diag: diagParam = "" } = spec;
+  const verdict = DIAG_VERDICT_KEYS[diagParam] ? diagParam : preset === "direct" ? "connected" : preset === "no_response" ? "no_reply" : preset === "peer_unsupported" ? "peer_refused" : "all_failed";
+  const supported = preset !== "unsupported";
+  const enabled = preset !== "off" && supported;
+  const connected = preset === "direct" || preset === "file" || preset === "read" || preset === "file-fallback";
+  const trying = preset === "trying" || preset === "none";
+  const peerOutdated = verdict === "peer_refused";
+  const blocked = verdict === "no_stun" || verdict === "all_failed" || verdict === "no_traversal";
+
+  const titleText = connected
+    ? tk("transport.diag_connected_title")
+    : peerOutdated
+      ? tk("transport.diag_status_peer_old")
+      : blocked
+        ? tk("transport.diag_title_probe_blocked")
+        : verdict === "no_reply"
+          ? tk("transport.diag_title_no_reply")
+          : tk("transport.diag_title_generic");
+
+  const checks = [
+    create(PlainDiagCheckViewSchema, {
+      mark: peerOutdated || verdict === "no_reply" ? DiagCheckMark.OFF : DiagCheckMark.ONLINE,
+      labelText: tk("transport.diag_check_peer"),
+      detailText: peerOutdated ? tk("transport.diag_peer_old_desc") : verdict === "no_reply" ? tk("transport.diag_peer_no_reply_desc") : undefined,
+      statusText: peerOutdated ? tk("transport.diag_status_peer_old") : verdict === "no_reply" ? tk("transport.diag_status_no_reply") : tk("transport.diag_status_ok"),
+    }),
+    create(PlainDiagCheckViewSchema, {
+      mark: connected ? DiagCheckMark.ONLINE : trying ? DiagCheckMark.RUN : DiagCheckMark.OFF,
+      labelText: tk("transport.diag_check_path"),
+      detailText: blocked ? tk("transport.diag_path_udp_blocked") : !connected ? tk("transport.diag_path_failed") : undefined,
+      statusText: connected ? tk("transport.diag_status_connected") : trying ? tk("transport.diag_status_checking") : tk("transport.diag_status_blocked"),
+    }),
+    create(PlainDiagCheckViewSchema, {
+      mark: DiagCheckMark.ONLINE,
+      labelText: tk("transport.diag_check_retry"),
+      detailText: peerOutdated ? tk("transport.diag_retry_wait_desc") : tk("transport.diag_retry_auto_desc"),
+      statusText: peerOutdated ? tk("transport.diag_status_wait_update") : tk("transport.diag_status_enabled"),
+    }),
+  ];
+
+  const vKey = DIAG_VERDICT_KEYS[verdict] ?? "transport.diag_verdict_unknown";
+  return create(DirectDiagnosticsViewModelSchema, {
+    machineId,
+    supported,
+    enabled,
+    connected,
+    peerOutdated,
+    trying,
+    canRetry: !connected && !trying && !peerOutdated && supported && enabled,
+    titleText,
+    verdictText: tk(vKey),
+    checks,
+    reportLines: [
+      tk("transport.diag_report_title"),
+      tk("transport.diag_report_verdict", { verdict: tk(vKey) }),
+      tk("transport.diag_report_round", { n: 1, age: tk("machine_status.seconds_ago", { count: 4 }) }),
+    ],
+  });
+}
+
+function buildChip(spec: DemoDirectSpec, machineName: string) {
+  const { preset, rttMs } = spec;
+  if (preset === "off" || preset === "unsupported" || preset === "none") return undefined;
+  const direct = preset === "direct" || preset === "file" || preset === "read" || preset === "file-fallback";
+  const header = direct
+    ? (rttMs !== undefined ? tk("transport.popover_direct_title_rtt", { name: machineName, ms: rttMs }) : tk("transport.popover_direct_title", { name: machineName }))
+    : (rttMs !== undefined ? tk("transport.popover_relay_title_rtt", { name: machineName, ms: rttMs }) : tk("transport.popover_relay_title", { name: machineName }));
+  const body =
+    preset === "direct"
+      ? tk("transport.popover_stable")
+      : preset === "file"
+        ? tk("transport.popover_file_only")
+        : preset === "read" || preset === "file-fallback"
+          ? tk("transport.popover_read_only")
+          : tk("transport.popover_switched_relay");
+  return create(SessionDirectChipViewSchema, {
+    visible: direct || preset === "relay" || preset === "relay-faster" || preset === "failed" || preset === "no_traversal" || preset === "no_response" || preset === "peer_unsupported",
+    active: direct,
+    readDirect: preset === "direct" || preset === "read" || preset === "file-fallback",
+    fileDirect: preset === "direct" || preset === "file",
+    labelText: tk("transport.direct"),
+    popoverTitle: header,
+    popoverBody: body,
+    popoverFoot: tk("transport.popover_settings"),
+  });
+}
+
+function resolveMachinePreset(base: DemoPreset, raw: string, machineId: string, diag: string): DemoPreset {
+  if (diag) {
+    if (machineId !== "mac") return "direct";
+    if (diag === "connected") return "direct";
+    if (diag === "no_reply") return "no_response";
+    if (diag === "peer_refused") return "peer_unsupported";
+    return "no_traversal";
+  }
+  if (raw === "mix") {
+    return machineId === "mini" ? "no_traversal" : "direct";
+  }
+  return base;
+}
+
+const demoOverrides = new WeakMap<CoreHost, Map<string, DemoDirectSpec>>();
+
+export function setDemoDirect(remote: Remote, machineId: string, spec: DemoPreset | DemoDirectSpec) {
+  const host = getCoreHost(remote);
+  if (!demoOverrides.has(host)) {
+    installDemoDirectHost(remote, host, "");
+  }
+  const map = demoOverrides.get(host)!;
+  map.set(machineId, typeof spec === "string" ? { preset: spec } : spec);
+  host.dispatch(create(CoreEventSchema, { event: { case: "directPreferencesLoaded", value: create(DirectPreferencesLoadedEventSchema, { entries: [] }) } }));
+}
+
+export function clearDemoDirect(remote: Remote, machineId?: string) {
+  const host = getCoreHost(remote);
+  const map = demoOverrides.get(host);
+  if (!map) return;
+  if (machineId) map.delete(machineId);
+  else map.clear();
+  host.dispatch(create(CoreEventSchema, { event: { case: "directPreferencesLoaded", value: create(DirectPreferencesLoadedEventSchema, { entries: [] }) } }));
+}
+
+function installDemoDirectHost(
+  remote: Remote,
+  host: CoreHost,
+  speedsParam: string,
+  fallback?: (machineId: string) => DemoDirectSpec | undefined,
+) {
+  const map = new Map<string, DemoDirectSpec>();
+  demoOverrides.set(host, map);
+  const specFor = (id: string) => map.get(id) ?? fallback?.(id);
+
+  const origViewMachineSettings = host.viewMachineSettings.bind(host);
+  host.viewMachineSettings = (machineId: string) => {
+    const vm = origViewMachineSettings(machineId);
+    const s = specFor(machineId);
+    if (s) vm.connection = buildConnectionGroup({ speeds: speedsParam, offline: !vm.online, ...s });
+    return vm;
+  };
+
+  const origViewDirectDiagnostics = host.viewDirectDiagnostics.bind(host);
+  host.viewDirectDiagnostics = (machineId: string) => {
+    const vm = origViewDirectDiagnostics(machineId);
+    const s = specFor(machineId);
+    if (!s) return vm;
+    return buildDiagnostics(machineId, s);
+  };
+
+  const origViewSettings = host.viewSettings.bind(host);
+  host.viewSettings = () => {
+    const vm = origViewSettings();
+    for (const m of vm.machines) {
+      const s = specFor(m.machineId);
+      if (s) m.directRow = buildConnCheckRow(buildConnectionGroup({ speeds: speedsParam, ...s }));
+    }
+    return vm;
+  };
+
+  const origViewSession = host.viewSession.bind(host);
+  host.viewSession = (sessionId, windowOpts) => {
+    const vm = origViewSession(sessionId, windowOpts);
+    const sess = remote.sessions.get(sessionId);
+    const mid = sess?.machineId ?? "mac";
+    const s = specFor(mid);
+    if (s && vm.header) {
+      const mName = remote.machines.get(mid)?.meta?.hostname ?? mid;
+      vm.header.directChip = buildChip(s, mName);
+    }
+    return vm;
+  };
+
+  const origUpdatePref = host.updateDirectPreference.bind(host);
+  host.updateDirectPreference = (machineId: string, enabled: boolean) => {
+    const s = specFor(machineId);
+    if (s && s.preset !== "unsupported") {
+      if (!enabled) {
+        map.set(machineId, { ...s, preset: "off" });
+      } else {
+        map.delete(machineId);
+      }
+    }
+    origUpdatePref(machineId, enabled);
+  };
+}
+
+export function seedDirect(remote: Remote, opts: URLSearchParams) {
+  const directParam = opts.get("direct") ?? "";
+  const diagParam = opts.get("diag") ?? "";
+  const speedsParam = opts.get("speeds") ?? "";
+  if (!directParam && !diagParam && !speedsParam) return;
+
+  const host = getCoreHost(remote);
+  const basePreset = ((directParam === "mix" ? "direct" : directParam) || "failed") as DemoPreset;
+  const fallback = (id: string): DemoDirectSpec => ({
+    preset: resolveMachinePreset(basePreset, directParam, id, diagParam),
+    speeds: speedsParam,
+    diag: id === "mac" ? diagParam : "",
+    rttMs: directParam === "direct" ? 4 : undefined,
+  });
+  installDemoDirectHost(remote, host, speedsParam, fallback);
 }

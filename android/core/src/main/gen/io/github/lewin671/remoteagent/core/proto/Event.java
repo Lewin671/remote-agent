@@ -144,6 +144,28 @@ public  final class Event extends
     SCHEDULE_FORM_UPDATE_TIMING(347),
     SCHEDULE_FORM_SUBMIT(348),
     SCHEDULE_FORM_RETRY_MODELS(349),
+    TRANSPORT_CONFIG(400),
+    DIRECT_SECURITY_SNAPSHOT(401),
+    DIRECT_SIGNAL_RECEIVED(402),
+    DIRECT_SIGNAL_DELIVERY(403),
+    DIRECT_KEY_SIGNED(404),
+    DIRECT_KEY_AGREED(405),
+    DIRECT_PC_CREATED(406),
+    DIRECT_PC_DESCRIPTION(407),
+    DIRECT_PC_REMOTE_SET(408),
+    DIRECT_PC_CANDIDATES_ADDED(409),
+    DIRECT_PC_LOCAL_CANDIDATE(410),
+    DIRECT_PC_STATE(411),
+    DIRECT_PC_STUN_ERROR(412),
+    DIRECT_PC_CLOSED(413),
+    DIRECT_DC_STATE(414),
+    DIRECT_DC_STATS(415),
+    DIRECT_RETRY_NOW(416),
+    DIRECT_REFRESH_DIAGNOSTICS(417),
+    DIRECT_BULK_TRANSFER_BEGIN(418),
+    DIRECT_BULK_TRANSFER_DONE(419),
+    TERMINAL_STREAM(420),
+    DIRECT_PREFERENCES_LOADED(421),
     EVENT_NOT_SET(0);
     private final int value;
     private EventCase(int value) {
@@ -282,6 +304,28 @@ public  final class Event extends
         case 347: return SCHEDULE_FORM_UPDATE_TIMING;
         case 348: return SCHEDULE_FORM_SUBMIT;
         case 349: return SCHEDULE_FORM_RETRY_MODELS;
+        case 400: return TRANSPORT_CONFIG;
+        case 401: return DIRECT_SECURITY_SNAPSHOT;
+        case 402: return DIRECT_SIGNAL_RECEIVED;
+        case 403: return DIRECT_SIGNAL_DELIVERY;
+        case 404: return DIRECT_KEY_SIGNED;
+        case 405: return DIRECT_KEY_AGREED;
+        case 406: return DIRECT_PC_CREATED;
+        case 407: return DIRECT_PC_DESCRIPTION;
+        case 408: return DIRECT_PC_REMOTE_SET;
+        case 409: return DIRECT_PC_CANDIDATES_ADDED;
+        case 410: return DIRECT_PC_LOCAL_CANDIDATE;
+        case 411: return DIRECT_PC_STATE;
+        case 412: return DIRECT_PC_STUN_ERROR;
+        case 413: return DIRECT_PC_CLOSED;
+        case 414: return DIRECT_DC_STATE;
+        case 415: return DIRECT_DC_STATS;
+        case 416: return DIRECT_RETRY_NOW;
+        case 417: return DIRECT_REFRESH_DIAGNOSTICS;
+        case 418: return DIRECT_BULK_TRANSFER_BEGIN;
+        case 419: return DIRECT_BULK_TRANSFER_DONE;
+        case 420: return TERMINAL_STREAM;
+        case 421: return DIRECT_PREFERENCES_LOADED;
         case 0: return EVENT_NOT_SET;
         default: return null;
       }
@@ -6699,6 +6743,1150 @@ public  final class Event extends
     }
   }
 
+  public static final int TRANSPORT_CONFIG_FIELD_NUMBER = 400;
+  /**
+   * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTransportConfig() {
+    return eventCase_ == 400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TransportConfigEvent getTransportConfig() {
+    if (eventCase_ == 400) {
+       return (io.github.lewin671.remoteagent.core.proto.TransportConfigEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTransportConfig(io.github.lewin671.remoteagent.core.proto.TransportConfigEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTransportConfig(io.github.lewin671.remoteagent.core.proto.TransportConfigEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 400 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TransportConfigEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+   */
+  private void clearTransportConfig() {
+    if (eventCase_ == 400) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_SECURITY_SNAPSHOT_FIELD_NUMBER = 401;
+  /**
+   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectSecuritySnapshot() {
+    return eventCase_ == 401;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent getDirectSecuritySnapshot() {
+    if (eventCase_ == 401) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 401;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 401 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 401;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+   */
+  private void clearDirectSecuritySnapshot() {
+    if (eventCase_ == 401) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_SIGNAL_RECEIVED_FIELD_NUMBER = 402;
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectSignalReceived() {
+    return eventCase_ == 402;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent getDirectSignalReceived() {
+    if (eventCase_ == 402) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectSignalReceived(io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 402;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectSignalReceived(io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 402 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 402;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+   */
+  private void clearDirectSignalReceived() {
+    if (eventCase_ == 402) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_SIGNAL_DELIVERY_FIELD_NUMBER = 403;
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectSignalDelivery() {
+    return eventCase_ == 403;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent getDirectSignalDelivery() {
+    if (eventCase_ == 403) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectSignalDelivery(io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 403;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectSignalDelivery(io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 403 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 403;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+   */
+  private void clearDirectSignalDelivery() {
+    if (eventCase_ == 403) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_KEY_SIGNED_FIELD_NUMBER = 404;
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectKeySigned() {
+    return eventCase_ == 404;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent getDirectKeySigned() {
+    if (eventCase_ == 404) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectKeySigned(io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 404;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectKeySigned(io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 404 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 404;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+   */
+  private void clearDirectKeySigned() {
+    if (eventCase_ == 404) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_KEY_AGREED_FIELD_NUMBER = 405;
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectKeyAgreed() {
+    return eventCase_ == 405;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent getDirectKeyAgreed() {
+    if (eventCase_ == 405) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectKeyAgreed(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 405;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectKeyAgreed(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 405 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 405;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+   */
+  private void clearDirectKeyAgreed() {
+    if (eventCase_ == 405) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_CREATED_FIELD_NUMBER = 406;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcCreated() {
+    return eventCase_ == 406;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent getDirectPcCreated() {
+    if (eventCase_ == 406) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcCreated(io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 406;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcCreated(io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 406 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 406;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+   */
+  private void clearDirectPcCreated() {
+    if (eventCase_ == 406) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_DESCRIPTION_FIELD_NUMBER = 407;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcDescription() {
+    return eventCase_ == 407;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent getDirectPcDescription() {
+    if (eventCase_ == 407) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcDescription(io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 407;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcDescription(io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 407 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 407;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+   */
+  private void clearDirectPcDescription() {
+    if (eventCase_ == 407) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_REMOTE_SET_FIELD_NUMBER = 408;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcRemoteSet() {
+    return eventCase_ == 408;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent getDirectPcRemoteSet() {
+    if (eventCase_ == 408) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcRemoteSet(io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 408;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcRemoteSet(io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 408 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 408;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+   */
+  private void clearDirectPcRemoteSet() {
+    if (eventCase_ == 408) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_CANDIDATES_ADDED_FIELD_NUMBER = 409;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcCandidatesAdded() {
+    return eventCase_ == 409;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent getDirectPcCandidatesAdded() {
+    if (eventCase_ == 409) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcCandidatesAdded(io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 409;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcCandidatesAdded(io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 409 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 409;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+   */
+  private void clearDirectPcCandidatesAdded() {
+    if (eventCase_ == 409) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_LOCAL_CANDIDATE_FIELD_NUMBER = 410;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcLocalCandidate() {
+    return eventCase_ == 410;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent getDirectPcLocalCandidate() {
+    if (eventCase_ == 410) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcLocalCandidate(io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 410;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcLocalCandidate(io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 410 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 410;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+   */
+  private void clearDirectPcLocalCandidate() {
+    if (eventCase_ == 410) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_STATE_FIELD_NUMBER = 411;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcState() {
+    return eventCase_ == 411;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent getDirectPcState() {
+    if (eventCase_ == 411) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcState(io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 411;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcState(io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 411 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 411;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+   */
+  private void clearDirectPcState() {
+    if (eventCase_ == 411) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_STUN_ERROR_FIELD_NUMBER = 412;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcStunError() {
+    return eventCase_ == 412;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent getDirectPcStunError() {
+    if (eventCase_ == 412) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcStunError(io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 412;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcStunError(io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 412 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 412;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+   */
+  private void clearDirectPcStunError() {
+    if (eventCase_ == 412) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_CLOSED_FIELD_NUMBER = 413;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcClosed() {
+    return eventCase_ == 413;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent getDirectPcClosed() {
+    if (eventCase_ == 413) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcClosed(io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 413;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcClosed(io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 413 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 413;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+   */
+  private void clearDirectPcClosed() {
+    if (eventCase_ == 413) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_DC_STATE_FIELD_NUMBER = 414;
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectDcState() {
+    return eventCase_ == 414;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent getDirectDcState() {
+    if (eventCase_ == 414) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectDcState(io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 414;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectDcState(io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 414 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 414;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+   */
+  private void clearDirectDcState() {
+    if (eventCase_ == 414) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_DC_STATS_FIELD_NUMBER = 415;
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectDcStats() {
+    return eventCase_ == 415;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent getDirectDcStats() {
+    if (eventCase_ == 415) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectDcStats(io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 415;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectDcStats(io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 415 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 415;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+   */
+  private void clearDirectDcStats() {
+    if (eventCase_ == 415) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_RETRY_NOW_FIELD_NUMBER = 416;
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectRetryNow() {
+    return eventCase_ == 416;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction getDirectRetryNow() {
+    if (eventCase_ == 416) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectRetryNow(io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 416;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectRetryNow(io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 416 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 416;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+   */
+  private void clearDirectRetryNow() {
+    if (eventCase_ == 416) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_REFRESH_DIAGNOSTICS_FIELD_NUMBER = 417;
+  /**
+   * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectRefreshDiagnostics() {
+    return eventCase_ == 417;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction getDirectRefreshDiagnostics() {
+    if (eventCase_ == 417) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectRefreshDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 417;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectRefreshDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 417 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 417;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+   */
+  private void clearDirectRefreshDiagnostics() {
+    if (eventCase_ == 417) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_BULK_TRANSFER_BEGIN_FIELD_NUMBER = 418;
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectBulkTransferBegin() {
+    return eventCase_ == 418;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent getDirectBulkTransferBegin() {
+    if (eventCase_ == 418) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectBulkTransferBegin(io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 418;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectBulkTransferBegin(io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 418 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 418;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+   */
+  private void clearDirectBulkTransferBegin() {
+    if (eventCase_ == 418) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_BULK_TRANSFER_DONE_FIELD_NUMBER = 419;
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectBulkTransferDone() {
+    return eventCase_ == 419;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent getDirectBulkTransferDone() {
+    if (eventCase_ == 419) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectBulkTransferDone(io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 419;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectBulkTransferDone(io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 419 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 419;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+   */
+  private void clearDirectBulkTransferDone() {
+    if (eventCase_ == 419) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TERMINAL_STREAM_FIELD_NUMBER = 420;
+  /**
+   * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalStream() {
+    return eventCase_ == 420;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent getTerminalStream() {
+    if (eventCase_ == 420) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalStream(io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 420;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalStream(io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 420 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 420;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+   */
+  private void clearTerminalStream() {
+    if (eventCase_ == 420) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_PREFERENCES_LOADED_FIELD_NUMBER = 421;
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPreferencesLoaded() {
+    return eventCase_ == 421;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent getDirectPreferencesLoaded() {
+    if (eventCase_ == 421) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPreferencesLoaded(io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 421;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPreferencesLoaded(io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 421 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 421;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+   */
+  private void clearDirectPreferencesLoaded() {
+    if (eventCase_ == 421) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
   public static final int NOW_MS_FIELD_NUMBER = 98;
   private long nowMs_;
   /**
@@ -12931,6 +14119,1062 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTransportConfig() {
+      return instance.hasTransportConfig();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TransportConfigEvent getTransportConfig() {
+      return instance.getTransportConfig();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+     */
+    public Builder setTransportConfig(io.github.lewin671.remoteagent.core.proto.TransportConfigEvent value) {
+      copyOnWrite();
+      instance.setTransportConfig(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+     */
+    public Builder setTransportConfig(
+        io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTransportConfig(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+     */
+    public Builder mergeTransportConfig(io.github.lewin671.remoteagent.core.proto.TransportConfigEvent value) {
+      copyOnWrite();
+      instance.mergeTransportConfig(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TransportConfigEvent transport_config = 400 [json_name = "transportConfig"];</code>
+     */
+    public Builder clearTransportConfig() {
+      copyOnWrite();
+      instance.clearTransportConfig();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectSecuritySnapshot() {
+      return instance.hasDirectSecuritySnapshot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent getDirectSecuritySnapshot() {
+      return instance.getDirectSecuritySnapshot();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+     */
+    public Builder setDirectSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent value) {
+      copyOnWrite();
+      instance.setDirectSecuritySnapshot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+     */
+    public Builder setDirectSecuritySnapshot(
+        io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectSecuritySnapshot(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+     */
+    public Builder mergeDirectSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent value) {
+      copyOnWrite();
+      instance.mergeDirectSecuritySnapshot(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
+     */
+    public Builder clearDirectSecuritySnapshot() {
+      copyOnWrite();
+      instance.clearDirectSecuritySnapshot();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectSignalReceived() {
+      return instance.hasDirectSignalReceived();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent getDirectSignalReceived() {
+      return instance.getDirectSignalReceived();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+     */
+    public Builder setDirectSignalReceived(io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent value) {
+      copyOnWrite();
+      instance.setDirectSignalReceived(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+     */
+    public Builder setDirectSignalReceived(
+        io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectSignalReceived(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+     */
+    public Builder mergeDirectSignalReceived(io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectSignalReceived(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
+     */
+    public Builder clearDirectSignalReceived() {
+      copyOnWrite();
+      instance.clearDirectSignalReceived();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectSignalDelivery() {
+      return instance.hasDirectSignalDelivery();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent getDirectSignalDelivery() {
+      return instance.getDirectSignalDelivery();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+     */
+    public Builder setDirectSignalDelivery(io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent value) {
+      copyOnWrite();
+      instance.setDirectSignalDelivery(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+     */
+    public Builder setDirectSignalDelivery(
+        io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectSignalDelivery(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+     */
+    public Builder mergeDirectSignalDelivery(io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent value) {
+      copyOnWrite();
+      instance.mergeDirectSignalDelivery(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalDeliveryEvent direct_signal_delivery = 403 [json_name = "directSignalDelivery"];</code>
+     */
+    public Builder clearDirectSignalDelivery() {
+      copyOnWrite();
+      instance.clearDirectSignalDelivery();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectKeySigned() {
+      return instance.hasDirectKeySigned();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent getDirectKeySigned() {
+      return instance.getDirectKeySigned();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+     */
+    public Builder setDirectKeySigned(io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent value) {
+      copyOnWrite();
+      instance.setDirectKeySigned(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+     */
+    public Builder setDirectKeySigned(
+        io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectKeySigned(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+     */
+    public Builder mergeDirectKeySigned(io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectKeySigned(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
+     */
+    public Builder clearDirectKeySigned() {
+      copyOnWrite();
+      instance.clearDirectKeySigned();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectKeyAgreed() {
+      return instance.hasDirectKeyAgreed();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent getDirectKeyAgreed() {
+      return instance.getDirectKeyAgreed();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+     */
+    public Builder setDirectKeyAgreed(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent value) {
+      copyOnWrite();
+      instance.setDirectKeyAgreed(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+     */
+    public Builder setDirectKeyAgreed(
+        io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectKeyAgreed(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+     */
+    public Builder mergeDirectKeyAgreed(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectKeyAgreed(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
+     */
+    public Builder clearDirectKeyAgreed() {
+      copyOnWrite();
+      instance.clearDirectKeyAgreed();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcCreated() {
+      return instance.hasDirectPcCreated();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent getDirectPcCreated() {
+      return instance.getDirectPcCreated();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+     */
+    public Builder setDirectPcCreated(io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent value) {
+      copyOnWrite();
+      instance.setDirectPcCreated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+     */
+    public Builder setDirectPcCreated(
+        io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcCreated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+     */
+    public Builder mergeDirectPcCreated(io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcCreated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
+     */
+    public Builder clearDirectPcCreated() {
+      copyOnWrite();
+      instance.clearDirectPcCreated();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcDescription() {
+      return instance.hasDirectPcDescription();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent getDirectPcDescription() {
+      return instance.getDirectPcDescription();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+     */
+    public Builder setDirectPcDescription(io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent value) {
+      copyOnWrite();
+      instance.setDirectPcDescription(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+     */
+    public Builder setDirectPcDescription(
+        io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcDescription(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+     */
+    public Builder mergeDirectPcDescription(io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcDescription(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescriptionEvent direct_pc_description = 407 [json_name = "directPcDescription"];</code>
+     */
+    public Builder clearDirectPcDescription() {
+      copyOnWrite();
+      instance.clearDirectPcDescription();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcRemoteSet() {
+      return instance.hasDirectPcRemoteSet();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent getDirectPcRemoteSet() {
+      return instance.getDirectPcRemoteSet();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+     */
+    public Builder setDirectPcRemoteSet(io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent value) {
+      copyOnWrite();
+      instance.setDirectPcRemoteSet(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+     */
+    public Builder setDirectPcRemoteSet(
+        io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcRemoteSet(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+     */
+    public Builder mergeDirectPcRemoteSet(io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcRemoteSet(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcRemoteSetEvent direct_pc_remote_set = 408 [json_name = "directPcRemoteSet"];</code>
+     */
+    public Builder clearDirectPcRemoteSet() {
+      copyOnWrite();
+      instance.clearDirectPcRemoteSet();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcCandidatesAdded() {
+      return instance.hasDirectPcCandidatesAdded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent getDirectPcCandidatesAdded() {
+      return instance.getDirectPcCandidatesAdded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+     */
+    public Builder setDirectPcCandidatesAdded(io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent value) {
+      copyOnWrite();
+      instance.setDirectPcCandidatesAdded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+     */
+    public Builder setDirectPcCandidatesAdded(
+        io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcCandidatesAdded(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+     */
+    public Builder mergeDirectPcCandidatesAdded(io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcCandidatesAdded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409 [json_name = "directPcCandidatesAdded"];</code>
+     */
+    public Builder clearDirectPcCandidatesAdded() {
+      copyOnWrite();
+      instance.clearDirectPcCandidatesAdded();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcLocalCandidate() {
+      return instance.hasDirectPcLocalCandidate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent getDirectPcLocalCandidate() {
+      return instance.getDirectPcLocalCandidate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+     */
+    public Builder setDirectPcLocalCandidate(io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent value) {
+      copyOnWrite();
+      instance.setDirectPcLocalCandidate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+     */
+    public Builder setDirectPcLocalCandidate(
+        io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcLocalCandidate(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+     */
+    public Builder mergeDirectPcLocalCandidate(io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcLocalCandidate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcLocalCandidateEvent direct_pc_local_candidate = 410 [json_name = "directPcLocalCandidate"];</code>
+     */
+    public Builder clearDirectPcLocalCandidate() {
+      copyOnWrite();
+      instance.clearDirectPcLocalCandidate();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcState() {
+      return instance.hasDirectPcState();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent getDirectPcState() {
+      return instance.getDirectPcState();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+     */
+    public Builder setDirectPcState(io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent value) {
+      copyOnWrite();
+      instance.setDirectPcState(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+     */
+    public Builder setDirectPcState(
+        io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcState(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+     */
+    public Builder mergeDirectPcState(io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcState(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStateEvent direct_pc_state = 411 [json_name = "directPcState"];</code>
+     */
+    public Builder clearDirectPcState() {
+      copyOnWrite();
+      instance.clearDirectPcState();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcStunError() {
+      return instance.hasDirectPcStunError();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent getDirectPcStunError() {
+      return instance.getDirectPcStunError();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+     */
+    public Builder setDirectPcStunError(io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent value) {
+      copyOnWrite();
+      instance.setDirectPcStunError(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+     */
+    public Builder setDirectPcStunError(
+        io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcStunError(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+     */
+    public Builder mergeDirectPcStunError(io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcStunError(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcStunErrorEvent direct_pc_stun_error = 412 [json_name = "directPcStunError"];</code>
+     */
+    public Builder clearDirectPcStunError() {
+      copyOnWrite();
+      instance.clearDirectPcStunError();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcClosed() {
+      return instance.hasDirectPcClosed();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent getDirectPcClosed() {
+      return instance.getDirectPcClosed();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+     */
+    public Builder setDirectPcClosed(io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent value) {
+      copyOnWrite();
+      instance.setDirectPcClosed(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+     */
+    public Builder setDirectPcClosed(
+        io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcClosed(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+     */
+    public Builder mergeDirectPcClosed(io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPcClosed(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcClosedEvent direct_pc_closed = 413 [json_name = "directPcClosed"];</code>
+     */
+    public Builder clearDirectPcClosed() {
+      copyOnWrite();
+      instance.clearDirectPcClosed();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectDcState() {
+      return instance.hasDirectDcState();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent getDirectDcState() {
+      return instance.getDirectDcState();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+     */
+    public Builder setDirectDcState(io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent value) {
+      copyOnWrite();
+      instance.setDirectDcState(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+     */
+    public Builder setDirectDcState(
+        io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectDcState(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+     */
+    public Builder mergeDirectDcState(io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent value) {
+      copyOnWrite();
+      instance.mergeDirectDcState(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStateEvent direct_dc_state = 414 [json_name = "directDcState"];</code>
+     */
+    public Builder clearDirectDcState() {
+      copyOnWrite();
+      instance.clearDirectDcState();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectDcStats() {
+      return instance.hasDirectDcStats();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent getDirectDcStats() {
+      return instance.getDirectDcStats();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+     */
+    public Builder setDirectDcStats(io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent value) {
+      copyOnWrite();
+      instance.setDirectDcStats(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+     */
+    public Builder setDirectDcStats(
+        io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectDcStats(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+     */
+    public Builder mergeDirectDcStats(io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent value) {
+      copyOnWrite();
+      instance.mergeDirectDcStats(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcStatsEvent direct_dc_stats = 415 [json_name = "directDcStats"];</code>
+     */
+    public Builder clearDirectDcStats() {
+      copyOnWrite();
+      instance.clearDirectDcStats();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectRetryNow() {
+      return instance.hasDirectRetryNow();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction getDirectRetryNow() {
+      return instance.getDirectRetryNow();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+     */
+    public Builder setDirectRetryNow(io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction value) {
+      copyOnWrite();
+      instance.setDirectRetryNow(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+     */
+    public Builder setDirectRetryNow(
+        io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectRetryNow(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+     */
+    public Builder mergeDirectRetryNow(io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction value) {
+      copyOnWrite();
+      instance.mergeDirectRetryNow(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowAction direct_retry_now = 416 [json_name = "directRetryNow"];</code>
+     */
+    public Builder clearDirectRetryNow() {
+      copyOnWrite();
+      instance.clearDirectRetryNow();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectRefreshDiagnostics() {
+      return instance.hasDirectRefreshDiagnostics();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction getDirectRefreshDiagnostics() {
+      return instance.getDirectRefreshDiagnostics();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+     */
+    public Builder setDirectRefreshDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction value) {
+      copyOnWrite();
+      instance.setDirectRefreshDiagnostics(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+     */
+    public Builder setDirectRefreshDiagnostics(
+        io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectRefreshDiagnostics(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+     */
+    public Builder mergeDirectRefreshDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction value) {
+      copyOnWrite();
+      instance.mergeDirectRefreshDiagnostics(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417 [json_name = "directRefreshDiagnostics"];</code>
+     */
+    public Builder clearDirectRefreshDiagnostics() {
+      copyOnWrite();
+      instance.clearDirectRefreshDiagnostics();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectBulkTransferBegin() {
+      return instance.hasDirectBulkTransferBegin();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent getDirectBulkTransferBegin() {
+      return instance.getDirectBulkTransferBegin();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+     */
+    public Builder setDirectBulkTransferBegin(io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent value) {
+      copyOnWrite();
+      instance.setDirectBulkTransferBegin(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+     */
+    public Builder setDirectBulkTransferBegin(
+        io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectBulkTransferBegin(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+     */
+    public Builder mergeDirectBulkTransferBegin(io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent value) {
+      copyOnWrite();
+      instance.mergeDirectBulkTransferBegin(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418 [json_name = "directBulkTransferBegin"];</code>
+     */
+    public Builder clearDirectBulkTransferBegin() {
+      copyOnWrite();
+      instance.clearDirectBulkTransferBegin();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectBulkTransferDone() {
+      return instance.hasDirectBulkTransferDone();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent getDirectBulkTransferDone() {
+      return instance.getDirectBulkTransferDone();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+     */
+    public Builder setDirectBulkTransferDone(io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent value) {
+      copyOnWrite();
+      instance.setDirectBulkTransferDone(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+     */
+    public Builder setDirectBulkTransferDone(
+        io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectBulkTransferDone(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+     */
+    public Builder mergeDirectBulkTransferDone(io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent value) {
+      copyOnWrite();
+      instance.mergeDirectBulkTransferDone(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419 [json_name = "directBulkTransferDone"];</code>
+     */
+    public Builder clearDirectBulkTransferDone() {
+      copyOnWrite();
+      instance.clearDirectBulkTransferDone();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalStream() {
+      return instance.hasTerminalStream();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent getTerminalStream() {
+      return instance.getTerminalStream();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+     */
+    public Builder setTerminalStream(io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent value) {
+      copyOnWrite();
+      instance.setTerminalStream(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+     */
+    public Builder setTerminalStream(
+        io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalStream(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+     */
+    public Builder mergeTerminalStream(io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent value) {
+      copyOnWrite();
+      instance.mergeTerminalStream(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalStreamEvent terminal_stream = 420 [json_name = "terminalStream"];</code>
+     */
+    public Builder clearTerminalStream() {
+      copyOnWrite();
+      instance.clearTerminalStream();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPreferencesLoaded() {
+      return instance.hasDirectPreferencesLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent getDirectPreferencesLoaded() {
+      return instance.getDirectPreferencesLoaded();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+     */
+    public Builder setDirectPreferencesLoaded(io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent value) {
+      copyOnWrite();
+      instance.setDirectPreferencesLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+     */
+    public Builder setDirectPreferencesLoaded(
+        io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPreferencesLoaded(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+     */
+    public Builder mergeDirectPreferencesLoaded(io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent value) {
+      copyOnWrite();
+      instance.mergeDirectPreferencesLoaded(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPreferencesLoadedEvent direct_preferences_loaded = 421 [json_name = "directPreferencesLoaded"];</code>
+     */
+    public Builder clearDirectPreferencesLoaded() {
+      copyOnWrite();
+      instance.clearDirectPreferencesLoaded();
+      return this;
+    }
+
+    /**
      * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
      * @return The nowMs.
      */
@@ -13292,27 +15536,53 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSortEvent.class,
             io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent.class,
             io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcLocalCandidateEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcStateEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcStunErrorEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcClosedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectRetryNowAction.class,
+            io.github.lewin671.remoteagent.core.proto.DirectRefreshDiagnosticsAction.class,
+            io.github.lewin671.remoteagent.core.proto.DirectBulkTransferBeginEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.class,
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0001\u0181\u0000\u0002\u0000\u0001<\u0000\u0002<\u0000\u0003" +
-              "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
-              "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
-              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
-              "\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
-              "\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/" +
-              "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;" +
-              "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000" +
-              "\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4" +
-              "<\u0000\u00d5<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000" +
-              "\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140" +
-              "<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000" +
-              "\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152" +
-              "<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000" +
-              "\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f" +
-              "<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000" +
-              "\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u016e<\u0000\u0172<\u0000\u0177" +
-              "<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000" +
-              "\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000";
+              "\u0000\u0095\u0001\u0000\u0001\u01a5\u0095\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
+              "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
+              "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
+              "\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f" +
+              "<\u0000 <\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000" +
+              ".<\u0000/<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000" +
+              ":<\u0000;<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd" +
+              "<\u0000\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000" +
+              "\u00d4<\u0000\u00d5<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f" +
+              "<\u0000\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000" +
+              "\u0140<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146" +
+              "<\u0000\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000" +
+              "\u0152<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158" +
+              "<\u0000\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000" +
+              "\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169" +
+              "<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u016e<\u0000\u0172<\u0000" +
+              "\u0177<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d" +
+              "<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0191<\u0000" +
+              "\u0192<\u0000\u0193<\u0000\u0194<\u0000\u0195<\u0000\u0196<\u0000\u0197<\u0000\u0198" +
+              "<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000" +
+              "\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5" +
+              "<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

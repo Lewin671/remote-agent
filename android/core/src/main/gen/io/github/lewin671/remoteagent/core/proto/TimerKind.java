@@ -59,6 +59,18 @@ public enum TimerKind
    * <code>TIMER_KIND_SESSION_STEER_GRACE = 11;</code>
    */
   TIMER_KIND_SESSION_STEER_GRACE(11),
+  /**
+   * <code>TIMER_KIND_DIRECT_ENGINE = 12;</code>
+   */
+  TIMER_KIND_DIRECT_ENGINE(12),
+  /**
+   * <code>TIMER_KIND_DIRECT_SESSION = 13;</code>
+   */
+  TIMER_KIND_DIRECT_SESSION(13),
+  /**
+   * <code>TIMER_KIND_TERMINAL_REOPEN = 14;</code>
+   */
+  TIMER_KIND_TERMINAL_REOPEN(14),
   UNRECOGNIZED(-1),
   ;
 
@@ -110,6 +122,18 @@ public enum TimerKind
    * <code>TIMER_KIND_SESSION_STEER_GRACE = 11;</code>
    */
   public static final int TIMER_KIND_SESSION_STEER_GRACE_VALUE = 11;
+  /**
+   * <code>TIMER_KIND_DIRECT_ENGINE = 12;</code>
+   */
+  public static final int TIMER_KIND_DIRECT_ENGINE_VALUE = 12;
+  /**
+   * <code>TIMER_KIND_DIRECT_SESSION = 13;</code>
+   */
+  public static final int TIMER_KIND_DIRECT_SESSION_VALUE = 13;
+  /**
+   * <code>TIMER_KIND_TERMINAL_REOPEN = 14;</code>
+   */
+  public static final int TIMER_KIND_TERMINAL_REOPEN_VALUE = 14;
 
 
   @java.lang.Override
@@ -145,6 +169,9 @@ public enum TimerKind
       case 9: return TIMER_KIND_COMMAND_RETRY;
       case 10: return TIMER_KIND_SESSION_UNDO;
       case 11: return TIMER_KIND_SESSION_STEER_GRACE;
+      case 12: return TIMER_KIND_DIRECT_ENGINE;
+      case 13: return TIMER_KIND_DIRECT_SESSION;
+      case 14: return TIMER_KIND_TERMINAL_REOPEN;
       default: return null;
     }
   }

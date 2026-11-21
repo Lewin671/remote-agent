@@ -139,4 +139,28 @@ public interface CommandOutcomeEventOrBuilder extends
    * @return The routeWasDirect.
    */
   boolean getRouteWasDirect();
+
+  /**
+   * <code>double elapsed_ms = 15 [json_name = "elapsedMs"];</code>
+   * @return The elapsedMs.
+   */
+  double getElapsedMs();
+
+  /**
+   * <code>int64 observed_bytes = 16 [json_name = "observedBytes"];</code>
+   * @return The observedBytes.
+   */
+  long getObservedBytes();
+
+  /**
+   * <code>bool handed_off = 17 [json_name = "handedOff"];</code>
+   * @return The handedOff.
+   */
+  boolean getHandedOff();
+
+  /**
+   * <code>uint64 direct_ticket_id = 18 [json_name = "directTicketId"];</code>
+   * @return The directTicketId.
+   */
+  long getDirectTicketId();
 }

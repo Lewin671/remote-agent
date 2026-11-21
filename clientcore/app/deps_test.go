@@ -10,21 +10,93 @@ import (
 // The wasm build must not pull in packages that bloat it or break the core's
 // rules (architecture.md, 体积与性能预算): fmt and reflect cost tens of KB each,
 // protobuf-go brings reflection, and the core never does network I/O or uses
-// the main module's internals.
+// the main module's internals. Forbidden packages are banned as direct imports
+// anywhere under clientcore/ or shared/, and may appear transitively only behind
+// explicit gateways (crypto/ed25519, compress/flate in shared/devicesec) whose
+// sensitive paths are dead-code-banned by shared/deps_test.go.
 func TestCoreWasmDependencies(t *testing.T) {
-	cmd := exec.Command("go", "list", "-deps", "./cmd/corewasm")
+	const coreModule = "github.com/Lewin671/remote-agent/"
+	forbidden := map[string]bool{
+		"fmt": true, "reflect": true, "encoding/json": true, "encoding/hex": true,
+		"encoding/binary": true, "crypto/rand": true, "math/rand": true, "math/rand/v2": true,
+		"math/big": true, "net": true, "regexp": true, "context": true,
+		"crypto/ecdh": true, "crypto/hpke": true, "log": true, "log/slog": true,
+		"os": true,
+	}
+	gateways := map[string][]string{
+		"crypto/ed25519": nil,
+		"compress/flate": {"shared/devicesec"},
+	}
+	cmd := exec.Command("go", "list", "-deps", "-f", "{{.ImportPath}}\t{{join .Imports \" \"}}", "./cmd/corewasm")
 	cmd.Dir = ".."
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("go list: %v", err)
 	}
-	for _, dep := range strings.Fields(string(out)) {
-		switch {
-		case dep == "fmt", dep == "reflect", dep == "encoding/json", dep == "net", strings.HasPrefix(dep, "net/"),
-			strings.HasPrefix(dep, "google.golang.org/protobuf"),
-			strings.HasPrefix(dep, "github.com/Lewin671/remote-agent/internal"):
-			t.Errorf("core wasm depends on %s", dep)
+	graph := map[string][]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		pkg, imports, _ := strings.Cut(line, "\t")
+		graph[pkg] = strings.Fields(imports)
+	}
+	for pkg, imports := range graph {
+		if !strings.HasPrefix(pkg, coreModule+"clientcore/") && !strings.HasPrefix(pkg, coreModule+"shared/") {
+			continue
+		}
+		for _, imp := range imports {
+			if forbidden[imp] || strings.HasPrefix(imp, "net/") ||
+				strings.HasPrefix(imp, "google.golang.org/protobuf") ||
+				strings.HasPrefix(imp, coreModule+"internal") {
+				t.Errorf("%s directly imports forbidden package %s", pkg, imp)
+			}
+		}
+	}
+	allowedViaGateway := func(importer, imp string) bool {
+		only, ok := gateways[imp]
+		if !ok {
+			return false
+		}
+		if len(only) == 0 {
+			return true
+		}
+		rel := strings.TrimPrefix(importer, coreModule)
+		for _, prefix := range only {
+			if rel == prefix || strings.HasPrefix(rel, prefix+"/") {
+				return true
+			}
+		}
+		return false
+	}
+	type step struct{ pkg, via string }
+	var queue []step
+	seen := map[string]bool{}
+	for pkg := range graph {
+		if strings.HasPrefix(pkg, coreModule+"clientcore/") || strings.HasPrefix(pkg, coreModule+"shared/") {
+			queue = append(queue, step{pkg, pkg})
+			seen[pkg] = true
+		}
+	}
+	for len(queue) > 0 {
+		s := queue[0]
+		queue = queue[1:]
+		for _, imp := range graph[s.pkg] {
+			if seen[imp] {
+				continue
+			}
+			if (strings.HasPrefix(s.pkg, coreModule+"clientcore/") || strings.HasPrefix(s.pkg, coreModule+"shared/")) &&
+				allowedViaGateway(s.pkg, imp) {
+				continue
+			}
+			if strings.HasPrefix(imp, "crypto/internal/") {
+				continue
+			}
+			seen[imp] = true
+			queue = append(queue, step{imp, s.via})
+			if forbidden[imp] || strings.HasPrefix(imp, "net/") ||
+				strings.HasPrefix(imp, "google.golang.org/protobuf") ||
+				strings.HasPrefix(imp, coreModule+"internal") {
+				t.Errorf("core wasm %s reaches %s via %s outside permitted gateways", s.via, imp, s.pkg)
+			}
 		}
 	}
 }

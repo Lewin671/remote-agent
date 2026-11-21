@@ -18,6 +18,7 @@ public  final class DirectEventsReceivedEvent extends
     machineId_ = "";
     sessionId_ = "";
     events_ = emptyProtobufList();
+    sender_ = "";
   }
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
   private java.lang.String machineId_;
@@ -210,6 +211,80 @@ public  final class DirectEventsReceivedEvent extends
   private void removeEvents(int index) {
     ensureEventsIsMutable();
     events_.remove(index);
+  }
+
+  public static final int PC_ID_FIELD_NUMBER = 4;
+  private long pcId_;
+  /**
+   * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
+   * @return The pcId.
+   */
+  @java.lang.Override
+  public long getPcId() {
+    return pcId_;
+  }
+  /**
+   * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
+   * @param value The pcId to set.
+   */
+  private void setPcId(long value) {
+    
+    pcId_ = value;
+  }
+  /**
+   * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
+   */
+  private void clearPcId() {
+
+    pcId_ = 0L;
+  }
+
+  public static final int SENDER_FIELD_NUMBER = 5;
+  private java.lang.String sender_;
+  /**
+   * <code>string sender = 5 [json_name = "sender"];</code>
+   * @return The sender.
+   */
+  @java.lang.Override
+  public java.lang.String getSender() {
+    return sender_;
+  }
+  /**
+   * <code>string sender = 5 [json_name = "sender"];</code>
+   * @return The bytes for sender.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getSenderBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(sender_);
+  }
+  /**
+   * <code>string sender = 5 [json_name = "sender"];</code>
+   * @param value The sender to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSender(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    sender_ = value;
+  }
+  /**
+   * <code>string sender = 5 [json_name = "sender"];</code>
+   */
+  private void clearSender() {
+
+    sender_ = getDefaultInstance().getSender();
+  }
+  /**
+   * <code>string sender = 5 [json_name = "sender"];</code>
+   * @param value The bytes for sender to set.
+   */
+  private void setSenderBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    sender_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent parseFrom(
@@ -509,6 +584,83 @@ public  final class DirectEventsReceivedEvent extends
       return this;
     }
 
+    /**
+     * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
+     * @return The pcId.
+     */
+    @java.lang.Override
+    public long getPcId() {
+      return instance.getPcId();
+    }
+    /**
+     * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
+     * @param value The pcId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPcId(long value) {
+      copyOnWrite();
+      instance.setPcId(value);
+      return this;
+    }
+    /**
+     * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPcId() {
+      copyOnWrite();
+      instance.clearPcId();
+      return this;
+    }
+
+    /**
+     * <code>string sender = 5 [json_name = "sender"];</code>
+     * @return The sender.
+     */
+    @java.lang.Override
+    public java.lang.String getSender() {
+      return instance.getSender();
+    }
+    /**
+     * <code>string sender = 5 [json_name = "sender"];</code>
+     * @return The bytes for sender.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getSenderBytes() {
+      return instance.getSenderBytes();
+    }
+    /**
+     * <code>string sender = 5 [json_name = "sender"];</code>
+     * @param value The sender to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSender(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setSender(value);
+      return this;
+    }
+    /**
+     * <code>string sender = 5 [json_name = "sender"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSender() {
+      copyOnWrite();
+      instance.clearSender();
+      return this;
+    }
+    /**
+     * <code>string sender = 5 [json_name = "sender"];</code>
+     * @param value The bytes for sender to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSenderBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSenderBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DirectEventsReceivedEvent)
   }
   @java.lang.Override
@@ -529,10 +681,12 @@ public  final class DirectEventsReceivedEvent extends
             "sessionId_",
             "events_",
             io.github.lewin671.remoteagent.core.proto.PlainEvent.class,
+            "pcId_",
+            "sender_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u001b";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u001b\u0004\u0003\u0005\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

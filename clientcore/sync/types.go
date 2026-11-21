@@ -12,6 +12,8 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/transport"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
 const (
@@ -57,6 +59,7 @@ type DirtyFlags struct {
 	NewSession  bool
 	SyncState   bool
 	SessionData bool
+	Direct      bool
 }
 
 // Add merges additional dirty screen markers (and marks SyncState when any view changes).
@@ -80,7 +83,12 @@ func (d *DirtyFlags) MarkSessionData() {
 	d.SyncState = true
 }
 
-// MarkAll marks every managed screen and transitional view dirty.
+// MarkDirect marks direct route/diagnostic screens dirty (called only when Core transport state changes).
+func (d *DirtyFlags) MarkDirect() {
+	d.Direct = true
+}
+
+// MarkAll marks every non-transport screen and transitional view dirty.
 func (d *DirtyFlags) MarkAll() {
 	d.Home = true
 	d.Project = true
@@ -91,7 +99,7 @@ func (d *DirtyFlags) MarkAll() {
 
 // Any reports whether at least one screen or transitional view is dirty.
 func (d DirtyFlags) Any() bool {
-	return d.Home || d.Project || d.NewSession || d.SyncState || d.SessionData
+	return d.Home || d.Project || d.NewSession || d.SyncState || d.SessionData || d.Direct
 }
 
 // ScreenTargets returns ordered corev1.ScreenTarget entries for RenderEffect.
@@ -111,6 +119,9 @@ func (d DirtyFlags) ScreenTargets() []corev1.ScreenTarget {
 	}
 	if d.SessionData {
 		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_SESSION_DATA)
+	}
+	if d.Direct {
+		out = append(out, corev1.ScreenTarget_SCREEN_TARGET_DIRECT_DIAGNOSTICS)
 	}
 	return out
 }
@@ -345,8 +356,9 @@ type Engine struct {
 	nextPushSeq  uint64
 	nextEventRev uint64
 
-	recovery              *Recovery
-	liveness              *LegLiveness
+	budget                linkcore.Budget
+	recovery              linkcore.Recovery
+	liveness              *linkcore.Liveness
 	timers                map[timerKey]timerEntry
 	everReady             bool
 	displayGraceUntilMs   int64
@@ -412,6 +424,17 @@ type Engine struct {
 	reqIDByAttempt  map[string]string
 	attemptTrackers map[string]*AttemptTracker
 	retryReqByTimer map[string]string // timer key -> request_id
+
+	transportCoord         *transport.Coordinator
+	transportConfigured    bool
+	platformAgent          string
+	directPrefs            map[string]bool
+	directEngineAt         int64
+	directEngineScheduled  bool
+	directSessionAt        int64
+	directSessionScheduled bool
+	directTermAt           int64
+	directTermScheduled    bool
 }
 
 // NewEngine constructs a fresh sans-IO sync Engine.
@@ -419,7 +442,6 @@ func NewEngine() *Engine {
 	e := &Engine{
 		foreground:        true,
 		networkAvailable:  true,
-		recovery:          NewRecovery(NewRecoveryBudget(4.0, 2.0)),
 		timers:            make(map[timerKey]timerEntry),
 		listBackoffMs:     ListRetryInitialMs,
 		prefsBackoffMs:    PrefsRetryInitialMs,
@@ -434,6 +456,7 @@ func NewEngine() *Engine {
 		removedPushes:     make(map[string]uint64),
 		devicePushes:      make(map[string]uint64),
 		directReady:       make(map[string]bool),
+		directPrefs:       make(map[string]bool),
 		buffers:           make(map[string]*EventBuffer),
 		watchedSessions:   make(map[string]bool),
 		pinnedSessions:    make(map[string]bool),
@@ -535,6 +558,9 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	e.entropy.push(ev.RandomIds, ev.UnitFloats)
 	if ep := ev.GetEntropyProvided(); ep != nil {
 		e.entropy.push(ep.RandomIds, ep.UnitFloats)
+		if len(ep.Seed) > 0 {
+			e.handleDirectEntropySeed(ctx, ep.Seed)
+		}
 		return true, finalizeResult(ctx)
 	}
 	if cal != nil {
@@ -603,6 +629,50 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleScheduleHints(ctx, k.SessionScheduleHints)
 	case *corev1.Event_DirectEventsReceived:
 		e.handleDirectEvents(ctx, k.DirectEventsReceived)
+	case *corev1.Event_TransportConfig:
+		e.handleTransportConfig(ctx, k.TransportConfig)
+	case *corev1.Event_DirectPreferencesLoaded:
+		e.handleDirectPreferencesLoaded(ctx, k.DirectPreferencesLoaded)
+	case *corev1.Event_DirectSecuritySnapshot:
+		e.handleDirectSecuritySnapshot(ctx, k.DirectSecuritySnapshot)
+	case *corev1.Event_DirectSignalReceived:
+		e.handleDirectSignalReceived(ctx, k.DirectSignalReceived)
+	case *corev1.Event_DirectSignalDelivery:
+		e.handleDirectSignalDelivery(ctx, k.DirectSignalDelivery)
+	case *corev1.Event_DirectKeySigned:
+		e.handleDirectKeySigned(ctx, k.DirectKeySigned)
+	case *corev1.Event_DirectKeyAgreed:
+		e.handleDirectKeyAgreed(ctx, k.DirectKeyAgreed)
+	case *corev1.Event_DirectPcCreated:
+		e.handleDirectPcCreated(ctx, k.DirectPcCreated)
+	case *corev1.Event_DirectPcDescription:
+		e.handleDirectPcDescription(ctx, k.DirectPcDescription)
+	case *corev1.Event_DirectPcRemoteSet:
+		e.handleDirectPcRemoteSet(ctx, k.DirectPcRemoteSet)
+	case *corev1.Event_DirectPcCandidatesAdded:
+		e.handleDirectPcCandidatesAdded(ctx, k.DirectPcCandidatesAdded)
+	case *corev1.Event_DirectPcLocalCandidate:
+		e.handleDirectPcLocalCandidate(ctx, k.DirectPcLocalCandidate)
+	case *corev1.Event_DirectPcState:
+		e.handleDirectPcState(ctx, k.DirectPcState)
+	case *corev1.Event_DirectPcStunError:
+		e.handleDirectPcStunError(ctx, k.DirectPcStunError)
+	case *corev1.Event_DirectPcClosed:
+		e.handleDirectPcClosed(ctx, k.DirectPcClosed)
+	case *corev1.Event_DirectDcState:
+		e.handleDirectDcState(ctx, k.DirectDcState)
+	case *corev1.Event_DirectDcStats:
+		e.handleDirectDcStats(ctx, k.DirectDcStats)
+	case *corev1.Event_DirectRetryNow:
+		e.handleDirectRetryNow(ctx, k.DirectRetryNow)
+	case *corev1.Event_DirectRefreshDiagnostics:
+		e.handleDirectRefreshDiagnostics(ctx, k.DirectRefreshDiagnostics)
+	case *corev1.Event_DirectBulkTransferBegin:
+		e.handleDirectBulkTransferBegin(ctx, k.DirectBulkTransferBegin)
+	case *corev1.Event_DirectBulkTransferDone:
+		e.handleDirectBulkTransferDone(ctx, k.DirectBulkTransferDone)
+	case *corev1.Event_TerminalStream:
+		e.handleTerminalStream(ctx, k.TerminalStream)
 	default:
 		consumed = false
 	}

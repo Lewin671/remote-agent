@@ -218,6 +218,7 @@ func (e *Engine) handleSessionWatch(ctx *StepContext, ev *corev1.SessionWatchEve
 		e.trimHistory(ctx)
 	}
 	e.updateLivePollers(ctx)
+	e.syncDirectWatched(ctx)
 	ctx.Dirty.MarkSessionData()
 }
 
@@ -666,6 +667,12 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 	}
 	if e.security.Loaded && !e.security.TrustedMachines[ev.MachineId] {
 		return
+	}
+	if e.transportConfigured && e.transportCoord != nil && ev.PcId != 0 {
+		roundID, machineID, use, ok := e.transportCoord.InboundDCContext(e.nowMs, ev.PcId)
+		if !ok || machineID != ev.MachineId || !e.transportCoord.PushedEventAllowed(e.nowMs, roundID, use, ev.MachineId, ev.Sender) {
+			return
+		}
 	}
 	expected := uint64(len(b.prefix)) + 1
 	var clean []*corev1.PlainEvent

@@ -10,6 +10,7 @@ import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/session_view.proto";
 import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/sync_view.proto";
+import "remoteagent/core/v1/transport.proto";
 import "remoteagent/core/v1/usage_view.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
@@ -55,6 +56,7 @@ message Screen {
     DevicesScreenRequest devices = 34;
     ClientDetailScreenRequest client_detail = 35;
     UsageScreenRequest usage = 36;
+    DirectDiagnosticsScreenRequest direct_diagnostics = 37;
     SessionScreenRequest session = 10;
     SchedulesScreenRequest schedules = 20;
     ScheduleDetailScreenRequest schedule_detail = 21;
@@ -79,6 +81,7 @@ message ViewModel {
     DevicesViewModel devices = 34;
     ClientDetailViewModel client_detail = 35;
     UsageViewModel usage = 36;
+    DirectDiagnosticsViewModel direct_diagnostics = 37;
     SessionViewModel session = 10;
     SchedulesViewModel schedules = 20;
     ScheduleDetailViewModel schedule_detail = 21;
@@ -105,6 +108,7 @@ message LocalCalendar {
 message EntropyProvided {
   repeated string random_ids = 1;
   repeated double unit_floats = 2;
+  bytes seed = 3;
 }
 
 enum SyncLifecycleKind {
@@ -141,6 +145,9 @@ enum TimerKind {
   TIMER_KIND_COMMAND_RETRY = 9;
   TIMER_KIND_SESSION_UNDO = 10;
   TIMER_KIND_SESSION_STEER_GRACE = 11;
+  TIMER_KIND_DIRECT_ENGINE = 12;
+  TIMER_KIND_DIRECT_SESSION = 13;
+  TIMER_KIND_TERMINAL_REOPEN = 14;
 }
 
 message TimerFiredEvent {
@@ -363,6 +370,10 @@ message CommandOutcomeEvent {
   string transport_code = 12;
   string transport_detail = 13;
   bool route_was_direct = 14;
+  double elapsed_ms = 15;
+  int64 observed_bytes = 16;
+  bool handed_off = 17;
+  uint64 direct_ticket_id = 18;
 }
 
 message SessionWatchEvent {
@@ -392,6 +403,8 @@ message DirectEventsReceivedEvent {
   string machine_id = 1;
   string session_id = 2;
   repeated PlainEvent events = 3;
+  uint64 pc_id = 4;
+  string sender = 5;
 }
 
 message SessionScheduleHint {
@@ -612,6 +625,28 @@ message Event {
     ScheduleFormUpdateTimingAction schedule_form_update_timing = 347;
     ScheduleFormBoolAction schedule_form_submit = 348;
     ScheduleFormStringAction schedule_form_retry_models = 349;
+    TransportConfigEvent transport_config = 400;
+    DirectSecuritySnapshotEvent direct_security_snapshot = 401;
+    DirectSignalReceivedEvent direct_signal_received = 402;
+    DirectSignalDeliveryEvent direct_signal_delivery = 403;
+    DirectKeySignedEvent direct_key_signed = 404;
+    DirectKeyAgreedEvent direct_key_agreed = 405;
+    DirectPcCreatedEvent direct_pc_created = 406;
+    DirectPcDescriptionEvent direct_pc_description = 407;
+    DirectPcRemoteSetEvent direct_pc_remote_set = 408;
+    DirectPcCandidatesAddedEvent direct_pc_candidates_added = 409;
+    DirectPcLocalCandidateEvent direct_pc_local_candidate = 410;
+    DirectPcStateEvent direct_pc_state = 411;
+    DirectPcStunErrorEvent direct_pc_stun_error = 412;
+    DirectPcClosedEvent direct_pc_closed = 413;
+    DirectDcStateEvent direct_dc_state = 414;
+    DirectDcStatsEvent direct_dc_stats = 415;
+    DirectRetryNowAction direct_retry_now = 416;
+    DirectRefreshDiagnosticsAction direct_refresh_diagnostics = 417;
+    DirectBulkTransferBeginEvent direct_bulk_transfer_begin = 418;
+    DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419;
+    TerminalStreamEvent terminal_stream = 420;
+    DirectPreferencesLoadedEvent direct_preferences_loaded = 421;
   }
   int64 now_ms = 98;
   int64 mono_ms = 99;
@@ -635,6 +670,7 @@ enum ScreenTarget {
   SCREEN_TARGET_DEVICES = 34;
   SCREEN_TARGET_CLIENT_DETAIL = 35;
   SCREEN_TARGET_USAGE = 36;
+  SCREEN_TARGET_DIRECT_DIAGNOSTICS = 37;
   SCREEN_TARGET_SESSION = 10;
   SCREEN_TARGET_SCHEDULES = 20;
   SCREEN_TARGET_SCHEDULE_DETAIL = 21;
@@ -800,6 +836,10 @@ message DispatchCommandEffect {
   string bulk_file_key = 10;
   int64 bulk_bytes = 11;
   bool bulk_upload = 12;
+  CommandRouteLeg route_leg = 13;
+  uint64 direct_pc_id = 14;
+  int64 direct_timeout_ms = 15;
+  uint64 direct_ticket_id = 16;
 }
 
 message SaveHomeScopeEffect {
@@ -831,6 +871,7 @@ message AttachmentsSettledEffect {
 message RequestEntropyEffect {
   int32 min_ids = 1;
   int32 min_floats = 2;
+  int32 min_seed_bytes = 3;
 }
 
 message Effect {
@@ -867,6 +908,20 @@ message Effect {
     ScheduleSaveSeenEffect schedule_save_seen = 63;
     ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64;
     ScheduleNavigateEffect schedule_navigate = 65;
+    DirectKeySignEffect direct_key_sign = 100;
+    DirectKeyAgreeEffect direct_key_agree = 101;
+    DirectSignalSendEffect direct_signal_send = 102;
+    DirectPcCreateEffect direct_pc_create = 103;
+    DirectPcDescribeEffect direct_pc_describe = 104;
+    DirectPcSetRemoteEffect direct_pc_set_remote = 105;
+    DirectPcAddCandidatesEffect direct_pc_add_candidates = 106;
+    DirectPcConfirmEffect direct_pc_confirm = 107;
+    DirectPcCloseEffect direct_pc_close = 108;
+    DirectDcReadStatsEffect direct_dc_read_stats = 109;
+    DirectAuthorizeEffect direct_authorize = 110;
+    DirectBulkRouteEffect direct_bulk_route = 111;
+    TerminalReopenEffect terminal_reopen = 112;
+    DirectRetryNowResultEffect direct_retry_now_result = 113;
   }
 }
 

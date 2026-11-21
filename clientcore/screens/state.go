@@ -124,6 +124,9 @@ type State struct {
 	NewSessions          map[string]*NewSessionDraft
 
 	Schedules *ScheduleState
+
+	// DirectReportFn returns the live direct-path preference & report when transport is owned by Core.
+	DirectReportFn func(machineID string) (enabled bool, report *corev1.DirectRouteReport, ok bool)
 }
 
 // NewState constructs a State over w with empty UI lookup maps. A nil w gets a

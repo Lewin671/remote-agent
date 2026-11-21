@@ -155,6 +155,18 @@ message SessionHeaderView {
   SessionCapabilitiesView capabilities = 52;
   Text missing_text = 53;
   ComputerReachability computer_reachability = 54;
+  SessionDirectChipView direct_chip = 55;
+}
+
+message SessionDirectChipView {
+  bool visible = 1;
+  bool active = 2;
+  bool read_direct = 3;
+  bool file_direct = 4;
+  Text label_text = 5;
+  Text popover_title = 6;
+  Text popover_body = 7;
+  Text popover_foot = 8;
 }
 
 message SessionModelChoiceView {

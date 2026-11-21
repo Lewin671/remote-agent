@@ -1,19 +1,25 @@
 import { cleanup } from "../cleanup";
 import type { Path } from "./path";
-import { Router } from "./router";
 
-/** Owns physical path routing and logical streams across relay and direct paths.
- * Command lifecycle and retries now live in shared Core. */
+/** Owns physical path readiness and active transport streams.
+ * Command routing, retries, and direct session ownership live in shared Core. */
 export class Link {
-  readonly router: Router;
   private readonly listeners = new Set<() => void>();
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   changed() { cleanup(...this.listeners); }
   private readonly streams = new Set<{ end(reason: string, notify?: boolean): void }>();
-  constructor(path: Path) { this.router = new Router(path); }
-  status(machineId: string) { return this.router.status(machineId); }
+  constructor(readonly path: Path) {}
 
-  openPathStream(address: string) { return this.router.path.openStream(address); }
+  status(machineId: string) {
+    const state = this.path.status(machineId);
+    return {
+      ...state,
+      available: state.ready && state.reachable,
+      canProbe: (serverReachable: boolean) => serverReachable || !state.relayRequired,
+    };
+  }
+
+  openPathStream(address: string) { return this.path.openStream(address); }
 
   openStream(onClose: (reason: string) => void, stop: (reason: string) => void) {
     let ended = false;

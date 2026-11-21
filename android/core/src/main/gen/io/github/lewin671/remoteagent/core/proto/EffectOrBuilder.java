@@ -362,5 +362,159 @@ public interface EffectOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect getScheduleNavigate();
 
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+   * @return Whether the directKeySign field is set.
+   */
+  boolean hasDirectKeySign();
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+   * @return The directKeySign.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect getDirectKeySign();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+   * @return Whether the directKeyAgree field is set.
+   */
+  boolean hasDirectKeyAgree();
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+   * @return The directKeyAgree.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect getDirectKeyAgree();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+   * @return Whether the directSignalSend field is set.
+   */
+  boolean hasDirectSignalSend();
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+   * @return The directSignalSend.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect getDirectSignalSend();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+   * @return Whether the directPcCreate field is set.
+   */
+  boolean hasDirectPcCreate();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+   * @return The directPcCreate.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect getDirectPcCreate();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+   * @return Whether the directPcDescribe field is set.
+   */
+  boolean hasDirectPcDescribe();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+   * @return The directPcDescribe.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect getDirectPcDescribe();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+   * @return Whether the directPcSetRemote field is set.
+   */
+  boolean hasDirectPcSetRemote();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+   * @return The directPcSetRemote.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect getDirectPcSetRemote();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+   * @return Whether the directPcAddCandidates field is set.
+   */
+  boolean hasDirectPcAddCandidates();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+   * @return The directPcAddCandidates.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect getDirectPcAddCandidates();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+   * @return Whether the directPcConfirm field is set.
+   */
+  boolean hasDirectPcConfirm();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+   * @return The directPcConfirm.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect getDirectPcConfirm();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+   * @return Whether the directPcClose field is set.
+   */
+  boolean hasDirectPcClose();
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+   * @return The directPcClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect getDirectPcClose();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+   * @return Whether the directDcReadStats field is set.
+   */
+  boolean hasDirectDcReadStats();
+  /**
+   * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+   * @return The directDcReadStats.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect getDirectDcReadStats();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+   * @return Whether the directAuthorize field is set.
+   */
+  boolean hasDirectAuthorize();
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+   * @return The directAuthorize.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect getDirectAuthorize();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+   * @return Whether the directBulkRoute field is set.
+   */
+  boolean hasDirectBulkRoute();
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+   * @return The directBulkRoute.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect getDirectBulkRoute();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+   * @return Whether the terminalReopen field is set.
+   */
+  boolean hasTerminalReopen();
+  /**
+   * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+   * @return The terminalReopen.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect getTerminalReopen();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+   * @return Whether the directRetryNowResult field is set.
+   */
+  boolean hasDirectRetryNowResult();
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+   * @return The directRetryNowResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect getDirectRetryNowResult();
+
   public io.github.lewin671.remoteagent.core.proto.Effect.EffectCase getEffectCase();
 }

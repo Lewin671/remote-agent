@@ -36,6 +36,9 @@ const (
 	TimerKind_TIMER_KIND_COMMAND_RETRY       TimerKind = 9
 	TimerKind_TIMER_KIND_SESSION_UNDO        TimerKind = 10
 	TimerKind_TIMER_KIND_SESSION_STEER_GRACE TimerKind = 11
+	TimerKind_TIMER_KIND_DIRECT_ENGINE       TimerKind = 12
+	TimerKind_TIMER_KIND_DIRECT_SESSION      TimerKind = 13
+	TimerKind_TIMER_KIND_TERMINAL_REOPEN     TimerKind = 14
 )
 
 type OutcomeSource int32
@@ -64,6 +67,7 @@ const (
 	ScreenTarget_SCREEN_TARGET_DEVICES                ScreenTarget = 34
 	ScreenTarget_SCREEN_TARGET_CLIENT_DETAIL          ScreenTarget = 35
 	ScreenTarget_SCREEN_TARGET_USAGE                  ScreenTarget = 36
+	ScreenTarget_SCREEN_TARGET_DIRECT_DIAGNOSTICS     ScreenTarget = 37
 	ScreenTarget_SCREEN_TARGET_SESSION                ScreenTarget = 10
 	ScreenTarget_SCREEN_TARGET_SCHEDULES              ScreenTarget = 20
 	ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL        ScreenTarget = 21
@@ -347,6 +351,12 @@ type Screen_Usage struct{ Usage *UsageScreenRequest }
 
 func (*Screen_Usage) isScreen_Screen() {}
 
+type Screen_DirectDiagnostics struct {
+	DirectDiagnostics *DirectDiagnosticsScreenRequest
+}
+
+func (*Screen_DirectDiagnostics) isScreen_Screen() {}
+
 type Screen_Session struct{ Session *SessionScreenRequest }
 
 func (*Screen_Session) isScreen_Screen() {}
@@ -444,6 +454,12 @@ func (m *Screen) GetClientDetail() *ClientDetailScreenRequest {
 func (m *Screen) GetUsage() *UsageScreenRequest {
 	if x, ok := m.GetScreen().(*Screen_Usage); ok && x != nil {
 		return x.Usage
+	}
+	return nil
+}
+func (m *Screen) GetDirectDiagnostics() *DirectDiagnosticsScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_DirectDiagnostics); ok && x != nil {
+		return x.DirectDiagnostics
 	}
 	return nil
 }
@@ -665,6 +681,21 @@ func (m *Screen) Unmarshal(b []byte) error {
 				m.Screen = &Screen_Usage{Usage: sub}
 				continue
 			}
+		case 37:
+			if wtyp == litewire.BytesType {
+				var sub *DirectDiagnosticsScreenRequest
+				if cur, ok := m.Screen.(*Screen_DirectDiagnostics); ok && cur != nil {
+					sub = cur.DirectDiagnostics
+				}
+				if sub == nil {
+					sub = &DirectDiagnosticsScreenRequest{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Screen = &Screen_DirectDiagnostics{DirectDiagnostics: sub}
+				continue
+			}
 		case 10:
 			if wtyp == litewire.BytesType {
 				var sub *SessionScreenRequest
@@ -801,6 +832,10 @@ type ViewModel_Usage struct{ Usage *UsageViewModel }
 
 func (*ViewModel_Usage) isViewModel_View() {}
 
+type ViewModel_DirectDiagnostics struct{ DirectDiagnostics *DirectDiagnosticsViewModel }
+
+func (*ViewModel_DirectDiagnostics) isViewModel_View() {}
+
 type ViewModel_Session struct{ Session *SessionViewModel }
 
 func (*ViewModel_Session) isViewModel_View() {}
@@ -898,6 +933,12 @@ func (m *ViewModel) GetClientDetail() *ClientDetailViewModel {
 func (m *ViewModel) GetUsage() *UsageViewModel {
 	if x, ok := m.GetView().(*ViewModel_Usage); ok && x != nil {
 		return x.Usage
+	}
+	return nil
+}
+func (m *ViewModel) GetDirectDiagnostics() *DirectDiagnosticsViewModel {
+	if x, ok := m.GetView().(*ViewModel_DirectDiagnostics); ok && x != nil {
+		return x.DirectDiagnostics
 	}
 	return nil
 }
@@ -1013,6 +1054,12 @@ func (m *ViewModel) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.Usage != nil {
 				b = litewire.AppendMessage(b, 36, x.Usage)
+			}
+		}
+	case *ViewModel_DirectDiagnostics:
+		if x != nil {
+			if x.DirectDiagnostics != nil {
+				b = litewire.AppendMessage(b, 37, x.DirectDiagnostics)
 			}
 		}
 	case *ViewModel_Session:
@@ -1234,6 +1281,7 @@ func (m *LocalCalendar) Unmarshal(b []byte) error {
 type EntropyProvided struct {
 	RandomIds  []string
 	UnitFloats []float64
+	Seed       []byte
 }
 
 func (m *EntropyProvided) GetRandomIds() []string {
@@ -1245,6 +1293,12 @@ func (m *EntropyProvided) GetRandomIds() []string {
 func (m *EntropyProvided) GetUnitFloats() []float64 {
 	if m != nil {
 		return m.UnitFloats
+	}
+	return nil
+}
+func (m *EntropyProvided) GetSeed() []byte {
+	if m != nil {
+		return m.Seed
 	}
 	return nil
 }
@@ -1286,6 +1340,15 @@ func (m *EntropyProvided) Unmarshal(b []byte) error {
 					return err
 				}
 				m.UnitFloats = append(m.UnitFloats, math.Float64frombits(v))
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Seed = v
 				continue
 			}
 		}
@@ -3934,6 +3997,10 @@ type CommandOutcomeEvent struct {
 	TransportCode     string
 	TransportDetail   string
 	RouteWasDirect    bool
+	ElapsedMs         float64
+	ObservedBytes     int64
+	HandedOff         bool
+	DirectTicketId    uint64
 }
 
 func (m *CommandOutcomeEvent) GetRequestId() string {
@@ -4019,6 +4086,30 @@ func (m *CommandOutcomeEvent) GetRouteWasDirect() bool {
 		return m.RouteWasDirect
 	}
 	return false
+}
+func (m *CommandOutcomeEvent) GetElapsedMs() float64 {
+	if m != nil {
+		return m.ElapsedMs
+	}
+	return 0
+}
+func (m *CommandOutcomeEvent) GetObservedBytes() int64 {
+	if m != nil {
+		return m.ObservedBytes
+	}
+	return 0
+}
+func (m *CommandOutcomeEvent) GetHandedOff() bool {
+	if m != nil {
+		return m.HandedOff
+	}
+	return false
+}
+func (m *CommandOutcomeEvent) GetDirectTicketId() uint64 {
+	if m != nil {
+		return m.DirectTicketId
+	}
+	return 0
 }
 
 func (m *CommandOutcomeEvent) Unmarshal(b []byte) error {
@@ -4153,6 +4244,42 @@ func (m *CommandOutcomeEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.RouteWasDirect = litewire.DecodeBool(v)
+				continue
+			}
+		case 15:
+			if wtyp == litewire.Fixed64Type {
+				v, err := litewire.ReadFixed64(&b)
+				if err != nil {
+					return err
+				}
+				m.ElapsedMs = math.Float64frombits(v)
+				continue
+			}
+		case 16:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ObservedBytes = int64(v)
+				continue
+			}
+		case 17:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HandedOff = litewire.DecodeBool(v)
+				continue
+			}
+		case 18:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.DirectTicketId = v
 				continue
 			}
 		}
@@ -4390,6 +4517,8 @@ type DirectEventsReceivedEvent struct {
 	MachineId string
 	SessionId string
 	Events    []*PlainEvent
+	PcId      uint64
+	Sender    string
 }
 
 func (m *DirectEventsReceivedEvent) GetMachineId() string {
@@ -4409,6 +4538,18 @@ func (m *DirectEventsReceivedEvent) GetEvents() []*PlainEvent {
 		return m.Events
 	}
 	return nil
+}
+func (m *DirectEventsReceivedEvent) GetPcId() uint64 {
+	if m != nil {
+		return m.PcId
+	}
+	return 0
+}
+func (m *DirectEventsReceivedEvent) GetSender() string {
+	if m != nil {
+		return m.Sender
+	}
+	return ""
 }
 
 func (m *DirectEventsReceivedEvent) Unmarshal(b []byte) error {
@@ -4443,6 +4584,24 @@ func (m *DirectEventsReceivedEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Events = append(m.Events, elem)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.PcId = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Sender = v
 				continue
 			}
 		}
@@ -5879,6 +6038,96 @@ type Event_ScheduleFormRetryModels struct{ ScheduleFormRetryModels *ScheduleForm
 
 func (*Event_ScheduleFormRetryModels) isEvent_Event() {}
 
+type Event_TransportConfig struct{ TransportConfig *TransportConfigEvent }
+
+func (*Event_TransportConfig) isEvent_Event() {}
+
+type Event_DirectSecuritySnapshot struct{ DirectSecuritySnapshot *DirectSecuritySnapshotEvent }
+
+func (*Event_DirectSecuritySnapshot) isEvent_Event() {}
+
+type Event_DirectSignalReceived struct{ DirectSignalReceived *DirectSignalReceivedEvent }
+
+func (*Event_DirectSignalReceived) isEvent_Event() {}
+
+type Event_DirectSignalDelivery struct{ DirectSignalDelivery *DirectSignalDeliveryEvent }
+
+func (*Event_DirectSignalDelivery) isEvent_Event() {}
+
+type Event_DirectKeySigned struct{ DirectKeySigned *DirectKeySignedEvent }
+
+func (*Event_DirectKeySigned) isEvent_Event() {}
+
+type Event_DirectKeyAgreed struct{ DirectKeyAgreed *DirectKeyAgreedEvent }
+
+func (*Event_DirectKeyAgreed) isEvent_Event() {}
+
+type Event_DirectPcCreated struct{ DirectPcCreated *DirectPcCreatedEvent }
+
+func (*Event_DirectPcCreated) isEvent_Event() {}
+
+type Event_DirectPcDescription struct{ DirectPcDescription *DirectPcDescriptionEvent }
+
+func (*Event_DirectPcDescription) isEvent_Event() {}
+
+type Event_DirectPcRemoteSet struct{ DirectPcRemoteSet *DirectPcRemoteSetEvent }
+
+func (*Event_DirectPcRemoteSet) isEvent_Event() {}
+
+type Event_DirectPcCandidatesAdded struct{ DirectPcCandidatesAdded *DirectPcCandidatesAddedEvent }
+
+func (*Event_DirectPcCandidatesAdded) isEvent_Event() {}
+
+type Event_DirectPcLocalCandidate struct{ DirectPcLocalCandidate *DirectPcLocalCandidateEvent }
+
+func (*Event_DirectPcLocalCandidate) isEvent_Event() {}
+
+type Event_DirectPcState struct{ DirectPcState *DirectPcStateEvent }
+
+func (*Event_DirectPcState) isEvent_Event() {}
+
+type Event_DirectPcStunError struct{ DirectPcStunError *DirectPcStunErrorEvent }
+
+func (*Event_DirectPcStunError) isEvent_Event() {}
+
+type Event_DirectPcClosed struct{ DirectPcClosed *DirectPcClosedEvent }
+
+func (*Event_DirectPcClosed) isEvent_Event() {}
+
+type Event_DirectDcState struct{ DirectDcState *DirectDcStateEvent }
+
+func (*Event_DirectDcState) isEvent_Event() {}
+
+type Event_DirectDcStats struct{ DirectDcStats *DirectDcStatsEvent }
+
+func (*Event_DirectDcStats) isEvent_Event() {}
+
+type Event_DirectRetryNow struct{ DirectRetryNow *DirectRetryNowAction }
+
+func (*Event_DirectRetryNow) isEvent_Event() {}
+
+type Event_DirectRefreshDiagnostics struct {
+	DirectRefreshDiagnostics *DirectRefreshDiagnosticsAction
+}
+
+func (*Event_DirectRefreshDiagnostics) isEvent_Event() {}
+
+type Event_DirectBulkTransferBegin struct{ DirectBulkTransferBegin *DirectBulkTransferBeginEvent }
+
+func (*Event_DirectBulkTransferBegin) isEvent_Event() {}
+
+type Event_DirectBulkTransferDone struct{ DirectBulkTransferDone *DirectBulkTransferDoneEvent }
+
+func (*Event_DirectBulkTransferDone) isEvent_Event() {}
+
+type Event_TerminalStream struct{ TerminalStream *TerminalStreamEvent }
+
+func (*Event_TerminalStream) isEvent_Event() {}
+
+type Event_DirectPreferencesLoaded struct{ DirectPreferencesLoaded *DirectPreferencesLoadedEvent }
+
+func (*Event_DirectPreferencesLoaded) isEvent_Event() {}
+
 func (m *Event) GetEvent() isEvent_Event {
 	if m != nil {
 		return m.Event
@@ -6620,6 +6869,138 @@ func (m *Event) GetScheduleFormSubmit() *ScheduleFormBoolAction {
 func (m *Event) GetScheduleFormRetryModels() *ScheduleFormStringAction {
 	if x, ok := m.GetEvent().(*Event_ScheduleFormRetryModels); ok && x != nil {
 		return x.ScheduleFormRetryModels
+	}
+	return nil
+}
+func (m *Event) GetTransportConfig() *TransportConfigEvent {
+	if x, ok := m.GetEvent().(*Event_TransportConfig); ok && x != nil {
+		return x.TransportConfig
+	}
+	return nil
+}
+func (m *Event) GetDirectSecuritySnapshot() *DirectSecuritySnapshotEvent {
+	if x, ok := m.GetEvent().(*Event_DirectSecuritySnapshot); ok && x != nil {
+		return x.DirectSecuritySnapshot
+	}
+	return nil
+}
+func (m *Event) GetDirectSignalReceived() *DirectSignalReceivedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectSignalReceived); ok && x != nil {
+		return x.DirectSignalReceived
+	}
+	return nil
+}
+func (m *Event) GetDirectSignalDelivery() *DirectSignalDeliveryEvent {
+	if x, ok := m.GetEvent().(*Event_DirectSignalDelivery); ok && x != nil {
+		return x.DirectSignalDelivery
+	}
+	return nil
+}
+func (m *Event) GetDirectKeySigned() *DirectKeySignedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectKeySigned); ok && x != nil {
+		return x.DirectKeySigned
+	}
+	return nil
+}
+func (m *Event) GetDirectKeyAgreed() *DirectKeyAgreedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectKeyAgreed); ok && x != nil {
+		return x.DirectKeyAgreed
+	}
+	return nil
+}
+func (m *Event) GetDirectPcCreated() *DirectPcCreatedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcCreated); ok && x != nil {
+		return x.DirectPcCreated
+	}
+	return nil
+}
+func (m *Event) GetDirectPcDescription() *DirectPcDescriptionEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcDescription); ok && x != nil {
+		return x.DirectPcDescription
+	}
+	return nil
+}
+func (m *Event) GetDirectPcRemoteSet() *DirectPcRemoteSetEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcRemoteSet); ok && x != nil {
+		return x.DirectPcRemoteSet
+	}
+	return nil
+}
+func (m *Event) GetDirectPcCandidatesAdded() *DirectPcCandidatesAddedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcCandidatesAdded); ok && x != nil {
+		return x.DirectPcCandidatesAdded
+	}
+	return nil
+}
+func (m *Event) GetDirectPcLocalCandidate() *DirectPcLocalCandidateEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcLocalCandidate); ok && x != nil {
+		return x.DirectPcLocalCandidate
+	}
+	return nil
+}
+func (m *Event) GetDirectPcState() *DirectPcStateEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcState); ok && x != nil {
+		return x.DirectPcState
+	}
+	return nil
+}
+func (m *Event) GetDirectPcStunError() *DirectPcStunErrorEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcStunError); ok && x != nil {
+		return x.DirectPcStunError
+	}
+	return nil
+}
+func (m *Event) GetDirectPcClosed() *DirectPcClosedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPcClosed); ok && x != nil {
+		return x.DirectPcClosed
+	}
+	return nil
+}
+func (m *Event) GetDirectDcState() *DirectDcStateEvent {
+	if x, ok := m.GetEvent().(*Event_DirectDcState); ok && x != nil {
+		return x.DirectDcState
+	}
+	return nil
+}
+func (m *Event) GetDirectDcStats() *DirectDcStatsEvent {
+	if x, ok := m.GetEvent().(*Event_DirectDcStats); ok && x != nil {
+		return x.DirectDcStats
+	}
+	return nil
+}
+func (m *Event) GetDirectRetryNow() *DirectRetryNowAction {
+	if x, ok := m.GetEvent().(*Event_DirectRetryNow); ok && x != nil {
+		return x.DirectRetryNow
+	}
+	return nil
+}
+func (m *Event) GetDirectRefreshDiagnostics() *DirectRefreshDiagnosticsAction {
+	if x, ok := m.GetEvent().(*Event_DirectRefreshDiagnostics); ok && x != nil {
+		return x.DirectRefreshDiagnostics
+	}
+	return nil
+}
+func (m *Event) GetDirectBulkTransferBegin() *DirectBulkTransferBeginEvent {
+	if x, ok := m.GetEvent().(*Event_DirectBulkTransferBegin); ok && x != nil {
+		return x.DirectBulkTransferBegin
+	}
+	return nil
+}
+func (m *Event) GetDirectBulkTransferDone() *DirectBulkTransferDoneEvent {
+	if x, ok := m.GetEvent().(*Event_DirectBulkTransferDone); ok && x != nil {
+		return x.DirectBulkTransferDone
+	}
+	return nil
+}
+func (m *Event) GetTerminalStream() *TerminalStreamEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalStream); ok && x != nil {
+		return x.TerminalStream
+	}
+	return nil
+}
+func (m *Event) GetDirectPreferencesLoaded() *DirectPreferencesLoadedEvent {
+	if x, ok := m.GetEvent().(*Event_DirectPreferencesLoaded); ok && x != nil {
+		return x.DirectPreferencesLoaded
 	}
 	return nil
 }
@@ -8500,6 +8881,336 @@ func (m *Event) Unmarshal(b []byte) error {
 				m.Event = &Event_ScheduleFormRetryModels{ScheduleFormRetryModels: sub}
 				continue
 			}
+		case 400:
+			if wtyp == litewire.BytesType {
+				var sub *TransportConfigEvent
+				if cur, ok := m.Event.(*Event_TransportConfig); ok && cur != nil {
+					sub = cur.TransportConfig
+				}
+				if sub == nil {
+					sub = &TransportConfigEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_TransportConfig{TransportConfig: sub}
+				continue
+			}
+		case 401:
+			if wtyp == litewire.BytesType {
+				var sub *DirectSecuritySnapshotEvent
+				if cur, ok := m.Event.(*Event_DirectSecuritySnapshot); ok && cur != nil {
+					sub = cur.DirectSecuritySnapshot
+				}
+				if sub == nil {
+					sub = &DirectSecuritySnapshotEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectSecuritySnapshot{DirectSecuritySnapshot: sub}
+				continue
+			}
+		case 402:
+			if wtyp == litewire.BytesType {
+				var sub *DirectSignalReceivedEvent
+				if cur, ok := m.Event.(*Event_DirectSignalReceived); ok && cur != nil {
+					sub = cur.DirectSignalReceived
+				}
+				if sub == nil {
+					sub = &DirectSignalReceivedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectSignalReceived{DirectSignalReceived: sub}
+				continue
+			}
+		case 403:
+			if wtyp == litewire.BytesType {
+				var sub *DirectSignalDeliveryEvent
+				if cur, ok := m.Event.(*Event_DirectSignalDelivery); ok && cur != nil {
+					sub = cur.DirectSignalDelivery
+				}
+				if sub == nil {
+					sub = &DirectSignalDeliveryEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectSignalDelivery{DirectSignalDelivery: sub}
+				continue
+			}
+		case 404:
+			if wtyp == litewire.BytesType {
+				var sub *DirectKeySignedEvent
+				if cur, ok := m.Event.(*Event_DirectKeySigned); ok && cur != nil {
+					sub = cur.DirectKeySigned
+				}
+				if sub == nil {
+					sub = &DirectKeySignedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectKeySigned{DirectKeySigned: sub}
+				continue
+			}
+		case 405:
+			if wtyp == litewire.BytesType {
+				var sub *DirectKeyAgreedEvent
+				if cur, ok := m.Event.(*Event_DirectKeyAgreed); ok && cur != nil {
+					sub = cur.DirectKeyAgreed
+				}
+				if sub == nil {
+					sub = &DirectKeyAgreedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectKeyAgreed{DirectKeyAgreed: sub}
+				continue
+			}
+		case 406:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPcCreatedEvent
+				if cur, ok := m.Event.(*Event_DirectPcCreated); ok && cur != nil {
+					sub = cur.DirectPcCreated
+				}
+				if sub == nil {
+					sub = &DirectPcCreatedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPcCreated{DirectPcCreated: sub}
+				continue
+			}
+		case 407:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPcDescriptionEvent
+				if cur, ok := m.Event.(*Event_DirectPcDescription); ok && cur != nil {
+					sub = cur.DirectPcDescription
+				}
+				if sub == nil {
+					sub = &DirectPcDescriptionEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPcDescription{DirectPcDescription: sub}
+				continue
+			}
+		case 408:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPcRemoteSetEvent
+				if cur, ok := m.Event.(*Event_DirectPcRemoteSet); ok && cur != nil {
+					sub = cur.DirectPcRemoteSet
+				}
+				if sub == nil {
+					sub = &DirectPcRemoteSetEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPcRemoteSet{DirectPcRemoteSet: sub}
+				continue
+			}
+		case 409:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPcCandidatesAddedEvent
+				if cur, ok := m.Event.(*Event_DirectPcCandidatesAdded); ok && cur != nil {
+					sub = cur.DirectPcCandidatesAdded
+				}
+				if sub == nil {
+					sub = &DirectPcCandidatesAddedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPcCandidatesAdded{DirectPcCandidatesAdded: sub}
+				continue
+			}
+		case 410:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPcLocalCandidateEvent
+				if cur, ok := m.Event.(*Event_DirectPcLocalCandidate); ok && cur != nil {
+					sub = cur.DirectPcLocalCandidate
+				}
+				if sub == nil {
+					sub = &DirectPcLocalCandidateEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPcLocalCandidate{DirectPcLocalCandidate: sub}
+				continue
+			}
+		case 411:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPcStateEvent
+				if cur, ok := m.Event.(*Event_DirectPcState); ok && cur != nil {
+					sub = cur.DirectPcState
+				}
+				if sub == nil {
+					sub = &DirectPcStateEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPcState{DirectPcState: sub}
+				continue
+			}
+		case 412:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPcStunErrorEvent
+				if cur, ok := m.Event.(*Event_DirectPcStunError); ok && cur != nil {
+					sub = cur.DirectPcStunError
+				}
+				if sub == nil {
+					sub = &DirectPcStunErrorEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPcStunError{DirectPcStunError: sub}
+				continue
+			}
+		case 413:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPcClosedEvent
+				if cur, ok := m.Event.(*Event_DirectPcClosed); ok && cur != nil {
+					sub = cur.DirectPcClosed
+				}
+				if sub == nil {
+					sub = &DirectPcClosedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPcClosed{DirectPcClosed: sub}
+				continue
+			}
+		case 414:
+			if wtyp == litewire.BytesType {
+				var sub *DirectDcStateEvent
+				if cur, ok := m.Event.(*Event_DirectDcState); ok && cur != nil {
+					sub = cur.DirectDcState
+				}
+				if sub == nil {
+					sub = &DirectDcStateEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectDcState{DirectDcState: sub}
+				continue
+			}
+		case 415:
+			if wtyp == litewire.BytesType {
+				var sub *DirectDcStatsEvent
+				if cur, ok := m.Event.(*Event_DirectDcStats); ok && cur != nil {
+					sub = cur.DirectDcStats
+				}
+				if sub == nil {
+					sub = &DirectDcStatsEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectDcStats{DirectDcStats: sub}
+				continue
+			}
+		case 416:
+			if wtyp == litewire.BytesType {
+				var sub *DirectRetryNowAction
+				if cur, ok := m.Event.(*Event_DirectRetryNow); ok && cur != nil {
+					sub = cur.DirectRetryNow
+				}
+				if sub == nil {
+					sub = &DirectRetryNowAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectRetryNow{DirectRetryNow: sub}
+				continue
+			}
+		case 417:
+			if wtyp == litewire.BytesType {
+				var sub *DirectRefreshDiagnosticsAction
+				if cur, ok := m.Event.(*Event_DirectRefreshDiagnostics); ok && cur != nil {
+					sub = cur.DirectRefreshDiagnostics
+				}
+				if sub == nil {
+					sub = &DirectRefreshDiagnosticsAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectRefreshDiagnostics{DirectRefreshDiagnostics: sub}
+				continue
+			}
+		case 418:
+			if wtyp == litewire.BytesType {
+				var sub *DirectBulkTransferBeginEvent
+				if cur, ok := m.Event.(*Event_DirectBulkTransferBegin); ok && cur != nil {
+					sub = cur.DirectBulkTransferBegin
+				}
+				if sub == nil {
+					sub = &DirectBulkTransferBeginEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectBulkTransferBegin{DirectBulkTransferBegin: sub}
+				continue
+			}
+		case 419:
+			if wtyp == litewire.BytesType {
+				var sub *DirectBulkTransferDoneEvent
+				if cur, ok := m.Event.(*Event_DirectBulkTransferDone); ok && cur != nil {
+					sub = cur.DirectBulkTransferDone
+				}
+				if sub == nil {
+					sub = &DirectBulkTransferDoneEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectBulkTransferDone{DirectBulkTransferDone: sub}
+				continue
+			}
+		case 420:
+			if wtyp == litewire.BytesType {
+				var sub *TerminalStreamEvent
+				if cur, ok := m.Event.(*Event_TerminalStream); ok && cur != nil {
+					sub = cur.TerminalStream
+				}
+				if sub == nil {
+					sub = &TerminalStreamEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_TerminalStream{TerminalStream: sub}
+				continue
+			}
+		case 421:
+			if wtyp == litewire.BytesType {
+				var sub *DirectPreferencesLoadedEvent
+				if cur, ok := m.Event.(*Event_DirectPreferencesLoaded); ok && cur != nil {
+					sub = cur.DirectPreferencesLoaded
+				}
+				if sub == nil {
+					sub = &DirectPreferencesLoadedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectPreferencesLoaded{DirectPreferencesLoaded: sub}
+				continue
+			}
 		case 98:
 			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
@@ -9627,18 +10338,22 @@ func (m *RpcEffect) AppendMarshal(b []byte) []byte {
 }
 
 type DispatchCommandEffect struct {
-	RequestId      string
-	AttemptId      string
-	MachineId      string
-	SessionId      string
-	DeadlineMs     int64
-	CommandBytes   []byte
-	RouteHint      CommandRouteHint
-	RetryOfUnknown bool
-	ForceRelay     bool
-	BulkFileKey    string
-	BulkBytes      int64
-	BulkUpload     bool
+	RequestId       string
+	AttemptId       string
+	MachineId       string
+	SessionId       string
+	DeadlineMs      int64
+	CommandBytes    []byte
+	RouteHint       CommandRouteHint
+	RetryOfUnknown  bool
+	ForceRelay      bool
+	BulkFileKey     string
+	BulkBytes       int64
+	BulkUpload      bool
+	RouteLeg        CommandRouteLeg
+	DirectPcId      uint64
+	DirectTimeoutMs int64
+	DirectTicketId  uint64
 }
 
 func (m *DispatchCommandEffect) GetRequestId() string {
@@ -9713,6 +10428,30 @@ func (m *DispatchCommandEffect) GetBulkUpload() bool {
 	}
 	return false
 }
+func (m *DispatchCommandEffect) GetRouteLeg() CommandRouteLeg {
+	if m != nil {
+		return m.RouteLeg
+	}
+	return 0
+}
+func (m *DispatchCommandEffect) GetDirectPcId() uint64 {
+	if m != nil {
+		return m.DirectPcId
+	}
+	return 0
+}
+func (m *DispatchCommandEffect) GetDirectTimeoutMs() int64 {
+	if m != nil {
+		return m.DirectTimeoutMs
+	}
+	return 0
+}
+func (m *DispatchCommandEffect) GetDirectTicketId() uint64 {
+	if m != nil {
+		return m.DirectTicketId
+	}
+	return 0
+}
 
 func (m *DispatchCommandEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
@@ -9736,6 +10475,10 @@ func (m *DispatchCommandEffect) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 10, m.BulkFileKey)
 	b = litewire.AppendVarint(b, 11, uint64(m.BulkBytes))
 	b = litewire.AppendBool(b, 12, m.BulkUpload)
+	b = litewire.AppendInt32(b, 13, int32(m.RouteLeg))
+	b = litewire.AppendVarint(b, 14, uint64(m.DirectPcId))
+	b = litewire.AppendVarint(b, 15, uint64(m.DirectTimeoutMs))
+	b = litewire.AppendVarint(b, 16, uint64(m.DirectTicketId))
 	return b
 }
 
@@ -9863,8 +10606,9 @@ func (m *AttachmentsSettledEffect) AppendMarshal(b []byte) []byte {
 }
 
 type RequestEntropyEffect struct {
-	MinIds    int32
-	MinFloats int32
+	MinIds       int32
+	MinFloats    int32
+	MinSeedBytes int32
 }
 
 func (m *RequestEntropyEffect) GetMinIds() int32 {
@@ -9876,6 +10620,12 @@ func (m *RequestEntropyEffect) GetMinIds() int32 {
 func (m *RequestEntropyEffect) GetMinFloats() int32 {
 	if m != nil {
 		return m.MinFloats
+	}
+	return 0
+}
+func (m *RequestEntropyEffect) GetMinSeedBytes() int32 {
+	if m != nil {
+		return m.MinSeedBytes
 	}
 	return 0
 }
@@ -9892,6 +10642,7 @@ func (m *RequestEntropyEffect) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendInt32(b, 1, int32(m.MinIds))
 	b = litewire.AppendInt32(b, 2, int32(m.MinFloats))
+	b = litewire.AppendInt32(b, 3, int32(m.MinSeedBytes))
 	return b
 }
 
@@ -10031,6 +10782,62 @@ func (*Effect_ScheduleDismissNotifications) isEffect_Effect() {}
 type Effect_ScheduleNavigate struct{ ScheduleNavigate *ScheduleNavigateEffect }
 
 func (*Effect_ScheduleNavigate) isEffect_Effect() {}
+
+type Effect_DirectKeySign struct{ DirectKeySign *DirectKeySignEffect }
+
+func (*Effect_DirectKeySign) isEffect_Effect() {}
+
+type Effect_DirectKeyAgree struct{ DirectKeyAgree *DirectKeyAgreeEffect }
+
+func (*Effect_DirectKeyAgree) isEffect_Effect() {}
+
+type Effect_DirectSignalSend struct{ DirectSignalSend *DirectSignalSendEffect }
+
+func (*Effect_DirectSignalSend) isEffect_Effect() {}
+
+type Effect_DirectPcCreate struct{ DirectPcCreate *DirectPcCreateEffect }
+
+func (*Effect_DirectPcCreate) isEffect_Effect() {}
+
+type Effect_DirectPcDescribe struct{ DirectPcDescribe *DirectPcDescribeEffect }
+
+func (*Effect_DirectPcDescribe) isEffect_Effect() {}
+
+type Effect_DirectPcSetRemote struct{ DirectPcSetRemote *DirectPcSetRemoteEffect }
+
+func (*Effect_DirectPcSetRemote) isEffect_Effect() {}
+
+type Effect_DirectPcAddCandidates struct{ DirectPcAddCandidates *DirectPcAddCandidatesEffect }
+
+func (*Effect_DirectPcAddCandidates) isEffect_Effect() {}
+
+type Effect_DirectPcConfirm struct{ DirectPcConfirm *DirectPcConfirmEffect }
+
+func (*Effect_DirectPcConfirm) isEffect_Effect() {}
+
+type Effect_DirectPcClose struct{ DirectPcClose *DirectPcCloseEffect }
+
+func (*Effect_DirectPcClose) isEffect_Effect() {}
+
+type Effect_DirectDcReadStats struct{ DirectDcReadStats *DirectDcReadStatsEffect }
+
+func (*Effect_DirectDcReadStats) isEffect_Effect() {}
+
+type Effect_DirectAuthorize struct{ DirectAuthorize *DirectAuthorizeEffect }
+
+func (*Effect_DirectAuthorize) isEffect_Effect() {}
+
+type Effect_DirectBulkRoute struct{ DirectBulkRoute *DirectBulkRouteEffect }
+
+func (*Effect_DirectBulkRoute) isEffect_Effect() {}
+
+type Effect_TerminalReopen struct{ TerminalReopen *TerminalReopenEffect }
+
+func (*Effect_TerminalReopen) isEffect_Effect() {}
+
+type Effect_DirectRetryNowResult struct{ DirectRetryNowResult *DirectRetryNowResultEffect }
+
+func (*Effect_DirectRetryNowResult) isEffect_Effect() {}
 
 func (m *Effect) GetEffect() isEffect_Effect {
 	if m != nil {
@@ -10227,6 +11034,90 @@ func (m *Effect) GetScheduleDismissNotifications() *ScheduleDismissNotifications
 func (m *Effect) GetScheduleNavigate() *ScheduleNavigateEffect {
 	if x, ok := m.GetEffect().(*Effect_ScheduleNavigate); ok && x != nil {
 		return x.ScheduleNavigate
+	}
+	return nil
+}
+func (m *Effect) GetDirectKeySign() *DirectKeySignEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectKeySign); ok && x != nil {
+		return x.DirectKeySign
+	}
+	return nil
+}
+func (m *Effect) GetDirectKeyAgree() *DirectKeyAgreeEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectKeyAgree); ok && x != nil {
+		return x.DirectKeyAgree
+	}
+	return nil
+}
+func (m *Effect) GetDirectSignalSend() *DirectSignalSendEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectSignalSend); ok && x != nil {
+		return x.DirectSignalSend
+	}
+	return nil
+}
+func (m *Effect) GetDirectPcCreate() *DirectPcCreateEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectPcCreate); ok && x != nil {
+		return x.DirectPcCreate
+	}
+	return nil
+}
+func (m *Effect) GetDirectPcDescribe() *DirectPcDescribeEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectPcDescribe); ok && x != nil {
+		return x.DirectPcDescribe
+	}
+	return nil
+}
+func (m *Effect) GetDirectPcSetRemote() *DirectPcSetRemoteEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectPcSetRemote); ok && x != nil {
+		return x.DirectPcSetRemote
+	}
+	return nil
+}
+func (m *Effect) GetDirectPcAddCandidates() *DirectPcAddCandidatesEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectPcAddCandidates); ok && x != nil {
+		return x.DirectPcAddCandidates
+	}
+	return nil
+}
+func (m *Effect) GetDirectPcConfirm() *DirectPcConfirmEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectPcConfirm); ok && x != nil {
+		return x.DirectPcConfirm
+	}
+	return nil
+}
+func (m *Effect) GetDirectPcClose() *DirectPcCloseEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectPcClose); ok && x != nil {
+		return x.DirectPcClose
+	}
+	return nil
+}
+func (m *Effect) GetDirectDcReadStats() *DirectDcReadStatsEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectDcReadStats); ok && x != nil {
+		return x.DirectDcReadStats
+	}
+	return nil
+}
+func (m *Effect) GetDirectAuthorize() *DirectAuthorizeEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectAuthorize); ok && x != nil {
+		return x.DirectAuthorize
+	}
+	return nil
+}
+func (m *Effect) GetDirectBulkRoute() *DirectBulkRouteEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectBulkRoute); ok && x != nil {
+		return x.DirectBulkRoute
+	}
+	return nil
+}
+func (m *Effect) GetTerminalReopen() *TerminalReopenEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalReopen); ok && x != nil {
+		return x.TerminalReopen
+	}
+	return nil
+}
+func (m *Effect) GetDirectRetryNowResult() *DirectRetryNowResultEffect {
+	if x, ok := m.GetEffect().(*Effect_DirectRetryNowResult); ok && x != nil {
+		return x.DirectRetryNowResult
 	}
 	return nil
 }
@@ -10432,6 +11323,90 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.ScheduleNavigate != nil {
 				b = litewire.AppendMessage(b, 65, x.ScheduleNavigate)
+			}
+		}
+	case *Effect_DirectKeySign:
+		if x != nil {
+			if x.DirectKeySign != nil {
+				b = litewire.AppendMessage(b, 100, x.DirectKeySign)
+			}
+		}
+	case *Effect_DirectKeyAgree:
+		if x != nil {
+			if x.DirectKeyAgree != nil {
+				b = litewire.AppendMessage(b, 101, x.DirectKeyAgree)
+			}
+		}
+	case *Effect_DirectSignalSend:
+		if x != nil {
+			if x.DirectSignalSend != nil {
+				b = litewire.AppendMessage(b, 102, x.DirectSignalSend)
+			}
+		}
+	case *Effect_DirectPcCreate:
+		if x != nil {
+			if x.DirectPcCreate != nil {
+				b = litewire.AppendMessage(b, 103, x.DirectPcCreate)
+			}
+		}
+	case *Effect_DirectPcDescribe:
+		if x != nil {
+			if x.DirectPcDescribe != nil {
+				b = litewire.AppendMessage(b, 104, x.DirectPcDescribe)
+			}
+		}
+	case *Effect_DirectPcSetRemote:
+		if x != nil {
+			if x.DirectPcSetRemote != nil {
+				b = litewire.AppendMessage(b, 105, x.DirectPcSetRemote)
+			}
+		}
+	case *Effect_DirectPcAddCandidates:
+		if x != nil {
+			if x.DirectPcAddCandidates != nil {
+				b = litewire.AppendMessage(b, 106, x.DirectPcAddCandidates)
+			}
+		}
+	case *Effect_DirectPcConfirm:
+		if x != nil {
+			if x.DirectPcConfirm != nil {
+				b = litewire.AppendMessage(b, 107, x.DirectPcConfirm)
+			}
+		}
+	case *Effect_DirectPcClose:
+		if x != nil {
+			if x.DirectPcClose != nil {
+				b = litewire.AppendMessage(b, 108, x.DirectPcClose)
+			}
+		}
+	case *Effect_DirectDcReadStats:
+		if x != nil {
+			if x.DirectDcReadStats != nil {
+				b = litewire.AppendMessage(b, 109, x.DirectDcReadStats)
+			}
+		}
+	case *Effect_DirectAuthorize:
+		if x != nil {
+			if x.DirectAuthorize != nil {
+				b = litewire.AppendMessage(b, 110, x.DirectAuthorize)
+			}
+		}
+	case *Effect_DirectBulkRoute:
+		if x != nil {
+			if x.DirectBulkRoute != nil {
+				b = litewire.AppendMessage(b, 111, x.DirectBulkRoute)
+			}
+		}
+	case *Effect_TerminalReopen:
+		if x != nil {
+			if x.TerminalReopen != nil {
+				b = litewire.AppendMessage(b, 112, x.TerminalReopen)
+			}
+		}
+	case *Effect_DirectRetryNowResult:
+		if x != nil {
+			if x.DirectRetryNowResult != nil {
+				b = litewire.AppendMessage(b, 113, x.DirectRetryNowResult)
 			}
 		}
 	}

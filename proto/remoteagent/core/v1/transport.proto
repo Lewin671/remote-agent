@@ -1,0 +1,308 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+enum CommandRouteLeg {
+  COMMAND_ROUTE_LEG_UNSPECIFIED = 0;
+  COMMAND_ROUTE_LEG_RELAY = 1;
+  COMMAND_ROUTE_LEG_DIRECT = 2;
+}
+
+enum DirectStateKind {
+  DIRECT_STATE_KIND_UNSPECIFIED = 0;
+  DIRECT_STATE_KIND_GATHER = 1;
+  DIRECT_STATE_KIND_ICE = 2;
+  DIRECT_STATE_KIND_CONN = 3;
+  DIRECT_STATE_KIND_DTLS = 4;
+  DIRECT_STATE_KIND_SCTP = 5;
+  DIRECT_STATE_KIND_DC = 6;
+}
+
+enum DirectCandType {
+  DIRECT_CAND_TYPE_UNSPECIFIED = 0;
+  DIRECT_CAND_TYPE_HOST = 1;
+  DIRECT_CAND_TYPE_SRFLX = 2;
+  DIRECT_CAND_TYPE_PRFLX = 3;
+  DIRECT_CAND_TYPE_RELAY = 4;
+  DIRECT_CAND_TYPE_OTHER = 5;
+}
+
+enum DirectCandFamily {
+  DIRECT_CAND_FAMILY_UNSPECIFIED = 0;
+  DIRECT_CAND_FAMILY_V4 = 1;
+  DIRECT_CAND_FAMILY_V6 = 2;
+}
+
+enum TerminalStreamEventKind {
+  TERMINAL_STREAM_EVENT_KIND_UNSPECIFIED = 0;
+  TERMINAL_STREAM_EVENT_KIND_LIVE = 1;
+  TERMINAL_STREAM_EVENT_KIND_CLOSED = 2;
+  TERMINAL_STREAM_EVENT_KIND_MANUAL_RECONNECT = 3;
+  TERMINAL_STREAM_EVENT_KIND_DISPOSED = 4;
+}
+
+message DirectIceCandidate {
+  bytes line = 1;
+  bytes ufrag = 2;
+  bytes mid = 3;
+  uint32 mline_index = 4;
+}
+
+message DirectSecurityMember {
+  string device_id = 1;
+  bytes ed_public = 2;
+  bytes x_public = 3;
+  bool is_self = 4;
+}
+
+message DirectPreferenceEntry {
+  string machine_id = 1;
+  bool enabled = 2;
+}
+
+message DirectStatsPair {
+  DirectCandType local_type = 1;
+  DirectCandFamily local_family = 2;
+  DirectCandType remote_type = 3;
+  DirectCandFamily remote_family = 4;
+  bool nominated = 5;
+  string state = 6;
+  int32 requests_sent = 7;
+  int32 responses_received = 8;
+  double current_rtt_seconds = 9;
+  bool has_current_rtt = 10;
+}
+
+message DirectStatsReport {
+  string ice_state = 1;
+  string dtls_state = 2;
+  string dc_state = 3;
+  repeated DirectStatsPair pairs = 4;
+}
+
+// ---- Events (Shell -> Core) ----
+
+message TransportConfigEvent {
+  bool supported = 1;
+  string account = 2;
+  uint32 protocol_version = 3;
+  repeated string stun_servers = 4;
+  string platform_agent = 5;
+}
+
+message DirectSecuritySnapshotEvent {
+  bool member = 1;
+  string account = 2;
+  bytes domain = 3;
+  string head = 4;
+  bytes head_hash = 5;
+  uint64 epoch = 6;
+  int64 started_at_ms = 7;
+  int64 lease_not_after_ms = 8;
+  string self_id = 9;
+  bytes self_ed_public = 10;
+  bytes self_x_public = 11;
+  repeated DirectSecurityMember members = 12;
+  bool rejected = 13;
+}
+
+message DirectSignalReceivedEvent {
+  bytes raw = 1;
+}
+
+message DirectSignalDeliveryEvent {
+  bytes frame_id = 1;
+  uint32 status = 2;
+  uint64 retry_after_ms = 3;
+}
+
+message DirectKeySignedEvent {
+  uint64 op_id = 1;
+  bytes signature = 2;
+}
+
+message DirectKeyAgreedEvent {
+  uint64 op_id = 1;
+  bytes shared_secret = 2;
+  bool ok = 3;
+}
+
+message DirectPcCreatedEvent {
+  uint64 pc_id = 1;
+  bool ok = 2;
+}
+
+message DirectPcDescriptionEvent {
+  uint64 pc_id = 1;
+  bytes sdp = 2;
+  bool ok = 3;
+}
+
+message DirectPcRemoteSetEvent {
+  uint64 pc_id = 1;
+  bool ok = 2;
+  string error = 3;
+}
+
+message DirectPcCandidatesAddedEvent {
+  uint64 pc_id = 1;
+  bool ok = 2;
+  string error = 3;
+}
+
+message DirectPcLocalCandidateEvent {
+  uint64 pc_id = 1;
+  string candidate = 2;
+  bool end_of_candidates = 3;
+}
+
+message DirectPcStateEvent {
+  uint64 pc_id = 1;
+  DirectStateKind kind = 2;
+  string value = 3;
+}
+
+message DirectPcStunErrorEvent {
+  uint64 pc_id = 1;
+  int32 code = 2;
+  string address = 3;
+}
+
+message DirectPcClosedEvent {
+  uint64 pc_id = 1;
+}
+
+message DirectDcStateEvent {
+  uint64 pc_id = 1;
+  bool open = 2;
+}
+
+message DirectDcStatsEvent {
+  uint64 pc_id = 1;
+  DirectStatsReport report = 2;
+}
+
+message DirectRetryNowAction {
+  string machine_id = 1;
+}
+
+message DirectRefreshDiagnosticsAction {
+  string machine_id = 1;
+}
+
+message DirectBulkTransferBeginEvent {
+  uint64 call_id = 1;
+  string machine_id = 2;
+  uint32 route_hint = 3;
+  string bulk_file_key = 4;
+  int64 bulk_bytes = 5;
+  bool bulk_upload = 6;
+  int64 deadline_ms = 7;
+  bool force_relay = 8;
+  string upload_transfer_id = 9;
+  bool upload_has_filename = 10;
+  bool interactive_dual = 11;
+}
+
+message DirectBulkTransferDoneEvent {
+  uint64 ticket_id = 1;
+  bool route_was_direct = 2;
+  bool ok = 3;
+  double elapsed_ms = 4;
+  int64 observed_bytes = 5;
+  string finish_upload_transfer_id = 6;
+  string machine_id = 7;
+}
+
+message TerminalStreamEvent {
+  string terminal_id = 1;
+  TerminalStreamEventKind kind = 2;
+  bool opened = 3;
+}
+
+message DirectPreferencesLoadedEvent {
+  repeated DirectPreferenceEntry entries = 1;
+}
+
+// ---- Effects (Core -> Shell) ----
+
+message DirectKeySignEffect {
+  uint64 op_id = 1;
+  bytes message = 2;
+}
+
+message DirectKeyAgreeEffect {
+  uint64 op_id = 1;
+  string peer_id = 2;
+  bytes peer_x_public = 3;
+}
+
+message DirectSignalSendEffect {
+  bytes to_device = 1;
+  uint32 frame_class = 2;
+  bytes frame_id = 3;
+  bytes sealed = 4;
+  int64 deadline_ms = 5;
+  bool critical = 6;
+}
+
+message DirectPcCreateEffect {
+  uint64 round_id = 1;
+  string machine_id = 2;
+  uint64 pc_id = 3;
+  uint32 use = 4;
+  uint64 generation = 5;
+  repeated string stun_servers = 6;
+}
+
+message DirectPcDescribeEffect {
+  uint64 pc_id = 1;
+  bool offer = 2;
+  bool ice_restart = 3;
+}
+
+message DirectPcSetRemoteEffect {
+  uint64 pc_id = 1;
+  bytes sdp = 2;
+  bool offer = 3;
+}
+
+message DirectPcAddCandidatesEffect {
+  uint64 pc_id = 1;
+  repeated DirectIceCandidate candidates = 2;
+  bool end_of_candidates = 3;
+}
+
+message DirectPcConfirmEffect {
+  uint64 pc_id = 1;
+  string machine_id = 2;
+  uint32 use = 3;
+}
+
+message DirectPcCloseEffect {
+  uint64 pc_id = 1;
+  string reason = 2;
+}
+
+message DirectDcReadStatsEffect {
+  uint64 pc_id = 1;
+}
+
+message DirectAuthorizeEffect {}
+
+message DirectBulkRouteEffect {
+  uint64 call_id = 1;
+  bool use_direct = 2;
+  uint64 pc_id = 3;
+  uint64 ticket_id = 4;
+  int64 timeout_ms = 5;
+}
+
+message TerminalReopenEffect {
+  string terminal_id = 1;
+}
+
+message DirectRetryNowResultEffect {
+  string machine_id = 1;
+  bool started = 2;
+}

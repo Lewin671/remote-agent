@@ -673,3 +673,70 @@ func TestStepsAreWords(t *testing.T) {
 		t.Fatalf("steps = %q", got)
 	}
 }
+
+func TestPeerUnsupportedAndSignalRejectedAndMarks(t *testing.T) {
+	a, b := orderedKeys(t)
+	n := newFakePair(t, a, b)
+	e := n.ends[0]
+	for i := 0; i < 6 && (!e.s.Booted() || len(e.s.pcs[0].sender.Pending) == 0); i++ {
+		n.step()
+	}
+	if !e.s.Booted() {
+		t.Fatal("expected offerer Booted() == true after Challenge")
+	}
+	marks := e.s.Marks()
+	if !marks[0][0] {
+		t.Fatalf("expected Boot mark on use 1, got %+v", marks)
+	}
+
+	// Find a pending Offer frame from a -> b (Class=1, Type=3, Use=1).
+	var offer peerwire.Opened
+	var offerRaw []byte
+	for _, p := range e.s.pcs[0].sender.Pending {
+		o, err := e.codec.OpenSent(p.Raw, a.pub, b.pub, a.shared(b.pub), n.now)
+		if err == nil && o.Context.Class == 1 && o.Type == 3 && o.Context.Use == 1 {
+			offer, offerRaw = o, p.Raw
+			break
+		}
+	}
+	if len(offerRaw) == 0 {
+		t.Fatal("expected pending Offer on use 1")
+	}
+
+	// Tampered frame emits SignalRejected.
+	bad := append([]byte(nil), offerRaw...)
+	bad[len(bad)-1] ^= 1
+	var rejected bool
+	for _, eff := range e.s.Handle(FrameReceived{bad}, n.now) {
+		if _, ok := eff.(SignalRejected); ok {
+			rejected = true
+		}
+	}
+	if !rejected {
+		t.Fatal("expected SignalRejected on tampered frame")
+	}
+
+	// Unsupported response targeting pending Offer closes use 1 PC and emits PeerUnsupported.
+	uBody := peerwire.PB(peerwire.U(1, offer.Context.Class), peerwire.U(2, offer.Type), peerwire.U(3, offer.Context.Seq), peerwire.B(4, offer.Hash))
+	uc := peerwire.NewContext(b.pub, a.pub, e.s.cfg.Connection, 0, 1, 99, n.now, 2, false)
+	uc.Deadline = n.now + 9000
+	uRaw := b.seal(t, e.codec, a.pub, uc, 10, uBody)
+	var gotUnsupported []PeerUnsupported
+	var closedPC bool
+	for _, eff := range e.s.Handle(FrameReceived{uRaw}, n.now) {
+		switch eff := eff.(type) {
+		case PeerUnsupported:
+			gotUnsupported = append(gotUnsupported, eff)
+		case ClosePC:
+			if eff.Reason == "peer_unsupported" {
+				closedPC = true
+			}
+		}
+	}
+	if len(gotUnsupported) != 1 || gotUnsupported[0] != (PeerUnsupported{Class: 1, Type: 3, Use: 1}) {
+		t.Fatalf("got Unsupported %+v", gotUnsupported)
+	}
+	if !closedPC || !e.s.pcs[0].signal.Closed {
+		t.Fatalf("expected use 1 PC closed as peer_unsupported (closedPC=%v signal.Closed=%v)", closedPC, e.s.pcs[0].signal.Closed)
+	}
+}

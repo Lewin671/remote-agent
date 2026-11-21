@@ -21,4 +21,10 @@ public interface RequestEntropyEffectOrBuilder extends
    * @return The minFloats.
    */
   int getMinFloats();
+
+  /**
+   * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+   * @return The minSeedBytes.
+   */
+  int getMinSeedBytes();
 }

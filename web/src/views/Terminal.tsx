@@ -6,9 +6,11 @@ import { usePointerFine, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { TerminalStreamEventKind, useCoreHost } from "../core/host";
 import { errorText, type Remote, type SessionView, type TermConn } from "../remote";
-import { TerminalReconnectController } from "../transport/terminal-recovery";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
+
+let nextTerminalStreamId = 0;
 
 const enc = new TextEncoder();
 
@@ -261,22 +263,21 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const controllerRef = useRef<TerminalReconnectController | undefined>(undefined);
+  const hostBridge = useCoreHost(remote);
+  const terminalIdRef = useRef("");
+  if (!terminalIdRef.current) terminalIdRef.current = `term-${++nextTerminalStreamId}`;
+  const terminalId = terminalIdRef.current;
   const allowOpenRef = useRef(false);
   useEffect(() => {
-    const ctrl = new TerminalReconnectController(
-      () => onlineRef.current,
-      () => {
-        allowOpenRef.current = true;
-        setAttempt((n) => n + 1);
-      },
-    );
-    controllerRef.current = ctrl;
+    const offReopen = hostBridge.onTerminalReopen(terminalId, () => {
+      allowOpenRef.current = true;
+      setAttempt((n) => n + 1);
+    });
     return () => {
-      ctrl.dispose();
-      if (controllerRef.current === ctrl) controllerRef.current = undefined;
+      offReopen();
+      hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.DISPOSED, false);
     };
-  }, [remote, session.id]);
+  }, [hostBridge, terminalId, session.id]);
   useEffect(() => {
     if (heldForWaitingRef.current) {
       if (online) {
@@ -286,7 +287,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       }
       if (!waitingPeer) {
         heldForWaitingRef.current = false;
-        controllerRef.current?.markOfflineClosed();
+        hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, false);
         setTerminalState("closed");
         setReason("");
         setLinked(false);
@@ -294,15 +295,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       }
     }
     if (!online && stateRef.current === "closed") {
-      controllerRef.current?.markOfflineClosed();
-      return;
+      hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, false);
     }
-    if (online && stateRef.current === "closed") {
-      controllerRef.current?.onMainOnline();
-    }
-  }, [online, waitingPeer, remote, session.id]);
+  }, [online, waitingPeer, hostBridge, terminalId, session.id]);
   useEffect(() => {
-    const ctrl = controllerRef.current;
     if (!onlineRef.current && !allowOpenRef.current) {
       if (waitingPeerRef.current) {
         heldForWaitingRef.current = true;
@@ -312,7 +308,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         return;
       }
       heldForWaitingRef.current = false;
-      ctrl?.markOfflineClosed();
+      hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, false);
       setTerminalState("closed");
       setReason("");
       setLinked(false);
@@ -371,7 +367,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               pictured.current = true;
               if (conn.current) {
                 setTerminalState("live");
-                ctrl?.onLive();
+                hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.LIVE, true);
               }
               return written;
             }
@@ -392,7 +388,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           history.disconnected();
           setTerminalState("closed");
           setReason((r) => r || why);
-          ctrl?.onClosed(opened);
+          hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, opened);
         },
         opening.signal,
       )
@@ -405,7 +401,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           // The snapshot can be here before the opening command has answered: live once both are.
           if (pictured.current && stateRef.current === "connecting") {
             setTerminalState("live");
-            ctrl?.onLive();
+            hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.LIVE, true);
           }
         },
         (e) => {
@@ -415,7 +411,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           history.disconnected();
           setTerminalState("closed");
           setReason(errorText(e));
-          ctrl?.onClosed(opened);
+          hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, opened);
         },
       );
     return () => {
@@ -520,8 +516,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
             <div className="btns">
               <button className="btn pri" onClick={() => {
                 allowOpenRef.current = true;
-                if (controllerRef.current) controllerRef.current.manualReconnect();
-                else setAttempt((a) => a + 1);
+                hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.MANUAL_RECONNECT, false);
               }}>
                 {i18n.t("terminal.reconnect")}</button>
             </div>

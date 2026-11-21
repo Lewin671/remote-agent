@@ -25,8 +25,17 @@ val hostOs = System.getProperty("os.name").lowercase()
 val corebindHostDir = coreOutRoot.resolve("android-host")
 val corebindHostLib = corebindHostDir.resolve(if (hostOs.contains("mac")) "libgojni.dylib" else "libgojni.so")
 val coreBuildInputs = fileTree(repoRoot) {
-    include("clientcore/**/*.go", "clientcore/go.mod", "clientcore/go.sum", "proto/**/*.proto", "scripts/core/build.sh")
-    exclude("clientcore/**/*_test.go")
+    include(
+        "clientcore/**/*.go",
+        "clientcore/go.mod",
+        "clientcore/go.sum",
+        "shared/**/*.go",
+        "go.mod",
+        "go.sum",
+        "proto/**/*.proto",
+        "scripts/core/build.sh",
+    )
+    exclude("clientcore/**/*_test.go", "shared/**/*_test.go")
 }
 val buildCorebindAar by tasks.registering(Exec::class) {
     workingDir = repoRoot

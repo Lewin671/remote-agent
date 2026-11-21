@@ -201,6 +201,29 @@ func (s *Session) NextTimer() (due uint64, ok bool) {
 	return due, ok
 }
 
+// Booted reports whether bootstrap completed on either peer-connection use.
+func (s *Session) Booted() bool { return s.pcs[0].signal.BootReady || s.pcs[1].signal.BootReady }
+
+// Peer returns the peer's public identity, including Instance/Boot learned during bootstrap.
+func (s *Session) Peer() peerwire.Public { return s.pcs[0].signal.Peer }
+
+// Deadline returns the session's establishment deadline (ms).
+func (s *Session) Deadline() uint64 { return s.cfg.Deadline }
+
+// RetainUntil returns how long retired replay protection remains active (ms).
+func (s *Session) RetainUntil() uint64 { return s.retainUntil }
+
+// Marks reports diagnostic milestone flags per use:
+// [boot, local SDP, remote SDP, peer confirm, ready/announced].
+func (s *Session) Marks() [2][5]bool {
+	var out [2][5]bool
+	for i := range s.pcs {
+		p := &s.pcs[i]
+		out[i] = [5]bool{p.signal.BootReady, p.signal.LocalSDP, p.signal.RemoteSDP, p.signal.Confirmed, p.announced}
+	}
+	return out
+}
+
 // Steps names how far each use got: boot, local SDP, remote SDP, DTLS,
 // confirm sent, announced; one letter each when reached, a dash when not.
 func (s *Session) Steps() [2]string {
@@ -650,7 +673,11 @@ func (s *Session) receive(raw []byte, now uint64) {
 	}
 	peer := s.pcs[0].signal.Peer
 	o, err := s.cfg.Codec.Open(raw, peer, s.cfg.Self, s.cfg.Shared, now)
-	if err != nil || !bytes.Equal(o.Context.Connection, s.cfg.Connection) {
+	if err != nil {
+		s.emit(SignalRejected{Reason: err.Error()})
+		return
+	}
+	if !bytes.Equal(o.Context.Connection, s.cfg.Connection) {
 		return
 	}
 	s.emit(FrameObserved{o.Type, o.Context.Use})
@@ -711,6 +738,7 @@ func (s *Session) receive(raw []byte, now uint64) {
 	p := &s.pcs[i]
 	actions, err := p.signal.Receive(raw, now)
 	if err != nil {
+		s.emit(SignalRejected{Use: c.Use, Type: o.Type, Reason: err.Error()})
 		return
 	}
 	s.retainUntil = max(s.retainUntil, c.Deadline+300000)
@@ -733,7 +761,16 @@ func (s *Session) receive(raw []byte, now uint64) {
 	s.drainActions(i, now)
 }
 
-// receiveACK settles only a recorded immutable sender packet.
+func (s *Session) ackAll(hash []byte) {
+	s.boot.Ack(hash)
+	if s.controlWindow != nil {
+		s.controlWindow.Ack(hash)
+	}
+	for i := range s.pcs {
+		s.pcs[i].sender.Ack(hash)
+	}
+}
+
 func (s *Session) receiveACK(raw []byte, o peerwire.Opened, now uint64) {
 	if _, err := peerwire.KnownPayload(2, 4, o.Payload); err != nil {
 		return
@@ -767,12 +804,8 @@ func (s *Session) receiveACK(raw []byte, o peerwire.Opened, now uint64) {
 			}
 		}
 	}
-	s.boot.Ack(hash)
-	if s.controlWindow != nil {
-		s.controlWindow.Ack(hash)
-	}
+	s.ackAll(hash)
 	for i := range s.pcs {
-		s.pcs[i].sender.Ack(hash)
 		s.maybeOffer(i, now)
 	}
 }
@@ -782,6 +815,7 @@ func (s *Session) receiveACK(raw []byte, o peerwire.Opened, now uint64) {
 func (s *Session) receiveBootstrap(raw []byte, o peerwire.Opened, now uint64) {
 	for i := range s.pcs {
 		if _, err := s.pcs[i].signal.Receive(raw, now); err != nil {
+			s.emit(SignalRejected{Use: 0, Type: o.Type, Reason: err.Error()})
 			return
 		}
 	}
@@ -826,11 +860,49 @@ func (s *Session) receiveControl(o peerwire.Opened, now uint64) {
 	s.controlSeen[key] = cached{bytes: append([]byte(nil), o.Hash...), until: c.Deadline + 300000}
 	s.retainUntil = max(s.retainUntil, c.Deadline+300000)
 	if o.Type == 10 {
+		s.receiveUnsupported(o, now)
+		return
+	}
+	if o.Type == 11 || o.Type == 12 || o.Type == 13 {
 		return
 	}
 	s.nextOp++
 	s.controls[s.nextOp] = o
 	s.emit(HandleControl{s.nextOp, o, now})
+}
+
+func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
+	f, err := peerwire.ParseMessage(o.Payload, "Unsupported")
+	if err != nil {
+		return
+	}
+	hash := f[4].B
+	var matchedUse uint64
+	matched := false
+	for _, sender := range s.senders() {
+		if pending := sender.Pending[string(hash)]; pending != nil {
+			original, err := s.openSent(pending.Raw, now)
+			if err != nil || original.Context.Class != f[1].U || original.Type != f[2].U || original.Context.Seq != f[3].U {
+				continue
+			}
+			matched = true
+			matchedUse = original.Context.Use
+			break
+		}
+	}
+	if !matched {
+		return
+	}
+	s.ackAll(hash)
+	if matchedUse == 1 || matchedUse == 2 {
+		p := &s.pcs[int(matchedUse)-1]
+		p.signal.Closed = true
+		if p.pc != 0 {
+			s.emit(ClosePC{p.pc, "peer_unsupported"})
+			p.pc = 0
+		}
+	}
+	s.emit(PeerUnsupported{Class: f[1].U, Type: f[2].U, Use: matchedUse})
 }
 
 func (s *Session) controlHandled(e ControlHandled, now uint64) {

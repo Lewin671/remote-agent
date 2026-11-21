@@ -6,7 +6,6 @@ import { DemoRemote } from "../dev/demo";
 import { patchSyncState } from "../test/remote-fixture";
 import type { Remote } from "../remote";
 import { TerminalView } from "./Terminal";
-import { resetProcessBudgetForTest } from "../transport/recovery";
 
 const terminal = vi.hoisted(() => ({ writes: vi.fn(), resize: vi.fn() }));
 vi.mock("@xterm/xterm", () => ({ Terminal: class {
@@ -27,7 +26,7 @@ afterEach(async () => {
   if (root) await act(async () => root!.unmount()); root = undefined;
   host?.remove();
   for (const r of remotes.splice(0)) r.dispose();
-  vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); resetProcessBudgetForTest();
+  vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers();
 });
 async function mount() {
   let hidden = false, width = 600;
@@ -189,42 +188,51 @@ it("reopens after an opening failure when main transitions from offline to onlin
  const session = remote.sessions.get("s-run")!;
  await act(async () => root!.render(<TerminalView remote={remote} session={session} running />));
  expect(open).toHaveBeenCalledTimes(1);
- // Transitions offline -> online should reopen even though the first attempt never opened.
- await act(async () => { patchSyncState(remote, { conn: "offline" }); });
- expect(open).toHaveBeenCalledTimes(1);
- await act(async () => { patchSyncState(remote, { conn: "online" }); });
- expect(open).toHaveBeenCalledTimes(2);
+  // Transitions offline -> online should reopen even though the first attempt never opened.
+  await act(async () => {
+    remote.setDemoMainOnline(false);
+    patchSyncState(remote, { conn: "offline" });
+  });
+  expect(open).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    remote.setDemoMainOnline(true);
+    patchSyncState(remote, { conn: "online" });
+  });
+  expect(open).toHaveBeenCalledTimes(2);
 });
 
 it("does not open a newly selected session while offline, and opens it once online", async () => {
- vi.spyOn(document, "hidden", "get").mockReturnValue(false);
- vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
- vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
- vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
- const remote = track(DemoRemote.create(new URLSearchParams()));
- await act(async () => { remote.start(); });
- patchSyncState(remote, { conn: "offline" });
- const openedSids: string[] = [];
- vi.spyOn(remote, "openTerminal").mockImplementation(async (sid) => {
-   openedSids.push(sid);
-   return { close: vi.fn(), send: vi.fn() } as never;
- });
- const s1 = remote.sessions.get("s-run")!;
- const s2 = { ...s1, id: "s-next" };
- host = document.createElement("div"); document.body.append(host); root = createRoot(host);
- await act(async () => root!.render(<TerminalView remote={remote} session={s1} running />));
- expect(openedSids).toEqual([]);
- // Switching session while offline must still not open in the background.
- await act(async () => root!.render(<TerminalView remote={remote} session={s2} running />));
- expect(openedSids).toEqual([]);
- // Once main becomes online, only the newly selected session opens.
- await act(async () => { patchSyncState(remote, { conn: "online" }); });
- expect(openedSids).toEqual(["s-next"]);
+  vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const remote = track(DemoRemote.create(new URLSearchParams()));
+  await act(async () => { remote.start(); });
+  remote.setDemoMainOnline(false);
+  patchSyncState(remote, { conn: "offline" });
+  const openedSids: string[] = [];
+  vi.spyOn(remote, "openTerminal").mockImplementation(async (sid) => {
+    openedSids.push(sid);
+    return { close: vi.fn(), send: vi.fn() } as never;
+  });
+  const s1 = remote.sessions.get("s-run")!;
+  const s2 = { ...s1, id: "s-next" };
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  await act(async () => root!.render(<TerminalView remote={remote} session={s1} running />));
+  expect(openedSids).toEqual([]);
+  // Switching session while offline must still not open in the background.
+  await act(async () => root!.render(<TerminalView remote={remote} session={s2} running />));
+  expect(openedSids).toEqual([]);
+  // Once main becomes online, only the newly selected session opens.
+  await act(async () => {
+    remote.setDemoMainOnline(true);
+    patchSyncState(remote, { conn: "online" });
+  });
+  expect(openedSids).toEqual(["s-next"]);
 });
 
 it("applies backoff before re-stabilizing when reopened terminal keeps failing", async () => {
  vi.useFakeTimers();
- vi.spyOn(Math, "random").mockReturnValue(0.5);
  const vm = await mount();
  expect(vm.open).toHaveBeenCalledTimes(1);
  await act(async () => { vm.end("loss 1"); });
@@ -233,9 +241,7 @@ it("applies backoff before re-stabilizing when reopened terminal keeps failing",
  // Second failure before 5s stability must back off rather than spinning immediately.
  await act(async () => { vm.end("loss 2"); });
  expect(vm.open).toHaveBeenCalledTimes(2);
- await act(async () => { await vi.advanceTimersByTimeAsync(499); });
- expect(vm.open).toHaveBeenCalledTimes(2);
- await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+ await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
  expect(vm.open).toHaveBeenCalledTimes(3);
 });
 

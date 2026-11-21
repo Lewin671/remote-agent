@@ -548,14 +548,13 @@ export function SessionScreenView({
     setPage(defaultPage);
   }, [sid, defaultPage, defaultDenying]);
 
-  const directStatus = remote && header?.machineId ? remote.direct.status(header.machineId) : undefined;
+  const chip = header?.directChip;
   const directActive =
     !exited &&
     !!header?.computerOnline &&
     !header?.computerUnlinked &&
-    directStatus?.state === "connected" &&
-    (directStatus.read === "direct" || directStatus.file === "direct");
-  const showDirectChip = directActive || directOpen;
+    !!chip?.active;
+  const showDirectChip = (!exited && !!chip?.visible) || directOpen;
 
   useLayoutEffect(() => {
     if (!directOpen) return;
@@ -753,7 +752,7 @@ export function SessionScreenView({
         onClick={() => setDirectOpen((v) => !v)}
       >
         <Zap />
-        <span>{t("transport.direct")}</span>
+        <span>{renderText(chip?.labelText) || t("transport.direct")}</span>
       </button>
     </span>
   ) : null;
@@ -1241,7 +1240,7 @@ export function SessionScreenView({
               onClose={() => setViewingShared(undefined)}
             />
           )}
-          {directOpen && directStatus && header && typeof document !== "undefined" && createPortal(
+          {directOpen && header && typeof document !== "undefined" && createPortal(
             <>
               <div className="dpop-back" onClick={() => setDirectOpen(false)} />
               <div
@@ -1253,27 +1252,17 @@ export function SessionScreenView({
                 <div className="dpop-hd">
                   <StateMark kind={directActive ? "online" : "off"} />
                   <span>
-                    {directActive
-                      ? directStatus.read === "direct" && directStatus.readMs.direct !== undefined
-                        ? t("transport.popover_direct_title_rtt", { name: mname, ms: String(Math.round(directStatus.readMs.direct)) })
-                        : t("transport.popover_direct_title", { name: mname })
-                      : directStatus.readMs.relay !== undefined
-                        ? t("transport.popover_relay_title_rtt", { name: mname, ms: String(Math.round(directStatus.readMs.relay)) })
-                        : t("transport.popover_relay_title", { name: mname })}
+                    {renderText(chip?.popoverTitle) ||
+                      (directActive ? t("transport.popover_direct_title", { name: mname }) : t("transport.popover_relay_title", { name: mname }))}
                   </span>
                 </div>
                 <p className="dpop-body">
-                  {directActive ? t("transport.popover_direct_body") : t("transport.popover_relay_body")}
+                  {renderText(chip?.popoverBody) ||
+                    (directActive ? t("transport.popover_direct_body") : t("transport.popover_relay_body"))}
                 </p>
                 <div className="dpop-foot">
                   <span>
-                    {!directActive
-                      ? t("transport.popover_switched_relay")
-                      : directStatus.read === "direct" && directStatus.file === "direct"
-                        ? t("transport.popover_stable")
-                        : directStatus.read === "direct"
-                          ? t("transport.popover_read_only")
-                          : t("transport.popover_file_only")}
+                    {renderText(chip?.popoverFoot) || t("transport.popover_switched_relay")}
                   </span>
                   {go && (
                     <button

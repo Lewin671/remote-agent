@@ -125,7 +125,12 @@ func (s *SettingsExtra) EnsureFeed(id string) *MachinePollFeed {
 	return f
 }
 
-func machineDirectInputs(extra *SettingsExtra, machineID string) (bool, *corev1.DirectRouteReport) {
+func machineDirectInputs(st *State, extra *SettingsExtra, machineID string) (bool, *corev1.DirectRouteReport) {
+	if st != nil && st.DirectReportFn != nil {
+		if enabled, report, ok := st.DirectReportFn(machineID); ok {
+			return enabled, report
+		}
+	}
 	directPref := true
 	if extra == nil {
 		return directPref, nil
@@ -242,7 +247,7 @@ func buildMachineListCards(st *State, machines []*lists.Machine, extra *Settings
 		}
 		if includeSummary {
 			card.QuotaSummaries = quotaSummaries
-			directPref, directReport := machineDirectInputs(extra, m.ID)
+			directPref, directReport := machineDirectInputs(st, extra, m.ID)
 			card.DirectRow = machine.BuildConnCheckDirectRow(online && !unlinked, directPref, directReport)
 		}
 		out = append(out, card)
@@ -737,7 +742,7 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 
 	// Direct connection group
 	mExtra := extra.Machines[machineID]
-	directPref, directReport := machineDirectInputs(extra, machineID)
+	directPref, directReport := machineDirectInputs(st, extra, machineID)
 	vm.Connection = machine.BuildConnectionGroup(vm.Online && vm.Member, directPref, directReport)
 
 	// Daemon Settings & Cache (needed before building per-CLI defaults summaries)

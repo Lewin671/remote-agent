@@ -538,6 +538,58 @@ func (ConnProbeState) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{8}
 }
 
+type DiagCheckMark int32
+
+const (
+	DiagCheckMark_DIAG_CHECK_MARK_UNSPECIFIED DiagCheckMark = 0
+	DiagCheckMark_DIAG_CHECK_MARK_ONLINE      DiagCheckMark = 1
+	DiagCheckMark_DIAG_CHECK_MARK_OFF         DiagCheckMark = 2
+	DiagCheckMark_DIAG_CHECK_MARK_RUN         DiagCheckMark = 3
+)
+
+// Enum value maps for DiagCheckMark.
+var (
+	DiagCheckMark_name = map[int32]string{
+		0: "DIAG_CHECK_MARK_UNSPECIFIED",
+		1: "DIAG_CHECK_MARK_ONLINE",
+		2: "DIAG_CHECK_MARK_OFF",
+		3: "DIAG_CHECK_MARK_RUN",
+	}
+	DiagCheckMark_value = map[string]int32{
+		"DIAG_CHECK_MARK_UNSPECIFIED": 0,
+		"DIAG_CHECK_MARK_ONLINE":      1,
+		"DIAG_CHECK_MARK_OFF":         2,
+		"DIAG_CHECK_MARK_RUN":         3,
+	}
+)
+
+func (x DiagCheckMark) Enum() *DiagCheckMark {
+	p := new(DiagCheckMark)
+	*p = x
+	return p
+}
+
+func (x DiagCheckMark) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DiagCheckMark) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_settings_view_proto_enumTypes[9].Descriptor()
+}
+
+func (DiagCheckMark) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_settings_view_proto_enumTypes[9]
+}
+
+func (x DiagCheckMark) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DiagCheckMark.Descriptor instead.
+func (DiagCheckMark) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{9}
+}
+
 type SettingsScreenRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -3998,6 +4050,378 @@ func (x *DevicesViewModel) GetClientCountText() *Text {
 	return nil
 }
 
+type DirectDiagnosticsScreenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DirectDiagnosticsScreenRequest) Reset() {
+	*x = DirectDiagnosticsScreenRequest{}
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DirectDiagnosticsScreenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DirectDiagnosticsScreenRequest) ProtoMessage() {}
+
+func (x *DirectDiagnosticsScreenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DirectDiagnosticsScreenRequest.ProtoReflect.Descriptor instead.
+func (*DirectDiagnosticsScreenRequest) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *DirectDiagnosticsScreenRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+type PlainDiagCheckView struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Mark          DiagCheckMark          `protobuf:"varint,1,opt,name=mark,proto3,enum=remoteagent.core.v1.DiagCheckMark" json:"mark,omitempty"`
+	LabelText     *Text                  `protobuf:"bytes,2,opt,name=label_text,json=labelText,proto3" json:"label_text,omitempty"`
+	DetailText    *Text                  `protobuf:"bytes,3,opt,name=detail_text,json=detailText,proto3" json:"detail_text,omitempty"`
+	StatusText    *Text                  `protobuf:"bytes,4,opt,name=status_text,json=statusText,proto3" json:"status_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PlainDiagCheckView) Reset() {
+	*x = PlainDiagCheckView{}
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlainDiagCheckView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlainDiagCheckView) ProtoMessage() {}
+
+func (x *PlainDiagCheckView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlainDiagCheckView.ProtoReflect.Descriptor instead.
+func (*PlainDiagCheckView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *PlainDiagCheckView) GetMark() DiagCheckMark {
+	if x != nil {
+		return x.Mark
+	}
+	return DiagCheckMark_DIAG_CHECK_MARK_UNSPECIFIED
+}
+
+func (x *PlainDiagCheckView) GetLabelText() *Text {
+	if x != nil {
+		return x.LabelText
+	}
+	return nil
+}
+
+func (x *PlainDiagCheckView) GetDetailText() *Text {
+	if x != nil {
+		return x.DetailText
+	}
+	return nil
+}
+
+func (x *PlainDiagCheckView) GetStatusText() *Text {
+	if x != nil {
+		return x.StatusText
+	}
+	return nil
+}
+
+type DiagRowView struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LabelText     *Text                  `protobuf:"bytes,1,opt,name=label_text,json=labelText,proto3" json:"label_text,omitempty"`
+	ValueText     *Text                  `protobuf:"bytes,2,opt,name=value_text,json=valueText,proto3" json:"value_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiagRowView) Reset() {
+	*x = DiagRowView{}
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiagRowView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiagRowView) ProtoMessage() {}
+
+func (x *DiagRowView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiagRowView.ProtoReflect.Descriptor instead.
+func (*DiagRowView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *DiagRowView) GetLabelText() *Text {
+	if x != nil {
+		return x.LabelText
+	}
+	return nil
+}
+
+func (x *DiagRowView) GetValueText() *Text {
+	if x != nil {
+		return x.ValueText
+	}
+	return nil
+}
+
+type DiagGroupView struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TitleText     *Text                  `protobuf:"bytes,1,opt,name=title_text,json=titleText,proto3" json:"title_text,omitempty"`
+	Rows          []*DiagRowView         `protobuf:"bytes,2,rep,name=rows,proto3" json:"rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiagGroupView) Reset() {
+	*x = DiagGroupView{}
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiagGroupView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiagGroupView) ProtoMessage() {}
+
+func (x *DiagGroupView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiagGroupView.ProtoReflect.Descriptor instead.
+func (*DiagGroupView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *DiagGroupView) GetTitleText() *Text {
+	if x != nil {
+		return x.TitleText
+	}
+	return nil
+}
+
+func (x *DiagGroupView) GetRows() []*DiagRowView {
+	if x != nil {
+		return x.Rows
+	}
+	return nil
+}
+
+type DirectDiagnosticsViewModel struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	Supported     bool                   `protobuf:"varint,2,opt,name=supported,proto3" json:"supported,omitempty"`
+	Enabled       bool                   `protobuf:"varint,3,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Connected     bool                   `protobuf:"varint,4,opt,name=connected,proto3" json:"connected,omitempty"`
+	PeerOutdated  bool                   `protobuf:"varint,5,opt,name=peer_outdated,json=peerOutdated,proto3" json:"peer_outdated,omitempty"`
+	Trying        bool                   `protobuf:"varint,6,opt,name=trying,proto3" json:"trying,omitempty"`
+	CanRetry      bool                   `protobuf:"varint,7,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
+	TitleText     *Text                  `protobuf:"bytes,8,opt,name=title_text,json=titleText,proto3" json:"title_text,omitempty"`
+	BodyText      *Text                  `protobuf:"bytes,9,opt,name=body_text,json=bodyText,proto3" json:"body_text,omitempty"`
+	VerdictText   *Text                  `protobuf:"bytes,10,opt,name=verdict_text,json=verdictText,proto3" json:"verdict_text,omitempty"`
+	Checks        []*PlainDiagCheckView  `protobuf:"bytes,11,rep,name=checks,proto3" json:"checks,omitempty"`
+	Groups        []*DiagGroupView       `protobuf:"bytes,12,rep,name=groups,proto3" json:"groups,omitempty"`
+	ResultGroup   *DiagGroupView         `protobuf:"bytes,13,opt,name=result_group,json=resultGroup,proto3" json:"result_group,omitempty"`
+	ReportLines   []*Text                `protobuf:"bytes,14,rep,name=report_lines,json=reportLines,proto3" json:"report_lines,omitempty"`
+	Report        *DirectRouteReport     `protobuf:"bytes,15,opt,name=report,proto3" json:"report,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DirectDiagnosticsViewModel) Reset() {
+	*x = DirectDiagnosticsViewModel{}
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DirectDiagnosticsViewModel) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DirectDiagnosticsViewModel) ProtoMessage() {}
+
+func (x *DirectDiagnosticsViewModel) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DirectDiagnosticsViewModel.ProtoReflect.Descriptor instead.
+func (*DirectDiagnosticsViewModel) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *DirectDiagnosticsViewModel) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *DirectDiagnosticsViewModel) GetSupported() bool {
+	if x != nil {
+		return x.Supported
+	}
+	return false
+}
+
+func (x *DirectDiagnosticsViewModel) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *DirectDiagnosticsViewModel) GetConnected() bool {
+	if x != nil {
+		return x.Connected
+	}
+	return false
+}
+
+func (x *DirectDiagnosticsViewModel) GetPeerOutdated() bool {
+	if x != nil {
+		return x.PeerOutdated
+	}
+	return false
+}
+
+func (x *DirectDiagnosticsViewModel) GetTrying() bool {
+	if x != nil {
+		return x.Trying
+	}
+	return false
+}
+
+func (x *DirectDiagnosticsViewModel) GetCanRetry() bool {
+	if x != nil {
+		return x.CanRetry
+	}
+	return false
+}
+
+func (x *DirectDiagnosticsViewModel) GetTitleText() *Text {
+	if x != nil {
+		return x.TitleText
+	}
+	return nil
+}
+
+func (x *DirectDiagnosticsViewModel) GetBodyText() *Text {
+	if x != nil {
+		return x.BodyText
+	}
+	return nil
+}
+
+func (x *DirectDiagnosticsViewModel) GetVerdictText() *Text {
+	if x != nil {
+		return x.VerdictText
+	}
+	return nil
+}
+
+func (x *DirectDiagnosticsViewModel) GetChecks() []*PlainDiagCheckView {
+	if x != nil {
+		return x.Checks
+	}
+	return nil
+}
+
+func (x *DirectDiagnosticsViewModel) GetGroups() []*DiagGroupView {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
+func (x *DirectDiagnosticsViewModel) GetResultGroup() *DiagGroupView {
+	if x != nil {
+		return x.ResultGroup
+	}
+	return nil
+}
+
+func (x *DirectDiagnosticsViewModel) GetReportLines() []*Text {
+	if x != nil {
+		return x.ReportLines
+	}
+	return nil
+}
+
+func (x *DirectDiagnosticsViewModel) GetReport() *DirectRouteReport {
+	if x != nil {
+		return x.Report
+	}
+	return nil
+}
+
 type ClientDetailScreenRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
@@ -4007,7 +4431,7 @@ type ClientDetailScreenRequest struct {
 
 func (x *ClientDetailScreenRequest) Reset() {
 	*x = ClientDetailScreenRequest{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4019,7 +4443,7 @@ func (x *ClientDetailScreenRequest) String() string {
 func (*ClientDetailScreenRequest) ProtoMessage() {}
 
 func (x *ClientDetailScreenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4032,7 +4456,7 @@ func (x *ClientDetailScreenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientDetailScreenRequest.ProtoReflect.Descriptor instead.
 func (*ClientDetailScreenRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{31}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ClientDetailScreenRequest) GetDeviceId() string {
@@ -4071,7 +4495,7 @@ type ClientDetailViewModel struct {
 
 func (x *ClientDetailViewModel) Reset() {
 	*x = ClientDetailViewModel{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4083,7 +4507,7 @@ func (x *ClientDetailViewModel) String() string {
 func (*ClientDetailViewModel) ProtoMessage() {}
 
 func (x *ClientDetailViewModel) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4096,7 +4520,7 @@ func (x *ClientDetailViewModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientDetailViewModel.ProtoReflect.Descriptor instead.
 func (*ClientDetailViewModel) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{32}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ClientDetailViewModel) GetDeviceId() string {
@@ -4255,7 +4679,7 @@ type MachineSettingsOpenEvent struct {
 
 func (x *MachineSettingsOpenEvent) Reset() {
 	*x = MachineSettingsOpenEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4267,7 +4691,7 @@ func (x *MachineSettingsOpenEvent) String() string {
 func (*MachineSettingsOpenEvent) ProtoMessage() {}
 
 func (x *MachineSettingsOpenEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4280,7 +4704,7 @@ func (x *MachineSettingsOpenEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MachineSettingsOpenEvent.ProtoReflect.Descriptor instead.
 func (*MachineSettingsOpenEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{33}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *MachineSettingsOpenEvent) GetMachineId() string {
@@ -4301,7 +4725,7 @@ type ToggleMachineAgentEvent struct {
 
 func (x *ToggleMachineAgentEvent) Reset() {
 	*x = ToggleMachineAgentEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4313,7 +4737,7 @@ func (x *ToggleMachineAgentEvent) String() string {
 func (*ToggleMachineAgentEvent) ProtoMessage() {}
 
 func (x *ToggleMachineAgentEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4326,7 +4750,7 @@ func (x *ToggleMachineAgentEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToggleMachineAgentEvent.ProtoReflect.Descriptor instead.
 func (*ToggleMachineAgentEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{34}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ToggleMachineAgentEvent) GetMachineId() string {
@@ -4360,7 +4784,7 @@ type MachineSettingsSelectAgentEvent struct {
 
 func (x *MachineSettingsSelectAgentEvent) Reset() {
 	*x = MachineSettingsSelectAgentEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4372,7 +4796,7 @@ func (x *MachineSettingsSelectAgentEvent) String() string {
 func (*MachineSettingsSelectAgentEvent) ProtoMessage() {}
 
 func (x *MachineSettingsSelectAgentEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4385,7 +4809,7 @@ func (x *MachineSettingsSelectAgentEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MachineSettingsSelectAgentEvent.ProtoReflect.Descriptor instead.
 func (*MachineSettingsSelectAgentEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{35}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *MachineSettingsSelectAgentEvent) GetMachineId() string {
@@ -4415,7 +4839,7 @@ type UpdateMachineAgentDefaultsEvent struct {
 
 func (x *UpdateMachineAgentDefaultsEvent) Reset() {
 	*x = UpdateMachineAgentDefaultsEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4427,7 +4851,7 @@ func (x *UpdateMachineAgentDefaultsEvent) String() string {
 func (*UpdateMachineAgentDefaultsEvent) ProtoMessage() {}
 
 func (x *UpdateMachineAgentDefaultsEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4440,7 +4864,7 @@ func (x *UpdateMachineAgentDefaultsEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMachineAgentDefaultsEvent.ProtoReflect.Descriptor instead.
 func (*UpdateMachineAgentDefaultsEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{36}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *UpdateMachineAgentDefaultsEvent) GetMachineId() string {
@@ -4491,7 +4915,7 @@ type UpdateMachineDaemonSettingsEvent struct {
 
 func (x *UpdateMachineDaemonSettingsEvent) Reset() {
 	*x = UpdateMachineDaemonSettingsEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4503,7 +4927,7 @@ func (x *UpdateMachineDaemonSettingsEvent) String() string {
 func (*UpdateMachineDaemonSettingsEvent) ProtoMessage() {}
 
 func (x *UpdateMachineDaemonSettingsEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4516,7 +4940,7 @@ func (x *UpdateMachineDaemonSettingsEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMachineDaemonSettingsEvent.ProtoReflect.Descriptor instead.
 func (*UpdateMachineDaemonSettingsEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{37}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *UpdateMachineDaemonSettingsEvent) GetMachineId() string {
@@ -4564,7 +4988,7 @@ type UpdateDirectPreferenceEvent struct {
 
 func (x *UpdateDirectPreferenceEvent) Reset() {
 	*x = UpdateDirectPreferenceEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4576,7 +5000,7 @@ func (x *UpdateDirectPreferenceEvent) String() string {
 func (*UpdateDirectPreferenceEvent) ProtoMessage() {}
 
 func (x *UpdateDirectPreferenceEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4589,7 +5013,7 @@ func (x *UpdateDirectPreferenceEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateDirectPreferenceEvent.ProtoReflect.Descriptor instead.
 func (*UpdateDirectPreferenceEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{38}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *UpdateDirectPreferenceEvent) GetMachineId() string {
@@ -4616,7 +5040,7 @@ type MachineDirectStatusEvent struct {
 
 func (x *MachineDirectStatusEvent) Reset() {
 	*x = MachineDirectStatusEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4628,7 +5052,7 @@ func (x *MachineDirectStatusEvent) String() string {
 func (*MachineDirectStatusEvent) ProtoMessage() {}
 
 func (x *MachineDirectStatusEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4641,7 +5065,7 @@ func (x *MachineDirectStatusEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MachineDirectStatusEvent.ProtoReflect.Descriptor instead.
 func (*MachineDirectStatusEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{39}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *MachineDirectStatusEvent) GetMachineId() string {
@@ -4669,7 +5093,7 @@ type UpdateClientNameEvent struct {
 
 func (x *UpdateClientNameEvent) Reset() {
 	*x = UpdateClientNameEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4681,7 +5105,7 @@ func (x *UpdateClientNameEvent) String() string {
 func (*UpdateClientNameEvent) ProtoMessage() {}
 
 func (x *UpdateClientNameEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4694,7 +5118,7 @@ func (x *UpdateClientNameEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateClientNameEvent.ProtoReflect.Descriptor instead.
 func (*UpdateClientNameEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{40}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *UpdateClientNameEvent) GetDeviceId() string {
@@ -4734,7 +5158,7 @@ type SetNotificationPrefEvent struct {
 
 func (x *SetNotificationPrefEvent) Reset() {
 	*x = SetNotificationPrefEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4746,7 +5170,7 @@ func (x *SetNotificationPrefEvent) String() string {
 func (*SetNotificationPrefEvent) ProtoMessage() {}
 
 func (x *SetNotificationPrefEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4759,7 +5183,7 @@ func (x *SetNotificationPrefEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetNotificationPrefEvent.ProtoReflect.Descriptor instead.
 func (*SetNotificationPrefEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{41}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SetNotificationPrefEvent) GetSupported() bool {
@@ -4827,7 +5251,7 @@ type SetAppearancePrefEvent struct {
 
 func (x *SetAppearancePrefEvent) Reset() {
 	*x = SetAppearancePrefEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4839,7 +5263,7 @@ func (x *SetAppearancePrefEvent) String() string {
 func (*SetAppearancePrefEvent) ProtoMessage() {}
 
 func (x *SetAppearancePrefEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4852,7 +5276,7 @@ func (x *SetAppearancePrefEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAppearancePrefEvent.ProtoReflect.Descriptor instead.
 func (*SetAppearancePrefEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{42}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *SetAppearancePrefEvent) GetTheme() ThemePreference {
@@ -4873,7 +5297,7 @@ type ConnCheckStatusEvent struct {
 
 func (x *ConnCheckStatusEvent) Reset() {
 	*x = ConnCheckStatusEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4885,7 +5309,7 @@ func (x *ConnCheckStatusEvent) String() string {
 func (*ConnCheckStatusEvent) ProtoMessage() {}
 
 func (x *ConnCheckStatusEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4898,7 +5322,7 @@ func (x *ConnCheckStatusEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnCheckStatusEvent.ProtoReflect.Descriptor instead.
 func (*ConnCheckStatusEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{43}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ConnCheckStatusEvent) GetServerState() ConnProbeState {
@@ -4939,7 +5363,7 @@ type ClientUpdateStateEvent struct {
 
 func (x *ClientUpdateStateEvent) Reset() {
 	*x = ClientUpdateStateEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4951,7 +5375,7 @@ func (x *ClientUpdateStateEvent) String() string {
 func (*ClientUpdateStateEvent) ProtoMessage() {}
 
 func (x *ClientUpdateStateEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4964,7 +5388,7 @@ func (x *ClientUpdateStateEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientUpdateStateEvent.ProtoReflect.Descriptor instead.
 func (*ClientUpdateStateEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{44}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *ClientUpdateStateEvent) GetCurrentVersion() string {
@@ -5038,7 +5462,7 @@ type CheckForUpdatesEvent struct {
 
 func (x *CheckForUpdatesEvent) Reset() {
 	*x = CheckForUpdatesEvent{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5050,7 +5474,7 @@ func (x *CheckForUpdatesEvent) String() string {
 func (*CheckForUpdatesEvent) ProtoMessage() {}
 
 func (x *CheckForUpdatesEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5063,7 +5487,7 @@ func (x *CheckForUpdatesEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckForUpdatesEvent.ProtoReflect.Descriptor instead.
 func (*CheckForUpdatesEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{45}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{50}
 }
 
 type DirectPreferenceEffect struct {
@@ -5076,7 +5500,7 @@ type DirectPreferenceEffect struct {
 
 func (x *DirectPreferenceEffect) Reset() {
 	*x = DirectPreferenceEffect{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5088,7 +5512,7 @@ func (x *DirectPreferenceEffect) String() string {
 func (*DirectPreferenceEffect) ProtoMessage() {}
 
 func (x *DirectPreferenceEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5101,7 +5525,7 @@ func (x *DirectPreferenceEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectPreferenceEffect.ProtoReflect.Descriptor instead.
 func (*DirectPreferenceEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{46}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *DirectPreferenceEffect) GetMachineId() string {
@@ -5128,7 +5552,7 @@ type RenameClientEffect struct {
 
 func (x *RenameClientEffect) Reset() {
 	*x = RenameClientEffect{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5140,7 +5564,7 @@ func (x *RenameClientEffect) String() string {
 func (*RenameClientEffect) ProtoMessage() {}
 
 func (x *RenameClientEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5153,7 +5577,7 @@ func (x *RenameClientEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameClientEffect.ProtoReflect.Descriptor instead.
 func (*RenameClientEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{47}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *RenameClientEffect) GetDeviceId() string {
@@ -5178,7 +5602,7 @@ type CheckUpdatesEffect struct {
 
 func (x *CheckUpdatesEffect) Reset() {
 	*x = CheckUpdatesEffect{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5190,7 +5614,7 @@ func (x *CheckUpdatesEffect) String() string {
 func (*CheckUpdatesEffect) ProtoMessage() {}
 
 func (x *CheckUpdatesEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5203,7 +5627,7 @@ func (x *CheckUpdatesEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckUpdatesEffect.ProtoReflect.Descriptor instead.
 func (*CheckUpdatesEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{48}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{53}
 }
 
 type PersistClientPrefsEffect struct {
@@ -5219,7 +5643,7 @@ type PersistClientPrefsEffect struct {
 
 func (x *PersistClientPrefsEffect) Reset() {
 	*x = PersistClientPrefsEffect{}
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5231,7 +5655,7 @@ func (x *PersistClientPrefsEffect) String() string {
 func (*PersistClientPrefsEffect) ProtoMessage() {}
 
 func (x *PersistClientPrefsEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_settings_view_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5244,7 +5668,7 @@ func (x *PersistClientPrefsEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PersistClientPrefsEffect.ProtoReflect.Descriptor instead.
 func (*PersistClientPrefsEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{49}
+	return file_remoteagent_core_v1_settings_view_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *PersistClientPrefsEffect) GetNotifyAttention() bool {
@@ -5679,7 +6103,46 @@ const file_remoteagent_core_v1_settings_view_proto_rawDesc = "" +
 	"error_text\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\terrorText\x12)\n" +
 	"\x10machines_loading\x18\f \x01(\bR\x0fmachinesLoading\x12K\n" +
 	"\x14empty_computers_text\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x12emptyComputersText\x12E\n" +
-	"\x11client_count_text\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\x0fclientCountText\"8\n" +
+	"\x11client_count_text\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\x0fclientCountText\"?\n" +
+	"\x1eDirectDiagnosticsScreenRequest\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\"\xfe\x01\n" +
+	"\x12PlainDiagCheckView\x126\n" +
+	"\x04mark\x18\x01 \x01(\x0e2\".remoteagent.core.v1.DiagCheckMarkR\x04mark\x128\n" +
+	"\n" +
+	"label_text\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\tlabelText\x12:\n" +
+	"\vdetail_text\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"detailText\x12:\n" +
+	"\vstatus_text\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"statusText\"\x81\x01\n" +
+	"\vDiagRowView\x128\n" +
+	"\n" +
+	"label_text\x18\x01 \x01(\v2\x19.remoteagent.core.v1.TextR\tlabelText\x128\n" +
+	"\n" +
+	"value_text\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\tvalueText\"\x7f\n" +
+	"\rDiagGroupView\x128\n" +
+	"\n" +
+	"title_text\x18\x01 \x01(\v2\x19.remoteagent.core.v1.TextR\ttitleText\x124\n" +
+	"\x04rows\x18\x02 \x03(\v2 .remoteagent.core.v1.DiagRowViewR\x04rows\"\xdd\x05\n" +
+	"\x1aDirectDiagnosticsViewModel\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1c\n" +
+	"\tsupported\x18\x02 \x01(\bR\tsupported\x12\x18\n" +
+	"\aenabled\x18\x03 \x01(\bR\aenabled\x12\x1c\n" +
+	"\tconnected\x18\x04 \x01(\bR\tconnected\x12#\n" +
+	"\rpeer_outdated\x18\x05 \x01(\bR\fpeerOutdated\x12\x16\n" +
+	"\x06trying\x18\x06 \x01(\bR\x06trying\x12\x1b\n" +
+	"\tcan_retry\x18\a \x01(\bR\bcanRetry\x128\n" +
+	"\n" +
+	"title_text\x18\b \x01(\v2\x19.remoteagent.core.v1.TextR\ttitleText\x126\n" +
+	"\tbody_text\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\bbodyText\x12<\n" +
+	"\fverdict_text\x18\n" +
+	" \x01(\v2\x19.remoteagent.core.v1.TextR\vverdictText\x12?\n" +
+	"\x06checks\x18\v \x03(\v2'.remoteagent.core.v1.PlainDiagCheckViewR\x06checks\x12:\n" +
+	"\x06groups\x18\f \x03(\v2\".remoteagent.core.v1.DiagGroupViewR\x06groups\x12E\n" +
+	"\fresult_group\x18\r \x01(\v2\".remoteagent.core.v1.DiagGroupViewR\vresultGroup\x12<\n" +
+	"\freport_lines\x18\x0e \x03(\v2\x19.remoteagent.core.v1.TextR\vreportLines\x12>\n" +
+	"\x06report\x18\x0f \x01(\v2&.remoteagent.core.v1.DirectRouteReportR\x06report\"8\n" +
 	"\x19ClientDetailScreenRequest\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\"\xde\x06\n" +
 	"\x15ClientDetailViewModel\x12\x1b\n" +
@@ -5867,7 +6330,12 @@ const file_remoteagent_core_v1_settings_view_proto_rawDesc = "" +
 	"\x19CONN_PROBE_STATE_CHECKING\x10\x02\x12\x1c\n" +
 	"\x18CONN_PROBE_STATE_WORKING\x10\x03\x12\x19\n" +
 	"\x15CONN_PROBE_STATE_SLOW\x10\x04\x12 \n" +
-	"\x1cCONN_PROBE_STATE_UNAVAILABLE\x10\x05B\xdb\x01\n" +
+	"\x1cCONN_PROBE_STATE_UNAVAILABLE\x10\x05*~\n" +
+	"\rDiagCheckMark\x12\x1f\n" +
+	"\x1bDIAG_CHECK_MARK_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16DIAG_CHECK_MARK_ONLINE\x10\x01\x12\x17\n" +
+	"\x13DIAG_CHECK_MARK_OFF\x10\x02\x12\x17\n" +
+	"\x13DIAG_CHECK_MARK_RUN\x10\x03B\xdb\x01\n" +
 	"\x17com.remoteagent.core.v1B\x11SettingsViewProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -5882,8 +6350,8 @@ func file_remoteagent_core_v1_settings_view_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_settings_view_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_settings_view_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_remoteagent_core_v1_settings_view_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
+var file_remoteagent_core_v1_settings_view_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_remoteagent_core_v1_settings_view_proto_msgTypes = make([]protoimpl.MessageInfo, 55)
 var file_remoteagent_core_v1_settings_view_proto_goTypes = []any{
 	(DirectRouteState)(0),                    // 0: remoteagent.core.v1.DirectRouteState
 	(DirectRouteReason)(0),                   // 1: remoteagent.core.v1.DirectRouteReason
@@ -5894,218 +6362,240 @@ var file_remoteagent_core_v1_settings_view_proto_goTypes = []any{
 	(NotificationPermissionState)(0),         // 6: remoteagent.core.v1.NotificationPermissionState
 	(PushRegistrationState)(0),               // 7: remoteagent.core.v1.PushRegistrationState
 	(ConnProbeState)(0),                      // 8: remoteagent.core.v1.ConnProbeState
-	(*SettingsScreenRequest)(nil),            // 9: remoteagent.core.v1.SettingsScreenRequest
-	(*SubtitleSegment)(nil),                  // 10: remoteagent.core.v1.SubtitleSegment
-	(*MachineListCardView)(nil),              // 11: remoteagent.core.v1.MachineListCardView
-	(*ClientRowView)(nil),                    // 12: remoteagent.core.v1.ClientRowView
-	(*SecuritySummaryView)(nil),              // 13: remoteagent.core.v1.SecuritySummaryView
-	(*NotificationsView)(nil),                // 14: remoteagent.core.v1.NotificationsView
-	(*AppearanceView)(nil),                   // 15: remoteagent.core.v1.AppearanceView
-	(*ReleaseCandidateInfo)(nil),             // 16: remoteagent.core.v1.ReleaseCandidateInfo
-	(*ClientUpdateView)(nil),                 // 17: remoteagent.core.v1.ClientUpdateView
-	(*ConnCheckSummaryView)(nil),             // 18: remoteagent.core.v1.ConnCheckSummaryView
-	(*SettingsViewModel)(nil),                // 19: remoteagent.core.v1.SettingsViewModel
-	(*MachineSettingsScreenRequest)(nil),     // 20: remoteagent.core.v1.MachineSettingsScreenRequest
-	(*DirectRouteReport)(nil),                // 21: remoteagent.core.v1.DirectRouteReport
-	(*ConnCheckDirectRowView)(nil),           // 22: remoteagent.core.v1.ConnCheckDirectRowView
-	(*DirectViewsRequest)(nil),               // 23: remoteagent.core.v1.DirectViewsRequest
-	(*DirectViewsResponse)(nil),              // 24: remoteagent.core.v1.DirectViewsResponse
-	(*ConnectionGroupView)(nil),              // 25: remoteagent.core.v1.ConnectionGroupView
-	(*CliVersionView)(nil),                   // 26: remoteagent.core.v1.CliVersionView
-	(*ModelChoiceView)(nil),                  // 27: remoteagent.core.v1.ModelChoiceView
-	(*EffortChoiceView)(nil),                 // 28: remoteagent.core.v1.EffortChoiceView
-	(*ModeChoiceView)(nil),                   // 29: remoteagent.core.v1.ModeChoiceView
-	(*MachineAgentDefaultsView)(nil),         // 30: remoteagent.core.v1.MachineAgentDefaultsView
-	(*TimeoutChoiceView)(nil),                // 31: remoteagent.core.v1.TimeoutChoiceView
-	(*IdleCloseChoiceView)(nil),              // 32: remoteagent.core.v1.IdleCloseChoiceView
-	(*QuotaSizeChoiceView)(nil),              // 33: remoteagent.core.v1.QuotaSizeChoiceView
-	(*AttachmentStorageView)(nil),            // 34: remoteagent.core.v1.AttachmentStorageView
-	(*MachineProjectView)(nil),               // 35: remoteagent.core.v1.MachineProjectView
-	(*MachineManagementActionsView)(nil),     // 36: remoteagent.core.v1.MachineManagementActionsView
-	(*MachineSettingsViewModel)(nil),         // 37: remoteagent.core.v1.MachineSettingsViewModel
-	(*DevicesScreenRequest)(nil),             // 38: remoteagent.core.v1.DevicesScreenRequest
-	(*DevicesViewModel)(nil),                 // 39: remoteagent.core.v1.DevicesViewModel
-	(*ClientDetailScreenRequest)(nil),        // 40: remoteagent.core.v1.ClientDetailScreenRequest
-	(*ClientDetailViewModel)(nil),            // 41: remoteagent.core.v1.ClientDetailViewModel
-	(*MachineSettingsOpenEvent)(nil),         // 42: remoteagent.core.v1.MachineSettingsOpenEvent
-	(*ToggleMachineAgentEvent)(nil),          // 43: remoteagent.core.v1.ToggleMachineAgentEvent
-	(*MachineSettingsSelectAgentEvent)(nil),  // 44: remoteagent.core.v1.MachineSettingsSelectAgentEvent
-	(*UpdateMachineAgentDefaultsEvent)(nil),  // 45: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
-	(*UpdateMachineDaemonSettingsEvent)(nil), // 46: remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
-	(*UpdateDirectPreferenceEvent)(nil),      // 47: remoteagent.core.v1.UpdateDirectPreferenceEvent
-	(*MachineDirectStatusEvent)(nil),         // 48: remoteagent.core.v1.MachineDirectStatusEvent
-	(*UpdateClientNameEvent)(nil),            // 49: remoteagent.core.v1.UpdateClientNameEvent
-	(*SetNotificationPrefEvent)(nil),         // 50: remoteagent.core.v1.SetNotificationPrefEvent
-	(*SetAppearancePrefEvent)(nil),           // 51: remoteagent.core.v1.SetAppearancePrefEvent
-	(*ConnCheckStatusEvent)(nil),             // 52: remoteagent.core.v1.ConnCheckStatusEvent
-	(*ClientUpdateStateEvent)(nil),           // 53: remoteagent.core.v1.ClientUpdateStateEvent
-	(*CheckForUpdatesEvent)(nil),             // 54: remoteagent.core.v1.CheckForUpdatesEvent
-	(*DirectPreferenceEffect)(nil),           // 55: remoteagent.core.v1.DirectPreferenceEffect
-	(*RenameClientEffect)(nil),               // 56: remoteagent.core.v1.RenameClientEffect
-	(*CheckUpdatesEffect)(nil),               // 57: remoteagent.core.v1.CheckUpdatesEffect
-	(*PersistClientPrefsEffect)(nil),         // 58: remoteagent.core.v1.PersistClientPrefsEffect
-	(*Text)(nil),                             // 59: remoteagent.core.v1.Text
-	(*QuotaCliSection)(nil),                  // 60: remoteagent.core.v1.QuotaCliSection
-	(MachineStatusDot)(0),                    // 61: remoteagent.core.v1.MachineStatusDot
-	(*DiskReminderView)(nil),                 // 62: remoteagent.core.v1.DiskReminderView
-	(*QuotaBannerView)(nil),                  // 63: remoteagent.core.v1.QuotaBannerView
-	(v1.Agent)(0),                            // 64: remoteagent.v1.Agent
-	(v1.ApprovalMode)(0),                     // 65: remoteagent.v1.ApprovalMode
-	(*MachineRingView)(nil),                  // 66: remoteagent.core.v1.MachineRingView
+	(DiagCheckMark)(0),                       // 9: remoteagent.core.v1.DiagCheckMark
+	(*SettingsScreenRequest)(nil),            // 10: remoteagent.core.v1.SettingsScreenRequest
+	(*SubtitleSegment)(nil),                  // 11: remoteagent.core.v1.SubtitleSegment
+	(*MachineListCardView)(nil),              // 12: remoteagent.core.v1.MachineListCardView
+	(*ClientRowView)(nil),                    // 13: remoteagent.core.v1.ClientRowView
+	(*SecuritySummaryView)(nil),              // 14: remoteagent.core.v1.SecuritySummaryView
+	(*NotificationsView)(nil),                // 15: remoteagent.core.v1.NotificationsView
+	(*AppearanceView)(nil),                   // 16: remoteagent.core.v1.AppearanceView
+	(*ReleaseCandidateInfo)(nil),             // 17: remoteagent.core.v1.ReleaseCandidateInfo
+	(*ClientUpdateView)(nil),                 // 18: remoteagent.core.v1.ClientUpdateView
+	(*ConnCheckSummaryView)(nil),             // 19: remoteagent.core.v1.ConnCheckSummaryView
+	(*SettingsViewModel)(nil),                // 20: remoteagent.core.v1.SettingsViewModel
+	(*MachineSettingsScreenRequest)(nil),     // 21: remoteagent.core.v1.MachineSettingsScreenRequest
+	(*DirectRouteReport)(nil),                // 22: remoteagent.core.v1.DirectRouteReport
+	(*ConnCheckDirectRowView)(nil),           // 23: remoteagent.core.v1.ConnCheckDirectRowView
+	(*DirectViewsRequest)(nil),               // 24: remoteagent.core.v1.DirectViewsRequest
+	(*DirectViewsResponse)(nil),              // 25: remoteagent.core.v1.DirectViewsResponse
+	(*ConnectionGroupView)(nil),              // 26: remoteagent.core.v1.ConnectionGroupView
+	(*CliVersionView)(nil),                   // 27: remoteagent.core.v1.CliVersionView
+	(*ModelChoiceView)(nil),                  // 28: remoteagent.core.v1.ModelChoiceView
+	(*EffortChoiceView)(nil),                 // 29: remoteagent.core.v1.EffortChoiceView
+	(*ModeChoiceView)(nil),                   // 30: remoteagent.core.v1.ModeChoiceView
+	(*MachineAgentDefaultsView)(nil),         // 31: remoteagent.core.v1.MachineAgentDefaultsView
+	(*TimeoutChoiceView)(nil),                // 32: remoteagent.core.v1.TimeoutChoiceView
+	(*IdleCloseChoiceView)(nil),              // 33: remoteagent.core.v1.IdleCloseChoiceView
+	(*QuotaSizeChoiceView)(nil),              // 34: remoteagent.core.v1.QuotaSizeChoiceView
+	(*AttachmentStorageView)(nil),            // 35: remoteagent.core.v1.AttachmentStorageView
+	(*MachineProjectView)(nil),               // 36: remoteagent.core.v1.MachineProjectView
+	(*MachineManagementActionsView)(nil),     // 37: remoteagent.core.v1.MachineManagementActionsView
+	(*MachineSettingsViewModel)(nil),         // 38: remoteagent.core.v1.MachineSettingsViewModel
+	(*DevicesScreenRequest)(nil),             // 39: remoteagent.core.v1.DevicesScreenRequest
+	(*DevicesViewModel)(nil),                 // 40: remoteagent.core.v1.DevicesViewModel
+	(*DirectDiagnosticsScreenRequest)(nil),   // 41: remoteagent.core.v1.DirectDiagnosticsScreenRequest
+	(*PlainDiagCheckView)(nil),               // 42: remoteagent.core.v1.PlainDiagCheckView
+	(*DiagRowView)(nil),                      // 43: remoteagent.core.v1.DiagRowView
+	(*DiagGroupView)(nil),                    // 44: remoteagent.core.v1.DiagGroupView
+	(*DirectDiagnosticsViewModel)(nil),       // 45: remoteagent.core.v1.DirectDiagnosticsViewModel
+	(*ClientDetailScreenRequest)(nil),        // 46: remoteagent.core.v1.ClientDetailScreenRequest
+	(*ClientDetailViewModel)(nil),            // 47: remoteagent.core.v1.ClientDetailViewModel
+	(*MachineSettingsOpenEvent)(nil),         // 48: remoteagent.core.v1.MachineSettingsOpenEvent
+	(*ToggleMachineAgentEvent)(nil),          // 49: remoteagent.core.v1.ToggleMachineAgentEvent
+	(*MachineSettingsSelectAgentEvent)(nil),  // 50: remoteagent.core.v1.MachineSettingsSelectAgentEvent
+	(*UpdateMachineAgentDefaultsEvent)(nil),  // 51: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
+	(*UpdateMachineDaemonSettingsEvent)(nil), // 52: remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
+	(*UpdateDirectPreferenceEvent)(nil),      // 53: remoteagent.core.v1.UpdateDirectPreferenceEvent
+	(*MachineDirectStatusEvent)(nil),         // 54: remoteagent.core.v1.MachineDirectStatusEvent
+	(*UpdateClientNameEvent)(nil),            // 55: remoteagent.core.v1.UpdateClientNameEvent
+	(*SetNotificationPrefEvent)(nil),         // 56: remoteagent.core.v1.SetNotificationPrefEvent
+	(*SetAppearancePrefEvent)(nil),           // 57: remoteagent.core.v1.SetAppearancePrefEvent
+	(*ConnCheckStatusEvent)(nil),             // 58: remoteagent.core.v1.ConnCheckStatusEvent
+	(*ClientUpdateStateEvent)(nil),           // 59: remoteagent.core.v1.ClientUpdateStateEvent
+	(*CheckForUpdatesEvent)(nil),             // 60: remoteagent.core.v1.CheckForUpdatesEvent
+	(*DirectPreferenceEffect)(nil),           // 61: remoteagent.core.v1.DirectPreferenceEffect
+	(*RenameClientEffect)(nil),               // 62: remoteagent.core.v1.RenameClientEffect
+	(*CheckUpdatesEffect)(nil),               // 63: remoteagent.core.v1.CheckUpdatesEffect
+	(*PersistClientPrefsEffect)(nil),         // 64: remoteagent.core.v1.PersistClientPrefsEffect
+	(*Text)(nil),                             // 65: remoteagent.core.v1.Text
+	(*QuotaCliSection)(nil),                  // 66: remoteagent.core.v1.QuotaCliSection
+	(MachineStatusDot)(0),                    // 67: remoteagent.core.v1.MachineStatusDot
+	(*DiskReminderView)(nil),                 // 68: remoteagent.core.v1.DiskReminderView
+	(*QuotaBannerView)(nil),                  // 69: remoteagent.core.v1.QuotaBannerView
+	(v1.Agent)(0),                            // 70: remoteagent.v1.Agent
+	(v1.ApprovalMode)(0),                     // 71: remoteagent.v1.ApprovalMode
+	(*MachineRingView)(nil),                  // 72: remoteagent.core.v1.MachineRingView
 }
 var file_remoteagent_core_v1_settings_view_proto_depIdxs = []int32{
-	59,  // 0: remoteagent.core.v1.SubtitleSegment.text:type_name -> remoteagent.core.v1.Text
-	59,  // 1: remoteagent.core.v1.MachineListCardView.status_text:type_name -> remoteagent.core.v1.Text
-	60,  // 2: remoteagent.core.v1.MachineListCardView.quota_summaries:type_name -> remoteagent.core.v1.QuotaCliSection
-	22,  // 3: remoteagent.core.v1.MachineListCardView.direct_row:type_name -> remoteagent.core.v1.ConnCheckDirectRowView
-	61,  // 4: remoteagent.core.v1.MachineListCardView.status_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	10,  // 5: remoteagent.core.v1.MachineListCardView.subtitle_parts:type_name -> remoteagent.core.v1.SubtitleSegment
-	59,  // 6: remoteagent.core.v1.ClientRowView.role_label:type_name -> remoteagent.core.v1.Text
-	59,  // 7: remoteagent.core.v1.ClientRowView.last_used_text:type_name -> remoteagent.core.v1.Text
-	59,  // 8: remoteagent.core.v1.ClientRowView.added_text:type_name -> remoteagent.core.v1.Text
-	59,  // 9: remoteagent.core.v1.SecuritySummaryView.summary_text:type_name -> remoteagent.core.v1.Text
-	59,  // 10: remoteagent.core.v1.SecuritySummaryView.recovery_notice:type_name -> remoteagent.core.v1.Text
+	65,  // 0: remoteagent.core.v1.SubtitleSegment.text:type_name -> remoteagent.core.v1.Text
+	65,  // 1: remoteagent.core.v1.MachineListCardView.status_text:type_name -> remoteagent.core.v1.Text
+	66,  // 2: remoteagent.core.v1.MachineListCardView.quota_summaries:type_name -> remoteagent.core.v1.QuotaCliSection
+	23,  // 3: remoteagent.core.v1.MachineListCardView.direct_row:type_name -> remoteagent.core.v1.ConnCheckDirectRowView
+	67,  // 4: remoteagent.core.v1.MachineListCardView.status_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	11,  // 5: remoteagent.core.v1.MachineListCardView.subtitle_parts:type_name -> remoteagent.core.v1.SubtitleSegment
+	65,  // 6: remoteagent.core.v1.ClientRowView.role_label:type_name -> remoteagent.core.v1.Text
+	65,  // 7: remoteagent.core.v1.ClientRowView.last_used_text:type_name -> remoteagent.core.v1.Text
+	65,  // 8: remoteagent.core.v1.ClientRowView.added_text:type_name -> remoteagent.core.v1.Text
+	65,  // 9: remoteagent.core.v1.SecuritySummaryView.summary_text:type_name -> remoteagent.core.v1.Text
+	65,  // 10: remoteagent.core.v1.SecuritySummaryView.recovery_notice:type_name -> remoteagent.core.v1.Text
 	6,   // 11: remoteagent.core.v1.NotificationsView.permission:type_name -> remoteagent.core.v1.NotificationPermissionState
 	7,   // 12: remoteagent.core.v1.NotificationsView.push_state:type_name -> remoteagent.core.v1.PushRegistrationState
-	59,  // 13: remoteagent.core.v1.NotificationsView.status_text:type_name -> remoteagent.core.v1.Text
-	59,  // 14: remoteagent.core.v1.NotificationsView.hint_text:type_name -> remoteagent.core.v1.Text
-	59,  // 15: remoteagent.core.v1.NotificationsView.summary_text:type_name -> remoteagent.core.v1.Text
+	65,  // 13: remoteagent.core.v1.NotificationsView.status_text:type_name -> remoteagent.core.v1.Text
+	65,  // 14: remoteagent.core.v1.NotificationsView.hint_text:type_name -> remoteagent.core.v1.Text
+	65,  // 15: remoteagent.core.v1.NotificationsView.summary_text:type_name -> remoteagent.core.v1.Text
 	5,   // 16: remoteagent.core.v1.AppearanceView.theme:type_name -> remoteagent.core.v1.ThemePreference
-	59,  // 17: remoteagent.core.v1.AppearanceView.label:type_name -> remoteagent.core.v1.Text
-	59,  // 18: remoteagent.core.v1.ClientUpdateView.status_text:type_name -> remoteagent.core.v1.Text
-	59,  // 19: remoteagent.core.v1.ClientUpdateView.error_text:type_name -> remoteagent.core.v1.Text
+	65,  // 17: remoteagent.core.v1.AppearanceView.label:type_name -> remoteagent.core.v1.Text
+	65,  // 18: remoteagent.core.v1.ClientUpdateView.status_text:type_name -> remoteagent.core.v1.Text
+	65,  // 19: remoteagent.core.v1.ClientUpdateView.error_text:type_name -> remoteagent.core.v1.Text
 	8,   // 20: remoteagent.core.v1.ConnCheckSummaryView.server_state:type_name -> remoteagent.core.v1.ConnProbeState
-	59,  // 21: remoteagent.core.v1.ConnCheckSummaryView.status_word:type_name -> remoteagent.core.v1.Text
-	59,  // 22: remoteagent.core.v1.ConnCheckSummaryView.summary_text:type_name -> remoteagent.core.v1.Text
-	59,  // 23: remoteagent.core.v1.ConnCheckSummaryView.last_failure_text:type_name -> remoteagent.core.v1.Text
-	59,  // 24: remoteagent.core.v1.SettingsViewModel.recovery_banner_text:type_name -> remoteagent.core.v1.Text
-	59,  // 25: remoteagent.core.v1.SettingsViewModel.unlinked_banner_text:type_name -> remoteagent.core.v1.Text
-	59,  // 26: remoteagent.core.v1.SettingsViewModel.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
-	11,  // 27: remoteagent.core.v1.SettingsViewModel.machines:type_name -> remoteagent.core.v1.MachineListCardView
-	59,  // 28: remoteagent.core.v1.SettingsViewModel.add_device_hint:type_name -> remoteagent.core.v1.Text
-	59,  // 29: remoteagent.core.v1.SettingsViewModel.empty_machines_text:type_name -> remoteagent.core.v1.Text
-	12,  // 30: remoteagent.core.v1.SettingsViewModel.recent_clients:type_name -> remoteagent.core.v1.ClientRowView
-	13,  // 31: remoteagent.core.v1.SettingsViewModel.security:type_name -> remoteagent.core.v1.SecuritySummaryView
-	14,  // 32: remoteagent.core.v1.SettingsViewModel.notifications:type_name -> remoteagent.core.v1.NotificationsView
-	15,  // 33: remoteagent.core.v1.SettingsViewModel.appearance:type_name -> remoteagent.core.v1.AppearanceView
-	17,  // 34: remoteagent.core.v1.SettingsViewModel.update:type_name -> remoteagent.core.v1.ClientUpdateView
-	18,  // 35: remoteagent.core.v1.SettingsViewModel.conn_check:type_name -> remoteagent.core.v1.ConnCheckSummaryView
-	62,  // 36: remoteagent.core.v1.SettingsViewModel.disk_reminders:type_name -> remoteagent.core.v1.DiskReminderView
-	63,  // 37: remoteagent.core.v1.SettingsViewModel.quota_banner:type_name -> remoteagent.core.v1.QuotaBannerView
-	59,  // 38: remoteagent.core.v1.SettingsViewModel.machine_count_text:type_name -> remoteagent.core.v1.Text
-	59,  // 39: remoteagent.core.v1.SettingsViewModel.clients_summary_text:type_name -> remoteagent.core.v1.Text
-	59,  // 40: remoteagent.core.v1.SettingsViewModel.empty_machines_body:type_name -> remoteagent.core.v1.Text
+	65,  // 21: remoteagent.core.v1.ConnCheckSummaryView.status_word:type_name -> remoteagent.core.v1.Text
+	65,  // 22: remoteagent.core.v1.ConnCheckSummaryView.summary_text:type_name -> remoteagent.core.v1.Text
+	65,  // 23: remoteagent.core.v1.ConnCheckSummaryView.last_failure_text:type_name -> remoteagent.core.v1.Text
+	65,  // 24: remoteagent.core.v1.SettingsViewModel.recovery_banner_text:type_name -> remoteagent.core.v1.Text
+	65,  // 25: remoteagent.core.v1.SettingsViewModel.unlinked_banner_text:type_name -> remoteagent.core.v1.Text
+	65,  // 26: remoteagent.core.v1.SettingsViewModel.clock_skew_banner_text:type_name -> remoteagent.core.v1.Text
+	12,  // 27: remoteagent.core.v1.SettingsViewModel.machines:type_name -> remoteagent.core.v1.MachineListCardView
+	65,  // 28: remoteagent.core.v1.SettingsViewModel.add_device_hint:type_name -> remoteagent.core.v1.Text
+	65,  // 29: remoteagent.core.v1.SettingsViewModel.empty_machines_text:type_name -> remoteagent.core.v1.Text
+	13,  // 30: remoteagent.core.v1.SettingsViewModel.recent_clients:type_name -> remoteagent.core.v1.ClientRowView
+	14,  // 31: remoteagent.core.v1.SettingsViewModel.security:type_name -> remoteagent.core.v1.SecuritySummaryView
+	15,  // 32: remoteagent.core.v1.SettingsViewModel.notifications:type_name -> remoteagent.core.v1.NotificationsView
+	16,  // 33: remoteagent.core.v1.SettingsViewModel.appearance:type_name -> remoteagent.core.v1.AppearanceView
+	18,  // 34: remoteagent.core.v1.SettingsViewModel.update:type_name -> remoteagent.core.v1.ClientUpdateView
+	19,  // 35: remoteagent.core.v1.SettingsViewModel.conn_check:type_name -> remoteagent.core.v1.ConnCheckSummaryView
+	68,  // 36: remoteagent.core.v1.SettingsViewModel.disk_reminders:type_name -> remoteagent.core.v1.DiskReminderView
+	69,  // 37: remoteagent.core.v1.SettingsViewModel.quota_banner:type_name -> remoteagent.core.v1.QuotaBannerView
+	65,  // 38: remoteagent.core.v1.SettingsViewModel.machine_count_text:type_name -> remoteagent.core.v1.Text
+	65,  // 39: remoteagent.core.v1.SettingsViewModel.clients_summary_text:type_name -> remoteagent.core.v1.Text
+	65,  // 40: remoteagent.core.v1.SettingsViewModel.empty_machines_body:type_name -> remoteagent.core.v1.Text
 	0,   // 41: remoteagent.core.v1.DirectRouteReport.state:type_name -> remoteagent.core.v1.DirectRouteState
 	1,   // 42: remoteagent.core.v1.DirectRouteReport.reason:type_name -> remoteagent.core.v1.DirectRouteReason
 	2,   // 43: remoteagent.core.v1.DirectRouteReport.file_route:type_name -> remoteagent.core.v1.DirectPathChoice
 	2,   // 44: remoteagent.core.v1.DirectRouteReport.read_route:type_name -> remoteagent.core.v1.DirectPathChoice
 	3,   // 45: remoteagent.core.v1.ConnCheckDirectRowView.stage:type_name -> remoteagent.core.v1.ConnectionGroupStage
 	4,   // 46: remoteagent.core.v1.ConnCheckDirectRowView.tone:type_name -> remoteagent.core.v1.ConnectionGroupTone
-	59,  // 47: remoteagent.core.v1.ConnCheckDirectRowView.label_text:type_name -> remoteagent.core.v1.Text
-	59,  // 48: remoteagent.core.v1.ConnCheckDirectRowView.status_text:type_name -> remoteagent.core.v1.Text
-	59,  // 49: remoteagent.core.v1.ConnCheckDirectRowView.detail_text:type_name -> remoteagent.core.v1.Text
-	59,  // 50: remoteagent.core.v1.ConnCheckDirectRowView.metric_text:type_name -> remoteagent.core.v1.Text
-	21,  // 51: remoteagent.core.v1.DirectViewsRequest.report:type_name -> remoteagent.core.v1.DirectRouteReport
-	25,  // 52: remoteagent.core.v1.DirectViewsResponse.connection:type_name -> remoteagent.core.v1.ConnectionGroupView
-	22,  // 53: remoteagent.core.v1.DirectViewsResponse.conn_check_direct:type_name -> remoteagent.core.v1.ConnCheckDirectRowView
+	65,  // 47: remoteagent.core.v1.ConnCheckDirectRowView.label_text:type_name -> remoteagent.core.v1.Text
+	65,  // 48: remoteagent.core.v1.ConnCheckDirectRowView.status_text:type_name -> remoteagent.core.v1.Text
+	65,  // 49: remoteagent.core.v1.ConnCheckDirectRowView.detail_text:type_name -> remoteagent.core.v1.Text
+	65,  // 50: remoteagent.core.v1.ConnCheckDirectRowView.metric_text:type_name -> remoteagent.core.v1.Text
+	22,  // 51: remoteagent.core.v1.DirectViewsRequest.report:type_name -> remoteagent.core.v1.DirectRouteReport
+	26,  // 52: remoteagent.core.v1.DirectViewsResponse.connection:type_name -> remoteagent.core.v1.ConnectionGroupView
+	23,  // 53: remoteagent.core.v1.DirectViewsResponse.conn_check_direct:type_name -> remoteagent.core.v1.ConnCheckDirectRowView
 	3,   // 54: remoteagent.core.v1.ConnectionGroupView.stage:type_name -> remoteagent.core.v1.ConnectionGroupStage
 	4,   // 55: remoteagent.core.v1.ConnectionGroupView.tone:type_name -> remoteagent.core.v1.ConnectionGroupTone
-	59,  // 56: remoteagent.core.v1.ConnectionGroupView.status_text:type_name -> remoteagent.core.v1.Text
-	59,  // 57: remoteagent.core.v1.ConnectionGroupView.metric_text:type_name -> remoteagent.core.v1.Text
-	59,  // 58: remoteagent.core.v1.ConnectionGroupView.detail_text:type_name -> remoteagent.core.v1.Text
-	59,  // 59: remoteagent.core.v1.ConnectionGroupView.file_speed_text:type_name -> remoteagent.core.v1.Text
-	59,  // 60: remoteagent.core.v1.ConnectionGroupView.read_latency_text:type_name -> remoteagent.core.v1.Text
-	59,  // 61: remoteagent.core.v1.ConnectionGroupView.footer_text:type_name -> remoteagent.core.v1.Text
-	61,  // 62: remoteagent.core.v1.ConnectionGroupView.row_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	59,  // 63: remoteagent.core.v1.ConnectionGroupView.row_value_text:type_name -> remoteagent.core.v1.Text
-	59,  // 64: remoteagent.core.v1.ConnectionGroupView.row_subtitle_text:type_name -> remoteagent.core.v1.Text
-	64,  // 65: remoteagent.core.v1.CliVersionView.agent:type_name -> remoteagent.v1.Agent
-	59,  // 66: remoteagent.core.v1.CliVersionView.unverified_label:type_name -> remoteagent.core.v1.Text
-	59,  // 67: remoteagent.core.v1.CliVersionView.default_model_label:type_name -> remoteagent.core.v1.Text
-	59,  // 68: remoteagent.core.v1.CliVersionView.default_mode_label:type_name -> remoteagent.core.v1.Text
-	59,  // 69: remoteagent.core.v1.CliVersionView.disabled_label:type_name -> remoteagent.core.v1.Text
-	30,  // 70: remoteagent.core.v1.CliVersionView.defaults:type_name -> remoteagent.core.v1.MachineAgentDefaultsView
-	59,  // 71: remoteagent.core.v1.ModelChoiceView.label:type_name -> remoteagent.core.v1.Text
-	59,  // 72: remoteagent.core.v1.EffortChoiceView.label:type_name -> remoteagent.core.v1.Text
-	65,  // 73: remoteagent.core.v1.ModeChoiceView.mode:type_name -> remoteagent.v1.ApprovalMode
-	59,  // 74: remoteagent.core.v1.ModeChoiceView.label:type_name -> remoteagent.core.v1.Text
-	59,  // 75: remoteagent.core.v1.ModeChoiceView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	64,  // 76: remoteagent.core.v1.MachineAgentDefaultsView.agent:type_name -> remoteagent.v1.Agent
-	59,  // 77: remoteagent.core.v1.MachineAgentDefaultsView.selected_model_label:type_name -> remoteagent.core.v1.Text
-	27,  // 78: remoteagent.core.v1.MachineAgentDefaultsView.model_choices:type_name -> remoteagent.core.v1.ModelChoiceView
-	28,  // 79: remoteagent.core.v1.MachineAgentDefaultsView.effort_choices:type_name -> remoteagent.core.v1.EffortChoiceView
-	65,  // 80: remoteagent.core.v1.MachineAgentDefaultsView.selected_mode:type_name -> remoteagent.v1.ApprovalMode
-	29,  // 81: remoteagent.core.v1.MachineAgentDefaultsView.mode_choices:type_name -> remoteagent.core.v1.ModeChoiceView
-	59,  // 82: remoteagent.core.v1.MachineAgentDefaultsView.auto_unavailable_notice:type_name -> remoteagent.core.v1.Text
-	59,  // 83: remoteagent.core.v1.MachineAgentDefaultsView.footer_text:type_name -> remoteagent.core.v1.Text
-	59,  // 84: remoteagent.core.v1.TimeoutChoiceView.label:type_name -> remoteagent.core.v1.Text
-	59,  // 85: remoteagent.core.v1.IdleCloseChoiceView.label:type_name -> remoteagent.core.v1.Text
-	59,  // 86: remoteagent.core.v1.QuotaSizeChoiceView.label:type_name -> remoteagent.core.v1.Text
-	59,  // 87: remoteagent.core.v1.AttachmentStorageView.uploaded_text:type_name -> remoteagent.core.v1.Text
-	59,  // 88: remoteagent.core.v1.AttachmentStorageView.uploaded_detail:type_name -> remoteagent.core.v1.Text
-	33,  // 89: remoteagent.core.v1.AttachmentStorageView.quota_choices:type_name -> remoteagent.core.v1.QuotaSizeChoiceView
-	59,  // 90: remoteagent.core.v1.AttachmentStorageView.preview_cache_text:type_name -> remoteagent.core.v1.Text
-	59,  // 91: remoteagent.core.v1.AttachmentStorageView.emergency_reserve_text:type_name -> remoteagent.core.v1.Text
-	59,  // 92: remoteagent.core.v1.AttachmentStorageView.clear_button_label:type_name -> remoteagent.core.v1.Text
-	59,  // 93: remoteagent.core.v1.AttachmentStorageView.footer_text:type_name -> remoteagent.core.v1.Text
-	59,  // 94: remoteagent.core.v1.AttachmentStorageView.summary_text:type_name -> remoteagent.core.v1.Text
-	59,  // 95: remoteagent.core.v1.AttachmentStorageView.used_total_text:type_name -> remoteagent.core.v1.Text
-	59,  // 96: remoteagent.core.v1.AttachmentStorageView.limit_label:type_name -> remoteagent.core.v1.Text
-	59,  // 97: remoteagent.core.v1.MachineProjectView.last_active_text:type_name -> remoteagent.core.v1.Text
-	59,  // 98: remoteagent.core.v1.MachineManagementActionsView.explanation_text:type_name -> remoteagent.core.v1.Text
-	59,  // 99: remoteagent.core.v1.MachineSettingsViewModel.offline_or_mismatch_banner:type_name -> remoteagent.core.v1.Text
-	59,  // 100: remoteagent.core.v1.MachineSettingsViewModel.removed_banner:type_name -> remoteagent.core.v1.Text
-	66,  // 101: remoteagent.core.v1.MachineSettingsViewModel.status_rings:type_name -> remoteagent.core.v1.MachineRingView
-	60,  // 102: remoteagent.core.v1.MachineSettingsViewModel.quota_rows:type_name -> remoteagent.core.v1.QuotaCliSection
-	25,  // 103: remoteagent.core.v1.MachineSettingsViewModel.connection:type_name -> remoteagent.core.v1.ConnectionGroupView
-	26,  // 104: remoteagent.core.v1.MachineSettingsViewModel.cli_versions:type_name -> remoteagent.core.v1.CliVersionView
-	59,  // 105: remoteagent.core.v1.MachineSettingsViewModel.settings_error:type_name -> remoteagent.core.v1.Text
-	59,  // 106: remoteagent.core.v1.MachineSettingsViewModel.save_error:type_name -> remoteagent.core.v1.Text
-	64,  // 107: remoteagent.core.v1.MachineSettingsViewModel.available_agents:type_name -> remoteagent.v1.Agent
-	64,  // 108: remoteagent.core.v1.MachineSettingsViewModel.selected_agent:type_name -> remoteagent.v1.Agent
-	30,  // 109: remoteagent.core.v1.MachineSettingsViewModel.agent_defaults:type_name -> remoteagent.core.v1.MachineAgentDefaultsView
-	31,  // 110: remoteagent.core.v1.MachineSettingsViewModel.approval_timeout_choices:type_name -> remoteagent.core.v1.TimeoutChoiceView
-	32,  // 111: remoteagent.core.v1.MachineSettingsViewModel.idle_close_choices:type_name -> remoteagent.core.v1.IdleCloseChoiceView
-	34,  // 112: remoteagent.core.v1.MachineSettingsViewModel.attachment_storage:type_name -> remoteagent.core.v1.AttachmentStorageView
-	35,  // 113: remoteagent.core.v1.MachineSettingsViewModel.projects:type_name -> remoteagent.core.v1.MachineProjectView
-	36,  // 114: remoteagent.core.v1.MachineSettingsViewModel.management:type_name -> remoteagent.core.v1.MachineManagementActionsView
-	59,  // 115: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_disabled_reason:type_name -> remoteagent.core.v1.Text
-	59,  // 116: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_conflict_banner:type_name -> remoteagent.core.v1.Text
-	59,  // 117: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_footer:type_name -> remoteagent.core.v1.Text
-	61,  // 118: remoteagent.core.v1.MachineSettingsViewModel.header_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	59,  // 119: remoteagent.core.v1.MachineSettingsViewModel.header_subtitle:type_name -> remoteagent.core.v1.Text
-	61,  // 120: remoteagent.core.v1.MachineSettingsViewModel.status_card_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	59,  // 121: remoteagent.core.v1.MachineSettingsViewModel.status_card_badge:type_name -> remoteagent.core.v1.Text
-	59,  // 122: remoteagent.core.v1.MachineSettingsViewModel.usage_empty_text:type_name -> remoteagent.core.v1.Text
-	59,  // 123: remoteagent.core.v1.MachineSettingsViewModel.project_count_text:type_name -> remoteagent.core.v1.Text
-	59,  // 124: remoteagent.core.v1.DevicesViewModel.add_device_hint:type_name -> remoteagent.core.v1.Text
-	11,  // 125: remoteagent.core.v1.DevicesViewModel.computers:type_name -> remoteagent.core.v1.MachineListCardView
-	12,  // 126: remoteagent.core.v1.DevicesViewModel.clients:type_name -> remoteagent.core.v1.ClientRowView
-	12,  // 127: remoteagent.core.v1.DevicesViewModel.unfinished_pairings:type_name -> remoteagent.core.v1.ClientRowView
-	59,  // 128: remoteagent.core.v1.DevicesViewModel.error_text:type_name -> remoteagent.core.v1.Text
-	59,  // 129: remoteagent.core.v1.DevicesViewModel.empty_computers_text:type_name -> remoteagent.core.v1.Text
-	59,  // 130: remoteagent.core.v1.DevicesViewModel.client_count_text:type_name -> remoteagent.core.v1.Text
-	59,  // 131: remoteagent.core.v1.ClientDetailViewModel.role_label:type_name -> remoteagent.core.v1.Text
-	59,  // 132: remoteagent.core.v1.ClientDetailViewModel.last_used_text:type_name -> remoteagent.core.v1.Text
-	59,  // 133: remoteagent.core.v1.ClientDetailViewModel.added_text:type_name -> remoteagent.core.v1.Text
-	59,  // 134: remoteagent.core.v1.ClientDetailViewModel.rename_error:type_name -> remoteagent.core.v1.Text
-	59,  // 135: remoteagent.core.v1.ClientDetailViewModel.management_hint:type_name -> remoteagent.core.v1.Text
-	64,  // 136: remoteagent.core.v1.ToggleMachineAgentEvent.agent:type_name -> remoteagent.v1.Agent
-	64,  // 137: remoteagent.core.v1.MachineSettingsSelectAgentEvent.agent:type_name -> remoteagent.v1.Agent
-	64,  // 138: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent.agent:type_name -> remoteagent.v1.Agent
-	65,  // 139: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent.mode:type_name -> remoteagent.v1.ApprovalMode
-	21,  // 140: remoteagent.core.v1.MachineDirectStatusEvent.report:type_name -> remoteagent.core.v1.DirectRouteReport
-	6,   // 141: remoteagent.core.v1.SetNotificationPrefEvent.permission:type_name -> remoteagent.core.v1.NotificationPermissionState
-	7,   // 142: remoteagent.core.v1.SetNotificationPrefEvent.push_state:type_name -> remoteagent.core.v1.PushRegistrationState
-	5,   // 143: remoteagent.core.v1.SetAppearancePrefEvent.theme:type_name -> remoteagent.core.v1.ThemePreference
-	8,   // 144: remoteagent.core.v1.ConnCheckStatusEvent.server_state:type_name -> remoteagent.core.v1.ConnProbeState
-	16,  // 145: remoteagent.core.v1.ClientUpdateStateEvent.releases:type_name -> remoteagent.core.v1.ReleaseCandidateInfo
-	5,   // 146: remoteagent.core.v1.PersistClientPrefsEffect.theme:type_name -> remoteagent.core.v1.ThemePreference
-	147, // [147:147] is the sub-list for method output_type
-	147, // [147:147] is the sub-list for method input_type
-	147, // [147:147] is the sub-list for extension type_name
-	147, // [147:147] is the sub-list for extension extendee
-	0,   // [0:147] is the sub-list for field type_name
+	65,  // 56: remoteagent.core.v1.ConnectionGroupView.status_text:type_name -> remoteagent.core.v1.Text
+	65,  // 57: remoteagent.core.v1.ConnectionGroupView.metric_text:type_name -> remoteagent.core.v1.Text
+	65,  // 58: remoteagent.core.v1.ConnectionGroupView.detail_text:type_name -> remoteagent.core.v1.Text
+	65,  // 59: remoteagent.core.v1.ConnectionGroupView.file_speed_text:type_name -> remoteagent.core.v1.Text
+	65,  // 60: remoteagent.core.v1.ConnectionGroupView.read_latency_text:type_name -> remoteagent.core.v1.Text
+	65,  // 61: remoteagent.core.v1.ConnectionGroupView.footer_text:type_name -> remoteagent.core.v1.Text
+	67,  // 62: remoteagent.core.v1.ConnectionGroupView.row_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	65,  // 63: remoteagent.core.v1.ConnectionGroupView.row_value_text:type_name -> remoteagent.core.v1.Text
+	65,  // 64: remoteagent.core.v1.ConnectionGroupView.row_subtitle_text:type_name -> remoteagent.core.v1.Text
+	70,  // 65: remoteagent.core.v1.CliVersionView.agent:type_name -> remoteagent.v1.Agent
+	65,  // 66: remoteagent.core.v1.CliVersionView.unverified_label:type_name -> remoteagent.core.v1.Text
+	65,  // 67: remoteagent.core.v1.CliVersionView.default_model_label:type_name -> remoteagent.core.v1.Text
+	65,  // 68: remoteagent.core.v1.CliVersionView.default_mode_label:type_name -> remoteagent.core.v1.Text
+	65,  // 69: remoteagent.core.v1.CliVersionView.disabled_label:type_name -> remoteagent.core.v1.Text
+	31,  // 70: remoteagent.core.v1.CliVersionView.defaults:type_name -> remoteagent.core.v1.MachineAgentDefaultsView
+	65,  // 71: remoteagent.core.v1.ModelChoiceView.label:type_name -> remoteagent.core.v1.Text
+	65,  // 72: remoteagent.core.v1.EffortChoiceView.label:type_name -> remoteagent.core.v1.Text
+	71,  // 73: remoteagent.core.v1.ModeChoiceView.mode:type_name -> remoteagent.v1.ApprovalMode
+	65,  // 74: remoteagent.core.v1.ModeChoiceView.label:type_name -> remoteagent.core.v1.Text
+	65,  // 75: remoteagent.core.v1.ModeChoiceView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 76: remoteagent.core.v1.MachineAgentDefaultsView.agent:type_name -> remoteagent.v1.Agent
+	65,  // 77: remoteagent.core.v1.MachineAgentDefaultsView.selected_model_label:type_name -> remoteagent.core.v1.Text
+	28,  // 78: remoteagent.core.v1.MachineAgentDefaultsView.model_choices:type_name -> remoteagent.core.v1.ModelChoiceView
+	29,  // 79: remoteagent.core.v1.MachineAgentDefaultsView.effort_choices:type_name -> remoteagent.core.v1.EffortChoiceView
+	71,  // 80: remoteagent.core.v1.MachineAgentDefaultsView.selected_mode:type_name -> remoteagent.v1.ApprovalMode
+	30,  // 81: remoteagent.core.v1.MachineAgentDefaultsView.mode_choices:type_name -> remoteagent.core.v1.ModeChoiceView
+	65,  // 82: remoteagent.core.v1.MachineAgentDefaultsView.auto_unavailable_notice:type_name -> remoteagent.core.v1.Text
+	65,  // 83: remoteagent.core.v1.MachineAgentDefaultsView.footer_text:type_name -> remoteagent.core.v1.Text
+	65,  // 84: remoteagent.core.v1.TimeoutChoiceView.label:type_name -> remoteagent.core.v1.Text
+	65,  // 85: remoteagent.core.v1.IdleCloseChoiceView.label:type_name -> remoteagent.core.v1.Text
+	65,  // 86: remoteagent.core.v1.QuotaSizeChoiceView.label:type_name -> remoteagent.core.v1.Text
+	65,  // 87: remoteagent.core.v1.AttachmentStorageView.uploaded_text:type_name -> remoteagent.core.v1.Text
+	65,  // 88: remoteagent.core.v1.AttachmentStorageView.uploaded_detail:type_name -> remoteagent.core.v1.Text
+	34,  // 89: remoteagent.core.v1.AttachmentStorageView.quota_choices:type_name -> remoteagent.core.v1.QuotaSizeChoiceView
+	65,  // 90: remoteagent.core.v1.AttachmentStorageView.preview_cache_text:type_name -> remoteagent.core.v1.Text
+	65,  // 91: remoteagent.core.v1.AttachmentStorageView.emergency_reserve_text:type_name -> remoteagent.core.v1.Text
+	65,  // 92: remoteagent.core.v1.AttachmentStorageView.clear_button_label:type_name -> remoteagent.core.v1.Text
+	65,  // 93: remoteagent.core.v1.AttachmentStorageView.footer_text:type_name -> remoteagent.core.v1.Text
+	65,  // 94: remoteagent.core.v1.AttachmentStorageView.summary_text:type_name -> remoteagent.core.v1.Text
+	65,  // 95: remoteagent.core.v1.AttachmentStorageView.used_total_text:type_name -> remoteagent.core.v1.Text
+	65,  // 96: remoteagent.core.v1.AttachmentStorageView.limit_label:type_name -> remoteagent.core.v1.Text
+	65,  // 97: remoteagent.core.v1.MachineProjectView.last_active_text:type_name -> remoteagent.core.v1.Text
+	65,  // 98: remoteagent.core.v1.MachineManagementActionsView.explanation_text:type_name -> remoteagent.core.v1.Text
+	65,  // 99: remoteagent.core.v1.MachineSettingsViewModel.offline_or_mismatch_banner:type_name -> remoteagent.core.v1.Text
+	65,  // 100: remoteagent.core.v1.MachineSettingsViewModel.removed_banner:type_name -> remoteagent.core.v1.Text
+	72,  // 101: remoteagent.core.v1.MachineSettingsViewModel.status_rings:type_name -> remoteagent.core.v1.MachineRingView
+	66,  // 102: remoteagent.core.v1.MachineSettingsViewModel.quota_rows:type_name -> remoteagent.core.v1.QuotaCliSection
+	26,  // 103: remoteagent.core.v1.MachineSettingsViewModel.connection:type_name -> remoteagent.core.v1.ConnectionGroupView
+	27,  // 104: remoteagent.core.v1.MachineSettingsViewModel.cli_versions:type_name -> remoteagent.core.v1.CliVersionView
+	65,  // 105: remoteagent.core.v1.MachineSettingsViewModel.settings_error:type_name -> remoteagent.core.v1.Text
+	65,  // 106: remoteagent.core.v1.MachineSettingsViewModel.save_error:type_name -> remoteagent.core.v1.Text
+	70,  // 107: remoteagent.core.v1.MachineSettingsViewModel.available_agents:type_name -> remoteagent.v1.Agent
+	70,  // 108: remoteagent.core.v1.MachineSettingsViewModel.selected_agent:type_name -> remoteagent.v1.Agent
+	31,  // 109: remoteagent.core.v1.MachineSettingsViewModel.agent_defaults:type_name -> remoteagent.core.v1.MachineAgentDefaultsView
+	32,  // 110: remoteagent.core.v1.MachineSettingsViewModel.approval_timeout_choices:type_name -> remoteagent.core.v1.TimeoutChoiceView
+	33,  // 111: remoteagent.core.v1.MachineSettingsViewModel.idle_close_choices:type_name -> remoteagent.core.v1.IdleCloseChoiceView
+	35,  // 112: remoteagent.core.v1.MachineSettingsViewModel.attachment_storage:type_name -> remoteagent.core.v1.AttachmentStorageView
+	36,  // 113: remoteagent.core.v1.MachineSettingsViewModel.projects:type_name -> remoteagent.core.v1.MachineProjectView
+	37,  // 114: remoteagent.core.v1.MachineSettingsViewModel.management:type_name -> remoteagent.core.v1.MachineManagementActionsView
+	65,  // 115: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_disabled_reason:type_name -> remoteagent.core.v1.Text
+	65,  // 116: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_conflict_banner:type_name -> remoteagent.core.v1.Text
+	65,  // 117: remoteagent.core.v1.MachineSettingsViewModel.cli_switches_footer:type_name -> remoteagent.core.v1.Text
+	67,  // 118: remoteagent.core.v1.MachineSettingsViewModel.header_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	65,  // 119: remoteagent.core.v1.MachineSettingsViewModel.header_subtitle:type_name -> remoteagent.core.v1.Text
+	67,  // 120: remoteagent.core.v1.MachineSettingsViewModel.status_card_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	65,  // 121: remoteagent.core.v1.MachineSettingsViewModel.status_card_badge:type_name -> remoteagent.core.v1.Text
+	65,  // 122: remoteagent.core.v1.MachineSettingsViewModel.usage_empty_text:type_name -> remoteagent.core.v1.Text
+	65,  // 123: remoteagent.core.v1.MachineSettingsViewModel.project_count_text:type_name -> remoteagent.core.v1.Text
+	65,  // 124: remoteagent.core.v1.DevicesViewModel.add_device_hint:type_name -> remoteagent.core.v1.Text
+	12,  // 125: remoteagent.core.v1.DevicesViewModel.computers:type_name -> remoteagent.core.v1.MachineListCardView
+	13,  // 126: remoteagent.core.v1.DevicesViewModel.clients:type_name -> remoteagent.core.v1.ClientRowView
+	13,  // 127: remoteagent.core.v1.DevicesViewModel.unfinished_pairings:type_name -> remoteagent.core.v1.ClientRowView
+	65,  // 128: remoteagent.core.v1.DevicesViewModel.error_text:type_name -> remoteagent.core.v1.Text
+	65,  // 129: remoteagent.core.v1.DevicesViewModel.empty_computers_text:type_name -> remoteagent.core.v1.Text
+	65,  // 130: remoteagent.core.v1.DevicesViewModel.client_count_text:type_name -> remoteagent.core.v1.Text
+	9,   // 131: remoteagent.core.v1.PlainDiagCheckView.mark:type_name -> remoteagent.core.v1.DiagCheckMark
+	65,  // 132: remoteagent.core.v1.PlainDiagCheckView.label_text:type_name -> remoteagent.core.v1.Text
+	65,  // 133: remoteagent.core.v1.PlainDiagCheckView.detail_text:type_name -> remoteagent.core.v1.Text
+	65,  // 134: remoteagent.core.v1.PlainDiagCheckView.status_text:type_name -> remoteagent.core.v1.Text
+	65,  // 135: remoteagent.core.v1.DiagRowView.label_text:type_name -> remoteagent.core.v1.Text
+	65,  // 136: remoteagent.core.v1.DiagRowView.value_text:type_name -> remoteagent.core.v1.Text
+	65,  // 137: remoteagent.core.v1.DiagGroupView.title_text:type_name -> remoteagent.core.v1.Text
+	43,  // 138: remoteagent.core.v1.DiagGroupView.rows:type_name -> remoteagent.core.v1.DiagRowView
+	65,  // 139: remoteagent.core.v1.DirectDiagnosticsViewModel.title_text:type_name -> remoteagent.core.v1.Text
+	65,  // 140: remoteagent.core.v1.DirectDiagnosticsViewModel.body_text:type_name -> remoteagent.core.v1.Text
+	65,  // 141: remoteagent.core.v1.DirectDiagnosticsViewModel.verdict_text:type_name -> remoteagent.core.v1.Text
+	42,  // 142: remoteagent.core.v1.DirectDiagnosticsViewModel.checks:type_name -> remoteagent.core.v1.PlainDiagCheckView
+	44,  // 143: remoteagent.core.v1.DirectDiagnosticsViewModel.groups:type_name -> remoteagent.core.v1.DiagGroupView
+	44,  // 144: remoteagent.core.v1.DirectDiagnosticsViewModel.result_group:type_name -> remoteagent.core.v1.DiagGroupView
+	65,  // 145: remoteagent.core.v1.DirectDiagnosticsViewModel.report_lines:type_name -> remoteagent.core.v1.Text
+	22,  // 146: remoteagent.core.v1.DirectDiagnosticsViewModel.report:type_name -> remoteagent.core.v1.DirectRouteReport
+	65,  // 147: remoteagent.core.v1.ClientDetailViewModel.role_label:type_name -> remoteagent.core.v1.Text
+	65,  // 148: remoteagent.core.v1.ClientDetailViewModel.last_used_text:type_name -> remoteagent.core.v1.Text
+	65,  // 149: remoteagent.core.v1.ClientDetailViewModel.added_text:type_name -> remoteagent.core.v1.Text
+	65,  // 150: remoteagent.core.v1.ClientDetailViewModel.rename_error:type_name -> remoteagent.core.v1.Text
+	65,  // 151: remoteagent.core.v1.ClientDetailViewModel.management_hint:type_name -> remoteagent.core.v1.Text
+	70,  // 152: remoteagent.core.v1.ToggleMachineAgentEvent.agent:type_name -> remoteagent.v1.Agent
+	70,  // 153: remoteagent.core.v1.MachineSettingsSelectAgentEvent.agent:type_name -> remoteagent.v1.Agent
+	70,  // 154: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent.agent:type_name -> remoteagent.v1.Agent
+	71,  // 155: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent.mode:type_name -> remoteagent.v1.ApprovalMode
+	22,  // 156: remoteagent.core.v1.MachineDirectStatusEvent.report:type_name -> remoteagent.core.v1.DirectRouteReport
+	6,   // 157: remoteagent.core.v1.SetNotificationPrefEvent.permission:type_name -> remoteagent.core.v1.NotificationPermissionState
+	7,   // 158: remoteagent.core.v1.SetNotificationPrefEvent.push_state:type_name -> remoteagent.core.v1.PushRegistrationState
+	5,   // 159: remoteagent.core.v1.SetAppearancePrefEvent.theme:type_name -> remoteagent.core.v1.ThemePreference
+	8,   // 160: remoteagent.core.v1.ConnCheckStatusEvent.server_state:type_name -> remoteagent.core.v1.ConnProbeState
+	17,  // 161: remoteagent.core.v1.ClientUpdateStateEvent.releases:type_name -> remoteagent.core.v1.ReleaseCandidateInfo
+	5,   // 162: remoteagent.core.v1.PersistClientPrefsEffect.theme:type_name -> remoteagent.core.v1.ThemePreference
+	163, // [163:163] is the sub-list for method output_type
+	163, // [163:163] is the sub-list for method input_type
+	163, // [163:163] is the sub-list for extension type_name
+	163, // [163:163] is the sub-list for extension extendee
+	0,   // [0:163] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_settings_view_proto_init() }
@@ -6115,16 +6605,16 @@ func file_remoteagent_core_v1_settings_view_proto_init() {
 	}
 	file_remoteagent_core_v1_machine_view_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
-	file_remoteagent_core_v1_settings_view_proto_msgTypes[36].OneofWrappers = []any{}
-	file_remoteagent_core_v1_settings_view_proto_msgTypes[37].OneofWrappers = []any{}
 	file_remoteagent_core_v1_settings_view_proto_msgTypes[41].OneofWrappers = []any{}
+	file_remoteagent_core_v1_settings_view_proto_msgTypes[42].OneofWrappers = []any{}
+	file_remoteagent_core_v1_settings_view_proto_msgTypes[46].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_settings_view_proto_rawDesc), len(file_remoteagent_core_v1_settings_view_proto_rawDesc)),
-			NumEnums:      9,
-			NumMessages:   50,
+			NumEnums:      10,
+			NumMessages:   55,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

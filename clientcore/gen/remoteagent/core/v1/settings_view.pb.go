@@ -106,6 +106,15 @@ const (
 	ConnProbeState_CONN_PROBE_STATE_UNAVAILABLE ConnProbeState = 5
 )
 
+type DiagCheckMark int32
+
+const (
+	DiagCheckMark_DIAG_CHECK_MARK_UNSPECIFIED DiagCheckMark = 0
+	DiagCheckMark_DIAG_CHECK_MARK_ONLINE      DiagCheckMark = 1
+	DiagCheckMark_DIAG_CHECK_MARK_OFF         DiagCheckMark = 2
+	DiagCheckMark_DIAG_CHECK_MARK_RUN         DiagCheckMark = 3
+)
+
 type SettingsScreenRequest struct {
 }
 
@@ -1423,6 +1432,41 @@ func (m *DirectRouteReport) Clone() *DirectRouteReport {
 	}
 	cp := *m
 	return &cp
+}
+
+func (m *DirectRouteReport) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *DirectRouteReport) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *DirectRouteReport) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.Enabled)
+	b = litewire.AppendBool(b, 2, m.Capable)
+	b = litewire.AppendBool(b, 3, m.DaemonDisabled)
+	b = litewire.AppendInt32(b, 4, int32(m.State))
+	b = litewire.AppendInt32(b, 5, int32(m.Reason))
+	b = litewire.AppendInt32(b, 6, int32(m.FileRoute))
+	b = litewire.AppendInt32(b, 7, int32(m.ReadRoute))
+	b = litewire.AppendBool(b, 8, m.HasActiveRttMs)
+	b = litewire.AppendInt32(b, 9, int32(m.ActiveRttMs))
+	b = litewire.AppendBool(b, 10, m.HasDirectFileMibps)
+	b = litewire.AppendDouble(b, 11, m.DirectFileMibps)
+	b = litewire.AppendBool(b, 12, m.HasRelayFileMibps)
+	b = litewire.AppendDouble(b, 13, m.RelayFileMibps)
+	b = litewire.AppendBool(b, 14, m.HasDirectReadMs)
+	b = litewire.AppendInt32(b, 15, int32(m.DirectReadMs))
+	b = litewire.AppendBool(b, 16, m.HasRelayReadMs)
+	b = litewire.AppendInt32(b, 17, int32(m.RelayReadMs))
+	b = litewire.AppendBool(b, 18, m.Warming)
+	b = litewire.AppendBool(b, 19, m.Compared)
+	b = litewire.AppendBool(b, 20, m.HasDiagnostics)
+	b = litewire.AppendBool(b, 21, m.ReadSlow)
+	b = litewire.AppendBool(b, 22, m.FileSlow)
+	return b
 }
 
 func (m *DirectRouteReport) Unmarshal(b []byte) error {
@@ -3495,6 +3539,331 @@ func (m *DevicesViewModel) AppendMarshal(b []byte) []byte {
 	}
 	if m.ClientCountText != nil {
 		b = litewire.AppendMessage(b, 14, m.ClientCountText)
+	}
+	return b
+}
+
+type DirectDiagnosticsScreenRequest struct {
+	MachineId string
+}
+
+func (m *DirectDiagnosticsScreenRequest) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+
+func (m *DirectDiagnosticsScreenRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PlainDiagCheckView struct {
+	Mark       DiagCheckMark
+	LabelText  *Text
+	DetailText *Text
+	StatusText *Text
+}
+
+func (m *PlainDiagCheckView) GetMark() DiagCheckMark {
+	if m != nil {
+		return m.Mark
+	}
+	return 0
+}
+func (m *PlainDiagCheckView) GetLabelText() *Text {
+	if m != nil {
+		return m.LabelText
+	}
+	return nil
+}
+func (m *PlainDiagCheckView) GetDetailText() *Text {
+	if m != nil {
+		return m.DetailText
+	}
+	return nil
+}
+func (m *PlainDiagCheckView) GetStatusText() *Text {
+	if m != nil {
+		return m.StatusText
+	}
+	return nil
+}
+
+func (m *PlainDiagCheckView) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *PlainDiagCheckView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PlainDiagCheckView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Mark))
+	if m.LabelText != nil {
+		b = litewire.AppendMessage(b, 2, m.LabelText)
+	}
+	if m.DetailText != nil {
+		b = litewire.AppendMessage(b, 3, m.DetailText)
+	}
+	if m.StatusText != nil {
+		b = litewire.AppendMessage(b, 4, m.StatusText)
+	}
+	return b
+}
+
+type DiagRowView struct {
+	LabelText *Text
+	ValueText *Text
+}
+
+func (m *DiagRowView) GetLabelText() *Text {
+	if m != nil {
+		return m.LabelText
+	}
+	return nil
+}
+func (m *DiagRowView) GetValueText() *Text {
+	if m != nil {
+		return m.ValueText
+	}
+	return nil
+}
+
+func (m *DiagRowView) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *DiagRowView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *DiagRowView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	if m.LabelText != nil {
+		b = litewire.AppendMessage(b, 1, m.LabelText)
+	}
+	if m.ValueText != nil {
+		b = litewire.AppendMessage(b, 2, m.ValueText)
+	}
+	return b
+}
+
+type DiagGroupView struct {
+	TitleText *Text
+	Rows      []*DiagRowView
+}
+
+func (m *DiagGroupView) GetTitleText() *Text {
+	if m != nil {
+		return m.TitleText
+	}
+	return nil
+}
+func (m *DiagGroupView) GetRows() []*DiagRowView {
+	if m != nil {
+		return m.Rows
+	}
+	return nil
+}
+
+func (m *DiagGroupView) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *DiagGroupView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *DiagGroupView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	if m.TitleText != nil {
+		b = litewire.AppendMessage(b, 1, m.TitleText)
+	}
+	for _, v := range m.Rows {
+		if v != nil {
+			b = litewire.AppendMessage(b, 2, v)
+		}
+	}
+	return b
+}
+
+type DirectDiagnosticsViewModel struct {
+	MachineId    string
+	Supported    bool
+	Enabled      bool
+	Connected    bool
+	PeerOutdated bool
+	Trying       bool
+	CanRetry     bool
+	TitleText    *Text
+	BodyText     *Text
+	VerdictText  *Text
+	Checks       []*PlainDiagCheckView
+	Groups       []*DiagGroupView
+	ResultGroup  *DiagGroupView
+	ReportLines  []*Text
+	Report       *DirectRouteReport
+}
+
+func (m *DirectDiagnosticsViewModel) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *DirectDiagnosticsViewModel) GetSupported() bool {
+	if m != nil {
+		return m.Supported
+	}
+	return false
+}
+func (m *DirectDiagnosticsViewModel) GetEnabled() bool {
+	if m != nil {
+		return m.Enabled
+	}
+	return false
+}
+func (m *DirectDiagnosticsViewModel) GetConnected() bool {
+	if m != nil {
+		return m.Connected
+	}
+	return false
+}
+func (m *DirectDiagnosticsViewModel) GetPeerOutdated() bool {
+	if m != nil {
+		return m.PeerOutdated
+	}
+	return false
+}
+func (m *DirectDiagnosticsViewModel) GetTrying() bool {
+	if m != nil {
+		return m.Trying
+	}
+	return false
+}
+func (m *DirectDiagnosticsViewModel) GetCanRetry() bool {
+	if m != nil {
+		return m.CanRetry
+	}
+	return false
+}
+func (m *DirectDiagnosticsViewModel) GetTitleText() *Text {
+	if m != nil {
+		return m.TitleText
+	}
+	return nil
+}
+func (m *DirectDiagnosticsViewModel) GetBodyText() *Text {
+	if m != nil {
+		return m.BodyText
+	}
+	return nil
+}
+func (m *DirectDiagnosticsViewModel) GetVerdictText() *Text {
+	if m != nil {
+		return m.VerdictText
+	}
+	return nil
+}
+func (m *DirectDiagnosticsViewModel) GetChecks() []*PlainDiagCheckView {
+	if m != nil {
+		return m.Checks
+	}
+	return nil
+}
+func (m *DirectDiagnosticsViewModel) GetGroups() []*DiagGroupView {
+	if m != nil {
+		return m.Groups
+	}
+	return nil
+}
+func (m *DirectDiagnosticsViewModel) GetResultGroup() *DiagGroupView {
+	if m != nil {
+		return m.ResultGroup
+	}
+	return nil
+}
+func (m *DirectDiagnosticsViewModel) GetReportLines() []*Text {
+	if m != nil {
+		return m.ReportLines
+	}
+	return nil
+}
+func (m *DirectDiagnosticsViewModel) GetReport() *DirectRouteReport {
+	if m != nil {
+		return m.Report
+	}
+	return nil
+}
+
+func (m *DirectDiagnosticsViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *DirectDiagnosticsViewModel) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *DirectDiagnosticsViewModel) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.MachineId)
+	b = litewire.AppendBool(b, 2, m.Supported)
+	b = litewire.AppendBool(b, 3, m.Enabled)
+	b = litewire.AppendBool(b, 4, m.Connected)
+	b = litewire.AppendBool(b, 5, m.PeerOutdated)
+	b = litewire.AppendBool(b, 6, m.Trying)
+	b = litewire.AppendBool(b, 7, m.CanRetry)
+	if m.TitleText != nil {
+		b = litewire.AppendMessage(b, 8, m.TitleText)
+	}
+	if m.BodyText != nil {
+		b = litewire.AppendMessage(b, 9, m.BodyText)
+	}
+	if m.VerdictText != nil {
+		b = litewire.AppendMessage(b, 10, m.VerdictText)
+	}
+	for _, v := range m.Checks {
+		if v != nil {
+			b = litewire.AppendMessage(b, 11, v)
+		}
+	}
+	for _, v := range m.Groups {
+		if v != nil {
+			b = litewire.AppendMessage(b, 12, v)
+		}
+	}
+	if m.ResultGroup != nil {
+		b = litewire.AppendMessage(b, 13, m.ResultGroup)
+	}
+	for _, v := range m.ReportLines {
+		if v != nil {
+			b = litewire.AppendMessage(b, 14, v)
+		}
+	}
+	if m.Report != nil {
+		b = litewire.AppendMessage(b, 15, m.Report)
 	}
 	return b
 }

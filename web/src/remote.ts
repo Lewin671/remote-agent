@@ -1,7 +1,5 @@
-import { DirectEngine } from "./transport/direct-engine";
-import type { RouteHint } from "./transport/direct-routing";
+import { DirectExecutor, peerFrameBody } from "./transport/direct-executor";
 import { watchSecurityInstall } from "./device-security-store";
-import { peerFrameBody } from "./transport/peer-frame";
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
 import { abortable, ownedRound, PathChanged } from "./transport/recovery";
 import { cleanup } from "./cleanup";
@@ -17,10 +15,17 @@ import { AuthorityClient, PairingDeliveryError, handoffCandidates as verifiedHan
 import type { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
 import { machineReplacementOrigins } from "./machine-replacement";
-import { disposeCoreHost, getCoreHost, type CoreExecutor, type HostBridge, type StreamLegCallbacks } from "./core/host";
+import {
+  CommandRouteLeg,
+  disposeCoreHost,
+  getCoreHost,
+  type CoreExecutor,
+  type DirectSecuritySnapshotInput,
+  type HostBridge,
+  type StreamLegCallbacks,
+} from "./core/host";
 export type { StreamLegCallbacks } from "./core/host";
 import { renderText } from "./core/text";
-import { buildDirectRouteReport } from "./views/direct-status";
 import {
   AccountPrefsFetchedEventSchema,
   AccountPrefsPutResultEventSchema,
@@ -60,6 +65,18 @@ import {
   type SecuritySnapshotEvent,
   type TokenResultEvent,
 } from "./gen/remoteagent/core/v1/app_pb";
+import type {
+  DirectDcReadStatsEffect,
+  DirectKeyAgreeEffect,
+  DirectKeySignEffect,
+  DirectPcAddCandidatesEffect,
+  DirectPcCloseEffect,
+  DirectPcConfirmEffect,
+  DirectPcCreateEffect,
+  DirectPcDescribeEffect,
+  DirectPcSetRemoteEffect,
+  DirectSignalSendEffect,
+} from "./gen/remoteagent/core/v1/transport_pb";
 import {
   ScheduleCacheLoadedEventSchema,
   ScheduleSeenLoadedEventSchema,
@@ -70,7 +87,7 @@ import {
   type ScheduleSeenToken,
 } from "./gen/remoteagent/core/v1/schedules_view_pb";
 import { ConnState as CoreConnState } from "./gen/remoteagent/core/v1/home_view_pb";
-import type { SyncSessionView, SyncStateView } from "./gen/remoteagent/core/v1/sync_view_pb";
+import type { SyncMachineView, SyncSessionView, SyncStateView } from "./gen/remoteagent/core/v1/sync_view_pb";
 import {
   LiveSnapshotSchema,
   type LiveSnapshot,
@@ -94,6 +111,7 @@ import {
   parseHeader,
   Purpose,
   SecurityError,
+  validLease,
   type Member,
   type SecurityHeader,
 } from "./device-security";
@@ -103,6 +121,7 @@ import {
   PairingService,
   DeviceKind,
   DeviceRegistrationSchema,
+  ForwardResponseSchema,
   PutDeviceMetaRequestSchema,
   ListMachinesResponseSchema,
   ListRemoteSessionsResponseSchema,
@@ -118,6 +137,7 @@ import {
   type Machine as RemoteMachine,
   type RemoteSession,
 } from "./gen/remoteagent/v1/relay_pb";
+import { PeerFrameResultSchema } from "./gen/remoteagent/v1/transport_pb";
 import {
   create,
   fromBinary,
@@ -140,6 +160,7 @@ import {
   checkServer,
   concat,
   deviceID,
+  hex,
   newRequestID,
   signLogin,
   expect,
@@ -431,7 +452,7 @@ export class Remote implements CoreExecutor {
 
   readonly security: DeviceSecurityClient;
   readonly authority: AuthorityClient;
-  readonly direct: DirectEngine;
+  readonly directExec: DirectExecutor;
   readonly deviceLink: DeviceLink;
   readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
 
@@ -441,9 +462,10 @@ export class Remote implements CoreExecutor {
   private securityTimer?: ReturnType<typeof setInterval>;
   private foreground = true;
   private lastSecuritySyncAt = 0;
-  private directTransfers = new Map<string, "image" | "file">();
-  private directReadyCache = new Map<string, boolean>();
-  private directReportCache = new Map<string, string>();
+  private cachedSyncMachines = new Map<string, SyncMachineView>();
+  private latestXPrivate?: CryptoKey;
+  private lastDirectSecurity?: DirectSecuritySnapshotInput;
+  private securitySyncRev = 0;
   private token = "";
   private tokenExpires = 0;
   private tokenWarmed = false;
@@ -553,15 +575,16 @@ export class Remote implements CoreExecutor {
       new RelayPath(
         (id) => {
           const m = this.machines.get(id);
-          const direct = this.direct?.ready(id, { kind: "read" }) ?? false;
+          const sm = this.cachedSyncMachines.get(id);
+          const direct = !!sm?.directReady;
           return {
             relayRequired: !direct,
             unlinked: this.unlinked,
             reachable: direct || !!m?.online,
             ready: direct || this.conn === "online",
             authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)),
-            protocolVersion: direct ? PROTOCOL_VERSION : m?.meta?.protocolVersion,
-            capabilities: this.direct?.capabilities(id) ?? m?.meta?.capabilities,
+            protocolVersion: direct ? PROTOCOL_VERSION : (sm?.protocolVersion || m?.meta?.protocolVersion),
+            capabilities: sm?.meta?.capabilities ?? m?.meta?.capabilities,
           };
         },
         () => this.relayEpoch(),
@@ -569,33 +592,22 @@ export class Remote implements CoreExecutor {
         (signal) => this.login(signal),
       ),
     );
-    this.direct = new DirectEngine(
-      account,
-      async () => {
-        await this.checkNetworkSecurity();
-        if (Date.now() - this.lastSecuritySyncAt >= 10_000) {
-          await this.security.sync(undefined, 5000);
-        }
-        await this.security.verifiedRecord();
+    this.directExec = new DirectExecutor({
+      devicePrivate: () => this.account.devicePrivate,
+      xPrivate: () => this.latestXPrivate,
+      emit: (ev) => this.hostBridge?.dispatchEvent(ev),
+      onPushedEvent: (machineId, pcId, env, header, size) => {
+        this.handleDirectEvent(machineId, pcId, env, header, size);
       },
-      () => {
-        if (!this.closed) {
-          this.syncDirectStatuses();
-          this.changed();
-        }
-      },
-    );
-    this.direct.setEventHandler((machineId, env, header, size) => {
-      this.handleDirectEvent(machineId, env, header, size);
     });
     this.security.onSync = (record, started) => {
       this.lastSecuritySyncAt = started;
-      void this.direct.synced(record, started);
+      void this.syncDirectSecurityRecord(record, started);
       this.pushSecuritySnapshot(record);
     };
-    this.security.onSyncFailed = () => this.direct.invalidate();
+    this.security.onSyncFailed = () => this.rejectDirectSecurity();
     this.security.onInstall = (record) => {
-      void this.direct.install(record);
+      this.handleDirectSecurityInstall(record);
       this.pushSecuritySnapshot(record);
     };
     const pairing = createClient(
@@ -632,9 +644,6 @@ export class Remote implements CoreExecutor {
 
   attachHost(bridge: HostBridge) {
     this.hostBridge = bridge;
-    this.directReadyCache.clear();
-    this.directReportCache.clear();
-    this.syncDirectStatuses();
   }
 
   private ensureHost(): HostBridge {
@@ -675,7 +684,7 @@ export class Remote implements CoreExecutor {
     this.closed = false;
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = watchSecurityInstall((record) => {
-      this.direct.install(record);
+      this.handleDirectSecurityInstall(record);
       this.pushSecuritySnapshot(record);
     });
     this.unwatchSecurityPush?.();
@@ -691,11 +700,14 @@ export class Remote implements CoreExecutor {
     this.authority.lifecycle.resume();
     void this.watchPairingDelivery();
     this.ensureHost().start();
+    if (this.lastDirectSecurity) {
+      this.hostBridge?.dispatchDirectSecuritySnapshot(this.lastDirectSecurity);
+    }
   }
 
   stop() {
     this.closed = true;
-    this.direct.close();
+    this.directExec.close();
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = undefined;
     this.unwatchSecurityPush?.();
@@ -765,7 +777,6 @@ export class Remote implements CoreExecutor {
 
   setForeground(active: boolean) {
     this.foreground = active;
-    this.direct.setForeground(active);
     this.ensureHost().setForeground(active);
   }
 
@@ -817,25 +828,77 @@ export class Remote implements CoreExecutor {
 
   setWatchedSessions(sessionIds: string[]) {
     this.watchedSessionIds = [...sessionIds];
-    this.syncDirectSubscriptions();
   }
 
-  private syncDirectSubscriptions() {
-    const byMachine = new Map<string, string[]>();
-    for (const sid of this.watchedSessionIds) {
-      const machineId = this.cachedSessionMap.get(sid)?.machineId;
-      if (!machineId) continue;
-      let list = byMachine.get(machineId);
-      if (!list) {
-        list = [];
-        byMachine.set(machineId, list);
-      }
-      if (list.length < 4 && !list.includes(sid)) list.push(sid);
+  private rejectDirectSecurity() {
+    this.lastDirectSecurity = {
+      member: false,
+      account: "",
+      domain: new Uint8Array(),
+      head: "",
+      headHash: new Uint8Array(),
+      epoch: 0n,
+      startedAtMs: 0n,
+      leaseNotAfterMs: 0n,
+      selfId: "",
+      selfEdPublic: new Uint8Array(),
+      selfXPublic: new Uint8Array(),
+      members: [],
+      rejected: true,
+    };
+    if (!this.closed) this.hostBridge?.dispatchDirectSecuritySnapshot(this.lastDirectSecurity);
+  }
+
+  private handleDirectSecurityInstall(record: SecurityRecord) {
+    this.latestXPrivate = record.xPrivate;
+    const prev = this.lastDirectSecurity;
+    if (!record.member || (prev && !prev.rejected && (record.pin.account !== prev.account || hex(record.stateHash) !== prev.head))) {
+      this.rejectDirectSecurity();
     }
-    this.direct.setWatchedSessions(byMachine);
   }
 
-  private handleDirectEvent(machineId: string, env: Envelope, header: Header, size: number) {
+  private async syncDirectSecurityRecord(record: SecurityRecord, started: number): Promise<void> {
+    const rev = ++this.securitySyncRev;
+    try {
+      const head = record.states[record.states.length - 1];
+      await validLease(record.lease, head, BigInt(Math.max(Date.now(), Number(record.floor))));
+      const selfMember = head.core.members.find((m) => m.id === record.memberID);
+      if (!record.member || record.memberID !== this.account.deviceId || Date.now() >= started + 20_000 || !selfMember) {
+        if (rev === this.securitySyncRev) this.rejectDirectSecurity();
+        return;
+      }
+      if (rev !== this.securitySyncRev || this.closed) return;
+      this.latestXPrivate = record.xPrivate;
+      const snap: DirectSecuritySnapshotInput = {
+        member: true,
+        account: record.pin.account,
+        domain: new Uint8Array(record.pin.domain),
+        head: hex(record.stateHash),
+        headHash: new Uint8Array(record.stateHash),
+        epoch: head.core.epoch,
+        startedAtMs: BigInt(started),
+        leaseNotAfterMs: record.lease?.notAfter ?? 0n,
+        selfId: selfMember.id,
+        selfEdPublic: new Uint8Array(selfMember.ed),
+        selfXPublic: new Uint8Array(selfMember.x),
+        members: head.core.members.map((m) => ({
+          deviceId: m.id,
+          edPublic: new Uint8Array(m.ed),
+          xPublic: new Uint8Array(m.x),
+          isSelf: m.id === record.memberID,
+        })),
+        rejected: false,
+      };
+      this.lastDirectSecurity = snap;
+      this.hostBridge?.dispatchDirectSecuritySnapshot(snap);
+    } catch {
+      if (rev === this.securitySyncRev) {
+        this.rejectDirectSecurity();
+      }
+    }
+  }
+
+  private handleDirectEvent(machineId: string, pcId: bigint, env: Envelope, header: Header, size: number) {
     if (this.closed) return;
     const sid = header.sessionId;
     if (!sid || header.seq <= 0n || !this.watchedSessionIds.includes(sid)) return;
@@ -878,6 +941,8 @@ export class Remote implements CoreExecutor {
                 sessionId: sid,
                 machineId,
                 events: [plainEvent],
+                pcId,
+                sender: machineId,
               }),
             },
           }),
@@ -922,6 +987,7 @@ export class Remote implements CoreExecutor {
       nextMachines.set(pm.machineId, { id: pm.machineId, online: authorized && pm.online, lastSeenMs: pm.lastSeenMs, meta: pm.meta, metaRev: pm.metaRev, keptOnline: !view.machinesListed ? authorized && pm.online : undefined });
     }
     this.cachedMachineMap = nextMachines;
+    this.cachedSyncMachines = new Map(view.machines.map((pm) => [pm.machineId, pm]));
 
     const nextSessions = new Map<string, SessionView>();
     for (const sv of view.sessions) {
@@ -929,7 +995,6 @@ export class Remote implements CoreExecutor {
       nextSessions.set(sv.sessionId, syncSessionToView(sv));
     }
     this.cachedSessionMap = nextSessions;
-    this.syncDirectSubscriptions();
 
     const nextDevices = new Map<string, DeviceInfo>();
     for (const dv of view.devices) {
@@ -941,9 +1006,6 @@ export class Remote implements CoreExecutor {
 
     this.cachedPrefPending.clear();
     if (view.prefsSyncing) this.cachedPrefPending.set("", "syncing");
-    if (this.hostBridge) {
-      this.syncDirectStatuses();
-    }
     this.changed();
     if (!wasOnline && (this.conn as ConnState) === "online" && !this.closed) void restorePushPrefs(this);
   }
@@ -1022,7 +1084,7 @@ export class Remote implements CoreExecutor {
       if (state.stopped) return;
       state.stopped = true;
       if (this.legs.get(legId) === state) this.legs.delete(legId);
-      this.direct.detach(ws);
+      this.directExec.detachLeg(ws);
       ws.close();
       callbacks.onClosed(legId, { policyViolation: code === 1008, errorCode: code === 1008 ? "unauthenticated" : "", error, unresolvedHost: false });
     };
@@ -1042,13 +1104,22 @@ export class Remote implements CoreExecutor {
       catch (e) { drop(errorText(e)); return; }
       if (frame.kind.case === "ready") {
         this.serverAhead = BigInt(Date.now()) - frame.kind.value.serverTimeMs > BigInt(MAX_CLOCK_SKEW);
-        this.direct.attach(ws);
+        this.directExec.attachLeg(ws);
         callbacks.onReady(legId, frame.kind.value.serverTimeMs);
         return;
       }
       if (frame.kind.case === "peerFrameDelivery" || frame.kind.case === "peerFrameResult") {
         const raw = peerFrameBody(new Uint8Array(data), frame.kind.case === "peerFrameDelivery" ? 11 : 12);
-        if (raw) { if (frame.kind.case === "peerFrameDelivery") this.direct.receive(raw, ws); else this.direct.result(raw, ws); }
+        if (raw) {
+          if (frame.kind.case === "peerFrameDelivery") {
+            this.hostBridge?.dispatchDirectSignal(raw);
+          } else {
+            try {
+              const res = fromBinary(PeerFrameResultSchema, raw);
+              this.hostBridge?.dispatchDirectSignalDelivery(new Uint8Array(res.frameId), res.status, Number(res.retryAfterMs));
+            } catch { /* Ignore malformed receipt. */ }
+          }
+        }
         return;
       }
       queuedBytes += data.byteLength;
@@ -1076,7 +1147,7 @@ export class Remote implements CoreExecutor {
     if (!leg) return;
     leg.stopped = true;
     this.legs.delete(legId);
-    this.direct.detach(leg.ws);
+    this.directExec.detachLeg(leg.ws);
     leg.ws.close();
   }
 
@@ -1451,28 +1522,92 @@ export class Remote implements CoreExecutor {
 
   // --- CoreExecutor: Single-Attempt Command Dispatch (including Direct-First + Interactive Dual-Send) ---
 
+  directKeySign(eff: DirectKeySignEffect) { void this.directExec.keySign(eff); }
+  directKeyAgree(eff: DirectKeyAgreeEffect) { void this.directExec.keyAgree(eff); }
+  directSignalSend(eff: DirectSignalSendEffect) { this.directExec.signalSend(eff); }
+  directPcCreate(eff: DirectPcCreateEffect) { this.directExec.pcCreate(eff); }
+  directPcDescribe(eff: DirectPcDescribeEffect) { void this.directExec.pcDescribe(eff); }
+  directPcSetRemote(eff: DirectPcSetRemoteEffect) { void this.directExec.pcSetRemote(eff); }
+  directPcAddCandidates(eff: DirectPcAddCandidatesEffect) { void this.directExec.pcAddCandidates(eff); }
+  directPcConfirm(eff: DirectPcConfirmEffect) { this.directExec.pcConfirm(eff); }
+  directPcClose(eff: DirectPcCloseEffect) { this.directExec.pcClose(eff); }
+  directDcReadStats(eff: DirectDcReadStatsEffect) { void this.directExec.dcReadStats(eff); }
+  directAuthorize() {
+    void (async () => {
+      try {
+        await this.checkNetworkSecurity();
+        if (Date.now() - this.lastSecuritySyncAt >= 10_000) {
+          await this.security.sync(undefined, 5000);
+        }
+        await this.security.verifiedRecord();
+      } catch {
+        /* Wait for next sync/main reconnect. */
+      }
+    })();
+  }
+
   async executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent> {
-    let hint: RouteHint | undefined;
-    if (eff.routeHint === CommandRouteHint.READ) hint = { kind: "read" };
-    else if (eff.routeHint === CommandRouteHint.BULK) hint = { kind: "bulk", file: eff.bulkFileKey, upload: eff.bulkUpload ? "file" : undefined, bytes: Number(eff.bulkBytes) };
+    const directRoute = eff.routeLeg === CommandRouteLeg.DIRECT && eff.directPcId > 0n
+      ? { pcId: eff.directPcId, ticketId: eff.directTicketId, timeoutMs: eff.directTimeoutMs }
+      : undefined;
     const { outcome } = await this.executeSealedAttempt({
-      requestId: eff.requestId, attemptId: eff.attemptId, machineId: eff.machineId, sessionId: eff.sessionId,
-      deadlineMs: Number(eff.deadlineMs), commandBytes: new Uint8Array(eff.commandBytes),
-      routeHint: hint, forceRelay: eff.forceRelay, priorUnknown: eff.retryOfUnknown, signal,
+      requestId: eff.requestId,
+      attemptId: eff.attemptId,
+      machineId: eff.machineId,
+      sessionId: eff.sessionId,
+      deadlineMs: Number(eff.deadlineMs),
+      commandBytes: new Uint8Array(eff.commandBytes),
+      priorUnknown: eff.retryOfUnknown,
+      directRoute,
+      directTicketId: eff.directTicketId,
+      signal,
     });
     return outcome;
   }
 
   private async executeSealedAttempt(params: {
-    requestId: string; attemptId: string; machineId: string; sessionId: string; deadlineMs: number;
-    commandBytes: Uint8Array<ArrayBuffer>; routeHint?: RouteHint; forceRelay: boolean; priorUnknown: boolean;
-    hasFiles?: boolean; signal?: AbortSignal; onHandoff?: () => () => void;
-  }): Promise<{ outcome: CommandOutcomeEvent; msg?: CommandResult; rawEnvelope?: Envelope; directLegFailed?: boolean }> {
-    const base = { requestId: params.requestId, attemptId: params.attemptId };
-    const mk = (fields: Omit<Partial<CommandOutcomeEvent>, "$typeName" | "requestId" | "attemptId">) =>
+    requestId: string;
+    attemptId: string;
+    machineId: string;
+    sessionId: string;
+    deadlineMs: number;
+    commandBytes: Uint8Array<ArrayBuffer>;
+    priorUnknown: boolean;
+    directRoute?: { pcId: bigint; ticketId: bigint; timeoutMs: bigint };
+    directTicketId?: bigint;
+    hasFiles?: boolean;
+    signal?: AbortSignal;
+    onHandoff?: () => () => void;
+  }): Promise<{
+    outcome: CommandOutcomeEvent;
+    msg?: CommandResult;
+    rawEnvelope?: Envelope;
+    elapsedMs: number;
+    observedBytes: bigint;
+    ok: boolean;
+  }> {
+    const ticketId = params.directRoute?.ticketId ?? params.directTicketId ?? 0n;
+    const isDirect = Boolean(params.directRoute && params.directRoute.pcId > 0n);
+    const base = { requestId: params.requestId, attemptId: params.attemptId, directTicketId: ticketId };
+    const mk = (fields: Omit<Partial<CommandOutcomeEvent>, "$typeName" | "requestId" | "attemptId" | "directTicketId">) =>
       create(CommandOutcomeEventSchema, { ...base, ...fields });
-    if (this.closed) return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: "canceled" }) };
-    if (this.serverAhead) return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: !params.priorUnknown, transportCode: params.priorUnknown ? "unknown" : "clock", transportDetail: l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote") }) };
+    if (this.closed) {
+      return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: "canceled", routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
+    }
+    if (this.serverAhead) {
+      return {
+        outcome: mk({
+          source: OutcomeSource.LOCAL,
+          notForwarded: !params.priorUnknown,
+          transportCode: params.priorUnknown ? "unknown" : "clock",
+          transportDetail: l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),
+          routeWasDirect: isDirect,
+        }),
+        elapsedMs: 0,
+        observedBytes: 0n,
+        ok: false,
+      };
+    }
 
     let parsedCmd: ReturnType<typeof fromBinary<typeof CommandSchema>> | undefined;
     try { parsedCmd = fromBinary(CommandSchema, params.commandBytes); } catch { parsedCmd = undefined; }
@@ -1484,139 +1619,168 @@ export class Remote implements CoreExecutor {
       binding = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), params.commandBytes);
       if (params.hasFiles) {
         const issue = this.fileUploadIssue(params.machineId);
-        if (issue) return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: params.priorUnknown ? "unknown" : "failed_precondition", transportDetail: issue }) };
+        if (issue) {
+          return {
+            outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: params.priorUnknown ? "unknown" : "failed_precondition", transportDetail: issue, routeWasDirect: isDirect }),
+            elapsedMs: 0,
+            observedBytes: 0n,
+            ok: false,
+          };
+        }
       }
     } catch (e) {
       this.noteClock(e);
-      if (params.priorUnknown) return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: false, transportCode: "unknown", transportDetail: errorText(e) }) };
+      if (params.priorUnknown) {
+        return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: false, handedOff: true, transportCode: "unknown", transportDetail: errorText(e), routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
+      }
       const code = e instanceof SecurityError && e.code === "clock" ? "clock" : e instanceof SecurityError && e.code === "lease" ? "failed_precondition" : "security_unavailable";
-      return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: code, transportDetail: errorText(e) }) };
+      return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: code, transportDetail: errorText(e), routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
     }
 
-    type LegResult = { outcome: CommandOutcomeEvent; msg?: CommandResult; rawEnvelope?: Envelope; handedOff: boolean; legAttempt: { direct?: boolean } };
-    const routeAttemptWith = (attemptBuilder: (handoff: () => void) => ReturnType<DeviceLink["router"]["path"]["attempt"]> | undefined, tracking?: ReturnType<DirectEngine["track"]>) => {
-      let handedOff = false, undo: (() => void) | undefined;
-      const attempt = attemptBuilder(() => { handedOff = true; undo = params.onHandoff?.(); });
-      if (!attempt) return undefined;
-      return {
-        attempt,
-        handedOff: () => handedOff,
-        undo: () => { undo?.(); undo = undefined; },
-        tracking,
-      };
-    };
-
-    const executeLeg = async (
-      leg: NonNullable<ReturnType<typeof routeAttemptWith>>,
-      legSignal?: AbortSignal,
-    ): Promise<LegResult> => {
-      const a = leg.attempt;
-      const isDirect = !!a.direct;
-      const routeStarted = performance.now();
-      try {
-        legSignal?.throwIfAborted();
-        await a.prepare();
-        const res = await a.send(params.machineId, envelope, legSignal);
-        let msg: CommandResult;
-        try {
-          msg = (await this.openSecureMessage(res.result, { kind: PayloadKind.COMMAND_RESULT, machineId: params.machineId, sessionId: params.sessionId, requestId: params.requestId }, CommandResultSchema)).msg;
-        } catch {
-          return { handedOff: leg.handedOff(), legAttempt: a, outcome: mk({ source: OutcomeSource.DAEMON, attemptBound: res.attemptId === a.attemptId, signed: false, hashesMatch: false, routeWasDirect: isDirect }) };
-        }
-        const hashesMatch = equal(msg.requestKeyHash, binding.key) && equal(msg.payloadHash, binding.payload) && (msg.outcome === "conflict" || msg.conflictKind === "");
-        const attemptBound = res.attemptId === a.attemptId;
-        const outerMatchesInner = isDirect || (res.outcome === msg.outcome && res.reason === msg.reason);
-        if (leg.tracking && hashesMatch && attemptBound && outerMatchesInner && !msg.errorCode && msg.outcome === "executed") {
-          const bytes = parsedCmd?.kind.case === "putImageChunk" ? parsedCmd.kind.value.data?.length ?? 0 : msg.kind.case === "getSharedFileChunk" ? msg.kind.value.data.length : 0;
-          leg.tracking.observe(isDirect, bytes, performance.now() - routeStarted);
-        }
-        if (parsedCmd?.kind.case === "beginImageUpload") {
-          if (this.directTransfers.size >= 128) this.directTransfers.delete(this.directTransfers.keys().next().value!);
-          this.directTransfers.set(`${params.machineId}/${parsedCmd.kind.value.transferId}`, parsedCmd.kind.value.fileName ? "file" : "image");
-        } else if (parsedCmd?.kind.case === "completeImageUpload" || parsedCmd?.kind.case === "abortImageUpload") {
-          this.directTransfers.delete(`${params.machineId}/${parsedCmd.kind.value.transferId}`);
-        }
-        if (
-          parsedCmd?.kind.case === "schedule" &&
-          parsedCmd.kind.value.operation === "list" &&
-          hashesMatch &&
-          attemptBound &&
-          outerMatchesInner &&
-          !msg.errorCode &&
-          msg.outcome === "executed" &&
-          res.result &&
-          !(this.archiveMachines.has(params.machineId) && !this.trustedMembers.has(params.machineId))
-        ) {
-          await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
-        }
-        return {
-          handedOff: leg.handedOff(), legAttempt: a, msg, rawEnvelope: res.result,
-          outcome: mk({ source: OutcomeSource.DAEMON, signed: true, hashesMatch, attemptBound, outerMatchesInner, outerOutcome: isDirect ? msg.outcome : res.outcome, outerReason: isDirect ? msg.reason : res.reason, result: msg, routeWasDirect: isDirect }),
-        };
-      } catch (e) {
-        if (isDirect) leg.tracking?.failed();
-        if (e instanceof PathChanged) return { handedOff: leg.handedOff(), legAttempt: a, outcome: mk({ source: OutcomeSource.TRANSPORT, notForwarded: !leg.handedOff(), transportCode: "path_changed", routeWasDirect: isDirect }) };
-        if (e instanceof ConnectError) {
-          const refusal = a.refusal(e);
-          if (refusal !== undefined) {
-            leg.undo();
-            return { handedOff: false, legAttempt: a, outcome: mk({ source: OutcomeSource.SERVER, notForwarded: true, attemptBound: true, outerReason: refusal.reason ?? "", transportCode: connectErrorCode(e.code), transportDetail: refusal.reason === "machine_offline" ? "" : (e.rawMessage || e.message), routeWasDirect: false }) };
-          }
-          if (!leg.handedOff() && e.code === Code.Unauthenticated) {
-            return { handedOff: false, legAttempt: a, outcome: mk({ source: OutcomeSource.SERVER, notForwarded: true, attemptBound: true, transportCode: "unauthenticated", transportDetail: e.rawMessage || e.message, routeWasDirect: false }) };
-          }
-          return { handedOff: leg.handedOff(), legAttempt: a, outcome: mk({ source: OutcomeSource.SERVER, notForwarded: !leg.handedOff(), attemptBound: false, transportCode: connectErrorCode(e.code), transportDetail: e.rawMessage || e.message, routeWasDirect: false }) };
-        }
-        return { handedOff: leg.handedOff(), legAttempt: a, outcome: mk({ source: OutcomeSource.TRANSPORT, notForwarded: !leg.handedOff(), transportCode: !this.network ? "network" : "unknown", transportDetail: errorText(e), routeWasDirect: isDirect }) };
+    let handedOff = false;
+    let undo: (() => void) | undefined;
+    const handoff = () => {
+      if (!handedOff) {
+        handedOff = true;
+        undo = params.onHandoff?.();
       }
     };
+    const relayAttempt = isDirect ? undefined : this.deviceLink.path.attempt(handoff);
+    const attemptId = isDirect ? params.attemptId : relayAttempt!.attemptId;
+    const routeStarted = performance.now();
 
-    const tracking = params.routeHint ? this.direct.track(params.machineId, params.routeHint) : undefined;
-    const interactive = isInteractiveCommand(parsedCmd?.kind);
-    const dualDirect = !params.forceRelay && interactive && this.direct.ready(params.machineId, { kind: "read" })
-      ? routeAttemptWith((h) => this.direct.attemptInteractive(params.machineId, h))
-      : undefined;
-
-    if (dualDirect?.attempt.direct) {
-      let directLegFailed = false;
-      const relayLeg = routeAttemptWith((h) => this.deviceLink.router.path.attempt(h))!;
-      const isTrusted = (res: LegResult) => {
-        const o = res.outcome;
-        return o.source === OutcomeSource.DAEMON && o.signed && o.hashesMatch && o.attemptBound && o.outerMatchesInner;
-      };
-      try {
-        const winner = await this.deviceLink.router.dual<LegResult>(
-          async (legSignal) => {
-            const res = await executeLeg(dualDirect, legSignal);
-            if (isTrusted(res)) return { trusted: true, value: res };
-            directLegFailed = true;
-            return { trusted: false, error: res };
-          },
-          async (legSignal) => {
-            const res = await executeLeg(relayLeg, legSignal);
-            if (isTrusted(res)) return { trusted: true, value: res };
-            return { trusted: false, error: res };
-          },
+    try {
+      params.signal?.throwIfAborted();
+      let res;
+      if (isDirect) {
+        const env = await this.directExec.sendRpc(
+          params.directRoute!.pcId,
+          params.requestId,
+          toBinary(EnvelopeSchema, envelope) as Uint8Array<ArrayBuffer>,
+          params.directRoute!.timeoutMs,
+          handoff,
           params.signal,
         );
-        return { outcome: winner.outcome, msg: winner.msg, rawEnvelope: winner.rawEnvelope, directLegFailed };
-      } catch (err) {
-        const fallback = err as LegResult;
-        const out = fallback.outcome;
-        const serverNotForwarded = out.source === OutcomeSource.SERVER && out.notForwarded && out.attemptBound;
-        const relayPossiblyForwarded = relayLeg.handedOff() && !serverNotForwarded;
-        if (dualDirect.handedOff() || relayPossiblyForwarded) {
-          out.notForwarded = false;
-          if (out.source === OutcomeSource.LOCAL || out.source === OutcomeSource.SERVER) out.source = OutcomeSource.TRANSPORT;
-        }
-        return { outcome: out, msg: fallback.msg, rawEnvelope: fallback.rawEnvelope, directLegFailed };
+        res = create(ForwardResponseSchema, { result: env, attemptId });
+      } else {
+        await relayAttempt!.prepare();
+        res = await relayAttempt!.send(params.machineId, envelope, params.signal);
       }
-    }
 
-    const primary = (params.routeHint && !params.forceRelay ? routeAttemptWith((h) => this.direct.attempt(params.machineId, params.routeHint!, h), tracking) : undefined)
-      ?? routeAttemptWith((h) => this.deviceLink.router.path.attempt(h))!;
-    const single = await executeLeg(primary, params.signal);
-    return { outcome: single.outcome, msg: single.msg, rawEnvelope: single.rawEnvelope };
+      const elapsedMs = performance.now() - routeStarted;
+      let msg: CommandResult;
+      try {
+        msg = (await this.openSecureMessage(res.result, { kind: PayloadKind.COMMAND_RESULT, machineId: params.machineId, sessionId: params.sessionId, requestId: params.requestId }, CommandResultSchema)).msg;
+      } catch {
+        return {
+          outcome: mk({
+            source: OutcomeSource.DAEMON,
+            attemptBound: res.attemptId === attemptId,
+            signed: false,
+            hashesMatch: false,
+            handedOff,
+            routeWasDirect: isDirect,
+            elapsedMs,
+          }),
+          elapsedMs,
+          observedBytes: 0n,
+          ok: false,
+        };
+      }
+      const hashesMatch = equal(msg.requestKeyHash, binding.key) && equal(msg.payloadHash, binding.payload) && (msg.outcome === "conflict" || msg.conflictKind === "");
+      const attemptBound = res.attemptId === attemptId;
+      const outerMatchesInner = isDirect || (res.outcome === msg.outcome && res.reason === msg.reason);
+      const bytes = BigInt(
+        parsedCmd?.kind.case === "putImageChunk"
+          ? parsedCmd.kind.value.data?.length ?? 0
+          : msg.kind.case === "getSharedFileChunk"
+            ? msg.kind.value.data.length
+            : 0,
+      );
+      const ok = hashesMatch && attemptBound && outerMatchesInner && !msg.errorCode && msg.outcome === "executed";
+      if (
+        parsedCmd?.kind.case === "schedule" &&
+        parsedCmd.kind.value.operation === "list" &&
+        ok &&
+        res.result &&
+        !(this.archiveMachines.has(params.machineId) && !this.trustedMembers.has(params.machineId))
+      ) {
+        await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
+      }
+      return {
+        msg,
+        rawEnvelope: res.result,
+        elapsedMs,
+        observedBytes: bytes,
+        ok,
+        outcome: mk({
+          source: OutcomeSource.DAEMON,
+          signed: true,
+          hashesMatch,
+          attemptBound,
+          outerMatchesInner,
+          outerOutcome: isDirect ? msg.outcome : res.outcome,
+          outerReason: isDirect ? msg.reason : res.reason,
+          result: msg,
+          handedOff,
+          routeWasDirect: isDirect,
+          elapsedMs,
+          observedBytes: bytes,
+        }),
+      };
+    } catch (e) {
+      const elapsedMs = performance.now() - routeStarted;
+      if (e instanceof PathChanged) {
+        return {
+          outcome: mk({ source: OutcomeSource.TRANSPORT, notForwarded: !handedOff, handedOff, transportCode: "path_changed", routeWasDirect: isDirect, elapsedMs }),
+          elapsedMs,
+          observedBytes: 0n,
+          ok: false,
+        };
+      }
+      if (!isDirect && e instanceof ConnectError && relayAttempt) {
+        const refusal = relayAttempt.refusal(e);
+        if (refusal !== undefined) {
+          undo?.();
+          undo = undefined;
+          return {
+            outcome: mk({
+              source: OutcomeSource.SERVER,
+              notForwarded: true,
+              attemptBound: true,
+              outerReason: refusal.reason ?? "",
+              transportCode: connectErrorCode(e.code),
+              transportDetail: refusal.reason === "machine_offline" ? "" : (e.rawMessage || e.message),
+              routeWasDirect: false,
+              elapsedMs,
+            }),
+            elapsedMs,
+            observedBytes: 0n,
+            ok: false,
+          };
+        }
+        if (!handedOff && e.code === Code.Unauthenticated) {
+          return {
+            outcome: mk({ source: OutcomeSource.SERVER, notForwarded: true, attemptBound: true, transportCode: "unauthenticated", transportDetail: e.rawMessage || e.message, routeWasDirect: false, elapsedMs }),
+            elapsedMs,
+            observedBytes: 0n,
+            ok: false,
+          };
+        }
+        return {
+          outcome: mk({ source: OutcomeSource.SERVER, notForwarded: !handedOff, handedOff, attemptBound: false, transportCode: connectErrorCode(e.code), transportDetail: e.rawMessage || e.message, routeWasDirect: false, elapsedMs }),
+          elapsedMs,
+          observedBytes: 0n,
+          ok: false,
+        };
+      }
+      return {
+        outcome: mk({ source: OutcomeSource.TRANSPORT, notForwarded: !handedOff, handedOff, transportCode: !this.network ? "network" : "unknown", transportDetail: errorText(e), routeWasDirect: isDirect, elapsedMs }),
+        elapsedMs,
+        observedBytes: 0n,
+        ok: false,
+      };
+    }
   }
 
   // --- Security Gate unpacking ---
@@ -1805,7 +1969,6 @@ export class Remote implements CoreExecutor {
   private roundBudget(): number { return this.everOnline || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
 
   private retireNetworkIO() {
-    this.direct.invalidate();
     this.loginController?.abort(new PathChanged());
     this.wakeController?.abort(new PathChanged());
     this.wakeSecurity = undefined;
@@ -1877,30 +2040,6 @@ export class Remote implements CoreExecutor {
     }
   }
 
-  refreshDirectStatuses() {
-    this.syncDirectStatuses();
-  }
-
-  private syncDirectStatuses() {
-    if (!this.hostBridge) return;
-    for (const id of this.machines.keys()) {
-      const ready = this.direct.ready(id, { kind: "read" });
-      if (this.directReadyCache.get(id) !== ready) {
-        this.directReadyCache.set(id, ready);
-        this.hostBridge.pushRouteStatus(id, ready);
-      }
-      const s = this.direct.status(id);
-      const enabled = this.direct.enabled(id);
-      const hasDiagnostics = this.direct.diagnostics(id).rounds.length > 0;
-      const report = buildDirectRouteReport(s, enabled, hasDiagnostics);
-      const sig = `${report.enabled}:${report.capable}:${report.state}:${report.reason}:${report.fileRoute}:${report.readRoute}:${report.compared}:${report.readSlow}:${report.fileSlow}:${report.hasDiagnostics}:${report.directFileMibps}:${report.relayFileMibps}:${report.directReadMs}:${report.relayReadMs}:${report.activeRttMs}`;
-      if (this.directReportCache.get(id) !== sig) {
-        this.directReportCache.set(id, sig);
-        this.hostBridge.pushDirectReport(id, report);
-      }
-    }
-  }
-
   private maintainAuthority() {
     if (typeof navigator === "undefined" || !navigator.locks) return;
     void (async () => {
@@ -1941,15 +2080,6 @@ export class Remote implements CoreExecutor {
   // --- Transitional Step 3/4 Command Runner (reuses executeSealedAttempt) ---
 
   protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
-
-  private directHint(machineId: string, cmd: CommandKind): RouteHint | undefined {
-    if (cmd?.case === "getSharedFileChunk") return { kind: "bulk", file: `${cmd.value.sessionId}/${cmd.value.fileId}` };
-    if (cmd?.case === "putImageChunk") {
-      const upload = this.directTransfers.get(`${machineId}/${cmd.value.transferId}`);
-      return upload ? { kind: "bulk", file: cmd.value.transferId!, upload, bytes: cmd.value.data?.length } : undefined;
-    }
-    return cmd?.case !== "getImageUploadStatus" && readOnlyCommand(cmd) ? { kind: "read" } : undefined;
-  }
 
   fileUploadIssue(machineId: string): string { return this.peer(machineId).capabilities?.fileUpload === true ? "" : fileUploadUpdateRequired(); }
 
@@ -1997,7 +2127,23 @@ export class Remote implements CoreExecutor {
     this.checkFileCapability(machineId, cmd, slot.evidence.unresolved);
     await slot.beforeDispatch?.(slot);
 
-    const routeHint = this.directHint(machineId, cmd);
+    const routeParams = (() => {
+      if (cmd?.case === "getSharedFileChunk") {
+        return { routeHint: CommandRouteHint.BULK, bulkFileKey: `${cmd.value.sessionId}/${cmd.value.fileId}`, bulkBytes: 0n, bulkUpload: false };
+      }
+      if (cmd?.case === "putImageChunk") {
+        return { routeHint: CommandRouteHint.BULK, bulkFileKey: cmd.value.transferId, bulkBytes: BigInt(cmd.value.data?.length ?? 0), bulkUpload: true };
+      }
+      if (readOnlyCommand(cmd) && cmd?.case !== "getImageUploadStatus") {
+        return { routeHint: CommandRouteHint.READ };
+      }
+      return {};
+    })();
+    const uploadTransferId = cmd?.case === "beginImageUpload" ? cmd.value.transferId : "";
+    const uploadHasFilename = cmd?.case === "beginImageUpload" && !!cmd.value.fileName;
+    const finishUploadTransferId =
+      cmd?.case === "completeImageUpload" || cmd?.case === "abortImageUpload" ? cmd.value.transferId : "";
+
     let forceRelay = false, attempted = false, recoveryUntil: number | undefined;
     for (let attempt = 0; ; attempt++) {
       signal?.throwIfAborted();
@@ -2008,13 +2154,34 @@ export class Remote implements CoreExecutor {
       attempted = true;
       const priorUnknown = !!slot.evidence.unresolved;
       const priorOutcome: Outcome = priorUnknown ? "unknown" : "not_sent";
-      const { outcome: ev, msg, directLegFailed } = await this.executeSealedAttempt({
+      const dec = routeParams.routeHint || uploadTransferId
+        ? await (this.hostBridge?.beginDirectBulkTransfer({
+            machineId,
+            ...routeParams,
+            deadlineMs: BigInt(deadline),
+            forceRelay,
+            uploadTransferId,
+            uploadHasFilename,
+          }) ?? Promise.resolve({ useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n }))
+        : { useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n };
+      const directRoute = dec.useDirect && !forceRelay && dec.pcId > 0n
+        ? { pcId: dec.pcId, ticketId: dec.ticketId, timeoutMs: dec.timeoutMs }
+        : undefined;
+      const { outcome: ev, msg, elapsedMs, observedBytes, ok } = await this.executeSealedAttempt({
         requestId, attemptId: newRequestID(), machineId, sessionId: sid, deadlineMs: deadline, commandBytes: plain,
-        routeHint, forceRelay, priorUnknown,
+        priorUnknown, directRoute, directTicketId: dec.ticketId,
         hasFiles: (cmd?.case === "send" || cmd?.case === "createSession") && !!cmd.value.fileIds?.length,
         signal, onHandoff: () => slot.evidence.trackHandoff(),
       });
-      if (directLegFailed) forceRelay = true;
+      this.hostBridge?.finishDirectBulkTransfer({
+        ticketId: dec.ticketId,
+        routeWasDirect: Boolean(directRoute),
+        ok,
+        elapsedMs,
+        observedBytes,
+        finishUploadTransferId,
+        machineId,
+      });
 
       if (ev.source === OutcomeSource.DAEMON) {
         const category = (ev.outerOutcome || msg?.outcome || "unknown") as Outcome;
@@ -2031,7 +2198,7 @@ export class Remote implements CoreExecutor {
       }
 
       if (!ev.notForwarded) slot.evidence.includePrior(true);
-      if (ev.routeWasDirect && routeHint) {
+      if (ev.routeWasDirect && routeParams.routeHint) {
         forceRelay = true;
         if (cmd?.case === "putImageChunk") await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId: cmd.value.transferId } });
         if (ev.transportCode === "path_changed" && Date.now() < deadline) { attempt--; continue; }

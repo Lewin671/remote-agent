@@ -154,6 +154,15 @@ type (
 	RoundDone struct{}
 	// FrameObserved names an authenticated frame received, for the trace.
 	FrameObserved struct{ Type, Use uint64 }
+	// PeerUnsupported reports that the peer answered Unsupported (control type 10)
+	// to a pending frame from this session.
+	PeerUnsupported struct{ Class, Type, Use uint64 }
+	// SignalRejected reports that an inbound frame failed verification or state rules.
+	SignalRejected struct {
+		Use    uint64
+		Type   uint64
+		Reason string
+	}
 	// SessionEnd is the last effect: close every PC and release the session.
 	SessionEnd struct{ Reason string }
 )
@@ -187,6 +196,8 @@ func (BeforeOffer) sessionEffect()     {}
 func (PCChosen) sessionEffect()        {}
 func (RoundDone) sessionEffect()       {}
 func (FrameObserved) sessionEffect()   {}
+func (PeerUnsupported) sessionEffect() {}
+func (SignalRejected) sessionEffect()  {}
 func (SessionEnd) sessionEffect()      {}
 
 // Current reports whether the frame still belongs to the session as seen by

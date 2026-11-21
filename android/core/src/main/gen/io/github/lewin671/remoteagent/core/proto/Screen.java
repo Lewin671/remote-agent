@@ -31,6 +31,7 @@ public  final class Screen extends
     DEVICES(34),
     CLIENT_DETAIL(35),
     USAGE(36),
+    DIRECT_DIAGNOSTICS(37),
     SESSION(10),
     SCHEDULES(20),
     SCHEDULE_DETAIL(21),
@@ -63,6 +64,7 @@ public  final class Screen extends
         case 34: return DEVICES;
         case 35: return CLIENT_DETAIL;
         case 36: return USAGE;
+        case 37: return DIRECT_DIAGNOSTICS;
         case 10: return SESSION;
         case 20: return SCHEDULES;
         case 21: return SCHEDULE_DETAIL;
@@ -748,6 +750,58 @@ public  final class Screen extends
    */
   private void clearUsage() {
     if (screenCase_ == 36) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int DIRECT_DIAGNOSTICS_FIELD_NUMBER = 37;
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectDiagnostics() {
+    return screenCase_ == 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest getDirectDiagnostics() {
+    if (screenCase_ == 37) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 37 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 37;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   */
+  private void clearDirectDiagnostics() {
+    if (screenCase_ == 37) {
       screenCase_ = 0;
       screen_ = null;
     }
@@ -1747,6 +1801,54 @@ public  final class Screen extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectDiagnostics() {
+      return instance.hasDirectDiagnostics();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest getDirectDiagnostics() {
+      return instance.getDirectDiagnostics();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    public Builder setDirectDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest value) {
+      copyOnWrite();
+      instance.setDirectDiagnostics(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    public Builder setDirectDiagnostics(
+        io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectDiagnostics(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    public Builder mergeDirectDiagnostics(io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest value) {
+      copyOnWrite();
+      instance.mergeDirectDiagnostics(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+     */
+    public Builder clearDirectDiagnostics() {
+      copyOnWrite();
+      instance.clearDirectDiagnostics();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
      */
     @java.lang.Override
@@ -2021,12 +2123,13 @@ public  final class Screen extends
             io.github.lewin671.remoteagent.core.proto.DevicesScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.UsageScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest.class,
           };
           java.lang.String info =
-              "\u0000\u0011\u0001\u0000\u0001$\u0011\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u0012\u0001\u0000\u0001%\u0012\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
               "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000";
+              "<\u0000%<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

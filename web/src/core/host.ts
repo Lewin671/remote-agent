@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "r
 import type { Tray, TrayItem } from "../attach";
 import { newRequestID } from "../crypto";
 import * as l10n from "../i18n";
+import { PROTOCOL_VERSION } from "../protocol";
 import { pushPrefs, pushState, pushSupported, setPushPrefs, type PushPrefs } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
+import { stunServers } from "../transport/direct-executor";
 import { checkUpdate } from "../update";
 import {
   CacheBootstrapLoadedEventSchema,
@@ -24,7 +26,6 @@ import {
   HomeSetFilterActionSchema,
   HomeSetScopeActionSchema,
   LocalCalendarSchema,
-  MachineRouteStatusEventSchema,
   MonthStartSchema,
   NavigateRoute,
   NetworkChangedEventSchema,
@@ -77,6 +78,34 @@ import {
   type TokenResultEvent,
   type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
+import {
+  CommandRouteLeg,
+  DirectBulkTransferBeginEventSchema,
+  DirectBulkTransferDoneEventSchema,
+  DirectPreferenceEntrySchema,
+  DirectPreferencesLoadedEventSchema,
+  DirectRefreshDiagnosticsActionSchema,
+  DirectRetryNowActionSchema,
+  DirectSecurityMemberSchema,
+  DirectSecuritySnapshotEventSchema,
+  DirectSignalDeliveryEventSchema,
+  DirectSignalReceivedEventSchema,
+  TerminalStreamEventKind,
+  TerminalStreamEventSchema,
+  TransportConfigEventSchema,
+  type DirectBulkRouteEffect,
+  type DirectDcReadStatsEffect,
+  type DirectKeyAgreeEffect,
+  type DirectKeySignEffect,
+  type DirectPcAddCandidatesEffect,
+  type DirectPcCloseEffect,
+  type DirectPcConfirmEffect,
+  type DirectPcCreateEffect,
+  type DirectPcDescribeEffect,
+  type DirectPcSetRemoteEffect,
+  type DirectPreferenceEntry,
+  type DirectSignalSendEffect,
+} from "../gen/remoteagent/core/v1/transport_pb";
 import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { UsageRangePreset, UsageStatsResponseSchema, type UsageStatsResponse } from "../gen/remoteagent/v1/local_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
@@ -154,7 +183,7 @@ import {
   ClientUpdateStateEventSchema,
   ConnCheckStatusEventSchema,
   ConnProbeState,
-  MachineDirectStatusEventSchema,
+  DirectDiagnosticsScreenRequestSchema,
   MachineSettingsOpenEventSchema,
   MachineSettingsScreenRequestSchema,
   MachineSettingsSelectAgentEventSchema,
@@ -171,7 +200,7 @@ import {
   type ClientDetailViewModel,
   type ClientUpdateStateEvent,
   type DevicesViewModel,
-  type DirectRouteReport,
+  type DirectDiagnosticsViewModel,
   type MachineSettingsViewModel,
   type SetNotificationPrefEvent,
   type SettingsViewModel,
@@ -212,6 +241,22 @@ export interface StreamLegCallbacks {
   onClosed(legId: bigint, info: Omit<StreamClosedEvent, "$typeName" | "legId">): void;
 }
 
+export interface DirectSecuritySnapshotInput {
+  member: boolean;
+  account: string;
+  domain: Uint8Array<ArrayBuffer>;
+  head: string;
+  headHash: Uint8Array<ArrayBuffer>;
+  epoch: bigint;
+  startedAtMs: bigint;
+  leaseNotAfterMs: bigint;
+  selfId: string;
+  selfEdPublic: Uint8Array<ArrayBuffer>;
+  selfXPublic: Uint8Array<ArrayBuffer>;
+  members: Array<{ deviceId: string; edPublic: Uint8Array<ArrayBuffer>; xPublic: Uint8Array<ArrayBuffer>; isSelf: boolean }>;
+  rejected: boolean;
+}
+
 export interface HostBridge {
   start(): void;
   stop(): void;
@@ -226,8 +271,30 @@ export interface HostBridge {
   ensureSession(sessionId: string): Promise<void>;
   retrySession(sessionId: string): void;
   retryEvents(sessionId: string): void;
-  pushRouteStatus(machineId: string, directReady: boolean): void;
-  pushDirectReport(machineId: string, report: DirectRouteReport): void;
+  dispatchDirectSecuritySnapshot(snap: DirectSecuritySnapshotInput): void;
+  dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
+  dispatchDirectSignalDelivery(frameId: Uint8Array<ArrayBuffer>, status: number, retryAfterMs: number): void;
+  beginDirectBulkTransfer(params: {
+    machineId: string;
+    routeHint?: number;
+    bulkFileKey?: string;
+    bulkBytes?: bigint;
+    bulkUpload?: boolean;
+    deadlineMs: bigint;
+    forceRelay?: boolean;
+    uploadTransferId?: string;
+    uploadHasFilename?: boolean;
+    interactiveDual?: boolean;
+  }): Promise<DirectBulkRouteEffect>;
+  finishDirectBulkTransfer(params: {
+    ticketId: bigint;
+    routeWasDirect: boolean;
+    ok: boolean;
+    elapsedMs: number;
+    observedBytes: bigint;
+    finishUploadTransferId?: string;
+    machineId?: string;
+  }): void;
   pushScheduleHints(hints: Array<{ sessionId: string; scheduleName: string; unread: boolean }>): void;
   pushSessionPin(sessionId: string, pinned: boolean): void;
   changeProjectPref(kind: "pin" | "unpin" | "hide" | "unhide", path: string): void;
@@ -261,6 +328,17 @@ export interface CoreExecutor {
   saveScheduleSeen?(machineId: string, tokens: ScheduleSeenToken[]): Promise<void>;
   dismissScheduleNotifications?(runs: ScheduleNotificationRef[]): void;
   setWatchedSessions?(sessionIds: string[]): void;
+  directKeySign?(eff: DirectKeySignEffect): void;
+  directKeyAgree?(eff: DirectKeyAgreeEffect): void;
+  directSignalSend?(eff: DirectSignalSendEffect): void;
+  directPcCreate?(eff: DirectPcCreateEffect): void;
+  directPcDescribe?(eff: DirectPcDescribeEffect): void;
+  directPcSetRemote?(eff: DirectPcSetRemoteEffect): void;
+  directPcAddCandidates?(eff: DirectPcAddCandidatesEffect): void;
+  directPcConfirm?(eff: DirectPcConfirmEffect): void;
+  directPcClose?(eff: DirectPcCloseEffect): void;
+  directDcReadStats?(eff: DirectDcReadStatsEffect): void;
+  directAuthorize?(): void;
 }
 
 export interface SessionWindowOptions {
@@ -553,6 +631,7 @@ const SETTINGS_TARGETS = [
   ScreenTarget.DEVICES,
   ScreenTarget.CLIENT_DETAIL,
   ScreenTarget.USAGE,
+  ScreenTarget.DIRECT_DIAGNOSTICS,
 ];
 
 const ALL_TARGETS = [
@@ -658,7 +737,12 @@ export class CoreHost {
   private devicesCache?: { version: number; vm: DevicesViewModel };
   private clientDetailCache = new Map<string, { version: number; vm: ClientDetailViewModel }>();
   private usageCache = new Map<string, { version: number; vm: UsageViewModel }>();
+  private directDiagnosticsCache = new Map<string, { version: number; vm: DirectDiagnosticsViewModel }>();
   private usageHydratedMachines = new Set<string>();
+  private nextDirectCallId = 0n;
+  private bulkRouteWaiters = new Map<bigint, (eff: DirectBulkRouteEffect) => void>();
+  private retryNowWaiters = new Map<string, Array<(started: boolean) => void>>();
+  private terminalReopenListeners = new Map<string, () => void>();
 
   private started = false;
   private closed = false;
@@ -724,9 +808,12 @@ export class CoreHost {
         ensureSession: (sid) => this.ensureSession(sid),
         retrySession: (sid) => this.retrySession(sid),
         retryEvents: (sid) => this.retryEvents(sid),
-        pushRouteStatus: (machineId, directReady) =>
-          this.emit({ case: "machineRouteStatus", value: create(MachineRouteStatusEventSchema, { machineId, directReady }) }),
-        pushDirectReport: (machineId, report) => this.reportMachineDirectStatus(machineId, report),
+        dispatchDirectSecuritySnapshot: (snap) => this.dispatchDirectSecuritySnapshot(snap),
+        dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
+        dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
+          this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
+        beginDirectBulkTransfer: (params) => this.beginDirectBulkTransfer(params),
+        finishDirectBulkTransfer: (params) => this.finishDirectBulkTransfer(params),
         pushScheduleHints: (hints) =>
           this.emit({ case: "sessionScheduleHints", value: create(SessionScheduleHintsEventSchema, { hints: hints.map((h) => create(SessionScheduleHintSchema, h)) }) }),
         pushSessionPin: (sessionId, pinned) =>
@@ -840,6 +927,24 @@ export class CoreHost {
     }, CLOCK_TICK_MS);
     const available = this.remote ? this.remote.network : typeof navigator === "undefined" || navigator.onLine !== false;
     this.emitClock();
+    const storedPrefs = this.readStoredDirectPreferences();
+    if (storedPrefs.length > 0) {
+      this.emit({
+        case: "directPreferencesLoaded",
+        value: create(DirectPreferencesLoadedEventSchema, { entries: storedPrefs }),
+      });
+    }
+    const serverHost = this.remote ? new URL(this.remote.account.server).hostname : "localhost";
+    this.emit({
+      case: "transportConfig",
+      value: create(TransportConfigEventSchema, {
+        supported: typeof RTCPeerConnection !== "undefined",
+        account: "",
+        protocolVersion: PROTOCOL_VERSION,
+        stunServers: stunServers(serverHost, import.meta.env.VITE_DIRECT_STUN_URL),
+        platformAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+      }),
+    });
     this.emit({
       case: "syncLifecycle",
       value: create(SyncLifecycleActionSchema, {
@@ -1490,14 +1595,167 @@ export class CoreHost {
     if (machineId && !this.closed) this.emit({ case: "updateMachineDaemonSettings", value: create(UpdateMachineDaemonSettingsEventSchema, { machineId, ...patch, cleanImages: !!patch.cleanImages }) });
   }
 
+  private directPrefPrefix(): string {
+    return `remote-agent-direct:${this.remote?.account.server ?? "local"}:${this.remote?.account.deviceId ?? "local"}:`;
+  }
+
+  private directPrefKey(machineId: string): string {
+    return `${this.directPrefPrefix()}${machineId}`;
+  }
+
+  private readStoredDirectPreferences(): DirectPreferenceEntry[] {
+    if (typeof localStorage === "undefined") return [];
+    const prefix = this.directPrefPrefix();
+    const entries: DirectPreferenceEntry[] = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith(prefix)) continue;
+        const machineId = k.slice(prefix.length);
+        if (!machineId) continue;
+        entries.push(
+          create(DirectPreferenceEntrySchema, {
+            machineId,
+            enabled: localStorage.getItem(k) !== "off",
+          }),
+        );
+      }
+    } catch { /* Storage unavailable. */ }
+    return entries;
+  }
+
   updateDirectPreference(machineId: string, enabled: boolean) {
     if (!machineId || this.closed) return;
     this.setDirectError(machineId, "");
     this.emit({ case: "updateDirectPreference", value: create(UpdateDirectPreferenceEventSchema, { machineId, enabled }) });
   }
 
-  reportMachineDirectStatus(machineId: string, report: DirectRouteReport) {
-    if (machineId && !this.closed) this.emit({ case: "machineDirectStatus", value: create(MachineDirectStatusEventSchema, { machineId, report }) });
+  retryDirectNow(machineId: string): Promise<boolean> {
+    if (!machineId || this.closed || !this.started) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
+      let list = this.retryNowWaiters.get(machineId);
+      if (!list) {
+        list = [];
+        this.retryNowWaiters.set(machineId, list);
+      }
+      list.push(resolve);
+      this.emit({ case: "directRetryNow", value: create(DirectRetryNowActionSchema, { machineId }) });
+    });
+  }
+
+  refreshDirectDiagnostics(machineId: string) {
+    if (machineId && !this.closed && this.started) {
+      this.emit({ case: "directRefreshDiagnostics", value: create(DirectRefreshDiagnosticsActionSchema, { machineId }) });
+    }
+  }
+
+  sendTerminalStream(terminalId: string, kind: TerminalStreamEventKind, opened: boolean) {
+    if (terminalId && !this.closed) {
+      this.emit({ case: "terminalStream", value: create(TerminalStreamEventSchema, { terminalId, kind, opened }) });
+    }
+  }
+
+  onTerminalReopen(terminalId: string, fn: () => void): () => void {
+    this.terminalReopenListeners.set(terminalId, fn);
+    return () => {
+      if (this.terminalReopenListeners.get(terminalId) === fn) this.terminalReopenListeners.delete(terminalId);
+    };
+  }
+
+  dispatchDirectSecuritySnapshot(snap: DirectSecuritySnapshotInput) {
+    if (this.closed) return;
+    this.emit({
+      case: "directSecuritySnapshot",
+      value: create(DirectSecuritySnapshotEventSchema, {
+        member: snap.member,
+        account: snap.account,
+        domain: snap.domain,
+        head: snap.head,
+        headHash: snap.headHash,
+        epoch: snap.epoch,
+        startedAtMs: snap.startedAtMs,
+        leaseNotAfterMs: snap.leaseNotAfterMs,
+        selfId: snap.selfId,
+        selfEdPublic: snap.selfEdPublic,
+        selfXPublic: snap.selfXPublic,
+        members: snap.members.map((m) => create(DirectSecurityMemberSchema, m)),
+        rejected: snap.rejected,
+      }),
+    });
+  }
+
+  dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>) {
+    if (!this.closed && raw.byteLength > 0) {
+      this.emit({ case: "directSignalReceived", value: create(DirectSignalReceivedEventSchema, { raw }) });
+    }
+  }
+
+  dispatchDirectSignalDelivery(frameId: Uint8Array<ArrayBuffer>, status: number, retryAfterMs: number) {
+    if (!this.closed && frameId.byteLength > 0) {
+      this.emit({ case: "directSignalDelivery", value: create(DirectSignalDeliveryEventSchema, { frameId, status, retryAfterMs: BigInt(Math.max(0, Math.floor(retryAfterMs))) }) });
+    }
+  }
+
+  beginDirectBulkTransfer(params: {
+    machineId: string;
+    routeHint?: number;
+    bulkFileKey?: string;
+    bulkBytes?: bigint;
+    bulkUpload?: boolean;
+    deadlineMs: bigint;
+    forceRelay?: boolean;
+    uploadTransferId?: string;
+    uploadHasFilename?: boolean;
+    interactiveDual?: boolean;
+  }): Promise<DirectBulkRouteEffect> {
+    if (this.closed || !this.started) {
+      return Promise.resolve({ $typeName: "remoteagent.core.v1.DirectBulkRouteEffect", callId: 0n, useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n });
+    }
+    const callId = ++this.nextDirectCallId;
+    return new Promise<DirectBulkRouteEffect>((resolve) => {
+      this.bulkRouteWaiters.set(callId, resolve);
+      this.emit({
+        case: "directBulkTransferBegin",
+        value: create(DirectBulkTransferBeginEventSchema, {
+          callId,
+          machineId: params.machineId,
+          routeHint: params.routeHint ?? 0,
+          bulkFileKey: params.bulkFileKey ?? "",
+          bulkBytes: params.bulkBytes ?? 0n,
+          bulkUpload: !!params.bulkUpload,
+          deadlineMs: params.deadlineMs,
+          forceRelay: !!params.forceRelay,
+          uploadTransferId: params.uploadTransferId ?? "",
+          uploadHasFilename: !!params.uploadHasFilename,
+          interactiveDual: !!params.interactiveDual,
+        }),
+      });
+    });
+  }
+
+  finishDirectBulkTransfer(params: {
+    ticketId: bigint;
+    routeWasDirect: boolean;
+    ok: boolean;
+    elapsedMs: number;
+    observedBytes: bigint;
+    finishUploadTransferId?: string;
+    machineId?: string;
+  }) {
+    if (this.closed) return;
+    if (params.ticketId === 0n && !params.finishUploadTransferId) return;
+    this.emit({
+      case: "directBulkTransferDone",
+      value: create(DirectBulkTransferDoneEventSchema, {
+        ticketId: params.ticketId,
+        routeWasDirect: params.routeWasDirect,
+        ok: params.ok,
+        elapsedMs: params.elapsedMs,
+        observedBytes: params.observedBytes,
+        finishUploadTransferId: params.finishUploadTransferId ?? "",
+        machineId: params.machineId ?? "",
+      }),
+    });
   }
 
   updateClientName(deviceId: string, name: string, restoreDefault = false) {
@@ -1797,6 +2055,18 @@ export class CoreHost {
     return vm;
   }
 
+  viewDirectDiagnostics(machineId: string): DirectDiagnosticsViewModel {
+    const ver = this.version(ScreenTarget.DIRECT_DIAGNOSTICS);
+    const cached = this.directDiagnosticsCache.get(machineId);
+    if (cached?.version === ver) return cached.vm;
+    const vm = this.readView<DirectDiagnosticsViewModel>("directDiagnostics", {
+      case: "directDiagnostics",
+      value: create(DirectDiagnosticsScreenRequestSchema, { machineId }),
+    });
+    this.directDiagnosticsCache.set(machineId, { version: ver, vm });
+    return vm;
+  }
+
   // --- Dispatch & Effect Execution ---
 
   dispatch(ev: Event, onProcessed?: () => void) {
@@ -2053,6 +2323,9 @@ export class CoreHost {
       case "requestEntropy": {
         const minIds = Math.max(val.value.minIds, 16);
         const minFloats = Math.max(val.value.minFloats, 16);
+        const seed = val.value.minSeedBytes > 0
+          ? crypto.getRandomValues(new Uint8Array(Math.max(val.value.minSeedBytes, 32)))
+          : new Uint8Array();
         this.pendingEvents.push({
           ev: create(EventSchema, {
             nowMs: BigInt(Date.now()),
@@ -2062,6 +2335,7 @@ export class CoreHost {
               value: create(EntropyProvidedSchema, {
                 randomIds: randomIds(minIds),
                 unitFloats: randomFloats(minFloats),
+                seed,
               }),
             },
           }),
@@ -2220,8 +2494,6 @@ export class CoreHost {
       case "directPreference": {
         const { machineId, enabled } = val.value;
         if (this.revertingDirect.delete(machineId)) break;
-        if (!this.remote) break;
-        const remote = this.remote;
         const onFail = (err: unknown) => {
           if (this.closed) return;
           this.setDirectError(machineId, errorMessage(err));
@@ -2232,9 +2504,8 @@ export class CoreHost {
           });
         };
         try {
-          const res: unknown = remote.direct.setEnabled(machineId, enabled);
-          if (res && typeof (res as Promise<unknown>).catch === "function") {
-            void (res as Promise<unknown>).catch(onFail);
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem(this.directPrefKey(machineId), enabled ? "auto" : "off");
           }
         } catch (err) {
           onFail(err);
@@ -2333,6 +2604,74 @@ export class CoreHost {
         this.persistUsageCache(val.value.machineId, val.value.snapshot);
         break;
 
+      case "directKeySign":
+        this.executor?.directKeySign?.(val.value);
+        break;
+
+      case "directKeyAgree":
+        this.executor?.directKeyAgree?.(val.value);
+        break;
+
+      case "directSignalSend":
+        this.executor?.directSignalSend?.(val.value);
+        break;
+
+      case "directPcCreate":
+        this.executor?.directPcCreate?.(val.value);
+        break;
+
+      case "directPcDescribe":
+        this.executor?.directPcDescribe?.(val.value);
+        break;
+
+      case "directPcSetRemote":
+        this.executor?.directPcSetRemote?.(val.value);
+        break;
+
+      case "directPcAddCandidates":
+        this.executor?.directPcAddCandidates?.(val.value);
+        break;
+
+      case "directPcConfirm":
+        this.executor?.directPcConfirm?.(val.value);
+        break;
+
+      case "directPcClose":
+        this.executor?.directPcClose?.(val.value);
+        break;
+
+      case "directDcReadStats":
+        this.executor?.directDcReadStats?.(val.value);
+        break;
+
+      case "directAuthorize":
+        this.executor?.directAuthorize?.();
+        break;
+
+      case "directBulkRoute": {
+        const w = this.bulkRouteWaiters.get(val.value.callId);
+        if (w) {
+          this.bulkRouteWaiters.delete(val.value.callId);
+          w(val.value);
+        }
+        break;
+      }
+
+      case "terminalReopen": {
+        this.terminalReopenListeners.get(val.value.terminalId)?.();
+        break;
+      }
+
+      case "directRetryNowResult": {
+        const list = this.retryNowWaiters.get(val.value.machineId);
+        if (list && list.length > 0) {
+          const fn = list.shift()!;
+          if (list.length === 0) this.retryNowWaiters.delete(val.value.machineId);
+          fn(val.value.started);
+        }
+        break;
+      }
+
       case undefined:
         break;
 
@@ -2416,6 +2755,7 @@ export class CoreHost {
     else if (target === ScreenTarget.DEVICES) this.devicesCache = undefined;
     else if (target === ScreenTarget.CLIENT_DETAIL) this.clientDetailCache.clear();
     else if (target === ScreenTarget.USAGE) this.usageCache.clear();
+    else if (target === ScreenTarget.DIRECT_DIAGNOSTICS) this.directDiagnosticsCache.clear();
   }
 
   private flushRenders() {
@@ -2481,6 +2821,15 @@ export class CoreHost {
     this.extraListeners.clear();
     this.machineWatchCounts.clear();
     this.machineWatchActive.clear();
+    this.terminalReopenListeners.clear();
+    for (const w of this.bulkRouteWaiters.values()) {
+      w({ $typeName: "remoteagent.core.v1.DirectBulkRouteEffect", callId: 0n, useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n });
+    }
+    this.bulkRouteWaiters.clear();
+    for (const list of this.retryNowWaiters.values()) {
+      for (const fn of list) fn(false);
+    }
+    this.retryNowWaiters.clear();
     this.core.close();
   }
 }
@@ -2689,8 +3038,15 @@ export function useClientRenameState(host: CoreHost, deviceId: string): { saving
   return useMemo(() => host.clientRenameState(deviceId), [host, ver, deviceId]);
 }
 
+export function useDirectDiagnosticsView(host: CoreHost, machineId: string): DirectDiagnosticsViewModel {
+  const version = useScreenVersion(host, ScreenTarget.DIRECT_DIAGNOSTICS);
+  return useMemo(() => host.viewDirectDiagnostics(machineId), [host, version, machineId]);
+}
+
 export {
+  CommandRouteLeg,
   ConnProbeState,
+  TerminalStreamEventKind,
   ConnState,
   MachineChartKind,
   MachinePollMode,

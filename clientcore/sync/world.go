@@ -10,6 +10,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
 func (e *Engine) worldUnlinked() bool {
@@ -255,8 +256,8 @@ func (e *Engine) Connection() lists.ConnectionKind {
 }
 
 // RecoveryState exposes the internal Recovery instance for testing/inspection.
-func (e *Engine) RecoveryState() *Recovery {
-	return e.recovery
+func (e *Engine) RecoveryState() *linkcore.Recovery {
+	return &e.recovery
 }
 
 // ScopeHMACKey returns the cached scope HMAC key (from SyncLifecycleAction or cache bootstrap).

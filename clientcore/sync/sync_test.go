@@ -12,6 +12,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
+	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
 func seedEntropy(n int) ([]string, []float64) {
@@ -224,7 +225,8 @@ func TestConnectionLifecycleRecoveryAndLiveness(t *testing.T) {
 	e3.running = true
 	e3.legID = 7
 	e3.w.World.Connection = lists.ConnConnecting
-	e3.liveness = NewLegLiveness(1_000)
+	l3 := linkcore.NewLiveness(1_000)
+	e3.liveness = &l3
 	e3.HandleEvent(&corev1.Event{
 		NowMs:  now,
 		MonoMs: 1_500,

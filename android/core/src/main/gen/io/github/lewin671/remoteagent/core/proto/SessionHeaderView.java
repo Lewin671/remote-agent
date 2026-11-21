@@ -2078,6 +2078,54 @@ public  final class SessionHeaderView extends
     computerReachability_ = 0;
   }
 
+  public static final int DIRECT_CHIP_FIELD_NUMBER = 55;
+  private io.github.lewin671.remoteagent.core.proto.SessionDirectChipView directChip_;
+  /**
+   * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectChip() {
+    return ((bitField0_ & 0x00004000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionDirectChipView getDirectChip() {
+    return directChip_ == null ? io.github.lewin671.remoteagent.core.proto.SessionDirectChipView.getDefaultInstance() : directChip_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectChip(io.github.lewin671.remoteagent.core.proto.SessionDirectChipView value) {
+    value.getClass();  // minimal bytecode null check
+    directChip_ = value;
+    bitField0_ |= 0x00004000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDirectChip(io.github.lewin671.remoteagent.core.proto.SessionDirectChipView value) {
+    value.getClass();  // minimal bytecode null check
+    if (directChip_ != null &&
+        directChip_ != io.github.lewin671.remoteagent.core.proto.SessionDirectChipView.getDefaultInstance()) {
+      directChip_ =
+        io.github.lewin671.remoteagent.core.proto.SessionDirectChipView.newBuilder(directChip_).mergeFrom(value).buildPartial();
+    } else {
+      directChip_ = value;
+    }
+    bitField0_ |= 0x00004000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+   */
+  private void clearDirectChip() {
+    directChip_ = null;
+    bitField0_ = (bitField0_ & ~0x00004000);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionHeaderView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4292,6 +4340,53 @@ public  final class SessionHeaderView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectChip() {
+      return instance.hasDirectChip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionDirectChipView getDirectChip() {
+      return instance.getDirectChip();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+     */
+    public Builder setDirectChip(io.github.lewin671.remoteagent.core.proto.SessionDirectChipView value) {
+      copyOnWrite();
+      instance.setDirectChip(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+     */
+    public Builder setDirectChip(
+        io.github.lewin671.remoteagent.core.proto.SessionDirectChipView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectChip(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+     */
+    public Builder mergeDirectChip(io.github.lewin671.remoteagent.core.proto.SessionDirectChipView value) {
+      copyOnWrite();
+      instance.mergeDirectChip(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionDirectChipView direct_chip = 55 [json_name = "directChip"];</code>
+     */
+    public Builder clearDirectChip() {  copyOnWrite();
+      instance.clearDirectChip();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionHeaderView)
   }
   @java.lang.Override
@@ -4363,16 +4458,17 @@ public  final class SessionHeaderView extends
             "capabilities_",
             "missingText_",
             "computerReachability_",
+            "directChip_",
           };
           java.lang.String info =
-              "\u00006\u0000\u0001\u000166\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
+              "\u00007\u0000\u0001\u000177\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
               "\u0004\u0007\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u0208\b\u0208\t\f\n\u0208" +
               "\u000b\f\f\f\r\u1009\u0002\u000e\u1009\u0003\u000f\f\u0010\u0208\u0011\u1009\u0004" +
               "\u0012\u0007\u0013\u0208\u0014\u0208\u0015\u0208\u0016\u1009\u0005\u0017\u0007\u0018" +
               "\u0007\u0019\u0007\u001a\u0004\u001b\u0002\u001c\u0002\u001d\u1009\u0006\u001e\u0007" +
               "\u001f\u0208 \u1009\u0007!\u0007\"\u0007#\u0002$\u1009\b%\f&\u0007\'\u000b(\u000b" +
               ")\u1009\t*\u0007+\u0002,\u1009\n-\u0007.\u0208/\u1009\u000b0\u00071\u02082\u0208" +
-              "3\u00074\u1009\f5\u1009\r6\f";
+              "3\u00074\u1009\f5\u1009\r6\f7\u1009\u000e";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

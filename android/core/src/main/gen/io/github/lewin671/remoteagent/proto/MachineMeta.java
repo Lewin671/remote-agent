@@ -27,6 +27,7 @@ public  final class MachineMeta extends
     quotas_ = emptyProtobufList();
     projects_ = emptyProtobufList();
     disabledAgents_ = emptyIntList();
+    daemonVersion_ = "";
   }
   private int bitField0_;
   public static final int HOSTNAME_FIELD_NUMBER = 1;
@@ -1224,6 +1225,89 @@ public  final class MachineMeta extends
   private void clearSettingsRevision() {
 
     settingsRevision_ = 0L;
+  }
+
+  public static final int DAEMON_VERSION_FIELD_NUMBER = 18;
+  private java.lang.String daemonVersion_;
+  /**
+   * <pre>
+   * The daemon's product version (internal/buildinfo, as `--version`
+   * prints it), e.g. "0.94.0"; source builds report other forms such as
+   * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+   * decided by protocol_version.
+   * </pre>
+   *
+   * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+   * @return The daemonVersion.
+   */
+  @java.lang.Override
+  public java.lang.String getDaemonVersion() {
+    return daemonVersion_;
+  }
+  /**
+   * <pre>
+   * The daemon's product version (internal/buildinfo, as `--version`
+   * prints it), e.g. "0.94.0"; source builds report other forms such as
+   * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+   * decided by protocol_version.
+   * </pre>
+   *
+   * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+   * @return The bytes for daemonVersion.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDaemonVersionBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(daemonVersion_);
+  }
+  /**
+   * <pre>
+   * The daemon's product version (internal/buildinfo, as `--version`
+   * prints it), e.g. "0.94.0"; source builds report other forms such as
+   * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+   * decided by protocol_version.
+   * </pre>
+   *
+   * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+   * @param value The daemonVersion to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDaemonVersion(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    daemonVersion_ = value;
+  }
+  /**
+   * <pre>
+   * The daemon's product version (internal/buildinfo, as `--version`
+   * prints it), e.g. "0.94.0"; source builds report other forms such as
+   * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+   * decided by protocol_version.
+   * </pre>
+   *
+   * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+   */
+  private void clearDaemonVersion() {
+
+    daemonVersion_ = getDefaultInstance().getDaemonVersion();
+  }
+  /**
+   * <pre>
+   * The daemon's product version (internal/buildinfo, as `--version`
+   * prints it), e.g. "0.94.0"; source builds report other forms such as
+   * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+   * decided by protocol_version.
+   * </pre>
+   *
+   * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+   * @param value The bytes for daemonVersion to set.
+   */
+  private void setDaemonVersionBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    daemonVersion_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.proto.MachineMeta parseFrom(
@@ -2562,6 +2646,90 @@ public  final class MachineMeta extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The daemon's product version (internal/buildinfo, as `--version`
+     * prints it), e.g. "0.94.0"; source builds report other forms such as
+     * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+     * decided by protocol_version.
+     * </pre>
+     *
+     * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+     * @return The daemonVersion.
+     */
+    @java.lang.Override
+    public java.lang.String getDaemonVersion() {
+      return instance.getDaemonVersion();
+    }
+    /**
+     * <pre>
+     * The daemon's product version (internal/buildinfo, as `--version`
+     * prints it), e.g. "0.94.0"; source builds report other forms such as
+     * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+     * decided by protocol_version.
+     * </pre>
+     *
+     * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+     * @return The bytes for daemonVersion.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDaemonVersionBytes() {
+      return instance.getDaemonVersionBytes();
+    }
+    /**
+     * <pre>
+     * The daemon's product version (internal/buildinfo, as `--version`
+     * prints it), e.g. "0.94.0"; source builds report other forms such as
+     * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+     * decided by protocol_version.
+     * </pre>
+     *
+     * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+     * @param value The daemonVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDaemonVersion(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDaemonVersion(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The daemon's product version (internal/buildinfo, as `--version`
+     * prints it), e.g. "0.94.0"; source builds report other forms such as
+     * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+     * decided by protocol_version.
+     * </pre>
+     *
+     * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDaemonVersion() {
+      copyOnWrite();
+      instance.clearDaemonVersion();
+      return this;
+    }
+    /**
+     * <pre>
+     * The daemon's product version (internal/buildinfo, as `--version`
+     * prints it), e.g. "0.94.0"; source builds report other forms such as
+     * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+     * decided by protocol_version.
+     * </pre>
+     *
+     * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+     * @param value The bytes for daemonVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDaemonVersionBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDaemonVersionBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineMeta)
   }
   @java.lang.Override
@@ -2596,11 +2764,12 @@ public  final class MachineMeta extends
             "diskStatus_",
             "disabledAgents_",
             "settingsRevision_",
+            "daemonVersion_",
           };
           java.lang.String info =
-              "\u0000\u000e\u0000\u0001\u0001\u0011\u000e\u0000\u0004\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u000f\u0000\u0001\u0001\u0012\u000f\u0000\u0004\u0000\u0001\u0208\u0002\u0208" +
               "\u0006\u0208\u0007\u0208\b\u0007\t\u001b\n\u1009\u0000\u000b\u001b\f\u000b\r\u001b" +
-              "\u000e\u0003\u000f\u1009\u0001\u0010,\u0011\u0003";
+              "\u000e\u0003\u000f\u1009\u0001\u0010,\u0011\u0003\u0012\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

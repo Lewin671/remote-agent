@@ -47,4 +47,22 @@ public interface DirectEventsReceivedEventOrBuilder extends
    * <code>repeated .remoteagent.core.v1.PlainEvent events = 3 [json_name = "events"];</code>
    */
   int getEventsCount();
+
+  /**
+   * <code>uint64 pc_id = 4 [json_name = "pcId"];</code>
+   * @return The pcId.
+   */
+  long getPcId();
+
+  /**
+   * <code>string sender = 5 [json_name = "sender"];</code>
+   * @return The sender.
+   */
+  java.lang.String getSender();
+  /**
+   * <code>string sender = 5 [json_name = "sender"];</code>
+   * @return The bytes for sender.
+   */
+  com.google.protobuf.ByteString
+      getSenderBytes();
 }

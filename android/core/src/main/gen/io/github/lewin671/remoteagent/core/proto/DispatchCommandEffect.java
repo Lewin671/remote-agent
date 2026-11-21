@@ -461,6 +461,126 @@ public  final class DispatchCommandEffect extends
     bulkUpload_ = false;
   }
 
+  public static final int ROUTE_LEG_FIELD_NUMBER = 13;
+  private int routeLeg_;
+  /**
+   * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+   * @return The enum numeric value on the wire for routeLeg.
+   */
+  @java.lang.Override
+  public int getRouteLegValue() {
+    return routeLeg_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+   * @return The routeLeg.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.CommandRouteLeg getRouteLeg() {
+    io.github.lewin671.remoteagent.core.proto.CommandRouteLeg result = io.github.lewin671.remoteagent.core.proto.CommandRouteLeg.forNumber(routeLeg_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.CommandRouteLeg.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+   * @param value The enum numeric value on the wire for routeLeg to set.
+   */
+  private void setRouteLegValue(int value) {
+      routeLeg_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+   * @param value The routeLeg to set.
+   */
+  private void setRouteLeg(io.github.lewin671.remoteagent.core.proto.CommandRouteLeg value) {
+    routeLeg_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+   */
+  private void clearRouteLeg() {
+
+    routeLeg_ = 0;
+  }
+
+  public static final int DIRECT_PC_ID_FIELD_NUMBER = 14;
+  private long directPcId_;
+  /**
+   * <code>uint64 direct_pc_id = 14 [json_name = "directPcId"];</code>
+   * @return The directPcId.
+   */
+  @java.lang.Override
+  public long getDirectPcId() {
+    return directPcId_;
+  }
+  /**
+   * <code>uint64 direct_pc_id = 14 [json_name = "directPcId"];</code>
+   * @param value The directPcId to set.
+   */
+  private void setDirectPcId(long value) {
+    
+    directPcId_ = value;
+  }
+  /**
+   * <code>uint64 direct_pc_id = 14 [json_name = "directPcId"];</code>
+   */
+  private void clearDirectPcId() {
+
+    directPcId_ = 0L;
+  }
+
+  public static final int DIRECT_TIMEOUT_MS_FIELD_NUMBER = 15;
+  private long directTimeoutMs_;
+  /**
+   * <code>int64 direct_timeout_ms = 15 [json_name = "directTimeoutMs"];</code>
+   * @return The directTimeoutMs.
+   */
+  @java.lang.Override
+  public long getDirectTimeoutMs() {
+    return directTimeoutMs_;
+  }
+  /**
+   * <code>int64 direct_timeout_ms = 15 [json_name = "directTimeoutMs"];</code>
+   * @param value The directTimeoutMs to set.
+   */
+  private void setDirectTimeoutMs(long value) {
+    
+    directTimeoutMs_ = value;
+  }
+  /**
+   * <code>int64 direct_timeout_ms = 15 [json_name = "directTimeoutMs"];</code>
+   */
+  private void clearDirectTimeoutMs() {
+
+    directTimeoutMs_ = 0L;
+  }
+
+  public static final int DIRECT_TICKET_ID_FIELD_NUMBER = 16;
+  private long directTicketId_;
+  /**
+   * <code>uint64 direct_ticket_id = 16 [json_name = "directTicketId"];</code>
+   * @return The directTicketId.
+   */
+  @java.lang.Override
+  public long getDirectTicketId() {
+    return directTicketId_;
+  }
+  /**
+   * <code>uint64 direct_ticket_id = 16 [json_name = "directTicketId"];</code>
+   * @param value The directTicketId to set.
+   */
+  private void setDirectTicketId(long value) {
+    
+    directTicketId_ = value;
+  }
+  /**
+   * <code>uint64 direct_ticket_id = 16 [json_name = "directTicketId"];</code>
+   */
+  private void clearDirectTicketId() {
+
+    directTicketId_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1017,6 +1137,136 @@ public  final class DispatchCommandEffect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+     * @return The enum numeric value on the wire for routeLeg.
+     */
+    @java.lang.Override
+    public int getRouteLegValue() {
+      return instance.getRouteLegValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+     * @param value The routeLeg to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRouteLegValue(int value) {
+      copyOnWrite();
+      instance.setRouteLegValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+     * @return The routeLeg.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.CommandRouteLeg getRouteLeg() {
+      return instance.getRouteLeg();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+     * @param value The enum numeric value on the wire for routeLeg to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRouteLeg(io.github.lewin671.remoteagent.core.proto.CommandRouteLeg value) {
+      copyOnWrite();
+      instance.setRouteLeg(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRouteLeg() {
+      copyOnWrite();
+      instance.clearRouteLeg();
+      return this;
+    }
+
+    /**
+     * <code>uint64 direct_pc_id = 14 [json_name = "directPcId"];</code>
+     * @return The directPcId.
+     */
+    @java.lang.Override
+    public long getDirectPcId() {
+      return instance.getDirectPcId();
+    }
+    /**
+     * <code>uint64 direct_pc_id = 14 [json_name = "directPcId"];</code>
+     * @param value The directPcId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDirectPcId(long value) {
+      copyOnWrite();
+      instance.setDirectPcId(value);
+      return this;
+    }
+    /**
+     * <code>uint64 direct_pc_id = 14 [json_name = "directPcId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDirectPcId() {
+      copyOnWrite();
+      instance.clearDirectPcId();
+      return this;
+    }
+
+    /**
+     * <code>int64 direct_timeout_ms = 15 [json_name = "directTimeoutMs"];</code>
+     * @return The directTimeoutMs.
+     */
+    @java.lang.Override
+    public long getDirectTimeoutMs() {
+      return instance.getDirectTimeoutMs();
+    }
+    /**
+     * <code>int64 direct_timeout_ms = 15 [json_name = "directTimeoutMs"];</code>
+     * @param value The directTimeoutMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDirectTimeoutMs(long value) {
+      copyOnWrite();
+      instance.setDirectTimeoutMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 direct_timeout_ms = 15 [json_name = "directTimeoutMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDirectTimeoutMs() {
+      copyOnWrite();
+      instance.clearDirectTimeoutMs();
+      return this;
+    }
+
+    /**
+     * <code>uint64 direct_ticket_id = 16 [json_name = "directTicketId"];</code>
+     * @return The directTicketId.
+     */
+    @java.lang.Override
+    public long getDirectTicketId() {
+      return instance.getDirectTicketId();
+    }
+    /**
+     * <code>uint64 direct_ticket_id = 16 [json_name = "directTicketId"];</code>
+     * @param value The directTicketId to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDirectTicketId(long value) {
+      copyOnWrite();
+      instance.setDirectTicketId(value);
+      return this;
+    }
+    /**
+     * <code>uint64 direct_ticket_id = 16 [json_name = "directTicketId"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDirectTicketId() {
+      copyOnWrite();
+      instance.clearDirectTicketId();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DispatchCommandEffect)
   }
   @java.lang.Override
@@ -1045,11 +1295,15 @@ public  final class DispatchCommandEffect extends
             "bulkFileKey_",
             "bulkBytes_",
             "bulkUpload_",
+            "routeLeg_",
+            "directPcId_",
+            "directTimeoutMs_",
+            "directTicketId_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0000\u0001\f\f\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\u0208\u0005\u0002\u0006\n\u0007\f\b\u0007\t\u0007\n\u0208\u000b\u0002\f\u0007" +
-              "";
+              "\u0000\u0010\u0000\u0000\u0001\u0010\u0010\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0208\u0005\u0002\u0006\n\u0007\f\b\u0007\t\u0007\n\u0208\u000b" +
+              "\u0002\f\u0007\r\f\u000e\u0003\u000f\u0002\u0010\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -116,4 +116,33 @@ public interface DispatchCommandEffectOrBuilder extends
    * @return The bulkUpload.
    */
   boolean getBulkUpload();
+
+  /**
+   * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+   * @return The enum numeric value on the wire for routeLeg.
+   */
+  int getRouteLegValue();
+  /**
+   * <code>.remoteagent.core.v1.CommandRouteLeg route_leg = 13 [json_name = "routeLeg"];</code>
+   * @return The routeLeg.
+   */
+  io.github.lewin671.remoteagent.core.proto.CommandRouteLeg getRouteLeg();
+
+  /**
+   * <code>uint64 direct_pc_id = 14 [json_name = "directPcId"];</code>
+   * @return The directPcId.
+   */
+  long getDirectPcId();
+
+  /**
+   * <code>int64 direct_timeout_ms = 15 [json_name = "directTimeoutMs"];</code>
+   * @return The directTimeoutMs.
+   */
+  long getDirectTimeoutMs();
+
+  /**
+   * <code>uint64 direct_ticket_id = 16 [json_name = "directTicketId"];</code>
+   * @return The directTicketId.
+   */
+  long getDirectTicketId();
 }

@@ -17,6 +17,7 @@ public  final class EntropyProvided extends
   private EntropyProvided() {
     randomIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
     unitFloats_ = emptyDoubleList();
+    seed_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int RANDOM_IDS_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.ProtobufList<java.lang.String> randomIds_;
@@ -182,6 +183,33 @@ public  final class EntropyProvided extends
    */
   private void clearUnitFloats() {
     unitFloats_ = emptyDoubleList();
+  }
+
+  public static final int SEED_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString seed_;
+  /**
+   * <code>bytes seed = 3 [json_name = "seed"];</code>
+   * @return The seed.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSeed() {
+    return seed_;
+  }
+  /**
+   * <code>bytes seed = 3 [json_name = "seed"];</code>
+   * @param value The seed to set.
+   */
+  private void setSeed(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    seed_ = value;
+  }
+  /**
+   * <code>bytes seed = 3 [json_name = "seed"];</code>
+   */
+  private void clearSeed() {
+
+    seed_ = getDefaultInstance().getSeed();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.EntropyProvided parseFrom(
@@ -442,6 +470,34 @@ public  final class EntropyProvided extends
       return this;
     }
 
+    /**
+     * <code>bytes seed = 3 [json_name = "seed"];</code>
+     * @return The seed.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSeed() {
+      return instance.getSeed();
+    }
+    /**
+     * <code>bytes seed = 3 [json_name = "seed"];</code>
+     * @param value The seed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSeed(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSeed(value);
+      return this;
+    }
+    /**
+     * <code>bytes seed = 3 [json_name = "seed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSeed() {
+      copyOnWrite();
+      instance.clearSeed();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.EntropyProvided)
   }
   @java.lang.Override
@@ -460,9 +516,11 @@ public  final class EntropyProvided extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "randomIds_",
             "unitFloats_",
+            "seed_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0002\u0000\u0001\u021a\u0002#";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0002\u0000\u0001\u021a\u0002#\u0003" +
+              "\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -298,4 +298,30 @@ public interface MachineMetaOrBuilder extends
    * @return The settingsRevision.
    */
   long getSettingsRevision();
+
+  /**
+   * <pre>
+   * The daemon's product version (internal/buildinfo, as `--version`
+   * prints it), e.g. "0.94.0"; source builds report other forms such as
+   * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+   * decided by protocol_version.
+   * </pre>
+   *
+   * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+   * @return The daemonVersion.
+   */
+  java.lang.String getDaemonVersion();
+  /**
+   * <pre>
+   * The daemon's product version (internal/buildinfo, as `--version`
+   * prints it), e.g. "0.94.0"; source builds report other forms such as
+   * "0.94.0-dev.abc1234" or "dev". Shown to people only: compatibility is
+   * decided by protocol_version.
+   * </pre>
+   *
+   * <code>string daemon_version = 18 [json_name = "daemonVersion"];</code>
+   * @return The bytes for daemonVersion.
+   */
+  com.google.protobuf.ByteString
+      getDaemonVersionBytes();
 }

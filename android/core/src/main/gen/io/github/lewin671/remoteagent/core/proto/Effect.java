@@ -51,6 +51,20 @@ public  final class Effect extends
     SCHEDULE_SAVE_SEEN(63),
     SCHEDULE_DISMISS_NOTIFICATIONS(64),
     SCHEDULE_NAVIGATE(65),
+    DIRECT_KEY_SIGN(100),
+    DIRECT_KEY_AGREE(101),
+    DIRECT_SIGNAL_SEND(102),
+    DIRECT_PC_CREATE(103),
+    DIRECT_PC_DESCRIBE(104),
+    DIRECT_PC_SET_REMOTE(105),
+    DIRECT_PC_ADD_CANDIDATES(106),
+    DIRECT_PC_CONFIRM(107),
+    DIRECT_PC_CLOSE(108),
+    DIRECT_DC_READ_STATS(109),
+    DIRECT_AUTHORIZE(110),
+    DIRECT_BULK_ROUTE(111),
+    TERMINAL_REOPEN(112),
+    DIRECT_RETRY_NOW_RESULT(113),
     EFFECT_NOT_SET(0);
     private final int value;
     private EffectCase(int value) {
@@ -98,6 +112,20 @@ public  final class Effect extends
         case 63: return SCHEDULE_SAVE_SEEN;
         case 64: return SCHEDULE_DISMISS_NOTIFICATIONS;
         case 65: return SCHEDULE_NAVIGATE;
+        case 100: return DIRECT_KEY_SIGN;
+        case 101: return DIRECT_KEY_AGREE;
+        case 102: return DIRECT_SIGNAL_SEND;
+        case 103: return DIRECT_PC_CREATE;
+        case 104: return DIRECT_PC_DESCRIBE;
+        case 105: return DIRECT_PC_SET_REMOTE;
+        case 106: return DIRECT_PC_ADD_CANDIDATES;
+        case 107: return DIRECT_PC_CONFIRM;
+        case 108: return DIRECT_PC_CLOSE;
+        case 109: return DIRECT_DC_READ_STATS;
+        case 110: return DIRECT_AUTHORIZE;
+        case 111: return DIRECT_BULK_ROUTE;
+        case 112: return TERMINAL_REOPEN;
+        case 113: return DIRECT_RETRY_NOW_RESULT;
         case 0: return EFFECT_NOT_SET;
         default: return null;
       }
@@ -1783,6 +1811,734 @@ public  final class Effect extends
     }
   }
 
+  public static final int DIRECT_KEY_SIGN_FIELD_NUMBER = 100;
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectKeySign() {
+    return effectCase_ == 100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect getDirectKeySign() {
+    if (effectCase_ == 100) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectKeySign(io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectKeySign(io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 100 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+   */
+  private void clearDirectKeySign() {
+    if (effectCase_ == 100) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_KEY_AGREE_FIELD_NUMBER = 101;
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectKeyAgree() {
+    return effectCase_ == 101;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect getDirectKeyAgree() {
+    if (effectCase_ == 101) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectKeyAgree(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 101;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectKeyAgree(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 101 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 101;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+   */
+  private void clearDirectKeyAgree() {
+    if (effectCase_ == 101) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_SIGNAL_SEND_FIELD_NUMBER = 102;
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectSignalSend() {
+    return effectCase_ == 102;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect getDirectSignalSend() {
+    if (effectCase_ == 102) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectSignalSend(io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 102;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectSignalSend(io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 102 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 102;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+   */
+  private void clearDirectSignalSend() {
+    if (effectCase_ == 102) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_CREATE_FIELD_NUMBER = 103;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcCreate() {
+    return effectCase_ == 103;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect getDirectPcCreate() {
+    if (effectCase_ == 103) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcCreate(io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 103;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcCreate(io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 103 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 103;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+   */
+  private void clearDirectPcCreate() {
+    if (effectCase_ == 103) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_DESCRIBE_FIELD_NUMBER = 104;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcDescribe() {
+    return effectCase_ == 104;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect getDirectPcDescribe() {
+    if (effectCase_ == 104) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcDescribe(io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 104;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcDescribe(io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 104 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 104;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+   */
+  private void clearDirectPcDescribe() {
+    if (effectCase_ == 104) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_SET_REMOTE_FIELD_NUMBER = 105;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcSetRemote() {
+    return effectCase_ == 105;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect getDirectPcSetRemote() {
+    if (effectCase_ == 105) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcSetRemote(io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 105;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcSetRemote(io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 105 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 105;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+   */
+  private void clearDirectPcSetRemote() {
+    if (effectCase_ == 105) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_ADD_CANDIDATES_FIELD_NUMBER = 106;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcAddCandidates() {
+    return effectCase_ == 106;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect getDirectPcAddCandidates() {
+    if (effectCase_ == 106) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcAddCandidates(io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 106;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcAddCandidates(io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 106 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 106;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+   */
+  private void clearDirectPcAddCandidates() {
+    if (effectCase_ == 106) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_CONFIRM_FIELD_NUMBER = 107;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcConfirm() {
+    return effectCase_ == 107;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect getDirectPcConfirm() {
+    if (effectCase_ == 107) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcConfirm(io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 107;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcConfirm(io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 107 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 107;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+   */
+  private void clearDirectPcConfirm() {
+    if (effectCase_ == 107) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_PC_CLOSE_FIELD_NUMBER = 108;
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectPcClose() {
+    return effectCase_ == 108;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect getDirectPcClose() {
+    if (effectCase_ == 108) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectPcClose(io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 108;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectPcClose(io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 108 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 108;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+   */
+  private void clearDirectPcClose() {
+    if (effectCase_ == 108) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_DC_READ_STATS_FIELD_NUMBER = 109;
+  /**
+   * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectDcReadStats() {
+    return effectCase_ == 109;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect getDirectDcReadStats() {
+    if (effectCase_ == 109) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectDcReadStats(io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 109;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectDcReadStats(io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 109 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 109;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+   */
+  private void clearDirectDcReadStats() {
+    if (effectCase_ == 109) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_AUTHORIZE_FIELD_NUMBER = 110;
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectAuthorize() {
+    return effectCase_ == 110;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect getDirectAuthorize() {
+    if (effectCase_ == 110) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectAuthorize(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 110;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectAuthorize(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 110 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 110;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+   */
+  private void clearDirectAuthorize() {
+    if (effectCase_ == 110) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_BULK_ROUTE_FIELD_NUMBER = 111;
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectBulkRoute() {
+    return effectCase_ == 111;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect getDirectBulkRoute() {
+    if (effectCase_ == 111) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectBulkRoute(io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 111;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectBulkRoute(io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 111 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 111;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+   */
+  private void clearDirectBulkRoute() {
+    if (effectCase_ == 111) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int TERMINAL_REOPEN_FIELD_NUMBER = 112;
+  /**
+   * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalReopen() {
+    return effectCase_ == 112;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect getTerminalReopen() {
+    if (effectCase_ == 112) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalReopen(io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 112;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalReopen(io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 112 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 112;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+   */
+  private void clearTerminalReopen() {
+    if (effectCase_ == 112) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DIRECT_RETRY_NOW_RESULT_FIELD_NUMBER = 113;
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectRetryNowResult() {
+    return effectCase_ == 113;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect getDirectRetryNowResult() {
+    if (effectCase_ == 113) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectRetryNowResult(io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 113;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectRetryNowResult(io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 113 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 113;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+   */
+  private void clearDirectRetryNowResult() {
+    if (effectCase_ == 113) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.Effect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3428,6 +4184,678 @@ public  final class Effect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectKeySign() {
+      return instance.hasDirectKeySign();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect getDirectKeySign() {
+      return instance.getDirectKeySign();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+     */
+    public Builder setDirectKeySign(io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect value) {
+      copyOnWrite();
+      instance.setDirectKeySign(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+     */
+    public Builder setDirectKeySign(
+        io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectKeySign(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+     */
+    public Builder mergeDirectKeySign(io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect value) {
+      copyOnWrite();
+      instance.mergeDirectKeySign(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
+     */
+    public Builder clearDirectKeySign() {
+      copyOnWrite();
+      instance.clearDirectKeySign();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectKeyAgree() {
+      return instance.hasDirectKeyAgree();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect getDirectKeyAgree() {
+      return instance.getDirectKeyAgree();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+     */
+    public Builder setDirectKeyAgree(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect value) {
+      copyOnWrite();
+      instance.setDirectKeyAgree(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+     */
+    public Builder setDirectKeyAgree(
+        io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectKeyAgree(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+     */
+    public Builder mergeDirectKeyAgree(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect value) {
+      copyOnWrite();
+      instance.mergeDirectKeyAgree(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
+     */
+    public Builder clearDirectKeyAgree() {
+      copyOnWrite();
+      instance.clearDirectKeyAgree();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectSignalSend() {
+      return instance.hasDirectSignalSend();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect getDirectSignalSend() {
+      return instance.getDirectSignalSend();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+     */
+    public Builder setDirectSignalSend(io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect value) {
+      copyOnWrite();
+      instance.setDirectSignalSend(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+     */
+    public Builder setDirectSignalSend(
+        io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectSignalSend(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+     */
+    public Builder mergeDirectSignalSend(io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect value) {
+      copyOnWrite();
+      instance.mergeDirectSignalSend(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
+     */
+    public Builder clearDirectSignalSend() {
+      copyOnWrite();
+      instance.clearDirectSignalSend();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcCreate() {
+      return instance.hasDirectPcCreate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect getDirectPcCreate() {
+      return instance.getDirectPcCreate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+     */
+    public Builder setDirectPcCreate(io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect value) {
+      copyOnWrite();
+      instance.setDirectPcCreate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+     */
+    public Builder setDirectPcCreate(
+        io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcCreate(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+     */
+    public Builder mergeDirectPcCreate(io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect value) {
+      copyOnWrite();
+      instance.mergeDirectPcCreate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCreateEffect direct_pc_create = 103 [json_name = "directPcCreate"];</code>
+     */
+    public Builder clearDirectPcCreate() {
+      copyOnWrite();
+      instance.clearDirectPcCreate();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcDescribe() {
+      return instance.hasDirectPcDescribe();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect getDirectPcDescribe() {
+      return instance.getDirectPcDescribe();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+     */
+    public Builder setDirectPcDescribe(io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect value) {
+      copyOnWrite();
+      instance.setDirectPcDescribe(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+     */
+    public Builder setDirectPcDescribe(
+        io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcDescribe(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+     */
+    public Builder mergeDirectPcDescribe(io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect value) {
+      copyOnWrite();
+      instance.mergeDirectPcDescribe(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcDescribeEffect direct_pc_describe = 104 [json_name = "directPcDescribe"];</code>
+     */
+    public Builder clearDirectPcDescribe() {
+      copyOnWrite();
+      instance.clearDirectPcDescribe();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcSetRemote() {
+      return instance.hasDirectPcSetRemote();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect getDirectPcSetRemote() {
+      return instance.getDirectPcSetRemote();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+     */
+    public Builder setDirectPcSetRemote(io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect value) {
+      copyOnWrite();
+      instance.setDirectPcSetRemote(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+     */
+    public Builder setDirectPcSetRemote(
+        io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcSetRemote(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+     */
+    public Builder mergeDirectPcSetRemote(io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect value) {
+      copyOnWrite();
+      instance.mergeDirectPcSetRemote(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcSetRemoteEffect direct_pc_set_remote = 105 [json_name = "directPcSetRemote"];</code>
+     */
+    public Builder clearDirectPcSetRemote() {
+      copyOnWrite();
+      instance.clearDirectPcSetRemote();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcAddCandidates() {
+      return instance.hasDirectPcAddCandidates();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect getDirectPcAddCandidates() {
+      return instance.getDirectPcAddCandidates();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+     */
+    public Builder setDirectPcAddCandidates(io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect value) {
+      copyOnWrite();
+      instance.setDirectPcAddCandidates(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+     */
+    public Builder setDirectPcAddCandidates(
+        io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcAddCandidates(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+     */
+    public Builder mergeDirectPcAddCandidates(io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect value) {
+      copyOnWrite();
+      instance.mergeDirectPcAddCandidates(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcAddCandidatesEffect direct_pc_add_candidates = 106 [json_name = "directPcAddCandidates"];</code>
+     */
+    public Builder clearDirectPcAddCandidates() {
+      copyOnWrite();
+      instance.clearDirectPcAddCandidates();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcConfirm() {
+      return instance.hasDirectPcConfirm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect getDirectPcConfirm() {
+      return instance.getDirectPcConfirm();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+     */
+    public Builder setDirectPcConfirm(io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect value) {
+      copyOnWrite();
+      instance.setDirectPcConfirm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+     */
+    public Builder setDirectPcConfirm(
+        io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcConfirm(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+     */
+    public Builder mergeDirectPcConfirm(io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect value) {
+      copyOnWrite();
+      instance.mergeDirectPcConfirm(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcConfirmEffect direct_pc_confirm = 107 [json_name = "directPcConfirm"];</code>
+     */
+    public Builder clearDirectPcConfirm() {
+      copyOnWrite();
+      instance.clearDirectPcConfirm();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectPcClose() {
+      return instance.hasDirectPcClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect getDirectPcClose() {
+      return instance.getDirectPcClose();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+     */
+    public Builder setDirectPcClose(io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect value) {
+      copyOnWrite();
+      instance.setDirectPcClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+     */
+    public Builder setDirectPcClose(
+        io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectPcClose(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+     */
+    public Builder mergeDirectPcClose(io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect value) {
+      copyOnWrite();
+      instance.mergeDirectPcClose(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectPcCloseEffect direct_pc_close = 108 [json_name = "directPcClose"];</code>
+     */
+    public Builder clearDirectPcClose() {
+      copyOnWrite();
+      instance.clearDirectPcClose();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectDcReadStats() {
+      return instance.hasDirectDcReadStats();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect getDirectDcReadStats() {
+      return instance.getDirectDcReadStats();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+     */
+    public Builder setDirectDcReadStats(io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect value) {
+      copyOnWrite();
+      instance.setDirectDcReadStats(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+     */
+    public Builder setDirectDcReadStats(
+        io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectDcReadStats(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+     */
+    public Builder mergeDirectDcReadStats(io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect value) {
+      copyOnWrite();
+      instance.mergeDirectDcReadStats(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectDcReadStatsEffect direct_dc_read_stats = 109 [json_name = "directDcReadStats"];</code>
+     */
+    public Builder clearDirectDcReadStats() {
+      copyOnWrite();
+      instance.clearDirectDcReadStats();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectAuthorize() {
+      return instance.hasDirectAuthorize();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect getDirectAuthorize() {
+      return instance.getDirectAuthorize();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+     */
+    public Builder setDirectAuthorize(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect value) {
+      copyOnWrite();
+      instance.setDirectAuthorize(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+     */
+    public Builder setDirectAuthorize(
+        io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectAuthorize(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+     */
+    public Builder mergeDirectAuthorize(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect value) {
+      copyOnWrite();
+      instance.mergeDirectAuthorize(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
+     */
+    public Builder clearDirectAuthorize() {
+      copyOnWrite();
+      instance.clearDirectAuthorize();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectBulkRoute() {
+      return instance.hasDirectBulkRoute();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect getDirectBulkRoute() {
+      return instance.getDirectBulkRoute();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+     */
+    public Builder setDirectBulkRoute(io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect value) {
+      copyOnWrite();
+      instance.setDirectBulkRoute(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+     */
+    public Builder setDirectBulkRoute(
+        io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectBulkRoute(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+     */
+    public Builder mergeDirectBulkRoute(io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect value) {
+      copyOnWrite();
+      instance.mergeDirectBulkRoute(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>
+     */
+    public Builder clearDirectBulkRoute() {
+      copyOnWrite();
+      instance.clearDirectBulkRoute();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalReopen() {
+      return instance.hasTerminalReopen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect getTerminalReopen() {
+      return instance.getTerminalReopen();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+     */
+    public Builder setTerminalReopen(io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect value) {
+      copyOnWrite();
+      instance.setTerminalReopen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+     */
+    public Builder setTerminalReopen(
+        io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalReopen(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+     */
+    public Builder mergeTerminalReopen(io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect value) {
+      copyOnWrite();
+      instance.mergeTerminalReopen(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalReopenEffect terminal_reopen = 112 [json_name = "terminalReopen"];</code>
+     */
+    public Builder clearTerminalReopen() {
+      copyOnWrite();
+      instance.clearTerminalReopen();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectRetryNowResult() {
+      return instance.hasDirectRetryNowResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect getDirectRetryNowResult() {
+      return instance.getDirectRetryNowResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+     */
+    public Builder setDirectRetryNowResult(io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect value) {
+      copyOnWrite();
+      instance.setDirectRetryNowResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+     */
+    public Builder setDirectRetryNowResult(
+        io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectRetryNowResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+     */
+    public Builder mergeDirectRetryNowResult(io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect value) {
+      copyOnWrite();
+      instance.mergeDirectRetryNowResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectRetryNowResultEffect direct_retry_now_result = 113 [json_name = "directRetryNowResult"];</code>
+     */
+    public Builder clearDirectRetryNowResult() {
+      copyOnWrite();
+      instance.clearDirectRetryNowResult();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.Effect)
   }
   @java.lang.Override
@@ -3478,13 +4906,28 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.class,
             io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.class,
             io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcSetRemoteEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect.class,
           };
           java.lang.String info =
-              "\u0000 \u0001\u0000\u0001L \u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003<\u0000" +
+              "\u0000.\u0001\u0000\u0001q.\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003<\u0000" +
               "\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b" +
               "<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000(<\u0000" +
               ")<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000" +
-              "I<\u0000J<\u0000K<\u0000L<\u0000";
+              "I<\u0000J<\u0000K<\u0000L<\u0000d<\u0000e<\u0000f<\u0000g<\u0000h<\u0000i<\u0000" +
+              "j<\u0000k<\u0000l<\u0000m<\u0000n<\u0000o<\u0000p<\u0000q<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -159,6 +159,17 @@ public interface ViewModelOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageViewModel getUsage();
 
   /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   * @return Whether the directDiagnostics field is set.
+   */
+  boolean hasDirectDiagnostics();
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsViewModel direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   * @return The directDiagnostics.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel getDirectDiagnostics();
+
+  /**
    * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
    * @return Whether the session field is set.
    */

@@ -38,6 +38,16 @@ func (d *DispatchState) HasPrior() bool {
 	return d.PriorUnknown || d.Possible > 0
 }
 
+// CommandLeg tracks one in-flight transport attempt leg (direct vs relay) of a PreparedCommand.
+type CommandLeg struct {
+	AttemptID string
+	Direct    bool
+	TicketID  uint64
+	HandedOff bool
+	Done      bool
+	Outcome   *corev1.CommandOutcomeEvent
+}
+
 // PreparedCommand preserves a fixed RequestID, DeadlineMs, and serialized command payload across retries.
 type PreparedCommand struct {
 	RequestID          string
@@ -54,6 +64,10 @@ type PreparedCommand struct {
 	AttemptCount       int
 	RecoveryUntilMs    int64
 	PendingAttempts    map[string]bool
+	DualMode           bool
+	ActiveLegs         map[string]*CommandLeg
+	DirectLegID        string
+	RelayLegID         string
 	BulkFileKey        string
 	BulkBytes          int64
 	BulkUpload         bool
@@ -140,6 +154,7 @@ func (e *Engine) SubmitCommand(ctx *StepContext, in SubmitCommandParams) (reques
 	}
 
 	prep.Dispatch.PriorUnknown = prep.Dispatch.PriorUnknown || retryOfUnknown
+	e.trackCommandTransferLifecycle(prep.Command, prep.MachineID)
 	if !e.preflightAndEmit(ctx, prep, retryOfUnknown) {
 		return prep.RequestID, false
 	}
@@ -255,31 +270,122 @@ func (e *Engine) preflightAndEmit(ctx *StepContext, prep *PreparedCommand, retry
 }
 
 func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, retryOfUnknown bool) {
-	attemptID := e.entropy.nextID(ctx)
-	prep.Dispatch.Active++
-	prep.Dispatch.Possible++
-	prep.PendingAttempts[attemptID] = true
-	e.inFlightCmds[prep.RequestID] = prep
-	e.reqIDByAttempt[attemptID] = prep.RequestID
+	if !e.transportConfigured || e.transportCoord == nil {
+		attemptID := e.entropy.nextID(ctx)
+		prep.Dispatch.Active++
+		prep.Dispatch.Possible++
+		prep.PendingAttempts[attemptID] = true
+		e.inFlightCmds[prep.RequestID] = prep
+		e.reqIDByAttempt[attemptID] = prep.RequestID
 
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_DispatchCommand{
-			DispatchCommand: &corev1.DispatchCommandEffect{
-				RequestId:      prep.RequestID,
-				AttemptId:      attemptID,
-				MachineId:      prep.MachineID,
-				SessionId:      prep.SessionID,
-				DeadlineMs:     prep.DeadlineMs,
-				CommandBytes:   prep.CommandBytes,
-				RouteHint:      prep.RouteHint,
-				RetryOfUnknown: retryOfUnknown,
-				ForceRelay:     prep.ForceRelay,
-				BulkFileKey:    prep.BulkFileKey,
-				BulkBytes:      prep.BulkBytes,
-				BulkUpload:     prep.BulkUpload,
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_DispatchCommand{
+				DispatchCommand: &corev1.DispatchCommandEffect{
+					RequestId:      prep.RequestID,
+					AttemptId:      attemptID,
+					MachineId:      prep.MachineID,
+					SessionId:      prep.SessionID,
+					DeadlineMs:     prep.DeadlineMs,
+					CommandBytes:   prep.CommandBytes,
+					RouteHint:      prep.RouteHint,
+					RetryOfUnknown: retryOfUnknown,
+					ForceRelay:     prep.ForceRelay,
+					BulkFileKey:    prep.BulkFileKey,
+					BulkBytes:      prep.BulkBytes,
+					BulkUpload:     prep.BulkUpload,
+				},
 			},
-		},
-	})
+		})
+		return
+	}
+
+	if prep.ActiveLegs == nil {
+		prep.ActiveLegs = make(map[string]*CommandLeg)
+	} else {
+		clear(prep.ActiveLegs)
+	}
+	prep.DualMode = false
+	prep.DirectLegID = ""
+	prep.RelayLegID = ""
+	e.inFlightCmds[prep.RequestID] = prep
+
+	emitLeg := func(attemptID string, leg corev1.CommandRouteLeg, dec directRouteArg) {
+		prep.Dispatch.Active++
+		prep.Dispatch.Possible++
+		prep.PendingAttempts[attemptID] = true
+		e.reqIDByAttempt[attemptID] = prep.RequestID
+		isDirect := leg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT
+		prep.ActiveLegs[attemptID] = &CommandLeg{
+			AttemptID: attemptID,
+			Direct:    isDirect,
+			TicketID:  dec.ticketID,
+		}
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_DispatchCommand{
+				DispatchCommand: &corev1.DispatchCommandEffect{
+					RequestId:       prep.RequestID,
+					AttemptId:       attemptID,
+					MachineId:       prep.MachineID,
+					SessionId:       prep.SessionID,
+					DeadlineMs:      prep.DeadlineMs,
+					CommandBytes:    prep.CommandBytes,
+					RouteHint:       prep.RouteHint,
+					RetryOfUnknown:  retryOfUnknown,
+					ForceRelay:      prep.ForceRelay,
+					BulkFileKey:     prep.BulkFileKey,
+					BulkBytes:       prep.BulkBytes,
+					BulkUpload:      prep.BulkUpload,
+					RouteLeg:        leg,
+					DirectPcId:      dec.pcID,
+					DirectTimeoutMs: dec.timeoutMs,
+					DirectTicketId:  dec.ticketID,
+				},
+			},
+		})
+	}
+
+	if !prep.ForceRelay && isInteractiveCommand(prep.Command) {
+		if dec, ok := e.transportCoord.PrepareInteractive(e.nowMs, prep.MachineID, prep.DeadlineMs); ok {
+			attemptD := e.entropy.nextID(ctx)
+			attemptR := e.entropy.nextID(ctx)
+			prep.DualMode = true
+			prep.DirectLegID = attemptD
+			prep.RelayLegID = attemptR
+			emitLeg(attemptD, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT, directRouteArg{
+				pcID:      dec.PCID,
+				timeoutMs: dec.TimeoutMs,
+				ticketID:  dec.TicketID,
+			})
+			emitLeg(attemptR, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY, directRouteArg{})
+			e.syncDirectTimers(ctx)
+			return
+		}
+	}
+
+	if !prep.ForceRelay {
+		if h, ok := e.commandTransportHint(prep); ok {
+			dec := e.transportCoord.PrepareAttempt(e.nowMs, prep.MachineID, h, prep.DeadlineMs, prep.ForceRelay)
+			e.syncDirectTimers(ctx)
+			attemptID := e.entropy.nextID(ctx)
+			leg := corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY
+			var arg directRouteArg
+			if dec.UseDirect {
+				leg = corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT
+			}
+			arg = directRouteArg{pcID: dec.PCID, timeoutMs: dec.TimeoutMs, ticketID: dec.TicketID}
+			emitLeg(attemptID, leg, arg)
+			return
+		}
+	}
+
+	attemptID := e.entropy.nextID(ctx)
+	emitLeg(attemptID, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY, directRouteArg{})
+}
+
+type directRouteArg struct {
+	pcID      uint64
+	timeoutMs int64
+	ticketID  uint64
 }
 
 func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcomeEvent) {
@@ -303,7 +409,97 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 		}
 	}
 
+	var leg *CommandLeg
+	if len(prep.ActiveLegs) > 0 && ev.AttemptId != "" {
+		leg = prep.ActiveLegs[ev.AttemptId]
+	}
+
 	priorBefore := prep.Dispatch.PriorUnknown || (prep.Dispatch.Possible > 1) || (ev.Source != corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL && !ev.NotForwarded)
+
+	if e.transportConfigured && e.transportCoord != nil {
+		ticketID := ev.DirectTicketId
+		if ticketID == 0 && leg != nil {
+			ticketID = leg.TicketID
+		}
+		daemonOK := false
+		if ev.Source == corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON {
+			cat := classifyDaemonOutcome(ev, priorBefore)
+			daemonOK = cat != outcome.Unknown
+			if daemonOK && ticketID != 0 {
+				e.emitCoordEffects(ctx, e.transportCoord.ObserveTicket(e.nowMs, ticketID, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
+			} else if !daemonOK && ev.RouteWasDirect && ticketID != 0 {
+				e.emitCoordEffects(ctx, e.transportCoord.FailTicket(e.nowMs, ticketID))
+			}
+		} else if ev.RouteWasDirect && ticketID != 0 {
+			e.emitCoordEffects(ctx, e.transportCoord.FailTicket(e.nowMs, ticketID))
+		}
+
+		if prep.DualMode && leg != nil {
+			if daemonOK {
+				prep.DualMode = false
+				clear(prep.ActiveLegs)
+			} else {
+				leg.Done = true
+				evCopy := *ev
+				leg.Outcome = &evCopy
+				leg.HandedOff = ev.HandedOff || !ev.NotForwarded
+				if ev.RouteWasDirect {
+					prep.ForceRelay = true
+				}
+				if !leg.HandedOff && prep.Dispatch.Possible > 0 {
+					prep.Dispatch.Possible--
+				}
+				var sibling *CommandLeg
+				for id, l := range prep.ActiveLegs {
+					if id != leg.AttemptID {
+						sibling = l
+						break
+					}
+				}
+				if sibling != nil && !sibling.Done {
+					return
+				}
+				// Both legs finished without a verified daemon result.
+				directLeg := prep.ActiveLegs[prep.DirectLegID]
+				relayLeg := prep.ActiveLegs[prep.RelayLegID]
+				chosen := evCopy
+				if relayLeg != nil && relayLeg.Outcome != nil {
+					chosen = *relayLeg.Outcome
+				}
+				serverNotForwarded := chosen.Source == corev1.OutcomeSource_OUTCOME_SOURCE_SERVER && chosen.NotForwarded && chosen.AttemptBound
+				relayPossiblyForwarded := relayLeg != nil && relayLeg.HandedOff && !serverNotForwarded
+				if (directLeg != nil && directLeg.HandedOff) || relayPossiblyForwarded {
+					chosen.NotForwarded = false
+					if chosen.Source == corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL || chosen.Source == corev1.OutcomeSource_OUTCOME_SOURCE_SERVER {
+						chosen.Source = corev1.OutcomeSource_OUTCOME_SOURCE_TRANSPORT
+					}
+					prep.Dispatch.PriorUnknown = true
+				}
+				prep.DualMode = false
+				clear(prep.ActiveLegs)
+				prep.ForceRelay = true
+				ev = &chosen
+				priorBefore = prep.Dispatch.PriorUnknown || (prep.Dispatch.Possible > 1) || (ev.Source != corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL && !ev.NotForwarded)
+			}
+		} else if !prep.DualMode && ev.RouteWasDirect && ev.Source != corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON {
+			prep.ForceRelay = true
+			if ev.NotForwarded && !ev.HandedOff {
+				if prep.Dispatch.Possible > 0 {
+					prep.Dispatch.Possible--
+				}
+			} else {
+				prep.Dispatch.PriorUnknown = true
+			}
+			deadlineLimit := prep.DeadlineMs
+			if ev.TransportCode == errCodePathChanged {
+				deadlineLimit = prep.RecoveryDeadlineMs
+			}
+			if e.nowMs < deadlineLimit && e.running {
+				e.emitCommandAttempt(ctx, prep, prep.Dispatch.HasPrior())
+				return
+			}
+		}
+	}
 
 	switch ev.Source {
 	case corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL:
@@ -493,6 +689,8 @@ func (e *Engine) settleCommand(
 		delete(e.reqIDByAttempt, aid)
 	}
 	clear(prep.PendingAttempts)
+	clear(prep.ActiveLegs)
+	prep.DualMode = false
 
 	if _, isLive := e.livePollReqToSid[prep.RequestID]; isLive {
 		e.onLivePollSettled(ctx, prep.RequestID, res)
@@ -577,8 +775,7 @@ func routeHintFor(cmd *v1.Command) corev1.CommandRouteHint {
 		*v1.Command_GetSettings,
 		*v1.Command_GetLiveSnapshot,
 		*v1.Command_GetMachineStatus,
-		*v1.Command_GetUsageStats,
-		*v1.Command_GetImageUploadStatus:
+		*v1.Command_GetUsageStats:
 		return corev1.CommandRouteHint_COMMAND_ROUTE_HINT_READ
 	case *v1.Command_Schedule:
 		if k.Schedule != nil && (k.Schedule.Operation == "list" || k.Schedule.Operation == "get") {

@@ -508,6 +508,11 @@ func buildSessionHeader(
 		TerminalAvailable:   meta != nil && meta.Status != v1.SessionStatus_SESSION_STATUS_EXITED,
 		MaxImages:           maxImagesCount(mc),
 	}
+	if st != nil && st.DirectReportFn != nil && machineID != "" {
+		if _, report, ok := st.DirectReportFn(machineID); ok {
+			out.DirectChip = BuildSessionDirectChip(report, out.ComputerName, out.ComputerOnline, out.ComputerUnlinked, out.Exited)
+		}
+	}
 
 	return out
 }

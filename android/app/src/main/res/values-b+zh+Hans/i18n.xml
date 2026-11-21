@@ -2186,29 +2186,98 @@
     <string name="transport_conn_footer_unsupported_app" formatted="false">"当前应用版本暂不支持直连，已全部经中继连接。"</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"在这台电脑上开启后可用"</string>
     <string name="transport_detail_relay_only" formatted="false">"已全部经中继连接，不影响正常使用"</string>
+    <string name="transport_diag_at">"%2$s %1$s 秒"</string>
+    <string name="transport_diag_cand">"%2$s ×%1$d（%3$s）"</string>
+    <string name="transport_diag_channel" formatted="false">"数据通道"</string>
     <string name="transport_diag_check_path" formatted="false">"局域网或公网直通"</string>
     <string name="transport_diag_check_peer" formatted="false">"电脑在线并响应"</string>
     <string name="transport_diag_check_retry" formatted="false">"后台自动重试"</string>
     <string name="transport_diag_connected_body" formatted="false">"加载与文件现在已恢复直连。"</string>
     <string name="transport_diag_connected_title" formatted="false">"直连已连上"</string>
     <string name="transport_diag_copy_permission" formatted="false">"没能复制，请检查剪贴板权限"</string>
+    <string name="transport_diag_count">"×%1$d"</string>
+    <string name="transport_diag_dtls" formatted="false">"加密握手"</string>
     <string name="transport_diag_explain_generic" formatted="false">"本次协商没有在时限内完成，网络稳定后会自动再试。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_explain_nat" formatted="false">"本机与电脑各自处在限制直连的网络里，常见于蜂窝网络或公司内网。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_explain_no_reply" formatted="false">"电脑没有回应直连握手，可能在电脑上关闭了直连或防火墙拦下了请求。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_explain_peer_old" formatted="false">"电脑上安装的 remote-agent 版本暂不支持直连，更新后即可自动使用。当前所有操作都已自动走中继，不影响正常使用。"</string>
     <string name="transport_diag_explain_probe_blocked" formatted="false">"当前网络限制了直连探测所需的 UDP 通信。当前所有操作都已自动走中继，不影响正常使用。"</string>
+    <string name="transport_diag_family_unknown" formatted="false">"未知"</string>
+    <string name="transport_diag_g_checks" formatted="false">"连通检查"</string>
+    <string name="transport_diag_g_local" formatted="false">"本机地址"</string>
+    <string name="transport_diag_g_peer" formatted="false">"电脑地址"</string>
+    <string name="transport_diag_g_result" formatted="false">"结果"</string>
+    <string name="transport_diag_gather" formatted="false">"收集地址"</string>
+    <string name="transport_diag_hidden" formatted="false">"已隐藏的地址"</string>
+    <string name="transport_diag_ice" formatted="false">"ICE 状态"</string>
+    <string name="transport_diag_ipv4" formatted="false">"IPv4"</string>
+    <string name="transport_diag_ipv6" formatted="false">"IPv6"</string>
+    <string name="transport_diag_no_attempt" formatted="false">"没有创建连接"</string>
+    <string name="transport_diag_none" formatted="false">"没有"</string>
+    <string name="transport_diag_not_sampled" formatted="false">"没有读到检查记录"</string>
+    <string name="transport_diag_pair">"%1$s → %2$s"</string>
+    <string name="transport_diag_pair_failed">"失败 %1$d"</string>
+    <string name="transport_diag_pair_ok">"成功 %1$d"</string>
+    <string name="transport_diag_pair_traffic">"发出 %2$d · 收到 %1$d"</string>
+    <string name="transport_diag_pair_wait">"进行中 %1$d"</string>
     <string name="transport_diag_path_failed" formatted="false">"未能建立直连通道"</string>
     <string name="transport_diag_path_nat" formatted="false">"两边都在运营商共享网关后，未能直通"</string>
     <string name="transport_diag_path_udp_blocked" formatted="false">"UDP 直连探测被当前网络拦截"</string>
     <string name="transport_diag_peer_no_reply_desc" formatted="false">"握手等待超时，未收到电脑应答"</string>
     <string name="transport_diag_peer_old_desc" formatted="false">"电脑上的 remote-agent 暂不支持直连"</string>
     <string name="transport_diag_privacy_footer" formatted="false">"复制的诊断只含地址类型和范围，不含具体地址、端口或对话内容。"</string>
+    <string name="transport_diag_range_cgnat" formatted="false">"运营商共享"</string>
+    <string name="transport_diag_range_global" formatted="false">"全球"</string>
+    <string name="transport_diag_range_link_local" formatted="false">"链路本地"</string>
+    <string name="transport_diag_range_loopback" formatted="false">"回环"</string>
+    <string name="transport_diag_range_other" formatted="false">"其他"</string>
+    <string name="transport_diag_range_private" formatted="false">"私网"</string>
+    <string name="transport_diag_range_public" formatted="false">"公网"</string>
+    <string name="transport_diag_range_ula" formatted="false">"本地唯一"</string>
+    <string name="transport_diag_rej_browser" formatted="false">"浏览器拒绝的地址"</string>
+    <string name="transport_diag_rej_candidates" formatted="false">"候选地址"</string>
+    <string name="transport_diag_rej_confirm" formatted="false">"确认"</string>
+    <string name="transport_diag_rej_end" formatted="false">"地址结束标记"</string>
+    <string name="transport_diag_rej_sdp" formatted="false">"连接信息"</string>
+    <string name="transport_diag_rej_signal" formatted="false">"其他握手消息"</string>
+    <string name="transport_diag_rej_value">"%2$s：%3$s ×%1$d"</string>
+    <string name="transport_diag_rejected" formatted="false">"被拒绝的消息"</string>
+    <string name="transport_diag_report_browser">"浏览器：%1$s"</string>
+    <string name="transport_diag_report_round">"第 %2$d 次 · %1$s"</string>
     <string name="transport_diag_report_title" formatted="false">"直连诊断"</string>
     <string name="transport_diag_report_verdict">"结论：%1$s"</string>
+    <string name="transport_diag_result_cancelled" formatted="false">"已取消"</string>
+    <string name="transport_diag_result_lost" formatted="false">"连上后断开"</string>
+    <string name="transport_diag_result_no_response" formatted="false">"电脑没回应"</string>
+    <string name="transport_diag_result_ok" formatted="false">"已连上"</string>
+    <string name="transport_diag_result_refused" formatted="false">"电脑拒绝"</string>
+    <string name="transport_diag_result_retired" formatted="false">"被新一轮替换"</string>
+    <string name="transport_diag_result_timeout" formatted="false">"没连上"</string>
+    <string name="transport_diag_result_trying" formatted="false">"进行中"</string>
     <string name="transport_diag_retry_auto_desc" formatted="false">"切换 Wi-Fi 或网络变化时会自动再试"</string>
     <string name="transport_diag_retry_wait_desc" formatted="false">"更新电脑上的 remote-agent 后自动恢复"</string>
     <string name="transport_diag_retrying" formatted="false">"正在尝试…"</string>
+    <string name="transport_diag_round">"%1$s · %2$s 秒"</string>
+    <string name="transport_diag_rtt">"%1$d ms"</string>
     <string name="transport_diag_section_auto" formatted="false">"自动排障检查"</string>
+    <string name="transport_diag_sig_limited">"被中继限速 ×%1$d"</string>
+    <string name="transport_diag_sig_offline">"电脑不在线 ×%1$d"</string>
+    <string name="transport_diag_sig_refused" formatted="false">"电脑回复不支持"</string>
+    <string name="transport_diag_signal" formatted="false">"握手消息"</string>
+    <string name="transport_diag_stage" formatted="false">"停在"</string>
+    <string name="transport_diag_stage_channel" formatted="false">"打开数据通道"</string>
+    <string name="transport_diag_stage_confirm" formatted="false">"等电脑确认"</string>
+    <string name="transport_diag_stage_dtls" formatted="false">"加密握手"</string>
+    <string name="transport_diag_stage_handshake" formatted="false">"等电脑回应握手"</string>
+    <string name="transport_diag_stage_ice" formatted="false">"连通检查"</string>
+    <string name="transport_diag_stage_ready" formatted="false">"已完成"</string>
+    <string name="transport_diag_stage_sdp" formatted="false">"交换连接信息"</string>
+    <string name="transport_diag_state_closed" formatted="false">"已关闭"</string>
+    <string name="transport_diag_state_doing" formatted="false">"进行中"</string>
+    <string name="transport_diag_state_dropped" formatted="false">"已断开"</string>
+    <string name="transport_diag_state_failed" formatted="false">"失败"</string>
+    <string name="transport_diag_state_none" formatted="false">"未开始"</string>
+    <string name="transport_diag_state_ok" formatted="false">"已完成"</string>
     <string name="transport_diag_status_blocked" formatted="false">"未通"</string>
     <string name="transport_diag_status_checking" formatted="false">"正在检查…"</string>
     <string name="transport_diag_status_connected" formatted="false">"已连通"</string>
@@ -2218,10 +2287,38 @@
     <string name="transport_diag_status_ok" formatted="false">"正常"</string>
     <string name="transport_diag_status_peer_old" formatted="false">"版本过旧"</string>
     <string name="transport_diag_status_wait_update" formatted="false">"等待更新"</string>
+    <string name="transport_diag_stun_error">"%1$d · %3$s ×%2$d"</string>
+    <string name="transport_diag_stun_errors" formatted="false">"STUN 错误"</string>
     <string name="transport_diag_title_generic" formatted="false">"暂时没连上，稍后会自动再试"</string>
     <string name="transport_diag_title_no_reply" formatted="false">"电脑没有回应直连握手，可能在电脑上关了直连"</string>
     <string name="transport_diag_title_probe_blocked" formatted="false">"所在网络限制了直连探测，不能直接连通"</string>
+    <string name="transport_diag_type_host" formatted="false">"本机网卡"</string>
+    <string name="transport_diag_type_other" formatted="false">"其他"</string>
+    <string name="transport_diag_type_prflx" formatted="false">"对端发现"</string>
+    <string name="transport_diag_type_relay" formatted="false">"中继"</string>
+    <string name="transport_diag_type_srflx" formatted="false">"公网映射"</string>
+    <string name="transport_diag_use_file" formatted="false">"文件"</string>
+    <string name="transport_diag_use_read" formatted="false">"加载"</string>
+    <string name="transport_diag_verdict_all_failed" formatted="false">"两边地址都有，连通检查全部失败"</string>
+    <string name="transport_diag_verdict_budget" formatted="false">"本机的直连名额已满，这次没有尝试"</string>
+    <string name="transport_diag_verdict_cancelled" formatted="false">"这次尝试被取消了（直连被关闭或网络变了）"</string>
+    <string name="transport_diag_verdict_channel" formatted="false">"加密握手完成，数据通道没有打开"</string>
+    <string name="transport_diag_verdict_confirm" formatted="false">"数据通道已打开，但电脑没有确认"</string>
+    <string name="transport_diag_verdict_connected" formatted="false">"直连已连上"</string>
+    <string name="transport_diag_verdict_create_failed" formatted="false">"浏览器没能创建直连"</string>
+    <string name="transport_diag_verdict_dtls" formatted="false">"已连上，加密握手没完成"</string>
+    <string name="transport_diag_verdict_ipv6_silent" formatted="false">"本机拿到了 IPv6，但电脑的 IPv6 地址没有回应"</string>
+    <string name="transport_diag_verdict_lost" formatted="false">"直连连上后又断开了"</string>
+    <string name="transport_diag_verdict_no_local" formatted="false">"本机没有拿到任何可用地址"</string>
+    <string name="transport_diag_verdict_no_remote" formatted="false">"没有收到电脑的任何地址"</string>
+    <string name="transport_diag_verdict_no_reply" formatted="false">"电脑没有回应直连握手，可能在电脑上关了直连"</string>
+    <string name="transport_diag_verdict_no_sdp" formatted="false">"和电脑没有完成连接信息的交换"</string>
+    <string name="transport_diag_verdict_no_stun" formatted="false">"本机没有拿到公网映射地址，网络可能挡了 STUN"</string>
     <string name="transport_diag_verdict_none" formatted="false">"还没有直连尝试的记录"</string>
+    <string name="transport_diag_verdict_peer_refused" formatted="false">"电脑拒绝了这次直连（版本、策略或数量上限）"</string>
+    <string name="transport_diag_verdict_signal_limited" formatted="false">"握手消息被中继限速了，稍后会自动再试"</string>
+    <string name="transport_diag_verdict_signal_offline" formatted="false">"握手消息没送到：电脑当前不在线"</string>
+    <string name="transport_diag_verdict_unknown" formatted="false">"没连上，原因不明"</string>
     <string name="transport_direct" formatted="false">"直连"</string>
     <string name="transport_direct_slow" formatted="false">"直连较慢，暂时改用中继"</string>
     <string name="transport_file_speed_both">"直连 %1$s · 中继 %2$s MiB/s"</string>

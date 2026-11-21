@@ -159,6 +159,17 @@ public interface ScreenOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageScreenRequest getUsage();
 
   /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   * @return Whether the directDiagnostics field is set.
+   */
+  boolean hasDirectDiagnostics();
+  /**
+   * <code>.remoteagent.core.v1.DirectDiagnosticsScreenRequest direct_diagnostics = 37 [json_name = "directDiagnostics"];</code>
+   * @return The directDiagnostics.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest getDirectDiagnostics();
+
+  /**
    * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
    * @return Whether the session field is set.
    */

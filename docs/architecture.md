@@ -254,7 +254,7 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 
 #### 体积与性能预算
 
-- 体积：网页 wasm brotli 全部迁完后（各界面与 security 都进核心）不超过 1.6 MB；同时首屏要下载的 JS、CSS 与 wasm（brotli）合计不超过 2026-11-17 的水平加 15%（当时 wasm 约 1,256 KiB、全部 JS 约 595 KiB）——逻辑从 TS 搬进核心时，JS 必须相应变小，体积只是换了地方不算达标。Android 每个 ABI、iOS 每个切片不超过 6 MB。最初定的 1.2 MB 只算了运行时和加密库，没有算各界面的视图模型代码，迁完会话、设置、定时三个界面就已超过
+- 体积：网页 wasm brotli 全部迁完后（各界面与 security 都进核心）目标约 1.6 MB，发布门槛由首屏下载的 JS、CSS 与 wasm 合计 brotli 体积（不超过 2026-11-17 的水平 1,851 KiB ≈ 1,895,424 B 加 15%，即 `2,179,738 B`）把关，由 `web/scripts/check-first-paint-budget.mjs` 在 `pnpm build` 时强制校验——逻辑从 TS 搬进核心时，JS 必须相应变小，体积只是换了地方不算达标。`scripts/core/build.sh web` 输出并报告 `core.wasm` 的 brotli 体积（参考值 1,575,000 B），不再因单个文件移动而阻断构建。Android 每个 ABI、iOS 每个切片不超过 6 MB。最初定的 1.2 MB 只算了运行时和加密库，没有算各界面的视图模型代码，迁完会话、设置、定时三个界面就已超过
 - 控制体积的手段：生成器只为核心可达的 wire 消息生成代码（`cmd/protoc-gen-go-lite/entries.txt`）并按数据方向生成（只从核心流向壳的视图模型和 Effect 只要序列化，只从壳流向核心的 Event 只要反序列化）；序列化不单独算长度，嵌套消息先占一个字节的长度位、写完再补（`litewire.BeginMessage`/`EndMessage`），输出字节与先算长度相同（`clientcore/corebind/wire_bytes_test.go` 守住）；核心不依赖 `fmt`、`reflect`、protobuf-go（`clientcore/app/deps_test.go` 守住）
 - 现状（2026-11-20，Go 1.26.11，`-s -w`）：core.wasm 原始 8,766,588 B、brotli（q11）1,556,470 B；`scripts/core/build.sh web` 在 brotli 超过 1,575,000 B 时让构建失败，需要更多余量时在同一提交里调高并写明原因。Android `libgojni.so` arm64 6,349,952 B、x86_64 6,813,760 B（解压后，仍超 6 MB，口径未定，见 [plan.md](plan.md#待确认)）；iOS 静态库 ios-arm64 切片 7,678,984 B，其中链接进 App 的段约 5.49 MB
 - 性能：一次 `Dispatch` 典型小于 1 ms，`View(home)` 在 1000 个会话时小于 5 ms，聊天按窗口取；一次界面刷新跨边界不超过一两次，禁止在行渲染、比较器里调用核心

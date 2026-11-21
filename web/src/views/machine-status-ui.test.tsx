@@ -8,7 +8,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { patchSyncState } from "../test/remote-fixture";
 import { DemoRemote } from "../dev/demo";
-import { setDirect } from "../test/direct-state";
 import { CommandResultSchema, ProjectSummarySchema } from "../gen/remoteagent/v1/remote_pb";
 import type { MachineStatus } from "../gen/remoteagent/v1/local_pb";
 import { localeStore, t as message } from "../i18n";
@@ -668,9 +667,7 @@ describe("direct path on the machine status page", () => {
   afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
   it("only tells the numbers: nothing about transport, however the direct path is", async () => {
-    const r = demo("ms-full");
-    setDirect(r.direct, "mac", "connected");
-    r.direct.routing("mac").observe({ kind: "bulk", file: "f" }, "direct", 4 << 20, 500);
+    const r = demo("ms-full&direct=direct");
     mount(<MachineStatusPage remote={r} id="mac" go={none} onBack={none} />);
     await ready();
     expect(host.querySelector(".grp")).toBeNull();

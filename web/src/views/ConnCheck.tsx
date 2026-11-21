@@ -59,9 +59,6 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
   const startedAt = remote.connStartedAt;
   const connecting = remote.conn !== "online" && !!remote.connStep && startedAt !== undefined;
   useEffect(() => {
-    remote.refreshDirectStatuses();
-  }, [remote]);
-  useEffect(() => {
     if (!connecting) return;
     setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
