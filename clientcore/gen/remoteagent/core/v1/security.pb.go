@@ -2163,12 +2163,256 @@ func (m *DemoSessionEvents) Unmarshal(b []byte) error {
 	return nil
 }
 
+type DemoSecurity struct {
+	IsMember               bool
+	Removed                bool
+	SelfDeviceId           string
+	AuthorityDeviceId      string
+	TrustedMachineIds      []string
+	TrustedClientIds       []string
+	ArchiveMachineIds      []string
+	HeadEpoch              uint64
+	LeaseEndMs             int64
+	ClockSkewed            bool
+	RecoveryPending        bool
+	RecoveryReadyMs        int64
+	RecoveryObjectsPending bool
+	NetworkGeneration      uint64
+}
+
+func (m *DemoSecurity) GetIsMember() bool {
+	if m != nil {
+		return m.IsMember
+	}
+	return false
+}
+func (m *DemoSecurity) GetRemoved() bool {
+	if m != nil {
+		return m.Removed
+	}
+	return false
+}
+func (m *DemoSecurity) GetSelfDeviceId() string {
+	if m != nil {
+		return m.SelfDeviceId
+	}
+	return ""
+}
+func (m *DemoSecurity) GetAuthorityDeviceId() string {
+	if m != nil {
+		return m.AuthorityDeviceId
+	}
+	return ""
+}
+func (m *DemoSecurity) GetTrustedMachineIds() []string {
+	if m != nil {
+		return m.TrustedMachineIds
+	}
+	return nil
+}
+func (m *DemoSecurity) GetTrustedClientIds() []string {
+	if m != nil {
+		return m.TrustedClientIds
+	}
+	return nil
+}
+func (m *DemoSecurity) GetArchiveMachineIds() []string {
+	if m != nil {
+		return m.ArchiveMachineIds
+	}
+	return nil
+}
+func (m *DemoSecurity) GetHeadEpoch() uint64 {
+	if m != nil {
+		return m.HeadEpoch
+	}
+	return 0
+}
+func (m *DemoSecurity) GetLeaseEndMs() int64 {
+	if m != nil {
+		return m.LeaseEndMs
+	}
+	return 0
+}
+func (m *DemoSecurity) GetClockSkewed() bool {
+	if m != nil {
+		return m.ClockSkewed
+	}
+	return false
+}
+func (m *DemoSecurity) GetRecoveryPending() bool {
+	if m != nil {
+		return m.RecoveryPending
+	}
+	return false
+}
+func (m *DemoSecurity) GetRecoveryReadyMs() int64 {
+	if m != nil {
+		return m.RecoveryReadyMs
+	}
+	return 0
+}
+func (m *DemoSecurity) GetRecoveryObjectsPending() bool {
+	if m != nil {
+		return m.RecoveryObjectsPending
+	}
+	return false
+}
+func (m *DemoSecurity) GetNetworkGeneration() uint64 {
+	if m != nil {
+		return m.NetworkGeneration
+	}
+	return 0
+}
+
+func (m *DemoSecurity) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.IsMember = litewire.DecodeBool(v)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Removed = litewire.DecodeBool(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.SelfDeviceId = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.AuthorityDeviceId = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.TrustedMachineIds = append(m.TrustedMachineIds, v)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.TrustedClientIds = append(m.TrustedClientIds, v)
+				continue
+			}
+		case 7:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ArchiveMachineIds = append(m.ArchiveMachineIds, v)
+				continue
+			}
+		case 8:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HeadEpoch = v
+				continue
+			}
+		case 9:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.LeaseEndMs = int64(v)
+				continue
+			}
+		case 10:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ClockSkewed = litewire.DecodeBool(v)
+				continue
+			}
+		case 11:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryPending = litewire.DecodeBool(v)
+				continue
+			}
+		case 12:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryReadyMs = int64(v)
+				continue
+			}
+		case 13:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryObjectsPending = litewire.DecodeBool(v)
+				continue
+			}
+		case 14:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.NetworkGeneration = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type SeedDemoWorldEvent struct {
 	Machines      []*DemoMachine
 	Sessions      []*DemoSession
 	Devices       []*DemoDevice
 	Prefs         *v1.ProjectPrefs
 	SessionEvents []*DemoSessionEvents
+	Security      *DemoSecurity
 }
 
 func (m *SeedDemoWorldEvent) GetMachines() []*DemoMachine {
@@ -2198,6 +2442,12 @@ func (m *SeedDemoWorldEvent) GetPrefs() *v1.ProjectPrefs {
 func (m *SeedDemoWorldEvent) GetSessionEvents() []*DemoSessionEvents {
 	if m != nil {
 		return m.SessionEvents
+	}
+	return nil
+}
+func (m *SeedDemoWorldEvent) GetSecurity() *DemoSecurity {
+	if m != nil {
+		return m.Security
 	}
 	return nil
 }
@@ -2253,6 +2503,16 @@ func (m *SeedDemoWorldEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.SessionEvents = append(m.SessionEvents, elem)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				if m.Security == nil {
+					m.Security = &DemoSecurity{}
+				}
+				if err := litewire.ReadMessage(&b, m.Security); err != nil {
+					return err
+				}
 				continue
 			}
 		}

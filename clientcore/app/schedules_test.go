@@ -43,14 +43,15 @@ func bootConnectedScheduleHost(t *testing.T, caps bool, rev uint64, defaultMode 
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1791633600010,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:              3,
-				IsMember:          true,
-				SelfDeviceId:      "dev-1",
-				AuthorityDeviceId: "dev-1",
-				LeaseEndMs:        1799999999000,
-				TrustedMachineIds: []string{"m-1"},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        1799999999000,
+					TrustedMachineIds: []string{"m-1"},
+				},
 			},
 		},
 	})
@@ -745,13 +746,15 @@ func TestScheduleEditTargetSelectProjectKeepsLockedMachine(t *testing.T) {
 	// Add a second machine with a project at /Users/me/other.
 	c.Dispatch(&corev1.Event{
 		NowMs: 1791633600055,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				IsMember:          true,
-				SelfDeviceId:      "dev-1",
-				AuthorityDeviceId: "dev-1",
-				LeaseEndMs:        1799999999000,
-				TrustedMachineIds: []string{"m-1", "m-2"},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        1799999999000,
+					TrustedMachineIds: []string{"m-1", "m-2"},
+				},
 			},
 		},
 	})

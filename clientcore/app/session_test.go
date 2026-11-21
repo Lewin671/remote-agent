@@ -45,15 +45,16 @@ func bootstrapReadyApp(t *testing.T, machines []*corev1.PlainMachine, sessions [
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_010,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:              3,
-				IsMember:          true,
-				SelfDeviceId:      "dev-1",
-				AuthorityDeviceId: "dev-1",
-				LeaseEndMs:        1_791_164_460_000,
-				TrustedMachineIds: []string{"m-on", "m-off", "m-old", "m-new"},
-				TrustedClientIds:  []string{"dev-1"},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        1_791_164_460_000,
+					TrustedMachineIds: []string{"m-on", "m-off", "m-old", "m-new"},
+					TrustedClientIds:  []string{"dev-1"},
+				},
 			},
 		},
 	})

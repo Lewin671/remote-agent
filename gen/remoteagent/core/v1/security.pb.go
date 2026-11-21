@@ -2100,6 +2100,154 @@ func (x *DemoSessionEvents) GetEvents() []*v1.Event {
 	return nil
 }
 
+type DemoSecurity struct {
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	IsMember               bool                   `protobuf:"varint,1,opt,name=is_member,json=isMember,proto3" json:"is_member,omitempty"`
+	Removed                bool                   `protobuf:"varint,2,opt,name=removed,proto3" json:"removed,omitempty"`
+	SelfDeviceId           string                 `protobuf:"bytes,3,opt,name=self_device_id,json=selfDeviceId,proto3" json:"self_device_id,omitempty"`
+	AuthorityDeviceId      string                 `protobuf:"bytes,4,opt,name=authority_device_id,json=authorityDeviceId,proto3" json:"authority_device_id,omitempty"`
+	TrustedMachineIds      []string               `protobuf:"bytes,5,rep,name=trusted_machine_ids,json=trustedMachineIds,proto3" json:"trusted_machine_ids,omitempty"`
+	TrustedClientIds       []string               `protobuf:"bytes,6,rep,name=trusted_client_ids,json=trustedClientIds,proto3" json:"trusted_client_ids,omitempty"`
+	ArchiveMachineIds      []string               `protobuf:"bytes,7,rep,name=archive_machine_ids,json=archiveMachineIds,proto3" json:"archive_machine_ids,omitempty"`
+	HeadEpoch              uint64                 `protobuf:"varint,8,opt,name=head_epoch,json=headEpoch,proto3" json:"head_epoch,omitempty"`
+	LeaseEndMs             int64                  `protobuf:"varint,9,opt,name=lease_end_ms,json=leaseEndMs,proto3" json:"lease_end_ms,omitempty"`
+	ClockSkewed            bool                   `protobuf:"varint,10,opt,name=clock_skewed,json=clockSkewed,proto3" json:"clock_skewed,omitempty"`
+	RecoveryPending        bool                   `protobuf:"varint,11,opt,name=recovery_pending,json=recoveryPending,proto3" json:"recovery_pending,omitempty"`
+	RecoveryReadyMs        int64                  `protobuf:"varint,12,opt,name=recovery_ready_ms,json=recoveryReadyMs,proto3" json:"recovery_ready_ms,omitempty"`
+	RecoveryObjectsPending bool                   `protobuf:"varint,13,opt,name=recovery_objects_pending,json=recoveryObjectsPending,proto3" json:"recovery_objects_pending,omitempty"`
+	NetworkGeneration      uint64                 `protobuf:"varint,14,opt,name=network_generation,json=networkGeneration,proto3" json:"network_generation,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *DemoSecurity) Reset() {
+	*x = DemoSecurity{}
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DemoSecurity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DemoSecurity) ProtoMessage() {}
+
+func (x *DemoSecurity) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DemoSecurity.ProtoReflect.Descriptor instead.
+func (*DemoSecurity) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *DemoSecurity) GetIsMember() bool {
+	if x != nil {
+		return x.IsMember
+	}
+	return false
+}
+
+func (x *DemoSecurity) GetRemoved() bool {
+	if x != nil {
+		return x.Removed
+	}
+	return false
+}
+
+func (x *DemoSecurity) GetSelfDeviceId() string {
+	if x != nil {
+		return x.SelfDeviceId
+	}
+	return ""
+}
+
+func (x *DemoSecurity) GetAuthorityDeviceId() string {
+	if x != nil {
+		return x.AuthorityDeviceId
+	}
+	return ""
+}
+
+func (x *DemoSecurity) GetTrustedMachineIds() []string {
+	if x != nil {
+		return x.TrustedMachineIds
+	}
+	return nil
+}
+
+func (x *DemoSecurity) GetTrustedClientIds() []string {
+	if x != nil {
+		return x.TrustedClientIds
+	}
+	return nil
+}
+
+func (x *DemoSecurity) GetArchiveMachineIds() []string {
+	if x != nil {
+		return x.ArchiveMachineIds
+	}
+	return nil
+}
+
+func (x *DemoSecurity) GetHeadEpoch() uint64 {
+	if x != nil {
+		return x.HeadEpoch
+	}
+	return 0
+}
+
+func (x *DemoSecurity) GetLeaseEndMs() int64 {
+	if x != nil {
+		return x.LeaseEndMs
+	}
+	return 0
+}
+
+func (x *DemoSecurity) GetClockSkewed() bool {
+	if x != nil {
+		return x.ClockSkewed
+	}
+	return false
+}
+
+func (x *DemoSecurity) GetRecoveryPending() bool {
+	if x != nil {
+		return x.RecoveryPending
+	}
+	return false
+}
+
+func (x *DemoSecurity) GetRecoveryReadyMs() int64 {
+	if x != nil {
+		return x.RecoveryReadyMs
+	}
+	return 0
+}
+
+func (x *DemoSecurity) GetRecoveryObjectsPending() bool {
+	if x != nil {
+		return x.RecoveryObjectsPending
+	}
+	return false
+}
+
+func (x *DemoSecurity) GetNetworkGeneration() uint64 {
+	if x != nil {
+		return x.NetworkGeneration
+	}
+	return 0
+}
+
 type SeedDemoWorldEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Machines      []*DemoMachine         `protobuf:"bytes,1,rep,name=machines,proto3" json:"machines,omitempty"`
@@ -2107,13 +2255,14 @@ type SeedDemoWorldEvent struct {
 	Devices       []*DemoDevice          `protobuf:"bytes,3,rep,name=devices,proto3" json:"devices,omitempty"`
 	Prefs         *v1.ProjectPrefs       `protobuf:"bytes,4,opt,name=prefs,proto3" json:"prefs,omitempty"`
 	SessionEvents []*DemoSessionEvents   `protobuf:"bytes,5,rep,name=session_events,json=sessionEvents,proto3" json:"session_events,omitempty"`
+	Security      *DemoSecurity          `protobuf:"bytes,6,opt,name=security,proto3" json:"security,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SeedDemoWorldEvent) Reset() {
 	*x = SeedDemoWorldEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2125,7 +2274,7 @@ func (x *SeedDemoWorldEvent) String() string {
 func (*SeedDemoWorldEvent) ProtoMessage() {}
 
 func (x *SeedDemoWorldEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2138,7 +2287,7 @@ func (x *SeedDemoWorldEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedDemoWorldEvent.ProtoReflect.Descriptor instead.
 func (*SeedDemoWorldEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{26}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SeedDemoWorldEvent) GetMachines() []*DemoMachine {
@@ -2176,6 +2325,13 @@ func (x *SeedDemoWorldEvent) GetSessionEvents() []*DemoSessionEvents {
 	return nil
 }
 
+func (x *SeedDemoWorldEvent) GetSecurity() *DemoSecurity {
+	if x != nil {
+		return x.Security
+	}
+	return nil
+}
+
 type CacheWriteStoredEvents struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -2186,7 +2342,7 @@ type CacheWriteStoredEvents struct {
 
 func (x *CacheWriteStoredEvents) Reset() {
 	*x = CacheWriteStoredEvents{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2198,7 +2354,7 @@ func (x *CacheWriteStoredEvents) String() string {
 func (*CacheWriteStoredEvents) ProtoMessage() {}
 
 func (x *CacheWriteStoredEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2211,7 +2367,7 @@ func (x *CacheWriteStoredEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheWriteStoredEvents.ProtoReflect.Descriptor instead.
 func (*CacheWriteStoredEvents) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{27}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CacheWriteStoredEvents) GetSessionId() string {
@@ -2411,13 +2567,32 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x11DemoSessionEvents\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12-\n" +
-	"\x06events\x18\x02 \x03(\v2\x15.remoteagent.v1.EventR\x06events\"\xce\x02\n" +
+	"\x06events\x18\x02 \x03(\v2\x15.remoteagent.v1.EventR\x06events\"\xcd\x04\n" +
+	"\fDemoSecurity\x12\x1b\n" +
+	"\tis_member\x18\x01 \x01(\bR\bisMember\x12\x18\n" +
+	"\aremoved\x18\x02 \x01(\bR\aremoved\x12$\n" +
+	"\x0eself_device_id\x18\x03 \x01(\tR\fselfDeviceId\x12.\n" +
+	"\x13authority_device_id\x18\x04 \x01(\tR\x11authorityDeviceId\x12.\n" +
+	"\x13trusted_machine_ids\x18\x05 \x03(\tR\x11trustedMachineIds\x12,\n" +
+	"\x12trusted_client_ids\x18\x06 \x03(\tR\x10trustedClientIds\x12.\n" +
+	"\x13archive_machine_ids\x18\a \x03(\tR\x11archiveMachineIds\x12\x1d\n" +
+	"\n" +
+	"head_epoch\x18\b \x01(\x04R\theadEpoch\x12 \n" +
+	"\flease_end_ms\x18\t \x01(\x03R\n" +
+	"leaseEndMs\x12!\n" +
+	"\fclock_skewed\x18\n" +
+	" \x01(\bR\vclockSkewed\x12)\n" +
+	"\x10recovery_pending\x18\v \x01(\bR\x0frecoveryPending\x12*\n" +
+	"\x11recovery_ready_ms\x18\f \x01(\x03R\x0frecoveryReadyMs\x128\n" +
+	"\x18recovery_objects_pending\x18\r \x01(\bR\x16recoveryObjectsPending\x12-\n" +
+	"\x12network_generation\x18\x0e \x01(\x04R\x11networkGeneration\"\x8d\x03\n" +
 	"\x12SeedDemoWorldEvent\x12<\n" +
 	"\bmachines\x18\x01 \x03(\v2 .remoteagent.core.v1.DemoMachineR\bmachines\x12<\n" +
 	"\bsessions\x18\x02 \x03(\v2 .remoteagent.core.v1.DemoSessionR\bsessions\x129\n" +
 	"\adevices\x18\x03 \x03(\v2\x1f.remoteagent.core.v1.DemoDeviceR\adevices\x122\n" +
 	"\x05prefs\x18\x04 \x01(\v2\x1c.remoteagent.v1.ProjectPrefsR\x05prefs\x12M\n" +
-	"\x0esession_events\x18\x05 \x03(\v2&.remoteagent.core.v1.DemoSessionEventsR\rsessionEvents\"l\n" +
+	"\x0esession_events\x18\x05 \x03(\v2&.remoteagent.core.v1.DemoSessionEventsR\rsessionEvents\x12=\n" +
+	"\bsecurity\x18\x06 \x01(\v2!.remoteagent.core.v1.DemoSecurityR\bsecurity\"l\n" +
 	"\x16CacheWriteStoredEvents\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x123\n" +
@@ -2444,7 +2619,7 @@ func file_remoteagent_core_v1_security_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_security_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_remoteagent_core_v1_security_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_remoteagent_core_v1_security_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_remoteagent_core_v1_security_proto_goTypes = []any{
 	(SecurityKeyKind)(0),                 // 0: remoteagent.core.v1.SecurityKeyKind
 	(*SecurityConfigEvent)(nil),          // 1: remoteagent.core.v1.SecurityConfigEvent
@@ -2473,17 +2648,18 @@ var file_remoteagent_core_v1_security_proto_goTypes = []any{
 	(*DemoSession)(nil),                  // 24: remoteagent.core.v1.DemoSession
 	(*DemoDevice)(nil),                   // 25: remoteagent.core.v1.DemoDevice
 	(*DemoSessionEvents)(nil),            // 26: remoteagent.core.v1.DemoSessionEvents
-	(*SeedDemoWorldEvent)(nil),           // 27: remoteagent.core.v1.SeedDemoWorldEvent
-	(*CacheWriteStoredEvents)(nil),       // 28: remoteagent.core.v1.CacheWriteStoredEvents
-	(*v1.Envelope)(nil),                  // 29: remoteagent.v1.Envelope
-	(*v1.MachineMeta)(nil),               // 30: remoteagent.v1.MachineMeta
-	(*v1.Session)(nil),                   // 31: remoteagent.v1.Session
-	(*v1.LiveSnapshot)(nil),              // 32: remoteagent.v1.LiveSnapshot
-	(v1.DeviceKind)(0),                   // 33: remoteagent.v1.DeviceKind
-	(*v1.DeviceMeta)(nil),                // 34: remoteagent.v1.DeviceMeta
-	(*v1.Event)(nil),                     // 35: remoteagent.v1.Event
-	(*v1.ProjectPrefs)(nil),              // 36: remoteagent.v1.ProjectPrefs
-	(*v1.StoredEvent)(nil),               // 37: remoteagent.v1.StoredEvent
+	(*DemoSecurity)(nil),                 // 27: remoteagent.core.v1.DemoSecurity
+	(*SeedDemoWorldEvent)(nil),           // 28: remoteagent.core.v1.SeedDemoWorldEvent
+	(*CacheWriteStoredEvents)(nil),       // 29: remoteagent.core.v1.CacheWriteStoredEvents
+	(*v1.Envelope)(nil),                  // 30: remoteagent.v1.Envelope
+	(*v1.MachineMeta)(nil),               // 31: remoteagent.v1.MachineMeta
+	(*v1.Session)(nil),                   // 32: remoteagent.v1.Session
+	(*v1.LiveSnapshot)(nil),              // 33: remoteagent.v1.LiveSnapshot
+	(v1.DeviceKind)(0),                   // 34: remoteagent.v1.DeviceKind
+	(*v1.DeviceMeta)(nil),                // 35: remoteagent.v1.DeviceMeta
+	(*v1.Event)(nil),                     // 36: remoteagent.v1.Event
+	(*v1.ProjectPrefs)(nil),              // 37: remoteagent.v1.ProjectPrefs
+	(*v1.StoredEvent)(nil),               // 38: remoteagent.v1.StoredEvent
 }
 var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	2,  // 0: remoteagent.core.v1.SecurityRecordEvent.content_keys:type_name -> remoteagent.core.v1.SecurityContentKey
@@ -2495,30 +2671,31 @@ var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	11, // 6: remoteagent.core.v1.SecurityCryptoBatchItem.sha256:type_name -> remoteagent.core.v1.CryptoBatchSha256Item
 	12, // 7: remoteagent.core.v1.SecurityCryptoBatchEffect.items:type_name -> remoteagent.core.v1.SecurityCryptoBatchItem
 	14, // 8: remoteagent.core.v1.SecurityCryptoBatchDoneEvent.results:type_name -> remoteagent.core.v1.SecurityCryptoBatchResult
-	29, // 9: remoteagent.core.v1.SecurityOpenEnvelopeOp.envelope:type_name -> remoteagent.v1.Envelope
+	30, // 9: remoteagent.core.v1.SecurityOpenEnvelopeOp.envelope:type_name -> remoteagent.v1.Envelope
 	16, // 10: remoteagent.core.v1.SecurityOpRequestEvent.open_envelope:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeOp
 	17, // 11: remoteagent.core.v1.SecurityOpRequestEvent.seal_envelope:type_name -> remoteagent.core.v1.SecuritySealEnvelopeOp
 	18, // 12: remoteagent.core.v1.SecurityOpRequestEvent.get_session_seed:type_name -> remoteagent.core.v1.SecurityGetSessionSeedOp
-	29, // 13: remoteagent.core.v1.SecuritySealEnvelopeResult.envelope:type_name -> remoteagent.v1.Envelope
+	30, // 13: remoteagent.core.v1.SecuritySealEnvelopeResult.envelope:type_name -> remoteagent.v1.Envelope
 	20, // 14: remoteagent.core.v1.SecurityOpResultEffect.opened:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeResult
 	21, // 15: remoteagent.core.v1.SecurityOpResultEffect.sealed:type_name -> remoteagent.core.v1.SecuritySealEnvelopeResult
-	30, // 16: remoteagent.core.v1.DemoMachine.meta:type_name -> remoteagent.v1.MachineMeta
-	31, // 17: remoteagent.core.v1.DemoSession.meta:type_name -> remoteagent.v1.Session
-	32, // 18: remoteagent.core.v1.DemoSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
-	33, // 19: remoteagent.core.v1.DemoDevice.kind:type_name -> remoteagent.v1.DeviceKind
-	34, // 20: remoteagent.core.v1.DemoDevice.meta:type_name -> remoteagent.v1.DeviceMeta
-	35, // 21: remoteagent.core.v1.DemoSessionEvents.events:type_name -> remoteagent.v1.Event
+	31, // 16: remoteagent.core.v1.DemoMachine.meta:type_name -> remoteagent.v1.MachineMeta
+	32, // 17: remoteagent.core.v1.DemoSession.meta:type_name -> remoteagent.v1.Session
+	33, // 18: remoteagent.core.v1.DemoSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
+	34, // 19: remoteagent.core.v1.DemoDevice.kind:type_name -> remoteagent.v1.DeviceKind
+	35, // 20: remoteagent.core.v1.DemoDevice.meta:type_name -> remoteagent.v1.DeviceMeta
+	36, // 21: remoteagent.core.v1.DemoSessionEvents.events:type_name -> remoteagent.v1.Event
 	23, // 22: remoteagent.core.v1.SeedDemoWorldEvent.machines:type_name -> remoteagent.core.v1.DemoMachine
 	24, // 23: remoteagent.core.v1.SeedDemoWorldEvent.sessions:type_name -> remoteagent.core.v1.DemoSession
 	25, // 24: remoteagent.core.v1.SeedDemoWorldEvent.devices:type_name -> remoteagent.core.v1.DemoDevice
-	36, // 25: remoteagent.core.v1.SeedDemoWorldEvent.prefs:type_name -> remoteagent.v1.ProjectPrefs
+	37, // 25: remoteagent.core.v1.SeedDemoWorldEvent.prefs:type_name -> remoteagent.v1.ProjectPrefs
 	26, // 26: remoteagent.core.v1.SeedDemoWorldEvent.session_events:type_name -> remoteagent.core.v1.DemoSessionEvents
-	37, // 27: remoteagent.core.v1.CacheWriteStoredEvents.events:type_name -> remoteagent.v1.StoredEvent
-	28, // [28:28] is the sub-list for method output_type
-	28, // [28:28] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	27, // 27: remoteagent.core.v1.SeedDemoWorldEvent.security:type_name -> remoteagent.core.v1.DemoSecurity
+	38, // 28: remoteagent.core.v1.CacheWriteStoredEvents.events:type_name -> remoteagent.v1.StoredEvent
+	29, // [29:29] is the sub-list for method output_type
+	29, // [29:29] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_security_proto_init() }
@@ -2548,7 +2725,7 @@ func file_remoteagent_core_v1_security_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_security_proto_rawDesc), len(file_remoteagent_core_v1_security_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   28,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

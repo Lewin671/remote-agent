@@ -76,4 +76,15 @@ public interface SeedDemoWorldEventOrBuilder extends
    * <code>repeated .remoteagent.core.v1.DemoSessionEvents session_events = 5 [json_name = "sessionEvents"];</code>
    */
   int getSessionEventsCount();
+
+  /**
+   * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+   * @return Whether the security field is set.
+   */
+  boolean hasSecurity();
+  /**
+   * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+   * @return The security.
+   */
+  io.github.lewin671.remoteagent.core.proto.DemoSecurity getSecurity();
 }

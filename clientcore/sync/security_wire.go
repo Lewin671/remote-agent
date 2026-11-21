@@ -24,7 +24,6 @@ type decodedMachine struct {
 	MetaRev    uint64
 	MetaBroken bool
 	Wire       *v1.Machine
-	CacheRef   string
 }
 
 type decodedSession struct {
@@ -40,7 +39,6 @@ type decodedSession struct {
 	RetiredHistory    bool
 	OpenFailed        bool
 	Wire              *v1.RemoteSession
-	CacheRef          string
 }
 
 type decodedDevice struct {
@@ -58,7 +56,6 @@ type decodedPrefs struct {
 	Prefs    *v1.ProjectPrefs
 	Broken   bool
 	Wire     *v1.AccountPrefsObject
-	CacheRef string
 }
 
 type decodedEventItem struct {
@@ -70,7 +67,6 @@ type decodedEventItem struct {
 	Verified    bool
 	ApproxBytes int64
 	RawStored   *v1.StoredEvent
-	CacheRef    string
 }
 
 func (e *Engine) maybeRequestEntropy(ctx *StepContext) {
@@ -278,93 +274,122 @@ func (e *Engine) handleSecurityOpRequest(ctx *StepContext, ev *corev1.SecurityOp
 }
 
 func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldEvent) {
-	if ev == nil || e.secEngine.Locked() || e.security.Loaded {
+	if ev == nil || e.secEngine.Locked() {
 		return
 	}
-	e.coldStartGraceExpired = true
-	e.clearColdStartGrace(ctx)
-	e.w.World.MachinesListed = true
-	e.w.World.SessionsListed = true
-	e.w.World.LiveLoaded = true
-	e.w.SessionListErrorText = nil
-	e.w.World.SessionListError = ""
+	if s := ev.Security; s != nil {
+		e.security.Loaded = true
+		e.security.IsMember = s.IsMember
+		e.removed = s.Removed
+		if s.SelfDeviceId != "" {
+			e.security.SelfDeviceID = s.SelfDeviceId
+		}
+		e.security.AuthorityDeviceID = s.AuthorityDeviceId
+		e.security.TrustedMachines = toStringSet(s.TrustedMachineIds)
+		e.security.TrustedClients = toStringSet(s.TrustedClientIds)
+		e.security.ArchiveMachines = toStringSet(s.ArchiveMachineIds)
+		e.security.HeadEpoch = s.HeadEpoch
+		e.security.LeaseEndMs = s.LeaseEndMs
+		e.security.ClockSkewed = s.ClockSkewed
+		e.security.RecoveryPending = s.RecoveryPending
+		e.security.RecoveryReadyMs = s.RecoveryReadyMs
+		e.security.RecoveryObjectsPending = s.RecoveryObjectsPending
+		e.security.NetworkGen = s.NetworkGeneration
+		if s.NetworkGeneration == e.networkGen || s.NetworkGeneration >= e.security.VerifiedNetGen {
+			e.security.VerifiedNetGen = s.NetworkGeneration
+		}
+	}
 
-	for _, m := range ev.Machines {
-		if m == nil || m.MachineId == "" {
-			continue
-		}
-		e.putMachineDecoded(ctx, decodedMachine{
-			MachineID:  m.MachineId,
-			Online:     m.Online,
-			LastSeenMs: m.LastSeenMs,
-			Meta:       m.Meta,
-		}, false, false)
-	}
-	for _, s := range ev.Sessions {
-		if s == nil || s.SessionId == "" {
-			continue
-		}
-		e.listed[s.SessionId] = true
-		e.putSessionDecoded(ctx, decodedSession{
-			SessionID:     s.SessionId,
-			MachineID:     s.MachineId,
-			LastSeq:       s.LastSeq,
-			UpdatedMs:     s.UpdatedMs,
-			ListedEndedMs: s.ListedEndedMs,
-			Meta:          s.Meta,
-			Checkpoint:    s.Checkpoint,
-		}, false)
-	}
-	for _, d := range ev.Devices {
-		if d == nil || d.DeviceId == "" {
-			continue
-		}
-		e.devices[d.DeviceId] = decodedToDeviceEntry(decodedDevice{
-			DeviceID:   d.DeviceId,
-			Kind:       d.Kind,
-			CreatedMs:  d.CreatedMs,
-			LastSeenMs: d.LastSeenMs,
-			Meta:       d.Meta,
-		})
-	}
-	if ev.Prefs != nil {
-		e.applyAccountPrefsDecoded(&decodedPrefs{
-			Revision: 1,
-			Prefs:    ev.Prefs,
-		}, true)
-	}
-	for _, se := range ev.SessionEvents {
-		if se == nil || se.SessionId == "" {
-			continue
-		}
-		b := e.buffers[se.SessionId]
-		if b == nil {
-			var agent v1.Agent
-			if sess := e.sessions[se.SessionId]; sess != nil && sess.Info != nil {
-				agent = sess.Info.Agent
-			}
-			b = newEventBuffer(se.SessionId, agent, e.monoMs)
-			e.buffers[se.SessionId] = b
-		}
-		items := make([]decodedEventItem, 0, len(se.Events))
-		for _, item := range se.Events {
-			if item == nil || item.Seq == 0 {
+	seedWorld := ev.Security == nil || len(ev.Machines) > 0 || len(ev.Sessions) > 0 ||
+		len(ev.Devices) > 0 || ev.Prefs != nil || len(ev.SessionEvents) > 0
+	if seedWorld {
+		e.coldStartGraceExpired = true
+		e.clearColdStartGrace(ctx)
+		e.w.World.MachinesListed = true
+		e.w.World.SessionsListed = true
+		e.w.World.LiveLoaded = true
+		e.w.SessionListErrorText = nil
+		e.w.World.SessionListError = ""
+
+		for _, m := range ev.Machines {
+			if m == nil || m.MachineId == "" {
 				continue
 			}
-			items = append(items, decodedEventItem{
-				Seq:         item.Seq,
-				Event:       item,
-				Verified:    true,
-				ApproxBytes: 128,
+			e.putMachineDecoded(ctx, decodedMachine{
+				MachineID:  m.MachineId,
+				Online:     m.Online,
+				LastSeenMs: m.LastSeenMs,
+				Meta:       m.Meta,
+			}, false, false)
+		}
+		for _, s := range ev.Sessions {
+			if s == nil || s.SessionId == "" {
+				continue
+			}
+			e.listed[s.SessionId] = true
+			e.putSessionDecoded(ctx, decodedSession{
+				SessionID:     s.SessionId,
+				MachineID:     s.MachineId,
+				LastSeq:       s.LastSeq,
+				UpdatedMs:     s.UpdatedMs,
+				ListedEndedMs: s.ListedEndedMs,
+				Meta:          s.Meta,
+				Checkpoint:    s.Checkpoint,
+			}, false)
+		}
+		for _, d := range ev.Devices {
+			if d == nil || d.DeviceId == "" {
+				continue
+			}
+			e.devices[d.DeviceId] = decodedToDeviceEntry(decodedDevice{
+				DeviceID:   d.DeviceId,
+				Kind:       d.Kind,
+				CreatedMs:  d.CreatedMs,
+				LastSeenMs: d.LastSeenMs,
+				Meta:       d.Meta,
 			})
 		}
-		b.loaded = true
-		b.awaitingCache = false
-		e.ingestDecodedEvents(ctx, se.SessionId, b, items, false, false, true, false)
+		if ev.Prefs != nil {
+			e.applyAccountPrefsDecoded(&decodedPrefs{
+				Revision: 1,
+				Prefs:    ev.Prefs,
+			}, true)
+		}
+		for _, se := range ev.SessionEvents {
+			if se == nil || se.SessionId == "" {
+				continue
+			}
+			b := e.buffers[se.SessionId]
+			if b == nil {
+				var agent v1.Agent
+				if sess := e.sessions[se.SessionId]; sess != nil && sess.Info != nil {
+					agent = sess.Info.Agent
+				}
+				b = newEventBuffer(se.SessionId, agent, e.monoMs)
+				e.buffers[se.SessionId] = b
+			}
+			items := make([]decodedEventItem, 0, len(se.Events))
+			for _, item := range se.Events {
+				if item == nil || item.Seq == 0 {
+					continue
+				}
+				items = append(items, decodedEventItem{
+					Seq:         item.Seq,
+					Event:       item,
+					Verified:    true,
+					ApproxBytes: 128,
+				})
+			}
+			b.loaded = true
+			b.awaitingCache = false
+			e.ingestDecodedEvents(ctx, se.SessionId, b, items, false, false, true, false)
+		}
 	}
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
-	ctx.Dirty.MarkSessionData()
+	if seedWorld {
+		ctx.Dirty.MarkSessionData()
+	}
 }
 
 func validateSessionCheckpoint(sid string, meta *v1.Session) (*v1.LiveSnapshot, bool) {

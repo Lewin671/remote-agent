@@ -756,7 +756,6 @@ func (e *Engine) putMachine(ctx *StepContext, pm *corev1.PlainMachine, staleOnli
 		Meta:       pm.Meta,
 		MetaRev:    pm.MetaRev,
 		MetaBroken: pm.MetaBroken,
-		CacheRef:   pm.CacheRef,
 	}, staleOnline, writeCache)
 }
 
@@ -781,24 +780,14 @@ func (e *Engine) putMachineDecoded(ctx *StepContext, dm decodedMachine, staleOnl
 		}
 	}
 	e.storeMachine(entry)
-	if writeCache {
-		if dm.Wire != nil {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheWrite{
-					CacheWrite: &corev1.CacheWriteEffect{
-						Kind: &corev1.CacheWriteEffect_WriteMachine{WriteMachine: dm.Wire},
-					},
+	if writeCache && dm.Wire != nil {
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_CacheWrite{
+				CacheWrite: &corev1.CacheWriteEffect{
+					Kind: &corev1.CacheWriteEffect_WriteMachine{WriteMachine: dm.Wire},
 				},
-			})
-		} else if dm.CacheRef != "" {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheWrite{
-					CacheWrite: &corev1.CacheWriteEffect{
-						Kind: &corev1.CacheWriteEffect_WriteMachineRef{WriteMachineRef: dm.CacheRef},
-					},
-				},
-			})
-		}
+			},
+		})
 	}
 }
 
@@ -838,7 +827,6 @@ func (e *Engine) putSession(ctx *StepContext, ps *corev1.PlainSession, writeCach
 		CheckpointInvalid: ps.CheckpointInvalid,
 		RetiredHistory:    ps.RetiredHistory,
 		OpenFailed:        ps.OpenFailed,
-		CacheRef:          ps.CacheRef,
 	}, writeCache)
 }
 
@@ -861,33 +849,15 @@ func (e *Engine) putSessionDecoded(ctx *StepContext, ds decodedSession, writeCac
 					},
 				},
 			})
-		} else if ds.CacheRef != "" {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheWrite{
-					CacheWrite: &corev1.CacheWriteEffect{
-						Kind: &corev1.CacheWriteEffect_KeepSessionOwnerRef{KeepSessionOwnerRef: ds.CacheRef},
-					},
-				},
-			})
 		}
-	} else if writeCache {
-		if ds.Wire != nil {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheWrite{
-					CacheWrite: &corev1.CacheWriteEffect{
-						Kind: &corev1.CacheWriteEffect_WriteSession{WriteSession: ds.Wire},
-					},
+	} else if writeCache && ds.Wire != nil {
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_CacheWrite{
+				CacheWrite: &corev1.CacheWriteEffect{
+					Kind: &corev1.CacheWriteEffect_WriteSession{WriteSession: ds.Wire},
 				},
-			})
-		} else if ds.CacheRef != "" {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheWrite{
-					CacheWrite: &corev1.CacheWriteEffect{
-						Kind: &corev1.CacheWriteEffect_WriteSessionRef{WriteSessionRef: ds.CacheRef},
-					},
-				},
-			})
-		}
+			},
+		})
 	}
 	if ds.RetiredHistory {
 		e.markSessionRetired(ds.SessionID)
@@ -1003,7 +973,6 @@ func plainToMachineEntry(pm *corev1.PlainMachine) *MachineEntry {
 		Meta:       pm.Meta,
 		MetaRev:    pm.MetaRev,
 		MetaBroken: pm.MetaBroken,
-		CacheRef:   pm.CacheRef,
 	})
 }
 
@@ -1021,7 +990,6 @@ func decodedToMachineEntry(dm decodedMachine) *MachineEntry {
 		},
 		MetaRev:    dm.MetaRev,
 		MetaBroken: dm.MetaBroken,
-		CacheRef:   dm.CacheRef,
 	}
 }
 
@@ -1038,7 +1006,6 @@ func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEn
 		CheckpointInvalid: ps.CheckpointInvalid,
 		RetiredHistory:    ps.RetiredHistory,
 		OpenFailed:        ps.OpenFailed,
-		CacheRef:          ps.CacheRef,
 	}, prev)
 }
 
@@ -1056,7 +1023,6 @@ func decodedToSessionEntry(ds decodedSession, prev *SessionEntry) *SessionEntry 
 		CheckpointInvalid: ds.CheckpointInvalid,
 		RetiredHistory:    ds.RetiredHistory,
 		OpenFailed:        ds.OpenFailed,
-		CacheRef:          ds.CacheRef,
 	}
 	if ds.Meta != nil {
 		entry.setInfo(ds.Meta.Clone())

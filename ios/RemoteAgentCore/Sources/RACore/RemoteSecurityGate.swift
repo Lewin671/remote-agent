@@ -208,7 +208,7 @@ extension Remote {
             if let data = try? obj.serializedData() {
                 await cache.putBlob(name: projectPrefsID, data: data)
             }
-        case .writeMachineRef, .writeSessionRef, .keepSessionOwnerRef, .writeEvents, .writePrefsRef, .setSessionOpen, nil:
+        case .setSessionOpen, nil:
             break
         }
     }

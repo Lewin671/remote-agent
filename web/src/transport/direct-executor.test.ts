@@ -3,13 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EnvelopeSchema, HeaderSchema, PayloadKind } from "../gen/remoteagent/v1/envelope_pb";
 import { PeerFrameSchema, ServerFrameSchema } from "../gen/remoteagent/v1/relay_pb";
 import { FragmentSchema, PeerFrameDeliverySchema } from "../gen/remoteagent/v1/transport_pb";
-import { EventSchema as CoreEventSchema, type Event as CoreEvent } from "../gen/remoteagent/core/v1/app_pb";
+import type { Event as CoreEvent } from "../gen/remoteagent/core/v1/app_pb";
 import {
   DirectCandFamily,
   DirectCandType,
   DirectDcReadStatsEffectSchema,
-  DirectKeyAgreeEffectSchema,
-  DirectKeySignEffectSchema,
   DirectPcAddCandidatesEffectSchema,
   DirectPcCloseEffectSchema,
   DirectPcConfirmEffectSchema,
@@ -44,42 +42,6 @@ describe("DirectExecutor", () => {
     expect(peerFrameBody(raw, 12)).toBeUndefined();
   });
 
-  it("performs WebCrypto Ed25519 signing and X25519 key agreement", async () => {
-    const ed = await crypto.subtle.generateKey("Ed25519", false, ["sign", "verify"]);
-    const xSelf = await crypto.subtle.generateKey("X25519", false, ["deriveBits"]);
-    const xPeer = await crypto.subtle.generateKey("X25519", false, ["deriveBits"]);
-    const peerRaw = new Uint8Array(await crypto.subtle.exportKey("raw", xPeer.publicKey));
-
-    const events: CoreEvent[] = [];
-    const exec = new DirectExecutor({
-      devicePrivate: () => ed.privateKey,
-      xPrivate: () => xSelf.privateKey,
-      emit: (ev) => events.push(create(CoreEventSchema, { event: ev.event })),
-      onPushedEvent: () => {},
-    });
-
-    const msg = new TextEncoder().encode("direct-handshake-test");
-    await exec.keySign(create(DirectKeySignEffectSchema, { opId: 7n, message: msg }));
-    const signedEv = events.find((e) => e.event.case === "directKeySigned");
-    expect(signedEv?.event.case).toBe("directKeySigned");
-    if (signedEv?.event.case === "directKeySigned") {
-      expect(signedEv.event.value.opId).toBe(7n);
-      expect(signedEv.event.value.signature.byteLength).toBe(64);
-      const ok = await crypto.subtle.verify("Ed25519", ed.publicKey, signedEv.event.value.signature as Uint8Array<ArrayBuffer>, msg);
-      expect(ok).toBe(true);
-    }
-
-    await exec.keyAgree(create(DirectKeyAgreeEffectSchema, { opId: 9n, peerId: "mac", peerXPublic: peerRaw }));
-    const agreedEv = events.find((e) => e.event.case === "directKeyAgreed");
-    expect(agreedEv?.event.case).toBe("directKeyAgreed");
-    if (agreedEv?.event.case === "directKeyAgreed") {
-      expect(agreedEv.event.value.ok).toBe(true);
-      const expectedBits = new Uint8Array(await crypto.subtle.deriveBits({ name: "X25519", public: xSelf.publicKey }, xPeer.privateKey, 256));
-      expect(agreedEv.event.value.sharedSecret).toEqual(expectedBits);
-    }
-    exec.close();
-  });
-
   it("bridges signaling, PC lifecycle, stats without IPs, RPCs, and confirmed-only pushed events", async () => {
     const sdk = fakeRTC();
     const events: CoreEvent[] = [];
@@ -87,8 +49,6 @@ describe("DirectExecutor", () => {
     const sentFrames: Uint8Array[] = [];
 
     const exec = new DirectExecutor({
-      devicePrivate: () => undefined,
-      xPrivate: () => undefined,
       emit: (ev) => events.push(ev),
       onPushedEvent: (machineId, pcId, _env, header) => pushed.push({ machineId, pcId, seq: header.seq }),
       factory: sdk.factory,

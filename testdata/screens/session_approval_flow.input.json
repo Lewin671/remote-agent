@@ -76,18 +76,19 @@
     {
       "event": {
         "nowMs": "1791078060010",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": [
-            "m1"
-          ],
-          "trustedClientIds": [
-            "dev-1"
-          ]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "m1"
+            ],
+            "trustedClientIds": [
+              "dev-1"
+            ]
+          }
         }
       }
     },

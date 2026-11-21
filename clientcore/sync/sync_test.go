@@ -1,6 +1,10 @@
 package sync
 
 import (
+	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/sha256"
 	"slices"
 	"testing"
 
@@ -9,6 +13,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
@@ -51,14 +56,16 @@ func startAndConnect(t *testing.T, e *Engine, nowMs int64) (legID uint64, listsO
 	if secOp != 0 {
 		e.HandleEvent(&corev1.Event{
 			NowMs: nowMs + 10,
-			Event: &corev1.Event_SecuritySnapshot{
-				SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-					OpId:              secOp,
-					IsMember:          true,
-					SelfDeviceId:      "c1",
-					AuthorityDeviceId: "c1",
-					LeaseEndMs:        nowMs + 86_400_000,
-					TrustedMachineIds: []string{"m1", "m2"},
+			Event: &corev1.Event_SeedDemoWorld{
+				SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+					Security: &corev1.DemoSecurity{
+						IsMember:          true,
+						SelfDeviceId:      "c1",
+						AuthorityDeviceId: "c1",
+						LeaseEndMs:        nowMs + 86_400_000,
+						TrustedMachineIds: []string{"m1", "m2"},
+						NetworkGeneration: e.networkGen,
+					},
 				},
 			},
 		})
@@ -1006,7 +1013,6 @@ func TestPrefsCASLoopConflictIdempotencyAndMaxAttempts(t *testing.T) {
 				OpId: getOp,
 				Prefs: &corev1.PlainAccountPrefs{
 					Revision: 5,
-					CacheRef: "prefs-rev-5",
 					Prefs: &v1.ProjectPrefs{
 						Schema:    1,
 						Pinned:    []*v1.ProjectPref{{Path: "/work/a"}},
@@ -1313,53 +1319,90 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
+	client := newDirectTestActor(t, 71, 1)
+	m1 := newDirectTestActor(t, 72, 2)
+	m2 := newDirectTestActor(t, 74, 2)
+	rec := newDirectTestActor(t, 73, 1)
+	dom := sha256.Sum256([]byte("sync-gen-check"))
+	sec1 := bytes.Repeat([]byte{0x11}, 32)
+	sec2 := bytes.Repeat([]byte{0x22}, 32)
+	sec3 := bytes.Repeat([]byte{0x33}, 32)
+	u0, err := devicesec.NewGenesis(client.id, dom, client.member(devicesec.Client), rec.signPub, sec1, uint64(now), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, _ := u0.SigningBytes()
+	u0.Signature = ed25519.Sign(client.signPriv, sb0)
+	s0Raw, _ := u0.MarshalBinary()
+	s0, _ := devicesec.ParseState(s0Raw)
+	genHash, _ := s0.Hash()
+	u1, err := devicesec.NewMembershipState(s0, []devicesec.Member{client.member(devicesec.Client), m2.member(devicesec.Machine)}, nil, sec1, sec2, uint64(now+1), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb1, _ := u1.SigningBytes()
+	u1.Signature = ed25519.Sign(client.signPriv, sb1)
+	s1Raw, _ := u1.MarshalBinary()
+	s1, _ := devicesec.ParseState(s1Raw)
+	u2, err := devicesec.NewMembershipState(s1, []devicesec.Member{client.member(devicesec.Client), m1.member(devicesec.Machine), m2.member(devicesec.Machine)}, nil, sec2, sec3, uint64(now+2), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb2, _ := u2.SigningBytes()
+	u2.Signature = ed25519.Sign(client.signPriv, sb2)
+	s2Raw, _ := u2.MarshalBinary()
 
-	// 1. opId=0, pushSeq=0 SecuritySnapshot must be ignored.
-	_, zeroSecRes := e.HandleEvent(&corev1.Event{
+	e.HandleEvent(&corev1.Event{
 		NowMs: now,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				IsMember:     true,
-				SelfDeviceId: "dev1",
-				HeadEpoch:    1,
-			},
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{Account: client.id, DeviceId: client.id, InlineCrypto: true},
 		},
 	})
-	if zeroSecRes.Dirty.SyncState || e.security.Loaded {
-		t.Fatalf("expected SecuritySnapshot with opId=0 and pushSeq=0 to be dropped")
-	}
 
-	// 2. Shell push with monotonic pushSeq=2 is accepted; stale pushSeq=1 is rejected.
+	// 1. Push with PushSeq=2 applies epoch=2; opId=0/pushSeq=0 or stale pushSeq=1 afterwards is ignored.
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 10,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				PushSeq:      2,
-				IsMember:     true,
-				SelfDeviceId: "dev1",
-				HeadEpoch:    2,
+		Event: &corev1.Event_SecurityRecord{
+			SecurityRecord: &corev1.SecurityRecordEvent{
+				PushSeq: 2,
+				Account: client.id,
+				Domain:  dom[:],
+				Genesis: genHash[:],
+				States:  [][]byte{s0Raw, s1Raw},
 			},
 		},
 	})
 	if !e.security.Loaded || e.security.HeadEpoch != 2 {
-		t.Fatalf("expected pushSeq=2 SecuritySnapshot to apply, got loaded=%v epoch=%d", e.security.Loaded, e.security.HeadEpoch)
+		t.Fatalf("expected pushSeq=2 SecurityRecord to apply, got loaded=%v epoch=%d", e.security.Loaded, e.security.HeadEpoch)
 	}
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 20,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				PushSeq:      1,
-				IsMember:     false,
-				SelfDeviceId: "dev1",
-				HeadEpoch:    1,
+		NowMs: now + 15,
+		Event: &corev1.Event_SecurityRecord{
+			SecurityRecord: &corev1.SecurityRecordEvent{
+				Account: client.id,
+				Domain:  dom[:],
+				Genesis: genHash[:],
+				States:  [][]byte{s0Raw},
 			},
 		},
 	})
 	if !e.security.Loaded || e.security.HeadEpoch != 2 || !e.security.IsMember {
-		t.Fatalf("expected stale pushSeq=1 SecuritySnapshot to be dropped, got member=%v epoch=%d", e.security.IsMember, e.security.HeadEpoch)
+		t.Fatalf("expected pushSeq=0 SecurityRecord after pushSeq=2 to be dropped, got member=%v epoch=%d", e.security.IsMember, e.security.HeadEpoch)
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 20,
+		Event: &corev1.Event_SecurityRecord{
+			SecurityRecord: &corev1.SecurityRecordEvent{
+				PushSeq: 1,
+				Removed: true,
+			},
+		},
+	})
+	if !e.security.Loaded || e.security.HeadEpoch != 2 || !e.security.IsMember {
+		t.Fatalf("expected stale pushSeq=1 SecurityRecord to be dropped, got member=%v epoch=%d", e.security.IsMember, e.security.HeadEpoch)
 	}
 
-	// 3. MachineRemovedId stream frame emits SyncSecurityEffect; wrong opId is rejected; matching opId succeeds even with pushSeq=0.
+	// 2. MachineRemovedId stream frame emits SyncSecurityEffect; wrong opId is rejected; matching opId succeeds even with pushSeq=0.
 	e.running = true
 	e.legID = 42
 	_, mrRes := e.HandleEvent(&corev1.Event{
@@ -1382,28 +1425,33 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 	}
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 35,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:      secOp + 99,
-				HeadEpoch: 99,
+		Event: &corev1.Event_SecurityRecord{
+			SecurityRecord: &corev1.SecurityRecordEvent{
+				OpId:    secOp + 99,
+				Account: client.id,
+				Domain:  dom[:],
+				Genesis: genHash[:],
+				States:  [][]byte{s0Raw, s1Raw, s2Raw},
 			},
 		},
 	})
 	if e.security.HeadEpoch != 2 {
-		t.Fatalf("expected wrong opId SecuritySnapshot to be ignored, got epoch=%d", e.security.HeadEpoch)
+		t.Fatalf("expected wrong opId SecurityRecord to be ignored, got epoch=%d", e.security.HeadEpoch)
 	}
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 40,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:      secOp,
-				IsMember:  true,
-				HeadEpoch: 3,
+		Event: &corev1.Event_SecurityRecord{
+			SecurityRecord: &corev1.SecurityRecordEvent{
+				OpId:    secOp,
+				Account: client.id,
+				Domain:  dom[:],
+				Genesis: genHash[:],
+				States:  [][]byte{s0Raw, s1Raw, s2Raw},
 			},
 		},
 	})
 	if e.security.HeadEpoch != 3 {
-		t.Fatalf("expected matching opId SecuritySnapshot to apply epoch=3, got %d", e.security.HeadEpoch)
+		t.Fatalf("expected matching opId SecurityRecord to apply epoch=3, got %d", e.security.HeadEpoch)
 	}
 
 	// 4. DevicesFetched: opId=0, pushSeq=0 is rejected; pushSeq=2 accepted; pushSeq=1 rejected.
@@ -1534,13 +1582,14 @@ func TestResumeAfterStopAndBackgroundEmitsTouchSyncSecurity(t *testing.T) {
 	}
 	e.HandleEvent(&corev1.Event{
 		NowMs: 2_110,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:              startSec.OpId,
-				NetworkGeneration: startSec.NetworkGeneration,
-				IsMember:          true,
-				HeadEpoch:         1,
-				LeaseEndMs:        9_999_999,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					NetworkGeneration: startSec.NetworkGeneration,
+					IsMember:          true,
+					HeadEpoch:         1,
+					LeaseEndMs:        9_999_999,
+				},
 			},
 		},
 	})
@@ -1965,14 +2014,15 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 	m1, m2 := m1Actor.id, m2Actor.id
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 35,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				PushSeq:           2,
-				IsMember:          true,
-				SelfDeviceId:      client.id,
-				AuthorityDeviceId: client.id,
-				LeaseEndMs:        now + 86_400_000,
-				TrustedMachineIds: []string{m1, m2},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      client.id,
+					AuthorityDeviceId: client.id,
+					LeaseEndMs:        now + 86_400_000,
+					TrustedMachineIds: []string{m1, m2},
+				},
 			},
 		},
 	})
@@ -2037,7 +2087,7 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 	now = hsNow
 
 	// 1. Direct event seq=3 arrives before relay: updates display prefix and LastSeq,
-	// does NOT advance ServerLastSeq, and emits NO CacheWriteEffect_WriteEvents.
+	// does NOT advance ServerLastSeq, and emits NO CacheWriteEffect.
 	_, directRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 10,
 		Event: &corev1.Event_DirectEventsReceived{
@@ -2047,7 +2097,7 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 				PcId:      readPCID,
 				Sender:    m1,
 				Events: []*corev1.PlainEvent{
-					{Seq: 3, Verified: true, CacheRef: "should-be-stripped", Event: &v1.Event{Seq: 3, SessionId: "s1"}},
+					{Seq: 3, Verified: true, Event: &v1.Event{Seq: 3, SessionId: "s1"}},
 				},
 			},
 		},
@@ -2056,8 +2106,8 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 		t.Fatalf("expected Dirty.SessionData on DirectEventsReceived")
 	}
 	for _, eff := range directRes.Effects {
-		if cw := eff.GetCacheWrite(); cw != nil && cw.GetWriteEvents() != nil {
-			t.Fatalf("direct event must not emit CacheWriteEffect_WriteEvents")
+		if cw := eff.GetCacheWrite(); cw != nil {
+			t.Fatalf("direct event must not emit CacheWriteEffect")
 		}
 	}
 	if buf := e.Buffer("s1"); buf.PrefixLen() != 3 {
@@ -2067,8 +2117,8 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 		t.Fatalf("expected LastSeq=3 ServerLastSeq=2, got LastSeq=%d ServerLastSeq=%d", s.LastSeq, s.ServerLastSeq)
 	}
 
-	// 2. Relay EventsAppended arrives with seq=3 later: deduplicates and writes CacheRef.
-	_, relayRes := e.HandleEvent(&corev1.Event{
+	// 2. Relay EventsAppended arrives with seq=3 later: deduplicates and advances ServerLastSeq.
+	e.HandleEvent(&corev1.Event{
 		NowMs: now + 20,
 		Event: &corev1.Event_StreamFrame{
 			StreamFrame: &corev1.StreamFrameEvent{
@@ -2077,24 +2127,13 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 					EventsAppended: &corev1.EventsAppendedFrame{
 						SessionId: "s1",
 						Events: []*corev1.PlainEvent{
-							{Seq: 3, Verified: true, CacheRef: "ref-3", Event: &v1.Event{Seq: 3, SessionId: "s1"}},
+							{Seq: 3, Verified: true, Event: &v1.Event{Seq: 3, SessionId: "s1"}},
 						},
 					},
 				},
 			},
 		},
 	})
-	wroteCache := false
-	for _, eff := range relayRes.Effects {
-		if cw := eff.GetCacheWrite(); cw != nil && cw.GetWriteEvents() != nil {
-			if slices.Equal(cw.GetWriteEvents().GetCacheRefs(), []string{"ref-3"}) {
-				wroteCache = true
-			}
-		}
-	}
-	if !wroteCache {
-		t.Fatalf("expected relay EventsAppended to write ref-3 to EventCache")
-	}
 	if buf := e.Buffer("s1"); buf.PrefixLen() != 3 {
 		t.Fatalf("expected deduplicated prefix=3, got %d", buf.PrefixLen())
 	}
@@ -2144,14 +2183,15 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 	m1 := m1Actor.id
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 35,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				PushSeq:           2,
-				IsMember:          true,
-				SelfDeviceId:      client.id,
-				AuthorityDeviceId: client.id,
-				LeaseEndMs:        now + 86_400_000,
-				TrustedMachineIds: []string{m1},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      client.id,
+					AuthorityDeviceId: client.id,
+					LeaseEndMs:        now + 86_400_000,
+					TrustedMachineIds: []string{m1},
+				},
 			},
 		},
 	})
@@ -2292,8 +2332,8 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 				OpId:      gapOp,
 				SessionId: "s1",
 				Events: []*corev1.PlainEvent{
-					{Seq: 41, Verified: true, CacheRef: "ref-41", Event: &v1.Event{Seq: 41, SessionId: "s1"}},
-					{Seq: 42, Verified: true, CacheRef: "ref-42", Event: &v1.Event{Seq: 42, SessionId: "s1"}},
+					{Seq: 41, Verified: true, Event: &v1.Event{Seq: 41, SessionId: "s1"}},
+					{Seq: 42, Verified: true, Event: &v1.Event{Seq: 42, SessionId: "s1"}},
 				},
 				More: false,
 			},
@@ -2313,14 +2353,15 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 	m1 := m1Actor.id
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 35,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				PushSeq:           2,
-				IsMember:          true,
-				SelfDeviceId:      client.id,
-				AuthorityDeviceId: client.id,
-				LeaseEndMs:        now + 86_400_000,
-				TrustedMachineIds: []string{m1},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      client.id,
+					AuthorityDeviceId: client.id,
+					LeaseEndMs:        now + 86_400_000,
+					TrustedMachineIds: []string{m1},
+				},
 			},
 		},
 	})
@@ -2409,14 +2450,15 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 	m1 := m1Actor.id
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 35,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				PushSeq:           2,
-				IsMember:          true,
-				SelfDeviceId:      client.id,
-				AuthorityDeviceId: client.id,
-				LeaseEndMs:        now + 86_400_000,
-				TrustedMachineIds: []string{m1},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      client.id,
+					AuthorityDeviceId: client.id,
+					LeaseEndMs:        now + 86_400_000,
+					TrustedMachineIds: []string{m1},
+				},
 			},
 		},
 	})
@@ -2555,14 +2597,15 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 	m1 := m1Actor.id
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 35,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				PushSeq:           2,
-				IsMember:          true,
-				SelfDeviceId:      client.id,
-				AuthorityDeviceId: client.id,
-				LeaseEndMs:        now + 86_400_000,
-				TrustedMachineIds: []string{m1},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      client.id,
+					AuthorityDeviceId: client.id,
+					LeaseEndMs:        now + 86_400_000,
+					TrustedMachineIds: []string{m1},
+				},
 			},
 		},
 	})
@@ -2667,14 +2710,15 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 		e.legID = 7
 		e.HandleEvent(&corev1.Event{
 			NowMs: now,
-			Event: &corev1.Event_SecuritySnapshot{
-				SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-					PushSeq:           1,
-					IsMember:          true,
-					SelfDeviceId:      "c-self",
-					TrustedMachineIds: []string{"m-known"},
-					TrustedClientIds:  []string{"c-self", "c-known"},
-					ArchiveMachineIds: []string{"m-archive"},
+			Event: &corev1.Event_SeedDemoWorld{
+				SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+					Security: &corev1.DemoSecurity{
+						IsMember:          true,
+						SelfDeviceId:      "c-self",
+						TrustedMachineIds: []string{"m-known"},
+						TrustedClientIds:  []string{"c-self", "c-known"},
+						ArchiveMachineIds: []string{"m-archive"},
+					},
 				},
 			},
 		})
@@ -2850,19 +2894,6 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 	if secOp == 0 {
 		t.Fatalf("expected SyncSecurityEffect on DeviceUpdated")
 	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 9,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:              secOp,
-				PushSeq:           2,
-				IsMember:          true,
-				SelfDeviceId:      client.id,
-				TrustedMachineIds: []string{"m-known", mNew},
-				TrustedClientIds:  []string{client.id, "c-known"},
-			},
-		},
-	})
 	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+10, client, mNewActor)
 	e.HandleEvent(&corev1.Event{
 		NowMs: hsNow + 5,

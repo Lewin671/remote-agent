@@ -111,75 +111,6 @@ func (e *Engine) handleDirectPreferencesLoaded(ctx *StepContext, ev *corev1.Dire
 	ctx.Dirty.MarkDirect()
 }
 
-func (e *Engine) handleDirectSecuritySnapshot(ctx *StepContext, ev *corev1.DirectSecuritySnapshotEvent) {
-	if ev == nil || (e.secEngine != nil && e.secEngine.Locked()) {
-		return
-	}
-	c := e.ensureTransportCoord()
-	if ev.Rejected {
-		e.emitCoordEffects(ctx, c.OnSecurityRejected(e.nowMs))
-		return
-	}
-	var domain, headHash, selfEd, selfX [32]byte
-	if len(ev.Domain) != 32 || len(ev.HeadHash) != 32 {
-		e.emitCoordEffects(ctx, c.OnSecurityRejected(e.nowMs))
-		return
-	}
-	copy(domain[:], ev.Domain)
-	copy(headHash[:], ev.HeadHash)
-	if len(ev.SelfEdPublic) == 32 {
-		copy(selfEd[:], ev.SelfEdPublic)
-	}
-	if len(ev.SelfXPublic) == 32 {
-		copy(selfX[:], ev.SelfXPublic)
-	}
-	members := make([]transport.CoordMember, 0, len(ev.Members))
-	for _, m := range ev.Members {
-		if m == nil || m.DeviceId == "" || len(m.EdPublic) != 32 || len(m.XPublic) != 32 {
-			continue
-		}
-		var edPub, xPub [32]byte
-		copy(edPub[:], m.EdPublic)
-		copy(xPub[:], m.XPublic)
-		members = append(members, transport.CoordMember{
-			ID:    m.DeviceId,
-			EdPub: edPub,
-			XPub:  xPub,
-			Self:  m.IsSelf,
-			Kind:  m.Kind,
-		})
-	}
-	snap := transport.CoordSecuritySnapshot{
-		Member:        ev.Member,
-		Account:       ev.Account,
-		Domain:        domain,
-		Head:          ev.Head,
-		HeadHash:      headHash,
-		Epoch:         ev.Epoch,
-		StartedAt:     ev.StartedAtMs,
-		LeaseNotAfter: ev.LeaseNotAfterMs,
-		SelfID:        ev.SelfId,
-		SelfEdPub:     selfEd,
-		SelfXPub:      selfX,
-		Members:       members,
-	}
-	e.emitCoordEffects(ctx, c.OnSecuritySnapshot(e.nowMs, snap))
-}
-
-func (e *Engine) handleDirectSecurityInstalled(ctx *StepContext, ev *corev1.DirectSecurityInstalledEvent) {
-	if ev == nil {
-		return
-	}
-	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnSecurityInstalled(e.nowMs, ev.Member, ev.Account, ev.Head))
-}
-
-func (e *Engine) handleDirectAuthorizeDone(ctx *StepContext, ev *corev1.DirectAuthorizeDoneEvent) {
-	if ev == nil {
-		return
-	}
-	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, ev.Ok))
-}
-
 func (e *Engine) handleDirectSignalReceived(ctx *StepContext, ev *corev1.DirectSignalReceivedEvent) {
 	if ev == nil || len(ev.Raw) == 0 {
 		return
@@ -192,20 +123,6 @@ func (e *Engine) handleDirectSignalDelivery(ctx *StepContext, ev *corev1.DirectS
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnSignalDelivery(e.nowMs, ev.FrameId, ev.Status, ev.RetryAfterMs))
-}
-
-func (e *Engine) handleDirectKeySigned(ctx *StepContext, ev *corev1.DirectKeySignedEvent) {
-	if ev == nil {
-		return
-	}
-	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnKeySigned(e.nowMs, ev.OpId, ev.Signature))
-}
-
-func (e *Engine) handleDirectKeyAgreed(ctx *StepContext, ev *corev1.DirectKeyAgreedEvent) {
-	if ev == nil {
-		return
-	}
-	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnKeyAgreed(e.nowMs, ev.OpId, ev.SharedSecret, ev.Ok))
 }
 
 func (e *Engine) handleDirectPcCreated(ctx *StepContext, ev *corev1.DirectPcCreatedEvent) {
@@ -538,18 +455,10 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 			})
 
 		case transport.CoordAuthorize:
-			if e.secEngine != nil && e.secEngine.Locked() {
-				e.requestSyncSecurity(ctx, true)
-			} else {
-				ctx.emit(&corev1.Effect{
-					Effect: &corev1.Effect_DirectAuthorize{
-						DirectAuthorize: &corev1.DirectAuthorizeEffect{},
-					},
-				})
-			}
+			e.requestSyncSecurity(ctx, true)
 
 		case transport.CoordKeySign:
-			if e.secEngine != nil && e.secEngine.Locked() {
+			if e.secEngine != nil {
 				tid := eff.OpID
 				e.secEngine.RequestKeySign(eff.Message, func(sig []byte, err error) {
 					if err != nil {
@@ -558,19 +467,10 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 					e.emitCoordEffects(e.activeStepCtx, e.ensureTransportCoord().OnKeySigned(e.nowMs, tid, sig))
 				})
 				e.emitRawEffects(ctx, e.secEngine.DrainEffects())
-			} else {
-				ctx.emit(&corev1.Effect{
-					Effect: &corev1.Effect_DirectKeySign{
-						DirectKeySign: &corev1.DirectKeySignEffect{
-							OpId:    eff.OpID,
-							Message: eff.Message,
-						},
-					},
-				})
 			}
 
 		case transport.CoordKeyAgree:
-			if e.secEngine != nil && e.secEngine.Locked() {
+			if e.secEngine != nil {
 				tid := eff.OpID
 				var peerX [32]byte
 				copy(peerX[:], eff.PeerXPub[:])
@@ -578,16 +478,6 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 					e.emitCoordEffects(e.activeStepCtx, e.ensureTransportCoord().OnKeyAgreed(e.nowMs, tid, shared, err == nil))
 				})
 				e.emitRawEffects(ctx, e.secEngine.DrainEffects())
-			} else {
-				ctx.emit(&corev1.Effect{
-					Effect: &corev1.Effect_DirectKeyAgree{
-						DirectKeyAgree: &corev1.DirectKeyAgreeEffect{
-							OpId:        eff.OpID,
-							PeerId:      eff.PeerID,
-							PeerXPublic: append([]byte(nil), eff.PeerXPub[:]...),
-						},
-					},
-				})
 			}
 
 		case transport.CoordSignalSend:

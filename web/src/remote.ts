@@ -49,7 +49,6 @@ import {
   type DispatchCommandEffect,
   type Event as CoreEvent,
   type RpcEffect,
-  type SecuritySnapshotEvent,
   type TokenResultEvent,
 } from "./gen/remoteagent/core/v1/app_pb";
 import {
@@ -63,8 +62,6 @@ import {
 } from "./gen/remoteagent/core/v1/security_pb";
 import type {
   DirectDcReadStatsEffect,
-  DirectKeyAgreeEffect,
-  DirectKeySignEffect,
   DirectPcAddCandidatesEffect,
   DirectPcCloseEffect,
   DirectPcConfirmEffect,
@@ -722,8 +719,6 @@ export class Remote implements CoreExecutor {
 
   private newDirectExecutor() {
     return new DirectExecutor({
-      devicePrivate: () => this.account.devicePrivate,
-      xPrivate: () => this.latestXPrivate,
       emit: (ev) => this.hostBridge?.dispatchEvent(ev),
       onPushedEvent: (machineId, pcId, env, header, size) => {
         this.handleDirectEvent(machineId, pcId, env, header, size);
@@ -1143,8 +1138,6 @@ export class Remote implements CoreExecutor {
     return { account: "", deviceId: this.account.deviceId };
   }
 
-  syncSecuritySnapshot?(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent>;
-
   securityKeySign(eff: SecurityKeySignEffect) {
     void this.secExec.keySign(eff);
   }
@@ -1496,8 +1489,6 @@ export class Remote implements CoreExecutor {
 
   // --- CoreExecutor: Single-Attempt Command Dispatch (including Direct-First + Interactive Dual-Send) ---
 
-  directKeySign(eff: DirectKeySignEffect) { void this.directExec.keySign(eff); }
-  directKeyAgree(eff: DirectKeyAgreeEffect) { void this.directExec.keyAgree(eff); }
   directSignalSend(eff: DirectSignalSendEffect) { this.directExec.signalSend(eff); }
   directPcCreate(eff: DirectPcCreateEffect) { this.directExec.pcCreate(eff); }
   directPcDescribe(eff: DirectPcDescribeEffect) { void this.directExec.pcDescribe(eff); }

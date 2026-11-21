@@ -29,7 +29,6 @@ public  final class Event extends
     CACHE_BOOTSTRAP_LOADED(6),
     CACHE_EVENTS_LOADED(7),
     TOKEN_RESULT(8),
-    SECURITY_SNAPSHOT(9),
     STREAM_READY(10),
     STREAM_CLOSED(11),
     STREAM_FRAME(12),
@@ -143,11 +142,8 @@ public  final class Event extends
     SCHEDULE_FORM_SUBMIT(348),
     SCHEDULE_FORM_RETRY_MODELS(349),
     TRANSPORT_CONFIG(400),
-    DIRECT_SECURITY_SNAPSHOT(401),
     DIRECT_SIGNAL_RECEIVED(402),
     DIRECT_SIGNAL_DELIVERY(403),
-    DIRECT_KEY_SIGNED(404),
-    DIRECT_KEY_AGREED(405),
     DIRECT_PC_CREATED(406),
     DIRECT_PC_DESCRIPTION(407),
     DIRECT_PC_REMOTE_SET(408),
@@ -164,8 +160,6 @@ public  final class Event extends
     DIRECT_BULK_TRANSFER_DONE(419),
     TERMINAL_STREAM(420),
     DIRECT_PREFERENCES_LOADED(421),
-    DIRECT_SECURITY_INSTALLED(422),
-    DIRECT_AUTHORIZE_DONE(423),
     SECURITY_CONFIG(450),
     SECURITY_RECORD(451),
     SECURITY_KEY_SIGNED(452),
@@ -196,7 +190,6 @@ public  final class Event extends
         case 6: return CACHE_BOOTSTRAP_LOADED;
         case 7: return CACHE_EVENTS_LOADED;
         case 8: return TOKEN_RESULT;
-        case 9: return SECURITY_SNAPSHOT;
         case 10: return STREAM_READY;
         case 11: return STREAM_CLOSED;
         case 12: return STREAM_FRAME;
@@ -310,11 +303,8 @@ public  final class Event extends
         case 348: return SCHEDULE_FORM_SUBMIT;
         case 349: return SCHEDULE_FORM_RETRY_MODELS;
         case 400: return TRANSPORT_CONFIG;
-        case 401: return DIRECT_SECURITY_SNAPSHOT;
         case 402: return DIRECT_SIGNAL_RECEIVED;
         case 403: return DIRECT_SIGNAL_DELIVERY;
-        case 404: return DIRECT_KEY_SIGNED;
-        case 405: return DIRECT_KEY_AGREED;
         case 406: return DIRECT_PC_CREATED;
         case 407: return DIRECT_PC_DESCRIPTION;
         case 408: return DIRECT_PC_REMOTE_SET;
@@ -331,8 +321,6 @@ public  final class Event extends
         case 419: return DIRECT_BULK_TRANSFER_DONE;
         case 420: return TERMINAL_STREAM;
         case 421: return DIRECT_PREFERENCES_LOADED;
-        case 422: return DIRECT_SECURITY_INSTALLED;
-        case 423: return DIRECT_AUTHORIZE_DONE;
         case 450: return SECURITY_CONFIG;
         case 451: return SECURITY_RECORD;
         case 452: return SECURITY_KEY_SIGNED;
@@ -772,58 +760,6 @@ public  final class Event extends
    */
   private void clearTokenResult() {
     if (eventCase_ == 8) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int SECURITY_SNAPSHOT_FIELD_NUMBER = 9;
-  /**
-   * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecuritySnapshot() {
-    return eventCase_ == 9;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent getSecuritySnapshot() {
-    if (eventCase_ == 9) {
-       return (io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 9;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 9 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 9;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-   */
-  private void clearSecuritySnapshot() {
-    if (eventCase_ == 9) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -6705,58 +6641,6 @@ public  final class Event extends
     }
   }
 
-  public static final int DIRECT_SECURITY_SNAPSHOT_FIELD_NUMBER = 401;
-  /**
-   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDirectSecuritySnapshot() {
-    return eventCase_ == 401;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent getDirectSecuritySnapshot() {
-    if (eventCase_ == 401) {
-       return (io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDirectSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 401;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDirectSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 401 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 401;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-   */
-  private void clearDirectSecuritySnapshot() {
-    if (eventCase_ == 401) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
   public static final int DIRECT_SIGNAL_RECEIVED_FIELD_NUMBER = 402;
   /**
    * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
@@ -6856,110 +6740,6 @@ public  final class Event extends
    */
   private void clearDirectSignalDelivery() {
     if (eventCase_ == 403) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int DIRECT_KEY_SIGNED_FIELD_NUMBER = 404;
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDirectKeySigned() {
-    return eventCase_ == 404;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent getDirectKeySigned() {
-    if (eventCase_ == 404) {
-       return (io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDirectKeySigned(io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 404;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDirectKeySigned(io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 404 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 404;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-   */
-  private void clearDirectKeySigned() {
-    if (eventCase_ == 404) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int DIRECT_KEY_AGREED_FIELD_NUMBER = 405;
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDirectKeyAgreed() {
-    return eventCase_ == 405;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent getDirectKeyAgreed() {
-    if (eventCase_ == 405) {
-       return (io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDirectKeyAgreed(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 405;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDirectKeyAgreed(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 405 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 405;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-   */
-  private void clearDirectKeyAgreed() {
-    if (eventCase_ == 405) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -7792,110 +7572,6 @@ public  final class Event extends
    */
   private void clearDirectPreferencesLoaded() {
     if (eventCase_ == 421) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int DIRECT_SECURITY_INSTALLED_FIELD_NUMBER = 422;
-  /**
-   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDirectSecurityInstalled() {
-    return eventCase_ == 422;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent getDirectSecurityInstalled() {
-    if (eventCase_ == 422) {
-       return (io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDirectSecurityInstalled(io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 422;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDirectSecurityInstalled(io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 422 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 422;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-   */
-  private void clearDirectSecurityInstalled() {
-    if (eventCase_ == 422) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int DIRECT_AUTHORIZE_DONE_FIELD_NUMBER = 423;
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDirectAuthorizeDone() {
-    return eventCase_ == 423;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent getDirectAuthorizeDone() {
-    if (eventCase_ == 423) {
-       return (io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDirectAuthorizeDone(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 423;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDirectAuthorizeDone(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 423 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 423;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-   */
-  private void clearDirectAuthorizeDone() {
-    if (eventCase_ == 423) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -8993,54 +8669,6 @@ public  final class Event extends
     public Builder clearTokenResult() {
       copyOnWrite();
       instance.clearTokenResult();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecuritySnapshot() {
-      return instance.hasSecuritySnapshot();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent getSecuritySnapshot() {
-      return instance.getSecuritySnapshot();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-     */
-    public Builder setSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent value) {
-      copyOnWrite();
-      instance.setSecuritySnapshot(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-     */
-    public Builder setSecuritySnapshot(
-        io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecuritySnapshot(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-     */
-    public Builder mergeSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent value) {
-      copyOnWrite();
-      instance.mergeSecuritySnapshot(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-     */
-    public Builder clearSecuritySnapshot() {
-      copyOnWrite();
-      instance.clearSecuritySnapshot();
       return this;
     }
 
@@ -14469,54 +14097,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDirectSecuritySnapshot() {
-      return instance.hasDirectSecuritySnapshot();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent getDirectSecuritySnapshot() {
-      return instance.getDirectSecuritySnapshot();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-     */
-    public Builder setDirectSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent value) {
-      copyOnWrite();
-      instance.setDirectSecuritySnapshot(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-     */
-    public Builder setDirectSecuritySnapshot(
-        io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDirectSecuritySnapshot(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-     */
-    public Builder mergeDirectSecuritySnapshot(io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent value) {
-      copyOnWrite();
-      instance.mergeDirectSecuritySnapshot(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-     */
-    public Builder clearDirectSecuritySnapshot() {
-      copyOnWrite();
-      instance.clearDirectSecuritySnapshot();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
      */
     @java.lang.Override
@@ -14609,102 +14189,6 @@ public  final class Event extends
     public Builder clearDirectSignalDelivery() {
       copyOnWrite();
       instance.clearDirectSignalDelivery();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDirectKeySigned() {
-      return instance.hasDirectKeySigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent getDirectKeySigned() {
-      return instance.getDirectKeySigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-     */
-    public Builder setDirectKeySigned(io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent value) {
-      copyOnWrite();
-      instance.setDirectKeySigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-     */
-    public Builder setDirectKeySigned(
-        io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDirectKeySigned(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-     */
-    public Builder mergeDirectKeySigned(io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent value) {
-      copyOnWrite();
-      instance.mergeDirectKeySigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-     */
-    public Builder clearDirectKeySigned() {
-      copyOnWrite();
-      instance.clearDirectKeySigned();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDirectKeyAgreed() {
-      return instance.hasDirectKeyAgreed();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent getDirectKeyAgreed() {
-      return instance.getDirectKeyAgreed();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-     */
-    public Builder setDirectKeyAgreed(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent value) {
-      copyOnWrite();
-      instance.setDirectKeyAgreed(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-     */
-    public Builder setDirectKeyAgreed(
-        io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDirectKeyAgreed(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-     */
-    public Builder mergeDirectKeyAgreed(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent value) {
-      copyOnWrite();
-      instance.mergeDirectKeyAgreed(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-     */
-    public Builder clearDirectKeyAgreed() {
-      copyOnWrite();
-      instance.clearDirectKeyAgreed();
       return this;
     }
 
@@ -15477,102 +14961,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDirectSecurityInstalled() {
-      return instance.hasDirectSecurityInstalled();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent getDirectSecurityInstalled() {
-      return instance.getDirectSecurityInstalled();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-     */
-    public Builder setDirectSecurityInstalled(io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent value) {
-      copyOnWrite();
-      instance.setDirectSecurityInstalled(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-     */
-    public Builder setDirectSecurityInstalled(
-        io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDirectSecurityInstalled(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-     */
-    public Builder mergeDirectSecurityInstalled(io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent value) {
-      copyOnWrite();
-      instance.mergeDirectSecurityInstalled(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-     */
-    public Builder clearDirectSecurityInstalled() {
-      copyOnWrite();
-      instance.clearDirectSecurityInstalled();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDirectAuthorizeDone() {
-      return instance.hasDirectAuthorizeDone();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent getDirectAuthorizeDone() {
-      return instance.getDirectAuthorizeDone();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-     */
-    public Builder setDirectAuthorizeDone(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent value) {
-      copyOnWrite();
-      instance.setDirectAuthorizeDone(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-     */
-    public Builder setDirectAuthorizeDone(
-        io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDirectAuthorizeDone(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-     */
-    public Builder mergeDirectAuthorizeDone(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent value) {
-      copyOnWrite();
-      instance.mergeDirectAuthorizeDone(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-     */
-    public Builder clearDirectAuthorizeDone() {
-      copyOnWrite();
-      instance.clearDirectAuthorizeDone();
-      return this;
-    }
-
-    /**
      * <pre>
      * Security engine (450-499 reserved for security).
      * </pre>
@@ -16175,7 +15563,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.CacheBootstrapLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.CacheEventsLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.TokenResultEvent.class,
-            io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamReadyEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamClosedEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.class,
@@ -16293,11 +15680,8 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UsageScreenSelectSeriesEvent.class,
             io.github.lewin671.remoteagent.core.proto.UsageScreenScrubEvent.class,
             io.github.lewin671.remoteagent.core.proto.TransportConfigEvent.class,
-            io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalReceivedEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent.class,
-            io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcCreatedEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcDescriptionEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcRemoteSetEvent.class,
@@ -16314,8 +15698,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent.class,
             io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.class,
-            io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent.class,
@@ -16325,30 +15707,29 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent.class,
           };
           java.lang.String info =
-              "\u0000\u009c\u0001\u0000\u0001\u01ca\u009c\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u0096\u0001\u0000\u0001\u01ca\u0096\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
-              "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
-              "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
-              "\u0017<\u0000\u0018<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
-              "\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/" +
-              "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;" +
-              "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000" +
-              "\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4" +
-              "<\u0000\u00d5<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000" +
-              "\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140" +
-              "<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000" +
-              "\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152" +
-              "<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000" +
-              "\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f" +
-              "<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000" +
-              "\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178" +
-              "<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000" +
-              "\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0191<\u0000\u0192<\u0000\u0193" +
-              "<\u0000\u0194<\u0000\u0195<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000" +
-              "\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0" +
-              "<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000" +
-              "\u01a7<\u0000\u01c2<\u0000\u01c3<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9" +
-              "<\u0000\u01ca<\u0000";
+              "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
+              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
+              "\u0018<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000" +
+              "\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00002<\u0000" +
+              "3<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;<\u0000b\u0002c" +
+              "\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000\u00ce<\u0000" +
+              "\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4<\u0000\u00d5" +
+              "<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000\u0130<\u0000" +
+              "\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140<\u0000\u0141" +
+              "<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000\u014a<\u0000" +
+              "\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152<\u0000\u0153" +
+              "<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000\u0159<\u0000" +
+              "\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f<\u0000\u0160" +
+              "<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a<\u0000" +
+              "\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000\u0179" +
+              "<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000\u017f<\u0000" +
+              "\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197" +
+              "<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000" +
+              "\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4" +
+              "<\u0000\u01a5<\u0000\u01c2<\u0000\u01c3<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000" +
+              "\u01c9<\u0000\u01ca<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -457,6 +457,54 @@ public  final class SeedDemoWorldEvent extends
     sessionEvents_.remove(index);
   }
 
+  public static final int SECURITY_FIELD_NUMBER = 6;
+  private io.github.lewin671.remoteagent.core.proto.DemoSecurity security_;
+  /**
+   * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecurity() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DemoSecurity getSecurity() {
+    return security_ == null ? io.github.lewin671.remoteagent.core.proto.DemoSecurity.getDefaultInstance() : security_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurity(io.github.lewin671.remoteagent.core.proto.DemoSecurity value) {
+    value.getClass();  // minimal bytecode null check
+    security_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSecurity(io.github.lewin671.remoteagent.core.proto.DemoSecurity value) {
+    value.getClass();  // minimal bytecode null check
+    if (security_ != null &&
+        security_ != io.github.lewin671.remoteagent.core.proto.DemoSecurity.getDefaultInstance()) {
+      security_ =
+        io.github.lewin671.remoteagent.core.proto.DemoSecurity.newBuilder(security_).mergeFrom(value).buildPartial();
+    } else {
+      security_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+   */
+  private void clearSecurity() {
+    security_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1009,6 +1057,53 @@ public  final class SeedDemoWorldEvent extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecurity() {
+      return instance.hasSecurity();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DemoSecurity getSecurity() {
+      return instance.getSecurity();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+     */
+    public Builder setSecurity(io.github.lewin671.remoteagent.core.proto.DemoSecurity value) {
+      copyOnWrite();
+      instance.setSecurity(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+     */
+    public Builder setSecurity(
+        io.github.lewin671.remoteagent.core.proto.DemoSecurity.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurity(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+     */
+    public Builder mergeSecurity(io.github.lewin671.remoteagent.core.proto.DemoSecurity value) {
+      copyOnWrite();
+      instance.mergeSecurity(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DemoSecurity security = 6 [json_name = "security"];</code>
+     */
+    public Builder clearSecurity() {  copyOnWrite();
+      instance.clearSecurity();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SeedDemoWorldEvent)
   }
   @java.lang.Override
@@ -1035,10 +1130,11 @@ public  final class SeedDemoWorldEvent extends
             "prefs_",
             "sessionEvents_",
             io.github.lewin671.remoteagent.core.proto.DemoSessionEvents.class,
+            "security_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0004\u0000\u0001\u001b\u0002\u001b" +
-              "\u0003\u001b\u0004\u1009\u0000\u0005\u001b";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0004\u0000\u0001\u001b\u0002\u001b" +
+              "\u0003\u001b\u0004\u1009\u0000\u0005\u001b\u0006\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

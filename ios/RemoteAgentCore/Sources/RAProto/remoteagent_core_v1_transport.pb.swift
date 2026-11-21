@@ -265,26 +265,6 @@ public struct PBCoreDirectIceCandidate: Sendable {
   public init() {}
 }
 
-public struct PBCoreDirectSecurityMember: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var deviceID: String = String()
-
-  public var edPublic: Data = Data()
-
-  public var xPublic: Data = Data()
-
-  public var isSelf: Bool = false
-
-  public var kind: UInt32 = 0
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 public struct PBCoreDirectPreferenceEntry: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -369,42 +349,6 @@ public struct PBCoreTransportConfigEvent: Sendable {
   public init() {}
 }
 
-public struct PBCoreDirectSecuritySnapshotEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var member: Bool = false
-
-  public var account: String = String()
-
-  public var domain: Data = Data()
-
-  public var head: String = String()
-
-  public var headHash: Data = Data()
-
-  public var epoch: UInt64 = 0
-
-  public var startedAtMs: Int64 = 0
-
-  public var leaseNotAfterMs: Int64 = 0
-
-  public var selfID: String = String()
-
-  public var selfEdPublic: Data = Data()
-
-  public var selfXPublic: Data = Data()
-
-  public var members: [PBCoreDirectSecurityMember] = []
-
-  public var rejected: Bool = false
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 public struct PBCoreDirectSignalReceivedEvent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -427,36 +371,6 @@ public struct PBCoreDirectSignalDeliveryEvent: Sendable {
   public var status: UInt32 = 0
 
   public var retryAfterMs: UInt64 = 0
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-public struct PBCoreDirectKeySignedEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var opID: UInt64 = 0
-
-  public var signature: Data = Data()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-public struct PBCoreDirectKeyAgreedEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var opID: UInt64 = 0
-
-  public var sharedSecret: Data = Data()
-
-  public var ok: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -730,64 +644,6 @@ public struct PBCoreDirectPreferencesLoadedEvent: Sendable {
   public init() {}
 }
 
-public struct PBCoreDirectSecurityInstalledEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var member: Bool = false
-
-  public var account: String = String()
-
-  public var head: String = String()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-public struct PBCoreDirectAuthorizeDoneEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var ok: Bool = false
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-public struct PBCoreDirectKeySignEffect: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var opID: UInt64 = 0
-
-  public var message: Data = Data()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-public struct PBCoreDirectKeyAgreeEffect: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var opID: UInt64 = 0
-
-  public var peerID: String = String()
-
-  public var peerXPublic: Data = Data()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 public struct PBCoreDirectSignalSendEffect: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -922,16 +778,6 @@ public struct PBCoreDirectDcReadStatsEffect: Sendable {
   public init() {}
 }
 
-public struct PBCoreDirectAuthorizeEffect: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 public struct PBCoreDirectBulkRouteEffect: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1042,56 +888,6 @@ extension PBCoreDirectIceCandidate: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.ufrag != rhs.ufrag {return false}
     if lhs.mid != rhs.mid {return false}
     if lhs.mlineIndex != rhs.mlineIndex {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBCoreDirectSecurityMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectSecurityMember"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}ed_public\0\u{3}x_public\0\u{3}is_self\0\u{1}kind\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
-      case 2: try { try decoder.decodeSingularBytesField(value: &self.edPublic) }()
-      case 3: try { try decoder.decodeSingularBytesField(value: &self.xPublic) }()
-      case 4: try { try decoder.decodeSingularBoolField(value: &self.isSelf) }()
-      case 5: try { try decoder.decodeSingularUInt32Field(value: &self.kind) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.deviceID.isEmpty {
-      try visitor.visitSingularStringField(value: self.deviceID, fieldNumber: 1)
-    }
-    if !self.edPublic.isEmpty {
-      try visitor.visitSingularBytesField(value: self.edPublic, fieldNumber: 2)
-    }
-    if !self.xPublic.isEmpty {
-      try visitor.visitSingularBytesField(value: self.xPublic, fieldNumber: 3)
-    }
-    if self.isSelf != false {
-      try visitor.visitSingularBoolField(value: self.isSelf, fieldNumber: 4)
-    }
-    if self.kind != 0 {
-      try visitor.visitSingularUInt32Field(value: self.kind, fieldNumber: 5)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectSecurityMember, rhs: PBCoreDirectSecurityMember) -> Bool {
-    if lhs.deviceID != rhs.deviceID {return false}
-    if lhs.edPublic != rhs.edPublic {return false}
-    if lhs.xPublic != rhs.xPublic {return false}
-    if lhs.isSelf != rhs.isSelf {return false}
-    if lhs.kind != rhs.kind {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1307,96 +1103,6 @@ extension PBCoreTransportConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
   }
 }
 
-extension PBCoreDirectSecuritySnapshotEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectSecuritySnapshotEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}member\0\u{1}account\0\u{1}domain\0\u{1}head\0\u{3}head_hash\0\u{1}epoch\0\u{3}started_at_ms\0\u{3}lease_not_after_ms\0\u{3}self_id\0\u{3}self_ed_public\0\u{3}self_x_public\0\u{1}members\0\u{1}rejected\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBoolField(value: &self.member) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.account) }()
-      case 3: try { try decoder.decodeSingularBytesField(value: &self.domain) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.head) }()
-      case 5: try { try decoder.decodeSingularBytesField(value: &self.headHash) }()
-      case 6: try { try decoder.decodeSingularUInt64Field(value: &self.epoch) }()
-      case 7: try { try decoder.decodeSingularInt64Field(value: &self.startedAtMs) }()
-      case 8: try { try decoder.decodeSingularInt64Field(value: &self.leaseNotAfterMs) }()
-      case 9: try { try decoder.decodeSingularStringField(value: &self.selfID) }()
-      case 10: try { try decoder.decodeSingularBytesField(value: &self.selfEdPublic) }()
-      case 11: try { try decoder.decodeSingularBytesField(value: &self.selfXPublic) }()
-      case 12: try { try decoder.decodeRepeatedMessageField(value: &self.members) }()
-      case 13: try { try decoder.decodeSingularBoolField(value: &self.rejected) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.member != false {
-      try visitor.visitSingularBoolField(value: self.member, fieldNumber: 1)
-    }
-    if !self.account.isEmpty {
-      try visitor.visitSingularStringField(value: self.account, fieldNumber: 2)
-    }
-    if !self.domain.isEmpty {
-      try visitor.visitSingularBytesField(value: self.domain, fieldNumber: 3)
-    }
-    if !self.head.isEmpty {
-      try visitor.visitSingularStringField(value: self.head, fieldNumber: 4)
-    }
-    if !self.headHash.isEmpty {
-      try visitor.visitSingularBytesField(value: self.headHash, fieldNumber: 5)
-    }
-    if self.epoch != 0 {
-      try visitor.visitSingularUInt64Field(value: self.epoch, fieldNumber: 6)
-    }
-    if self.startedAtMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.startedAtMs, fieldNumber: 7)
-    }
-    if self.leaseNotAfterMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.leaseNotAfterMs, fieldNumber: 8)
-    }
-    if !self.selfID.isEmpty {
-      try visitor.visitSingularStringField(value: self.selfID, fieldNumber: 9)
-    }
-    if !self.selfEdPublic.isEmpty {
-      try visitor.visitSingularBytesField(value: self.selfEdPublic, fieldNumber: 10)
-    }
-    if !self.selfXPublic.isEmpty {
-      try visitor.visitSingularBytesField(value: self.selfXPublic, fieldNumber: 11)
-    }
-    if !self.members.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.members, fieldNumber: 12)
-    }
-    if self.rejected != false {
-      try visitor.visitSingularBoolField(value: self.rejected, fieldNumber: 13)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectSecuritySnapshotEvent, rhs: PBCoreDirectSecuritySnapshotEvent) -> Bool {
-    if lhs.member != rhs.member {return false}
-    if lhs.account != rhs.account {return false}
-    if lhs.domain != rhs.domain {return false}
-    if lhs.head != rhs.head {return false}
-    if lhs.headHash != rhs.headHash {return false}
-    if lhs.epoch != rhs.epoch {return false}
-    if lhs.startedAtMs != rhs.startedAtMs {return false}
-    if lhs.leaseNotAfterMs != rhs.leaseNotAfterMs {return false}
-    if lhs.selfID != rhs.selfID {return false}
-    if lhs.selfEdPublic != rhs.selfEdPublic {return false}
-    if lhs.selfXPublic != rhs.selfXPublic {return false}
-    if lhs.members != rhs.members {return false}
-    if lhs.rejected != rhs.rejected {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
 extension PBCoreDirectSignalReceivedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectSignalReceivedEvent"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}raw\0")
@@ -1462,81 +1168,6 @@ extension PBCoreDirectSignalDeliveryEvent: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.frameID != rhs.frameID {return false}
     if lhs.status != rhs.status {return false}
     if lhs.retryAfterMs != rhs.retryAfterMs {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBCoreDirectKeySignedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectKeySignedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}signature\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
-    if !self.signature.isEmpty {
-      try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 2)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectKeySignedEvent, rhs: PBCoreDirectKeySignedEvent) -> Bool {
-    if lhs.opID != rhs.opID {return false}
-    if lhs.signature != rhs.signature {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBCoreDirectKeyAgreedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectKeyAgreedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}shared_secret\0\u{1}ok\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeSingularBytesField(value: &self.sharedSecret) }()
-      case 3: try { try decoder.decodeSingularBoolField(value: &self.ok) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
-    if !self.sharedSecret.isEmpty {
-      try visitor.visitSingularBytesField(value: self.sharedSecret, fieldNumber: 2)
-    }
-    if self.ok != false {
-      try visitor.visitSingularBoolField(value: self.ok, fieldNumber: 3)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectKeyAgreedEvent, rhs: PBCoreDirectKeyAgreedEvent) -> Bool {
-    if lhs.opID != rhs.opID {return false}
-    if lhs.sharedSecret != rhs.sharedSecret {return false}
-    if lhs.ok != rhs.ok {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2191,151 +1822,6 @@ extension PBCoreDirectPreferencesLoadedEvent: SwiftProtobuf.Message, SwiftProtob
   }
 }
 
-extension PBCoreDirectSecurityInstalledEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectSecurityInstalledEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}member\0\u{1}account\0\u{1}head\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBoolField(value: &self.member) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.account) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.head) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.member != false {
-      try visitor.visitSingularBoolField(value: self.member, fieldNumber: 1)
-    }
-    if !self.account.isEmpty {
-      try visitor.visitSingularStringField(value: self.account, fieldNumber: 2)
-    }
-    if !self.head.isEmpty {
-      try visitor.visitSingularStringField(value: self.head, fieldNumber: 3)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectSecurityInstalledEvent, rhs: PBCoreDirectSecurityInstalledEvent) -> Bool {
-    if lhs.member != rhs.member {return false}
-    if lhs.account != rhs.account {return false}
-    if lhs.head != rhs.head {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBCoreDirectAuthorizeDoneEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectAuthorizeDoneEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ok\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBoolField(value: &self.ok) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.ok != false {
-      try visitor.visitSingularBoolField(value: self.ok, fieldNumber: 1)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectAuthorizeDoneEvent, rhs: PBCoreDirectAuthorizeDoneEvent) -> Bool {
-    if lhs.ok != rhs.ok {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBCoreDirectKeySignEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectKeySignEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}message\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeSingularBytesField(value: &self.message) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
-    if !self.message.isEmpty {
-      try visitor.visitSingularBytesField(value: self.message, fieldNumber: 2)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectKeySignEffect, rhs: PBCoreDirectKeySignEffect) -> Bool {
-    if lhs.opID != rhs.opID {return false}
-    if lhs.message != rhs.message {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBCoreDirectKeyAgreeEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectKeyAgreeEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}peer_id\0\u{3}peer_x_public\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.peerID) }()
-      case 3: try { try decoder.decodeSingularBytesField(value: &self.peerXPublic) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
-    if !self.peerID.isEmpty {
-      try visitor.visitSingularStringField(value: self.peerID, fieldNumber: 2)
-    }
-    if !self.peerXPublic.isEmpty {
-      try visitor.visitSingularBytesField(value: self.peerXPublic, fieldNumber: 3)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectKeyAgreeEffect, rhs: PBCoreDirectKeyAgreeEffect) -> Bool {
-    if lhs.opID != rhs.opID {return false}
-    if lhs.peerID != rhs.peerID {return false}
-    if lhs.peerXPublic != rhs.peerXPublic {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
 extension PBCoreDirectSignalSendEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectSignalSendEffect"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}to_device\0\u{3}frame_class\0\u{3}frame_id\0\u{1}sealed\0\u{3}deadline_ms\0\u{1}critical\0")
@@ -2666,25 +2152,6 @@ extension PBCoreDirectDcReadStatsEffect: SwiftProtobuf.Message, SwiftProtobuf._M
 
   public static func ==(lhs: PBCoreDirectDcReadStatsEffect, rhs: PBCoreDirectDcReadStatsEffect) -> Bool {
     if lhs.pcID != rhs.pcID {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBCoreDirectAuthorizeEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectAuthorizeEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    // Load everything into unknown fields
-    while try decoder.nextFieldNumber() != nil {}
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreDirectAuthorizeEffect, rhs: PBCoreDirectAuthorizeEffect) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

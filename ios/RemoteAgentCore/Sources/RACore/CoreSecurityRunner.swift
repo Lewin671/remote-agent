@@ -1,6 +1,5 @@
 import Foundation
 import RAProto
-import Security
 
 /// Drives a standalone Go `CoreClient` + `SecurityExecutor` when no host `CoreHost` is attached
 /// (e.g. standalone `Remote` tests or `AuthorityCoordinator.resumeHandoffOffer` device-meta sealing).
@@ -285,15 +284,7 @@ final class CoreSecurityRunner: @unchecked Sendable {
             ev.unitFloats = (0..<minFloats).map { _ in Double.random(in: 0..<1) }
         }
         if minRandomBytes > 0 {
-            var data = Data(count: minRandomBytes)
-            let rc = data.withUnsafeMutableBytes { buf in
-                SecRandomCopyBytes(kSecRandomDefault, minRandomBytes, buf.baseAddress!)
-            }
-            if rc == errSecSuccess {
-                ev.randomBytes = data
-            } else {
-                ev.randomBytes = randomBytes(minRandomBytes)
-            }
+            ev.randomBytes = randomBytes(minRandomBytes)
         }
         return ev
     }

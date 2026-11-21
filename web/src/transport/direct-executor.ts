@@ -5,8 +5,6 @@ import { EventSchema as CoreEventSchema, type Event as CoreEvent } from "../gen/
 import {
   DirectDcStateEventSchema,
   DirectDcStatsEventSchema,
-  DirectKeyAgreedEventSchema,
-  DirectKeySignedEventSchema,
   DirectPcCandidatesAddedEventSchema,
   DirectPcClosedEventSchema,
   DirectPcCreatedEventSchema,
@@ -16,8 +14,6 @@ import {
   DirectPcStateEventSchema,
   DirectPcStunErrorEventSchema,
   type DirectDcReadStatsEffect,
-  type DirectKeyAgreeEffect,
-  type DirectKeySignEffect,
   type DirectPcAddCandidatesEffect,
   type DirectPcCloseEffect,
   type DirectPcConfirmEffect,
@@ -71,27 +67,19 @@ function errorName(err: unknown): string {
   return "Error";
 }
 
-function hexKey(b: Uint8Array): string {
-  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
-}
-
 /**
- * Platform executor for Core's direct-path coordinator: owns WebRTC PCs,
- * WebCrypto Ed25519/X25519 leaf operations, and main-WS signaling framing.
- * Bulk AES-GCM and batch signature verification stay in WebCrypto outside Core.
+ * Platform executor for Core's direct-path coordinator: owns WebRTC PCs
+ * and main-WS signaling framing.
  */
 export class DirectExecutor {
   readonly budget = new DirectBudget();
   private readonly pcs = new Map<bigint, PcEntry>();
   private readonly pendingRpc = new Map<string, PendingRpc>();
-  private readonly xPubKeys = new Map<string, Promise<CryptoKey>>();
   private leg?: FrameStream;
   private closed = false;
 
   constructor(
     private readonly options: {
-      devicePrivate: () => CryptoKey | undefined;
-      xPrivate: () => CryptoKey | undefined;
       emit: (ev: CoreEvent) => void;
       onPushedEvent: (machineId: string, pcId: bigint, env: Envelope, header: Header, size: number) => void;
       factory?: (config: RTCConfiguration) => RTCPeerConnection;
@@ -110,46 +98,6 @@ export class DirectExecutor {
 
   detachLeg(leg: FrameStream) {
     if (this.leg === leg) this.leg = undefined;
-  }
-
-  async keySign(eff: DirectKeySignEffect): Promise<void> {
-    try {
-      const priv = this.options.devicePrivate();
-      if (!priv) {
-        this.emit({ case: "directKeySigned", value: create(DirectKeySignedEventSchema, { opId: eff.opId, signature: new Uint8Array() }) });
-        return;
-      }
-      const sig = new Uint8Array(await crypto.subtle.sign("Ed25519", priv, eff.message as Uint8Array<ArrayBuffer>));
-      this.emit({ case: "directKeySigned", value: create(DirectKeySignedEventSchema, { opId: eff.opId, signature: sig }) });
-    } catch {
-      this.emit({ case: "directKeySigned", value: create(DirectKeySignedEventSchema, { opId: eff.opId, signature: new Uint8Array() }) });
-    }
-  }
-
-  async keyAgree(eff: DirectKeyAgreeEffect): Promise<void> {
-    try {
-      const priv = this.options.xPrivate();
-      if (!priv || eff.peerXPublic.byteLength !== 32) {
-        this.emit({ case: "directKeyAgreed", value: create(DirectKeyAgreedEventSchema, { opId: eff.opId, ok: false }) });
-        return;
-      }
-      const cacheKey = `${eff.peerId}:${hexKey(eff.peerXPublic)}`;
-      let pubPromise = this.xPubKeys.get(cacheKey);
-      if (!pubPromise) {
-        if (this.xPubKeys.size >= 256) this.xPubKeys.clear();
-        pubPromise = crypto.subtle.importKey("raw", eff.peerXPublic as Uint8Array<ArrayBuffer>, "X25519", false, []);
-        pubPromise.catch(() => this.xPubKeys.delete(cacheKey));
-        this.xPubKeys.set(cacheKey, pubPromise);
-      }
-      const pub = await pubPromise;
-      const bits = await crypto.subtle.deriveBits({ name: "X25519", public: pub }, priv, 256);
-      this.emit({
-        case: "directKeyAgreed",
-        value: create(DirectKeyAgreedEventSchema, { opId: eff.opId, sharedSecret: new Uint8Array(bits), ok: true }),
-      });
-    } catch {
-      this.emit({ case: "directKeyAgreed", value: create(DirectKeyAgreedEventSchema, { opId: eff.opId, ok: false }) });
-    }
   }
 
   signalSend(eff: DirectSignalSendEffect): boolean {

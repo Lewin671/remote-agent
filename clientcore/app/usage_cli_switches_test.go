@@ -26,14 +26,15 @@ func seedDualCLIMachine(t *testing.T, c *Core) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_010,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:              3,
-				IsMember:          true,
-				SelfDeviceId:      "dev-1",
-				AuthorityDeviceId: "dev-1",
-				LeaseEndMs:        1_891_633_600_000,
-				TrustedMachineIds: []string{"m-1"},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        1_891_633_600_000,
+					TrustedMachineIds: []string{"m-1"},
+				},
 			},
 		},
 	})

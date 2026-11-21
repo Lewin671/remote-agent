@@ -827,14 +827,6 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 		if pe == nil || pe.Seq == 0 || pe.Broken || pe.Retired || pe.Unavailable || pe.Seq != expected {
 			continue
 		}
-		if pe.CacheRef != "" {
-			pe = &corev1.PlainEvent{
-				Seq:         pe.Seq,
-				Event:       pe.Event,
-				Verified:    pe.Verified,
-				ApproxBytes: pe.ApproxBytes,
-			}
-		}
 		clean = append(clean, pe)
 		expected++
 	}
@@ -859,7 +851,6 @@ func plainEventsToDecoded(items []*corev1.PlainEvent) []decodedEventItem {
 			Unavailable: pe.Unavailable,
 			Verified:    pe.Verified,
 			ApproxBytes: pe.ApproxBytes,
-			CacheRef:    pe.CacheRef,
 		})
 	}
 	return out
@@ -893,7 +884,6 @@ func (e *Engine) ingestDecodedEvents(
 		return true
 	}
 	b.usedAtMs = e.monoMs
-	var cacheRefs []string
 	var rawStored []*v1.StoredEvent
 	var maxSeq uint64
 	advancedPrefix := false
@@ -1000,12 +990,8 @@ func (e *Engine) ingestDecodedEvents(
 			}
 		}
 
-		if save && (pe.Verified || pe.Unavailable) {
-			if pe.RawStored != nil {
-				rawStored = append(rawStored, pe.RawStored)
-			} else if pe.CacheRef != "" {
-				cacheRefs = append(cacheRefs, pe.CacheRef)
-			}
+		if save && (pe.Verified || pe.Unavailable) && pe.RawStored != nil {
+			rawStored = append(rawStored, pe.RawStored)
 		}
 	}
 
@@ -1032,19 +1018,6 @@ func (e *Engine) ingestDecodedEvents(
 						WriteStoredEvents: &corev1.CacheWriteStoredEvents{
 							SessionId: sid,
 							Events:    rawStored,
-						},
-					},
-				},
-			},
-		})
-	} else if len(cacheRefs) > 0 {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheWrite{
-				CacheWrite: &corev1.CacheWriteEffect{
-					Kind: &corev1.CacheWriteEffect_WriteEvents{
-						WriteEvents: &corev1.CacheWriteEvents{
-							SessionId: sid,
-							CacheRefs: cacheRefs,
 						},
 					},
 				},

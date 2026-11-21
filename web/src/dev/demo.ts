@@ -102,7 +102,6 @@ import {
   PlainEventSchema,
   PlainMachineSchema,
   PlainSessionSchema,
-  SecuritySnapshotEventSchema,
   SessionByIdFetchedEventSchema,
   TimerKind,
   TokenResultEventSchema,
@@ -114,12 +113,12 @@ import {
   type DispatchCommandEffect,
   type Event as CoreEvent,
   type RpcEffect,
-  type SecuritySnapshotEvent,
   type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
   DemoDeviceSchema,
   DemoMachineSchema,
+  DemoSecuritySchema,
   DemoSessionSchema,
   SeedDemoWorldEventSchema,
   type SecurityRecordEvent,
@@ -1557,10 +1556,8 @@ export class DemoRemote extends Remote {
   private demoHasMoreSessions = false;
   private demoBootConsumed = false;
   private demoListRetried = false;
-  private demoSecurityPushSeq = 0n;
   private syncBootOpId = 0n;
   private syncTokenOpId = 0n;
-  private syncSecOpId = 0n;
   private syncRpcQueue: RpcEffect[] = [];
   private evs = new Map<string, Event[]>();
   private attempts = new Map<string, number>();
@@ -1610,10 +1607,11 @@ export class DemoRemote extends Remote {
     const removed = conn === "removed";
     return create(TokenResultEventSchema, { opId, token: conn === "fail" || removed ? "" : "demo-token", expiresMs: BigInt(Date.now() + 30 * 86_400_000), removed, errorCode: conn === "fail" ? "invalid_argument" : "", error: conn === "fail" ? "证书无效" : "" });
   }
-  private demoSec(opId: bigint, networkGeneration: bigint, pushSeq = 0n) {
-    return create(SecuritySnapshotEventSchema, {
-      opId, pushSeq, networkGeneration,
-      isMember: this.opts.get("conn") !== "removed",
+  private demoSecurity() {
+    const removed = this.opts.get("conn") === "removed";
+    return create(DemoSecuritySchema, {
+      isMember: !removed,
+      removed,
       selfDeviceId: ME,
       authorityDeviceId: this.authorityDeviceId || ANDROID,
       trustedMachineIds: [...this.demoMachines.keys()],
@@ -1628,7 +1626,10 @@ export class DemoRemote extends Remote {
   private demoBoot(opId: bigint) {
     return create(CacheBootstrapLoadedEventSchema, { opId, homeScopeToken: this.demoScope(), scopeHmacKey: new Uint8Array(32) });
   }
-  private demoWorld() {
+  private demoWorld(includeWorld: boolean) {
+    if (!includeWorld) {
+      return create(SeedDemoWorldEventSchema, { security: this.demoSecurity() });
+    }
     return create(SeedDemoWorldEventSchema, {
       machines: [...this.demoMachines.values()].map((m) =>
         create(DemoMachineSchema, { machineId: m.id, online: m.online, lastSeenMs: m.lastSeenMs, meta: m.meta }),
@@ -1648,6 +1649,7 @@ export class DemoRemote extends Remote {
         create(DemoDeviceSchema, { deviceId: d.id, kind: d.kind, createdMs: d.createdMs, lastSeenMs: d.lastSeenMs, meta: d.meta }),
       ),
       prefs: this.stored.prefs,
+      security: this.demoSecurity(),
     });
   }
   private pushFrame(legId: bigint, frame: NonNullable<import("../gen/remoteagent/core/v1/app_pb").StreamFrameEvent["frame"]>) {
@@ -1664,17 +1666,14 @@ export class DemoRemote extends Remote {
     const drainRpc = () => { while (this.syncRpcQueue.length > 0) host.dispatch(this.resolveSyncRpc(this.syncRpcQueue.shift()!)); };
     if (!this.demoSeedSynced) {
       this.demoSeedSynced = true;
-      this.syncBootOpId = this.syncTokenOpId = this.syncSecOpId = 0n;
+      this.syncBootOpId = this.syncTokenOpId = 0n;
       this.syncRpcQueue = [];
       this.demoSyncing = true;
       try {
         host.start();
         this.demoBootConsumed = true;
         host.dispatch(create(CoreEventSchema, { event: { case: "cacheBootstrapLoaded", value: this.demoBoot(this.syncBootOpId) } }));
-        if (this.opts.get("list") !== "fail") {
-          host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld() } }));
-        }
-        host.dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: this.demoSec(this.syncSecOpId, 0n, this.syncSecOpId === 0n ? ++this.demoSecurityPushSeq : 0n) } }));
+        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(this.opts.get("list") !== "fail") } }));
         host.dispatch(create(CoreEventSchema, { event: { case: "tokenResult", value: this.demoToken(this.syncTokenOpId) } }));
         drainRpc();
         if (conn === "noserver" && this.demoStream) {
@@ -1717,10 +1716,6 @@ export class DemoRemote extends Remote {
   override securityConfig() { return undefined; }
   override readCachedSecurityRecord(): Promise<SecurityRecordEvent | undefined> { return Promise.resolve(undefined); }
   override syncSecurity(): Promise<SecurityRecordEvent> { return new Promise(() => {}); }
-  override syncSecuritySnapshot(opId: bigint, networkGeneration: bigint): Promise<SecuritySnapshotEvent> {
-    if (this.demoSyncing) { this.syncSecOpId = opId; return new Promise(() => {}); }
-    return Promise.resolve(this.demoSec(opId, networkGeneration));
-  }
   override openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks) {
     this.demoStream = { legId, callbacks, ready: false };
     const conn = this.opts.get("conn");

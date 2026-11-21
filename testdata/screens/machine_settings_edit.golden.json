@@ -181,7 +181,7 @@
             "dispatchCommand": {
               "requestId": "r1",
               "attemptId": "a1",
-              "machineId": "m1",
+              "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120050",
               "commandBytes": "qgECCAGgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
@@ -193,7 +193,7 @@
             "dispatchCommand": {
               "requestId": "r2",
               "attemptId": "a2",
-              "machineId": "m1",
+              "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120050",
               "commandBytes": "ugEAoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
@@ -205,7 +205,7 @@
             "dispatchCommand": {
               "requestId": "r3",
               "attemptId": "a3",
-              "machineId": "m1",
+              "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120050",
               "commandBytes": "qgECCAKgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
@@ -273,7 +273,10 @@
       "effects": {
         "effects": [
           {
-            "directAuthorize": {}
+            "syncSecurity": {
+              "opId": "6",
+              "touch": true
+            }
           },
           {
             "requestEntropy": {
@@ -301,7 +304,7 @@
       "views": {
         "initialLoaded": {
           "machineSettings": {
-            "machineId": "m1",
+            "machineId": "85d2362959f254ac4ffeeba70d956154",
             "name": "MacStudio",
             "found": true,
             "member": true,
@@ -1095,7 +1098,7 @@
                 }
               ]
             },
-            "shortId": "m1"
+            "shortId": "…0d956154"
           }
         }
       }
@@ -1143,7 +1146,7 @@
             "dispatchCommand": {
               "requestId": "r4",
               "attemptId": "a4",
-              "machineId": "m1",
+              "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120110",
               "commandBytes": "wgFACjwI2AQSB2dwdC01LjQaBGhpZ2ggASoVChFjbGF1ZGUtc29ubmV0LTQtNRgCMICAgIAEQP///////////wEQAaAGEQ==",
               "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
@@ -1162,7 +1165,7 @@
       "views": {
         "savingClaudeAndClean": {
           "machineSettings": {
-            "machineId": "m1",
+            "machineId": "85d2362959f254ac4ffeeba70d956154",
             "name": "MacStudio",
             "found": true,
             "member": true,
@@ -1965,7 +1968,7 @@
                 }
               ]
             },
-            "shortId": "m1"
+            "shortId": "…0d956154"
           }
         }
       }
@@ -1977,7 +1980,7 @@
             "dispatchCommand": {
               "requestId": "r5",
               "attemptId": "a5",
-              "machineId": "m1",
+              "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120120",
               "commandBytes": "ugEAoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
@@ -2007,7 +2010,7 @@
       "views": {
         "unknownTriggersReread": {
           "machineSettings": {
-            "machineId": "m1",
+            "machineId": "85d2362959f254ac4ffeeba70d956154",
             "name": "MacStudio",
             "found": true,
             "member": true,
@@ -2811,7 +2814,7 @@
                 }
               ]
             },
-            "shortId": "m1"
+            "shortId": "…0d956154"
           }
         }
       }
@@ -2820,13 +2823,23 @@
       "effects": {}
     },
     {
+      "effects": {}
+    },
+    {
       "effects": {
         "effects": [
           {
-            "directKeyAgree": {
+            "securityKeyAgree": {
               "opId": "1",
-              "peerId": "m1",
-              "peerXPublic": "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY="
+              "keyKind": "SECURITY_KEY_KIND_DEVICE_X",
+              "peerPublic": "pOuub6GSvelOBE4TUb8MNQjjTAR3jTQ50REkDqJ1IEE="
+            }
+          },
+          {
+            "securityKeyAgree": {
+              "opId": "2",
+              "keyKind": "SECURITY_KEY_KIND_DEVICE_X",
+              "peerPublic": "0uWjKfLzwvNjLEhBOjAjueSB/ju6M7JD/+uFm0OjzEw="
             }
           },
           {
@@ -2839,9 +2852,18 @@
           {
             "render": {
               "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
                 "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_SETTINGS",
-                "SCREEN_TARGET_MACHINE_SETTINGS"
+                "SCREEN_TARGET_MACHINE_STATUS",
+                "SCREEN_TARGET_MACHINE_SETTINGS",
+                "SCREEN_TARGET_QUOTA",
+                "SCREEN_TARGET_DEVICES",
+                "SCREEN_TARGET_CLIENT_DETAIL"
               ]
             }
           }
@@ -2849,12 +2871,16 @@
       }
     },
     {
+      "effects": {}
+    },
+    {
       "effects": {
         "effects": [
           {
-            "directKeySign": {
-              "opId": "1",
-              "message": "AAAAHnJlbW90ZS1hZ2VudC9wZWVyLXNpZ25hdHVyZS92MQAAAJMAAAAYcmVtb3RlLWFnZW50L3BlZXItYWFkL3YxAAAAIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxAAAAIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAAACAAAAAAAAAARAAAAHwoFZGV2LTESAm0xGAEiEDAxMjM0NTY3ODlhYmNkZWYAAAAMMDEyMzQ1Njc4OWFiAAABCvySWwM7SVogKDmwDiVPjVAd2U/eVutFjtipYeMB9Y3gCveq0E1vQ70bHvhujLVzqALXcPEJ/McCvjnmEFRHZaDl9G1kAyI0672XAfIYr/hTjNc3M/EqhtOUq+ItlhHkxtN0sr7S9FhHrsIHz0qcpsGe0z7KKcB6574IguE4iG4T3FimQ7UvA/r5IrELTTXMEQnYYic3EYc75TmnpeDvRL+JiG8XSL2XKbldPy3FRasegGB0PHW8xzQWIwQM8xuWFueepIKlUZnbvchkbCLBhzZ8QsSNpIdPO+nHyawcrSukISUN5lof2GJzg5/IAVeBNk9aEPoyzywTVSpEpGvSQPc+vnqylfOw0AjDAAAADGNkZWYwMTIzNDU2NwAAAFx0CaJNGuWOmDtJT2nubD0WQWPsGxGTuyCCxuPojd0MFbutBKSdN4uWPYiHAHJK5f61qP2lYjVrdGS62iESfLXfXc7Ts4ch+f5YX+hR5m0TxQn5p6gKufHJpBvfKw=="
+            "securityKeySign": {
+              "opId": "3",
+              "keyKind": "SECURITY_KEY_KIND_DEVICE_ED",
+              "message": "AAAAHnJlbW90ZS1hZ2VudC9wZWVyLXNpZ25hdHVyZS92MQAAAMwAAAAYcmVtb3RlLWFnZW50L3BlZXItYWFkL3YxAAAAIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxAAAAIGWVrcq4msoIlDWB0ztJ9suWbMMLKZcZLMnb7DObAUCzAAAACAAAAAAAAAARAAAAWAogOTliYzU0ZTZiZWM5OWY2YTA4ODU1YzI0Y2FkZTNhYjcSIDg1ZDIzNjI5NTlmMjU0YWM0ZmZlZWJhNzBkOTU2MTU0GAEiEDAxMjM0NTY3ODlhYmNkZWYAAAAMMDEyMzQ1Njc4OWFiAAABfBlXTntUxzpH5+5YE49mg77BgD1raVNMHWC8DlOhFzzV8ABbQ/qr21jcTIK7PbDkrnkcNdwppuYX8QRpHMwKmYCu5BKQuIErExoITd9raLA7puyX6rwDEhDG2nDLXJwxKJE/yzws9hVxJCgkYinoKjTIL2HyLMZFWnQlXJ2Qyv9JgVJOxD64d4GAoEMqRzW/ldM/lz2j3ulkIVtBX1k7ff7YS6E6KXppiXFaCnFaF5AvlKhBFDkUTX08xaCRFsLeXvbCzl5x2DUJGyvxvKzwVXSdhx/X/z2RSb7EyzopE+tbiP0d+S6yXy+kk/iAhYmEZ/MW/NoDV1nynzV8Rgj48jrP2MGSI09EFyaN6udlnY2jcqxdwh+jNMeyCq6R3rEPtlEvRaJeQ//WIv6MrTAtM24qpmjN1G0veiXSrcfHlJn30zQFX62e3plgolL5PiwlqbQUu9g2iOTL2q6ySc1Bho5Pq93s6Kql8o7CX65l9G6FzuojcVVPG8Gb11BRAAAADGNkZWYwMTIzNDU2NwAAAFwXb3vxN2ELn4LO95BXkcJc1183b60HRA8u/oNrZLRzO9388X0XtRldxNojzKAZt+gbyy3xoFfy0KsjuAgjGjGfy3RqerJ746vLwuqr4y3ghA7eQb/7LIWuO+3a4w=="
             }
           },
           {
@@ -2890,7 +2916,7 @@
       "views": {
         "relayFailedDiag": {
           "machineSettings": {
-            "machineId": "m1",
+            "machineId": "85d2362959f254ac4ffeeba70d956154",
             "name": "MacStudio",
             "found": true,
             "member": true,
@@ -3695,7 +3721,7 @@
                 }
               ]
             },
-            "shortId": "m1"
+            "shortId": "…0d956154"
           }
         }
       }

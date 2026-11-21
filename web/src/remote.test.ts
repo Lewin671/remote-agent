@@ -1226,7 +1226,7 @@ it("disposes its CoreHost on dispose() and drops an earlier-started snapshot tha
     .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
     .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
 
-  const syncSecurity = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<{ pushSeq: bigint }> }).syncSecurity.bind(r);
+  const syncSecurity = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<import("./gen/remoteagent/core/v1/security_pb").SecurityRecordEvent> }).syncSecurity.bind(r);
   const first = syncSecurity(0n, 0n, false);
   const second = syncSecurity(0n, 0n, false);
   resolveSecond(newerRecord);
@@ -1235,12 +1235,12 @@ it("disposes its CoreHost on dispose() and drops an earlier-started snapshot tha
   const firstSnap = await first;
   expect(firstSnap.pushSeq).toBeLessThan(secondSnap.pushSeq);
 
-  host.dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: secondSnap as never } }));
+  host.dispatch(create(CoreEventSchema, { event: { case: "securityRecord", value: secondSnap } }));
   expect(host.viewSyncState().securityLoaded).toBe(true);
   expect(r.devices.get(r.machine)).toBeUndefined();
 
   // Earlier-started snapshot finishing late must be dropped by Core instead of re-trusting the removed machine.
-  host.dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: firstSnap as never } }));
+  host.dispatch(create(CoreEventSchema, { event: { case: "securityRecord", value: firstSnap } }));
   expect(r.devices.get(r.machine)).toBeUndefined();
 
   r.dispose();

@@ -99,17 +99,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.TokenResultEvent getTokenResult();
 
   /**
-   * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-   * @return Whether the securitySnapshot field is set.
-   */
-  boolean hasSecuritySnapshot();
-  /**
-   * <code>.remoteagent.core.v1.SecuritySnapshotEvent security_snapshot = 9 [json_name = "securitySnapshot"];</code>
-   * @return The securitySnapshot.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent getSecuritySnapshot();
-
-  /**
    * <code>.remoteagent.core.v1.StreamReadyEvent stream_ready = 10 [json_name = "streamReady"];</code>
    * @return Whether the streamReady field is set.
    */
@@ -1353,17 +1342,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.TransportConfigEvent getTransportConfig();
 
   /**
-   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-   * @return Whether the directSecuritySnapshot field is set.
-   */
-  boolean hasDirectSecuritySnapshot();
-  /**
-   * <code>.remoteagent.core.v1.DirectSecuritySnapshotEvent direct_security_snapshot = 401 [json_name = "directSecuritySnapshot"];</code>
-   * @return The directSecuritySnapshot.
-   */
-  io.github.lewin671.remoteagent.core.proto.DirectSecuritySnapshotEvent getDirectSecuritySnapshot();
-
-  /**
    * <code>.remoteagent.core.v1.DirectSignalReceivedEvent direct_signal_received = 402 [json_name = "directSignalReceived"];</code>
    * @return Whether the directSignalReceived field is set.
    */
@@ -1384,28 +1362,6 @@ public interface EventOrBuilder extends
    * @return The directSignalDelivery.
    */
   io.github.lewin671.remoteagent.core.proto.DirectSignalDeliveryEvent getDirectSignalDelivery();
-
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-   * @return Whether the directKeySigned field is set.
-   */
-  boolean hasDirectKeySigned();
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignedEvent direct_key_signed = 404 [json_name = "directKeySigned"];</code>
-   * @return The directKeySigned.
-   */
-  io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent getDirectKeySigned();
-
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-   * @return Whether the directKeyAgreed field is set.
-   */
-  boolean hasDirectKeyAgreed();
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreedEvent direct_key_agreed = 405 [json_name = "directKeyAgreed"];</code>
-   * @return The directKeyAgreed.
-   */
-  io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent getDirectKeyAgreed();
 
   /**
    * <code>.remoteagent.core.v1.DirectPcCreatedEvent direct_pc_created = 406 [json_name = "directPcCreated"];</code>
@@ -1582,28 +1538,6 @@ public interface EventOrBuilder extends
    * @return The directPreferencesLoaded.
    */
   io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent getDirectPreferencesLoaded();
-
-  /**
-   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-   * @return Whether the directSecurityInstalled field is set.
-   */
-  boolean hasDirectSecurityInstalled();
-  /**
-   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
-   * @return The directSecurityInstalled.
-   */
-  io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent getDirectSecurityInstalled();
-
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-   * @return Whether the directAuthorizeDone field is set.
-   */
-  boolean hasDirectAuthorizeDone();
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
-   * @return The directAuthorizeDone.
-   */
-  io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent getDirectAuthorizeDone();
 
   /**
    * <pre>

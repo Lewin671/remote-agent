@@ -141,7 +141,6 @@ export enum Purpose {
   TerminalResize = 14,
   TerminalHistory = 15,
 }
-export const control = (p: Purpose) => p === Purpose.Command || p === Purpose.TerminalInput;
 
 export interface SecurityHeader {
   account: string;
@@ -159,13 +158,6 @@ export interface SecurityHeader {
   deadline: bigint;
   compression: number;
 }
-export interface FormedCipher {
-  header: B;
-  nonce: B;
-  cipher: B;
-  origin: B;
-}
-export type SecureWire = FormedCipher;
 export interface PairTrust {
   pin: Pin;
   approver: string;

@@ -13,7 +13,6 @@ import {
   PlainMachineSchema,
   PlainSessionSchema,
   ScreenTarget,
-  SecuritySnapshotEventSchema,
   TokenResultEventSchema,
   type CacheWriteEffect,
   type DispatchCommandEffect,
@@ -21,7 +20,7 @@ import {
   type Event,
   type RpcEffect,
 } from "../gen/remoteagent/core/v1/app_pb";
-import { SecurityRecordEventSchema } from "../gen/remoteagent/core/v1/security_pb";
+import { DemoSecuritySchema, SecurityConfigEventSchema, SecurityRecordEventSchema, SeedDemoWorldEventSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { Agent, SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
@@ -71,23 +70,8 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
       });
     },
     discardToken() {},
-    async syncSecurity(opId, networkGeneration) {
-      return create(SecurityRecordEventSchema, {
-        opId,
-        networkGeneration,
-      });
-    },
-    async syncSecuritySnapshot(opId, networkGeneration) {
-      return create(SecuritySnapshotEventSchema, {
-        opId,
-        isMember: true,
-        selfDeviceId: "dev-client",
-        authorityDeviceId: "dev-client",
-        trustedMachineIds: ["m1"],
-        trustedClientIds: ["dev-client"],
-        headEpoch: 1n,
-        networkGeneration,
-      });
+    syncSecurity() {
+      return new Promise(() => {});
     },
     async readBootstrapCache(opId) {
       return create(CacheBootstrapLoadedEventSchema, {
@@ -124,7 +108,6 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
                   machineId: "m1",
                   online: true,
                   meta: { hostname: "MacBook" },
-                  cacheRef: "cache-m1",
                 }),
               ],
               sessions: [
@@ -140,7 +123,6 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
                     status: SessionStatus.RUNNING,
                     agent: Agent.CLAUDE,
                   },
-                  cacheRef: "cache-s1",
                 }),
               ],
               devices: [
@@ -183,6 +165,23 @@ test("CoreHost boots real WASM core, hydrates HomeViewModel, and uses persistent
   const unsub = host.subscribe(ScreenTarget.HOME, onHome);
   try {
     host.start();
+    host.dispatch(
+      create(EventSchema, {
+        event: {
+          case: "seedDemoWorld",
+          value: create(SeedDemoWorldEventSchema, {
+            security: create(DemoSecuritySchema, {
+              isMember: true,
+              selfDeviceId: "dev-client",
+              authorityDeviceId: "dev-client",
+              trustedMachineIds: ["m1"],
+              trustedClientIds: ["dev-client"],
+              headEpoch: 1n,
+            }),
+          }),
+        },
+      }),
+    );
     await flushPromises();
     await flushPromises();
 
@@ -223,11 +222,60 @@ test("CoreHost serializes prepared cache writes in effect order and releases unu
         order.push(`end:${label}`);
       };
     },
+    async executeRpc(eff) {
+      if (eff.kind.case === "fetchLists") {
+        return create(EventSchema, {
+          event: {
+            case: "listsFetched",
+            value: create(ListsFetchedEventSchema, {
+              opId: eff.opId,
+              machines: [
+                create(PlainMachineSchema, {
+                  machineId: "m1",
+                  online: true,
+                  meta: { hostname: "MacBook" },
+                }),
+              ],
+              sessions: [
+                create(PlainSessionSchema, {
+                  sessionId: "s1",
+                  machineId: "m1",
+                  openFailed: true,
+                }),
+                create(PlainSessionSchema, {
+                  sessionId: "s2",
+                  machineId: "m1",
+                  openFailed: true,
+                }),
+              ],
+            }),
+          },
+        });
+      }
+      return create(EventSchema, {});
+    },
   });
 
   const host = new CoreHost(undefined, { executor: exec });
   hosts.push(host);
   host.start();
+  host.dispatch(
+    create(EventSchema, {
+      event: {
+        case: "seedDemoWorld",
+        value: create(SeedDemoWorldEventSchema, {
+          security: create(DemoSecuritySchema, {
+            isMember: true,
+            selfDeviceId: "dev-client",
+            authorityDeviceId: "dev-client",
+            trustedMachineIds: ["m1"],
+            trustedClientIds: ["dev-client"],
+            headEpoch: 1n,
+          }),
+        }),
+      },
+    }),
+  );
   await flushPromises();
   await flushPromises();
 
@@ -250,11 +298,19 @@ test("CoreHost serializes prepared cache writes in effect order and releases unu
   expect(endIndices[0]).toBeLessThan(startIndices[1]);
 });
 
-test("CoreHost dispatches unrequested securitySnapshot when pushSeq increases monotonically", async () => {
+test("CoreHost dispatches unrequested securityRecord when pushSeq increases monotonically", async () => {
   const exec = makeExecutor();
   const host = new CoreHost(undefined, { executor: exec });
   hosts.push(host);
   host.start();
+  host.dispatch(
+    create(EventSchema, {
+      event: {
+        case: "securityConfig",
+        value: create(SecurityConfigEventSchema, { account: "acc-1", deviceId: "dev-client", inlineCrypto: true }),
+      },
+    }),
+  );
   await flushPromises();
   await flushPromises();
 
@@ -262,14 +318,11 @@ test("CoreHost dispatches unrequested securitySnapshot when pushSeq increases mo
   host.dispatch(
     create(EventSchema, {
       event: {
-        case: "securitySnapshot",
-        value: create(SecuritySnapshotEventSchema, {
+        case: "securityRecord",
+        value: create(SecurityRecordEventSchema, {
           opId: 0n,
           pushSeq: 2n,
-          isMember: false,
-          selfDeviceId: "dev-client",
-          authorityDeviceId: "dev-client",
-          headEpoch: 3n,
+          removed: true,
         }),
       },
     }),
@@ -280,16 +333,11 @@ test("CoreHost dispatches unrequested securitySnapshot when pushSeq increases mo
   host.dispatch(
     create(EventSchema, {
       event: {
-        case: "securitySnapshot",
-        value: create(SecuritySnapshotEventSchema, {
+        case: "securityRecord",
+        value: create(SecurityRecordEventSchema, {
           opId: 0n,
           pushSeq: 1n,
-          isMember: true,
-          selfDeviceId: "dev-client",
-          authorityDeviceId: "dev-client",
-          trustedMachineIds: ["m1", "m2"],
-          trustedClientIds: ["dev-client"],
-          headEpoch: 2n,
+          account: "acc-1",
         }),
       },
     }),

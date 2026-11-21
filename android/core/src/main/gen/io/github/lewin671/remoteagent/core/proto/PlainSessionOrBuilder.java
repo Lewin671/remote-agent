@@ -97,16 +97,4 @@ public interface PlainSessionOrBuilder extends
    * @return The openFailed.
    */
   boolean getOpenFailed();
-
-  /**
-   * <code>string cache_ref = 12 [json_name = "cacheRef"];</code>
-   * @return The cacheRef.
-   */
-  java.lang.String getCacheRef();
-  /**
-   * <code>string cache_ref = 12 [json_name = "cacheRef"];</code>
-   * @return The bytes for cacheRef.
-   */
-  com.google.protobuf.ByteString
-      getCacheRefBytes();
 }

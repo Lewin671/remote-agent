@@ -233,12 +233,30 @@ message DemoSessionEvents {
   repeated remoteagent.v1.Event events = 2;
 }
 
+message DemoSecurity {
+  bool is_member = 1;
+  bool removed = 2;
+  string self_device_id = 3;
+  string authority_device_id = 4;
+  repeated string trusted_machine_ids = 5;
+  repeated string trusted_client_ids = 6;
+  repeated string archive_machine_ids = 7;
+  uint64 head_epoch = 8;
+  int64 lease_end_ms = 9;
+  bool clock_skewed = 10;
+  bool recovery_pending = 11;
+  int64 recovery_ready_ms = 12;
+  bool recovery_objects_pending = 13;
+  uint64 network_generation = 14;
+}
+
 message SeedDemoWorldEvent {
   repeated DemoMachine machines = 1;
   repeated DemoSession sessions = 2;
   repeated DemoDevice devices = 3;
   remoteagent.v1.ProjectPrefs prefs = 4;
   repeated DemoSessionEvents session_events = 5;
+  DemoSecurity security = 6;
 }
 
 // ---- Wire Cache Helpers ----

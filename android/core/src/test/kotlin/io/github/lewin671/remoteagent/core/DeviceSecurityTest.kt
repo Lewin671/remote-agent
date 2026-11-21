@@ -358,13 +358,24 @@ class DeviceSecurityTest {
             signer,
             clock = { now },
         ).use { bridge ->
-            val env =
+            val histPlain =
+                io.github.lewin671.remoteagent.proto.ProjectPrefs.newBuilder()
+                    .setSchema(1)
+                    .build()
+                    .toByteArray()
+            bridge.seal(
+                DeviceSecurity.Purpose.COMMAND,
+                machine = machineId,
+                request = "0123456789abcdef",
+                deadline = lease.notAfter + 60_000uL,
+                plain = cmdPlain,
+            )
+            val histEnv =
                 bridge.seal(
-                    DeviceSecurity.Purpose.COMMAND,
-                    machine = machineId,
-                    request = "0123456789abcdef",
-                    deadline = lease.notAfter + 60_000uL,
-                    plain = cmdPlain,
+                    DeviceSecurity.Purpose.PREFS,
+                    request = "project-prefs",
+                    seq = 1uL,
+                    plain = histPlain,
                 )
             now = lease.notAfter.toLong()
             val err =
@@ -378,7 +389,7 @@ class DeviceSecurityTest {
                     )
                 }.exceptionOrNull()
             assertTrue(err is DeviceSecurity.Failure && err.code == "lease")
-            assertArrayEquals(cmdPlain, bridge.openHistory(env).second)
+            assertArrayEquals(histPlain, bridge.openHistory(histEnv).second)
         }
         reject { lease.valid(state, lease.notAfter) }
     }

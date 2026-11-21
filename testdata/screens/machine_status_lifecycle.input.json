@@ -9,7 +9,13 @@
           "yesterdayStartMs": "1790956800000",
           "weekStartMs": "1790524800000",
           "nowYear": 2026,
-          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
         }
       }
     },
@@ -18,41 +24,64 @@
         "nowMs": "1791078060000",
         "monoMs": "1000",
         "randomIds": [
-          "ms-req-1", "ms-att-1",
-          "ms-req-2", "ms-att-2",
-          "ms-req-3", "ms-att-3",
-          "ms-req-4", "ms-att-4",
-          "ms-req-5", "ms-att-5",
-          "ms-req-6", "ms-att-6",
-          "ms-req-7", "ms-att-7"
+          "ms-req-1",
+          "ms-att-1",
+          "ms-req-2",
+          "ms-att-2",
+          "ms-req-3",
+          "ms-att-3",
+          "ms-req-4",
+          "ms-att-4",
+          "ms-req-5",
+          "ms-att-5",
+          "ms-req-6",
+          "ms-att-6",
+          "ms-req-7",
+          "ms-att-7"
         ],
-        "unitFloats": [0.5, 0.5, 0.5, 0.5],
-        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060010",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": ["m1"]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "m1"
+            ]
+          }
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060020",
-        "tokenResult": { "opId": "2", "token": "tok-1" }
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060030",
-        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
       }
     },
     {
@@ -67,9 +96,15 @@
               "meta": {
                 "hostname": "MacStudio",
                 "protocolVersion": 17,
-                "capabilities": { "machineStatus": true },
+                "capabilities": {
+                  "machineStatus": true
+                },
                 "projects": [
-                  { "path": "/Users/me/Code/alpha", "latestCreatedMs": "1791070000000", "latestEndedMs": "1791075000000" }
+                  {
+                    "path": "/Users/me/Code/alpha",
+                    "latestCreatedMs": "1791070000000",
+                    "latestEndedMs": "1791075000000"
+                  }
                 ]
               }
             }
@@ -101,7 +136,14 @@
         }
       },
       "views": [
-        { "name": "loading", "screen": { "machineStatus": { "machineId": "m1" } } }
+        {
+          "name": "loading",
+          "screen": {
+            "machineStatus": {
+              "machineId": "m1"
+            }
+          }
+        }
       ]
     },
     {
@@ -133,7 +175,10 @@
               "swapUsedBytes": "1363148800",
               "agentBytes": "4800000000",
               "uptimeSeconds": "100800",
-              "battery": { "percent": 82.0, "charging": true },
+              "battery": {
+                "percent": 82.0,
+                "charging": true
+              },
               "disk": {
                 "observedMs": "1791078060400",
                 "totalBytes": "500000000000",
@@ -141,22 +186,55 @@
                 "pressure": "RESOURCE_PRESSURE_CRITICAL"
               },
               "sessions": [
-                { "id": "u-1", "sessionId": "s-1", "executable": "codex", "cpuPercent": 15.0, "memoryBytes": "900000000" },
-                { "id": "u-2", "sessionId": "s-unknown", "executable": "claude", "cpuPercent": 8.0, "memoryBytes": "400000000" }
+                {
+                  "id": "u-1",
+                  "sessionId": "s-1",
+                  "executable": "codex",
+                  "cpuPercent": 15.0,
+                  "memoryBytes": "900000000"
+                },
+                {
+                  "id": "u-2",
+                  "sessionId": "s-unknown",
+                  "executable": "claude",
+                  "cpuPercent": 8.0,
+                  "memoryBytes": "400000000"
+                }
               ],
               "processes": [
-                { "id": "p-1", "sessionId": "s-1", "executable": "node", "cpuPercent": 12.0, "memoryBytes": "600000000" }
+                {
+                  "id": "p-1",
+                  "sessionId": "s-1",
+                  "executable": "node",
+                  "cpuPercent": 12.0,
+                  "memoryBytes": "600000000"
+                }
               ],
               "samples": [
-                { "timeMs": "1791078056400", "cpuPercent": 18.0, "memoryUsedBytes": "11500000000" },
-                { "timeMs": "1791078060400", "cpuPercent": 24.4, "memoryUsedBytes": "12025908428" }
+                {
+                  "timeMs": "1791078056400",
+                  "cpuPercent": 18.0,
+                  "memoryUsedBytes": "11500000000"
+                },
+                {
+                  "timeMs": "1791078060400",
+                  "cpuPercent": 24.4,
+                  "memoryUsedBytes": "12025908428"
+                }
               ]
             }
           }
         }
       },
       "views": [
-        { "name": "liveCriticalDisk", "screen": { "machineStatus": { "machineId": "m1" } } }
+        {
+          "name": "liveCriticalDisk",
+          "screen": {
+            "machineStatus": {
+              "machineId": "m1"
+            }
+          }
+        }
       ]
     },
     {
@@ -178,58 +256,95 @@
         }
       },
       "views": [
-        { "name": "processesAndScrub", "screen": { "machineStatus": { "machineId": "m1" } } }
+        {
+          "name": "processesAndScrub",
+          "screen": {
+            "machineStatus": {
+              "machineId": "m1"
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060700",
-        "machineStatusCleanup": { "machineId": "m1" }
+        "machineStatusCleanup": {
+          "machineId": "m1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078062050",
-        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+        "machineStatusPollTick": {
+          "machineId": "m1",
+          "generation": "1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078077050",
-        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+        "machineStatusPollTick": {
+          "machineId": "m1",
+          "generation": "1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078077060",
-        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+        "machineStatusPollTick": {
+          "machineId": "m1",
+          "generation": "1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078092060",
-        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+        "machineStatusPollTick": {
+          "machineId": "m1",
+          "generation": "1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078092070",
-        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+        "machineStatusPollTick": {
+          "machineId": "m1",
+          "generation": "1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078107070",
-        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+        "machineStatusPollTick": {
+          "machineId": "m1",
+          "generation": "1"
+        }
       },
       "views": [
-        { "name": "staleAfter3Timeouts", "screen": { "machineStatus": { "machineId": "m1" } } }
+        {
+          "name": "staleAfter3Timeouts",
+          "screen": {
+            "machineStatus": {
+              "machineId": "m1"
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078107100",
-        "machineStatusPollTick": { "machineId": "m1", "generation": "1" }
+        "machineStatusPollTick": {
+          "machineId": "m1",
+          "generation": "1"
+        }
       }
     },
     {
@@ -263,15 +378,30 @@
                 "pressure": "RESOURCE_PRESSURE_NORMAL"
               },
               "samples": [
-                { "timeMs": "1791078060400", "cpuPercent": 24.4, "memoryUsedBytes": "12025908428" },
-                { "timeMs": "1791078107200", "cpuPercent": 11.0, "memoryUsedBytes": "10737418240" }
+                {
+                  "timeMs": "1791078060400",
+                  "cpuPercent": 24.4,
+                  "memoryUsedBytes": "12025908428"
+                },
+                {
+                  "timeMs": "1791078107200",
+                  "cpuPercent": 11.0,
+                  "memoryUsedBytes": "10737418240"
+                }
               ]
             }
           }
         }
       },
       "views": [
-        { "name": "recoveredFreshCurve", "screen": { "machineStatus": { "machineId": "m1" } } }
+        {
+          "name": "recoveredFreshCurve",
+          "screen": {
+            "machineStatus": {
+              "machineId": "m1"
+            }
+          }
+        }
       ]
     }
   ]

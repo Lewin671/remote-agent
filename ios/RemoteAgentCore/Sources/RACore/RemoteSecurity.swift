@@ -4,8 +4,6 @@ import RAProto
 import SwiftProtobuf
 
 extension Remote {
-    public nonisolated var usesCoreSecurity: Bool { true }
-
     func securitySession() throws -> AuthoritySecurity {
         if let deviceSecurity { return deviceSecurity }
         guard let securityStorage else { throw DeviceSecurity.Failure.storage }

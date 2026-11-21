@@ -97,7 +97,6 @@ struct NewSessionAttachmentsSubmission {
 protocol CoreHostExecutor: AnyObject, Sendable {
     var account: Account { get }
     var state: Feed<RemoteState> { get }
-    var usesCoreSecurity: Bool { get }
     var directSupported: Bool { get }
     var directServerHost: String { get }
     var directConfiguredStun: String { get }
@@ -106,7 +105,6 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func setNetworkGeneration(_ gen: UInt64) async
     func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent
     func discardToken(_ rejected: String) async
-    func syncSecuritySnapshot(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBCoreSecuritySnapshotEvent
     func syncSecurityRecord(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBSecurityRecordEvent
     func openStream(legId: UInt64, token: String, callbacks: Remote.StreamCallbacks) async
     func closeStream(legId: UInt64) async
@@ -123,10 +121,7 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func renameDevice(_ id: String, name: String) async throws
     func loadDirectPreferences() -> [String: Bool]
     func persistDirectPreference(_ machineId: String, enabled: Bool)
-    func authorizeDirect() async
     func detachDirectStreams()
-    func handleDirectKeySign(_ eff: PBCoreDirectKeySignEffect)
-    func handleDirectKeyAgree(_ eff: PBCoreDirectKeyAgreeEffect)
     func handleSecurityKeySign(_ eff: PBSecurityKeySignEffect) -> PBSecurityKeySignedEvent
     func handleSecurityKeyAgree(_ eff: PBSecurityKeyAgreeEffect) -> PBSecurityKeyAgreedEvent
     func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool
@@ -141,13 +136,9 @@ protocol CoreHostExecutor: AnyObject, Sendable {
 }
 
 extension CoreHostExecutor {
-    var usesCoreSecurity: Bool { false }
     var directSupported: Bool { false }
     var directServerHost: String { "" }
     var directConfiguredStun: String { "" }
-    func syncSecuritySnapshot(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBCoreSecuritySnapshotEvent {
-        PBCoreSecuritySnapshotEvent()
-    }
     func syncSecurityRecord(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBSecurityRecordEvent {
         PBSecurityRecordEvent()
     }
@@ -155,10 +146,7 @@ extension CoreHostExecutor {
     func deleteScheduleCache(_ machineId: String) async {}
     func loadDirectPreferences() -> [String: Bool] { [:] }
     func persistDirectPreference(_ machineId: String, enabled: Bool) {}
-    func authorizeDirect() async {}
     func detachDirectStreams() {}
-    func handleDirectKeySign(_ eff: PBCoreDirectKeySignEffect) {}
-    func handleDirectKeyAgree(_ eff: PBCoreDirectKeyAgreeEffect) {}
     func handleSecurityKeySign(_ eff: PBSecurityKeySignEffect) -> PBSecurityKeySignedEvent {
         .with {
             $0.opID = eff.opID
@@ -567,13 +555,11 @@ actor CoreHost: SyncEngine {
                     }
                 }
             }
-            if executor.usesCoreSecurity {
-                await dispatch {
-                    $0.securityConfig = .with {
-                        $0.account = acct.accountId
-                        $0.deviceID = acct.deviceId
-                        $0.inlineCrypto = true
-                    }
+            await dispatch {
+                $0.securityConfig = .with {
+                    $0.account = acct.accountId
+                    $0.deviceID = acct.deviceId
+                    $0.inlineCrypto = true
                 }
             }
         }
@@ -628,18 +614,9 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    // Unrequested snapshots carry a push sequence taken before the sync
+    // Unrequested records carry a push sequence taken before the sync
     // starts, so the core drops one that finishes after a newer one.
     private var securityPushSeq: UInt64 = 1
-
-    private func dispatchSecuritySnapshot(_ snapshot: PBCoreSecuritySnapshotEvent) async {
-        guard !closed else { return }
-        let seq = securityPushSeq
-        securityPushSeq += 1
-        var snap = snapshot
-        snap.pushSeq = seq
-        await dispatch { $0.securitySnapshot = snap }
-    }
 
     private func dispatchSecurityRecord(_ record: PBSecurityRecordEvent) async {
         guard !closed else { return }
@@ -684,13 +661,8 @@ actor CoreHost: SyncEngine {
 
     private func syncSecurityNow() async {
         guard !closed else { return }
-        if executor.usesCoreSecurity {
-            let rec = await executor.syncSecurityRecord(opId: 0, networkGeneration: networkGen, touch: false)
-            await dispatchSecurityRecord(rec)
-        } else {
-            let snap = await executor.syncSecuritySnapshot(opId: 0, networkGeneration: networkGen, touch: false)
-            await dispatchSecuritySnapshot(snap)
-        }
+        let rec = await executor.syncSecurityRecord(opId: 0, networkGeneration: networkGen, touch: false)
+        await dispatchSecurityRecord(rec)
     }
 
     private func handleNetworkChange(signature: String, available: Bool) async {
@@ -1684,21 +1656,12 @@ actor CoreHost: SyncEngine {
             case .syncSecurity(let s):
                 guard !demoMode else { continue }
                 spawnIO { host in
-                    if host.executor.usesCoreSecurity {
-                        let rec = await host.executor.syncSecurityRecord(
-                            opId: s.opID,
-                            networkGeneration: s.networkGeneration,
-                            touch: s.touch
-                        )
-                        await host.dispatch { $0.securityRecord = rec }
-                    } else {
-                        let snap = await host.executor.syncSecuritySnapshot(
-                            opId: s.opID,
-                            networkGeneration: s.networkGeneration,
-                            touch: s.touch
-                        )
-                        await host.dispatch { $0.securitySnapshot = snap }
-                    }
+                    let rec = await host.executor.syncSecurityRecord(
+                        opId: s.opID,
+                        networkGeneration: s.networkGeneration,
+                        touch: s.touch
+                    )
+                    await host.dispatch { $0.securityRecord = rec }
                 }
 
             case .scheduleTimer(let t):
@@ -1851,12 +1814,6 @@ actor CoreHost: SyncEngine {
             case .directPreference(let eff):
                 executor.persistDirectPreference(eff.machineID, enabled: eff.enabled)
 
-            case .directKeySign(let eff):
-                executor.handleDirectKeySign(eff)
-
-            case .directKeyAgree(let eff):
-                executor.handleDirectKeyAgree(eff)
-
             case .directSignalSend(let eff):
                 _ = executor.handleDirectSignalSend(eff)
 
@@ -1909,11 +1866,6 @@ actor CoreHost: SyncEngine {
 
             case .securityOpResult(let eff):
                 securityOpWaiters.removeValue(forKey: eff.opID)?.resume(returning: eff)
-
-            case .directAuthorize:
-                spawnIO { host in
-                    await host.executor.authorizeDirect()
-                }
 
             case .directBulkRoute(let eff):
                 bulkRouteWaiters.removeValue(forKey: eff.callID)?.resume(returning: eff)
@@ -2784,10 +2736,9 @@ actor CoreHost: SyncEngine {
         mergeDemo(state: shown, events: events)
         for (mid, data) in schedules { demoSchedules[mid] = data }
         for (mid, tokens) in scheduleSeen { demoScheduleSeen[mid] = tokens }
-        var secOpID: UInt64 = 0, tokenOpID: UInt64 = 0
+        var tokenOpID: UInt64 = 0
         func scanPre(_ effects: [PBCoreEffect]) {
             for eff in effects {
-                if case .syncSecurity(let s)? = eff.effect { secOpID = s.opID }
                 if case .ensureToken(let t)? = eff.effect { tokenOpID = t.opID }
             }
         }
@@ -2810,17 +2761,23 @@ actor CoreHost: SyncEngine {
         scanPre(await stepDemo { $0.clockUpdated = Self.makeLocalCalendar(nowMs: clock()) })
         scanPre(await stepDemo { $0.scheduleLocalContext = Self.makeScheduleLocalContext(nowMs: clock()) })
         scanPre(await stepDemo { $0.networkChanged = .with { $0.signature = "demo-wifi"; $0.available = true } })
-        scanPre(await stepDemo {
-            $0.securitySnapshot = .with {
-                $0.opID = secOpID > 0 ? secOpID : 1; $0.isMember = !demoState.removed
+        _ = await stepDemo {
+            $0.seedDemoWorld.security = .with {
+                $0.isMember = !demoState.removed
+                $0.removed = demoState.removed
                 $0.authorityDeviceID = demoState.authorityDeviceId
                 $0.trustedMachineIds = demoState.machines.keys.sorted()
                 $0.trustedClientIds = demoState.devices.values.filter { $0.kind == .client }.map(\.id)
-                $0.leaseEndMs = Int64(demoState.leaseEndMs); $0.recoveryPending = demoState.recoveryPending
-                $0.recoveryReadyMs = Int64(demoState.recoveryReadyMs); $0.recoveryObjectsPending = false
-                $0.clockSkewed = !demoState.clockWarning.isEmpty; $0.selfDeviceID = self.account.deviceId
+                $0.archiveMachineIds = demoState.machines.keys.sorted()
+                $0.headEpoch = 1
+                $0.leaseEndMs = Int64(demoState.leaseEndMs)
+                $0.recoveryPending = demoState.recoveryPending
+                $0.recoveryReadyMs = Int64(demoState.recoveryReadyMs)
+                $0.recoveryObjectsPending = false
+                $0.clockSkewed = !demoState.clockWarning.isEmpty
+                $0.selfDeviceID = self.account.deviceId
             }
-        })
+        }
         var legID: UInt64 = 0
         if tokenOpID > 0 {
             let effs = await stepDemo {
@@ -2874,15 +2831,18 @@ actor CoreHost: SyncEngine {
         mergeDemo(state: shown, events: events)
         guard demoLegID > 0 else { return }
         _ = await stepDemo {
-            $0.securitySnapshot = .with {
-                $0.opID = 0
+            $0.seedDemoWorld.security = .with {
                 $0.isMember = !self.demoState.removed
+                $0.removed = self.demoState.removed
                 $0.authorityDeviceID = self.demoState.authorityDeviceId
                 $0.trustedMachineIds = self.demoState.machines.keys.sorted()
                 $0.trustedClientIds = self.demoState.devices.values.filter { $0.kind == .client }.map(\.id)
+                $0.archiveMachineIds = self.demoState.machines.keys.sorted()
+                $0.headEpoch = 1
                 $0.leaseEndMs = Int64(self.demoState.leaseEndMs)
                 $0.recoveryPending = self.demoState.recoveryPending
                 $0.recoveryReadyMs = Int64(self.demoState.recoveryReadyMs)
+                $0.clockSkewed = !self.demoState.clockWarning.isEmpty
                 $0.selfDeviceID = self.account.deviceId
             }
         }

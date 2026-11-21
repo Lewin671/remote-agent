@@ -27,8 +27,9 @@ import io.github.lewin671.remoteagent.core.proto.PlainMachine
 import io.github.lewin671.remoteagent.core.proto.PlainSession
 import io.github.lewin671.remoteagent.core.proto.ProjectKeyAction
 import io.github.lewin671.remoteagent.core.proto.RpcEffect
+import io.github.lewin671.remoteagent.core.proto.DemoSecurity
 import io.github.lewin671.remoteagent.core.proto.ScreenTarget
-import io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent
+import io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent
 import io.github.lewin671.remoteagent.core.proto.SessionWatchEvent
 import io.github.lewin671.remoteagent.core.proto.StreamClosedEvent
 import io.github.lewin671.remoteagent.core.proto.StreamReadyEvent
@@ -167,16 +168,17 @@ class CoreHostSmokeTest {
                     val s = secs.removeAt(0)
                     h.dispatchOnWorker(
                         CoreEvent.newBuilder()
-                            .setSecuritySnapshot(
-                                SecuritySnapshotEvent.newBuilder()
-                                    .setOpId(s.opId)
-                                    .setIsMember(true)
-                                    .setSelfDeviceId("c1")
-                                    .setAuthorityDeviceId("c1")
-                                    .addTrustedMachineIds("m1")
-                                    .setHeadEpoch(1L)
-                                    .setLeaseEndMs(now + 3_600_000L)
-                                    .setNetworkGeneration(s.networkGeneration),
+                            .setSeedDemoWorld(
+                                SeedDemoWorldEvent.newBuilder().setSecurity(
+                                    DemoSecurity.newBuilder()
+                                        .setIsMember(true)
+                                        .setSelfDeviceId("c1")
+                                        .setAuthorityDeviceId("c1")
+                                        .addTrustedMachineIds("m1")
+                                        .setHeadEpoch(1L)
+                                        .setLeaseEndMs(now + 3_600_000L)
+                                        .setNetworkGeneration(s.networkGeneration),
+                                ),
                             )
                             .build(),
                     )

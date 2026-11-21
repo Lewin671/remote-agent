@@ -1215,16 +1215,15 @@ class RemoteTest {
         assertTrue(r.coreHost.syncStateView.value.isMember)
         assertTrue(expectedAuthority.isNotEmpty())
 
-        // Dispatching op_id=0, push_seq=0 SecuritySnapshot must be ignored by core.
+        // Dispatching op_id=0, push_seq=0 SecurityRecord must be ignored by core.
         r.coreHost.dispatchAndWait(
             io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setSecuritySnapshot(
-                    io.github.lewin671.remoteagent.core.proto.SecuritySnapshotEvent.newBuilder()
+                .setSecurityRecord(
+                    io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.newBuilder()
                         .setOpId(0L)
                         .setPushSeq(0L)
-                        .setIsMember(false)
-                        .setAuthorityDeviceId("spoofed")
-                        .setHeadEpoch(999L),
+                        .setRemoved(true)
+                        .setAccount(r.account.accountId),
                 )
                 .build(),
         )

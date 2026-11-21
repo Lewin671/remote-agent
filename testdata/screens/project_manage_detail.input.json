@@ -9,7 +9,13 @@
           "yesterdayStartMs": "1790956800000",
           "weekStartMs": "1790524800000",
           "nowYear": 2026,
-          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
         }
       }
     },
@@ -17,34 +23,59 @@
       "event": {
         "nowMs": "1791078060000",
         "monoMs": "1000",
-        "randomIds": ["pref-op-1", "dir-req-1", "dir-att-1", "pref-op-2", "r5", "r6", "r7", "r8"],
-        "unitFloats": [0.5, 0.5, 0.5, 0.5],
-        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+        "randomIds": [
+          "pref-op-1",
+          "dir-req-1",
+          "dir-att-1",
+          "pref-op-2",
+          "r5",
+          "r6",
+          "r7",
+          "r8"
+        ],
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060010",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": ["m1"]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "m1"
+            ]
+          }
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060020",
-        "tokenResult": { "opId": "2", "token": "tok-1" }
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060030",
-        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
       }
     },
     {
@@ -59,10 +90,21 @@
               "meta": {
                 "hostname": "MacBook",
                 "protocolVersion": 17,
-                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }],
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ],
                 "projects": [
-                  { "path": "/Users/me/Code/alpha", "ended": 1 },
-                  { "path": "/Users/me/Code/beta", "ended": 0 }
+                  {
+                    "path": "/Users/me/Code/alpha",
+                    "ended": 1
+                  },
+                  {
+                    "path": "/Users/me/Code/beta",
+                    "ended": 0
+                  }
                 ]
               }
             }
@@ -95,7 +137,12 @@
             "revision": "1",
             "prefs": {
               "schema": 1,
-              "pinned": [{ "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" }]
+              "pinned": [
+                {
+                  "path": "/Users/me/Code/alpha",
+                  "sinceMs": "1791000000000"
+                }
+              ]
             }
           }
         }
@@ -103,14 +150,22 @@
       "views": [
         {
           "name": "detailInitial",
-          "screen": { "project": { "projectKey": "/Users/me/Code/alpha", "manage": false, "endedLimit": 50 } }
+          "screen": {
+            "project": {
+              "projectKey": "/Users/me/Code/alpha",
+              "manage": false,
+              "endedLimit": 50
+            }
+          }
         }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060060",
-        "projectTogglePin": { "projectKey": "/Users/me/Code/beta" }
+        "projectTogglePin": {
+          "projectKey": "/Users/me/Code/beta"
+        }
       }
     },
     {
@@ -122,7 +177,12 @@
             "revision": "1",
             "prefs": {
               "schema": 1,
-              "pinned": [{ "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" }]
+              "pinned": [
+                {
+                  "path": "/Users/me/Code/alpha",
+                  "sinceMs": "1791000000000"
+                }
+              ]
             }
           }
         }
@@ -139,10 +199,18 @@
             "prefs": {
               "schema": 1,
               "pinned": [
-                { "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" },
-                { "path": "/Users/me/Code/beta", "sinceMs": "1791078060060" }
+                {
+                  "path": "/Users/me/Code/alpha",
+                  "sinceMs": "1791000000000"
+                },
+                {
+                  "path": "/Users/me/Code/beta",
+                  "sinceMs": "1791078060060"
+                }
               ],
-              "recentOps": ["pref-op-1"]
+              "recentOps": [
+                "pref-op-1"
+              ]
             }
           }
         }
@@ -150,14 +218,23 @@
       "views": [
         {
           "name": "managePinning",
-          "screen": { "project": { "projectKey": "", "manage": true, "endedLimit": 50 } }
+          "screen": {
+            "project": {
+              "projectKey": "",
+              "manage": true,
+              "endedLimit": 50
+            }
+          }
         }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060090",
-        "projectOpenDirPicker": { "machineId": "m1", "path": "/Users/me/Code" }
+        "projectOpenDirPicker": {
+          "machineId": "m1",
+          "path": "/Users/me/Code"
+        }
       }
     },
     {
@@ -180,7 +257,10 @@
             "listDirectories": {
               "path": "/Users/me/Code",
               "parent": "/Users/me",
-              "dirs": ["alpha", "delta"]
+              "dirs": [
+                "alpha",
+                "delta"
+              ]
             }
           }
         }
@@ -188,14 +268,22 @@
       "views": [
         {
           "name": "manageDirPicker",
-          "screen": { "project": { "projectKey": "", "manage": true, "endedLimit": 50 } }
+          "screen": {
+            "project": {
+              "projectKey": "",
+              "manage": true,
+              "endedLimit": 50
+            }
+          }
         }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060110",
-        "projectAdd": { "path": "/Users/me/Code/delta" }
+        "projectAdd": {
+          "path": "/Users/me/Code/delta"
+        }
       }
     },
     {
@@ -208,8 +296,14 @@
             "prefs": {
               "schema": 1,
               "pinned": [
-                { "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" },
-                { "path": "/Users/me/Code/beta", "sinceMs": "1791078060060" }
+                {
+                  "path": "/Users/me/Code/alpha",
+                  "sinceMs": "1791000000000"
+                },
+                {
+                  "path": "/Users/me/Code/beta",
+                  "sinceMs": "1791078060060"
+                }
               ]
             }
           }
@@ -227,13 +321,24 @@
             "prefs": {
               "schema": 1,
               "pinned": [
-                { "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" },
-                { "path": "/Users/me/Code/beta", "sinceMs": "1791078060060" }
+                {
+                  "path": "/Users/me/Code/alpha",
+                  "sinceMs": "1791000000000"
+                },
+                {
+                  "path": "/Users/me/Code/beta",
+                  "sinceMs": "1791078060060"
+                }
               ],
               "settings": [
-                { "path": "/Users/me/Code/delta", "machineId": "m1" }
+                {
+                  "path": "/Users/me/Code/delta",
+                  "machineId": "m1"
+                }
               ],
-              "recentOps": ["pref-op-2"]
+              "recentOps": [
+                "pref-op-2"
+              ]
             }
           }
         }
@@ -241,14 +346,23 @@
       "views": [
         {
           "name": "detailAfterAdd",
-          "screen": { "project": { "projectKey": "/Users/me/Code/delta", "manage": false, "endedLimit": 50 } }
+          "screen": {
+            "project": {
+              "projectKey": "/Users/me/Code/delta",
+              "manage": false,
+              "endedLimit": 50
+            }
+          }
         }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060140",
-        "projectOpenDirPicker": { "machineId": "m1", "path": "/" }
+        "projectOpenDirPicker": {
+          "machineId": "m1",
+          "path": "/"
+        }
       }
     },
     {
@@ -271,7 +385,10 @@
             "listDirectories": {
               "path": "/",
               "parent": "",
-              "dirs": ["Users", "tmp"]
+              "dirs": [
+                "Users",
+                "tmp"
+              ]
             }
           }
         }
@@ -279,7 +396,13 @@
       "views": [
         {
           "name": "manageDirPickerRoot",
-          "screen": { "project": { "projectKey": "", "manage": true, "endedLimit": 50 } }
+          "screen": {
+            "project": {
+              "projectKey": "",
+              "manage": true,
+              "endedLimit": 50
+            }
+          }
         }
       ]
     }

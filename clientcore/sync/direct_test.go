@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"bytes"
 	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -12,6 +13,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
@@ -51,6 +53,51 @@ func newDirectTestActor(t *testing.T, tag byte, role byte) *directTestActor {
 	copy(a.signPub[:], signPub)
 	copy(a.xPub[:], xPriv.PublicKey().Bytes())
 	return a
+}
+
+func (a *directTestActor) member(k devicesec.Kind) devicesec.Member {
+	return devicesec.Member{ID: a.id, EdPublic: a.signPub, XPublic: a.xPub, Kind: k}
+}
+
+func makeDirectTestChain(
+	t *testing.T,
+	account string,
+	dom [32]byte,
+	client, daemon *directTestActor,
+	now int64,
+) (genHash, headHash [32]byte, epoch uint64, statesRaw [][]byte, leaseRaw []byte) {
+	t.Helper()
+	rec := newDirectTestActor(t, 99, 1)
+	sec1 := bytes.Repeat([]byte{0x11}, 32)
+	sec2 := bytes.Repeat([]byte{0x22}, 32)
+	u0, err := devicesec.NewGenesis(account, dom, client.member(devicesec.Client), rec.signPub, sec1, uint64(now), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, _ := u0.SigningBytes()
+	u0.Signature = ed25519.Sign(client.signPriv, sb0)
+	s0Raw, _ := u0.MarshalBinary()
+	s0, _ := devicesec.ParseState(s0Raw)
+	genHash, _ = s0.Hash()
+
+	u1, err := devicesec.NewMembershipState(s0, []devicesec.Member{client.member(devicesec.Client), daemon.member(devicesec.Machine)}, nil, sec1, sec2, uint64(now+1), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb1, _ := u1.SigningBytes()
+	u1.Signature = ed25519.Sign(client.signPriv, sb1)
+	s1Raw, _ := u1.MarshalBinary()
+	s1, _ := devicesec.ParseState(s1Raw)
+	headHash, _ = s1.Hash()
+
+	l, err := devicesec.NewLease(s1, uint64(now+1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lb, _ := l.SigningBytes()
+	l.Signature = ed25519.Sign(client.signPriv, lb)
+	leaseRaw, _ = l.MarshalBinary()
+	return genHash, headHash, s1.Core.Epoch, [][]byte{s0Raw, s1Raw}, leaseRaw
 }
 
 func (a *directTestActor) agree(peerX [32]byte) []byte {
@@ -104,7 +151,11 @@ type directSyncHarness struct {
 	daemon    *directTestActor
 	account   string
 	domain    [32]byte
+	genHash   [32]byte
 	headHash  [32]byte
+	headEpoch uint64
+	statesRaw [][]byte
+	leaseRaw  []byte
 	codec     *peerwire.Codec
 	daemonSec *linkcore.Session
 
@@ -117,25 +168,30 @@ type directSyncHarness struct {
 
 func newDirectSyncHarness(t *testing.T) *directSyncHarness {
 	t.Helper()
+	now := int64(1_791_078_000_000)
 	client := newDirectTestActor(t, 1, 1)
 	daemon := newDirectTestActor(t, 2, 2)
 	account := "00000000000000000000000000000001"
 	domain := sha256.Sum256([]byte("direct-sync-domain"))
-	headHash := sha256.Sum256([]byte("direct-sync-head"))
-	codec, err := peerwire.NewCodec(account, domain, headHash, 1, 17)
+	genHash, headHash, headEpoch, statesRaw, leaseRaw := makeDirectTestChain(t, account, domain, client, daemon, now)
+	codec, err := peerwire.NewCodec(account, domain, headHash, headEpoch, 17)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return &directSyncHarness{
-		t:        t,
-		eng:      NewEngine(),
-		now:      1_791_078_000_000,
-		client:   client,
-		daemon:   daemon,
-		account:  account,
-		domain:   domain,
-		headHash: headHash,
-		codec:    codec,
+		t:         t,
+		eng:       NewEngine(),
+		now:       now,
+		client:    client,
+		daemon:    daemon,
+		account:   account,
+		domain:    domain,
+		genHash:   genHash,
+		headHash:  headHash,
+		headEpoch: headEpoch,
+		statesRaw: statesRaw,
+		leaseRaw:  leaseRaw,
+		codec:     codec,
 	}
 }
 
@@ -145,6 +201,49 @@ func (h *directSyncHarness) step(ev *corev1.Event) StepResult {
 	ev.MonoMs = h.now
 	_, res := h.eng.HandleEvent(ev)
 	return res
+}
+
+func (h *directSyncHarness) drainCryptoEffects(effs []*corev1.Effect) []*corev1.Effect {
+	h.t.Helper()
+	var out []*corev1.Effect
+	queue := append([]*corev1.Effect(nil), effs...)
+	for len(queue) > 0 {
+		eff := queue[0]
+		queue = queue[1:]
+		out = append(out, eff)
+		switch k := eff.Effect.(type) {
+		case *corev1.Effect_SecurityKeySign:
+			sig := ed25519.Sign(h.client.signPriv, k.SecurityKeySign.Message)
+			res := h.step(&corev1.Event{
+				Event: &corev1.Event_SecurityKeySigned{SecurityKeySigned: &corev1.SecurityKeySignedEvent{OpId: k.SecurityKeySign.OpId, Signature: sig}},
+			})
+			queue = append(queue, res.Effects...)
+		case *corev1.Effect_SecurityKeyAgree:
+			peer, err := ecdh.X25519().NewPublicKey(k.SecurityKeyAgree.PeerPublic)
+			if err != nil {
+				h.t.Fatal(err)
+			}
+			shared, err := h.client.xPriv.ECDH(peer)
+			if err != nil {
+				h.t.Fatal(err)
+			}
+			res := h.step(&corev1.Event{
+				Event: &corev1.Event_SecurityKeyAgreed{SecurityKeyAgreed: &corev1.SecurityKeyAgreedEvent{OpId: k.SecurityKeyAgree.OpId, Shared: shared}},
+			})
+			queue = append(queue, res.Effects...)
+		}
+	}
+	return out
+}
+
+func (h *directSyncHarness) submitAndDrain(in SubmitCommandParams) (string, bool, []*corev1.Effect) {
+	h.t.Helper()
+	var reqID string
+	var ok bool
+	res := h.eng.Run(func(ctx *StepContext) {
+		reqID, ok = h.eng.SubmitCommand(ctx, in)
+	})
+	return reqID, ok, h.drainCryptoEffects(res.Effects)
 }
 
 func (h *directSyncHarness) connectMainAndList(sessionID string) {
@@ -184,16 +283,18 @@ func (h *directSyncHarness) connectMainAndList(sessionID string) {
 			listOp = r.OpId
 		}
 	}
+	_ = secOp
 	h.step(&corev1.Event{
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:              secOp,
-				IsMember:          true,
-				SelfDeviceId:      h.client.id,
-				AuthorityDeviceId: h.client.id,
-				TrustedMachineIds: []string{h.daemon.id},
-				HeadEpoch:         1,
-				LeaseEndMs:        h.now + 3_600_000,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      h.client.id,
+					AuthorityDeviceId: h.client.id,
+					TrustedMachineIds: []string{h.daemon.id},
+					HeadEpoch:         1,
+					LeaseEndMs:        h.now + 3_600_000,
+				},
 			},
 		},
 	})
@@ -228,42 +329,6 @@ func (h *directSyncHarness) connectMainAndList(sessionID string) {
 	})
 }
 
-func attachDirectForSyncTest(
-	t *testing.T,
-	eng *Engine,
-	now int64,
-	account string,
-	client, daemon *directTestActor,
-	domain, headHash [32]byte,
-	sessions []string,
-) (newNow int64, readPCID, bulkPCID uint64, wantSeed bool) {
-	t.Helper()
-	h := &directSyncHarness{
-		t:        t,
-		eng:      eng,
-		now:      now,
-		client:   client,
-		daemon:   daemon,
-		account:  account,
-		domain:   domain,
-		headHash: headHash,
-	}
-	var err error
-	h.codec, err = peerwire.NewCodec(account, domain, headHash, 1, 17)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(sessions) > 0 {
-		h.step(&corev1.Event{
-			Event: &corev1.Event_DirectSecuritySnapshot{
-				DirectSecuritySnapshot: &corev1.DirectSecuritySnapshotEvent{Rejected: true},
-			},
-		})
-	}
-	h.driveDirectHandshake()
-	return h.now, h.readPCID, h.bulkPCID, h.wantSeed
-}
-
 func connectDirectForExistingEngine(
 	t *testing.T,
 	eng *Engine,
@@ -271,20 +336,27 @@ func connectDirectForExistingEngine(
 	client, daemon *directTestActor,
 ) (readPCID uint64, updatedNow int64) {
 	t.Helper()
-	h := &directSyncHarness{
-		t:        t,
-		eng:      eng,
-		now:      now,
-		client:   client,
-		daemon:   daemon,
-		account:  "00000000000000000000000000000001",
-		domain:   sha256.Sum256([]byte("direct-sync-domain")),
-		headHash: sha256.Sum256([]byte("direct-sync-head")),
-	}
-	var err error
-	h.codec, err = peerwire.NewCodec(h.account, h.domain, h.headHash, 1, uint64(PeerVersion))
+	account := "00000000000000000000000000000001"
+	domain := sha256.Sum256([]byte("direct-sync-domain"))
+	genHash, headHash, headEpoch, statesRaw, leaseRaw := makeDirectTestChain(t, account, domain, client, daemon, now)
+	codec, err := peerwire.NewCodec(account, domain, headHash, headEpoch, uint64(PeerVersion))
 	if err != nil {
 		t.Fatal(err)
+	}
+	h := &directSyncHarness{
+		t:         t,
+		eng:       eng,
+		now:       now,
+		client:    client,
+		daemon:    daemon,
+		account:   account,
+		domain:    domain,
+		genHash:   genHash,
+		headHash:  headHash,
+		headEpoch: headEpoch,
+		statesRaw: statesRaw,
+		leaseRaw:  leaseRaw,
+		codec:     codec,
 	}
 	h.driveDirectHandshake()
 	return h.readPCID, h.now
@@ -315,11 +387,18 @@ func (h *directSyncHarness) driveDirectHandshake() {
 	h.step(&corev1.Event{
 		Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{RandomBytes: testSyncRandomBytes(transport.CoordEntropyRefillBytes)}},
 	})
+	h.step(&corev1.Event{
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{
+				Account:      h.account,
+				DeviceId:     h.client.id,
+				InlineCrypto: true,
+			},
+		},
+	})
 
 	var signalsToDaemon [][]byte
 	var daemonToClient [][]byte
-	var signQueue []*corev1.DirectKeySignEffect
-	var agreeQueue []*corev1.DirectKeyAgreeEffect
 
 	type pcRec struct {
 		sdp       []byte
@@ -384,12 +463,8 @@ func (h *directSyncHarness) driveDirectHandshake() {
 
 	var drainEffects func([]*corev1.Effect)
 	drainEffects = func(effs []*corev1.Effect) {
-		for _, eff := range effs {
+		for _, eff := range h.drainCryptoEffects(effs) {
 			switch k := eff.Effect.(type) {
-			case *corev1.Effect_DirectKeyAgree:
-				agreeQueue = append(agreeQueue, k.DirectKeyAgree)
-			case *corev1.Effect_DirectKeySign:
-				signQueue = append(signQueue, k.DirectKeySign)
 			case *corev1.Effect_DirectSignalSend:
 				raw := peerwire.PB(
 					peerwire.B(1, []byte(h.client.id)),
@@ -450,45 +525,22 @@ func (h *directSyncHarness) driveDirectHandshake() {
 		}
 	}
 
-	snapRes := h.step(&corev1.Event{
-		Event: &corev1.Event_DirectSecuritySnapshot{
-			DirectSecuritySnapshot: &corev1.DirectSecuritySnapshotEvent{
-				Member:          true,
-				Account:         h.account,
-				Domain:          h.domain[:],
-				Head:            "head-1",
-				HeadHash:        h.headHash[:],
-				Epoch:           1,
-				StartedAtMs:     h.now,
-				LeaseNotAfterMs: h.now + 3_600_000,
-				SelfId:          h.client.id,
-				SelfEdPublic:    h.client.signPub[:],
-				SelfXPublic:     h.client.xPub[:],
-				Members: []*corev1.DirectSecurityMember{
-					{DeviceId: h.client.id, EdPublic: h.client.signPub[:], XPublic: h.client.xPub[:], IsSelf: true, Kind: transport.MemberKindClient},
-					{DeviceId: h.daemon.id, EdPublic: h.daemon.signPub[:], XPublic: h.daemon.xPub[:], Kind: transport.MemberKindMachine},
-				},
+	drainEffects(h.step(&corev1.Event{
+		Event: &corev1.Event_SecurityRecord{
+			SecurityRecord: &corev1.SecurityRecordEvent{
+				OpId:              h.eng.activeSecOpID,
+				PushSeq:           1,
+				NetworkGeneration: 1,
+				Account:           h.account,
+				Domain:            h.domain[:],
+				Genesis:           h.genHash[:],
+				States:            h.statesRaw,
+				Lease:             h.leaseRaw,
 			},
 		},
-	})
-	drainEffects(snapRes.Effects)
+	}).Effects)
 
 	for step := 0; step < 40 && !h.eng.ensureTransportCoord().Ready(h.now, h.daemon.id, transport.Hint{Use: transport.UseRead}); step++ {
-		for len(agreeQueue) > 0 {
-			a := agreeQueue[0]
-			agreeQueue = agreeQueue[1:]
-			drainEffects(h.step(&corev1.Event{
-				Event: &corev1.Event_DirectKeyAgreed{DirectKeyAgreed: &corev1.DirectKeyAgreedEvent{OpId: a.OpId, SharedSecret: h.client.agree(h.daemon.xPub), Ok: true}},
-			}).Effects)
-		}
-		for len(signQueue) > 0 {
-			s := signQueue[0]
-			signQueue = signQueue[1:]
-			sig := ed25519.Sign(h.client.signPriv, s.Message)
-			drainEffects(h.step(&corev1.Event{
-				Event: &corev1.Event_DirectKeySigned{DirectKeySigned: &corev1.DirectKeySignedEvent{OpId: s.OpId, Signature: sig}},
-			}).Effects)
-		}
 		for len(signalsToDaemon) > 0 {
 			raw := signalsToDaemon[0]
 			signalsToDaemon = signalsToDaemon[1:]
@@ -615,19 +667,17 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	}
 
 	// 2) Interactive command triggers dual-send (DIRECT + RELAY); trusted direct outcome wins immediately.
-	res := h.eng.Run(func(ctx *StepContext) {
-		_, ok := h.eng.SubmitCommand(ctx, SubmitCommandParams{
-			SlotKey:   "slot-send-1",
-			MachineID: h.daemon.id,
-			SessionID: sid,
-			Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi"}}},
-		})
-		if !ok {
-			t.Fatal("expected SubmitCommand Send to dispatch")
-		}
+	_, ok, effects2 := h.submitAndDrain(SubmitCommandParams{
+		SlotKey:   "slot-send-1",
+		MachineID: h.daemon.id,
+		SessionID: sid,
+		Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi"}}},
 	})
+	if !ok {
+		t.Fatal("expected SubmitCommand Send to dispatch")
+	}
 	var directEff, relayEff *corev1.DispatchCommandEffect
-	for _, eff := range res.Effects {
+	for _, eff := range effects2 {
 		if dc := eff.GetDispatchCommand(); dc != nil {
 			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
 				directEff = dc
@@ -664,14 +714,12 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	}
 
 	// 3) Read command initially routes over DIRECT and falls back immediately to RELAY on transport error.
-	readRes := h.eng.Run(func(ctx *StepContext) {
-		h.eng.SubmitCommand(ctx, SubmitCommandParams{
-			MachineID: h.daemon.id,
-			Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
-		})
+	_, _, readEffects := h.submitAndDrain(SubmitCommandParams{
+		MachineID: h.daemon.id,
+		Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
 	})
 	var readDC *corev1.DispatchCommandEffect
-	for _, eff := range readRes.Effects {
+	for _, eff := range readEffects {
 		if dc := eff.GetDispatchCommand(); dc != nil {
 			readDC = dc
 		}
@@ -703,16 +751,14 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	}
 
 	// 4) Dual-send where direct fails: must wait for relay leg before settling.
-	res2 := h.eng.Run(func(ctx *StepContext) {
-		h.eng.SubmitCommand(ctx, SubmitCommandParams{
-			SlotKey:   "slot-send-2",
-			MachineID: h.daemon.id,
-			SessionID: sid,
-			Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi2"}}},
-		})
+	_, _, effects4 := h.submitAndDrain(SubmitCommandParams{
+		SlotKey:   "slot-send-2",
+		MachineID: h.daemon.id,
+		SessionID: sid,
+		Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi2"}}},
 	})
 	directEff, relayEff = nil, nil
-	for _, eff := range res2.Effects {
+	for _, eff := range effects4 {
 		if dc := eff.GetDispatchCommand(); dc != nil {
 			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
 				directEff = dc
@@ -759,16 +805,14 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	}
 
 	// 5) Dual-send where both legs fail and direct handed off: must surface Unknown (prior).
-	res3 := h.eng.Run(func(ctx *StepContext) {
-		h.eng.SubmitCommand(ctx, SubmitCommandParams{
-			SlotKey:   "slot-send-3",
-			MachineID: h.daemon.id,
-			SessionID: sid,
-			Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi3"}}},
-		})
+	_, _, effects5 := h.submitAndDrain(SubmitCommandParams{
+		SlotKey:   "slot-send-3",
+		MachineID: h.daemon.id,
+		SessionID: sid,
+		Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi3"}}},
 	})
 	directEff, relayEff = nil, nil
-	for _, eff := range res3.Effects {
+	for _, eff := range effects5 {
 		if dc := eff.GetDispatchCommand(); dc != nil {
 			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
 				directEff = dc
@@ -890,16 +934,14 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	basePending := coord.PendingTicketCount()
 
 	// Dual-send: Relay wins first, then Direct sibling fails late -> FailTicket runs & PendingTicketCount returns to basePending.
-	dsRes := h.eng.Run(func(ctx *StepContext) {
-		h.eng.SubmitCommand(ctx, SubmitCommandParams{
-			SlotKey:   "slot-late-fail",
-			MachineID: h.daemon.id,
-			SessionID: sid,
-			Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "race"}}},
-		})
+	_, _, dsEffects := h.submitAndDrain(SubmitCommandParams{
+		SlotKey:   "slot-late-fail",
+		MachineID: h.daemon.id,
+		SessionID: sid,
+		Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "race"}}},
 	})
 	var dLeg, rLeg *corev1.DispatchCommandEffect
-	for _, eff := range dsRes.Effects {
+	for _, eff := range dsEffects {
 		if dc := eff.GetDispatchCommand(); dc != nil {
 			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
 				dLeg = dc
@@ -984,30 +1026,6 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 		t.Fatalf("expected failed relay bulk transfer to release ticket, pending=%d base=%d", coord.PendingTicketCount(), basePending)
 	}
 
-	// DirectSecurityInstalledEvent with changed head invalidates & emits DirectAuthorizeEffect, then DirectAuthorizeDoneEvent clears authorizing.
-	instRes := h.step(&corev1.Event{
-		Event: &corev1.Event_DirectSecurityInstalled{
-			DirectSecurityInstalled: &corev1.DirectSecurityInstalledEvent{
-				Member:  true,
-				Account: h.account,
-				Head:    "head-rotated",
-			},
-		},
-	})
-	var sawDirectAuth bool
-	for _, eff := range instRes.Effects {
-		if eff.GetDirectAuthorize() != nil {
-			sawDirectAuth = true
-		}
-	}
-	if !sawDirectAuth || h.eng.directReady[h.daemon.id] {
-		t.Fatalf("expected DirectSecurityInstalled head mismatch to invalidate directReady and emit DirectAuthorize, sawAuth=%v", sawDirectAuth)
-	}
-	h.step(&corev1.Event{
-		Event: &corev1.Event_DirectAuthorizeDone{
-			DirectAuthorizeDone: &corev1.DirectAuthorizeDoneEvent{Ok: false},
-		},
-	})
 	h.step(&corev1.Event{
 		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP}},
 	})

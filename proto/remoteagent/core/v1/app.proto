@@ -166,7 +166,6 @@ message PlainMachine {
   remoteagent.v1.MachineMeta meta = 4;
   uint64 meta_rev = 5;
   bool meta_broken = 6;
-  string cache_ref = 7;
 }
 
 // Plaintext session decrypted and verified by the shell's security gate.
@@ -182,7 +181,6 @@ message PlainSession {
   bool checkpoint_invalid = 9;
   bool retired_history = 10;
   bool open_failed = 11;
-  string cache_ref = 12;
 }
 
 // Plaintext event decrypted and verified by the shell's security gate.
@@ -194,7 +192,6 @@ message PlainEvent {
   bool broken = 5;
   bool retired = 6;
   int64 approx_bytes = 7;
-  string cache_ref = 8;
 }
 
 // Plaintext device decrypted and verified by the shell's security gate.
@@ -213,7 +210,6 @@ message PlainAccountPrefs {
   uint64 revision = 1;
   remoteagent.v1.ProjectPrefs prefs = 2;
   bool broken = 3;
-  string cache_ref = 4;
 }
 
 message CacheBootstrapLoadedEvent {
@@ -247,26 +243,6 @@ message TokenResultEvent {
   string error_code = 5;
   string error = 6;
   bool unresolved_host = 7;
-}
-
-message SecuritySnapshotEvent {
-  uint64 op_id = 1;
-  bool is_member = 2;
-  string authority_device_id = 3;
-  repeated string trusted_machine_ids = 4;
-  repeated string trusted_client_ids = 5;
-  repeated string archive_machine_ids = 6;
-  uint64 head_epoch = 7;
-  int64 lease_end_ms = 8;
-  bool clock_skewed = 9;
-  bool recovery_pending = 10;
-  int64 recovery_ready_ms = 11;
-  bool recovery_objects_pending = 12;
-  uint64 network_generation = 13;
-  string error = 14;
-  bool unresolved_host = 15;
-  string self_device_id = 16;
-  uint64 push_seq = 17;
 }
 
 message StreamReadyEvent {
@@ -527,7 +503,6 @@ message Event {
     CacheBootstrapLoadedEvent cache_bootstrap_loaded = 6;
     CacheEventsLoadedEvent cache_events_loaded = 7;
     TokenResultEvent token_result = 8;
-    SecuritySnapshotEvent security_snapshot = 9;
     StreamReadyEvent stream_ready = 10;
     StreamClosedEvent stream_closed = 11;
     StreamFrameEvent stream_frame = 12;
@@ -641,11 +616,8 @@ message Event {
     ScheduleFormBoolAction schedule_form_submit = 348;
     ScheduleFormStringAction schedule_form_retry_models = 349;
     TransportConfigEvent transport_config = 400;
-    DirectSecuritySnapshotEvent direct_security_snapshot = 401;
     DirectSignalReceivedEvent direct_signal_received = 402;
     DirectSignalDeliveryEvent direct_signal_delivery = 403;
-    DirectKeySignedEvent direct_key_signed = 404;
-    DirectKeyAgreedEvent direct_key_agreed = 405;
     DirectPcCreatedEvent direct_pc_created = 406;
     DirectPcDescriptionEvent direct_pc_description = 407;
     DirectPcRemoteSetEvent direct_pc_remote_set = 408;
@@ -662,8 +634,6 @@ message Event {
     DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419;
     TerminalStreamEvent terminal_stream = 420;
     DirectPreferencesLoadedEvent direct_preferences_loaded = 421;
-    DirectSecurityInstalledEvent direct_security_installed = 422;
-    DirectAuthorizeDoneEvent direct_authorize_done = 423;
 
     // Security engine (450-499 reserved for security).
     SecurityConfigEvent security_config = 450;
@@ -766,11 +736,6 @@ message CacheReadEffect {
   }
 }
 
-message CacheWriteEvents {
-  string session_id = 1;
-  repeated string cache_refs = 2;
-}
-
 message CacheSessionOpen {
   string session_id = 1;
   bool open = 2;
@@ -778,11 +743,6 @@ message CacheSessionOpen {
 
 message CacheWriteEffect {
   oneof kind {
-    string write_machine_ref = 1;
-    string write_session_ref = 2;
-    string keep_session_owner_ref = 3;
-    CacheWriteEvents write_events = 4;
-    string write_prefs_ref = 5;
     CacheSessionOpen set_session_open = 6;
     remoteagent.v1.Machine write_machine = 7;
     remoteagent.v1.RemoteSession write_session = 8;
@@ -941,8 +901,6 @@ message Effect {
     ScheduleSaveSeenEffect schedule_save_seen = 63;
     ScheduleDismissNotificationsEffect schedule_dismiss_notifications = 64;
     ScheduleNavigateEffect schedule_navigate = 65;
-    DirectKeySignEffect direct_key_sign = 100;
-    DirectKeyAgreeEffect direct_key_agree = 101;
     DirectSignalSendEffect direct_signal_send = 102;
     DirectPcCreateEffect direct_pc_create = 103;
     DirectPcDescribeEffect direct_pc_describe = 104;
@@ -951,7 +909,6 @@ message Effect {
     DirectPcConfirmEffect direct_pc_confirm = 107;
     DirectPcCloseEffect direct_pc_close = 108;
     DirectDcReadStatsEffect direct_dc_read_stats = 109;
-    DirectAuthorizeEffect direct_authorize = 110;
     DirectBulkRouteEffect direct_bulk_route = 111;
     TerminalReopenEffect terminal_reopen = 112;
     DirectRetryNowResultEffect direct_retry_now_result = 113;

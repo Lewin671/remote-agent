@@ -1551,7 +1551,6 @@ type PlainMachine struct {
 	Meta       *v1.MachineMeta
 	MetaRev    uint64
 	MetaBroken bool
-	CacheRef   string
 }
 
 func (m *PlainMachine) GetMachineId() string {
@@ -1589,12 +1588,6 @@ func (m *PlainMachine) GetMetaBroken() bool {
 		return m.MetaBroken
 	}
 	return false
-}
-func (m *PlainMachine) GetCacheRef() string {
-	if m != nil {
-		return m.CacheRef
-	}
-	return ""
 }
 
 func (m *PlainMachine) Unmarshal(b []byte) error {
@@ -1659,15 +1652,6 @@ func (m *PlainMachine) Unmarshal(b []byte) error {
 				m.MetaBroken = litewire.DecodeBool(v)
 				continue
 			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheRef = v
-				continue
-			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -1688,7 +1672,6 @@ type PlainSession struct {
 	CheckpointInvalid bool
 	RetiredHistory    bool
 	OpenFailed        bool
-	CacheRef          string
 }
 
 func (m *PlainSession) GetSessionId() string {
@@ -1756,12 +1739,6 @@ func (m *PlainSession) GetOpenFailed() bool {
 		return m.OpenFailed
 	}
 	return false
-}
-func (m *PlainSession) GetCacheRef() string {
-	if m != nil {
-		return m.CacheRef
-	}
-	return ""
 }
 
 func (m *PlainSession) Unmarshal(b []byte) error {
@@ -1872,15 +1849,6 @@ func (m *PlainSession) Unmarshal(b []byte) error {
 				m.OpenFailed = litewire.DecodeBool(v)
 				continue
 			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheRef = v
-				continue
-			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -1897,7 +1865,6 @@ type PlainEvent struct {
 	Broken      bool
 	Retired     bool
 	ApproxBytes int64
-	CacheRef    string
 }
 
 func (m *PlainEvent) GetSeq() uint64 {
@@ -1941,12 +1908,6 @@ func (m *PlainEvent) GetApproxBytes() int64 {
 		return m.ApproxBytes
 	}
 	return 0
-}
-func (m *PlainEvent) GetCacheRef() string {
-	if m != nil {
-		return m.CacheRef
-	}
-	return ""
 }
 
 func (m *PlainEvent) Unmarshal(b []byte) error {
@@ -2018,15 +1979,6 @@ func (m *PlainEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.ApproxBytes = int64(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheRef = v
 				continue
 			}
 		}
@@ -2173,7 +2125,6 @@ type PlainAccountPrefs struct {
 	Revision uint64
 	Prefs    *v1.ProjectPrefs
 	Broken   bool
-	CacheRef string
 }
 
 func (m *PlainAccountPrefs) GetRevision() uint64 {
@@ -2193,12 +2144,6 @@ func (m *PlainAccountPrefs) GetBroken() bool {
 		return m.Broken
 	}
 	return false
-}
-func (m *PlainAccountPrefs) GetCacheRef() string {
-	if m != nil {
-		return m.CacheRef
-	}
-	return ""
 }
 
 func (m *PlainAccountPrefs) Unmarshal(b []byte) error {
@@ -2234,15 +2179,6 @@ func (m *PlainAccountPrefs) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Broken = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheRef = v
 				continue
 			}
 		}
@@ -2686,297 +2622,6 @@ func (m *TokenResultEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.UnresolvedHost = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type SecuritySnapshotEvent struct {
-	OpId                   uint64
-	IsMember               bool
-	AuthorityDeviceId      string
-	TrustedMachineIds      []string
-	TrustedClientIds       []string
-	ArchiveMachineIds      []string
-	HeadEpoch              uint64
-	LeaseEndMs             int64
-	ClockSkewed            bool
-	RecoveryPending        bool
-	RecoveryReadyMs        int64
-	RecoveryObjectsPending bool
-	NetworkGeneration      uint64
-	Error                  string
-	UnresolvedHost         bool
-	SelfDeviceId           string
-	PushSeq                uint64
-}
-
-func (m *SecuritySnapshotEvent) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *SecuritySnapshotEvent) GetIsMember() bool {
-	if m != nil {
-		return m.IsMember
-	}
-	return false
-}
-func (m *SecuritySnapshotEvent) GetAuthorityDeviceId() string {
-	if m != nil {
-		return m.AuthorityDeviceId
-	}
-	return ""
-}
-func (m *SecuritySnapshotEvent) GetTrustedMachineIds() []string {
-	if m != nil {
-		return m.TrustedMachineIds
-	}
-	return nil
-}
-func (m *SecuritySnapshotEvent) GetTrustedClientIds() []string {
-	if m != nil {
-		return m.TrustedClientIds
-	}
-	return nil
-}
-func (m *SecuritySnapshotEvent) GetArchiveMachineIds() []string {
-	if m != nil {
-		return m.ArchiveMachineIds
-	}
-	return nil
-}
-func (m *SecuritySnapshotEvent) GetHeadEpoch() uint64 {
-	if m != nil {
-		return m.HeadEpoch
-	}
-	return 0
-}
-func (m *SecuritySnapshotEvent) GetLeaseEndMs() int64 {
-	if m != nil {
-		return m.LeaseEndMs
-	}
-	return 0
-}
-func (m *SecuritySnapshotEvent) GetClockSkewed() bool {
-	if m != nil {
-		return m.ClockSkewed
-	}
-	return false
-}
-func (m *SecuritySnapshotEvent) GetRecoveryPending() bool {
-	if m != nil {
-		return m.RecoveryPending
-	}
-	return false
-}
-func (m *SecuritySnapshotEvent) GetRecoveryReadyMs() int64 {
-	if m != nil {
-		return m.RecoveryReadyMs
-	}
-	return 0
-}
-func (m *SecuritySnapshotEvent) GetRecoveryObjectsPending() bool {
-	if m != nil {
-		return m.RecoveryObjectsPending
-	}
-	return false
-}
-func (m *SecuritySnapshotEvent) GetNetworkGeneration() uint64 {
-	if m != nil {
-		return m.NetworkGeneration
-	}
-	return 0
-}
-func (m *SecuritySnapshotEvent) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *SecuritySnapshotEvent) GetUnresolvedHost() bool {
-	if m != nil {
-		return m.UnresolvedHost
-	}
-	return false
-}
-func (m *SecuritySnapshotEvent) GetSelfDeviceId() string {
-	if m != nil {
-		return m.SelfDeviceId
-	}
-	return ""
-}
-func (m *SecuritySnapshotEvent) GetPushSeq() uint64 {
-	if m != nil {
-		return m.PushSeq
-	}
-	return 0
-}
-
-func (m *SecuritySnapshotEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IsMember = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.AuthorityDeviceId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TrustedMachineIds = append(m.TrustedMachineIds, v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TrustedClientIds = append(m.TrustedClientIds, v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ArchiveMachineIds = append(m.ArchiveMachineIds, v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HeadEpoch = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LeaseEndMs = int64(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ClockSkewed = litewire.DecodeBool(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryPending = litewire.DecodeBool(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryReadyMs = int64(v)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryObjectsPending = litewire.DecodeBool(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NetworkGeneration = v
-				continue
-			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		case 15:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UnresolvedHost = litewire.DecodeBool(v)
-				continue
-			}
-		case 16:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SelfDeviceId = v
-				continue
-			}
-		case 17:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PushSeq = v
 				continue
 			}
 		}
@@ -5870,10 +5515,6 @@ type Event_TokenResult struct{ TokenResult *TokenResultEvent }
 
 func (*Event_TokenResult) isEvent_Event() {}
 
-type Event_SecuritySnapshot struct{ SecuritySnapshot *SecuritySnapshotEvent }
-
-func (*Event_SecuritySnapshot) isEvent_Event() {}
-
 type Event_StreamReady struct{ StreamReady *StreamReadyEvent }
 
 func (*Event_StreamReady) isEvent_Event() {}
@@ -6344,10 +5985,6 @@ type Event_TransportConfig struct{ TransportConfig *TransportConfigEvent }
 
 func (*Event_TransportConfig) isEvent_Event() {}
 
-type Event_DirectSecuritySnapshot struct{ DirectSecuritySnapshot *DirectSecuritySnapshotEvent }
-
-func (*Event_DirectSecuritySnapshot) isEvent_Event() {}
-
 type Event_DirectSignalReceived struct{ DirectSignalReceived *DirectSignalReceivedEvent }
 
 func (*Event_DirectSignalReceived) isEvent_Event() {}
@@ -6355,14 +5992,6 @@ func (*Event_DirectSignalReceived) isEvent_Event() {}
 type Event_DirectSignalDelivery struct{ DirectSignalDelivery *DirectSignalDeliveryEvent }
 
 func (*Event_DirectSignalDelivery) isEvent_Event() {}
-
-type Event_DirectKeySigned struct{ DirectKeySigned *DirectKeySignedEvent }
-
-func (*Event_DirectKeySigned) isEvent_Event() {}
-
-type Event_DirectKeyAgreed struct{ DirectKeyAgreed *DirectKeyAgreedEvent }
-
-func (*Event_DirectKeyAgreed) isEvent_Event() {}
 
 type Event_DirectPcCreated struct{ DirectPcCreated *DirectPcCreatedEvent }
 
@@ -6429,14 +6058,6 @@ func (*Event_TerminalStream) isEvent_Event() {}
 type Event_DirectPreferencesLoaded struct{ DirectPreferencesLoaded *DirectPreferencesLoadedEvent }
 
 func (*Event_DirectPreferencesLoaded) isEvent_Event() {}
-
-type Event_DirectSecurityInstalled struct{ DirectSecurityInstalled *DirectSecurityInstalledEvent }
-
-func (*Event_DirectSecurityInstalled) isEvent_Event() {}
-
-type Event_DirectAuthorizeDone struct{ DirectAuthorizeDone *DirectAuthorizeDoneEvent }
-
-func (*Event_DirectAuthorizeDone) isEvent_Event() {}
 
 type Event_SecurityConfig struct{ SecurityConfig *SecurityConfigEvent }
 
@@ -6517,12 +6138,6 @@ func (m *Event) GetCacheEventsLoaded() *CacheEventsLoadedEvent {
 func (m *Event) GetTokenResult() *TokenResultEvent {
 	if x, ok := m.GetEvent().(*Event_TokenResult); ok && x != nil {
 		return x.TokenResult
-	}
-	return nil
-}
-func (m *Event) GetSecuritySnapshot() *SecuritySnapshotEvent {
-	if x, ok := m.GetEvent().(*Event_SecuritySnapshot); ok && x != nil {
-		return x.SecuritySnapshot
 	}
 	return nil
 }
@@ -7204,12 +6819,6 @@ func (m *Event) GetTransportConfig() *TransportConfigEvent {
 	}
 	return nil
 }
-func (m *Event) GetDirectSecuritySnapshot() *DirectSecuritySnapshotEvent {
-	if x, ok := m.GetEvent().(*Event_DirectSecuritySnapshot); ok && x != nil {
-		return x.DirectSecuritySnapshot
-	}
-	return nil
-}
 func (m *Event) GetDirectSignalReceived() *DirectSignalReceivedEvent {
 	if x, ok := m.GetEvent().(*Event_DirectSignalReceived); ok && x != nil {
 		return x.DirectSignalReceived
@@ -7219,18 +6828,6 @@ func (m *Event) GetDirectSignalReceived() *DirectSignalReceivedEvent {
 func (m *Event) GetDirectSignalDelivery() *DirectSignalDeliveryEvent {
 	if x, ok := m.GetEvent().(*Event_DirectSignalDelivery); ok && x != nil {
 		return x.DirectSignalDelivery
-	}
-	return nil
-}
-func (m *Event) GetDirectKeySigned() *DirectKeySignedEvent {
-	if x, ok := m.GetEvent().(*Event_DirectKeySigned); ok && x != nil {
-		return x.DirectKeySigned
-	}
-	return nil
-}
-func (m *Event) GetDirectKeyAgreed() *DirectKeyAgreedEvent {
-	if x, ok := m.GetEvent().(*Event_DirectKeyAgreed); ok && x != nil {
-		return x.DirectKeyAgreed
 	}
 	return nil
 }
@@ -7327,18 +6924,6 @@ func (m *Event) GetTerminalStream() *TerminalStreamEvent {
 func (m *Event) GetDirectPreferencesLoaded() *DirectPreferencesLoadedEvent {
 	if x, ok := m.GetEvent().(*Event_DirectPreferencesLoaded); ok && x != nil {
 		return x.DirectPreferencesLoaded
-	}
-	return nil
-}
-func (m *Event) GetDirectSecurityInstalled() *DirectSecurityInstalledEvent {
-	if x, ok := m.GetEvent().(*Event_DirectSecurityInstalled); ok && x != nil {
-		return x.DirectSecurityInstalled
-	}
-	return nil
-}
-func (m *Event) GetDirectAuthorizeDone() *DirectAuthorizeDoneEvent {
-	if x, ok := m.GetEvent().(*Event_DirectAuthorizeDone); ok && x != nil {
-		return x.DirectAuthorizeDone
 	}
 	return nil
 }
@@ -7534,21 +7119,6 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_TokenResult{TokenResult: sub}
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				var sub *SecuritySnapshotEvent
-				if cur, ok := m.Event.(*Event_SecuritySnapshot); ok && cur != nil {
-					sub = cur.SecuritySnapshot
-				}
-				if sub == nil {
-					sub = &SecuritySnapshotEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_SecuritySnapshot{SecuritySnapshot: sub}
 				continue
 			}
 		case 10:
@@ -9246,21 +8816,6 @@ func (m *Event) Unmarshal(b []byte) error {
 				m.Event = &Event_TransportConfig{TransportConfig: sub}
 				continue
 			}
-		case 401:
-			if wtyp == litewire.BytesType {
-				var sub *DirectSecuritySnapshotEvent
-				if cur, ok := m.Event.(*Event_DirectSecuritySnapshot); ok && cur != nil {
-					sub = cur.DirectSecuritySnapshot
-				}
-				if sub == nil {
-					sub = &DirectSecuritySnapshotEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_DirectSecuritySnapshot{DirectSecuritySnapshot: sub}
-				continue
-			}
 		case 402:
 			if wtyp == litewire.BytesType {
 				var sub *DirectSignalReceivedEvent
@@ -9289,36 +8844,6 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_DirectSignalDelivery{DirectSignalDelivery: sub}
-				continue
-			}
-		case 404:
-			if wtyp == litewire.BytesType {
-				var sub *DirectKeySignedEvent
-				if cur, ok := m.Event.(*Event_DirectKeySigned); ok && cur != nil {
-					sub = cur.DirectKeySigned
-				}
-				if sub == nil {
-					sub = &DirectKeySignedEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_DirectKeySigned{DirectKeySigned: sub}
-				continue
-			}
-		case 405:
-			if wtyp == litewire.BytesType {
-				var sub *DirectKeyAgreedEvent
-				if cur, ok := m.Event.(*Event_DirectKeyAgreed); ok && cur != nil {
-					sub = cur.DirectKeyAgreed
-				}
-				if sub == nil {
-					sub = &DirectKeyAgreedEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_DirectKeyAgreed{DirectKeyAgreed: sub}
 				continue
 			}
 		case 406:
@@ -9559,36 +9084,6 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_DirectPreferencesLoaded{DirectPreferencesLoaded: sub}
-				continue
-			}
-		case 422:
-			if wtyp == litewire.BytesType {
-				var sub *DirectSecurityInstalledEvent
-				if cur, ok := m.Event.(*Event_DirectSecurityInstalled); ok && cur != nil {
-					sub = cur.DirectSecurityInstalled
-				}
-				if sub == nil {
-					sub = &DirectSecurityInstalledEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_DirectSecurityInstalled{DirectSecurityInstalled: sub}
-				continue
-			}
-		case 423:
-			if wtyp == litewire.BytesType {
-				var sub *DirectAuthorizeDoneEvent
-				if cur, ok := m.Event.(*Event_DirectAuthorizeDone); ok && cur != nil {
-					sub = cur.DirectAuthorizeDone
-				}
-				if sub == nil {
-					sub = &DirectAuthorizeDoneEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_DirectAuthorizeDone{DirectAuthorizeDone: sub}
 				continue
 			}
 		case 450:
@@ -10190,41 +9685,6 @@ func (m *CacheReadEffect) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-type CacheWriteEvents struct {
-	SessionId string
-	CacheRefs []string
-}
-
-func (m *CacheWriteEvents) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *CacheWriteEvents) GetCacheRefs() []string {
-	if m != nil {
-		return m.CacheRefs
-	}
-	return nil
-}
-
-func (m *CacheWriteEvents) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *CacheWriteEvents) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *CacheWriteEvents) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	for _, v := range m.CacheRefs {
-		b = litewire.AppendStringAlways(b, 2, v)
-	}
-	return b
-}
-
 type CacheSessionOpen struct {
 	SessionId string
 	Open      bool
@@ -10263,26 +9723,6 @@ type CacheWriteEffect struct {
 }
 
 type isCacheWriteEffect_Kind interface{ isCacheWriteEffect_Kind() }
-type CacheWriteEffect_WriteMachineRef struct{ WriteMachineRef string }
-
-func (*CacheWriteEffect_WriteMachineRef) isCacheWriteEffect_Kind() {}
-
-type CacheWriteEffect_WriteSessionRef struct{ WriteSessionRef string }
-
-func (*CacheWriteEffect_WriteSessionRef) isCacheWriteEffect_Kind() {}
-
-type CacheWriteEffect_KeepSessionOwnerRef struct{ KeepSessionOwnerRef string }
-
-func (*CacheWriteEffect_KeepSessionOwnerRef) isCacheWriteEffect_Kind() {}
-
-type CacheWriteEffect_WriteEvents struct{ WriteEvents *CacheWriteEvents }
-
-func (*CacheWriteEffect_WriteEvents) isCacheWriteEffect_Kind() {}
-
-type CacheWriteEffect_WritePrefsRef struct{ WritePrefsRef string }
-
-func (*CacheWriteEffect_WritePrefsRef) isCacheWriteEffect_Kind() {}
-
 type CacheWriteEffect_SetSessionOpen struct{ SetSessionOpen *CacheSessionOpen }
 
 func (*CacheWriteEffect_SetSessionOpen) isCacheWriteEffect_Kind() {}
@@ -10312,36 +9752,6 @@ func (m *CacheWriteEffect) GetKind() isCacheWriteEffect_Kind {
 		return m.Kind
 	}
 	return nil
-}
-func (m *CacheWriteEffect) GetWriteMachineRef() string {
-	if x, ok := m.GetKind().(*CacheWriteEffect_WriteMachineRef); ok && x != nil {
-		return x.WriteMachineRef
-	}
-	return ""
-}
-func (m *CacheWriteEffect) GetWriteSessionRef() string {
-	if x, ok := m.GetKind().(*CacheWriteEffect_WriteSessionRef); ok && x != nil {
-		return x.WriteSessionRef
-	}
-	return ""
-}
-func (m *CacheWriteEffect) GetKeepSessionOwnerRef() string {
-	if x, ok := m.GetKind().(*CacheWriteEffect_KeepSessionOwnerRef); ok && x != nil {
-		return x.KeepSessionOwnerRef
-	}
-	return ""
-}
-func (m *CacheWriteEffect) GetWriteEvents() *CacheWriteEvents {
-	if x, ok := m.GetKind().(*CacheWriteEffect_WriteEvents); ok && x != nil {
-		return x.WriteEvents
-	}
-	return nil
-}
-func (m *CacheWriteEffect) GetWritePrefsRef() string {
-	if x, ok := m.GetKind().(*CacheWriteEffect_WritePrefsRef); ok && x != nil {
-		return x.WritePrefsRef
-	}
-	return ""
 }
 func (m *CacheWriteEffect) GetSetSessionOpen() *CacheSessionOpen {
 	if x, ok := m.GetKind().(*CacheWriteEffect_SetSessionOpen); ok && x != nil {
@@ -10391,28 +9801,6 @@ func (m *CacheWriteEffect) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	switch x := m.Kind.(type) {
-	case *CacheWriteEffect_WriteMachineRef:
-		if x != nil {
-			b = litewire.AppendStringAlways(b, 1, x.WriteMachineRef)
-		}
-	case *CacheWriteEffect_WriteSessionRef:
-		if x != nil {
-			b = litewire.AppendStringAlways(b, 2, x.WriteSessionRef)
-		}
-	case *CacheWriteEffect_KeepSessionOwnerRef:
-		if x != nil {
-			b = litewire.AppendStringAlways(b, 3, x.KeepSessionOwnerRef)
-		}
-	case *CacheWriteEffect_WriteEvents:
-		if x != nil {
-			if x.WriteEvents != nil {
-				b = litewire.AppendMessage(b, 4, x.WriteEvents)
-			}
-		}
-	case *CacheWriteEffect_WritePrefsRef:
-		if x != nil {
-			b = litewire.AppendStringAlways(b, 5, x.WritePrefsRef)
-		}
 	case *CacheWriteEffect_SetSessionOpen:
 		if x != nil {
 			if x.SetSessionOpen != nil {
@@ -11368,14 +10756,6 @@ type Effect_ScheduleNavigate struct{ ScheduleNavigate *ScheduleNavigateEffect }
 
 func (*Effect_ScheduleNavigate) isEffect_Effect() {}
 
-type Effect_DirectKeySign struct{ DirectKeySign *DirectKeySignEffect }
-
-func (*Effect_DirectKeySign) isEffect_Effect() {}
-
-type Effect_DirectKeyAgree struct{ DirectKeyAgree *DirectKeyAgreeEffect }
-
-func (*Effect_DirectKeyAgree) isEffect_Effect() {}
-
 type Effect_DirectSignalSend struct{ DirectSignalSend *DirectSignalSendEffect }
 
 func (*Effect_DirectSignalSend) isEffect_Effect() {}
@@ -11407,10 +10787,6 @@ func (*Effect_DirectPcClose) isEffect_Effect() {}
 type Effect_DirectDcReadStats struct{ DirectDcReadStats *DirectDcReadStatsEffect }
 
 func (*Effect_DirectDcReadStats) isEffect_Effect() {}
-
-type Effect_DirectAuthorize struct{ DirectAuthorize *DirectAuthorizeEffect }
-
-func (*Effect_DirectAuthorize) isEffect_Effect() {}
 
 type Effect_DirectBulkRoute struct{ DirectBulkRoute *DirectBulkRouteEffect }
 
@@ -11638,18 +11014,6 @@ func (m *Effect) GetScheduleNavigate() *ScheduleNavigateEffect {
 	}
 	return nil
 }
-func (m *Effect) GetDirectKeySign() *DirectKeySignEffect {
-	if x, ok := m.GetEffect().(*Effect_DirectKeySign); ok && x != nil {
-		return x.DirectKeySign
-	}
-	return nil
-}
-func (m *Effect) GetDirectKeyAgree() *DirectKeyAgreeEffect {
-	if x, ok := m.GetEffect().(*Effect_DirectKeyAgree); ok && x != nil {
-		return x.DirectKeyAgree
-	}
-	return nil
-}
 func (m *Effect) GetDirectSignalSend() *DirectSignalSendEffect {
 	if x, ok := m.GetEffect().(*Effect_DirectSignalSend); ok && x != nil {
 		return x.DirectSignalSend
@@ -11695,12 +11059,6 @@ func (m *Effect) GetDirectPcClose() *DirectPcCloseEffect {
 func (m *Effect) GetDirectDcReadStats() *DirectDcReadStatsEffect {
 	if x, ok := m.GetEffect().(*Effect_DirectDcReadStats); ok && x != nil {
 		return x.DirectDcReadStats
-	}
-	return nil
-}
-func (m *Effect) GetDirectAuthorize() *DirectAuthorizeEffect {
-	if x, ok := m.GetEffect().(*Effect_DirectAuthorize); ok && x != nil {
-		return x.DirectAuthorize
 	}
 	return nil
 }
@@ -11950,18 +11308,6 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 				b = litewire.AppendMessage(b, 65, x.ScheduleNavigate)
 			}
 		}
-	case *Effect_DirectKeySign:
-		if x != nil {
-			if x.DirectKeySign != nil {
-				b = litewire.AppendMessage(b, 100, x.DirectKeySign)
-			}
-		}
-	case *Effect_DirectKeyAgree:
-		if x != nil {
-			if x.DirectKeyAgree != nil {
-				b = litewire.AppendMessage(b, 101, x.DirectKeyAgree)
-			}
-		}
 	case *Effect_DirectSignalSend:
 		if x != nil {
 			if x.DirectSignalSend != nil {
@@ -12008,12 +11354,6 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.DirectDcReadStats != nil {
 				b = litewire.AppendMessage(b, 109, x.DirectDcReadStats)
-			}
-		}
-	case *Effect_DirectAuthorize:
-		if x != nil {
-			if x.DirectAuthorize != nil {
-				b = litewire.AppendMessage(b, 110, x.DirectAuthorize)
 			}
 		}
 	case *Effect_DirectBulkRoute:

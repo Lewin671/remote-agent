@@ -5,8 +5,6 @@ import io.github.lewin671.remoteagent.core.SigningKey
 import io.github.lewin671.remoteagent.core.proto.DirectCandFamily
 import io.github.lewin671.remoteagent.core.proto.DirectCandType
 import io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect
-import io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect
-import io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect

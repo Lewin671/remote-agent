@@ -582,54 +582,6 @@ func classifyConnectError(unresolvedHost bool, errCode, errMsg string) *corev1.T
 	return text.Msg(text.KeyErrorsDisconnectedFromServer)
 }
 
-func (e *Engine) handleSecuritySnapshot(ctx *StepContext, ev *corev1.SecuritySnapshotEvent) {
-	if ev == nil || (e.secEngine != nil && e.secEngine.Locked()) {
-		return
-	}
-	switch {
-	case ev.OpId != 0:
-		if ev.OpId != e.activeSecOpID {
-			return
-		}
-		e.activeSecOpID = 0
-	case ev.PushSeq != 0:
-		if ev.PushSeq <= e.lastSecPushSeq {
-			return
-		}
-		e.lastSecPushSeq = ev.PushSeq
-	default:
-		return
-	}
-	if ev.Error != "" {
-		if ev.UnresolvedHost {
-			e.w.ConnectionReasonText = text.Msg(text.KeyConnectionNoServer)
-			ctx.Dirty.Add(true, false, false)
-		}
-		return
-	}
-	e.security.Loaded = true
-	e.security.IsMember = ev.IsMember
-	if ev.SelfDeviceId != "" {
-		e.security.SelfDeviceID = ev.SelfDeviceId
-	}
-	e.security.AuthorityDeviceID = ev.AuthorityDeviceId
-	e.security.TrustedMachines = toStringSet(ev.TrustedMachineIds)
-	e.security.TrustedClients = toStringSet(ev.TrustedClientIds)
-	e.security.ArchiveMachines = toStringSet(ev.ArchiveMachineIds)
-	e.security.HeadEpoch = ev.HeadEpoch
-	e.security.LeaseEndMs = ev.LeaseEndMs
-	e.security.ClockSkewed = ev.ClockSkewed
-	e.security.RecoveryPending = ev.RecoveryPending
-	e.security.RecoveryReadyMs = ev.RecoveryReadyMs
-	e.security.RecoveryObjectsPending = ev.RecoveryObjectsPending
-	e.security.NetworkGen = ev.NetworkGeneration
-	if ev.NetworkGeneration == e.networkGen || ev.NetworkGeneration >= e.security.VerifiedNetGen {
-		e.security.VerifiedNetGen = ev.NetworkGeneration
-	}
-	e.updateLivePollers(ctx)
-	ctx.Dirty.MarkAll()
-}
-
 func (e *Engine) checkLeaseClock(ctx *StepContext) {
 	if e.security.Loaded && e.security.LeaseEndMs > 0 && e.nowMs >= e.security.LeaseEndMs {
 		e.updateLivePollers(ctx)

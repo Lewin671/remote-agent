@@ -123,14 +123,15 @@ func seedOneMachine(c *Core) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1010,
-		Event: &corev1.Event_SecuritySnapshot{
-			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
-				OpId:              3,
-				IsMember:          true,
-				SelfDeviceId:      "dev-1",
-				AuthorityDeviceId: "dev-1",
-				LeaseEndMs:        99999999,
-				TrustedMachineIds: []string{"m-1"},
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        99999999,
+					TrustedMachineIds: []string{"m-1"},
+				},
 			},
 		},
 	})

@@ -48,14 +48,6 @@ message DirectIceCandidate {
   uint32 mline_index = 4;
 }
 
-message DirectSecurityMember {
-  string device_id = 1;
-  bytes ed_public = 2;
-  bytes x_public = 3;
-  bool is_self = 4;
-  uint32 kind = 5;
-}
-
 message DirectPreferenceEntry {
   string machine_id = 1;
   bool enabled = 2;
@@ -92,22 +84,6 @@ message TransportConfigEvent {
   string platform_agent = 6;
 }
 
-message DirectSecuritySnapshotEvent {
-  bool member = 1;
-  string account = 2;
-  bytes domain = 3;
-  string head = 4;
-  bytes head_hash = 5;
-  uint64 epoch = 6;
-  int64 started_at_ms = 7;
-  int64 lease_not_after_ms = 8;
-  string self_id = 9;
-  bytes self_ed_public = 10;
-  bytes self_x_public = 11;
-  repeated DirectSecurityMember members = 12;
-  bool rejected = 13;
-}
-
 message DirectSignalReceivedEvent {
   bytes raw = 1;
 }
@@ -116,17 +92,6 @@ message DirectSignalDeliveryEvent {
   bytes frame_id = 1;
   uint32 status = 2;
   uint64 retry_after_ms = 3;
-}
-
-message DirectKeySignedEvent {
-  uint64 op_id = 1;
-  bytes signature = 2;
-}
-
-message DirectKeyAgreedEvent {
-  uint64 op_id = 1;
-  bytes shared_secret = 2;
-  bool ok = 3;
 }
 
 message DirectPcCreatedEvent {
@@ -226,28 +191,7 @@ message DirectPreferencesLoadedEvent {
   repeated DirectPreferenceEntry entries = 1;
 }
 
-message DirectSecurityInstalledEvent {
-  bool member = 1;
-  string account = 2;
-  string head = 3;
-}
-
-message DirectAuthorizeDoneEvent {
-  bool ok = 1;
-}
-
 // ---- Effects (Core -> Shell) ----
-
-message DirectKeySignEffect {
-  uint64 op_id = 1;
-  bytes message = 2;
-}
-
-message DirectKeyAgreeEffect {
-  uint64 op_id = 1;
-  string peer_id = 2;
-  bytes peer_x_public = 3;
-}
 
 message DirectSignalSendEffect {
   bytes to_device = 1;
@@ -299,8 +243,6 @@ message DirectPcCloseEffect {
 message DirectDcReadStatsEffect {
   uint64 pc_id = 1;
 }
-
-message DirectAuthorizeEffect {}
 
 message DirectBulkRouteEffect {
   uint64 call_id = 1;

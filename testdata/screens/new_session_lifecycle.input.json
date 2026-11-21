@@ -9,7 +9,13 @@
           "yesterdayStartMs": "1790956800000",
           "weekStartMs": "1790524800000",
           "nowYear": 2026,
-          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
         }
       }
     },
@@ -18,16 +24,26 @@
         "nowMs": "1791078060000",
         "monoMs": "1000",
         "randomIds": [
-          "req-models-1", "att-models-1",
-          "req-settings-1", "att-settings-1",
+          "req-models-1",
+          "att-models-1",
+          "req-settings-1",
+          "att-settings-1",
           "pref-mach-1",
           "pref-mode-1",
-          "req-start-1", "att-start-1",
+          "req-start-1",
+          "att-start-1",
           "att-start-2",
           "pref-start-1"
         ],
-        "unitFloats": [0.5, 0.5, 0.5, 0.5],
-        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
       }
     },
     {
@@ -43,7 +59,12 @@
               "meta": {
                 "hostname": "OldMac",
                 "protocolVersion": 17,
-                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ]
               }
             }
           ],
@@ -68,35 +89,54 @@
     {
       "event": {
         "nowMs": "1791078060020",
-        "newSessionOpen": { "projectKey": "/Users/me/Code/app" }
+        "newSessionOpen": {
+          "projectKey": "/Users/me/Code/app"
+        }
       },
       "views": [
-        { "name": "offlineInit", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+        {
+          "name": "offlineInit",
+          "screen": {
+            "newSession": {
+              "projectKey": "/Users/me/Code/app"
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060030",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": ["m-off", "m-on"]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "m-off",
+              "m-on"
+            ]
+          }
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060040",
-        "tokenResult": { "opId": "2", "token": "tok-1" }
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060050",
-        "streamReady": { "legId": "1", "serverTimeMs": "1791078060050" }
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060050"
+        }
       }
     },
     {
@@ -112,7 +152,12 @@
               "meta": {
                 "hostname": "OldMac",
                 "protocolVersion": 17,
-                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ]
               }
             },
             {
@@ -122,10 +167,21 @@
                 "hostname": "Workstation",
                 "protocolVersion": 17,
                 "agents": [
-                  { "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" },
-                  { "agent": "AGENT_CLAUDE", "defaultMode": "APPROVAL_MODE_ASK" }
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  },
+                  {
+                    "agent": "AGENT_CLAUDE",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
                 ],
-                "projects": [{ "path": "/Users/me/Code/app", "ended": 1 }]
+                "projects": [
+                  {
+                    "path": "/Users/me/Code/app",
+                    "ended": 1
+                  }
+                ]
               }
             }
           ],
@@ -147,13 +203,22 @@
         }
       },
       "views": [
-        { "name": "offlineWithDraftChoices", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+        {
+          "name": "offlineWithDraftChoices",
+          "screen": {
+            "newSession": {
+              "projectKey": "/Users/me/Code/app"
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060070",
-        "newSessionSelectMachine": { "machineId": "m-on" }
+        "newSessionSelectMachine": {
+          "machineId": "m-on"
+        }
       }
     },
     {
@@ -176,7 +241,15 @@
             "listModels": {
               "defaultModel": "gpt-5.4",
               "models": [
-                { "slug": "gpt-5.4", "displayName": "GPT-5.4", "efforts": ["medium", "high"], "defaultEffort": "high" }
+                {
+                  "slug": "gpt-5.4",
+                  "displayName": "GPT-5.4",
+                  "efforts": [
+                    "medium",
+                    "high"
+                  ],
+                  "defaultEffort": "high"
+                }
               ]
             }
           }
@@ -201,7 +274,11 @@
             "reason": "ok",
             "resultAvailable": true,
             "getSettings": {
-              "settings": { "defaultModel": "gpt-5.4", "defaultEffort": "high", "defaultMode": "APPROVAL_MODE_ASK" }
+              "settings": {
+                "defaultModel": "gpt-5.4",
+                "defaultEffort": "high",
+                "defaultMode": "APPROVAL_MODE_ASK"
+              }
             }
           }
         }
@@ -220,16 +297,32 @@
     {
       "event": {
         "nowMs": "1791078060110",
-        "newSessionSetPrompt": { "prompt": "Ship M2 core", "attachmentCount": 1 }
+        "newSessionSetPrompt": {
+          "prompt": "Ship M2 core",
+          "attachmentCount": 1
+        }
       },
       "views": [
-        { "name": "readyToSubmit", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+        {
+          "name": "readyToSubmit",
+          "screen": {
+            "newSession": {
+              "projectKey": "/Users/me/Code/app"
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060120",
-        "newSessionSubmit": { "projectKey": "/Users/me/Code/app", "autoModeSupported": true, "imageIds": ["img-1"] }
+        "newSessionSubmit": {
+          "projectKey": "/Users/me/Code/app",
+          "autoModeSupported": true,
+          "imageIds": [
+            "img-1"
+          ]
+        }
       }
     },
     {
@@ -245,13 +338,26 @@
         }
       },
       "views": [
-        { "name": "unknownRetry", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+        {
+          "name": "unknownRetry",
+          "screen": {
+            "newSession": {
+              "projectKey": "/Users/me/Code/app"
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060200",
-        "newSessionSubmit": { "projectKey": "/Users/me/Code/app", "autoModeSupported": true, "imageIds": ["img-1"] }
+        "newSessionSubmit": {
+          "projectKey": "/Users/me/Code/app",
+          "autoModeSupported": true,
+          "imageIds": [
+            "img-1"
+          ]
+        }
       }
     },
     {
@@ -284,7 +390,14 @@
         }
       },
       "views": [
-        { "name": "afterExecuted", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+        {
+          "name": "afterExecuted",
+          "screen": {
+            "newSession": {
+              "projectKey": "/Users/me/Code/app"
+            }
+          }
+        }
       ]
     },
     {
@@ -292,11 +405,17 @@
         "nowMs": "1791078060295",
         "entropyProvided": {
           "randomIds": [
-            "pref-extra-1", "pref-extra-2",
-            "req-models-2", "att-models-2",
-            "req-extra-1", "req-extra-2"
+            "pref-extra-1",
+            "pref-extra-2",
+            "req-models-2",
+            "att-models-2",
+            "req-extra-1",
+            "req-extra-2"
           ],
-          "unitFloats": [0.5, 0.5]
+          "unitFloats": [
+            0.5,
+            0.5
+          ]
         }
       }
     },
@@ -315,7 +434,11 @@
                   "machineId": "m-on",
                   "agent": "AGENT_CODEX",
                   "agents": [
-                    { "agent": "AGENT_UNSPECIFIED", "model": "gpt-5.4", "effort": "high" }
+                    {
+                      "agent": "AGENT_UNSPECIFIED",
+                      "model": "gpt-5.4",
+                      "effort": "high"
+                    }
                   ]
                 },
                 {
@@ -323,7 +446,10 @@
                   "machineId": "m-on",
                   "agent": "AGENT_CLAUDE",
                   "agents": [
-                    { "agent": "AGENT_CLAUDE", "model": "claude-sonnet-5-5" }
+                    {
+                      "agent": "AGENT_CLAUDE",
+                      "model": "claude-sonnet-5-5"
+                    }
                   ]
                 }
               ]
@@ -335,16 +461,27 @@
     {
       "event": {
         "nowMs": "1791078060310",
-        "newSessionOpen": { "projectKey": "/Users/me/Code/app" }
+        "newSessionOpen": {
+          "projectKey": "/Users/me/Code/app"
+        }
       },
       "views": [
-        { "name": "reopenWithSavedPrefs", "screen": { "newSession": { "projectKey": "/Users/me/Code/app" } } }
+        {
+          "name": "reopenWithSavedPrefs",
+          "screen": {
+            "newSession": {
+              "projectKey": "/Users/me/Code/app"
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060320",
-        "newSessionOpen": { "projectKey": "/Users/me/Code/pref" }
+        "newSessionOpen": {
+          "projectKey": "/Users/me/Code/pref"
+        }
       }
     },
     {
@@ -367,15 +504,28 @@
             "listModels": {
               "defaultModel": "claude-opus-5-5",
               "models": [
-                { "slug": "claude-opus-5-5", "displayName": "Opus 5.5" },
-                { "slug": "claude-sonnet-5-5", "displayName": "Sonnet 5.5" }
+                {
+                  "slug": "claude-opus-5-5",
+                  "displayName": "Opus 5.5"
+                },
+                {
+                  "slug": "claude-sonnet-5-5",
+                  "displayName": "Sonnet 5.5"
+                }
               ]
             }
           }
         }
       },
       "views": [
-        { "name": "openOtherProjectWithSavedPrefs", "screen": { "newSession": { "projectKey": "/Users/me/Code/pref" } } }
+        {
+          "name": "openOtherProjectWithSavedPrefs",
+          "screen": {
+            "newSession": {
+              "projectKey": "/Users/me/Code/pref"
+            }
+          }
+        }
       ]
     }
   ]

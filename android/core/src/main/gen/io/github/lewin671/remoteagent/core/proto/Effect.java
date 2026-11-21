@@ -51,8 +51,6 @@ public  final class Effect extends
     SCHEDULE_SAVE_SEEN(63),
     SCHEDULE_DISMISS_NOTIFICATIONS(64),
     SCHEDULE_NAVIGATE(65),
-    DIRECT_KEY_SIGN(100),
-    DIRECT_KEY_AGREE(101),
     DIRECT_SIGNAL_SEND(102),
     DIRECT_PC_CREATE(103),
     DIRECT_PC_DESCRIBE(104),
@@ -61,7 +59,6 @@ public  final class Effect extends
     DIRECT_PC_CONFIRM(107),
     DIRECT_PC_CLOSE(108),
     DIRECT_DC_READ_STATS(109),
-    DIRECT_AUTHORIZE(110),
     DIRECT_BULK_ROUTE(111),
     TERMINAL_REOPEN(112),
     DIRECT_RETRY_NOW_RESULT(113),
@@ -116,8 +113,6 @@ public  final class Effect extends
         case 63: return SCHEDULE_SAVE_SEEN;
         case 64: return SCHEDULE_DISMISS_NOTIFICATIONS;
         case 65: return SCHEDULE_NAVIGATE;
-        case 100: return DIRECT_KEY_SIGN;
-        case 101: return DIRECT_KEY_AGREE;
         case 102: return DIRECT_SIGNAL_SEND;
         case 103: return DIRECT_PC_CREATE;
         case 104: return DIRECT_PC_DESCRIBE;
@@ -126,7 +121,6 @@ public  final class Effect extends
         case 107: return DIRECT_PC_CONFIRM;
         case 108: return DIRECT_PC_CLOSE;
         case 109: return DIRECT_DC_READ_STATS;
-        case 110: return DIRECT_AUTHORIZE;
         case 111: return DIRECT_BULK_ROUTE;
         case 112: return TERMINAL_REOPEN;
         case 113: return DIRECT_RETRY_NOW_RESULT;
@@ -1819,110 +1813,6 @@ public  final class Effect extends
     }
   }
 
-  public static final int DIRECT_KEY_SIGN_FIELD_NUMBER = 100;
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDirectKeySign() {
-    return effectCase_ == 100;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect getDirectKeySign() {
-    if (effectCase_ == 100) {
-       return (io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDirectKeySign(io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 100;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDirectKeySign(io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 100 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 100;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-   */
-  private void clearDirectKeySign() {
-    if (effectCase_ == 100) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int DIRECT_KEY_AGREE_FIELD_NUMBER = 101;
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDirectKeyAgree() {
-    return effectCase_ == 101;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect getDirectKeyAgree() {
-    if (effectCase_ == 101) {
-       return (io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDirectKeyAgree(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 101;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDirectKeyAgree(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 101 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 101;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-   */
-  private void clearDirectKeyAgree() {
-    if (effectCase_ == 101) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
   public static final int DIRECT_SIGNAL_SEND_FIELD_NUMBER = 102;
   /**
    * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
@@ -2334,58 +2224,6 @@ public  final class Effect extends
    */
   private void clearDirectDcReadStats() {
     if (effectCase_ == 109) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int DIRECT_AUTHORIZE_FIELD_NUMBER = 110;
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDirectAuthorize() {
-    return effectCase_ == 110;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect getDirectAuthorize() {
-    if (effectCase_ == 110) {
-       return (io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDirectAuthorize(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 110;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDirectAuthorize(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 110 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 110;
-  }
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-   */
-  private void clearDirectAuthorize() {
-    if (effectCase_ == 110) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -4421,102 +4259,6 @@ public  final class Effect extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDirectKeySign() {
-      return instance.hasDirectKeySign();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect getDirectKeySign() {
-      return instance.getDirectKeySign();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-     */
-    public Builder setDirectKeySign(io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect value) {
-      copyOnWrite();
-      instance.setDirectKeySign(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-     */
-    public Builder setDirectKeySign(
-        io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDirectKeySign(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-     */
-    public Builder mergeDirectKeySign(io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect value) {
-      copyOnWrite();
-      instance.mergeDirectKeySign(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-     */
-    public Builder clearDirectKeySign() {
-      copyOnWrite();
-      instance.clearDirectKeySign();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDirectKeyAgree() {
-      return instance.hasDirectKeyAgree();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect getDirectKeyAgree() {
-      return instance.getDirectKeyAgree();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-     */
-    public Builder setDirectKeyAgree(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect value) {
-      copyOnWrite();
-      instance.setDirectKeyAgree(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-     */
-    public Builder setDirectKeyAgree(
-        io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDirectKeyAgree(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-     */
-    public Builder mergeDirectKeyAgree(io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect value) {
-      copyOnWrite();
-      instance.mergeDirectKeyAgree(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-     */
-    public Builder clearDirectKeyAgree() {
-      copyOnWrite();
-      instance.clearDirectKeyAgree();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
      */
     @java.lang.Override
@@ -4897,54 +4639,6 @@ public  final class Effect extends
     public Builder clearDirectDcReadStats() {
       copyOnWrite();
       instance.clearDirectDcReadStats();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDirectAuthorize() {
-      return instance.hasDirectAuthorize();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect getDirectAuthorize() {
-      return instance.getDirectAuthorize();
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-     */
-    public Builder setDirectAuthorize(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect value) {
-      copyOnWrite();
-      instance.setDirectAuthorize(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-     */
-    public Builder setDirectAuthorize(
-        io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDirectAuthorize(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-     */
-    public Builder mergeDirectAuthorize(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect value) {
-      copyOnWrite();
-      instance.mergeDirectAuthorize(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-     */
-    public Builder clearDirectAuthorize() {
-      copyOnWrite();
-      instance.clearDirectAuthorize();
       return this;
     }
 
@@ -5358,8 +5052,6 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.class,
             io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.class,
             io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.class,
-            io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect.class,
-            io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.class,
@@ -5368,7 +5060,6 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.DirectPcConfirmEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect.class,
-            io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect.class,
             io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect.class,
@@ -5378,13 +5069,13 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.class,
           };
           java.lang.String info =
-              "\u00002\u0001\u0000\u0001\u00882\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000/\u0001\u0000\u0001\u0088/\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
               "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000(<\u0000)<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G" +
-              "<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000d<\u0000e<\u0000f<\u0000g<\u0000h" +
-              "<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000n<\u0000o<\u0000p<\u0000q<\u0000\u0082" +
-              "<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000";
+              "<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j" +
+              "<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000" +
+              "\u0087<\u0000\u0088<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

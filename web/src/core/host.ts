@@ -50,7 +50,6 @@ import {
   ScreenSchema,
   ScreenTarget,
   type Screen,
-  SecuritySnapshotEventSchema,
   SessionPinEventSchema,
   SessionScheduleHintSchema,
   SessionScheduleHintsEventSchema,
@@ -76,7 +75,6 @@ import {
   type LocalCalendar,
   type MonthStart,
   type RpcEffect,
-  type SecuritySnapshotEvent,
   type StreamClosedEvent,
   type StreamFrameEvent,
   type TokenResultEvent,
@@ -108,8 +106,6 @@ import {
   TransportConfigEventSchema,
   type DirectBulkRouteEffect,
   type DirectDcReadStatsEffect,
-  type DirectKeyAgreeEffect,
-  type DirectKeySignEffect,
   type DirectPcAddCandidatesEffect,
   type DirectPcCloseEffect,
   type DirectPcConfirmEffect,
@@ -306,7 +302,6 @@ export interface CoreExecutor {
   securityConfig?(): { account: string; deviceId: string } | undefined;
   readCachedSecurityRecord?(): Promise<SecurityRecordEvent | undefined>;
   syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecurityRecordEvent>;
-  syncSecuritySnapshot?(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent>;
   readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent>;
   readEventsCache(
     opId: bigint,
@@ -331,8 +326,6 @@ export interface CoreExecutor {
   securityKeySign?(eff: SecurityKeySignEffect): void;
   securityKeyAgree?(eff: SecurityKeyAgreeEffect): void;
   securityCryptoBatch?(eff: SecurityCryptoBatchEffect): void;
-  directKeySign?(eff: DirectKeySignEffect): void;
-  directKeyAgree?(eff: DirectKeyAgreeEffect): void;
   directSignalSend?(eff: DirectSignalSendEffect): void;
   directPcCreate?(eff: DirectPcCreateEffect): void;
   directPcDescribe?(eff: DirectPcDescribeEffect): void;
@@ -341,7 +334,6 @@ export interface CoreExecutor {
   directPcConfirm?(eff: DirectPcConfirmEffect): void;
   directPcClose?(eff: DirectPcCloseEffect): void;
   directDcReadStats?(eff: DirectDcReadStatsEffect): void;
-  directAuthorize?(): void;
 }
 
 export interface SessionWindowOptions {
@@ -2264,27 +2256,7 @@ export class CoreHost {
 
       case "syncSecurity": {
         const { opId, networkGeneration, touch } = val.value;
-        if (this.executor?.securityConfig?.()) {
-          void this.executor.syncSecurity(opId, networkGeneration, touch).then(
-            (value) => !this.closed && this.emit({ case: "securityRecord", value }),
-            (err) =>
-              !this.closed &&
-              this.emit({
-                case: "securityRecord",
-                value: create(SecurityRecordEventSchema, { opId, networkGeneration, error: errorMessage(err) }),
-              }),
-          );
-        } else if (this.executor?.syncSecuritySnapshot) {
-          void this.executor.syncSecuritySnapshot(opId, networkGeneration, touch).then(
-            (value) => !this.closed && this.emit({ case: "securitySnapshot", value }),
-            (err) =>
-              !this.closed &&
-              this.emit({
-                case: "securitySnapshot",
-                value: create(SecuritySnapshotEventSchema, { opId, networkGeneration, error: errorMessage(err) }),
-              }),
-          );
-        } else if (this.executor?.syncSecurity) {
+        if (this.executor?.syncSecurity) {
           void this.executor.syncSecurity(opId, networkGeneration, touch).then(
             (value) => !this.closed && this.emit({ case: "securityRecord", value }),
             (err) =>
@@ -2684,14 +2656,6 @@ export class CoreHost {
         this.persistUsageCache(val.value.machineId, val.value.snapshot);
         break;
 
-      case "directKeySign":
-        this.executor?.directKeySign?.(val.value);
-        break;
-
-      case "directKeyAgree":
-        this.executor?.directKeyAgree?.(val.value);
-        break;
-
       case "directSignalSend":
         this.executor?.directSignalSend?.(val.value);
         break;
@@ -2722,10 +2686,6 @@ export class CoreHost {
 
       case "directDcReadStats":
         this.executor?.directDcReadStats?.(val.value);
-        break;
-
-      case "directAuthorize":
-        this.executor?.directAuthorize?.();
         break;
 
       case "directBulkRoute": {

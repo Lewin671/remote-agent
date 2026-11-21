@@ -10,8 +10,16 @@
           "weekStartMs": "1790524800000",
           "nowYear": 2026,
           "months": [
-            { "year": 2026, "month": 10, "startMs": "1790812800000" },
-            { "year": 2026, "month": 9, "startMs": "1788220800000" }
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            },
+            {
+              "year": 2026,
+              "month": 9,
+              "startMs": "1788220800000"
+            }
           ]
         }
       }
@@ -20,8 +28,22 @@
       "event": {
         "nowMs": "1791078060000",
         "monoMs": "1000",
-        "randomIds": ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"],
-        "unitFloats": [0.5, 0.5, 0.5, 0.5],
+        "randomIds": [
+          "r1",
+          "r2",
+          "r3",
+          "r4",
+          "r5",
+          "r6",
+          "r7",
+          "r8"
+        ],
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
         "syncLifecycle": {
           "kind": "SYNC_LIFECYCLE_KIND_START",
           "scopeHmacKey": "c2NvcGUtbWFjLWtleS10ZXN0"
@@ -31,26 +53,35 @@
     {
       "event": {
         "nowMs": "1791078060010",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": ["m1"]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "m1"
+            ]
+          }
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060020",
-        "tokenResult": { "opId": "2", "token": "tok-1" }
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060030",
-        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
       }
     },
     {
@@ -65,10 +96,21 @@
               "meta": {
                 "hostname": "MacBook",
                 "protocolVersion": 17,
-                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }],
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ],
                 "projects": [
-                  { "path": "/Users/me/Code/alpha", "ended": 2 },
-                  { "path": "/Users/me/Code/beta", "ended": 1 }
+                  {
+                    "path": "/Users/me/Code/alpha",
+                    "ended": 2
+                  },
+                  {
+                    "path": "/Users/me/Code/beta",
+                    "ended": 1
+                  }
                 ]
               }
             }
@@ -121,7 +163,9 @@
                 "actions": [
                   {
                     "seq": "3",
-                    "planProposed": { "text": "Refactor sync engine" }
+                    "planProposed": {
+                      "text": "Refactor sync engine"
+                    }
                   }
                 ]
               }
@@ -195,31 +239,61 @@
             "revision": "1",
             "prefs": {
               "schema": 1,
-              "pinned": [{ "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" }]
+              "pinned": [
+                {
+                  "path": "/Users/me/Code/alpha",
+                  "sinceMs": "1791000000000"
+                }
+              ]
             }
           }
         }
       },
       "views": [
-        { "name": "homeInitial", "screen": { "home": { "endedLimit": 50 } } }
+        {
+          "name": "homeInitial",
+          "screen": {
+            "home": {
+              "endedLimit": 50
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060060",
-        "homeSetScope": { "scopeKey": "/Users/me/Code/alpha" }
+        "homeSetScope": {
+          "scopeKey": "/Users/me/Code/alpha"
+        }
       },
       "views": [
-        { "name": "homeScoped", "screen": { "home": { "endedLimit": 50 } } }
+        {
+          "name": "homeScoped",
+          "screen": {
+            "home": {
+              "endedLimit": 50
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060070",
-        "homeSetFilter": { "query": "test" }
+        "homeSetFilter": {
+          "query": "test"
+        }
       },
       "views": [
-        { "name": "homeFiltered", "screen": { "home": { "endedLimit": 50 } } }
+        {
+          "name": "homeFiltered",
+          "screen": {
+            "home": {
+              "endedLimit": 50
+            }
+          }
+        }
       ]
     }
   ]

@@ -616,11 +616,9 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 		SecurityConfig: &corev1.SecurityConfigEvent{Account: h.account, DeviceId: phone.id},
 	}})
 
-	// Drive unified S5 Security* + Direct* handshake without legacy DirectSecuritySnapshot.
+	// Drive unified S5 Security* handshake.
 	var signalsToDaemon [][]byte
 	var daemonToClient [][]byte
-	var signQueue []*corev1.DirectKeySignEffect
-	var agreeQueue []*corev1.DirectKeyAgreeEffect
 	type pcRec struct {
 		sdp       []byte
 		remote    []byte
@@ -705,10 +703,6 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 					t.Fatalf("expected SecurityKeyAgreed not to mark SyncState/Home dirty when membership unchanged, got %+v", stepRes.Dirty)
 				}
 				drainEffects(stepRes.Effects)
-			case *corev1.Effect_DirectKeyAgree:
-				agreeQueue = append(agreeQueue, k.DirectKeyAgree)
-			case *corev1.Effect_DirectKeySign:
-				signQueue = append(signQueue, k.DirectKeySign)
 			case *corev1.Effect_DirectSignalSend:
 				raw := peerwire.PB(
 					peerwire.B(1, []byte(h.client.id)),
@@ -784,21 +778,6 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	}
 
 	for step := 0; step < 40 && !h.eng.ensureTransportCoord().Ready(h.now, machine.id, transport.Hint{Use: transport.UseRead}); step++ {
-		for len(agreeQueue) > 0 {
-			a := agreeQueue[0]
-			agreeQueue = agreeQueue[1:]
-			drainEffects(h.step(&corev1.Event{
-				Event: &corev1.Event_DirectKeyAgreed{DirectKeyAgreed: &corev1.DirectKeyAgreedEvent{OpId: a.OpId, SharedSecret: h.client.agree(h.daemon.xPub), Ok: true}},
-			}).Effects)
-		}
-		for len(signQueue) > 0 {
-			s := signQueue[0]
-			signQueue = signQueue[1:]
-			sig := ed25519.Sign(h.client.signPriv, s.Message)
-			drainEffects(h.step(&corev1.Event{
-				Event: &corev1.Event_DirectKeySigned{DirectKeySigned: &corev1.DirectKeySignedEvent{OpId: s.OpId, Signature: sig}},
-			}).Effects)
-		}
 		for len(signalsToDaemon) > 0 {
 			raw := signalsToDaemon[0]
 			signalsToDaemon = signalsToDaemon[1:]
@@ -952,9 +931,6 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	for _, eff := range authEffs {
 		if ss := eff.GetSyncSecurity(); ss != nil {
 			authSyncOp = ss.OpId
-		}
-		if eff.GetDirectAuthorize() != nil {
-			t.Fatalf("expected CoordAuthorize with locked secEngine to emit SyncSecurityEffect, not DirectAuthorizeEffect")
 		}
 	}
 	if authSyncOp == 0 {

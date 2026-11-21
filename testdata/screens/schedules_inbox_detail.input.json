@@ -71,15 +71,16 @@
     {
       "event": {
         "nowMs": "1791078060030",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1799999999000",
-          "trustedMachineIds": [
-            "m1"
-          ]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1799999999000",
+            "trustedMachineIds": [
+              "m1"
+            ]
+          }
         }
       }
     },

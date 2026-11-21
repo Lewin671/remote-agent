@@ -56,16 +56,4 @@ public interface PlainMachineOrBuilder extends
    * @return The metaBroken.
    */
   boolean getMetaBroken();
-
-  /**
-   * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-   * @return The cacheRef.
-   */
-  java.lang.String getCacheRef();
-  /**
-   * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-   * @return The bytes for cacheRef.
-   */
-  com.google.protobuf.ByteString
-      getCacheRefBytes();
 }

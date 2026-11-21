@@ -9,7 +9,13 @@
           "yesterdayStartMs": "1790956800000",
           "weekStartMs": "1790524800000",
           "nowYear": 2026,
-          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
         }
       }
     },
@@ -17,32 +23,43 @@
       "event": {
         "nowMs": "1791078060000",
         "monoMs": "1000",
-        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060010",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": ["m1"]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "m1"
+            ]
+          }
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060020",
-        "tokenResult": { "opId": "2", "token": "tok-1" }
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060030",
-        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
       }
     },
     {
@@ -58,9 +75,21 @@
                 "hostname": "MacPro",
                 "protocolVersion": 17,
                 "agents": [
-                  { "agent": "AGENT_CODEX", "version": "0.42.0", "verified": true },
-                  { "agent": "AGENT_CLAUDE", "version": "2.1.0", "verified": true },
-                  { "agent": "AGENT_ANTIGRAVITY", "version": "1.2.0", "verified": false }
+                  {
+                    "agent": "AGENT_CODEX",
+                    "version": "0.42.0",
+                    "verified": true
+                  },
+                  {
+                    "agent": "AGENT_CLAUDE",
+                    "version": "2.1.0",
+                    "verified": true
+                  },
+                  {
+                    "agent": "AGENT_ANTIGRAVITY",
+                    "version": "1.2.0",
+                    "verified": false
+                  }
                 ],
                 "quotas": [
                   {
@@ -71,8 +100,16 @@
                     "account": "dev@example.com",
                     "observedMs": "1791077460000",
                     "windows": [
-                      { "name": "primary", "usedPercent": 85.0, "resetsAtMs": "1791081660000" },
-                      { "name": "secondary", "usedPercent": 40.0, "resetsAtMs": "1791070000000" }
+                      {
+                        "name": "primary",
+                        "usedPercent": 85.0,
+                        "resetsAtMs": "1791081660000"
+                      },
+                      {
+                        "name": "secondary",
+                        "usedPercent": 40.0,
+                        "resetsAtMs": "1791070000000"
+                      }
                     ]
                   },
                   {
@@ -87,9 +124,19 @@
                     "state": "QUOTA_STATE_OK",
                     "observedMs": "1791077900000",
                     "windows": [
-                      { "name": "gemini-5h", "usedPercent": 100.0, "resetsAtMs": "1791088860000" },
-                      { "name": "3p-5h", "usedPercent": 35.0, "resetsAtMs": "1791085260000" },
-                      { "name": "3p-weekly" }
+                      {
+                        "name": "gemini-5h",
+                        "usedPercent": 100.0,
+                        "resetsAtMs": "1791088860000"
+                      },
+                      {
+                        "name": "3p-5h",
+                        "usedPercent": 35.0,
+                        "resetsAtMs": "1791085260000"
+                      },
+                      {
+                        "name": "3p-weekly"
+                      }
                     ]
                   }
                 ]
@@ -99,8 +146,23 @@
         }
       },
       "views": [
-        { "name": "allQuotas", "screen": { "quota": { "machineId": "m1" } } },
-        { "name": "codexOnly", "screen": { "quota": { "machineId": "m1", "filterAgent": "AGENT_CODEX" } } }
+        {
+          "name": "allQuotas",
+          "screen": {
+            "quota": {
+              "machineId": "m1"
+            }
+          }
+        },
+        {
+          "name": "codexOnly",
+          "screen": {
+            "quota": {
+              "machineId": "m1",
+              "filterAgent": "AGENT_CODEX"
+            }
+          }
+        }
       ]
     }
   ]

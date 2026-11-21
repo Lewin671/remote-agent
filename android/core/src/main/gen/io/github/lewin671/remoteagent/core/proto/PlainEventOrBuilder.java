@@ -56,16 +56,4 @@ public interface PlainEventOrBuilder extends
    * @return The approxBytes.
    */
   long getApproxBytes();
-
-  /**
-   * <code>string cache_ref = 8 [json_name = "cacheRef"];</code>
-   * @return The cacheRef.
-   */
-  java.lang.String getCacheRef();
-  /**
-   * <code>string cache_ref = 8 [json_name = "cacheRef"];</code>
-   * @return The bytes for cacheRef.
-   */
-  com.google.protobuf.ByteString
-      getCacheRefBytes();
 }

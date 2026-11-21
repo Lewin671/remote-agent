@@ -9,7 +9,13 @@
           "yesterdayStartMs": "1790956800000",
           "weekStartMs": "1790524800000",
           "nowYear": 2026,
-          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
         }
       }
     },
@@ -18,41 +24,64 @@
         "nowMs": "1791078060000",
         "monoMs": "1000",
         "randomIds": [
-          "r1", "a1",
-          "r2", "a2",
-          "r3", "a3",
-          "r4", "a4",
-          "r5", "a5",
-          "r6", "a6",
-          "r7", "a7"
+          "r1",
+          "a1",
+          "r2",
+          "a2",
+          "r3",
+          "a3",
+          "r4",
+          "a4",
+          "r5",
+          "a5",
+          "r6",
+          "a6",
+          "r7",
+          "a7"
         ],
-        "unitFloats": [0.5, 0.5, 0.5, 0.5],
-        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060010",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": ["m1"]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "99bc54e6bec99f6a08855c24cade3ab7",
+            "authorityDeviceId": "99bc54e6bec99f6a08855c24cade3ab7",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "85d2362959f254ac4ffeeba70d956154"
+            ]
+          }
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060020",
-        "tokenResult": { "opId": "2", "token": "tok-1" }
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060030",
-        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
       }
     },
     {
@@ -62,19 +91,34 @@
           "opId": "4",
           "machines": [
             {
-              "machineId": "m1",
+              "machineId": "85d2362959f254ac4ffeeba70d956154",
               "online": true,
               "meta": {
                 "hostname": "MacStudio",
                 "protocolVersion": 17,
                 "daemonVersion": "0.94.0",
-                "capabilities": { "machineStatus": true },
+                "capabilities": {
+                  "machineStatus": true
+                },
                 "agents": [
-                  { "agent": "AGENT_CODEX", "version": "0.42.0", "verified": true, "defaultMode": "APPROVAL_MODE_ASK" },
-                  { "agent": "AGENT_CLAUDE", "version": "2.1.0", "verified": false, "defaultMode": "APPROVAL_MODE_ASK" }
+                  {
+                    "agent": "AGENT_CODEX",
+                    "version": "0.42.0",
+                    "verified": true,
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  },
+                  {
+                    "agent": "AGENT_CLAUDE",
+                    "version": "2.1.0",
+                    "verified": false,
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
                 ],
                 "projects": [
-                  { "path": "/Users/me/Code/alpha", "latestCreatedMs": "1791077000000" }
+                  {
+                    "path": "/Users/me/Code/alpha",
+                    "latestCreatedMs": "1791077000000"
+                  }
                 ]
               }
             }
@@ -85,7 +129,9 @@
     {
       "event": {
         "nowMs": "1791078060050",
-        "machineSettingsOpen": { "machineId": "m1" }
+        "machineSettingsOpen": {
+          "machineId": "85d2362959f254ac4ffeeba70d956154"
+        }
       }
     },
     {
@@ -108,7 +154,15 @@
             "listModels": {
               "defaultModel": "gpt-5.4",
               "models": [
-                { "slug": "gpt-5.4", "displayName": "GPT-5.4", "efforts": ["medium", "high"], "defaultEffort": "high" }
+                {
+                  "slug": "gpt-5.4",
+                  "displayName": "GPT-5.4",
+                  "efforts": [
+                    "medium",
+                    "high"
+                  ],
+                  "defaultEffort": "high"
+                }
               ]
             }
           }
@@ -140,7 +194,10 @@
                 "defaultModel": "gpt-5.4",
                 "defaultEffort": "high",
                 "defaultMode": "APPROVAL_MODE_ASK",
-                "claude": { "model": "claude-sonnet-4-5", "mode": "APPROVAL_MODE_AUTO" }
+                "claude": {
+                  "model": "claude-sonnet-4-5",
+                  "mode": "APPROVAL_MODE_AUTO"
+                }
               },
               "imageStorage": {
                 "emergencyReserveBytes": "52428800",
@@ -163,13 +220,23 @@
         }
       },
       "views": [
-        { "name": "initialLoaded", "screen": { "machineSettings": { "machineId": "m1" } } }
+        {
+          "name": "initialLoaded",
+          "screen": {
+            "machineSettings": {
+              "machineId": "85d2362959f254ac4ffeeba70d956154"
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078060090",
-        "machineSettingsSelectAgent": { "machineId": "m1", "agent": "AGENT_CLAUDE" }
+        "machineSettingsSelectAgent": {
+          "machineId": "85d2362959f254ac4ffeeba70d956154",
+          "agent": "AGENT_CLAUDE"
+        }
       }
     },
     {
@@ -192,7 +259,11 @@
             "listModels": {
               "defaultModel": "claude-sonnet-4-5",
               "models": [
-                { "slug": "claude-sonnet-4-5", "displayName": "Sonnet 4.5", "autoUnavailable": true }
+                {
+                  "slug": "claude-sonnet-4-5",
+                  "displayName": "Sonnet 4.5",
+                  "autoUnavailable": true
+                }
               ]
             }
           }
@@ -203,14 +274,21 @@
       "event": {
         "nowMs": "1791078060110",
         "updateMachineDaemonSettings": {
-          "machineId": "m1",
+          "machineId": "85d2362959f254ac4ffeeba70d956154",
           "approvalTimeoutSeconds": 600,
           "idleCloseMinutes": -1,
           "cleanImages": true
         }
       },
       "views": [
-        { "name": "savingClaudeAndClean", "screen": { "machineSettings": { "machineId": "m1" } } }
+        {
+          "name": "savingClaudeAndClean",
+          "screen": {
+            "machineSettings": {
+              "machineId": "85d2362959f254ac4ffeeba70d956154"
+            }
+          }
+        }
       ]
     },
     {
@@ -226,7 +304,14 @@
         }
       },
       "views": [
-        { "name": "unknownTriggersReread", "screen": { "machineSettings": { "machineId": "m1" } } }
+        {
+          "name": "unknownTriggersReread",
+          "screen": {
+            "machineSettings": {
+              "machineId": "85d2362959f254ac4ffeeba70d956154"
+            }
+          }
+        }
       ]
     },
     {
@@ -240,43 +325,44 @@
     {
       "event": {
         "nowMs": "1791078060140",
-        "directSecuritySnapshot": {
-          "member": true,
+        "securityConfig": {
           "account": "00000000000000000000000000000001",
-          "domain": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
-          "head": "head-1",
-          "headHash": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=",
-          "epoch": "1",
-          "startedAtMs": "1791078060140",
-          "leaseNotAfterMs": "1791164460000",
-          "selfId": "dev-1",
-          "selfEdPublic": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=",
-          "selfXPublic": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=",
-          "members": [
-            {
-              "deviceId": "dev-1",
-              "edPublic": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=",
-              "xPublic": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=",
-              "isSelf": true,
-              "kind": 2
-            },
-            {
-              "deviceId": "m1",
-              "edPublic": "BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU=",
-              "xPublic": "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY=",
-              "kind": 1
-            }
-          ]
+          "deviceId": "99bc54e6bec99f6a08855c24cade3ab7",
+          "inlineCrypto": true
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060140",
+        "securityRecord": {
+          "pushSeq": "1",
+          "account": "00000000000000000000000000000001",
+          "domain": "ZZWtyriaygiUNYHTO0n2y5ZswwsplxksydvsM5sBQLM=",
+          "genesis": "KDyqE8jmtYR8FoBpWqtHC+hFoHZ3+xOjj0d9Jtae+aQ=",
+          "states": [
+            "AAABNAAAAAMAAAAgMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDFlla3KuJrKCJQ1gdM7SfbLlmzDCymXGSzJ2+wzmwFAswAAACA5OWJjNTRlNmJlYzk5ZjZhMDg4NTVjMjRjYWRlM2FiN76/3lOOgsOpcHbJrJDqjBGAGM8uBeiW7PPr7M5ZFqqMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAABoQSST+AAAAABAAAAIDk5YmM1NGU2YmVjOTlmNmEwODg1NWMyNGNhZGUzYWI3+jyNxaha1ewP5jUH96yn3ucXKlqePi+ctXWGCPGpNKG37q12CeCNCN16tmhkE+3GNWyr6ArOojoAMzdsB7tmAwAAAAIAAAAAAAAAAQAAACA5OWJjNTRlNmJlYzk5ZjZhMDg4NTVjMjRjYWRlM2FiNwAAACBouyTrqiMw1suf9ppe0/0zbV58d+AbnWU3cYQMps64BgAAADB0NPdCyfOuSgwsNtmaGk+mUqvW8PIhdbNQSUckf5IenaZHd00O4Iep6OV3jL6z6SsAAAAAAAAAQPMcKC8xb1H4gzLB6vyjbd74P4Gigex8Ajewf2Up3j9lk3iHkOnTTYupzXrEgmm6zHEHFRsDIWdyBLeBV/rY0gE=",
+            "AAABnAAAAAMAAAAgMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDFlla3KuJrKCJQ1gdM7SfbLlmzDCymXGSzJ2+wzmwFAswAAACA5OWJjNTRlNmJlYzk5ZjZhMDg4NTVjMjRjYWRlM2FiN76/3lOOgsOpcHbJrJDqjBGAGM8uBeiW7PPr7M5ZFqqMKDyqE8jmtYR8FoBpWqtHC+hFoHZ3+xOjj0d9Jtae+aQAAAAAAAAAAgAAAAAAAAACAAABoQSST+EAAAACAAAAIDg1ZDIzNjI5NTlmMjU0YWM0ZmZlZWJhNzBkOTU2MTU0njC8dTNqJTUvvD7WV1SSleo99eTjaAb+zareMZ1/9hjS5aMp8vPC82MsSEE6MCO55IH+O7ozskP/64WbQ6PMTAAAAAEAAAAgOTliYzU0ZTZiZWM5OWY2YTA4ODU1YzI0Y2FkZTNhYjf6PI3FqFrV7A/mNQf3rKfe5xcqWp4+L5y1dYYI8ak0obfurXYJ4I0I3Xq2aGQT7cY1bKvoCs6iOgAzN2wHu2YDAAAAAgAAAAAAAAACAAAAIDg1ZDIzNjI5NTlmMjU0YWM0ZmZlZWJhNzBkOTU2MTU0AAAAIPlMFQsqe5Y1gxpTuU5mHloliaqcYmhjeyVbg447+u1BAAAAMMvc2EudwkZ2tAKxJ9qxgf7nLadA3NkAnY4S7YQtGABxYvM2l7NBO36uNo4VTuClGwAAACA5OWJjNTRlNmJlYzk5ZjZhMDg4NTVjMjRjYWRlM2FiNwAAACCk665voZK96U4EThNRvww1CONMBHeNNDnRESQOonUgQQAAADDBrGTqwI6pKvo9obzO3R3wt1SP4IgJZsp8lapF8vt0ieLmDGIjH1116/FFs3IFaZEAAAA8T76pvHzRjDTTvHrDMm2DhVk/q4poRWAuyaMdU199x9nUXOuVFJ3Tlo4TXJJ/DGbcGm2K5rR3dedxgxjmAAAAQOxbqSyPW+f4PKiIILWMx1YyGIm6TQzboB6hAZakVvjmxvPbk0B9TsWezN7Zler4guEl3jF4Cab7gIBG/Pc5pww="
+          ],
+          "lease": "AAAAWnJhMy9sZWFzZQBlla3KuJrKCJQ1gdM7SfbLlmzDCymXGSzJ2+wzmwFAsyLAKrTGSAJPJkzHjeC0gUpBM9LW5H1CdHd+fk2SacftAAABoQSST+EAAAGhFAVj4QAAAEB8exm/aBI9eGFDMZiQfDtv1g4cZ5HSQ2hLP+UtCifAdqvLvYO5vMqWaFTvO8GvRG0WIKR7CDRgGYb1a68isGgM"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060145",
+        "securityKeyAgreed": {
+          "opId": "1",
+          "shared": "LcSau4zpRNuzfwjTQJAMM133R4ZfCVmotil+4WLdDXE="
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060150",
-        "directKeyAgreed": {
-          "opId": "1",
-          "sharedSecret": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=",
-          "ok": true
+        "securityKeyAgreed": {
+          "opId": "2",
+          "shared": "zOnklC+5zna0srED8u96USkZEtbNOakyL8WMb1BUcnc="
         }
       }
     },
@@ -289,7 +375,14 @@
         }
       },
       "views": [
-        { "name": "relayFailedDiag", "screen": { "machineSettings": { "machineId": "m1" } } }
+        {
+          "name": "relayFailedDiag",
+          "screen": {
+            "machineSettings": {
+              "machineId": "85d2362959f254ac4ffeeba70d956154"
+            }
+          }
+        }
       ]
     }
   ]

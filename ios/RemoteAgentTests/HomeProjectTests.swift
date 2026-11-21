@@ -1,6 +1,6 @@
 #if DEBUG
 import Foundation
-import RACore
+@testable import RACore
 import RAProto
 import SwiftProtobuf
 import SwiftUI
@@ -11,6 +11,10 @@ import UIKit
 
 private actor FakeCoreExecutor: CoreHostExecutor {
     nonisolated let account: Account
+    nonisolated let machineID: String
+    nonisolated let clientSigner: SigningKey
+    nonisolated let clientXRaw: Data
+    private let securityRecord: DeviceSecurity.Record
     nonisolated let state = Feed<RemoteState>(RemoteState())
 
     private var hooks: Remote.CoreHooks?
@@ -30,11 +34,68 @@ private actor FakeCoreExecutor: CoreHostExecutor {
     var prefsRev: UInt64 = 1
     var nowMs: Int64 = 1_791_000_000_000
 
-    init(account: Account = Demo.account) {
-        self.account = account
+    init() {
+        let clientSeed = Data(repeating: 1, count: 32)
+        let clientX = Data(repeating: 2, count: 32)
+        let machineSeed = Data(repeating: 3, count: 32)
+        let machineX = Data(repeating: 4, count: 32)
+        let recoverySeed = Data(repeating: 5, count: 32)
+        let domain = Data(repeating: 6, count: 32)
+        let sec1 = Data(repeating: 7, count: 32)
+        let sec2 = Data(repeating: 8, count: 32)
+        let acctId = String(repeating: "0", count: 31) + "1"
+
+        let clientSigner = try! SigningKey(seed: clientSeed)
+        let machineSigner = try! SigningKey(seed: machineSeed)
+        let recPub = try! SigningKey(seed: recoverySeed).publicKey
+        let clientId = deviceId(publicKey: clientSigner.publicKey)
+        let machineId = deviceId(publicKey: machineSigner.publicKey)
+        let auth = Authority()
+        let clientMember = try! Authority.newMember(signer: clientSigner, xPrivate: clientX, kind: .client)
+        let machineMember = try! Authority.newMember(signer: machineSigner, xPrivate: machineX, kind: .machine)
+        let s0 = try! auth.genesis(
+            account: acctId,
+            domain: domain,
+            member: clientMember,
+            recoveryEd: recPub,
+            secret: sec1,
+            signer: clientSigner,
+            now: 1_791_000_000_000
+        )
+        let s1 = try! auth.membership(
+            parent: s0,
+            members: [clientMember, machineMember],
+            removed: [],
+            oldSecret: sec1,
+            newSecret: sec2,
+            signer: clientSigner,
+            now: 1_791_000_000_000
+        )
+        let lease = try! DeviceSecurity.HeadLease.sign(s1, signer: clientSigner, now: 1_791_000_000_000)
+        let pin = try! DeviceSecurity.pin(for: s0)
+        self.securityRecord = try! DeviceSecurity.Record(
+            pin: pin,
+            states: [1: s0, 2: s1],
+            memberID: clientId,
+            xPrivate: clientX,
+            member: true,
+            secret: sec2,
+            contentKeys: [1: sec1, 2: sec2],
+            lease: lease
+        )
+        self.clientSigner = clientSigner
+        self.clientXRaw = clientX
+        self.machineID = machineId
+        self.account = Account(
+            server: "http://127.0.0.1:1",
+            root: Data(repeating: 9, count: 32),
+            deviceSeed: clientSeed,
+            deviceId: clientId,
+            accountId: acctId
+        )
         self.machines = [
             .with {
-                $0.machineID = "m1"
+                $0.machineID = machineId
                 $0.online = true
                 $0.lastSeenMs = 1_791_000_000_000
                 $0.meta = .with {
@@ -47,7 +108,7 @@ private actor FakeCoreExecutor: CoreHostExecutor {
         self.sessions = [
             .with {
                 $0.sessionID = "s1"
-                $0.machineID = "m1"
+                $0.machineID = machineId
                 $0.updatedMs = 1_790_999_000_000
                 $0.meta = .with {
                     $0.id = "s1"
@@ -60,7 +121,7 @@ private actor FakeCoreExecutor: CoreHostExecutor {
             },
             .with {
                 $0.sessionID = "s2"
-                $0.machineID = "m1"
+                $0.machineID = machineId
                 $0.updatedMs = 1_790_998_000_000
                 $0.meta = .with {
                     $0.id = "s2"
@@ -104,16 +165,24 @@ private actor FakeCoreExecutor: CoreHostExecutor {
 
     func discardToken(_ rejected: String) async {}
 
-    func syncSecuritySnapshot(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBCoreSecuritySnapshotEvent {
-        PBCoreSecuritySnapshotEvent.with {
-            $0.opID = opId
-            $0.isMember = true
-            $0.authorityDeviceID = account.deviceId
-            $0.trustedMachineIds = machines.map(\.machineID)
-            $0.trustedClientIds = [account.deviceId]
-            $0.selfDeviceID = account.deviceId
-            $0.leaseEndMs = nowMs + 86_400_000
-        }
+    func syncSecurityRecord(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBSecurityRecordEvent {
+        (try? CoreSecurityRunner.makeRecordEvent(
+            record: securityRecord,
+            opId: opId,
+            pushSeq: 0,
+            networkGeneration: networkGeneration,
+            recoveryPending: false,
+            recoveryReadyMs: 0,
+            recoveryObjectsPending: false
+        )) ?? PBSecurityRecordEvent()
+    }
+
+    nonisolated func handleSecurityKeySign(_ eff: PBSecurityKeySignEffect) -> PBSecurityKeySignedEvent {
+        SecurityExecutor(signer: { [clientSigner] in clientSigner }, xPrivate: { [clientXRaw] in clientXRaw }).keySign(eff)
+    }
+
+    nonisolated func handleSecurityKeyAgree(_ eff: PBSecurityKeyAgreeEffect) -> PBSecurityKeyAgreedEvent {
+        SecurityExecutor(signer: { nil }, xPrivate: { [clientXRaw] in clientXRaw }).keyAgree(eff)
     }
 
     func openStream(legId: UInt64, token: String, callbacks: Remote.StreamCallbacks) async {
@@ -386,7 +455,7 @@ private actor NavRecorder {
         let initialFetches = await executor.fetchListsCount
         await executor.appendSession(.with {
             $0.sessionID = "s3"
-            $0.machineID = "m1"
+            $0.machineID = executor.machineID
             $0.updatedMs = 1_791_000_001_000
             $0.meta = .with {
                 $0.id = "s3"

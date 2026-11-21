@@ -32,16 +32,4 @@ public interface PlainAccountPrefsOrBuilder extends
    * @return The broken.
    */
   boolean getBroken();
-
-  /**
-   * <code>string cache_ref = 4 [json_name = "cacheRef"];</code>
-   * @return The cacheRef.
-   */
-  java.lang.String getCacheRef();
-  /**
-   * <code>string cache_ref = 4 [json_name = "cacheRef"];</code>
-   * @return The bytes for cacheRef.
-   */
-  com.google.protobuf.ByteString
-      getCacheRefBytes();
 }

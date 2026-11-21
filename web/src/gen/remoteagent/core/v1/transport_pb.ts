@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/core/v1/transport.proto.
  */
 export const file_remoteagent_core_v1_transport: GenFile = /*@__PURE__*/
-  fileDesc("CiNyZW1vdGVhZ2VudC9jb3JlL3YxL3RyYW5zcG9ydC5wcm90bxITcmVtb3RlYWdlbnQuY29yZS52MSJTChJEaXJlY3RJY2VDYW5kaWRhdGUSDAoEbGluZRgBIAEoDBINCgV1ZnJhZxgCIAEoDBILCgNtaWQYAyABKAwSEwoLbWxpbmVfaW5kZXgYBCABKA0ibQoURGlyZWN0U2VjdXJpdHlNZW1iZXISEQoJZGV2aWNlX2lkGAEgASgJEhEKCWVkX3B1YmxpYxgCIAEoDBIQCgh4X3B1YmxpYxgDIAEoDBIPCgdpc19zZWxmGAQgASgIEgwKBGtpbmQYBSABKA0iPAoVRGlyZWN0UHJlZmVyZW5jZUVudHJ5EhIKCm1hY2hpbmVfaWQYASABKAkSDwoHZW5hYmxlZBgCIAEoCCKKAwoPRGlyZWN0U3RhdHNQYWlyEjcKCmxvY2FsX3R5cGUYASABKA4yIy5yZW1vdGVhZ2VudC5jb3JlLnYxLkRpcmVjdENhbmRUeXBlEjsKDGxvY2FsX2ZhbWlseRgCIAEoDjIlLnJlbW90ZWFnZW50LmNvcmUudjEuRGlyZWN0Q2FuZEZhbWlseRI4CgtyZW1vdGVfdHlwZRgDIAEoDjIjLnJlbW90ZWFnZW50LmNvcmUudjEuRGlyZWN0Q2FuZFR5cGUSPAoNcmVtb3RlX2ZhbWlseRgEIAEoDjIlLnJlbW90ZWFnZW50LmNvcmUudjEuRGlyZWN0Q2FuZEZhbWlseRIRCglub21pbmF0ZWQYBSABKAgSDQoFc3RhdGUYBiABKAkSFQoNcmVxdWVzdHNfc2VudBgHIAEoBRIaChJyZXNwb25zZXNfcmVjZWl2ZWQYCCABKAUSGwoTY3VycmVudF9ydHRfc2Vjb25kcxgJIAEoARIXCg9oYXNfY3VycmVudF9ydHQYCiABKAgigQEKEURpcmVjdFN0YXRzUmVwb3J0EhEKCWljZV9zdGF0ZRgBIAEoCRISCgpkdGxzX3N0YXRlGAIgASgJEhAKCGRjX3N0YXRlGAMgASgJEjMKBXBhaXJzGAQgAygLMiQucmVtb3RlYWdlbnQuY29yZS52MS5EaXJlY3RTdGF0c1BhaXIimgEKFFRyYW5zcG9ydENvbmZpZ0V2ZW50EhEKCXN1cHBvcnRlZBgBIAEoCBIPCgdhY2NvdW50GAIgASgJEhgKEHByb3RvY29sX3ZlcnNpb24YAyABKA0SEwoLc2VydmVyX2hvc3QYBCABKAkSFwoPY29uZmlndXJlZF9zdHVuGAUgASgJEhYKDnBsYXRmb3JtX2FnZW50GAYgASgJIr8CChtEaXJlY3RTZWN1cml0eVNuYXBzaG90RXZlbnQSDgoGbWVtYmVyGAEgASgIEg8KB2FjY291bnQYAiABKAkSDgoGZG9tYWluGAMgASgMEgwKBGhlYWQYBCABKAkSEQoJaGVhZF9oYXNoGAUgASgMEg0KBWVwb2NoGAYgASgEEhUKDXN0YXJ0ZWRfYXRfbXMYByABKAMSGgoSbGVhc2Vfbm90X2FmdGVyX21zGAggASgDEg8KB3NlbGZfaWQYCSABKAkSFgoOc2VsZl9lZF9wdWJsaWMYCiABKAwSFQoNc2VsZl94X3B1YmxpYxgLIAEoDBI6CgdtZW1iZXJzGAwgAygLMikucmVtb3RlYWdlbnQuY29yZS52MS5EaXJlY3RTZWN1cml0eU1lbWJlchIQCghyZWplY3RlZBgNIAEoCCIoChlEaXJlY3RTaWduYWxSZWNlaXZlZEV2ZW50EgsKA3JhdxgBIAEoDCJVChlEaXJlY3RTaWduYWxEZWxpdmVyeUV2ZW50EhAKCGZyYW1lX2lkGAEgASgMEg4KBnN0YXR1cxgCIAEoDRIWCg5yZXRyeV9hZnRlcl9tcxgDIAEoBCI4ChREaXJlY3RLZXlTaWduZWRFdmVudBINCgVvcF9pZBgBIAEoBBIRCglzaWduYXR1cmUYAiABKAwiSAoURGlyZWN0S2V5QWdyZWVkRXZlbnQSDQoFb3BfaWQYASABKAQSFQoNc2hhcmVkX3NlY3JldBgCIAEoDBIKCgJvaxgDIAEoCCIxChREaXJlY3RQY0NyZWF0ZWRFdmVudBINCgVwY19pZBgBIAEoBBIKCgJvaxgCIAEoCCJCChhEaXJlY3RQY0Rlc2NyaXB0aW9uRXZlbnQSDQoFcGNfaWQYASABKAQSCwoDc2RwGAIgASgMEgoKAm9rGAMgASgIIkIKFkRpcmVjdFBjUmVtb3RlU2V0RXZlbnQSDQoFcGNfaWQYASABKAQSCgoCb2sYAiABKAgSDQoFZXJyb3IYAyABKAkiSAocRGlyZWN0UGNDYW5kaWRhdGVzQWRkZWRFdmVudBINCgVwY19pZBgBIAEoBBIKCgJvaxgCIAEoCBINCgVlcnJvchgDIAEoCSJaChtEaXJlY3RQY0xvY2FsQ2FuZGlkYXRlRXZlbnQSDQoFcGNfaWQYASABKAQSEQoJY2FuZGlkYXRlGAIgASgJEhkKEWVuZF9vZl9jYW5kaWRhdGVzGAMgASgIImYKEkRpcmVjdFBjU3RhdGVFdmVudBINCgVwY19pZBgBIAEoBBIyCgRraW5kGAIgASgOMiQucmVtb3RlYWdlbnQuY29yZS52MS5EaXJlY3RTdGF0ZUtpbmQSDQoFdmFsdWUYAyABKAkiRgoWRGlyZWN0UGNTdHVuRXJyb3JFdmVudBINCgVwY19pZBgBIAEoBBIMCgRjb2RlGAIgASgFEg8KB2FkZHJlc3MYAyABKAkiJAoTRGlyZWN0UGNDbG9zZWRFdmVudBINCgVwY19pZBgBIAEoBCIxChJEaXJlY3REY1N0YXRlRXZlbnQSDQoFcGNfaWQYASABKAQSDAoEb3BlbhgCIAEoCCJbChJEaXJlY3REY1N0YXRzRXZlbnQSDQoFcGNfaWQYASABKAQSNgoGcmVwb3J0GAIgASgLMiYucmVtb3RlYWdlbnQuY29yZS52MS5EaXJlY3RTdGF0c1JlcG9ydCIqChREaXJlY3RSZXRyeU5vd0FjdGlvbhISCgptYWNoaW5lX2lkGAEgASgJIjQKHkRpcmVjdFJlZnJlc2hEaWFnbm9zdGljc0FjdGlvbhISCgptYWNoaW5lX2lkGAEgASgJIpQCChxEaXJlY3RCdWxrVHJhbnNmZXJCZWdpbkV2ZW50Eg8KB2NhbGxfaWQYASABKAQSEgoKbWFjaGluZV9pZBgCIAEoCRISCgpyb3V0ZV9oaW50GAMgASgNEhUKDWJ1bGtfZmlsZV9rZXkYBCABKAkSEgoKYnVsa19ieXRlcxgFIAEoAxITCgtidWxrX3VwbG9hZBgGIAEoCBITCgtkZWFkbGluZV9tcxgHIAEoAxITCgtmb3JjZV9yZWxheRgIIAEoCBIaChJ1cGxvYWRfdHJhbnNmZXJfaWQYCSABKAkSGwoTdXBsb2FkX2hhc19maWxlbmFtZRgKIAEoCBIYChBpbnRlcmFjdGl2ZV9kdWFsGAsgASgIIrkBChtEaXJlY3RCdWxrVHJhbnNmZXJEb25lRXZlbnQSEQoJdGlja2V0X2lkGAEgASgEEhgKEHJvdXRlX3dhc19kaXJlY3QYAiABKAgSCgoCb2sYAyABKAgSEgoKZWxhcHNlZF9tcxgEIAEoARIWCg5vYnNlcnZlZF9ieXRlcxgFIAEoAxIhChlmaW5pc2hfdXBsb2FkX3RyYW5zZmVyX2lkGAYgASgJEhIKCm1hY2hpbmVfaWQYByABKAkidgoTVGVybWluYWxTdHJlYW1FdmVudBITCgt0ZXJtaW5hbF9pZBgBIAEoCRI6CgRraW5kGAIgASgOMiwucmVtb3RlYWdlbnQuY29yZS52MS5UZXJtaW5hbFN0cmVhbUV2ZW50S2luZBIOCgZvcGVuZWQYAyABKAgiWwocRGlyZWN0UHJlZmVyZW5jZXNMb2FkZWRFdmVudBI7CgdlbnRyaWVzGAEgAygLMioucmVtb3RlYWdlbnQuY29yZS52MS5EaXJlY3RQcmVmZXJlbmNlRW50cnkiTQocRGlyZWN0U2VjdXJpdHlJbnN0YWxsZWRFdmVudBIOCgZtZW1iZXIYASABKAgSDwoHYWNjb3VudBgCIAEoCRIMCgRoZWFkGAMgASgJIiYKGERpcmVjdEF1dGhvcml6ZURvbmVFdmVudBIKCgJvaxgBIAEoCCI1ChNEaXJlY3RLZXlTaWduRWZmZWN0Eg0KBW9wX2lkGAEgASgEEg8KB21lc3NhZ2UYAiABKAwiTQoURGlyZWN0S2V5QWdyZWVFZmZlY3QSDQoFb3BfaWQYASABKAQSDwoHcGVlcl9pZBgCIAEoCRIVCg1wZWVyX3hfcHVibGljGAMgASgMIokBChZEaXJlY3RTaWduYWxTZW5kRWZmZWN0EhEKCXRvX2RldmljZRgBIAEoDBITCgtmcmFtZV9jbGFzcxgCIAEoDRIQCghmcmFtZV9pZBgDIAEoDBIOCgZzZWFsZWQYBCABKAwSEwoLZGVhZGxpbmVfbXMYBSABKAMSEAoIY3JpdGljYWwYBiABKAgiggEKFERpcmVjdFBjQ3JlYXRlRWZmZWN0EhAKCHJvdW5kX2lkGAEgASgEEhIKCm1hY2hpbmVfaWQYAiABKAkSDQoFcGNfaWQYAyABKAQSCwoDdXNlGAQgASgNEhIKCmdlbmVyYXRpb24YBSABKAQSFAoMc3R1bl9zZXJ2ZXJzGAYgAygJIksKFkRpcmVjdFBjRGVzY3JpYmVFZmZlY3QSDQoFcGNfaWQYASABKAQSDQoFb2ZmZXIYAiABKAgSEwoLaWNlX3Jlc3RhcnQYAyABKAgiRAoXRGlyZWN0UGNTZXRSZW1vdGVFZmZlY3QSDQoFcGNfaWQYASABKAQSCwoDc2RwGAIgASgMEg0KBW9mZmVyGAMgASgIIoQBChtEaXJlY3RQY0FkZENhbmRpZGF0ZXNFZmZlY3QSDQoFcGNfaWQYASABKAQSOwoKY2FuZGlkYXRlcxgCIAMoCzInLnJlbW90ZWFnZW50LmNvcmUudjEuRGlyZWN0SWNlQ2FuZGlkYXRlEhkKEWVuZF9vZl9jYW5kaWRhdGVzGAMgASgIIkcKFURpcmVjdFBjQ29uZmlybUVmZmVjdBINCgVwY19pZBgBIAEoBBISCgptYWNoaW5lX2lkGAIgASgJEgsKA3VzZRgDIAEoDSI0ChNEaXJlY3RQY0Nsb3NlRWZmZWN0Eg0KBXBjX2lkGAEgASgEEg4KBnJlYXNvbhgCIAEoCSIoChdEaXJlY3REY1JlYWRTdGF0c0VmZmVjdBINCgVwY19pZBgBIAEoBCIXChVEaXJlY3RBdXRob3JpemVFZmZlY3QicgoVRGlyZWN0QnVsa1JvdXRlRWZmZWN0Eg8KB2NhbGxfaWQYASABKAQSEgoKdXNlX2RpcmVjdBgCIAEoCBINCgVwY19pZBgDIAEoBBIRCgl0aWNrZXRfaWQYBCABKAQSEgoKdGltZW91dF9tcxgFIAEoAyIrChRUZXJtaW5hbFJlb3BlbkVmZmVjdBITCgt0ZXJtaW5hbF9pZBgBIAEoCSJBChpEaXJlY3RSZXRyeU5vd1Jlc3VsdEVmZmVjdBISCgptYWNoaW5lX2lkGAEgASgJEg8KB3N0YXJ0ZWQYAiABKAgqbwoPQ29tbWFuZFJvdXRlTGVnEiEKHUNPTU1BTkRfUk9VVEVfTEVHX1VOU1BFQ0lGSUVEEAASGwoXQ09NTUFORF9ST1VURV9MRUdfUkVMQVkQARIcChhDT01NQU5EX1JPVVRFX0xFR19ESVJFQ1QQAirbAQoPRGlyZWN0U3RhdGVLaW5kEiEKHURJUkVDVF9TVEFURV9LSU5EX1VOU1BFQ0lGSUVEEAASHAoYRElSRUNUX1NUQVRFX0tJTkRfR0FUSEVSEAESGQoVRElSRUNUX1NUQVRFX0tJTkRfSUNFEAISGgoWRElSRUNUX1NUQVRFX0tJTkRfQ09OThADEhoKFkRJUkVDVF9TVEFURV9LSU5EX0RUTFMQBBIaChZESVJFQ1RfU1RBVEVfS0lORF9TQ1RQEAUSGAoURElSRUNUX1NUQVRFX0tJTkRfREMQBiq9AQoORGlyZWN0Q2FuZFR5cGUSIAocRElSRUNUX0NBTkRfVFlQRV9VTlNQRUNJRklFRBAAEhkKFURJUkVDVF9DQU5EX1RZUEVfSE9TVBABEhoKFkRJUkVDVF9DQU5EX1RZUEVfU1JGTFgQAhIaChZESVJFQ1RfQ0FORF9UWVBFX1BSRkxYEAMSGgoWRElSRUNUX0NBTkRfVFlQRV9SRUxBWRAEEhoKFkRJUkVDVF9DQU5EX1RZUEVfT1RIRVIQBSpsChBEaXJlY3RDYW5kRmFtaWx5EiIKHkRJUkVDVF9DQU5EX0ZBTUlMWV9VTlNQRUNJRklFRBAAEhkKFURJUkVDVF9DQU5EX0ZBTUlMWV9WNBABEhkKFURJUkVDVF9DQU5EX0ZBTUlMWV9WNhACKusBChdUZXJtaW5hbFN0cmVhbUV2ZW50S2luZBIqCiZURVJNSU5BTF9TVFJFQU1fRVZFTlRfS0lORF9VTlNQRUNJRklFRBAAEiMKH1RFUk1JTkFMX1NUUkVBTV9FVkVOVF9LSU5EX0xJVkUQARIlCiFURVJNSU5BTF9TVFJFQU1fRVZFTlRfS0lORF9DTE9TRUQQAhIvCitURVJNSU5BTF9TVFJFQU1fRVZFTlRfS0lORF9NQU5VQUxfUkVDT05ORUNUEAMSJwojVEVSTUlOQUxfU1RSRUFNX0VWRU5UX0tJTkRfRElTUE9TRUQQBGIGcHJvdG8z");
+  fileDesc("CiNyZW1vdGVhZ2VudC9jb3JlL3YxL3RyYW5zcG9ydC5wcm90bxITcmVtb3RlYWdlbnQuY29yZS52MSJTChJEaXJlY3RJY2VDYW5kaWRhdGUSDAoEbGluZRgBIAEoDBINCgV1ZnJhZxgCIAEoDBILCgNtaWQYAyABKAwSEwoLbWxpbmVfaW5kZXgYBCABKA0iPAoVRGlyZWN0UHJlZmVyZW5jZUVudHJ5EhIKCm1hY2hpbmVfaWQYASABKAkSDwoHZW5hYmxlZBgCIAEoCCKKAwoPRGlyZWN0U3RhdHNQYWlyEjcKCmxvY2FsX3R5cGUYASABKA4yIy5yZW1vdGVhZ2VudC5jb3JlLnYxLkRpcmVjdENhbmRUeXBlEjsKDGxvY2FsX2ZhbWlseRgCIAEoDjIlLnJlbW90ZWFnZW50LmNvcmUudjEuRGlyZWN0Q2FuZEZhbWlseRI4CgtyZW1vdGVfdHlwZRgDIAEoDjIjLnJlbW90ZWFnZW50LmNvcmUudjEuRGlyZWN0Q2FuZFR5cGUSPAoNcmVtb3RlX2ZhbWlseRgEIAEoDjIlLnJlbW90ZWFnZW50LmNvcmUudjEuRGlyZWN0Q2FuZEZhbWlseRIRCglub21pbmF0ZWQYBSABKAgSDQoFc3RhdGUYBiABKAkSFQoNcmVxdWVzdHNfc2VudBgHIAEoBRIaChJyZXNwb25zZXNfcmVjZWl2ZWQYCCABKAUSGwoTY3VycmVudF9ydHRfc2Vjb25kcxgJIAEoARIXCg9oYXNfY3VycmVudF9ydHQYCiABKAgigQEKEURpcmVjdFN0YXRzUmVwb3J0EhEKCWljZV9zdGF0ZRgBIAEoCRISCgpkdGxzX3N0YXRlGAIgASgJEhAKCGRjX3N0YXRlGAMgASgJEjMKBXBhaXJzGAQgAygLMiQucmVtb3RlYWdlbnQuY29yZS52MS5EaXJlY3RTdGF0c1BhaXIimgEKFFRyYW5zcG9ydENvbmZpZ0V2ZW50EhEKCXN1cHBvcnRlZBgBIAEoCBIPCgdhY2NvdW50GAIgASgJEhgKEHByb3RvY29sX3ZlcnNpb24YAyABKA0SEwoLc2VydmVyX2hvc3QYBCABKAkSFwoPY29uZmlndXJlZF9zdHVuGAUgASgJEhYKDnBsYXRmb3JtX2FnZW50GAYgASgJIigKGURpcmVjdFNpZ25hbFJlY2VpdmVkRXZlbnQSCwoDcmF3GAEgASgMIlUKGURpcmVjdFNpZ25hbERlbGl2ZXJ5RXZlbnQSEAoIZnJhbWVfaWQYASABKAwSDgoGc3RhdHVzGAIgASgNEhYKDnJldHJ5X2FmdGVyX21zGAMgASgEIjEKFERpcmVjdFBjQ3JlYXRlZEV2ZW50Eg0KBXBjX2lkGAEgASgEEgoKAm9rGAIgASgIIkIKGERpcmVjdFBjRGVzY3JpcHRpb25FdmVudBINCgVwY19pZBgBIAEoBBILCgNzZHAYAiABKAwSCgoCb2sYAyABKAgiQgoWRGlyZWN0UGNSZW1vdGVTZXRFdmVudBINCgVwY19pZBgBIAEoBBIKCgJvaxgCIAEoCBINCgVlcnJvchgDIAEoCSJIChxEaXJlY3RQY0NhbmRpZGF0ZXNBZGRlZEV2ZW50Eg0KBXBjX2lkGAEgASgEEgoKAm9rGAIgASgIEg0KBWVycm9yGAMgASgJIloKG0RpcmVjdFBjTG9jYWxDYW5kaWRhdGVFdmVudBINCgVwY19pZBgBIAEoBBIRCgljYW5kaWRhdGUYAiABKAkSGQoRZW5kX29mX2NhbmRpZGF0ZXMYAyABKAgiZgoSRGlyZWN0UGNTdGF0ZUV2ZW50Eg0KBXBjX2lkGAEgASgEEjIKBGtpbmQYAiABKA4yJC5yZW1vdGVhZ2VudC5jb3JlLnYxLkRpcmVjdFN0YXRlS2luZBINCgV2YWx1ZRgDIAEoCSJGChZEaXJlY3RQY1N0dW5FcnJvckV2ZW50Eg0KBXBjX2lkGAEgASgEEgwKBGNvZGUYAiABKAUSDwoHYWRkcmVzcxgDIAEoCSIkChNEaXJlY3RQY0Nsb3NlZEV2ZW50Eg0KBXBjX2lkGAEgASgEIjEKEkRpcmVjdERjU3RhdGVFdmVudBINCgVwY19pZBgBIAEoBBIMCgRvcGVuGAIgASgIIlsKEkRpcmVjdERjU3RhdHNFdmVudBINCgVwY19pZBgBIAEoBBI2CgZyZXBvcnQYAiABKAsyJi5yZW1vdGVhZ2VudC5jb3JlLnYxLkRpcmVjdFN0YXRzUmVwb3J0IioKFERpcmVjdFJldHJ5Tm93QWN0aW9uEhIKCm1hY2hpbmVfaWQYASABKAkiNAoeRGlyZWN0UmVmcmVzaERpYWdub3N0aWNzQWN0aW9uEhIKCm1hY2hpbmVfaWQYASABKAkilAIKHERpcmVjdEJ1bGtUcmFuc2ZlckJlZ2luRXZlbnQSDwoHY2FsbF9pZBgBIAEoBBISCgptYWNoaW5lX2lkGAIgASgJEhIKCnJvdXRlX2hpbnQYAyABKA0SFQoNYnVsa19maWxlX2tleRgEIAEoCRISCgpidWxrX2J5dGVzGAUgASgDEhMKC2J1bGtfdXBsb2FkGAYgASgIEhMKC2RlYWRsaW5lX21zGAcgASgDEhMKC2ZvcmNlX3JlbGF5GAggASgIEhoKEnVwbG9hZF90cmFuc2Zlcl9pZBgJIAEoCRIbChN1cGxvYWRfaGFzX2ZpbGVuYW1lGAogASgIEhgKEGludGVyYWN0aXZlX2R1YWwYCyABKAgiuQEKG0RpcmVjdEJ1bGtUcmFuc2ZlckRvbmVFdmVudBIRCgl0aWNrZXRfaWQYASABKAQSGAoQcm91dGVfd2FzX2RpcmVjdBgCIAEoCBIKCgJvaxgDIAEoCBISCgplbGFwc2VkX21zGAQgASgBEhYKDm9ic2VydmVkX2J5dGVzGAUgASgDEiEKGWZpbmlzaF91cGxvYWRfdHJhbnNmZXJfaWQYBiABKAkSEgoKbWFjaGluZV9pZBgHIAEoCSJ2ChNUZXJtaW5hbFN0cmVhbUV2ZW50EhMKC3Rlcm1pbmFsX2lkGAEgASgJEjoKBGtpbmQYAiABKA4yLC5yZW1vdGVhZ2VudC5jb3JlLnYxLlRlcm1pbmFsU3RyZWFtRXZlbnRLaW5kEg4KBm9wZW5lZBgDIAEoCCJbChxEaXJlY3RQcmVmZXJlbmNlc0xvYWRlZEV2ZW50EjsKB2VudHJpZXMYASADKAsyKi5yZW1vdGVhZ2VudC5jb3JlLnYxLkRpcmVjdFByZWZlcmVuY2VFbnRyeSKJAQoWRGlyZWN0U2lnbmFsU2VuZEVmZmVjdBIRCgl0b19kZXZpY2UYASABKAwSEwoLZnJhbWVfY2xhc3MYAiABKA0SEAoIZnJhbWVfaWQYAyABKAwSDgoGc2VhbGVkGAQgASgMEhMKC2RlYWRsaW5lX21zGAUgASgDEhAKCGNyaXRpY2FsGAYgASgIIoIBChREaXJlY3RQY0NyZWF0ZUVmZmVjdBIQCghyb3VuZF9pZBgBIAEoBBISCgptYWNoaW5lX2lkGAIgASgJEg0KBXBjX2lkGAMgASgEEgsKA3VzZRgEIAEoDRISCgpnZW5lcmF0aW9uGAUgASgEEhQKDHN0dW5fc2VydmVycxgGIAMoCSJLChZEaXJlY3RQY0Rlc2NyaWJlRWZmZWN0Eg0KBXBjX2lkGAEgASgEEg0KBW9mZmVyGAIgASgIEhMKC2ljZV9yZXN0YXJ0GAMgASgIIkQKF0RpcmVjdFBjU2V0UmVtb3RlRWZmZWN0Eg0KBXBjX2lkGAEgASgEEgsKA3NkcBgCIAEoDBINCgVvZmZlchgDIAEoCCKEAQobRGlyZWN0UGNBZGRDYW5kaWRhdGVzRWZmZWN0Eg0KBXBjX2lkGAEgASgEEjsKCmNhbmRpZGF0ZXMYAiADKAsyJy5yZW1vdGVhZ2VudC5jb3JlLnYxLkRpcmVjdEljZUNhbmRpZGF0ZRIZChFlbmRfb2ZfY2FuZGlkYXRlcxgDIAEoCCJHChVEaXJlY3RQY0NvbmZpcm1FZmZlY3QSDQoFcGNfaWQYASABKAQSEgoKbWFjaGluZV9pZBgCIAEoCRILCgN1c2UYAyABKA0iNAoTRGlyZWN0UGNDbG9zZUVmZmVjdBINCgVwY19pZBgBIAEoBBIOCgZyZWFzb24YAiABKAkiKAoXRGlyZWN0RGNSZWFkU3RhdHNFZmZlY3QSDQoFcGNfaWQYASABKAQicgoVRGlyZWN0QnVsa1JvdXRlRWZmZWN0Eg8KB2NhbGxfaWQYASABKAQSEgoKdXNlX2RpcmVjdBgCIAEoCBINCgVwY19pZBgDIAEoBBIRCgl0aWNrZXRfaWQYBCABKAQSEgoKdGltZW91dF9tcxgFIAEoAyIrChRUZXJtaW5hbFJlb3BlbkVmZmVjdBITCgt0ZXJtaW5hbF9pZBgBIAEoCSJBChpEaXJlY3RSZXRyeU5vd1Jlc3VsdEVmZmVjdBISCgptYWNoaW5lX2lkGAEgASgJEg8KB3N0YXJ0ZWQYAiABKAgqbwoPQ29tbWFuZFJvdXRlTGVnEiEKHUNPTU1BTkRfUk9VVEVfTEVHX1VOU1BFQ0lGSUVEEAASGwoXQ09NTUFORF9ST1VURV9MRUdfUkVMQVkQARIcChhDT01NQU5EX1JPVVRFX0xFR19ESVJFQ1QQAirbAQoPRGlyZWN0U3RhdGVLaW5kEiEKHURJUkVDVF9TVEFURV9LSU5EX1VOU1BFQ0lGSUVEEAASHAoYRElSRUNUX1NUQVRFX0tJTkRfR0FUSEVSEAESGQoVRElSRUNUX1NUQVRFX0tJTkRfSUNFEAISGgoWRElSRUNUX1NUQVRFX0tJTkRfQ09OThADEhoKFkRJUkVDVF9TVEFURV9LSU5EX0RUTFMQBBIaChZESVJFQ1RfU1RBVEVfS0lORF9TQ1RQEAUSGAoURElSRUNUX1NUQVRFX0tJTkRfREMQBiq9AQoORGlyZWN0Q2FuZFR5cGUSIAocRElSRUNUX0NBTkRfVFlQRV9VTlNQRUNJRklFRBAAEhkKFURJUkVDVF9DQU5EX1RZUEVfSE9TVBABEhoKFkRJUkVDVF9DQU5EX1RZUEVfU1JGTFgQAhIaChZESVJFQ1RfQ0FORF9UWVBFX1BSRkxYEAMSGgoWRElSRUNUX0NBTkRfVFlQRV9SRUxBWRAEEhoKFkRJUkVDVF9DQU5EX1RZUEVfT1RIRVIQBSpsChBEaXJlY3RDYW5kRmFtaWx5EiIKHkRJUkVDVF9DQU5EX0ZBTUlMWV9VTlNQRUNJRklFRBAAEhkKFURJUkVDVF9DQU5EX0ZBTUlMWV9WNBABEhkKFURJUkVDVF9DQU5EX0ZBTUlMWV9WNhACKusBChdUZXJtaW5hbFN0cmVhbUV2ZW50S2luZBIqCiZURVJNSU5BTF9TVFJFQU1fRVZFTlRfS0lORF9VTlNQRUNJRklFRBAAEiMKH1RFUk1JTkFMX1NUUkVBTV9FVkVOVF9LSU5EX0xJVkUQARIlCiFURVJNSU5BTF9TVFJFQU1fRVZFTlRfS0lORF9DTE9TRUQQAhIvCitURVJNSU5BTF9TVFJFQU1fRVZFTlRfS0lORF9NQU5VQUxfUkVDT05ORUNUEAMSJwojVEVSTUlOQUxfU1RSRUFNX0VWRU5UX0tJTkRfRElTUE9TRUQQBGIGcHJvdG8z");
 
 /**
  * @generated from message remoteagent.core.v1.DirectIceCandidate
@@ -45,43 +45,6 @@ export const DirectIceCandidateSchema: GenMessage<DirectIceCandidate> = /*@__PUR
   messageDesc(file_remoteagent_core_v1_transport, 0);
 
 /**
- * @generated from message remoteagent.core.v1.DirectSecurityMember
- */
-export type DirectSecurityMember = Message<"remoteagent.core.v1.DirectSecurityMember"> & {
-  /**
-   * @generated from field: string device_id = 1;
-   */
-  deviceId: string;
-
-  /**
-   * @generated from field: bytes ed_public = 2;
-   */
-  edPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes x_public = 3;
-   */
-  xPublic: Uint8Array;
-
-  /**
-   * @generated from field: bool is_self = 4;
-   */
-  isSelf: boolean;
-
-  /**
-   * @generated from field: uint32 kind = 5;
-   */
-  kind: number;
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectSecurityMember.
- * Use `create(DirectSecurityMemberSchema)` to create a new message.
- */
-export const DirectSecurityMemberSchema: GenMessage<DirectSecurityMember> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 1);
-
-/**
  * @generated from message remoteagent.core.v1.DirectPreferenceEntry
  */
 export type DirectPreferenceEntry = Message<"remoteagent.core.v1.DirectPreferenceEntry"> & {
@@ -101,7 +64,7 @@ export type DirectPreferenceEntry = Message<"remoteagent.core.v1.DirectPreferenc
  * Use `create(DirectPreferenceEntrySchema)` to create a new message.
  */
 export const DirectPreferenceEntrySchema: GenMessage<DirectPreferenceEntry> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 2);
+  messageDesc(file_remoteagent_core_v1_transport, 1);
 
 /**
  * @generated from message remoteagent.core.v1.DirectStatsPair
@@ -163,7 +126,7 @@ export type DirectStatsPair = Message<"remoteagent.core.v1.DirectStatsPair"> & {
  * Use `create(DirectStatsPairSchema)` to create a new message.
  */
 export const DirectStatsPairSchema: GenMessage<DirectStatsPair> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 3);
+  messageDesc(file_remoteagent_core_v1_transport, 2);
 
 /**
  * @generated from message remoteagent.core.v1.DirectStatsReport
@@ -195,7 +158,7 @@ export type DirectStatsReport = Message<"remoteagent.core.v1.DirectStatsReport">
  * Use `create(DirectStatsReportSchema)` to create a new message.
  */
 export const DirectStatsReportSchema: GenMessage<DirectStatsReport> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 4);
+  messageDesc(file_remoteagent_core_v1_transport, 3);
 
 /**
  * @generated from message remoteagent.core.v1.TransportConfigEvent
@@ -237,84 +200,7 @@ export type TransportConfigEvent = Message<"remoteagent.core.v1.TransportConfigE
  * Use `create(TransportConfigEventSchema)` to create a new message.
  */
 export const TransportConfigEventSchema: GenMessage<TransportConfigEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 5);
-
-/**
- * @generated from message remoteagent.core.v1.DirectSecuritySnapshotEvent
- */
-export type DirectSecuritySnapshotEvent = Message<"remoteagent.core.v1.DirectSecuritySnapshotEvent"> & {
-  /**
-   * @generated from field: bool member = 1;
-   */
-  member: boolean;
-
-  /**
-   * @generated from field: string account = 2;
-   */
-  account: string;
-
-  /**
-   * @generated from field: bytes domain = 3;
-   */
-  domain: Uint8Array;
-
-  /**
-   * @generated from field: string head = 4;
-   */
-  head: string;
-
-  /**
-   * @generated from field: bytes head_hash = 5;
-   */
-  headHash: Uint8Array;
-
-  /**
-   * @generated from field: uint64 epoch = 6;
-   */
-  epoch: bigint;
-
-  /**
-   * @generated from field: int64 started_at_ms = 7;
-   */
-  startedAtMs: bigint;
-
-  /**
-   * @generated from field: int64 lease_not_after_ms = 8;
-   */
-  leaseNotAfterMs: bigint;
-
-  /**
-   * @generated from field: string self_id = 9;
-   */
-  selfId: string;
-
-  /**
-   * @generated from field: bytes self_ed_public = 10;
-   */
-  selfEdPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes self_x_public = 11;
-   */
-  selfXPublic: Uint8Array;
-
-  /**
-   * @generated from field: repeated remoteagent.core.v1.DirectSecurityMember members = 12;
-   */
-  members: DirectSecurityMember[];
-
-  /**
-   * @generated from field: bool rejected = 13;
-   */
-  rejected: boolean;
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectSecuritySnapshotEvent.
- * Use `create(DirectSecuritySnapshotEventSchema)` to create a new message.
- */
-export const DirectSecuritySnapshotEventSchema: GenMessage<DirectSecuritySnapshotEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 6);
+  messageDesc(file_remoteagent_core_v1_transport, 4);
 
 /**
  * @generated from message remoteagent.core.v1.DirectSignalReceivedEvent
@@ -331,7 +217,7 @@ export type DirectSignalReceivedEvent = Message<"remoteagent.core.v1.DirectSigna
  * Use `create(DirectSignalReceivedEventSchema)` to create a new message.
  */
 export const DirectSignalReceivedEventSchema: GenMessage<DirectSignalReceivedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 7);
+  messageDesc(file_remoteagent_core_v1_transport, 5);
 
 /**
  * @generated from message remoteagent.core.v1.DirectSignalDeliveryEvent
@@ -358,56 +244,7 @@ export type DirectSignalDeliveryEvent = Message<"remoteagent.core.v1.DirectSigna
  * Use `create(DirectSignalDeliveryEventSchema)` to create a new message.
  */
 export const DirectSignalDeliveryEventSchema: GenMessage<DirectSignalDeliveryEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 8);
-
-/**
- * @generated from message remoteagent.core.v1.DirectKeySignedEvent
- */
-export type DirectKeySignedEvent = Message<"remoteagent.core.v1.DirectKeySignedEvent"> & {
-  /**
-   * @generated from field: uint64 op_id = 1;
-   */
-  opId: bigint;
-
-  /**
-   * @generated from field: bytes signature = 2;
-   */
-  signature: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectKeySignedEvent.
- * Use `create(DirectKeySignedEventSchema)` to create a new message.
- */
-export const DirectKeySignedEventSchema: GenMessage<DirectKeySignedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 9);
-
-/**
- * @generated from message remoteagent.core.v1.DirectKeyAgreedEvent
- */
-export type DirectKeyAgreedEvent = Message<"remoteagent.core.v1.DirectKeyAgreedEvent"> & {
-  /**
-   * @generated from field: uint64 op_id = 1;
-   */
-  opId: bigint;
-
-  /**
-   * @generated from field: bytes shared_secret = 2;
-   */
-  sharedSecret: Uint8Array;
-
-  /**
-   * @generated from field: bool ok = 3;
-   */
-  ok: boolean;
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectKeyAgreedEvent.
- * Use `create(DirectKeyAgreedEventSchema)` to create a new message.
- */
-export const DirectKeyAgreedEventSchema: GenMessage<DirectKeyAgreedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 10);
+  messageDesc(file_remoteagent_core_v1_transport, 6);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcCreatedEvent
@@ -429,7 +266,7 @@ export type DirectPcCreatedEvent = Message<"remoteagent.core.v1.DirectPcCreatedE
  * Use `create(DirectPcCreatedEventSchema)` to create a new message.
  */
 export const DirectPcCreatedEventSchema: GenMessage<DirectPcCreatedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 11);
+  messageDesc(file_remoteagent_core_v1_transport, 7);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcDescriptionEvent
@@ -456,7 +293,7 @@ export type DirectPcDescriptionEvent = Message<"remoteagent.core.v1.DirectPcDesc
  * Use `create(DirectPcDescriptionEventSchema)` to create a new message.
  */
 export const DirectPcDescriptionEventSchema: GenMessage<DirectPcDescriptionEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 12);
+  messageDesc(file_remoteagent_core_v1_transport, 8);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcRemoteSetEvent
@@ -483,7 +320,7 @@ export type DirectPcRemoteSetEvent = Message<"remoteagent.core.v1.DirectPcRemote
  * Use `create(DirectPcRemoteSetEventSchema)` to create a new message.
  */
 export const DirectPcRemoteSetEventSchema: GenMessage<DirectPcRemoteSetEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 13);
+  messageDesc(file_remoteagent_core_v1_transport, 9);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcCandidatesAddedEvent
@@ -510,7 +347,7 @@ export type DirectPcCandidatesAddedEvent = Message<"remoteagent.core.v1.DirectPc
  * Use `create(DirectPcCandidatesAddedEventSchema)` to create a new message.
  */
 export const DirectPcCandidatesAddedEventSchema: GenMessage<DirectPcCandidatesAddedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 14);
+  messageDesc(file_remoteagent_core_v1_transport, 10);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcLocalCandidateEvent
@@ -537,7 +374,7 @@ export type DirectPcLocalCandidateEvent = Message<"remoteagent.core.v1.DirectPcL
  * Use `create(DirectPcLocalCandidateEventSchema)` to create a new message.
  */
 export const DirectPcLocalCandidateEventSchema: GenMessage<DirectPcLocalCandidateEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 15);
+  messageDesc(file_remoteagent_core_v1_transport, 11);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcStateEvent
@@ -564,7 +401,7 @@ export type DirectPcStateEvent = Message<"remoteagent.core.v1.DirectPcStateEvent
  * Use `create(DirectPcStateEventSchema)` to create a new message.
  */
 export const DirectPcStateEventSchema: GenMessage<DirectPcStateEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 16);
+  messageDesc(file_remoteagent_core_v1_transport, 12);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcStunErrorEvent
@@ -591,7 +428,7 @@ export type DirectPcStunErrorEvent = Message<"remoteagent.core.v1.DirectPcStunEr
  * Use `create(DirectPcStunErrorEventSchema)` to create a new message.
  */
 export const DirectPcStunErrorEventSchema: GenMessage<DirectPcStunErrorEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 17);
+  messageDesc(file_remoteagent_core_v1_transport, 13);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcClosedEvent
@@ -608,7 +445,7 @@ export type DirectPcClosedEvent = Message<"remoteagent.core.v1.DirectPcClosedEve
  * Use `create(DirectPcClosedEventSchema)` to create a new message.
  */
 export const DirectPcClosedEventSchema: GenMessage<DirectPcClosedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 18);
+  messageDesc(file_remoteagent_core_v1_transport, 14);
 
 /**
  * @generated from message remoteagent.core.v1.DirectDcStateEvent
@@ -630,7 +467,7 @@ export type DirectDcStateEvent = Message<"remoteagent.core.v1.DirectDcStateEvent
  * Use `create(DirectDcStateEventSchema)` to create a new message.
  */
 export const DirectDcStateEventSchema: GenMessage<DirectDcStateEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 19);
+  messageDesc(file_remoteagent_core_v1_transport, 15);
 
 /**
  * @generated from message remoteagent.core.v1.DirectDcStatsEvent
@@ -652,7 +489,7 @@ export type DirectDcStatsEvent = Message<"remoteagent.core.v1.DirectDcStatsEvent
  * Use `create(DirectDcStatsEventSchema)` to create a new message.
  */
 export const DirectDcStatsEventSchema: GenMessage<DirectDcStatsEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 20);
+  messageDesc(file_remoteagent_core_v1_transport, 16);
 
 /**
  * @generated from message remoteagent.core.v1.DirectRetryNowAction
@@ -669,7 +506,7 @@ export type DirectRetryNowAction = Message<"remoteagent.core.v1.DirectRetryNowAc
  * Use `create(DirectRetryNowActionSchema)` to create a new message.
  */
 export const DirectRetryNowActionSchema: GenMessage<DirectRetryNowAction> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 21);
+  messageDesc(file_remoteagent_core_v1_transport, 17);
 
 /**
  * @generated from message remoteagent.core.v1.DirectRefreshDiagnosticsAction
@@ -686,7 +523,7 @@ export type DirectRefreshDiagnosticsAction = Message<"remoteagent.core.v1.Direct
  * Use `create(DirectRefreshDiagnosticsActionSchema)` to create a new message.
  */
 export const DirectRefreshDiagnosticsActionSchema: GenMessage<DirectRefreshDiagnosticsAction> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 22);
+  messageDesc(file_remoteagent_core_v1_transport, 18);
 
 /**
  * @generated from message remoteagent.core.v1.DirectBulkTransferBeginEvent
@@ -753,7 +590,7 @@ export type DirectBulkTransferBeginEvent = Message<"remoteagent.core.v1.DirectBu
  * Use `create(DirectBulkTransferBeginEventSchema)` to create a new message.
  */
 export const DirectBulkTransferBeginEventSchema: GenMessage<DirectBulkTransferBeginEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 23);
+  messageDesc(file_remoteagent_core_v1_transport, 19);
 
 /**
  * @generated from message remoteagent.core.v1.DirectBulkTransferDoneEvent
@@ -800,7 +637,7 @@ export type DirectBulkTransferDoneEvent = Message<"remoteagent.core.v1.DirectBul
  * Use `create(DirectBulkTransferDoneEventSchema)` to create a new message.
  */
 export const DirectBulkTransferDoneEventSchema: GenMessage<DirectBulkTransferDoneEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 24);
+  messageDesc(file_remoteagent_core_v1_transport, 20);
 
 /**
  * @generated from message remoteagent.core.v1.TerminalStreamEvent
@@ -827,7 +664,7 @@ export type TerminalStreamEvent = Message<"remoteagent.core.v1.TerminalStreamEve
  * Use `create(TerminalStreamEventSchema)` to create a new message.
  */
 export const TerminalStreamEventSchema: GenMessage<TerminalStreamEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 25);
+  messageDesc(file_remoteagent_core_v1_transport, 21);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPreferencesLoadedEvent
@@ -844,100 +681,7 @@ export type DirectPreferencesLoadedEvent = Message<"remoteagent.core.v1.DirectPr
  * Use `create(DirectPreferencesLoadedEventSchema)` to create a new message.
  */
 export const DirectPreferencesLoadedEventSchema: GenMessage<DirectPreferencesLoadedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 26);
-
-/**
- * @generated from message remoteagent.core.v1.DirectSecurityInstalledEvent
- */
-export type DirectSecurityInstalledEvent = Message<"remoteagent.core.v1.DirectSecurityInstalledEvent"> & {
-  /**
-   * @generated from field: bool member = 1;
-   */
-  member: boolean;
-
-  /**
-   * @generated from field: string account = 2;
-   */
-  account: string;
-
-  /**
-   * @generated from field: string head = 3;
-   */
-  head: string;
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectSecurityInstalledEvent.
- * Use `create(DirectSecurityInstalledEventSchema)` to create a new message.
- */
-export const DirectSecurityInstalledEventSchema: GenMessage<DirectSecurityInstalledEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 27);
-
-/**
- * @generated from message remoteagent.core.v1.DirectAuthorizeDoneEvent
- */
-export type DirectAuthorizeDoneEvent = Message<"remoteagent.core.v1.DirectAuthorizeDoneEvent"> & {
-  /**
-   * @generated from field: bool ok = 1;
-   */
-  ok: boolean;
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectAuthorizeDoneEvent.
- * Use `create(DirectAuthorizeDoneEventSchema)` to create a new message.
- */
-export const DirectAuthorizeDoneEventSchema: GenMessage<DirectAuthorizeDoneEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 28);
-
-/**
- * @generated from message remoteagent.core.v1.DirectKeySignEffect
- */
-export type DirectKeySignEffect = Message<"remoteagent.core.v1.DirectKeySignEffect"> & {
-  /**
-   * @generated from field: uint64 op_id = 1;
-   */
-  opId: bigint;
-
-  /**
-   * @generated from field: bytes message = 2;
-   */
-  message: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectKeySignEffect.
- * Use `create(DirectKeySignEffectSchema)` to create a new message.
- */
-export const DirectKeySignEffectSchema: GenMessage<DirectKeySignEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 29);
-
-/**
- * @generated from message remoteagent.core.v1.DirectKeyAgreeEffect
- */
-export type DirectKeyAgreeEffect = Message<"remoteagent.core.v1.DirectKeyAgreeEffect"> & {
-  /**
-   * @generated from field: uint64 op_id = 1;
-   */
-  opId: bigint;
-
-  /**
-   * @generated from field: string peer_id = 2;
-   */
-  peerId: string;
-
-  /**
-   * @generated from field: bytes peer_x_public = 3;
-   */
-  peerXPublic: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectKeyAgreeEffect.
- * Use `create(DirectKeyAgreeEffectSchema)` to create a new message.
- */
-export const DirectKeyAgreeEffectSchema: GenMessage<DirectKeyAgreeEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 30);
+  messageDesc(file_remoteagent_core_v1_transport, 22);
 
 /**
  * @generated from message remoteagent.core.v1.DirectSignalSendEffect
@@ -979,7 +723,7 @@ export type DirectSignalSendEffect = Message<"remoteagent.core.v1.DirectSignalSe
  * Use `create(DirectSignalSendEffectSchema)` to create a new message.
  */
 export const DirectSignalSendEffectSchema: GenMessage<DirectSignalSendEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 31);
+  messageDesc(file_remoteagent_core_v1_transport, 23);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcCreateEffect
@@ -1021,7 +765,7 @@ export type DirectPcCreateEffect = Message<"remoteagent.core.v1.DirectPcCreateEf
  * Use `create(DirectPcCreateEffectSchema)` to create a new message.
  */
 export const DirectPcCreateEffectSchema: GenMessage<DirectPcCreateEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 32);
+  messageDesc(file_remoteagent_core_v1_transport, 24);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcDescribeEffect
@@ -1048,7 +792,7 @@ export type DirectPcDescribeEffect = Message<"remoteagent.core.v1.DirectPcDescri
  * Use `create(DirectPcDescribeEffectSchema)` to create a new message.
  */
 export const DirectPcDescribeEffectSchema: GenMessage<DirectPcDescribeEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 33);
+  messageDesc(file_remoteagent_core_v1_transport, 25);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcSetRemoteEffect
@@ -1075,7 +819,7 @@ export type DirectPcSetRemoteEffect = Message<"remoteagent.core.v1.DirectPcSetRe
  * Use `create(DirectPcSetRemoteEffectSchema)` to create a new message.
  */
 export const DirectPcSetRemoteEffectSchema: GenMessage<DirectPcSetRemoteEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 34);
+  messageDesc(file_remoteagent_core_v1_transport, 26);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcAddCandidatesEffect
@@ -1102,7 +846,7 @@ export type DirectPcAddCandidatesEffect = Message<"remoteagent.core.v1.DirectPcA
  * Use `create(DirectPcAddCandidatesEffectSchema)` to create a new message.
  */
 export const DirectPcAddCandidatesEffectSchema: GenMessage<DirectPcAddCandidatesEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 35);
+  messageDesc(file_remoteagent_core_v1_transport, 27);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcConfirmEffect
@@ -1129,7 +873,7 @@ export type DirectPcConfirmEffect = Message<"remoteagent.core.v1.DirectPcConfirm
  * Use `create(DirectPcConfirmEffectSchema)` to create a new message.
  */
 export const DirectPcConfirmEffectSchema: GenMessage<DirectPcConfirmEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 36);
+  messageDesc(file_remoteagent_core_v1_transport, 28);
 
 /**
  * @generated from message remoteagent.core.v1.DirectPcCloseEffect
@@ -1151,7 +895,7 @@ export type DirectPcCloseEffect = Message<"remoteagent.core.v1.DirectPcCloseEffe
  * Use `create(DirectPcCloseEffectSchema)` to create a new message.
  */
 export const DirectPcCloseEffectSchema: GenMessage<DirectPcCloseEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 37);
+  messageDesc(file_remoteagent_core_v1_transport, 29);
 
 /**
  * @generated from message remoteagent.core.v1.DirectDcReadStatsEffect
@@ -1168,20 +912,7 @@ export type DirectDcReadStatsEffect = Message<"remoteagent.core.v1.DirectDcReadS
  * Use `create(DirectDcReadStatsEffectSchema)` to create a new message.
  */
 export const DirectDcReadStatsEffectSchema: GenMessage<DirectDcReadStatsEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 38);
-
-/**
- * @generated from message remoteagent.core.v1.DirectAuthorizeEffect
- */
-export type DirectAuthorizeEffect = Message<"remoteagent.core.v1.DirectAuthorizeEffect"> & {
-};
-
-/**
- * Describes the message remoteagent.core.v1.DirectAuthorizeEffect.
- * Use `create(DirectAuthorizeEffectSchema)` to create a new message.
- */
-export const DirectAuthorizeEffectSchema: GenMessage<DirectAuthorizeEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 39);
+  messageDesc(file_remoteagent_core_v1_transport, 30);
 
 /**
  * @generated from message remoteagent.core.v1.DirectBulkRouteEffect
@@ -1218,7 +949,7 @@ export type DirectBulkRouteEffect = Message<"remoteagent.core.v1.DirectBulkRoute
  * Use `create(DirectBulkRouteEffectSchema)` to create a new message.
  */
 export const DirectBulkRouteEffectSchema: GenMessage<DirectBulkRouteEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 40);
+  messageDesc(file_remoteagent_core_v1_transport, 31);
 
 /**
  * @generated from message remoteagent.core.v1.TerminalReopenEffect
@@ -1235,7 +966,7 @@ export type TerminalReopenEffect = Message<"remoteagent.core.v1.TerminalReopenEf
  * Use `create(TerminalReopenEffectSchema)` to create a new message.
  */
 export const TerminalReopenEffectSchema: GenMessage<TerminalReopenEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 41);
+  messageDesc(file_remoteagent_core_v1_transport, 32);
 
 /**
  * @generated from message remoteagent.core.v1.DirectRetryNowResultEffect
@@ -1257,7 +988,7 @@ export type DirectRetryNowResultEffect = Message<"remoteagent.core.v1.DirectRetr
  * Use `create(DirectRetryNowResultEffectSchema)` to create a new message.
  */
 export const DirectRetryNowResultEffectSchema: GenMessage<DirectRetryNowResultEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_transport, 42);
+  messageDesc(file_remoteagent_core_v1_transport, 33);
 
 /**
  * @generated from enum remoteagent.core.v1.CommandRouteLeg

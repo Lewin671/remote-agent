@@ -198,15 +198,6 @@ func (e *Engine) handleAccountPrefsFetched(ctx *StepContext, ev *corev1.AccountP
 		return
 	}
 	e.applyAccountPrefs(ev.Prefs, true)
-	if ev.Prefs != nil && ev.Prefs.CacheRef != "" {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheWrite{
-				CacheWrite: &corev1.CacheWriteEffect{
-					Kind: &corev1.CacheWriteEffect_WritePrefsRef{WritePrefsRef: ev.Prefs.CacheRef},
-				},
-			},
-		})
-	}
 	ctx.Dirty.MarkAll()
 }
 
@@ -282,15 +273,6 @@ func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPre
 
 	if basePrefs != nil && slices.Contains(basePrefs.RecentOps, head.OpID) {
 		e.applyAccountPrefs(ev.Prefs, true)
-		if ev.Prefs != nil && ev.Prefs.CacheRef != "" {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheWrite{
-					CacheWrite: &corev1.CacheWriteEffect{
-						Kind: &corev1.CacheWriteEffect_WritePrefsRef{WritePrefsRef: ev.Prefs.CacheRef},
-					},
-				},
-			})
-		}
 		e.finishPrefsOp(ctx, nil)
 		return
 	}
@@ -362,15 +344,6 @@ func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.Accoun
 	}
 	if ev.Current != nil {
 		e.applyAccountPrefs(ev.Current, true)
-		if ev.Current.CacheRef != "" {
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_CacheWrite{
-					CacheWrite: &corev1.CacheWriteEffect{
-						Kind: &corev1.CacheWriteEffect_WritePrefsRef{WritePrefsRef: ev.Current.CacheRef},
-					},
-				},
-			})
-		}
 	}
 	e.finishPrefsOp(ctx, nil)
 }
@@ -415,7 +388,6 @@ func (e *Engine) applyAccountPrefs(in *corev1.PlainAccountPrefs, forceAccept boo
 		Revision: in.Revision,
 		Prefs:    in.Prefs,
 		Broken:   in.Broken,
-		CacheRef: in.CacheRef,
 	}, forceAccept)
 }
 
@@ -441,7 +413,6 @@ func (e *Engine) applyAccountPrefsDecoded(in *decodedPrefs, forceAccept bool) {
 			Loaded:   true,
 			Revision: in.Revision,
 			Prefs:    clone,
-			CacheRef: in.CacheRef,
 		}
 	}
 }

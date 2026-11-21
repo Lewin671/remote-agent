@@ -137,7 +137,6 @@ type MachineEntry struct {
 	lists.Machine
 	MetaRev    uint64
 	MetaBroken bool
-	CacheRef   string
 
 	reachable bool
 	unlinked  bool
@@ -154,7 +153,6 @@ type SessionEntry struct {
 	CheckpointInvalid bool
 	RetiredHistory    bool
 	OpenFailed        bool
-	CacheRef          string
 }
 
 // setInfo replaces the session metadata and the list preview derived from it.
@@ -181,7 +179,6 @@ type PrefsState struct {
 	Prefs      *v1.ProjectPrefs
 	Broken     bool
 	LoadFailed bool
-	CacheRef   string
 }
 
 // SecurityState mirrors the shell security gate snapshot relevant to sync and world state.
@@ -613,8 +610,6 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleCacheEventsLoaded(ctx, k.CacheEventsLoaded)
 	case *corev1.Event_TokenResult:
 		e.handleTokenResult(ctx, k.TokenResult)
-	case *corev1.Event_SecuritySnapshot:
-		e.handleSecuritySnapshot(ctx, k.SecuritySnapshot)
 	case *corev1.Event_StreamReady:
 		e.handleStreamReady(ctx, k.StreamReady)
 	case *corev1.Event_StreamClosed:
@@ -657,20 +652,10 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleTransportConfig(ctx, k.TransportConfig)
 	case *corev1.Event_DirectPreferencesLoaded:
 		e.handleDirectPreferencesLoaded(ctx, k.DirectPreferencesLoaded)
-	case *corev1.Event_DirectSecuritySnapshot:
-		e.handleDirectSecuritySnapshot(ctx, k.DirectSecuritySnapshot)
-	case *corev1.Event_DirectSecurityInstalled:
-		e.handleDirectSecurityInstalled(ctx, k.DirectSecurityInstalled)
-	case *corev1.Event_DirectAuthorizeDone:
-		e.handleDirectAuthorizeDone(ctx, k.DirectAuthorizeDone)
 	case *corev1.Event_DirectSignalReceived:
 		e.handleDirectSignalReceived(ctx, k.DirectSignalReceived)
 	case *corev1.Event_DirectSignalDelivery:
 		e.handleDirectSignalDelivery(ctx, k.DirectSignalDelivery)
-	case *corev1.Event_DirectKeySigned:
-		e.handleDirectKeySigned(ctx, k.DirectKeySigned)
-	case *corev1.Event_DirectKeyAgreed:
-		e.handleDirectKeyAgreed(ctx, k.DirectKeyAgreed)
 	case *corev1.Event_DirectPcCreated:
 		e.handleDirectPcCreated(ctx, k.DirectPcCreated)
 	case *corev1.Event_DirectPcDescription:

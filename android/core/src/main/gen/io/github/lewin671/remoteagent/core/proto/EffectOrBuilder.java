@@ -363,28 +363,6 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.ScheduleNavigateEffect getScheduleNavigate();
 
   /**
-   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-   * @return Whether the directKeySign field is set.
-   */
-  boolean hasDirectKeySign();
-  /**
-   * <code>.remoteagent.core.v1.DirectKeySignEffect direct_key_sign = 100 [json_name = "directKeySign"];</code>
-   * @return The directKeySign.
-   */
-  io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect getDirectKeySign();
-
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-   * @return Whether the directKeyAgree field is set.
-   */
-  boolean hasDirectKeyAgree();
-  /**
-   * <code>.remoteagent.core.v1.DirectKeyAgreeEffect direct_key_agree = 101 [json_name = "directKeyAgree"];</code>
-   * @return The directKeyAgree.
-   */
-  io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect getDirectKeyAgree();
-
-  /**
    * <code>.remoteagent.core.v1.DirectSignalSendEffect direct_signal_send = 102 [json_name = "directSignalSend"];</code>
    * @return Whether the directSignalSend field is set.
    */
@@ -471,17 +449,6 @@ public interface EffectOrBuilder extends
    * @return The directDcReadStats.
    */
   io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect getDirectDcReadStats();
-
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-   * @return Whether the directAuthorize field is set.
-   */
-  boolean hasDirectAuthorize();
-  /**
-   * <code>.remoteagent.core.v1.DirectAuthorizeEffect direct_authorize = 110 [json_name = "directAuthorize"];</code>
-   * @return The directAuthorize.
-   */
-  io.github.lewin671.remoteagent.core.proto.DirectAuthorizeEffect getDirectAuthorize();
 
   /**
    * <code>.remoteagent.core.v1.DirectBulkRouteEffect direct_bulk_route = 111 [json_name = "directBulkRoute"];</code>

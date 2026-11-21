@@ -330,19 +330,21 @@ internal fun seedCoreForTest(
     }
     coreHost.onSyncSecurity = { eff ->
         send {
-            setSecuritySnapshot(
-                SecuritySnapshotEvent.newBuilder()
-                    .setOpId(eff.opId).setIsMember(!state.removed).setSelfDeviceId(selfDeviceId)
-                    .setAuthorityDeviceId(state.authorityDeviceId.ifEmpty { if (state.isAuthority) selfDeviceId else "authority" })
-                    .addAllTrustedMachineIds(state.machines.keys)
-                    .addAllTrustedClientIds(
-                        state.devices.values
-                            .filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT }
-                            .map { it.id },
-                    )
-                    .setHeadEpoch(1L).setLeaseEndMs(state.leaseEndMs)
-                    .setClockSkewed(state.clockWarning).setRecoveryPending(state.recoveryPending)
-                    .setRecoveryReadyMs(state.recoveryReadyMs).setNetworkGeneration(eff.networkGeneration),
+            setSeedDemoWorld(
+                SeedDemoWorldEvent.newBuilder().setSecurity(
+                    DemoSecurity.newBuilder()
+                        .setIsMember(!state.removed).setRemoved(state.removed).setSelfDeviceId(selfDeviceId)
+                        .setAuthorityDeviceId(state.authorityDeviceId.ifEmpty { if (state.isAuthority) selfDeviceId else "authority" })
+                        .addAllTrustedMachineIds(state.machines.keys)
+                        .addAllTrustedClientIds(
+                            state.devices.values
+                                .filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT }
+                                .map { it.id },
+                        )
+                        .setHeadEpoch(1L).setLeaseEndMs(state.leaseEndMs)
+                        .setClockSkewed(state.clockWarning).setRecoveryPending(state.recoveryPending)
+                        .setRecoveryReadyMs(state.recoveryReadyMs).setNetworkGeneration(eff.networkGeneration),
+                ),
             )
         }
     }

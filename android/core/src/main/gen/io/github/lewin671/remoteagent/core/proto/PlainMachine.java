@@ -20,7 +20,6 @@ public  final class PlainMachine extends
     PlainMachineOrBuilder {
   private PlainMachine() {
     machineId_ = "";
-    cacheRef_ = "";
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -221,54 +220,6 @@ public  final class PlainMachine extends
   private void clearMetaBroken() {
 
     metaBroken_ = false;
-  }
-
-  public static final int CACHE_REF_FIELD_NUMBER = 7;
-  private java.lang.String cacheRef_;
-  /**
-   * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-   * @return The cacheRef.
-   */
-  @java.lang.Override
-  public java.lang.String getCacheRef() {
-    return cacheRef_;
-  }
-  /**
-   * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-   * @return The bytes for cacheRef.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getCacheRefBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(cacheRef_);
-  }
-  /**
-   * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-   * @param value The cacheRef to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setCacheRef(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    cacheRef_ = value;
-  }
-  /**
-   * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-   */
-  private void clearCacheRef() {
-
-    cacheRef_ = getDefaultInstance().getCacheRef();
-  }
-  /**
-   * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-   * @param value The bytes for cacheRef to set.
-   */
-  private void setCacheRefBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    cacheRef_ = value.toStringUtf8();
-
   }
 
   public static io.github.lewin671.remoteagent.core.proto.PlainMachine parseFrom(
@@ -580,55 +531,6 @@ public  final class PlainMachine extends
       return this;
     }
 
-    /**
-     * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-     * @return The cacheRef.
-     */
-    @java.lang.Override
-    public java.lang.String getCacheRef() {
-      return instance.getCacheRef();
-    }
-    /**
-     * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-     * @return The bytes for cacheRef.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getCacheRefBytes() {
-      return instance.getCacheRefBytes();
-    }
-    /**
-     * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-     * @param value The cacheRef to set.
-     * @return This builder for chaining.
-     */
-    public Builder setCacheRef(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setCacheRef(value);
-      return this;
-    }
-    /**
-     * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearCacheRef() {
-      copyOnWrite();
-      instance.clearCacheRef();
-      return this;
-    }
-    /**
-     * <code>string cache_ref = 7 [json_name = "cacheRef"];</code>
-     * @param value The bytes for cacheRef to set.
-     * @return This builder for chaining.
-     */
-    public Builder setCacheRefBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setCacheRefBytes(value);
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.PlainMachine)
   }
   @java.lang.Override
@@ -652,11 +554,10 @@ public  final class PlainMachine extends
             "meta_",
             "metaRev_",
             "metaBroken_",
-            "cacheRef_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
-              "\u0003\u0002\u0004\u1009\u0000\u0005\u0003\u0006\u0007\u0007\u0208";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
+              "\u0003\u0002\u0004\u1009\u0000\u0005\u0003\u0006\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

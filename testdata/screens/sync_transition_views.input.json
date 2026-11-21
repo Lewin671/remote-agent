@@ -9,7 +9,13 @@
           "yesterdayStartMs": "1790956800000",
           "weekStartMs": "1790524800000",
           "nowYear": 2026,
-          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
         }
       }
     },
@@ -17,35 +23,60 @@
       "event": {
         "nowMs": "1791078060000",
         "monoMs": "1000",
-        "randomIds": ["live-req-1", "live-att-1", "r3", "r4", "r5", "r6"],
-        "unitFloats": [0.5, 0.5, 0.5, 0.5],
-        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+        "randomIds": [
+          "live-req-1",
+          "live-att-1",
+          "r3",
+          "r4",
+          "r5",
+          "r6"
+        ],
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060010",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": ["m1"],
-          "trustedClientIds": ["dev-1"]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "m1"
+            ],
+            "trustedClientIds": [
+              "dev-1"
+            ]
+          }
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060020",
-        "tokenResult": { "opId": "2", "token": "tok-1" }
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060030",
-        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
       }
     },
     {
@@ -61,7 +92,12 @@
               "meta": {
                 "hostname": "MacStudio",
                 "protocolVersion": 17,
-                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ]
               }
             }
           ],
@@ -95,12 +131,25 @@
             }
           ],
           "devices": [
-            { "deviceId": "dev-1", "kind": "DEVICE_KIND_CLIENT", "createdMs": "1791000000000", "meta": { "name": "Phone", "platform": "iOS" } }
+            {
+              "deviceId": "dev-1",
+              "kind": "DEVICE_KIND_CLIENT",
+              "createdMs": "1791000000000",
+              "meta": {
+                "name": "Phone",
+                "platform": "iOS"
+              }
+            }
           ]
         }
       },
       "views": [
-        { "name": "syncStateOnline", "screen": { "syncState": {} } }
+        {
+          "name": "syncStateOnline",
+          "screen": {
+            "syncState": {}
+          }
+        }
       ]
     },
     {
@@ -112,7 +161,12 @@
             "revision": "3",
             "prefs": {
               "schema": 1,
-              "pinned": [{ "path": "/Users/me/Code/alpha", "sinceMs": "1791000000000" }]
+              "pinned": [
+                {
+                  "path": "/Users/me/Code/alpha",
+                  "sinceMs": "1791000000000"
+                }
+              ]
             }
           }
         }
@@ -122,10 +176,20 @@
       "event": {
         "nowMs": "1791078060060",
         "monoMs": "1100",
-        "sessionWatch": { "sessionId": "s-tr", "watched": true }
+        "sessionWatch": {
+          "sessionId": "s-tr",
+          "watched": true
+        }
       },
       "views": [
-        { "name": "sessionLoading", "screen": { "sessionData": { "sessionId": "s-tr" } } }
+        {
+          "name": "sessionLoading",
+          "screen": {
+            "sessionData": {
+              "sessionId": "s-tr"
+            }
+          }
+        }
       ]
     },
     {
@@ -136,7 +200,17 @@
           "opId": "6",
           "sessionId": "s-tr",
           "events": [
-            { "seq": "1", "verified": true, "approxBytes": "64", "event": { "seq": "1", "userMessage": { "text": "run tests" } } }
+            {
+              "seq": "1",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "1",
+                "userMessage": {
+                  "text": "run tests"
+                }
+              }
+            }
           ]
         }
       }
@@ -149,13 +223,37 @@
           "opId": "7",
           "sessionId": "s-tr",
           "events": [
-            { "seq": "2", "verified": true, "approxBytes": "64", "event": { "seq": "2", "approvalRequested": { "approvalId": "ap-tr-1", "toolName": "Bash", "command": "go test ./..." } } }
+            {
+              "seq": "2",
+              "verified": true,
+              "approxBytes": "64",
+              "event": {
+                "seq": "2",
+                "approvalRequested": {
+                  "approvalId": "ap-tr-1",
+                  "toolName": "Bash",
+                  "command": "go test ./..."
+                }
+              }
+            }
           ]
         }
       },
       "views": [
-        { "name": "sessionLoaded", "screen": { "sessionData": { "sessionId": "s-tr" } } },
-        { "name": "syncStateAfterLoad", "screen": { "syncState": {} } }
+        {
+          "name": "sessionLoaded",
+          "screen": {
+            "sessionData": {
+              "sessionId": "s-tr"
+            }
+          }
+        },
+        {
+          "name": "syncStateAfterLoad",
+          "screen": {
+            "syncState": {}
+          }
+        }
       ]
     }
   ]

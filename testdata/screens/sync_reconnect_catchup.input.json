@@ -9,7 +9,13 @@
           "yesterdayStartMs": "1790956800000",
           "weekStartMs": "1790524800000",
           "nowYear": 2026,
-          "months": [{ "year": 2026, "month": 10, "startMs": "1790812800000" }]
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
         }
       }
     },
@@ -17,34 +23,59 @@
       "event": {
         "nowMs": "1791078060000",
         "monoMs": "1000",
-        "randomIds": ["live-req-1", "live-att-1", "r3", "r4", "r5", "r6", "r7", "r8"],
-        "unitFloats": [0.5, 0.5, 0.5, 0.5],
-        "syncLifecycle": { "kind": "SYNC_LIFECYCLE_KIND_START" }
+        "randomIds": [
+          "live-req-1",
+          "live-att-1",
+          "r3",
+          "r4",
+          "r5",
+          "r6",
+          "r7",
+          "r8"
+        ],
+        "unitFloats": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060010",
-        "securitySnapshot": {
-          "opId": "3",
-          "isMember": true,
-          "selfDeviceId": "dev-1",
-          "authorityDeviceId": "dev-1",
-          "leaseEndMs": "1791164460000",
-          "trustedMachineIds": ["m1"]
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": [
+              "m1"
+            ]
+          }
         }
       }
     },
     {
       "event": {
         "nowMs": "1791078060020",
-        "tokenResult": { "opId": "2", "token": "tok-1" }
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-1"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078060030",
-        "streamReady": { "legId": "1", "serverTimeMs": "1791078060030" }
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060030"
+        }
       }
     },
     {
@@ -59,7 +90,12 @@
               "meta": {
                 "hostname": "MacBook",
                 "protocolVersion": 17,
-                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ]
               }
             }
           ],
@@ -85,7 +121,10 @@
       "event": {
         "nowMs": "1791078060050",
         "monoMs": "1100",
-        "sessionWatch": { "sessionId": "s1", "watched": true }
+        "sessionWatch": {
+          "sessionId": "s1",
+          "watched": true
+        }
       }
     },
     {
@@ -96,8 +135,16 @@
           "opId": "6",
           "sessionId": "s1",
           "events": [
-            { "seq": "1", "verified": true, "approxBytes": "64" },
-            { "seq": "2", "verified": true, "approxBytes": "64" }
+            {
+              "seq": "1",
+              "verified": true,
+              "approxBytes": "64"
+            },
+            {
+              "seq": "2",
+              "verified": true,
+              "approxBytes": "64"
+            }
           ]
         }
       }
@@ -106,41 +153,71 @@
       "event": {
         "nowMs": "1791078060100",
         "monoMs": "1300",
-        "streamClosed": { "legId": "1", "errorCode": "unavailable", "error": "drop" }
+        "streamClosed": {
+          "legId": "1",
+          "errorCode": "unavailable",
+          "error": "drop"
+        }
       },
       "views": [
-        { "name": "duringGraceReconnecting", "screen": { "home": { "endedLimit": 50 } } }
+        {
+          "name": "duringGraceReconnecting",
+          "screen": {
+            "home": {
+              "endedLimit": 50
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078070200",
         "monoMs": "11500",
-        "timerFired": { "timerId": "4", "kind": "TIMER_KIND_LINK_GRACE" }
+        "timerFired": {
+          "timerId": "4",
+          "kind": "TIMER_KIND_LINK_GRACE"
+        }
       },
       "views": [
-        { "name": "afterGraceOffline", "screen": { "home": { "endedLimit": 50 } } }
+        {
+          "name": "afterGraceOffline",
+          "screen": {
+            "home": {
+              "endedLimit": 50
+            }
+          }
+        }
       ]
     },
     {
       "event": {
         "nowMs": "1791078071000",
         "monoMs": "12300",
-        "timerFired": { "timerId": "5", "kind": "TIMER_KIND_RECONNECT" }
+        "timerFired": {
+          "timerId": "5",
+          "kind": "TIMER_KIND_RECONNECT"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078071010",
         "monoMs": "12310",
-        "tokenResult": { "opId": "8", "token": "tok-2" }
+        "tokenResult": {
+          "opId": "8",
+          "token": "tok-2"
+        }
       }
     },
     {
       "event": {
         "nowMs": "1791078071020",
         "monoMs": "12320",
-        "streamReady": { "legId": "2", "serverTimeMs": "1791078071020" }
+        "streamReady": {
+          "legId": "2",
+          "serverTimeMs": "1791078071020"
+        }
       }
     },
     {
@@ -156,7 +233,12 @@
               "meta": {
                 "hostname": "MacBook",
                 "protocolVersion": 17,
-                "agents": [{ "agent": "AGENT_CODEX", "defaultMode": "APPROVAL_MODE_ASK" }]
+                "agents": [
+                  {
+                    "agent": "AGENT_CODEX",
+                    "defaultMode": "APPROVAL_MODE_ASK"
+                  }
+                ]
               }
             }
           ],
@@ -178,7 +260,14 @@
         }
       },
       "views": [
-        { "name": "reconnectedOnline", "screen": { "home": { "endedLimit": 50 } } }
+        {
+          "name": "reconnectedOnline",
+          "screen": {
+            "home": {
+              "endedLimit": 50
+            }
+          }
+        }
       ]
     }
   ]
