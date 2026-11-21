@@ -403,6 +403,12 @@ message ScheduleDetailViewModel {
 
 // --- Form Screen ViewModel ---
 
+message ScheduleJitterOptionView {
+  int64 minutes = 1;
+  Text label = 2;
+  bool selected = 3;
+}
+
 message ScheduleTimingDraftView {
   ScheduleTimingKind kind = 1;
   bool after_turn_unselected = 2;
@@ -423,6 +429,10 @@ message ScheduleTimingDraftView {
   Text timing_error = 17;
   bool timing_done_enabled = 18;
   bool timing_applied = 19;
+  bool show_jitter = 20;
+  repeated ScheduleJitterOptionView jitter_options = 21;
+  Text jitter_label = 22;
+  Text jitter_hint = 23;
 }
 
 message ScheduleProjectOptionView {
@@ -706,4 +716,5 @@ message ScheduleFormUpdateTimingAction {
   optional bool until_dst_gap = 18;
   bool apply = 19;
   bool reset_draft = 20;
+  optional int64 jitter_minutes = 21;
 }

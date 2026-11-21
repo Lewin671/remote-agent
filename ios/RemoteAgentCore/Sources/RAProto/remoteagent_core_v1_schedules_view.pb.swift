@@ -2180,6 +2180,31 @@ public struct PBScheduleDetailViewModel: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBScheduleJitterOptionView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var minutes: Int64 = 0
+
+  public var label: PBCoreText {
+    get {return _label ?? PBCoreText()}
+    set {_label = newValue}
+  }
+  /// Returns true if `label` has been explicitly set.
+  public var hasLabel: Bool {return self._label != nil}
+  /// Clears the value of `label`. Subsequent reads from it will return its default value.
+  public mutating func clearLabel() {self._label = nil}
+
+  public var selected: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _label: PBCoreText? = nil
+}
+
 public struct PBScheduleTimingDraftView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -2291,6 +2316,34 @@ public struct PBScheduleTimingDraftView: @unchecked Sendable {
     get {return _storage._timingApplied}
     set {_uniqueStorage()._timingApplied = newValue}
   }
+
+  public var showJitter: Bool {
+    get {return _storage._showJitter}
+    set {_uniqueStorage()._showJitter = newValue}
+  }
+
+  public var jitterOptions: [PBScheduleJitterOptionView] {
+    get {return _storage._jitterOptions}
+    set {_uniqueStorage()._jitterOptions = newValue}
+  }
+
+  public var jitterLabel: PBCoreText {
+    get {return _storage._jitterLabel ?? PBCoreText()}
+    set {_uniqueStorage()._jitterLabel = newValue}
+  }
+  /// Returns true if `jitterLabel` has been explicitly set.
+  public var hasJitterLabel: Bool {return _storage._jitterLabel != nil}
+  /// Clears the value of `jitterLabel`. Subsequent reads from it will return its default value.
+  public mutating func clearJitterLabel() {_uniqueStorage()._jitterLabel = nil}
+
+  public var jitterHint: PBCoreText {
+    get {return _storage._jitterHint ?? PBCoreText()}
+    set {_uniqueStorage()._jitterHint = newValue}
+  }
+  /// Returns true if `jitterHint` has been explicitly set.
+  public var hasJitterHint: Bool {return _storage._jitterHint != nil}
+  /// Clears the value of `jitterHint`. Subsequent reads from it will return its default value.
+  public mutating func clearJitterHint() {_uniqueStorage()._jitterHint = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3438,6 +3491,15 @@ public struct PBScheduleFormUpdateTimingAction: @unchecked Sendable {
     get {return _storage._resetDraft}
     set {_uniqueStorage()._resetDraft = newValue}
   }
+
+  public var jitterMinutes: Int64 {
+    get {return _storage._jitterMinutes ?? 0}
+    set {_uniqueStorage()._jitterMinutes = newValue}
+  }
+  /// Returns true if `jitterMinutes` has been explicitly set.
+  public var hasJitterMinutes: Bool {return _storage._jitterMinutes != nil}
+  /// Clears the value of `jitterMinutes`. Subsequent reads from it will return its default value.
+  public mutating func clearJitterMinutes() {_uniqueStorage()._jitterMinutes = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5602,9 +5664,53 @@ extension PBScheduleDetailViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
   }
 }
 
+extension PBScheduleJitterOptionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ScheduleJitterOptionView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}minutes\0\u{1}label\0\u{1}selected\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.minutes) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._label) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.selected) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.minutes != 0 {
+      try visitor.visitSingularInt64Field(value: self.minutes, fieldNumber: 1)
+    }
+    try { if let v = self._label {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    if self.selected != false {
+      try visitor.visitSingularBoolField(value: self.selected, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBScheduleJitterOptionView, rhs: PBScheduleJitterOptionView) -> Bool {
+    if lhs.minutes != rhs.minutes {return false}
+    if lhs._label != rhs._label {return false}
+    if lhs.selected != rhs.selected {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBScheduleTimingDraftView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScheduleTimingDraftView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}after_turn_unselected\0\u{3}after_turn_hint\0\u{1}date\0\u{1}time\0\u{1}zone\0\u{1}workdays\0\u{1}weekdays\0\u{1}interval\0\u{1}unit\0\u{1}end\0\u{1}count\0\u{3}until_date\0\u{3}until_ms\0\u{3}show_interval_hint\0\u{3}interval_hint\0\u{3}timing_error\0\u{3}timing_done_enabled\0\u{3}timing_applied\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}after_turn_unselected\0\u{3}after_turn_hint\0\u{1}date\0\u{1}time\0\u{1}zone\0\u{1}workdays\0\u{1}weekdays\0\u{1}interval\0\u{1}unit\0\u{1}end\0\u{1}count\0\u{3}until_date\0\u{3}until_ms\0\u{3}show_interval_hint\0\u{3}interval_hint\0\u{3}timing_error\0\u{3}timing_done_enabled\0\u{3}timing_applied\0\u{3}show_jitter\0\u{3}jitter_options\0\u{3}jitter_label\0\u{3}jitter_hint\0")
 
   fileprivate class _StorageClass {
     var _kind: PBScheduleTimingKind = .unspecified
@@ -5626,6 +5732,10 @@ extension PBScheduleTimingDraftView: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _timingError: PBCoreText? = nil
     var _timingDoneEnabled: Bool = false
     var _timingApplied: Bool = false
+    var _showJitter: Bool = false
+    var _jitterOptions: [PBScheduleJitterOptionView] = []
+    var _jitterLabel: PBCoreText? = nil
+    var _jitterHint: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5655,6 +5765,10 @@ extension PBScheduleTimingDraftView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _timingError = source._timingError
       _timingDoneEnabled = source._timingDoneEnabled
       _timingApplied = source._timingApplied
+      _showJitter = source._showJitter
+      _jitterOptions = source._jitterOptions
+      _jitterLabel = source._jitterLabel
+      _jitterHint = source._jitterHint
     }
   }
 
@@ -5692,6 +5806,10 @@ extension PBScheduleTimingDraftView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._timingError) }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._timingDoneEnabled) }()
         case 19: try { try decoder.decodeSingularBoolField(value: &_storage._timingApplied) }()
+        case 20: try { try decoder.decodeSingularBoolField(value: &_storage._showJitter) }()
+        case 21: try { try decoder.decodeRepeatedMessageField(value: &_storage._jitterOptions) }()
+        case 22: try { try decoder.decodeSingularMessageField(value: &_storage._jitterLabel) }()
+        case 23: try { try decoder.decodeSingularMessageField(value: &_storage._jitterHint) }()
         default: break
         }
       }
@@ -5761,6 +5879,18 @@ extension PBScheduleTimingDraftView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if _storage._timingApplied != false {
         try visitor.visitSingularBoolField(value: _storage._timingApplied, fieldNumber: 19)
       }
+      if _storage._showJitter != false {
+        try visitor.visitSingularBoolField(value: _storage._showJitter, fieldNumber: 20)
+      }
+      if !_storage._jitterOptions.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._jitterOptions, fieldNumber: 21)
+      }
+      try { if let v = _storage._jitterLabel {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
+      } }()
+      try { if let v = _storage._jitterHint {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5789,6 +5919,10 @@ extension PBScheduleTimingDraftView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._timingError != rhs_storage._timingError {return false}
         if _storage._timingDoneEnabled != rhs_storage._timingDoneEnabled {return false}
         if _storage._timingApplied != rhs_storage._timingApplied {return false}
+        if _storage._showJitter != rhs_storage._showJitter {return false}
+        if _storage._jitterOptions != rhs_storage._jitterOptions {return false}
+        if _storage._jitterLabel != rhs_storage._jitterLabel {return false}
+        if _storage._jitterHint != rhs_storage._jitterHint {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -7710,7 +7844,7 @@ extension PBScheduleFormSelectModelAction: SwiftProtobuf.Message, SwiftProtobuf.
 
 extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScheduleFormUpdateTimingAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}form_key\0\u{1}kind\0\u{1}date\0\u{1}time\0\u{1}zone\0\u{1}workdays\0\u{3}replace_weekdays\0\u{1}weekdays\0\u{1}interval\0\u{1}unit\0\u{1}end\0\u{1}count\0\u{3}until_date\0\u{3}until_ms\0\u{3}at_ms\0\u{3}zone_valid\0\u{3}at_dst_gap\0\u{3}until_dst_gap\0\u{1}apply\0\u{3}reset_draft\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}form_key\0\u{1}kind\0\u{1}date\0\u{1}time\0\u{1}zone\0\u{1}workdays\0\u{3}replace_weekdays\0\u{1}weekdays\0\u{1}interval\0\u{1}unit\0\u{1}end\0\u{1}count\0\u{3}until_date\0\u{3}until_ms\0\u{3}at_ms\0\u{3}zone_valid\0\u{3}at_dst_gap\0\u{3}until_dst_gap\0\u{1}apply\0\u{3}reset_draft\0\u{3}jitter_minutes\0")
 
   fileprivate class _StorageClass {
     var _formKey: String = String()
@@ -7733,6 +7867,7 @@ extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf
     var _untilDstGap: Bool? = nil
     var _apply: Bool = false
     var _resetDraft: Bool = false
+    var _jitterMinutes: Int64? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7763,6 +7898,7 @@ extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf
       _untilDstGap = source._untilDstGap
       _apply = source._apply
       _resetDraft = source._resetDraft
+      _jitterMinutes = source._jitterMinutes
     }
   }
 
@@ -7801,6 +7937,7 @@ extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._untilDstGap) }()
         case 19: try { try decoder.decodeSingularBoolField(value: &_storage._apply) }()
         case 20: try { try decoder.decodeSingularBoolField(value: &_storage._resetDraft) }()
+        case 21: try { try decoder.decodeSingularInt64Field(value: &_storage._jitterMinutes) }()
         default: break
         }
       }
@@ -7873,6 +8010,9 @@ extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf
       if _storage._resetDraft != false {
         try visitor.visitSingularBoolField(value: _storage._resetDraft, fieldNumber: 20)
       }
+      try { if let v = _storage._jitterMinutes {
+        try visitor.visitSingularInt64Field(value: v, fieldNumber: 21)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7902,6 +8042,7 @@ extension PBScheduleFormUpdateTimingAction: SwiftProtobuf.Message, SwiftProtobuf
         if _storage._untilDstGap != rhs_storage._untilDstGap {return false}
         if _storage._apply != rhs_storage._apply {return false}
         if _storage._resetDraft != rhs_storage._resetDraft {return false}
+        if _storage._jitterMinutes != rhs_storage._jitterMinutes {return false}
         return true
       }
       if !storagesAreEqual {return false}

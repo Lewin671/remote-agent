@@ -1005,6 +1005,7 @@ internal fun ScheduleTimeSheet(
     var countInput by remember { mutableStateOf(draft.count) }
     var zoneInput by remember { mutableStateOf(draft.zone) }
     var pendingApply by remember { mutableStateOf(false) }
+    var pickingJitter by remember { mutableStateOf(false) }
 
     LaunchedEffect(draft.interval) { if (!pendingApply && draft.interval != intervalInput) intervalInput = draft.interval }
     LaunchedEffect(draft.count) { if (!pendingApply && draft.count != countInput) countInput = draft.count }
@@ -1029,11 +1030,12 @@ internal fun ScheduleTimeSheet(
     val endSegs = listOf(ScheduleTimingEnd.SCHEDULE_TIMING_END_NEVER, ScheduleTimingEnd.SCHEDULE_TIMING_END_COUNT, ScheduleTimingEnd.SCHEDULE_TIMING_END_DATE)
     val busy = mutation.busy
     val sheetEnabled = enabled && !busy
+    val selectedJitter = draft.jitterOptionsList.firstOrNull { it.selected } ?: draft.jitterOptionsList.firstOrNull()
     val initialTiming = remember(formKey) {
-        listOf(draft.kind.name, draft.date, draft.time, draft.interval, draft.unit.name, draft.end.name, draft.count, draft.zone, draft.workdays.toString())
+        listOf(draft.kind.name, draft.date, draft.time, draft.interval, draft.unit.name, draft.end.name, draft.count, draft.zone, draft.workdays.toString(), selectedJitter?.minutes?.toString() ?: "0")
     }
     val timingDirty = submitOnApply && initialTiming != listOf(
-        draft.kind.name, draft.date, draft.time, intervalInput, draft.unit.name, draft.end.name, countInput, zoneInput, draft.workdays.toString(),
+        draft.kind.name, draft.date, draft.time, intervalInput, draft.unit.name, draft.end.name, countInput, zoneInput, draft.workdays.toString(), selectedJitter?.minutes?.toString() ?: "0",
     )
 
     fun applyNow() {
@@ -1078,6 +1080,10 @@ internal fun ScheduleTimeSheet(
                         unitSegs.indexOf(draft.unit).coerceAtLeast(0), sheetEnabled) { idx -> update { setUnit(unitSegs[idx]) } }
                 })
             }
+            if (draft.showJitter && selectedJitter != null) {
+                ScheduleSetting(uiText(draft.jitterLabel), uiText(selectedJitter.label), sheetEnabled) { pickingJitter = true }
+                if (draft.jitterHint.isCoreTextNotEmpty()) Hint(uiText(draft.jitterHint))
+            }
             if (draft.kind == ScheduleTimingKind.SCHEDULE_TIMING_KIND_DAILY) {
                 ToggleRow(copy(UiMessages.scheduleWeekdaysOnly()), copy(UiMessages.scheduleAndroidMondayToFriday()), draft.workdays, sheetEnabled) {
                     update { setWorkdays(it) }
@@ -1118,6 +1124,25 @@ internal fun ScheduleTimeSheet(
                 InputField(zoneInput, { if (sheetEnabled) { zoneInput = it; update { setZone(it.trim()) } } }, copy(UiMessages.scheduleAndroidForExampleAsiaShanghai()))
             } else if (draft.showIntervalHint && draft.intervalHint.isCoreTextNotEmpty()) {
                 Hint(uiText(draft.intervalHint))
+            }
+        }
+    }
+    if (pickingJitter && draft.showJitter && draft.jitterOptionsCount > 0) {
+        Sheet({ pickingJitter = false }) {
+            SheetHead(uiText(draft.jitterLabel), copy(UiMessages.commonCancel()), { pickingJitter = false })
+            Column(Modifier.selectableGroup()) {
+                draft.jitterOptionsList.forEachIndexed { idx, opt ->
+                    ListItem(
+                        uiText(opt.label),
+                        checked = opt.selected,
+                        enabled = sheetEnabled,
+                        last = idx == draft.jitterOptionsCount - 1,
+                        onClick = {
+                            update { setJitterMinutes(opt.minutes) }
+                            pickingJitter = false
+                        },
+                    )
+                }
             }
         }
     }

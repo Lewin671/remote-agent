@@ -58,6 +58,7 @@ type TimingDraft struct {
 	UntilDate           string // YYYY-MM-DD
 	UntilMs             int64
 	UntilEdited         bool
+	JitterMinutes       int64
 	Original            *Trigger
 	InitialEnd          TimingEnd
 	InitialCount        string
@@ -126,6 +127,19 @@ func uniqueSortedWeekdays(days []int) []int {
 		}
 	}
 	slices.Sort(out)
+	return out
+}
+
+var defaultJitterOptions = []int64{0, 15, 30, 60}
+
+// JitterOptionMinutes returns sorted minute choices for the calendar jitter selector,
+// always including the fixed presets and any positive custom value currently on the draft.
+func JitterOptionMinutes(current int64) []int64 {
+	out := slices.Clone(defaultJitterOptions)
+	if current > 0 && !slices.Contains(out, current) {
+		out = append(out, current)
+		slices.Sort(out)
+	}
 	return out
 }
 
@@ -215,6 +229,9 @@ func TimingDraftFromTrigger(tr Trigger, nowMs int64, localZone string, bounds Ca
 		d.Kind = TimingAfterTurn
 		d.AfterTurnUnselected = true
 	default:
+		if tr.JitterMinutes > 0 {
+			d.JitterMinutes = tr.JitterMinutes
+		}
 		if slices.Equal(days, []int{1, 2, 3, 4, 5}) {
 			d.Kind = TimingDaily
 			d.Workdays = true
@@ -429,10 +446,8 @@ func (d TimingDraft) BuildTrigger(in TimingBuildInput) (Trigger, *corev1.Text) {
 			Timezone: zone,
 			Weekdays: days,
 		}
-		// The editor has no jitter control; keep the task's random window,
-		// shortened if a later time would push it past midnight.
-		if d.Original != nil && d.Original.Type == "calendar" && d.Original.JitterMinutes > 0 {
-			out.JitterMinutes = d.Original.JitterMinutes
+		if d.JitterMinutes > 0 {
+			out.JitterMinutes = d.JitterMinutes
 			if room := int64(23*60 + 59 - (hr*60 + min)); out.JitterMinutes > room {
 				out.JitterMinutes = room
 			}
@@ -466,6 +481,7 @@ func (d TimingDraft) BuildTrigger(in TimingBuildInput) (Trigger, *corev1.Text) {
 		if d.Original != nil && d.Original.Type == "after_turn" {
 			out = *d.Original
 			out.Weekdays = nil
+			out.JitterMinutes = 0
 		} else {
 			return Trigger{}, text.Msg(text.KeyScheduleAndroidChooseATimeType)
 		}

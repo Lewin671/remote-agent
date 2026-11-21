@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -251,11 +252,39 @@ func TestTimingDraftValidationAndAfterTurn(t *testing.T) {
 		t.Fatalf("BuildTrigger after_turn = (%+v, %v)", gotAT, errTxt)
 	}
 
-	// Editing a jittered calendar task keeps its random window, clamped to the day.
+	// Editing a jittered calendar task keeps its value, offers it among sorted options,
+	// applies user edits, clears on non-calendar kinds, and clamps to the same local day.
 	jDraft := TimingDraftFromTrigger(Trigger{Type: "calendar", Time: "10:10", Timezone: "UTC", JitterMinutes: 50}, nowMs, "UTC", b)
+	if jDraft.JitterMinutes != 50 {
+		t.Fatalf("TimingDraftFromTrigger jitter = %d, want 50", jDraft.JitterMinutes)
+	}
+	if opts := JitterOptionMinutes(jDraft.JitterMinutes); !slices.Equal(opts, []int64{0, 15, 30, 50, 60}) {
+		t.Fatalf("JitterOptionMinutes(50) = %v, want [0 15 30 50 60]", opts)
+	}
+	if opts := JitterOptionMinutes(0); !slices.Equal(opts, []int64{0, 15, 30, 60}) {
+		t.Fatalf("JitterOptionMinutes(0) = %v, want [0 15 30 60]", opts)
+	}
 	jDraft.Time = "23:30"
 	if got, errTxt := jDraft.BuildTrigger(TimingBuildInput{NowMs: nowMs}); errTxt != nil || got.JitterMinutes != 29 {
-		t.Fatalf("BuildTrigger jitter = (%+v, %v)", got, errTxt)
+		t.Fatalf("BuildTrigger clamped jitter = (%+v, %v)", got, errTxt)
+	}
+	jDraft.Time = "10:10"
+	jDraft.JitterMinutes = 30
+	if got, errTxt := jDraft.BuildTrigger(TimingBuildInput{NowMs: nowMs}); errTxt != nil || got.JitterMinutes != 30 {
+		t.Fatalf("BuildTrigger updated jitter = (%+v, %v)", got, errTxt)
+	}
+	jDraft.JitterMinutes = 0
+	if got, errTxt := jDraft.BuildTrigger(TimingBuildInput{NowMs: nowMs}); errTxt != nil || got.JitterMinutes != 0 {
+		t.Fatalf("BuildTrigger cleared jitter = (%+v, %v)", got, errTxt)
+	}
+	jDraft.JitterMinutes = 50
+	for _, kind := range []TimingKind{TimingOnce, TimingInterval} {
+		switched := jDraft
+		switched.Kind = kind
+		switched.Date = "2026-10-12"
+		if got, errTxt := switched.BuildTrigger(TimingBuildInput{NowMs: nowMs}); errTxt != nil || got.JitterMinutes != 0 {
+			t.Fatalf("BuildTrigger kind=%v jitter = (%+v, %v), want 0", kind, got, errTxt)
+		}
 	}
 
 	// Shell-provided DST gap flag (works consistently on WASM without tzdata)

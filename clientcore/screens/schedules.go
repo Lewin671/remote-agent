@@ -1302,6 +1302,32 @@ func buildTimingDraftView(d schedule.TimingDraft, errTxt *corev1.Text, applied b
 		weekdays = append(weekdays, int32(wd))
 	}
 	doneEnabled := d.AfterTurnUnselected || d.Kind != schedule.TimingWeekly || len(d.Weekdays) > 0
+	showJitter := d.Kind == schedule.TimingDaily || d.Kind == schedule.TimingWeekly
+	var jitterLabel, jitterHint *corev1.Text
+	var jitterOptions []*corev1.ScheduleJitterOptionView
+	if showJitter {
+		jitterLabel = text.Msg(text.KeyScheduleJitterLabel)
+		jitterHint = text.Msg(text.KeyScheduleJitterHint)
+		selected := d.JitterMinutes
+		if selected < 0 {
+			selected = 0
+		}
+		mins := schedule.JitterOptionMinutes(selected)
+		jitterOptions = make([]*corev1.ScheduleJitterOptionView, 0, len(mins))
+		for _, m := range mins {
+			var lbl *corev1.Text
+			if m == 0 {
+				lbl = text.Msg(text.KeyScheduleJitterNone)
+			} else {
+				lbl = text.Msg(text.KeyScheduleJitterWithinMinutes, text.Int("count", m))
+			}
+			jitterOptions = append(jitterOptions, &corev1.ScheduleJitterOptionView{
+				Minutes:  m,
+				Label:    lbl,
+				Selected: m == selected,
+			})
+		}
+	}
 	return &corev1.ScheduleTimingDraftView{
 		Kind:                mapTimingKindProto(d.Kind),
 		AfterTurnUnselected: d.AfterTurnUnselected,
@@ -1322,6 +1348,10 @@ func buildTimingDraftView(d schedule.TimingDraft, errTxt *corev1.Text, applied b
 		TimingError:         errTxt,
 		TimingDoneEnabled:   doneEnabled,
 		TimingApplied:       applied,
+		ShowJitter:          showJitter,
+		JitterOptions:       jitterOptions,
+		JitterLabel:         jitterLabel,
+		JitterHint:          jitterHint,
 	}
 }
 

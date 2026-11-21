@@ -1103,6 +1103,12 @@
     <string name="schedule_ios_enter_a_valid_interval" formatted="false">"请输入有效的间隔"</string>
     <string name="schedule_ios_takeover_notice">"%1$s继续会由你接管任务，按任务中显示的权限运行。"</string>
     <string name="schedule_ios_task_details" formatted="false">"任务详情"</string>
+    <string name="schedule_jitter_hint" formatted="false">"每天在设定时间之后的这段时间里随机选一个时刻开始"</string>
+    <string name="schedule_jitter_label" formatted="false">"随机延后"</string>
+    <string name="schedule_jitter_none" formatted="false">"不随机"</string>
+    <plurals name="schedule_jitter_within_minutes">
+        <item quantity="other">"%1$d 分钟内"</item>
+    </plurals>
     <string name="schedule_last_result">"%2$s %1$s"</string>
     <string name="schedule_last_result_detail">"%3$s %2$s：%1$s"</string>
     <string name="schedule_latest_summary">"最近一次 %2$s：%1$s"</string>

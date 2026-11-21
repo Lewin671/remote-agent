@@ -871,6 +871,9 @@
 "schedule_ios_task_not_found" = "Task not found";
 "schedule_ios_unread" = "Unread";
 "schedule_ios_unsaved_changes_will_be_lost" = "Unsaved changes will be lost.";
+"schedule_jitter_hint" = "Starts at a random time within this window after the set time";
+"schedule_jitter_label" = "Random delay";
+"schedule_jitter_none" = "None";
 "schedule_last_result" = "%2$@ %1$@";
 "schedule_last_result_detail" = "%3$@ %2$@: %1$@";
 "schedule_latest_summary" = "Latest %2$@: %1$@";

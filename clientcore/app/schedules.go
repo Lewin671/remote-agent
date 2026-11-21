@@ -2053,6 +2053,14 @@ func (c *Core) handleScheduleFormUpdateTiming(ctx *sync.StepContext, act *corev1
 		d.Count = *act.Count
 		fieldEdited = true
 	}
+	if act.JitterMinutes != nil {
+		v := *act.JitterMinutes
+		if v < 0 {
+			v = 0
+		}
+		d.JitterMinutes = v
+		fieldEdited = true
+	}
 
 	if fieldEdited && !act.Apply {
 		form.TimingError = nil

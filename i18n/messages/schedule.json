@@ -4848,5 +4848,85 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "schedule.jitter_label",
+    "zh-CN": "随机延后",
+    "en": "Random delay",
+    "notes": "定时任务时间编辑器中随机延后控件的行标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.jitter_none",
+    "zh-CN": "不随机",
+    "en": "None",
+    "notes": "定时任务随机延后控件中表示按设定时间准点运行（0 分钟延后）的选项。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.jitter_within_minutes",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 分钟内"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Within {count} minute",
+        "other": "Within {count} minutes"
+      }
+    },
+    "notes": "定时任务随机延后控件的选项标签，表示在设定时间之后 count 分钟内随机选一个时刻开始。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 15
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.jitter_hint",
+    "zh-CN": "每天在设定时间之后的这段时间里随机选一个时刻开始",
+    "en": "Starts at a random time within this window after the set time",
+    "notes": "定时任务时间编辑器中随机延后选项下方的说明文字。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

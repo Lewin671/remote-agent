@@ -2187,6 +2187,49 @@ func (m *ScheduleDetailViewModel) AppendMarshal(b []byte) []byte {
 	return b
 }
 
+type ScheduleJitterOptionView struct {
+	Minutes  int64
+	Label    *Text
+	Selected bool
+}
+
+func (m *ScheduleJitterOptionView) GetMinutes() int64 {
+	if m != nil {
+		return m.Minutes
+	}
+	return 0
+}
+func (m *ScheduleJitterOptionView) GetLabel() *Text {
+	if m != nil {
+		return m.Label
+	}
+	return nil
+}
+func (m *ScheduleJitterOptionView) GetSelected() bool {
+	if m != nil {
+		return m.Selected
+	}
+	return false
+}
+
+func (m *ScheduleJitterOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *ScheduleJitterOptionView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ScheduleJitterOptionView) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.Minutes))
+	if m.Label != nil {
+		b = litewire.AppendMessage(b, 2, m.Label)
+	}
+	b = litewire.AppendBool(b, 3, m.Selected)
+	return b
+}
+
 type ScheduleTimingDraftView struct {
 	Kind                ScheduleTimingKind
 	AfterTurnUnselected bool
@@ -2207,6 +2250,10 @@ type ScheduleTimingDraftView struct {
 	TimingError         *Text
 	TimingDoneEnabled   bool
 	TimingApplied       bool
+	ShowJitter          bool
+	JitterOptions       []*ScheduleJitterOptionView
+	JitterLabel         *Text
+	JitterHint          *Text
 }
 
 func (m *ScheduleTimingDraftView) GetKind() ScheduleTimingKind {
@@ -2323,6 +2370,30 @@ func (m *ScheduleTimingDraftView) GetTimingApplied() bool {
 	}
 	return false
 }
+func (m *ScheduleTimingDraftView) GetShowJitter() bool {
+	if m != nil {
+		return m.ShowJitter
+	}
+	return false
+}
+func (m *ScheduleTimingDraftView) GetJitterOptions() []*ScheduleJitterOptionView {
+	if m != nil {
+		return m.JitterOptions
+	}
+	return nil
+}
+func (m *ScheduleTimingDraftView) GetJitterLabel() *Text {
+	if m != nil {
+		return m.JitterLabel
+	}
+	return nil
+}
+func (m *ScheduleTimingDraftView) GetJitterHint() *Text {
+	if m != nil {
+		return m.JitterHint
+	}
+	return nil
+}
 
 func (m *ScheduleTimingDraftView) Size() int { return len(m.AppendMarshal(nil)) }
 
@@ -2366,6 +2437,18 @@ func (m *ScheduleTimingDraftView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBool(b, 18, m.TimingDoneEnabled)
 	b = litewire.AppendBool(b, 19, m.TimingApplied)
+	b = litewire.AppendBool(b, 20, m.ShowJitter)
+	for _, v := range m.JitterOptions {
+		if v != nil {
+			b = litewire.AppendMessage(b, 21, v)
+		}
+	}
+	if m.JitterLabel != nil {
+		b = litewire.AppendMessage(b, 22, m.JitterLabel)
+	}
+	if m.JitterHint != nil {
+		b = litewire.AppendMessage(b, 23, m.JitterHint)
+	}
 	return b
 }
 
@@ -4726,6 +4809,7 @@ type ScheduleFormUpdateTimingAction struct {
 	UntilDstGap     *bool
 	Apply           bool
 	ResetDraft      bool
+	JitterMinutes   *int64
 }
 
 func (m *ScheduleFormUpdateTimingAction) GetFormKey() string {
@@ -4847,6 +4931,12 @@ func (m *ScheduleFormUpdateTimingAction) GetResetDraft() bool {
 		return m.ResetDraft
 	}
 	return false
+}
+func (m *ScheduleFormUpdateTimingAction) GetJitterMinutes() int64 {
+	if m != nil && m.JitterMinutes != nil {
+		return *m.JitterMinutes
+	}
+	return 0
 }
 
 func (m *ScheduleFormUpdateTimingAction) Unmarshal(b []byte) error {
@@ -5063,6 +5153,16 @@ func (m *ScheduleFormUpdateTimingAction) Unmarshal(b []byte) error {
 					return err
 				}
 				m.ResetDraft = litewire.DecodeBool(v)
+				continue
+			}
+		case 21:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				pv := int64(v)
+				m.JitterMinutes = &pv
 				continue
 			}
 		}

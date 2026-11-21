@@ -22,6 +22,7 @@ public  final class ScheduleTimingDraftView extends
     interval_ = "";
     count_ = "";
     untilDate_ = "";
+    jitterOptions_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int KIND_FIELD_NUMBER = 1;
@@ -807,6 +808,225 @@ public  final class ScheduleTimingDraftView extends
   private void clearTimingApplied() {
 
     timingApplied_ = false;
+  }
+
+  public static final int SHOW_JITTER_FIELD_NUMBER = 20;
+  private boolean showJitter_;
+  /**
+   * <code>bool show_jitter = 20 [json_name = "showJitter"];</code>
+   * @return The showJitter.
+   */
+  @java.lang.Override
+  public boolean getShowJitter() {
+    return showJitter_;
+  }
+  /**
+   * <code>bool show_jitter = 20 [json_name = "showJitter"];</code>
+   * @param value The showJitter to set.
+   */
+  private void setShowJitter(boolean value) {
+    
+    showJitter_ = value;
+  }
+  /**
+   * <code>bool show_jitter = 20 [json_name = "showJitter"];</code>
+   */
+  private void clearShowJitter() {
+
+    showJitter_ = false;
+  }
+
+  public static final int JITTER_OPTIONS_FIELD_NUMBER = 21;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView> jitterOptions_;
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView> getJitterOptionsList() {
+    return jitterOptions_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionViewOrBuilder> 
+      getJitterOptionsOrBuilderList() {
+    return jitterOptions_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  @java.lang.Override
+  public int getJitterOptionsCount() {
+    return jitterOptions_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView getJitterOptions(int index) {
+    return jitterOptions_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionViewOrBuilder getJitterOptionsOrBuilder(
+      int index) {
+    return jitterOptions_.get(index);
+  }
+  private void ensureJitterOptionsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView> tmp = jitterOptions_;
+    if (!tmp.isModifiable()) {
+      jitterOptions_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setJitterOptions(
+      int index, io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureJitterOptionsIsMutable();
+    jitterOptions_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addJitterOptions(io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureJitterOptionsIsMutable();
+    jitterOptions_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addJitterOptions(
+      int index, io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureJitterOptionsIsMutable();
+    jitterOptions_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  private void addAllJitterOptions(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView> values) {
+    ensureJitterOptionsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, jitterOptions_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  private void clearJitterOptions() {
+    jitterOptions_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  private void removeJitterOptions(int index) {
+    ensureJitterOptionsIsMutable();
+    jitterOptions_.remove(index);
+  }
+
+  public static final int JITTER_LABEL_FIELD_NUMBER = 22;
+  private io.github.lewin671.remoteagent.core.proto.Text jitterLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasJitterLabel() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getJitterLabel() {
+    return jitterLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : jitterLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setJitterLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    jitterLabel_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeJitterLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (jitterLabel_ != null &&
+        jitterLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      jitterLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(jitterLabel_).mergeFrom(value).buildPartial();
+    } else {
+      jitterLabel_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+   */
+  private void clearJitterLabel() {
+    jitterLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int JITTER_HINT_FIELD_NUMBER = 23;
+  private io.github.lewin671.remoteagent.core.proto.Text jitterHint_;
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+   */
+  @java.lang.Override
+  public boolean hasJitterHint() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getJitterHint() {
+    return jitterHint_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : jitterHint_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setJitterHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    jitterHint_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeJitterHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (jitterHint_ != null &&
+        jitterHint_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      jitterHint_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(jitterHint_).mergeFrom(value).buildPartial();
+    } else {
+      jitterHint_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+   */
+  private void clearJitterHint() {
+    jitterHint_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.ScheduleTimingDraftView parseFrom(
@@ -1716,6 +1936,230 @@ public  final class ScheduleTimingDraftView extends
       return this;
     }
 
+    /**
+     * <code>bool show_jitter = 20 [json_name = "showJitter"];</code>
+     * @return The showJitter.
+     */
+    @java.lang.Override
+    public boolean getShowJitter() {
+      return instance.getShowJitter();
+    }
+    /**
+     * <code>bool show_jitter = 20 [json_name = "showJitter"];</code>
+     * @param value The showJitter to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShowJitter(boolean value) {
+      copyOnWrite();
+      instance.setShowJitter(value);
+      return this;
+    }
+    /**
+     * <code>bool show_jitter = 20 [json_name = "showJitter"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearShowJitter() {
+      copyOnWrite();
+      instance.clearShowJitter();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView> getJitterOptionsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getJitterOptionsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    @java.lang.Override
+    public int getJitterOptionsCount() {
+      return instance.getJitterOptionsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView getJitterOptions(int index) {
+      return instance.getJitterOptions(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder setJitterOptions(
+        int index, io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView value) {
+      copyOnWrite();
+      instance.setJitterOptions(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder setJitterOptions(
+        int index, io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setJitterOptions(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder addJitterOptions(io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView value) {
+      copyOnWrite();
+      instance.addJitterOptions(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder addJitterOptions(
+        int index, io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView value) {
+      copyOnWrite();
+      instance.addJitterOptions(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder addJitterOptions(
+        io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addJitterOptions(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder addJitterOptions(
+        int index, io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addJitterOptions(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder addAllJitterOptions(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView> values) {
+      copyOnWrite();
+      instance.addAllJitterOptions(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder clearJitterOptions() {
+      copyOnWrite();
+      instance.clearJitterOptions();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+     */
+    public Builder removeJitterOptions(int index) {
+      copyOnWrite();
+      instance.removeJitterOptions(index);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasJitterLabel() {
+      return instance.hasJitterLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getJitterLabel() {
+      return instance.getJitterLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+     */
+    public Builder setJitterLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setJitterLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+     */
+    public Builder setJitterLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setJitterLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+     */
+    public Builder mergeJitterLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeJitterLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+     */
+    public Builder clearJitterLabel() {  copyOnWrite();
+      instance.clearJitterLabel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+     */
+    @java.lang.Override
+    public boolean hasJitterHint() {
+      return instance.hasJitterHint();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getJitterHint() {
+      return instance.getJitterHint();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+     */
+    public Builder setJitterHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setJitterHint(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+     */
+    public Builder setJitterHint(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setJitterHint(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+     */
+    public Builder mergeJitterHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeJitterHint(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+     */
+    public Builder clearJitterHint() {  copyOnWrite();
+      instance.clearJitterHint();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ScheduleTimingDraftView)
   }
   @java.lang.Override
@@ -1752,12 +2196,18 @@ public  final class ScheduleTimingDraftView extends
             "timingError_",
             "timingDoneEnabled_",
             "timingApplied_",
+            "showJitter_",
+            "jitterOptions_",
+            io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView.class,
+            "jitterLabel_",
+            "jitterHint_",
           };
           java.lang.String info =
-              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0001\u0000\u0001\f\u0002\u0007" +
+              "\u0000\u0017\u0000\u0001\u0001\u0017\u0017\u0000\u0002\u0000\u0001\f\u0002\u0007" +
               "\u0003\u1009\u0000\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0007\b\'\t\u0208\n" +
               "\f\u000b\f\f\u0208\r\u0208\u000e\u0002\u000f\u0007\u0010\u1009\u0001\u0011\u1009" +
-              "\u0002\u0012\u0007\u0013\u0007";
+              "\u0002\u0012\u0007\u0013\u0007\u0014\u0007\u0015\u001b\u0016\u1009\u0003\u0017\u1009" +
+              "\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

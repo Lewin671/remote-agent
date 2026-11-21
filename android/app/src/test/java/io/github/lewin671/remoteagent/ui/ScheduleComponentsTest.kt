@@ -256,6 +256,11 @@ class ScheduleComponentsTest {
                 .setEnd(ScheduleTimingEnd.SCHEDULE_TIMING_END_COUNT)
                 .setCount("8")
                 .setTimingDoneEnabled(true)
+                .setShowJitter(true)
+                .setJitterLabel(coreMsgText("schedule.jitter_label"))
+                .setJitterHint(coreMsgText("schedule.jitter_hint"))
+                .addJitterOptions(ScheduleJitterOptionView.newBuilder().setMinutes(0).setLabel(coreMsgText("schedule.jitter_none")).setSelected(true))
+                .addJitterOptions(ScheduleJitterOptionView.newBuilder().setMinutes(30).setLabel(corePlainText("30 分钟内")).setSelected(false))
                 .build(),
         )
         val updates = mutableListOf<ScheduleFormUpdateTimingAction>()
@@ -277,9 +282,18 @@ class ScheduleComponentsTest {
                                 .addAllWeekdays(act.weekdaysList)
                                 .setTimingDoneEnabled(act.weekdaysCount > 0)
                                 .build()
+                        } else if (act.hasJitterMinutes()) {
+                            draft = draft.toBuilder()
+                                .clearJitterOptions()
+                                .addAllJitterOptions(
+                                    draft.jitterOptionsList.map { it.toBuilder().setSelected(it.minutes == act.jitterMinutes).build() },
+                                )
+                                .build()
                         } else if (act.hasKind()) {
+                            val showJ = act.kind == ScheduleTimingKind.SCHEDULE_TIMING_KIND_DAILY || act.kind == ScheduleTimingKind.SCHEDULE_TIMING_KIND_WEEKLY
                             draft = draft.toBuilder()
                                 .setKind(act.kind)
+                                .setShowJitter(showJ)
                                 .setShowIntervalHint(act.kind == ScheduleTimingKind.SCHEDULE_TIMING_KIND_INTERVAL)
                                 .setIntervalHint(coreMsgText("schedule.the_first_run_is_after_a_full_interval_to"))
                                 .build()
@@ -288,12 +302,16 @@ class ScheduleComponentsTest {
                 )
             }
         }
+        ui.onNodeWithText(messageTextForTest(UiMessages.scheduleJitterLabel())).performClick()
+        ui.onNodeWithText("30 分钟内").performClick()
+        assertTrue(updates.any { it.hasJitterMinutes() && it.jitterMinutes == 30L })
         ui.onNodeWithText("一").assertIsToggleable().assertIsOn().performClick()
         ui.onNodeWithText("完成").assertIsNotEnabled()
         ui.onNodeWithText("五").performClick().assertIsOn()
         ui.onNodeWithText("完成").assertIsEnabled().performClick()
         ui.onNodeWithText("每隔").performClick()
         ui.onNodeWithText("时区").assertDoesNotExist()
+        ui.onNodeWithText(messageTextForTest(UiMessages.scheduleJitterLabel())).assertDoesNotExist()
         ui.onNodeWithText(messageTextForTest(UiMessages.scheduleTheFirstRunIsAfterAFullIntervalTo())).assertExists()
         assertTrue(updates.any { it.apply })
     }

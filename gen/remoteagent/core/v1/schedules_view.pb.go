@@ -3095,34 +3095,98 @@ func (x *ScheduleDetailViewModel) GetMenuSubtitle() *Text {
 	return nil
 }
 
+type ScheduleJitterOptionView struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Minutes       int64                  `protobuf:"varint,1,opt,name=minutes,proto3" json:"minutes,omitempty"`
+	Label         *Text                  `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
+	Selected      bool                   `protobuf:"varint,3,opt,name=selected,proto3" json:"selected,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScheduleJitterOptionView) Reset() {
+	*x = ScheduleJitterOptionView{}
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScheduleJitterOptionView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScheduleJitterOptionView) ProtoMessage() {}
+
+func (x *ScheduleJitterOptionView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScheduleJitterOptionView.ProtoReflect.Descriptor instead.
+func (*ScheduleJitterOptionView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ScheduleJitterOptionView) GetMinutes() int64 {
+	if x != nil {
+		return x.Minutes
+	}
+	return 0
+}
+
+func (x *ScheduleJitterOptionView) GetLabel() *Text {
+	if x != nil {
+		return x.Label
+	}
+	return nil
+}
+
+func (x *ScheduleJitterOptionView) GetSelected() bool {
+	if x != nil {
+		return x.Selected
+	}
+	return false
+}
+
 type ScheduleTimingDraftView struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Kind                ScheduleTimingKind     `protobuf:"varint,1,opt,name=kind,proto3,enum=remoteagent.core.v1.ScheduleTimingKind" json:"kind,omitempty"`
-	AfterTurnUnselected bool                   `protobuf:"varint,2,opt,name=after_turn_unselected,json=afterTurnUnselected,proto3" json:"after_turn_unselected,omitempty"`
-	AfterTurnHint       *Text                  `protobuf:"bytes,3,opt,name=after_turn_hint,json=afterTurnHint,proto3" json:"after_turn_hint,omitempty"`
-	Date                string                 `protobuf:"bytes,4,opt,name=date,proto3" json:"date,omitempty"`
-	Time                string                 `protobuf:"bytes,5,opt,name=time,proto3" json:"time,omitempty"`
-	Zone                string                 `protobuf:"bytes,6,opt,name=zone,proto3" json:"zone,omitempty"`
-	Workdays            bool                   `protobuf:"varint,7,opt,name=workdays,proto3" json:"workdays,omitempty"`
-	Weekdays            []int32                `protobuf:"varint,8,rep,packed,name=weekdays,proto3" json:"weekdays,omitempty"`
-	Interval            string                 `protobuf:"bytes,9,opt,name=interval,proto3" json:"interval,omitempty"`
-	Unit                ScheduleIntervalUnit   `protobuf:"varint,10,opt,name=unit,proto3,enum=remoteagent.core.v1.ScheduleIntervalUnit" json:"unit,omitempty"`
-	End                 ScheduleTimingEnd      `protobuf:"varint,11,opt,name=end,proto3,enum=remoteagent.core.v1.ScheduleTimingEnd" json:"end,omitempty"`
-	Count               string                 `protobuf:"bytes,12,opt,name=count,proto3" json:"count,omitempty"`
-	UntilDate           string                 `protobuf:"bytes,13,opt,name=until_date,json=untilDate,proto3" json:"until_date,omitempty"`
-	UntilMs             int64                  `protobuf:"varint,14,opt,name=until_ms,json=untilMs,proto3" json:"until_ms,omitempty"`
-	ShowIntervalHint    bool                   `protobuf:"varint,15,opt,name=show_interval_hint,json=showIntervalHint,proto3" json:"show_interval_hint,omitempty"`
-	IntervalHint        *Text                  `protobuf:"bytes,16,opt,name=interval_hint,json=intervalHint,proto3" json:"interval_hint,omitempty"`
-	TimingError         *Text                  `protobuf:"bytes,17,opt,name=timing_error,json=timingError,proto3" json:"timing_error,omitempty"`
-	TimingDoneEnabled   bool                   `protobuf:"varint,18,opt,name=timing_done_enabled,json=timingDoneEnabled,proto3" json:"timing_done_enabled,omitempty"`
-	TimingApplied       bool                   `protobuf:"varint,19,opt,name=timing_applied,json=timingApplied,proto3" json:"timing_applied,omitempty"`
+	state               protoimpl.MessageState      `protogen:"open.v1"`
+	Kind                ScheduleTimingKind          `protobuf:"varint,1,opt,name=kind,proto3,enum=remoteagent.core.v1.ScheduleTimingKind" json:"kind,omitempty"`
+	AfterTurnUnselected bool                        `protobuf:"varint,2,opt,name=after_turn_unselected,json=afterTurnUnselected,proto3" json:"after_turn_unselected,omitempty"`
+	AfterTurnHint       *Text                       `protobuf:"bytes,3,opt,name=after_turn_hint,json=afterTurnHint,proto3" json:"after_turn_hint,omitempty"`
+	Date                string                      `protobuf:"bytes,4,opt,name=date,proto3" json:"date,omitempty"`
+	Time                string                      `protobuf:"bytes,5,opt,name=time,proto3" json:"time,omitempty"`
+	Zone                string                      `protobuf:"bytes,6,opt,name=zone,proto3" json:"zone,omitempty"`
+	Workdays            bool                        `protobuf:"varint,7,opt,name=workdays,proto3" json:"workdays,omitempty"`
+	Weekdays            []int32                     `protobuf:"varint,8,rep,packed,name=weekdays,proto3" json:"weekdays,omitempty"`
+	Interval            string                      `protobuf:"bytes,9,opt,name=interval,proto3" json:"interval,omitempty"`
+	Unit                ScheduleIntervalUnit        `protobuf:"varint,10,opt,name=unit,proto3,enum=remoteagent.core.v1.ScheduleIntervalUnit" json:"unit,omitempty"`
+	End                 ScheduleTimingEnd           `protobuf:"varint,11,opt,name=end,proto3,enum=remoteagent.core.v1.ScheduleTimingEnd" json:"end,omitempty"`
+	Count               string                      `protobuf:"bytes,12,opt,name=count,proto3" json:"count,omitempty"`
+	UntilDate           string                      `protobuf:"bytes,13,opt,name=until_date,json=untilDate,proto3" json:"until_date,omitempty"`
+	UntilMs             int64                       `protobuf:"varint,14,opt,name=until_ms,json=untilMs,proto3" json:"until_ms,omitempty"`
+	ShowIntervalHint    bool                        `protobuf:"varint,15,opt,name=show_interval_hint,json=showIntervalHint,proto3" json:"show_interval_hint,omitempty"`
+	IntervalHint        *Text                       `protobuf:"bytes,16,opt,name=interval_hint,json=intervalHint,proto3" json:"interval_hint,omitempty"`
+	TimingError         *Text                       `protobuf:"bytes,17,opt,name=timing_error,json=timingError,proto3" json:"timing_error,omitempty"`
+	TimingDoneEnabled   bool                        `protobuf:"varint,18,opt,name=timing_done_enabled,json=timingDoneEnabled,proto3" json:"timing_done_enabled,omitempty"`
+	TimingApplied       bool                        `protobuf:"varint,19,opt,name=timing_applied,json=timingApplied,proto3" json:"timing_applied,omitempty"`
+	ShowJitter          bool                        `protobuf:"varint,20,opt,name=show_jitter,json=showJitter,proto3" json:"show_jitter,omitempty"`
+	JitterOptions       []*ScheduleJitterOptionView `protobuf:"bytes,21,rep,name=jitter_options,json=jitterOptions,proto3" json:"jitter_options,omitempty"`
+	JitterLabel         *Text                       `protobuf:"bytes,22,opt,name=jitter_label,json=jitterLabel,proto3" json:"jitter_label,omitempty"`
+	JitterHint          *Text                       `protobuf:"bytes,23,opt,name=jitter_hint,json=jitterHint,proto3" json:"jitter_hint,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ScheduleTimingDraftView) Reset() {
 	*x = ScheduleTimingDraftView{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3134,7 +3198,7 @@ func (x *ScheduleTimingDraftView) String() string {
 func (*ScheduleTimingDraftView) ProtoMessage() {}
 
 func (x *ScheduleTimingDraftView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3147,7 +3211,7 @@ func (x *ScheduleTimingDraftView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleTimingDraftView.ProtoReflect.Descriptor instead.
 func (*ScheduleTimingDraftView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{17}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ScheduleTimingDraftView) GetKind() ScheduleTimingKind {
@@ -3283,6 +3347,34 @@ func (x *ScheduleTimingDraftView) GetTimingApplied() bool {
 	return false
 }
 
+func (x *ScheduleTimingDraftView) GetShowJitter() bool {
+	if x != nil {
+		return x.ShowJitter
+	}
+	return false
+}
+
+func (x *ScheduleTimingDraftView) GetJitterOptions() []*ScheduleJitterOptionView {
+	if x != nil {
+		return x.JitterOptions
+	}
+	return nil
+}
+
+func (x *ScheduleTimingDraftView) GetJitterLabel() *Text {
+	if x != nil {
+		return x.JitterLabel
+	}
+	return nil
+}
+
+func (x *ScheduleTimingDraftView) GetJitterHint() *Text {
+	if x != nil {
+		return x.JitterHint
+	}
+	return nil
+}
+
 type ScheduleProjectOptionView struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectKey    string                 `protobuf:"bytes,1,opt,name=project_key,json=projectKey,proto3" json:"project_key,omitempty"`
@@ -3295,7 +3387,7 @@ type ScheduleProjectOptionView struct {
 
 func (x *ScheduleProjectOptionView) Reset() {
 	*x = ScheduleProjectOptionView{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3307,7 +3399,7 @@ func (x *ScheduleProjectOptionView) String() string {
 func (*ScheduleProjectOptionView) ProtoMessage() {}
 
 func (x *ScheduleProjectOptionView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3320,7 +3412,7 @@ func (x *ScheduleProjectOptionView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleProjectOptionView.ProtoReflect.Descriptor instead.
 func (*ScheduleProjectOptionView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{18}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ScheduleProjectOptionView) GetProjectKey() string {
@@ -3365,7 +3457,7 @@ type ScheduleMachineOptionView struct {
 
 func (x *ScheduleMachineOptionView) Reset() {
 	*x = ScheduleMachineOptionView{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3377,7 +3469,7 @@ func (x *ScheduleMachineOptionView) String() string {
 func (*ScheduleMachineOptionView) ProtoMessage() {}
 
 func (x *ScheduleMachineOptionView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3390,7 +3482,7 @@ func (x *ScheduleMachineOptionView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleMachineOptionView.ProtoReflect.Descriptor instead.
 func (*ScheduleMachineOptionView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{19}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ScheduleMachineOptionView) GetMachineId() string {
@@ -3449,7 +3541,7 @@ type ScheduleModeOptionView struct {
 
 func (x *ScheduleModeOptionView) Reset() {
 	*x = ScheduleModeOptionView{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3461,7 +3553,7 @@ func (x *ScheduleModeOptionView) String() string {
 func (*ScheduleModeOptionView) ProtoMessage() {}
 
 func (x *ScheduleModeOptionView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3474,7 +3566,7 @@ func (x *ScheduleModeOptionView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleModeOptionView.ProtoReflect.Descriptor instead.
 func (*ScheduleModeOptionView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{20}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ScheduleModeOptionView) GetMode() v1.ApprovalMode {
@@ -3535,7 +3627,7 @@ type ScheduleModelPanelView struct {
 
 func (x *ScheduleModelPanelView) Reset() {
 	*x = ScheduleModelPanelView{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3547,7 +3639,7 @@ func (x *ScheduleModelPanelView) String() string {
 func (*ScheduleModelPanelView) ProtoMessage() {}
 
 func (x *ScheduleModelPanelView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3560,7 +3652,7 @@ func (x *ScheduleModelPanelView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleModelPanelView.ProtoReflect.Descriptor instead.
 func (*ScheduleModelPanelView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{21}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ScheduleModelPanelView) GetModelsLoading() bool {
@@ -3630,7 +3722,7 @@ type ScheduleFormNoticeView struct {
 
 func (x *ScheduleFormNoticeView) Reset() {
 	*x = ScheduleFormNoticeView{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3642,7 +3734,7 @@ func (x *ScheduleFormNoticeView) String() string {
 func (*ScheduleFormNoticeView) ProtoMessage() {}
 
 func (x *ScheduleFormNoticeView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3655,7 +3747,7 @@ func (x *ScheduleFormNoticeView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormNoticeView.ProtoReflect.Descriptor instead.
 func (*ScheduleFormNoticeView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{22}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ScheduleFormNoticeView) GetKind() ScheduleFormNoticeKind {
@@ -3733,7 +3825,7 @@ type ScheduleFormViewModel struct {
 
 func (x *ScheduleFormViewModel) Reset() {
 	*x = ScheduleFormViewModel{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3745,7 +3837,7 @@ func (x *ScheduleFormViewModel) String() string {
 func (*ScheduleFormViewModel) ProtoMessage() {}
 
 func (x *ScheduleFormViewModel) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3758,7 +3850,7 @@ func (x *ScheduleFormViewModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormViewModel.ProtoReflect.Descriptor instead.
 func (*ScheduleFormViewModel) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ScheduleFormViewModel) GetFormKey() string {
@@ -4098,7 +4190,7 @@ type ScheduleSessionStripTaskView struct {
 
 func (x *ScheduleSessionStripTaskView) Reset() {
 	*x = ScheduleSessionStripTaskView{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4110,7 +4202,7 @@ func (x *ScheduleSessionStripTaskView) String() string {
 func (*ScheduleSessionStripTaskView) ProtoMessage() {}
 
 func (x *ScheduleSessionStripTaskView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4123,7 +4215,7 @@ func (x *ScheduleSessionStripTaskView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleSessionStripTaskView.ProtoReflect.Descriptor instead.
 func (*ScheduleSessionStripTaskView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ScheduleSessionStripTaskView) GetMachineId() string {
@@ -4189,7 +4281,7 @@ type ScheduleSessionStripViewModel struct {
 
 func (x *ScheduleSessionStripViewModel) Reset() {
 	*x = ScheduleSessionStripViewModel{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4201,7 +4293,7 @@ func (x *ScheduleSessionStripViewModel) String() string {
 func (*ScheduleSessionStripViewModel) ProtoMessage() {}
 
 func (x *ScheduleSessionStripViewModel) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4214,7 +4306,7 @@ func (x *ScheduleSessionStripViewModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleSessionStripViewModel.ProtoReflect.Descriptor instead.
 func (*ScheduleSessionStripViewModel) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{25}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ScheduleSessionStripViewModel) GetSessionId() string {
@@ -4269,7 +4361,7 @@ type ScheduleReadCacheEffect struct {
 
 func (x *ScheduleReadCacheEffect) Reset() {
 	*x = ScheduleReadCacheEffect{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4281,7 +4373,7 @@ func (x *ScheduleReadCacheEffect) String() string {
 func (*ScheduleReadCacheEffect) ProtoMessage() {}
 
 func (x *ScheduleReadCacheEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4294,7 +4386,7 @@ func (x *ScheduleReadCacheEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleReadCacheEffect.ProtoReflect.Descriptor instead.
 func (*ScheduleReadCacheEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{26}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ScheduleReadCacheEffect) GetOpId() uint64 {
@@ -4320,7 +4412,7 @@ type ScheduleDeleteCacheEffect struct {
 
 func (x *ScheduleDeleteCacheEffect) Reset() {
 	*x = ScheduleDeleteCacheEffect{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4332,7 +4424,7 @@ func (x *ScheduleDeleteCacheEffect) String() string {
 func (*ScheduleDeleteCacheEffect) ProtoMessage() {}
 
 func (x *ScheduleDeleteCacheEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4345,7 +4437,7 @@ func (x *ScheduleDeleteCacheEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleDeleteCacheEffect.ProtoReflect.Descriptor instead.
 func (*ScheduleDeleteCacheEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{27}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ScheduleDeleteCacheEffect) GetMachineId() string {
@@ -4365,7 +4457,7 @@ type ScheduleSeenToken struct {
 
 func (x *ScheduleSeenToken) Reset() {
 	*x = ScheduleSeenToken{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4377,7 +4469,7 @@ func (x *ScheduleSeenToken) String() string {
 func (*ScheduleSeenToken) ProtoMessage() {}
 
 func (x *ScheduleSeenToken) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4390,7 +4482,7 @@ func (x *ScheduleSeenToken) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleSeenToken.ProtoReflect.Descriptor instead.
 func (*ScheduleSeenToken) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{28}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ScheduleSeenToken) GetTaskId() string {
@@ -4416,7 +4508,7 @@ type ScheduleLoadSeenEffect struct {
 
 func (x *ScheduleLoadSeenEffect) Reset() {
 	*x = ScheduleLoadSeenEffect{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4428,7 +4520,7 @@ func (x *ScheduleLoadSeenEffect) String() string {
 func (*ScheduleLoadSeenEffect) ProtoMessage() {}
 
 func (x *ScheduleLoadSeenEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4441,7 +4533,7 @@ func (x *ScheduleLoadSeenEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleLoadSeenEffect.ProtoReflect.Descriptor instead.
 func (*ScheduleLoadSeenEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{29}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ScheduleLoadSeenEffect) GetMachineId() string {
@@ -4461,7 +4553,7 @@ type ScheduleSaveSeenEffect struct {
 
 func (x *ScheduleSaveSeenEffect) Reset() {
 	*x = ScheduleSaveSeenEffect{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4473,7 +4565,7 @@ func (x *ScheduleSaveSeenEffect) String() string {
 func (*ScheduleSaveSeenEffect) ProtoMessage() {}
 
 func (x *ScheduleSaveSeenEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4486,7 +4578,7 @@ func (x *ScheduleSaveSeenEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleSaveSeenEffect.ProtoReflect.Descriptor instead.
 func (*ScheduleSaveSeenEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{30}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ScheduleSaveSeenEffect) GetMachineId() string {
@@ -4516,7 +4608,7 @@ type ScheduleNotificationRef struct {
 
 func (x *ScheduleNotificationRef) Reset() {
 	*x = ScheduleNotificationRef{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4528,7 +4620,7 @@ func (x *ScheduleNotificationRef) String() string {
 func (*ScheduleNotificationRef) ProtoMessage() {}
 
 func (x *ScheduleNotificationRef) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4541,7 +4633,7 @@ func (x *ScheduleNotificationRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleNotificationRef.ProtoReflect.Descriptor instead.
 func (*ScheduleNotificationRef) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{31}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ScheduleNotificationRef) GetMachineId() string {
@@ -4588,7 +4680,7 @@ type ScheduleDismissNotificationsEffect struct {
 
 func (x *ScheduleDismissNotificationsEffect) Reset() {
 	*x = ScheduleDismissNotificationsEffect{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4600,7 +4692,7 @@ func (x *ScheduleDismissNotificationsEffect) String() string {
 func (*ScheduleDismissNotificationsEffect) ProtoMessage() {}
 
 func (x *ScheduleDismissNotificationsEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4613,7 +4705,7 @@ func (x *ScheduleDismissNotificationsEffect) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ScheduleDismissNotificationsEffect.ProtoReflect.Descriptor instead.
 func (*ScheduleDismissNotificationsEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{32}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ScheduleDismissNotificationsEffect) GetRuns() []*ScheduleNotificationRef {
@@ -4638,7 +4730,7 @@ type ScheduleNavigateEffect struct {
 
 func (x *ScheduleNavigateEffect) Reset() {
 	*x = ScheduleNavigateEffect{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4650,7 +4742,7 @@ func (x *ScheduleNavigateEffect) String() string {
 func (*ScheduleNavigateEffect) ProtoMessage() {}
 
 func (x *ScheduleNavigateEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4663,7 +4755,7 @@ func (x *ScheduleNavigateEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleNavigateEffect.ProtoReflect.Descriptor instead.
 func (*ScheduleNavigateEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{33}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ScheduleNavigateEffect) GetRoute() ScheduleNavigateRoute {
@@ -4727,7 +4819,7 @@ type ScheduleCacheLoadedEvent struct {
 
 func (x *ScheduleCacheLoadedEvent) Reset() {
 	*x = ScheduleCacheLoadedEvent{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4739,7 +4831,7 @@ func (x *ScheduleCacheLoadedEvent) String() string {
 func (*ScheduleCacheLoadedEvent) ProtoMessage() {}
 
 func (x *ScheduleCacheLoadedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4752,7 +4844,7 @@ func (x *ScheduleCacheLoadedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleCacheLoadedEvent.ProtoReflect.Descriptor instead.
 func (*ScheduleCacheLoadedEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{34}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ScheduleCacheLoadedEvent) GetOpId() uint64 {
@@ -4795,7 +4887,7 @@ type ScheduleSeenLoadedEvent struct {
 
 func (x *ScheduleSeenLoadedEvent) Reset() {
 	*x = ScheduleSeenLoadedEvent{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4807,7 +4899,7 @@ func (x *ScheduleSeenLoadedEvent) String() string {
 func (*ScheduleSeenLoadedEvent) ProtoMessage() {}
 
 func (x *ScheduleSeenLoadedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4820,7 +4912,7 @@ func (x *ScheduleSeenLoadedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleSeenLoadedEvent.ProtoReflect.Descriptor instead.
 func (*ScheduleSeenLoadedEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{35}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ScheduleSeenLoadedEvent) GetMachineId() string {
@@ -4862,7 +4954,7 @@ type ScheduleLocalContextEvent struct {
 
 func (x *ScheduleLocalContextEvent) Reset() {
 	*x = ScheduleLocalContextEvent{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4874,7 +4966,7 @@ func (x *ScheduleLocalContextEvent) String() string {
 func (*ScheduleLocalContextEvent) ProtoMessage() {}
 
 func (x *ScheduleLocalContextEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4887,7 +4979,7 @@ func (x *ScheduleLocalContextEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleLocalContextEvent.ProtoReflect.Descriptor instead.
 func (*ScheduleLocalContextEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{36}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ScheduleLocalContextEvent) GetLocalTimezone() string {
@@ -4920,7 +5012,7 @@ type ScheduleStringAction struct {
 
 func (x *ScheduleStringAction) Reset() {
 	*x = ScheduleStringAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4932,7 +5024,7 @@ func (x *ScheduleStringAction) String() string {
 func (*ScheduleStringAction) ProtoMessage() {}
 
 func (x *ScheduleStringAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4945,7 +5037,7 @@ func (x *ScheduleStringAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleStringAction.ProtoReflect.Descriptor instead.
 func (*ScheduleStringAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{37}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ScheduleStringAction) GetValue() string {
@@ -4964,7 +5056,7 @@ type ScheduleBoolAction struct {
 
 func (x *ScheduleBoolAction) Reset() {
 	*x = ScheduleBoolAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4976,7 +5068,7 @@ func (x *ScheduleBoolAction) String() string {
 func (*ScheduleBoolAction) ProtoMessage() {}
 
 func (x *ScheduleBoolAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4989,7 +5081,7 @@ func (x *ScheduleBoolAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleBoolAction.ProtoReflect.Descriptor instead.
 func (*ScheduleBoolAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{38}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ScheduleBoolAction) GetValue() bool {
@@ -5009,7 +5101,7 @@ type ScheduleTaskRef struct {
 
 func (x *ScheduleTaskRef) Reset() {
 	*x = ScheduleTaskRef{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5021,7 +5113,7 @@ func (x *ScheduleTaskRef) String() string {
 func (*ScheduleTaskRef) ProtoMessage() {}
 
 func (x *ScheduleTaskRef) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5034,7 +5126,7 @@ func (x *ScheduleTaskRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleTaskRef.ProtoReflect.Descriptor instead.
 func (*ScheduleTaskRef) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{39}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ScheduleTaskRef) GetMachineId() string {
@@ -5062,7 +5154,7 @@ type ScheduleTaskStringAction struct {
 
 func (x *ScheduleTaskStringAction) Reset() {
 	*x = ScheduleTaskStringAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5074,7 +5166,7 @@ func (x *ScheduleTaskStringAction) String() string {
 func (*ScheduleTaskStringAction) ProtoMessage() {}
 
 func (x *ScheduleTaskStringAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5087,7 +5179,7 @@ func (x *ScheduleTaskStringAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleTaskStringAction.ProtoReflect.Descriptor instead.
 func (*ScheduleTaskStringAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{40}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ScheduleTaskStringAction) GetMachineId() string {
@@ -5122,7 +5214,7 @@ type ScheduleTaskBoolAction struct {
 
 func (x *ScheduleTaskBoolAction) Reset() {
 	*x = ScheduleTaskBoolAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5134,7 +5226,7 @@ func (x *ScheduleTaskBoolAction) String() string {
 func (*ScheduleTaskBoolAction) ProtoMessage() {}
 
 func (x *ScheduleTaskBoolAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5147,7 +5239,7 @@ func (x *ScheduleTaskBoolAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleTaskBoolAction.ProtoReflect.Descriptor instead.
 func (*ScheduleTaskBoolAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{41}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ScheduleTaskBoolAction) GetMachineId() string {
@@ -5182,7 +5274,7 @@ type ScheduleMutationRef struct {
 
 func (x *ScheduleMutationRef) Reset() {
 	*x = ScheduleMutationRef{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5194,7 +5286,7 @@ func (x *ScheduleMutationRef) String() string {
 func (*ScheduleMutationRef) ProtoMessage() {}
 
 func (x *ScheduleMutationRef) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5207,7 +5299,7 @@ func (x *ScheduleMutationRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleMutationRef.ProtoReflect.Descriptor instead.
 func (*ScheduleMutationRef) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{42}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *ScheduleMutationRef) GetMachineId() string {
@@ -5241,7 +5333,7 @@ type ScheduleMarkReadAction struct {
 
 func (x *ScheduleMarkReadAction) Reset() {
 	*x = ScheduleMarkReadAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5253,7 +5345,7 @@ func (x *ScheduleMarkReadAction) String() string {
 func (*ScheduleMarkReadAction) ProtoMessage() {}
 
 func (x *ScheduleMarkReadAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5266,7 +5358,7 @@ func (x *ScheduleMarkReadAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleMarkReadAction.ProtoReflect.Descriptor instead.
 func (*ScheduleMarkReadAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{43}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *ScheduleMarkReadAction) GetTasks() []*ScheduleTaskRef {
@@ -5294,7 +5386,7 @@ type ScheduleOperateAction struct {
 
 func (x *ScheduleOperateAction) Reset() {
 	*x = ScheduleOperateAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5306,7 +5398,7 @@ func (x *ScheduleOperateAction) String() string {
 func (*ScheduleOperateAction) ProtoMessage() {}
 
 func (x *ScheduleOperateAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5319,7 +5411,7 @@ func (x *ScheduleOperateAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleOperateAction.ProtoReflect.Descriptor instead.
 func (*ScheduleOperateAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{44}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ScheduleOperateAction) GetMachineId() string {
@@ -5357,7 +5449,7 @@ type ScheduleFormOpenAction struct {
 
 func (x *ScheduleFormOpenAction) Reset() {
 	*x = ScheduleFormOpenAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5369,7 +5461,7 @@ func (x *ScheduleFormOpenAction) String() string {
 func (*ScheduleFormOpenAction) ProtoMessage() {}
 
 func (x *ScheduleFormOpenAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5382,7 +5474,7 @@ func (x *ScheduleFormOpenAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormOpenAction.ProtoReflect.Descriptor instead.
 func (*ScheduleFormOpenAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{45}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ScheduleFormOpenAction) GetMode() ScheduleFormMode {
@@ -5437,7 +5529,7 @@ type ScheduleFormStringAction struct {
 
 func (x *ScheduleFormStringAction) Reset() {
 	*x = ScheduleFormStringAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5449,7 +5541,7 @@ func (x *ScheduleFormStringAction) String() string {
 func (*ScheduleFormStringAction) ProtoMessage() {}
 
 func (x *ScheduleFormStringAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5462,7 +5554,7 @@ func (x *ScheduleFormStringAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormStringAction.ProtoReflect.Descriptor instead.
 func (*ScheduleFormStringAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{46}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ScheduleFormStringAction) GetFormKey() string {
@@ -5489,7 +5581,7 @@ type ScheduleFormBoolAction struct {
 
 func (x *ScheduleFormBoolAction) Reset() {
 	*x = ScheduleFormBoolAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5501,7 +5593,7 @@ func (x *ScheduleFormBoolAction) String() string {
 func (*ScheduleFormBoolAction) ProtoMessage() {}
 
 func (x *ScheduleFormBoolAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5514,7 +5606,7 @@ func (x *ScheduleFormBoolAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormBoolAction.ProtoReflect.Descriptor instead.
 func (*ScheduleFormBoolAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{47}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ScheduleFormBoolAction) GetFormKey() string {
@@ -5542,7 +5634,7 @@ type ScheduleFormSelectProjectAction struct {
 
 func (x *ScheduleFormSelectProjectAction) Reset() {
 	*x = ScheduleFormSelectProjectAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5554,7 +5646,7 @@ func (x *ScheduleFormSelectProjectAction) String() string {
 func (*ScheduleFormSelectProjectAction) ProtoMessage() {}
 
 func (x *ScheduleFormSelectProjectAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5567,7 +5659,7 @@ func (x *ScheduleFormSelectProjectAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormSelectProjectAction.ProtoReflect.Descriptor instead.
 func (*ScheduleFormSelectProjectAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{48}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *ScheduleFormSelectProjectAction) GetFormKey() string {
@@ -5601,7 +5693,7 @@ type ScheduleFormSelectAgentAction struct {
 
 func (x *ScheduleFormSelectAgentAction) Reset() {
 	*x = ScheduleFormSelectAgentAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5613,7 +5705,7 @@ func (x *ScheduleFormSelectAgentAction) String() string {
 func (*ScheduleFormSelectAgentAction) ProtoMessage() {}
 
 func (x *ScheduleFormSelectAgentAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5626,7 +5718,7 @@ func (x *ScheduleFormSelectAgentAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormSelectAgentAction.ProtoReflect.Descriptor instead.
 func (*ScheduleFormSelectAgentAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{49}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *ScheduleFormSelectAgentAction) GetFormKey() string {
@@ -5655,7 +5747,7 @@ type ScheduleFormSelectModelAction struct {
 
 func (x *ScheduleFormSelectModelAction) Reset() {
 	*x = ScheduleFormSelectModelAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[50]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5667,7 +5759,7 @@ func (x *ScheduleFormSelectModelAction) String() string {
 func (*ScheduleFormSelectModelAction) ProtoMessage() {}
 
 func (x *ScheduleFormSelectModelAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[50]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5680,7 +5772,7 @@ func (x *ScheduleFormSelectModelAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormSelectModelAction.ProtoReflect.Descriptor instead.
 func (*ScheduleFormSelectModelAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{50}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *ScheduleFormSelectModelAction) GetFormKey() string {
@@ -5733,13 +5825,14 @@ type ScheduleFormUpdateTimingAction struct {
 	UntilDstGap     *bool                  `protobuf:"varint,18,opt,name=until_dst_gap,json=untilDstGap,proto3,oneof" json:"until_dst_gap,omitempty"`
 	Apply           bool                   `protobuf:"varint,19,opt,name=apply,proto3" json:"apply,omitempty"`
 	ResetDraft      bool                   `protobuf:"varint,20,opt,name=reset_draft,json=resetDraft,proto3" json:"reset_draft,omitempty"`
+	JitterMinutes   *int64                 `protobuf:"varint,21,opt,name=jitter_minutes,json=jitterMinutes,proto3,oneof" json:"jitter_minutes,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ScheduleFormUpdateTimingAction) Reset() {
 	*x = ScheduleFormUpdateTimingAction{}
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[51]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5751,7 +5844,7 @@ func (x *ScheduleFormUpdateTimingAction) String() string {
 func (*ScheduleFormUpdateTimingAction) ProtoMessage() {}
 
 func (x *ScheduleFormUpdateTimingAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[51]
+	mi := &file_remoteagent_core_v1_schedules_view_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5764,7 +5857,7 @@ func (x *ScheduleFormUpdateTimingAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleFormUpdateTimingAction.ProtoReflect.Descriptor instead.
 func (*ScheduleFormUpdateTimingAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{51}
+	return file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *ScheduleFormUpdateTimingAction) GetFormKey() string {
@@ -5905,6 +5998,13 @@ func (x *ScheduleFormUpdateTimingAction) GetResetDraft() bool {
 		return x.ResetDraft
 	}
 	return false
+}
+
+func (x *ScheduleFormUpdateTimingAction) GetJitterMinutes() int64 {
+	if x != nil && x.JitterMinutes != nil {
+		return *x.JitterMinutes
+	}
+	return 0
 }
 
 var File_remoteagent_core_v1_schedules_view_proto protoreflect.FileDescriptor
@@ -6159,7 +6259,11 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\vscoped_mode\x18/ \x01(\tR\n" +
 	"scopedMode\x12F\n" +
 	"\aactions\x180 \x01(\v2,.remoteagent.core.v1.ScheduleTaskActionsViewR\aactions\x12>\n" +
-	"\rmenu_subtitle\x181 \x01(\v2\x19.remoteagent.core.v1.TextR\fmenuSubtitle\"\xa9\x06\n" +
+	"\rmenu_subtitle\x181 \x01(\v2\x19.remoteagent.core.v1.TextR\fmenuSubtitle\"\x81\x01\n" +
+	"\x18ScheduleJitterOptionView\x12\x18\n" +
+	"\aminutes\x18\x01 \x01(\x03R\aminutes\x12/\n" +
+	"\x05label\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05label\x12\x1a\n" +
+	"\bselected\x18\x03 \x01(\bR\bselected\"\x9a\b\n" +
 	"\x17ScheduleTimingDraftView\x12;\n" +
 	"\x04kind\x18\x01 \x01(\x0e2'.remoteagent.core.v1.ScheduleTimingKindR\x04kind\x122\n" +
 	"\x15after_turn_unselected\x18\x02 \x01(\bR\x13afterTurnUnselected\x12A\n" +
@@ -6181,7 +6285,13 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\rinterval_hint\x18\x10 \x01(\v2\x19.remoteagent.core.v1.TextR\fintervalHint\x12<\n" +
 	"\ftiming_error\x18\x11 \x01(\v2\x19.remoteagent.core.v1.TextR\vtimingError\x12.\n" +
 	"\x13timing_done_enabled\x18\x12 \x01(\bR\x11timingDoneEnabled\x12%\n" +
-	"\x0etiming_applied\x18\x13 \x01(\bR\rtimingApplied\"\xa6\x01\n" +
+	"\x0etiming_applied\x18\x13 \x01(\bR\rtimingApplied\x12\x1f\n" +
+	"\vshow_jitter\x18\x14 \x01(\bR\n" +
+	"showJitter\x12T\n" +
+	"\x0ejitter_options\x18\x15 \x03(\v2-.remoteagent.core.v1.ScheduleJitterOptionViewR\rjitterOptions\x12<\n" +
+	"\fjitter_label\x18\x16 \x01(\v2\x19.remoteagent.core.v1.TextR\vjitterLabel\x12:\n" +
+	"\vjitter_hint\x18\x17 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"jitterHint\"\xa6\x01\n" +
 	"\x19ScheduleProjectOptionView\x12\x1f\n" +
 	"\vproject_key\x18\x01 \x01(\tR\n" +
 	"projectKey\x12-\n" +
@@ -6409,7 +6519,7 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\x05model\x18\x02 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x03 \x01(\tR\x06effort\x125\n" +
 	"\x04mode\x18\x04 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeH\x00R\x04mode\x88\x01\x01B\a\n" +
-	"\x05_mode\"\xa3\a\n" +
+	"\x05_mode\"\xe2\a\n" +
 	"\x1eScheduleFormUpdateTimingAction\x12\x19\n" +
 	"\bform_key\x18\x01 \x01(\tR\aformKey\x12@\n" +
 	"\x04kind\x18\x02 \x01(\x0e2'.remoteagent.core.v1.ScheduleTimingKindH\x00R\x04kind\x88\x01\x01\x12\x17\n" +
@@ -6436,7 +6546,8 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\runtil_dst_gap\x18\x12 \x01(\bH\x0eR\vuntilDstGap\x88\x01\x01\x12\x14\n" +
 	"\x05apply\x18\x13 \x01(\bR\x05apply\x12\x1f\n" +
 	"\vreset_draft\x18\x14 \x01(\bR\n" +
-	"resetDraftB\a\n" +
+	"resetDraft\x12*\n" +
+	"\x0ejitter_minutes\x18\x15 \x01(\x03H\x0fR\rjitterMinutes\x88\x01\x01B\a\n" +
 	"\x05_kindB\a\n" +
 	"\x05_dateB\a\n" +
 	"\x05_timeB\a\n" +
@@ -6451,7 +6562,8 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\x06_at_msB\r\n" +
 	"\v_zone_validB\r\n" +
 	"\v_at_dst_gapB\x10\n" +
-	"\x0e_until_dst_gap*\xca\x01\n" +
+	"\x0e_until_dst_gapB\x11\n" +
+	"\x0f_jitter_minutes*\xca\x01\n" +
 	"\x14ScheduleDisplayGroup\x12&\n" +
 	"\"SCHEDULE_DISPLAY_GROUP_UNSPECIFIED\x10\x00\x12$\n" +
 	" SCHEDULE_DISPLAY_GROUP_ATTENTION\x10\x01\x12 \n" +
@@ -6579,7 +6691,7 @@ func file_remoteagent_core_v1_schedules_view_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_schedules_view_proto_enumTypes = make([]protoimpl.EnumInfo, 17)
-var file_remoteagent_core_v1_schedules_view_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
+var file_remoteagent_core_v1_schedules_view_proto_msgTypes = make([]protoimpl.MessageInfo, 53)
 var file_remoteagent_core_v1_schedules_view_proto_goTypes = []any{
 	(ScheduleDisplayGroup)(0),                  // 0: remoteagent.core.v1.ScheduleDisplayGroup
 	(ScheduleTaskStatus)(0),                    // 1: remoteagent.core.v1.ScheduleTaskStatus
@@ -6615,190 +6727,195 @@ var file_remoteagent_core_v1_schedules_view_proto_goTypes = []any{
 	(*ScheduleRunRowView)(nil),                 // 31: remoteagent.core.v1.ScheduleRunRowView
 	(*ScheduleHistoryGroupView)(nil),           // 32: remoteagent.core.v1.ScheduleHistoryGroupView
 	(*ScheduleDetailViewModel)(nil),            // 33: remoteagent.core.v1.ScheduleDetailViewModel
-	(*ScheduleTimingDraftView)(nil),            // 34: remoteagent.core.v1.ScheduleTimingDraftView
-	(*ScheduleProjectOptionView)(nil),          // 35: remoteagent.core.v1.ScheduleProjectOptionView
-	(*ScheduleMachineOptionView)(nil),          // 36: remoteagent.core.v1.ScheduleMachineOptionView
-	(*ScheduleModeOptionView)(nil),             // 37: remoteagent.core.v1.ScheduleModeOptionView
-	(*ScheduleModelPanelView)(nil),             // 38: remoteagent.core.v1.ScheduleModelPanelView
-	(*ScheduleFormNoticeView)(nil),             // 39: remoteagent.core.v1.ScheduleFormNoticeView
-	(*ScheduleFormViewModel)(nil),              // 40: remoteagent.core.v1.ScheduleFormViewModel
-	(*ScheduleSessionStripTaskView)(nil),       // 41: remoteagent.core.v1.ScheduleSessionStripTaskView
-	(*ScheduleSessionStripViewModel)(nil),      // 42: remoteagent.core.v1.ScheduleSessionStripViewModel
-	(*ScheduleReadCacheEffect)(nil),            // 43: remoteagent.core.v1.ScheduleReadCacheEffect
-	(*ScheduleDeleteCacheEffect)(nil),          // 44: remoteagent.core.v1.ScheduleDeleteCacheEffect
-	(*ScheduleSeenToken)(nil),                  // 45: remoteagent.core.v1.ScheduleSeenToken
-	(*ScheduleLoadSeenEffect)(nil),             // 46: remoteagent.core.v1.ScheduleLoadSeenEffect
-	(*ScheduleSaveSeenEffect)(nil),             // 47: remoteagent.core.v1.ScheduleSaveSeenEffect
-	(*ScheduleNotificationRef)(nil),            // 48: remoteagent.core.v1.ScheduleNotificationRef
-	(*ScheduleDismissNotificationsEffect)(nil), // 49: remoteagent.core.v1.ScheduleDismissNotificationsEffect
-	(*ScheduleNavigateEffect)(nil),             // 50: remoteagent.core.v1.ScheduleNavigateEffect
-	(*ScheduleCacheLoadedEvent)(nil),           // 51: remoteagent.core.v1.ScheduleCacheLoadedEvent
-	(*ScheduleSeenLoadedEvent)(nil),            // 52: remoteagent.core.v1.ScheduleSeenLoadedEvent
-	(*ScheduleLocalContextEvent)(nil),          // 53: remoteagent.core.v1.ScheduleLocalContextEvent
-	(*ScheduleStringAction)(nil),               // 54: remoteagent.core.v1.ScheduleStringAction
-	(*ScheduleBoolAction)(nil),                 // 55: remoteagent.core.v1.ScheduleBoolAction
-	(*ScheduleTaskRef)(nil),                    // 56: remoteagent.core.v1.ScheduleTaskRef
-	(*ScheduleTaskStringAction)(nil),           // 57: remoteagent.core.v1.ScheduleTaskStringAction
-	(*ScheduleTaskBoolAction)(nil),             // 58: remoteagent.core.v1.ScheduleTaskBoolAction
-	(*ScheduleMutationRef)(nil),                // 59: remoteagent.core.v1.ScheduleMutationRef
-	(*ScheduleMarkReadAction)(nil),             // 60: remoteagent.core.v1.ScheduleMarkReadAction
-	(*ScheduleOperateAction)(nil),              // 61: remoteagent.core.v1.ScheduleOperateAction
-	(*ScheduleFormOpenAction)(nil),             // 62: remoteagent.core.v1.ScheduleFormOpenAction
-	(*ScheduleFormStringAction)(nil),           // 63: remoteagent.core.v1.ScheduleFormStringAction
-	(*ScheduleFormBoolAction)(nil),             // 64: remoteagent.core.v1.ScheduleFormBoolAction
-	(*ScheduleFormSelectProjectAction)(nil),    // 65: remoteagent.core.v1.ScheduleFormSelectProjectAction
-	(*ScheduleFormSelectAgentAction)(nil),      // 66: remoteagent.core.v1.ScheduleFormSelectAgentAction
-	(*ScheduleFormSelectModelAction)(nil),      // 67: remoteagent.core.v1.ScheduleFormSelectModelAction
-	(*ScheduleFormUpdateTimingAction)(nil),     // 68: remoteagent.core.v1.ScheduleFormUpdateTimingAction
-	(*Text)(nil),                               // 69: remoteagent.core.v1.Text
-	(*ConnectionStatusView)(nil),               // 70: remoteagent.core.v1.ConnectionStatusView
-	(v1.ApprovalMode)(0),                       // 71: remoteagent.v1.ApprovalMode
-	(*ModelOptionView)(nil),                    // 72: remoteagent.core.v1.ModelOptionView
-	(v1.Agent)(0),                              // 73: remoteagent.v1.Agent
-	(*AgentOptionView)(nil),                    // 74: remoteagent.core.v1.AgentOptionView
+	(*ScheduleJitterOptionView)(nil),           // 34: remoteagent.core.v1.ScheduleJitterOptionView
+	(*ScheduleTimingDraftView)(nil),            // 35: remoteagent.core.v1.ScheduleTimingDraftView
+	(*ScheduleProjectOptionView)(nil),          // 36: remoteagent.core.v1.ScheduleProjectOptionView
+	(*ScheduleMachineOptionView)(nil),          // 37: remoteagent.core.v1.ScheduleMachineOptionView
+	(*ScheduleModeOptionView)(nil),             // 38: remoteagent.core.v1.ScheduleModeOptionView
+	(*ScheduleModelPanelView)(nil),             // 39: remoteagent.core.v1.ScheduleModelPanelView
+	(*ScheduleFormNoticeView)(nil),             // 40: remoteagent.core.v1.ScheduleFormNoticeView
+	(*ScheduleFormViewModel)(nil),              // 41: remoteagent.core.v1.ScheduleFormViewModel
+	(*ScheduleSessionStripTaskView)(nil),       // 42: remoteagent.core.v1.ScheduleSessionStripTaskView
+	(*ScheduleSessionStripViewModel)(nil),      // 43: remoteagent.core.v1.ScheduleSessionStripViewModel
+	(*ScheduleReadCacheEffect)(nil),            // 44: remoteagent.core.v1.ScheduleReadCacheEffect
+	(*ScheduleDeleteCacheEffect)(nil),          // 45: remoteagent.core.v1.ScheduleDeleteCacheEffect
+	(*ScheduleSeenToken)(nil),                  // 46: remoteagent.core.v1.ScheduleSeenToken
+	(*ScheduleLoadSeenEffect)(nil),             // 47: remoteagent.core.v1.ScheduleLoadSeenEffect
+	(*ScheduleSaveSeenEffect)(nil),             // 48: remoteagent.core.v1.ScheduleSaveSeenEffect
+	(*ScheduleNotificationRef)(nil),            // 49: remoteagent.core.v1.ScheduleNotificationRef
+	(*ScheduleDismissNotificationsEffect)(nil), // 50: remoteagent.core.v1.ScheduleDismissNotificationsEffect
+	(*ScheduleNavigateEffect)(nil),             // 51: remoteagent.core.v1.ScheduleNavigateEffect
+	(*ScheduleCacheLoadedEvent)(nil),           // 52: remoteagent.core.v1.ScheduleCacheLoadedEvent
+	(*ScheduleSeenLoadedEvent)(nil),            // 53: remoteagent.core.v1.ScheduleSeenLoadedEvent
+	(*ScheduleLocalContextEvent)(nil),          // 54: remoteagent.core.v1.ScheduleLocalContextEvent
+	(*ScheduleStringAction)(nil),               // 55: remoteagent.core.v1.ScheduleStringAction
+	(*ScheduleBoolAction)(nil),                 // 56: remoteagent.core.v1.ScheduleBoolAction
+	(*ScheduleTaskRef)(nil),                    // 57: remoteagent.core.v1.ScheduleTaskRef
+	(*ScheduleTaskStringAction)(nil),           // 58: remoteagent.core.v1.ScheduleTaskStringAction
+	(*ScheduleTaskBoolAction)(nil),             // 59: remoteagent.core.v1.ScheduleTaskBoolAction
+	(*ScheduleMutationRef)(nil),                // 60: remoteagent.core.v1.ScheduleMutationRef
+	(*ScheduleMarkReadAction)(nil),             // 61: remoteagent.core.v1.ScheduleMarkReadAction
+	(*ScheduleOperateAction)(nil),              // 62: remoteagent.core.v1.ScheduleOperateAction
+	(*ScheduleFormOpenAction)(nil),             // 63: remoteagent.core.v1.ScheduleFormOpenAction
+	(*ScheduleFormStringAction)(nil),           // 64: remoteagent.core.v1.ScheduleFormStringAction
+	(*ScheduleFormBoolAction)(nil),             // 65: remoteagent.core.v1.ScheduleFormBoolAction
+	(*ScheduleFormSelectProjectAction)(nil),    // 66: remoteagent.core.v1.ScheduleFormSelectProjectAction
+	(*ScheduleFormSelectAgentAction)(nil),      // 67: remoteagent.core.v1.ScheduleFormSelectAgentAction
+	(*ScheduleFormSelectModelAction)(nil),      // 68: remoteagent.core.v1.ScheduleFormSelectModelAction
+	(*ScheduleFormUpdateTimingAction)(nil),     // 69: remoteagent.core.v1.ScheduleFormUpdateTimingAction
+	(*Text)(nil),                               // 70: remoteagent.core.v1.Text
+	(*ConnectionStatusView)(nil),               // 71: remoteagent.core.v1.ConnectionStatusView
+	(v1.ApprovalMode)(0),                       // 72: remoteagent.v1.ApprovalMode
+	(*ModelOptionView)(nil),                    // 73: remoteagent.core.v1.ModelOptionView
+	(v1.Agent)(0),                              // 74: remoteagent.v1.Agent
+	(*AgentOptionView)(nil),                    // 75: remoteagent.core.v1.AgentOptionView
 }
 var file_remoteagent_core_v1_schedules_view_proto_depIdxs = []int32{
 	6,   // 0: remoteagent.core.v1.ScheduleTakeoverView.via:type_name -> remoteagent.core.v1.ScheduleTakeoverVia
-	69,  // 1: remoteagent.core.v1.ScheduleTakeoverView.label:type_name -> remoteagent.core.v1.Text
-	69,  // 2: remoteagent.core.v1.ScheduleTaskActionsView.run_now_disabled_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 3: remoteagent.core.v1.ScheduleTaskActionsView.toggle_label:type_name -> remoteagent.core.v1.Text
-	69,  // 4: remoteagent.core.v1.ScheduleTaskActionsView.toggle_disabled_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 5: remoteagent.core.v1.ScheduleTaskActionsView.delete_disabled_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 6: remoteagent.core.v1.ScheduleTaskActionsView.rename_disabled_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 7: remoteagent.core.v1.ScheduleTaskActionsView.edit_definition_disabled_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 8: remoteagent.core.v1.ScheduleTaskActionsView.notify_disabled_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 9: remoteagent.core.v1.ScheduleMutationView.error:type_name -> remoteagent.core.v1.Text
-	69,  // 10: remoteagent.core.v1.ScheduleMutationView.notice:type_name -> remoteagent.core.v1.Text
-	69,  // 11: remoteagent.core.v1.ScheduleMutationView.frozen_hint:type_name -> remoteagent.core.v1.Text
+	70,  // 1: remoteagent.core.v1.ScheduleTakeoverView.label:type_name -> remoteagent.core.v1.Text
+	70,  // 2: remoteagent.core.v1.ScheduleTaskActionsView.run_now_disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 3: remoteagent.core.v1.ScheduleTaskActionsView.toggle_label:type_name -> remoteagent.core.v1.Text
+	70,  // 4: remoteagent.core.v1.ScheduleTaskActionsView.toggle_disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 5: remoteagent.core.v1.ScheduleTaskActionsView.delete_disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 6: remoteagent.core.v1.ScheduleTaskActionsView.rename_disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 7: remoteagent.core.v1.ScheduleTaskActionsView.edit_definition_disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 8: remoteagent.core.v1.ScheduleTaskActionsView.notify_disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 9: remoteagent.core.v1.ScheduleMutationView.error:type_name -> remoteagent.core.v1.Text
+	70,  // 10: remoteagent.core.v1.ScheduleMutationView.notice:type_name -> remoteagent.core.v1.Text
+	70,  // 11: remoteagent.core.v1.ScheduleMutationView.frozen_hint:type_name -> remoteagent.core.v1.Text
 	7,   // 12: remoteagent.core.v1.ScheduleHeadlineView.kind:type_name -> remoteagent.core.v1.ScheduleHeadlineKind
-	69,  // 13: remoteagent.core.v1.ScheduleHeadlineView.title:type_name -> remoteagent.core.v1.Text
-	69,  // 14: remoteagent.core.v1.ScheduleHeadlineView.sub:type_name -> remoteagent.core.v1.Text
-	69,  // 15: remoteagent.core.v1.ScheduleMachineErrorView.error:type_name -> remoteagent.core.v1.Text
+	70,  // 13: remoteagent.core.v1.ScheduleHeadlineView.title:type_name -> remoteagent.core.v1.Text
+	70,  // 14: remoteagent.core.v1.ScheduleHeadlineView.sub:type_name -> remoteagent.core.v1.Text
+	70,  // 15: remoteagent.core.v1.ScheduleMachineErrorView.error:type_name -> remoteagent.core.v1.Text
 	0,   // 16: remoteagent.core.v1.ScheduleTaskItemView.group:type_name -> remoteagent.core.v1.ScheduleDisplayGroup
 	1,   // 17: remoteagent.core.v1.ScheduleTaskItemView.status:type_name -> remoteagent.core.v1.ScheduleTaskStatus
 	2,   // 18: remoteagent.core.v1.ScheduleTaskItemView.tone:type_name -> remoteagent.core.v1.ScheduleTone
-	69,  // 19: remoteagent.core.v1.ScheduleTaskItemView.time_text:type_name -> remoteagent.core.v1.Text
-	69,  // 20: remoteagent.core.v1.ScheduleTaskItemView.attention_lead:type_name -> remoteagent.core.v1.Text
-	69,  // 21: remoteagent.core.v1.ScheduleTaskItemView.attention_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 22: remoteagent.core.v1.ScheduleTaskItemView.preview:type_name -> remoteagent.core.v1.Text
-	69,  // 23: remoteagent.core.v1.ScheduleTaskItemView.metadata:type_name -> remoteagent.core.v1.Text
-	69,  // 24: remoteagent.core.v1.ScheduleTaskItemView.timing_text:type_name -> remoteagent.core.v1.Text
-	69,  // 25: remoteagent.core.v1.ScheduleTaskItemView.next_run_text:type_name -> remoteagent.core.v1.Text
+	70,  // 19: remoteagent.core.v1.ScheduleTaskItemView.time_text:type_name -> remoteagent.core.v1.Text
+	70,  // 20: remoteagent.core.v1.ScheduleTaskItemView.attention_lead:type_name -> remoteagent.core.v1.Text
+	70,  // 21: remoteagent.core.v1.ScheduleTaskItemView.attention_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 22: remoteagent.core.v1.ScheduleTaskItemView.preview:type_name -> remoteagent.core.v1.Text
+	70,  // 23: remoteagent.core.v1.ScheduleTaskItemView.metadata:type_name -> remoteagent.core.v1.Text
+	70,  // 24: remoteagent.core.v1.ScheduleTaskItemView.timing_text:type_name -> remoteagent.core.v1.Text
+	70,  // 25: remoteagent.core.v1.ScheduleTaskItemView.next_run_text:type_name -> remoteagent.core.v1.Text
 	21,  // 26: remoteagent.core.v1.ScheduleTaskItemView.takeover:type_name -> remoteagent.core.v1.ScheduleTakeoverView
-	69,  // 27: remoteagent.core.v1.ScheduleTaskItemView.read_only_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 27: remoteagent.core.v1.ScheduleTaskItemView.read_only_reason:type_name -> remoteagent.core.v1.Text
 	22,  // 28: remoteagent.core.v1.ScheduleTaskItemView.actions:type_name -> remoteagent.core.v1.ScheduleTaskActionsView
-	69,  // 29: remoteagent.core.v1.ScheduleTaskItemView.menu_subtitle:type_name -> remoteagent.core.v1.Text
-	70,  // 30: remoteagent.core.v1.SchedulesViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
+	70,  // 29: remoteagent.core.v1.ScheduleTaskItemView.menu_subtitle:type_name -> remoteagent.core.v1.Text
+	71,  // 30: remoteagent.core.v1.SchedulesViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
 	24,  // 31: remoteagent.core.v1.SchedulesViewModel.headline:type_name -> remoteagent.core.v1.ScheduleHeadlineView
-	69,  // 32: remoteagent.core.v1.SchedulesViewModel.unsupported_notice:type_name -> remoteagent.core.v1.Text
-	69,  // 33: remoteagent.core.v1.SchedulesViewModel.offline_notice:type_name -> remoteagent.core.v1.Text
+	70,  // 32: remoteagent.core.v1.SchedulesViewModel.unsupported_notice:type_name -> remoteagent.core.v1.Text
+	70,  // 33: remoteagent.core.v1.SchedulesViewModel.offline_notice:type_name -> remoteagent.core.v1.Text
 	25,  // 34: remoteagent.core.v1.SchedulesViewModel.machine_errors:type_name -> remoteagent.core.v1.ScheduleMachineErrorView
-	69,  // 35: remoteagent.core.v1.SchedulesViewModel.empty_hint:type_name -> remoteagent.core.v1.Text
+	70,  // 35: remoteagent.core.v1.SchedulesViewModel.empty_hint:type_name -> remoteagent.core.v1.Text
 	26,  // 36: remoteagent.core.v1.SchedulesViewModel.attention:type_name -> remoteagent.core.v1.ScheduleTaskItemView
 	26,  // 37: remoteagent.core.v1.SchedulesViewModel.fresh:type_name -> remoteagent.core.v1.ScheduleTaskItemView
 	26,  // 38: remoteagent.core.v1.SchedulesViewModel.others:type_name -> remoteagent.core.v1.ScheduleTaskItemView
 	26,  // 39: remoteagent.core.v1.SchedulesViewModel.ended:type_name -> remoteagent.core.v1.ScheduleTaskItemView
-	69,  // 40: remoteagent.core.v1.SchedulesViewModel.ended_label:type_name -> remoteagent.core.v1.Text
-	69,  // 41: remoteagent.core.v1.SchedulesViewModel.others_section_title:type_name -> remoteagent.core.v1.Text
-	69,  // 42: remoteagent.core.v1.ScheduleAttentionView.message:type_name -> remoteagent.core.v1.Text
-	69,  // 43: remoteagent.core.v1.ScheduleAttentionView.primary_action_label:type_name -> remoteagent.core.v1.Text
+	70,  // 40: remoteagent.core.v1.SchedulesViewModel.ended_label:type_name -> remoteagent.core.v1.Text
+	70,  // 41: remoteagent.core.v1.SchedulesViewModel.others_section_title:type_name -> remoteagent.core.v1.Text
+	70,  // 42: remoteagent.core.v1.ScheduleAttentionView.message:type_name -> remoteagent.core.v1.Text
+	70,  // 43: remoteagent.core.v1.ScheduleAttentionView.primary_action_label:type_name -> remoteagent.core.v1.Text
 	9,   // 44: remoteagent.core.v1.ScheduleAttentionView.primary_action_kind:type_name -> remoteagent.core.v1.ScheduleRecoveryActionKind
-	69,  // 45: remoteagent.core.v1.ScheduleAttentionView.primary_action_disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 45: remoteagent.core.v1.ScheduleAttentionView.primary_action_disabled_reason:type_name -> remoteagent.core.v1.Text
 	3,   // 46: remoteagent.core.v1.ScheduleActiveRunView.status:type_name -> remoteagent.core.v1.ScheduleRunStatus
-	69,  // 47: remoteagent.core.v1.ScheduleActiveRunView.status_text:type_name -> remoteagent.core.v1.Text
-	69,  // 48: remoteagent.core.v1.ScheduleResultCardView.time_text:type_name -> remoteagent.core.v1.Text
-	69,  // 49: remoteagent.core.v1.ScheduleResultCardView.fallback_reason_text:type_name -> remoteagent.core.v1.Text
+	70,  // 47: remoteagent.core.v1.ScheduleActiveRunView.status_text:type_name -> remoteagent.core.v1.Text
+	70,  // 48: remoteagent.core.v1.ScheduleResultCardView.time_text:type_name -> remoteagent.core.v1.Text
+	70,  // 49: remoteagent.core.v1.ScheduleResultCardView.fallback_reason_text:type_name -> remoteagent.core.v1.Text
 	3,   // 50: remoteagent.core.v1.ScheduleRunRowView.status:type_name -> remoteagent.core.v1.ScheduleRunStatus
-	69,  // 51: remoteagent.core.v1.ScheduleRunRowView.notification_source_text:type_name -> remoteagent.core.v1.Text
-	69,  // 52: remoteagent.core.v1.ScheduleRunRowView.time_text:type_name -> remoteagent.core.v1.Text
-	69,  // 53: remoteagent.core.v1.ScheduleRunRowView.summary_text:type_name -> remoteagent.core.v1.Text
-	69,  // 54: remoteagent.core.v1.ScheduleHistoryGroupView.folded_title:type_name -> remoteagent.core.v1.Text
-	69,  // 55: remoteagent.core.v1.ScheduleHistoryGroupView.folded_summary:type_name -> remoteagent.core.v1.Text
+	70,  // 51: remoteagent.core.v1.ScheduleRunRowView.notification_source_text:type_name -> remoteagent.core.v1.Text
+	70,  // 52: remoteagent.core.v1.ScheduleRunRowView.time_text:type_name -> remoteagent.core.v1.Text
+	70,  // 53: remoteagent.core.v1.ScheduleRunRowView.summary_text:type_name -> remoteagent.core.v1.Text
+	70,  // 54: remoteagent.core.v1.ScheduleHistoryGroupView.folded_title:type_name -> remoteagent.core.v1.Text
+	70,  // 55: remoteagent.core.v1.ScheduleHistoryGroupView.folded_summary:type_name -> remoteagent.core.v1.Text
 	31,  // 56: remoteagent.core.v1.ScheduleHistoryGroupView.runs:type_name -> remoteagent.core.v1.ScheduleRunRowView
-	69,  // 57: remoteagent.core.v1.ScheduleDetailViewModel.not_found_text:type_name -> remoteagent.core.v1.Text
-	69,  // 58: remoteagent.core.v1.ScheduleDetailViewModel.subtitle:type_name -> remoteagent.core.v1.Text
-	70,  // 59: remoteagent.core.v1.ScheduleDetailViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
-	69,  // 60: remoteagent.core.v1.ScheduleDetailViewModel.read_only_notice:type_name -> remoteagent.core.v1.Text
-	69,  // 61: remoteagent.core.v1.ScheduleDetailViewModel.machine_error:type_name -> remoteagent.core.v1.Text
+	70,  // 57: remoteagent.core.v1.ScheduleDetailViewModel.not_found_text:type_name -> remoteagent.core.v1.Text
+	70,  // 58: remoteagent.core.v1.ScheduleDetailViewModel.subtitle:type_name -> remoteagent.core.v1.Text
+	71,  // 59: remoteagent.core.v1.ScheduleDetailViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
+	70,  // 60: remoteagent.core.v1.ScheduleDetailViewModel.read_only_notice:type_name -> remoteagent.core.v1.Text
+	70,  // 61: remoteagent.core.v1.ScheduleDetailViewModel.machine_error:type_name -> remoteagent.core.v1.Text
 	23,  // 62: remoteagent.core.v1.ScheduleDetailViewModel.mutation:type_name -> remoteagent.core.v1.ScheduleMutationView
 	28,  // 63: remoteagent.core.v1.ScheduleDetailViewModel.attention:type_name -> remoteagent.core.v1.ScheduleAttentionView
 	29,  // 64: remoteagent.core.v1.ScheduleDetailViewModel.active_run:type_name -> remoteagent.core.v1.ScheduleActiveRunView
 	30,  // 65: remoteagent.core.v1.ScheduleDetailViewModel.result_card:type_name -> remoteagent.core.v1.ScheduleResultCardView
 	32,  // 66: remoteagent.core.v1.ScheduleDetailViewModel.earlier_groups:type_name -> remoteagent.core.v1.ScheduleHistoryGroupView
-	69,  // 67: remoteagent.core.v1.ScheduleDetailViewModel.earlier_count_text:type_name -> remoteagent.core.v1.Text
-	69,  // 68: remoteagent.core.v1.ScheduleDetailViewModel.view_all_text:type_name -> remoteagent.core.v1.Text
-	69,  // 69: remoteagent.core.v1.ScheduleDetailViewModel.empty_history_text:type_name -> remoteagent.core.v1.Text
-	69,  // 70: remoteagent.core.v1.ScheduleDetailViewModel.timing_text:type_name -> remoteagent.core.v1.Text
-	69,  // 71: remoteagent.core.v1.ScheduleDetailViewModel.limits_text:type_name -> remoteagent.core.v1.Text
+	70,  // 67: remoteagent.core.v1.ScheduleDetailViewModel.earlier_count_text:type_name -> remoteagent.core.v1.Text
+	70,  // 68: remoteagent.core.v1.ScheduleDetailViewModel.view_all_text:type_name -> remoteagent.core.v1.Text
+	70,  // 69: remoteagent.core.v1.ScheduleDetailViewModel.empty_history_text:type_name -> remoteagent.core.v1.Text
+	70,  // 70: remoteagent.core.v1.ScheduleDetailViewModel.timing_text:type_name -> remoteagent.core.v1.Text
+	70,  // 71: remoteagent.core.v1.ScheduleDetailViewModel.limits_text:type_name -> remoteagent.core.v1.Text
 	4,   // 72: remoteagent.core.v1.ScheduleDetailViewModel.target_type:type_name -> remoteagent.core.v1.ScheduleTargetType
-	69,  // 73: remoteagent.core.v1.ScheduleDetailViewModel.target_label:type_name -> remoteagent.core.v1.Text
-	69,  // 74: remoteagent.core.v1.ScheduleDetailViewModel.target_value:type_name -> remoteagent.core.v1.Text
-	69,  // 75: remoteagent.core.v1.ScheduleDetailViewModel.permissions_text:type_name -> remoteagent.core.v1.Text
-	69,  // 76: remoteagent.core.v1.ScheduleDetailViewModel.creation_footer:type_name -> remoteagent.core.v1.Text
-	69,  // 77: remoteagent.core.v1.ScheduleDetailViewModel.run_once_footer:type_name -> remoteagent.core.v1.Text
+	70,  // 73: remoteagent.core.v1.ScheduleDetailViewModel.target_label:type_name -> remoteagent.core.v1.Text
+	70,  // 74: remoteagent.core.v1.ScheduleDetailViewModel.target_value:type_name -> remoteagent.core.v1.Text
+	70,  // 75: remoteagent.core.v1.ScheduleDetailViewModel.permissions_text:type_name -> remoteagent.core.v1.Text
+	70,  // 76: remoteagent.core.v1.ScheduleDetailViewModel.creation_footer:type_name -> remoteagent.core.v1.Text
+	70,  // 77: remoteagent.core.v1.ScheduleDetailViewModel.run_once_footer:type_name -> remoteagent.core.v1.Text
 	5,   // 78: remoteagent.core.v1.ScheduleDetailViewModel.source:type_name -> remoteagent.core.v1.ScheduleSource
 	21,  // 79: remoteagent.core.v1.ScheduleDetailViewModel.takeover:type_name -> remoteagent.core.v1.ScheduleTakeoverView
 	22,  // 80: remoteagent.core.v1.ScheduleDetailViewModel.actions:type_name -> remoteagent.core.v1.ScheduleTaskActionsView
-	69,  // 81: remoteagent.core.v1.ScheduleDetailViewModel.menu_subtitle:type_name -> remoteagent.core.v1.Text
-	10,  // 82: remoteagent.core.v1.ScheduleTimingDraftView.kind:type_name -> remoteagent.core.v1.ScheduleTimingKind
-	69,  // 83: remoteagent.core.v1.ScheduleTimingDraftView.after_turn_hint:type_name -> remoteagent.core.v1.Text
-	11,  // 84: remoteagent.core.v1.ScheduleTimingDraftView.unit:type_name -> remoteagent.core.v1.ScheduleIntervalUnit
-	12,  // 85: remoteagent.core.v1.ScheduleTimingDraftView.end:type_name -> remoteagent.core.v1.ScheduleTimingEnd
-	69,  // 86: remoteagent.core.v1.ScheduleTimingDraftView.interval_hint:type_name -> remoteagent.core.v1.Text
-	69,  // 87: remoteagent.core.v1.ScheduleTimingDraftView.timing_error:type_name -> remoteagent.core.v1.Text
-	69,  // 88: remoteagent.core.v1.ScheduleProjectOptionView.name:type_name -> remoteagent.core.v1.Text
-	69,  // 89: remoteagent.core.v1.ScheduleMachineOptionView.note:type_name -> remoteagent.core.v1.Text
-	71,  // 90: remoteagent.core.v1.ScheduleModeOptionView.mode:type_name -> remoteagent.v1.ApprovalMode
-	69,  // 91: remoteagent.core.v1.ScheduleModeOptionView.label:type_name -> remoteagent.core.v1.Text
-	69,  // 92: remoteagent.core.v1.ScheduleModeOptionView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	69,  // 93: remoteagent.core.v1.ScheduleModelPanelView.models_error:type_name -> remoteagent.core.v1.Text
-	69,  // 94: remoteagent.core.v1.ScheduleModelPanelView.default_model_label:type_name -> remoteagent.core.v1.Text
-	72,  // 95: remoteagent.core.v1.ScheduleModelPanelView.models:type_name -> remoteagent.core.v1.ModelOptionView
-	15,  // 96: remoteagent.core.v1.ScheduleFormNoticeView.kind:type_name -> remoteagent.core.v1.ScheduleFormNoticeKind
-	14,  // 97: remoteagent.core.v1.ScheduleFormNoticeView.severity:type_name -> remoteagent.core.v1.ScheduleFormNoticeSeverity
-	69,  // 98: remoteagent.core.v1.ScheduleFormNoticeView.text:type_name -> remoteagent.core.v1.Text
-	13,  // 99: remoteagent.core.v1.ScheduleFormViewModel.mode:type_name -> remoteagent.core.v1.ScheduleFormMode
-	69,  // 100: remoteagent.core.v1.ScheduleFormViewModel.message_error:type_name -> remoteagent.core.v1.Text
-	69,  // 101: remoteagent.core.v1.ScheduleFormViewModel.title_placeholder:type_name -> remoteagent.core.v1.Text
-	69,  // 102: remoteagent.core.v1.ScheduleFormViewModel.timing_summary:type_name -> remoteagent.core.v1.Text
-	34,  // 103: remoteagent.core.v1.ScheduleFormViewModel.timing:type_name -> remoteagent.core.v1.ScheduleTimingDraftView
-	69,  // 104: remoteagent.core.v1.ScheduleFormViewModel.project_name:type_name -> remoteagent.core.v1.Text
-	35,  // 105: remoteagent.core.v1.ScheduleFormViewModel.project_choices:type_name -> remoteagent.core.v1.ScheduleProjectOptionView
-	36,  // 106: remoteagent.core.v1.ScheduleFormViewModel.machine_choices:type_name -> remoteagent.core.v1.ScheduleMachineOptionView
-	73,  // 107: remoteagent.core.v1.ScheduleFormViewModel.agent:type_name -> remoteagent.v1.Agent
-	74,  // 108: remoteagent.core.v1.ScheduleFormViewModel.available_agents:type_name -> remoteagent.core.v1.AgentOptionView
-	69,  // 109: remoteagent.core.v1.ScheduleFormViewModel.model_label:type_name -> remoteagent.core.v1.Text
-	38,  // 110: remoteagent.core.v1.ScheduleFormViewModel.model_panel:type_name -> remoteagent.core.v1.ScheduleModelPanelView
-	71,  // 111: remoteagent.core.v1.ScheduleFormViewModel.approval_mode:type_name -> remoteagent.v1.ApprovalMode
-	69,  // 112: remoteagent.core.v1.ScheduleFormViewModel.approval_mode_label:type_name -> remoteagent.core.v1.Text
-	37,  // 113: remoteagent.core.v1.ScheduleFormViewModel.mode_choices:type_name -> remoteagent.core.v1.ScheduleModeOptionView
-	69,  // 114: remoteagent.core.v1.ScheduleFormViewModel.location_text:type_name -> remoteagent.core.v1.Text
-	69,  // 115: remoteagent.core.v1.ScheduleFormViewModel.submit_label:type_name -> remoteagent.core.v1.Text
-	69,  // 116: remoteagent.core.v1.ScheduleFormViewModel.submit_disabled_reason:type_name -> remoteagent.core.v1.Text
-	39,  // 117: remoteagent.core.v1.ScheduleFormViewModel.notices:type_name -> remoteagent.core.v1.ScheduleFormNoticeView
-	23,  // 118: remoteagent.core.v1.ScheduleFormViewModel.mutation:type_name -> remoteagent.core.v1.ScheduleMutationView
-	69,  // 119: remoteagent.core.v1.ScheduleSessionStripTaskView.timing_text:type_name -> remoteagent.core.v1.Text
-	69,  // 120: remoteagent.core.v1.ScheduleSessionStripTaskView.next_run_text:type_name -> remoteagent.core.v1.Text
-	1,   // 121: remoteagent.core.v1.ScheduleSessionStripTaskView.status:type_name -> remoteagent.core.v1.ScheduleTaskStatus
-	69,  // 122: remoteagent.core.v1.ScheduleSessionStripViewModel.summary_text:type_name -> remoteagent.core.v1.Text
-	41,  // 123: remoteagent.core.v1.ScheduleSessionStripViewModel.tasks:type_name -> remoteagent.core.v1.ScheduleSessionStripTaskView
-	45,  // 124: remoteagent.core.v1.ScheduleSaveSeenEffect.tokens:type_name -> remoteagent.core.v1.ScheduleSeenToken
-	48,  // 125: remoteagent.core.v1.ScheduleDismissNotificationsEffect.runs:type_name -> remoteagent.core.v1.ScheduleNotificationRef
-	16,  // 126: remoteagent.core.v1.ScheduleNavigateEffect.route:type_name -> remoteagent.core.v1.ScheduleNavigateRoute
-	45,  // 127: remoteagent.core.v1.ScheduleSeenLoadedEvent.tokens:type_name -> remoteagent.core.v1.ScheduleSeenToken
-	56,  // 128: remoteagent.core.v1.ScheduleMarkReadAction.tasks:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	8,   // 129: remoteagent.core.v1.ScheduleOperateAction.operation:type_name -> remoteagent.core.v1.ScheduleOperationKind
-	13,  // 130: remoteagent.core.v1.ScheduleFormOpenAction.mode:type_name -> remoteagent.core.v1.ScheduleFormMode
-	73,  // 131: remoteagent.core.v1.ScheduleFormSelectAgentAction.agent:type_name -> remoteagent.v1.Agent
-	71,  // 132: remoteagent.core.v1.ScheduleFormSelectModelAction.mode:type_name -> remoteagent.v1.ApprovalMode
-	10,  // 133: remoteagent.core.v1.ScheduleFormUpdateTimingAction.kind:type_name -> remoteagent.core.v1.ScheduleTimingKind
-	11,  // 134: remoteagent.core.v1.ScheduleFormUpdateTimingAction.unit:type_name -> remoteagent.core.v1.ScheduleIntervalUnit
-	12,  // 135: remoteagent.core.v1.ScheduleFormUpdateTimingAction.end:type_name -> remoteagent.core.v1.ScheduleTimingEnd
-	136, // [136:136] is the sub-list for method output_type
-	136, // [136:136] is the sub-list for method input_type
-	136, // [136:136] is the sub-list for extension type_name
-	136, // [136:136] is the sub-list for extension extendee
-	0,   // [0:136] is the sub-list for field type_name
+	70,  // 81: remoteagent.core.v1.ScheduleDetailViewModel.menu_subtitle:type_name -> remoteagent.core.v1.Text
+	70,  // 82: remoteagent.core.v1.ScheduleJitterOptionView.label:type_name -> remoteagent.core.v1.Text
+	10,  // 83: remoteagent.core.v1.ScheduleTimingDraftView.kind:type_name -> remoteagent.core.v1.ScheduleTimingKind
+	70,  // 84: remoteagent.core.v1.ScheduleTimingDraftView.after_turn_hint:type_name -> remoteagent.core.v1.Text
+	11,  // 85: remoteagent.core.v1.ScheduleTimingDraftView.unit:type_name -> remoteagent.core.v1.ScheduleIntervalUnit
+	12,  // 86: remoteagent.core.v1.ScheduleTimingDraftView.end:type_name -> remoteagent.core.v1.ScheduleTimingEnd
+	70,  // 87: remoteagent.core.v1.ScheduleTimingDraftView.interval_hint:type_name -> remoteagent.core.v1.Text
+	70,  // 88: remoteagent.core.v1.ScheduleTimingDraftView.timing_error:type_name -> remoteagent.core.v1.Text
+	34,  // 89: remoteagent.core.v1.ScheduleTimingDraftView.jitter_options:type_name -> remoteagent.core.v1.ScheduleJitterOptionView
+	70,  // 90: remoteagent.core.v1.ScheduleTimingDraftView.jitter_label:type_name -> remoteagent.core.v1.Text
+	70,  // 91: remoteagent.core.v1.ScheduleTimingDraftView.jitter_hint:type_name -> remoteagent.core.v1.Text
+	70,  // 92: remoteagent.core.v1.ScheduleProjectOptionView.name:type_name -> remoteagent.core.v1.Text
+	70,  // 93: remoteagent.core.v1.ScheduleMachineOptionView.note:type_name -> remoteagent.core.v1.Text
+	72,  // 94: remoteagent.core.v1.ScheduleModeOptionView.mode:type_name -> remoteagent.v1.ApprovalMode
+	70,  // 95: remoteagent.core.v1.ScheduleModeOptionView.label:type_name -> remoteagent.core.v1.Text
+	70,  // 96: remoteagent.core.v1.ScheduleModeOptionView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 97: remoteagent.core.v1.ScheduleModelPanelView.models_error:type_name -> remoteagent.core.v1.Text
+	70,  // 98: remoteagent.core.v1.ScheduleModelPanelView.default_model_label:type_name -> remoteagent.core.v1.Text
+	73,  // 99: remoteagent.core.v1.ScheduleModelPanelView.models:type_name -> remoteagent.core.v1.ModelOptionView
+	15,  // 100: remoteagent.core.v1.ScheduleFormNoticeView.kind:type_name -> remoteagent.core.v1.ScheduleFormNoticeKind
+	14,  // 101: remoteagent.core.v1.ScheduleFormNoticeView.severity:type_name -> remoteagent.core.v1.ScheduleFormNoticeSeverity
+	70,  // 102: remoteagent.core.v1.ScheduleFormNoticeView.text:type_name -> remoteagent.core.v1.Text
+	13,  // 103: remoteagent.core.v1.ScheduleFormViewModel.mode:type_name -> remoteagent.core.v1.ScheduleFormMode
+	70,  // 104: remoteagent.core.v1.ScheduleFormViewModel.message_error:type_name -> remoteagent.core.v1.Text
+	70,  // 105: remoteagent.core.v1.ScheduleFormViewModel.title_placeholder:type_name -> remoteagent.core.v1.Text
+	70,  // 106: remoteagent.core.v1.ScheduleFormViewModel.timing_summary:type_name -> remoteagent.core.v1.Text
+	35,  // 107: remoteagent.core.v1.ScheduleFormViewModel.timing:type_name -> remoteagent.core.v1.ScheduleTimingDraftView
+	70,  // 108: remoteagent.core.v1.ScheduleFormViewModel.project_name:type_name -> remoteagent.core.v1.Text
+	36,  // 109: remoteagent.core.v1.ScheduleFormViewModel.project_choices:type_name -> remoteagent.core.v1.ScheduleProjectOptionView
+	37,  // 110: remoteagent.core.v1.ScheduleFormViewModel.machine_choices:type_name -> remoteagent.core.v1.ScheduleMachineOptionView
+	74,  // 111: remoteagent.core.v1.ScheduleFormViewModel.agent:type_name -> remoteagent.v1.Agent
+	75,  // 112: remoteagent.core.v1.ScheduleFormViewModel.available_agents:type_name -> remoteagent.core.v1.AgentOptionView
+	70,  // 113: remoteagent.core.v1.ScheduleFormViewModel.model_label:type_name -> remoteagent.core.v1.Text
+	39,  // 114: remoteagent.core.v1.ScheduleFormViewModel.model_panel:type_name -> remoteagent.core.v1.ScheduleModelPanelView
+	72,  // 115: remoteagent.core.v1.ScheduleFormViewModel.approval_mode:type_name -> remoteagent.v1.ApprovalMode
+	70,  // 116: remoteagent.core.v1.ScheduleFormViewModel.approval_mode_label:type_name -> remoteagent.core.v1.Text
+	38,  // 117: remoteagent.core.v1.ScheduleFormViewModel.mode_choices:type_name -> remoteagent.core.v1.ScheduleModeOptionView
+	70,  // 118: remoteagent.core.v1.ScheduleFormViewModel.location_text:type_name -> remoteagent.core.v1.Text
+	70,  // 119: remoteagent.core.v1.ScheduleFormViewModel.submit_label:type_name -> remoteagent.core.v1.Text
+	70,  // 120: remoteagent.core.v1.ScheduleFormViewModel.submit_disabled_reason:type_name -> remoteagent.core.v1.Text
+	40,  // 121: remoteagent.core.v1.ScheduleFormViewModel.notices:type_name -> remoteagent.core.v1.ScheduleFormNoticeView
+	23,  // 122: remoteagent.core.v1.ScheduleFormViewModel.mutation:type_name -> remoteagent.core.v1.ScheduleMutationView
+	70,  // 123: remoteagent.core.v1.ScheduleSessionStripTaskView.timing_text:type_name -> remoteagent.core.v1.Text
+	70,  // 124: remoteagent.core.v1.ScheduleSessionStripTaskView.next_run_text:type_name -> remoteagent.core.v1.Text
+	1,   // 125: remoteagent.core.v1.ScheduleSessionStripTaskView.status:type_name -> remoteagent.core.v1.ScheduleTaskStatus
+	70,  // 126: remoteagent.core.v1.ScheduleSessionStripViewModel.summary_text:type_name -> remoteagent.core.v1.Text
+	42,  // 127: remoteagent.core.v1.ScheduleSessionStripViewModel.tasks:type_name -> remoteagent.core.v1.ScheduleSessionStripTaskView
+	46,  // 128: remoteagent.core.v1.ScheduleSaveSeenEffect.tokens:type_name -> remoteagent.core.v1.ScheduleSeenToken
+	49,  // 129: remoteagent.core.v1.ScheduleDismissNotificationsEffect.runs:type_name -> remoteagent.core.v1.ScheduleNotificationRef
+	16,  // 130: remoteagent.core.v1.ScheduleNavigateEffect.route:type_name -> remoteagent.core.v1.ScheduleNavigateRoute
+	46,  // 131: remoteagent.core.v1.ScheduleSeenLoadedEvent.tokens:type_name -> remoteagent.core.v1.ScheduleSeenToken
+	57,  // 132: remoteagent.core.v1.ScheduleMarkReadAction.tasks:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	8,   // 133: remoteagent.core.v1.ScheduleOperateAction.operation:type_name -> remoteagent.core.v1.ScheduleOperationKind
+	13,  // 134: remoteagent.core.v1.ScheduleFormOpenAction.mode:type_name -> remoteagent.core.v1.ScheduleFormMode
+	74,  // 135: remoteagent.core.v1.ScheduleFormSelectAgentAction.agent:type_name -> remoteagent.v1.Agent
+	72,  // 136: remoteagent.core.v1.ScheduleFormSelectModelAction.mode:type_name -> remoteagent.v1.ApprovalMode
+	10,  // 137: remoteagent.core.v1.ScheduleFormUpdateTimingAction.kind:type_name -> remoteagent.core.v1.ScheduleTimingKind
+	11,  // 138: remoteagent.core.v1.ScheduleFormUpdateTimingAction.unit:type_name -> remoteagent.core.v1.ScheduleIntervalUnit
+	12,  // 139: remoteagent.core.v1.ScheduleFormUpdateTimingAction.end:type_name -> remoteagent.core.v1.ScheduleTimingEnd
+	140, // [140:140] is the sub-list for method output_type
+	140, // [140:140] is the sub-list for method input_type
+	140, // [140:140] is the sub-list for extension type_name
+	140, // [140:140] is the sub-list for extension extendee
+	0,   // [0:140] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_schedules_view_proto_init() }
@@ -6809,16 +6926,16 @@ func file_remoteagent_core_v1_schedules_view_proto_init() {
 	file_remoteagent_core_v1_home_view_proto_init()
 	file_remoteagent_core_v1_new_session_view_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
-	file_remoteagent_core_v1_schedules_view_proto_msgTypes[38].OneofWrappers = []any{}
-	file_remoteagent_core_v1_schedules_view_proto_msgTypes[50].OneofWrappers = []any{}
+	file_remoteagent_core_v1_schedules_view_proto_msgTypes[39].OneofWrappers = []any{}
 	file_remoteagent_core_v1_schedules_view_proto_msgTypes[51].OneofWrappers = []any{}
+	file_remoteagent_core_v1_schedules_view_proto_msgTypes[52].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_schedules_view_proto_rawDesc), len(file_remoteagent_core_v1_schedules_view_proto_rawDesc)),
 			NumEnums:      17,
-			NumMessages:   52,
+			NumMessages:   53,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

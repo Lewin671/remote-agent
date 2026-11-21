@@ -912,6 +912,40 @@ public  final class ScheduleFormUpdateTimingAction extends
     resetDraft_ = false;
   }
 
+  public static final int JITTER_MINUTES_FIELD_NUMBER = 21;
+  private long jitterMinutes_;
+  /**
+   * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+   * @return Whether the jitterMinutes field is set.
+   */
+  @java.lang.Override
+  public boolean hasJitterMinutes() {
+    return ((bitField0_ & 0x00008000) != 0);
+  }
+  /**
+   * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+   * @return The jitterMinutes.
+   */
+  @java.lang.Override
+  public long getJitterMinutes() {
+    return jitterMinutes_;
+  }
+  /**
+   * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+   * @param value The jitterMinutes to set.
+   */
+  private void setJitterMinutes(long value) {
+    bitField0_ |= 0x00008000;
+    jitterMinutes_ = value;
+  }
+  /**
+   * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+   */
+  private void clearJitterMinutes() {
+    bitField0_ = (bitField0_ & ~0x00008000);
+    jitterMinutes_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ScheduleFormUpdateTimingAction parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1931,6 +1965,42 @@ public  final class ScheduleFormUpdateTimingAction extends
       return this;
     }
 
+    /**
+     * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+     * @return Whether the jitterMinutes field is set.
+     */
+    @java.lang.Override
+    public boolean hasJitterMinutes() {
+      return instance.hasJitterMinutes();
+    }
+    /**
+     * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+     * @return The jitterMinutes.
+     */
+    @java.lang.Override
+    public long getJitterMinutes() {
+      return instance.getJitterMinutes();
+    }
+    /**
+     * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+     * @param value The jitterMinutes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setJitterMinutes(long value) {
+      copyOnWrite();
+      instance.setJitterMinutes(value);
+      return this;
+    }
+    /**
+     * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearJitterMinutes() {
+      copyOnWrite();
+      instance.clearJitterMinutes();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ScheduleFormUpdateTimingAction)
   }
   @java.lang.Override
@@ -1968,13 +2038,14 @@ public  final class ScheduleFormUpdateTimingAction extends
             "untilDstGap_",
             "apply_",
             "resetDraft_",
+            "jitterMinutes_",
           };
           java.lang.String info =
-              "\u0000\u0014\u0000\u0001\u0001\u0014\u0014\u0000\u0001\u0000\u0001\u0208\u0002\u100c" +
+              "\u0000\u0015\u0000\u0001\u0001\u0015\u0015\u0000\u0001\u0000\u0001\u0208\u0002\u100c" +
               "\u0000\u0003\u1208\u0001\u0004\u1208\u0002\u0005\u1208\u0003\u0006\u1007\u0004\u0007" +
               "\u0007\b\'\t\u1208\u0005\n\u100c\u0006\u000b\u100c\u0007\f\u1208\b\r\u1208\t\u000e" +
               "\u1002\n\u000f\u1002\u000b\u0010\u1007\f\u0011\u1007\r\u0012\u1007\u000e\u0013\u0007" +
-              "\u0014\u0007";
+              "\u0014\u0007\u0015\u1002\u000f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

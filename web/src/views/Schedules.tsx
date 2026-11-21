@@ -410,10 +410,11 @@ export function TimingSheetView({ draft, formError, onUpdate, onApplied, onClose
     [ScheduleIntervalUnit.HOURS, t("schedule.android_hours")], [ScheduleIntervalUnit.DAYS, t("schedule.android_days")],
   ];
 
+  const selectedJitter = draft.jitterOptions.find((o) => o.selected) ?? draft.jitterOptions[0];
   const timingSnap = JSON.stringify({
     k: kind, d: draft.date, tm: draft.time, w: draft.weekdays, iv: draft.interval,
     u: draft.unit, z: draft.zone, wd: draft.workdays, e: draft.end, ud: draft.untilDate,
-    um: String(draft.untilMs), mc: draft.count,
+    um: String(draft.untilMs), mc: draft.count, jm: String(selectedJitter?.minutes ?? 0n),
   });
   const [initialTimingSnap] = useState(timingSnap);
 
@@ -427,6 +428,17 @@ export function TimingSheetView({ draft, formError, onUpdate, onApplied, onClose
         )}
         {(kind === ScheduleTimingKind.DAILY || kind === ScheduleTimingKind.WEEKLY) && (
           <label>{t("schedule.time")}<input type="time" value={draft.time} onChange={(e) => onUpdate({ time: e.target.value })} /></label>
+        )}
+        {draft.showJitter && draft.jitterOptions.length > 0 && (
+          <>
+            <label>{renderText(draft.jitterLabel)}
+              <select aria-label={renderText(draft.jitterLabel)} value={String(selectedJitter.minutes)}
+                onChange={(e) => onUpdate({ jitterMinutes: BigInt(e.target.value) })}>
+                {draft.jitterOptions.map((o) => <option key={String(o.minutes)} value={String(o.minutes)}>{renderText(o.label)}</option>)}
+              </select>
+            </label>
+            {draft.jitterHint && <p className="hint">{renderText(draft.jitterHint)}</p>}
+          </>
         )}
         {kind === ScheduleTimingKind.DAILY && (
           <label className="check-field">{t("schedule.weekdays_only")}<input type="checkbox" checked={draft.workdays} onChange={(e) => onUpdate({ workdays: e.target.checked })} /></label>
@@ -459,7 +471,7 @@ export function TimingSheetView({ draft, formError, onUpdate, onApplied, onClose
         {kind !== ScheduleTimingKind.ONCE && (
           <>
             <label>{t("session.end")}
-              <select value={String(draft.end || ScheduleTimingEnd.NEVER)} onChange={(e) => onUpdate({ end: Number(e.target.value) as ScheduleTimingEnd })}>
+              <select aria-label={t("session.end")} value={String(draft.end || ScheduleTimingEnd.NEVER)} onChange={(e) => onUpdate({ end: Number(e.target.value) as ScheduleTimingEnd })}>
                 <option value={String(ScheduleTimingEnd.NEVER)}>{t("schedule.never")}</option>
                 <option value={String(ScheduleTimingEnd.COUNT)}>{t("schedule.after_a_run_count")}</option>
                 <option value={String(ScheduleTimingEnd.DATE)}>{t("schedule.end_date")}</option>

@@ -289,7 +289,58 @@
               "end": "SCHEDULE_TIMING_END_NEVER",
               "count": "10",
               "untilDate": "2026-11-03",
-              "timingDoneEnabled": true
+              "timingDoneEnabled": true,
+              "showJitter": true,
+              "jitterOptions": [
+                {
+                  "label": {
+                    "key": "schedule.jitter_none"
+                  },
+                  "selected": true
+                },
+                {
+                  "minutes": "15",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "15"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "minutes": "30",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "30"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "minutes": "60",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "60"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "jitterLabel": {
+                "key": "schedule.jitter_label"
+              },
+              "jitterHint": {
+                "key": "schedule.jitter_hint"
+              }
             },
             "projectName": {
               "literal": "app"
@@ -521,7 +572,58 @@
               "count": "5",
               "untilDate": "2026-11-03",
               "timingDoneEnabled": true,
-              "timingApplied": true
+              "timingApplied": true,
+              "showJitter": true,
+              "jitterOptions": [
+                {
+                  "label": {
+                    "key": "schedule.jitter_none"
+                  },
+                  "selected": true
+                },
+                {
+                  "minutes": "15",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "15"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "minutes": "30",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "30"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "minutes": "60",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "60"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "jitterLabel": {
+                "key": "schedule.jitter_label"
+              },
+              "jitterHint": {
+                "key": "schedule.jitter_hint"
+              }
             },
             "projectName": {
               "literal": "app"
@@ -758,7 +860,58 @@
               "count": "5",
               "untilDate": "2026-11-03",
               "timingDoneEnabled": true,
-              "timingApplied": true
+              "timingApplied": true,
+              "showJitter": true,
+              "jitterOptions": [
+                {
+                  "label": {
+                    "key": "schedule.jitter_none"
+                  },
+                  "selected": true
+                },
+                {
+                  "minutes": "15",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "15"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "minutes": "30",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "30"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "minutes": "60",
+                  "label": {
+                    "key": "schedule.jitter_within_minutes",
+                    "args": [
+                      {
+                        "name": "count",
+                        "intValue": "60"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "jitterLabel": {
+                "key": "schedule.jitter_label"
+              },
+              "jitterHint": {
+                "key": "schedule.jitter_hint"
+              }
             },
             "projectName": {
               "literal": "app"

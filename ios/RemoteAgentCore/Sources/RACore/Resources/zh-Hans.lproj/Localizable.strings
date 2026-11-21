@@ -871,6 +871,9 @@
 "schedule_ios_task_not_found" = "找不到这个任务";
 "schedule_ios_unread" = "未读";
 "schedule_ios_unsaved_changes_will_be_lost" = "这次修改不会保存。";
+"schedule_jitter_hint" = "每天在设定时间之后的这段时间里随机选一个时刻开始";
+"schedule_jitter_label" = "随机延后";
+"schedule_jitter_none" = "不随机";
 "schedule_last_result" = "%2$@ %1$@";
 "schedule_last_result_detail" = "%3$@ %2$@：%1$@";
 "schedule_latest_summary" = "最近一次 %2$@：%1$@";

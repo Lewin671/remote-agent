@@ -1179,6 +1179,13 @@
     <string name="schedule_ios_enter_a_valid_interval" formatted="false">"Enter a valid interval"</string>
     <string name="schedule_ios_takeover_notice">"%1$s Continuing takes over the task and runs it with the permissions shown."</string>
     <string name="schedule_ios_task_details" formatted="false">"Task details"</string>
+    <string name="schedule_jitter_hint" formatted="false">"Starts at a random time within this window after the set time"</string>
+    <string name="schedule_jitter_label" formatted="false">"Random delay"</string>
+    <string name="schedule_jitter_none" formatted="false">"None"</string>
+    <plurals name="schedule_jitter_within_minutes">
+        <item quantity="one">"Within %1$d minute"</item>
+        <item quantity="other">"Within %1$d minutes"</item>
+    </plurals>
     <string name="schedule_last_result">"%2$s %1$s"</string>
     <string name="schedule_last_result_detail">"%3$s %2$s: %1$s"</string>
     <string name="schedule_latest_summary">"Latest %2$s: %1$s"</string>

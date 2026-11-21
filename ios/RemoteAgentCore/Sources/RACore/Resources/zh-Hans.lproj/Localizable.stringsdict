@@ -1150,6 +1150,20 @@
 			<string>每 %1$lld 秒</string>
 		</dict>
 	</dict>
+	<key>schedule_jitter_within_minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 分钟内</string>
+		</dict>
+	</dict>
 	<key>schedule_limits_both</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

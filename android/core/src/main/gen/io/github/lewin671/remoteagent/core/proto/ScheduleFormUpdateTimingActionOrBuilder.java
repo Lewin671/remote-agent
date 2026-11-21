@@ -272,4 +272,15 @@ public interface ScheduleFormUpdateTimingActionOrBuilder extends
    * @return The resetDraft.
    */
   boolean getResetDraft();
+
+  /**
+   * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+   * @return Whether the jitterMinutes field is set.
+   */
+  boolean hasJitterMinutes();
+  /**
+   * <code>optional int64 jitter_minutes = 21 [json_name = "jitterMinutes"];</code>
+   * @return The jitterMinutes.
+   */
+  long getJitterMinutes();
 }

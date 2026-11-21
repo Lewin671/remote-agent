@@ -1314,6 +1314,22 @@
 			<string>Every %1$lld sec</string>
 		</dict>
 	</dict>
+	<key>schedule_jitter_within_minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Within %1$lld minute</string>
+			<key>other</key>
+			<string>Within %1$lld minutes</string>
+		</dict>
+	</dict>
 	<key>schedule_limits_both</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

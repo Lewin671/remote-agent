@@ -799,6 +799,10 @@ export interface MessageArgs {
   "schedule.ios_choose_a_valid_iana_time_zone": { [name: string]: never };
   "schedule.ios_enter_a_valid_interval": { [name: string]: never };
   "schedule.ios_takeover_notice": { notice: string };
+  "schedule.jitter_hint": { [name: string]: never };
+  "schedule.jitter_label": { [name: string]: never };
+  "schedule.jitter_none": { [name: string]: never };
+  "schedule.jitter_within_minutes": { count: number };
   "schedule.last_result": { result: string; time: string };
   "schedule.last_result_detail": { detail: string; result: string; time: string };
   "schedule.latest_summary": { summary: string; time: string };
@@ -3020,6 +3024,16 @@ export const messages = {
     "schedule.ios_choose_a_valid_iana_time_zone": "Choose a valid IANA time zone",
     "schedule.ios_enter_a_valid_interval": "Enter a valid interval",
     "schedule.ios_takeover_notice": "{notice} Continuing takes over the task and runs it with the permissions shown.",
+    "schedule.jitter_hint": "Starts at a random time within this window after the set time",
+    "schedule.jitter_label": "Random delay",
+    "schedule.jitter_none": "None",
+    "schedule.jitter_within_minutes": {
+      "forms": {
+        "one": "Within {count} minute",
+        "other": "Within {count} minutes"
+      },
+      "plural": "count"
+    },
     "schedule.last_result": "{time} {result}",
     "schedule.last_result_detail": "{time} {result}: {detail}",
     "schedule.latest_summary": "Latest {time}: {summary}",
@@ -5347,6 +5361,15 @@ export const messages = {
     "schedule.ios_choose_a_valid_iana_time_zone": "请选择有效的 IANA 时区",
     "schedule.ios_enter_a_valid_interval": "请输入有效的间隔",
     "schedule.ios_takeover_notice": "{notice}继续会由你接管任务，按任务中显示的权限运行。",
+    "schedule.jitter_hint": "每天在设定时间之后的这段时间里随机选一个时刻开始",
+    "schedule.jitter_label": "随机延后",
+    "schedule.jitter_none": "不随机",
+    "schedule.jitter_within_minutes": {
+      "forms": {
+        "other": "{count} 分钟内"
+      },
+      "plural": "count"
+    },
     "schedule.last_result": "{time} {result}",
     "schedule.last_result_detail": "{time} {result}：{detail}",
     "schedule.latest_summary": "最近一次 {time}：{summary}",

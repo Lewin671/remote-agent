@@ -673,6 +673,23 @@ func TestScheduleFormResetDraftPreservesCommittedTrigger(t *testing.T) {
 		},
 	})
 	fvm := viewFormVM(t, c, "")
+	if !fvm.Timing.ShowJitter || len(fvm.Timing.JitterOptions) != 4 || !fvm.Timing.JitterOptions[0].Selected || fvm.Timing.JitterOptions[0].Minutes != 0 {
+		t.Fatalf("expected default daily jitter options [0*,15,30,60], got show=%v opts=%+v", fvm.Timing.ShowJitter, fvm.Timing.JitterOptions)
+	}
+	jitter50 := int64(50)
+	c.Dispatch(&corev1.Event{
+		NowMs: 1791633600025,
+		Event: &corev1.Event_ScheduleFormUpdateTiming{
+			ScheduleFormUpdateTiming: &corev1.ScheduleFormUpdateTimingAction{
+				FormKey:       fvm.FormKey,
+				JitterMinutes: &jitter50,
+			},
+		},
+	})
+	with50 := viewFormVM(t, c, fvm.FormKey)
+	if len(with50.Timing.JitterOptions) != 5 || with50.Timing.JitterOptions[3].Minutes != 50 || !with50.Timing.JitterOptions[3].Selected {
+		t.Fatalf("expected 50 inserted and selected, got %+v", with50.Timing.JitterOptions)
+	}
 	everyKind := corev1.ScheduleTimingKind_SCHEDULE_TIMING_KIND_INTERVAL
 	everyUnit := corev1.ScheduleIntervalUnit_SCHEDULE_INTERVAL_UNIT_HOURS
 	everyVal := "3"
@@ -688,6 +705,9 @@ func TestScheduleFormResetDraftPreservesCommittedTrigger(t *testing.T) {
 			},
 		},
 	})
+	if iv := viewFormVM(t, c, fvm.FormKey); iv.Timing.ShowJitter || len(iv.Timing.JitterOptions) != 0 {
+		t.Fatalf("expected interval timing to hide jitter, got show=%v opts=%+v", iv.Timing.ShowJitter, iv.Timing.JitterOptions)
+	}
 	// Now start editing another value, then ResetDraft -> must revert back to every 3 hours and keep TimingApplied=true.
 	badVal := "99"
 	c.Dispatch(&corev1.Event{

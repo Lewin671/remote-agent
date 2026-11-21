@@ -200,4 +200,46 @@ public interface ScheduleTimingDraftViewOrBuilder extends
    * @return The timingApplied.
    */
   boolean getTimingApplied();
+
+  /**
+   * <code>bool show_jitter = 20 [json_name = "showJitter"];</code>
+   * @return The showJitter.
+   */
+  boolean getShowJitter();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView> 
+      getJitterOptionsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.ScheduleJitterOptionView getJitterOptions(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.ScheduleJitterOptionView jitter_options = 21 [json_name = "jitterOptions"];</code>
+   */
+  int getJitterOptionsCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+   * @return Whether the jitterLabel field is set.
+   */
+  boolean hasJitterLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_label = 22 [json_name = "jitterLabel"];</code>
+   * @return The jitterLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getJitterLabel();
+
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+   * @return Whether the jitterHint field is set.
+   */
+  boolean hasJitterHint();
+  /**
+   * <code>.remoteagent.core.v1.Text jitter_hint = 23 [json_name = "jitterHint"];</code>
+   * @return The jitterHint.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getJitterHint();
 }

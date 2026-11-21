@@ -94,7 +94,13 @@ struct ScheduleTimingContent: View {
                                     set: { let t = format($0, "HH:mm"); onUpdate { $0.time = t } }
                                 ), displayedComponents: .hourAndMinute)
                                     .environment(\.timeZone, activeTimeZone).padding(.horizontal, 14).padding(.vertical, 8).disabled(!sheetEnabled)
-                                if draft.kind == .daily {
+                                if draft.showJitter && !draft.jitterOptions.isEmpty {
+                                    jitterRow(enabled: sheetEnabled)
+                                }
+                            }
+                            if draft.showJitter && draft.hasJitterHint { Hint(draft.jitterHint.rendered()) }
+                            if draft.kind == .daily {
+                                GroupCard {
                                     ToggleRow(L10n.scheduleWeekdaysOnly(), isOn: Binding(get: { draft.workdays }, set: { v in onUpdate { $0.workdays = v } }))
                                         .disabled(!sheetEnabled)
                                 }
@@ -139,6 +145,23 @@ struct ScheduleTimingContent: View {
             .onChange(of: draft.interval, initial: true) { _, val in if intervalInput != val { intervalInput = val } }
             .onChange(of: draft.count, initial: true) { _, val in if countInput != val { countInput = val } }
         }
+    }
+
+    @ViewBuilder private func jitterRow(enabled: Bool) -> some View {
+        let selected = draft.jitterOptions.first(where: { $0.selected })?.minutes ?? draft.jitterOptions[0].minutes
+        HStack(spacing: 10) {
+            Text(draft.jitterLabel.rendered()).font(.body).ink(DS.ink)
+            Spacer()
+            Picker(draft.jitterLabel.rendered(), selection: Binding(
+                get: { selected },
+                set: { v in onUpdate { $0.jitterMinutes = v } }
+            )) {
+                ForEach(draft.jitterOptions, id: \.minutes) { opt in
+                    Text(opt.label.rendered()).tag(opt.minutes)
+                }
+            }
+            .pickerStyle(.menu).labelsHidden().tint(DS.ink2).disabled(!enabled)
+        }.padding(.horizontal, 14).padding(.vertical, 8)
     }
 
     private func weekdayPicker(names: [String], enabled: Bool) -> some View {

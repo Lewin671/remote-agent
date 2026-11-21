@@ -321,7 +321,7 @@ it("edits calendar time, weekdays, limits and the IANA timezone", async () => {
   await click(/^什么时候/);
   await click(message("schedule.weekly_on"));
   await click("周五");
-  const select = host.querySelector("select")!;
+  const select = host.querySelector<HTMLSelectElement>(`select[aria-label="${message("session.end")}"]`)!;
   await act(async () => {
     select.value = String(ScheduleTimingEnd.COUNT);
     select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -937,11 +937,20 @@ it("disables weekly completion without selected days and hides interval timezone
     weekdays: [1],
   });
   await mount(<TimingSheet host={core} formKey={formKey} onClose={() => {}} />);
+  const jitterSelect = host.querySelector<HTMLSelectElement>(`select[aria-label="${message("schedule.jitter_label")}"]`)!;
+  expect(jitterSelect).not.toBeNull();
+  await act(async () => {
+    jitterSelect.value = "30";
+    jitterSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(core.viewScheduleForm(formKey).timing?.jitterOptions.find((o) => o.selected)?.minutes).toBe(30n);
   await click("周一");
   expect(button(message("common.done"))?.disabled).toBe(true);
   await click(message("schedule.every"));
   expect(host.querySelector('[aria-label="时区"]')).toBeNull();
+  expect(host.querySelector(`select[aria-label="${message("schedule.jitter_label")}"]`)).toBeNull();
   await click(message("schedule.once_schedules"));
+  expect(host.querySelector(`select[aria-label="${message("schedule.jitter_label")}"]`)).toBeNull();
   await click(message("schedule.weekly_on"));
   expect(button(message("common.done"))?.disabled).toBe(true);
   await click("周五");
