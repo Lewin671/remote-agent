@@ -157,6 +157,11 @@ func TestZonesAndTimingText(t *testing.T) {
 		t.Fatalf("same zone key = %q, want %q", sameZone.GetKey(), text.KeyScheduleDailyAt)
 	}
 
+	jitter := TimingText(Trigger{Type: "calendar", Time: "10:10", Timezone: "UTC", JitterMinutes: 50}, b)
+	if w := jitter.GetArgs()[0].GetTextValue(); w.GetKey() != text.KeyScheduleRandomWindow || w.GetArgs()[1].GetStrValue() != "11:00" {
+		t.Fatalf("jitter window = %+v", jitter)
+	}
+
 	diffZone := TimingText(Trigger{
 		Type:     "calendar",
 		Time:     "08:00",
@@ -244,6 +249,13 @@ func TestTimingDraftValidationAndAfterTurn(t *testing.T) {
 	gotAT, errTxt := atDraft.BuildTrigger(TimingBuildInput{NowMs: nowMs})
 	if errTxt != nil || gotAT.Type != "after_turn" || gotAT.DelaySeconds != 30 || !gotAT.Repeat || gotAT.MaxRuns != 3 {
 		t.Fatalf("BuildTrigger after_turn = (%+v, %v)", gotAT, errTxt)
+	}
+
+	// Editing a jittered calendar task keeps its random window, clamped to the day.
+	jDraft := TimingDraftFromTrigger(Trigger{Type: "calendar", Time: "10:10", Timezone: "UTC", JitterMinutes: 50}, nowMs, "UTC", b)
+	jDraft.Time = "23:30"
+	if got, errTxt := jDraft.BuildTrigger(TimingBuildInput{NowMs: nowMs}); errTxt != nil || got.JitterMinutes != 29 {
+		t.Fatalf("BuildTrigger jitter = (%+v, %v)", got, errTxt)
 	}
 
 	// Shell-provided DST gap flag (works consistently on WASM without tzdata)

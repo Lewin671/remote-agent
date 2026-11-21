@@ -1003,6 +1003,7 @@ object UiMessages {
     fun scheduleProject(): UiMessage = UiMessage("schedule.project", emptyMap())
     fun scheduleProjectRequired(): UiMessage = UiMessage("schedule.project_required", emptyMap())
     fun scheduleQuietRuns(count: Int, day: String): UiMessage = UiMessage("schedule.quiet_runs", mapOf("count" to count, "day" to day))
+    fun scheduleRandomWindow(end: String, start: String): UiMessage = UiMessage("schedule.random_window", mapOf("end" to end, "start" to start))
     fun scheduleReadFullText(): UiMessage = UiMessage("schedule.read_full_text", emptyMap())
     fun scheduleReadOnlyActiveRun(): UiMessage = UiMessage("schedule.read_only_active_run", emptyMap())
     fun scheduleReadOnlyBusy(): UiMessage = UiMessage("schedule.read_only_busy", emptyMap())

@@ -219,12 +219,16 @@ func FrequencyText(tr Trigger, b CalendarBounds) *corev1.Text {
 	case triggerTypeCalendar:
 		days := slices.Clone(tr.Weekdays)
 		slices.Sort(days)
-		clock := tr.Time
+		clock := text.Str("time", tr.Time)
+		if hr, mn, ok := parseHHMM(tr.Time); ok && tr.JitterMinutes > 0 {
+			end := min(hr*60+mn+int(tr.JitterMinutes), 23*60+59)
+			clock = text.ArgText("time", text.Msg(text.KeyScheduleRandomWindow, text.Str("start", tr.Time), text.Str("end", twoDigits(end/60)+":"+twoDigits(end%60))))
+		}
 		if len(days) == 0 || len(days) == 7 {
-			return text.Msg(text.KeyScheduleDailyAt, text.Str("time", clock))
+			return text.Msg(text.KeyScheduleDailyAt, clock)
 		}
 		if slices.Equal(days, []int{1, 2, 3, 4, 5}) {
-			return text.Msg(text.KeyScheduleWorkdaysAt, text.Str("time", clock))
+			return text.Msg(text.KeyScheduleWorkdaysAt, clock)
 		}
 		dayTexts := make([]*corev1.Text, 0, len(days))
 		for _, d := range days {
@@ -235,7 +239,7 @@ func FrequencyText(tr Trigger, b CalendarBounds) *corev1.Text {
 			}
 		}
 		joinedDays := text.Join(text.KeyCommonListSeparator, dayTexts...)
-		return text.Msg(text.KeyScheduleWeeklyAt, text.ArgText("days", joinedDays), text.Str("time", clock))
+		return text.Msg(text.KeyScheduleWeeklyAt, text.ArgText("days", joinedDays), clock)
 	case triggerTypeInterval:
 		s := tr.IntervalSeconds
 		switch {

@@ -4708,5 +4708,10 @@
     "path": "shared/linkcore/session.go",
     "literal": "need_entropy",
     "reason": "Internal Go sentinel error returned by entropy readers when the shell byte pool needs refill; handled internally by linkcore and never displayed to users."
+  },
+  {
+    "path": "internal/schedule/calendar.go",
+    "literal": "jitter_minutes must be nonnegative and keep the run within the same local day",
+    "reason": "TaskSpec validation for CLI/MCP callers naming a JSON field; clients clamp jitter before sending, so it is not client UI text. Tool errors remain English for the model."
   }
 ]

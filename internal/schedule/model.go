@@ -32,6 +32,7 @@ type Trigger struct {
 	Time            string     `json:"time,omitempty" jsonschema:"HH:MM local time for calendar"`
 	Weekdays        []int      `json:"weekdays,omitempty" jsonschema:"Calendar weekdays: Monday=1 through Sunday=7; empty means every day"`
 	Timezone        string     `json:"timezone,omitempty" jsonschema:"Required IANA timezone for calendar"`
+	JitterMinutes   int64      `json:"jitter_minutes,omitempty" jsonschema:"Calendar only: each date runs at a pseudo-random minute from time to time+jitter_minutes (same local day), so the start varies daily"`
 	Until           *time.Time `json:"until,omitempty" jsonschema:"RFC3339 timestamp with timezone; no recurring dispatch after this instant"`
 	Type            string     `json:"type" jsonschema:"at (one timestamp), interval (fixed elapsed-time recurrence), calendar (local daily/weekly time), or after_turn (delay from the current turn ending)"`
 	At              *time.Time `json:"at,omitempty" jsonschema:"RFC3339 timestamp with timezone, required for at; optional first occurrence for interval"`

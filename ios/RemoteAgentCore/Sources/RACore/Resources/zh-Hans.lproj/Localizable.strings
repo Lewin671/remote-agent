@@ -911,6 +911,7 @@
 "schedule_plan_mode_cannot_create_execution_tasks_choose_other_permissions" = "计划模式不能创建执行任务，请先选择其他权限";
 "schedule_project" = "项目";
 "schedule_project_required" = "请先选择一个项目";
+"schedule_random_window" = "%2$@–%1$@ 随机";
 "schedule_read_only_active_run" = "正在运行，结束前不能修改执行定义";
 "schedule_read_only_busy" = "正在处理上一次操作";
 "schedule_read_only_unconfirmed" = "上一次操作结果未确认";

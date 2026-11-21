@@ -3,13 +3,14 @@ package schedule
 import (
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"slices"
 	"time"
 )
 
 func (t Trigger) ValidateCalendar() error {
 	if t.Type != "calendar" {
-		if t.Time != "" || t.Timezone != "" || len(t.Weekdays) != 0 {
+		if t.Time != "" || t.Timezone != "" || len(t.Weekdays) != 0 || t.JitterMinutes != 0 {
 			return errors.New("calendar fields require a calendar trigger")
 		}
 		return nil
@@ -19,6 +20,9 @@ func (t Trigger) ValidateCalendar() error {
 	}
 	if _, err := time.Parse("15:04", t.Time); err != nil {
 		return errors.New("calendar time must be HH:MM")
+	}
+	if t.JitterMinutes < 0 || clockMinutes(t.Time)+t.JitterMinutes > 23*60+59 {
+		return errors.New("jitter_minutes must be nonnegative and keep the run within the same local day")
 	}
 	if t.Timezone == "" || t.Timezone == "Local" {
 		return errors.New("calendar requires an IANA timezone")
@@ -51,6 +55,7 @@ func (t Trigger) CalendarOn(date time.Time) time.Time {
 	if _, err := fmt.Sscanf(t.Time, "%d:%d", &hour, &minute); err != nil {
 		return time.Time{}
 	}
+	target := hour*60 + minute + t.jitterOn(y, m, d)
 	weekday := int(time.Date(y, m, d, 12, 0, 0, 0, loc).Weekday())
 	if weekday == 0 {
 		weekday = 7
@@ -62,11 +67,30 @@ func (t Trigger) CalendarOn(date time.Time) time.Time {
 	for at, end := base.Add(-24*time.Hour), base.Add(48*time.Hour); at.Before(end); at = at.Add(time.Minute) {
 		wall := at.In(loc)
 		wy, wm, wd := wall.Date()
-		if wy == y && wm == m && wd == d && wall.Hour()*60+wall.Minute() >= hour*60+minute {
+		if wy == y && wm == m && wd == d && wall.Hour()*60+wall.Minute() >= target {
 			return at
 		}
 	}
 	return time.Time{} // A local date can be skipped entirely (e.g. dateline changes).
+}
+
+// jitterOn picks the date's offset in [0, JitterMinutes]. It is a pure
+// function of the trigger and the local date, so every caller (next, latest,
+// catch-up and the consumed-date check) resolves the same instant for a date
+// while the minute still varies from day to day.
+func (t Trigger) jitterOn(y int, m time.Month, d int) int {
+	if t.JitterMinutes <= 0 {
+		return 0
+	}
+	h := fnv.New64a()
+	fmt.Fprintf(h, "%s|%s|%04d-%02d-%02d", t.Timezone, t.Time, y, int(m), d)
+	return int(h.Sum64() % uint64(t.JitterMinutes+1))
+}
+
+func clockMinutes(clock string) int64 {
+	var hour, minute int64
+	fmt.Sscanf(clock, "%d:%d", &hour, &minute)
+	return hour*60 + minute
 }
 
 // NextCalendar returns the first occurrence strictly after after.

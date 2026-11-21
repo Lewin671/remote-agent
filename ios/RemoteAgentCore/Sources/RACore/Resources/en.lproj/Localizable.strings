@@ -911,6 +911,7 @@
 "schedule_plan_mode_cannot_create_execution_tasks_choose_other_permissions" = "Plan mode cannot create execution tasks. Choose other permissions first.";
 "schedule_project" = "Project";
 "schedule_project_required" = "Choose a project first";
+"schedule_random_window" = "%2$@–%1$@ (random)";
 "schedule_read_only_active_run" = "Running; execution settings cannot be edited until it finishes";
 "schedule_read_only_busy" = "Previous operation is still in progress";
 "schedule_read_only_unconfirmed" = "Previous operation result is unconfirmed";

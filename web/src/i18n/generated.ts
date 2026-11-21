@@ -847,6 +847,7 @@ export interface MessageArgs {
   "schedule.project": { [name: string]: never };
   "schedule.project_required": { [name: string]: never };
   "schedule.quiet_runs": { count: number; day: string };
+  "schedule.random_window": { end: string; start: string };
   "schedule.read_full_text": { [name: string]: never };
   "schedule.read_only_active_run": { [name: string]: never };
   "schedule.read_only_busy": { [name: string]: never };
@@ -3091,6 +3092,7 @@ export const messages = {
       },
       "plural": "count"
     },
+    "schedule.random_window": "{start}–{end} (random)",
     "schedule.read_full_text": "Read full text",
     "schedule.read_only_active_run": "Running; execution settings cannot be edited until it finishes",
     "schedule.read_only_busy": "Previous operation is still in progress",
@@ -5413,6 +5415,7 @@ export const messages = {
       },
       "plural": "count"
     },
+    "schedule.random_window": "{start}–{end} 随机",
     "schedule.read_full_text": "看全文",
     "schedule.read_only_active_run": "正在运行，结束前不能修改执行定义",
     "schedule.read_only_busy": "正在处理上一次操作",

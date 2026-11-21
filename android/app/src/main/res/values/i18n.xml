@@ -1160,6 +1160,7 @@
     <plurals name="schedule_quiet_runs">
         <item quantity="other">"%2$s · %1$d 次，都没有通知"</item>
     </plurals>
+    <string name="schedule_random_window">"%2$s–%1$s 随机"</string>
     <string name="schedule_read_full_text" formatted="false">"看全文"</string>
     <string name="schedule_read_only_active_run" formatted="false">"正在运行，结束前不能修改执行定义"</string>
     <string name="schedule_read_only_busy" formatted="false">"正在处理上一次操作"</string>

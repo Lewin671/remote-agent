@@ -42,6 +42,7 @@ type Trigger struct {
 	Time            string `json:"time,omitempty"`
 	Weekdays        []int  `json:"weekdays,omitempty"`
 	Timezone        string `json:"timezone,omitempty"`
+	JitterMinutes   int64  `json:"jitter_minutes,omitempty"`
 	Until           string `json:"until,omitempty"`
 	Type            string `json:"type"`
 	At              string `json:"at,omitempty"`

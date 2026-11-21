@@ -429,6 +429,14 @@ func (d TimingDraft) BuildTrigger(in TimingBuildInput) (Trigger, *corev1.Text) {
 			Timezone: zone,
 			Weekdays: days,
 		}
+		// The editor has no jitter control; keep the task's random window,
+		// shortened if a later time would push it past midnight.
+		if d.Original != nil && d.Original.Type == "calendar" && d.Original.JitterMinutes > 0 {
+			out.JitterMinutes = d.Original.JitterMinutes
+			if room := int64(23*60 + 59 - (hr*60 + min)); out.JitterMinutes > room {
+				out.JitterMinutes = room
+			}
+		}
 
 	case TimingInterval:
 		n, err := strconv.ParseInt(strings.TrimSpace(d.Interval), 10, 64)

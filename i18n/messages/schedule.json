@@ -4823,5 +4823,30 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "schedule.random_window",
+    "zh-CN": "{start}–{end} 随机",
+    "en": "{start}–{end} (random)",
+    "notes": "带随机延后的定时任务的触发时间段，代入「每天 {time}」等频率句的 time；start、end 为 HH:MM，每天在这段时间里随机挑一个时刻运行。",
+    "params": {
+      "start": {
+        "type": "string",
+        "example": "10:10"
+      },
+      "end": {
+        "type": "string",
+        "example": "11:00"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

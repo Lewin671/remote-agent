@@ -1240,6 +1240,7 @@
         <item quantity="one">"%2$s · %1$d run, none notified you"</item>
         <item quantity="other">"%2$s · %1$d runs, none notified you"</item>
     </plurals>
+    <string name="schedule_random_window">"%2$s–%1$s (random)"</string>
     <string name="schedule_read_full_text" formatted="false">"Read full text"</string>
     <string name="schedule_read_only_active_run" formatted="false">"Running; execution settings cannot be edited until it finishes"</string>
     <string name="schedule_read_only_busy" formatted="false">"Previous operation is still in progress"</string>

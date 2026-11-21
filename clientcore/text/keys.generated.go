@@ -1232,6 +1232,7 @@ const KeySchedulePlanModeCannotCreateExecutionTasksChooseOtherPermissions = "sch
 const KeyScheduleProject = "schedule.project"
 const KeyScheduleProjectRequired = "schedule.project_required"
 const KeyScheduleQuietRuns = "schedule.quiet_runs"
+const KeyScheduleRandomWindow = "schedule.random_window"
 const KeyScheduleReadFullText = "schedule.read_full_text"
 const KeyScheduleReadOnlyActiveRun = "schedule.read_only_active_run"
 const KeyScheduleReadOnlyBusy = "schedule.read_only_busy"
