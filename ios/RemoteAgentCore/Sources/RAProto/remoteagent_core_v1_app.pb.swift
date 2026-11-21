@@ -1793,20 +1793,6 @@ public struct PBCoreFetchSessionAction: Sendable {
   public init() {}
 }
 
-public struct PBCoreMachineRouteStatusEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var machineID: String = String()
-
-  public var directReady: Bool = false
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 public struct PBCoreDirectEventsReceivedEvent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -2320,14 +2306,6 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .fetchSession(newValue)}
   }
 
-  public var machineRouteStatus: PBCoreMachineRouteStatusEvent {
-    get {
-      if case .machineRouteStatus(let v)? = _storage._event {return v}
-      return PBCoreMachineRouteStatusEvent()
-    }
-    set {_uniqueStorage()._event = .machineRouteStatus(newValue)}
-  }
-
   public var sessionScheduleHints: PBCoreSessionScheduleHintsEvent {
     get {
       if case .sessionScheduleHints(let v)? = _storage._event {return v}
@@ -2614,14 +2592,6 @@ public struct PBCoreEvent: @unchecked Sendable {
       return PBUpdateDirectPreferenceEvent()
     }
     set {_uniqueStorage()._event = .updateDirectPreference(newValue)}
-  }
-
-  public var machineDirectStatus: PBMachineDirectStatusEvent {
-    get {
-      if case .machineDirectStatus(let v)? = _storage._event {return v}
-      return PBMachineDirectStatusEvent()
-    }
-    set {_uniqueStorage()._event = .machineDirectStatus(newValue)}
   }
 
   public var toggleMachineAgent: PBToggleMachineAgentEvent {
@@ -3335,7 +3305,6 @@ public struct PBCoreEvent: @unchecked Sendable {
     case sessionPin(PBCoreSessionPinEvent)
     case retrySessionEvents(PBCoreRetrySessionEventsAction)
     case fetchSession(PBCoreFetchSessionAction)
-    case machineRouteStatus(PBCoreMachineRouteStatusEvent)
     case sessionScheduleHints(PBCoreSessionScheduleHintsEvent)
     case directEventsReceived(PBCoreDirectEventsReceivedEvent)
     case homeSetScope(PBCoreHomeSetScopeAction)
@@ -3372,7 +3341,6 @@ public struct PBCoreEvent: @unchecked Sendable {
     case updateMachineAgentDefaults(PBUpdateMachineAgentDefaultsEvent)
     case updateMachineDaemonSettings(PBUpdateMachineDaemonSettingsEvent)
     case updateDirectPreference(PBUpdateDirectPreferenceEvent)
-    case machineDirectStatus(PBMachineDirectStatusEvent)
     case toggleMachineAgent(PBToggleMachineAgentEvent)
     case usageScreenOpen(PBCoreUsageScreenOpenEvent)
     case usageScreenRetry(PBCoreUsageScreenRetryEvent)
@@ -7347,41 +7315,6 @@ extension PBCoreFetchSessionAction: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
-extension PBCoreMachineRouteStatusEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".MachineRouteStatusEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}direct_ready\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 2: try { try decoder.decodeSingularBoolField(value: &self.directReady) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.machineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
-    }
-    if self.directReady != false {
-      try visitor.visitSingularBoolField(value: self.directReady, fieldNumber: 2)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBCoreMachineRouteStatusEvent, rhs: PBCoreMachineRouteStatusEvent) -> Bool {
-    if lhs.machineID != rhs.machineID {return false}
-    if lhs.directReady != rhs.directReady {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
 extension PBCoreDirectEventsReceivedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectEventsReceivedEvent"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}events\0\u{3}pc_id\0\u{1}sender\0")
@@ -8111,7 +8044,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{3}machine_route_status\0\u{3}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{3}machine_direct_status\0\u{3}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{3}direct_security_snapshot\0\u{3}direct_signal_received\0\u{3}direct_signal_delivery\0\u{3}direct_key_signed\0\u{3}direct_key_agreed\0\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{3}direct_security_snapshot\0\u{3}direct_signal_received\0\u{3}direct_signal_delivery\0\u{3}direct_key_signed\0\u{3}direct_key_agreed\0\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -8462,19 +8395,6 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
           if let v = v {
             if hadOneofValue {try decoder.handleConflictingOneOf()}
             _storage._event = .fetchSession(v)
-          }
-        }()
-        case 25: try {
-          var v: PBCoreMachineRouteStatusEvent?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .machineRouteStatus(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .machineRouteStatus(v)
           }
         }()
         case 26: try {
@@ -9573,19 +9493,6 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
             _storage._event = .updateDirectPreference(v)
           }
         }()
-        case 365: try {
-          var v: PBMachineDirectStatusEvent?
-          var hadOneofValue = false
-          if let current = _storage._event {
-            hadOneofValue = true
-            if case .machineDirectStatus(let m) = current {v = m}
-          }
-          try decoder.decodeSingularMessageField(value: &v)
-          if let v = v {
-            if hadOneofValue {try decoder.handleConflictingOneOf()}
-            _storage._event = .machineDirectStatus(v)
-          }
-        }()
         case 366: try {
           var v: PBToggleMachineAgentEvent?
           var hadOneofValue = false
@@ -10150,10 +10057,6 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
         guard case .fetchSession(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
       }()
-      case .machineRouteStatus?: try {
-        guard case .machineRouteStatus(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
-      }()
       case .sessionScheduleHints?: try {
         guard case .sessionScheduleHints(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
@@ -10504,10 +10407,6 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case .updateDirectPreference?: try {
         guard case .updateDirectPreference(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 364)
-      }()
-      case .machineDirectStatus?: try {
-        guard case .machineDirectStatus(let v)? = _storage._event else { preconditionFailure() }
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 365)
       }()
       case .toggleMachineAgent?: try {
         guard case .toggleMachineAgent(let v)? = _storage._event else { preconditionFailure() }

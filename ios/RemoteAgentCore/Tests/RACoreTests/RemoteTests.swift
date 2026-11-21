@@ -385,7 +385,6 @@ extension SyncServerTests {
                     onRefresh: {},
                     onRefreshDevices: {},
                     onSavePrefs: { _ in },
-                    onDirectStatus: { _, _, _ in },
                     onSecuritySnapshot: { snapshots.put($0) }
                 ))
                 let client = try await r.securitySession()

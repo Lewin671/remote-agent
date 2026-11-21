@@ -394,11 +394,6 @@ message FetchSessionAction {
   string session_id = 1;
 }
 
-message MachineRouteStatusEvent {
-  string machine_id = 1;
-  bool direct_ready = 2;
-}
-
 message DirectEventsReceivedEvent {
   string machine_id = 1;
   string session_id = 2;
@@ -526,7 +521,6 @@ message Event {
     SessionPinEvent session_pin = 22;
     RetrySessionEventsAction retry_session_events = 23;
     FetchSessionAction fetch_session = 24;
-    MachineRouteStatusEvent machine_route_status = 25;
     SessionScheduleHintsEvent session_schedule_hints = 26;
     DirectEventsReceivedEvent direct_events_received = 27;
     HomeSetScopeAction home_set_scope = 30;
@@ -563,7 +557,6 @@ message Event {
     UpdateMachineAgentDefaultsEvent update_machine_agent_defaults = 362;
     UpdateMachineDaemonSettingsEvent update_machine_daemon_settings = 363;
     UpdateDirectPreferenceEvent update_direct_preference = 364;
-    MachineDirectStatusEvent machine_direct_status = 365;
     ToggleMachineAgentEvent toggle_machine_agent = 366;
     UsageScreenOpenEvent usage_screen_open = 380;
     UsageScreenRetryEvent usage_screen_retry = 381;

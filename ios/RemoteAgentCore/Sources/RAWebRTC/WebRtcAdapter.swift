@@ -1,11 +1,12 @@
 import Foundation
 import RACore
+import RAProto
 import WebRTC
 
 /// DataChannel-only use of the WebRTC SDK (docs/transport.md §2): no media track is ever created,
 /// so neither the microphone nor the camera is touched and no permission is asked; STUN is only
 /// the relay host's own server, never TURN or a third party. SDP and candidate strings go to and
-/// come from the SDK exactly as they are; RACore validates them.
+/// come from the SDK directly; Core validates them.
 public final class WebRtcFactory: RtcFactory, @unchecked Sendable {
     private final class Sdk: @unchecked Sendable {
         let factory: RTCPeerConnectionFactory
@@ -31,6 +32,59 @@ public final class WebRtcFactory: RtcFactory, @unchecked Sendable {
 
 enum SdkFailure: Error { case create, channel, description }
 
+private func iceConnString(_ state: RTCIceConnectionState) -> String {
+    switch state {
+    case .new: "new"
+    case .checking: "checking"
+    case .connected: "connected"
+    case .completed: "completed"
+    case .failed: "failed"
+    case .disconnected: "disconnected"
+    case .closed: "closed"
+    case .count: "count"
+    @unknown default: ""
+    }
+}
+
+private func iceGatherString(_ state: RTCIceGatheringState) -> String {
+    switch state {
+    case .new: "new"
+    case .gathering: "gathering"
+    case .complete: "complete"
+    @unknown default: ""
+    }
+}
+
+private func statsCandType(_ value: Any?) -> PBCoreDirectCandType {
+    switch value as? String {
+    case "host": .host
+    case "srflx": .srflx
+    case "prflx": .prflx
+    case "relay": .relay
+    case nil: .unspecified
+    default: .other
+    }
+}
+
+private let ipv4Regex = try! NSRegularExpression(pattern: #"^\d{1,3}(?:\.\d{1,3}){3}$"#)
+private let v4MappedRegex = try! NSRegularExpression(pattern: #"^::ffff:\d{1,3}(?:\.\d{1,3}){3}$"#)
+
+private func statsCandFamily(_ value: Any?) -> PBCoreDirectCandFamily {
+    guard let s = (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+          !s.isEmpty else { return .unspecified }
+    let base = String(s.split(separator: "%", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+    if base.isEmpty || base.hasSuffix(".local") { return .unspecified }
+    let range = NSRange(base.startIndex..<base.endIndex, in: base)
+    if ipv4Regex.firstMatch(in: base, range: range) != nil || v4MappedRegex.firstMatch(in: base, range: range) != nil {
+        return .v4
+    }
+    return base.contains(":") ? .v6 : .unspecified
+}
+
+private func statsInt(_ value: Any?) -> Int32 {
+    (value as? NSNumber)?.int32Value ?? 0
+}
+
 private final class PeerObserver: NSObject, RTCPeerConnectionDelegate, @unchecked Sendable {
     let listener: any RtcPeerListener
     weak var pc: RTCPeerConnection?
@@ -39,10 +93,20 @@ private final class PeerObserver: NSObject, RTCPeerConnectionDelegate, @unchecke
     func peerConnection(_ p: RTCPeerConnection, didAdd stream: RTCMediaStream) {}
     func peerConnection(_ p: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
     func peerConnectionShouldNegotiate(_ p: RTCPeerConnection) {}
-    func peerConnection(_ p: RTCPeerConnection, didChange newState: RTCIceConnectionState) {}
-    func peerConnection(_ p: RTCPeerConnection, didChange newState: RTCIceGatheringState) { if newState == .complete { listener.onIceGatheringComplete() } }
+    func peerConnection(_ p: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
+        let s = iceConnString(newState)
+        if !s.isEmpty { listener.onIceConnectionStateChange(s) }
+    }
+    func peerConnection(_ p: RTCPeerConnection, didChange newState: RTCIceGatheringState) {
+        let s = iceGatherString(newState)
+        if !s.isEmpty { listener.onIceGatheringStateChange(s) }
+        if newState == .complete { listener.onIceGatheringComplete() }
+    }
     func peerConnection(_ p: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
         listener.onIceCandidate(RtcIceCandidate(candidate: candidate.sdp, sdpMid: candidate.sdpMid ?? "", sdpMLineIndex: Int(candidate.sdpMLineIndex), isSrflx: candidate.sdp.contains(" typ srflx ")))
+    }
+    func peerConnection(_ p: RTCPeerConnection, didFailToGatherIceCandidate event: RTCIceCandidateErrorEvent) {
+        listener.onIceCandidateError(code: Int(event.errorCode), address: event.address)
     }
     func peerConnection(_ p: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
     func peerConnection(_ p: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) { dataChannel.close(); listener.onUnexpectedDataChannel() }
@@ -88,6 +152,7 @@ private final class PeerConnection: RtcPeerConnection, @unchecked Sendable {
     let pc: RTCPeerConnection, observer: PeerObserver
     private let lock = NSLock()
     private var channels: [Channel] = []
+    private var closed = false
     init(pc: RTCPeerConnection, observer: PeerObserver) { self.pc = pc; self.observer = observer }
     var maxMessageSize: Int? { nil }
 
@@ -128,8 +193,74 @@ private final class PeerConnection: RtcPeerConnection, @unchecked Sendable {
             pc.add(RTCIceCandidate(sdp: candidate, sdpMLineIndex: Int32(sdpMLineIndex), sdpMid: sdpMid)) { e in if let e { c.resume(throwing: e) } else { c.resume() } }
         }
     }
+    func readStats() async -> PBCoreDirectStatsReport {
+        let iceState = iceConnString(pc.iceConnectionState)
+        if lock.withLock({ closed }) {
+            return PBCoreDirectStatsReport.with { $0.iceState = iceState }
+        }
+        return await withCheckedContinuation { (c: CheckedContinuation<PBCoreDirectStatsReport, Never>) in
+            pc.statistics { report in
+                var dtlsState = ""
+                var dcState = ""
+                var locals: [String: (PBCoreDirectCandType, PBCoreDirectCandFamily)] = [:]
+                var remotes: [String: (PBCoreDirectCandType, PBCoreDirectCandFamily)] = [:]
+                var rawPairs: [RTCStatistics] = []
+                for s in report.statistics.values {
+                    let m = s.values
+                    switch s.type {
+                    case "local-candidate", "remote-candidate":
+                        let address = m["address"] ?? m["ip"]
+                        let info = (statsCandType(m["candidateType"]), statsCandFamily(address))
+                        if s.type == "local-candidate" { locals[s.id] = info } else { remotes[s.id] = info }
+                    case "candidate-pair":
+                        rawPairs.append(s)
+                    case "transport":
+                        if let st = m["dtlsState"] as? String, !st.isEmpty { dtlsState = st }
+                    case "data-channel":
+                        let dcId = (m["dataChannelIdentifier"] as? NSNumber)?.intValue
+                        if let st = m["state"] as? String, !st.isEmpty, dcId == nil || dcId == 0 {
+                            dcState = st
+                        }
+                    default:
+                        break
+                    }
+                }
+                var out = PBCoreDirectStatsReport()
+                out.iceState = iceState
+                out.dtlsState = dtlsState
+                out.dcState = dcState
+                out.pairs = rawPairs.map { p in
+                    let m = p.values
+                    let localInfo = (m["localCandidateId"] as? String).flatMap { locals[$0] } ?? (.unspecified, .unspecified)
+                    let remoteInfo = (m["remoteCandidateId"] as? String).flatMap { remotes[$0] } ?? (.unspecified, .unspecified)
+                    let rtt = (m["currentRoundTripTime"] as? NSNumber)?.doubleValue
+                    var pair = PBCoreDirectStatsPair()
+                    pair.localType = localInfo.0
+                    pair.localFamily = localInfo.1
+                    pair.remoteType = remoteInfo.0
+                    pair.remoteFamily = remoteInfo.1
+                    pair.nominated = (m["nominated"] as? NSNumber)?.boolValue ?? false
+                    pair.state = (m["state"] as? String) ?? ""
+                    pair.requestsSent = statsInt(m["requestsSent"])
+                    pair.responsesReceived = statsInt(m["responsesReceived"])
+                    if let rtt, rtt.isFinite {
+                        pair.hasCurrentRtt_p = true
+                        pair.currentRttSeconds = rtt
+                    }
+                    return pair
+                }
+                c.resume(returning: out)
+            }
+        }
+    }
     func close() {
-        let all = lock.withLock { () -> [Channel] in let c = channels; channels = []; return c }
+        let all = lock.withLock { () -> [Channel] in
+            if closed { return [] }
+            closed = true
+            let c = channels
+            channels = []
+            return c
+        }
         for c in all { c.channel.delegate = nil; c.channel.close() }
         pc.delegate = nil
         pc.close()

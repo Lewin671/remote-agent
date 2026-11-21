@@ -29,6 +29,9 @@ type Caps struct {
 
 // ---- events from the shell ----
 
+// SetSupported: whether this device can make direct paths (WebRTC available/linked).
+type SetSupported struct{ Supported bool }
+
 // Lifecycle: the app or tab went to the foreground or background. Direct
 // paths are kept only in the foreground.
 type Lifecycle struct{ Foreground bool }
@@ -206,6 +209,7 @@ type RetryNowResult struct {
 	Started bool
 }
 
+func (SetSupported) event()       {}
 func (Lifecycle) event()          {}
 func (MainLeg) event()            {}
 func (NetworkChanged) event()     {}

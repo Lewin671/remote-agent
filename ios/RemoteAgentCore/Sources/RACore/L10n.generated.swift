@@ -8355,10 +8355,6 @@ public enum L10n {
         let key = "transport_popover_relay_title"
         return format(key, locale: locale, args: [name])
     }
-    public static func transportPopoverRelayTitleRtt(ms: String, name: String, locale: String = MessageLocale.current) -> String {
-        let key = "transport_popover_relay_title_rtt"
-        return format(key, locale: locale, args: [ms, name])
-    }
     public static func transportPopoverSettings(locale: String = MessageLocale.current) -> String {
         let key = "transport_popover_settings"
         return format(key, locale: locale, args: [])
@@ -17095,10 +17091,6 @@ public enum L10nMessage {
         let key = "transport_popover_relay_title"
         return LocalizedMessage(key: key, arguments: [.string(name)])
     }
-    public static func transportPopoverRelayTitleRtt(ms: String, name: String) -> LocalizedMessage {
-        let key = "transport_popover_relay_title_rtt"
-        return LocalizedMessage(key: key, arguments: [.string(ms), .string(name)])
-    }
     public static func transportPopoverSettings() -> LocalizedMessage {
         let key = "transport_popover_settings"
         return LocalizedMessage(key: key, arguments: [])
@@ -19727,7 +19719,6 @@ public enum L10nText {
         case "transport.popover_read_only": return L10n.format("transport_popover_read_only", locale: locale, args: [])
         case "transport.popover_relay_body": return L10n.format("transport_popover_relay_body", locale: locale, args: [])
         case "transport.popover_relay_title": return L10n.format("transport_popover_relay_title", locale: locale, args: [strArg(args["name"])])
-        case "transport.popover_relay_title_rtt": return L10n.format("transport_popover_relay_title_rtt", locale: locale, args: [strArg(args["ms"]), strArg(args["name"])])
         case "transport.popover_settings": return L10n.format("transport_popover_settings", locale: locale, args: [])
         case "transport.popover_stable": return L10n.format("transport_popover_stable", locale: locale, args: [])
         case "transport.popover_switched_relay": return L10n.format("transport_popover_switched_relay", locale: locale, args: [])
@@ -19744,12 +19735,12 @@ public enum L10nText {
         case "transport.reason_peer_unsupported": return L10n.format("transport_reason_peer_unsupported", locale: locale, args: [])
         case "transport.reason_security_pending": return L10n.format("transport_reason_security_pending", locale: locale, args: [])
         case "transport.reason_starting": return L10n.format("transport_reason_starting", locale: locale, args: [])
+        case "transport.row_allow_direct": return L10n.format("transport_row_allow_direct", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve14(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
-        case "transport.row_allow_direct": return L10n.format("transport_row_allow_direct", locale: locale, args: [])
         case "transport.row_diag_copied": return L10n.format("transport_row_diag_copied", locale: locale, args: [])
         case "transport.row_diag_copy_support": return L10n.format("transport_row_diag_copy_support", locale: locale, args: [])
         case "transport.row_off": return L10n.format("transport_row_off", locale: locale, args: [])

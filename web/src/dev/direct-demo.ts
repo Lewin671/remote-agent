@@ -376,7 +376,7 @@ function buildChip(spec: DemoDirectSpec, machineName: string) {
   const direct = preset === "direct" || preset === "file" || preset === "read" || preset === "file-fallback";
   const header = direct
     ? (rttMs !== undefined ? tk("transport.popover_direct_title_rtt", { name: machineName, ms: rttMs }) : tk("transport.popover_direct_title", { name: machineName }))
-    : (rttMs !== undefined ? tk("transport.popover_relay_title_rtt", { name: machineName, ms: rttMs }) : tk("transport.popover_relay_title", { name: machineName }));
+    : tk("transport.popover_relay_title", { name: machineName });
   const body =
     preset === "direct"
       ? tk("transport.popover_stable")

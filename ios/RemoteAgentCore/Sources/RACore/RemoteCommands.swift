@@ -39,23 +39,25 @@ extension Remote {
             trackTransfer(machineId: effect.machineID, command: cmd)
         }
 
-        let hint = effect.forceRelay ? nil : directHint(for: effect)
-        let tracking = hint.flatMap { direct?.track(effect.machineID, $0) }
-        let build = hint.flatMap { directBuilder(direct, effect.machineID, $0) }
+        let useDirect = effect.routeLeg == .direct && effect.directPcID > 0
         let handedOffLock = OSAllocatedUnfairLock(initialState: false)
-        let delivery = deviceLink.delivery(
-            attemptId: effect.attemptID,
-            direct: build,
-            handoff: { handedOffLock.withLock { $0 = true } }
-        )
-        ev.routeWasDirect = delivery.isDirect
+        let handoff: @Sendable () throws -> Void = {
+            handedOffLock.withLock { $0 = true }
+        }
+        let relayAttempt = useDirect ? nil : deviceLink.delivery(attemptId: effect.attemptID, handoff: handoff)
+        ev.routeWasDirect = useDirect
         let started = ContinuousClock.now
+        func elapsed() -> Double {
+            Double(max((ContinuousClock.now - started).milliseconds, 1))
+        }
 
         do {
             if let cmd {
                 try requireFileCapability(machineId: effect.machineID, hasFiles: requiresFileCapability(cmd))
             }
-            try await delivery.prepare(prior: effect.retryOfUnknown)
+            if let relayAttempt {
+                try await relayAttempt.prepare(prior: effect.retryOfUnknown)
+            }
 
             let stateHash = try await authorizationStateHash()
             let (envelope, keyHash, payloadHash) = try await sealedForDispatch(
@@ -65,7 +67,26 @@ extension Remote {
                 try requireFileCapability(machineId: effect.machineID, hasFiles: requiresFileCapability(cmd))
             }
 
-            let res = try await delivery.send(machineId: effect.machineID, command: envelope)
+            let res: PBForwardResponse
+            if useDirect {
+                let rawEnv = try envelope.serializedData()
+                let directEnv = try await directExecutor.sendRpc(
+                    pcId: effect.directPcID,
+                    requestId: effect.requestID,
+                    sealedBytes: rawEnv,
+                    timeoutMs: effect.directTimeoutMs,
+                    handoff: handoff
+                )
+                res = PBForwardResponse.with {
+                    $0.result = directEnv
+                    $0.attemptID = effect.attemptID
+                }
+            } else {
+                res = try await relayAttempt!.send(machineId: effect.machineID, command: envelope)
+            }
+            ev.elapsedMs = elapsed()
+            ev.handedOff = handedOffLock.withLock { $0 }
+
             let (_, msg): (PBHeader, PBCommandResult)
             do {
                 (_, msg) = try await openSecureMessage(
@@ -77,10 +98,9 @@ extension Remote {
                         requestId: effect.requestID),
                     as: PBCommandResult.self)
             } catch {
-                tracking?.failed()
                 ev.source = .daemon
                 ev.notForwarded = false
-                ev.attemptBound = res.attemptID == delivery.attemptId
+                ev.attemptBound = res.attemptID == effect.attemptID
                 ev.hashesMatch = false
                 ev.signed = false
                 ev.outerMatchesInner = false
@@ -90,24 +110,20 @@ extension Remote {
             }
 
             let hashesMatch = msg.requestKeyHash == keyHash && msg.payloadHash == payloadHash
-            let outerOutcome = delivery.isDirect ? msg.outcome : res.outcome
-            let outerReason = delivery.isDirect ? msg.reason : res.reason
-            let outerMatchesInner = delivery.isDirect || (res.outcome == msg.outcome && res.reason == msg.reason)
+            let outerOutcome = useDirect ? msg.outcome : res.outcome
+            let outerReason = useDirect ? msg.reason : res.reason
+            let outerMatchesInner = useDirect || (res.outcome == msg.outcome && res.reason == msg.reason)
             let signed = msg.outcome == "conflict" || msg.conflictKind.isEmpty
-            let bound = res.attemptID == delivery.attemptId
+            let bound = res.attemptID == effect.attemptID
 
-            let elapsedMs = Double((ContinuousClock.now - started).milliseconds)
-            if delivery.isDirect {
-                if bound && hashesMatch && outerMatchesInner && signed && msg.outcome != "unknown" {
-                    let bytes = effect.bulkFileKey.isEmpty ? 0 : Int(max(0, effect.bulkBytes))
-                    tracking?.observe(true, bytes, elapsedMs)
-                } else {
-                    tracking?.failed()
-                }
-            } else if bound && hashesMatch && outerMatchesInner && signed && msg.outcome == "executed" {
-                let bytes = effect.bulkFileKey.isEmpty ? 0 : Int(max(0, effect.bulkBytes))
-                tracking?.observe(false, bytes, elapsedMs)
+            let obsBytes: Int64 = if let cmd, case .putImageChunk(let put)? = cmd.kind {
+                Int64(put.data.count)
+            } else if case .getSharedFileChunk(let chunk)? = msg.kind {
+                Int64(chunk.data.count)
+            } else {
+                0
             }
+            ev.observedBytes = obsBytes
 
             if bound && hashesMatch && outerMatchesInner && signed && msg.outcome == "executed",
                msg.errorCode.isEmpty, msg.resultAvailable,
@@ -128,17 +144,19 @@ extension Remote {
             ev.result = msg
             return ev
         } catch let error as CommandError {
-            tracking?.failed()
+            ev.elapsedMs = elapsed()
             let handedOff = handedOffLock.withLock { $0 }
+            ev.handedOff = handedOff
             ev.source = .local
             ev.notForwarded = !handedOff
             ev.transportCode = error.code
             ev.transportDetail = error.message
             return ev
         } catch let error as ConnectError {
-            tracking?.failed()
+            ev.elapsedMs = elapsed()
             let handedOff = handedOffLock.withLock { $0 }
-            if let refusal = delivery.refusal(error) {
+            ev.handedOff = handedOff
+            if let relayAttempt, let refusal = relayAttempt.refusal(error) {
                 if error.code == .unauthenticated { dropToken() }
                 ev.source = .server
                 ev.notForwarded = true
@@ -166,15 +184,17 @@ extension Remote {
             }
             return ev
         } catch is PathChanged {
-            tracking?.failed()
+            ev.elapsedMs = elapsed()
             let handedOff = handedOffLock.withLock { $0 }
+            ev.handedOff = handedOff
             ev.source = .transport
             ev.notForwarded = !handedOff
             ev.transportCode = "path_changed"
             return ev
         } catch {
-            tracking?.failed()
+            ev.elapsedMs = elapsed()
             let handedOff = handedOffLock.withLock { $0 }
+            ev.handedOff = handedOff
             ev.source = .transport
             ev.notForwarded = !handedOff
             ev.transportCode = unresolvedHost(error) ? "unresolved_host" : (handedOff ? CommandError.unknownOutcome : "network")
@@ -274,7 +294,7 @@ extension Remote {
             throw CommandError("failed_precondition", refusal, outcome: prior ? .unknown : .notSent)
         }
         trackTransfer(machineId: p.machineId, command: p.command)
-        let routeHint = directHint(p.machineId, p.command)
+        let bulkHint = directBulkHint(p.machineId, p.command)
         var forceRelay = false
         var attemptCount = 0
 
@@ -282,17 +302,52 @@ extension Remote {
             guard clock() < recoveryDeadline else {
                 throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
             }
-            let build = routeHint != nil && !forceRelay ? directBuilder(direct, p.machineId, routeHint!) : nil
-            let tracking = routeHint.flatMap { direct?.track(p.machineId, $0) }
+            let attemptId = newRequestId()
+            let dec: PBCoreDirectBulkRouteEffect
+            if (bulkHint.routeHintValue != 0 || !bulkHint.uploadTransferID.isEmpty), let hooks = hostHooks {
+                let beginEv = PBCoreDirectBulkTransferBeginEvent.with {
+                    $0.machineID = p.machineId
+                    $0.routeHint = bulkHint.routeHintValue
+                    $0.bulkFileKey = bulkHint.bulkFileKey
+                    $0.bulkBytes = bulkHint.bulkBytes
+                    $0.bulkUpload = bulkHint.bulkUpload
+                    $0.deadlineMs = p.deadlineMs
+                    $0.forceRelay = forceRelay
+                    $0.uploadTransferID = bulkHint.uploadTransferID
+                    $0.uploadHasFilename = bulkHint.uploadHasFilename
+                }
+                dec = await hooks.onBeginDirectBulkTransfer(beginEv)
+            } else {
+                dec = PBCoreDirectBulkRouteEffect()
+            }
+            let useDirect = dec.useDirect && !forceRelay && dec.pcID > 0
             let started = ContinuousClock.now
-            let handedOffLock = OSAllocatedUnfairLock(initialState: false)
-            let delivery = deviceLink.delivery(direct: build, handoff: {
-                handedOffLock.withLock { $0 = true }
-                p.markMayHaveRun()
-            })
+            let handoff: @Sendable () throws -> Void = { p.markMayHaveRun() }
+            let relayAttempt = useDirect ? nil : deviceLink.delivery(attemptId: attemptId, handoff: handoff)
+            let initialBytes: Int64 = if case .putImageChunk(let c)? = p.command.kind {
+                Int64(c.data.count)
+            } else {
+                0
+            }
+            @Sendable func reportRoute(_ ok: Bool, _ obsBytes: Int64) async {
+                guard dec.ticketID != 0 || !bulkHint.finishTransferID.isEmpty else { return }
+                let done = PBCoreDirectBulkTransferDoneEvent.with {
+                    $0.ticketID = dec.ticketID
+                    $0.routeWasDirect = useDirect
+                    $0.ok = ok
+                    $0.elapsedMs = Double(max((ContinuousClock.now - started).milliseconds, 1))
+                    $0.observedBytes = obsBytes
+                    $0.finishUploadTransferID = bulkHint.finishTransferID
+                    $0.machineID = p.machineId
+                }
+                await hostHooks?.onFinishDirectBulkTransfer(done)
+            }
+            var routeReported = false
             do {
                 try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
-                try await delivery.prepare(prior: p.mayHaveRun)
+                if let relayAttempt {
+                    try await relayAttempt.prepare(prior: p.mayHaveRun)
+                }
                 let stateHash = try await authorizationStateHash()
                 let auth = p.authorizationResult(stateHash: stateHash) { _ in
                     Task {
@@ -302,7 +357,22 @@ extension Remote {
                 let envelope = try await auth.value
                 try Task.checkCancellation()
                 let binding = try await securitySession().commandIdentity(envelope)
-                let res = try await delivery.send(machineId: p.machineIDOr(p.machineId), command: envelope)
+                let res: PBForwardResponse
+                if useDirect {
+                    let directEnv = try await directExecutor.sendRpc(
+                        pcId: dec.pcID,
+                        requestId: p.requestId,
+                        sealedBytes: try envelope.serializedData(),
+                        timeoutMs: dec.timeoutMs,
+                        handoff: handoff
+                    )
+                    res = PBForwardResponse.with {
+                        $0.result = directEnv
+                        $0.attemptID = attemptId
+                    }
+                } else {
+                    res = try await relayAttempt!.send(machineId: p.machineIDOr(p.machineId), command: envelope)
+                }
                 let msg: PBCommandResult
                 do {
                     (_, msg) = try await openSecureMessage(
@@ -310,20 +380,24 @@ extension Remote {
                         want: Place(.commandResult, machineId: p.machineId, sessionId: p.sessionId, requestId: p.requestId),
                         as: PBCommandResult.self)
                 } catch {
-                    tracking?.failed()
+                    routeReported = true
+                    await reportRoute(false, initialBytes)
                     throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), outcome: .unknown)
                 }
-                let bound = res.attemptID == delivery.attemptId
+                let bound = res.attemptID == attemptId
                     && msg.requestKeyHash == binding.key
                     && msg.payloadHash == binding.payload
-                    && (delivery.isDirect || (res.outcome == msg.outcome && res.reason == msg.reason))
+                    && (useDirect || (res.outcome == msg.outcome && res.reason == msg.reason))
                     && (msg.outcome == "conflict" || msg.conflictKind.isEmpty)
                 let category = Outcome(rawValue: msg.outcome) ?? .unknown
                 guard bound && category != .unknown else {
-                    tracking?.failed()
+                    routeReported = true
+                    await reportRoute(false, initialBytes)
                     throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), fromDaemon: true, outcome: .unknown)
                 }
                 if (category == .executed && !msg.resultAvailable) || (category == .conflict && msg.conflictKind == "identity") {
+                    routeReported = true
+                    await reportRoute(false, initialBytes)
                     _ = await refresh()
                     throw CommandError(
                         msg.errorCode,
@@ -331,29 +405,33 @@ extension Remote {
                         fromDaemon: true, outcome: category, conflictKind: msg.conflictKind, resultAvailable: msg.resultAvailable)
                 }
                 if !msg.errorCode.isEmpty || category != .executed {
+                    routeReported = true
+                    await reportRoute(category == .executed, initialBytes)
                     throw CommandError(
                         msg.errorCode.ifEmpty(msg.outcome),
                         msg.errorMessage.ifEmpty(msg.errorCode),
                         fromDaemon: true, outcome: category, conflictKind: msg.conflictKind)
                 }
-                let elapsedMs = Double((ContinuousClock.now - started).milliseconds)
-                if delivery.isDirect || routeHint != nil {
-                    tracking?.observe(delivery.isDirect, 0, elapsedMs)
+                var finalBytes = initialBytes
+                if case .getSharedFileChunk(let chunk)? = msg.kind {
+                    finalBytes = Int64(chunk.data.count)
                 }
+                routeReported = true
+                await reportRoute(true, finalBytes)
                 return msg
             } catch let e as CommandError {
-                tracking?.failed()
+                if !routeReported { await reportRoute(false, initialBytes) }
                 if prior && !e.unknown && !(e.fromDaemon && e.outcome != .notSent) {
                     throw CommandError(e.code, e.message, fromDaemon: e.fromDaemon, readOnly: e.readOnly, outcomeDetail: e.outcomeDetail, outcome: .unknown, conflictKind: e.conflictKind, resultAvailable: e.resultAvailable)
                 }
                 throw e
             } catch is PathChanged {
-                tracking?.failed()
-                if delivery.isDirect { forceRelay = true; continue }
+                if !routeReported { await reportRoute(false, initialBytes) }
+                if useDirect { forceRelay = true; continue }
                 throw CommandError.unknownBecause(L10n.errorsConnectionDroppedMidway())
             } catch let ce as ConnectError {
-                tracking?.failed()
-                if let refusal = delivery.refusal(ce) {
+                if !routeReported { await reportRoute(false, initialBytes) }
+                if let relayAttempt, let refusal = relayAttempt.refusal(ce) {
                     if ce.code == .unauthenticated {
                         rejectCredential(token)
                         attemptCount += 1
@@ -374,7 +452,7 @@ extension Remote {
                 if p.mayHaveRun { throw CommandError.unknownBecause(errorText(ce)) }
                 throw CommandError(ce.code.name, errorText(ce))
             } catch {
-                tracking?.failed()
+                if !routeReported { await reportRoute(false, initialBytes) }
                 if p.mayHaveRun { throw CommandError.unknownBecause(errorText(error)) }
                 throw error
             }

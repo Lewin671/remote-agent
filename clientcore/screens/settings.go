@@ -23,9 +23,6 @@ type MachineSettingsExtra struct {
 	SaveUnknown        bool
 	CleaningImages     bool
 	SaveError          *corev1.Text
-	DirectEnabled      bool
-	DirectHasPref      bool
-	DirectReport       *corev1.DirectRouteReport
 	ToggleSaving       map[v1.Agent]bool
 	TogglePendingValue map[v1.Agent]bool
 	ToggleBaseRevision uint64
@@ -105,7 +102,7 @@ func (s *SettingsExtra) EnsureMachine(id string) *MachineSettingsExtra {
 	}
 	e := s.Machines[id]
 	if e == nil {
-		e = &MachineSettingsExtra{DirectEnabled: true}
+		e = &MachineSettingsExtra{}
 		s.Machines[id] = e
 	}
 	return e
@@ -125,24 +122,13 @@ func (s *SettingsExtra) EnsureFeed(id string) *MachinePollFeed {
 	return f
 }
 
-func machineDirectInputs(st *State, extra *SettingsExtra, machineID string) (bool, *corev1.DirectRouteReport) {
+func machineDirectInputs(st *State, _ *SettingsExtra, machineID string) (bool, *corev1.DirectRouteReport) {
 	if st != nil && st.DirectReportFn != nil {
 		if enabled, report, ok := st.DirectReportFn(machineID); ok {
 			return enabled, report
 		}
 	}
-	directPref := true
-	if extra == nil {
-		return directPref, nil
-	}
-	mExtra := extra.Machines[machineID]
-	if mExtra == nil {
-		return directPref, nil
-	}
-	if mExtra.DirectHasPref {
-		directPref = mExtra.DirectEnabled
-	}
-	return directPref, mExtra.DirectReport
+	return true, nil
 }
 
 func buildMachineListCards(st *State, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) []*corev1.MachineListCardView {

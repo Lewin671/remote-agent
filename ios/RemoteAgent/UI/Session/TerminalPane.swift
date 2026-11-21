@@ -88,13 +88,24 @@ struct TerminalPane: View {
     }
 
     private func start() {
-        let (remote, app, sid) = (context.remote, model, sessionId)
+        let (remote, app, sid, host) = (context.remote, model, sessionId, context.coreHost)
         terminal.use(
             RemoteTerminal.Link(
                 open: { try await remote.openTerminal(sid, listener: $0) },
                 online: { app.state.peer(app.state.sessions[sessionId]?.machineId).ready && app.foreground },
                 hold: { app.holdTerminal($0) },
-                release: { app.releaseTerminal($0) }))
+                release: { app.releaseTerminal($0) },
+                reportStream: { id, kind, opened in
+                    Task { await host.sendTerminalStream(terminalID: id, kind: kind, opened: opened) }
+                },
+                subscribeReopen: { id, handler in
+                    let token = UUID()
+                    let task = Task { await host.registerTerminalReopen(terminalID: id, token: token, handler: handler) }
+                    return {
+                        task.cancel()
+                        Task { await host.unregisterTerminalReopen(terminalID: id, token: token) }
+                    }
+                }))
         if active { open() }
         else if !waitingReachability { terminal.close() }
     }

@@ -249,36 +249,32 @@ struct SessionScreen: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 let computer = header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: machineID)
-                let liveDirectReport: PBDirectRouteReport? = {
-                    if let rep = context.core.directReports[machineID] { return rep }
+                let demoChip: PBSessionDirectChipView? = {
                     #if DEBUG
                     if model.isDemo && SessionDebug.shows("direct") {
-                        return PBDirectRouteReport.with {
-                            $0.enabled = true
-                            $0.capable = true
-                            $0.state = .connected
-                            $0.readRoute = .direct
-                            $0.fileRoute = .direct
-                            $0.hasDirectReadMs_p = true
-                            $0.directReadMs = 12
-                            $0.hasActiveRttMs_p = true
-                            $0.activeRttMs = 12
+                        return PBSessionDirectChipView.with {
+                            $0.visible = true
+                            $0.active = true
+                            $0.readDirect = true
+                            $0.fileDirect = true
                         }
                     }
                     #endif
                     return nil
                 }()
+                let chip = demoChip ?? (header.hasDirectChip ? header.directChip : nil)
                 let directActive = !term && !header.exited && header.computerOnline && !header.computerUnlinked
-                    && liveDirectReport?.state == .connected
-                    && (liveDirectReport?.readRoute == .direct || liveDirectReport?.fileRoute == .direct)
+                    && chip?.visible == true && chip?.active == true
                 let showDirectChip = !term && (directActive || directPopoverOpen)
+                let chipLabel = chip?.hasLabelText == true ? chip!.labelText.rendered() : ""
                 let titleView = SessionTitle(
                     title: titleText,
                     mark: StatusKind(header),
                     status: statusText,
                     mode: modeText,
                     danger: modeDanger,
-                    showDirect: showDirectChip
+                    showDirect: showDirectChip,
+                    directLabel: chipLabel
                 )
                 if showDirectChip {
                     Button {
@@ -292,7 +288,7 @@ struct SessionScreen: View {
                         SessionDirectPopover(
                             computerName: computer,
                             directActive: directActive,
-                            report: liveDirectReport,
+                            chip: chip,
                             onSettings: {
                                 directPopoverOpen = false
                                 nav.open(.machine(id: machineID, initialDirect: true))
@@ -606,6 +602,7 @@ private struct SessionTitle: View {
     let mode: String
     let danger: Bool
     var showDirect: Bool = false
+    var directLabel: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -618,7 +615,7 @@ private struct SessionTitle: View {
                     HStack(spacing: 3) {
                         Text("·").foregroundStyle(DS.ink2)
                         SymbolImage(directChipSymbol, style: .caption2, color: DS.ink2)
-                        Text(L10n.transportDirect()).foregroundStyle(DS.ink2)
+                        Text(directLabel.or(L10n.transportDirect())).foregroundStyle(DS.ink2)
                     }
                     .font(.caption)
                     .lineLimit(1)
@@ -635,31 +632,32 @@ private struct SessionTitle: View {
 private struct SessionDirectPopover: View {
     let computerName: String
     let directActive: Bool
-    let report: PBDirectRouteReport?
+    let chip: PBSessionDirectChipView?
     let onSettings: () -> Void
 
     var body: some View {
-        let rttDirect: Int? = report.flatMap { r in r.hasDirectReadMs_p ? Int(r.directReadMs) : (r.hasActiveRttMs_p ? Int(r.activeRttMs) : nil) }
-        let rttRelay: Int? = report.flatMap { r in r.hasRelayReadMs_p ? Int(r.relayReadMs) : nil }
         let titleText: String = {
-            if directActive, let rttDirect {
-                return L10n.transportPopoverDirectTitleRtt(ms: "\(rttDirect)", name: computerName)
+            if let chip, chip.hasPopoverTitle {
+                let text = chip.popoverTitle.rendered()
+                if !text.isEmpty && (directActive || !chip.active) { return text }
             }
-            if directActive {
-                return L10n.transportPopoverDirectTitle(name: computerName)
-            }
-            if let rttRelay {
-                return L10n.transportPopoverRelayTitleRtt(ms: "\(rttRelay)", name: computerName)
-            }
-            return L10n.transportPopoverRelayTitle(name: computerName)
+            return directActive
+                ? L10n.transportPopoverDirectTitle(name: computerName)
+                : L10n.transportPopoverRelayTitle(name: computerName)
         }()
-        let readDirect = report?.readRoute == .direct
-        let fileDirect = report?.fileRoute == .direct
+        let bodyText: String = {
+            if let chip, chip.hasPopoverBody {
+                let text = chip.popoverBody.rendered()
+                if !text.isEmpty && (directActive || !chip.active) { return text }
+            }
+            return directActive ? L10n.transportPopoverDirectBody() : L10n.transportPopoverRelayBody()
+        }()
         let footerStatus: String = {
-            if !directActive { return L10n.transportPopoverSwitchedRelay() }
-            if readDirect && !fileDirect { return L10n.transportPopoverReadOnly() }
-            if fileDirect && !readDirect { return L10n.transportPopoverFileOnly() }
-            return L10n.transportPopoverStable()
+            if let chip, chip.hasPopoverFoot {
+                let text = chip.popoverFoot.rendered()
+                if !text.isEmpty && (directActive || !chip.active) { return text }
+            }
+            return directActive ? L10n.transportPopoverStable() : L10n.transportPopoverSwitchedRelay()
         }()
 
         VStack(alignment: .leading, spacing: 10) {
@@ -670,7 +668,7 @@ private struct SessionDirectPopover: View {
                     .foregroundStyle(DS.ink)
                     .monospacedDigit()
             }
-            Text(directActive ? L10n.transportPopoverDirectBody() : L10n.transportPopoverRelayBody())
+            Text(bodyText)
                 .font(.footnote)
                 .foregroundStyle(DS.ink2)
                 .fixedSize(horizontal: false, vertical: true)

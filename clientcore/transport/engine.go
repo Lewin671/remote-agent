@@ -127,6 +127,8 @@ func NewEngine(supported bool) *Engine {
 func (e *Engine) Handle(now int64, ev Event) []Effect {
 	e.out, e.changed = nil, false
 	switch ev := ev.(type) {
+	case SetSupported:
+		e.setSupported(now, ev.Supported)
 	case Lifecycle:
 		e.setForeground(now, ev.Foreground)
 	case MainLeg:
@@ -185,7 +187,7 @@ func (e *Engine) Handle(now int64, ev Event) []Effect {
 	default:
 		e.handleDiag(now, ev)
 	}
-	if len(e.units) < entropyLow && !e.entropyAsked {
+	if e.supported && len(e.units) < entropyLow && !e.entropyAsked {
 		e.entropyAsked = true
 		e.emit(RequestEntropy{Count: entropyBatch})
 	}
@@ -302,7 +304,28 @@ func (e *Engine) mainLeg(now int64, ready bool) {
 	e.refreshAndDiscover(now)
 }
 
+func (e *Engine) setSupported(now int64, supported bool) {
+	if e.supported == supported {
+		return
+	}
+	e.supported = supported
+	e.markChanged()
+	if !supported {
+		e.cancelTick()
+		e.hasAuthAt = false
+		e.invalidate(now)
+		return
+	}
+	if e.foreground && e.legReady {
+		e.ensureTick()
+		e.refreshAndDiscover(now)
+	}
+}
+
 func (e *Engine) ensureTick() {
+	if !e.supported {
+		return
+	}
 	if !e.ticking {
 		e.ticking = true
 		e.emit(ScheduleTick{DelayMs: TickMs})
@@ -336,7 +359,7 @@ func (e *Engine) tick(now int64) {
 // authorize asks for a security sync: at most every 12 s, every 2 s when the
 // proof is about to lapse, at once when forced.
 func (e *Engine) authorize(now int64, force bool) {
-	if !e.foreground || !e.legReady || e.authorizing {
+	if !e.supported || !e.foreground || !e.legReady || e.authorizing {
 		return
 	}
 	if !force && e.hasAuthAt {
@@ -435,7 +458,7 @@ func (e *Engine) setEnabled(now int64, m string, on bool) {
 // authorizes first and the round starts once the sync succeeds.
 func (e *Engine) retryNow(now int64, m string) {
 	p := e.peers[m]
-	if !e.foreground || !e.legReady || !e.enabled(m) || p != nil && e.active(p, now) || e.hasManual && now-e.manualAt < ManualGapMs {
+	if !e.supported || !e.foreground || !e.legReady || !e.enabled(m) || p != nil && e.active(p, now) || e.hasManual && now-e.manualAt < ManualGapMs {
 		e.emit(RetryNowResult{Machine: m})
 		return
 	}

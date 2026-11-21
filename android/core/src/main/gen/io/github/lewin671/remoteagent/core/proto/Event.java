@@ -45,7 +45,6 @@ public  final class Event extends
     SESSION_PIN(22),
     RETRY_SESSION_EVENTS(23),
     FETCH_SESSION(24),
-    MACHINE_ROUTE_STATUS(25),
     SESSION_SCHEDULE_HINTS(26),
     DIRECT_EVENTS_RECEIVED(27),
     HOME_SET_SCOPE(30),
@@ -82,7 +81,6 @@ public  final class Event extends
     UPDATE_MACHINE_AGENT_DEFAULTS(362),
     UPDATE_MACHINE_DAEMON_SETTINGS(363),
     UPDATE_DIRECT_PREFERENCE(364),
-    MACHINE_DIRECT_STATUS(365),
     TOGGLE_MACHINE_AGENT(366),
     USAGE_SCREEN_OPEN(380),
     USAGE_SCREEN_RETRY(381),
@@ -205,7 +203,6 @@ public  final class Event extends
         case 22: return SESSION_PIN;
         case 23: return RETRY_SESSION_EVENTS;
         case 24: return FETCH_SESSION;
-        case 25: return MACHINE_ROUTE_STATUS;
         case 26: return SESSION_SCHEDULE_HINTS;
         case 27: return DIRECT_EVENTS_RECEIVED;
         case 30: return HOME_SET_SCOPE;
@@ -242,7 +239,6 @@ public  final class Event extends
         case 362: return UPDATE_MACHINE_AGENT_DEFAULTS;
         case 363: return UPDATE_MACHINE_DAEMON_SETTINGS;
         case 364: return UPDATE_DIRECT_PREFERENCE;
-        case 365: return MACHINE_DIRECT_STATUS;
         case 366: return TOGGLE_MACHINE_AGENT;
         case 380: return USAGE_SCREEN_OPEN;
         case 381: return USAGE_SCREEN_RETRY;
@@ -1590,58 +1586,6 @@ public  final class Event extends
    */
   private void clearFetchSession() {
     if (eventCase_ == 24) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int MACHINE_ROUTE_STATUS_FIELD_NUMBER = 25;
-  /**
-   * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-   */
-  @java.lang.Override
-  public boolean hasMachineRouteStatus() {
-    return eventCase_ == 25;
-  }
-  /**
-   * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent getMachineRouteStatus() {
-    if (eventCase_ == 25) {
-       return (io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMachineRouteStatus(io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 25;
-  }
-  /**
-   * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeMachineRouteStatus(io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 25 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 25;
-  }
-  /**
-   * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-   */
-  private void clearMachineRouteStatus() {
-    if (eventCase_ == 25) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -3514,58 +3458,6 @@ public  final class Event extends
    */
   private void clearUpdateDirectPreference() {
     if (eventCase_ == 364) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int MACHINE_DIRECT_STATUS_FIELD_NUMBER = 365;
-  /**
-   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-   */
-  @java.lang.Override
-  public boolean hasMachineDirectStatus() {
-    return eventCase_ == 365;
-  }
-  /**
-   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent getMachineDirectStatus() {
-    if (eventCase_ == 365) {
-       return (io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMachineDirectStatus(io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 365;
-  }
-  /**
-   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeMachineDirectStatus(io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 365 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 365;
-  }
-  /**
-   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-   */
-  private void clearMachineDirectStatus() {
-    if (eventCase_ == 365) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -9367,54 +9259,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-     */
-    @java.lang.Override
-    public boolean hasMachineRouteStatus() {
-      return instance.hasMachineRouteStatus();
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent getMachineRouteStatus() {
-      return instance.getMachineRouteStatus();
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-     */
-    public Builder setMachineRouteStatus(io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent value) {
-      copyOnWrite();
-      instance.setMachineRouteStatus(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-     */
-    public Builder setMachineRouteStatus(
-        io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setMachineRouteStatus(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-     */
-    public Builder mergeMachineRouteStatus(io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent value) {
-      copyOnWrite();
-      instance.mergeMachineRouteStatus(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-     */
-    public Builder clearMachineRouteStatus() {
-      copyOnWrite();
-      instance.clearMachineRouteStatus();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SessionScheduleHintsEvent session_schedule_hints = 26 [json_name = "sessionScheduleHints"];</code>
      */
     @java.lang.Override
@@ -11139,54 +10983,6 @@ public  final class Event extends
     public Builder clearUpdateDirectPreference() {
       copyOnWrite();
       instance.clearUpdateDirectPreference();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-     */
-    @java.lang.Override
-    public boolean hasMachineDirectStatus() {
-      return instance.hasMachineDirectStatus();
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent getMachineDirectStatus() {
-      return instance.getMachineDirectStatus();
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-     */
-    public Builder setMachineDirectStatus(io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent value) {
-      copyOnWrite();
-      instance.setMachineDirectStatus(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-     */
-    public Builder setMachineDirectStatus(
-        io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setMachineDirectStatus(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-     */
-    public Builder mergeMachineDirectStatus(io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent value) {
-      copyOnWrite();
-      instance.mergeMachineDirectStatus(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-     */
-    public Builder clearMachineDirectStatus() {
-      copyOnWrite();
-      instance.clearMachineDirectStatus();
       return this;
     }
 
@@ -15433,7 +15229,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SessionPinEvent.class,
             io.github.lewin671.remoteagent.core.proto.RetrySessionEventsAction.class,
             io.github.lewin671.remoteagent.core.proto.FetchSessionAction.class,
-            io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent.class,
             io.github.lewin671.remoteagent.core.proto.SessionScheduleHintsEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.class,
             io.github.lewin671.remoteagent.core.proto.HomeSetScopeAction.class,
@@ -15522,7 +15317,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.UpdateMachineAgentDefaultsEvent.class,
             io.github.lewin671.remoteagent.core.proto.UpdateMachineDaemonSettingsEvent.class,
             io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent.class,
-            io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent.class,
             io.github.lewin671.remoteagent.core.proto.ToggleMachineAgentEvent.class,
             io.github.lewin671.remoteagent.core.proto.UpdateClientNameEvent.class,
             io.github.lewin671.remoteagent.core.proto.SetNotificationPrefEvent.class,
@@ -15560,29 +15354,28 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.class,
           };
           java.lang.String info =
-              "\u0000\u0095\u0001\u0000\u0001\u01a5\u0095\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u0093\u0001\u0000\u0001\u01a5\u0093\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
-              "\u0017<\u0000\u0018<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f" +
-              "<\u0000 <\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000" +
-              ".<\u0000/<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000" +
-              ":<\u0000;<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd" +
-              "<\u0000\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000" +
-              "\u00d4<\u0000\u00d5<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f" +
-              "<\u0000\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000" +
-              "\u0140<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146" +
-              "<\u0000\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000" +
-              "\u0152<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158" +
-              "<\u0000\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000" +
-              "\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169" +
-              "<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016d<\u0000\u016e<\u0000\u0172<\u0000" +
-              "\u0177<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d" +
-              "<\u0000\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0191<\u0000" +
-              "\u0192<\u0000\u0193<\u0000\u0194<\u0000\u0195<\u0000\u0196<\u0000\u0197<\u0000\u0198" +
-              "<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000" +
-              "\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5" +
-              "<\u0000";
+              "\u0017<\u0000\u0018<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
+              "\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/" +
+              "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;" +
+              "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000" +
+              "\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4" +
+              "<\u0000\u00d5<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000" +
+              "\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140" +
+              "<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000" +
+              "\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152" +
+              "<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000" +
+              "\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f" +
+              "<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000" +
+              "\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178" +
+              "<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000" +
+              "\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0191<\u0000\u0192<\u0000\u0193" +
+              "<\u0000\u0194<\u0000\u0195<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000" +
+              "\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0" +
+              "<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

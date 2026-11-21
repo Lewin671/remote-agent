@@ -1437,62 +1437,6 @@ public struct PBConnCheckDirectRowView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct PBDirectViewsRequest: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var online: Bool = false
-
-  public var prefEnabled: Bool = false
-
-  public var report: PBDirectRouteReport {
-    get {return _report ?? PBDirectRouteReport()}
-    set {_report = newValue}
-  }
-  /// Returns true if `report` has been explicitly set.
-  public var hasReport: Bool {return self._report != nil}
-  /// Clears the value of `report`. Subsequent reads from it will return its default value.
-  public mutating func clearReport() {self._report = nil}
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-
-  fileprivate var _report: PBDirectRouteReport? = nil
-}
-
-public struct PBDirectViewsResponse: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var connection: PBConnectionGroupView {
-    get {return _connection ?? PBConnectionGroupView()}
-    set {_connection = newValue}
-  }
-  /// Returns true if `connection` has been explicitly set.
-  public var hasConnection: Bool {return self._connection != nil}
-  /// Clears the value of `connection`. Subsequent reads from it will return its default value.
-  public mutating func clearConnection() {self._connection = nil}
-
-  public var connCheckDirect: PBConnCheckDirectRowView {
-    get {return _connCheckDirect ?? PBConnCheckDirectRowView()}
-    set {_connCheckDirect = newValue}
-  }
-  /// Returns true if `connCheckDirect` has been explicitly set.
-  public var hasConnCheckDirect: Bool {return self._connCheckDirect != nil}
-  /// Clears the value of `connCheckDirect`. Subsequent reads from it will return its default value.
-  public mutating func clearConnCheckDirect() {self._connCheckDirect = nil}
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-
-  fileprivate var _connection: PBConnectionGroupView? = nil
-  fileprivate var _connCheckDirect: PBConnCheckDirectRowView? = nil
-}
-
 public struct PBConnectionGroupView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -3118,29 +3062,6 @@ public struct PBUpdateDirectPreferenceEvent: Sendable {
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
-}
-
-public struct PBMachineDirectStatusEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var machineID: String = String()
-
-  public var report: PBDirectRouteReport {
-    get {return _report ?? PBDirectRouteReport()}
-    set {_report = newValue}
-  }
-  /// Returns true if `report` has been explicitly set.
-  public var hasReport: Bool {return self._report != nil}
-  /// Clears the value of `report`. Subsequent reads from it will return its default value.
-  public mutating func clearReport() {self._report = nil}
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-
-  fileprivate var _report: PBDirectRouteReport? = nil
 }
 
 public struct PBUpdateClientNameEvent: Sendable {
@@ -5000,89 +4921,6 @@ extension PBConnCheckDirectRowView: SwiftProtobuf.Message, SwiftProtobuf._Messag
       }
       if !storagesAreEqual {return false}
     }
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBDirectViewsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectViewsRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}online\0\u{3}pref_enabled\0\u{1}report\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBoolField(value: &self.online) }()
-      case 2: try { try decoder.decodeSingularBoolField(value: &self.prefEnabled) }()
-      case 3: try { try decoder.decodeSingularMessageField(value: &self._report) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.online != false {
-      try visitor.visitSingularBoolField(value: self.online, fieldNumber: 1)
-    }
-    if self.prefEnabled != false {
-      try visitor.visitSingularBoolField(value: self.prefEnabled, fieldNumber: 2)
-    }
-    try { if let v = self._report {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    } }()
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBDirectViewsRequest, rhs: PBDirectViewsRequest) -> Bool {
-    if lhs.online != rhs.online {return false}
-    if lhs.prefEnabled != rhs.prefEnabled {return false}
-    if lhs._report != rhs._report {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBDirectViewsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".DirectViewsResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}conn_check_direct\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularMessageField(value: &self._connection) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._connCheckDirect) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    try { if let v = self._connection {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-    } }()
-    try { if let v = self._connCheckDirect {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBDirectViewsResponse, rhs: PBDirectViewsResponse) -> Bool {
-    if lhs._connection != rhs._connection {return false}
-    if lhs._connCheckDirect != rhs._connCheckDirect {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7646,45 +7484,6 @@ extension PBUpdateDirectPreferenceEvent: SwiftProtobuf.Message, SwiftProtobuf._M
   public static func ==(lhs: PBUpdateDirectPreferenceEvent, rhs: PBUpdateDirectPreferenceEvent) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
     if lhs.enabled != rhs.enabled {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBMachineDirectStatusEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".MachineDirectStatusEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}report\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._report) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.machineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
-    }
-    try { if let v = self._report {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBMachineDirectStatusEvent, rhs: PBMachineDirectStatusEvent) -> Bool {
-    if lhs.machineID != rhs.machineID {return false}
-    if lhs._report != rhs._report {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

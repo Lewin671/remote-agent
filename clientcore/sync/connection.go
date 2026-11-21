@@ -69,11 +69,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		if len(e.buffers) > 0 {
 			e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_HISTORY_SWEEP, "", HistorySweepIntervalMs)
 		}
-		if e.transportConfigured {
-			c := e.ensureTransportCoord()
-			e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, true))
-			e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
-		}
+		c := e.ensureTransportCoord()
+		e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, true))
+		e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
 		e.beginConnect(ctx)
 		ctx.Dirty.MarkAll()
 
@@ -104,19 +102,15 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		clear(e.sessionByIDFailed)
 		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
-		if e.transportConfigured {
-			c := e.ensureTransportCoord()
-			e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
-			e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, false))
-		}
+		c := e.ensureTransportCoord()
+		e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
+		e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, false))
 		ctx.Dirty.MarkAll()
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND:
 		wasForeground := e.foreground
 		e.foreground = true
-		if e.transportConfigured {
-			e.emitCoordEffects(ctx, e.ensureTransportCoord().SetLifecycle(e.nowMs, true))
-		}
+		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetLifecycle(e.nowMs, true))
 		e.updateLivePollers(ctx)
 		if !wasForeground && e.everReady && !e.removed && e.running && e.w.World.Connection != lists.ConnConnected {
 			e.startDisplayGrace(ctx)
@@ -148,9 +142,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		if len(e.directReady) > 0 {
 			clear(e.directReady)
 		}
-		if e.transportConfigured {
-			e.emitCoordEffects(ctx, e.ensureTransportCoord().SetLifecycle(e.nowMs, false))
-		}
+		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetLifecycle(e.nowMs, false))
 		e.updateLivePollers(ctx)
 		ctx.Dirty.MarkAll()
 
@@ -238,17 +230,15 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 			e.startDisplayGrace(ctx)
 		}
 		e.clearColdStartGrace(ctx)
-		if e.transportConfigured {
-			c := e.ensureTransportCoord()
-			e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
-			e.emitCoordEffects(ctx, c.SetNetworkChanged(e.nowMs))
-		}
+		c := e.ensureTransportCoord()
+		e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
+		e.emitCoordEffects(ctx, c.SetNetworkChanged(e.nowMs))
 		e.updateLivePollers(ctx)
 		ctx.Dirty.MarkAll()
 		return
 	}
 
-	if e.transportConfigured && (sigChanged || !prevAvail) {
+	if sigChanged || !prevAvail {
 		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetNetworkChanged(e.nowMs))
 	}
 
@@ -428,9 +418,7 @@ func (e *Engine) handleStreamReady(ctx *StepContext, ev *corev1.StreamReadyEvent
 			e.startLoadEvents(ctx, sid)
 		}
 	}
-	if e.transportConfigured {
-		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetMainLeg(e.nowMs, true))
-	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().SetMainLeg(e.nowMs, true))
 	ctx.Dirty.MarkAll()
 }
 
@@ -451,9 +439,7 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 	e.liveness = nil
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_STREAM_OPEN, "")
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "")
-	if e.transportConfigured {
-		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetMainLeg(e.nowMs, false))
-	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().SetMainLeg(e.nowMs, false))
 
 	if policyViolation {
 		e.forceLogin = true

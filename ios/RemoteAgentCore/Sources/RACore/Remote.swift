@@ -2,9 +2,10 @@
 // Sync state (connection machine, directory/paging, event buffers/LRU, live polling,
 // prefs CAS, command retries/outcome classification) lives in Go `clientcore/sync`.
 // `Remote` only provides token login, WebSocket stream frames, RPC execution,
-// DirectEngine bypass, CipherCache I/O, and cryptographic opening/sealing, plus
+// DirectExecutor bypass, CipherCache I/O, and cryptographic opening/sealing, plus
 // transitional Step 4 `Feed` mirror pushed from Core's `SyncStateView`.
 import Connect
+import CryptoKit
 import Foundation
 import RAProto
 import SwiftProtobuf
@@ -201,11 +202,20 @@ public final actor Remote {
     var deviceSecurity: DeviceSecurityClient?
     var management: AuthorityCoordinator?
 
-    nonisolated let direct: DirectEngine?
-    public nonisolated let directChanges = Feed<Int>(0)
+    struct DirectSecurityHolder: Sendable {
+        var rev: UInt64 = 0
+        var xPrivateRaw: Data?
+        var lastSnapshot: PBCoreDirectSecuritySnapshotEvent?
+    }
+
+    nonisolated let directPreferences: any DirectPreferenceStore
+    public nonisolated let directStunServers: [String]
+    public nonisolated let directSupported: Bool
+    nonisolated let directSecurityLock: OSAllocatedUnfairLock<DirectSecurityHolder>
+    private nonisolated let coreEventChain: SerialChain
+    nonisolated let directExecutor: DirectExecutor
     var directTransfers: [String: UploadKind] = [:]
     private let peerBudget = StreamByteBudget(limit: 8 * 65536)
-    private let peerResponder = PeerResponder()
 
     nonisolated let deviceLink: Link
 
@@ -230,14 +240,14 @@ public final actor Remote {
     private var activeLegId: UInt64?
 
     // Security Gate & opaque cipher cache refs
-    let directGate = DirectEventQueueGate()
+    let directGate: DirectEventQueueGate
     var sessionKeys: [String: Data] = [:]
     var sessionMachines: [String: String] = [:] {
         didSet {
             if sessionMachines != oldValue { directGate.updateMachines(sessionMachines) }
         }
     }
-    private var watchedSessionIds: [String] = [] {
+    var watchedSessionIds: [String] = [] {
         didSet {
             if watchedSessionIds != oldValue { directGate.updateWatched(watchedSessionIds) }
         }
@@ -266,35 +276,38 @@ public final actor Remote {
     public nonisolated let state: Feed<RemoteState>
     var sessionRemovalHandler: @Sendable (String) async -> Void = { _ in }
 
-    // Hooks installed by CoreHost so unmigrated Step 4 actions still route into Core
+    // Hooks installed by CoreHost so Core receives executor events and drives direct transport.
     var hostHooks: CoreHooks?
     public struct CoreHooks: Sendable {
         public var onFetchSession: @Sendable (String) async -> Void
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
         public var onSavePrefs: @Sendable (PrefsOp) async throws -> Void
-        public var onDirectStatus: @Sendable (String, Bool, PBDirectRouteReport) async -> Void
         public var onLoadMoreSessions: @Sendable () async -> Void
-        public var onDirectEvents: @Sendable (String, String, [PBCorePlainEvent]) async -> Void
         public var onSecuritySnapshot: @Sendable (PBCoreSecuritySnapshotEvent) async -> Void
+        public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
+        public var onBeginDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect
+        public var onFinishDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void
         public init(
             onFetchSession: @escaping @Sendable (String) async -> Void,
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
             onSavePrefs: @escaping @Sendable (PrefsOp) async throws -> Void,
-            onDirectStatus: @escaping @Sendable (String, Bool, PBDirectRouteReport) async -> Void,
             onLoadMoreSessions: @escaping @Sendable () async -> Void = {},
-            onDirectEvents: @escaping @Sendable (String, String, [PBCorePlainEvent]) async -> Void = { _, _, _ in },
-            onSecuritySnapshot: @escaping @Sendable (PBCoreSecuritySnapshotEvent) async -> Void = { _ in }
+            onSecuritySnapshot: @escaping @Sendable (PBCoreSecuritySnapshotEvent) async -> Void = { _ in },
+            onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
+            onBeginDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect = { _ in PBCoreDirectBulkRouteEffect() },
+            onFinishDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void = { _ in }
         ) {
             self.onFetchSession = onFetchSession
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
             self.onSavePrefs = onSavePrefs
-            self.onDirectStatus = onDirectStatus
             self.onLoadMoreSessions = onLoadMoreSessions
-            self.onDirectEvents = onDirectEvents
             self.onSecuritySnapshot = onSecuritySnapshot
+            self.onCoreEvent = onCoreEvent
+            self.onBeginDirectBulkTransfer = onBeginDirectBulkTransfer
+            self.onFinishDirectBulkTransfer = onFinishDirectBulkTransfer
         }
     }
 
@@ -318,17 +331,9 @@ public final actor Remote {
         directStun: [String]? = nil
     ) throws {
         self.account = account
-        let holder = WeakRemote()
-        if let rtc {
-            direct = DirectEngine(
-                server: account.server, deviceId: account.deviceId, deviceSeed: account.deviceSeed,
-                factory: rtc, preferences: directPreferences, stun: directStun,
-                authorize: { try await holder.remote?.directAuthorize() },
-                changed: { holder.remote?.directChanged() }
-            )
-        } else {
-            direct = nil
-        }
+        self.directPreferences = directPreferences
+        self.directStunServers = directStun ?? DirectExecutor.defaultStunUrls(server: account.server)
+        self.directSupported = rtc != nil
         self.securityStorage = securityStorage
         self.http = http
         self.cache = cache
@@ -341,6 +346,48 @@ public final actor Remote {
         let builtApi = try Api(server: account.server, http: http)
         api = builtApi
         state = Feed(RemoteState())
+        let holder = WeakRemote()
+        let seedCopy = account.deviceSeed
+        let secLock = OSAllocatedUnfairLock(initialState: DirectSecurityHolder())
+        let gate = DirectEventQueueGate()
+        let eventChain = SerialChain()
+        self.directSecurityLock = secLock
+        self.directGate = gate
+        self.coreEventChain = eventChain
+        directExecutor = DirectExecutor(
+            deviceSeed: { seedCopy },
+            xPrivateKey: {
+                guard let raw = secLock.withLock({ $0.xPrivateRaw }), raw.count == 32 else { return nil }
+                return try? Curve25519.KeyAgreement.PrivateKey(rawRepresentation: raw)
+            },
+            emit: { ev in
+                eventChain.run {
+                    await holder.remote?.emitCoreEvent(ev)
+                }
+            },
+            onPushedEvent: { machineId, pcId, env, header, size in
+                let sid = header.sessionID
+                guard let chain = gate.admit(
+                    sid,
+                    machineId: machineId,
+                    sender: header.sender,
+                    seq: header.seq,
+                    bytes: size
+                ) else { return }
+                chain.run {
+                    await holder.remote?.handleDirectEvent(machineId: machineId, pcId: pcId, envelope: env, header: header, size: size)
+                    gate.release(sid, bytes: size)
+                }
+            },
+            factory: rtc,
+            clock: { UInt64(max(0, clock())) },
+            monotonic: {
+                if let monotonic {
+                    return Double(monotonic())
+                }
+                return Double(DispatchTime.now().uptimeNanoseconds) / 1e6
+            }
+        )
         deviceLink = Link(relay: RelayPath(
             api: builtApi, sleep: sleep,
             prepare: { [holder] prior in
@@ -357,23 +404,6 @@ public final actor Remote {
             }
         ))
         holder.remote = self
-        direct?.probe = { [holder] id, path in await holder.remote?.probeRead(id, path) }
-        direct?.trace = log
-        let directGate = self.directGate
-        direct?.eventHandler = { [holder] machineId, env, header, size in
-            let sid = header.session
-            guard let chain = directGate.admit(
-                sid,
-                machineId: machineId,
-                sender: header.sender,
-                seq: header.seq,
-                bytes: size
-            ) else { return }
-            chain.run {
-                await holder.remote?.handleDirectEvent(machineId: machineId, envelope: env, header: header, size: size)
-                directGate.release(sid, bytes: size)
-            }
-        }
     }
 
     public nonisolated var current: RemoteState { state.value }
@@ -402,66 +432,20 @@ public final actor Remote {
             }
             sessionMachines = nextMachines
         }
-        syncDirectSubscriptions()
         if updated != state.value { state.set(updated) }
     }
 
     public func setWatchedSessions(_ sessionIds: [String]) {
         watchedSessionIds = sessionIds
-        syncDirectSubscriptions()
     }
 
-    private func syncDirectSubscriptions() {
-        guard let direct else { return }
-        var byMachine: [String: [String]] = [:]
-        for sid in watchedSessionIds {
-            guard let machineId = sessionMachines[sid], !machineId.isEmpty else { continue }
-            var list = byMachine[machineId] ?? []
-            if list.count < 4 && !list.contains(sid) {
-                list.append(sid)
-                byMachine[machineId] = list
-            }
-        }
-        direct.setWatchedSessions(byMachine)
-    }
-
-    private func handleDirectEvent(machineId: String, envelope: PBEnvelope, header: DeviceSecurity.Header, size: Int) async {
+    func emitCoreEvent(_ ev: PBCoreEvent) async {
         guard !closed else { return }
-        let sid = header.session
-        guard !sid.isEmpty, header.seq > 0, watchedSessionIds.contains(sid) else { return }
-        guard sessionMachines[sid] == machineId, header.sender == machineId else { return }
-        guard let seed = sessionKeys[sid], !seed.isEmpty else { return }
-        do {
-            let (h, ev) = try await openSecureMessage(
-                envelope: envelope,
-                want: Place(.event, machineId: machineId, sessionId: sid, seq: header.seq),
-                as: PBEvent.self,
-                history: false
-            )
-            guard !closed, h.sender == machineId, ev.seq == header.seq, ev.sessionID == sid else { return }
-            let plain = PBCorePlainEvent.with {
-                $0.seq = header.seq
-                $0.event = ev
-                $0.verified = true
-                $0.approxBytes = Int64(max(size, 64))
-            }
-            await hostHooks?.onDirectEvents(sid, machineId, [plain])
-        } catch {
-            // Direct push is best-effort; drop errors silently without creating broken/retired events.
-        }
+        await hostHooks?.onCoreEvent(ev)
     }
 
     public func setNetworkGeneration(_ gen: UInt64) {
         networkGeneration = gen
-    }
-
-    func notifyDirectStatusChanged() async {
-        guard let direct, let hooks = hostHooks else { return }
-        for machineId in state.value.machines.keys {
-            let status = direct.status(machineId)
-            let ready = status.state == .connected
-            await hooks.onDirectStatus(machineId, ready, status.toCoreRouteReport())
-        }
     }
 
     func machineIdForSession(_ sid: String) -> String {
@@ -650,7 +634,7 @@ public final actor Remote {
             }
             return
         }
-        let socket = deviceLink.router.path.openStream("/v1/stream", hello: hello)
+        let socket = deviceLink.relay.openStream("/v1/stream", hello: hello)
         let leg = StreamLeg(legId: legId, socket: socket)
         streamLegs[legId] = leg
         let netGen = networkGeneration
@@ -661,26 +645,23 @@ public final actor Remote {
         let budget = StreamByteBudget(limit: frameQueueBytes)
         let parse = frameParser.withLock { $0 }
         let peerBudget = self.peerBudget
-        let direct = self.direct
 
         leg.receiveTask = Task.detached { [weak self] in
             while let bytes = try? await socket.receive() {
-                if let direct, let body = PeerResponder.body(bytes) {
-                    direct.receive(Array(body), from: socket)
-                    continue
-                }
-                if let direct, let body = PeerResponder.resultBody(bytes) {
-                    direct.result(Array(body), from: socket)
-                    continue
-                }
-                if let body = PeerResponder.body(bytes) {
+                if let body = peerFrameBody(bytes, targetField: 11) {
                     if peerBudget.reserve(65536) {
                         Task {
-                            if let self {
-                                await self.handlePeerFrame(body, socket: socket, netGen: netGen)
-                            } else {
-                                peerBudget.release(65536)
-                            }
+                            await self?.handlePeerDelivery(body, legId: legId, socket: socket, netGen: netGen)
+                            peerBudget.release(65536)
+                        }
+                    }
+                    continue
+                }
+                if let body = peerFrameBody(bytes, targetField: 12) {
+                    if peerBudget.reserve(65536) {
+                        Task {
+                            await self?.handlePeerResult(body, legId: legId, socket: socket, netGen: netGen)
+                            peerBudget.release(65536)
                         }
                     }
                     continue
@@ -716,6 +697,7 @@ public final actor Remote {
         if activeLegId == legId {
             activeLegId = nil
         }
+        directExecutor.detachLeg(leg.socket)
         leg.closed = true
         leg.queue?.finish()
         leg.receiveTask?.cancel()
@@ -723,23 +705,23 @@ public final actor Remote {
         leg.socket.cancel()
     }
 
-    private func handlePeerFrame(_ bytes: Data, socket: any FrameStream, netGen: UInt64) async {
-        defer { peerBudget.release(65536) }
-        guard !closed, networkGeneration == netGen, let activeLegId, streamLegs[activeLegId]?.socket === socket else { return }
-        do {
-            let record = try await securitySession().record()
-            let reply = await peerResponder.receive(
-                bytes, record: record, seed: account.deviceSeed, now: UInt64(max(1, clock())))
-            guard !closed, networkGeneration == netGen,
-                  let legId = self.activeLegId, streamLegs[legId]?.socket === socket,
-                  let reply,
-                  let current = try? await securitySession().record(),
-                  current.member,
-                  max(UInt64(max(1, clock())), current.floor) < (try await securitySession().leaseExpiration()),
-                  try DeviceSecurity.stateHash(current.state) == DeviceSecurity.stateHash(record.state)
-            else { return }
-            socket.send(reply)
-        } catch { /* Authenticated peer refusal is optional; relay stays available. */ }
+    private func handlePeerDelivery(_ body: Data, legId: UInt64, socket: any FrameStream, netGen: UInt64) async {
+        guard !closed, networkGeneration == netGen, activeLegId == legId, streamLegs[legId]?.socket === socket else { return }
+        var ev = PBCoreEvent()
+        ev.directSignalReceived = .with { $0.raw = body }
+        await hostHooks?.onCoreEvent(ev)
+    }
+
+    private func handlePeerResult(_ body: Data, legId: UInt64, socket: any FrameStream, netGen: UInt64) async {
+        guard !closed, networkGeneration == netGen, activeLegId == legId, streamLegs[legId]?.socket === socket,
+              let res = try? PBPeerFrameResult(serializedBytes: body) else { return }
+        var ev = PBCoreEvent()
+        ev.directSignalDelivery = .with {
+            $0.frameID = res.frameID
+            $0.status = UInt32(res.status.rawValue)
+            $0.retryAfterMs = UInt64(res.retryAfterMs)
+        }
+        await hostHooks?.onCoreEvent(ev)
     }
 
     private func processStream(
@@ -765,7 +747,7 @@ public final actor Remote {
                 switch serverFrame.kind {
                 case .ready(let ready)?:
                     activeLegId = legId
-                    direct?.attach(leg.socket)
+                    directExecutor.attachLeg(leg.socket)
                     await callbacks.onReady(legId, ready.serverTimeMs)
                 case .heartbeat?:
                     await emit { $0.heartbeat = true }
@@ -804,6 +786,7 @@ public final actor Remote {
             }
         }
         leg.socket.cancel()
+        directExecutor.detachLeg(leg.socket)
         guard streamLegs[legId] === leg else { return }
         streamLegs.removeValue(forKey: legId)
         if activeLegId == legId { activeLegId = nil }
@@ -878,7 +861,7 @@ public final actor Remote {
     public nonisolated func close() {
         directGate.markClosed()
         deviceLink.closeStreams()
-        direct?.close()
+        directExecutor.close()
         Task { await self.closeActor() }
     }
 
@@ -898,7 +881,7 @@ public final actor Remote {
         streamLegs.removeAll()
         activeLegId = nil
         deviceLink.closeStreams()
-        direct?.close()
+        directExecutor.close()
     }
 
     // MARK: - Transitional Step 3-4 Forwarding to Core

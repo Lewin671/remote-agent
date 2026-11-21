@@ -42,7 +42,7 @@ final class CoreScreens {
     var quota = PBQuotaViewModel()
     var devices = PBDevicesViewModel()
     var clientDetail = PBClientDetailViewModel()
-    var directReports: [String: PBDirectRouteReport] = [:]
+    var directDiagnostics = PBDirectDiagnosticsViewModel()
     var pendingComposerRestores: [RestoredComposer] = []
     var pendingResendAttachments: [ResendAttachments] = []
     var pendingCleanup: PendingCleanup?
@@ -96,6 +96,8 @@ struct NewSessionAttachmentsSubmission {
 protocol CoreHostExecutor: AnyObject, Sendable {
     var account: Account { get }
     var state: Feed<RemoteState> { get }
+    var directSupported: Bool { get }
+    var directStunServers: [String] { get }
     func installCoreHooks(_ hooks: Remote.CoreHooks) async
     func publishSyncState(_ snapshot: RemoteState) async
     func setNetworkGeneration(_ gen: UInt64) async
@@ -115,14 +117,44 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func cachedScheduleResultJson(_ machineId: String) async -> Data?
     func deleteScheduleCache(_ machineId: String) async
     func renameDevice(_ id: String, name: String) async throws
-    func directRouteReport(_ machineId: String) async -> PBDirectRouteReport
-    func applyDirectPreference(_ machineId: String, enabled: Bool) async -> PBDirectRouteReport
+    func loadDirectPreferences() -> [String: Bool]
+    func persistDirectPreference(_ machineId: String, enabled: Bool)
+    func cachedDirectSecuritySnapshot() -> PBCoreDirectSecuritySnapshotEvent?
+    func authorizeDirect() async
+    func detachDirectStreams()
+    func handleDirectKeySign(_ eff: PBCoreDirectKeySignEffect)
+    func handleDirectKeyAgree(_ eff: PBCoreDirectKeyAgreeEffect)
+    func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool
+    func handleDirectPcCreate(_ eff: PBCoreDirectPcCreateEffect)
+    func handleDirectPcDescribe(_ eff: PBCoreDirectPcDescribeEffect) async
+    func handleDirectPcSetRemote(_ eff: PBCoreDirectPcSetRemoteEffect) async
+    func handleDirectPcAddCandidates(_ eff: PBCoreDirectPcAddCandidatesEffect) async
+    func handleDirectPcConfirm(_ eff: PBCoreDirectPcConfirmEffect)
+    func handleDirectPcClose(_ eff: PBCoreDirectPcCloseEffect)
+    func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async
     func close() async
 }
 
 extension CoreHostExecutor {
+    var directSupported: Bool { false }
+    var directStunServers: [String] { [] }
     func cachedScheduleResultJson(_ machineId: String) async -> Data? { nil }
     func deleteScheduleCache(_ machineId: String) async {}
+    func loadDirectPreferences() -> [String: Bool] { [:] }
+    func persistDirectPreference(_ machineId: String, enabled: Bool) {}
+    func cachedDirectSecuritySnapshot() -> PBCoreDirectSecuritySnapshotEvent? { nil }
+    func authorizeDirect() async {}
+    func detachDirectStreams() {}
+    func handleDirectKeySign(_ eff: PBCoreDirectKeySignEffect) {}
+    func handleDirectKeyAgree(_ eff: PBCoreDirectKeyAgreeEffect) {}
+    func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool { false }
+    func handleDirectPcCreate(_ eff: PBCoreDirectPcCreateEffect) {}
+    func handleDirectPcDescribe(_ eff: PBCoreDirectPcDescribeEffect) async {}
+    func handleDirectPcSetRemote(_ eff: PBCoreDirectPcSetRemoteEffect) async {}
+    func handleDirectPcAddCandidates(_ eff: PBCoreDirectPcAddCandidatesEffect) async {}
+    func handleDirectPcConfirm(_ eff: PBCoreDirectPcConfirmEffect) {}
+    func handleDirectPcClose(_ eff: PBCoreDirectPcCloseEffect) {}
+    func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {}
 }
 
 extension Remote: CoreHostExecutor {}
@@ -273,7 +305,12 @@ actor CoreHost: SyncEngine {
     private var activeScheduleFormKey = ""
     private var scheduleStripWatches: [UUID: String] = [:]
     private var machineStatusWatches: [UUID: MachineStatusWatchEntry] = [:]
-    private var lastDirectReports: [String: PBDirectRouteReport] = [:]
+    private var activeDirectDiagnosticsID = ""
+    private var hooksInstalled = false
+    private var nextDirectCallID: UInt64 = 1
+    private var bulkRouteWaiters: [UInt64: CheckedContinuation<PBCoreDirectBulkRouteEffect, Never>] = [:]
+    private var retryNowWaiters: [String: [CheckedContinuation<Bool, Never>]] = [:]
+    private var terminalReopenListeners: [String: (token: UUID, handler: @MainActor @Sendable () -> Void)] = [:]
     private var syncStateRenderNeeded = false
     private var onPersistClientPrefs: (@MainActor @Sendable (PBPersistClientPrefsEffect) -> Void)?
     #if DEBUG
@@ -368,6 +405,8 @@ actor CoreHost: SyncEngine {
     }
 
     func wireExecutorHooks() async {
+        guard !hooksInstalled else { return }
+        hooksInstalled = true
         await executor.installCoreHooks(Remote.CoreHooks(
             onFetchSession: { [weak self] sid in
                 await self?.dispatch { $0.fetchSession.sessionID = sid }
@@ -382,25 +421,22 @@ actor CoreHost: SyncEngine {
                 guard let self else { return }
                 try await self.executor.applyTransitionalPrefsOp(op)
             },
-            onDirectStatus: { [weak self] machineId, ready, report in
-                await self?.handleDirectStatus(machineId: machineId, ready: ready, report: report)
-            },
             onLoadMoreSessions: { [weak self] in
                 await self?.dispatch {
                     $0.homeLoadMoreEnded = PBCoreHomeLoadMoreEndedAction()
                 }
             },
-            onDirectEvents: { [weak self] sid, machineId, events in
-                await self?.dispatch {
-                    $0.directEventsReceived = .with {
-                        $0.sessionID = sid
-                        $0.machineID = machineId
-                        $0.events = events
-                    }
-                }
-            },
             onSecuritySnapshot: { [weak self] snapshot in
                 await self?.dispatchSecuritySnapshot(snapshot)
+            },
+            onCoreEvent: { [weak self] ev in
+                await self?.dispatch(ev)
+            },
+            onBeginDirectBulkTransfer: { [weak self] ev in
+                await self?.beginDirectBulkTransfer(ev) ?? PBCoreDirectBulkRouteEffect()
+            },
+            onFinishDirectBulkTransfer: { [weak self] ev in
+                await self?.finishDirectBulkTransfer(ev)
             }
         ))
         await syncWatchedSessionsToExecutor()
@@ -448,9 +484,52 @@ actor CoreHost: SyncEngine {
 
     func startAsync() async {
         guard !closed else { return }
+        await wireExecutorHooks()
         started = true
         foregrounded = true
         startClockTicker()
+        replenishEntropy(minIds: 16, minFloats: 16)
+        let initIds = randomIdPool
+        let initFloats = unitFloatPool
+        randomIdPool.removeAll(keepingCapacity: true)
+        unitFloatPool.removeAll(keepingCapacity: true)
+        await dispatch {
+            $0.entropyProvided = .with {
+                $0.randomIds = initIds
+                $0.unitFloats = initFloats
+                $0.seed = Self.randomBytes(32)
+            }
+        }
+        if !demoMode {
+            let acct = executor.account
+            let supported = executor.directSupported
+            let stunServers = executor.directStunServers
+            await dispatch {
+                $0.transportConfig = .with {
+                    $0.supported = supported
+                    $0.account = acct.accountId
+                    $0.protocolVersion = UInt32(protocolVersion)
+                    $0.stunServers = stunServers
+                    $0.platformAgent = "ios"
+                }
+            }
+            let prefs = executor.loadDirectPreferences()
+            if !prefs.isEmpty {
+                await dispatch {
+                    $0.directPreferencesLoaded = .with {
+                        $0.entries = prefs.map { key, value in
+                            PBCoreDirectPreferenceEntry.with {
+                                $0.machineID = key
+                                $0.enabled = value
+                            }
+                        }
+                    }
+                }
+            }
+            if let snap = executor.cachedDirectSecuritySnapshot() {
+                await dispatch { $0.directSecuritySnapshot = snap }
+            }
+        }
         let savedScope = defaults.homeScopeToken()
         await dispatch { [scopeHmacKey] ev in
             ev.syncLifecycle = .with {
@@ -471,6 +550,7 @@ actor CoreHost: SyncEngine {
         cancelAllTimers()
         cancelAllMachinePollTimers()
         cancelIOTasks()
+        executor.detachDirectStreams()
         await dispatch {
             $0.syncLifecycle.kind = .stop
         }
@@ -548,29 +628,135 @@ actor CoreHost: SyncEngine {
         cancelIOTasks()
         cacheChain?.cancel()
         cacheChain = nil
+        let pendingBulk = bulkRouteWaiters
+        bulkRouteWaiters.removeAll()
+        for continuation in pendingBulk.values {
+            continuation.resume(returning: PBCoreDirectBulkRouteEffect())
+        }
+        let pendingRetry = retryNowWaiters
+        retryNowWaiters.removeAll()
+        for list in pendingRetry.values {
+            for continuation in list {
+                continuation.resume(returning: false)
+            }
+        }
+        terminalReopenListeners.removeAll()
+        executor.detachDirectStreams()
         await executor.close()
         client.close()
     }
 
-    private func handleDirectStatus(machineId: String, ready: Bool, report: PBDirectRouteReport) async {
+    func openDirectDiagnostics(machineID: String) async {
+        guard !closed, !machineID.isEmpty else { return }
+        activeDirectDiagnosticsID = machineID
+        if !demoMode {
+            await dispatch {
+                $0.directRefreshDiagnostics = .with { $0.machineID = machineID }
+            }
+        }
+        await renderTargets([.directDiagnostics])
+    }
+
+    func closeDirectDiagnostics() async {
+        activeDirectDiagnosticsID = ""
         await MainActor.run { [screens] in
-            screens.directReports[machineId] = report
+            screens.directDiagnostics = PBDirectDiagnosticsViewModel()
+        }
+    }
+
+    func refreshDirectDiagnostics() async {
+        guard !closed, !activeDirectDiagnosticsID.isEmpty else { return }
+        let machineID = activeDirectDiagnosticsID
+        if !demoMode {
+            await dispatch {
+                $0.directRefreshDiagnostics = .with { $0.machineID = machineID }
+            }
+        }
+        await renderTargets([.directDiagnostics])
+    }
+
+    @discardableResult
+    func retryDirectNow(machineID: String) async -> Bool {
+        guard !closed, !demoMode, !machineID.isEmpty else { return false }
+        return await withCheckedContinuation { continuation in
+            retryNowWaiters[machineID, default: []].append(continuation)
+            Task { await self.sendDirectRetryNow(machineID: machineID) }
+        }
+    }
+
+    private func sendDirectRetryNow(machineID: String) async {
+        guard !closed, !demoMode else {
+            resumeRetryNowWaiters(machineID: machineID, started: false)
+            return
         }
         await dispatch {
-            $0.machineRouteStatus = .with {
-                $0.machineID = machineId
-                $0.directReady = ready
+            $0.directRetryNow = .with { $0.machineID = machineID }
+        }
+    }
+
+    private func resumeRetryNowWaiters(machineID: String, started: Bool) {
+        guard let list = retryNowWaiters.removeValue(forKey: machineID) else { return }
+        for continuation in list {
+            continuation.resume(returning: started)
+        }
+    }
+
+    func beginDirectBulkTransfer(_ ev: PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect {
+        guard !closed, !demoMode else { return PBCoreDirectBulkRouteEffect() }
+        let callID = nextDirectCallID
+        nextDirectCallID &+= 1
+        var req = ev
+        req.callID = callID
+        let capturedReq = req
+        return await withCheckedContinuation { continuation in
+            bulkRouteWaiters[callID] = continuation
+            Task { await self.sendBeginDirectBulkTransfer(callID: callID, event: capturedReq) }
+        }
+    }
+
+    private func sendBeginDirectBulkTransfer(callID: UInt64, event: PBCoreDirectBulkTransferBeginEvent) async {
+        guard !closed, !demoMode else {
+            bulkRouteWaiters.removeValue(forKey: callID)?.resume(returning: PBCoreDirectBulkRouteEffect())
+            return
+        }
+        await dispatch {
+            $0.directBulkTransferBegin = event
+        }
+    }
+
+    func finishDirectBulkTransfer(_ ev: PBCoreDirectBulkTransferDoneEvent) async {
+        guard !closed, !demoMode else { return }
+        await dispatch {
+            $0.directBulkTransferDone = ev
+        }
+    }
+
+    func sendTerminalStream(terminalID: String, kind: PBCoreTerminalStreamEventKind, opened: Bool) async {
+        guard !closed, !demoMode, !terminalID.isEmpty else { return }
+        await dispatch {
+            $0.terminalStream = .with {
+                $0.terminalID = terminalID
+                $0.kind = kind
+                $0.opened = opened
             }
         }
-        if lastDirectReports[machineId] != report {
-            lastDirectReports[machineId] = report
-            await dispatch {
-                $0.machineDirectStatus = .with {
-                    $0.machineID = machineId
-                    $0.report = report
-                }
-            }
+    }
+
+    func registerTerminalReopen(
+        terminalID: String,
+        token: UUID = UUID(),
+        handler: @escaping @MainActor @Sendable () -> Void
+    ) {
+        guard !closed, !terminalID.isEmpty else { return }
+        terminalReopenListeners[terminalID] = (token: token, handler: handler)
+    }
+
+    func unregisterTerminalReopen(terminalID: String, token: UUID? = nil) {
+        guard !terminalID.isEmpty else { return }
+        if let token, let existing = terminalReopenListeners[terminalID], existing.token != token {
+            return
         }
+        terminalReopenListeners.removeValue(forKey: terminalID)
     }
 
     // MARK: - Screen & Subscription Events
@@ -653,18 +839,6 @@ actor CoreHost: SyncEngine {
         guard !closed, !machineID.isEmpty else { return }
         activeMachineSettingsID = machineID
         await hydrateUsageCache(machineID: machineID)
-        if !demoMode {
-            let report = await executor.directRouteReport(machineID)
-            if lastDirectReports[machineID] != report {
-                lastDirectReports[machineID] = report
-                await dispatch {
-                    $0.machineDirectStatus = .with {
-                        $0.machineID = machineID
-                        $0.report = report
-                    }
-                }
-            }
-        }
         await dispatch {
             $0.machineSettingsOpen.machineID = machineID
         }
@@ -1480,10 +1654,12 @@ actor CoreHost: SyncEngine {
                 let floats = unitFloatPool
                 randomIdPool.removeAll(keepingCapacity: true)
                 unitFloatPool.removeAll(keepingCapacity: true)
+                let seedBytes = req.minSeedBytes > 0 ? Self.randomBytes(max(Int(req.minSeedBytes), 32)) : Data()
                 await dispatch {
                     $0.entropyProvided = .with {
                         $0.randomIds = ids
                         $0.unitFloats = floats
+                        if !seedBytes.isEmpty { $0.seed = seedBytes }
                     }
                 }
 
@@ -1562,14 +1738,62 @@ actor CoreHost: SyncEngine {
                 scheduleMachinePoll(eff)
 
             case .directPreference(let eff):
+                executor.persistDirectPreference(eff.machineID, enabled: eff.enabled)
+
+            case .directKeySign(let eff):
+                executor.handleDirectKeySign(eff)
+
+            case .directKeyAgree(let eff):
+                executor.handleDirectKeyAgree(eff)
+
+            case .directSignalSend(let eff):
+                _ = executor.handleDirectSignalSend(eff)
+
+            case .directPcCreate(let eff):
+                executor.handleDirectPcCreate(eff)
+
+            case .directPcDescribe(let eff):
                 spawnIO { host in
-                    let report = await host.executor.applyDirectPreference(eff.machineID, enabled: eff.enabled)
-                    await host.handleDirectStatus(
-                        machineId: eff.machineID,
-                        ready: report.state == .connected,
-                        report: report
-                    )
+                    await host.executor.handleDirectPcDescribe(eff)
                 }
+
+            case .directPcSetRemote(let eff):
+                spawnIO { host in
+                    await host.executor.handleDirectPcSetRemote(eff)
+                }
+
+            case .directPcAddCandidates(let eff):
+                spawnIO { host in
+                    await host.executor.handleDirectPcAddCandidates(eff)
+                }
+
+            case .directPcConfirm(let eff):
+                executor.handleDirectPcConfirm(eff)
+
+            case .directPcClose(let eff):
+                executor.handleDirectPcClose(eff)
+
+            case .directDcReadStats(let eff):
+                spawnIO { host in
+                    await host.executor.handleDirectDcReadStats(eff)
+                }
+
+            case .directAuthorize:
+                spawnIO { host in
+                    await host.executor.authorizeDirect()
+                }
+
+            case .directBulkRoute(let eff):
+                bulkRouteWaiters.removeValue(forKey: eff.callID)?.resume(returning: eff)
+
+            case .terminalReopen(let eff):
+                if let entry = terminalReopenListeners[eff.terminalID] {
+                    let cb = entry.handler
+                    await MainActor.run { cb() }
+                }
+
+            case .directRetryNowResult(let eff):
+                resumeRetryNowWaiters(machineID: eff.machineID, started: eff.started)
 
             case .renameClient(let eff):
                 spawnIO { host in
@@ -1815,6 +2039,7 @@ actor CoreHost: SyncEngine {
         var usageVM: PBCoreUsageViewModel?
         var devicesVM: PBDevicesViewModel?
         var clientDetailVM: PBClientDetailViewModel?
+        var directDiagnosticsVM: PBDirectDiagnosticsViewModel?
         var sessionVMs: [String: PBSessionViewModel] = [:]
         var scheduleStripVMs: [String: PBScheduleSessionStripViewModel] = [:]
 
@@ -1922,6 +2147,11 @@ actor CoreHost: SyncEngine {
                 $0.clientDetail = .with { $0.deviceID = activeClientDetailID }
             }).clientDetail
         }
+        if targets.contains(.directDiagnostics), !activeDirectDiagnosticsID.isEmpty {
+            directDiagnosticsVM = try? client.view(PBCoreScreen.with {
+                $0.directDiagnostics = .with { $0.machineID = activeDirectDiagnosticsID }
+            }).directDiagnostics
+        }
         let refreshSessions = targets.contains(.session)
             || targets.contains(.sessionData)
             || (targets.contains(.home) && !sessionWatches.isEmpty)
@@ -1943,35 +2173,13 @@ actor CoreHost: SyncEngine {
         if let syncStateVM {
             let adapted = SyncStateAdapter.toRemoteState(syncStateVM)
             await executor.publishSyncState(adapted)
-            if !demoMode {
-                var initialReports: [String: PBDirectRouteReport] = [:]
-                for m in syncStateVM.machines where lastDirectReports[m.machineID] == nil {
-                    let report = await executor.directRouteReport(m.machineID)
-                    lastDirectReports[m.machineID] = report
-                    initialReports[m.machineID] = report
-                    await dispatch {
-                        $0.machineDirectStatus = .with {
-                            $0.machineID = m.machineID
-                            $0.report = report
-                        }
-                    }
-                }
-                if !initialReports.isEmpty {
-                    let captured = initialReports
-                    await MainActor.run { [screens] in
-                        for (id, report) in captured {
-                            screens.directReports[id] = report
-                        }
-                    }
-                }
-            }
         }
 
         await MainActor.run { [
             screens, homeVM, projectVM, newSessionVM,
             schedulesVM, scheduleDetailVM, scheduleFormVM,
             settingsVM, machineStatusVM, machineSettingsVM, quotaVM, usageVM, devicesVM, clientDetailVM,
-            sessionVMs, scheduleStripVMs
+            directDiagnosticsVM, sessionVMs, scheduleStripVMs
         ] in
             if let homeVM { screens.home = homeVM }
             if let projectVM {
@@ -1990,6 +2198,7 @@ actor CoreHost: SyncEngine {
             if let usageVM { screens.usageView = usageVM }
             if let devicesVM { screens.devices = devicesVM }
             if let clientDetailVM { screens.clientDetail = clientDetailVM }
+            if let directDiagnosticsVM { screens.directDiagnostics = directDiagnosticsVM }
             for (sid, vm) in sessionVMs {
                 screens.sessions[sid] = vm
             }
@@ -2116,6 +2325,11 @@ actor CoreHost: SyncEngine {
             $0.nowYear = nowYear
             $0.months = months
         }
+    }
+
+    private static func randomBytes(_ count: Int) -> Data {
+        var rng = SystemRandomNumberGenerator()
+        return Data((0..<max(count, 1)).map { _ in UInt8.random(in: UInt8.min...UInt8.max, using: &rng) })
     }
 
     private func replenishEntropy(minIds: Int, minFloats: Int) {
@@ -2437,6 +2651,21 @@ actor CoreHost: SyncEngine {
                 if case .ensureToken(let t)? = eff.effect { tokenOpID = t.opID }
             }
         }
+        scanPre(await stepDemo {
+            $0.entropyProvided = .with {
+                $0.randomIds = (0..<16).map { _ in newRequestId() }
+                $0.unitFloats = (0..<16).map { _ in Double.random(in: 0..<1) }
+                $0.seed = Self.randomBytes(32)
+            }
+        })
+        scanPre(await stepDemo {
+            $0.transportConfig = .with {
+                $0.supported = false
+                $0.account = account.accountId
+                $0.protocolVersion = UInt32(protocolVersion)
+                $0.platformAgent = "ios"
+            }
+        })
         scanPre(await stepDemo { $0.syncLifecycle = .with { $0.kind = .start; $0.scopeHmacKey = self.scopeHmacKey } })
         scanPre(await stepDemo { $0.clockUpdated = Self.makeLocalCalendar(nowMs: clock()) })
         scanPre(await stepDemo { $0.scheduleLocalContext = Self.makeScheduleLocalContext(nowMs: clock()) })

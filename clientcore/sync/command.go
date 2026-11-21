@@ -270,35 +270,6 @@ func (e *Engine) preflightAndEmit(ctx *StepContext, prep *PreparedCommand, retry
 }
 
 func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, retryOfUnknown bool) {
-	if !e.transportConfigured || e.transportCoord == nil {
-		attemptID := e.entropy.nextID(ctx)
-		prep.Dispatch.Active++
-		prep.Dispatch.Possible++
-		prep.PendingAttempts[attemptID] = true
-		e.inFlightCmds[prep.RequestID] = prep
-		e.reqIDByAttempt[attemptID] = prep.RequestID
-
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_DispatchCommand{
-				DispatchCommand: &corev1.DispatchCommandEffect{
-					RequestId:      prep.RequestID,
-					AttemptId:      attemptID,
-					MachineId:      prep.MachineID,
-					SessionId:      prep.SessionID,
-					DeadlineMs:     prep.DeadlineMs,
-					CommandBytes:   prep.CommandBytes,
-					RouteHint:      prep.RouteHint,
-					RetryOfUnknown: retryOfUnknown,
-					ForceRelay:     prep.ForceRelay,
-					BulkFileKey:    prep.BulkFileKey,
-					BulkBytes:      prep.BulkBytes,
-					BulkUpload:     prep.BulkUpload,
-				},
-			},
-		})
-		return
-	}
-
 	if prep.ActiveLegs == nil {
 		prep.ActiveLegs = make(map[string]*CommandLeg)
 	} else {
@@ -416,7 +387,7 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 
 	priorBefore := prep.Dispatch.PriorUnknown || (prep.Dispatch.Possible > 1) || (ev.Source != corev1.OutcomeSource_OUTCOME_SOURCE_LOCAL && !ev.NotForwarded)
 
-	if e.transportConfigured && e.transportCoord != nil {
+	if c := e.transportCoord; c != nil {
 		ticketID := ev.DirectTicketId
 		if ticketID == 0 && leg != nil {
 			ticketID = leg.TicketID
@@ -426,12 +397,12 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 			cat := classifyDaemonOutcome(ev, priorBefore)
 			daemonOK = cat != outcome.Unknown
 			if daemonOK && ticketID != 0 {
-				e.emitCoordEffects(ctx, e.transportCoord.ObserveTicket(e.nowMs, ticketID, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
+				e.emitCoordEffects(ctx, c.ObserveTicket(e.nowMs, ticketID, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
 			} else if !daemonOK && ev.RouteWasDirect && ticketID != 0 {
-				e.emitCoordEffects(ctx, e.transportCoord.FailTicket(e.nowMs, ticketID))
+				e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ticketID))
 			}
 		} else if ev.RouteWasDirect && ticketID != 0 {
-			e.emitCoordEffects(ctx, e.transportCoord.FailTicket(e.nowMs, ticketID))
+			e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ticketID))
 		}
 
 		if prep.DualMode && leg != nil {

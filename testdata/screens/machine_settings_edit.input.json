@@ -156,16 +156,10 @@
     {
       "event": {
         "nowMs": "1791078060080",
-        "machineDirectStatus": {
-          "machineId": "m1",
-          "report": {
-            "enabled": true,
-            "capable": true,
-            "state": "DIRECT_ROUTE_STATE_CONNECTED",
-            "readRoute": "DIRECT_PATH_CHOICE_DIRECT",
-            "hasActiveRttMs": true,
-            "activeRttMs": 12
-          }
+        "transportConfig": {
+          "supported": true,
+          "account": "00000000000000000000000000000001",
+          "protocolVersion": 17
         }
       },
       "views": [
@@ -238,14 +232,58 @@
     {
       "event": {
         "nowMs": "1791078060130",
-        "machineDirectStatus": {
-          "machineId": "m1",
-          "report": {
-            "enabled": true,
-            "capable": true,
-            "state": "DIRECT_ROUTE_STATE_NONE",
-            "reason": "DIRECT_ROUTE_REASON_NO_TRAVERSAL"
-          }
+        "entropyProvided": {
+          "seed": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060140",
+        "directSecuritySnapshot": {
+          "member": true,
+          "account": "00000000000000000000000000000001",
+          "domain": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+          "head": "head-1",
+          "headHash": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=",
+          "epoch": "1",
+          "startedAtMs": "1791078060140",
+          "leaseNotAfterMs": "1791164460000",
+          "selfId": "dev-1",
+          "selfEdPublic": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=",
+          "selfXPublic": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=",
+          "members": [
+            {
+              "deviceId": "dev-1",
+              "edPublic": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=",
+              "xPublic": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=",
+              "isSelf": true
+            },
+            {
+              "deviceId": "m1",
+              "edPublic": "BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU=",
+              "xPublic": "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY="
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060150",
+        "directKeyAgreed": {
+          "opId": "1",
+          "sharedSecret": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=",
+          "ok": true
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078070200",
+        "timerFired": {
+          "timerId": "6",
+          "kind": "TIMER_KIND_DIRECT_SESSION"
         }
       },
       "views": [

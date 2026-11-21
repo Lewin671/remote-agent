@@ -1,183 +1,319 @@
+import CryptoKit
 import Foundation
 import RAProto
 
-/// Weak, so the engine's callbacks (made before the actor exists) never keep it alive.
+/// Weak holder so executor callbacks created before actor initialization finish never leak `Remote`.
 final class WeakRemote: @unchecked Sendable {
-    private let lock = NSLock(); private weak var stored: Remote?
+    private let lock = NSLock()
+    private weak var stored: Remote?
     var remote: Remote? { get { lock.withLock { stored } } set { lock.withLock { stored = newValue } } }
 }
 
-// Direct paths for read-only requests and bulk (docs/transport.md §3 「只读选路」): what Remote adds
-// around DirectEngine. The engine owns sessions and routing; Remote keeps the keys, the
-// authorization and the verification of every answer, whichever path carried it.
-extension Remote {
-    func directAuthorize() async throws {
-        guard verifiedNetworkGeneration == networkGeneration else { throw PathChanged() }
-        _ = try await securitySession().headStateHash()
-    }
+enum UploadKind: Equatable, Sendable {
+    case image
+    case file
+}
 
-    nonisolated func directChanged() {
-        directChanges.set(directChanges.value &+ 1)
-        Task {
-            await self.notifyDirectStatusChanged()
+struct DirectBulkHint: Sendable {
+    var routeHintValue: UInt32 = 0
+    var bulkFileKey: String = ""
+    var bulkBytes: Int64 = 0
+    var bulkUpload: Bool = false
+    var uploadTransferID: String = ""
+    var uploadHasFilename: Bool = false
+    var finishTransferID: String = ""
+}
+
+/// Extracts raw bytes for a top-level length-delimited `PBServerFrame` field (`11` = delivery, `12` = result)
+/// without re-serializing, so Core's strict peerwire parser sees the exact incoming wire bytes.
+func peerFrameBody(_ raw: Data, targetField: UInt64) -> Data? {
+    var idx = raw.startIndex
+    func readVarint() -> UInt64? {
+        var value: UInt64 = 0
+        var shift: UInt64 = 0
+        for _ in 0..<10 {
+            guard idx < raw.endIndex else { return nil }
+            let b = raw[idx]
+            idx = raw.index(after: idx)
+            value |= UInt64(b & 0x7F) << shift
+            if b & 0x80 == 0 { return value }
+            shift += 7
+        }
+        return nil
+    }
+    while idx < raw.endIndex {
+        guard let tag = readVarint() else { return nil }
+        let field = tag >> 3
+        let wire = tag & 7
+        guard field > 0 else { return nil }
+        switch wire {
+        case 0:
+            guard readVarint() != nil else { return nil }
+        case 1:
+            guard raw.distance(from: idx, to: raw.endIndex) >= 8 else { return nil }
+            idx = raw.index(idx, offsetBy: 8)
+        case 2:
+            guard let len = readVarint(), len <= UInt64(raw.distance(from: idx, to: raw.endIndex)) else { return nil }
+            let end = raw.index(idx, offsetBy: Int(len))
+            if field == targetField {
+                return Data(raw[idx..<end])
+            }
+            idx = end
+        case 5:
+            guard raw.distance(from: idx, to: raw.endIndex) >= 4 else { return nil }
+            idx = raw.index(idx, offsetBy: 4)
+        default:
+            return nil
         }
     }
+    return nil
+}
 
+extension Remote {
     func securityObserver() -> SyncObserver {
-        let direct = self.direct
-        return SyncObserver(
+        SyncObserver(
             synced: { [weak self] record, started in
-                if let direct { await direct.synced(record, started: started) }
+                await self?.emitDirectSecuritySnapshot(record, started: started)
                 await self?.pushObservedSecuritySnapshot(record)
             },
-            failed: { direct?.invalidate() },
+            failed: { [weak self] in
+                self?.rejectDirectSecurity()
+            },
             installed: { [weak self] record in
-                direct?.install(record)
-                Task { await self?.pushObservedSecuritySnapshot(record) }
+                Task {
+                    await self?.emitDirectSecuritySnapshot(record, started: nil)
+                    await self?.pushObservedSecuritySnapshot(record)
+                }
             }
         )
     }
 
-    /// Which requests may use a DirectPath: read-only ones and bulk. Side effects and terminals stay on the relay.
-    func directHint(_ machineId: String, _ cmd: PBCommand) -> RouteHint? {
-        switch cmd.kind {
-        case .getSharedFileChunk(let c)?: return .bulk(file: "\(c.sessionID)/\(c.fileID)")
-        case .putImageChunk(let c)?:
-            guard let kind = directTransfers["\(machineId)/\(c.transferID)"] else { return nil }
-            return .bulk(file: c.transferID, upload: kind, bytes: c.data.count)
-        case .getImageUploadStatus?: return nil
-        default: return cmd.isReadOnlyCommand ? .read : nil
+    public nonisolated func cachedDirectSecuritySnapshot() -> PBCoreDirectSecuritySnapshotEvent? {
+        directSecurityLock.withLock { $0.lastSnapshot }
+    }
+
+    public nonisolated func loadDirectPreferences() -> [String: Bool] {
+        directPreferences.allEnabled(server: account.server, deviceId: account.deviceId)
+    }
+
+    public nonisolated func persistDirectPreference(_ machineId: String, enabled: Bool) {
+        try? directPreferences.setEnabled(server: account.server, deviceId: account.deviceId, machineId: machineId, enabled: enabled)
+    }
+
+    public func authorizeDirect() {
+        guard !closed else { return }
+        Task {
+            _ = try? await securitySession().sync()
         }
     }
 
-    func directHint(for effect: PBCoreDispatchCommandEffect) -> RouteHint? {
-        switch effect.routeHint {
-        case .read:
-            return .read
-        case .bulk:
-            if effect.bulkUpload {
-                return .bulk(file: effect.bulkFileKey, upload: .file, bytes: Int(effect.bulkBytes))
+    public nonisolated func detachDirectStreams() {
+        directExecutor.detachAll()
+    }
+
+    public nonisolated func handleDirectKeySign(_ eff: PBCoreDirectKeySignEffect) {
+        directExecutor.keySign(eff)
+    }
+
+    public nonisolated func handleDirectKeyAgree(_ eff: PBCoreDirectKeyAgreeEffect) {
+        directExecutor.keyAgree(eff)
+    }
+
+    @discardableResult
+    public nonisolated func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool {
+        directExecutor.signalSend(eff)
+    }
+
+    public nonisolated func handleDirectPcCreate(_ eff: PBCoreDirectPcCreateEffect) {
+        directExecutor.pcCreate(eff)
+    }
+
+    public func handleDirectPcDescribe(_ eff: PBCoreDirectPcDescribeEffect) async {
+        await directExecutor.pcDescribe(eff)
+    }
+
+    public func handleDirectPcSetRemote(_ eff: PBCoreDirectPcSetRemoteEffect) async {
+        await directExecutor.pcSetRemote(eff)
+    }
+
+    public func handleDirectPcAddCandidates(_ eff: PBCoreDirectPcAddCandidatesEffect) async {
+        await directExecutor.pcAddCandidates(eff)
+    }
+
+    public nonisolated func handleDirectPcConfirm(_ eff: PBCoreDirectPcConfirmEffect) {
+        directExecutor.pcConfirm(eff)
+    }
+
+    public nonisolated func handleDirectPcClose(_ eff: PBCoreDirectPcCloseEffect) {
+        directExecutor.pcClose(eff)
+    }
+
+    public func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {
+        await directExecutor.dcReadStats(eff)
+    }
+
+    nonisolated func rejectDirectSecurity() {
+        let rejected = PBCoreDirectSecuritySnapshotEvent.with { $0.rejected = true }
+        directSecurityLock.withLock { state in
+            state.rev &+= 1
+            state.xPrivateRaw = nil
+            state.lastSnapshot = rejected
+        }
+        var ev = PBCoreEvent()
+        ev.directSecuritySnapshot = rejected
+        Task { await self.emitCoreEvent(ev) }
+    }
+
+    func emitDirectSecuritySnapshot(_ record: DeviceSecurity.Record, started: UInt64?) async {
+        let rev = directSecurityLock.withLock { state -> UInt64 in
+            state.rev &+= 1
+            return state.rev
+        }
+        let nowMs = clock()
+        let startedMs = started.map { Int64(min($0, UInt64(Int64.max))) } ?? nowMs
+        var built: (snapshot: PBCoreDirectSecuritySnapshotEvent, xPrivateRaw: Data)?
+        do {
+            let head = record.state
+            let at = max(UInt64(max(0, nowMs)), record.floor)
+            if record.member,
+               record.memberID == account.deviceId,
+               let lease = record.lease,
+               nowMs < startedMs + 20_000,
+               let selfMember = head.core.member(record.memberID) {
+                try lease.valid(head, now: at)
+                let xKey = try record.xKey
+                let xPub = xKey.publicKey.rawRepresentation
+                let edPub = device.publicKey
+                if edPub == selfMember.ed && xPub == selfMember.x {
+                    let stateHash = try DeviceSecurity.stateHash(head)
+                    let snap = PBCoreDirectSecuritySnapshotEvent.with {
+                        $0.member = true
+                        $0.account = record.pin.account
+                        $0.domain = record.pin.domain
+                        $0.head = stateHash.hex
+                        $0.headHash = stateHash
+                        $0.epoch = head.core.epoch
+                        $0.startedAtMs = startedMs
+                        $0.leaseNotAfterMs = Int64(min(lease.notAfter, UInt64(Int64.max)))
+                        $0.selfID = selfMember.id
+                        $0.selfEdPublic = selfMember.ed
+                        $0.selfXPublic = selfMember.x
+                        $0.members = head.core.members.map { m in
+                            PBCoreDirectSecurityMember.with {
+                                $0.deviceID = m.id
+                                $0.edPublic = m.ed
+                                $0.xPublic = m.x
+                                $0.isSelf = (m.id == record.memberID)
+                            }
+                        }
+                    }
+                    built = (snap, xKey.rawRepresentation)
+                }
             }
-            return .bulk(file: effect.bulkFileKey)
-        case .normal, .unspecified, .UNRECOGNIZED:
-            return nil
+        } catch {
+            built = nil
+        }
+        let builtSnapshot = built
+        let out = builtSnapshot?.snapshot ?? PBCoreDirectSecuritySnapshotEvent.with { $0.rejected = true }
+        let committed = directSecurityLock.withLock { state -> Bool in
+            guard state.rev == rev else { return false }
+            state.xPrivateRaw = builtSnapshot?.xPrivateRaw
+            state.lastSnapshot = out
+            return true
+        }
+        guard committed, !closed else { return }
+        var ev = PBCoreEvent()
+        ev.directSecuritySnapshot = out
+        await hostHooks?.onCoreEvent(ev)
+    }
+
+    func handleDirectEvent(
+        machineId: String,
+        pcId: UInt64,
+        envelope: PBEnvelope,
+        header: PBHeader,
+        size: Int
+    ) async {
+        guard !closed else { return }
+        let sid = header.sessionID
+        guard !sid.isEmpty, header.seq > 0, watchedSessionIds.contains(sid) else { return }
+        guard sessionMachines[sid] == machineId, header.sender == machineId else { return }
+        guard let seed = sessionKeys[sid], !seed.isEmpty else { return }
+        do {
+            let (h, ev) = try await openSecureMessage(
+                envelope: envelope,
+                want: Place(.event, machineId: machineId, sessionId: sid, seq: header.seq),
+                as: PBEvent.self,
+                history: false
+            )
+            guard !closed, h.sender == machineId, ev.seq == header.seq, ev.sessionID == sid else { return }
+            let plain = PBCorePlainEvent.with {
+                $0.seq = header.seq
+                $0.event = ev
+                $0.verified = true
+                $0.approxBytes = Int64(max(size, 64))
+            }
+            var event = PBCoreEvent()
+            event.directEventsReceived = .with {
+                $0.machineID = machineId
+                $0.sessionID = sid
+                $0.pcID = pcId
+                $0.sender = machineId
+                $0.events = [plain]
+            }
+            if let hooks = hostHooks {
+                await hooks.onCoreEvent(event)
+            }
+        } catch {
+            // Direct push is best-effort; drop errors silently.
         }
     }
 
-    nonisolated func directBuilder(_ engine: DirectEngine?, _ machine: String, _ hint: RouteHint, probe: Bool = false) -> Link.DirectBuilder? {
-        guard let engine else { return nil }
-        let build: Link.DirectBuilder = { handoff in engine.attempt(machine, hint, handoff: handoff, probe: probe) }
-        return build
+    func directBulkHint(_ machineId: String, _ cmd: PBCommand) -> DirectBulkHint {
+        var hint = DirectBulkHint()
+        switch cmd.kind {
+        case .beginImageUpload(let c)?:
+            hint.uploadTransferID = c.transferID
+            hint.uploadHasFilename = !c.fileName.isEmpty
+        case .putImageChunk(let c)?:
+            if directTransfers["\(machineId)/\(c.transferID)"] != nil {
+                hint.routeHintValue = UInt32(PBCoreCommandRouteHint.bulk.rawValue)
+                hint.bulkFileKey = c.transferID
+                hint.bulkBytes = Int64(c.data.count)
+                hint.bulkUpload = true
+                hint.uploadTransferID = c.transferID
+                hint.uploadHasFilename = (directTransfers["\(machineId)/\(c.transferID)"] == .file)
+            }
+        case .getSharedFileChunk(let c)?:
+            hint.routeHintValue = UInt32(PBCoreCommandRouteHint.bulk.rawValue)
+            hint.bulkFileKey = "\(c.sessionID)/\(c.fileID)"
+        case .completeImageUpload(let c)?:
+            hint.finishTransferID = c.transferID
+        case .abortImageUpload(let c)?:
+            hint.finishTransferID = c.transferID
+        case .getImageUploadStatus?:
+            break
+        default:
+            if cmd.isReadOnlyCommand {
+                hint.routeHintValue = UInt32(PBCoreCommandRouteHint.read.rawValue)
+            }
+        }
+        return hint
     }
 
     func trackTransfer(machineId: String, command cmd: PBCommand) {
         switch cmd.kind {
         case .beginImageUpload(let c)?:
-            if directTransfers.count >= 128, let first = directTransfers.keys.first { directTransfers.removeValue(forKey: first) }
+            if directTransfers.count >= 128, let first = directTransfers.keys.first {
+                directTransfers.removeValue(forKey: first)
+            }
             directTransfers["\(machineId)/\(c.transferID)"] = c.fileName.isEmpty ? .image : .file
-        case .completeImageUpload(let c)?: directTransfers.removeValue(forKey: "\(machineId)/\(c.transferID)")
-        case .abortImageUpload(let c)?: directTransfers.removeValue(forKey: "\(machineId)/\(c.transferID)")
-        default: break
-        }
-    }
-
-    // MARK: what a screen asks
-    public nonisolated var directSupported: Bool { direct != nil }
-    public nonisolated func directStatus(_ machineId: String) -> DirectStatus { direct?.status(machineId) ?? DirectStatus(state: .unsupported) }
-    public nonisolated func setDirectEnabled(_ machineId: String, _ enabled: Bool) throws { try direct?.setEnabled(machineId, enabled) }
-    /// A screen that shows the numbers opened: one warm-up when the window is thin, so they are fresh.
-    public nonisolated func refreshDirect(_ machineId: String) { direct?.refresh(machineId) }
-    public nonisolated func directRouteReport(_ machineId: String) -> PBDirectRouteReport {
-        directStatus(machineId).toCoreRouteReport()
-    }
-    public nonisolated func applyDirectPreference(_ machineId: String, enabled: Bool) -> PBDirectRouteReport {
-        try? setDirectEnabled(machineId, enabled)
-        return directStatus(machineId).toCoreRouteReport()
-    }
-
-    /// One warm-up sample of the read path: an authorized read-only status request of its own.
-    func probeRead(_ machineId: String, _ path: RouteName) async {
-        guard let direct, !closed else { return }
-        log("read sample requested on the \(path == .direct ? "direct" : "relay") path")
-        let hint = RouteHint.read, tracking = direct.track(machineId, hint), isDirect = path == .direct
-        do {
-            var cmd = PBCommand(); cmd.getMachineStatus = PBGetMachineStatusRequest()
-            cmd.protocolVersion = protocolVersion
-            let requestId = newRequestId()
-            let deadline = clock() + commandTTLMs
-            let build = isDirect ? directBuilder(direct, machineId, hint, probe: true) : nil
-            let delivery = deviceLink.delivery(direct: build)
-            guard delivery.isDirect == isDirect else {
-                log("read sample: the \(isDirect ? "direct" : "relay") path was not offered")
-                return
-            }
-            let started = ContinuousClock.now
-            try await delivery.prepare(prior: false)
-            let envelope = try await authorizeCommandBytes(
-                machineId: machineId, sessionId: "", requestId: requestId, deadlineMs: deadline,
-                commandBytes: try cmd.serializedData())
-            let binding = try await securitySession().commandIdentity(envelope)
-            let res = try await delivery.send(machineId: machineId, command: envelope)
-            let (_, msg) = try await openSecureMessage(
-                envelope: res.result,
-                want: Place(.commandResult, machineId: machineId, sessionId: "", requestId: requestId),
-                as: PBCommandResult.self)
-            let outerOutcome = isDirect ? msg.outcome : res.outcome
-            let outerReason = isDirect ? msg.reason : res.reason
-            let bound = msg.requestKeyHash == binding.key && msg.payloadHash == binding.payload
-                && res.attemptID == delivery.attemptId && outerOutcome == msg.outcome && outerReason == msg.reason
-            guard bound, msg.errorCode.isEmpty, msg.outcome == "executed" else {
-                log("read sample not usable: bound=\(bound) code=\(msg.errorCode)")
-                return
-            }
-            let elapsedMs = Double((ContinuousClock.now - started).milliseconds)
-            log("read sample on the \(isDirect ? "direct" : "relay") path: executed in \(Int(elapsedMs)) ms")
-            tracking.observe(isDirect, 0, elapsedMs)
-        } catch {
-            log("read sample on the \(isDirect ? "direct" : "relay") path failed: \(errorText(error))")
-            if isDirect { tracking.failed() }
-        }
-    }
-}
-
-extension DirectStatus {
-    public func toCoreRouteReport() -> PBDirectRouteReport {
-        let enabled = reason != .disabled
-        let activeRtt = readDirect ? readMs[DirectPath.direct] : (state == .connected ? readMs[DirectPath.relay] : nil)
-        let readSlow = state == .connected && compared && !readDirect
-        let fileSlow = state == .connected && compared && !fileDirect
-        return PBDirectRouteReport.with {
-            $0.enabled = enabled
-            $0.capable = state != .unsupported
-            $0.state = switch state {
-            case .unsupported: .unsupported
-            case .connected: .connected
-            case .connecting: .connecting
-            case .none: .none
-            }
-            $0.reason = switch reason {
-            case .disabled: .disabled
-            case .peerUnsupported: .peerUnsupported
-            case .noResponse: .noResponse
-            case .noTraversal: .noTraversal
-            case .failed: .failed
-            case .atCap: .atCap
-            case .securityPending: .securityPending
-            case .starting: .starting
-            case nil: .unspecified
-            }
-            $0.fileRoute = fileDirect ? .direct : .relay
-            $0.readRoute = readDirect ? .direct : .relay
-            $0.warming = warming
-            $0.compared = compared
-            $0.readSlow = readSlow
-            $0.fileSlow = fileSlow
-            $0.hasDiagnostics_p = reason == .noResponse || reason == .noTraversal || reason == .failed
-            if let fd = fileMiBps[DirectPath.direct] { $0.hasDirectFileMibps_p = true; $0.directFileMibps = fd }
-            if let fr = fileMiBps[DirectPath.relay] { $0.hasRelayFileMibps_p = true; $0.relayFileMibps = fr }
-            if let rd = readMs[DirectPath.direct] { $0.hasDirectReadMs_p = true; $0.directReadMs = Int32(rd.rounded()) }
-            if let rr = readMs[DirectPath.relay] { $0.hasRelayReadMs_p = true; $0.relayReadMs = Int32(rr.rounded()) }
-            if let rtt = activeRtt { $0.hasActiveRttMs_p = true; $0.activeRttMs = Int32(rtt.rounded()) }
+        case .completeImageUpload(let c)?:
+            directTransfers.removeValue(forKey: "\(machineId)/\(c.transferID)")
+        case .abortImageUpload(let c)?:
+            directTransfers.removeValue(forKey: "\(machineId)/\(c.transferID)")
+        default:
+            break
         }
     }
 }

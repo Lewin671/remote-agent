@@ -184,7 +184,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078120050",
               "commandBytes": "igIAoAYR",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "1"
             }
           },
           {
@@ -362,6 +364,7 @@
                 "SCREEN_TARGET_PROJECT",
                 "SCREEN_TARGET_NEW_SESSION",
                 "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_STATUS",
                 "SCREEN_TARGET_MACHINE_SETTINGS",
@@ -1355,7 +1358,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078122050",
               "commandBytes": "igIAoAYR",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "2"
             }
           },
           {
@@ -1406,7 +1411,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078137060",
               "commandBytes": "igIAoAYR",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "3"
             }
           },
           {
@@ -1457,7 +1464,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078152070",
               "commandBytes": "igIAoAYR",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "4"
             }
           },
           {
@@ -1887,7 +1896,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078167100",
               "commandBytes": "igIAoAYR",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "5"
             }
           },
           {
@@ -1937,7 +1948,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078167300",
               "commandBytes": "qgECCAGgBhE=",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "6"
             }
           },
           {
@@ -1947,7 +1960,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078167300",
               "commandBytes": "ugEAoAYR",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "7"
             }
           },
           {
@@ -1957,6 +1972,7 @@
                 "SCREEN_TARGET_PROJECT",
                 "SCREEN_TARGET_NEW_SESSION",
                 "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_STATUS",
                 "SCREEN_TARGET_MACHINE_SETTINGS",

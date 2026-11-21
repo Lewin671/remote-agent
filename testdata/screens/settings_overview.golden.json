@@ -604,7 +604,7 @@
                 },
                 "lastSeenMs": "1791000000000",
                 "directRow": {
-                  "stage": "CONNECTION_GROUP_STAGE_OFFLINE",
+                  "stage": "CONNECTION_GROUP_STAGE_UNSUPPORTED",
                   "tone": "CONNECTION_GROUP_TONE_MUTED"
                 },
                 "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC"
@@ -763,18 +763,8 @@
                 ],
                 "lastSeenMs": "1791078060000",
                 "directRow": {
-                  "visible": true,
-                  "stage": "CONNECTION_GROUP_STAGE_RELAY",
-                  "tone": "CONNECTION_GROUP_TONE_MUTED",
-                  "labelText": {
-                    "key": "transport.direct"
-                  },
-                  "statusText": {
-                    "key": "transport.status_relay"
-                  },
-                  "detailText": {
-                    "key": "transport.reason_starting"
-                  }
+                  "stage": "CONNECTION_GROUP_STAGE_UNSUPPORTED",
+                  "tone": "CONNECTION_GROUP_TONE_MUTED"
                 },
                 "statusDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
                 "subtitleParts": [
@@ -1155,7 +1145,7 @@
                 },
                 "lastSeenMs": "1791000000000",
                 "directRow": {
-                  "stage": "CONNECTION_GROUP_STAGE_OFFLINE",
+                  "stage": "CONNECTION_GROUP_STAGE_UNSUPPORTED",
                   "tone": "CONNECTION_GROUP_TONE_MUTED"
                 },
                 "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC"
@@ -1314,18 +1304,8 @@
                 ],
                 "lastSeenMs": "1791078060000",
                 "directRow": {
-                  "visible": true,
-                  "stage": "CONNECTION_GROUP_STAGE_RELAY",
-                  "tone": "CONNECTION_GROUP_TONE_MUTED",
-                  "labelText": {
-                    "key": "transport.direct"
-                  },
-                  "statusText": {
-                    "key": "transport.status_relay"
-                  },
-                  "detailText": {
-                    "key": "transport.reason_starting"
-                  }
+                  "stage": "CONNECTION_GROUP_STAGE_UNSUPPORTED",
+                  "tone": "CONNECTION_GROUP_TONE_MUTED"
                 },
                 "statusDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
                 "subtitleParts": [

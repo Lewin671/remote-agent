@@ -353,7 +353,7 @@ func (c *Coordinator) Configure(now int64, cfg CoordConfig) []CoordEffect {
 	changed := cfg.Supported != c.cfg.Supported || cfg.Account != c.cfg.Account || !slicesEqual(cfg.StunServers, c.cfg.StunServers)
 	c.cfg = cfg
 	if changed {
-		c.engine.supported = cfg.Supported
+		c.handleEngine(now, SetSupported{Supported: cfg.Supported})
 		c.rebuildCodec()
 		c.emit(CoordChanged{})
 	}
@@ -1319,7 +1319,7 @@ func (c *Coordinator) applyEngineEffects(now int64, effs []Effect, observe func(
 }
 
 func (c *Coordinator) maybeNeedEntropy() {
-	if !c.seeded && !c.entropyAsked {
+	if c.cfg.Supported && !c.seeded && !c.entropyAsked {
 		c.entropyAsked = true
 		c.emit(CoordNeedEntropy{MinSeedBytes: 32})
 	}

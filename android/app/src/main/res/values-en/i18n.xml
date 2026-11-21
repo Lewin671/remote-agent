@@ -2432,7 +2432,6 @@
     <string name="transport_popover_read_only" formatted="false">"Loading only over direct"</string>
     <string name="transport_popover_relay_body" formatted="false">"Everything currently connects via relay, with no impact on use."</string>
     <string name="transport_popover_relay_title">"Via relay to %1$s"</string>
-    <string name="transport_popover_relay_title_rtt">"Via relay to %2$s · %1$s ms"</string>
     <string name="transport_popover_settings" formatted="false">"Connection settings"</string>
     <string name="transport_popover_stable" formatted="false">"Connection stable"</string>
     <string name="transport_popover_switched_relay" formatted="false">"Switched to relay"</string>

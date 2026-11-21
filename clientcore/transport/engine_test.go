@@ -879,3 +879,27 @@ func TestStatsReadBudget(t *testing.T) {
 		t.Fatal("closed rounds are not read")
 	}
 }
+
+func TestUnsupportedSuppressesEntropyTickAndAuthorizeUntilSupported(t *testing.T) {
+	e := NewEngine(false)
+	now := int64(1_000_000)
+	checkIdle := func(effs []Effect, label string) {
+		t.Helper()
+		if has[RequestEntropy](effs) || has[ScheduleTick](effs) || has[Authorize](effs) {
+			t.Fatalf("%s when unsupported: unexpected side effect in %#v", label, effs)
+		}
+	}
+
+	checkIdle(e.Handle(now, Lifecycle{Foreground: true}), "lifecycle")
+	checkIdle(e.Handle(now, MainLeg{Ready: true}), "mainLeg")
+	retryOut := e.Handle(now, RetryNow{Machine: "m1"})
+	checkIdle(retryOut, "retryNow")
+	if res := of[RetryNowResult](retryOut); len(res) != 1 || res[0].Started {
+		t.Fatalf("expected RetryNowResult{Started: false} when unsupported, got %#v", res)
+	}
+
+	effs := e.Handle(now, SetSupported{Supported: true})
+	if !has[RequestEntropy](effs) || !has[ScheduleTick](effs) || !has[Authorize](effs) {
+		t.Fatalf("expected RequestEntropy, ScheduleTick, and Authorize once supported, got %#v", effs)
+	}
+}

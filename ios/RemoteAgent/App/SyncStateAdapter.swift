@@ -66,12 +66,22 @@ enum SyncStateAdapter {
         var machines: [String: MachineView] = [:]
         var currentMachines = Set<String>()
         for m in v.machines {
+            let meta = m.hasMeta ? m.meta : nil
+            var ps = PeerState()
+            ps.reachable = m.online
+            ps.ready = (v.connection == .connected)
+            ps.authorized = !v.removed
+            ps.unlinked = m.unlinked || v.unlinked
+            ps.protocolVersion = meta?.protocolVersion
+            ps.capabilities = meta.flatMap { $0.hasCapabilities ? $0.capabilities : nil }
+            ps.relayRequired = !m.directReady
             let mv = MachineView(
                 id: m.machineID,
                 online: m.online,
                 lastSeenMs: m.lastSeenMs,
-                meta: m.hasMeta ? m.meta : nil,
-                metaRev: m.metaRev
+                meta: meta,
+                metaRev: m.metaRev,
+                linkState: ps
             )
             machines[m.machineID] = mv
             if !m.unlinked {

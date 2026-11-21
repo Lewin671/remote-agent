@@ -1,4 +1,5 @@
 import Foundation
+import RAProto
 @testable import RACore
 
 /// An in-process stand-in for the WebRTC SDK: two fake PeerConnections that exchanged valid SDP
@@ -116,6 +117,7 @@ final class FakePC: RtcPeerConnection, @unchecked Sendable {
         net.onEvent?()
     }
     func addIceCandidate(_ candidate: String, sdpMid: String, sdpMLineIndex: Int, usernameFragment: String) async throws {}
+    func readStats() async -> PBCoreDirectStatsReport { PBCoreDirectStatsReport() }
     private func tryConnect() async throws {
         guard let other = peer else { return }
         let ready = lock.withLock { local && remote && !closed } && other.lock.withLock { other.local && other.remote && !other.closed }

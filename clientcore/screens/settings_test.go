@@ -392,13 +392,18 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 		EmergencyReserveBytes: 32 * 1024 * 1024,
 		ReclaimableBytes:      100 * 1024 * 1024,
 	}
-	mExtra.DirectReport = &corev1.DirectRouteReport{
-		Enabled:       true,
-		Capable:       true,
-		State:         corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
-		Reason:        corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL,
-		HasRelayReadMs: true,
-		RelayReadMs:   184,
+	st.DirectReportFn = func(machineID string) (bool, *corev1.DirectRouteReport, bool) {
+		if machineID != "1234567890abcdef" {
+			return false, nil, false
+		}
+		return true, &corev1.DirectRouteReport{
+			Enabled:        true,
+			Capable:        true,
+			State:          corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+			Reason:         corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL,
+			HasRelayReadMs: true,
+			RelayReadMs:    184,
+		}, true
 	}
 
 	sv := &corev1.SyncStateView{

@@ -278,8 +278,6 @@ private actor FakeCoreExecutor: CoreHostExecutor {
     func setWatchedSessions(_ sessionIds: [String]) async {}
     func describeSelf(platform: String, description: String) async throws {}
     func renameDevice(_ id: String, name: String) async throws {}
-    func directRouteReport(_ machineId: String) async -> PBDirectRouteReport { PBDirectRouteReport() }
-    func applyDirectPreference(_ machineId: String, enabled: Bool) async -> PBDirectRouteReport { PBDirectRouteReport() }
     func close() async {}
 }
 

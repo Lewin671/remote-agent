@@ -275,17 +275,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.FetchSessionAction getFetchSession();
 
   /**
-   * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-   * @return Whether the machineRouteStatus field is set.
-   */
-  boolean hasMachineRouteStatus();
-  /**
-   * <code>.remoteagent.core.v1.MachineRouteStatusEvent machine_route_status = 25 [json_name = "machineRouteStatus"];</code>
-   * @return The machineRouteStatus.
-   */
-  io.github.lewin671.remoteagent.core.proto.MachineRouteStatusEvent getMachineRouteStatus();
-
-  /**
    * <code>.remoteagent.core.v1.SessionScheduleHintsEvent session_schedule_hints = 26 [json_name = "sessionScheduleHints"];</code>
    * @return Whether the sessionScheduleHints field is set.
    */
@@ -680,17 +669,6 @@ public interface EventOrBuilder extends
    * @return The updateDirectPreference.
    */
   io.github.lewin671.remoteagent.core.proto.UpdateDirectPreferenceEvent getUpdateDirectPreference();
-
-  /**
-   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-   * @return Whether the machineDirectStatus field is set.
-   */
-  boolean hasMachineDirectStatus();
-  /**
-   * <code>.remoteagent.core.v1.MachineDirectStatusEvent machine_direct_status = 365 [json_name = "machineDirectStatus"];</code>
-   * @return The machineDirectStatus.
-   */
-  io.github.lewin671.remoteagent.core.proto.MachineDirectStatusEvent getMachineDirectStatus();
 
   /**
    * <code>.remoteagent.core.v1.ToggleMachineAgentEvent toggle_machine_agent = 366 [json_name = "toggleMachineAgent"];</code>

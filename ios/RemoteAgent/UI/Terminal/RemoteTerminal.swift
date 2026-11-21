@@ -24,6 +24,11 @@ final class RemoteTerminal {
         /// The screen shows the remote terminal and what is typed goes to it.
         case live
         case closed(String)
+
+        var isClosed: Bool {
+            if case .closed = self { return true }
+            return false
+        }
     }
 
     /// What the pane needs of the app: the session's stream, whether the main
@@ -34,6 +39,8 @@ final class RemoteTerminal {
         var online: @MainActor () -> Bool
         var hold: @MainActor (TermConn) -> UUID
         var release: @MainActor (UUID) -> Void
+        var reportStream: @MainActor (String, PBCoreTerminalStreamEventKind, Bool) -> Void = { _, _, _ in }
+        var subscribeReopen: @MainActor (String, @escaping @MainActor @Sendable () -> Void) -> () -> Void = { _, _ in {} }
     }
 
     static var paused: String { L10n.terminalIosPaused() }
@@ -105,6 +112,7 @@ final class RemoteTerminal {
         return host
     }()
 
+    let terminalId = UUID().uuidString
     @ObservationIgnored private var link: Link?
     /// Columns and rows the view has room for at a readable size, for "fit".
     @ObservationIgnored private var fitSize = TerminalSize(0, 0)
@@ -114,99 +122,39 @@ final class RemoteTerminal {
     @ObservationIgnored private var pictured = false
     @ObservationIgnored private var held: UUID?
     @ObservationIgnored private var job: Task<Void, Never>?
-    @ObservationIgnored private var reopenTask: Task<Void, Never>?
-    @ObservationIgnored private var stabilityTask: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
+    @ObservationIgnored private var active = false
+    @ObservationIgnored private var liveNotified = false
+    @ObservationIgnored private var reopenCancel: (() -> Void)?
     /// This connection has yet to fit on its own; never again once 还原 was chosen here.
     @ObservationIgnored private var autoFit = false
     @ObservationIgnored private var released = false
     @ObservationIgnored private var frames = TerminalFrames()
-    @ObservationIgnored private let recovery: TerminalRecovery
-    @ObservationIgnored private let stabilityDuration: Duration
 
-    init(
-        recovery: TerminalRecovery = TerminalRecovery(),
-        stabilityDuration: Duration = .seconds(5)
-    ) {
-        self.recovery = recovery
-        self.stabilityDuration = stabilityDuration
-    }
+    init() {}
 
     func use(_ link: Link) {
+        reopenCancel?()
         self.link = link
-    }
-
-    func connectIfNeeded() {
-        if case .closed = state { resumeConnect() }
-        else if conn == nil && job == nil && reopenTask == nil { resumeConnect() }
-    }
-
-    func connect() {
-        reopenTask?.cancel(); reopenTask = nil
-        stabilityTask?.cancel(); stabilityTask = nil
-        recovery.reset()
-        openAttempt()
-    }
-
-    private func resumeConnect() {
-        guard reopenTask == nil else { return }
-        guard let link else { return }
-        guard link.online() else {
-            close()
-            return
-        }
-        scheduleTakeOrDelay(generation, fallbackReason: nil)
-    }
-
-    private func scheduleReopen(_ expectedGen: Int, fallbackReason: String) {
-        guard expectedGen == generation, reopenTask == nil else { return }
-        guard link?.online() == true else { return }
-        stabilityTask?.cancel(); stabilityTask = nil
-        recovery.recordFailureIfUnstabilized()
-        scheduleTakeOrDelay(expectedGen, fallbackReason: fallbackReason)
-    }
-
-    private func scheduleTakeOrDelay(_ expectedGen: Int, fallbackReason: String?) {
-        guard expectedGen == generation, reopenTask == nil else { return }
-        guard link?.online() == true else { return }
-        guard let waitMs = recovery.takeOrDelayMs() else {
-            openAttempt()
-            return
-        }
-        generation += 1
-        let nextGen = generation
-        frames.close()
-        job?.cancel()
-        job = nil
-        drop()
-        if case .closed = state {} else {
-            state = .closed(fallbackReason ?? L10n.errorsTerminalConnectionDropped())
-        }
-        reopenTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            var pendingDelay = waitMs
-            while pendingDelay > 0 {
-                try? await Task.sleep(for: .milliseconds(pendingDelay))
-                if Task.isCancelled || nextGen != self.generation { return }
-                guard self.link?.online() == true else {
-                    self.reopenTask = nil
-                    return
-                }
-                if let nextWait = self.recovery.takeOrDelayMs() {
-                    pendingDelay = nextWait
-                } else {
-                    break
-                }
-            }
-            guard !Task.isCancelled, nextGen == self.generation else { return }
-            self.reopenTask = nil
+        reopenCancel = link.subscribeReopen(terminalId) { [weak self] in
+            guard let self, self.active, self.link?.online() == true else { return }
             self.openAttempt()
         }
     }
 
+    func connectIfNeeded() {
+        guard conn == nil && job == nil && (!active || !state.isClosed) else { return }
+        active = true
+        openAttempt()
+    }
+
+    func connect() {
+        active = true
+        link?.reportStream(terminalId, .manualReconnect, false)
+        openAttempt()
+    }
+
     private func openAttempt() {
-        reopenTask?.cancel(); reopenTask = nil
-        stabilityTask?.cancel(); stabilityTask = nil
         history.end()
         guard let link else { return }
         guard link.online() else {
@@ -222,6 +170,7 @@ final class RemoteTerminal {
         frames = queue
         state = .connecting
         pictured = false
+        liveNotified = false
         fit.reset()
         fitted = false
         autoFit = !released
@@ -230,8 +179,11 @@ final class RemoteTerminal {
             case .schedule: onMain(after: Self.frameInterval) { self?.flush(gen, queue) }
             case .overflow: onMain {
                 if let self, gen == self.generation {
+                    let wasOpened = self.conn != nil || self.liveNotified
                     self.history.disconnected()
-                    self.scheduleReopen(gen, fallbackReason: L10n.errorsTerminalConnectionDropped())
+                    self.drop()
+                    self.state = .closed(L10n.errorsTerminalConnectionDropped())
+                    self.link?.reportStream(self.terminalId, .closed, wasOpened)
                 }
             }
             case .queued, .closed: break
@@ -251,8 +203,8 @@ final class RemoteTerminal {
             } catch {
                 guard let self, gen == self.generation else { return }
                 self.job = nil
-                self.recovery.recordFailureIfUnstabilized()
                 self.state = .closed(errorText(error))
+                link.reportStream(self.terminalId, .closed, false)
             }
         }
     }
@@ -282,15 +234,13 @@ final class RemoteTerminal {
             history.disconnected()
             // The daemon says why before it hangs up; the end of the connection that follows says less.
             if case .closed = state { return }
-            let opened = conn != nil
+            let opened = conn != nil || liveNotified
             state = .closed(reason)
-            // This leg may end after main recovery. Opening failures and
-            // explicit lifecycle close do not enter this retry path.
             if opened {
                 let gen = generation
                 onMain { [weak self] in
                     guard let self, gen == self.generation, self.link?.online() == true else { return }
-                    self.scheduleReopen(gen, fallbackReason: reason)
+                    self.link?.reportStream(self.terminalId, .closed, true)
                 }
             }
         }
@@ -303,18 +253,11 @@ final class RemoteTerminal {
         guard pictured, conn != nil else { return }
         if state == .connecting {
             state = .live
-            startStabilityTimer(for: generation)
         }
         fitOnOpen()
-    }
-
-    private func startStabilityTimer(for gen: Int) {
-        stabilityTask?.cancel()
-        let duration = stabilityDuration
-        stabilityTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: duration)
-            guard let self, !Task.isCancelled, gen == self.generation, self.state == .live else { return }
-            self.recovery.onStabilized()
+        if !liveNotified {
+            liveNotified = true
+            link?.reportStream(terminalId, .live, true)
         }
     }
 
@@ -385,8 +328,8 @@ final class RemoteTerminal {
     }
 
     func close() {
-        reopenTask?.cancel(); reopenTask = nil
-        stabilityTask?.cancel(); stabilityTask = nil
+        active = false
+        liveNotified = false
         history.end()
         generation += 1
         frames.close()
@@ -394,6 +337,7 @@ final class RemoteTerminal {
         job?.cancel()
         job = nil
         drop()
+        link?.reportStream(terminalId, .disposed, false)
     }
 
     private func drop() {

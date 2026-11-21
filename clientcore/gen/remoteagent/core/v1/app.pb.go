@@ -4462,57 +4462,6 @@ func (m *FetchSessionAction) Unmarshal(b []byte) error {
 	return nil
 }
 
-type MachineRouteStatusEvent struct {
-	MachineId   string
-	DirectReady bool
-}
-
-func (m *MachineRouteStatusEvent) GetMachineId() string {
-	if m != nil {
-		return m.MachineId
-	}
-	return ""
-}
-func (m *MachineRouteStatusEvent) GetDirectReady() bool {
-	if m != nil {
-		return m.DirectReady
-	}
-	return false
-}
-
-func (m *MachineRouteStatusEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DirectReady = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type DirectEventsReceivedEvent struct {
 	MachineId string
 	SessionId string
@@ -5624,10 +5573,6 @@ type Event_FetchSession struct{ FetchSession *FetchSessionAction }
 
 func (*Event_FetchSession) isEvent_Event() {}
 
-type Event_MachineRouteStatus struct{ MachineRouteStatus *MachineRouteStatusEvent }
-
-func (*Event_MachineRouteStatus) isEvent_Event() {}
-
 type Event_SessionScheduleHints struct{ SessionScheduleHints *SessionScheduleHintsEvent }
 
 func (*Event_SessionScheduleHints) isEvent_Event() {}
@@ -5781,10 +5726,6 @@ func (*Event_UpdateMachineDaemonSettings) isEvent_Event() {}
 type Event_UpdateDirectPreference struct{ UpdateDirectPreference *UpdateDirectPreferenceEvent }
 
 func (*Event_UpdateDirectPreference) isEvent_Event() {}
-
-type Event_MachineDirectStatus struct{ MachineDirectStatus *MachineDirectStatusEvent }
-
-func (*Event_MachineDirectStatus) isEvent_Event() {}
 
 type Event_ToggleMachineAgent struct{ ToggleMachineAgent *ToggleMachineAgentEvent }
 
@@ -6278,12 +6219,6 @@ func (m *Event) GetFetchSession() *FetchSessionAction {
 	}
 	return nil
 }
-func (m *Event) GetMachineRouteStatus() *MachineRouteStatusEvent {
-	if x, ok := m.GetEvent().(*Event_MachineRouteStatus); ok && x != nil {
-		return x.MachineRouteStatus
-	}
-	return nil
-}
 func (m *Event) GetSessionScheduleHints() *SessionScheduleHintsEvent {
 	if x, ok := m.GetEvent().(*Event_SessionScheduleHints); ok && x != nil {
 		return x.SessionScheduleHints
@@ -6497,12 +6432,6 @@ func (m *Event) GetUpdateMachineDaemonSettings() *UpdateMachineDaemonSettingsEve
 func (m *Event) GetUpdateDirectPreference() *UpdateDirectPreferenceEvent {
 	if x, ok := m.GetEvent().(*Event_UpdateDirectPreference); ok && x != nil {
 		return x.UpdateDirectPreference
-	}
-	return nil
-}
-func (m *Event) GetMachineDirectStatus() *MachineDirectStatusEvent {
-	if x, ok := m.GetEvent().(*Event_MachineDirectStatus); ok && x != nil {
-		return x.MachineDirectStatus
 	}
 	return nil
 }
@@ -7396,21 +7325,6 @@ func (m *Event) Unmarshal(b []byte) error {
 				m.Event = &Event_FetchSession{FetchSession: sub}
 				continue
 			}
-		case 25:
-			if wtyp == litewire.BytesType {
-				var sub *MachineRouteStatusEvent
-				if cur, ok := m.Event.(*Event_MachineRouteStatus); ok && cur != nil {
-					sub = cur.MachineRouteStatus
-				}
-				if sub == nil {
-					sub = &MachineRouteStatusEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_MachineRouteStatus{MachineRouteStatus: sub}
-				continue
-			}
 		case 26:
 			if wtyp == litewire.BytesType {
 				var sub *SessionScheduleHintsEvent
@@ -7949,21 +7863,6 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_UpdateDirectPreference{UpdateDirectPreference: sub}
-				continue
-			}
-		case 365:
-			if wtyp == litewire.BytesType {
-				var sub *MachineDirectStatusEvent
-				if cur, ok := m.Event.(*Event_MachineDirectStatus); ok && cur != nil {
-					sub = cur.MachineDirectStatus
-				}
-				if sub == nil {
-					sub = &MachineDirectStatusEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_MachineDirectStatus{MachineDirectStatus: sub}
 				continue
 			}
 		case 366:

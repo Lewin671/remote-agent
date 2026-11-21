@@ -2333,7 +2333,6 @@
     <string name="transport_popover_read_only" formatted="false">"仅加载走直连"</string>
     <string name="transport_popover_relay_body" formatted="false">"当前所有操作都经中继连接电脑，不影响正常使用。"</string>
     <string name="transport_popover_relay_title">"经中继连接 %1$s"</string>
-    <string name="transport_popover_relay_title_rtt">"经中继连接 %2$s · %1$s ms"</string>
     <string name="transport_popover_settings" formatted="false">"连接设置"</string>
     <string name="transport_popover_stable" formatted="false">"连接稳定"</string>
     <string name="transport_popover_switched_relay" formatted="false">"已切回中继"</string>

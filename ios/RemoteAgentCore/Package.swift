@@ -50,7 +50,7 @@ let package = Package(
         // The one place that touches the WebRTC SDK: RACore sees only its own RtcFactory.
         .target(
             name: "RAWebRTC",
-            dependencies: ["RACore", .product(name: "WebRTC", package: "WebRTC")],
+            dependencies: ["RACore", "RAProto", .product(name: "WebRTC", package: "WebRTC")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(name: "RAWebRTCTests", dependencies: ["RAWebRTC", "RACore"], swiftSettings: [.swiftLanguageMode(.v5)]),

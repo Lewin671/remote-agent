@@ -19,12 +19,6 @@ func (e *Engine) ensureTransportCoord() *transport.Coordinator {
 	return e.transportCoord
 }
 
-// TransportConfigured reports whether the shell has handed direct-path ownership
-// to Core via TransportConfigEvent.
-func (e *Engine) TransportConfigured() bool {
-	return e != nil && e.transportConfigured
-}
-
 // PlatformAgent returns the client platform identifier sent in TransportConfigEvent.
 func (e *Engine) PlatformAgent() string {
 	if e == nil {
@@ -56,7 +50,7 @@ func (e *Engine) DirectMachineReport(machineID string) (
 
 // SetDirectEnabled updates a computer's direct-path preference when transport is Core-owned.
 func (e *Engine) SetDirectEnabled(ctx *StepContext, machineID string, enabled bool) {
-	if machineID == "" || !e.transportConfigured {
+	if machineID == "" {
 		return
 	}
 	c := e.ensureTransportCoord()
@@ -70,7 +64,6 @@ func (e *Engine) handleTransportConfig(ctx *StepContext, ev *corev1.TransportCon
 		return
 	}
 	c := e.ensureTransportCoord()
-	e.transportConfigured = true
 	e.platformAgent = ev.PlatformAgent
 	pv := uint64(ev.ProtocolVersion)
 	if pv == 0 {
@@ -110,9 +103,6 @@ func (e *Engine) handleDirectPreferencesLoaded(ctx *StepContext, ev *corev1.Dire
 		if entry != nil && entry.MachineId != "" {
 			e.directPrefs[entry.MachineId] = entry.Enabled
 		}
-	}
-	if !e.transportConfigured {
-		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().LoadPreferences(e.nowMs, e.directPrefs))
 	ctx.Dirty.MarkDirect()
@@ -173,70 +163,70 @@ func (e *Engine) handleDirectSecuritySnapshot(ctx *StepContext, ev *corev1.Direc
 }
 
 func (e *Engine) handleDirectSignalReceived(ctx *StepContext, ev *corev1.DirectSignalReceivedEvent) {
-	if ev == nil || len(ev.Raw) == 0 || !e.transportConfigured {
+	if ev == nil || len(ev.Raw) == 0 {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnSignalReceived(e.nowMs, ev.Raw))
 }
 
 func (e *Engine) handleDirectSignalDelivery(ctx *StepContext, ev *corev1.DirectSignalDeliveryEvent) {
-	if ev == nil || len(ev.FrameId) == 0 || !e.transportConfigured {
+	if ev == nil || len(ev.FrameId) == 0 {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnSignalDelivery(e.nowMs, ev.FrameId, ev.Status, ev.RetryAfterMs))
 }
 
 func (e *Engine) handleDirectKeySigned(ctx *StepContext, ev *corev1.DirectKeySignedEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnKeySigned(e.nowMs, ev.OpId, ev.Signature))
 }
 
 func (e *Engine) handleDirectKeyAgreed(ctx *StepContext, ev *corev1.DirectKeyAgreedEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnKeyAgreed(e.nowMs, ev.OpId, ev.SharedSecret, ev.Ok))
 }
 
 func (e *Engine) handleDirectPcCreated(ctx *StepContext, ev *corev1.DirectPcCreatedEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcCreated(e.nowMs, ev.PcId, ev.Ok))
 }
 
 func (e *Engine) handleDirectPcDescription(ctx *StepContext, ev *corev1.DirectPcDescriptionEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcDescription(e.nowMs, ev.PcId, ev.Sdp, ev.Ok))
 }
 
 func (e *Engine) handleDirectPcRemoteSet(ctx *StepContext, ev *corev1.DirectPcRemoteSetEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcRemoteSet(e.nowMs, ev.PcId, ev.Ok, ev.Error))
 }
 
 func (e *Engine) handleDirectPcCandidatesAdded(ctx *StepContext, ev *corev1.DirectPcCandidatesAddedEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcCandidatesAdded(e.nowMs, ev.PcId, ev.Ok, ev.Error))
 }
 
 func (e *Engine) handleDirectPcLocalCandidate(ctx *StepContext, ev *corev1.DirectPcLocalCandidateEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcLocalCandidate(e.nowMs, ev.PcId, ev.Candidate, ev.EndOfCandidates))
 }
 
 func (e *Engine) handleDirectPcState(ctx *StepContext, ev *corev1.DirectPcStateEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	var kind transport.StateKind
@@ -260,28 +250,28 @@ func (e *Engine) handleDirectPcState(ctx *StepContext, ev *corev1.DirectPcStateE
 }
 
 func (e *Engine) handleDirectPcStunError(ctx *StepContext, ev *corev1.DirectPcStunErrorEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcStunError(e.nowMs, ev.PcId, int(ev.Code), ev.Address))
 }
 
 func (e *Engine) handleDirectPcClosed(ctx *StepContext, ev *corev1.DirectPcClosedEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnPcClosed(e.nowMs, ev.PcId))
 }
 
 func (e *Engine) handleDirectDcState(ctx *StepContext, ev *corev1.DirectDcStateEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnDcState(e.nowMs, ev.PcId, ev.Open))
 }
 
 func (e *Engine) handleDirectDcStats(ctx *StepContext, ev *corev1.DirectDcStatsEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	var report *transport.StatsReport
@@ -359,21 +349,21 @@ func statsCandAddress(f corev1.DirectCandFamily) string {
 }
 
 func (e *Engine) handleDirectRetryNow(ctx *StepContext, act *corev1.DirectRetryNowAction) {
-	if act == nil || act.MachineId == "" || !e.transportConfigured {
+	if act == nil || act.MachineId == "" {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().RetryNow(e.nowMs, act.MachineId))
 }
 
 func (e *Engine) handleDirectRefreshDiagnostics(ctx *StepContext, act *corev1.DirectRefreshDiagnosticsAction) {
-	if act == nil || act.MachineId == "" || !e.transportConfigured {
+	if act == nil || act.MachineId == "" {
 		return
 	}
 	e.emitCoordEffects(ctx, e.ensureTransportCoord().RefreshDiagnostics(e.nowMs, act.MachineId))
 }
 
 func (e *Engine) handleDirectBulkTransferBegin(ctx *StepContext, ev *corev1.DirectBulkTransferBeginEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	c := e.ensureTransportCoord()
@@ -428,7 +418,7 @@ func (e *Engine) handleDirectBulkTransferBegin(ctx *StepContext, ev *corev1.Dire
 }
 
 func (e *Engine) handleDirectBulkTransferDone(ctx *StepContext, ev *corev1.DirectBulkTransferDoneEvent) {
-	if ev == nil || !e.transportConfigured {
+	if ev == nil {
 		return
 	}
 	c := e.ensureTransportCoord()
@@ -445,7 +435,7 @@ func (e *Engine) handleDirectBulkTransferDone(ctx *StepContext, ev *corev1.Direc
 }
 
 func (e *Engine) handleTerminalStream(ctx *StepContext, ev *corev1.TerminalStreamEvent) {
-	if ev == nil || ev.TerminalId == "" || !e.transportConfigured {
+	if ev == nil || ev.TerminalId == "" {
 		return
 	}
 	c := e.ensureTransportCoord()
@@ -464,7 +454,7 @@ func (e *Engine) handleTerminalStream(ctx *StepContext, ev *corev1.TerminalStrea
 }
 
 func (e *Engine) syncDirectWatched(ctx *StepContext) {
-	if !e.transportConfigured || e.transportCoord == nil {
+	if e.transportCoord == nil {
 		return
 	}
 	byMachine := make(map[string][]string)
@@ -739,7 +729,7 @@ func isInteractiveCommand(cmd *v1.Command) bool {
 }
 
 func (e *Engine) trackCommandTransferLifecycle(cmd *v1.Command, machineID string) {
-	if cmd == nil || !e.transportConfigured || e.transportCoord == nil {
+	if cmd == nil || e.transportCoord == nil {
 		return
 	}
 	switch k := cmd.Kind.(type) {

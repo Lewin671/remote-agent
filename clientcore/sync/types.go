@@ -426,7 +426,6 @@ type Engine struct {
 	retryReqByTimer map[string]string // timer key -> request_id
 
 	transportCoord         *transport.Coordinator
-	transportConfigured    bool
 	platformAgent          string
 	directPrefs            map[string]bool
 	directEngineAt         int64
@@ -466,6 +465,9 @@ func NewEngine() *Engine {
 		reqIDByAttempt:    make(map[string]string),
 		attemptTrackers:   make(map[string]*AttemptTracker),
 		retryReqByTimer:   make(map[string]string),
+		transportCoord: transport.NewCoordinator(transport.CoordConfig{
+			ProtocolVersion: uint64(ProtocolVersion),
+		}),
 	}
 	e.w.Init()
 	e.w.World.ClientVersion = ProtocolVersion
@@ -623,8 +625,6 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		if k.FetchSession != nil {
 			e.fetchSessionByID(ctx, k.FetchSession.SessionId)
 		}
-	case *corev1.Event_MachineRouteStatus:
-		e.handleMachineRouteStatus(ctx, k.MachineRouteStatus)
 	case *corev1.Event_SessionScheduleHints:
 		e.handleScheduleHints(ctx, k.SessionScheduleHints)
 	case *corev1.Event_DirectEventsReceived:

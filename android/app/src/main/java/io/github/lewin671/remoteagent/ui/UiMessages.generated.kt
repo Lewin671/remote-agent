@@ -7091,11 +7091,6 @@ private fun resolveUiMessage14(resources: android.content.res.Resources, message
             val name = message.args.getValue("name") as String
             resources.getString(R.string.transport_popover_relay_title, name)
         }
-        "transport.popover_relay_title_rtt" -> {
-            val ms = message.args.getValue("ms") as String
-            val name = message.args.getValue("name") as String
-            resources.getString(R.string.transport_popover_relay_title_rtt, ms, name)
-        }
         "transport.popover_settings" -> {
             resources.getString(R.string.transport_popover_settings)
         }

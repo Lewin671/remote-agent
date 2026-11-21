@@ -2131,7 +2131,6 @@ object UiMessages {
     fun transportPopoverReadOnly(): UiMessage = UiMessage("transport.popover_read_only", emptyMap())
     fun transportPopoverRelayBody(): UiMessage = UiMessage("transport.popover_relay_body", emptyMap())
     fun transportPopoverRelayTitle(name: String): UiMessage = UiMessage("transport.popover_relay_title", mapOf("name" to name))
-    fun transportPopoverRelayTitleRtt(ms: String, name: String): UiMessage = UiMessage("transport.popover_relay_title_rtt", mapOf("ms" to ms, "name" to name))
     fun transportPopoverSettings(): UiMessage = UiMessage("transport.popover_settings", emptyMap())
     fun transportPopoverStable(): UiMessage = UiMessage("transport.popover_stable", emptyMap())
     fun transportPopoverSwitchedRelay(): UiMessage = UiMessage("transport.popover_switched_relay", emptyMap())

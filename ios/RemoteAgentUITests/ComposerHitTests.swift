@@ -244,12 +244,49 @@ final class ComposerHitTests: XCTestCase {
         checkRestored("ios-attach-files-cancelled")
     }
 
+    private func draftImageFrames(_ app: XCUIApplication, firstLabel: String, removeLabel: String, secondLabel: String) throws -> (body: CGRect, hit: CGRect, next: CGRect) {
+        func flatten(_ node: any XCUIElementSnapshot) -> [any XCUIElementSnapshot] {
+            [node] + node.children.flatMap(flatten)
+        }
+        func valid(_ frame: CGRect?) -> CGRect? {
+            guard let frame, !frame.isEmpty, frame.minX.isFinite, frame.minY.isFinite else { return nil }
+            return frame
+        }
+        func snapshot() -> (CGRect, CGRect, CGRect)? {
+            guard let tree = try? app.snapshot() else { return nil }
+            let nodes = flatten(tree)
+            let find: (XCUIElement.ElementType, String) -> CGRect? = { kind, name in
+                valid(nodes.first { $0.elementType == kind && ($0.label == name || $0.identifier == name) }?.frame)
+            }
+            guard let body = find(.other, firstLabel),
+                  let hit = find(.button, removeLabel),
+                  let next = find(.other, secondLabel)
+            else { return nil }
+            return (body, hit, next)
+        }
+        var previous = snapshot()
+        var settled: (CGRect, CGRect, CGRect)?
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard let cur = snapshot() else { previous = nil; return false }
+            defer { previous = cur }
+            guard let prev = previous,
+                  self.sameFrame(prev.0, cur.0),
+                  self.sameFrame(prev.1, cur.1),
+                  self.sameFrame(prev.2, cur.2)
+            else { return false }
+            settled = cur
+            return true
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed)
+        return try XCTUnwrap(settled)
+    }
+
     private func checkDraftImageGeometryAndTouches(_ app: XCUIApplication) throws {
-        let first = app.otherElements["第 1 张，共 3 张"]
+        let firstLabel = "第 1 张，共 3 张", removeLabel = "移除图片 1", secondLabel = "第 2 张，共 3 张"
+        let first = app.otherElements[firstLabel]
         XCTAssertTrue(first.present(timeout: 15))
-        let remove = app.buttons["移除图片 1"]
-        let body = first.frame, hit = remove.frame
-        let next = app.otherElements["第 2 张，共 3 张"].frame
+        let remove = app.buttons[removeLabel]
+        let (body, hit, next) = try draftImageFrames(app, firstLabel: firstLabel, removeLabel: removeLabel, secondLabel: secondLabel)
         XCTAssertEqual(body.width, 56, accuracy: 0.5)
         XCTAssertEqual(hit.width, 44, accuracy: 0.5)
         XCTAssertEqual(hit.height, 44, accuracy: 0.5)

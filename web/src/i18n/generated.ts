@@ -1722,7 +1722,6 @@ export interface MessageArgs {
   "transport.popover_read_only": { [name: string]: never };
   "transport.popover_relay_body": { [name: string]: never };
   "transport.popover_relay_title": { name: string };
-  "transport.popover_relay_title_rtt": { ms: string; name: string };
   "transport.popover_settings": { [name: string]: never };
   "transport.popover_stable": { [name: string]: never };
   "transport.popover_switched_relay": { [name: string]: never };
@@ -4099,7 +4098,6 @@ export const messages = {
     "transport.popover_read_only": "Loading only over direct",
     "transport.popover_relay_body": "Everything currently connects via relay, with no impact on use.",
     "transport.popover_relay_title": "Via relay to {name}",
-    "transport.popover_relay_title_rtt": "Via relay to {name} · {ms} ms",
     "transport.popover_settings": "Connection settings",
     "transport.popover_stable": "Connection stable",
     "transport.popover_switched_relay": "Switched to relay",
@@ -6402,7 +6400,6 @@ export const messages = {
     "transport.popover_read_only": "仅加载走直连",
     "transport.popover_relay_body": "当前所有操作都经中继连接电脑，不影响正常使用。",
     "transport.popover_relay_title": "经中继连接 {name}",
-    "transport.popover_relay_title_rtt": "经中继连接 {name} · {ms} ms",
     "transport.popover_settings": "连接设置",
     "transport.popover_stable": "连接稳定",
     "transport.popover_switched_relay": "已切回中继",

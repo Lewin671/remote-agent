@@ -92,9 +92,6 @@ func newModel() *Model {
 		return events, m.sync.SessionEventsSettled(sid)
 	}
 	m.state.DirectReportFn = func(machineID string) (bool, *corev1.DirectRouteReport, bool) {
-		if !m.sync.TransportConfigured() {
-			return false, nil, false
-		}
 		prefEnabled, daemonDisabled, status, rounds, _, _ := m.sync.DirectMachineReport(machineID)
 		return prefEnabled, screens.BuildDirectRouteReport(status, prefEnabled, daemonDisabled, len(rounds)), true
 	}

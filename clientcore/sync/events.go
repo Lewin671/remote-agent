@@ -668,7 +668,7 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 	if e.security.Loaded && !e.security.TrustedMachines[ev.MachineId] {
 		return
 	}
-	if e.transportConfigured && e.transportCoord != nil && ev.PcId != 0 {
+	if e.transportCoord != nil && ev.PcId != 0 {
 		roundID, machineID, use, ok := e.transportCoord.InboundDCContext(e.nowMs, ev.PcId)
 		if !ok || machineID != ev.MachineId || !e.transportCoord.PushedEventAllowed(e.nowMs, roundID, use, ev.MachineId, ev.Sender) {
 			return

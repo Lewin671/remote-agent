@@ -1984,7 +1984,6 @@
 "transport_popover_read_only" = "仅加载走直连";
 "transport_popover_relay_body" = "当前所有操作都经中继连接电脑，不影响正常使用。";
 "transport_popover_relay_title" = "经中继连接 %1$@";
-"transport_popover_relay_title_rtt" = "经中继连接 %2$@ · %1$@ ms";
 "transport_popover_settings" = "连接设置";
 "transport_popover_stable" = "连接稳定";
 "transport_popover_switched_relay" = "已切回中继";

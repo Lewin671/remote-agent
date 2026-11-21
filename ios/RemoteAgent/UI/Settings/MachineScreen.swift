@@ -45,7 +45,7 @@ struct MachineScreen: View {
             vm: vm,
             initialDirect: initialDirect,
             initialCliAgent: initialCliAgent,
-            directStatus: model.isDemo ? nil : context.remote.directStatus(id),
+            directDiagnostics: context.core.directDiagnostics,
             onOpenStatus: { nav.open(.machineStatus(id: id)) },
             onOpenQuota: { nav.open(.quota(machine: id)) },
             onOpenUsage: { nav.open(.usage(machine: id)) },
@@ -59,7 +59,10 @@ struct MachineScreen: View {
                     }
                 }
             },
-            onRetryDirect: { context.remote.refreshDirect(id) },
+            onRetryDirect: { Task { await host.retryDirectNow(machineID: id) } },
+            onOpenDirectDiag: { Task { await host.openDirectDiagnostics(machineID: id) } },
+            onCloseDirectDiag: { Task { await host.closeDirectDiagnostics() } },
+            onRefreshDirectDiag: { Task { await host.refreshDirectDiagnostics() } },
             onRetrySettings: { Task { await host.openMachineSettings(machineID: id) } },
             onRefresh: refreshAction,
             onSelectAgent: { agent in
@@ -111,7 +114,7 @@ struct MachineScreenContent<Management: View>: View {
     let vm: PBMachineSettingsViewModel
     var initialDirect = false
     var initialCliAgent: String? = nil
-    var directStatus: DirectStatus? = nil
+    var directDiagnostics = PBDirectDiagnosticsViewModel()
     let onOpenStatus: () -> Void
     let onOpenQuota: () -> Void
     var onOpenUsage: () -> Void = {}
@@ -119,6 +122,9 @@ struct MachineScreenContent<Management: View>: View {
     var onOpenProjects: () -> Void = {}
     let onToggleDirect: (Bool) -> Void
     let onRetryDirect: () -> Void
+    var onOpenDirectDiag: () -> Void = {}
+    var onCloseDirectDiag: () -> Void = {}
+    var onRefreshDirectDiag: () -> Void = {}
     let onRetrySettings: () -> Void
     let onRefresh: (@MainActor @Sendable () async -> Void)?
     let onSelectAgent: (PBAgent) -> Void
@@ -192,9 +198,12 @@ struct MachineScreenContent<Management: View>: View {
                 machineID: vm.machineID,
                 machineName: vm.name.or(vm.machineID),
                 view: vm.connection,
-                directStatus: directStatus,
+                diag: directDiagnostics,
                 onToggle: onToggleDirect,
                 onRetry: onRetryDirect,
+                onOpenDiag: onOpenDirectDiag,
+                onCloseDiag: onCloseDirectDiag,
+                onRefreshDiag: onRefreshDirectDiag,
                 onClose: { directSheetOpen = false }
             )
         }
@@ -839,22 +848,18 @@ private struct DirectSettingsSheet: View {
     let machineID: String
     let machineName: String
     let view: PBConnectionGroupView
-    let directStatus: DirectStatus?
+    let diag: PBDirectDiagnosticsViewModel
     let onToggle: (Bool) -> Void
     let onRetry: () -> Void
+    let onOpenDiag: () -> Void
+    let onCloseDiag: () -> Void
+    let onRefreshDiag: () -> Void
     let onClose: () -> Void
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var copied = false
     @State private var cooldown = false
     @State private var wasDiagShown = false
-
-    private struct DiagCheckRow {
-        let dotColor: Color
-        let label: String
-        let detail: String?
-        let status: String
-    }
 
     var body: some View {
         let supported = view.toggleVisible
@@ -865,10 +870,12 @@ private struct DirectSettingsSheet: View {
         let readLatency = view.readLatencyText.rendered()
         let showStatus = !status.isEmpty || !detail.isEmpty || !metric.isEmpty
         let showSpeeds = view.stage != .disabled && view.stage != .unsupported && view.stage != .offline
-        let isDirect = view.stage == .direct
-        let isRunning = view.stage == .connecting || view.stage == .measuring || directStatus?.state == .connecting
+        let matchingDiag = diag.machineID.isEmpty || diag.machineID == machineID
+        let isDirect = (matchingDiag && diag.connected) || view.stage == .direct
+        let isRunning = (matchingDiag && diag.trying) || view.stage == .connecting || view.stage == .measuring
+        let peerOutdated = !isDirect && matchingDiag && diag.peerOutdated
         let showDiagSection = !isDirect && (view.showDiagnosticsEntry || (wasDiagShown && isRunning))
-        let explanation = diagnosticExplanation(connected: isDirect)
+        let explanation = (matchingDiag ? diag.bodyText.rendered() : "").or(L10n.transportDiagExplainGeneric())
 
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -897,34 +904,42 @@ private struct DirectSettingsSheet: View {
                 }
 
                 if showDiagSection {
-                    let checks = buildDiagChecks(connected: isDirect, running: isRunning)
+                    let checks = matchingDiag ? diag.checks : []
                     GroupLabel(L10n.transportDiagSectionAuto())
                     Text(explanation)
                         .font(.subheadline)
                         .foregroundStyle(DS.ink2)
                         .padding(.horizontal, 16)
                         .padding(.bottom, 10)
-                    GroupCard(separatorLeading: 34) {
-                        ForEach(Array(checks.enumerated()), id: \.offset) { _, row in
-                            HStack(alignment: .center, spacing: 10) {
-                                Dot(row.dotColor, size: 8)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(row.label).font(.body).foregroundStyle(DS.ink)
-                                    if let d = row.detail, !d.isEmpty {
-                                        Text(d).font(.footnote).foregroundStyle(DS.ink2)
-                                    }
+                    if !checks.isEmpty {
+                        GroupCard(separatorLeading: 34) {
+                            ForEach(Array(checks.enumerated()), id: \.offset) { _, row in
+                                let dotColor: Color = switch row.mark {
+                                case .online: DS.green
+                                case .run: DS.ink
+                                default: DS.ink3
                                 }
-                                Spacer(minLength: 8)
-                                Text(row.status).font(.subheadline).foregroundStyle(DS.ink2)
+                                let detailText = row.detailText.rendered()
+                                HStack(alignment: .center, spacing: 10) {
+                                    Dot(dotColor, size: 8)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(row.labelText.rendered()).font(.body).foregroundStyle(DS.ink)
+                                        if !detailText.isEmpty {
+                                            Text(detailText).font(.footnote).foregroundStyle(DS.ink2)
+                                        }
+                                    }
+                                    Spacer(minLength: 8)
+                                    Text(row.statusText.rendered()).font(.subheadline).foregroundStyle(DS.ink2)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .frame(minHeight: DS.minHit)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .frame(minHeight: DS.minHit)
                         }
                     }
 
-                    let peerOutdated = directStatus?.reason == .peerUnsupported
-                    let retryDisabled = isRunning || cooldown || peerOutdated || view.stage == .unsupported
+                    let canRetryVm = !matchingDiag || diag.machineID.isEmpty || (diag.supported && diag.canRetry)
+                    let retryDisabled = isRunning || cooldown || isDirect || peerOutdated || !supported || !canRetryVm
                     VStack(spacing: 10) {
                         Btn(
                             isRunning ? L10n.transportDiagRetrying() : L10n.transportRowRetryDirect(),
@@ -942,7 +957,7 @@ private struct DirectSettingsSheet: View {
                             copied ? L10n.transportRowDiagCopied() : L10n.transportRowDiagCopySupport(),
                             kind: .secondary
                         ) {
-                            UIPasteboard.general.string = diagnosticReport(verdict: detail.or(status))
+                            UIPasteboard.general.string = diagnosticReport(matchingDiag: matchingDiag, verdict: detail.or(status))
                             copied = true
                             Task {
                                 try? await Task.sleep(for: .seconds(1.8))
@@ -962,6 +977,20 @@ private struct DirectSettingsSheet: View {
         .sheetSurface()
         .tint(DS.blue)
         .adaptiveModalPresentation(sizeClass: sizeClass)
+        .task(id: machineID) {
+            onOpenDiag()
+        }
+        .onDisappear {
+            onCloseDiag()
+        }
+        .task(id: "\(machineID):\(isRunning)") {
+            onRefreshDiag()
+            guard isRunning else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                if !Task.isCancelled { onRefreshDiag() }
+            }
+        }
         .onChange(of: view.showDiagnosticsEntry, initial: true) { _, show in
             if isDirect || !view.toggleChecked {
                 wasDiagShown = false
@@ -977,74 +1006,24 @@ private struct DirectSettingsSheet: View {
         }
     }
 
-    private func diagnosticExplanation(connected: Bool) -> String {
-        guard !connected else { return L10n.transportDiagConnectedBody() }
-        switch directStatus?.reason {
-        case .peerUnsupported:
-            return L10n.transportDiagExplainPeerOld()
-        case .noResponse:
-            return L10n.transportDiagExplainNoReply()
-        case .noTraversal:
-            return L10n.transportDiagExplainNat()
-        default:
-            return L10n.transportDiagExplainGeneric()
-        }
-    }
-
-    private func buildDiagChecks(connected: Bool, running: Bool) -> [DiagCheckRow] {
-        let reason = directStatus?.reason
-        let peerOutdated = !connected && reason == .peerUnsupported
-        let noReply = !connected && !peerOutdated && reason == .noResponse
-        let natBlocked = !connected && !peerOutdated && !noReply && (reason == .noTraversal || reason == .failed)
-
-        let peerRow: DiagCheckRow = if peerOutdated {
-            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPeer(), detail: L10n.transportDiagPeerOldDesc(), status: L10n.transportDiagStatusPeerOld())
-        } else if noReply {
-            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPeer(), detail: L10n.transportDiagPeerNoReplyDesc(), status: L10n.transportDiagStatusNoReply())
-        } else {
-            DiagCheckRow(dotColor: DS.green, label: L10n.transportDiagCheckPeer(), detail: nil, status: L10n.transportDiagStatusOk())
-        }
-
-        let pathRow: DiagCheckRow = if connected {
-            DiagCheckRow(dotColor: DS.green, label: L10n.transportDiagCheckPath(), detail: nil, status: L10n.transportDiagStatusConnected())
-        } else if running {
-            DiagCheckRow(dotColor: DS.ink, label: L10n.transportDiagCheckPath(), detail: nil, status: L10n.transportDiagStatusChecking())
-        } else if peerOutdated || noReply {
-            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPath(), detail: nil, status: L10n.transportDiagStatusNotStarted())
-        } else if natBlocked {
-            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPath(), detail: L10n.transportDiagPathNat(), status: L10n.transportDiagStatusBlocked())
-        } else {
-            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckPath(), detail: L10n.transportDiagPathFailed(), status: L10n.transportDiagStatusBlocked())
-        }
-
-        let retryRow: DiagCheckRow = if peerOutdated {
-            DiagCheckRow(dotColor: DS.ink3, label: L10n.transportDiagCheckRetry(), detail: L10n.transportDiagRetryWaitDesc(), status: L10n.transportDiagStatusWaitUpdate())
-        } else {
-            DiagCheckRow(dotColor: DS.green, label: L10n.transportDiagCheckRetry(), detail: L10n.transportDiagRetryAutoDesc(), status: L10n.transportDiagStatusEnabled())
-        }
-
-        return [peerRow, pathRow, retryRow]
-    }
-
-    private func diagnosticReport(verdict: String) -> String {
+    private func diagnosticReport(matchingDiag: Bool, verdict: String) -> String {
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "en_US_POSIX")
         fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        var lines = [
-            L10n.transportDiagReportTitle(),
-            L10n.transportDiagReportVerdict(verdict: verdict.or(L10n.transportDiagVerdictNone())),
-            "Client: iOS \(UIDevice.current.systemVersion)",
-            "Computer: \(machineName)",
-            "Time: \(fmt.string(from: Date()))",
-            "Stage: \(view.stage.rawValue), Reason: \(directStatus?.reason.map { String(describing: $0) } ?? "none")",
-        ]
-        if let ds = directStatus {
-            let directMs = ds.readMs[DirectPath.direct].map { String(format: "%.0fms", $0) } ?? "-"
-            let relayMs = ds.readMs[DirectPath.relay].map { String(format: "%.0fms", $0) } ?? "-"
-            let directMiB = ds.fileMiBps[DirectPath.direct].map { String(format: "%.1fMB/s", $0) } ?? "-"
-            let relayMiB = ds.fileMiBps[DirectPath.relay].map { String(format: "%.1fMB/s", $0) } ?? "-"
-            lines.append("Routes: readDirect=\(ds.readDirect) fileDirect=\(ds.fileDirect) readMs(direct=\(directMs), relay=\(relayMs)) file(direct=\(directMiB), relay=\(relayMiB))")
+        let renderedLines = matchingDiag ? diag.reportLines.map { $0.rendered() }.filter { !$0.isEmpty } : []
+        var lines: [String] = []
+        if !renderedLines.isEmpty {
+            lines.append(contentsOf: renderedLines)
+        } else {
+            let title = (matchingDiag ? diag.titleText.rendered().or(diag.verdictText.rendered()) : "").or(verdict)
+            lines.append(L10n.transportDiagReportTitle())
+            lines.append(L10n.transportDiagReportVerdict(verdict: title.or(L10n.transportDiagVerdictNone())))
+            lines.append("Client: iOS \(UIDevice.current.systemVersion)")
         }
+        if !machineName.isEmpty {
+            lines.append("Computer: \(machineName)")
+        }
+        lines.append("Time: \(fmt.string(from: Date()))")
         return lines.joined(separator: "\n")
     }
 }

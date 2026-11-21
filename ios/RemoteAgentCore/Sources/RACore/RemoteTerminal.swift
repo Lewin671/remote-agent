@@ -121,7 +121,7 @@ extension Remote {
         hello.token = tok
         hello.streamID = streamId
         hello.machineID = machineId
-        let socket = deviceLink.router.path.openStream("/v1/term", hello: try hello.serializedData())
+        let socket = deviceLink.relay.openStream("/v1/term", hello: try hello.serializedData())
         let stream = deviceLink.openStream(stop: { cancelPath in
             closed.withLock { $0 = true }
             if cancelPath { socket.cancel() }

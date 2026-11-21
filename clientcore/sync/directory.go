@@ -513,18 +513,6 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 	}
 }
 
-func (e *Engine) handleMachineRouteStatus(ctx *StepContext, ev *corev1.MachineRouteStatusEvent) {
-	if e.transportConfigured || ev == nil || ev.MachineId == "" {
-		return
-	}
-	if e.directReady[ev.MachineId] == ev.DirectReady {
-		return
-	}
-	e.directReady[ev.MachineId] = ev.DirectReady
-	e.updateLivePollers(ctx)
-	ctx.Dirty.MarkAll()
-}
-
 func (e *Engine) handleScheduleHints(ctx *StepContext, ev *corev1.SessionScheduleHintsEvent) {
 	if ev == nil {
 		return

@@ -1984,7 +1984,6 @@
 "transport_popover_read_only" = "Loading only over direct";
 "transport_popover_relay_body" = "Everything currently connects via relay, with no impact on use.";
 "transport_popover_relay_title" = "Via relay to %1$@";
-"transport_popover_relay_title_rtt" = "Via relay to %2$@ · %1$@ ms";
 "transport_popover_settings" = "Connection settings";
 "transport_popover_stable" = "Connection stable";
 "transport_popover_switched_relay" = "Switched to relay";

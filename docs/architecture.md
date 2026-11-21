@@ -254,9 +254,9 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 
 #### 体积与性能预算
 
-- 体积：网页 wasm brotli 全部迁完后（各界面与 security 都进核心）目标约 1.6 MB，发布门槛由首屏下载的 JS、CSS 与 wasm 合计 brotli 体积（不超过 2026-11-17 的水平 1,851 KiB ≈ 1,895,424 B 加 15%，即 `2,179,738 B`）把关，由 `web/scripts/check-first-paint-budget.mjs` 在 `pnpm build` 时强制校验——逻辑从 TS 搬进核心时，JS 必须相应变小，体积只是换了地方不算达标。`scripts/core/build.sh web` 输出并报告 `core.wasm` 的 brotli 体积（参考值 1,575,000 B），不再因单个文件移动而阻断构建。Android 每个 ABI、iOS 每个切片不超过 6 MB。最初定的 1.2 MB 只算了运行时和加密库，没有算各界面的视图模型代码，迁完会话、设置、定时三个界面就已超过
+- 体积：网页 wasm brotli 全部迁完后（各界面与 security 都进核心）目标约 1.6 MB，发布门槛由首屏下载的 JS、CSS 与 wasm 合计 brotli 体积（不超过 2026-11-17 的水平 1,851 KiB ≈ 1,895,424 B 加 15%，即 `2,179,738 B`）把关，由 `web/scripts/check-first-paint-budget.mjs` 在 `pnpm build` 时强制校验——逻辑从 TS 搬进核心时，JS 必须相应变小，体积只是换了地方不算达标。`scripts/core/build.sh web` 输出并报告 `core.wasm` 的 brotli 体积（参考值 1,575,000 B），不再因单个文件移动而阻断构建。Android 每个 ABI 的 **APK 内压缩体积**（`gzip -9`）不超过 6 MB（解压后的 `.so` 受 Go 运行时与 cgo 影响会超过 6 MB，正式包继续同时保留 `arm64-v8a` 与 `x86_64`）；iOS 每个 arm64 切片的静态库链接目标同样以 6 MB 为参考门槛。最初定的 1.2 MB 只算了运行时和加密库，没有算各界面的视图模型代码，迁完会话、设置、定时三个界面就已超过
 - 控制体积的手段：生成器只为核心可达的 wire 消息生成代码（`cmd/protoc-gen-go-lite/entries.txt`）并按数据方向生成（只从核心流向壳的视图模型和 Effect 只要序列化，只从壳流向核心的 Event 只要反序列化）；序列化不单独算长度，嵌套消息先占一个字节的长度位、写完再补（`litewire.BeginMessage`/`EndMessage`），输出字节与先算长度相同（`clientcore/corebind/wire_bytes_test.go` 守住）；核心不依赖 `fmt`、`reflect`、protobuf-go（`clientcore/app/deps_test.go` 守住）
-- 现状（2026-11-20，Go 1.26.11，`-s -w`）：core.wasm 原始 8,766,588 B、brotli（q11）1,556,470 B；`scripts/core/build.sh web` 在 brotli 超过 1,575,000 B 时让构建失败，需要更多余量时在同一提交里调高并写明原因。Android `libgojni.so` arm64 6,349,952 B、x86_64 6,813,760 B（解压后，仍超 6 MB，口径未定，见 [plan.md](plan.md#待确认)）；iOS 静态库 ios-arm64 切片 7,678,984 B，其中链接进 App 的段约 5.49 MB
+- 现状（2026-11-21，S4 完成并拆除过渡桥接，Go 1.26.11，`-s -w`）：`core.wasm` 原始 `10,366,190 B`、brotli（q11）`1,829,377 B`，首屏合计 brotli（JS `303,009 B` + CSS `26,789 B` + wasm `1,829,377 B`）为 `2,159,175 B`（门限 `2,179,738 B`）。Android `libgojni.so` APK 内压缩体积（`gzip -9`）`arm64-v8a` `2,493,993 B`（约 `2.38 MiB`）、`x86_64` `2,705,837 B`（约 `2.58 MiB`），原始 Stored 分别为 `7,245,152 B`、`7,803,872 B`；iOS `Corebind.xcframework` `ios-arm64` 切片文件 `8,729,056 B`（`__TEXT` `5,151,819 B` 约 `4.91 MiB`，非零填充 `__TEXT+__DATA_CONST+__DATA` `6,299,458 B` 约 `6.01 MiB`）
 - 性能：一次 `Dispatch` 典型小于 1 ms，`View(home)` 在 1000 个会话时小于 5 ms，聊天按窗口取；一次界面刷新跨边界不超过一两次，禁止在行渲染、比较器里调用核心
 - 构建：核心不用 protobuf-go 反射，用 `cmd/protoc-gen-go-lite` 生成只依赖 `protowire` 的类型；不 import 会带进 sqlite、webrtc、net/http 的主 module 包，确需复用的先拆出纯逻辑子包；gomobile 经中性路径构建，产物里不留检出路径（见 `scripts/core/build.sh`）
 - 独立 module：gomobile 的依赖只进 `clientcore/go.mod`，不影响 daemon 和 server；测试可以引用主 module 做 wire 兼容和向量检查
@@ -280,7 +280,7 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 3. session 界面：聊天行、审批、提问、队列、计划，复用 `projection`
 4. schedules、machine status、quota、settings
 5. `security`：信封、成员链、配对、恢复，密钥操作走 Effect；安全门并入核心
-6. 附件和共享文件的状态机；直连的选路策略（路径可用性、退回与等待、指令两路同发的编排、响应时间统计）提前到 iOS 接入直连之前进 `sync`，壳只按核心指定的路径收发，iOS 不再自己写一套
+6. 附件和共享文件的状态机；直连的选路策略（路径可用性、退回与等待、指令两路同发与终端恢复重连的状态机）已按 S4 迁入 `clientcore/transport` 与 `sync`，网页、Android、iOS 三端均已完成接线并拆除过渡桥接，各端仅保留平台原生 WebRTC / WebSocket / Timer / 密钥 / 加密执行器
 7. Markdown 和终端 SGR 的解析（渲染留在壳）
 
 同步必须先于各界面进核心：第 1 步曾让同步留在壳里、由宿主把壳的状态翻成 Event，三端宿主各写了 600 到 1100 行翻译代码，产品代码不减反增。界面迁移只在核心已持有它所需的状态之后进行。

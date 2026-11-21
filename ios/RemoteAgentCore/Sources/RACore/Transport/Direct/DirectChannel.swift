@@ -1,59 +1,228 @@
+import CryptoKit
 import Foundation
 import RAProto
 
 private let frameBytes = 16 << 10
 private let payloadBytes = frameBytes - 128
 
+private func sha256Data(_ data: Data) -> Data {
+    Data(SHA256.hash(data: data))
+}
+
+private func hexString(_ data: Data) -> String {
+    data.map { String(format: "%02x", $0) }.joined()
+}
+
+/// Minimal platform sanity check before calling WebRTC SDP APIs; semantic validation lives in shared/peerwire.
+func validateMinimalSDP(_ raw: Data) throws -> String {
+    guard !raw.isEmpty, raw.count <= 60 * 1024 else { throw PathChanged() }
+    if raw.count >= 3, raw[0] == 0xEF, raw[1] == 0xBB, raw[2] == 0xBF {
+        throw PathChanged()
+    }
+    guard let text = String(data: raw, encoding: .utf8),
+          text.hasSuffix("\r\n"),
+          !text.unicodeScalars.contains(where: {
+              $0.value == 0x00 || $0.value == 0x0B || $0.value == 0x0C ||
+              $0.value == 0x85 || $0.value == 0x2028 || $0.value == 0x2029
+          }) else {
+        throw PathChanged()
+    }
+    var prevCR = false
+    for scalar in text.unicodeScalars {
+        if scalar.value == 0x0A {
+            if !prevCR { throw PathChanged() }
+            prevCR = false
+        } else if prevCR {
+            throw PathChanged()
+        } else if scalar.value == 0x0D {
+            prevCR = true
+        }
+    }
+    if prevCR { throw PathChanged() }
+    guard text.contains("m=application "), text.contains("a=fingerprint:sha-256 ") else {
+        throw PathChanged()
+    }
+    return text
+}
+
+/// Serializes queued async jobs in FIFO order without blocking actor executors.
+final class SerialChain: @unchecked Sendable {
+    private let lock = NSLock()
+    private var tail: Task<Void, Never>?
+
+    @discardableResult
+    func run<T: Sendable>(_ work: @escaping @Sendable () async -> T) -> Task<T, Never> {
+        lock.lock(); defer { lock.unlock() }
+        let previous = tail
+        let job = Task<T, Never> { await previous?.value; return await work() }
+        tail = Task { _ = await job.value }
+        return job
+    }
+
+    func drain() async {
+        await run {}.value
+    }
+}
+
+/// Wakes writers waiting for the DataChannel buffer to drain without losing signals.
+final class AsyncSignal: @unchecked Sendable {
+    private let lock = NSLock()
+    private var waiters: [UUID: CheckedContinuation<Void, Never>] = [:]
+    private var pending = false
+
+    func signal() {
+        lock.lock()
+        let all = Array(waiters.values)
+        waiters.removeAll()
+        pending = all.isEmpty
+        lock.unlock()
+        for waiter in all { waiter.resume() }
+    }
+
+    func wait(ms: UInt64) async {
+        let id = UUID()
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            lock.lock()
+            if pending { pending = false; lock.unlock(); c.resume(); return }
+            waiters[id] = c
+            lock.unlock()
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: ms * 1_000_000)
+                self?.expire(id)
+            }
+        }
+    }
+
+    private func expire(_ id: UUID) {
+        lock.lock(); let c = waiters.removeValue(forKey: id); lock.unlock(); c?.resume()
+    }
+}
+
+/// Shared by both PC uses and replacement connections; hints never reset it.
+final class DirectBudget: @unchecked Sendable {
+    private struct Usage { var owner: String; var uses = Set<Int>(); var bytes = [0, 0]; var frames = [0, 0] }
+    private let lock = NSLock()
+    private var peers: [String: Usage] = [:]
+    private var total = [0, 0]
+    let maxPeers: Int
+
+    init(maxPeers: Int = 4) { self.maxPeers = maxPeers }
+
+    func acquire(_ peer: String, _ owner: String, _ use: Int) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        var current = peers[peer]
+        if current == nil {
+            if peers.count >= maxPeers { return false }
+            current = Usage(owner: owner)
+        }
+        guard current!.owner == owner, !current!.uses.contains(use), current!.uses.count < 2 else { return false }
+        current!.uses.insert(use); peers[peer] = current
+        return true
+    }
+
+    func ownerAvailable(_ peer: String, _ owner: String) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return peers[peer] == nil || peers[peer]!.owner == owner
+    }
+
+    func release(_ peer: String, _ use: Int) {
+        lock.lock(); defer { lock.unlock() }
+        if var current = peers[peer] {
+            current.uses.remove(use); peers[peer] = current; prune(peer)
+        }
+    }
+
+    func reserve(_ peer: String, _ owner: String, _ use: Int, _ direction: Int, _ bytes: Int, _ frames: Int) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard var current = peers[peer], current.owner == owner, current.uses.contains(use) else { return false }
+        guard bytes >= 0, frames >= 0,
+              current.bytes[direction] + bytes <= 2 << 20,
+              current.frames[direction] + frames <= 128,
+              total[direction] + bytes <= 16 << 20 else { return false }
+        current.bytes[direction] += bytes; current.frames[direction] += frames; total[direction] += bytes
+        peers[peer] = current
+        return true
+    }
+
+    func free(_ peer: String, _ direction: Int, _ bytes: Int, _ frames: Int) {
+        lock.lock(); defer { lock.unlock() }
+        if var current = peers[peer] {
+            current.bytes[direction] -= bytes; current.frames[direction] -= frames; total[direction] -= bytes
+            peers[peer] = current; prune(peer)
+        }
+    }
+
+    private func prune(_ peer: String) {
+        guard let current = peers[peer] else { return }
+        if current.uses.isEmpty && current.bytes == [0, 0] && current.frames == [0, 0] {
+            peers.removeValue(forKey: peer)
+        }
+    }
+
+    var isEmpty: Bool { lock.lock(); defer { lock.unlock() }; return peers.isEmpty && total == [0, 0] }
+}
+
+private func cleanup(_ steps: (() -> Void)...) {
+    for step in steps { step() }
+}
+
+private func decodeStrictFragment(_ raw: Data) throws -> PBFragment {
+    let frame = try PBFragment(serializedBytes: raw)
+    guard frame.unknownFields.data.isEmpty else { throw PathChanged() }
+    return frame
+}
+
 struct DirectChannelOptions: Sendable {
     var peer: String
-    var connection: PeerWire.Bytes
+    var roundId: UInt64
     var use: Int
     var generation: UInt64
-    var deadline: UInt64
     var budget: DirectBudget
     var valid: @Sendable () -> Bool
     var stun: [String]
     var factory: any RtcFactory
     var candidate: @Sendable (RtcIceCandidate?) -> Void
-    var state: @Sendable (RtcPeerState) -> Void
-    var frame: @Sendable (PeerWire.Bytes) -> Void
+    var state: @Sendable (PBCoreDirectStateKind, String) -> Void
+    var dcState: (@Sendable (Bool) -> Void)? = nil
+    var stunError: (@Sendable (Int, String) -> Void)? = nil
+    var frame: @Sendable (Data) -> Void
     var closed: @Sendable () -> Void
     var open: (@Sendable () -> Void)? = nil
-    var probe: (@Sendable (Double) -> Void)?
-    var clock = DirectClock()
+    var probe: (@Sendable (Double) -> Void)? = nil
+    var clock: @Sendable () -> UInt64 = { UInt64(Date().timeIntervalSince1970 * 1000) }
+    var monotonic: @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1e6 }
 }
 
-/// One framed PeerConnection use (docs/transport.md §2): a reliable ordered business channel and a
-/// small unreliable probe channel, both negotiated, no others. SDK objects, SDP and candidates
-/// stay below the session. Fragments are reassembled and hashed here, off every actor of the app.
+/// Framed WebRTC DataChannel pair (id 0 reliable data, id 1 unreliable probe); signaling, state machine,
+/// and routing policy live in Go Core.
 final class DirectChannel: @unchecked Sendable {
     private struct Partial {
-        var count: Int, length: Int, hash: PeerWire.Bytes
-        var parts: [Int: PeerWire.Bytes] = [:]
+        var count: Int, length: Int, hash: Data
+        var parts: [Int: Data] = [:]
         var bytes = 0
         var until: Double
     }
+
     private let options: DirectChannelOptions
     private let owner: String
     private let lock = NSLock()
     private let wake = AsyncSignal()
     private let writes = SerialChain()
-    private var confirmed = false, stunReady = false, ended = false, reservationReleased = false
+    private var confirmed = false, ended = false, reservationReleased = false
     private var writers = 0, missedProbes = 0
     private var lastProbe = -Double.infinity
     private var partial: [String: Partial] = [:]
-    private var waiting: [PeerWire.Bytes] = []
+    private var waiting: [Data] = []
     private var probes: [String: Double] = [:]
     private var pc: (any RtcPeerConnection)!
     private var data: (any RtcDataChannel)!
     private var probe: (any RtcDataChannel)!
     private var incoming: AsyncStream<Data>.Continuation!
     private var tick: Task<Void, Never>?
-    private var consumer: Task<Void, Never>?
 
     init(_ options: DirectChannelOptions) throws {
         self.options = options
-        owner = PeerWire.hex(options.connection)
+        self.owner = String(options.roundId)
         guard options.valid(), options.stun.count <= 2,
               options.stun.allSatisfy({ $0.hasPrefix("stun:") && (!$0.contains("?") || $0.hasSuffix("?transport=udp")) }),
               options.budget.acquire(options.peer, owner, options.use) else { throw PathChanged() }
@@ -70,12 +239,11 @@ final class DirectChannel: @unchecked Sendable {
             options.budget.release(options.peer, options.use)
             throw PathChanged()
         }
-        // Reassembly and the final hash run on a lane of their own: a 1 MiB block must never
-        // queue ahead of an approval on the Remote actor or the session's chain.
-        consumer = Task.detached(priority: .utility) { [weak self] in
+        // Reassembly and SHA-256 verification stay off caller actors.
+        Task.detached(priority: .utility) { [weak self] in
             for await raw in stream {
                 guard let self, self.valid() else { break }
-                do { try self.receive(Array(raw)) } catch { self.close(); break }
+                do { try self.receive(raw) } catch { self.close(); break }
             }
         }
         tick = Task.detached { [weak self] in
@@ -87,31 +255,50 @@ final class DirectChannel: @unchecked Sendable {
         }
     }
 
-    private var isEnded: Bool { lock.lock(); defer { lock.unlock() }; return ended }
-    private func valid() -> Bool {
-        lock.lock(); let state = (ended, confirmed); lock.unlock()
-        return !state.0 && options.valid() && (state.1 || options.clock.now() < options.deadline)
-    }
-    var ready: Bool { lock.lock(); let c = confirmed; lock.unlock(); return c && valid() && data.state == .open }
-    /// Ready as far as the channel's own flags say: no question to the owner, so the engine may ask under its lock.
-    var usable: Bool { lock.lock(); let c = confirmed && !ended; lock.unlock(); return c && data.state == .open }
-    var traversalReady: Bool { lock.lock(); defer { lock.unlock() }; return stunReady }
-    var queuedBytes: Int { data.bufferedAmount }
+    private var isEnded: Bool { lock.withLock { ended } }
+    private func valid() -> Bool { !isEnded && options.valid() }
+    var ready: Bool { lock.withLock { confirmed } && valid() && data.state == .open }
+    var usable: Bool { lock.withLock { confirmed && !ended } && data.state == .open }
     var isClosed: Bool { isEnded }
 
-    // MARK: SDK events (any thread)
+    // MARK: SDK events
     fileprivate func peerCandidate(_ candidate: RtcIceCandidate) {
-        if candidate.isSrflx { lock.lock(); stunReady = true; lock.unlock() }
         if valid() { options.candidate(candidate) }
     }
-    fileprivate func peerGathered() { if valid() { options.candidate(nil) } }
+    fileprivate func peerGathered() {
+        if valid() { options.candidate(nil) }
+    }
     fileprivate func peerState(_ state: RtcPeerState) {
         if isEnded { return }
-        options.state(state)
+        let stateToken = switch state {
+        case .new: "new"
+        case .connecting: "connecting"
+        case .connected: "connected"
+        case .disconnected: "disconnected"
+        case .failed: "failed"
+        case .closed: "closed"
+        }
+        options.state(.conn, stateToken)
         if state == .failed || state == .closed || state == .disconnected { close() }
     }
+    fileprivate func iceConnState(_ state: String) {
+        if !isEnded && !state.isEmpty { options.state(.ice, state) }
+    }
+    fileprivate func iceGatherState(_ state: String) {
+        if !isEnded && !state.isEmpty { options.state(.gather, state) }
+    }
+    fileprivate func iceCandidateError(code: Int, address: String) {
+        if !isEnded { options.stunError?(code, address) }
+    }
     fileprivate func dataChanged() {
-        if data.state == .open { wake.signal(); options.open?() } else if data.state == .closed { close() }
+        if data.state == .open {
+            wake.signal()
+            options.dcState?(true)
+            options.open?()
+        } else if data.state == .closed {
+            options.dcState?(false)
+            close()
+        }
     }
     fileprivate func dataDrained() { if data.bufferedAmount <= 32 << 10 { wake.signal() } }
     fileprivate func dataMessage(_ raw: Data) {
@@ -122,90 +309,116 @@ final class DirectChannel: @unchecked Sendable {
     fileprivate func probeChanged() { if probe.state == .closed { close() } }
     fileprivate func probeMessage(_ raw: Data) {
         guard ready, raw.count == 17 else { return }
-        let bytes = Array(raw)
-        if bytes[0] == 0 { var reply = bytes; reply[0] = 1; _ = probe.send(Data(reply)) }
-        else if bytes[0] == 1 {
-            let id = PeerWire.hex(Array(bytes[1...]))
+        let bytes = [UInt8](raw)
+        if bytes[0] == 0 {
+            var reply = bytes; reply[0] = 1
+            _ = probe.send(Data(reply))
+        } else if bytes[0] == 1 {
+            let id = hexString(Data(bytes[1...]))
             lock.lock(); let start = probes.removeValue(forKey: id); if start != nil { missedProbes = 0 }; lock.unlock()
-            if let start { options.probe?(options.clock.monotonic() - start) }
+            if let start { options.probe?(options.monotonic() - start) }
         }
     }
 
     private func tickOnce() {
         guard valid() else { close(); return }
-        let now = options.clock.monotonic()
+        let now = options.monotonic()
         var expired: [Partial] = []
         var tooMany = false
         lock.lock()
         for (key, part) in partial where now >= part.until { expired.append(part); partial.removeValue(forKey: key) }
-        for (id, start) in probes where now - start >= 1000 { probes.removeValue(forKey: id); missedProbes += 1; if missedProbes >= 3 { tooMany = true } }
+        for (id, start) in probes where now - start >= 1000 {
+            probes.removeValue(forKey: id)
+            missedProbes += 1
+            if missedProbes >= 3 { tooMany = true }
+        }
         lock.unlock()
         for part in expired { options.budget.free(options.peer, 1, part.bytes, part.parts.count) }
         if tooMany { close(); return }
         if ready && probe.state == .open && now - lastProbe >= 1000 {
             lastProbe = now
-            var raw = PeerWire.random(17); raw[0] = 0
-            lock.lock(); probes[PeerWire.hex(Array(raw[1...]))] = now; lock.unlock()
+            var raw = [UInt8](randomBytes(17))
+            raw[0] = 0
+            lock.lock(); probes[hexString(Data(raw[1...]))] = now; lock.unlock()
             _ = probe.send(Data(raw))
         }
     }
 
     // MARK: negotiation
-    func description(offer: Bool, restart: Bool = false) async throws -> PeerWire.Bytes {
+    func description(offer: Bool, restart: Bool = false) async throws -> Data {
         guard valid() else { throw PathChanged() }
         let sdp = offer ? try await pc.createOffer(iceRestart: restart) : try await pc.createAnswer()
         guard valid(), !sdp.isEmpty else { throw PathChanged() }
-        let raw = PeerWire.utf8(sdp)
-        try PeerSdp.validate(Data(raw))
-        // Freeze the SDK original before collection. Never trim the local description.
+        let raw = Data(sdp.utf8)
+        _ = try validateMinimalSDP(raw)
         try await pc.setLocalDescription(offer: offer, sdp: sdp)
         guard valid() else { throw PathChanged() }
         return raw
     }
-    func remote(_ raw: PeerWire.Bytes, offer: Bool) async throws {
+
+    func remote(_ raw: Data, offer: Bool) async throws {
         guard valid() else { throw PathChanged() }
-        try PeerSdp.validate(Data(raw))
-        guard let text = String(bytes: raw, encoding: .utf8) else { throw PathChanged() }
+        let text = try validateMinimalSDP(raw)
         try await pc.setRemoteDescription(offer: offer, sdp: text)
         guard valid() else { throw PathChanged() }
     }
+
     func addCandidate(_ candidate: RtcIceCandidate?) async throws {
         guard valid() else { throw PathChanged() }
-        if let candidate { try await pc.addIceCandidate(candidate.candidate, sdpMid: candidate.sdpMid, sdpMLineIndex: candidate.sdpMLineIndex, usernameFragment: "") }
+        if let candidate {
+            try await pc.addIceCandidate(candidate.candidate, sdpMid: candidate.sdpMid, sdpMLineIndex: candidate.sdpMLineIndex, usernameFragment: "")
+        }
         guard valid() else { throw PathChanged() }
     }
+
+    func addCandidateLine(_ line: String, mid: String, mlineIndex: Int, ufrag: String) async throws {
+        guard valid() else { throw PathChanged() }
+        let normalizedMid = mid.isEmpty ? "0" : mid
+        try await pc.addIceCandidate(line, sdpMid: normalizedMid, sdpMLineIndex: mlineIndex, usernameFragment: ufrag)
+        guard valid() else { throw PathChanged() }
+    }
+
     func confirm(_ beforeDeliver: () -> Void = {}) {
         lock.lock()
-        guard !ended, options.valid(), confirmed || options.clock.now() < options.deadline else { lock.unlock(); return }
-        confirmed = true; let queued = waiting; waiting = []
+        guard !ended, options.valid() else { lock.unlock(); return }
+        confirmed = true
+        let queued = waiting
+        waiting = []
         lock.unlock()
         beforeDeliver()
         for raw in queued { deliver(raw) }
     }
 
+    func readStats() async -> PBCoreDirectStatsReport {
+        guard valid() else { return PBCoreDirectStatsReport() }
+        return await pc.readStats()
+    }
+
     // MARK: writing
-    /// Seals nothing and decides nothing: `raw` is an already authorized envelope. `handoff` runs
-    /// once, right before the first fragment goes out, and may refuse.
-    func write(_ raw: PeerWire.Bytes, handoff: @escaping @Sendable () throws -> Void) async throws {
+    func write(_ raw: Data, handoff: @escaping @Sendable () throws -> Void) async throws {
         let count = (raw.count + payloadBytes - 1) / payloadBytes
-        guard ready, !raw.isEmpty, raw.count <= 1 << 20, options.budget.reserve(options.peer, owner, options.use, 0, raw.count, count) else { throw PathChanged() }
+        guard ready, !raw.isEmpty, raw.count <= 1 << 20,
+              options.budget.reserve(options.peer, owner, options.use, 0, raw.count, count) else { throw PathChanged() }
         lock.withLock { writers += 1 }
         let job = writes.run { [self] () -> Error? in
             defer { endWriter(raw.count, count) }
             do { try await writeNow(raw, handoff); return nil } catch { return error }
         }
-        // A cancelled caller stops waiting; the job still ends and frees its reservation.
         let failure = await withTaskCancellationHandler { await job.value } onCancel: { [wake] in job.cancel(); wake.signal() }
         if let failure { throw failure }
         try Task.checkCancellation()
     }
+
     private func endWriter(_ bytes: Int, _ frames: Int) {
         options.budget.free(options.peer, 0, bytes, frames)
         lock.withLock { writers -= 1 }
         releaseReservation()
     }
-    private func writeNow(_ raw: PeerWire.Bytes, _ handoff: () throws -> Void) async throws {
-        let hash = PeerWire.hash(raw), id = PeerWire.random(16), count = (raw.count + payloadBytes - 1) / payloadBytes
+
+    private func writeNow(_ raw: Data, _ handoff: () throws -> Void) async throws {
+        let hash = sha256Data(raw)
+        let id = randomBytes(16)
+        let count = (raw.count + payloadBytes - 1) / payloadBytes
         for index in 0..<count {
             while valid() && (!ready || data.bufferedAmount > 64 << 10) {
                 try Task.checkCancellation()
@@ -215,10 +428,13 @@ final class DirectChannel: @unchecked Sendable {
             try Task.checkCancellation()
             guard ready else { throw PathChanged() }
             var fragment = PBFragment()
-            fragment.messageID = Data(id); fragment.index = UInt32(index); fragment.count = UInt32(count)
-            fragment.ciphertextLength = UInt32(raw.count); fragment.ciphertextSha256 = Data(hash)
+            fragment.messageID = id
+            fragment.index = UInt32(index)
+            fragment.count = UInt32(count)
+            fragment.ciphertextLength = UInt32(raw.count)
+            fragment.ciphertextSha256 = hash
             fragment.pathGeneration = options.generation
-            fragment.fragment = Data(raw[(index * payloadBytes)..<min(raw.count, (index + 1) * payloadBytes)])
+            fragment.fragment = raw.subdata(in: (index * payloadBytes)..<min(raw.count, (index + 1) * payloadBytes))
             let frame = try fragment.serializedData()
             let maximum = pc.maxMessageSize ?? frameBytes
             guard frame.count <= frameBytes, maximum <= 0 || frame.count <= maximum else { throw PathChanged() }
@@ -228,65 +444,83 @@ final class DirectChannel: @unchecked Sendable {
     }
 
     // MARK: receiving
-    private func receive(_ raw: PeerWire.Bytes) throws {
+    private func receive(_ raw: Data) throws {
         guard valid() else { return }
-        _ = try PeerSchema.normalize(raw, "Fragment")
-        let frame = try PBFragment(serializedBytes: raw)
-        guard frame.messageID.count == 16, frame.ciphertextSha256.count == 32, frame.pathGeneration == options.generation,
-              frame.count > 0, frame.count <= 128, frame.index < frame.count, frame.ciphertextLength > 0, frame.ciphertextLength <= 1 << 20, !frame.fragment.isEmpty else { return }
-        let key = PeerWire.hex(Array(frame.messageID)), piece = Array(frame.fragment), hash = Array(frame.ciphertextSha256)
-        var complete: PeerWire.Bytes?
+        let frame = try decodeStrictFragment(raw)
+        guard frame.messageID.count == 16,
+              frame.ciphertextSha256.count == 32,
+              frame.pathGeneration == options.generation,
+              frame.count > 0, frame.count <= 128,
+              frame.index < frame.count,
+              frame.ciphertextLength > 0, frame.ciphertextLength <= 1 << 20,
+              !frame.fragment.isEmpty else { return }
+        let key = hexString(frame.messageID)
+        let piece = frame.fragment
+        let hash = frame.ciphertextSha256
+        var complete: Data?
         lock.lock()
         if ended { lock.unlock(); return }
-        var part = partial[key] ?? Partial(count: Int(frame.count), length: Int(frame.ciphertextLength), hash: hash, until: options.clock.monotonic() + 5000)
+        var part = partial[key] ?? Partial(count: Int(frame.count), length: Int(frame.ciphertextLength), hash: hash, until: options.monotonic() + 5000)
         if part.count != Int(frame.count) || part.length != Int(frame.ciphertextLength) || part.hash != hash { lock.unlock(); return }
         if let old = part.parts[Int(frame.index)] {
             lock.unlock()
             if old != piece { close() }
             return
         }
-        if part.bytes + piece.count > part.length || !options.budget.reserve(options.peer, owner, options.use, 1, piece.count, 1) { lock.unlock(); return }
+        if part.bytes + piece.count > part.length || !options.budget.reserve(options.peer, owner, options.use, 1, piece.count, 1) {
+            lock.unlock()
+            return
+        }
         part.parts[Int(frame.index)] = piece; part.bytes += piece.count; partial[key] = part
         if part.parts.count == part.count {
             partial.removeValue(forKey: key)
             if part.bytes != part.length || !options.budget.reserve(options.peer, owner, options.use, 1, part.bytes, 1) {
                 options.budget.free(options.peer, 1, part.bytes, part.parts.count)
             } else {
-                var joined = PeerWire.Bytes(); joined.reserveCapacity(part.length)
-                for index in 0..<part.count { joined += part.parts[index]! }
-                // The pieces' reservation becomes the whole message's; only that stays charged.
+                var joined = Data(); joined.reserveCapacity(part.length)
+                for index in 0..<part.count { joined.append(part.parts[index]!) }
                 options.budget.free(options.peer, 1, part.bytes, part.parts.count)
                 complete = joined
             }
         }
         lock.unlock()
         guard let joined = complete else { return }
-        // The hash is the one costly step: outside the lock, with the buffer already reserved.
-        guard PeerWire.hash(joined) == hash, valid() else { options.budget.free(options.peer, 1, joined.count, 1); return }
+        guard sha256Data(joined) == hash, valid() else {
+            options.budget.free(options.peer, 1, joined.count, 1)
+            return
+        }
         lock.lock()
-        if ended { lock.unlock(); options.budget.free(options.peer, 1, joined.count, 1); return }
+        if ended {
+            lock.unlock()
+            options.budget.free(options.peer, 1, joined.count, 1)
+            return
+        }
         let now = confirmed
         if !now { waiting.append(joined) }
         lock.unlock()
         if now { deliver(joined) }
     }
-    private func deliver(_ raw: PeerWire.Bytes) {
+
+    private func deliver(_ raw: Data) {
         options.budget.free(options.peer, 1, raw.count, 1)
         if valid() && lock.withLock({ confirmed }) { options.frame(raw) }
     }
 
     func close() {
-        var parts: [Partial] = [], held: [PeerWire.Bytes] = []
+        var parts: [Partial] = [], held: [Data] = []
         lock.lock()
         if ended { lock.unlock(); return }
-        ended = true; parts = Array(partial.values); partial = [:]; held = waiting; waiting = []; probes = [:]
+        ended = true
+        parts = Array(partial.values); partial = [:]
+        held = waiting; waiting = []
+        probes = [:]
         lock.unlock()
         for part in parts { options.budget.free(options.peer, 1, part.bytes, part.parts.count) }
         for raw in held { options.budget.free(options.peer, 1, raw.count, 1) }
         wake.signal(); incoming.finish(); tick?.cancel()
-        // SDK shutdown may block for a while: never under a lock, and the observer runs after it.
         cleanup({ [pc] in pc?.close() }, { [options] in options.closed() }, { [self] in releaseReservation() })
     }
+
     private func releaseReservation() {
         lock.lock()
         let release = ended && writers == 0 && !reservationReleased
@@ -295,13 +529,15 @@ final class DirectChannel: @unchecked Sendable {
         if release { options.budget.release(options.peer, options.use) }
     }
 
-    // Listener shims hold the channel weakly: the SDK may outlive it.
     private struct PeerEvents: RtcPeerListener {
         weak var owner: DirectChannel?
         func onIceCandidate(_ c: RtcIceCandidate) { owner?.peerCandidate(c) }
         func onIceGatheringComplete() { owner?.peerGathered() }
         func onConnectionStateChange(_ s: RtcPeerState) { owner?.peerState(s) }
         func onUnexpectedDataChannel() { owner?.close() }
+        func onIceConnectionStateChange(_ state: String) { owner?.iceConnState(state) }
+        func onIceGatheringStateChange(_ state: String) { owner?.iceGatherState(state) }
+        func onIceCandidateError(code: Int, address: String) { owner?.iceCandidateError(code: code, address: address) }
     }
     private struct DataEvents: RtcDataChannelListener {
         weak var owner: DirectChannel?

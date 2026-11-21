@@ -172,7 +172,7 @@ func (c *Core) appendSettingsRender(effects []*corev1.Effect, syncDirty sync.Dir
 	if sd.MachineSettings {
 		targets = append(targets, corev1.ScreenTarget_SCREEN_TARGET_MACHINE_SETTINGS)
 	}
-	if sd.DirectDiagnostics && c.m.sync.TransportConfigured() {
+	if sd.DirectDiagnostics {
 		targets = append(targets, corev1.ScreenTarget_SCREEN_TARGET_DIRECT_DIAGNOSTICS)
 	}
 	if sd.Quota {
@@ -821,39 +821,10 @@ func (c *Core) dispatchSettingsUI(ctx *sync.StepContext, ev *corev1.Event) []*co
 			return nil
 		}
 		u := a.UpdateDirectPreference
-		if c.m.sync.TransportConfigured() {
-			c.m.sync.SetDirectEnabled(ctx, u.MachineId, u.Enabled)
-			c.m.settingsDirty.MachineSettings = true
-			c.m.settingsDirty.Settings = true
-			c.m.settingsDirty.DirectDiagnostics = true
-			return effects
-		}
-		me := extra.EnsureMachine(u.MachineId)
-		me.DirectEnabled = u.Enabled
-		me.DirectHasPref = true
+		c.m.sync.SetDirectEnabled(ctx, u.MachineId, u.Enabled)
 		c.m.settingsDirty.MachineSettings = true
 		c.m.settingsDirty.Settings = true
-		effects = append(effects, &corev1.Effect{
-			Effect: &corev1.Effect_DirectPreference{
-				DirectPreference: &corev1.DirectPreferenceEffect{
-					MachineId: u.MachineId,
-					Enabled:   u.Enabled,
-				},
-			},
-		})
-
-	case *corev1.Event_MachineDirectStatus:
-		if a.MachineDirectStatus == nil {
-			return nil
-		}
-		r := a.MachineDirectStatus
-		me := extra.EnsureMachine(r.MachineId)
-		me.DirectReport = r.Report.Clone()
-		if r.Report != nil && !me.DirectHasPref {
-			me.DirectEnabled = r.Report.Enabled
-		}
-		c.m.settingsDirty.MachineSettings = true
-		c.m.settingsDirty.Settings = true
+		c.m.settingsDirty.DirectDiagnostics = true
 
 	case *corev1.Event_UpdateClientName:
 		if a.UpdateClientName == nil {

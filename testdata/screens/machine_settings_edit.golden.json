@@ -184,7 +184,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078120050",
               "commandBytes": "qgECCAGgBhE=",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "1"
             }
           },
           {
@@ -194,7 +196,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078120050",
               "commandBytes": "ugEAoAYR",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "2"
             }
           },
           {
@@ -204,7 +208,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078120050",
               "commandBytes": "qgECCAKgBhE=",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "3"
             }
           },
           {
@@ -227,6 +233,7 @@
                 "SCREEN_TARGET_PROJECT",
                 "SCREEN_TARGET_NEW_SESSION",
                 "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_STATUS",
                 "SCREEN_TARGET_MACHINE_SETTINGS",
@@ -249,6 +256,7 @@
                 "SCREEN_TARGET_PROJECT",
                 "SCREEN_TARGET_NEW_SESSION",
                 "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_STATUS",
                 "SCREEN_TARGET_MACHINE_SETTINGS",
@@ -265,8 +273,24 @@
       "effects": {
         "effects": [
           {
+            "directAuthorize": {}
+          },
+          {
+            "requestEntropy": {
+              "minSeedBytes": 32
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "4",
+              "kind": "TIMER_KIND_DIRECT_ENGINE",
+              "delayMs": "1000"
+            }
+          },
+          {
             "render": {
               "screens": [
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_SETTINGS"
               ]
@@ -408,38 +432,23 @@
               "toggleVisible": true,
               "toggleEnabled": true,
               "toggleChecked": true,
-              "stage": "CONNECTION_GROUP_STAGE_DIRECT",
-              "tone": "CONNECTION_GROUP_TONE_LIVE",
+              "stage": "CONNECTION_GROUP_STAGE_RELAY",
+              "tone": "CONNECTION_GROUP_TONE_MUTED",
               "statusText": {
-                "key": "transport.status_direct"
-              },
-              "metricText": {
-                "key": "transport.rtt_ms",
-                "args": [
-                  {
-                    "name": "ms",
-                    "strValue": "12"
-                  }
-                ]
+                "key": "transport.status_relay"
               },
               "detailText": {
-                "key": "transport.use_read"
+                "key": "transport.reason_security_pending"
               },
               "footerText": {
                 "key": "transport.footer"
               },
-              "rowDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+              "rowDot": "MACHINE_STATUS_DOT_GRAY_STATIC",
               "rowValueText": {
-                "key": "transport.row_using_direct_ms",
-                "args": [
-                  {
-                    "name": "ms",
-                    "strValue": "12"
-                  }
-                ]
+                "key": "transport.row_relay"
               },
               "rowSubtitleText": {
-                "key": "transport.use_read"
+                "key": "transport.reason_security_pending"
               }
             },
             "cliVersions": [
@@ -1114,6 +1123,7 @@
                 "SCREEN_TARGET_PROJECT",
                 "SCREEN_TARGET_NEW_SESSION",
                 "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_STATUS",
                 "SCREEN_TARGET_MACHINE_SETTINGS",
@@ -1136,7 +1146,8 @@
               "machineId": "m1",
               "deadlineMs": "1791078120110",
               "commandBytes": "wgFACjwI2AQSB2dwdC01LjQaBGhpZ2ggASoVChFjbGF1ZGUtc29ubmV0LTQtNRgCMICAgIAEQP///////////wEQAaAGEQ==",
-              "routeHint": "COMMAND_ROUTE_HINT_NORMAL"
+              "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY"
             }
           },
           {
@@ -1282,38 +1293,23 @@
               "toggleVisible": true,
               "toggleEnabled": true,
               "toggleChecked": true,
-              "stage": "CONNECTION_GROUP_STAGE_DIRECT",
-              "tone": "CONNECTION_GROUP_TONE_LIVE",
+              "stage": "CONNECTION_GROUP_STAGE_RELAY",
+              "tone": "CONNECTION_GROUP_TONE_MUTED",
               "statusText": {
-                "key": "transport.status_direct"
-              },
-              "metricText": {
-                "key": "transport.rtt_ms",
-                "args": [
-                  {
-                    "name": "ms",
-                    "strValue": "12"
-                  }
-                ]
+                "key": "transport.status_relay"
               },
               "detailText": {
-                "key": "transport.use_read"
+                "key": "transport.reason_security_pending"
               },
               "footerText": {
                 "key": "transport.footer"
               },
-              "rowDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+              "rowDot": "MACHINE_STATUS_DOT_GRAY_STATIC",
               "rowValueText": {
-                "key": "transport.row_using_direct_ms",
-                "args": [
-                  {
-                    "name": "ms",
-                    "strValue": "12"
-                  }
-                ]
+                "key": "transport.row_relay"
               },
               "rowSubtitleText": {
-                "key": "transport.use_read"
+                "key": "transport.reason_security_pending"
               }
             },
             "cliVersions": [
@@ -1984,7 +1980,9 @@
               "machineId": "m1",
               "deadlineMs": "1791078120120",
               "commandBytes": "ugEAoAYR",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "4"
             }
           },
           {
@@ -1997,6 +1995,7 @@
                 "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_STATUS",
                 "SCREEN_TARGET_MACHINE_SETTINGS",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_QUOTA",
                 "SCREEN_TARGET_DEVICES",
                 "SCREEN_TARGET_CLIENT_DETAIL"
@@ -2139,38 +2138,23 @@
               "toggleVisible": true,
               "toggleEnabled": true,
               "toggleChecked": true,
-              "stage": "CONNECTION_GROUP_STAGE_DIRECT",
-              "tone": "CONNECTION_GROUP_TONE_LIVE",
+              "stage": "CONNECTION_GROUP_STAGE_RELAY",
+              "tone": "CONNECTION_GROUP_TONE_MUTED",
               "statusText": {
-                "key": "transport.status_direct"
-              },
-              "metricText": {
-                "key": "transport.rtt_ms",
-                "args": [
-                  {
-                    "name": "ms",
-                    "strValue": "12"
-                  }
-                ]
+                "key": "transport.status_relay"
               },
               "detailText": {
-                "key": "transport.use_read"
+                "key": "transport.reason_security_pending"
               },
               "footerText": {
                 "key": "transport.footer"
               },
-              "rowDot": "MACHINE_STATUS_DOT_GREEN_LIVE",
+              "rowDot": "MACHINE_STATUS_DOT_GRAY_STATIC",
               "rowValueText": {
-                "key": "transport.row_using_direct_ms",
-                "args": [
-                  {
-                    "name": "ms",
-                    "strValue": "12"
-                  }
-                ]
+                "key": "transport.row_relay"
               },
               "rowSubtitleText": {
-                "key": "transport.use_read"
+                "key": "transport.reason_security_pending"
               }
             },
             "cliVersions": [
@@ -2833,11 +2817,69 @@
       }
     },
     {
+      "effects": {}
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "directKeyAgree": {
+              "opId": "1",
+              "peerId": "m1",
+              "peerXPublic": "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY="
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "5",
+              "kind": "TIMER_KIND_DIRECT_SESSION",
+              "delayMs": "10000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
+                "SCREEN_TARGET_SETTINGS",
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "directKeySign": {
+              "opId": "1",
+              "message": "AAAAHnJlbW90ZS1hZ2VudC9wZWVyLXNpZ25hdHVyZS92MQAAAJMAAAAYcmVtb3RlLWFnZW50L3BlZXItYWFkL3YxAAAAIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxAAAAIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAAACAAAAAAAAAARAAAAHwoFZGV2LTESAm0xGAEiEEsTQ2vmBnFCSnDhVMIsoGQAAAAMhwx4pHiGJkAW3/CSAAABCshDL1f6iEmO4YIuM2Fcb6sVTOoxzuEAOo1+/0DaxrdGyZe2X3iriRdvfG2qLUylscIU+s9MWnP0G3qX7/y8Ig+2OkvEJY3ImSoXMqZ1FvsZWEfoKYI56FNs5ZNhW4TKsNhUL2mDl0Lox4sXTmIYOXOS707G+zp4GE0JkMr1w9j86B7pSBzt9y5Vd8LG/d0Kt6eINltPoVSOpOoKTIdKd1Sz4A+mn3n3JY0jlBf5SX1ebBf5uNA3xplQjY2xDQYooNrmsB+O6+itpvHPd6sIATe6Rn8cuuUexECCOluKYCZEIZIN2yf6eDmiJTmQpScCeT8WlRLLAfJWDc3C1xz1ksoMW/GDSxNCsAIvAAAADDj8yR1UcWec+zi+sQAAAFzy5AIN0nFcRZ0GtLchl/vZBxZ4sEu9MLxdMmQo7VnDmy5a1hNsOhfiNGcLacL9OBpafUCqq0RzmhR6fZzJC6yMKJyzdVLDsMhMh7H0RHb/5NDzvyYMfGAARbJAvA=="
+            }
+          },
+          {
+            "cancelTimer": {
+              "timerId": "5",
+              "kind": "TIMER_KIND_DIRECT_SESSION"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "6",
+              "kind": "TIMER_KIND_DIRECT_SESSION",
+              "delayMs": "8490"
+            }
+          }
+        ]
+      }
+    },
+    {
       "effects": {
         "effects": [
           {
             "render": {
               "screens": [
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
                 "SCREEN_TARGET_SETTINGS",
                 "SCREEN_TARGET_MACHINE_SETTINGS"
               ]
@@ -2985,7 +3027,7 @@
                 "key": "transport.status_relay"
               },
               "detailText": {
-                "key": "transport.reason_no_traversal"
+                "key": "transport.reason_no_response"
               },
               "showDiagnosticsEntry": true,
               "footerText": {
@@ -2996,7 +3038,7 @@
                 "key": "transport.row_relay"
               },
               "rowSubtitleText": {
-                "key": "transport.reason_no_traversal"
+                "key": "transport.reason_no_response"
               }
             },
             "cliVersions": [

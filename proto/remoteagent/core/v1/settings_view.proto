@@ -263,17 +263,6 @@ message ConnCheckDirectRowView {
   Text metric_text = 7;
 }
 
-message DirectViewsRequest {
-  bool online = 1;
-  bool pref_enabled = 2;
-  DirectRouteReport report = 3;
-}
-
-message DirectViewsResponse {
-  ConnectionGroupView connection = 1;
-  ConnCheckDirectRowView conn_check_direct = 2;
-}
-
 message ConnectionGroupView {
   bool toggle_visible = 1;
   bool toggle_enabled = 2;
@@ -587,11 +576,6 @@ message UpdateMachineDaemonSettingsEvent {
 message UpdateDirectPreferenceEvent {
   string machine_id = 1;
   bool enabled = 2;
-}
-
-message MachineDirectStatusEvent {
-  string machine_id = 1;
-  DirectRouteReport report = 2;
 }
 
 message UpdateClientNameEvent {

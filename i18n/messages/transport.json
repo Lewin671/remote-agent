@@ -2492,31 +2492,6 @@
     }
   },
   {
-    "key": "transport.popover_relay_title_rtt",
-    "zh-CN": "经中继连接 {name} · {ms} ms",
-    "en": "Via relay to {name} · {ms} ms",
-    "notes": "轻气泡打开期间直连切回中继且有延迟样本时的首行标题。",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "MacBook"
-      },
-      "ms": {
-        "type": "string",
-        "example": "168"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "transport.popover_direct_body",
     "zh-CN": "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。",
     "en": "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first.",

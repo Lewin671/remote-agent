@@ -1033,9 +1033,6 @@ class CoreHost(
     fun fetchSession(sessionId: String) =
         send { setFetchSession(FetchSessionAction.newBuilder().setSessionId(sessionId)) }
 
-    fun notifyMachineRouteStatus(machineId: String, directReady: Boolean) =
-        send { setMachineRouteStatus(MachineRouteStatusEvent.newBuilder().setMachineId(machineId).setDirectReady(directReady)) }
-
     fun pinSession(sessionId: String, pinned: Boolean) =
         send { setSessionPin(SessionPinEvent.newBuilder().setSessionId(sessionId).setPinned(pinned)) }
 

@@ -37,6 +37,9 @@ final class E2EFactory: RtcFactory, @unchecked Sendable {
         func onIceGatheringComplete() { inner.onIceGatheringComplete() }
         func onConnectionStateChange(_ s: RtcPeerState) { owner.log("sdk connection state \(s)"); inner.onConnectionStateChange(s) }
         func onUnexpectedDataChannel() { inner.onUnexpectedDataChannel() }
+        func onIceConnectionStateChange(_ state: String) { inner.onIceConnectionStateChange(state) }
+        func onIceGatheringStateChange(_ state: String) { inner.onIceGatheringStateChange(state) }
+        func onIceCandidateError(code: Int, address: String) { inner.onIceCandidateError(code: code, address: address) }
     }
     func create(stun: [String], listener: any RtcPeerListener) throws -> any RtcPeerConnection {
         let real = try inner.create(stun: stun, listener: Filter(inner: listener, owner: self))
@@ -74,6 +77,7 @@ final class E2EFactory: RtcFactory, @unchecked Sendable {
             do { try await real.addIceCandidate(candidate, sdpMid: sdpMid, sdpMLineIndex: sdpMLineIndex, usernameFragment: usernameFragment) }
             catch { owner.log("pc\(n) addIceCandidate FAILED \(error)"); throw error }
         }
+        func readStats() async -> PBCoreDirectStatsReport { await real.readStats() }
         func close() { real.close() }
     }
     final class SpyChannel: RtcDataChannel, @unchecked Sendable {
@@ -147,7 +151,7 @@ struct DirectE2ETests {
         throw UserError("timed out waiting for \(what)")
     }
 
-    func make() async throws -> (Remote, CoreHost, String, E2EFactory) {
+    func make() async throws -> (Remote, CoreHost, CoreScreens, String, E2EFactory) {
         let server = try read("url"), token = try read("setup-token")
         let vault = Vault(service: "io.github.lewin671.remoteagent.e2e.\(UUID().uuidString)")
         let gate = AuthorityGate(); gate.set(active: true, protectedDataAvailable: true)
@@ -183,14 +187,19 @@ struct DirectE2ETests {
         say("paired")
         let screens = await MainActor.run { CoreScreens() }
         let host = try CoreHost.live(remote: remote, account: account, defaults: .standard, screens: screens, onNavigate: { _ in })
-        host.start()
+        await host.startAsync()
         var machine = ""
         _ = try await wait("the computer online", seconds: 90) {
             if let m = remote.current.machines.values.first(where: { $0.pathState.reachable }) { machine = m.id; return true }
             return false
         }
         say("computer online \(machine.prefix(8))")
-        return (remote, host, machine, factory)
+        return (remote, host, screens, machine, factory)
+    }
+
+    func report(_ host: CoreHost, _ screens: CoreScreens, _ machine: String) async -> PBDirectRouteReport {
+        await host.openDirectDiagnostics(machineID: machine)
+        return await MainActor.run { screens.directDiagnostics.report }
     }
 
     func call(_ remote: Remote, _ machine: String, session: String = "", _ cmd: PBCommand) async throws -> PBCommandResult {
@@ -204,73 +213,82 @@ struct DirectE2ETests {
     }
 
     func run() async throws {
-        let (remote, host, machine, factory) = try await make()
-        defer { host.stop() }
+        let (remote, host, screens, machine, factory) = try await make()
+        defer { Task { await host.stopAsync() } }
         var r: [String: Any] = ["scenario": E2E.scenario]
         defer { save(r) }
         let watcher = Task {
             var last = ""
             while !Task.isCancelled {
-                let s = remote.directStatus(machine)
-                let d = "status \(s.state) reason=\(String(describing: s.reason)) file=\(s.fileDirect) read=\(s.readDirect) warming=\(s.warming) compared=\(s.compared) pcs=\(factory.made) readMs=\(s.readMs) fileMiBps=\(s.fileMiBps)"
+                let s = await self.report(host, screens, machine)
+                let rMs = s.hasRelayReadMs_p ? "\(s.relayReadMs)" : "-"
+                let dMs = s.hasDirectReadMs_p ? "\(s.directReadMs)" : "-"
+                let d = "status \(s.state) reason=\(s.reason) file=\(s.fileRoute == .direct) read=\(s.readRoute == .direct) warming=\(s.warming) compared=\(s.compared) pcs=\(factory.made) readMs=\(dMs)/\(rMs)"
                 if d != last { say(d); last = d }
                 try? await Task.sleep(nanoseconds: 250_000_000)
             }
         }
         defer { watcher.cancel() }
         switch E2E.scenario {
-        case "positive": try await positive(remote, machine, factory, &r)
-        case "cut": try await cutOnly(remote, machine, factory, &r)
+        case "positive": try await positive(remote, host, screens, machine, factory, &r)
+        case "cut": try await cutOnly(remote, host, screens, machine, factory, &r)
         case "p99":
             try setRelayDelay(ms: 60)
-            remote.refreshDirect(machine)
-            _ = try await wait("direct to establish", seconds: 120) { remote.directStatus(machine).state == .connected }
-            try await download(remote, machine, rounds: 3, &r)
+            await host.retryDirectNow(machineID: machine)
+            _ = try await wait("direct to establish", seconds: 120) { await self.report(host, screens, machine).state == .connected }
+            try await download(remote, host, screens, machine, rounds: 3, &r)
             try setRelayDelay(ms: 0)
-            try await approvals(remote, machine, &r)
-        default: try await negative(remote, machine, factory, &r)
+            try await approvals(remote, host, screens, machine, &r)
+        default: try await negative(remote, host, screens, machine, factory, &r)
         }
         say("done")
     }
 
     // MARK: staying on the relay
 
-    func negative(_ remote: Remote, _ machine: String, _ factory: E2EFactory, _ r: inout [String: Any]) async throws {
+    func negative(_ remote: Remote, _ host: CoreHost, _ screens: CoreScreens, _ machine: String, _ factory: E2EFactory, _ r: inout [String: Any]) async throws {
         var reads = 0, failures = 0, connected = false
         let t0 = Date()
         while Date().timeIntervalSince(t0) < 25 {
             do { _ = try await call(remote, machine, settings()); reads += 1 } catch { failures += 1; if failures == 1 { say("first read failure: \(error)") } }
-            let s = remote.directStatus(machine)
-            if s.state == .connected || s.readDirect || s.fileDirect { connected = true }
+            let s = await report(host, screens, machine)
+            if s.state == .connected || s.readRoute == .direct || s.fileRoute == .direct { connected = true }
             try await Task.sleep(nanoseconds: 400_000_000)
         }
-        let s = remote.directStatus(machine)
-        say("\(E2E.scenario): reads=\(reads) failures=\(failures) state=\(s.state) reason=\(String(describing: s.reason)) pcs=\(factory.made)")
+        let s = await report(host, screens, machine)
+        say("\(E2E.scenario): reads=\(reads) failures=\(failures) state=\(s.state) reason=\(s.reason) pcs=\(factory.made)")
         r["reads"] = reads; r["failures"] = failures; r["everDirect"] = connected
-        r["finalState"] = "\(s.state)"; r["finalReason"] = "\(String(describing: s.reason))"; r["peerConnectionsMade"] = factory.made
+        r["finalState"] = "\(s.state)"; r["finalReason"] = "\(s.reason)"; r["peerConnectionsMade"] = factory.made
         #expect(!connected, "stays on relay")
         #expect(failures == 0 && reads > 10, "relay reads keep working")
     }
 
-    func cutOnly(_ remote: Remote, _ machine: String, _ factory: E2EFactory, _ r: inout [String: Any]) async throws {
+    func cutOnly(_ remote: Remote, _ host: CoreHost, _ screens: CoreScreens, _ machine: String, _ factory: E2EFactory, _ r: inout [String: Any]) async throws {
         try setRelayDelay(ms: 60)
-        remote.refreshDirect(machine)
-        _ = try await wait("direct to establish", seconds: 60) { remote.directStatus(machine).state == .connected }
-        _ = try await wait("reads to go direct", seconds: 60) { _ = try? await call(remote, machine, settings()); return remote.directStatus(machine).readDirect }
+        await host.retryDirectNow(machineID: machine)
+        _ = try await wait("direct to establish", seconds: 60) { await self.report(host, screens, machine).state == .connected }
+        _ = try await wait("reads to go direct", seconds: 60) {
+            _ = try? await call(remote, machine, settings())
+            return await self.report(host, screens, machine).readRoute == .direct
+        }
         let made = factory.made
         factory.cut(); say("cut")
-        let t = try? await wait("a rebuilt path", seconds: 60) { _ = try? await call(remote, machine, settings()); return factory.made > made && remote.directStatus(machine).state == .connected }
+        let t = try? await wait("a rebuilt path", seconds: 60) {
+            _ = try? await call(remote, machine, settings())
+            let st = await self.report(host, screens, machine)
+            return factory.made > made && st.state == .connected
+        }
         r["rebuiltSeconds"] = t ?? -1
         #expect(t != nil)
     }
 
     // MARK: the whole of it
 
-    func positive(_ remote: Remote, _ machine: String, _ factory: E2EFactory, _ r: inout [String: Any]) async throws {
+    func positive(_ remote: Remote, _ host: CoreHost, _ screens: CoreScreens, _ machine: String, _ factory: E2EFactory, _ r: inout [String: Any]) async throws {
         try setRelayDelay(ms: 60)
-        remote.refreshDirect(machine)
+        await host.retryDirectNow(machineID: machine)
         // 1. direct establishes
-        let establish = try await wait("direct to establish", seconds: 60) { remote.directStatus(machine).state == .connected }
+        let establish = try await wait("direct to establish", seconds: 60) { await self.report(host, screens, machine).state == .connected }
         r["directEstablishedSeconds"] = establish
         say("direct established after \(establish) s")
 
@@ -278,14 +296,15 @@ struct DirectE2ETests {
         var samples = 0
         let upgrade = try await wait("reads to go direct", seconds: 150) {
             _ = try? await call(remote, machine, settings()); samples += 1
-            return remote.directStatus(machine).readDirect
+            return await self.report(host, screens, machine).readRoute == .direct
         }
-        let s2 = remote.directStatus(machine)
+        let s2 = await report(host, screens, machine)
         r["readUpgradeSeconds"] = upgrade; r["readUpgradeSamples"] = samples
-        r["readMsDirect"] = s2.readMs[DirectPath.direct] ?? -1; r["readMsRelay"] = s2.readMs[DirectPath.relay] ?? -1
-        say("reads direct after \(upgrade) s, \(samples) test reads; median ms direct=\(s2.readMs[DirectPath.direct] ?? -1) relay=\(s2.readMs[DirectPath.relay] ?? -1)")
+        r["readMsDirect"] = s2.hasDirectReadMs_p ? Int(s2.directReadMs) : -1
+        r["readMsRelay"] = s2.hasRelayReadMs_p ? Int(s2.relayReadMs) : -1
+        say("reads direct after \(upgrade) s, \(samples) test reads; median ms direct=\(r["readMsDirect"] ?? -1) relay=\(r["readMsRelay"] ?? -1)")
 
-        try await download(remote, machine, rounds: 2, &r)
+        try await download(remote, host, screens, machine, rounds: 2, &r)
 
         // 4. a cut falls back to the relay and rebuilds by itself
         let made = factory.made
@@ -294,8 +313,8 @@ struct DirectE2ETests {
         var okReads = 0, badReads = 0, fellBack: Double?, rebuilt: Double?
         while Date().timeIntervalSince(cutAt) < 90, rebuilt == nil {
             do { _ = try await call(remote, machine, settings()); okReads += 1 } catch { badReads += 1 }
-            let s = remote.directStatus(machine)
-            if fellBack == nil, !(s.state == .connected && s.readDirect) { fellBack = Date().timeIntervalSince(cutAt) }
+            let s = await report(host, screens, machine)
+            if fellBack == nil, !(s.state == .connected && s.readRoute == .direct) { fellBack = Date().timeIntervalSince(cutAt) }
             if fellBack != nil, s.state == .connected, factory.made > made { rebuilt = Date().timeIntervalSince(cutAt) }
             try await Task.sleep(nanoseconds: 250_000_000)
         }
@@ -303,18 +322,19 @@ struct DirectE2ETests {
         say("cut: fell back after \(String(describing: fellBack)), rebuilt after \(String(describing: rebuilt)); reads ok=\(okReads) failed=\(badReads)")
         #expect(fellBack != nil && rebuilt != nil && badReads == 0)
         _ = try? await wait("reads direct again", seconds: 90) {
-            _ = try? await call(remote, machine, settings()); return remote.directStatus(machine).readDirect
+            _ = try? await call(remote, machine, settings())
+            return await self.report(host, screens, machine).readRoute == .direct
         }
 
         // 5. an upload resumes at the persisted offset
-        try await upload(remote, machine, factory, &r)
+        try await upload(remote, host, screens, machine, factory, &r)
 
         // 6. the approval flow under full load
         try setRelayDelay(ms: 0)
-        try await approvals(remote, machine, &r)
+        try await approvals(remote, host, screens, machine, &r)
     }
 
-    func download(_ remote: Remote, _ machine: String, rounds count: Int, _ r: inout [String: Any]) async throws {
+    func download(_ remote: Remote, _ host: CoreHost, _ screens: CoreScreens, _ machine: String, rounds count: Int, _ r: inout [String: Any]) async throws {
         // Over 16 MiB, not in the accept log, hash equal.
         let total = 64 << 20, want = Data(SHA256.hash(data: expectedBytes(total)))
         var rounds: [[String: Any]] = []
@@ -330,17 +350,17 @@ struct DirectE2ETests {
             let secs = Date().timeIntervalSince(t0)
             let after = try await mark("download\(round)-end")
             let ok = Data(hash.finalize()) == want
-            let st = remote.directStatus(machine)
+            let st = await report(host, screens, machine)
             let row: [String: Any] = ["round": round, "bytes": total, "seconds": secs, "MiBps": Double(total >> 20) / secs, "hashEqual": ok,
                 "acceptedBefore": before["accepted"] ?? -1, "acceptedAfter": after["accepted"] ?? -1,
-                "relayBytes": (after["proxy_bytes"] ?? 0) - (before["proxy_bytes"] ?? 0), "fileDirect": st.fileDirect]
+                "relayBytes": (after["proxy_bytes"] ?? 0) - (before["proxy_bytes"] ?? 0), "fileDirect": st.fileRoute == .direct]
             rounds.append(row); say("download \(row)")
             #expect(ok && before["accepted"] == after["accepted"])
         }
         r["downloads"] = rounds
     }
 
-    func upload(_ remote: Remote, _ machine: String, _ factory: E2EFactory, _ r: inout [String: Any]) async throws {
+    func upload(_ remote: Remote, _ host: CoreHost, _ screens: CoreScreens, _ machine: String, _ factory: E2EFactory, _ r: inout [String: Any]) async throws {
         let total = 8 << 20, block = 256 << 10
         let data = Data((0..<total).map { UInt8(truncatingIfNeeded: ($0 &* 7) ^ ($0 >> 9)) })
         let sum = Data(SHA256.hash(data: data))
@@ -366,14 +386,14 @@ struct DirectE2ETests {
         }
         var done = PBCommand(); done.completeImageUpload.transferID = id
         let final = try await call(remote, machine, done).completeImageUpload.status
-        let st = remote.directStatus(machine)
+        let st = await report(host, screens, machine)
         r["upload"] = ["bytes": total, "puts": puts, "persistedAtCut": persistedAtCut, "resumedAt": resumedAt, "complete": final.state == .complete,
-            "monotonic": zip(offsets, offsets.dropFirst()).allSatisfy { $0 < $1 }, "fileDirect": st.fileDirect]
+            "monotonic": zip(offsets, offsets.dropFirst()).allSatisfy { $0 < $1 }, "fileDirect": st.fileRoute == .direct]
         say("upload: puts=\(puts) persistedAtCut=\(persistedAtCut) complete=\(final.state == .complete)")
         #expect(final.state == .complete && persistedAtCut == 12 * Int64(block))
     }
 
-    func approvals(_ remote: Remote, _ machine: String, _ r: inout [String: Any]) async throws {
+    func approvals(_ remote: Remote, _ host: CoreHost, _ screens: CoreScreens, _ machine: String, _ r: inout [String: Any]) async throws {
         let stop = Flag()
         var snapshot = PBCommand(); snapshot.getLiveSnapshot.sessionID = "fx-session"
         let snap = snapshot
@@ -408,13 +428,13 @@ struct DirectE2ETests {
             try await Task.sleep(nanoseconds: 30_000_000)
         }
         let after = try await mark("approvals-end")
-        let st = remote.directStatus(machine)
+        let st = await report(host, screens, machine)
         stop.set = true
         for t in tasks { _ = await t.value }
         let p99 = percentile(times, 0.99)
         r["approvals"] = ["n": times.count, "failures": failures, "p50": median(times), "p95": percentile(times, 0.95), "p99": p99, "max": times.max() ?? 0,
-            "relayBytesDuringLoad": (after["proxy_bytes"] ?? 0) - (before["proxy_bytes"] ?? 0), "bulkBytesDuringLoad": bulk.value, "fileDirect": st.fileDirect, "readDirect": st.readDirect]
-        say("approvals: n=\(times.count) failures=\(failures) p50=\(median(times)) p99=\(p99) max=\(times.max() ?? 0) fileDirect=\(st.fileDirect)")
+            "relayBytesDuringLoad": (after["proxy_bytes"] ?? 0) - (before["proxy_bytes"] ?? 0), "bulkBytesDuringLoad": bulk.value, "fileDirect": st.fileRoute == .direct, "readDirect": st.readRoute == .direct]
+        say("approvals: n=\(times.count) failures=\(failures) p50=\(median(times)) p99=\(p99) max=\(times.max() ?? 0) fileDirect=\(st.fileRoute == .direct)")
         #expect(failures == 0 && p99 <= 100)
     }
 }

@@ -3890,58 +3890,6 @@ func (x *FetchSessionAction) GetSessionId() string {
 	return ""
 }
 
-type MachineRouteStatusEvent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	DirectReady   bool                   `protobuf:"varint,2,opt,name=direct_ready,json=directReady,proto3" json:"direct_ready,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *MachineRouteStatusEvent) Reset() {
-	*x = MachineRouteStatusEvent{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[38]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MachineRouteStatusEvent) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MachineRouteStatusEvent) ProtoMessage() {}
-
-func (x *MachineRouteStatusEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[38]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use MachineRouteStatusEvent.ProtoReflect.Descriptor instead.
-func (*MachineRouteStatusEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{38}
-}
-
-func (x *MachineRouteStatusEvent) GetMachineId() string {
-	if x != nil {
-		return x.MachineId
-	}
-	return ""
-}
-
-func (x *MachineRouteStatusEvent) GetDirectReady() bool {
-	if x != nil {
-		return x.DirectReady
-	}
-	return false
-}
-
 type DirectEventsReceivedEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
@@ -3955,7 +3903,7 @@ type DirectEventsReceivedEvent struct {
 
 func (x *DirectEventsReceivedEvent) Reset() {
 	*x = DirectEventsReceivedEvent{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3967,7 +3915,7 @@ func (x *DirectEventsReceivedEvent) String() string {
 func (*DirectEventsReceivedEvent) ProtoMessage() {}
 
 func (x *DirectEventsReceivedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3980,7 +3928,7 @@ func (x *DirectEventsReceivedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectEventsReceivedEvent.ProtoReflect.Descriptor instead.
 func (*DirectEventsReceivedEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{39}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DirectEventsReceivedEvent) GetMachineId() string {
@@ -4029,7 +3977,7 @@ type SessionScheduleHint struct {
 
 func (x *SessionScheduleHint) Reset() {
 	*x = SessionScheduleHint{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4041,7 +3989,7 @@ func (x *SessionScheduleHint) String() string {
 func (*SessionScheduleHint) ProtoMessage() {}
 
 func (x *SessionScheduleHint) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4054,7 +4002,7 @@ func (x *SessionScheduleHint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionScheduleHint.ProtoReflect.Descriptor instead.
 func (*SessionScheduleHint) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{40}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SessionScheduleHint) GetSessionId() string {
@@ -4087,7 +4035,7 @@ type SessionScheduleHintsEvent struct {
 
 func (x *SessionScheduleHintsEvent) Reset() {
 	*x = SessionScheduleHintsEvent{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4099,7 +4047,7 @@ func (x *SessionScheduleHintsEvent) String() string {
 func (*SessionScheduleHintsEvent) ProtoMessage() {}
 
 func (x *SessionScheduleHintsEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4112,7 +4060,7 @@ func (x *SessionScheduleHintsEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionScheduleHintsEvent.ProtoReflect.Descriptor instead.
 func (*SessionScheduleHintsEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{41}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *SessionScheduleHintsEvent) GetHints() []*SessionScheduleHint {
@@ -4131,7 +4079,7 @@ type HomeSetScopeAction struct {
 
 func (x *HomeSetScopeAction) Reset() {
 	*x = HomeSetScopeAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4143,7 +4091,7 @@ func (x *HomeSetScopeAction) String() string {
 func (*HomeSetScopeAction) ProtoMessage() {}
 
 func (x *HomeSetScopeAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4156,7 +4104,7 @@ func (x *HomeSetScopeAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeSetScopeAction.ProtoReflect.Descriptor instead.
 func (*HomeSetScopeAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{42}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *HomeSetScopeAction) GetScopeKey() string {
@@ -4175,7 +4123,7 @@ type HomeSetFilterAction struct {
 
 func (x *HomeSetFilterAction) Reset() {
 	*x = HomeSetFilterAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4187,7 +4135,7 @@ func (x *HomeSetFilterAction) String() string {
 func (*HomeSetFilterAction) ProtoMessage() {}
 
 func (x *HomeSetFilterAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4200,7 +4148,7 @@ func (x *HomeSetFilterAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeSetFilterAction.ProtoReflect.Descriptor instead.
 func (*HomeSetFilterAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{43}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *HomeSetFilterAction) GetQuery() string {
@@ -4219,7 +4167,7 @@ type HomeLoadMoreEndedAction struct {
 
 func (x *HomeLoadMoreEndedAction) Reset() {
 	*x = HomeLoadMoreEndedAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4231,7 +4179,7 @@ func (x *HomeLoadMoreEndedAction) String() string {
 func (*HomeLoadMoreEndedAction) ProtoMessage() {}
 
 func (x *HomeLoadMoreEndedAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4244,7 +4192,7 @@ func (x *HomeLoadMoreEndedAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeLoadMoreEndedAction.ProtoReflect.Descriptor instead.
 func (*HomeLoadMoreEndedAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{44}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *HomeLoadMoreEndedAction) GetStep() int32 {
@@ -4262,7 +4210,7 @@ type HomeRetryLoadAction struct {
 
 func (x *HomeRetryLoadAction) Reset() {
 	*x = HomeRetryLoadAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4274,7 +4222,7 @@ func (x *HomeRetryLoadAction) String() string {
 func (*HomeRetryLoadAction) ProtoMessage() {}
 
 func (x *HomeRetryLoadAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4287,7 +4235,7 @@ func (x *HomeRetryLoadAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeRetryLoadAction.ProtoReflect.Descriptor instead.
 func (*HomeRetryLoadAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{45}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{44}
 }
 
 type HomeSelectSessionAction struct {
@@ -4299,7 +4247,7 @@ type HomeSelectSessionAction struct {
 
 func (x *HomeSelectSessionAction) Reset() {
 	*x = HomeSelectSessionAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4311,7 +4259,7 @@ func (x *HomeSelectSessionAction) String() string {
 func (*HomeSelectSessionAction) ProtoMessage() {}
 
 func (x *HomeSelectSessionAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4324,7 +4272,7 @@ func (x *HomeSelectSessionAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HomeSelectSessionAction.ProtoReflect.Descriptor instead.
 func (*HomeSelectSessionAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{46}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *HomeSelectSessionAction) GetSessionId() string {
@@ -4343,7 +4291,7 @@ type ProjectSetSearchAction struct {
 
 func (x *ProjectSetSearchAction) Reset() {
 	*x = ProjectSetSearchAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4355,7 +4303,7 @@ func (x *ProjectSetSearchAction) String() string {
 func (*ProjectSetSearchAction) ProtoMessage() {}
 
 func (x *ProjectSetSearchAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4368,7 +4316,7 @@ func (x *ProjectSetSearchAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectSetSearchAction.ProtoReflect.Descriptor instead.
 func (*ProjectSetSearchAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{47}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ProjectSetSearchAction) GetQuery() string {
@@ -4387,7 +4335,7 @@ type ProjectKeyAction struct {
 
 func (x *ProjectKeyAction) Reset() {
 	*x = ProjectKeyAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4399,7 +4347,7 @@ func (x *ProjectKeyAction) String() string {
 func (*ProjectKeyAction) ProtoMessage() {}
 
 func (x *ProjectKeyAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4412,7 +4360,7 @@ func (x *ProjectKeyAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectKeyAction.ProtoReflect.Descriptor instead.
 func (*ProjectKeyAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{48}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ProjectKeyAction) GetProjectKey() string {
@@ -4431,7 +4379,7 @@ type ProjectAddAction struct {
 
 func (x *ProjectAddAction) Reset() {
 	*x = ProjectAddAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4443,7 +4391,7 @@ func (x *ProjectAddAction) String() string {
 func (*ProjectAddAction) ProtoMessage() {}
 
 func (x *ProjectAddAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4456,7 +4404,7 @@ func (x *ProjectAddAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectAddAction.ProtoReflect.Descriptor instead.
 func (*ProjectAddAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{49}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ProjectAddAction) GetPath() string {
@@ -4477,7 +4425,7 @@ type DirPickerOpenAction struct {
 
 func (x *DirPickerOpenAction) Reset() {
 	*x = DirPickerOpenAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[50]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4489,7 +4437,7 @@ func (x *DirPickerOpenAction) String() string {
 func (*DirPickerOpenAction) ProtoMessage() {}
 
 func (x *DirPickerOpenAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[50]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4502,7 +4450,7 @@ func (x *DirPickerOpenAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirPickerOpenAction.ProtoReflect.Descriptor instead.
 func (*DirPickerOpenAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{50}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *DirPickerOpenAction) GetMachineId() string {
@@ -4536,7 +4484,7 @@ type DirNavigateAction struct {
 
 func (x *DirNavigateAction) Reset() {
 	*x = DirNavigateAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[51]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4548,7 +4496,7 @@ func (x *DirNavigateAction) String() string {
 func (*DirNavigateAction) ProtoMessage() {}
 
 func (x *DirNavigateAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[51]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4561,7 +4509,7 @@ func (x *DirNavigateAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirNavigateAction.ProtoReflect.Descriptor instead.
 func (*DirNavigateAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{51}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *DirNavigateAction) GetMachineId() string {
@@ -4586,7 +4534,7 @@ type DirPickerCloseAction struct {
 
 func (x *DirPickerCloseAction) Reset() {
 	*x = DirPickerCloseAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[52]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4598,7 +4546,7 @@ func (x *DirPickerCloseAction) String() string {
 func (*DirPickerCloseAction) ProtoMessage() {}
 
 func (x *DirPickerCloseAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[52]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4611,7 +4559,7 @@ func (x *DirPickerCloseAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirPickerCloseAction.ProtoReflect.Descriptor instead.
 func (*DirPickerCloseAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{52}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{51}
 }
 
 type NewSessionOpenAction struct {
@@ -4623,7 +4571,7 @@ type NewSessionOpenAction struct {
 
 func (x *NewSessionOpenAction) Reset() {
 	*x = NewSessionOpenAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[53]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4635,7 +4583,7 @@ func (x *NewSessionOpenAction) String() string {
 func (*NewSessionOpenAction) ProtoMessage() {}
 
 func (x *NewSessionOpenAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[53]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4648,7 +4596,7 @@ func (x *NewSessionOpenAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewSessionOpenAction.ProtoReflect.Descriptor instead.
 func (*NewSessionOpenAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{53}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *NewSessionOpenAction) GetProjectKey() string {
@@ -4667,7 +4615,7 @@ type NewSessionSelectProjectAction struct {
 
 func (x *NewSessionSelectProjectAction) Reset() {
 	*x = NewSessionSelectProjectAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[54]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4679,7 +4627,7 @@ func (x *NewSessionSelectProjectAction) String() string {
 func (*NewSessionSelectProjectAction) ProtoMessage() {}
 
 func (x *NewSessionSelectProjectAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[54]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4692,7 +4640,7 @@ func (x *NewSessionSelectProjectAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewSessionSelectProjectAction.ProtoReflect.Descriptor instead.
 func (*NewSessionSelectProjectAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{54}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *NewSessionSelectProjectAction) GetProjectKey() string {
@@ -4711,7 +4659,7 @@ type NewSessionSelectMachineAction struct {
 
 func (x *NewSessionSelectMachineAction) Reset() {
 	*x = NewSessionSelectMachineAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[55]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4723,7 +4671,7 @@ func (x *NewSessionSelectMachineAction) String() string {
 func (*NewSessionSelectMachineAction) ProtoMessage() {}
 
 func (x *NewSessionSelectMachineAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[55]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4736,7 +4684,7 @@ func (x *NewSessionSelectMachineAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewSessionSelectMachineAction.ProtoReflect.Descriptor instead.
 func (*NewSessionSelectMachineAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{55}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *NewSessionSelectMachineAction) GetMachineId() string {
@@ -4755,7 +4703,7 @@ type NewSessionSelectAgentAction struct {
 
 func (x *NewSessionSelectAgentAction) Reset() {
 	*x = NewSessionSelectAgentAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[56]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4767,7 +4715,7 @@ func (x *NewSessionSelectAgentAction) String() string {
 func (*NewSessionSelectAgentAction) ProtoMessage() {}
 
 func (x *NewSessionSelectAgentAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[56]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4780,7 +4728,7 @@ func (x *NewSessionSelectAgentAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewSessionSelectAgentAction.ProtoReflect.Descriptor instead.
 func (*NewSessionSelectAgentAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{56}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *NewSessionSelectAgentAction) GetAgent() v1.Agent {
@@ -4802,7 +4750,7 @@ type NewSessionSelectModelAction struct {
 
 func (x *NewSessionSelectModelAction) Reset() {
 	*x = NewSessionSelectModelAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[57]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4814,7 +4762,7 @@ func (x *NewSessionSelectModelAction) String() string {
 func (*NewSessionSelectModelAction) ProtoMessage() {}
 
 func (x *NewSessionSelectModelAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[57]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4827,7 +4775,7 @@ func (x *NewSessionSelectModelAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewSessionSelectModelAction.ProtoReflect.Descriptor instead.
 func (*NewSessionSelectModelAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{57}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *NewSessionSelectModelAction) GetModel() string {
@@ -4869,7 +4817,7 @@ type NewSessionSetPromptAction struct {
 
 func (x *NewSessionSetPromptAction) Reset() {
 	*x = NewSessionSetPromptAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[58]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4881,7 +4829,7 @@ func (x *NewSessionSetPromptAction) String() string {
 func (*NewSessionSetPromptAction) ProtoMessage() {}
 
 func (x *NewSessionSetPromptAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[58]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4894,7 +4842,7 @@ func (x *NewSessionSetPromptAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewSessionSetPromptAction.ProtoReflect.Descriptor instead.
 func (*NewSessionSetPromptAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{58}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *NewSessionSetPromptAction) GetPrompt() string {
@@ -4927,7 +4875,7 @@ type NewSessionProjectAction struct {
 
 func (x *NewSessionProjectAction) Reset() {
 	*x = NewSessionProjectAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[59]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4939,7 +4887,7 @@ func (x *NewSessionProjectAction) String() string {
 func (*NewSessionProjectAction) ProtoMessage() {}
 
 func (x *NewSessionProjectAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[59]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4952,7 +4900,7 @@ func (x *NewSessionProjectAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewSessionProjectAction.ProtoReflect.Descriptor instead.
 func (*NewSessionProjectAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{59}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *NewSessionProjectAction) GetProjectKey() string {
@@ -4974,7 +4922,7 @@ type NewSessionSubmitAction struct {
 
 func (x *NewSessionSubmitAction) Reset() {
 	*x = NewSessionSubmitAction{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[60]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4986,7 +4934,7 @@ func (x *NewSessionSubmitAction) String() string {
 func (*NewSessionSubmitAction) ProtoMessage() {}
 
 func (x *NewSessionSubmitAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[60]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4999,7 +4947,7 @@ func (x *NewSessionSubmitAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewSessionSubmitAction.ProtoReflect.Descriptor instead.
 func (*NewSessionSubmitAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{60}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *NewSessionSubmitAction) GetProjectKey() string {
@@ -5058,7 +5006,6 @@ type Event struct {
 	//	*Event_SessionPin
 	//	*Event_RetrySessionEvents
 	//	*Event_FetchSession
-	//	*Event_MachineRouteStatus
 	//	*Event_SessionScheduleHints
 	//	*Event_DirectEventsReceived
 	//	*Event_HomeSetScope
@@ -5095,7 +5042,6 @@ type Event struct {
 	//	*Event_UpdateMachineAgentDefaults
 	//	*Event_UpdateMachineDaemonSettings
 	//	*Event_UpdateDirectPreference
-	//	*Event_MachineDirectStatus
 	//	*Event_ToggleMachineAgent
 	//	*Event_UsageScreenOpen
 	//	*Event_UsageScreenRetry
@@ -5190,7 +5136,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[61]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5202,7 +5148,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[61]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5215,7 +5161,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{61}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *Event) GetEvent() isEvent_Event {
@@ -5436,15 +5382,6 @@ func (x *Event) GetFetchSession() *FetchSessionAction {
 	if x != nil {
 		if x, ok := x.Event.(*Event_FetchSession); ok {
 			return x.FetchSession
-		}
-	}
-	return nil
-}
-
-func (x *Event) GetMachineRouteStatus() *MachineRouteStatusEvent {
-	if x != nil {
-		if x, ok := x.Event.(*Event_MachineRouteStatus); ok {
-			return x.MachineRouteStatus
 		}
 	}
 	return nil
@@ -5769,15 +5706,6 @@ func (x *Event) GetUpdateDirectPreference() *UpdateDirectPreferenceEvent {
 	if x != nil {
 		if x, ok := x.Event.(*Event_UpdateDirectPreference); ok {
 			return x.UpdateDirectPreference
-		}
-	}
-	return nil
-}
-
-func (x *Event) GetMachineDirectStatus() *MachineDirectStatusEvent {
-	if x != nil {
-		if x, ok := x.Event.(*Event_MachineDirectStatus); ok {
-			return x.MachineDirectStatus
 		}
 	}
 	return nil
@@ -6658,10 +6586,6 @@ type Event_FetchSession struct {
 	FetchSession *FetchSessionAction `protobuf:"bytes,24,opt,name=fetch_session,json=fetchSession,proto3,oneof"`
 }
 
-type Event_MachineRouteStatus struct {
-	MachineRouteStatus *MachineRouteStatusEvent `protobuf:"bytes,25,opt,name=machine_route_status,json=machineRouteStatus,proto3,oneof"`
-}
-
 type Event_SessionScheduleHints struct {
 	SessionScheduleHints *SessionScheduleHintsEvent `protobuf:"bytes,26,opt,name=session_schedule_hints,json=sessionScheduleHints,proto3,oneof"`
 }
@@ -6804,10 +6728,6 @@ type Event_UpdateMachineDaemonSettings struct {
 
 type Event_UpdateDirectPreference struct {
 	UpdateDirectPreference *UpdateDirectPreferenceEvent `protobuf:"bytes,364,opt,name=update_direct_preference,json=updateDirectPreference,proto3,oneof"`
-}
-
-type Event_MachineDirectStatus struct {
-	MachineDirectStatus *MachineDirectStatusEvent `protobuf:"bytes,365,opt,name=machine_direct_status,json=machineDirectStatus,proto3,oneof"`
 }
 
 type Event_ToggleMachineAgent struct {
@@ -7190,8 +7110,6 @@ func (*Event_RetrySessionEvents) isEvent_Event() {}
 
 func (*Event_FetchSession) isEvent_Event() {}
 
-func (*Event_MachineRouteStatus) isEvent_Event() {}
-
 func (*Event_SessionScheduleHints) isEvent_Event() {}
 
 func (*Event_DirectEventsReceived) isEvent_Event() {}
@@ -7263,8 +7181,6 @@ func (*Event_UpdateMachineAgentDefaults) isEvent_Event() {}
 func (*Event_UpdateMachineDaemonSettings) isEvent_Event() {}
 
 func (*Event_UpdateDirectPreference) isEvent_Event() {}
-
-func (*Event_MachineDirectStatus) isEvent_Event() {}
 
 func (*Event_ToggleMachineAgent) isEvent_Event() {}
 
@@ -7441,7 +7357,7 @@ type RenderEffect struct {
 
 func (x *RenderEffect) Reset() {
 	*x = RenderEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[62]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7453,7 +7369,7 @@ func (x *RenderEffect) String() string {
 func (*RenderEffect) ProtoMessage() {}
 
 func (x *RenderEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[62]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7466,7 +7382,7 @@ func (x *RenderEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenderEffect.ProtoReflect.Descriptor instead.
 func (*RenderEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{62}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *RenderEffect) GetScreens() []ScreenTarget {
@@ -7487,7 +7403,7 @@ type OpenStreamEffect struct {
 
 func (x *OpenStreamEffect) Reset() {
 	*x = OpenStreamEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[63]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7499,7 +7415,7 @@ func (x *OpenStreamEffect) String() string {
 func (*OpenStreamEffect) ProtoMessage() {}
 
 func (x *OpenStreamEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[63]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7512,7 +7428,7 @@ func (x *OpenStreamEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenStreamEffect.ProtoReflect.Descriptor instead.
 func (*OpenStreamEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{63}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *OpenStreamEffect) GetLegId() uint64 {
@@ -7545,7 +7461,7 @@ type CloseStreamEffect struct {
 
 func (x *CloseStreamEffect) Reset() {
 	*x = CloseStreamEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[64]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7557,7 +7473,7 @@ func (x *CloseStreamEffect) String() string {
 func (*CloseStreamEffect) ProtoMessage() {}
 
 func (x *CloseStreamEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[64]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7570,7 +7486,7 @@ func (x *CloseStreamEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseStreamEffect.ProtoReflect.Descriptor instead.
 func (*CloseStreamEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{64}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *CloseStreamEffect) GetLegId() uint64 {
@@ -7591,7 +7507,7 @@ type EnsureTokenEffect struct {
 
 func (x *EnsureTokenEffect) Reset() {
 	*x = EnsureTokenEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[65]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7603,7 +7519,7 @@ func (x *EnsureTokenEffect) String() string {
 func (*EnsureTokenEffect) ProtoMessage() {}
 
 func (x *EnsureTokenEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[65]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7616,7 +7532,7 @@ func (x *EnsureTokenEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureTokenEffect.ProtoReflect.Descriptor instead.
 func (*EnsureTokenEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{65}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *EnsureTokenEffect) GetOpId() uint64 {
@@ -7649,7 +7565,7 @@ type DiscardTokenEffect struct {
 
 func (x *DiscardTokenEffect) Reset() {
 	*x = DiscardTokenEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[66]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7661,7 +7577,7 @@ func (x *DiscardTokenEffect) String() string {
 func (*DiscardTokenEffect) ProtoMessage() {}
 
 func (x *DiscardTokenEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[66]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7674,7 +7590,7 @@ func (x *DiscardTokenEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiscardTokenEffect.ProtoReflect.Descriptor instead.
 func (*DiscardTokenEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{66}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *DiscardTokenEffect) GetToken() string {
@@ -7695,7 +7611,7 @@ type SyncSecurityEffect struct {
 
 func (x *SyncSecurityEffect) Reset() {
 	*x = SyncSecurityEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[67]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7707,7 +7623,7 @@ func (x *SyncSecurityEffect) String() string {
 func (*SyncSecurityEffect) ProtoMessage() {}
 
 func (x *SyncSecurityEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[67]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7720,7 +7636,7 @@ func (x *SyncSecurityEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncSecurityEffect.ProtoReflect.Descriptor instead.
 func (*SyncSecurityEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{67}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *SyncSecurityEffect) GetOpId() uint64 {
@@ -7756,7 +7672,7 @@ type ScheduleTimerEffect struct {
 
 func (x *ScheduleTimerEffect) Reset() {
 	*x = ScheduleTimerEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[68]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7768,7 +7684,7 @@ func (x *ScheduleTimerEffect) String() string {
 func (*ScheduleTimerEffect) ProtoMessage() {}
 
 func (x *ScheduleTimerEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[68]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7781,7 +7697,7 @@ func (x *ScheduleTimerEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleTimerEffect.ProtoReflect.Descriptor instead.
 func (*ScheduleTimerEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{68}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ScheduleTimerEffect) GetTimerId() uint64 {
@@ -7823,7 +7739,7 @@ type CancelTimerEffect struct {
 
 func (x *CancelTimerEffect) Reset() {
 	*x = CancelTimerEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[69]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7835,7 +7751,7 @@ func (x *CancelTimerEffect) String() string {
 func (*CancelTimerEffect) ProtoMessage() {}
 
 func (x *CancelTimerEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[69]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7848,7 +7764,7 @@ func (x *CancelTimerEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelTimerEffect.ProtoReflect.Descriptor instead.
 func (*CancelTimerEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{69}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *CancelTimerEffect) GetTimerId() uint64 {
@@ -7881,7 +7797,7 @@ type CacheReadBootstrap struct {
 
 func (x *CacheReadBootstrap) Reset() {
 	*x = CacheReadBootstrap{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[70]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7893,7 +7809,7 @@ func (x *CacheReadBootstrap) String() string {
 func (*CacheReadBootstrap) ProtoMessage() {}
 
 func (x *CacheReadBootstrap) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[70]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7906,7 +7822,7 @@ func (x *CacheReadBootstrap) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheReadBootstrap.ProtoReflect.Descriptor instead.
 func (*CacheReadBootstrap) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{70}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *CacheReadBootstrap) GetOpId() uint64 {
@@ -7929,7 +7845,7 @@ type CacheReadEvents struct {
 
 func (x *CacheReadEvents) Reset() {
 	*x = CacheReadEvents{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[71]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7941,7 +7857,7 @@ func (x *CacheReadEvents) String() string {
 func (*CacheReadEvents) ProtoMessage() {}
 
 func (x *CacheReadEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[71]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7954,7 +7870,7 @@ func (x *CacheReadEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheReadEvents.ProtoReflect.Descriptor instead.
 func (*CacheReadEvents) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{71}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *CacheReadEvents) GetOpId() uint64 {
@@ -8005,7 +7921,7 @@ type CacheReadEffect struct {
 
 func (x *CacheReadEffect) Reset() {
 	*x = CacheReadEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[72]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8017,7 +7933,7 @@ func (x *CacheReadEffect) String() string {
 func (*CacheReadEffect) ProtoMessage() {}
 
 func (x *CacheReadEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[72]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8030,7 +7946,7 @@ func (x *CacheReadEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheReadEffect.ProtoReflect.Descriptor instead.
 func (*CacheReadEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{72}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *CacheReadEffect) GetKind() isCacheReadEffect_Kind {
@@ -8084,7 +8000,7 @@ type CacheWriteEvents struct {
 
 func (x *CacheWriteEvents) Reset() {
 	*x = CacheWriteEvents{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[73]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8096,7 +8012,7 @@ func (x *CacheWriteEvents) String() string {
 func (*CacheWriteEvents) ProtoMessage() {}
 
 func (x *CacheWriteEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[73]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8109,7 +8025,7 @@ func (x *CacheWriteEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheWriteEvents.ProtoReflect.Descriptor instead.
 func (*CacheWriteEvents) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{73}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *CacheWriteEvents) GetSessionId() string {
@@ -8136,7 +8052,7 @@ type CacheSessionOpen struct {
 
 func (x *CacheSessionOpen) Reset() {
 	*x = CacheSessionOpen{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[74]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8148,7 +8064,7 @@ func (x *CacheSessionOpen) String() string {
 func (*CacheSessionOpen) ProtoMessage() {}
 
 func (x *CacheSessionOpen) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[74]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8161,7 +8077,7 @@ func (x *CacheSessionOpen) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheSessionOpen.ProtoReflect.Descriptor instead.
 func (*CacheSessionOpen) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{74}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *CacheSessionOpen) GetSessionId() string {
@@ -8195,7 +8111,7 @@ type CacheWriteEffect struct {
 
 func (x *CacheWriteEffect) Reset() {
 	*x = CacheWriteEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[75]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8207,7 +8123,7 @@ func (x *CacheWriteEffect) String() string {
 func (*CacheWriteEffect) ProtoMessage() {}
 
 func (x *CacheWriteEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[75]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8220,7 +8136,7 @@ func (x *CacheWriteEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheWriteEffect.ProtoReflect.Descriptor instead.
 func (*CacheWriteEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{75}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *CacheWriteEffect) GetKind() isCacheWriteEffect_Kind {
@@ -8339,7 +8255,7 @@ type CacheDeleteEffect struct {
 
 func (x *CacheDeleteEffect) Reset() {
 	*x = CacheDeleteEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[76]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8351,7 +8267,7 @@ func (x *CacheDeleteEffect) String() string {
 func (*CacheDeleteEffect) ProtoMessage() {}
 
 func (x *CacheDeleteEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[76]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8364,7 +8280,7 @@ func (x *CacheDeleteEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheDeleteEffect.ProtoReflect.Descriptor instead.
 func (*CacheDeleteEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{76}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *CacheDeleteEffect) GetKind() isCacheDeleteEffect_Kind {
@@ -8447,7 +8363,7 @@ type FetchListsRpc struct {
 
 func (x *FetchListsRpc) Reset() {
 	*x = FetchListsRpc{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[77]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8459,7 +8375,7 @@ func (x *FetchListsRpc) String() string {
 func (*FetchListsRpc) ProtoMessage() {}
 
 func (x *FetchListsRpc) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[77]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8472,7 +8388,7 @@ func (x *FetchListsRpc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchListsRpc.ProtoReflect.Descriptor instead.
 func (*FetchListsRpc) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{77}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *FetchListsRpc) GetLimit() uint32 {
@@ -8492,7 +8408,7 @@ type FetchSessionsPageRpc struct {
 
 func (x *FetchSessionsPageRpc) Reset() {
 	*x = FetchSessionsPageRpc{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[78]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8504,7 +8420,7 @@ func (x *FetchSessionsPageRpc) String() string {
 func (*FetchSessionsPageRpc) ProtoMessage() {}
 
 func (x *FetchSessionsPageRpc) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[78]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8517,7 +8433,7 @@ func (x *FetchSessionsPageRpc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchSessionsPageRpc.ProtoReflect.Descriptor instead.
 func (*FetchSessionsPageRpc) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{78}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *FetchSessionsPageRpc) GetAfter() *v1.SessionCursor {
@@ -8543,7 +8459,7 @@ type FetchSessionByIdRpc struct {
 
 func (x *FetchSessionByIdRpc) Reset() {
 	*x = FetchSessionByIdRpc{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[79]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8555,7 +8471,7 @@ func (x *FetchSessionByIdRpc) String() string {
 func (*FetchSessionByIdRpc) ProtoMessage() {}
 
 func (x *FetchSessionByIdRpc) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[79]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8568,7 +8484,7 @@ func (x *FetchSessionByIdRpc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchSessionByIdRpc.ProtoReflect.Descriptor instead.
 func (*FetchSessionByIdRpc) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{79}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *FetchSessionByIdRpc) GetSessionId() string {
@@ -8589,7 +8505,7 @@ type GetEventsRpc struct {
 
 func (x *GetEventsRpc) Reset() {
 	*x = GetEventsRpc{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[80]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8601,7 +8517,7 @@ func (x *GetEventsRpc) String() string {
 func (*GetEventsRpc) ProtoMessage() {}
 
 func (x *GetEventsRpc) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[80]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8614,7 +8530,7 @@ func (x *GetEventsRpc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEventsRpc.ProtoReflect.Descriptor instead.
 func (*GetEventsRpc) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{80}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *GetEventsRpc) GetSessionId() string {
@@ -8647,7 +8563,7 @@ type GetAccountPrefsRpc struct {
 
 func (x *GetAccountPrefsRpc) Reset() {
 	*x = GetAccountPrefsRpc{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[81]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8659,7 +8575,7 @@ func (x *GetAccountPrefsRpc) String() string {
 func (*GetAccountPrefsRpc) ProtoMessage() {}
 
 func (x *GetAccountPrefsRpc) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[81]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8672,7 +8588,7 @@ func (x *GetAccountPrefsRpc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountPrefsRpc.ProtoReflect.Descriptor instead.
 func (*GetAccountPrefsRpc) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{81}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *GetAccountPrefsRpc) GetObjectId() string {
@@ -8693,7 +8609,7 @@ type PutAccountPrefsRpc struct {
 
 func (x *PutAccountPrefsRpc) Reset() {
 	*x = PutAccountPrefsRpc{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[82]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8705,7 +8621,7 @@ func (x *PutAccountPrefsRpc) String() string {
 func (*PutAccountPrefsRpc) ProtoMessage() {}
 
 func (x *PutAccountPrefsRpc) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[82]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8718,7 +8634,7 @@ func (x *PutAccountPrefsRpc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutAccountPrefsRpc.ProtoReflect.Descriptor instead.
 func (*PutAccountPrefsRpc) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{82}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *PutAccountPrefsRpc) GetObjectId() string {
@@ -8751,7 +8667,7 @@ type FetchDevicesRpc struct {
 
 func (x *FetchDevicesRpc) Reset() {
 	*x = FetchDevicesRpc{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[83]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8763,7 +8679,7 @@ func (x *FetchDevicesRpc) String() string {
 func (*FetchDevicesRpc) ProtoMessage() {}
 
 func (x *FetchDevicesRpc) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[83]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8776,7 +8692,7 @@ func (x *FetchDevicesRpc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FetchDevicesRpc.ProtoReflect.Descriptor instead.
 func (*FetchDevicesRpc) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{83}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *FetchDevicesRpc) GetForce() bool {
@@ -8805,7 +8721,7 @@ type RpcEffect struct {
 
 func (x *RpcEffect) Reset() {
 	*x = RpcEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[84]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8817,7 +8733,7 @@ func (x *RpcEffect) String() string {
 func (*RpcEffect) ProtoMessage() {}
 
 func (x *RpcEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[84]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8830,7 +8746,7 @@ func (x *RpcEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RpcEffect.ProtoReflect.Descriptor instead.
 func (*RpcEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{84}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *RpcEffect) GetOpId() uint64 {
@@ -8980,7 +8896,7 @@ type DispatchCommandEffect struct {
 
 func (x *DispatchCommandEffect) Reset() {
 	*x = DispatchCommandEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[85]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8992,7 +8908,7 @@ func (x *DispatchCommandEffect) String() string {
 func (*DispatchCommandEffect) ProtoMessage() {}
 
 func (x *DispatchCommandEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[85]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9005,7 +8921,7 @@ func (x *DispatchCommandEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DispatchCommandEffect.ProtoReflect.Descriptor instead.
 func (*DispatchCommandEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{85}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *DispatchCommandEffect) GetRequestId() string {
@@ -9130,7 +9046,7 @@ type SaveHomeScopeEffect struct {
 
 func (x *SaveHomeScopeEffect) Reset() {
 	*x = SaveHomeScopeEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[86]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9142,7 +9058,7 @@ func (x *SaveHomeScopeEffect) String() string {
 func (*SaveHomeScopeEffect) ProtoMessage() {}
 
 func (x *SaveHomeScopeEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[86]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9155,7 +9071,7 @@ func (x *SaveHomeScopeEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveHomeScopeEffect.ProtoReflect.Descriptor instead.
 func (*SaveHomeScopeEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{86}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *SaveHomeScopeEffect) GetScopeKey() string {
@@ -9184,7 +9100,7 @@ type NavigateEffect struct {
 
 func (x *NavigateEffect) Reset() {
 	*x = NavigateEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[87]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9196,7 +9112,7 @@ func (x *NavigateEffect) String() string {
 func (*NavigateEffect) ProtoMessage() {}
 
 func (x *NavigateEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[87]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9209,7 +9125,7 @@ func (x *NavigateEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NavigateEffect.ProtoReflect.Descriptor instead.
 func (*NavigateEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{87}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *NavigateEffect) GetRoute() NavigateRoute {
@@ -9251,7 +9167,7 @@ type AttachmentsSettledEffect struct {
 
 func (x *AttachmentsSettledEffect) Reset() {
 	*x = AttachmentsSettledEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[88]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9263,7 +9179,7 @@ func (x *AttachmentsSettledEffect) String() string {
 func (*AttachmentsSettledEffect) ProtoMessage() {}
 
 func (x *AttachmentsSettledEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[88]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9276,7 +9192,7 @@ func (x *AttachmentsSettledEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentsSettledEffect.ProtoReflect.Descriptor instead.
 func (*AttachmentsSettledEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{88}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *AttachmentsSettledEffect) GetProjectKey() string {
@@ -9311,7 +9227,7 @@ type RequestEntropyEffect struct {
 
 func (x *RequestEntropyEffect) Reset() {
 	*x = RequestEntropyEffect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[89]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9323,7 +9239,7 @@ func (x *RequestEntropyEffect) String() string {
 func (*RequestEntropyEffect) ProtoMessage() {}
 
 func (x *RequestEntropyEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[89]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9336,7 +9252,7 @@ func (x *RequestEntropyEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestEntropyEffect.ProtoReflect.Descriptor instead.
 func (*RequestEntropyEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{89}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *RequestEntropyEffect) GetMinIds() int32 {
@@ -9417,7 +9333,7 @@ type Effect struct {
 
 func (x *Effect) Reset() {
 	*x = Effect{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[90]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9429,7 +9345,7 @@ func (x *Effect) String() string {
 func (*Effect) ProtoMessage() {}
 
 func (x *Effect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[90]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9442,7 +9358,7 @@ func (x *Effect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Effect.ProtoReflect.Descriptor instead.
 func (*Effect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{90}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *Effect) GetEffect() isEffect_Effect {
@@ -10155,7 +10071,7 @@ type EffectBatch struct {
 
 func (x *EffectBatch) Reset() {
 	*x = EffectBatch{}
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[91]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10167,7 +10083,7 @@ func (x *EffectBatch) String() string {
 func (*EffectBatch) ProtoMessage() {}
 
 func (x *EffectBatch) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_app_proto_msgTypes[91]
+	mi := &file_remoteagent_core_v1_app_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10180,7 +10096,7 @@ func (x *EffectBatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectBatch.ProtoReflect.Descriptor instead.
 func (*EffectBatch) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{91}
+	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *EffectBatch) GetEffects() []*Effect {
@@ -10494,11 +10410,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"3\n" +
 	"\x12FetchSessionAction\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"[\n" +
-	"\x17MachineRouteStatusEvent\x12\x1d\n" +
-	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
-	"\fdirect_ready\x18\x02 \x01(\bR\vdirectReady\"\xbf\x01\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xbf\x01\n" +
 	"\x19DirectEventsReceivedEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -10572,7 +10484,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"projectKey\x12.\n" +
 	"\x13auto_mode_supported\x18\x02 \x01(\bR\x11autoModeSupported\x12\x1b\n" +
 	"\timage_ids\x18\x03 \x03(\tR\bimageIds\x12\x19\n" +
-	"\bfile_ids\x18\x04 \x03(\tR\afileIds\"\xcdp\n" +
+	"\bfile_ids\x18\x04 \x03(\tR\afileIds\"\x85o\n" +
 	"\x05Event\x12I\n" +
 	"\rclock_updated\x18\x01 \x01(\v2\".remoteagent.core.v1.LocalCalendarH\x00R\fclockUpdated\x12Q\n" +
 	"\x10entropy_provided\x18\x02 \x01(\v2$.remoteagent.core.v1.EntropyProvidedH\x00R\x0fentropyProvided\x12Q\n" +
@@ -10600,8 +10512,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\vsession_pin\x18\x16 \x01(\v2$.remoteagent.core.v1.SessionPinEventH\x00R\n" +
 	"sessionPin\x12a\n" +
 	"\x14retry_session_events\x18\x17 \x01(\v2-.remoteagent.core.v1.RetrySessionEventsActionH\x00R\x12retrySessionEvents\x12N\n" +
-	"\rfetch_session\x18\x18 \x01(\v2'.remoteagent.core.v1.FetchSessionActionH\x00R\ffetchSession\x12`\n" +
-	"\x14machine_route_status\x18\x19 \x01(\v2,.remoteagent.core.v1.MachineRouteStatusEventH\x00R\x12machineRouteStatus\x12f\n" +
+	"\rfetch_session\x18\x18 \x01(\v2'.remoteagent.core.v1.FetchSessionActionH\x00R\ffetchSession\x12f\n" +
 	"\x16session_schedule_hints\x18\x1a \x01(\v2..remoteagent.core.v1.SessionScheduleHintsEventH\x00R\x14sessionScheduleHints\x12f\n" +
 	"\x16direct_events_received\x18\x1b \x01(\v2..remoteagent.core.v1.DirectEventsReceivedEventH\x00R\x14directEventsReceived\x12O\n" +
 	"\x0ehome_set_scope\x18\x1e \x01(\v2'.remoteagent.core.v1.HomeSetScopeActionH\x00R\fhomeSetScope\x12R\n" +
@@ -10638,8 +10549,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x1dmachine_settings_select_agent\x18\xe9\x02 \x01(\v24.remoteagent.core.v1.MachineSettingsSelectAgentEventH\x00R\x1amachineSettingsSelectAgent\x12z\n" +
 	"\x1dupdate_machine_agent_defaults\x18\xea\x02 \x01(\v24.remoteagent.core.v1.UpdateMachineAgentDefaultsEventH\x00R\x1aupdateMachineAgentDefaults\x12}\n" +
 	"\x1eupdate_machine_daemon_settings\x18\xeb\x02 \x01(\v25.remoteagent.core.v1.UpdateMachineDaemonSettingsEventH\x00R\x1bupdateMachineDaemonSettings\x12m\n" +
-	"\x18update_direct_preference\x18\xec\x02 \x01(\v20.remoteagent.core.v1.UpdateDirectPreferenceEventH\x00R\x16updateDirectPreference\x12d\n" +
-	"\x15machine_direct_status\x18\xed\x02 \x01(\v2-.remoteagent.core.v1.MachineDirectStatusEventH\x00R\x13machineDirectStatus\x12a\n" +
+	"\x18update_direct_preference\x18\xec\x02 \x01(\v20.remoteagent.core.v1.UpdateDirectPreferenceEventH\x00R\x16updateDirectPreference\x12a\n" +
 	"\x14toggle_machine_agent\x18\xee\x02 \x01(\v2,.remoteagent.core.v1.ToggleMachineAgentEventH\x00R\x12toggleMachineAgent\x12X\n" +
 	"\x11usage_screen_open\x18\xfc\x02 \x01(\v2).remoteagent.core.v1.UsageScreenOpenEventH\x00R\x0fusageScreenOpen\x12[\n" +
 	"\x12usage_screen_retry\x18\xfd\x02 \x01(\v2*.remoteagent.core.v1.UsageScreenRetryEventH\x00R\x10usageScreenRetry\x12[\n" +
@@ -11013,7 +10923,7 @@ func file_remoteagent_core_v1_app_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_app_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_remoteagent_core_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 92)
+var file_remoteagent_core_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 91)
 var file_remoteagent_core_v1_app_proto_goTypes = []any{
 	(SyncLifecycleKind)(0),                     // 0: remoteagent.core.v1.SyncLifecycleKind
 	(TimerKind)(0),                             // 1: remoteagent.core.v1.TimerKind
@@ -11059,204 +10969,202 @@ var file_remoteagent_core_v1_app_proto_goTypes = []any{
 	(*SessionPinEvent)(nil),                    // 41: remoteagent.core.v1.SessionPinEvent
 	(*RetrySessionEventsAction)(nil),           // 42: remoteagent.core.v1.RetrySessionEventsAction
 	(*FetchSessionAction)(nil),                 // 43: remoteagent.core.v1.FetchSessionAction
-	(*MachineRouteStatusEvent)(nil),            // 44: remoteagent.core.v1.MachineRouteStatusEvent
-	(*DirectEventsReceivedEvent)(nil),          // 45: remoteagent.core.v1.DirectEventsReceivedEvent
-	(*SessionScheduleHint)(nil),                // 46: remoteagent.core.v1.SessionScheduleHint
-	(*SessionScheduleHintsEvent)(nil),          // 47: remoteagent.core.v1.SessionScheduleHintsEvent
-	(*HomeSetScopeAction)(nil),                 // 48: remoteagent.core.v1.HomeSetScopeAction
-	(*HomeSetFilterAction)(nil),                // 49: remoteagent.core.v1.HomeSetFilterAction
-	(*HomeLoadMoreEndedAction)(nil),            // 50: remoteagent.core.v1.HomeLoadMoreEndedAction
-	(*HomeRetryLoadAction)(nil),                // 51: remoteagent.core.v1.HomeRetryLoadAction
-	(*HomeSelectSessionAction)(nil),            // 52: remoteagent.core.v1.HomeSelectSessionAction
-	(*ProjectSetSearchAction)(nil),             // 53: remoteagent.core.v1.ProjectSetSearchAction
-	(*ProjectKeyAction)(nil),                   // 54: remoteagent.core.v1.ProjectKeyAction
-	(*ProjectAddAction)(nil),                   // 55: remoteagent.core.v1.ProjectAddAction
-	(*DirPickerOpenAction)(nil),                // 56: remoteagent.core.v1.DirPickerOpenAction
-	(*DirNavigateAction)(nil),                  // 57: remoteagent.core.v1.DirNavigateAction
-	(*DirPickerCloseAction)(nil),               // 58: remoteagent.core.v1.DirPickerCloseAction
-	(*NewSessionOpenAction)(nil),               // 59: remoteagent.core.v1.NewSessionOpenAction
-	(*NewSessionSelectProjectAction)(nil),      // 60: remoteagent.core.v1.NewSessionSelectProjectAction
-	(*NewSessionSelectMachineAction)(nil),      // 61: remoteagent.core.v1.NewSessionSelectMachineAction
-	(*NewSessionSelectAgentAction)(nil),        // 62: remoteagent.core.v1.NewSessionSelectAgentAction
-	(*NewSessionSelectModelAction)(nil),        // 63: remoteagent.core.v1.NewSessionSelectModelAction
-	(*NewSessionSetPromptAction)(nil),          // 64: remoteagent.core.v1.NewSessionSetPromptAction
-	(*NewSessionProjectAction)(nil),            // 65: remoteagent.core.v1.NewSessionProjectAction
-	(*NewSessionSubmitAction)(nil),             // 66: remoteagent.core.v1.NewSessionSubmitAction
-	(*Event)(nil),                              // 67: remoteagent.core.v1.Event
-	(*RenderEffect)(nil),                       // 68: remoteagent.core.v1.RenderEffect
-	(*OpenStreamEffect)(nil),                   // 69: remoteagent.core.v1.OpenStreamEffect
-	(*CloseStreamEffect)(nil),                  // 70: remoteagent.core.v1.CloseStreamEffect
-	(*EnsureTokenEffect)(nil),                  // 71: remoteagent.core.v1.EnsureTokenEffect
-	(*DiscardTokenEffect)(nil),                 // 72: remoteagent.core.v1.DiscardTokenEffect
-	(*SyncSecurityEffect)(nil),                 // 73: remoteagent.core.v1.SyncSecurityEffect
-	(*ScheduleTimerEffect)(nil),                // 74: remoteagent.core.v1.ScheduleTimerEffect
-	(*CancelTimerEffect)(nil),                  // 75: remoteagent.core.v1.CancelTimerEffect
-	(*CacheReadBootstrap)(nil),                 // 76: remoteagent.core.v1.CacheReadBootstrap
-	(*CacheReadEvents)(nil),                    // 77: remoteagent.core.v1.CacheReadEvents
-	(*CacheReadEffect)(nil),                    // 78: remoteagent.core.v1.CacheReadEffect
-	(*CacheWriteEvents)(nil),                   // 79: remoteagent.core.v1.CacheWriteEvents
-	(*CacheSessionOpen)(nil),                   // 80: remoteagent.core.v1.CacheSessionOpen
-	(*CacheWriteEffect)(nil),                   // 81: remoteagent.core.v1.CacheWriteEffect
-	(*CacheDeleteEffect)(nil),                  // 82: remoteagent.core.v1.CacheDeleteEffect
-	(*FetchListsRpc)(nil),                      // 83: remoteagent.core.v1.FetchListsRpc
-	(*FetchSessionsPageRpc)(nil),               // 84: remoteagent.core.v1.FetchSessionsPageRpc
-	(*FetchSessionByIdRpc)(nil),                // 85: remoteagent.core.v1.FetchSessionByIdRpc
-	(*GetEventsRpc)(nil),                       // 86: remoteagent.core.v1.GetEventsRpc
-	(*GetAccountPrefsRpc)(nil),                 // 87: remoteagent.core.v1.GetAccountPrefsRpc
-	(*PutAccountPrefsRpc)(nil),                 // 88: remoteagent.core.v1.PutAccountPrefsRpc
-	(*FetchDevicesRpc)(nil),                    // 89: remoteagent.core.v1.FetchDevicesRpc
-	(*RpcEffect)(nil),                          // 90: remoteagent.core.v1.RpcEffect
-	(*DispatchCommandEffect)(nil),              // 91: remoteagent.core.v1.DispatchCommandEffect
-	(*SaveHomeScopeEffect)(nil),                // 92: remoteagent.core.v1.SaveHomeScopeEffect
-	(*NavigateEffect)(nil),                     // 93: remoteagent.core.v1.NavigateEffect
-	(*AttachmentsSettledEffect)(nil),           // 94: remoteagent.core.v1.AttachmentsSettledEffect
-	(*RequestEntropyEffect)(nil),               // 95: remoteagent.core.v1.RequestEntropyEffect
-	(*Effect)(nil),                             // 96: remoteagent.core.v1.Effect
-	(*EffectBatch)(nil),                        // 97: remoteagent.core.v1.EffectBatch
-	(*SettingsScreenRequest)(nil),              // 98: remoteagent.core.v1.SettingsScreenRequest
-	(*MachineStatusScreenRequest)(nil),         // 99: remoteagent.core.v1.MachineStatusScreenRequest
-	(*MachineSettingsScreenRequest)(nil),       // 100: remoteagent.core.v1.MachineSettingsScreenRequest
-	(*QuotaScreenRequest)(nil),                 // 101: remoteagent.core.v1.QuotaScreenRequest
-	(*DevicesScreenRequest)(nil),               // 102: remoteagent.core.v1.DevicesScreenRequest
-	(*ClientDetailScreenRequest)(nil),          // 103: remoteagent.core.v1.ClientDetailScreenRequest
-	(*UsageScreenRequest)(nil),                 // 104: remoteagent.core.v1.UsageScreenRequest
-	(*DirectDiagnosticsScreenRequest)(nil),     // 105: remoteagent.core.v1.DirectDiagnosticsScreenRequest
-	(*SessionScreenRequest)(nil),               // 106: remoteagent.core.v1.SessionScreenRequest
-	(*SchedulesScreenRequest)(nil),             // 107: remoteagent.core.v1.SchedulesScreenRequest
-	(*ScheduleDetailScreenRequest)(nil),        // 108: remoteagent.core.v1.ScheduleDetailScreenRequest
-	(*ScheduleFormScreenRequest)(nil),          // 109: remoteagent.core.v1.ScheduleFormScreenRequest
-	(*ScheduleSessionStripScreenRequest)(nil),  // 110: remoteagent.core.v1.ScheduleSessionStripScreenRequest
-	(*HomeViewModel)(nil),                      // 111: remoteagent.core.v1.HomeViewModel
-	(*ProjectViewModel)(nil),                   // 112: remoteagent.core.v1.ProjectViewModel
-	(*NewSessionViewModel)(nil),                // 113: remoteagent.core.v1.NewSessionViewModel
-	(*SyncStateView)(nil),                      // 114: remoteagent.core.v1.SyncStateView
-	(*SessionDataView)(nil),                    // 115: remoteagent.core.v1.SessionDataView
-	(*SettingsViewModel)(nil),                  // 116: remoteagent.core.v1.SettingsViewModel
-	(*MachineStatusViewModel)(nil),             // 117: remoteagent.core.v1.MachineStatusViewModel
-	(*MachineSettingsViewModel)(nil),           // 118: remoteagent.core.v1.MachineSettingsViewModel
-	(*QuotaViewModel)(nil),                     // 119: remoteagent.core.v1.QuotaViewModel
-	(*DevicesViewModel)(nil),                   // 120: remoteagent.core.v1.DevicesViewModel
-	(*ClientDetailViewModel)(nil),              // 121: remoteagent.core.v1.ClientDetailViewModel
-	(*UsageViewModel)(nil),                     // 122: remoteagent.core.v1.UsageViewModel
-	(*DirectDiagnosticsViewModel)(nil),         // 123: remoteagent.core.v1.DirectDiagnosticsViewModel
-	(*SessionViewModel)(nil),                   // 124: remoteagent.core.v1.SessionViewModel
-	(*SchedulesViewModel)(nil),                 // 125: remoteagent.core.v1.SchedulesViewModel
-	(*ScheduleDetailViewModel)(nil),            // 126: remoteagent.core.v1.ScheduleDetailViewModel
-	(*ScheduleFormViewModel)(nil),              // 127: remoteagent.core.v1.ScheduleFormViewModel
-	(*ScheduleSessionStripViewModel)(nil),      // 128: remoteagent.core.v1.ScheduleSessionStripViewModel
-	(*v1.MachineMeta)(nil),                     // 129: remoteagent.v1.MachineMeta
-	(*v1.Session)(nil),                         // 130: remoteagent.v1.Session
-	(*v1.LiveSnapshot)(nil),                    // 131: remoteagent.v1.LiveSnapshot
-	(*v1.Event)(nil),                           // 132: remoteagent.v1.Event
-	(v1.DeviceKind)(0),                         // 133: remoteagent.v1.DeviceKind
-	(*v1.DeviceMeta)(nil),                      // 134: remoteagent.v1.DeviceMeta
-	(*v1.ProjectPrefs)(nil),                    // 135: remoteagent.v1.ProjectPrefs
-	(*v1.SessionCursor)(nil),                   // 136: remoteagent.v1.SessionCursor
-	(*v1.CommandResult)(nil),                   // 137: remoteagent.v1.CommandResult
-	(v1.Agent)(0),                              // 138: remoteagent.v1.Agent
-	(v1.ApprovalMode)(0),                       // 139: remoteagent.v1.ApprovalMode
-	(*MachineStatusWatchEvent)(nil),            // 140: remoteagent.core.v1.MachineStatusWatchEvent
-	(*MachineStatusRetryEvent)(nil),            // 141: remoteagent.core.v1.MachineStatusRetryEvent
-	(*MachineStatusTabEvent)(nil),              // 142: remoteagent.core.v1.MachineStatusTabEvent
-	(*MachineStatusScrubEvent)(nil),            // 143: remoteagent.core.v1.MachineStatusScrubEvent
-	(*MachineStatusCleanupEvent)(nil),          // 144: remoteagent.core.v1.MachineStatusCleanupEvent
-	(*MachineStatusPollTickEvent)(nil),         // 145: remoteagent.core.v1.MachineStatusPollTickEvent
-	(*MachineSettingsOpenEvent)(nil),           // 146: remoteagent.core.v1.MachineSettingsOpenEvent
-	(*MachineSettingsSelectAgentEvent)(nil),    // 147: remoteagent.core.v1.MachineSettingsSelectAgentEvent
-	(*UpdateMachineAgentDefaultsEvent)(nil),    // 148: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
-	(*UpdateMachineDaemonSettingsEvent)(nil),   // 149: remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
-	(*UpdateDirectPreferenceEvent)(nil),        // 150: remoteagent.core.v1.UpdateDirectPreferenceEvent
-	(*MachineDirectStatusEvent)(nil),           // 151: remoteagent.core.v1.MachineDirectStatusEvent
-	(*ToggleMachineAgentEvent)(nil),            // 152: remoteagent.core.v1.ToggleMachineAgentEvent
-	(*UsageScreenOpenEvent)(nil),               // 153: remoteagent.core.v1.UsageScreenOpenEvent
-	(*UsageScreenRetryEvent)(nil),              // 154: remoteagent.core.v1.UsageScreenRetryEvent
-	(*UsageCacheLoadedEvent)(nil),              // 155: remoteagent.core.v1.UsageCacheLoadedEvent
-	(*UsageScreenSelectSortEvent)(nil),         // 156: remoteagent.core.v1.UsageScreenSelectSortEvent
-	(*UsageScreenSelectSeriesEvent)(nil),       // 157: remoteagent.core.v1.UsageScreenSelectSeriesEvent
-	(*UsageScreenScrubEvent)(nil),              // 158: remoteagent.core.v1.UsageScreenScrubEvent
-	(*UpdateClientNameEvent)(nil),              // 159: remoteagent.core.v1.UpdateClientNameEvent
-	(*SetNotificationPrefEvent)(nil),           // 160: remoteagent.core.v1.SetNotificationPrefEvent
-	(*SetAppearancePrefEvent)(nil),             // 161: remoteagent.core.v1.SetAppearancePrefEvent
-	(*ConnCheckStatusEvent)(nil),               // 162: remoteagent.core.v1.ConnCheckStatusEvent
-	(*ClientUpdateStateEvent)(nil),             // 163: remoteagent.core.v1.ClientUpdateStateEvent
-	(*CheckForUpdatesEvent)(nil),               // 164: remoteagent.core.v1.CheckForUpdatesEvent
-	(*SessionSubmitCommandAction)(nil),         // 165: remoteagent.core.v1.SessionSubmitCommandAction
-	(*SessionSlotAction)(nil),                  // 166: remoteagent.core.v1.SessionSlotAction
-	(*SessionOpenAction)(nil),                  // 167: remoteagent.core.v1.SessionOpenAction
-	(*SessionQuestionStepAction)(nil),          // 168: remoteagent.core.v1.SessionQuestionStepAction
-	(*SessionRefreshHistoryAction)(nil),        // 169: remoteagent.core.v1.SessionRefreshHistoryAction
-	(*SessionTrayItemAction)(nil),              // 170: remoteagent.core.v1.SessionTrayItemAction
-	(*SessionTraySessionAction)(nil),           // 171: remoteagent.core.v1.SessionTraySessionAction
-	(*ScheduleCacheLoadedEvent)(nil),           // 172: remoteagent.core.v1.ScheduleCacheLoadedEvent
-	(*ScheduleSeenLoadedEvent)(nil),            // 173: remoteagent.core.v1.ScheduleSeenLoadedEvent
-	(*ScheduleLocalContextEvent)(nil),          // 174: remoteagent.core.v1.ScheduleLocalContextEvent
-	(*ScheduleStringAction)(nil),               // 175: remoteagent.core.v1.ScheduleStringAction
-	(*ScheduleBoolAction)(nil),                 // 176: remoteagent.core.v1.ScheduleBoolAction
-	(*ScheduleTaskRef)(nil),                    // 177: remoteagent.core.v1.ScheduleTaskRef
-	(*ScheduleMarkReadAction)(nil),             // 178: remoteagent.core.v1.ScheduleMarkReadAction
-	(*ScheduleTaskBoolAction)(nil),             // 179: remoteagent.core.v1.ScheduleTaskBoolAction
-	(*ScheduleTaskStringAction)(nil),           // 180: remoteagent.core.v1.ScheduleTaskStringAction
-	(*ScheduleOperateAction)(nil),              // 181: remoteagent.core.v1.ScheduleOperateAction
-	(*ScheduleMutationRef)(nil),                // 182: remoteagent.core.v1.ScheduleMutationRef
-	(*ScheduleFormOpenAction)(nil),             // 183: remoteagent.core.v1.ScheduleFormOpenAction
-	(*ScheduleFormBoolAction)(nil),             // 184: remoteagent.core.v1.ScheduleFormBoolAction
-	(*ScheduleFormStringAction)(nil),           // 185: remoteagent.core.v1.ScheduleFormStringAction
-	(*ScheduleFormSelectProjectAction)(nil),    // 186: remoteagent.core.v1.ScheduleFormSelectProjectAction
-	(*ScheduleFormSelectAgentAction)(nil),      // 187: remoteagent.core.v1.ScheduleFormSelectAgentAction
-	(*ScheduleFormSelectModelAction)(nil),      // 188: remoteagent.core.v1.ScheduleFormSelectModelAction
-	(*ScheduleFormUpdateTimingAction)(nil),     // 189: remoteagent.core.v1.ScheduleFormUpdateTimingAction
-	(*TransportConfigEvent)(nil),               // 190: remoteagent.core.v1.TransportConfigEvent
-	(*DirectSecuritySnapshotEvent)(nil),        // 191: remoteagent.core.v1.DirectSecuritySnapshotEvent
-	(*DirectSignalReceivedEvent)(nil),          // 192: remoteagent.core.v1.DirectSignalReceivedEvent
-	(*DirectSignalDeliveryEvent)(nil),          // 193: remoteagent.core.v1.DirectSignalDeliveryEvent
-	(*DirectKeySignedEvent)(nil),               // 194: remoteagent.core.v1.DirectKeySignedEvent
-	(*DirectKeyAgreedEvent)(nil),               // 195: remoteagent.core.v1.DirectKeyAgreedEvent
-	(*DirectPcCreatedEvent)(nil),               // 196: remoteagent.core.v1.DirectPcCreatedEvent
-	(*DirectPcDescriptionEvent)(nil),           // 197: remoteagent.core.v1.DirectPcDescriptionEvent
-	(*DirectPcRemoteSetEvent)(nil),             // 198: remoteagent.core.v1.DirectPcRemoteSetEvent
-	(*DirectPcCandidatesAddedEvent)(nil),       // 199: remoteagent.core.v1.DirectPcCandidatesAddedEvent
-	(*DirectPcLocalCandidateEvent)(nil),        // 200: remoteagent.core.v1.DirectPcLocalCandidateEvent
-	(*DirectPcStateEvent)(nil),                 // 201: remoteagent.core.v1.DirectPcStateEvent
-	(*DirectPcStunErrorEvent)(nil),             // 202: remoteagent.core.v1.DirectPcStunErrorEvent
-	(*DirectPcClosedEvent)(nil),                // 203: remoteagent.core.v1.DirectPcClosedEvent
-	(*DirectDcStateEvent)(nil),                 // 204: remoteagent.core.v1.DirectDcStateEvent
-	(*DirectDcStatsEvent)(nil),                 // 205: remoteagent.core.v1.DirectDcStatsEvent
-	(*DirectRetryNowAction)(nil),               // 206: remoteagent.core.v1.DirectRetryNowAction
-	(*DirectRefreshDiagnosticsAction)(nil),     // 207: remoteagent.core.v1.DirectRefreshDiagnosticsAction
-	(*DirectBulkTransferBeginEvent)(nil),       // 208: remoteagent.core.v1.DirectBulkTransferBeginEvent
-	(*DirectBulkTransferDoneEvent)(nil),        // 209: remoteagent.core.v1.DirectBulkTransferDoneEvent
-	(*TerminalStreamEvent)(nil),                // 210: remoteagent.core.v1.TerminalStreamEvent
-	(*DirectPreferencesLoadedEvent)(nil),       // 211: remoteagent.core.v1.DirectPreferencesLoadedEvent
-	(CommandRouteLeg)(0),                       // 212: remoteagent.core.v1.CommandRouteLeg
-	(*ScheduleMachinePollEffect)(nil),          // 213: remoteagent.core.v1.ScheduleMachinePollEffect
-	(*DirectPreferenceEffect)(nil),             // 214: remoteagent.core.v1.DirectPreferenceEffect
-	(*RenameClientEffect)(nil),                 // 215: remoteagent.core.v1.RenameClientEffect
-	(*CheckUpdatesEffect)(nil),                 // 216: remoteagent.core.v1.CheckUpdatesEffect
-	(*PersistClientPrefsEffect)(nil),           // 217: remoteagent.core.v1.PersistClientPrefsEffect
-	(*PrepareCleanupSessionEffect)(nil),        // 218: remoteagent.core.v1.PrepareCleanupSessionEffect
-	(*UsageCacheWriteEffect)(nil),              // 219: remoteagent.core.v1.UsageCacheWriteEffect
-	(*SessionRestoreComposerEffect)(nil),       // 220: remoteagent.core.v1.SessionRestoreComposerEffect
-	(*SessionResendAttachmentsEffect)(nil),     // 221: remoteagent.core.v1.SessionResendAttachmentsEffect
-	(*ScheduleReadCacheEffect)(nil),            // 222: remoteagent.core.v1.ScheduleReadCacheEffect
-	(*ScheduleDeleteCacheEffect)(nil),          // 223: remoteagent.core.v1.ScheduleDeleteCacheEffect
-	(*ScheduleLoadSeenEffect)(nil),             // 224: remoteagent.core.v1.ScheduleLoadSeenEffect
-	(*ScheduleSaveSeenEffect)(nil),             // 225: remoteagent.core.v1.ScheduleSaveSeenEffect
-	(*ScheduleDismissNotificationsEffect)(nil), // 226: remoteagent.core.v1.ScheduleDismissNotificationsEffect
-	(*ScheduleNavigateEffect)(nil),             // 227: remoteagent.core.v1.ScheduleNavigateEffect
-	(*DirectKeySignEffect)(nil),                // 228: remoteagent.core.v1.DirectKeySignEffect
-	(*DirectKeyAgreeEffect)(nil),               // 229: remoteagent.core.v1.DirectKeyAgreeEffect
-	(*DirectSignalSendEffect)(nil),             // 230: remoteagent.core.v1.DirectSignalSendEffect
-	(*DirectPcCreateEffect)(nil),               // 231: remoteagent.core.v1.DirectPcCreateEffect
-	(*DirectPcDescribeEffect)(nil),             // 232: remoteagent.core.v1.DirectPcDescribeEffect
-	(*DirectPcSetRemoteEffect)(nil),            // 233: remoteagent.core.v1.DirectPcSetRemoteEffect
-	(*DirectPcAddCandidatesEffect)(nil),        // 234: remoteagent.core.v1.DirectPcAddCandidatesEffect
-	(*DirectPcConfirmEffect)(nil),              // 235: remoteagent.core.v1.DirectPcConfirmEffect
-	(*DirectPcCloseEffect)(nil),                // 236: remoteagent.core.v1.DirectPcCloseEffect
-	(*DirectDcReadStatsEffect)(nil),            // 237: remoteagent.core.v1.DirectDcReadStatsEffect
-	(*DirectAuthorizeEffect)(nil),              // 238: remoteagent.core.v1.DirectAuthorizeEffect
-	(*DirectBulkRouteEffect)(nil),              // 239: remoteagent.core.v1.DirectBulkRouteEffect
-	(*TerminalReopenEffect)(nil),               // 240: remoteagent.core.v1.TerminalReopenEffect
-	(*DirectRetryNowResultEffect)(nil),         // 241: remoteagent.core.v1.DirectRetryNowResultEffect
+	(*DirectEventsReceivedEvent)(nil),          // 44: remoteagent.core.v1.DirectEventsReceivedEvent
+	(*SessionScheduleHint)(nil),                // 45: remoteagent.core.v1.SessionScheduleHint
+	(*SessionScheduleHintsEvent)(nil),          // 46: remoteagent.core.v1.SessionScheduleHintsEvent
+	(*HomeSetScopeAction)(nil),                 // 47: remoteagent.core.v1.HomeSetScopeAction
+	(*HomeSetFilterAction)(nil),                // 48: remoteagent.core.v1.HomeSetFilterAction
+	(*HomeLoadMoreEndedAction)(nil),            // 49: remoteagent.core.v1.HomeLoadMoreEndedAction
+	(*HomeRetryLoadAction)(nil),                // 50: remoteagent.core.v1.HomeRetryLoadAction
+	(*HomeSelectSessionAction)(nil),            // 51: remoteagent.core.v1.HomeSelectSessionAction
+	(*ProjectSetSearchAction)(nil),             // 52: remoteagent.core.v1.ProjectSetSearchAction
+	(*ProjectKeyAction)(nil),                   // 53: remoteagent.core.v1.ProjectKeyAction
+	(*ProjectAddAction)(nil),                   // 54: remoteagent.core.v1.ProjectAddAction
+	(*DirPickerOpenAction)(nil),                // 55: remoteagent.core.v1.DirPickerOpenAction
+	(*DirNavigateAction)(nil),                  // 56: remoteagent.core.v1.DirNavigateAction
+	(*DirPickerCloseAction)(nil),               // 57: remoteagent.core.v1.DirPickerCloseAction
+	(*NewSessionOpenAction)(nil),               // 58: remoteagent.core.v1.NewSessionOpenAction
+	(*NewSessionSelectProjectAction)(nil),      // 59: remoteagent.core.v1.NewSessionSelectProjectAction
+	(*NewSessionSelectMachineAction)(nil),      // 60: remoteagent.core.v1.NewSessionSelectMachineAction
+	(*NewSessionSelectAgentAction)(nil),        // 61: remoteagent.core.v1.NewSessionSelectAgentAction
+	(*NewSessionSelectModelAction)(nil),        // 62: remoteagent.core.v1.NewSessionSelectModelAction
+	(*NewSessionSetPromptAction)(nil),          // 63: remoteagent.core.v1.NewSessionSetPromptAction
+	(*NewSessionProjectAction)(nil),            // 64: remoteagent.core.v1.NewSessionProjectAction
+	(*NewSessionSubmitAction)(nil),             // 65: remoteagent.core.v1.NewSessionSubmitAction
+	(*Event)(nil),                              // 66: remoteagent.core.v1.Event
+	(*RenderEffect)(nil),                       // 67: remoteagent.core.v1.RenderEffect
+	(*OpenStreamEffect)(nil),                   // 68: remoteagent.core.v1.OpenStreamEffect
+	(*CloseStreamEffect)(nil),                  // 69: remoteagent.core.v1.CloseStreamEffect
+	(*EnsureTokenEffect)(nil),                  // 70: remoteagent.core.v1.EnsureTokenEffect
+	(*DiscardTokenEffect)(nil),                 // 71: remoteagent.core.v1.DiscardTokenEffect
+	(*SyncSecurityEffect)(nil),                 // 72: remoteagent.core.v1.SyncSecurityEffect
+	(*ScheduleTimerEffect)(nil),                // 73: remoteagent.core.v1.ScheduleTimerEffect
+	(*CancelTimerEffect)(nil),                  // 74: remoteagent.core.v1.CancelTimerEffect
+	(*CacheReadBootstrap)(nil),                 // 75: remoteagent.core.v1.CacheReadBootstrap
+	(*CacheReadEvents)(nil),                    // 76: remoteagent.core.v1.CacheReadEvents
+	(*CacheReadEffect)(nil),                    // 77: remoteagent.core.v1.CacheReadEffect
+	(*CacheWriteEvents)(nil),                   // 78: remoteagent.core.v1.CacheWriteEvents
+	(*CacheSessionOpen)(nil),                   // 79: remoteagent.core.v1.CacheSessionOpen
+	(*CacheWriteEffect)(nil),                   // 80: remoteagent.core.v1.CacheWriteEffect
+	(*CacheDeleteEffect)(nil),                  // 81: remoteagent.core.v1.CacheDeleteEffect
+	(*FetchListsRpc)(nil),                      // 82: remoteagent.core.v1.FetchListsRpc
+	(*FetchSessionsPageRpc)(nil),               // 83: remoteagent.core.v1.FetchSessionsPageRpc
+	(*FetchSessionByIdRpc)(nil),                // 84: remoteagent.core.v1.FetchSessionByIdRpc
+	(*GetEventsRpc)(nil),                       // 85: remoteagent.core.v1.GetEventsRpc
+	(*GetAccountPrefsRpc)(nil),                 // 86: remoteagent.core.v1.GetAccountPrefsRpc
+	(*PutAccountPrefsRpc)(nil),                 // 87: remoteagent.core.v1.PutAccountPrefsRpc
+	(*FetchDevicesRpc)(nil),                    // 88: remoteagent.core.v1.FetchDevicesRpc
+	(*RpcEffect)(nil),                          // 89: remoteagent.core.v1.RpcEffect
+	(*DispatchCommandEffect)(nil),              // 90: remoteagent.core.v1.DispatchCommandEffect
+	(*SaveHomeScopeEffect)(nil),                // 91: remoteagent.core.v1.SaveHomeScopeEffect
+	(*NavigateEffect)(nil),                     // 92: remoteagent.core.v1.NavigateEffect
+	(*AttachmentsSettledEffect)(nil),           // 93: remoteagent.core.v1.AttachmentsSettledEffect
+	(*RequestEntropyEffect)(nil),               // 94: remoteagent.core.v1.RequestEntropyEffect
+	(*Effect)(nil),                             // 95: remoteagent.core.v1.Effect
+	(*EffectBatch)(nil),                        // 96: remoteagent.core.v1.EffectBatch
+	(*SettingsScreenRequest)(nil),              // 97: remoteagent.core.v1.SettingsScreenRequest
+	(*MachineStatusScreenRequest)(nil),         // 98: remoteagent.core.v1.MachineStatusScreenRequest
+	(*MachineSettingsScreenRequest)(nil),       // 99: remoteagent.core.v1.MachineSettingsScreenRequest
+	(*QuotaScreenRequest)(nil),                 // 100: remoteagent.core.v1.QuotaScreenRequest
+	(*DevicesScreenRequest)(nil),               // 101: remoteagent.core.v1.DevicesScreenRequest
+	(*ClientDetailScreenRequest)(nil),          // 102: remoteagent.core.v1.ClientDetailScreenRequest
+	(*UsageScreenRequest)(nil),                 // 103: remoteagent.core.v1.UsageScreenRequest
+	(*DirectDiagnosticsScreenRequest)(nil),     // 104: remoteagent.core.v1.DirectDiagnosticsScreenRequest
+	(*SessionScreenRequest)(nil),               // 105: remoteagent.core.v1.SessionScreenRequest
+	(*SchedulesScreenRequest)(nil),             // 106: remoteagent.core.v1.SchedulesScreenRequest
+	(*ScheduleDetailScreenRequest)(nil),        // 107: remoteagent.core.v1.ScheduleDetailScreenRequest
+	(*ScheduleFormScreenRequest)(nil),          // 108: remoteagent.core.v1.ScheduleFormScreenRequest
+	(*ScheduleSessionStripScreenRequest)(nil),  // 109: remoteagent.core.v1.ScheduleSessionStripScreenRequest
+	(*HomeViewModel)(nil),                      // 110: remoteagent.core.v1.HomeViewModel
+	(*ProjectViewModel)(nil),                   // 111: remoteagent.core.v1.ProjectViewModel
+	(*NewSessionViewModel)(nil),                // 112: remoteagent.core.v1.NewSessionViewModel
+	(*SyncStateView)(nil),                      // 113: remoteagent.core.v1.SyncStateView
+	(*SessionDataView)(nil),                    // 114: remoteagent.core.v1.SessionDataView
+	(*SettingsViewModel)(nil),                  // 115: remoteagent.core.v1.SettingsViewModel
+	(*MachineStatusViewModel)(nil),             // 116: remoteagent.core.v1.MachineStatusViewModel
+	(*MachineSettingsViewModel)(nil),           // 117: remoteagent.core.v1.MachineSettingsViewModel
+	(*QuotaViewModel)(nil),                     // 118: remoteagent.core.v1.QuotaViewModel
+	(*DevicesViewModel)(nil),                   // 119: remoteagent.core.v1.DevicesViewModel
+	(*ClientDetailViewModel)(nil),              // 120: remoteagent.core.v1.ClientDetailViewModel
+	(*UsageViewModel)(nil),                     // 121: remoteagent.core.v1.UsageViewModel
+	(*DirectDiagnosticsViewModel)(nil),         // 122: remoteagent.core.v1.DirectDiagnosticsViewModel
+	(*SessionViewModel)(nil),                   // 123: remoteagent.core.v1.SessionViewModel
+	(*SchedulesViewModel)(nil),                 // 124: remoteagent.core.v1.SchedulesViewModel
+	(*ScheduleDetailViewModel)(nil),            // 125: remoteagent.core.v1.ScheduleDetailViewModel
+	(*ScheduleFormViewModel)(nil),              // 126: remoteagent.core.v1.ScheduleFormViewModel
+	(*ScheduleSessionStripViewModel)(nil),      // 127: remoteagent.core.v1.ScheduleSessionStripViewModel
+	(*v1.MachineMeta)(nil),                     // 128: remoteagent.v1.MachineMeta
+	(*v1.Session)(nil),                         // 129: remoteagent.v1.Session
+	(*v1.LiveSnapshot)(nil),                    // 130: remoteagent.v1.LiveSnapshot
+	(*v1.Event)(nil),                           // 131: remoteagent.v1.Event
+	(v1.DeviceKind)(0),                         // 132: remoteagent.v1.DeviceKind
+	(*v1.DeviceMeta)(nil),                      // 133: remoteagent.v1.DeviceMeta
+	(*v1.ProjectPrefs)(nil),                    // 134: remoteagent.v1.ProjectPrefs
+	(*v1.SessionCursor)(nil),                   // 135: remoteagent.v1.SessionCursor
+	(*v1.CommandResult)(nil),                   // 136: remoteagent.v1.CommandResult
+	(v1.Agent)(0),                              // 137: remoteagent.v1.Agent
+	(v1.ApprovalMode)(0),                       // 138: remoteagent.v1.ApprovalMode
+	(*MachineStatusWatchEvent)(nil),            // 139: remoteagent.core.v1.MachineStatusWatchEvent
+	(*MachineStatusRetryEvent)(nil),            // 140: remoteagent.core.v1.MachineStatusRetryEvent
+	(*MachineStatusTabEvent)(nil),              // 141: remoteagent.core.v1.MachineStatusTabEvent
+	(*MachineStatusScrubEvent)(nil),            // 142: remoteagent.core.v1.MachineStatusScrubEvent
+	(*MachineStatusCleanupEvent)(nil),          // 143: remoteagent.core.v1.MachineStatusCleanupEvent
+	(*MachineStatusPollTickEvent)(nil),         // 144: remoteagent.core.v1.MachineStatusPollTickEvent
+	(*MachineSettingsOpenEvent)(nil),           // 145: remoteagent.core.v1.MachineSettingsOpenEvent
+	(*MachineSettingsSelectAgentEvent)(nil),    // 146: remoteagent.core.v1.MachineSettingsSelectAgentEvent
+	(*UpdateMachineAgentDefaultsEvent)(nil),    // 147: remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
+	(*UpdateMachineDaemonSettingsEvent)(nil),   // 148: remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
+	(*UpdateDirectPreferenceEvent)(nil),        // 149: remoteagent.core.v1.UpdateDirectPreferenceEvent
+	(*ToggleMachineAgentEvent)(nil),            // 150: remoteagent.core.v1.ToggleMachineAgentEvent
+	(*UsageScreenOpenEvent)(nil),               // 151: remoteagent.core.v1.UsageScreenOpenEvent
+	(*UsageScreenRetryEvent)(nil),              // 152: remoteagent.core.v1.UsageScreenRetryEvent
+	(*UsageCacheLoadedEvent)(nil),              // 153: remoteagent.core.v1.UsageCacheLoadedEvent
+	(*UsageScreenSelectSortEvent)(nil),         // 154: remoteagent.core.v1.UsageScreenSelectSortEvent
+	(*UsageScreenSelectSeriesEvent)(nil),       // 155: remoteagent.core.v1.UsageScreenSelectSeriesEvent
+	(*UsageScreenScrubEvent)(nil),              // 156: remoteagent.core.v1.UsageScreenScrubEvent
+	(*UpdateClientNameEvent)(nil),              // 157: remoteagent.core.v1.UpdateClientNameEvent
+	(*SetNotificationPrefEvent)(nil),           // 158: remoteagent.core.v1.SetNotificationPrefEvent
+	(*SetAppearancePrefEvent)(nil),             // 159: remoteagent.core.v1.SetAppearancePrefEvent
+	(*ConnCheckStatusEvent)(nil),               // 160: remoteagent.core.v1.ConnCheckStatusEvent
+	(*ClientUpdateStateEvent)(nil),             // 161: remoteagent.core.v1.ClientUpdateStateEvent
+	(*CheckForUpdatesEvent)(nil),               // 162: remoteagent.core.v1.CheckForUpdatesEvent
+	(*SessionSubmitCommandAction)(nil),         // 163: remoteagent.core.v1.SessionSubmitCommandAction
+	(*SessionSlotAction)(nil),                  // 164: remoteagent.core.v1.SessionSlotAction
+	(*SessionOpenAction)(nil),                  // 165: remoteagent.core.v1.SessionOpenAction
+	(*SessionQuestionStepAction)(nil),          // 166: remoteagent.core.v1.SessionQuestionStepAction
+	(*SessionRefreshHistoryAction)(nil),        // 167: remoteagent.core.v1.SessionRefreshHistoryAction
+	(*SessionTrayItemAction)(nil),              // 168: remoteagent.core.v1.SessionTrayItemAction
+	(*SessionTraySessionAction)(nil),           // 169: remoteagent.core.v1.SessionTraySessionAction
+	(*ScheduleCacheLoadedEvent)(nil),           // 170: remoteagent.core.v1.ScheduleCacheLoadedEvent
+	(*ScheduleSeenLoadedEvent)(nil),            // 171: remoteagent.core.v1.ScheduleSeenLoadedEvent
+	(*ScheduleLocalContextEvent)(nil),          // 172: remoteagent.core.v1.ScheduleLocalContextEvent
+	(*ScheduleStringAction)(nil),               // 173: remoteagent.core.v1.ScheduleStringAction
+	(*ScheduleBoolAction)(nil),                 // 174: remoteagent.core.v1.ScheduleBoolAction
+	(*ScheduleTaskRef)(nil),                    // 175: remoteagent.core.v1.ScheduleTaskRef
+	(*ScheduleMarkReadAction)(nil),             // 176: remoteagent.core.v1.ScheduleMarkReadAction
+	(*ScheduleTaskBoolAction)(nil),             // 177: remoteagent.core.v1.ScheduleTaskBoolAction
+	(*ScheduleTaskStringAction)(nil),           // 178: remoteagent.core.v1.ScheduleTaskStringAction
+	(*ScheduleOperateAction)(nil),              // 179: remoteagent.core.v1.ScheduleOperateAction
+	(*ScheduleMutationRef)(nil),                // 180: remoteagent.core.v1.ScheduleMutationRef
+	(*ScheduleFormOpenAction)(nil),             // 181: remoteagent.core.v1.ScheduleFormOpenAction
+	(*ScheduleFormBoolAction)(nil),             // 182: remoteagent.core.v1.ScheduleFormBoolAction
+	(*ScheduleFormStringAction)(nil),           // 183: remoteagent.core.v1.ScheduleFormStringAction
+	(*ScheduleFormSelectProjectAction)(nil),    // 184: remoteagent.core.v1.ScheduleFormSelectProjectAction
+	(*ScheduleFormSelectAgentAction)(nil),      // 185: remoteagent.core.v1.ScheduleFormSelectAgentAction
+	(*ScheduleFormSelectModelAction)(nil),      // 186: remoteagent.core.v1.ScheduleFormSelectModelAction
+	(*ScheduleFormUpdateTimingAction)(nil),     // 187: remoteagent.core.v1.ScheduleFormUpdateTimingAction
+	(*TransportConfigEvent)(nil),               // 188: remoteagent.core.v1.TransportConfigEvent
+	(*DirectSecuritySnapshotEvent)(nil),        // 189: remoteagent.core.v1.DirectSecuritySnapshotEvent
+	(*DirectSignalReceivedEvent)(nil),          // 190: remoteagent.core.v1.DirectSignalReceivedEvent
+	(*DirectSignalDeliveryEvent)(nil),          // 191: remoteagent.core.v1.DirectSignalDeliveryEvent
+	(*DirectKeySignedEvent)(nil),               // 192: remoteagent.core.v1.DirectKeySignedEvent
+	(*DirectKeyAgreedEvent)(nil),               // 193: remoteagent.core.v1.DirectKeyAgreedEvent
+	(*DirectPcCreatedEvent)(nil),               // 194: remoteagent.core.v1.DirectPcCreatedEvent
+	(*DirectPcDescriptionEvent)(nil),           // 195: remoteagent.core.v1.DirectPcDescriptionEvent
+	(*DirectPcRemoteSetEvent)(nil),             // 196: remoteagent.core.v1.DirectPcRemoteSetEvent
+	(*DirectPcCandidatesAddedEvent)(nil),       // 197: remoteagent.core.v1.DirectPcCandidatesAddedEvent
+	(*DirectPcLocalCandidateEvent)(nil),        // 198: remoteagent.core.v1.DirectPcLocalCandidateEvent
+	(*DirectPcStateEvent)(nil),                 // 199: remoteagent.core.v1.DirectPcStateEvent
+	(*DirectPcStunErrorEvent)(nil),             // 200: remoteagent.core.v1.DirectPcStunErrorEvent
+	(*DirectPcClosedEvent)(nil),                // 201: remoteagent.core.v1.DirectPcClosedEvent
+	(*DirectDcStateEvent)(nil),                 // 202: remoteagent.core.v1.DirectDcStateEvent
+	(*DirectDcStatsEvent)(nil),                 // 203: remoteagent.core.v1.DirectDcStatsEvent
+	(*DirectRetryNowAction)(nil),               // 204: remoteagent.core.v1.DirectRetryNowAction
+	(*DirectRefreshDiagnosticsAction)(nil),     // 205: remoteagent.core.v1.DirectRefreshDiagnosticsAction
+	(*DirectBulkTransferBeginEvent)(nil),       // 206: remoteagent.core.v1.DirectBulkTransferBeginEvent
+	(*DirectBulkTransferDoneEvent)(nil),        // 207: remoteagent.core.v1.DirectBulkTransferDoneEvent
+	(*TerminalStreamEvent)(nil),                // 208: remoteagent.core.v1.TerminalStreamEvent
+	(*DirectPreferencesLoadedEvent)(nil),       // 209: remoteagent.core.v1.DirectPreferencesLoadedEvent
+	(CommandRouteLeg)(0),                       // 210: remoteagent.core.v1.CommandRouteLeg
+	(*ScheduleMachinePollEffect)(nil),          // 211: remoteagent.core.v1.ScheduleMachinePollEffect
+	(*DirectPreferenceEffect)(nil),             // 212: remoteagent.core.v1.DirectPreferenceEffect
+	(*RenameClientEffect)(nil),                 // 213: remoteagent.core.v1.RenameClientEffect
+	(*CheckUpdatesEffect)(nil),                 // 214: remoteagent.core.v1.CheckUpdatesEffect
+	(*PersistClientPrefsEffect)(nil),           // 215: remoteagent.core.v1.PersistClientPrefsEffect
+	(*PrepareCleanupSessionEffect)(nil),        // 216: remoteagent.core.v1.PrepareCleanupSessionEffect
+	(*UsageCacheWriteEffect)(nil),              // 217: remoteagent.core.v1.UsageCacheWriteEffect
+	(*SessionRestoreComposerEffect)(nil),       // 218: remoteagent.core.v1.SessionRestoreComposerEffect
+	(*SessionResendAttachmentsEffect)(nil),     // 219: remoteagent.core.v1.SessionResendAttachmentsEffect
+	(*ScheduleReadCacheEffect)(nil),            // 220: remoteagent.core.v1.ScheduleReadCacheEffect
+	(*ScheduleDeleteCacheEffect)(nil),          // 221: remoteagent.core.v1.ScheduleDeleteCacheEffect
+	(*ScheduleLoadSeenEffect)(nil),             // 222: remoteagent.core.v1.ScheduleLoadSeenEffect
+	(*ScheduleSaveSeenEffect)(nil),             // 223: remoteagent.core.v1.ScheduleSaveSeenEffect
+	(*ScheduleDismissNotificationsEffect)(nil), // 224: remoteagent.core.v1.ScheduleDismissNotificationsEffect
+	(*ScheduleNavigateEffect)(nil),             // 225: remoteagent.core.v1.ScheduleNavigateEffect
+	(*DirectKeySignEffect)(nil),                // 226: remoteagent.core.v1.DirectKeySignEffect
+	(*DirectKeyAgreeEffect)(nil),               // 227: remoteagent.core.v1.DirectKeyAgreeEffect
+	(*DirectSignalSendEffect)(nil),             // 228: remoteagent.core.v1.DirectSignalSendEffect
+	(*DirectPcCreateEffect)(nil),               // 229: remoteagent.core.v1.DirectPcCreateEffect
+	(*DirectPcDescribeEffect)(nil),             // 230: remoteagent.core.v1.DirectPcDescribeEffect
+	(*DirectPcSetRemoteEffect)(nil),            // 231: remoteagent.core.v1.DirectPcSetRemoteEffect
+	(*DirectPcAddCandidatesEffect)(nil),        // 232: remoteagent.core.v1.DirectPcAddCandidatesEffect
+	(*DirectPcConfirmEffect)(nil),              // 233: remoteagent.core.v1.DirectPcConfirmEffect
+	(*DirectPcCloseEffect)(nil),                // 234: remoteagent.core.v1.DirectPcCloseEffect
+	(*DirectDcReadStatsEffect)(nil),            // 235: remoteagent.core.v1.DirectDcReadStatsEffect
+	(*DirectAuthorizeEffect)(nil),              // 236: remoteagent.core.v1.DirectAuthorizeEffect
+	(*DirectBulkRouteEffect)(nil),              // 237: remoteagent.core.v1.DirectBulkRouteEffect
+	(*TerminalReopenEffect)(nil),               // 238: remoteagent.core.v1.TerminalReopenEffect
+	(*DirectRetryNowResultEffect)(nil),         // 239: remoteagent.core.v1.DirectRetryNowResultEffect
 }
 var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	6,   // 0: remoteagent.core.v1.Screen.home:type_name -> remoteagent.core.v1.HomeScreenRequest
@@ -11264,47 +11172,47 @@ var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	8,   // 2: remoteagent.core.v1.Screen.new_session:type_name -> remoteagent.core.v1.NewSessionScreenRequest
 	9,   // 3: remoteagent.core.v1.Screen.sync_state:type_name -> remoteagent.core.v1.SyncStateScreenRequest
 	10,  // 4: remoteagent.core.v1.Screen.session_data:type_name -> remoteagent.core.v1.SessionDataScreenRequest
-	98,  // 5: remoteagent.core.v1.Screen.settings:type_name -> remoteagent.core.v1.SettingsScreenRequest
-	99,  // 6: remoteagent.core.v1.Screen.machine_status:type_name -> remoteagent.core.v1.MachineStatusScreenRequest
-	100, // 7: remoteagent.core.v1.Screen.machine_settings:type_name -> remoteagent.core.v1.MachineSettingsScreenRequest
-	101, // 8: remoteagent.core.v1.Screen.quota:type_name -> remoteagent.core.v1.QuotaScreenRequest
-	102, // 9: remoteagent.core.v1.Screen.devices:type_name -> remoteagent.core.v1.DevicesScreenRequest
-	103, // 10: remoteagent.core.v1.Screen.client_detail:type_name -> remoteagent.core.v1.ClientDetailScreenRequest
-	104, // 11: remoteagent.core.v1.Screen.usage:type_name -> remoteagent.core.v1.UsageScreenRequest
-	105, // 12: remoteagent.core.v1.Screen.direct_diagnostics:type_name -> remoteagent.core.v1.DirectDiagnosticsScreenRequest
-	106, // 13: remoteagent.core.v1.Screen.session:type_name -> remoteagent.core.v1.SessionScreenRequest
-	107, // 14: remoteagent.core.v1.Screen.schedules:type_name -> remoteagent.core.v1.SchedulesScreenRequest
-	108, // 15: remoteagent.core.v1.Screen.schedule_detail:type_name -> remoteagent.core.v1.ScheduleDetailScreenRequest
-	109, // 16: remoteagent.core.v1.Screen.schedule_form:type_name -> remoteagent.core.v1.ScheduleFormScreenRequest
-	110, // 17: remoteagent.core.v1.Screen.schedule_session_strip:type_name -> remoteagent.core.v1.ScheduleSessionStripScreenRequest
-	111, // 18: remoteagent.core.v1.ViewModel.home:type_name -> remoteagent.core.v1.HomeViewModel
-	112, // 19: remoteagent.core.v1.ViewModel.project:type_name -> remoteagent.core.v1.ProjectViewModel
-	113, // 20: remoteagent.core.v1.ViewModel.new_session:type_name -> remoteagent.core.v1.NewSessionViewModel
-	114, // 21: remoteagent.core.v1.ViewModel.sync_state:type_name -> remoteagent.core.v1.SyncStateView
-	115, // 22: remoteagent.core.v1.ViewModel.session_data:type_name -> remoteagent.core.v1.SessionDataView
-	116, // 23: remoteagent.core.v1.ViewModel.settings:type_name -> remoteagent.core.v1.SettingsViewModel
-	117, // 24: remoteagent.core.v1.ViewModel.machine_status:type_name -> remoteagent.core.v1.MachineStatusViewModel
-	118, // 25: remoteagent.core.v1.ViewModel.machine_settings:type_name -> remoteagent.core.v1.MachineSettingsViewModel
-	119, // 26: remoteagent.core.v1.ViewModel.quota:type_name -> remoteagent.core.v1.QuotaViewModel
-	120, // 27: remoteagent.core.v1.ViewModel.devices:type_name -> remoteagent.core.v1.DevicesViewModel
-	121, // 28: remoteagent.core.v1.ViewModel.client_detail:type_name -> remoteagent.core.v1.ClientDetailViewModel
-	122, // 29: remoteagent.core.v1.ViewModel.usage:type_name -> remoteagent.core.v1.UsageViewModel
-	123, // 30: remoteagent.core.v1.ViewModel.direct_diagnostics:type_name -> remoteagent.core.v1.DirectDiagnosticsViewModel
-	124, // 31: remoteagent.core.v1.ViewModel.session:type_name -> remoteagent.core.v1.SessionViewModel
-	125, // 32: remoteagent.core.v1.ViewModel.schedules:type_name -> remoteagent.core.v1.SchedulesViewModel
-	126, // 33: remoteagent.core.v1.ViewModel.schedule_detail:type_name -> remoteagent.core.v1.ScheduleDetailViewModel
-	127, // 34: remoteagent.core.v1.ViewModel.schedule_form:type_name -> remoteagent.core.v1.ScheduleFormViewModel
-	128, // 35: remoteagent.core.v1.ViewModel.schedule_session_strip:type_name -> remoteagent.core.v1.ScheduleSessionStripViewModel
+	97,  // 5: remoteagent.core.v1.Screen.settings:type_name -> remoteagent.core.v1.SettingsScreenRequest
+	98,  // 6: remoteagent.core.v1.Screen.machine_status:type_name -> remoteagent.core.v1.MachineStatusScreenRequest
+	99,  // 7: remoteagent.core.v1.Screen.machine_settings:type_name -> remoteagent.core.v1.MachineSettingsScreenRequest
+	100, // 8: remoteagent.core.v1.Screen.quota:type_name -> remoteagent.core.v1.QuotaScreenRequest
+	101, // 9: remoteagent.core.v1.Screen.devices:type_name -> remoteagent.core.v1.DevicesScreenRequest
+	102, // 10: remoteagent.core.v1.Screen.client_detail:type_name -> remoteagent.core.v1.ClientDetailScreenRequest
+	103, // 11: remoteagent.core.v1.Screen.usage:type_name -> remoteagent.core.v1.UsageScreenRequest
+	104, // 12: remoteagent.core.v1.Screen.direct_diagnostics:type_name -> remoteagent.core.v1.DirectDiagnosticsScreenRequest
+	105, // 13: remoteagent.core.v1.Screen.session:type_name -> remoteagent.core.v1.SessionScreenRequest
+	106, // 14: remoteagent.core.v1.Screen.schedules:type_name -> remoteagent.core.v1.SchedulesScreenRequest
+	107, // 15: remoteagent.core.v1.Screen.schedule_detail:type_name -> remoteagent.core.v1.ScheduleDetailScreenRequest
+	108, // 16: remoteagent.core.v1.Screen.schedule_form:type_name -> remoteagent.core.v1.ScheduleFormScreenRequest
+	109, // 17: remoteagent.core.v1.Screen.schedule_session_strip:type_name -> remoteagent.core.v1.ScheduleSessionStripScreenRequest
+	110, // 18: remoteagent.core.v1.ViewModel.home:type_name -> remoteagent.core.v1.HomeViewModel
+	111, // 19: remoteagent.core.v1.ViewModel.project:type_name -> remoteagent.core.v1.ProjectViewModel
+	112, // 20: remoteagent.core.v1.ViewModel.new_session:type_name -> remoteagent.core.v1.NewSessionViewModel
+	113, // 21: remoteagent.core.v1.ViewModel.sync_state:type_name -> remoteagent.core.v1.SyncStateView
+	114, // 22: remoteagent.core.v1.ViewModel.session_data:type_name -> remoteagent.core.v1.SessionDataView
+	115, // 23: remoteagent.core.v1.ViewModel.settings:type_name -> remoteagent.core.v1.SettingsViewModel
+	116, // 24: remoteagent.core.v1.ViewModel.machine_status:type_name -> remoteagent.core.v1.MachineStatusViewModel
+	117, // 25: remoteagent.core.v1.ViewModel.machine_settings:type_name -> remoteagent.core.v1.MachineSettingsViewModel
+	118, // 26: remoteagent.core.v1.ViewModel.quota:type_name -> remoteagent.core.v1.QuotaViewModel
+	119, // 27: remoteagent.core.v1.ViewModel.devices:type_name -> remoteagent.core.v1.DevicesViewModel
+	120, // 28: remoteagent.core.v1.ViewModel.client_detail:type_name -> remoteagent.core.v1.ClientDetailViewModel
+	121, // 29: remoteagent.core.v1.ViewModel.usage:type_name -> remoteagent.core.v1.UsageViewModel
+	122, // 30: remoteagent.core.v1.ViewModel.direct_diagnostics:type_name -> remoteagent.core.v1.DirectDiagnosticsViewModel
+	123, // 31: remoteagent.core.v1.ViewModel.session:type_name -> remoteagent.core.v1.SessionViewModel
+	124, // 32: remoteagent.core.v1.ViewModel.schedules:type_name -> remoteagent.core.v1.SchedulesViewModel
+	125, // 33: remoteagent.core.v1.ViewModel.schedule_detail:type_name -> remoteagent.core.v1.ScheduleDetailViewModel
+	126, // 34: remoteagent.core.v1.ViewModel.schedule_form:type_name -> remoteagent.core.v1.ScheduleFormViewModel
+	127, // 35: remoteagent.core.v1.ViewModel.schedule_session_strip:type_name -> remoteagent.core.v1.ScheduleSessionStripViewModel
 	13,  // 36: remoteagent.core.v1.LocalCalendar.months:type_name -> remoteagent.core.v1.MonthStart
 	0,   // 37: remoteagent.core.v1.SyncLifecycleAction.kind:type_name -> remoteagent.core.v1.SyncLifecycleKind
 	1,   // 38: remoteagent.core.v1.TimerFiredEvent.kind:type_name -> remoteagent.core.v1.TimerKind
-	129, // 39: remoteagent.core.v1.PlainMachine.meta:type_name -> remoteagent.v1.MachineMeta
-	130, // 40: remoteagent.core.v1.PlainSession.meta:type_name -> remoteagent.v1.Session
-	131, // 41: remoteagent.core.v1.PlainSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
-	132, // 42: remoteagent.core.v1.PlainEvent.event:type_name -> remoteagent.v1.Event
-	133, // 43: remoteagent.core.v1.PlainDevice.kind:type_name -> remoteagent.v1.DeviceKind
-	134, // 44: remoteagent.core.v1.PlainDevice.meta:type_name -> remoteagent.v1.DeviceMeta
-	135, // 45: remoteagent.core.v1.PlainAccountPrefs.prefs:type_name -> remoteagent.v1.ProjectPrefs
+	128, // 39: remoteagent.core.v1.PlainMachine.meta:type_name -> remoteagent.v1.MachineMeta
+	129, // 40: remoteagent.core.v1.PlainSession.meta:type_name -> remoteagent.v1.Session
+	130, // 41: remoteagent.core.v1.PlainSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
+	131, // 42: remoteagent.core.v1.PlainEvent.event:type_name -> remoteagent.v1.Event
+	132, // 43: remoteagent.core.v1.PlainDevice.kind:type_name -> remoteagent.v1.DeviceKind
+	133, // 44: remoteagent.core.v1.PlainDevice.meta:type_name -> remoteagent.v1.DeviceMeta
+	134, // 45: remoteagent.core.v1.PlainAccountPrefs.prefs:type_name -> remoteagent.v1.ProjectPrefs
 	19,  // 46: remoteagent.core.v1.CacheBootstrapLoadedEvent.machines:type_name -> remoteagent.core.v1.PlainMachine
 	20,  // 47: remoteagent.core.v1.CacheBootstrapLoadedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
 	23,  // 48: remoteagent.core.v1.CacheBootstrapLoadedEvent.prefs:type_name -> remoteagent.core.v1.PlainAccountPrefs
@@ -11317,21 +11225,21 @@ var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	22,  // 55: remoteagent.core.v1.StreamFrameEvent.device_updated:type_name -> remoteagent.core.v1.PlainDevice
 	19,  // 56: remoteagent.core.v1.ListsFetchedEvent.machines:type_name -> remoteagent.core.v1.PlainMachine
 	20,  // 57: remoteagent.core.v1.ListsFetchedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
-	136, // 58: remoteagent.core.v1.ListsFetchedEvent.next:type_name -> remoteagent.v1.SessionCursor
+	135, // 58: remoteagent.core.v1.ListsFetchedEvent.next:type_name -> remoteagent.v1.SessionCursor
 	22,  // 59: remoteagent.core.v1.ListsFetchedEvent.devices:type_name -> remoteagent.core.v1.PlainDevice
 	20,  // 60: remoteagent.core.v1.SessionsPageFetchedEvent.sessions:type_name -> remoteagent.core.v1.PlainSession
-	136, // 61: remoteagent.core.v1.SessionsPageFetchedEvent.next:type_name -> remoteagent.v1.SessionCursor
+	135, // 61: remoteagent.core.v1.SessionsPageFetchedEvent.next:type_name -> remoteagent.v1.SessionCursor
 	20,  // 62: remoteagent.core.v1.SessionByIdFetchedEvent.session:type_name -> remoteagent.core.v1.PlainSession
 	21,  // 63: remoteagent.core.v1.EventsPageFetchedEvent.events:type_name -> remoteagent.core.v1.PlainEvent
 	23,  // 64: remoteagent.core.v1.AccountPrefsFetchedEvent.prefs:type_name -> remoteagent.core.v1.PlainAccountPrefs
 	23,  // 65: remoteagent.core.v1.AccountPrefsPutResultEvent.current:type_name -> remoteagent.core.v1.PlainAccountPrefs
 	22,  // 66: remoteagent.core.v1.DevicesFetchedEvent.devices:type_name -> remoteagent.core.v1.PlainDevice
 	2,   // 67: remoteagent.core.v1.CommandOutcomeEvent.source:type_name -> remoteagent.core.v1.OutcomeSource
-	137, // 68: remoteagent.core.v1.CommandOutcomeEvent.result:type_name -> remoteagent.v1.CommandResult
+	136, // 68: remoteagent.core.v1.CommandOutcomeEvent.result:type_name -> remoteagent.v1.CommandResult
 	21,  // 69: remoteagent.core.v1.DirectEventsReceivedEvent.events:type_name -> remoteagent.core.v1.PlainEvent
-	46,  // 70: remoteagent.core.v1.SessionScheduleHintsEvent.hints:type_name -> remoteagent.core.v1.SessionScheduleHint
-	138, // 71: remoteagent.core.v1.NewSessionSelectAgentAction.agent:type_name -> remoteagent.v1.Agent
-	139, // 72: remoteagent.core.v1.NewSessionSelectModelAction.mode:type_name -> remoteagent.v1.ApprovalMode
+	45,  // 70: remoteagent.core.v1.SessionScheduleHintsEvent.hints:type_name -> remoteagent.core.v1.SessionScheduleHint
+	137, // 71: remoteagent.core.v1.NewSessionSelectAgentAction.agent:type_name -> remoteagent.v1.Agent
+	138, // 72: remoteagent.core.v1.NewSessionSelectModelAction.mode:type_name -> remoteagent.v1.ApprovalMode
 	14,  // 73: remoteagent.core.v1.Event.clock_updated:type_name -> remoteagent.core.v1.LocalCalendar
 	15,  // 74: remoteagent.core.v1.Event.entropy_provided:type_name -> remoteagent.core.v1.EntropyProvided
 	16,  // 75: remoteagent.core.v1.Event.sync_lifecycle:type_name -> remoteagent.core.v1.SyncLifecycleAction
@@ -11356,198 +11264,196 @@ var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	41,  // 94: remoteagent.core.v1.Event.session_pin:type_name -> remoteagent.core.v1.SessionPinEvent
 	42,  // 95: remoteagent.core.v1.Event.retry_session_events:type_name -> remoteagent.core.v1.RetrySessionEventsAction
 	43,  // 96: remoteagent.core.v1.Event.fetch_session:type_name -> remoteagent.core.v1.FetchSessionAction
-	44,  // 97: remoteagent.core.v1.Event.machine_route_status:type_name -> remoteagent.core.v1.MachineRouteStatusEvent
-	47,  // 98: remoteagent.core.v1.Event.session_schedule_hints:type_name -> remoteagent.core.v1.SessionScheduleHintsEvent
-	45,  // 99: remoteagent.core.v1.Event.direct_events_received:type_name -> remoteagent.core.v1.DirectEventsReceivedEvent
-	48,  // 100: remoteagent.core.v1.Event.home_set_scope:type_name -> remoteagent.core.v1.HomeSetScopeAction
-	49,  // 101: remoteagent.core.v1.Event.home_set_filter:type_name -> remoteagent.core.v1.HomeSetFilterAction
-	50,  // 102: remoteagent.core.v1.Event.home_load_more_ended:type_name -> remoteagent.core.v1.HomeLoadMoreEndedAction
-	51,  // 103: remoteagent.core.v1.Event.home_retry_load:type_name -> remoteagent.core.v1.HomeRetryLoadAction
-	52,  // 104: remoteagent.core.v1.Event.home_select_session:type_name -> remoteagent.core.v1.HomeSelectSessionAction
-	53,  // 105: remoteagent.core.v1.Event.project_set_search:type_name -> remoteagent.core.v1.ProjectSetSearchAction
-	54,  // 106: remoteagent.core.v1.Event.project_toggle_pin:type_name -> remoteagent.core.v1.ProjectKeyAction
-	54,  // 107: remoteagent.core.v1.Event.project_toggle_hide:type_name -> remoteagent.core.v1.ProjectKeyAction
-	55,  // 108: remoteagent.core.v1.Event.project_add:type_name -> remoteagent.core.v1.ProjectAddAction
-	54,  // 109: remoteagent.core.v1.Event.project_load_more_ended:type_name -> remoteagent.core.v1.ProjectKeyAction
-	56,  // 110: remoteagent.core.v1.Event.project_open_dir_picker:type_name -> remoteagent.core.v1.DirPickerOpenAction
-	57,  // 111: remoteagent.core.v1.Event.project_dir_navigate:type_name -> remoteagent.core.v1.DirNavigateAction
-	58,  // 112: remoteagent.core.v1.Event.project_close_dir_picker:type_name -> remoteagent.core.v1.DirPickerCloseAction
-	59,  // 113: remoteagent.core.v1.Event.new_session_open:type_name -> remoteagent.core.v1.NewSessionOpenAction
-	60,  // 114: remoteagent.core.v1.Event.new_session_select_project:type_name -> remoteagent.core.v1.NewSessionSelectProjectAction
-	61,  // 115: remoteagent.core.v1.Event.new_session_select_machine:type_name -> remoteagent.core.v1.NewSessionSelectMachineAction
-	62,  // 116: remoteagent.core.v1.Event.new_session_select_agent:type_name -> remoteagent.core.v1.NewSessionSelectAgentAction
-	63,  // 117: remoteagent.core.v1.Event.new_session_select_model:type_name -> remoteagent.core.v1.NewSessionSelectModelAction
-	64,  // 118: remoteagent.core.v1.Event.new_session_set_prompt:type_name -> remoteagent.core.v1.NewSessionSetPromptAction
-	65,  // 119: remoteagent.core.v1.Event.new_session_retry_models:type_name -> remoteagent.core.v1.NewSessionProjectAction
-	65,  // 120: remoteagent.core.v1.Event.new_session_retry_save_config:type_name -> remoteagent.core.v1.NewSessionProjectAction
-	66,  // 121: remoteagent.core.v1.Event.new_session_submit:type_name -> remoteagent.core.v1.NewSessionSubmitAction
-	65,  // 122: remoteagent.core.v1.Event.new_session_abandon_start:type_name -> remoteagent.core.v1.NewSessionProjectAction
-	140, // 123: remoteagent.core.v1.Event.machine_status_watch:type_name -> remoteagent.core.v1.MachineStatusWatchEvent
-	141, // 124: remoteagent.core.v1.Event.machine_status_retry:type_name -> remoteagent.core.v1.MachineStatusRetryEvent
-	142, // 125: remoteagent.core.v1.Event.machine_status_tab:type_name -> remoteagent.core.v1.MachineStatusTabEvent
-	143, // 126: remoteagent.core.v1.Event.machine_status_scrub:type_name -> remoteagent.core.v1.MachineStatusScrubEvent
-	144, // 127: remoteagent.core.v1.Event.machine_status_cleanup:type_name -> remoteagent.core.v1.MachineStatusCleanupEvent
-	145, // 128: remoteagent.core.v1.Event.machine_status_poll_tick:type_name -> remoteagent.core.v1.MachineStatusPollTickEvent
-	146, // 129: remoteagent.core.v1.Event.machine_settings_open:type_name -> remoteagent.core.v1.MachineSettingsOpenEvent
-	147, // 130: remoteagent.core.v1.Event.machine_settings_select_agent:type_name -> remoteagent.core.v1.MachineSettingsSelectAgentEvent
-	148, // 131: remoteagent.core.v1.Event.update_machine_agent_defaults:type_name -> remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
-	149, // 132: remoteagent.core.v1.Event.update_machine_daemon_settings:type_name -> remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
-	150, // 133: remoteagent.core.v1.Event.update_direct_preference:type_name -> remoteagent.core.v1.UpdateDirectPreferenceEvent
-	151, // 134: remoteagent.core.v1.Event.machine_direct_status:type_name -> remoteagent.core.v1.MachineDirectStatusEvent
-	152, // 135: remoteagent.core.v1.Event.toggle_machine_agent:type_name -> remoteagent.core.v1.ToggleMachineAgentEvent
-	153, // 136: remoteagent.core.v1.Event.usage_screen_open:type_name -> remoteagent.core.v1.UsageScreenOpenEvent
-	154, // 137: remoteagent.core.v1.Event.usage_screen_retry:type_name -> remoteagent.core.v1.UsageScreenRetryEvent
-	155, // 138: remoteagent.core.v1.Event.usage_cache_loaded:type_name -> remoteagent.core.v1.UsageCacheLoadedEvent
-	156, // 139: remoteagent.core.v1.Event.usage_screen_select_sort:type_name -> remoteagent.core.v1.UsageScreenSelectSortEvent
-	157, // 140: remoteagent.core.v1.Event.usage_screen_select_series:type_name -> remoteagent.core.v1.UsageScreenSelectSeriesEvent
-	158, // 141: remoteagent.core.v1.Event.usage_screen_scrub:type_name -> remoteagent.core.v1.UsageScreenScrubEvent
-	159, // 142: remoteagent.core.v1.Event.update_client_name:type_name -> remoteagent.core.v1.UpdateClientNameEvent
-	160, // 143: remoteagent.core.v1.Event.set_notification_pref:type_name -> remoteagent.core.v1.SetNotificationPrefEvent
-	161, // 144: remoteagent.core.v1.Event.set_appearance_pref:type_name -> remoteagent.core.v1.SetAppearancePrefEvent
-	162, // 145: remoteagent.core.v1.Event.conn_check_status:type_name -> remoteagent.core.v1.ConnCheckStatusEvent
-	163, // 146: remoteagent.core.v1.Event.client_update_state:type_name -> remoteagent.core.v1.ClientUpdateStateEvent
-	164, // 147: remoteagent.core.v1.Event.check_for_updates:type_name -> remoteagent.core.v1.CheckForUpdatesEvent
-	165, // 148: remoteagent.core.v1.Event.session_submit_command:type_name -> remoteagent.core.v1.SessionSubmitCommandAction
-	166, // 149: remoteagent.core.v1.Event.session_abandon_command:type_name -> remoteagent.core.v1.SessionSlotAction
-	167, // 150: remoteagent.core.v1.Event.session_open:type_name -> remoteagent.core.v1.SessionOpenAction
-	168, // 151: remoteagent.core.v1.Event.session_set_question_index:type_name -> remoteagent.core.v1.SessionQuestionStepAction
-	169, // 152: remoteagent.core.v1.Event.session_load_earlier:type_name -> remoteagent.core.v1.SessionRefreshHistoryAction
-	170, // 153: remoteagent.core.v1.Event.session_cancel_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
-	170, // 154: remoteagent.core.v1.Event.session_ignore_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
-	170, // 155: remoteagent.core.v1.Event.session_promote_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
-	170, // 156: remoteagent.core.v1.Event.session_restore_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
-	170, // 157: remoteagent.core.v1.Event.session_retry_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
-	170, // 158: remoteagent.core.v1.Event.session_resume_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
-	171, // 159: remoteagent.core.v1.Event.session_cancel_all_paused:type_name -> remoteagent.core.v1.SessionTraySessionAction
-	171, // 160: remoteagent.core.v1.Event.session_undo_cancel:type_name -> remoteagent.core.v1.SessionTraySessionAction
-	172, // 161: remoteagent.core.v1.Event.schedule_cache_loaded:type_name -> remoteagent.core.v1.ScheduleCacheLoadedEvent
-	173, // 162: remoteagent.core.v1.Event.schedule_seen_loaded:type_name -> remoteagent.core.v1.ScheduleSeenLoadedEvent
-	174, // 163: remoteagent.core.v1.Event.schedule_local_context:type_name -> remoteagent.core.v1.ScheduleLocalContextEvent
-	175, // 164: remoteagent.core.v1.Event.schedule_refresh:type_name -> remoteagent.core.v1.ScheduleStringAction
-	175, // 165: remoteagent.core.v1.Event.schedule_set_visible_session:type_name -> remoteagent.core.v1.ScheduleStringAction
-	176, // 166: remoteagent.core.v1.Event.schedule_list_open:type_name -> remoteagent.core.v1.ScheduleBoolAction
-	177, // 167: remoteagent.core.v1.Event.schedule_select_task:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	176, // 168: remoteagent.core.v1.Event.schedule_toggle_ended:type_name -> remoteagent.core.v1.ScheduleBoolAction
-	178, // 169: remoteagent.core.v1.Event.schedule_mark_read:type_name -> remoteagent.core.v1.ScheduleMarkReadAction
-	179, // 170: remoteagent.core.v1.Event.schedule_mark_unread:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
-	177, // 171: remoteagent.core.v1.Event.schedule_detail_open:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	177, // 172: remoteagent.core.v1.Event.schedule_detail_hide:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	177, // 173: remoteagent.core.v1.Event.schedule_detail_close:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	177, // 174: remoteagent.core.v1.Event.schedule_detail_show_latest_result:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	180, // 175: remoteagent.core.v1.Event.schedule_detail_toggle_quiet_group:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
-	179, // 176: remoteagent.core.v1.Event.schedule_detail_show_all_runs:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
-	180, // 177: remoteagent.core.v1.Event.schedule_detail_open_run:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
-	181, // 178: remoteagent.core.v1.Event.schedule_operate:type_name -> remoteagent.core.v1.ScheduleOperateAction
-	180, // 179: remoteagent.core.v1.Event.schedule_rename:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
-	179, // 180: remoteagent.core.v1.Event.schedule_set_notify:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
-	180, // 181: remoteagent.core.v1.Event.schedule_update_message:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
-	182, // 182: remoteagent.core.v1.Event.schedule_abandon_mutation:type_name -> remoteagent.core.v1.ScheduleMutationRef
-	182, // 183: remoteagent.core.v1.Event.schedule_retry_mutation:type_name -> remoteagent.core.v1.ScheduleMutationRef
-	183, // 184: remoteagent.core.v1.Event.schedule_form_open:type_name -> remoteagent.core.v1.ScheduleFormOpenAction
-	184, // 185: remoteagent.core.v1.Event.schedule_form_close:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
-	185, // 186: remoteagent.core.v1.Event.schedule_form_set_message:type_name -> remoteagent.core.v1.ScheduleFormStringAction
-	185, // 187: remoteagent.core.v1.Event.schedule_form_set_title:type_name -> remoteagent.core.v1.ScheduleFormStringAction
-	184, // 188: remoteagent.core.v1.Event.schedule_form_set_notify:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
-	186, // 189: remoteagent.core.v1.Event.schedule_form_select_project:type_name -> remoteagent.core.v1.ScheduleFormSelectProjectAction
-	185, // 190: remoteagent.core.v1.Event.schedule_form_select_machine:type_name -> remoteagent.core.v1.ScheduleFormStringAction
-	187, // 191: remoteagent.core.v1.Event.schedule_form_select_agent:type_name -> remoteagent.core.v1.ScheduleFormSelectAgentAction
-	188, // 192: remoteagent.core.v1.Event.schedule_form_select_model:type_name -> remoteagent.core.v1.ScheduleFormSelectModelAction
-	189, // 193: remoteagent.core.v1.Event.schedule_form_update_timing:type_name -> remoteagent.core.v1.ScheduleFormUpdateTimingAction
-	184, // 194: remoteagent.core.v1.Event.schedule_form_submit:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
-	185, // 195: remoteagent.core.v1.Event.schedule_form_retry_models:type_name -> remoteagent.core.v1.ScheduleFormStringAction
-	190, // 196: remoteagent.core.v1.Event.transport_config:type_name -> remoteagent.core.v1.TransportConfigEvent
-	191, // 197: remoteagent.core.v1.Event.direct_security_snapshot:type_name -> remoteagent.core.v1.DirectSecuritySnapshotEvent
-	192, // 198: remoteagent.core.v1.Event.direct_signal_received:type_name -> remoteagent.core.v1.DirectSignalReceivedEvent
-	193, // 199: remoteagent.core.v1.Event.direct_signal_delivery:type_name -> remoteagent.core.v1.DirectSignalDeliveryEvent
-	194, // 200: remoteagent.core.v1.Event.direct_key_signed:type_name -> remoteagent.core.v1.DirectKeySignedEvent
-	195, // 201: remoteagent.core.v1.Event.direct_key_agreed:type_name -> remoteagent.core.v1.DirectKeyAgreedEvent
-	196, // 202: remoteagent.core.v1.Event.direct_pc_created:type_name -> remoteagent.core.v1.DirectPcCreatedEvent
-	197, // 203: remoteagent.core.v1.Event.direct_pc_description:type_name -> remoteagent.core.v1.DirectPcDescriptionEvent
-	198, // 204: remoteagent.core.v1.Event.direct_pc_remote_set:type_name -> remoteagent.core.v1.DirectPcRemoteSetEvent
-	199, // 205: remoteagent.core.v1.Event.direct_pc_candidates_added:type_name -> remoteagent.core.v1.DirectPcCandidatesAddedEvent
-	200, // 206: remoteagent.core.v1.Event.direct_pc_local_candidate:type_name -> remoteagent.core.v1.DirectPcLocalCandidateEvent
-	201, // 207: remoteagent.core.v1.Event.direct_pc_state:type_name -> remoteagent.core.v1.DirectPcStateEvent
-	202, // 208: remoteagent.core.v1.Event.direct_pc_stun_error:type_name -> remoteagent.core.v1.DirectPcStunErrorEvent
-	203, // 209: remoteagent.core.v1.Event.direct_pc_closed:type_name -> remoteagent.core.v1.DirectPcClosedEvent
-	204, // 210: remoteagent.core.v1.Event.direct_dc_state:type_name -> remoteagent.core.v1.DirectDcStateEvent
-	205, // 211: remoteagent.core.v1.Event.direct_dc_stats:type_name -> remoteagent.core.v1.DirectDcStatsEvent
-	206, // 212: remoteagent.core.v1.Event.direct_retry_now:type_name -> remoteagent.core.v1.DirectRetryNowAction
-	207, // 213: remoteagent.core.v1.Event.direct_refresh_diagnostics:type_name -> remoteagent.core.v1.DirectRefreshDiagnosticsAction
-	208, // 214: remoteagent.core.v1.Event.direct_bulk_transfer_begin:type_name -> remoteagent.core.v1.DirectBulkTransferBeginEvent
-	209, // 215: remoteagent.core.v1.Event.direct_bulk_transfer_done:type_name -> remoteagent.core.v1.DirectBulkTransferDoneEvent
-	210, // 216: remoteagent.core.v1.Event.terminal_stream:type_name -> remoteagent.core.v1.TerminalStreamEvent
-	211, // 217: remoteagent.core.v1.Event.direct_preferences_loaded:type_name -> remoteagent.core.v1.DirectPreferencesLoadedEvent
-	3,   // 218: remoteagent.core.v1.RenderEffect.screens:type_name -> remoteagent.core.v1.ScreenTarget
-	1,   // 219: remoteagent.core.v1.ScheduleTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
-	1,   // 220: remoteagent.core.v1.CancelTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
-	76,  // 221: remoteagent.core.v1.CacheReadEffect.bootstrap:type_name -> remoteagent.core.v1.CacheReadBootstrap
-	77,  // 222: remoteagent.core.v1.CacheReadEffect.events:type_name -> remoteagent.core.v1.CacheReadEvents
-	79,  // 223: remoteagent.core.v1.CacheWriteEffect.write_events:type_name -> remoteagent.core.v1.CacheWriteEvents
-	80,  // 224: remoteagent.core.v1.CacheWriteEffect.set_session_open:type_name -> remoteagent.core.v1.CacheSessionOpen
-	136, // 225: remoteagent.core.v1.FetchSessionsPageRpc.after:type_name -> remoteagent.v1.SessionCursor
-	135, // 226: remoteagent.core.v1.PutAccountPrefsRpc.next_prefs:type_name -> remoteagent.v1.ProjectPrefs
-	83,  // 227: remoteagent.core.v1.RpcEffect.fetch_lists:type_name -> remoteagent.core.v1.FetchListsRpc
-	84,  // 228: remoteagent.core.v1.RpcEffect.fetch_sessions_page:type_name -> remoteagent.core.v1.FetchSessionsPageRpc
-	85,  // 229: remoteagent.core.v1.RpcEffect.fetch_session_by_id:type_name -> remoteagent.core.v1.FetchSessionByIdRpc
-	86,  // 230: remoteagent.core.v1.RpcEffect.get_events:type_name -> remoteagent.core.v1.GetEventsRpc
-	87,  // 231: remoteagent.core.v1.RpcEffect.get_account_prefs:type_name -> remoteagent.core.v1.GetAccountPrefsRpc
-	88,  // 232: remoteagent.core.v1.RpcEffect.put_account_prefs:type_name -> remoteagent.core.v1.PutAccountPrefsRpc
-	89,  // 233: remoteagent.core.v1.RpcEffect.fetch_devices:type_name -> remoteagent.core.v1.FetchDevicesRpc
-	4,   // 234: remoteagent.core.v1.DispatchCommandEffect.route_hint:type_name -> remoteagent.core.v1.CommandRouteHint
-	212, // 235: remoteagent.core.v1.DispatchCommandEffect.route_leg:type_name -> remoteagent.core.v1.CommandRouteLeg
-	5,   // 236: remoteagent.core.v1.NavigateEffect.route:type_name -> remoteagent.core.v1.NavigateRoute
-	68,  // 237: remoteagent.core.v1.Effect.render:type_name -> remoteagent.core.v1.RenderEffect
-	69,  // 238: remoteagent.core.v1.Effect.open_stream:type_name -> remoteagent.core.v1.OpenStreamEffect
-	70,  // 239: remoteagent.core.v1.Effect.close_stream:type_name -> remoteagent.core.v1.CloseStreamEffect
-	71,  // 240: remoteagent.core.v1.Effect.ensure_token:type_name -> remoteagent.core.v1.EnsureTokenEffect
-	72,  // 241: remoteagent.core.v1.Effect.discard_token:type_name -> remoteagent.core.v1.DiscardTokenEffect
-	73,  // 242: remoteagent.core.v1.Effect.sync_security:type_name -> remoteagent.core.v1.SyncSecurityEffect
-	74,  // 243: remoteagent.core.v1.Effect.schedule_timer:type_name -> remoteagent.core.v1.ScheduleTimerEffect
-	75,  // 244: remoteagent.core.v1.Effect.cancel_timer:type_name -> remoteagent.core.v1.CancelTimerEffect
-	78,  // 245: remoteagent.core.v1.Effect.cache_read:type_name -> remoteagent.core.v1.CacheReadEffect
-	81,  // 246: remoteagent.core.v1.Effect.cache_write:type_name -> remoteagent.core.v1.CacheWriteEffect
-	82,  // 247: remoteagent.core.v1.Effect.cache_delete:type_name -> remoteagent.core.v1.CacheDeleteEffect
-	90,  // 248: remoteagent.core.v1.Effect.rpc:type_name -> remoteagent.core.v1.RpcEffect
-	91,  // 249: remoteagent.core.v1.Effect.dispatch_command:type_name -> remoteagent.core.v1.DispatchCommandEffect
-	92,  // 250: remoteagent.core.v1.Effect.save_home_scope:type_name -> remoteagent.core.v1.SaveHomeScopeEffect
-	93,  // 251: remoteagent.core.v1.Effect.navigate:type_name -> remoteagent.core.v1.NavigateEffect
-	94,  // 252: remoteagent.core.v1.Effect.attachments_settled:type_name -> remoteagent.core.v1.AttachmentsSettledEffect
-	95,  // 253: remoteagent.core.v1.Effect.request_entropy:type_name -> remoteagent.core.v1.RequestEntropyEffect
-	213, // 254: remoteagent.core.v1.Effect.schedule_machine_poll:type_name -> remoteagent.core.v1.ScheduleMachinePollEffect
-	214, // 255: remoteagent.core.v1.Effect.direct_preference:type_name -> remoteagent.core.v1.DirectPreferenceEffect
-	215, // 256: remoteagent.core.v1.Effect.rename_client:type_name -> remoteagent.core.v1.RenameClientEffect
-	216, // 257: remoteagent.core.v1.Effect.check_updates:type_name -> remoteagent.core.v1.CheckUpdatesEffect
-	217, // 258: remoteagent.core.v1.Effect.persist_client_prefs:type_name -> remoteagent.core.v1.PersistClientPrefsEffect
-	218, // 259: remoteagent.core.v1.Effect.prepare_cleanup_session:type_name -> remoteagent.core.v1.PrepareCleanupSessionEffect
-	219, // 260: remoteagent.core.v1.Effect.usage_cache_write:type_name -> remoteagent.core.v1.UsageCacheWriteEffect
-	220, // 261: remoteagent.core.v1.Effect.session_restore_composer:type_name -> remoteagent.core.v1.SessionRestoreComposerEffect
-	221, // 262: remoteagent.core.v1.Effect.session_resend_attachments:type_name -> remoteagent.core.v1.SessionResendAttachmentsEffect
-	222, // 263: remoteagent.core.v1.Effect.schedule_read_cache:type_name -> remoteagent.core.v1.ScheduleReadCacheEffect
-	223, // 264: remoteagent.core.v1.Effect.schedule_delete_cache:type_name -> remoteagent.core.v1.ScheduleDeleteCacheEffect
-	224, // 265: remoteagent.core.v1.Effect.schedule_load_seen:type_name -> remoteagent.core.v1.ScheduleLoadSeenEffect
-	225, // 266: remoteagent.core.v1.Effect.schedule_save_seen:type_name -> remoteagent.core.v1.ScheduleSaveSeenEffect
-	226, // 267: remoteagent.core.v1.Effect.schedule_dismiss_notifications:type_name -> remoteagent.core.v1.ScheduleDismissNotificationsEffect
-	227, // 268: remoteagent.core.v1.Effect.schedule_navigate:type_name -> remoteagent.core.v1.ScheduleNavigateEffect
-	228, // 269: remoteagent.core.v1.Effect.direct_key_sign:type_name -> remoteagent.core.v1.DirectKeySignEffect
-	229, // 270: remoteagent.core.v1.Effect.direct_key_agree:type_name -> remoteagent.core.v1.DirectKeyAgreeEffect
-	230, // 271: remoteagent.core.v1.Effect.direct_signal_send:type_name -> remoteagent.core.v1.DirectSignalSendEffect
-	231, // 272: remoteagent.core.v1.Effect.direct_pc_create:type_name -> remoteagent.core.v1.DirectPcCreateEffect
-	232, // 273: remoteagent.core.v1.Effect.direct_pc_describe:type_name -> remoteagent.core.v1.DirectPcDescribeEffect
-	233, // 274: remoteagent.core.v1.Effect.direct_pc_set_remote:type_name -> remoteagent.core.v1.DirectPcSetRemoteEffect
-	234, // 275: remoteagent.core.v1.Effect.direct_pc_add_candidates:type_name -> remoteagent.core.v1.DirectPcAddCandidatesEffect
-	235, // 276: remoteagent.core.v1.Effect.direct_pc_confirm:type_name -> remoteagent.core.v1.DirectPcConfirmEffect
-	236, // 277: remoteagent.core.v1.Effect.direct_pc_close:type_name -> remoteagent.core.v1.DirectPcCloseEffect
-	237, // 278: remoteagent.core.v1.Effect.direct_dc_read_stats:type_name -> remoteagent.core.v1.DirectDcReadStatsEffect
-	238, // 279: remoteagent.core.v1.Effect.direct_authorize:type_name -> remoteagent.core.v1.DirectAuthorizeEffect
-	239, // 280: remoteagent.core.v1.Effect.direct_bulk_route:type_name -> remoteagent.core.v1.DirectBulkRouteEffect
-	240, // 281: remoteagent.core.v1.Effect.terminal_reopen:type_name -> remoteagent.core.v1.TerminalReopenEffect
-	241, // 282: remoteagent.core.v1.Effect.direct_retry_now_result:type_name -> remoteagent.core.v1.DirectRetryNowResultEffect
-	96,  // 283: remoteagent.core.v1.EffectBatch.effects:type_name -> remoteagent.core.v1.Effect
-	284, // [284:284] is the sub-list for method output_type
-	284, // [284:284] is the sub-list for method input_type
-	284, // [284:284] is the sub-list for extension type_name
-	284, // [284:284] is the sub-list for extension extendee
-	0,   // [0:284] is the sub-list for field type_name
+	46,  // 97: remoteagent.core.v1.Event.session_schedule_hints:type_name -> remoteagent.core.v1.SessionScheduleHintsEvent
+	44,  // 98: remoteagent.core.v1.Event.direct_events_received:type_name -> remoteagent.core.v1.DirectEventsReceivedEvent
+	47,  // 99: remoteagent.core.v1.Event.home_set_scope:type_name -> remoteagent.core.v1.HomeSetScopeAction
+	48,  // 100: remoteagent.core.v1.Event.home_set_filter:type_name -> remoteagent.core.v1.HomeSetFilterAction
+	49,  // 101: remoteagent.core.v1.Event.home_load_more_ended:type_name -> remoteagent.core.v1.HomeLoadMoreEndedAction
+	50,  // 102: remoteagent.core.v1.Event.home_retry_load:type_name -> remoteagent.core.v1.HomeRetryLoadAction
+	51,  // 103: remoteagent.core.v1.Event.home_select_session:type_name -> remoteagent.core.v1.HomeSelectSessionAction
+	52,  // 104: remoteagent.core.v1.Event.project_set_search:type_name -> remoteagent.core.v1.ProjectSetSearchAction
+	53,  // 105: remoteagent.core.v1.Event.project_toggle_pin:type_name -> remoteagent.core.v1.ProjectKeyAction
+	53,  // 106: remoteagent.core.v1.Event.project_toggle_hide:type_name -> remoteagent.core.v1.ProjectKeyAction
+	54,  // 107: remoteagent.core.v1.Event.project_add:type_name -> remoteagent.core.v1.ProjectAddAction
+	53,  // 108: remoteagent.core.v1.Event.project_load_more_ended:type_name -> remoteagent.core.v1.ProjectKeyAction
+	55,  // 109: remoteagent.core.v1.Event.project_open_dir_picker:type_name -> remoteagent.core.v1.DirPickerOpenAction
+	56,  // 110: remoteagent.core.v1.Event.project_dir_navigate:type_name -> remoteagent.core.v1.DirNavigateAction
+	57,  // 111: remoteagent.core.v1.Event.project_close_dir_picker:type_name -> remoteagent.core.v1.DirPickerCloseAction
+	58,  // 112: remoteagent.core.v1.Event.new_session_open:type_name -> remoteagent.core.v1.NewSessionOpenAction
+	59,  // 113: remoteagent.core.v1.Event.new_session_select_project:type_name -> remoteagent.core.v1.NewSessionSelectProjectAction
+	60,  // 114: remoteagent.core.v1.Event.new_session_select_machine:type_name -> remoteagent.core.v1.NewSessionSelectMachineAction
+	61,  // 115: remoteagent.core.v1.Event.new_session_select_agent:type_name -> remoteagent.core.v1.NewSessionSelectAgentAction
+	62,  // 116: remoteagent.core.v1.Event.new_session_select_model:type_name -> remoteagent.core.v1.NewSessionSelectModelAction
+	63,  // 117: remoteagent.core.v1.Event.new_session_set_prompt:type_name -> remoteagent.core.v1.NewSessionSetPromptAction
+	64,  // 118: remoteagent.core.v1.Event.new_session_retry_models:type_name -> remoteagent.core.v1.NewSessionProjectAction
+	64,  // 119: remoteagent.core.v1.Event.new_session_retry_save_config:type_name -> remoteagent.core.v1.NewSessionProjectAction
+	65,  // 120: remoteagent.core.v1.Event.new_session_submit:type_name -> remoteagent.core.v1.NewSessionSubmitAction
+	64,  // 121: remoteagent.core.v1.Event.new_session_abandon_start:type_name -> remoteagent.core.v1.NewSessionProjectAction
+	139, // 122: remoteagent.core.v1.Event.machine_status_watch:type_name -> remoteagent.core.v1.MachineStatusWatchEvent
+	140, // 123: remoteagent.core.v1.Event.machine_status_retry:type_name -> remoteagent.core.v1.MachineStatusRetryEvent
+	141, // 124: remoteagent.core.v1.Event.machine_status_tab:type_name -> remoteagent.core.v1.MachineStatusTabEvent
+	142, // 125: remoteagent.core.v1.Event.machine_status_scrub:type_name -> remoteagent.core.v1.MachineStatusScrubEvent
+	143, // 126: remoteagent.core.v1.Event.machine_status_cleanup:type_name -> remoteagent.core.v1.MachineStatusCleanupEvent
+	144, // 127: remoteagent.core.v1.Event.machine_status_poll_tick:type_name -> remoteagent.core.v1.MachineStatusPollTickEvent
+	145, // 128: remoteagent.core.v1.Event.machine_settings_open:type_name -> remoteagent.core.v1.MachineSettingsOpenEvent
+	146, // 129: remoteagent.core.v1.Event.machine_settings_select_agent:type_name -> remoteagent.core.v1.MachineSettingsSelectAgentEvent
+	147, // 130: remoteagent.core.v1.Event.update_machine_agent_defaults:type_name -> remoteagent.core.v1.UpdateMachineAgentDefaultsEvent
+	148, // 131: remoteagent.core.v1.Event.update_machine_daemon_settings:type_name -> remoteagent.core.v1.UpdateMachineDaemonSettingsEvent
+	149, // 132: remoteagent.core.v1.Event.update_direct_preference:type_name -> remoteagent.core.v1.UpdateDirectPreferenceEvent
+	150, // 133: remoteagent.core.v1.Event.toggle_machine_agent:type_name -> remoteagent.core.v1.ToggleMachineAgentEvent
+	151, // 134: remoteagent.core.v1.Event.usage_screen_open:type_name -> remoteagent.core.v1.UsageScreenOpenEvent
+	152, // 135: remoteagent.core.v1.Event.usage_screen_retry:type_name -> remoteagent.core.v1.UsageScreenRetryEvent
+	153, // 136: remoteagent.core.v1.Event.usage_cache_loaded:type_name -> remoteagent.core.v1.UsageCacheLoadedEvent
+	154, // 137: remoteagent.core.v1.Event.usage_screen_select_sort:type_name -> remoteagent.core.v1.UsageScreenSelectSortEvent
+	155, // 138: remoteagent.core.v1.Event.usage_screen_select_series:type_name -> remoteagent.core.v1.UsageScreenSelectSeriesEvent
+	156, // 139: remoteagent.core.v1.Event.usage_screen_scrub:type_name -> remoteagent.core.v1.UsageScreenScrubEvent
+	157, // 140: remoteagent.core.v1.Event.update_client_name:type_name -> remoteagent.core.v1.UpdateClientNameEvent
+	158, // 141: remoteagent.core.v1.Event.set_notification_pref:type_name -> remoteagent.core.v1.SetNotificationPrefEvent
+	159, // 142: remoteagent.core.v1.Event.set_appearance_pref:type_name -> remoteagent.core.v1.SetAppearancePrefEvent
+	160, // 143: remoteagent.core.v1.Event.conn_check_status:type_name -> remoteagent.core.v1.ConnCheckStatusEvent
+	161, // 144: remoteagent.core.v1.Event.client_update_state:type_name -> remoteagent.core.v1.ClientUpdateStateEvent
+	162, // 145: remoteagent.core.v1.Event.check_for_updates:type_name -> remoteagent.core.v1.CheckForUpdatesEvent
+	163, // 146: remoteagent.core.v1.Event.session_submit_command:type_name -> remoteagent.core.v1.SessionSubmitCommandAction
+	164, // 147: remoteagent.core.v1.Event.session_abandon_command:type_name -> remoteagent.core.v1.SessionSlotAction
+	165, // 148: remoteagent.core.v1.Event.session_open:type_name -> remoteagent.core.v1.SessionOpenAction
+	166, // 149: remoteagent.core.v1.Event.session_set_question_index:type_name -> remoteagent.core.v1.SessionQuestionStepAction
+	167, // 150: remoteagent.core.v1.Event.session_load_earlier:type_name -> remoteagent.core.v1.SessionRefreshHistoryAction
+	168, // 151: remoteagent.core.v1.Event.session_cancel_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
+	168, // 152: remoteagent.core.v1.Event.session_ignore_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
+	168, // 153: remoteagent.core.v1.Event.session_promote_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
+	168, // 154: remoteagent.core.v1.Event.session_restore_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
+	168, // 155: remoteagent.core.v1.Event.session_retry_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
+	168, // 156: remoteagent.core.v1.Event.session_resume_tray_item:type_name -> remoteagent.core.v1.SessionTrayItemAction
+	169, // 157: remoteagent.core.v1.Event.session_cancel_all_paused:type_name -> remoteagent.core.v1.SessionTraySessionAction
+	169, // 158: remoteagent.core.v1.Event.session_undo_cancel:type_name -> remoteagent.core.v1.SessionTraySessionAction
+	170, // 159: remoteagent.core.v1.Event.schedule_cache_loaded:type_name -> remoteagent.core.v1.ScheduleCacheLoadedEvent
+	171, // 160: remoteagent.core.v1.Event.schedule_seen_loaded:type_name -> remoteagent.core.v1.ScheduleSeenLoadedEvent
+	172, // 161: remoteagent.core.v1.Event.schedule_local_context:type_name -> remoteagent.core.v1.ScheduleLocalContextEvent
+	173, // 162: remoteagent.core.v1.Event.schedule_refresh:type_name -> remoteagent.core.v1.ScheduleStringAction
+	173, // 163: remoteagent.core.v1.Event.schedule_set_visible_session:type_name -> remoteagent.core.v1.ScheduleStringAction
+	174, // 164: remoteagent.core.v1.Event.schedule_list_open:type_name -> remoteagent.core.v1.ScheduleBoolAction
+	175, // 165: remoteagent.core.v1.Event.schedule_select_task:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	174, // 166: remoteagent.core.v1.Event.schedule_toggle_ended:type_name -> remoteagent.core.v1.ScheduleBoolAction
+	176, // 167: remoteagent.core.v1.Event.schedule_mark_read:type_name -> remoteagent.core.v1.ScheduleMarkReadAction
+	177, // 168: remoteagent.core.v1.Event.schedule_mark_unread:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
+	175, // 169: remoteagent.core.v1.Event.schedule_detail_open:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	175, // 170: remoteagent.core.v1.Event.schedule_detail_hide:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	175, // 171: remoteagent.core.v1.Event.schedule_detail_close:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	175, // 172: remoteagent.core.v1.Event.schedule_detail_show_latest_result:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	178, // 173: remoteagent.core.v1.Event.schedule_detail_toggle_quiet_group:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
+	177, // 174: remoteagent.core.v1.Event.schedule_detail_show_all_runs:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
+	178, // 175: remoteagent.core.v1.Event.schedule_detail_open_run:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
+	179, // 176: remoteagent.core.v1.Event.schedule_operate:type_name -> remoteagent.core.v1.ScheduleOperateAction
+	178, // 177: remoteagent.core.v1.Event.schedule_rename:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
+	177, // 178: remoteagent.core.v1.Event.schedule_set_notify:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
+	178, // 179: remoteagent.core.v1.Event.schedule_update_message:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
+	180, // 180: remoteagent.core.v1.Event.schedule_abandon_mutation:type_name -> remoteagent.core.v1.ScheduleMutationRef
+	180, // 181: remoteagent.core.v1.Event.schedule_retry_mutation:type_name -> remoteagent.core.v1.ScheduleMutationRef
+	181, // 182: remoteagent.core.v1.Event.schedule_form_open:type_name -> remoteagent.core.v1.ScheduleFormOpenAction
+	182, // 183: remoteagent.core.v1.Event.schedule_form_close:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
+	183, // 184: remoteagent.core.v1.Event.schedule_form_set_message:type_name -> remoteagent.core.v1.ScheduleFormStringAction
+	183, // 185: remoteagent.core.v1.Event.schedule_form_set_title:type_name -> remoteagent.core.v1.ScheduleFormStringAction
+	182, // 186: remoteagent.core.v1.Event.schedule_form_set_notify:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
+	184, // 187: remoteagent.core.v1.Event.schedule_form_select_project:type_name -> remoteagent.core.v1.ScheduleFormSelectProjectAction
+	183, // 188: remoteagent.core.v1.Event.schedule_form_select_machine:type_name -> remoteagent.core.v1.ScheduleFormStringAction
+	185, // 189: remoteagent.core.v1.Event.schedule_form_select_agent:type_name -> remoteagent.core.v1.ScheduleFormSelectAgentAction
+	186, // 190: remoteagent.core.v1.Event.schedule_form_select_model:type_name -> remoteagent.core.v1.ScheduleFormSelectModelAction
+	187, // 191: remoteagent.core.v1.Event.schedule_form_update_timing:type_name -> remoteagent.core.v1.ScheduleFormUpdateTimingAction
+	182, // 192: remoteagent.core.v1.Event.schedule_form_submit:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
+	183, // 193: remoteagent.core.v1.Event.schedule_form_retry_models:type_name -> remoteagent.core.v1.ScheduleFormStringAction
+	188, // 194: remoteagent.core.v1.Event.transport_config:type_name -> remoteagent.core.v1.TransportConfigEvent
+	189, // 195: remoteagent.core.v1.Event.direct_security_snapshot:type_name -> remoteagent.core.v1.DirectSecuritySnapshotEvent
+	190, // 196: remoteagent.core.v1.Event.direct_signal_received:type_name -> remoteagent.core.v1.DirectSignalReceivedEvent
+	191, // 197: remoteagent.core.v1.Event.direct_signal_delivery:type_name -> remoteagent.core.v1.DirectSignalDeliveryEvent
+	192, // 198: remoteagent.core.v1.Event.direct_key_signed:type_name -> remoteagent.core.v1.DirectKeySignedEvent
+	193, // 199: remoteagent.core.v1.Event.direct_key_agreed:type_name -> remoteagent.core.v1.DirectKeyAgreedEvent
+	194, // 200: remoteagent.core.v1.Event.direct_pc_created:type_name -> remoteagent.core.v1.DirectPcCreatedEvent
+	195, // 201: remoteagent.core.v1.Event.direct_pc_description:type_name -> remoteagent.core.v1.DirectPcDescriptionEvent
+	196, // 202: remoteagent.core.v1.Event.direct_pc_remote_set:type_name -> remoteagent.core.v1.DirectPcRemoteSetEvent
+	197, // 203: remoteagent.core.v1.Event.direct_pc_candidates_added:type_name -> remoteagent.core.v1.DirectPcCandidatesAddedEvent
+	198, // 204: remoteagent.core.v1.Event.direct_pc_local_candidate:type_name -> remoteagent.core.v1.DirectPcLocalCandidateEvent
+	199, // 205: remoteagent.core.v1.Event.direct_pc_state:type_name -> remoteagent.core.v1.DirectPcStateEvent
+	200, // 206: remoteagent.core.v1.Event.direct_pc_stun_error:type_name -> remoteagent.core.v1.DirectPcStunErrorEvent
+	201, // 207: remoteagent.core.v1.Event.direct_pc_closed:type_name -> remoteagent.core.v1.DirectPcClosedEvent
+	202, // 208: remoteagent.core.v1.Event.direct_dc_state:type_name -> remoteagent.core.v1.DirectDcStateEvent
+	203, // 209: remoteagent.core.v1.Event.direct_dc_stats:type_name -> remoteagent.core.v1.DirectDcStatsEvent
+	204, // 210: remoteagent.core.v1.Event.direct_retry_now:type_name -> remoteagent.core.v1.DirectRetryNowAction
+	205, // 211: remoteagent.core.v1.Event.direct_refresh_diagnostics:type_name -> remoteagent.core.v1.DirectRefreshDiagnosticsAction
+	206, // 212: remoteagent.core.v1.Event.direct_bulk_transfer_begin:type_name -> remoteagent.core.v1.DirectBulkTransferBeginEvent
+	207, // 213: remoteagent.core.v1.Event.direct_bulk_transfer_done:type_name -> remoteagent.core.v1.DirectBulkTransferDoneEvent
+	208, // 214: remoteagent.core.v1.Event.terminal_stream:type_name -> remoteagent.core.v1.TerminalStreamEvent
+	209, // 215: remoteagent.core.v1.Event.direct_preferences_loaded:type_name -> remoteagent.core.v1.DirectPreferencesLoadedEvent
+	3,   // 216: remoteagent.core.v1.RenderEffect.screens:type_name -> remoteagent.core.v1.ScreenTarget
+	1,   // 217: remoteagent.core.v1.ScheduleTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
+	1,   // 218: remoteagent.core.v1.CancelTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
+	75,  // 219: remoteagent.core.v1.CacheReadEffect.bootstrap:type_name -> remoteagent.core.v1.CacheReadBootstrap
+	76,  // 220: remoteagent.core.v1.CacheReadEffect.events:type_name -> remoteagent.core.v1.CacheReadEvents
+	78,  // 221: remoteagent.core.v1.CacheWriteEffect.write_events:type_name -> remoteagent.core.v1.CacheWriteEvents
+	79,  // 222: remoteagent.core.v1.CacheWriteEffect.set_session_open:type_name -> remoteagent.core.v1.CacheSessionOpen
+	135, // 223: remoteagent.core.v1.FetchSessionsPageRpc.after:type_name -> remoteagent.v1.SessionCursor
+	134, // 224: remoteagent.core.v1.PutAccountPrefsRpc.next_prefs:type_name -> remoteagent.v1.ProjectPrefs
+	82,  // 225: remoteagent.core.v1.RpcEffect.fetch_lists:type_name -> remoteagent.core.v1.FetchListsRpc
+	83,  // 226: remoteagent.core.v1.RpcEffect.fetch_sessions_page:type_name -> remoteagent.core.v1.FetchSessionsPageRpc
+	84,  // 227: remoteagent.core.v1.RpcEffect.fetch_session_by_id:type_name -> remoteagent.core.v1.FetchSessionByIdRpc
+	85,  // 228: remoteagent.core.v1.RpcEffect.get_events:type_name -> remoteagent.core.v1.GetEventsRpc
+	86,  // 229: remoteagent.core.v1.RpcEffect.get_account_prefs:type_name -> remoteagent.core.v1.GetAccountPrefsRpc
+	87,  // 230: remoteagent.core.v1.RpcEffect.put_account_prefs:type_name -> remoteagent.core.v1.PutAccountPrefsRpc
+	88,  // 231: remoteagent.core.v1.RpcEffect.fetch_devices:type_name -> remoteagent.core.v1.FetchDevicesRpc
+	4,   // 232: remoteagent.core.v1.DispatchCommandEffect.route_hint:type_name -> remoteagent.core.v1.CommandRouteHint
+	210, // 233: remoteagent.core.v1.DispatchCommandEffect.route_leg:type_name -> remoteagent.core.v1.CommandRouteLeg
+	5,   // 234: remoteagent.core.v1.NavigateEffect.route:type_name -> remoteagent.core.v1.NavigateRoute
+	67,  // 235: remoteagent.core.v1.Effect.render:type_name -> remoteagent.core.v1.RenderEffect
+	68,  // 236: remoteagent.core.v1.Effect.open_stream:type_name -> remoteagent.core.v1.OpenStreamEffect
+	69,  // 237: remoteagent.core.v1.Effect.close_stream:type_name -> remoteagent.core.v1.CloseStreamEffect
+	70,  // 238: remoteagent.core.v1.Effect.ensure_token:type_name -> remoteagent.core.v1.EnsureTokenEffect
+	71,  // 239: remoteagent.core.v1.Effect.discard_token:type_name -> remoteagent.core.v1.DiscardTokenEffect
+	72,  // 240: remoteagent.core.v1.Effect.sync_security:type_name -> remoteagent.core.v1.SyncSecurityEffect
+	73,  // 241: remoteagent.core.v1.Effect.schedule_timer:type_name -> remoteagent.core.v1.ScheduleTimerEffect
+	74,  // 242: remoteagent.core.v1.Effect.cancel_timer:type_name -> remoteagent.core.v1.CancelTimerEffect
+	77,  // 243: remoteagent.core.v1.Effect.cache_read:type_name -> remoteagent.core.v1.CacheReadEffect
+	80,  // 244: remoteagent.core.v1.Effect.cache_write:type_name -> remoteagent.core.v1.CacheWriteEffect
+	81,  // 245: remoteagent.core.v1.Effect.cache_delete:type_name -> remoteagent.core.v1.CacheDeleteEffect
+	89,  // 246: remoteagent.core.v1.Effect.rpc:type_name -> remoteagent.core.v1.RpcEffect
+	90,  // 247: remoteagent.core.v1.Effect.dispatch_command:type_name -> remoteagent.core.v1.DispatchCommandEffect
+	91,  // 248: remoteagent.core.v1.Effect.save_home_scope:type_name -> remoteagent.core.v1.SaveHomeScopeEffect
+	92,  // 249: remoteagent.core.v1.Effect.navigate:type_name -> remoteagent.core.v1.NavigateEffect
+	93,  // 250: remoteagent.core.v1.Effect.attachments_settled:type_name -> remoteagent.core.v1.AttachmentsSettledEffect
+	94,  // 251: remoteagent.core.v1.Effect.request_entropy:type_name -> remoteagent.core.v1.RequestEntropyEffect
+	211, // 252: remoteagent.core.v1.Effect.schedule_machine_poll:type_name -> remoteagent.core.v1.ScheduleMachinePollEffect
+	212, // 253: remoteagent.core.v1.Effect.direct_preference:type_name -> remoteagent.core.v1.DirectPreferenceEffect
+	213, // 254: remoteagent.core.v1.Effect.rename_client:type_name -> remoteagent.core.v1.RenameClientEffect
+	214, // 255: remoteagent.core.v1.Effect.check_updates:type_name -> remoteagent.core.v1.CheckUpdatesEffect
+	215, // 256: remoteagent.core.v1.Effect.persist_client_prefs:type_name -> remoteagent.core.v1.PersistClientPrefsEffect
+	216, // 257: remoteagent.core.v1.Effect.prepare_cleanup_session:type_name -> remoteagent.core.v1.PrepareCleanupSessionEffect
+	217, // 258: remoteagent.core.v1.Effect.usage_cache_write:type_name -> remoteagent.core.v1.UsageCacheWriteEffect
+	218, // 259: remoteagent.core.v1.Effect.session_restore_composer:type_name -> remoteagent.core.v1.SessionRestoreComposerEffect
+	219, // 260: remoteagent.core.v1.Effect.session_resend_attachments:type_name -> remoteagent.core.v1.SessionResendAttachmentsEffect
+	220, // 261: remoteagent.core.v1.Effect.schedule_read_cache:type_name -> remoteagent.core.v1.ScheduleReadCacheEffect
+	221, // 262: remoteagent.core.v1.Effect.schedule_delete_cache:type_name -> remoteagent.core.v1.ScheduleDeleteCacheEffect
+	222, // 263: remoteagent.core.v1.Effect.schedule_load_seen:type_name -> remoteagent.core.v1.ScheduleLoadSeenEffect
+	223, // 264: remoteagent.core.v1.Effect.schedule_save_seen:type_name -> remoteagent.core.v1.ScheduleSaveSeenEffect
+	224, // 265: remoteagent.core.v1.Effect.schedule_dismiss_notifications:type_name -> remoteagent.core.v1.ScheduleDismissNotificationsEffect
+	225, // 266: remoteagent.core.v1.Effect.schedule_navigate:type_name -> remoteagent.core.v1.ScheduleNavigateEffect
+	226, // 267: remoteagent.core.v1.Effect.direct_key_sign:type_name -> remoteagent.core.v1.DirectKeySignEffect
+	227, // 268: remoteagent.core.v1.Effect.direct_key_agree:type_name -> remoteagent.core.v1.DirectKeyAgreeEffect
+	228, // 269: remoteagent.core.v1.Effect.direct_signal_send:type_name -> remoteagent.core.v1.DirectSignalSendEffect
+	229, // 270: remoteagent.core.v1.Effect.direct_pc_create:type_name -> remoteagent.core.v1.DirectPcCreateEffect
+	230, // 271: remoteagent.core.v1.Effect.direct_pc_describe:type_name -> remoteagent.core.v1.DirectPcDescribeEffect
+	231, // 272: remoteagent.core.v1.Effect.direct_pc_set_remote:type_name -> remoteagent.core.v1.DirectPcSetRemoteEffect
+	232, // 273: remoteagent.core.v1.Effect.direct_pc_add_candidates:type_name -> remoteagent.core.v1.DirectPcAddCandidatesEffect
+	233, // 274: remoteagent.core.v1.Effect.direct_pc_confirm:type_name -> remoteagent.core.v1.DirectPcConfirmEffect
+	234, // 275: remoteagent.core.v1.Effect.direct_pc_close:type_name -> remoteagent.core.v1.DirectPcCloseEffect
+	235, // 276: remoteagent.core.v1.Effect.direct_dc_read_stats:type_name -> remoteagent.core.v1.DirectDcReadStatsEffect
+	236, // 277: remoteagent.core.v1.Effect.direct_authorize:type_name -> remoteagent.core.v1.DirectAuthorizeEffect
+	237, // 278: remoteagent.core.v1.Effect.direct_bulk_route:type_name -> remoteagent.core.v1.DirectBulkRouteEffect
+	238, // 279: remoteagent.core.v1.Effect.terminal_reopen:type_name -> remoteagent.core.v1.TerminalReopenEffect
+	239, // 280: remoteagent.core.v1.Effect.direct_retry_now_result:type_name -> remoteagent.core.v1.DirectRetryNowResultEffect
+	95,  // 281: remoteagent.core.v1.EffectBatch.effects:type_name -> remoteagent.core.v1.Effect
+	282, // [282:282] is the sub-list for method output_type
+	282, // [282:282] is the sub-list for method input_type
+	282, // [282:282] is the sub-list for extension type_name
+	282, // [282:282] is the sub-list for extension extendee
+	0,   // [0:282] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_app_proto_init() }
@@ -11615,8 +11521,8 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*StreamFrameEvent_DeviceUpdated)(nil),
 		(*StreamFrameEvent_DeviceRemovedId)(nil),
 	}
-	file_remoteagent_core_v1_app_proto_msgTypes[57].OneofWrappers = []any{}
-	file_remoteagent_core_v1_app_proto_msgTypes[61].OneofWrappers = []any{
+	file_remoteagent_core_v1_app_proto_msgTypes[56].OneofWrappers = []any{}
+	file_remoteagent_core_v1_app_proto_msgTypes[60].OneofWrappers = []any{
 		(*Event_ClockUpdated)(nil),
 		(*Event_EntropyProvided)(nil),
 		(*Event_SyncLifecycle)(nil),
@@ -11641,7 +11547,6 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Event_SessionPin)(nil),
 		(*Event_RetrySessionEvents)(nil),
 		(*Event_FetchSession)(nil),
-		(*Event_MachineRouteStatus)(nil),
 		(*Event_SessionScheduleHints)(nil),
 		(*Event_DirectEventsReceived)(nil),
 		(*Event_HomeSetScope)(nil),
@@ -11678,7 +11583,6 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Event_UpdateMachineAgentDefaults)(nil),
 		(*Event_UpdateMachineDaemonSettings)(nil),
 		(*Event_UpdateDirectPreference)(nil),
-		(*Event_MachineDirectStatus)(nil),
 		(*Event_ToggleMachineAgent)(nil),
 		(*Event_UsageScreenOpen)(nil),
 		(*Event_UsageScreenRetry)(nil),
@@ -11763,11 +11667,11 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Event_TerminalStream)(nil),
 		(*Event_DirectPreferencesLoaded)(nil),
 	}
-	file_remoteagent_core_v1_app_proto_msgTypes[72].OneofWrappers = []any{
+	file_remoteagent_core_v1_app_proto_msgTypes[71].OneofWrappers = []any{
 		(*CacheReadEffect_Bootstrap)(nil),
 		(*CacheReadEffect_Events)(nil),
 	}
-	file_remoteagent_core_v1_app_proto_msgTypes[75].OneofWrappers = []any{
+	file_remoteagent_core_v1_app_proto_msgTypes[74].OneofWrappers = []any{
 		(*CacheWriteEffect_WriteMachineRef)(nil),
 		(*CacheWriteEffect_WriteSessionRef)(nil),
 		(*CacheWriteEffect_KeepSessionOwnerRef)(nil),
@@ -11775,13 +11679,13 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*CacheWriteEffect_WritePrefsRef)(nil),
 		(*CacheWriteEffect_SetSessionOpen)(nil),
 	}
-	file_remoteagent_core_v1_app_proto_msgTypes[76].OneofWrappers = []any{
+	file_remoteagent_core_v1_app_proto_msgTypes[75].OneofWrappers = []any{
 		(*CacheDeleteEffect_DropEventsSessionId)(nil),
 		(*CacheDeleteEffect_RemoveSessionId)(nil),
 		(*CacheDeleteEffect_UnlistSessionId)(nil),
 		(*CacheDeleteEffect_RemoveMachineId)(nil),
 	}
-	file_remoteagent_core_v1_app_proto_msgTypes[84].OneofWrappers = []any{
+	file_remoteagent_core_v1_app_proto_msgTypes[83].OneofWrappers = []any{
 		(*RpcEffect_FetchLists)(nil),
 		(*RpcEffect_FetchSessionsPage)(nil),
 		(*RpcEffect_FetchSessionById)(nil),
@@ -11790,7 +11694,7 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*RpcEffect_PutAccountPrefs)(nil),
 		(*RpcEffect_FetchDevices)(nil),
 	}
-	file_remoteagent_core_v1_app_proto_msgTypes[90].OneofWrappers = []any{
+	file_remoteagent_core_v1_app_proto_msgTypes[89].OneofWrappers = []any{
 		(*Effect_Render)(nil),
 		(*Effect_OpenStream)(nil),
 		(*Effect_CloseStream)(nil),
@@ -11844,7 +11748,7 @@ func file_remoteagent_core_v1_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_app_proto_rawDesc), len(file_remoteagent_core_v1_app_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   92,
+			NumMessages:   91,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

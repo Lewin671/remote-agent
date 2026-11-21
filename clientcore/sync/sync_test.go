@@ -1362,15 +1362,7 @@ func TestBackgroundAndStopClearDirectReady(t *testing.T) {
 	startAndConnect(t, e, 1_000)
 	m := &MachineEntry{Machine: lists.Machine{ID: "m-1", Online: false}}
 	e.machines["m-1"] = m
-	e.HandleEvent(&corev1.Event{
-		NowMs: 1_100,
-		Event: &corev1.Event_MachineRouteStatus{
-			MachineRouteStatus: &corev1.MachineRouteStatusEvent{
-				MachineId:   "m-1",
-				DirectReady: true,
-			},
-		},
-	})
+	e.directReady["m-1"] = true
 	if !e.directReady["m-1"] || !e.machineReachable(m) {
 		t.Fatalf("expected m-1 directReady and reachable before background/stop")
 	}
@@ -1387,15 +1379,7 @@ func TestBackgroundAndStopClearDirectReady(t *testing.T) {
 		t.Fatalf("expected BACKGROUND to clear directReady for offline machine, got directReady=%v reachable=%v", e.directReady["m-1"], e.machineReachable(m))
 	}
 
-	e.HandleEvent(&corev1.Event{
-		NowMs: 1_300,
-		Event: &corev1.Event_MachineRouteStatus{
-			MachineRouteStatus: &corev1.MachineRouteStatusEvent{
-				MachineId:   "m-1",
-				DirectReady: true,
-			},
-		},
-	})
+	e.directReady["m-1"] = true
 	e.HandleEvent(&corev1.Event{
 		NowMs: 1_400,
 		Event: &corev1.Event_SyncLifecycle{

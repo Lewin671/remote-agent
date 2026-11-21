@@ -63,16 +63,48 @@ import Testing
         }
     }
 
+    private struct RecordedEvent: Equatable, Sendable {
+        let kind: PBCoreTerminalStreamEventKind
+        let opened: Bool
+    }
+
+    private final class CoreRecorder: @unchecked Sendable {
+        private let lock = NSLock()
+        private var events: [RecordedEvent] = []
+        private var reopenHandler: (@MainActor @Sendable () -> Void)?
+
+        var recorded: [RecordedEvent] {
+            lock.withLock { events }
+        }
+
+        func append(_ kind: PBCoreTerminalStreamEventKind, _ opened: Bool) {
+            lock.withLock { events.append(RecordedEvent(kind: kind, opened: opened)) }
+        }
+
+        func setReopen(_ handler: @escaping @MainActor @Sendable () -> Void) {
+            lock.withLock { reopenHandler = handler }
+        }
+
+        func clearReopen() {
+            lock.withLock { reopenHandler = nil }
+        }
+
+        @MainActor func triggerReopen() {
+            let h = lock.withLock { reopenHandler }
+            h?()
+        }
+    }
+
     private func terminal(
         _ streams: Streams,
         online: Flag = Flag(),
         fail: String? = nil,
-        recovery: TerminalRecovery = TerminalRecovery(budget: RecoveryBudget()),
-        stabilityDuration: Duration = .seconds(5)
+        recorder: CoreRecorder = CoreRecorder(),
+        autoReopenOnClosed: Bool = false
     )
         -> RemoteTerminal
     {
-        let terminal = RemoteTerminal(recovery: recovery, stabilityDuration: stabilityDuration)
+        let terminal = RemoteTerminal()
         terminal.host.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
         terminal.host.layoutIfNeeded()
         terminal.use(
@@ -85,7 +117,21 @@ import Testing
                         try await Task.sleep(for: .milliseconds(5))
                     }
                 },
-                online: { online.on }, hold: { _ in UUID() }, release: { _ in }))
+                online: { online.on },
+                hold: { _ in UUID() },
+                release: { _ in },
+                reportStream: { _, kind, opened in
+                    recorder.append(kind, opened)
+                    if autoReopenOnClosed && kind == .closed && opened {
+                        DispatchQueue.main.async {
+                            MainActor.assumeIsolated { recorder.triggerReopen() }
+                        }
+                    }
+                },
+                subscribeReopen: { _, handler in
+                    recorder.setReopen(handler)
+                    return { recorder.clearReopen() }
+                }))
         return terminal
     }
 
@@ -103,7 +149,7 @@ import Testing
 
     @Test func relayRecoveryKeepsHealthyTerminalAndDoesNotRetypeAfterRealLegLoss() async {
         let streams=Streams(), online=Flag()
-        let terminal=terminal(streams,online:online)
+        let terminal=terminal(streams, online: online, autoReopenOnClosed: true)
         defer {terminal.close()}
         terminal.connect()
         await eventually {streams.count==1}
@@ -287,10 +333,10 @@ import Testing
         t.close()
     }
 
-    /// architecture §11 「积压」: more than the screen keeps up with ends the stream, and another starts from a snapshot.
+    /// architecture §11 「积压」: more than the screen keeps up with ends the stream, and Core's reopen opens another from a snapshot.
     @Test func aBacklogReopensTheStreamInsteadOfSkippingBytes() async {
         let streams = Streams()
-        let t = terminal(streams)
+        let t = terminal(streams, autoReopenOnClosed: true)
         t.connect()
         await eventually { streams.count == 1 }
         let old = streams.listener(0)
@@ -410,80 +456,57 @@ import Testing
         #expect(t.state == .closed(L10n.errorsTerminalConnectionDropped()))
     }
 
-    @Test func repeatedFailuresBeforeStabilityBackOffAndResetAfterStabilizing() async {
+    @Test func terminalEmitsCoreStreamEventsAndReopensOnlyWhenActiveAndOnline() async {
         let streams = Streams()
         let online = Flag()
-        let budget = RecoveryBudget()
-        let recovery = TerminalRecovery(random: { 0.5 }, budget: budget)
-        let t = terminal(streams, online: online, recovery: recovery, stabilityDuration: .milliseconds(80))
-        defer { t.close() }
+        let recorder = CoreRecorder()
+        let t = terminal(streams, online: online, recorder: recorder)
 
         t.connect()
+        #expect(recorder.recorded.last == RecordedEvent(kind: .manualReconnect, opened: false))
         await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("s0"))
         await eventually { t.state == .live }
+        await eventually { recorder.recorded.last == RecordedEvent(kind: .live, opened: true) }
 
-        // First leg failure before 80ms stability reopens immediately using first token.
+        // A close on a previously live stream emits `.closed(opened: true)` and waits for Core's reopen signal.
         streams.listener(0).onClose("c0")
+        await eventually { recorder.recorded.last == RecordedEvent(kind: .closed, opened: true) }
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(streams.count == 1)
+
+        // Core's reopen callback opens a new stream while active and online.
+        recorder.triggerReopen()
         await eventually { streams.count == 2 }
         streams.listener(1).onFrame(snapshot("s1"))
         await eventually { t.state == .live }
 
-        // Second failure before 80ms stability must apply backoff (500ms at random=0.5) instead of spinning.
-        streams.listener(1).onClose("c1")
-        try? await Task.sleep(for: .milliseconds(180))
+        // Explicit close emits `.disposed` and suppresses later Core reopen signals until connect/connectIfNeeded.
+        t.close()
+        #expect(recorder.recorded.last == RecordedEvent(kind: .disposed, opened: false))
+        recorder.triggerReopen()
+        try? await Task.sleep(for: .milliseconds(50))
         #expect(streams.count == 2)
-        if case .closed = t.state {} else {
-            Issue.record("expected closed state during terminal reopen backoff, got \(t.state)")
-        }
 
-        // After the ~500ms backoff window elapses, stream 2 opens.
+        // Coming back online calls `connectIfNeeded`, reactivating and opening a fresh stream.
+        t.connectIfNeeded()
         await eventually { streams.count == 3 }
-        streams.listener(2).onFrame(snapshot("s2"))
-        await eventually { t.state == .live }
-
-        // Stabilizing for > 80ms resets backoff streak so the next failure reopens right away.
-        try? await Task.sleep(for: .milliseconds(130))
-        streams.listener(2).onClose("c2")
-        await eventually { streams.count == 4 }
+        t.close()
     }
 
-    @Test func overflowBeforeStabilityRespectsBackoffAndSharedBudget() async {
-        let streams1 = Streams()
-        let streams2 = Streams()
-        let budget = RecoveryBudget()
-        let t1 = terminal(
-            streams1,
-            recovery: TerminalRecovery(random: { 0.5 }, budget: budget),
-            stabilityDuration: .milliseconds(120)
-        )
-        let t2 = terminal(
-            streams2,
-            recovery: TerminalRecovery(random: { 0.5 }, budget: budget),
-            stabilityDuration: .milliseconds(120)
-        )
-        defer { t1.close(); t2.close() }
+    @Test func openFailureReportsUnopenedCloseAndDoesNotAutoSpin() async {
+        let streams = Streams()
+        let recorder = CoreRecorder()
+        let t = terminal(streams, fail: "连不上终端", recorder: recorder)
 
-        t1.connect()
-        t2.connect()
-        await eventually { streams1.count == 1 && streams2.count == 1 }
-        streams1.listener(0).onFrame(snapshot("a0"))
-        streams2.listener(0).onFrame(snapshot("b0"))
-        await eventually { t1.state == .live && t2.state == .live }
+        t.connect()
+        await eventually { t.state != .connecting }
+        #expect(recorder.recorded.contains { $0 == RecordedEvent(kind: .manualReconnect, opened: false) })
+        #expect(recorder.recorded.last == RecordedEvent(kind: .closed, opened: false))
 
-        let chunk = PBTerminalFrame.with { $0.output = Data(repeating: 0x78, count: 64 * 1024) }
-        for _ in 0..<40 { streams1.listener(0).onFrame(chunk) }
-        await eventually { streams1.count == 2 }
-        streams1.listener(1).onFrame(snapshot("a1"))
-        await eventually { t1.state == .live }
-
-        // Second overflow on t1 before stabilizing must enter backoff rather than reopening immediately.
-        for _ in 0..<40 { streams1.listener(1).onFrame(chunk) }
-        try? await Task.sleep(for: .milliseconds(180))
-        #expect(streams1.count == 2)
-
-        // Meanwhile t2 shares the same process RecoveryBudget: its first close still gets one token immediately.
-        streams2.listener(0).onClose("c0")
-        await eventually { streams2.count == 2 }
+        // Calling connectIfNeeded while still active and in `.closed` waits for Core rather than re-opening immediately.
+        t.connectIfNeeded()
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(streams.count == 1)
     }
 }

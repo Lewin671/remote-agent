@@ -202,7 +202,9 @@
               "sessionId": "s1",
               "deadlineMs": "1791078120050",
               "commandBytes": "+gEECgJzMaAGEQ==",
-              "routeHint": "COMMAND_ROUTE_HINT_READ"
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "1"
             }
           },
           {
