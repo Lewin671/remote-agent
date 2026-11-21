@@ -39,23 +39,12 @@ public interface SecurityOpRequestEventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeOp getSealEnvelope();
 
   /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryOp open_history = 4 [json_name = "openHistory"];</code>
-   * @return Whether the openHistory field is set.
-   */
-  boolean hasOpenHistory();
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryOp open_history = 4 [json_name = "openHistory"];</code>
-   * @return The openHistory.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryOp getOpenHistory();
-
-  /**
-   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 5 [json_name = "getSessionSeed"];</code>
+   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
    * @return Whether the getSessionSeed field is set.
    */
   boolean hasGetSessionSeed();
   /**
-   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 5 [json_name = "getSessionSeed"];</code>
+   * <code>.remoteagent.core.v1.SecurityGetSessionSeedOp get_session_seed = 4 [json_name = "getSessionSeed"];</code>
    * @return The getSessionSeed.
    */
   io.github.lewin671.remoteagent.core.proto.SecurityGetSessionSeedOp getGetSessionSeed();

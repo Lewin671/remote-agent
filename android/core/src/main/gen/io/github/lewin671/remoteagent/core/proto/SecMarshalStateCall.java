@@ -15,61 +15,166 @@ public  final class SecMarshalStateCall extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SecMarshalStateCall)
     SecMarshalStateCallOrBuilder {
   private SecMarshalStateCall() {
+    unsignedCore_ = com.google.protobuf.ByteString.EMPTY;
+    grants_ = emptyProtobufList();
+    prevSecret_ = com.google.protobuf.ByteString.EMPTY;
     signature_ = com.google.protobuf.ByteString.EMPTY;
   }
-  private int bitField0_;
-  public static final int UNSIGNED_FIELD_NUMBER = 1;
-  private io.github.lewin671.remoteagent.core.proto.SecUnsignedState unsigned_;
+  public static final int UNSIGNED_CORE_FIELD_NUMBER = 1;
+  private com.google.protobuf.ByteString unsignedCore_;
   /**
-   * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
+   * <code>bytes unsigned_core = 1 [json_name = "unsignedCore"];</code>
+   * @return The unsignedCore.
    */
   @java.lang.Override
-  public boolean hasUnsigned() {
-    return ((bitField0_ & 0x00000001) != 0);
+  public com.google.protobuf.ByteString getUnsignedCore() {
+    return unsignedCore_;
   }
   /**
-   * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
+   * <code>bytes unsigned_core = 1 [json_name = "unsignedCore"];</code>
+   * @param value The unsignedCore to set.
    */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecUnsignedState getUnsigned() {
-    return unsigned_ == null ? io.github.lewin671.remoteagent.core.proto.SecUnsignedState.getDefaultInstance() : unsigned_;
+  private void setUnsignedCore(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    unsignedCore_ = value;
   }
   /**
-   * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
+   * <code>bytes unsigned_core = 1 [json_name = "unsignedCore"];</code>
    */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setUnsigned(io.github.lewin671.remoteagent.core.proto.SecUnsignedState value) {
-    value.getClass();  // minimal bytecode null check
-    unsigned_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeUnsigned(io.github.lewin671.remoteagent.core.proto.SecUnsignedState value) {
-    value.getClass();  // minimal bytecode null check
-    if (unsigned_ != null &&
-        unsigned_ != io.github.lewin671.remoteagent.core.proto.SecUnsignedState.getDefaultInstance()) {
-      unsigned_ =
-        io.github.lewin671.remoteagent.core.proto.SecUnsignedState.newBuilder(unsigned_).mergeFrom(value).buildPartial();
-    } else {
-      unsigned_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
-   */
-  private void clearUnsigned() {
-    unsigned_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
+  private void clearUnsignedCore() {
+
+    unsignedCore_ = getDefaultInstance().getUnsignedCore();
   }
 
-  public static final int SIGNATURE_FIELD_NUMBER = 2;
+  public static final int GRANTS_FIELD_NUMBER = 2;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SecGrant> grants_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SecGrant> getGrantsList() {
+    return grants_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SecGrantOrBuilder> 
+      getGrantsOrBuilderList() {
+    return grants_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  @java.lang.Override
+  public int getGrantsCount() {
+    return grants_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecGrant getGrants(int index) {
+    return grants_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SecGrantOrBuilder getGrantsOrBuilder(
+      int index) {
+    return grants_.get(index);
+  }
+  private void ensureGrantsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SecGrant> tmp = grants_;
+    if (!tmp.isModifiable()) {
+      grants_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setGrants(
+      int index, io.github.lewin671.remoteagent.core.proto.SecGrant value) {
+    value.getClass();  // minimal bytecode null check
+    ensureGrantsIsMutable();
+    grants_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addGrants(io.github.lewin671.remoteagent.core.proto.SecGrant value) {
+    value.getClass();  // minimal bytecode null check
+    ensureGrantsIsMutable();
+    grants_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addGrants(
+      int index, io.github.lewin671.remoteagent.core.proto.SecGrant value) {
+    value.getClass();  // minimal bytecode null check
+    ensureGrantsIsMutable();
+    grants_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  private void addAllGrants(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SecGrant> values) {
+    ensureGrantsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, grants_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  private void clearGrants() {
+    grants_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  private void removeGrants(int index) {
+    ensureGrantsIsMutable();
+    grants_.remove(index);
+  }
+
+  public static final int PREV_SECRET_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString prevSecret_;
+  /**
+   * <code>bytes prev_secret = 3 [json_name = "prevSecret"];</code>
+   * @return The prevSecret.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getPrevSecret() {
+    return prevSecret_;
+  }
+  /**
+   * <code>bytes prev_secret = 3 [json_name = "prevSecret"];</code>
+   * @param value The prevSecret to set.
+   */
+  private void setPrevSecret(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    prevSecret_ = value;
+  }
+  /**
+   * <code>bytes prev_secret = 3 [json_name = "prevSecret"];</code>
+   */
+  private void clearPrevSecret() {
+
+    prevSecret_ = getDefaultInstance().getPrevSecret();
+  }
+
+  public static final int SIGNATURE_FIELD_NUMBER = 4;
   private com.google.protobuf.ByteString signature_;
   /**
-   * <code>bytes signature = 2 [json_name = "signature"];</code>
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
    * @return The signature.
    */
   @java.lang.Override
@@ -77,7 +182,7 @@ public  final class SecMarshalStateCall extends
     return signature_;
   }
   /**
-   * <code>bytes signature = 2 [json_name = "signature"];</code>
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
    * @param value The signature to set.
    */
   private void setSignature(com.google.protobuf.ByteString value) {
@@ -86,7 +191,7 @@ public  final class SecMarshalStateCall extends
     signature_ = value;
   }
   /**
-   * <code>bytes signature = 2 [json_name = "signature"];</code>
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
    */
   private void clearSignature() {
 
@@ -191,54 +296,165 @@ public  final class SecMarshalStateCall extends
 
 
     /**
-     * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
+     * <code>bytes unsigned_core = 1 [json_name = "unsignedCore"];</code>
+     * @return The unsignedCore.
      */
     @java.lang.Override
-    public boolean hasUnsigned() {
-      return instance.hasUnsigned();
+    public com.google.protobuf.ByteString getUnsignedCore() {
+      return instance.getUnsignedCore();
     }
     /**
-     * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
+     * <code>bytes unsigned_core = 1 [json_name = "unsignedCore"];</code>
+     * @param value The unsignedCore to set.
+     * @return This builder for chaining.
      */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecUnsignedState getUnsigned() {
-      return instance.getUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
-     */
-    public Builder setUnsigned(io.github.lewin671.remoteagent.core.proto.SecUnsignedState value) {
+    public Builder setUnsignedCore(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setUnsigned(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
-     */
-    public Builder setUnsigned(
-        io.github.lewin671.remoteagent.core.proto.SecUnsignedState.Builder builderForValue) {
-      copyOnWrite();
-      instance.setUnsigned(builderForValue.build());
+      instance.setUnsignedCore(value);
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
+     * <code>bytes unsigned_core = 1 [json_name = "unsignedCore"];</code>
+     * @return This builder for chaining.
      */
-    public Builder mergeUnsigned(io.github.lewin671.remoteagent.core.proto.SecUnsignedState value) {
+    public Builder clearUnsignedCore() {
       copyOnWrite();
-      instance.mergeUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
-     */
-    public Builder clearUnsigned() {  copyOnWrite();
-      instance.clearUnsigned();
+      instance.clearUnsignedCore();
       return this;
     }
 
     /**
-     * <code>bytes signature = 2 [json_name = "signature"];</code>
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SecGrant> getGrantsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getGrantsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    @java.lang.Override
+    public int getGrantsCount() {
+      return instance.getGrantsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecGrant getGrants(int index) {
+      return instance.getGrants(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder setGrants(
+        int index, io.github.lewin671.remoteagent.core.proto.SecGrant value) {
+      copyOnWrite();
+      instance.setGrants(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder setGrants(
+        int index, io.github.lewin671.remoteagent.core.proto.SecGrant.Builder builderForValue) {
+      copyOnWrite();
+      instance.setGrants(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder addGrants(io.github.lewin671.remoteagent.core.proto.SecGrant value) {
+      copyOnWrite();
+      instance.addGrants(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder addGrants(
+        int index, io.github.lewin671.remoteagent.core.proto.SecGrant value) {
+      copyOnWrite();
+      instance.addGrants(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder addGrants(
+        io.github.lewin671.remoteagent.core.proto.SecGrant.Builder builderForValue) {
+      copyOnWrite();
+      instance.addGrants(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder addGrants(
+        int index, io.github.lewin671.remoteagent.core.proto.SecGrant.Builder builderForValue) {
+      copyOnWrite();
+      instance.addGrants(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder addAllGrants(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SecGrant> values) {
+      copyOnWrite();
+      instance.addAllGrants(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder clearGrants() {
+      copyOnWrite();
+      instance.clearGrants();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+     */
+    public Builder removeGrants(int index) {
+      copyOnWrite();
+      instance.removeGrants(index);
+      return this;
+    }
+
+    /**
+     * <code>bytes prev_secret = 3 [json_name = "prevSecret"];</code>
+     * @return The prevSecret.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getPrevSecret() {
+      return instance.getPrevSecret();
+    }
+    /**
+     * <code>bytes prev_secret = 3 [json_name = "prevSecret"];</code>
+     * @param value The prevSecret to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPrevSecret(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPrevSecret(value);
+      return this;
+    }
+    /**
+     * <code>bytes prev_secret = 3 [json_name = "prevSecret"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPrevSecret() {
+      copyOnWrite();
+      instance.clearPrevSecret();
+      return this;
+    }
+
+    /**
+     * <code>bytes signature = 4 [json_name = "signature"];</code>
      * @return The signature.
      */
     @java.lang.Override
@@ -246,7 +462,7 @@ public  final class SecMarshalStateCall extends
       return instance.getSignature();
     }
     /**
-     * <code>bytes signature = 2 [json_name = "signature"];</code>
+     * <code>bytes signature = 4 [json_name = "signature"];</code>
      * @param value The signature to set.
      * @return This builder for chaining.
      */
@@ -256,7 +472,7 @@ public  final class SecMarshalStateCall extends
       return this;
     }
     /**
-     * <code>bytes signature = 2 [json_name = "signature"];</code>
+     * <code>bytes signature = 4 [json_name = "signature"];</code>
      * @return This builder for chaining.
      */
     public Builder clearSignature() {
@@ -281,13 +497,15 @@ public  final class SecMarshalStateCall extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
-            "bitField0_",
-            "unsigned_",
+            "unsignedCore_",
+            "grants_",
+            io.github.lewin671.remoteagent.core.proto.SecGrant.class,
+            "prevSecret_",
             "signature_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
-              "\n";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\n\u0002\u001b" +
+              "\u0003\n\u0004\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

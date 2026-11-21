@@ -130,24 +130,24 @@ func TestCoreRoundTrip(t *testing.T) {
 }
 
 func TestCoreSecCallRoundTrip(t *testing.T) {
-	idReq, err := proto.Marshal(&stdcorev1.SecCallRequest{
-		Call: &stdcorev1.SecCallRequest_DeviceId{
-			DeviceId: &stdcorev1.SecDeviceIDCall{EdPublic: make([]byte, 32)},
+	seedReq, err := proto.Marshal(&stdcorev1.SecCallRequest{
+		Call: &stdcorev1.SecCallRequest_Ed25519SeedPublic{
+			Ed25519SeedPublic: &stdcorev1.SecEd25519SeedPublicCall{Seed: make([]byte, 32)},
 		},
 	})
 	if err != nil {
 		t.Fatalf("marshal SecCallRequest: %v", err)
 	}
-	idRespBytes, err := SecCall(idReq)
+	respBytes, err := SecCall(seedReq)
 	if err != nil {
-		t.Fatalf("SecCall(DeviceId): %v", err)
+		t.Fatalf("SecCall(Ed25519SeedPublic): %v", err)
 	}
-	var idResp stdcorev1.SecCallResponse
-	if err := proto.Unmarshal(idRespBytes, &idResp); err != nil {
+	var resp stdcorev1.SecCallResponse
+	if err := proto.Unmarshal(respBytes, &resp); err != nil {
 		t.Fatalf("unmarshal SecCallResponse: %v", err)
 	}
-	if idResp.Error != "" || idResp.Text == "" {
-		t.Fatalf("unexpected SecCall(DeviceId) response: %+v", &idResp)
+	if resp.Error != "" || len(resp.Data) != 32 {
+		t.Fatalf("unexpected SecCall(Ed25519SeedPublic) response: %+v", &resp)
 	}
 
 	_, err = SecCall([]byte{0xff, 0xff, 0xff})

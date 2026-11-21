@@ -189,11 +189,6 @@ message SecuritySealEnvelopeOp {
   bool use_session_seed = 8;
 }
 
-message SecurityOpenHistoryOp {
-  string session_id = 1;
-  repeated remoteagent.v1.Envelope envelopes = 2;
-}
-
 message SecurityGetSessionSeedOp {
   string session_id = 1;
 }
@@ -203,8 +198,7 @@ message SecurityOpRequestEvent {
   oneof op {
     SecurityOpenEnvelopeOp open_envelope = 2;
     SecuritySealEnvelopeOp seal_envelope = 3;
-    SecurityOpenHistoryOp open_history = 4;
-    SecurityGetSessionSeedOp get_session_seed = 5;
+    SecurityGetSessionSeedOp get_session_seed = 4;
   }
 }
 
@@ -228,19 +222,6 @@ message SecuritySealEnvelopeResult {
   bytes payload_hash = 3;
 }
 
-message SecurityOpenedHistoryItem {
-  uint64 seq = 1;
-  bytes plaintext = 2;
-  bool unavailable = 3;
-  bool unsupported = 4;
-  string error = 5;
-  string error_code = 6;
-}
-
-message SecurityOpenHistoryResult {
-  repeated SecurityOpenedHistoryItem items = 1;
-}
-
 message SecurityOpResultEffect {
   uint64 op_id = 1;
   string error = 2;
@@ -248,8 +229,7 @@ message SecurityOpResultEffect {
   oneof result {
     SecurityOpenEnvelopeResult opened = 4;
     SecuritySealEnvelopeResult sealed = 5;
-    SecurityOpenHistoryResult history = 6;
-    bytes session_seed = 7;
+    bytes session_seed = 6;
   }
 }
 
@@ -407,13 +387,7 @@ message SecCallRequest {
     SecVerifyRecoveryStatementCall verify_recovery_statement = 12;
     SecNewRecoveryStatementUnsignedCall new_recovery_statement_unsigned = 13;
     SecMarshalRecoveryStatementCall marshal_recovery_statement = 14;
-    SecNewGenesisUnsignedCall new_genesis_unsigned = 15;
-    SecNewStateUnsignedCall new_state_unsigned = 16;
-    SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17;
-    SecNewPairStateUnsignedCall new_pair_state_unsigned = 18;
-    SecNewHandoffUnsignedCall new_handoff_unsigned = 19;
-    SecNewRecoveryUnsignedCall new_recovery_unsigned = 20;
-    SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21;
+    SecBuildStateCall build_state = 15;
     SecMarshalStateCall marshal_state = 22;
     SecSealPrevSecretCall seal_prev_secret = 23;
     SecOpenPrevSecretCall open_prev_secret = 24;
@@ -428,13 +402,10 @@ message SecCallRequest {
     SecDerivePairSecretsCall derive_pair_secrets = 33;
     SecEd25519SeedPublicCall ed25519_seed_public = 34;
     SecEd25519SeedSignCall ed25519_seed_sign = 35;
-    SecDeviceIDCall device_id = 36;
     SecInflateBoundedCall inflate_bounded = 37;
     SecRequestIdentityCall request_identity = 38;
     SecAccountDeleteSigningBytesCall account_delete_signing_bytes = 39;
     SecOpenNotifyEnvelopeCall open_notify_envelope = 40;
-    SecOpenEnvelopeDirectCall open_envelope_direct = 41;
-    SecSealEnvelopeDirectCall seal_envelope_direct = 42;
   }
 }
 
@@ -508,72 +479,28 @@ message SecMarshalRecoveryStatementCall {
   bytes nonce = 9;
   bytes signature = 10;
 }
-message SecNewGenesisUnsignedCall {
-  string account = 1;
-  bytes domain = 2;
-  SecMember member = 3;
-  bytes recovery_ed = 4;
-  bytes secret = 5;
-  uint64 now_ms = 6;
-  repeated SecKemPair kems = 7;
-}
-message SecNewStateUnsignedCall {
-  bytes parent_state = 1;
-  repeated SecMember members = 2;
-  repeated string removed = 3;
-  bytes secret = 4;
-  bytes prev_secret = 5;
-  uint64 now_ms = 6;
-  repeated SecKemPair kems = 7;
-}
-message SecNewMembershipStateUnsignedCall {
-  bytes parent_state = 1;
-  repeated SecMember members = 2;
-  repeated string removed = 3;
-  bytes old_secret = 4;
-  bytes new_secret = 5;
-  uint64 now_ms = 6;
-  bytes prev_secret_nonce = 7;
-  repeated SecKemPair kems = 8;
-}
-message SecNewPairStateUnsignedCall {
-  bytes parent_state = 1;
-  SecMember candidate = 2;
-  bytes old_secret = 3;
-  bytes new_secret = 4;
-  uint64 now_ms = 5;
-  bytes prev_secret_nonce = 6;
-  repeated SecKemPair kems = 7;
-}
-message SecNewHandoffUnsignedCall {
-  bytes parent_state = 1;
-  string incoming_id = 2;
-  bytes recovery_ed = 3;
-  bytes old_secret = 4;
-  bytes new_secret = 5;
-  uint64 now_ms = 6;
-  bytes prev_secret_nonce = 7;
-  repeated SecKemPair kems = 8;
-}
-message SecNewRecoveryUnsignedCall {
-  bytes parent_state = 1;
-  SecMember new_member = 2;
-  repeated SecMember members = 3;
-  bytes secret = 4;
-  bytes new_recovery_ed = 5;
-  uint64 now_ms = 6;
-  repeated SecKemPair kems = 7;
-}
-message SecNewRecoveryKeyRotationUnsignedCall {
-  bytes parent_state = 1;
-  bytes secret = 2;
-  bytes recovery_ed = 3;
-  uint64 now_ms = 4;
-  repeated SecKemPair kems = 5;
+message SecBuildStateCall {
+  uint32 kind = 1; // 1=Genesis, 2=Membership, 3=Pair, 4=Handoff, 5=Recovery, 6=RecoveryKeyRotation, 7=CustomState
+  string account = 2;
+  bytes domain = 3;
+  bytes parent_state = 4;
+  SecMember member = 5;
+  repeated SecMember members = 6;
+  repeated string removed = 7;
+  string incoming_id = 8;
+  bytes recovery_ed = 9;
+  bytes secret = 10;
+  bytes old_secret = 11;
+  bytes prev_secret = 12;
+  bytes prev_secret_nonce = 13;
+  uint64 now_ms = 14;
+  repeated SecKemPair kems = 15;
 }
 message SecMarshalStateCall {
-  SecUnsignedState unsigned = 1;
-  bytes signature = 2;
+  bytes unsigned_core = 1;
+  repeated SecGrant grants = 2;
+  bytes prev_secret = 3;
+  bytes signature = 4;
 }
 message SecSealPrevSecretCall {
   bytes new_secret = 1;
@@ -633,7 +560,6 @@ message SecDerivePairSecretsCall {
 }
 message SecEd25519SeedPublicCall { bytes seed = 1; }
 message SecEd25519SeedSignCall { bytes seed = 1; bytes message = 2; }
-message SecDeviceIDCall { bytes ed_public = 1; }
 message SecInflateBoundedCall { bytes compressed = 1; uint32 limit = 2; }
 message SecRequestIdentityCall {
   bytes header = 1;
@@ -654,34 +580,6 @@ message SecOpenNotifyEnvelopeCall {
   bytes content_secret = 6;
   remoteagent.v1.Envelope envelope = 7;
 }
-message SecOpenEnvelopeDirectCall {
-  SecPin pin = 1;
-  repeated bytes states = 2;
-  repeated bytes recovery_proofs = 3;
-  bytes content_secret = 4;
-  bytes session_seed = 5;
-  bool live = 6;
-  int64 now_ms = 7;
-  remoteagent.v1.Envelope envelope = 8;
-}
-message SecSealEnvelopeDirectCall {
-  bytes secret = 1;
-  bytes session_seed = 2;
-  string account = 3;
-  bytes domain = 4;
-  uint64 epoch = 5;
-  bytes state_hash = 6;
-  uint64 content_epoch = 7;
-  string sender = 8;
-  uint32 purpose = 9;
-  string machine_id = 10;
-  string session_id = 11;
-  string request_id = 12;
-  uint64 seq = 13;
-  int64 deadline_ms = 14;
-  bytes plaintext = 15;
-  bytes nonce = 16;
-}
 
 message SecCallResponse {
   string error = 1;
@@ -693,18 +591,7 @@ message SecCallResponse {
   SecParsedApproval parsed_approval = 7;
   bytes data = 8;
   bytes secondary_data = 9;
-  bytes tertiary_data = 10;
-  bytes info = 11;
-  bytes aad = 12;
-  string text = 13;
-  repeated string strings = 14;
-  SecPin pin = 15;
-  remoteagent.v1.NotifyContent notify = 16;
-  SecurityOpenEnvelopeResult opened = 17;
-  remoteagent.v1.Envelope envelope = 18;
-  bytes header = 19;
-  bytes origin_bytes = 20;
-  uint64 epoch = 21;
-  uint64 content_epoch = 22;
-  repeated SecParsedState parsed_states = 23;
+  string text = 10;
+  repeated string strings = 11;
+  SecPin pin = 12;
 }

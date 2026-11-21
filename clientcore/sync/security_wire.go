@@ -235,6 +235,9 @@ func (e *Engine) handleSecurityRecord(ctx *StepContext, ev *corev1.SecurityRecor
 	effs := e.secEngine.ApplyRecord(e.nowMs, ev)
 	e.emitRawEffects(ctx, effs)
 	e.syncSecurityStateFromEngine(ctx, true)
+	if _, ok := e.secEngine.CoordInfo(); ev.Error != "" || (!ok && !ev.Removed && !ev.Cleared) {
+		e.emitCoordEffects(ctx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
+	}
 	e.maybeRequestEntropy(ctx)
 }
 

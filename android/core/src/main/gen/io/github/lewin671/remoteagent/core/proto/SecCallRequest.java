@@ -33,13 +33,7 @@ public  final class SecCallRequest extends
     VERIFY_RECOVERY_STATEMENT(12),
     NEW_RECOVERY_STATEMENT_UNSIGNED(13),
     MARSHAL_RECOVERY_STATEMENT(14),
-    NEW_GENESIS_UNSIGNED(15),
-    NEW_STATE_UNSIGNED(16),
-    NEW_MEMBERSHIP_STATE_UNSIGNED(17),
-    NEW_PAIR_STATE_UNSIGNED(18),
-    NEW_HANDOFF_UNSIGNED(19),
-    NEW_RECOVERY_UNSIGNED(20),
-    NEW_RECOVERY_KEY_ROTATION_UNSIGNED(21),
+    BUILD_STATE(15),
     MARSHAL_STATE(22),
     SEAL_PREV_SECRET(23),
     OPEN_PREV_SECRET(24),
@@ -54,13 +48,10 @@ public  final class SecCallRequest extends
     DERIVE_PAIR_SECRETS(33),
     ED25519_SEED_PUBLIC(34),
     ED25519_SEED_SIGN(35),
-    DEVICE_ID(36),
     INFLATE_BOUNDED(37),
     REQUEST_IDENTITY(38),
     ACCOUNT_DELETE_SIGNING_BYTES(39),
     OPEN_NOTIFY_ENVELOPE(40),
-    OPEN_ENVELOPE_DIRECT(41),
-    SEAL_ENVELOPE_DIRECT(42),
     CALL_NOT_SET(0);
     private final int value;
     private CallCase(int value) {
@@ -90,13 +81,7 @@ public  final class SecCallRequest extends
         case 12: return VERIFY_RECOVERY_STATEMENT;
         case 13: return NEW_RECOVERY_STATEMENT_UNSIGNED;
         case 14: return MARSHAL_RECOVERY_STATEMENT;
-        case 15: return NEW_GENESIS_UNSIGNED;
-        case 16: return NEW_STATE_UNSIGNED;
-        case 17: return NEW_MEMBERSHIP_STATE_UNSIGNED;
-        case 18: return NEW_PAIR_STATE_UNSIGNED;
-        case 19: return NEW_HANDOFF_UNSIGNED;
-        case 20: return NEW_RECOVERY_UNSIGNED;
-        case 21: return NEW_RECOVERY_KEY_ROTATION_UNSIGNED;
+        case 15: return BUILD_STATE;
         case 22: return MARSHAL_STATE;
         case 23: return SEAL_PREV_SECRET;
         case 24: return OPEN_PREV_SECRET;
@@ -111,13 +96,10 @@ public  final class SecCallRequest extends
         case 33: return DERIVE_PAIR_SECRETS;
         case 34: return ED25519_SEED_PUBLIC;
         case 35: return ED25519_SEED_SIGN;
-        case 36: return DEVICE_ID;
         case 37: return INFLATE_BOUNDED;
         case 38: return REQUEST_IDENTITY;
         case 39: return ACCOUNT_DELETE_SIGNING_BYTES;
         case 40: return OPEN_NOTIFY_ENVELOPE;
-        case 41: return OPEN_ENVELOPE_DIRECT;
-        case 42: return SEAL_ENVELOPE_DIRECT;
         case 0: return CALL_NOT_SET;
         default: return null;
       }
@@ -867,42 +849,42 @@ public  final class SecCallRequest extends
     }
   }
 
-  public static final int NEW_GENESIS_UNSIGNED_FIELD_NUMBER = 15;
+  public static final int BUILD_STATE_FIELD_NUMBER = 15;
   /**
-   * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+   * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
    */
   @java.lang.Override
-  public boolean hasNewGenesisUnsigned() {
+  public boolean hasBuildState() {
     return callCase_ == 15;
   }
   /**
-   * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+   * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
    */
   @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall getNewGenesisUnsigned() {
+  public io.github.lewin671.remoteagent.core.proto.SecBuildStateCall getBuildState() {
     if (callCase_ == 15) {
-       return (io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall) call_;
+       return (io.github.lewin671.remoteagent.core.proto.SecBuildStateCall) call_;
     }
-    return io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall.getDefaultInstance();
+    return io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.getDefaultInstance();
   }
   /**
-   * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+   * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNewGenesisUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall value) {
+  private void setBuildState(io.github.lewin671.remoteagent.core.proto.SecBuildStateCall value) {
     value.getClass();  // minimal bytecode null check
     call_ = value;
     callCase_ = 15;
   }
   /**
-   * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+   * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeNewGenesisUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall value) {
+  private void mergeBuildState(io.github.lewin671.remoteagent.core.proto.SecBuildStateCall value) {
     value.getClass();  // minimal bytecode null check
     if (callCase_ == 15 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall) call_)
+        call_ != io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.getDefaultInstance()) {
+      call_ = io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecBuildStateCall) call_)
           .mergeFrom(value).buildPartial();
     } else {
       call_ = value;
@@ -910,322 +892,10 @@ public  final class SecCallRequest extends
     callCase_ = 15;
   }
   /**
-   * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+   * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
    */
-  private void clearNewGenesisUnsigned() {
+  private void clearBuildState() {
     if (callCase_ == 15) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
-  public static final int NEW_STATE_UNSIGNED_FIELD_NUMBER = 16;
-  /**
-   * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-   */
-  @java.lang.Override
-  public boolean hasNewStateUnsigned() {
-    return callCase_ == 16;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall getNewStateUnsigned() {
-    if (callCase_ == 16) {
-       return (io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNewStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 16;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeNewStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 16 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 16;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-   */
-  private void clearNewStateUnsigned() {
-    if (callCase_ == 16) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
-  public static final int NEW_MEMBERSHIP_STATE_UNSIGNED_FIELD_NUMBER = 17;
-  /**
-   * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-   */
-  @java.lang.Override
-  public boolean hasNewMembershipStateUnsigned() {
-    return callCase_ == 17;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall getNewMembershipStateUnsigned() {
-    if (callCase_ == 17) {
-       return (io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNewMembershipStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 17;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeNewMembershipStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 17 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 17;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-   */
-  private void clearNewMembershipStateUnsigned() {
-    if (callCase_ == 17) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
-  public static final int NEW_PAIR_STATE_UNSIGNED_FIELD_NUMBER = 18;
-  /**
-   * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-   */
-  @java.lang.Override
-  public boolean hasNewPairStateUnsigned() {
-    return callCase_ == 18;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall getNewPairStateUnsigned() {
-    if (callCase_ == 18) {
-       return (io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNewPairStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 18;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeNewPairStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 18 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 18;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-   */
-  private void clearNewPairStateUnsigned() {
-    if (callCase_ == 18) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
-  public static final int NEW_HANDOFF_UNSIGNED_FIELD_NUMBER = 19;
-  /**
-   * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-   */
-  @java.lang.Override
-  public boolean hasNewHandoffUnsigned() {
-    return callCase_ == 19;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall getNewHandoffUnsigned() {
-    if (callCase_ == 19) {
-       return (io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNewHandoffUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 19;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeNewHandoffUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 19 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 19;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-   */
-  private void clearNewHandoffUnsigned() {
-    if (callCase_ == 19) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
-  public static final int NEW_RECOVERY_UNSIGNED_FIELD_NUMBER = 20;
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-   */
-  @java.lang.Override
-  public boolean hasNewRecoveryUnsigned() {
-    return callCase_ == 20;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall getNewRecoveryUnsigned() {
-    if (callCase_ == 20) {
-       return (io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNewRecoveryUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 20;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeNewRecoveryUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 20 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 20;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-   */
-  private void clearNewRecoveryUnsigned() {
-    if (callCase_ == 20) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
-  public static final int NEW_RECOVERY_KEY_ROTATION_UNSIGNED_FIELD_NUMBER = 21;
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-   */
-  @java.lang.Override
-  public boolean hasNewRecoveryKeyRotationUnsigned() {
-    return callCase_ == 21;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall getNewRecoveryKeyRotationUnsigned() {
-    if (callCase_ == 21) {
-       return (io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNewRecoveryKeyRotationUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 21;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeNewRecoveryKeyRotationUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 21 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 21;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-   */
-  private void clearNewRecoveryKeyRotationUnsigned() {
-    if (callCase_ == 21) {
       callCase_ = 0;
       call_ = null;
     }
@@ -1959,58 +1629,6 @@ public  final class SecCallRequest extends
     }
   }
 
-  public static final int DEVICE_ID_FIELD_NUMBER = 36;
-  /**
-   * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-   */
-  @java.lang.Override
-  public boolean hasDeviceId() {
-    return callCase_ == 36;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall getDeviceId() {
-    if (callCase_ == 36) {
-       return (io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setDeviceId(io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 36;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeDeviceId(io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 36 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 36;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-   */
-  private void clearDeviceId() {
-    if (callCase_ == 36) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
   public static final int INFLATE_BOUNDED_FIELD_NUMBER = 37;
   /**
    * <code>.remoteagent.core.v1.SecInflateBoundedCall inflate_bounded = 37 [json_name = "inflateBounded"];</code>
@@ -2214,110 +1832,6 @@ public  final class SecCallRequest extends
    */
   private void clearOpenNotifyEnvelope() {
     if (callCase_ == 40) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
-  public static final int OPEN_ENVELOPE_DIRECT_FIELD_NUMBER = 41;
-  /**
-   * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-   */
-  @java.lang.Override
-  public boolean hasOpenEnvelopeDirect() {
-    return callCase_ == 41;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall getOpenEnvelopeDirect() {
-    if (callCase_ == 41) {
-       return (io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setOpenEnvelopeDirect(io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 41;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeOpenEnvelopeDirect(io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 41 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 41;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-   */
-  private void clearOpenEnvelopeDirect() {
-    if (callCase_ == 41) {
-      callCase_ = 0;
-      call_ = null;
-    }
-  }
-
-  public static final int SEAL_ENVELOPE_DIRECT_FIELD_NUMBER = 42;
-  /**
-   * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSealEnvelopeDirect() {
-    return callCase_ == 42;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall getSealEnvelopeDirect() {
-    if (callCase_ == 42) {
-       return (io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall) call_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSealEnvelopeDirect(io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall value) {
-    value.getClass();  // minimal bytecode null check
-    call_ = value;
-    callCase_ = 42;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSealEnvelopeDirect(io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall value) {
-    value.getClass();  // minimal bytecode null check
-    if (callCase_ == 42 &&
-        call_ != io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall.getDefaultInstance()) {
-      call_ = io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall.newBuilder((io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall) call_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      call_ = value;
-    }
-    callCase_ = 42;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-   */
-  private void clearSealEnvelopeDirect() {
-    if (callCase_ == 42) {
       callCase_ = 0;
       call_ = null;
     }
@@ -3105,338 +2619,50 @@ public  final class SecCallRequest extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+     * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
      */
     @java.lang.Override
-    public boolean hasNewGenesisUnsigned() {
-      return instance.hasNewGenesisUnsigned();
+    public boolean hasBuildState() {
+      return instance.hasBuildState();
     }
     /**
-     * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+     * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
      */
     @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall getNewGenesisUnsigned() {
-      return instance.getNewGenesisUnsigned();
+    public io.github.lewin671.remoteagent.core.proto.SecBuildStateCall getBuildState() {
+      return instance.getBuildState();
     }
     /**
-     * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+     * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
      */
-    public Builder setNewGenesisUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall value) {
+    public Builder setBuildState(io.github.lewin671.remoteagent.core.proto.SecBuildStateCall value) {
       copyOnWrite();
-      instance.setNewGenesisUnsigned(value);
+      instance.setBuildState(value);
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+     * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
      */
-    public Builder setNewGenesisUnsigned(
-        io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall.Builder builderForValue) {
+    public Builder setBuildState(
+        io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.Builder builderForValue) {
       copyOnWrite();
-      instance.setNewGenesisUnsigned(builderForValue.build());
+      instance.setBuildState(builderForValue.build());
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+     * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
      */
-    public Builder mergeNewGenesisUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall value) {
+    public Builder mergeBuildState(io.github.lewin671.remoteagent.core.proto.SecBuildStateCall value) {
       copyOnWrite();
-      instance.mergeNewGenesisUnsigned(value);
+      instance.mergeBuildState(value);
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
+     * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
      */
-    public Builder clearNewGenesisUnsigned() {
+    public Builder clearBuildState() {
       copyOnWrite();
-      instance.clearNewGenesisUnsigned();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-     */
-    @java.lang.Override
-    public boolean hasNewStateUnsigned() {
-      return instance.hasNewStateUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall getNewStateUnsigned() {
-      return instance.getNewStateUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-     */
-    public Builder setNewStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall value) {
-      copyOnWrite();
-      instance.setNewStateUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-     */
-    public Builder setNewStateUnsigned(
-        io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setNewStateUnsigned(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-     */
-    public Builder mergeNewStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall value) {
-      copyOnWrite();
-      instance.mergeNewStateUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-     */
-    public Builder clearNewStateUnsigned() {
-      copyOnWrite();
-      instance.clearNewStateUnsigned();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-     */
-    @java.lang.Override
-    public boolean hasNewMembershipStateUnsigned() {
-      return instance.hasNewMembershipStateUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall getNewMembershipStateUnsigned() {
-      return instance.getNewMembershipStateUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-     */
-    public Builder setNewMembershipStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall value) {
-      copyOnWrite();
-      instance.setNewMembershipStateUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-     */
-    public Builder setNewMembershipStateUnsigned(
-        io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setNewMembershipStateUnsigned(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-     */
-    public Builder mergeNewMembershipStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall value) {
-      copyOnWrite();
-      instance.mergeNewMembershipStateUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-     */
-    public Builder clearNewMembershipStateUnsigned() {
-      copyOnWrite();
-      instance.clearNewMembershipStateUnsigned();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-     */
-    @java.lang.Override
-    public boolean hasNewPairStateUnsigned() {
-      return instance.hasNewPairStateUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall getNewPairStateUnsigned() {
-      return instance.getNewPairStateUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-     */
-    public Builder setNewPairStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall value) {
-      copyOnWrite();
-      instance.setNewPairStateUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-     */
-    public Builder setNewPairStateUnsigned(
-        io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setNewPairStateUnsigned(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-     */
-    public Builder mergeNewPairStateUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall value) {
-      copyOnWrite();
-      instance.mergeNewPairStateUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-     */
-    public Builder clearNewPairStateUnsigned() {
-      copyOnWrite();
-      instance.clearNewPairStateUnsigned();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-     */
-    @java.lang.Override
-    public boolean hasNewHandoffUnsigned() {
-      return instance.hasNewHandoffUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall getNewHandoffUnsigned() {
-      return instance.getNewHandoffUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-     */
-    public Builder setNewHandoffUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall value) {
-      copyOnWrite();
-      instance.setNewHandoffUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-     */
-    public Builder setNewHandoffUnsigned(
-        io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setNewHandoffUnsigned(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-     */
-    public Builder mergeNewHandoffUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall value) {
-      copyOnWrite();
-      instance.mergeNewHandoffUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-     */
-    public Builder clearNewHandoffUnsigned() {
-      copyOnWrite();
-      instance.clearNewHandoffUnsigned();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-     */
-    @java.lang.Override
-    public boolean hasNewRecoveryUnsigned() {
-      return instance.hasNewRecoveryUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall getNewRecoveryUnsigned() {
-      return instance.getNewRecoveryUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-     */
-    public Builder setNewRecoveryUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall value) {
-      copyOnWrite();
-      instance.setNewRecoveryUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-     */
-    public Builder setNewRecoveryUnsigned(
-        io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setNewRecoveryUnsigned(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-     */
-    public Builder mergeNewRecoveryUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall value) {
-      copyOnWrite();
-      instance.mergeNewRecoveryUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-     */
-    public Builder clearNewRecoveryUnsigned() {
-      copyOnWrite();
-      instance.clearNewRecoveryUnsigned();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-     */
-    @java.lang.Override
-    public boolean hasNewRecoveryKeyRotationUnsigned() {
-      return instance.hasNewRecoveryKeyRotationUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall getNewRecoveryKeyRotationUnsigned() {
-      return instance.getNewRecoveryKeyRotationUnsigned();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-     */
-    public Builder setNewRecoveryKeyRotationUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall value) {
-      copyOnWrite();
-      instance.setNewRecoveryKeyRotationUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-     */
-    public Builder setNewRecoveryKeyRotationUnsigned(
-        io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setNewRecoveryKeyRotationUnsigned(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-     */
-    public Builder mergeNewRecoveryKeyRotationUnsigned(io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall value) {
-      copyOnWrite();
-      instance.mergeNewRecoveryKeyRotationUnsigned(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-     */
-    public Builder clearNewRecoveryKeyRotationUnsigned() {
-      copyOnWrite();
-      instance.clearNewRecoveryKeyRotationUnsigned();
+      instance.clearBuildState();
       return this;
     }
 
@@ -4113,54 +3339,6 @@ public  final class SecCallRequest extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-     */
-    @java.lang.Override
-    public boolean hasDeviceId() {
-      return instance.hasDeviceId();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall getDeviceId() {
-      return instance.getDeviceId();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-     */
-    public Builder setDeviceId(io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall value) {
-      copyOnWrite();
-      instance.setDeviceId(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-     */
-    public Builder setDeviceId(
-        io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setDeviceId(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-     */
-    public Builder mergeDeviceId(io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall value) {
-      copyOnWrite();
-      instance.mergeDeviceId(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-     */
-    public Builder clearDeviceId() {
-      copyOnWrite();
-      instance.clearDeviceId();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SecInflateBoundedCall inflate_bounded = 37 [json_name = "inflateBounded"];</code>
      */
     @java.lang.Override
@@ -4352,102 +3530,6 @@ public  final class SecCallRequest extends
       return this;
     }
 
-    /**
-     * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-     */
-    @java.lang.Override
-    public boolean hasOpenEnvelopeDirect() {
-      return instance.hasOpenEnvelopeDirect();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall getOpenEnvelopeDirect() {
-      return instance.getOpenEnvelopeDirect();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-     */
-    public Builder setOpenEnvelopeDirect(io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall value) {
-      copyOnWrite();
-      instance.setOpenEnvelopeDirect(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-     */
-    public Builder setOpenEnvelopeDirect(
-        io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setOpenEnvelopeDirect(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-     */
-    public Builder mergeOpenEnvelopeDirect(io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall value) {
-      copyOnWrite();
-      instance.mergeOpenEnvelopeDirect(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-     */
-    public Builder clearOpenEnvelopeDirect() {
-      copyOnWrite();
-      instance.clearOpenEnvelopeDirect();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSealEnvelopeDirect() {
-      return instance.hasSealEnvelopeDirect();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall getSealEnvelopeDirect() {
-      return instance.getSealEnvelopeDirect();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-     */
-    public Builder setSealEnvelopeDirect(io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall value) {
-      copyOnWrite();
-      instance.setSealEnvelopeDirect(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-     */
-    public Builder setSealEnvelopeDirect(
-        io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSealEnvelopeDirect(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-     */
-    public Builder mergeSealEnvelopeDirect(io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall value) {
-      copyOnWrite();
-      instance.mergeSealEnvelopeDirect(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-     */
-    public Builder clearSealEnvelopeDirect() {
-      copyOnWrite();
-      instance.clearSealEnvelopeDirect();
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecCallRequest)
   }
   @java.lang.Override
@@ -4480,13 +3562,7 @@ public  final class SecCallRequest extends
             io.github.lewin671.remoteagent.core.proto.SecVerifyRecoveryStatementCall.class,
             io.github.lewin671.remoteagent.core.proto.SecNewRecoveryStatementUnsignedCall.class,
             io.github.lewin671.remoteagent.core.proto.SecMarshalRecoveryStatementCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall.class,
+            io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.class,
             io.github.lewin671.remoteagent.core.proto.SecMarshalStateCall.class,
             io.github.lewin671.remoteagent.core.proto.SecSealPrevSecretCall.class,
             io.github.lewin671.remoteagent.core.proto.SecOpenPrevSecretCall.class,
@@ -4501,22 +3577,17 @@ public  final class SecCallRequest extends
             io.github.lewin671.remoteagent.core.proto.SecDerivePairSecretsCall.class,
             io.github.lewin671.remoteagent.core.proto.SecEd25519SeedPublicCall.class,
             io.github.lewin671.remoteagent.core.proto.SecEd25519SeedSignCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall.class,
             io.github.lewin671.remoteagent.core.proto.SecInflateBoundedCall.class,
             io.github.lewin671.remoteagent.core.proto.SecRequestIdentityCall.class,
             io.github.lewin671.remoteagent.core.proto.SecAccountDeleteSigningBytesCall.class,
             io.github.lewin671.remoteagent.core.proto.SecOpenNotifyEnvelopeCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall.class,
-            io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall.class,
           };
           java.lang.String info =
-              "\u0000*\u0001\u0000\u0001**\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003<\u0000" +
+              "\u0000!\u0001\u0000\u0001(!\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003<\u0000" +
               "\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b" +
-              "<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012" +
-              "<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000\u0018<\u0000" +
-              "\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001c<\u0000\u001d<\u0000\u001e<\u0000\u001f" +
-              "<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000" +
-              ")<\u0000*<\u0000";
+              "<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0016<\u0000\u0017<\u0000\u0018" +
+              "<\u0000\u0019<\u0000\u001a<\u0000\u001b<\u0000\u001c<\u0000\u001d<\u0000\u001e<\u0000" +
+              "\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000%<\u0000&<\u0000\'<\u0000(<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

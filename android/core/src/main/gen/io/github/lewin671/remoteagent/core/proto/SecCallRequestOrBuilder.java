@@ -165,81 +165,15 @@ public interface SecCallRequestOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecMarshalRecoveryStatementCall getMarshalRecoveryStatement();
 
   /**
-   * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
-   * @return Whether the newGenesisUnsigned field is set.
+   * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
+   * @return Whether the buildState field is set.
    */
-  boolean hasNewGenesisUnsigned();
+  boolean hasBuildState();
   /**
-   * <code>.remoteagent.core.v1.SecNewGenesisUnsignedCall new_genesis_unsigned = 15 [json_name = "newGenesisUnsigned"];</code>
-   * @return The newGenesisUnsigned.
+   * <code>.remoteagent.core.v1.SecBuildStateCall build_state = 15 [json_name = "buildState"];</code>
+   * @return The buildState.
    */
-  io.github.lewin671.remoteagent.core.proto.SecNewGenesisUnsignedCall getNewGenesisUnsigned();
-
-  /**
-   * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-   * @return Whether the newStateUnsigned field is set.
-   */
-  boolean hasNewStateUnsigned();
-  /**
-   * <code>.remoteagent.core.v1.SecNewStateUnsignedCall new_state_unsigned = 16 [json_name = "newStateUnsigned"];</code>
-   * @return The newStateUnsigned.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecNewStateUnsignedCall getNewStateUnsigned();
-
-  /**
-   * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-   * @return Whether the newMembershipStateUnsigned field is set.
-   */
-  boolean hasNewMembershipStateUnsigned();
-  /**
-   * <code>.remoteagent.core.v1.SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17 [json_name = "newMembershipStateUnsigned"];</code>
-   * @return The newMembershipStateUnsigned.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecNewMembershipStateUnsignedCall getNewMembershipStateUnsigned();
-
-  /**
-   * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-   * @return Whether the newPairStateUnsigned field is set.
-   */
-  boolean hasNewPairStateUnsigned();
-  /**
-   * <code>.remoteagent.core.v1.SecNewPairStateUnsignedCall new_pair_state_unsigned = 18 [json_name = "newPairStateUnsigned"];</code>
-   * @return The newPairStateUnsigned.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecNewPairStateUnsignedCall getNewPairStateUnsigned();
-
-  /**
-   * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-   * @return Whether the newHandoffUnsigned field is set.
-   */
-  boolean hasNewHandoffUnsigned();
-  /**
-   * <code>.remoteagent.core.v1.SecNewHandoffUnsignedCall new_handoff_unsigned = 19 [json_name = "newHandoffUnsigned"];</code>
-   * @return The newHandoffUnsigned.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecNewHandoffUnsignedCall getNewHandoffUnsigned();
-
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-   * @return Whether the newRecoveryUnsigned field is set.
-   */
-  boolean hasNewRecoveryUnsigned();
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryUnsignedCall new_recovery_unsigned = 20 [json_name = "newRecoveryUnsigned"];</code>
-   * @return The newRecoveryUnsigned.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecNewRecoveryUnsignedCall getNewRecoveryUnsigned();
-
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-   * @return Whether the newRecoveryKeyRotationUnsigned field is set.
-   */
-  boolean hasNewRecoveryKeyRotationUnsigned();
-  /**
-   * <code>.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21 [json_name = "newRecoveryKeyRotationUnsigned"];</code>
-   * @return The newRecoveryKeyRotationUnsigned.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecNewRecoveryKeyRotationUnsignedCall getNewRecoveryKeyRotationUnsigned();
+  io.github.lewin671.remoteagent.core.proto.SecBuildStateCall getBuildState();
 
   /**
    * <code>.remoteagent.core.v1.SecMarshalStateCall marshal_state = 22 [json_name = "marshalState"];</code>
@@ -396,17 +330,6 @@ public interface SecCallRequestOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecEd25519SeedSignCall getEd25519SeedSign();
 
   /**
-   * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-   * @return Whether the deviceId field is set.
-   */
-  boolean hasDeviceId();
-  /**
-   * <code>.remoteagent.core.v1.SecDeviceIDCall device_id = 36 [json_name = "deviceId"];</code>
-   * @return The deviceId.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecDeviceIDCall getDeviceId();
-
-  /**
    * <code>.remoteagent.core.v1.SecInflateBoundedCall inflate_bounded = 37 [json_name = "inflateBounded"];</code>
    * @return Whether the inflateBounded field is set.
    */
@@ -449,28 +372,6 @@ public interface SecCallRequestOrBuilder extends
    * @return The openNotifyEnvelope.
    */
   io.github.lewin671.remoteagent.core.proto.SecOpenNotifyEnvelopeCall getOpenNotifyEnvelope();
-
-  /**
-   * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-   * @return Whether the openEnvelopeDirect field is set.
-   */
-  boolean hasOpenEnvelopeDirect();
-  /**
-   * <code>.remoteagent.core.v1.SecOpenEnvelopeDirectCall open_envelope_direct = 41 [json_name = "openEnvelopeDirect"];</code>
-   * @return The openEnvelopeDirect.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecOpenEnvelopeDirectCall getOpenEnvelopeDirect();
-
-  /**
-   * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-   * @return Whether the sealEnvelopeDirect field is set.
-   */
-  boolean hasSealEnvelopeDirect();
-  /**
-   * <code>.remoteagent.core.v1.SecSealEnvelopeDirectCall seal_envelope_direct = 42 [json_name = "sealEnvelopeDirect"];</code>
-   * @return The sealEnvelopeDirect.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecSealEnvelopeDirectCall getSealEnvelopeDirect();
 
   public io.github.lewin671.remoteagent.core.proto.SecCallRequest.CallCase getCallCase();
 }

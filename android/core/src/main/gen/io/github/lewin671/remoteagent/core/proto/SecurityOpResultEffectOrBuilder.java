@@ -63,23 +63,12 @@ public interface SecurityOpResultEffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeResult getSealed();
 
   /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-   * @return Whether the history field is set.
-   */
-  boolean hasHistory();
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-   * @return The history.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult getHistory();
-
-  /**
-   * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
    * @return Whether the sessionSeed field is set.
    */
   boolean hasSessionSeed();
   /**
-   * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
    * @return The sessionSeed.
    */
   com.google.protobuf.ByteString getSessionSeed();

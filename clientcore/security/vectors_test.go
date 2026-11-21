@@ -2,6 +2,8 @@ package security
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -14,7 +16,9 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
+	"google.golang.org/protobuf/proto"
 )
 
 func loadVectorJSON(t *testing.T, relPath string, out any) {
@@ -453,8 +457,9 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 	dh, _ := eph.ECDH(phone.x.PublicKey())
 
 	genResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_NewGenesisUnsigned{
-			NewGenesisUnsigned: &corev1.SecNewGenesisUnsignedCall{
+		Call: &corev1.SecCallRequest_BuildState{
+			BuildState: &corev1.SecBuildStateCall{
+				Kind:       1,
 				Account:    phone.id,
 				Domain:     dom[:],
 				RecoveryEd: phone.edP,
@@ -475,14 +480,16 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 		},
 	})
 	if genResp.Error != "" || genResp.UnsignedState == nil {
-		t.Fatalf("NewGenesisUnsigned failed: %s", genResp.Error)
+		t.Fatalf("BuildState(Genesis) failed: %s", genResp.Error)
 	}
 	sig0 := ed25519.Sign(phone.ed, genResp.UnsignedState.SigningBytes)
 	mResp := SecCall(&corev1.SecCallRequest{
 		Call: &corev1.SecCallRequest_MarshalState{
 			MarshalState: &corev1.SecMarshalStateCall{
-				Unsigned:  genResp.UnsignedState,
-				Signature: sig0,
+				UnsignedCore: genResp.UnsignedState.UnsignedCore,
+				Grants:       genResp.UnsignedState.Grants,
+				PrevSecret:   genResp.UnsignedState.PrevSecret,
+				Signature:    sig0,
 			},
 		},
 	})
@@ -498,11 +505,12 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 	dhM, _ := ephM.ECDH(machine.x.PublicKey())
 	sec2 := bytes.Repeat([]byte{0x34}, 32)
 	addResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_NewMembershipStateUnsigned{
-			NewMembershipStateUnsigned: &corev1.SecNewMembershipStateUnsignedCall{
+		Call: &corev1.SecCallRequest_BuildState{
+			BuildState: &corev1.SecBuildStateCall{
+				Kind:            2,
 				ParentState:     mResp.Data,
 				OldSecret:       sec1,
-				NewSecret:       sec2,
+				Secret:          sec2,
 				NowMs:           nowMs + 10,
 				PrevSecretNonce: bytes.Repeat([]byte{0xaa}, 12),
 				Members: []*corev1.SecMember{
@@ -517,13 +525,15 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 		},
 	})
 	if addResp.Error != "" {
-		t.Fatalf("NewMembershipStateUnsigned failed: %s", addResp.Error)
+		t.Fatalf("BuildState(Membership) failed: %s", addResp.Error)
 	}
 	m2Resp := SecCall(&corev1.SecCallRequest{
 		Call: &corev1.SecCallRequest_MarshalState{
 			MarshalState: &corev1.SecMarshalStateCall{
-				Unsigned:  addResp.UnsignedState,
-				Signature: ed25519.Sign(phone.ed, addResp.UnsignedState.SigningBytes),
+				UnsignedCore: addResp.UnsignedState.UnsignedCore,
+				Grants:       addResp.UnsignedState.Grants,
+				PrevSecret:   addResp.UnsignedState.PrevSecret,
+				Signature:    ed25519.Sign(phone.ed, addResp.UnsignedState.SigningBytes),
 			},
 		},
 	})
@@ -555,41 +565,40 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 		t.Fatalf("MarshalLease failed: %s", lm.Error)
 	}
 
-	// Seal NotifyContent using SealEnvelopeDirect, sign origin externally, open via OpenNotifyEnvelope!
-	notifyMsg := &v1.NotifyContent{
-		Kind:        v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
+	// Seal NotifyContent and open via OpenNotifyEnvelope.
+	nPlain, err := proto.Marshal(&stdv1.NotifyContent{
+		Kind:        stdv1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
 		MachineId:   machine.id,
 		SessionId:   "sess-n1",
 		MachineName: "devbox",
 		Title:       "done",
-	}
-	nPlain, err := notifyMsg.Marshal()
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	sealedN := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_SealEnvelopeDirect{
-			SealEnvelopeDirect: &corev1.SecSealEnvelopeDirectCall{
-				Secret:       sec2,
-				Account:      phone.id,
-				Domain:       dom[:],
-				Epoch:        m2Resp.ParsedState.Epoch,
-				StateHash:    m2Resp.ParsedState.StateHash,
-				ContentEpoch: m2Resp.ParsedState.ContentEpoch,
-				Sender:       machine.id,
-				Purpose:      uint32(devicesec.Notify),
-				MachineId:    machine.id,
-				SessionId:    "sess-n1",
-				RequestId:    "notify-req-1",
-				Plaintext:    nPlain,
-				Nonce:        bytes.Repeat([]byte{0xbb}, 12),
-			},
-		},
-	})
-	if sealedN.Error != "" || sealedN.Envelope == nil {
-		t.Fatalf("SealEnvelopeDirect failed: %s", sealedN.Error)
+	var sh32 devicesec.Hash
+	copy(sh32[:], m2Resp.ParsedState.StateHash)
+	nh := devicesec.Header{
+		Account: phone.id, Domain: dom, Epoch: m2Resp.ParsedState.Epoch, State: sh32,
+		ContentEpoch: m2Resp.ParsedState.ContentEpoch, Sender: machine.id,
+		Kind: devicesec.Notify.Kind(), Purpose: devicesec.Notify,
+		Machine: machine.id, Session: "sess-n1", Request: "notify-req-1",
 	}
-	sealedN.Envelope.Signature = ed25519.Sign(machine.ed, sealedN.OriginBytes)
+	hb, aesKey, nonce, err := devicesec.PrepareCiphertext(sec2, nil, nh, len(nPlain), bytes.NewReader(bytes.Repeat([]byte{0xbb}, 12)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	blk, _ := aes.NewCipher(aesKey)
+	aead, _ := cipher.NewGCM(blk)
+	ct, originMsg, err := devicesec.AssembleCiphertext(hb, nonce, aead.Seal(nil, nonce, nPlain, hb))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ct.Origin = ed25519.Sign(machine.ed, originMsg)
+	nEnv, err := ToProtoEnvelope(ct)
+	if err != nil {
+		t.Fatal(err)
+	}
 	openN := SecCall(&corev1.SecCallRequest{
 		Call: &corev1.SecCallRequest_OpenNotifyEnvelope{
 			OpenNotifyEnvelope: &corev1.SecOpenNotifyEnvelopeCall{
@@ -597,22 +606,22 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 				States:   [][]byte{mResp.Data, m2Resp.Data},
 				MemberId: phone.id,
 				Dh:       dh,
-				Envelope: sealedN.Envelope,
+				Envelope: nEnv,
 			},
 		},
 	})
-	if openN.Error != "" || openN.Notify == nil || openN.Notify.Title != "done" {
-		t.Fatalf("OpenNotifyEnvelope failed: err=%s notify=%+v", openN.Error, openN.Notify)
+	var gotNotify v1.NotifyContent
+	if openN.Error != "" || len(openN.Data) == 0 || !bytes.Equal(openN.SecondaryData, sec2) || gotNotify.Unmarshal(openN.Data) != nil || gotNotify.Title != "done" {
+		t.Fatalf("OpenNotifyEnvelope failed: err=%s dataLen=%d title=%q", openN.Error, len(openN.Data), gotNotify.Title)
 	}
 
-	// Verify ed25519 seed & device_id & account_delete_signing_bytes helpers.
+	// Verify ed25519 seed & account_delete_signing_bytes helpers.
 	seed := bytes.Repeat([]byte{0x15}, 32)
 	pubR := SecCall(&corev1.SecCallRequest{Call: &corev1.SecCallRequest_Ed25519SeedPublic{Ed25519SeedPublic: &corev1.SecEd25519SeedPublicCall{Seed: seed}}})
-	idR := SecCall(&corev1.SecCallRequest{Call: &corev1.SecCallRequest_DeviceId{DeviceId: &corev1.SecDeviceIDCall{EdPublic: pubR.Data}}})
 	delR := SecCall(&corev1.SecCallRequest{
 		Call: &corev1.SecCallRequest_AccountDeleteSigningBytes{
 			AccountDeleteSigningBytes: &corev1.SecAccountDeleteSigningBytesCall{
-				Account:   idR.Text,
+				Account:   devicesec.ID(pubR.Data),
 				HeadHash:  m2Resp.ParsedState.StateHash,
 				Challenge: []byte("chal-1"),
 			},

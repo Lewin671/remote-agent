@@ -11,18 +11,33 @@ public interface SecMarshalStateCallOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
-   * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
-   * @return Whether the unsigned field is set.
+   * <code>bytes unsigned_core = 1 [json_name = "unsignedCore"];</code>
+   * @return The unsignedCore.
    */
-  boolean hasUnsigned();
-  /**
-   * <code>.remoteagent.core.v1.SecUnsignedState unsigned = 1 [json_name = "unsigned"];</code>
-   * @return The unsigned.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecUnsignedState getUnsigned();
+  com.google.protobuf.ByteString getUnsignedCore();
 
   /**
-   * <code>bytes signature = 2 [json_name = "signature"];</code>
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SecGrant> 
+      getGrantsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SecGrant getGrants(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SecGrant grants = 2 [json_name = "grants"];</code>
+   */
+  int getGrantsCount();
+
+  /**
+   * <code>bytes prev_secret = 3 [json_name = "prevSecret"];</code>
+   * @return The prevSecret.
+   */
+  com.google.protobuf.ByteString getPrevSecret();
+
+  /**
+   * <code>bytes signature = 4 [json_name = "signature"];</code>
    * @return The signature.
    */
   com.google.protobuf.ByteString getSignature();

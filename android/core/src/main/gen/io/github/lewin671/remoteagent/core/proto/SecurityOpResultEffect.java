@@ -23,8 +23,7 @@ public  final class SecurityOpResultEffect extends
   public enum ResultCase {
     OPENED(4),
     SEALED(5),
-    HISTORY(6),
-    SESSION_SEED(7),
+    SESSION_SEED(6),
     RESULT_NOT_SET(0);
     private final int value;
     private ResultCase(int value) {
@@ -42,8 +41,7 @@ public  final class SecurityOpResultEffect extends
       switch (value) {
         case 4: return OPENED;
         case 5: return SEALED;
-        case 6: return HISTORY;
-        case 7: return SESSION_SEED;
+        case 6: return SESSION_SEED;
         case 0: return RESULT_NOT_SET;
         default: return null;
       }
@@ -291,92 +289,40 @@ public  final class SecurityOpResultEffect extends
     }
   }
 
-  public static final int HISTORY_FIELD_NUMBER = 6;
+  public static final int SESSION_SEED_FIELD_NUMBER = 6;
   /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-   */
-  @java.lang.Override
-  public boolean hasHistory() {
-    return resultCase_ == 6;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult getHistory() {
-    if (resultCase_ == 6) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult) result_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setHistory(io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult value) {
-    value.getClass();  // minimal bytecode null check
-    result_ = value;
-    resultCase_ = 6;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeHistory(io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult value) {
-    value.getClass();  // minimal bytecode null check
-    if (resultCase_ == 6 &&
-        result_ != io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult.getDefaultInstance()) {
-      result_ = io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult) result_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      result_ = value;
-    }
-    resultCase_ = 6;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-   */
-  private void clearHistory() {
-    if (resultCase_ == 6) {
-      resultCase_ = 0;
-      result_ = null;
-    }
-  }
-
-  public static final int SESSION_SEED_FIELD_NUMBER = 7;
-  /**
-   * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
    * @return Whether the sessionSeed field is set.
    */
   @java.lang.Override
   public boolean hasSessionSeed() {
-    return resultCase_ == 7;
+    return resultCase_ == 6;
   }
   /**
-   * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
    * @return The sessionSeed.
    */
   @java.lang.Override
   public com.google.protobuf.ByteString getSessionSeed() {
-    if (resultCase_ == 7) {
+    if (resultCase_ == 6) {
       return (com.google.protobuf.ByteString) result_;
     }
     return com.google.protobuf.ByteString.EMPTY;
   }
   /**
-   * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
    * @param value The sessionSeed to set.
    */
   private void setSessionSeed(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
-  resultCase_ = 7;
+  resultCase_ = 6;
     result_ = value;
   }
   /**
-   * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+   * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
    */
   private void clearSessionSeed() {
-    if (resultCase_ == 7) {
+    if (resultCase_ == 6) {
       resultCase_ = 0;
       result_ = null;
     }
@@ -714,55 +660,7 @@ public  final class SecurityOpResultEffect extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-     */
-    @java.lang.Override
-    public boolean hasHistory() {
-      return instance.hasHistory();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult getHistory() {
-      return instance.getHistory();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-     */
-    public Builder setHistory(io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult value) {
-      copyOnWrite();
-      instance.setHistory(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-     */
-    public Builder setHistory(
-        io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult.Builder builderForValue) {
-      copyOnWrite();
-      instance.setHistory(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-     */
-    public Builder mergeHistory(io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult value) {
-      copyOnWrite();
-      instance.mergeHistory(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenHistoryResult history = 6 [json_name = "history"];</code>
-     */
-    public Builder clearHistory() {
-      copyOnWrite();
-      instance.clearHistory();
-      return this;
-    }
-
-    /**
-     * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+     * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
      * @return Whether the sessionSeed field is set.
      */
     @java.lang.Override
@@ -770,7 +668,7 @@ public  final class SecurityOpResultEffect extends
       return instance.hasSessionSeed();
     }
     /**
-     * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+     * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
      * @return The sessionSeed.
      */
     @java.lang.Override
@@ -778,7 +676,7 @@ public  final class SecurityOpResultEffect extends
       return instance.getSessionSeed();
     }
     /**
-     * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+     * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
      * @param value The sessionSeed to set.
      * @return This builder for chaining.
      */
@@ -788,7 +686,7 @@ public  final class SecurityOpResultEffect extends
       return this;
     }
     /**
-     * <code>bytes session_seed = 7 [json_name = "sessionSeed"];</code>
+     * <code>bytes session_seed = 6 [json_name = "sessionSeed"];</code>
      * @return This builder for chaining.
      */
     public Builder clearSessionSeed() {
@@ -820,11 +718,10 @@ public  final class SecurityOpResultEffect extends
             "errorCode_",
             io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult.class,
             io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeResult.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityOpenHistoryResult.class,
           };
           java.lang.String info =
-              "\u0000\u0007\u0001\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "\u0003\u0208\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007=\u0000";
+              "\u0000\u0006\u0001\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0003\u0208\u0004<\u0000\u0005<\u0000\u0006=\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

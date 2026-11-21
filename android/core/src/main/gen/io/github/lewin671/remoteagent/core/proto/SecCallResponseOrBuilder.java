@@ -102,54 +102,36 @@ public interface SecCallResponseOrBuilder extends
   com.google.protobuf.ByteString getSecondaryData();
 
   /**
-   * <code>bytes tertiary_data = 10 [json_name = "tertiaryData"];</code>
-   * @return The tertiaryData.
-   */
-  com.google.protobuf.ByteString getTertiaryData();
-
-  /**
-   * <code>bytes info = 11 [json_name = "info"];</code>
-   * @return The info.
-   */
-  com.google.protobuf.ByteString getInfo();
-
-  /**
-   * <code>bytes aad = 12 [json_name = "aad"];</code>
-   * @return The aad.
-   */
-  com.google.protobuf.ByteString getAad();
-
-  /**
-   * <code>string text = 13 [json_name = "text"];</code>
+   * <code>string text = 10 [json_name = "text"];</code>
    * @return The text.
    */
   java.lang.String getText();
   /**
-   * <code>string text = 13 [json_name = "text"];</code>
+   * <code>string text = 10 [json_name = "text"];</code>
    * @return The bytes for text.
    */
   com.google.protobuf.ByteString
       getTextBytes();
 
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @return A list containing the strings.
    */
   java.util.List<java.lang.String>
       getStringsList();
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @return The count of strings.
    */
   int getStringsCount();
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @param index The index of the element to return.
    * @return The strings at the given index.
    */
   java.lang.String getStrings(int index);
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @param index The index of the element to return.
    * @return The strings at the given index.
    */
@@ -157,84 +139,13 @@ public interface SecCallResponseOrBuilder extends
       getStringsBytes(int index);
 
   /**
-   * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+   * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
    * @return Whether the pin field is set.
    */
   boolean hasPin();
   /**
-   * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+   * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
    * @return The pin.
    */
   io.github.lewin671.remoteagent.core.proto.SecPin getPin();
-
-  /**
-   * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-   * @return Whether the notify field is set.
-   */
-  boolean hasNotify();
-  /**
-   * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-   * @return The notify.
-   */
-  io.github.lewin671.remoteagent.proto.NotifyContent getNotify();
-
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-   * @return Whether the opened field is set.
-   */
-  boolean hasOpened();
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-   * @return The opened.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult getOpened();
-
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-   * @return Whether the envelope field is set.
-   */
-  boolean hasEnvelope();
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-   * @return The envelope.
-   */
-  io.github.lewin671.remoteagent.proto.Envelope getEnvelope();
-
-  /**
-   * <code>bytes header = 19 [json_name = "header"];</code>
-   * @return The header.
-   */
-  com.google.protobuf.ByteString getHeader();
-
-  /**
-   * <code>bytes origin_bytes = 20 [json_name = "originBytes"];</code>
-   * @return The originBytes.
-   */
-  com.google.protobuf.ByteString getOriginBytes();
-
-  /**
-   * <code>uint64 epoch = 21 [json_name = "epoch"];</code>
-   * @return The epoch.
-   */
-  long getEpoch();
-
-  /**
-   * <code>uint64 content_epoch = 22 [json_name = "contentEpoch"];</code>
-   * @return The contentEpoch.
-   */
-  long getContentEpoch();
-
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.SecParsedState> 
-      getParsedStatesList();
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  io.github.lewin671.remoteagent.core.proto.SecParsedState getParsedStates(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  int getParsedStatesCount();
 }

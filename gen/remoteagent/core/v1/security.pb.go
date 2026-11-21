@@ -1673,58 +1673,6 @@ func (x *SecuritySealEnvelopeOp) GetUseSessionSeed() bool {
 	return false
 }
 
-type SecurityOpenHistoryOp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Envelopes     []*v1.Envelope         `protobuf:"bytes,2,rep,name=envelopes,proto3" json:"envelopes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecurityOpenHistoryOp) Reset() {
-	*x = SecurityOpenHistoryOp{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[22]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecurityOpenHistoryOp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecurityOpenHistoryOp) ProtoMessage() {}
-
-func (x *SecurityOpenHistoryOp) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[22]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecurityOpenHistoryOp.ProtoReflect.Descriptor instead.
-func (*SecurityOpenHistoryOp) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{22}
-}
-
-func (x *SecurityOpenHistoryOp) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-func (x *SecurityOpenHistoryOp) GetEnvelopes() []*v1.Envelope {
-	if x != nil {
-		return x.Envelopes
-	}
-	return nil
-}
-
 type SecurityGetSessionSeedOp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -1734,7 +1682,7 @@ type SecurityGetSessionSeedOp struct {
 
 func (x *SecurityGetSessionSeedOp) Reset() {
 	*x = SecurityGetSessionSeedOp{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1746,7 +1694,7 @@ func (x *SecurityGetSessionSeedOp) String() string {
 func (*SecurityGetSessionSeedOp) ProtoMessage() {}
 
 func (x *SecurityGetSessionSeedOp) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1759,7 +1707,7 @@ func (x *SecurityGetSessionSeedOp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityGetSessionSeedOp.ProtoReflect.Descriptor instead.
 func (*SecurityGetSessionSeedOp) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SecurityGetSessionSeedOp) GetSessionId() string {
@@ -1776,7 +1724,6 @@ type SecurityOpRequestEvent struct {
 	//
 	//	*SecurityOpRequestEvent_OpenEnvelope
 	//	*SecurityOpRequestEvent_SealEnvelope
-	//	*SecurityOpRequestEvent_OpenHistory
 	//	*SecurityOpRequestEvent_GetSessionSeed
 	Op            isSecurityOpRequestEvent_Op `protobuf_oneof:"op"`
 	unknownFields protoimpl.UnknownFields
@@ -1785,7 +1732,7 @@ type SecurityOpRequestEvent struct {
 
 func (x *SecurityOpRequestEvent) Reset() {
 	*x = SecurityOpRequestEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1797,7 +1744,7 @@ func (x *SecurityOpRequestEvent) String() string {
 func (*SecurityOpRequestEvent) ProtoMessage() {}
 
 func (x *SecurityOpRequestEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1810,7 +1757,7 @@ func (x *SecurityOpRequestEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityOpRequestEvent.ProtoReflect.Descriptor instead.
 func (*SecurityOpRequestEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SecurityOpRequestEvent) GetOpId() uint64 {
@@ -1845,15 +1792,6 @@ func (x *SecurityOpRequestEvent) GetSealEnvelope() *SecuritySealEnvelopeOp {
 	return nil
 }
 
-func (x *SecurityOpRequestEvent) GetOpenHistory() *SecurityOpenHistoryOp {
-	if x != nil {
-		if x, ok := x.Op.(*SecurityOpRequestEvent_OpenHistory); ok {
-			return x.OpenHistory
-		}
-	}
-	return nil
-}
-
 func (x *SecurityOpRequestEvent) GetGetSessionSeed() *SecurityGetSessionSeedOp {
 	if x != nil {
 		if x, ok := x.Op.(*SecurityOpRequestEvent_GetSessionSeed); ok {
@@ -1875,19 +1813,13 @@ type SecurityOpRequestEvent_SealEnvelope struct {
 	SealEnvelope *SecuritySealEnvelopeOp `protobuf:"bytes,3,opt,name=seal_envelope,json=sealEnvelope,proto3,oneof"`
 }
 
-type SecurityOpRequestEvent_OpenHistory struct {
-	OpenHistory *SecurityOpenHistoryOp `protobuf:"bytes,4,opt,name=open_history,json=openHistory,proto3,oneof"`
-}
-
 type SecurityOpRequestEvent_GetSessionSeed struct {
-	GetSessionSeed *SecurityGetSessionSeedOp `protobuf:"bytes,5,opt,name=get_session_seed,json=getSessionSeed,proto3,oneof"`
+	GetSessionSeed *SecurityGetSessionSeedOp `protobuf:"bytes,4,opt,name=get_session_seed,json=getSessionSeed,proto3,oneof"`
 }
 
 func (*SecurityOpRequestEvent_OpenEnvelope) isSecurityOpRequestEvent_Op() {}
 
 func (*SecurityOpRequestEvent_SealEnvelope) isSecurityOpRequestEvent_Op() {}
-
-func (*SecurityOpRequestEvent_OpenHistory) isSecurityOpRequestEvent_Op() {}
 
 func (*SecurityOpRequestEvent_GetSessionSeed) isSecurityOpRequestEvent_Op() {}
 
@@ -1910,7 +1842,7 @@ type SecurityOpenEnvelopeResult struct {
 
 func (x *SecurityOpenEnvelopeResult) Reset() {
 	*x = SecurityOpenEnvelopeResult{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1922,7 +1854,7 @@ func (x *SecurityOpenEnvelopeResult) String() string {
 func (*SecurityOpenEnvelopeResult) ProtoMessage() {}
 
 func (x *SecurityOpenEnvelopeResult) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1935,7 +1867,7 @@ func (x *SecurityOpenEnvelopeResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityOpenEnvelopeResult.ProtoReflect.Descriptor instead.
 func (*SecurityOpenEnvelopeResult) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{25}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SecurityOpenEnvelopeResult) GetHeader() []byte {
@@ -2026,7 +1958,7 @@ type SecuritySealEnvelopeResult struct {
 
 func (x *SecuritySealEnvelopeResult) Reset() {
 	*x = SecuritySealEnvelopeResult{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2038,7 +1970,7 @@ func (x *SecuritySealEnvelopeResult) String() string {
 func (*SecuritySealEnvelopeResult) ProtoMessage() {}
 
 func (x *SecuritySealEnvelopeResult) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2051,7 +1983,7 @@ func (x *SecuritySealEnvelopeResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecuritySealEnvelopeResult.ProtoReflect.Descriptor instead.
 func (*SecuritySealEnvelopeResult) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{26}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SecuritySealEnvelopeResult) GetEnvelope() *v1.Envelope {
@@ -2075,134 +2007,6 @@ func (x *SecuritySealEnvelopeResult) GetPayloadHash() []byte {
 	return nil
 }
 
-type SecurityOpenedHistoryItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Seq           uint64                 `protobuf:"varint,1,opt,name=seq,proto3" json:"seq,omitempty"`
-	Plaintext     []byte                 `protobuf:"bytes,2,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
-	Unavailable   bool                   `protobuf:"varint,3,opt,name=unavailable,proto3" json:"unavailable,omitempty"`
-	Unsupported   bool                   `protobuf:"varint,4,opt,name=unsupported,proto3" json:"unsupported,omitempty"`
-	Error         string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
-	ErrorCode     string                 `protobuf:"bytes,6,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecurityOpenedHistoryItem) Reset() {
-	*x = SecurityOpenedHistoryItem{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecurityOpenedHistoryItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecurityOpenedHistoryItem) ProtoMessage() {}
-
-func (x *SecurityOpenedHistoryItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecurityOpenedHistoryItem.ProtoReflect.Descriptor instead.
-func (*SecurityOpenedHistoryItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{27}
-}
-
-func (x *SecurityOpenedHistoryItem) GetSeq() uint64 {
-	if x != nil {
-		return x.Seq
-	}
-	return 0
-}
-
-func (x *SecurityOpenedHistoryItem) GetPlaintext() []byte {
-	if x != nil {
-		return x.Plaintext
-	}
-	return nil
-}
-
-func (x *SecurityOpenedHistoryItem) GetUnavailable() bool {
-	if x != nil {
-		return x.Unavailable
-	}
-	return false
-}
-
-func (x *SecurityOpenedHistoryItem) GetUnsupported() bool {
-	if x != nil {
-		return x.Unsupported
-	}
-	return false
-}
-
-func (x *SecurityOpenedHistoryItem) GetError() string {
-	if x != nil {
-		return x.Error
-	}
-	return ""
-}
-
-func (x *SecurityOpenedHistoryItem) GetErrorCode() string {
-	if x != nil {
-		return x.ErrorCode
-	}
-	return ""
-}
-
-type SecurityOpenHistoryResult struct {
-	state         protoimpl.MessageState       `protogen:"open.v1"`
-	Items         []*SecurityOpenedHistoryItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecurityOpenHistoryResult) Reset() {
-	*x = SecurityOpenHistoryResult{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecurityOpenHistoryResult) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecurityOpenHistoryResult) ProtoMessage() {}
-
-func (x *SecurityOpenHistoryResult) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecurityOpenHistoryResult.ProtoReflect.Descriptor instead.
-func (*SecurityOpenHistoryResult) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *SecurityOpenHistoryResult) GetItems() []*SecurityOpenedHistoryItem {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
 type SecurityOpResultEffect struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	OpId      uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
@@ -2212,7 +2016,6 @@ type SecurityOpResultEffect struct {
 	//
 	//	*SecurityOpResultEffect_Opened
 	//	*SecurityOpResultEffect_Sealed
-	//	*SecurityOpResultEffect_History
 	//	*SecurityOpResultEffect_SessionSeed
 	Result        isSecurityOpResultEffect_Result `protobuf_oneof:"result"`
 	unknownFields protoimpl.UnknownFields
@@ -2221,7 +2024,7 @@ type SecurityOpResultEffect struct {
 
 func (x *SecurityOpResultEffect) Reset() {
 	*x = SecurityOpResultEffect{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2233,7 +2036,7 @@ func (x *SecurityOpResultEffect) String() string {
 func (*SecurityOpResultEffect) ProtoMessage() {}
 
 func (x *SecurityOpResultEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2246,7 +2049,7 @@ func (x *SecurityOpResultEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecurityOpResultEffect.ProtoReflect.Descriptor instead.
 func (*SecurityOpResultEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{29}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SecurityOpResultEffect) GetOpId() uint64 {
@@ -2295,15 +2098,6 @@ func (x *SecurityOpResultEffect) GetSealed() *SecuritySealEnvelopeResult {
 	return nil
 }
 
-func (x *SecurityOpResultEffect) GetHistory() *SecurityOpenHistoryResult {
-	if x != nil {
-		if x, ok := x.Result.(*SecurityOpResultEffect_History); ok {
-			return x.History
-		}
-	}
-	return nil
-}
-
 func (x *SecurityOpResultEffect) GetSessionSeed() []byte {
 	if x != nil {
 		if x, ok := x.Result.(*SecurityOpResultEffect_SessionSeed); ok {
@@ -2325,19 +2119,13 @@ type SecurityOpResultEffect_Sealed struct {
 	Sealed *SecuritySealEnvelopeResult `protobuf:"bytes,5,opt,name=sealed,proto3,oneof"`
 }
 
-type SecurityOpResultEffect_History struct {
-	History *SecurityOpenHistoryResult `protobuf:"bytes,6,opt,name=history,proto3,oneof"`
-}
-
 type SecurityOpResultEffect_SessionSeed struct {
-	SessionSeed []byte `protobuf:"bytes,7,opt,name=session_seed,json=sessionSeed,proto3,oneof"`
+	SessionSeed []byte `protobuf:"bytes,6,opt,name=session_seed,json=sessionSeed,proto3,oneof"`
 }
 
 func (*SecurityOpResultEffect_Opened) isSecurityOpResultEffect_Result() {}
 
 func (*SecurityOpResultEffect_Sealed) isSecurityOpResultEffect_Result() {}
-
-func (*SecurityOpResultEffect_History) isSecurityOpResultEffect_Result() {}
 
 func (*SecurityOpResultEffect_SessionSeed) isSecurityOpResultEffect_Result() {}
 
@@ -2353,7 +2141,7 @@ type DemoMachine struct {
 
 func (x *DemoMachine) Reset() {
 	*x = DemoMachine{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2365,7 +2153,7 @@ func (x *DemoMachine) String() string {
 func (*DemoMachine) ProtoMessage() {}
 
 func (x *DemoMachine) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2378,7 +2166,7 @@ func (x *DemoMachine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoMachine.ProtoReflect.Descriptor instead.
 func (*DemoMachine) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{30}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DemoMachine) GetMachineId() string {
@@ -2424,7 +2212,7 @@ type DemoSession struct {
 
 func (x *DemoSession) Reset() {
 	*x = DemoSession{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2436,7 +2224,7 @@ func (x *DemoSession) String() string {
 func (*DemoSession) ProtoMessage() {}
 
 func (x *DemoSession) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2449,7 +2237,7 @@ func (x *DemoSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoSession.ProtoReflect.Descriptor instead.
 func (*DemoSession) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{31}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *DemoSession) GetSessionId() string {
@@ -2514,7 +2302,7 @@ type DemoDevice struct {
 
 func (x *DemoDevice) Reset() {
 	*x = DemoDevice{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2526,7 +2314,7 @@ func (x *DemoDevice) String() string {
 func (*DemoDevice) ProtoMessage() {}
 
 func (x *DemoDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2539,7 +2327,7 @@ func (x *DemoDevice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoDevice.ProtoReflect.Descriptor instead.
 func (*DemoDevice) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{32}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *DemoDevice) GetDeviceId() string {
@@ -2587,7 +2375,7 @@ type DemoSessionEvents struct {
 
 func (x *DemoSessionEvents) Reset() {
 	*x = DemoSessionEvents{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2599,7 +2387,7 @@ func (x *DemoSessionEvents) String() string {
 func (*DemoSessionEvents) ProtoMessage() {}
 
 func (x *DemoSessionEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2612,7 +2400,7 @@ func (x *DemoSessionEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DemoSessionEvents.ProtoReflect.Descriptor instead.
 func (*DemoSessionEvents) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{33}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *DemoSessionEvents) GetSessionId() string {
@@ -2642,7 +2430,7 @@ type SeedDemoWorldEvent struct {
 
 func (x *SeedDemoWorldEvent) Reset() {
 	*x = SeedDemoWorldEvent{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2654,7 +2442,7 @@ func (x *SeedDemoWorldEvent) String() string {
 func (*SeedDemoWorldEvent) ProtoMessage() {}
 
 func (x *SeedDemoWorldEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2667,7 +2455,7 @@ func (x *SeedDemoWorldEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeedDemoWorldEvent.ProtoReflect.Descriptor instead.
 func (*SeedDemoWorldEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{34}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *SeedDemoWorldEvent) GetMachines() []*DemoMachine {
@@ -2715,7 +2503,7 @@ type CacheWriteStoredEvents struct {
 
 func (x *CacheWriteStoredEvents) Reset() {
 	*x = CacheWriteStoredEvents{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2727,7 +2515,7 @@ func (x *CacheWriteStoredEvents) String() string {
 func (*CacheWriteStoredEvents) ProtoMessage() {}
 
 func (x *CacheWriteStoredEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2740,7 +2528,7 @@ func (x *CacheWriteStoredEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CacheWriteStoredEvents.ProtoReflect.Descriptor instead.
 func (*CacheWriteStoredEvents) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{35}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *CacheWriteStoredEvents) GetSessionId() string {
@@ -2768,7 +2556,7 @@ type SecPin struct {
 
 func (x *SecPin) Reset() {
 	*x = SecPin{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2780,7 +2568,7 @@ func (x *SecPin) String() string {
 func (*SecPin) ProtoMessage() {}
 
 func (x *SecPin) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2793,7 +2581,7 @@ func (x *SecPin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecPin.ProtoReflect.Descriptor instead.
 func (*SecPin) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{36}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *SecPin) GetAccount() string {
@@ -2829,7 +2617,7 @@ type SecMember struct {
 
 func (x *SecMember) Reset() {
 	*x = SecMember{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2841,7 +2629,7 @@ func (x *SecMember) String() string {
 func (*SecMember) ProtoMessage() {}
 
 func (x *SecMember) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2854,7 +2642,7 @@ func (x *SecMember) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecMember.ProtoReflect.Descriptor instead.
 func (*SecMember) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{37}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *SecMember) GetId() string {
@@ -2896,7 +2684,7 @@ type SecGrant struct {
 
 func (x *SecGrant) Reset() {
 	*x = SecGrant{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2908,7 +2696,7 @@ func (x *SecGrant) String() string {
 func (*SecGrant) ProtoMessage() {}
 
 func (x *SecGrant) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2921,7 +2709,7 @@ func (x *SecGrant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecGrant.ProtoReflect.Descriptor instead.
 func (*SecGrant) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{38}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *SecGrant) GetRecipient() string {
@@ -2969,7 +2757,7 @@ type SecParsedState struct {
 
 func (x *SecParsedState) Reset() {
 	*x = SecParsedState{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2981,7 +2769,7 @@ func (x *SecParsedState) String() string {
 func (*SecParsedState) ProtoMessage() {}
 
 func (x *SecParsedState) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2994,7 +2782,7 @@ func (x *SecParsedState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecParsedState.ProtoReflect.Descriptor instead.
 func (*SecParsedState) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{39}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *SecParsedState) GetStateHash() []byte {
@@ -3123,7 +2911,7 @@ type SecParsedLease struct {
 
 func (x *SecParsedLease) Reset() {
 	*x = SecParsedLease{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3135,7 +2923,7 @@ func (x *SecParsedLease) String() string {
 func (*SecParsedLease) ProtoMessage() {}
 
 func (x *SecParsedLease) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3148,7 +2936,7 @@ func (x *SecParsedLease) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecParsedLease.ProtoReflect.Descriptor instead.
 func (*SecParsedLease) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{40}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SecParsedLease) GetDomain() []byte {
@@ -3212,7 +3000,7 @@ type SecParsedRecoveryStatement struct {
 
 func (x *SecParsedRecoveryStatement) Reset() {
 	*x = SecParsedRecoveryStatement{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3224,7 +3012,7 @@ func (x *SecParsedRecoveryStatement) String() string {
 func (*SecParsedRecoveryStatement) ProtoMessage() {}
 
 func (x *SecParsedRecoveryStatement) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3237,7 +3025,7 @@ func (x *SecParsedRecoveryStatement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecParsedRecoveryStatement.ProtoReflect.Descriptor instead.
 func (*SecParsedRecoveryStatement) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{41}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SecParsedRecoveryStatement) GetAccount() string {
@@ -3328,7 +3116,7 @@ type SecKemPair struct {
 
 func (x *SecKemPair) Reset() {
 	*x = SecKemPair{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3340,7 +3128,7 @@ func (x *SecKemPair) String() string {
 func (*SecKemPair) ProtoMessage() {}
 
 func (x *SecKemPair) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3353,7 +3141,7 @@ func (x *SecKemPair) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecKemPair.ProtoReflect.Descriptor instead.
 func (*SecKemPair) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{42}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SecKemPair) GetMemberId() string {
@@ -3391,7 +3179,7 @@ type SecUnsignedState struct {
 
 func (x *SecUnsignedState) Reset() {
 	*x = SecUnsignedState{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3403,7 +3191,7 @@ func (x *SecUnsignedState) String() string {
 func (*SecUnsignedState) ProtoMessage() {}
 
 func (x *SecUnsignedState) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3416,7 +3204,7 @@ func (x *SecUnsignedState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecUnsignedState.ProtoReflect.Descriptor instead.
 func (*SecUnsignedState) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{43}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *SecUnsignedState) GetParsed() *SecParsedState {
@@ -3479,7 +3267,7 @@ type SecParsedApproval struct {
 
 func (x *SecParsedApproval) Reset() {
 	*x = SecParsedApproval{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3491,7 +3279,7 @@ func (x *SecParsedApproval) String() string {
 func (*SecParsedApproval) ProtoMessage() {}
 
 func (x *SecParsedApproval) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3504,7 +3292,7 @@ func (x *SecParsedApproval) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecParsedApproval.ProtoReflect.Descriptor instead.
 func (*SecParsedApproval) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{44}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *SecParsedApproval) GetAccountId() string {
@@ -3595,13 +3383,7 @@ type SecCallRequest struct {
 	//	*SecCallRequest_VerifyRecoveryStatement
 	//	*SecCallRequest_NewRecoveryStatementUnsigned
 	//	*SecCallRequest_MarshalRecoveryStatement
-	//	*SecCallRequest_NewGenesisUnsigned
-	//	*SecCallRequest_NewStateUnsigned
-	//	*SecCallRequest_NewMembershipStateUnsigned
-	//	*SecCallRequest_NewPairStateUnsigned
-	//	*SecCallRequest_NewHandoffUnsigned
-	//	*SecCallRequest_NewRecoveryUnsigned
-	//	*SecCallRequest_NewRecoveryKeyRotationUnsigned
+	//	*SecCallRequest_BuildState
 	//	*SecCallRequest_MarshalState
 	//	*SecCallRequest_SealPrevSecret
 	//	*SecCallRequest_OpenPrevSecret
@@ -3616,13 +3398,10 @@ type SecCallRequest struct {
 	//	*SecCallRequest_DerivePairSecrets
 	//	*SecCallRequest_Ed25519SeedPublic
 	//	*SecCallRequest_Ed25519SeedSign
-	//	*SecCallRequest_DeviceId
 	//	*SecCallRequest_InflateBounded
 	//	*SecCallRequest_RequestIdentity
 	//	*SecCallRequest_AccountDeleteSigningBytes
 	//	*SecCallRequest_OpenNotifyEnvelope
-	//	*SecCallRequest_OpenEnvelopeDirect
-	//	*SecCallRequest_SealEnvelopeDirect
 	Call          isSecCallRequest_Call `protobuf_oneof:"call"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3630,7 +3409,7 @@ type SecCallRequest struct {
 
 func (x *SecCallRequest) Reset() {
 	*x = SecCallRequest{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3642,7 +3421,7 @@ func (x *SecCallRequest) String() string {
 func (*SecCallRequest) ProtoMessage() {}
 
 func (x *SecCallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3655,7 +3434,7 @@ func (x *SecCallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecCallRequest.ProtoReflect.Descriptor instead.
 func (*SecCallRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{45}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *SecCallRequest) GetCall() isSecCallRequest_Call {
@@ -3791,64 +3570,10 @@ func (x *SecCallRequest) GetMarshalRecoveryStatement() *SecMarshalRecoveryStatem
 	return nil
 }
 
-func (x *SecCallRequest) GetNewGenesisUnsigned() *SecNewGenesisUnsignedCall {
+func (x *SecCallRequest) GetBuildState() *SecBuildStateCall {
 	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_NewGenesisUnsigned); ok {
-			return x.NewGenesisUnsigned
-		}
-	}
-	return nil
-}
-
-func (x *SecCallRequest) GetNewStateUnsigned() *SecNewStateUnsignedCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_NewStateUnsigned); ok {
-			return x.NewStateUnsigned
-		}
-	}
-	return nil
-}
-
-func (x *SecCallRequest) GetNewMembershipStateUnsigned() *SecNewMembershipStateUnsignedCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_NewMembershipStateUnsigned); ok {
-			return x.NewMembershipStateUnsigned
-		}
-	}
-	return nil
-}
-
-func (x *SecCallRequest) GetNewPairStateUnsigned() *SecNewPairStateUnsignedCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_NewPairStateUnsigned); ok {
-			return x.NewPairStateUnsigned
-		}
-	}
-	return nil
-}
-
-func (x *SecCallRequest) GetNewHandoffUnsigned() *SecNewHandoffUnsignedCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_NewHandoffUnsigned); ok {
-			return x.NewHandoffUnsigned
-		}
-	}
-	return nil
-}
-
-func (x *SecCallRequest) GetNewRecoveryUnsigned() *SecNewRecoveryUnsignedCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_NewRecoveryUnsigned); ok {
-			return x.NewRecoveryUnsigned
-		}
-	}
-	return nil
-}
-
-func (x *SecCallRequest) GetNewRecoveryKeyRotationUnsigned() *SecNewRecoveryKeyRotationUnsignedCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_NewRecoveryKeyRotationUnsigned); ok {
-			return x.NewRecoveryKeyRotationUnsigned
+		if x, ok := x.Call.(*SecCallRequest_BuildState); ok {
+			return x.BuildState
 		}
 	}
 	return nil
@@ -3980,15 +3705,6 @@ func (x *SecCallRequest) GetEd25519SeedSign() *SecEd25519SeedSignCall {
 	return nil
 }
 
-func (x *SecCallRequest) GetDeviceId() *SecDeviceIDCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_DeviceId); ok {
-			return x.DeviceId
-		}
-	}
-	return nil
-}
-
 func (x *SecCallRequest) GetInflateBounded() *SecInflateBoundedCall {
 	if x != nil {
 		if x, ok := x.Call.(*SecCallRequest_InflateBounded); ok {
@@ -4020,24 +3736,6 @@ func (x *SecCallRequest) GetOpenNotifyEnvelope() *SecOpenNotifyEnvelopeCall {
 	if x != nil {
 		if x, ok := x.Call.(*SecCallRequest_OpenNotifyEnvelope); ok {
 			return x.OpenNotifyEnvelope
-		}
-	}
-	return nil
-}
-
-func (x *SecCallRequest) GetOpenEnvelopeDirect() *SecOpenEnvelopeDirectCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_OpenEnvelopeDirect); ok {
-			return x.OpenEnvelopeDirect
-		}
-	}
-	return nil
-}
-
-func (x *SecCallRequest) GetSealEnvelopeDirect() *SecSealEnvelopeDirectCall {
-	if x != nil {
-		if x, ok := x.Call.(*SecCallRequest_SealEnvelopeDirect); ok {
-			return x.SealEnvelopeDirect
 		}
 	}
 	return nil
@@ -4103,32 +3801,8 @@ type SecCallRequest_MarshalRecoveryStatement struct {
 	MarshalRecoveryStatement *SecMarshalRecoveryStatementCall `protobuf:"bytes,14,opt,name=marshal_recovery_statement,json=marshalRecoveryStatement,proto3,oneof"`
 }
 
-type SecCallRequest_NewGenesisUnsigned struct {
-	NewGenesisUnsigned *SecNewGenesisUnsignedCall `protobuf:"bytes,15,opt,name=new_genesis_unsigned,json=newGenesisUnsigned,proto3,oneof"`
-}
-
-type SecCallRequest_NewStateUnsigned struct {
-	NewStateUnsigned *SecNewStateUnsignedCall `protobuf:"bytes,16,opt,name=new_state_unsigned,json=newStateUnsigned,proto3,oneof"`
-}
-
-type SecCallRequest_NewMembershipStateUnsigned struct {
-	NewMembershipStateUnsigned *SecNewMembershipStateUnsignedCall `protobuf:"bytes,17,opt,name=new_membership_state_unsigned,json=newMembershipStateUnsigned,proto3,oneof"`
-}
-
-type SecCallRequest_NewPairStateUnsigned struct {
-	NewPairStateUnsigned *SecNewPairStateUnsignedCall `protobuf:"bytes,18,opt,name=new_pair_state_unsigned,json=newPairStateUnsigned,proto3,oneof"`
-}
-
-type SecCallRequest_NewHandoffUnsigned struct {
-	NewHandoffUnsigned *SecNewHandoffUnsignedCall `protobuf:"bytes,19,opt,name=new_handoff_unsigned,json=newHandoffUnsigned,proto3,oneof"`
-}
-
-type SecCallRequest_NewRecoveryUnsigned struct {
-	NewRecoveryUnsigned *SecNewRecoveryUnsignedCall `protobuf:"bytes,20,opt,name=new_recovery_unsigned,json=newRecoveryUnsigned,proto3,oneof"`
-}
-
-type SecCallRequest_NewRecoveryKeyRotationUnsigned struct {
-	NewRecoveryKeyRotationUnsigned *SecNewRecoveryKeyRotationUnsignedCall `protobuf:"bytes,21,opt,name=new_recovery_key_rotation_unsigned,json=newRecoveryKeyRotationUnsigned,proto3,oneof"`
+type SecCallRequest_BuildState struct {
+	BuildState *SecBuildStateCall `protobuf:"bytes,15,opt,name=build_state,json=buildState,proto3,oneof"`
 }
 
 type SecCallRequest_MarshalState struct {
@@ -4187,10 +3861,6 @@ type SecCallRequest_Ed25519SeedSign struct {
 	Ed25519SeedSign *SecEd25519SeedSignCall `protobuf:"bytes,35,opt,name=ed25519_seed_sign,json=ed25519SeedSign,proto3,oneof"`
 }
 
-type SecCallRequest_DeviceId struct {
-	DeviceId *SecDeviceIDCall `protobuf:"bytes,36,opt,name=device_id,json=deviceId,proto3,oneof"`
-}
-
 type SecCallRequest_InflateBounded struct {
 	InflateBounded *SecInflateBoundedCall `protobuf:"bytes,37,opt,name=inflate_bounded,json=inflateBounded,proto3,oneof"`
 }
@@ -4205,14 +3875,6 @@ type SecCallRequest_AccountDeleteSigningBytes struct {
 
 type SecCallRequest_OpenNotifyEnvelope struct {
 	OpenNotifyEnvelope *SecOpenNotifyEnvelopeCall `protobuf:"bytes,40,opt,name=open_notify_envelope,json=openNotifyEnvelope,proto3,oneof"`
-}
-
-type SecCallRequest_OpenEnvelopeDirect struct {
-	OpenEnvelopeDirect *SecOpenEnvelopeDirectCall `protobuf:"bytes,41,opt,name=open_envelope_direct,json=openEnvelopeDirect,proto3,oneof"`
-}
-
-type SecCallRequest_SealEnvelopeDirect struct {
-	SealEnvelopeDirect *SecSealEnvelopeDirectCall `protobuf:"bytes,42,opt,name=seal_envelope_direct,json=sealEnvelopeDirect,proto3,oneof"`
 }
 
 func (*SecCallRequest_ParseState) isSecCallRequest_Call() {}
@@ -4243,19 +3905,7 @@ func (*SecCallRequest_NewRecoveryStatementUnsigned) isSecCallRequest_Call() {}
 
 func (*SecCallRequest_MarshalRecoveryStatement) isSecCallRequest_Call() {}
 
-func (*SecCallRequest_NewGenesisUnsigned) isSecCallRequest_Call() {}
-
-func (*SecCallRequest_NewStateUnsigned) isSecCallRequest_Call() {}
-
-func (*SecCallRequest_NewMembershipStateUnsigned) isSecCallRequest_Call() {}
-
-func (*SecCallRequest_NewPairStateUnsigned) isSecCallRequest_Call() {}
-
-func (*SecCallRequest_NewHandoffUnsigned) isSecCallRequest_Call() {}
-
-func (*SecCallRequest_NewRecoveryUnsigned) isSecCallRequest_Call() {}
-
-func (*SecCallRequest_NewRecoveryKeyRotationUnsigned) isSecCallRequest_Call() {}
+func (*SecCallRequest_BuildState) isSecCallRequest_Call() {}
 
 func (*SecCallRequest_MarshalState) isSecCallRequest_Call() {}
 
@@ -4285,8 +3935,6 @@ func (*SecCallRequest_Ed25519SeedPublic) isSecCallRequest_Call() {}
 
 func (*SecCallRequest_Ed25519SeedSign) isSecCallRequest_Call() {}
 
-func (*SecCallRequest_DeviceId) isSecCallRequest_Call() {}
-
 func (*SecCallRequest_InflateBounded) isSecCallRequest_Call() {}
 
 func (*SecCallRequest_RequestIdentity) isSecCallRequest_Call() {}
@@ -4294,10 +3942,6 @@ func (*SecCallRequest_RequestIdentity) isSecCallRequest_Call() {}
 func (*SecCallRequest_AccountDeleteSigningBytes) isSecCallRequest_Call() {}
 
 func (*SecCallRequest_OpenNotifyEnvelope) isSecCallRequest_Call() {}
-
-func (*SecCallRequest_OpenEnvelopeDirect) isSecCallRequest_Call() {}
-
-func (*SecCallRequest_SealEnvelopeDirect) isSecCallRequest_Call() {}
 
 type SecParseStateCall struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -4308,7 +3952,7 @@ type SecParseStateCall struct {
 
 func (x *SecParseStateCall) Reset() {
 	*x = SecParseStateCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4320,7 +3964,7 @@ func (x *SecParseStateCall) String() string {
 func (*SecParseStateCall) ProtoMessage() {}
 
 func (x *SecParseStateCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4333,7 +3977,7 @@ func (x *SecParseStateCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecParseStateCall.ProtoReflect.Descriptor instead.
 func (*SecParseStateCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{46}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SecParseStateCall) GetRaw() []byte {
@@ -4358,7 +4002,7 @@ type SecVerifyChainCall struct {
 
 func (x *SecVerifyChainCall) Reset() {
 	*x = SecVerifyChainCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4370,7 +4014,7 @@ func (x *SecVerifyChainCall) String() string {
 func (*SecVerifyChainCall) ProtoMessage() {}
 
 func (x *SecVerifyChainCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4383,7 +4027,7 @@ func (x *SecVerifyChainCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecVerifyChainCall.ProtoReflect.Descriptor instead.
 func (*SecVerifyChainCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{47}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SecVerifyChainCall) GetPin() *SecPin {
@@ -4446,7 +4090,7 @@ type SecGrantChallengeCall struct {
 
 func (x *SecGrantChallengeCall) Reset() {
 	*x = SecGrantChallengeCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4458,7 +4102,7 @@ func (x *SecGrantChallengeCall) String() string {
 func (*SecGrantChallengeCall) ProtoMessage() {}
 
 func (x *SecGrantChallengeCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[48]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4471,7 +4115,7 @@ func (x *SecGrantChallengeCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecGrantChallengeCall.ProtoReflect.Descriptor instead.
 func (*SecGrantChallengeCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{48}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SecGrantChallengeCall) GetPin() *SecPin {
@@ -4507,7 +4151,7 @@ type SecOpenGrantWithDHCall struct {
 
 func (x *SecOpenGrantWithDHCall) Reset() {
 	*x = SecOpenGrantWithDHCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4519,7 +4163,7 @@ func (x *SecOpenGrantWithDHCall) String() string {
 func (*SecOpenGrantWithDHCall) ProtoMessage() {}
 
 func (x *SecOpenGrantWithDHCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[49]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4532,7 +4176,7 @@ func (x *SecOpenGrantWithDHCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecOpenGrantWithDHCall.ProtoReflect.Descriptor instead.
 func (*SecOpenGrantWithDHCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{49}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SecOpenGrantWithDHCall) GetPin() *SecPin {
@@ -4577,7 +4221,7 @@ type SecHPKEWithDHCall struct {
 
 func (x *SecHPKEWithDHCall) Reset() {
 	*x = SecHPKEWithDHCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[50]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4589,7 +4233,7 @@ func (x *SecHPKEWithDHCall) String() string {
 func (*SecHPKEWithDHCall) ProtoMessage() {}
 
 func (x *SecHPKEWithDHCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[50]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4602,7 +4246,7 @@ func (x *SecHPKEWithDHCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecHPKEWithDHCall.ProtoReflect.Descriptor instead.
 func (*SecHPKEWithDHCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{50}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *SecHPKEWithDHCall) GetRecipientPublic() []byte {
@@ -4656,7 +4300,7 @@ type SecParseLeaseCall struct {
 
 func (x *SecParseLeaseCall) Reset() {
 	*x = SecParseLeaseCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[51]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4668,7 +4312,7 @@ func (x *SecParseLeaseCall) String() string {
 func (*SecParseLeaseCall) ProtoMessage() {}
 
 func (x *SecParseLeaseCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[51]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4681,7 +4325,7 @@ func (x *SecParseLeaseCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecParseLeaseCall.ProtoReflect.Descriptor instead.
 func (*SecParseLeaseCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{51}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *SecParseLeaseCall) GetRaw() []byte {
@@ -4703,7 +4347,7 @@ type SecVerifyLeaseCall struct {
 
 func (x *SecVerifyLeaseCall) Reset() {
 	*x = SecVerifyLeaseCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[52]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4715,7 +4359,7 @@ func (x *SecVerifyLeaseCall) String() string {
 func (*SecVerifyLeaseCall) ProtoMessage() {}
 
 func (x *SecVerifyLeaseCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[52]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4728,7 +4372,7 @@ func (x *SecVerifyLeaseCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecVerifyLeaseCall.ProtoReflect.Descriptor instead.
 func (*SecVerifyLeaseCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{52}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *SecVerifyLeaseCall) GetLease() []byte {
@@ -4769,7 +4413,7 @@ type SecNewLeaseUnsignedCall struct {
 
 func (x *SecNewLeaseUnsignedCall) Reset() {
 	*x = SecNewLeaseUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[53]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4781,7 +4425,7 @@ func (x *SecNewLeaseUnsignedCall) String() string {
 func (*SecNewLeaseUnsignedCall) ProtoMessage() {}
 
 func (x *SecNewLeaseUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[53]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4794,7 +4438,7 @@ func (x *SecNewLeaseUnsignedCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecNewLeaseUnsignedCall.ProtoReflect.Descriptor instead.
 func (*SecNewLeaseUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{53}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *SecNewLeaseUnsignedCall) GetHeadState() []byte {
@@ -4824,7 +4468,7 @@ type SecMarshalLeaseCall struct {
 
 func (x *SecMarshalLeaseCall) Reset() {
 	*x = SecMarshalLeaseCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[54]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4836,7 +4480,7 @@ func (x *SecMarshalLeaseCall) String() string {
 func (*SecMarshalLeaseCall) ProtoMessage() {}
 
 func (x *SecMarshalLeaseCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[54]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4849,7 +4493,7 @@ func (x *SecMarshalLeaseCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecMarshalLeaseCall.ProtoReflect.Descriptor instead.
 func (*SecMarshalLeaseCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{54}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *SecMarshalLeaseCall) GetDomain() []byte {
@@ -4896,7 +4540,7 @@ type SecParseRecoveryStatementCall struct {
 
 func (x *SecParseRecoveryStatementCall) Reset() {
 	*x = SecParseRecoveryStatementCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[55]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4908,7 +4552,7 @@ func (x *SecParseRecoveryStatementCall) String() string {
 func (*SecParseRecoveryStatementCall) ProtoMessage() {}
 
 func (x *SecParseRecoveryStatementCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[55]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4921,7 +4565,7 @@ func (x *SecParseRecoveryStatementCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecParseRecoveryStatementCall.ProtoReflect.Descriptor instead.
 func (*SecParseRecoveryStatementCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{55}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SecParseRecoveryStatementCall) GetRaw() []byte {
@@ -4942,7 +4586,7 @@ type SecVerifyRecoveryStatementCall struct {
 
 func (x *SecVerifyRecoveryStatementCall) Reset() {
 	*x = SecVerifyRecoveryStatementCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[56]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4954,7 +4598,7 @@ func (x *SecVerifyRecoveryStatementCall) String() string {
 func (*SecVerifyRecoveryStatementCall) ProtoMessage() {}
 
 func (x *SecVerifyRecoveryStatementCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[56]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4967,7 +4611,7 @@ func (x *SecVerifyRecoveryStatementCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecVerifyRecoveryStatementCall.ProtoReflect.Descriptor instead.
 func (*SecVerifyRecoveryStatementCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{56}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *SecVerifyRecoveryStatementCall) GetStatement() []byte {
@@ -5002,7 +4646,7 @@ type SecNewRecoveryStatementUnsignedCall struct {
 
 func (x *SecNewRecoveryStatementUnsignedCall) Reset() {
 	*x = SecNewRecoveryStatementUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[57]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5014,7 +4658,7 @@ func (x *SecNewRecoveryStatementUnsignedCall) String() string {
 func (*SecNewRecoveryStatementUnsignedCall) ProtoMessage() {}
 
 func (x *SecNewRecoveryStatementUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[57]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5027,7 +4671,7 @@ func (x *SecNewRecoveryStatementUnsignedCall) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use SecNewRecoveryStatementUnsignedCall.ProtoReflect.Descriptor instead.
 func (*SecNewRecoveryStatementUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{57}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SecNewRecoveryStatementUnsignedCall) GetParentState() []byte {
@@ -5069,7 +4713,7 @@ type SecMarshalRecoveryStatementCall struct {
 
 func (x *SecMarshalRecoveryStatementCall) Reset() {
 	*x = SecMarshalRecoveryStatementCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[58]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5081,7 +4725,7 @@ func (x *SecMarshalRecoveryStatementCall) String() string {
 func (*SecMarshalRecoveryStatementCall) ProtoMessage() {}
 
 func (x *SecMarshalRecoveryStatementCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[58]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5094,7 +4738,7 @@ func (x *SecMarshalRecoveryStatementCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecMarshalRecoveryStatementCall.ProtoReflect.Descriptor instead.
 func (*SecMarshalRecoveryStatementCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{58}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *SecMarshalRecoveryStatementCall) GetAccount() string {
@@ -5167,34 +4811,42 @@ func (x *SecMarshalRecoveryStatementCall) GetSignature() []byte {
 	return nil
 }
 
-type SecNewGenesisUnsignedCall struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Account       string                 `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	Domain        []byte                 `protobuf:"bytes,2,opt,name=domain,proto3" json:"domain,omitempty"`
-	Member        *SecMember             `protobuf:"bytes,3,opt,name=member,proto3" json:"member,omitempty"`
-	RecoveryEd    []byte                 `protobuf:"bytes,4,opt,name=recovery_ed,json=recoveryEd,proto3" json:"recovery_ed,omitempty"`
-	Secret        []byte                 `protobuf:"bytes,5,opt,name=secret,proto3" json:"secret,omitempty"`
-	NowMs         uint64                 `protobuf:"varint,6,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
-	Kems          []*SecKemPair          `protobuf:"bytes,7,rep,name=kems,proto3" json:"kems,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+type SecBuildStateCall struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Kind            uint32                 `protobuf:"varint,1,opt,name=kind,proto3" json:"kind,omitempty"` // 1=Genesis, 2=Membership, 3=Pair, 4=Handoff, 5=Recovery, 6=RecoveryKeyRotation, 7=CustomState
+	Account         string                 `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	Domain          []byte                 `protobuf:"bytes,3,opt,name=domain,proto3" json:"domain,omitempty"`
+	ParentState     []byte                 `protobuf:"bytes,4,opt,name=parent_state,json=parentState,proto3" json:"parent_state,omitempty"`
+	Member          *SecMember             `protobuf:"bytes,5,opt,name=member,proto3" json:"member,omitempty"`
+	Members         []*SecMember           `protobuf:"bytes,6,rep,name=members,proto3" json:"members,omitempty"`
+	Removed         []string               `protobuf:"bytes,7,rep,name=removed,proto3" json:"removed,omitempty"`
+	IncomingId      string                 `protobuf:"bytes,8,opt,name=incoming_id,json=incomingId,proto3" json:"incoming_id,omitempty"`
+	RecoveryEd      []byte                 `protobuf:"bytes,9,opt,name=recovery_ed,json=recoveryEd,proto3" json:"recovery_ed,omitempty"`
+	Secret          []byte                 `protobuf:"bytes,10,opt,name=secret,proto3" json:"secret,omitempty"`
+	OldSecret       []byte                 `protobuf:"bytes,11,opt,name=old_secret,json=oldSecret,proto3" json:"old_secret,omitempty"`
+	PrevSecret      []byte                 `protobuf:"bytes,12,opt,name=prev_secret,json=prevSecret,proto3" json:"prev_secret,omitempty"`
+	PrevSecretNonce []byte                 `protobuf:"bytes,13,opt,name=prev_secret_nonce,json=prevSecretNonce,proto3" json:"prev_secret_nonce,omitempty"`
+	NowMs           uint64                 `protobuf:"varint,14,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
+	Kems            []*SecKemPair          `protobuf:"bytes,15,rep,name=kems,proto3" json:"kems,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
-func (x *SecNewGenesisUnsignedCall) Reset() {
-	*x = SecNewGenesisUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[59]
+func (x *SecBuildStateCall) Reset() {
+	*x = SecBuildStateCall{}
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SecNewGenesisUnsignedCall) String() string {
+func (x *SecBuildStateCall) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SecNewGenesisUnsignedCall) ProtoMessage() {}
+func (*SecBuildStateCall) ProtoMessage() {}
 
-func (x *SecNewGenesisUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[59]
+func (x *SecBuildStateCall) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5205,606 +4857,110 @@ func (x *SecNewGenesisUnsignedCall) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SecNewGenesisUnsignedCall.ProtoReflect.Descriptor instead.
-func (*SecNewGenesisUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{59}
+// Deprecated: Use SecBuildStateCall.ProtoReflect.Descriptor instead.
+func (*SecBuildStateCall) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{56}
 }
 
-func (x *SecNewGenesisUnsignedCall) GetAccount() string {
+func (x *SecBuildStateCall) GetKind() uint32 {
+	if x != nil {
+		return x.Kind
+	}
+	return 0
+}
+
+func (x *SecBuildStateCall) GetAccount() string {
 	if x != nil {
 		return x.Account
 	}
 	return ""
 }
 
-func (x *SecNewGenesisUnsignedCall) GetDomain() []byte {
+func (x *SecBuildStateCall) GetDomain() []byte {
 	if x != nil {
 		return x.Domain
 	}
 	return nil
 }
 
-func (x *SecNewGenesisUnsignedCall) GetMember() *SecMember {
+func (x *SecBuildStateCall) GetParentState() []byte {
+	if x != nil {
+		return x.ParentState
+	}
+	return nil
+}
+
+func (x *SecBuildStateCall) GetMember() *SecMember {
 	if x != nil {
 		return x.Member
 	}
 	return nil
 }
 
-func (x *SecNewGenesisUnsignedCall) GetRecoveryEd() []byte {
-	if x != nil {
-		return x.RecoveryEd
-	}
-	return nil
-}
-
-func (x *SecNewGenesisUnsignedCall) GetSecret() []byte {
-	if x != nil {
-		return x.Secret
-	}
-	return nil
-}
-
-func (x *SecNewGenesisUnsignedCall) GetNowMs() uint64 {
-	if x != nil {
-		return x.NowMs
-	}
-	return 0
-}
-
-func (x *SecNewGenesisUnsignedCall) GetKems() []*SecKemPair {
-	if x != nil {
-		return x.Kems
-	}
-	return nil
-}
-
-type SecNewStateUnsignedCall struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ParentState   []byte                 `protobuf:"bytes,1,opt,name=parent_state,json=parentState,proto3" json:"parent_state,omitempty"`
-	Members       []*SecMember           `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
-	Removed       []string               `protobuf:"bytes,3,rep,name=removed,proto3" json:"removed,omitempty"`
-	Secret        []byte                 `protobuf:"bytes,4,opt,name=secret,proto3" json:"secret,omitempty"`
-	PrevSecret    []byte                 `protobuf:"bytes,5,opt,name=prev_secret,json=prevSecret,proto3" json:"prev_secret,omitempty"`
-	NowMs         uint64                 `protobuf:"varint,6,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
-	Kems          []*SecKemPair          `protobuf:"bytes,7,rep,name=kems,proto3" json:"kems,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecNewStateUnsignedCall) Reset() {
-	*x = SecNewStateUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[60]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecNewStateUnsignedCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecNewStateUnsignedCall) ProtoMessage() {}
-
-func (x *SecNewStateUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[60]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecNewStateUnsignedCall.ProtoReflect.Descriptor instead.
-func (*SecNewStateUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{60}
-}
-
-func (x *SecNewStateUnsignedCall) GetParentState() []byte {
-	if x != nil {
-		return x.ParentState
-	}
-	return nil
-}
-
-func (x *SecNewStateUnsignedCall) GetMembers() []*SecMember {
+func (x *SecBuildStateCall) GetMembers() []*SecMember {
 	if x != nil {
 		return x.Members
 	}
 	return nil
 }
 
-func (x *SecNewStateUnsignedCall) GetRemoved() []string {
+func (x *SecBuildStateCall) GetRemoved() []string {
 	if x != nil {
 		return x.Removed
 	}
 	return nil
 }
 
-func (x *SecNewStateUnsignedCall) GetSecret() []byte {
-	if x != nil {
-		return x.Secret
-	}
-	return nil
-}
-
-func (x *SecNewStateUnsignedCall) GetPrevSecret() []byte {
-	if x != nil {
-		return x.PrevSecret
-	}
-	return nil
-}
-
-func (x *SecNewStateUnsignedCall) GetNowMs() uint64 {
-	if x != nil {
-		return x.NowMs
-	}
-	return 0
-}
-
-func (x *SecNewStateUnsignedCall) GetKems() []*SecKemPair {
-	if x != nil {
-		return x.Kems
-	}
-	return nil
-}
-
-type SecNewMembershipStateUnsignedCall struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	ParentState     []byte                 `protobuf:"bytes,1,opt,name=parent_state,json=parentState,proto3" json:"parent_state,omitempty"`
-	Members         []*SecMember           `protobuf:"bytes,2,rep,name=members,proto3" json:"members,omitempty"`
-	Removed         []string               `protobuf:"bytes,3,rep,name=removed,proto3" json:"removed,omitempty"`
-	OldSecret       []byte                 `protobuf:"bytes,4,opt,name=old_secret,json=oldSecret,proto3" json:"old_secret,omitempty"`
-	NewSecret       []byte                 `protobuf:"bytes,5,opt,name=new_secret,json=newSecret,proto3" json:"new_secret,omitempty"`
-	NowMs           uint64                 `protobuf:"varint,6,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
-	PrevSecretNonce []byte                 `protobuf:"bytes,7,opt,name=prev_secret_nonce,json=prevSecretNonce,proto3" json:"prev_secret_nonce,omitempty"`
-	Kems            []*SecKemPair          `protobuf:"bytes,8,rep,name=kems,proto3" json:"kems,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *SecNewMembershipStateUnsignedCall) Reset() {
-	*x = SecNewMembershipStateUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[61]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecNewMembershipStateUnsignedCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecNewMembershipStateUnsignedCall) ProtoMessage() {}
-
-func (x *SecNewMembershipStateUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[61]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecNewMembershipStateUnsignedCall.ProtoReflect.Descriptor instead.
-func (*SecNewMembershipStateUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{61}
-}
-
-func (x *SecNewMembershipStateUnsignedCall) GetParentState() []byte {
-	if x != nil {
-		return x.ParentState
-	}
-	return nil
-}
-
-func (x *SecNewMembershipStateUnsignedCall) GetMembers() []*SecMember {
-	if x != nil {
-		return x.Members
-	}
-	return nil
-}
-
-func (x *SecNewMembershipStateUnsignedCall) GetRemoved() []string {
-	if x != nil {
-		return x.Removed
-	}
-	return nil
-}
-
-func (x *SecNewMembershipStateUnsignedCall) GetOldSecret() []byte {
-	if x != nil {
-		return x.OldSecret
-	}
-	return nil
-}
-
-func (x *SecNewMembershipStateUnsignedCall) GetNewSecret() []byte {
-	if x != nil {
-		return x.NewSecret
-	}
-	return nil
-}
-
-func (x *SecNewMembershipStateUnsignedCall) GetNowMs() uint64 {
-	if x != nil {
-		return x.NowMs
-	}
-	return 0
-}
-
-func (x *SecNewMembershipStateUnsignedCall) GetPrevSecretNonce() []byte {
-	if x != nil {
-		return x.PrevSecretNonce
-	}
-	return nil
-}
-
-func (x *SecNewMembershipStateUnsignedCall) GetKems() []*SecKemPair {
-	if x != nil {
-		return x.Kems
-	}
-	return nil
-}
-
-type SecNewPairStateUnsignedCall struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	ParentState     []byte                 `protobuf:"bytes,1,opt,name=parent_state,json=parentState,proto3" json:"parent_state,omitempty"`
-	Candidate       *SecMember             `protobuf:"bytes,2,opt,name=candidate,proto3" json:"candidate,omitempty"`
-	OldSecret       []byte                 `protobuf:"bytes,3,opt,name=old_secret,json=oldSecret,proto3" json:"old_secret,omitempty"`
-	NewSecret       []byte                 `protobuf:"bytes,4,opt,name=new_secret,json=newSecret,proto3" json:"new_secret,omitempty"`
-	NowMs           uint64                 `protobuf:"varint,5,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
-	PrevSecretNonce []byte                 `protobuf:"bytes,6,opt,name=prev_secret_nonce,json=prevSecretNonce,proto3" json:"prev_secret_nonce,omitempty"`
-	Kems            []*SecKemPair          `protobuf:"bytes,7,rep,name=kems,proto3" json:"kems,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *SecNewPairStateUnsignedCall) Reset() {
-	*x = SecNewPairStateUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[62]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecNewPairStateUnsignedCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecNewPairStateUnsignedCall) ProtoMessage() {}
-
-func (x *SecNewPairStateUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[62]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecNewPairStateUnsignedCall.ProtoReflect.Descriptor instead.
-func (*SecNewPairStateUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{62}
-}
-
-func (x *SecNewPairStateUnsignedCall) GetParentState() []byte {
-	if x != nil {
-		return x.ParentState
-	}
-	return nil
-}
-
-func (x *SecNewPairStateUnsignedCall) GetCandidate() *SecMember {
-	if x != nil {
-		return x.Candidate
-	}
-	return nil
-}
-
-func (x *SecNewPairStateUnsignedCall) GetOldSecret() []byte {
-	if x != nil {
-		return x.OldSecret
-	}
-	return nil
-}
-
-func (x *SecNewPairStateUnsignedCall) GetNewSecret() []byte {
-	if x != nil {
-		return x.NewSecret
-	}
-	return nil
-}
-
-func (x *SecNewPairStateUnsignedCall) GetNowMs() uint64 {
-	if x != nil {
-		return x.NowMs
-	}
-	return 0
-}
-
-func (x *SecNewPairStateUnsignedCall) GetPrevSecretNonce() []byte {
-	if x != nil {
-		return x.PrevSecretNonce
-	}
-	return nil
-}
-
-func (x *SecNewPairStateUnsignedCall) GetKems() []*SecKemPair {
-	if x != nil {
-		return x.Kems
-	}
-	return nil
-}
-
-type SecNewHandoffUnsignedCall struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	ParentState     []byte                 `protobuf:"bytes,1,opt,name=parent_state,json=parentState,proto3" json:"parent_state,omitempty"`
-	IncomingId      string                 `protobuf:"bytes,2,opt,name=incoming_id,json=incomingId,proto3" json:"incoming_id,omitempty"`
-	RecoveryEd      []byte                 `protobuf:"bytes,3,opt,name=recovery_ed,json=recoveryEd,proto3" json:"recovery_ed,omitempty"`
-	OldSecret       []byte                 `protobuf:"bytes,4,opt,name=old_secret,json=oldSecret,proto3" json:"old_secret,omitempty"`
-	NewSecret       []byte                 `protobuf:"bytes,5,opt,name=new_secret,json=newSecret,proto3" json:"new_secret,omitempty"`
-	NowMs           uint64                 `protobuf:"varint,6,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
-	PrevSecretNonce []byte                 `protobuf:"bytes,7,opt,name=prev_secret_nonce,json=prevSecretNonce,proto3" json:"prev_secret_nonce,omitempty"`
-	Kems            []*SecKemPair          `protobuf:"bytes,8,rep,name=kems,proto3" json:"kems,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *SecNewHandoffUnsignedCall) Reset() {
-	*x = SecNewHandoffUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[63]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecNewHandoffUnsignedCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecNewHandoffUnsignedCall) ProtoMessage() {}
-
-func (x *SecNewHandoffUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[63]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecNewHandoffUnsignedCall.ProtoReflect.Descriptor instead.
-func (*SecNewHandoffUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{63}
-}
-
-func (x *SecNewHandoffUnsignedCall) GetParentState() []byte {
-	if x != nil {
-		return x.ParentState
-	}
-	return nil
-}
-
-func (x *SecNewHandoffUnsignedCall) GetIncomingId() string {
+func (x *SecBuildStateCall) GetIncomingId() string {
 	if x != nil {
 		return x.IncomingId
 	}
 	return ""
 }
 
-func (x *SecNewHandoffUnsignedCall) GetRecoveryEd() []byte {
+func (x *SecBuildStateCall) GetRecoveryEd() []byte {
 	if x != nil {
 		return x.RecoveryEd
 	}
 	return nil
 }
 
-func (x *SecNewHandoffUnsignedCall) GetOldSecret() []byte {
+func (x *SecBuildStateCall) GetSecret() []byte {
+	if x != nil {
+		return x.Secret
+	}
+	return nil
+}
+
+func (x *SecBuildStateCall) GetOldSecret() []byte {
 	if x != nil {
 		return x.OldSecret
 	}
 	return nil
 }
 
-func (x *SecNewHandoffUnsignedCall) GetNewSecret() []byte {
+func (x *SecBuildStateCall) GetPrevSecret() []byte {
 	if x != nil {
-		return x.NewSecret
+		return x.PrevSecret
 	}
 	return nil
 }
 
-func (x *SecNewHandoffUnsignedCall) GetNowMs() uint64 {
-	if x != nil {
-		return x.NowMs
-	}
-	return 0
-}
-
-func (x *SecNewHandoffUnsignedCall) GetPrevSecretNonce() []byte {
+func (x *SecBuildStateCall) GetPrevSecretNonce() []byte {
 	if x != nil {
 		return x.PrevSecretNonce
 	}
 	return nil
 }
 
-func (x *SecNewHandoffUnsignedCall) GetKems() []*SecKemPair {
-	if x != nil {
-		return x.Kems
-	}
-	return nil
-}
-
-type SecNewRecoveryUnsignedCall struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ParentState   []byte                 `protobuf:"bytes,1,opt,name=parent_state,json=parentState,proto3" json:"parent_state,omitempty"`
-	NewMember     *SecMember             `protobuf:"bytes,2,opt,name=new_member,json=newMember,proto3" json:"new_member,omitempty"`
-	Members       []*SecMember           `protobuf:"bytes,3,rep,name=members,proto3" json:"members,omitempty"`
-	Secret        []byte                 `protobuf:"bytes,4,opt,name=secret,proto3" json:"secret,omitempty"`
-	NewRecoveryEd []byte                 `protobuf:"bytes,5,opt,name=new_recovery_ed,json=newRecoveryEd,proto3" json:"new_recovery_ed,omitempty"`
-	NowMs         uint64                 `protobuf:"varint,6,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
-	Kems          []*SecKemPair          `protobuf:"bytes,7,rep,name=kems,proto3" json:"kems,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecNewRecoveryUnsignedCall) Reset() {
-	*x = SecNewRecoveryUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[64]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecNewRecoveryUnsignedCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecNewRecoveryUnsignedCall) ProtoMessage() {}
-
-func (x *SecNewRecoveryUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[64]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecNewRecoveryUnsignedCall.ProtoReflect.Descriptor instead.
-func (*SecNewRecoveryUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{64}
-}
-
-func (x *SecNewRecoveryUnsignedCall) GetParentState() []byte {
-	if x != nil {
-		return x.ParentState
-	}
-	return nil
-}
-
-func (x *SecNewRecoveryUnsignedCall) GetNewMember() *SecMember {
-	if x != nil {
-		return x.NewMember
-	}
-	return nil
-}
-
-func (x *SecNewRecoveryUnsignedCall) GetMembers() []*SecMember {
-	if x != nil {
-		return x.Members
-	}
-	return nil
-}
-
-func (x *SecNewRecoveryUnsignedCall) GetSecret() []byte {
-	if x != nil {
-		return x.Secret
-	}
-	return nil
-}
-
-func (x *SecNewRecoveryUnsignedCall) GetNewRecoveryEd() []byte {
-	if x != nil {
-		return x.NewRecoveryEd
-	}
-	return nil
-}
-
-func (x *SecNewRecoveryUnsignedCall) GetNowMs() uint64 {
+func (x *SecBuildStateCall) GetNowMs() uint64 {
 	if x != nil {
 		return x.NowMs
 	}
 	return 0
 }
 
-func (x *SecNewRecoveryUnsignedCall) GetKems() []*SecKemPair {
-	if x != nil {
-		return x.Kems
-	}
-	return nil
-}
-
-type SecNewRecoveryKeyRotationUnsignedCall struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ParentState   []byte                 `protobuf:"bytes,1,opt,name=parent_state,json=parentState,proto3" json:"parent_state,omitempty"`
-	Secret        []byte                 `protobuf:"bytes,2,opt,name=secret,proto3" json:"secret,omitempty"`
-	RecoveryEd    []byte                 `protobuf:"bytes,3,opt,name=recovery_ed,json=recoveryEd,proto3" json:"recovery_ed,omitempty"`
-	NowMs         uint64                 `protobuf:"varint,4,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
-	Kems          []*SecKemPair          `protobuf:"bytes,5,rep,name=kems,proto3" json:"kems,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecNewRecoveryKeyRotationUnsignedCall) Reset() {
-	*x = SecNewRecoveryKeyRotationUnsignedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[65]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecNewRecoveryKeyRotationUnsignedCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecNewRecoveryKeyRotationUnsignedCall) ProtoMessage() {}
-
-func (x *SecNewRecoveryKeyRotationUnsignedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[65]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecNewRecoveryKeyRotationUnsignedCall.ProtoReflect.Descriptor instead.
-func (*SecNewRecoveryKeyRotationUnsignedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{65}
-}
-
-func (x *SecNewRecoveryKeyRotationUnsignedCall) GetParentState() []byte {
-	if x != nil {
-		return x.ParentState
-	}
-	return nil
-}
-
-func (x *SecNewRecoveryKeyRotationUnsignedCall) GetSecret() []byte {
-	if x != nil {
-		return x.Secret
-	}
-	return nil
-}
-
-func (x *SecNewRecoveryKeyRotationUnsignedCall) GetRecoveryEd() []byte {
-	if x != nil {
-		return x.RecoveryEd
-	}
-	return nil
-}
-
-func (x *SecNewRecoveryKeyRotationUnsignedCall) GetNowMs() uint64 {
-	if x != nil {
-		return x.NowMs
-	}
-	return 0
-}
-
-func (x *SecNewRecoveryKeyRotationUnsignedCall) GetKems() []*SecKemPair {
+func (x *SecBuildStateCall) GetKems() []*SecKemPair {
 	if x != nil {
 		return x.Kems
 	}
@@ -5813,15 +4969,17 @@ func (x *SecNewRecoveryKeyRotationUnsignedCall) GetKems() []*SecKemPair {
 
 type SecMarshalStateCall struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Unsigned      *SecUnsignedState      `protobuf:"bytes,1,opt,name=unsigned,proto3" json:"unsigned,omitempty"`
-	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
+	UnsignedCore  []byte                 `protobuf:"bytes,1,opt,name=unsigned_core,json=unsignedCore,proto3" json:"unsigned_core,omitempty"`
+	Grants        []*SecGrant            `protobuf:"bytes,2,rep,name=grants,proto3" json:"grants,omitempty"`
+	PrevSecret    []byte                 `protobuf:"bytes,3,opt,name=prev_secret,json=prevSecret,proto3" json:"prev_secret,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SecMarshalStateCall) Reset() {
 	*x = SecMarshalStateCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[66]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5833,7 +4991,7 @@ func (x *SecMarshalStateCall) String() string {
 func (*SecMarshalStateCall) ProtoMessage() {}
 
 func (x *SecMarshalStateCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[66]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5846,12 +5004,26 @@ func (x *SecMarshalStateCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecMarshalStateCall.ProtoReflect.Descriptor instead.
 func (*SecMarshalStateCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{66}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{57}
 }
 
-func (x *SecMarshalStateCall) GetUnsigned() *SecUnsignedState {
+func (x *SecMarshalStateCall) GetUnsignedCore() []byte {
 	if x != nil {
-		return x.Unsigned
+		return x.UnsignedCore
+	}
+	return nil
+}
+
+func (x *SecMarshalStateCall) GetGrants() []*SecGrant {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+func (x *SecMarshalStateCall) GetPrevSecret() []byte {
+	if x != nil {
+		return x.PrevSecret
 	}
 	return nil
 }
@@ -5874,7 +5046,7 @@ type SecSealPrevSecretCall struct {
 
 func (x *SecSealPrevSecretCall) Reset() {
 	*x = SecSealPrevSecretCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[67]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5886,7 +5058,7 @@ func (x *SecSealPrevSecretCall) String() string {
 func (*SecSealPrevSecretCall) ProtoMessage() {}
 
 func (x *SecSealPrevSecretCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[67]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5899,7 +5071,7 @@ func (x *SecSealPrevSecretCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecSealPrevSecretCall.ProtoReflect.Descriptor instead.
 func (*SecSealPrevSecretCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{67}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *SecSealPrevSecretCall) GetNewSecret() []byte {
@@ -5933,7 +5105,7 @@ type SecOpenPrevSecretCall struct {
 
 func (x *SecOpenPrevSecretCall) Reset() {
 	*x = SecOpenPrevSecretCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[68]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5945,7 +5117,7 @@ func (x *SecOpenPrevSecretCall) String() string {
 func (*SecOpenPrevSecretCall) ProtoMessage() {}
 
 func (x *SecOpenPrevSecretCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[68]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5958,7 +5130,7 @@ func (x *SecOpenPrevSecretCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecOpenPrevSecretCall.ProtoReflect.Descriptor instead.
 func (*SecOpenPrevSecretCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{68}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *SecOpenPrevSecretCall) GetNewSecret() []byte {
@@ -5987,7 +5159,7 @@ type SecVerifyPairApprovalCall struct {
 
 func (x *SecVerifyPairApprovalCall) Reset() {
 	*x = SecVerifyPairApprovalCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[69]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5999,7 +5171,7 @@ func (x *SecVerifyPairApprovalCall) String() string {
 func (*SecVerifyPairApprovalCall) ProtoMessage() {}
 
 func (x *SecVerifyPairApprovalCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[69]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6012,7 +5184,7 @@ func (x *SecVerifyPairApprovalCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecVerifyPairApprovalCall.ProtoReflect.Descriptor instead.
 func (*SecVerifyPairApprovalCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{69}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *SecVerifyPairApprovalCall) GetApproval() []byte {
@@ -6055,7 +5227,7 @@ type SecMachineReplacementOriginsCall struct {
 
 func (x *SecMachineReplacementOriginsCall) Reset() {
 	*x = SecMachineReplacementOriginsCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[70]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6067,7 +5239,7 @@ func (x *SecMachineReplacementOriginsCall) String() string {
 func (*SecMachineReplacementOriginsCall) ProtoMessage() {}
 
 func (x *SecMachineReplacementOriginsCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[70]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6080,7 +5252,7 @@ func (x *SecMachineReplacementOriginsCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecMachineReplacementOriginsCall.ProtoReflect.Descriptor instead.
 func (*SecMachineReplacementOriginsCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{70}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *SecMachineReplacementOriginsCall) GetAccount() string {
@@ -6121,7 +5293,7 @@ type SecPairTrustDescriptorCall struct {
 
 func (x *SecPairTrustDescriptorCall) Reset() {
 	*x = SecPairTrustDescriptorCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[71]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6133,7 +5305,7 @@ func (x *SecPairTrustDescriptorCall) String() string {
 func (*SecPairTrustDescriptorCall) ProtoMessage() {}
 
 func (x *SecPairTrustDescriptorCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[71]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6146,7 +5318,7 @@ func (x *SecPairTrustDescriptorCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecPairTrustDescriptorCall.ProtoReflect.Descriptor instead.
 func (*SecPairTrustDescriptorCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{71}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *SecPairTrustDescriptorCall) GetPin() *SecPin {
@@ -6172,7 +5344,7 @@ type SecParsePairTrustDescriptorCall struct {
 
 func (x *SecParsePairTrustDescriptorCall) Reset() {
 	*x = SecParsePairTrustDescriptorCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[72]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6184,7 +5356,7 @@ func (x *SecParsePairTrustDescriptorCall) String() string {
 func (*SecParsePairTrustDescriptorCall) ProtoMessage() {}
 
 func (x *SecParsePairTrustDescriptorCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[72]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6197,7 +5369,7 @@ func (x *SecParsePairTrustDescriptorCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecParsePairTrustDescriptorCall.ProtoReflect.Descriptor instead.
 func (*SecParsePairTrustDescriptorCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{72}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *SecParsePairTrustDescriptorCall) GetRaw() []byte {
@@ -6217,7 +5389,7 @@ type SecPairDomainCommitCall struct {
 
 func (x *SecPairDomainCommitCall) Reset() {
 	*x = SecPairDomainCommitCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[73]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6229,7 +5401,7 @@ func (x *SecPairDomainCommitCall) String() string {
 func (*SecPairDomainCommitCall) ProtoMessage() {}
 
 func (x *SecPairDomainCommitCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[73]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6242,7 +5414,7 @@ func (x *SecPairDomainCommitCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecPairDomainCommitCall.ProtoReflect.Descriptor instead.
 func (*SecPairDomainCommitCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{73}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *SecPairDomainCommitCall) GetInitiator() []byte {
@@ -6271,7 +5443,7 @@ type SecPairTranscriptCall struct {
 
 func (x *SecPairTranscriptCall) Reset() {
 	*x = SecPairTranscriptCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[74]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6283,7 +5455,7 @@ func (x *SecPairTranscriptCall) String() string {
 func (*SecPairTranscriptCall) ProtoMessage() {}
 
 func (x *SecPairTranscriptCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[74]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6296,7 +5468,7 @@ func (x *SecPairTranscriptCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecPairTranscriptCall.ProtoReflect.Descriptor instead.
 func (*SecPairTranscriptCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{74}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *SecPairTranscriptCall) GetPairingId() string {
@@ -6340,7 +5512,7 @@ type SecPairIdentityTranscriptCall struct {
 
 func (x *SecPairIdentityTranscriptCall) Reset() {
 	*x = SecPairIdentityTranscriptCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[75]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6352,7 +5524,7 @@ func (x *SecPairIdentityTranscriptCall) String() string {
 func (*SecPairIdentityTranscriptCall) ProtoMessage() {}
 
 func (x *SecPairIdentityTranscriptCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[75]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6365,7 +5537,7 @@ func (x *SecPairIdentityTranscriptCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecPairIdentityTranscriptCall.ProtoReflect.Descriptor instead.
 func (*SecPairIdentityTranscriptCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{75}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *SecPairIdentityTranscriptCall) GetPairingId() string {
@@ -6418,7 +5590,7 @@ type SecPairDomainTranscriptCall struct {
 
 func (x *SecPairDomainTranscriptCall) Reset() {
 	*x = SecPairDomainTranscriptCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[76]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6430,7 +5602,7 @@ func (x *SecPairDomainTranscriptCall) String() string {
 func (*SecPairDomainTranscriptCall) ProtoMessage() {}
 
 func (x *SecPairDomainTranscriptCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[76]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6443,7 +5615,7 @@ func (x *SecPairDomainTranscriptCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecPairDomainTranscriptCall.ProtoReflect.Descriptor instead.
 func (*SecPairDomainTranscriptCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{76}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *SecPairDomainTranscriptCall) GetPairingId() string {
@@ -6505,7 +5677,7 @@ type SecDerivePairSecretsCall struct {
 
 func (x *SecDerivePairSecretsCall) Reset() {
 	*x = SecDerivePairSecretsCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[77]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6517,7 +5689,7 @@ func (x *SecDerivePairSecretsCall) String() string {
 func (*SecDerivePairSecretsCall) ProtoMessage() {}
 
 func (x *SecDerivePairSecretsCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[77]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6530,7 +5702,7 @@ func (x *SecDerivePairSecretsCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecDerivePairSecretsCall.ProtoReflect.Descriptor instead.
 func (*SecDerivePairSecretsCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{77}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *SecDerivePairSecretsCall) GetShared() []byte {
@@ -6556,7 +5728,7 @@ type SecEd25519SeedPublicCall struct {
 
 func (x *SecEd25519SeedPublicCall) Reset() {
 	*x = SecEd25519SeedPublicCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[78]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6568,7 +5740,7 @@ func (x *SecEd25519SeedPublicCall) String() string {
 func (*SecEd25519SeedPublicCall) ProtoMessage() {}
 
 func (x *SecEd25519SeedPublicCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[78]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6581,7 +5753,7 @@ func (x *SecEd25519SeedPublicCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecEd25519SeedPublicCall.ProtoReflect.Descriptor instead.
 func (*SecEd25519SeedPublicCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{78}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *SecEd25519SeedPublicCall) GetSeed() []byte {
@@ -6601,7 +5773,7 @@ type SecEd25519SeedSignCall struct {
 
 func (x *SecEd25519SeedSignCall) Reset() {
 	*x = SecEd25519SeedSignCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[79]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6613,7 +5785,7 @@ func (x *SecEd25519SeedSignCall) String() string {
 func (*SecEd25519SeedSignCall) ProtoMessage() {}
 
 func (x *SecEd25519SeedSignCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[79]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6626,7 +5798,7 @@ func (x *SecEd25519SeedSignCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecEd25519SeedSignCall.ProtoReflect.Descriptor instead.
 func (*SecEd25519SeedSignCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{79}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *SecEd25519SeedSignCall) GetSeed() []byte {
@@ -6643,50 +5815,6 @@ func (x *SecEd25519SeedSignCall) GetMessage() []byte {
 	return nil
 }
 
-type SecDeviceIDCall struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	EdPublic      []byte                 `protobuf:"bytes,1,opt,name=ed_public,json=edPublic,proto3" json:"ed_public,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecDeviceIDCall) Reset() {
-	*x = SecDeviceIDCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[80]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecDeviceIDCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecDeviceIDCall) ProtoMessage() {}
-
-func (x *SecDeviceIDCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[80]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecDeviceIDCall.ProtoReflect.Descriptor instead.
-func (*SecDeviceIDCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{80}
-}
-
-func (x *SecDeviceIDCall) GetEdPublic() []byte {
-	if x != nil {
-		return x.EdPublic
-	}
-	return nil
-}
-
 type SecInflateBoundedCall struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Compressed    []byte                 `protobuf:"bytes,1,opt,name=compressed,proto3" json:"compressed,omitempty"`
@@ -6697,7 +5825,7 @@ type SecInflateBoundedCall struct {
 
 func (x *SecInflateBoundedCall) Reset() {
 	*x = SecInflateBoundedCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[81]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6709,7 +5837,7 @@ func (x *SecInflateBoundedCall) String() string {
 func (*SecInflateBoundedCall) ProtoMessage() {}
 
 func (x *SecInflateBoundedCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[81]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6722,7 +5850,7 @@ func (x *SecInflateBoundedCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecInflateBoundedCall.ProtoReflect.Descriptor instead.
 func (*SecInflateBoundedCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{81}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *SecInflateBoundedCall) GetCompressed() []byte {
@@ -6750,7 +5878,7 @@ type SecRequestIdentityCall struct {
 
 func (x *SecRequestIdentityCall) Reset() {
 	*x = SecRequestIdentityCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[82]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6762,7 +5890,7 @@ func (x *SecRequestIdentityCall) String() string {
 func (*SecRequestIdentityCall) ProtoMessage() {}
 
 func (x *SecRequestIdentityCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[82]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6775,7 +5903,7 @@ func (x *SecRequestIdentityCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecRequestIdentityCall.ProtoReflect.Descriptor instead.
 func (*SecRequestIdentityCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{82}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *SecRequestIdentityCall) GetHeader() []byte {
@@ -6810,7 +5938,7 @@ type SecAccountDeleteSigningBytesCall struct {
 
 func (x *SecAccountDeleteSigningBytesCall) Reset() {
 	*x = SecAccountDeleteSigningBytesCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[83]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6822,7 +5950,7 @@ func (x *SecAccountDeleteSigningBytesCall) String() string {
 func (*SecAccountDeleteSigningBytesCall) ProtoMessage() {}
 
 func (x *SecAccountDeleteSigningBytesCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[83]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6835,7 +5963,7 @@ func (x *SecAccountDeleteSigningBytesCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecAccountDeleteSigningBytesCall.ProtoReflect.Descriptor instead.
 func (*SecAccountDeleteSigningBytesCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{83}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *SecAccountDeleteSigningBytesCall) GetAccount() string {
@@ -6874,7 +6002,7 @@ type SecOpenNotifyEnvelopeCall struct {
 
 func (x *SecOpenNotifyEnvelopeCall) Reset() {
 	*x = SecOpenNotifyEnvelopeCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[84]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6886,7 +6014,7 @@ func (x *SecOpenNotifyEnvelopeCall) String() string {
 func (*SecOpenNotifyEnvelopeCall) ProtoMessage() {}
 
 func (x *SecOpenNotifyEnvelopeCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[84]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6899,7 +6027,7 @@ func (x *SecOpenNotifyEnvelopeCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecOpenNotifyEnvelopeCall.ProtoReflect.Descriptor instead.
 func (*SecOpenNotifyEnvelopeCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{84}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *SecOpenNotifyEnvelopeCall) GetPin() *SecPin {
@@ -6951,270 +6079,6 @@ func (x *SecOpenNotifyEnvelopeCall) GetEnvelope() *v1.Envelope {
 	return nil
 }
 
-type SecOpenEnvelopeDirectCall struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Pin            *SecPin                `protobuf:"bytes,1,opt,name=pin,proto3" json:"pin,omitempty"`
-	States         [][]byte               `protobuf:"bytes,2,rep,name=states,proto3" json:"states,omitempty"`
-	RecoveryProofs [][]byte               `protobuf:"bytes,3,rep,name=recovery_proofs,json=recoveryProofs,proto3" json:"recovery_proofs,omitempty"`
-	ContentSecret  []byte                 `protobuf:"bytes,4,opt,name=content_secret,json=contentSecret,proto3" json:"content_secret,omitempty"`
-	SessionSeed    []byte                 `protobuf:"bytes,5,opt,name=session_seed,json=sessionSeed,proto3" json:"session_seed,omitempty"`
-	Live           bool                   `protobuf:"varint,6,opt,name=live,proto3" json:"live,omitempty"`
-	NowMs          int64                  `protobuf:"varint,7,opt,name=now_ms,json=nowMs,proto3" json:"now_ms,omitempty"`
-	Envelope       *v1.Envelope           `protobuf:"bytes,8,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *SecOpenEnvelopeDirectCall) Reset() {
-	*x = SecOpenEnvelopeDirectCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[85]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecOpenEnvelopeDirectCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecOpenEnvelopeDirectCall) ProtoMessage() {}
-
-func (x *SecOpenEnvelopeDirectCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[85]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecOpenEnvelopeDirectCall.ProtoReflect.Descriptor instead.
-func (*SecOpenEnvelopeDirectCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{85}
-}
-
-func (x *SecOpenEnvelopeDirectCall) GetPin() *SecPin {
-	if x != nil {
-		return x.Pin
-	}
-	return nil
-}
-
-func (x *SecOpenEnvelopeDirectCall) GetStates() [][]byte {
-	if x != nil {
-		return x.States
-	}
-	return nil
-}
-
-func (x *SecOpenEnvelopeDirectCall) GetRecoveryProofs() [][]byte {
-	if x != nil {
-		return x.RecoveryProofs
-	}
-	return nil
-}
-
-func (x *SecOpenEnvelopeDirectCall) GetContentSecret() []byte {
-	if x != nil {
-		return x.ContentSecret
-	}
-	return nil
-}
-
-func (x *SecOpenEnvelopeDirectCall) GetSessionSeed() []byte {
-	if x != nil {
-		return x.SessionSeed
-	}
-	return nil
-}
-
-func (x *SecOpenEnvelopeDirectCall) GetLive() bool {
-	if x != nil {
-		return x.Live
-	}
-	return false
-}
-
-func (x *SecOpenEnvelopeDirectCall) GetNowMs() int64 {
-	if x != nil {
-		return x.NowMs
-	}
-	return 0
-}
-
-func (x *SecOpenEnvelopeDirectCall) GetEnvelope() *v1.Envelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
-type SecSealEnvelopeDirectCall struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Secret        []byte                 `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
-	SessionSeed   []byte                 `protobuf:"bytes,2,opt,name=session_seed,json=sessionSeed,proto3" json:"session_seed,omitempty"`
-	Account       string                 `protobuf:"bytes,3,opt,name=account,proto3" json:"account,omitempty"`
-	Domain        []byte                 `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
-	Epoch         uint64                 `protobuf:"varint,5,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	StateHash     []byte                 `protobuf:"bytes,6,opt,name=state_hash,json=stateHash,proto3" json:"state_hash,omitempty"`
-	ContentEpoch  uint64                 `protobuf:"varint,7,opt,name=content_epoch,json=contentEpoch,proto3" json:"content_epoch,omitempty"`
-	Sender        string                 `protobuf:"bytes,8,opt,name=sender,proto3" json:"sender,omitempty"`
-	Purpose       uint32                 `protobuf:"varint,9,opt,name=purpose,proto3" json:"purpose,omitempty"`
-	MachineId     string                 `protobuf:"bytes,10,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	SessionId     string                 `protobuf:"bytes,11,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	RequestId     string                 `protobuf:"bytes,12,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	Seq           uint64                 `protobuf:"varint,13,opt,name=seq,proto3" json:"seq,omitempty"`
-	DeadlineMs    int64                  `protobuf:"varint,14,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
-	Plaintext     []byte                 `protobuf:"bytes,15,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
-	Nonce         []byte                 `protobuf:"bytes,16,opt,name=nonce,proto3" json:"nonce,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SecSealEnvelopeDirectCall) Reset() {
-	*x = SecSealEnvelopeDirectCall{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[86]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SecSealEnvelopeDirectCall) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SecSealEnvelopeDirectCall) ProtoMessage() {}
-
-func (x *SecSealEnvelopeDirectCall) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[86]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SecSealEnvelopeDirectCall.ProtoReflect.Descriptor instead.
-func (*SecSealEnvelopeDirectCall) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{86}
-}
-
-func (x *SecSealEnvelopeDirectCall) GetSecret() []byte {
-	if x != nil {
-		return x.Secret
-	}
-	return nil
-}
-
-func (x *SecSealEnvelopeDirectCall) GetSessionSeed() []byte {
-	if x != nil {
-		return x.SessionSeed
-	}
-	return nil
-}
-
-func (x *SecSealEnvelopeDirectCall) GetAccount() string {
-	if x != nil {
-		return x.Account
-	}
-	return ""
-}
-
-func (x *SecSealEnvelopeDirectCall) GetDomain() []byte {
-	if x != nil {
-		return x.Domain
-	}
-	return nil
-}
-
-func (x *SecSealEnvelopeDirectCall) GetEpoch() uint64 {
-	if x != nil {
-		return x.Epoch
-	}
-	return 0
-}
-
-func (x *SecSealEnvelopeDirectCall) GetStateHash() []byte {
-	if x != nil {
-		return x.StateHash
-	}
-	return nil
-}
-
-func (x *SecSealEnvelopeDirectCall) GetContentEpoch() uint64 {
-	if x != nil {
-		return x.ContentEpoch
-	}
-	return 0
-}
-
-func (x *SecSealEnvelopeDirectCall) GetSender() string {
-	if x != nil {
-		return x.Sender
-	}
-	return ""
-}
-
-func (x *SecSealEnvelopeDirectCall) GetPurpose() uint32 {
-	if x != nil {
-		return x.Purpose
-	}
-	return 0
-}
-
-func (x *SecSealEnvelopeDirectCall) GetMachineId() string {
-	if x != nil {
-		return x.MachineId
-	}
-	return ""
-}
-
-func (x *SecSealEnvelopeDirectCall) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-func (x *SecSealEnvelopeDirectCall) GetRequestId() string {
-	if x != nil {
-		return x.RequestId
-	}
-	return ""
-}
-
-func (x *SecSealEnvelopeDirectCall) GetSeq() uint64 {
-	if x != nil {
-		return x.Seq
-	}
-	return 0
-}
-
-func (x *SecSealEnvelopeDirectCall) GetDeadlineMs() int64 {
-	if x != nil {
-		return x.DeadlineMs
-	}
-	return 0
-}
-
-func (x *SecSealEnvelopeDirectCall) GetPlaintext() []byte {
-	if x != nil {
-		return x.Plaintext
-	}
-	return nil
-}
-
-func (x *SecSealEnvelopeDirectCall) GetNonce() []byte {
-	if x != nil {
-		return x.Nonce
-	}
-	return nil
-}
-
 type SecCallResponse struct {
 	state          protoimpl.MessageState      `protogen:"open.v1"`
 	Error          string                      `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
@@ -7226,27 +6090,16 @@ type SecCallResponse struct {
 	ParsedApproval *SecParsedApproval          `protobuf:"bytes,7,opt,name=parsed_approval,json=parsedApproval,proto3" json:"parsed_approval,omitempty"`
 	Data           []byte                      `protobuf:"bytes,8,opt,name=data,proto3" json:"data,omitempty"`
 	SecondaryData  []byte                      `protobuf:"bytes,9,opt,name=secondary_data,json=secondaryData,proto3" json:"secondary_data,omitempty"`
-	TertiaryData   []byte                      `protobuf:"bytes,10,opt,name=tertiary_data,json=tertiaryData,proto3" json:"tertiary_data,omitempty"`
-	Info           []byte                      `protobuf:"bytes,11,opt,name=info,proto3" json:"info,omitempty"`
-	Aad            []byte                      `protobuf:"bytes,12,opt,name=aad,proto3" json:"aad,omitempty"`
-	Text           string                      `protobuf:"bytes,13,opt,name=text,proto3" json:"text,omitempty"`
-	Strings        []string                    `protobuf:"bytes,14,rep,name=strings,proto3" json:"strings,omitempty"`
-	Pin            *SecPin                     `protobuf:"bytes,15,opt,name=pin,proto3" json:"pin,omitempty"`
-	Notify         *v1.NotifyContent           `protobuf:"bytes,16,opt,name=notify,proto3" json:"notify,omitempty"`
-	Opened         *SecurityOpenEnvelopeResult `protobuf:"bytes,17,opt,name=opened,proto3" json:"opened,omitempty"`
-	Envelope       *v1.Envelope                `protobuf:"bytes,18,opt,name=envelope,proto3" json:"envelope,omitempty"`
-	Header         []byte                      `protobuf:"bytes,19,opt,name=header,proto3" json:"header,omitempty"`
-	OriginBytes    []byte                      `protobuf:"bytes,20,opt,name=origin_bytes,json=originBytes,proto3" json:"origin_bytes,omitempty"`
-	Epoch          uint64                      `protobuf:"varint,21,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	ContentEpoch   uint64                      `protobuf:"varint,22,opt,name=content_epoch,json=contentEpoch,proto3" json:"content_epoch,omitempty"`
-	ParsedStates   []*SecParsedState           `protobuf:"bytes,23,rep,name=parsed_states,json=parsedStates,proto3" json:"parsed_states,omitempty"`
+	Text           string                      `protobuf:"bytes,10,opt,name=text,proto3" json:"text,omitempty"`
+	Strings        []string                    `protobuf:"bytes,11,rep,name=strings,proto3" json:"strings,omitempty"`
+	Pin            *SecPin                     `protobuf:"bytes,12,opt,name=pin,proto3" json:"pin,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SecCallResponse) Reset() {
 	*x = SecCallResponse{}
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[87]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7258,7 +6111,7 @@ func (x *SecCallResponse) String() string {
 func (*SecCallResponse) ProtoMessage() {}
 
 func (x *SecCallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_security_proto_msgTypes[87]
+	mi := &file_remoteagent_core_v1_security_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7271,7 +6124,7 @@ func (x *SecCallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecCallResponse.ProtoReflect.Descriptor instead.
 func (*SecCallResponse) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{87}
+	return file_remoteagent_core_v1_security_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *SecCallResponse) GetError() string {
@@ -7337,27 +6190,6 @@ func (x *SecCallResponse) GetSecondaryData() []byte {
 	return nil
 }
 
-func (x *SecCallResponse) GetTertiaryData() []byte {
-	if x != nil {
-		return x.TertiaryData
-	}
-	return nil
-}
-
-func (x *SecCallResponse) GetInfo() []byte {
-	if x != nil {
-		return x.Info
-	}
-	return nil
-}
-
-func (x *SecCallResponse) GetAad() []byte {
-	if x != nil {
-		return x.Aad
-	}
-	return nil
-}
-
 func (x *SecCallResponse) GetText() string {
 	if x != nil {
 		return x.Text
@@ -7375,62 +6207,6 @@ func (x *SecCallResponse) GetStrings() []string {
 func (x *SecCallResponse) GetPin() *SecPin {
 	if x != nil {
 		return x.Pin
-	}
-	return nil
-}
-
-func (x *SecCallResponse) GetNotify() *v1.NotifyContent {
-	if x != nil {
-		return x.Notify
-	}
-	return nil
-}
-
-func (x *SecCallResponse) GetOpened() *SecurityOpenEnvelopeResult {
-	if x != nil {
-		return x.Opened
-	}
-	return nil
-}
-
-func (x *SecCallResponse) GetEnvelope() *v1.Envelope {
-	if x != nil {
-		return x.Envelope
-	}
-	return nil
-}
-
-func (x *SecCallResponse) GetHeader() []byte {
-	if x != nil {
-		return x.Header
-	}
-	return nil
-}
-
-func (x *SecCallResponse) GetOriginBytes() []byte {
-	if x != nil {
-		return x.OriginBytes
-	}
-	return nil
-}
-
-func (x *SecCallResponse) GetEpoch() uint64 {
-	if x != nil {
-		return x.Epoch
-	}
-	return 0
-}
-
-func (x *SecCallResponse) GetContentEpoch() uint64 {
-	if x != nil {
-		return x.ContentEpoch
-	}
-	return 0
-}
-
-func (x *SecCallResponse) GetParsedStates() []*SecParsedState {
-	if x != nil {
-		return x.ParsedStates
 	}
 	return nil
 }
@@ -7563,20 +6339,15 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\vdeadline_ms\x18\x06 \x01(\x03R\n" +
 	"deadlineMs\x12\x1c\n" +
 	"\tplaintext\x18\a \x01(\fR\tplaintext\x12(\n" +
-	"\x10use_session_seed\x18\b \x01(\bR\x0euseSessionSeed\"n\n" +
-	"\x15SecurityOpenHistoryOp\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x126\n" +
-	"\tenvelopes\x18\x02 \x03(\v2\x18.remoteagent.v1.EnvelopeR\tenvelopes\"9\n" +
+	"\x10use_session_seed\x18\b \x01(\bR\x0euseSessionSeed\"9\n" +
 	"\x18SecurityGetSessionSeedOp\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\x87\x03\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xb6\x02\n" +
 	"\x16SecurityOpRequestEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12R\n" +
 	"\ropen_envelope\x18\x02 \x01(\v2+.remoteagent.core.v1.SecurityOpenEnvelopeOpH\x00R\fopenEnvelope\x12R\n" +
-	"\rseal_envelope\x18\x03 \x01(\v2+.remoteagent.core.v1.SecuritySealEnvelopeOpH\x00R\fsealEnvelope\x12O\n" +
-	"\fopen_history\x18\x04 \x01(\v2*.remoteagent.core.v1.SecurityOpenHistoryOpH\x00R\vopenHistory\x12Y\n" +
-	"\x10get_session_seed\x18\x05 \x01(\v2-.remoteagent.core.v1.SecurityGetSessionSeedOpH\x00R\x0egetSessionSeedB\x04\n" +
+	"\rseal_envelope\x18\x03 \x01(\v2+.remoteagent.core.v1.SecuritySealEnvelopeOpH\x00R\fsealEnvelope\x12Y\n" +
+	"\x10get_session_seed\x18\x04 \x01(\v2-.remoteagent.core.v1.SecurityGetSessionSeedOpH\x00R\x0egetSessionSeedB\x04\n" +
 	"\x02op\"\xcf\x02\n" +
 	"\x1aSecurityOpenEnvelopeResult\x12\x16\n" +
 	"\x06header\x18\x01 \x01(\fR\x06header\x12\x1c\n" +
@@ -7598,26 +6369,15 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x1aSecuritySealEnvelopeResult\x124\n" +
 	"\benvelope\x18\x01 \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\x12(\n" +
 	"\x10request_key_hash\x18\x02 \x01(\fR\x0erequestKeyHash\x12!\n" +
-	"\fpayload_hash\x18\x03 \x01(\fR\vpayloadHash\"\xc4\x01\n" +
-	"\x19SecurityOpenedHistoryItem\x12\x10\n" +
-	"\x03seq\x18\x01 \x01(\x04R\x03seq\x12\x1c\n" +
-	"\tplaintext\x18\x02 \x01(\fR\tplaintext\x12 \n" +
-	"\vunavailable\x18\x03 \x01(\bR\vunavailable\x12 \n" +
-	"\vunsupported\x18\x04 \x01(\bR\vunsupported\x12\x14\n" +
-	"\x05error\x18\x05 \x01(\tR\x05error\x12\x1d\n" +
-	"\n" +
-	"error_code\x18\x06 \x01(\tR\terrorCode\"a\n" +
-	"\x19SecurityOpenHistoryResult\x12D\n" +
-	"\x05items\x18\x01 \x03(\v2..remoteagent.core.v1.SecurityOpenedHistoryItemR\x05items\"\xf3\x02\n" +
+	"\fpayload_hash\x18\x03 \x01(\fR\vpayloadHash\"\xa7\x02\n" +
 	"\x16SecurityOpResultEffect\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\tR\terrorCode\x12I\n" +
 	"\x06opened\x18\x04 \x01(\v2/.remoteagent.core.v1.SecurityOpenEnvelopeResultH\x00R\x06opened\x12I\n" +
-	"\x06sealed\x18\x05 \x01(\v2/.remoteagent.core.v1.SecuritySealEnvelopeResultH\x00R\x06sealed\x12J\n" +
-	"\ahistory\x18\x06 \x01(\v2..remoteagent.core.v1.SecurityOpenHistoryResultH\x00R\ahistory\x12#\n" +
-	"\fsession_seed\x18\a \x01(\fH\x00R\vsessionSeedB\b\n" +
+	"\x06sealed\x18\x05 \x01(\v2/.remoteagent.core.v1.SecuritySealEnvelopeResultH\x00R\x06sealed\x12#\n" +
+	"\fsession_seed\x18\x06 \x01(\fH\x00R\vsessionSeedB\b\n" +
 	"\x06result\"\x97\x01\n" +
 	"\vDemoMachine\x12\x1d\n" +
 	"\n" +
@@ -7746,7 +6506,7 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"expires_ms\x18\b \x01(\x03R\texpiresMs\x12\x14\n" +
 	"\x05nonce\x18\t \x01(\fR\x05nonce\x12,\n" +
 	"\x12replaces_device_id\x18\n" +
-	" \x01(\tR\x10replacesDeviceId\"\xb7 \n" +
+	" \x01(\tR\x10replacesDeviceId\"\xf5\x18\n" +
 	"\x0eSecCallRequest\x12I\n" +
 	"\vparse_state\x18\x01 \x01(\v2&.remoteagent.core.v1.SecParseStateCallH\x00R\n" +
 	"parseState\x12L\n" +
@@ -7764,14 +6524,9 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x18parse_recovery_statement\x18\v \x01(\v22.remoteagent.core.v1.SecParseRecoveryStatementCallH\x00R\x16parseRecoveryStatement\x12q\n" +
 	"\x19verify_recovery_statement\x18\f \x01(\v23.remoteagent.core.v1.SecVerifyRecoveryStatementCallH\x00R\x17verifyRecoveryStatement\x12\x81\x01\n" +
 	"\x1fnew_recovery_statement_unsigned\x18\r \x01(\v28.remoteagent.core.v1.SecNewRecoveryStatementUnsignedCallH\x00R\x1cnewRecoveryStatementUnsigned\x12t\n" +
-	"\x1amarshal_recovery_statement\x18\x0e \x01(\v24.remoteagent.core.v1.SecMarshalRecoveryStatementCallH\x00R\x18marshalRecoveryStatement\x12b\n" +
-	"\x14new_genesis_unsigned\x18\x0f \x01(\v2..remoteagent.core.v1.SecNewGenesisUnsignedCallH\x00R\x12newGenesisUnsigned\x12\\\n" +
-	"\x12new_state_unsigned\x18\x10 \x01(\v2,.remoteagent.core.v1.SecNewStateUnsignedCallH\x00R\x10newStateUnsigned\x12{\n" +
-	"\x1dnew_membership_state_unsigned\x18\x11 \x01(\v26.remoteagent.core.v1.SecNewMembershipStateUnsignedCallH\x00R\x1anewMembershipStateUnsigned\x12i\n" +
-	"\x17new_pair_state_unsigned\x18\x12 \x01(\v20.remoteagent.core.v1.SecNewPairStateUnsignedCallH\x00R\x14newPairStateUnsigned\x12b\n" +
-	"\x14new_handoff_unsigned\x18\x13 \x01(\v2..remoteagent.core.v1.SecNewHandoffUnsignedCallH\x00R\x12newHandoffUnsigned\x12e\n" +
-	"\x15new_recovery_unsigned\x18\x14 \x01(\v2/.remoteagent.core.v1.SecNewRecoveryUnsignedCallH\x00R\x13newRecoveryUnsigned\x12\x88\x01\n" +
-	"\"new_recovery_key_rotation_unsigned\x18\x15 \x01(\v2:.remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCallH\x00R\x1enewRecoveryKeyRotationUnsigned\x12O\n" +
+	"\x1amarshal_recovery_statement\x18\x0e \x01(\v24.remoteagent.core.v1.SecMarshalRecoveryStatementCallH\x00R\x18marshalRecoveryStatement\x12I\n" +
+	"\vbuild_state\x18\x0f \x01(\v2&.remoteagent.core.v1.SecBuildStateCallH\x00R\n" +
+	"buildState\x12O\n" +
 	"\rmarshal_state\x18\x16 \x01(\v2(.remoteagent.core.v1.SecMarshalStateCallH\x00R\fmarshalState\x12V\n" +
 	"\x10seal_prev_secret\x18\x17 \x01(\v2*.remoteagent.core.v1.SecSealPrevSecretCallH\x00R\x0esealPrevSecret\x12V\n" +
 	"\x10open_prev_secret\x18\x18 \x01(\v2*.remoteagent.core.v1.SecOpenPrevSecretCallH\x00R\x0eopenPrevSecret\x12b\n" +
@@ -7785,14 +6540,11 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x16pair_domain_transcript\x18  \x01(\v20.remoteagent.core.v1.SecPairDomainTranscriptCallH\x00R\x14pairDomainTranscript\x12_\n" +
 	"\x13derive_pair_secrets\x18! \x01(\v2-.remoteagent.core.v1.SecDerivePairSecretsCallH\x00R\x11derivePairSecrets\x12_\n" +
 	"\x13ed25519_seed_public\x18\" \x01(\v2-.remoteagent.core.v1.SecEd25519SeedPublicCallH\x00R\x11ed25519SeedPublic\x12Y\n" +
-	"\x11ed25519_seed_sign\x18# \x01(\v2+.remoteagent.core.v1.SecEd25519SeedSignCallH\x00R\x0fed25519SeedSign\x12C\n" +
-	"\tdevice_id\x18$ \x01(\v2$.remoteagent.core.v1.SecDeviceIDCallH\x00R\bdeviceId\x12U\n" +
+	"\x11ed25519_seed_sign\x18# \x01(\v2+.remoteagent.core.v1.SecEd25519SeedSignCallH\x00R\x0fed25519SeedSign\x12U\n" +
 	"\x0finflate_bounded\x18% \x01(\v2*.remoteagent.core.v1.SecInflateBoundedCallH\x00R\x0einflateBounded\x12X\n" +
 	"\x10request_identity\x18& \x01(\v2+.remoteagent.core.v1.SecRequestIdentityCallH\x00R\x0frequestIdentity\x12x\n" +
 	"\x1caccount_delete_signing_bytes\x18' \x01(\v25.remoteagent.core.v1.SecAccountDeleteSigningBytesCallH\x00R\x19accountDeleteSigningBytes\x12b\n" +
-	"\x14open_notify_envelope\x18( \x01(\v2..remoteagent.core.v1.SecOpenNotifyEnvelopeCallH\x00R\x12openNotifyEnvelope\x12b\n" +
-	"\x14open_envelope_direct\x18) \x01(\v2..remoteagent.core.v1.SecOpenEnvelopeDirectCallH\x00R\x12openEnvelopeDirect\x12b\n" +
-	"\x14seal_envelope_direct\x18* \x01(\v2..remoteagent.core.v1.SecSealEnvelopeDirectCallH\x00R\x12sealEnvelopeDirectB\x06\n" +
+	"\x14open_notify_envelope\x18( \x01(\v2..remoteagent.core.v1.SecOpenNotifyEnvelopeCallH\x00R\x12openNotifyEnvelopeB\x06\n" +
 	"\x04call\"%\n" +
 	"\x11SecParseStateCall\x12\x10\n" +
 	"\x03raw\x18\x01 \x01(\fR\x03raw\"\xfc\x01\n" +
@@ -7863,78 +6615,34 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"state_hash\x18\b \x01(\fR\tstateHash\x12\x14\n" +
 	"\x05nonce\x18\t \x01(\fR\x05nonce\x12\x1c\n" +
 	"\tsignature\x18\n" +
-	" \x01(\fR\tsignature\"\x8a\x02\n" +
-	"\x19SecNewGenesisUnsignedCall\x12\x18\n" +
-	"\aaccount\x18\x01 \x01(\tR\aaccount\x12\x16\n" +
-	"\x06domain\x18\x02 \x01(\fR\x06domain\x126\n" +
-	"\x06member\x18\x03 \x01(\v2\x1e.remoteagent.core.v1.SecMemberR\x06member\x12\x1f\n" +
-	"\vrecovery_ed\x18\x04 \x01(\fR\n" +
-	"recoveryEd\x12\x16\n" +
-	"\x06secret\x18\x05 \x01(\fR\x06secret\x12\x15\n" +
-	"\x06now_ms\x18\x06 \x01(\x04R\x05nowMs\x123\n" +
-	"\x04kems\x18\a \x03(\v2\x1f.remoteagent.core.v1.SecKemPairR\x04kems\"\x95\x02\n" +
-	"\x17SecNewStateUnsignedCall\x12!\n" +
-	"\fparent_state\x18\x01 \x01(\fR\vparentState\x128\n" +
-	"\amembers\x18\x02 \x03(\v2\x1e.remoteagent.core.v1.SecMemberR\amembers\x12\x18\n" +
-	"\aremoved\x18\x03 \x03(\tR\aremoved\x12\x16\n" +
-	"\x06secret\x18\x04 \x01(\fR\x06secret\x12\x1f\n" +
-	"\vprev_secret\x18\x05 \x01(\fR\n" +
-	"prevSecret\x12\x15\n" +
-	"\x06now_ms\x18\x06 \x01(\x04R\x05nowMs\x123\n" +
-	"\x04kems\x18\a \x03(\v2\x1f.remoteagent.core.v1.SecKemPairR\x04kems\"\xd0\x02\n" +
-	"!SecNewMembershipStateUnsignedCall\x12!\n" +
-	"\fparent_state\x18\x01 \x01(\fR\vparentState\x128\n" +
-	"\amembers\x18\x02 \x03(\v2\x1e.remoteagent.core.v1.SecMemberR\amembers\x12\x18\n" +
-	"\aremoved\x18\x03 \x03(\tR\aremoved\x12\x1d\n" +
-	"\n" +
-	"old_secret\x18\x04 \x01(\fR\toldSecret\x12\x1d\n" +
-	"\n" +
-	"new_secret\x18\x05 \x01(\fR\tnewSecret\x12\x15\n" +
-	"\x06now_ms\x18\x06 \x01(\x04R\x05nowMs\x12*\n" +
-	"\x11prev_secret_nonce\x18\a \x01(\fR\x0fprevSecretNonce\x123\n" +
-	"\x04kems\x18\b \x03(\v2\x1f.remoteagent.core.v1.SecKemPairR\x04kems\"\xb4\x02\n" +
-	"\x1bSecNewPairStateUnsignedCall\x12!\n" +
-	"\fparent_state\x18\x01 \x01(\fR\vparentState\x12<\n" +
-	"\tcandidate\x18\x02 \x01(\v2\x1e.remoteagent.core.v1.SecMemberR\tcandidate\x12\x1d\n" +
-	"\n" +
-	"old_secret\x18\x03 \x01(\fR\toldSecret\x12\x1d\n" +
-	"\n" +
-	"new_secret\x18\x04 \x01(\fR\tnewSecret\x12\x15\n" +
-	"\x06now_ms\x18\x05 \x01(\x04R\x05nowMs\x12*\n" +
-	"\x11prev_secret_nonce\x18\x06 \x01(\fR\x0fprevSecretNonce\x123\n" +
-	"\x04kems\x18\a \x03(\v2\x1f.remoteagent.core.v1.SecKemPairR\x04kems\"\xb6\x02\n" +
-	"\x19SecNewHandoffUnsignedCall\x12!\n" +
-	"\fparent_state\x18\x01 \x01(\fR\vparentState\x12\x1f\n" +
-	"\vincoming_id\x18\x02 \x01(\tR\n" +
+	" \x01(\fR\tsignature\"\x9a\x04\n" +
+	"\x11SecBuildStateCall\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\rR\x04kind\x12\x18\n" +
+	"\aaccount\x18\x02 \x01(\tR\aaccount\x12\x16\n" +
+	"\x06domain\x18\x03 \x01(\fR\x06domain\x12!\n" +
+	"\fparent_state\x18\x04 \x01(\fR\vparentState\x126\n" +
+	"\x06member\x18\x05 \x01(\v2\x1e.remoteagent.core.v1.SecMemberR\x06member\x128\n" +
+	"\amembers\x18\x06 \x03(\v2\x1e.remoteagent.core.v1.SecMemberR\amembers\x12\x18\n" +
+	"\aremoved\x18\a \x03(\tR\aremoved\x12\x1f\n" +
+	"\vincoming_id\x18\b \x01(\tR\n" +
 	"incomingId\x12\x1f\n" +
-	"\vrecovery_ed\x18\x03 \x01(\fR\n" +
-	"recoveryEd\x12\x1d\n" +
+	"\vrecovery_ed\x18\t \x01(\fR\n" +
+	"recoveryEd\x12\x16\n" +
+	"\x06secret\x18\n" +
+	" \x01(\fR\x06secret\x12\x1d\n" +
 	"\n" +
-	"old_secret\x18\x04 \x01(\fR\toldSecret\x12\x1d\n" +
-	"\n" +
-	"new_secret\x18\x05 \x01(\fR\tnewSecret\x12\x15\n" +
-	"\x06now_ms\x18\x06 \x01(\x04R\x05nowMs\x12*\n" +
-	"\x11prev_secret_nonce\x18\a \x01(\fR\x0fprevSecretNonce\x123\n" +
-	"\x04kems\x18\b \x03(\v2\x1f.remoteagent.core.v1.SecKemPairR\x04kems\"\xc4\x02\n" +
-	"\x1aSecNewRecoveryUnsignedCall\x12!\n" +
-	"\fparent_state\x18\x01 \x01(\fR\vparentState\x12=\n" +
-	"\n" +
-	"new_member\x18\x02 \x01(\v2\x1e.remoteagent.core.v1.SecMemberR\tnewMember\x128\n" +
-	"\amembers\x18\x03 \x03(\v2\x1e.remoteagent.core.v1.SecMemberR\amembers\x12\x16\n" +
-	"\x06secret\x18\x04 \x01(\fR\x06secret\x12&\n" +
-	"\x0fnew_recovery_ed\x18\x05 \x01(\fR\rnewRecoveryEd\x12\x15\n" +
-	"\x06now_ms\x18\x06 \x01(\x04R\x05nowMs\x123\n" +
-	"\x04kems\x18\a \x03(\v2\x1f.remoteagent.core.v1.SecKemPairR\x04kems\"\xcf\x01\n" +
-	"%SecNewRecoveryKeyRotationUnsignedCall\x12!\n" +
-	"\fparent_state\x18\x01 \x01(\fR\vparentState\x12\x16\n" +
-	"\x06secret\x18\x02 \x01(\fR\x06secret\x12\x1f\n" +
-	"\vrecovery_ed\x18\x03 \x01(\fR\n" +
-	"recoveryEd\x12\x15\n" +
-	"\x06now_ms\x18\x04 \x01(\x04R\x05nowMs\x123\n" +
-	"\x04kems\x18\x05 \x03(\v2\x1f.remoteagent.core.v1.SecKemPairR\x04kems\"v\n" +
-	"\x13SecMarshalStateCall\x12A\n" +
-	"\bunsigned\x18\x01 \x01(\v2%.remoteagent.core.v1.SecUnsignedStateR\bunsigned\x12\x1c\n" +
-	"\tsignature\x18\x02 \x01(\fR\tsignature\"k\n" +
+	"old_secret\x18\v \x01(\fR\toldSecret\x12\x1f\n" +
+	"\vprev_secret\x18\f \x01(\fR\n" +
+	"prevSecret\x12*\n" +
+	"\x11prev_secret_nonce\x18\r \x01(\fR\x0fprevSecretNonce\x12\x15\n" +
+	"\x06now_ms\x18\x0e \x01(\x04R\x05nowMs\x123\n" +
+	"\x04kems\x18\x0f \x03(\v2\x1f.remoteagent.core.v1.SecKemPairR\x04kems\"\xb0\x01\n" +
+	"\x13SecMarshalStateCall\x12#\n" +
+	"\runsigned_core\x18\x01 \x01(\fR\funsignedCore\x125\n" +
+	"\x06grants\x18\x02 \x03(\v2\x1d.remoteagent.core.v1.SecGrantR\x06grants\x12\x1f\n" +
+	"\vprev_secret\x18\x03 \x01(\fR\n" +
+	"prevSecret\x12\x1c\n" +
+	"\tsignature\x18\x04 \x01(\fR\tsignature\"k\n" +
 	"\x15SecSealPrevSecretCall\x12\x1d\n" +
 	"\n" +
 	"new_secret\x18\x01 \x01(\fR\tnewSecret\x12\x1d\n" +
@@ -7997,9 +6705,7 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x04seed\x18\x01 \x01(\fR\x04seed\"F\n" +
 	"\x16SecEd25519SeedSignCall\x12\x12\n" +
 	"\x04seed\x18\x01 \x01(\fR\x04seed\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\fR\amessage\".\n" +
-	"\x0fSecDeviceIDCall\x12\x1b\n" +
-	"\ted_public\x18\x01 \x01(\fR\bedPublic\"M\n" +
+	"\amessage\x18\x02 \x01(\fR\amessage\"M\n" +
 	"\x15SecInflateBoundedCall\x12\x1e\n" +
 	"\n" +
 	"compressed\x18\x01 \x01(\fR\n" +
@@ -8020,39 +6726,7 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\tmember_id\x18\x04 \x01(\tR\bmemberId\x12\x0e\n" +
 	"\x02dh\x18\x05 \x01(\fR\x02dh\x12%\n" +
 	"\x0econtent_secret\x18\x06 \x01(\fR\rcontentSecret\x124\n" +
-	"\benvelope\x18\a \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\"\xb6\x02\n" +
-	"\x19SecOpenEnvelopeDirectCall\x12-\n" +
-	"\x03pin\x18\x01 \x01(\v2\x1b.remoteagent.core.v1.SecPinR\x03pin\x12\x16\n" +
-	"\x06states\x18\x02 \x03(\fR\x06states\x12'\n" +
-	"\x0frecovery_proofs\x18\x03 \x03(\fR\x0erecoveryProofs\x12%\n" +
-	"\x0econtent_secret\x18\x04 \x01(\fR\rcontentSecret\x12!\n" +
-	"\fsession_seed\x18\x05 \x01(\fR\vsessionSeed\x12\x12\n" +
-	"\x04live\x18\x06 \x01(\bR\x04live\x12\x15\n" +
-	"\x06now_ms\x18\a \x01(\x03R\x05nowMs\x124\n" +
-	"\benvelope\x18\b \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\"\xd8\x03\n" +
-	"\x19SecSealEnvelopeDirectCall\x12\x16\n" +
-	"\x06secret\x18\x01 \x01(\fR\x06secret\x12!\n" +
-	"\fsession_seed\x18\x02 \x01(\fR\vsessionSeed\x12\x18\n" +
-	"\aaccount\x18\x03 \x01(\tR\aaccount\x12\x16\n" +
-	"\x06domain\x18\x04 \x01(\fR\x06domain\x12\x14\n" +
-	"\x05epoch\x18\x05 \x01(\x04R\x05epoch\x12\x1d\n" +
-	"\n" +
-	"state_hash\x18\x06 \x01(\fR\tstateHash\x12#\n" +
-	"\rcontent_epoch\x18\a \x01(\x04R\fcontentEpoch\x12\x16\n" +
-	"\x06sender\x18\b \x01(\tR\x06sender\x12\x18\n" +
-	"\apurpose\x18\t \x01(\rR\apurpose\x12\x1d\n" +
-	"\n" +
-	"machine_id\x18\n" +
-	" \x01(\tR\tmachineId\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\v \x01(\tR\tsessionId\x12\x1d\n" +
-	"\n" +
-	"request_id\x18\f \x01(\tR\trequestId\x12\x10\n" +
-	"\x03seq\x18\r \x01(\x04R\x03seq\x12\x1f\n" +
-	"\vdeadline_ms\x18\x0e \x01(\x03R\n" +
-	"deadlineMs\x12\x1c\n" +
-	"\tplaintext\x18\x0f \x01(\fR\tplaintext\x12\x14\n" +
-	"\x05nonce\x18\x10 \x01(\fR\x05nonce\"\xa8\b\n" +
+	"\benvelope\x18\a \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\"\xe7\x04\n" +
 	"\x0fSecCallResponse\x12\x14\n" +
 	"\x05error\x18\x01 \x01(\tR\x05error\x12\x1d\n" +
 	"\n" +
@@ -8063,22 +6737,11 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x0eunsigned_state\x18\x06 \x01(\v2%.remoteagent.core.v1.SecUnsignedStateR\runsignedState\x12O\n" +
 	"\x0fparsed_approval\x18\a \x01(\v2&.remoteagent.core.v1.SecParsedApprovalR\x0eparsedApproval\x12\x12\n" +
 	"\x04data\x18\b \x01(\fR\x04data\x12%\n" +
-	"\x0esecondary_data\x18\t \x01(\fR\rsecondaryData\x12#\n" +
-	"\rtertiary_data\x18\n" +
-	" \x01(\fR\ftertiaryData\x12\x12\n" +
-	"\x04info\x18\v \x01(\fR\x04info\x12\x10\n" +
-	"\x03aad\x18\f \x01(\fR\x03aad\x12\x12\n" +
-	"\x04text\x18\r \x01(\tR\x04text\x12\x18\n" +
-	"\astrings\x18\x0e \x03(\tR\astrings\x12-\n" +
-	"\x03pin\x18\x0f \x01(\v2\x1b.remoteagent.core.v1.SecPinR\x03pin\x125\n" +
-	"\x06notify\x18\x10 \x01(\v2\x1d.remoteagent.v1.NotifyContentR\x06notify\x12G\n" +
-	"\x06opened\x18\x11 \x01(\v2/.remoteagent.core.v1.SecurityOpenEnvelopeResultR\x06opened\x124\n" +
-	"\benvelope\x18\x12 \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\x12\x16\n" +
-	"\x06header\x18\x13 \x01(\fR\x06header\x12!\n" +
-	"\forigin_bytes\x18\x14 \x01(\fR\voriginBytes\x12\x14\n" +
-	"\x05epoch\x18\x15 \x01(\x04R\x05epoch\x12#\n" +
-	"\rcontent_epoch\x18\x16 \x01(\x04R\fcontentEpoch\x12H\n" +
-	"\rparsed_states\x18\x17 \x03(\v2#.remoteagent.core.v1.SecParsedStateR\fparsedStates*\xdf\x01\n" +
+	"\x0esecondary_data\x18\t \x01(\fR\rsecondaryData\x12\x12\n" +
+	"\x04text\x18\n" +
+	" \x01(\tR\x04text\x12\x18\n" +
+	"\astrings\x18\v \x03(\tR\astrings\x12-\n" +
+	"\x03pin\x18\f \x01(\v2\x1b.remoteagent.core.v1.SecPinR\x03pin*\xdf\x01\n" +
 	"\x0fSecurityKeyKind\x12!\n" +
 	"\x1dSECURITY_KEY_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bSECURITY_KEY_KIND_DEVICE_ED\x10\x01\x12\x1e\n" +
@@ -8105,231 +6768,189 @@ func file_remoteagent_core_v1_security_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_security_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_remoteagent_core_v1_security_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
+var file_remoteagent_core_v1_security_proto_msgTypes = make([]protoimpl.MessageInfo, 76)
 var file_remoteagent_core_v1_security_proto_goTypes = []any{
-	(SecurityKeyKind)(0),                          // 0: remoteagent.core.v1.SecurityKeyKind
-	(SecurityGenerateKind)(0),                     // 1: remoteagent.core.v1.SecurityGenerateKind
-	(*SecurityConfigEvent)(nil),                   // 2: remoteagent.core.v1.SecurityConfigEvent
-	(*SecurityRecordEvent)(nil),                   // 3: remoteagent.core.v1.SecurityRecordEvent
-	(*SecurityKeySignEffect)(nil),                 // 4: remoteagent.core.v1.SecurityKeySignEffect
-	(*SecurityKeySignedEvent)(nil),                // 5: remoteagent.core.v1.SecurityKeySignedEvent
-	(*SecurityKeyAgreeEffect)(nil),                // 6: remoteagent.core.v1.SecurityKeyAgreeEffect
-	(*SecurityKeyAgreedEvent)(nil),                // 7: remoteagent.core.v1.SecurityKeyAgreedEvent
-	(*SecurityKeyGenerateEffect)(nil),             // 8: remoteagent.core.v1.SecurityKeyGenerateEffect
-	(*SecurityKeyGeneratedEvent)(nil),             // 9: remoteagent.core.v1.SecurityKeyGeneratedEvent
-	(*SecurityKeyEncapsulateEffect)(nil),          // 10: remoteagent.core.v1.SecurityKeyEncapsulateEffect
-	(*SecurityKeyEncapsulatedPair)(nil),           // 11: remoteagent.core.v1.SecurityKeyEncapsulatedPair
-	(*SecurityKeyEncapsulatedEvent)(nil),          // 12: remoteagent.core.v1.SecurityKeyEncapsulatedEvent
-	(*SecurityKeyDiscardEffect)(nil),              // 13: remoteagent.core.v1.SecurityKeyDiscardEffect
-	(*CryptoBatchVerifyItem)(nil),                 // 14: remoteagent.core.v1.CryptoBatchVerifyItem
-	(*CryptoBatchAeadOpenItem)(nil),               // 15: remoteagent.core.v1.CryptoBatchAeadOpenItem
-	(*CryptoBatchAeadSealItem)(nil),               // 16: remoteagent.core.v1.CryptoBatchAeadSealItem
-	(*CryptoBatchSha256Item)(nil),                 // 17: remoteagent.core.v1.CryptoBatchSha256Item
-	(*SecurityCryptoBatchItem)(nil),               // 18: remoteagent.core.v1.SecurityCryptoBatchItem
-	(*SecurityCryptoBatchEffect)(nil),             // 19: remoteagent.core.v1.SecurityCryptoBatchEffect
-	(*SecurityCryptoBatchResult)(nil),             // 20: remoteagent.core.v1.SecurityCryptoBatchResult
-	(*SecurityCryptoBatchDoneEvent)(nil),          // 21: remoteagent.core.v1.SecurityCryptoBatchDoneEvent
-	(*SecurityOpenEnvelopeOp)(nil),                // 22: remoteagent.core.v1.SecurityOpenEnvelopeOp
-	(*SecuritySealEnvelopeOp)(nil),                // 23: remoteagent.core.v1.SecuritySealEnvelopeOp
-	(*SecurityOpenHistoryOp)(nil),                 // 24: remoteagent.core.v1.SecurityOpenHistoryOp
-	(*SecurityGetSessionSeedOp)(nil),              // 25: remoteagent.core.v1.SecurityGetSessionSeedOp
-	(*SecurityOpRequestEvent)(nil),                // 26: remoteagent.core.v1.SecurityOpRequestEvent
-	(*SecurityOpenEnvelopeResult)(nil),            // 27: remoteagent.core.v1.SecurityOpenEnvelopeResult
-	(*SecuritySealEnvelopeResult)(nil),            // 28: remoteagent.core.v1.SecuritySealEnvelopeResult
-	(*SecurityOpenedHistoryItem)(nil),             // 29: remoteagent.core.v1.SecurityOpenedHistoryItem
-	(*SecurityOpenHistoryResult)(nil),             // 30: remoteagent.core.v1.SecurityOpenHistoryResult
-	(*SecurityOpResultEffect)(nil),                // 31: remoteagent.core.v1.SecurityOpResultEffect
-	(*DemoMachine)(nil),                           // 32: remoteagent.core.v1.DemoMachine
-	(*DemoSession)(nil),                           // 33: remoteagent.core.v1.DemoSession
-	(*DemoDevice)(nil),                            // 34: remoteagent.core.v1.DemoDevice
-	(*DemoSessionEvents)(nil),                     // 35: remoteagent.core.v1.DemoSessionEvents
-	(*SeedDemoWorldEvent)(nil),                    // 36: remoteagent.core.v1.SeedDemoWorldEvent
-	(*CacheWriteStoredEvents)(nil),                // 37: remoteagent.core.v1.CacheWriteStoredEvents
-	(*SecPin)(nil),                                // 38: remoteagent.core.v1.SecPin
-	(*SecMember)(nil),                             // 39: remoteagent.core.v1.SecMember
-	(*SecGrant)(nil),                              // 40: remoteagent.core.v1.SecGrant
-	(*SecParsedState)(nil),                        // 41: remoteagent.core.v1.SecParsedState
-	(*SecParsedLease)(nil),                        // 42: remoteagent.core.v1.SecParsedLease
-	(*SecParsedRecoveryStatement)(nil),            // 43: remoteagent.core.v1.SecParsedRecoveryStatement
-	(*SecKemPair)(nil),                            // 44: remoteagent.core.v1.SecKemPair
-	(*SecUnsignedState)(nil),                      // 45: remoteagent.core.v1.SecUnsignedState
-	(*SecParsedApproval)(nil),                     // 46: remoteagent.core.v1.SecParsedApproval
-	(*SecCallRequest)(nil),                        // 47: remoteagent.core.v1.SecCallRequest
-	(*SecParseStateCall)(nil),                     // 48: remoteagent.core.v1.SecParseStateCall
-	(*SecVerifyChainCall)(nil),                    // 49: remoteagent.core.v1.SecVerifyChainCall
-	(*SecGrantChallengeCall)(nil),                 // 50: remoteagent.core.v1.SecGrantChallengeCall
-	(*SecOpenGrantWithDHCall)(nil),                // 51: remoteagent.core.v1.SecOpenGrantWithDHCall
-	(*SecHPKEWithDHCall)(nil),                     // 52: remoteagent.core.v1.SecHPKEWithDHCall
-	(*SecParseLeaseCall)(nil),                     // 53: remoteagent.core.v1.SecParseLeaseCall
-	(*SecVerifyLeaseCall)(nil),                    // 54: remoteagent.core.v1.SecVerifyLeaseCall
-	(*SecNewLeaseUnsignedCall)(nil),               // 55: remoteagent.core.v1.SecNewLeaseUnsignedCall
-	(*SecMarshalLeaseCall)(nil),                   // 56: remoteagent.core.v1.SecMarshalLeaseCall
-	(*SecParseRecoveryStatementCall)(nil),         // 57: remoteagent.core.v1.SecParseRecoveryStatementCall
-	(*SecVerifyRecoveryStatementCall)(nil),        // 58: remoteagent.core.v1.SecVerifyRecoveryStatementCall
-	(*SecNewRecoveryStatementUnsignedCall)(nil),   // 59: remoteagent.core.v1.SecNewRecoveryStatementUnsignedCall
-	(*SecMarshalRecoveryStatementCall)(nil),       // 60: remoteagent.core.v1.SecMarshalRecoveryStatementCall
-	(*SecNewGenesisUnsignedCall)(nil),             // 61: remoteagent.core.v1.SecNewGenesisUnsignedCall
-	(*SecNewStateUnsignedCall)(nil),               // 62: remoteagent.core.v1.SecNewStateUnsignedCall
-	(*SecNewMembershipStateUnsignedCall)(nil),     // 63: remoteagent.core.v1.SecNewMembershipStateUnsignedCall
-	(*SecNewPairStateUnsignedCall)(nil),           // 64: remoteagent.core.v1.SecNewPairStateUnsignedCall
-	(*SecNewHandoffUnsignedCall)(nil),             // 65: remoteagent.core.v1.SecNewHandoffUnsignedCall
-	(*SecNewRecoveryUnsignedCall)(nil),            // 66: remoteagent.core.v1.SecNewRecoveryUnsignedCall
-	(*SecNewRecoveryKeyRotationUnsignedCall)(nil), // 67: remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall
-	(*SecMarshalStateCall)(nil),                   // 68: remoteagent.core.v1.SecMarshalStateCall
-	(*SecSealPrevSecretCall)(nil),                 // 69: remoteagent.core.v1.SecSealPrevSecretCall
-	(*SecOpenPrevSecretCall)(nil),                 // 70: remoteagent.core.v1.SecOpenPrevSecretCall
-	(*SecVerifyPairApprovalCall)(nil),             // 71: remoteagent.core.v1.SecVerifyPairApprovalCall
-	(*SecMachineReplacementOriginsCall)(nil),      // 72: remoteagent.core.v1.SecMachineReplacementOriginsCall
-	(*SecPairTrustDescriptorCall)(nil),            // 73: remoteagent.core.v1.SecPairTrustDescriptorCall
-	(*SecParsePairTrustDescriptorCall)(nil),       // 74: remoteagent.core.v1.SecParsePairTrustDescriptorCall
-	(*SecPairDomainCommitCall)(nil),               // 75: remoteagent.core.v1.SecPairDomainCommitCall
-	(*SecPairTranscriptCall)(nil),                 // 76: remoteagent.core.v1.SecPairTranscriptCall
-	(*SecPairIdentityTranscriptCall)(nil),         // 77: remoteagent.core.v1.SecPairIdentityTranscriptCall
-	(*SecPairDomainTranscriptCall)(nil),           // 78: remoteagent.core.v1.SecPairDomainTranscriptCall
-	(*SecDerivePairSecretsCall)(nil),              // 79: remoteagent.core.v1.SecDerivePairSecretsCall
-	(*SecEd25519SeedPublicCall)(nil),              // 80: remoteagent.core.v1.SecEd25519SeedPublicCall
-	(*SecEd25519SeedSignCall)(nil),                // 81: remoteagent.core.v1.SecEd25519SeedSignCall
-	(*SecDeviceIDCall)(nil),                       // 82: remoteagent.core.v1.SecDeviceIDCall
-	(*SecInflateBoundedCall)(nil),                 // 83: remoteagent.core.v1.SecInflateBoundedCall
-	(*SecRequestIdentityCall)(nil),                // 84: remoteagent.core.v1.SecRequestIdentityCall
-	(*SecAccountDeleteSigningBytesCall)(nil),      // 85: remoteagent.core.v1.SecAccountDeleteSigningBytesCall
-	(*SecOpenNotifyEnvelopeCall)(nil),             // 86: remoteagent.core.v1.SecOpenNotifyEnvelopeCall
-	(*SecOpenEnvelopeDirectCall)(nil),             // 87: remoteagent.core.v1.SecOpenEnvelopeDirectCall
-	(*SecSealEnvelopeDirectCall)(nil),             // 88: remoteagent.core.v1.SecSealEnvelopeDirectCall
-	(*SecCallResponse)(nil),                       // 89: remoteagent.core.v1.SecCallResponse
-	(*v1.Envelope)(nil),                           // 90: remoteagent.v1.Envelope
-	(*v1.MachineMeta)(nil),                        // 91: remoteagent.v1.MachineMeta
-	(*v1.Session)(nil),                            // 92: remoteagent.v1.Session
-	(*v1.LiveSnapshot)(nil),                       // 93: remoteagent.v1.LiveSnapshot
-	(v1.DeviceKind)(0),                            // 94: remoteagent.v1.DeviceKind
-	(*v1.DeviceMeta)(nil),                         // 95: remoteagent.v1.DeviceMeta
-	(*v1.Event)(nil),                              // 96: remoteagent.v1.Event
-	(*v1.ProjectPrefs)(nil),                       // 97: remoteagent.v1.ProjectPrefs
-	(*v1.StoredEvent)(nil),                        // 98: remoteagent.v1.StoredEvent
-	(*v1.MachineReplacementProof)(nil),            // 99: remoteagent.v1.MachineReplacementProof
-	(*v1.NotifyContent)(nil),                      // 100: remoteagent.v1.NotifyContent
+	(SecurityKeyKind)(0),                        // 0: remoteagent.core.v1.SecurityKeyKind
+	(SecurityGenerateKind)(0),                   // 1: remoteagent.core.v1.SecurityGenerateKind
+	(*SecurityConfigEvent)(nil),                 // 2: remoteagent.core.v1.SecurityConfigEvent
+	(*SecurityRecordEvent)(nil),                 // 3: remoteagent.core.v1.SecurityRecordEvent
+	(*SecurityKeySignEffect)(nil),               // 4: remoteagent.core.v1.SecurityKeySignEffect
+	(*SecurityKeySignedEvent)(nil),              // 5: remoteagent.core.v1.SecurityKeySignedEvent
+	(*SecurityKeyAgreeEffect)(nil),              // 6: remoteagent.core.v1.SecurityKeyAgreeEffect
+	(*SecurityKeyAgreedEvent)(nil),              // 7: remoteagent.core.v1.SecurityKeyAgreedEvent
+	(*SecurityKeyGenerateEffect)(nil),           // 8: remoteagent.core.v1.SecurityKeyGenerateEffect
+	(*SecurityKeyGeneratedEvent)(nil),           // 9: remoteagent.core.v1.SecurityKeyGeneratedEvent
+	(*SecurityKeyEncapsulateEffect)(nil),        // 10: remoteagent.core.v1.SecurityKeyEncapsulateEffect
+	(*SecurityKeyEncapsulatedPair)(nil),         // 11: remoteagent.core.v1.SecurityKeyEncapsulatedPair
+	(*SecurityKeyEncapsulatedEvent)(nil),        // 12: remoteagent.core.v1.SecurityKeyEncapsulatedEvent
+	(*SecurityKeyDiscardEffect)(nil),            // 13: remoteagent.core.v1.SecurityKeyDiscardEffect
+	(*CryptoBatchVerifyItem)(nil),               // 14: remoteagent.core.v1.CryptoBatchVerifyItem
+	(*CryptoBatchAeadOpenItem)(nil),             // 15: remoteagent.core.v1.CryptoBatchAeadOpenItem
+	(*CryptoBatchAeadSealItem)(nil),             // 16: remoteagent.core.v1.CryptoBatchAeadSealItem
+	(*CryptoBatchSha256Item)(nil),               // 17: remoteagent.core.v1.CryptoBatchSha256Item
+	(*SecurityCryptoBatchItem)(nil),             // 18: remoteagent.core.v1.SecurityCryptoBatchItem
+	(*SecurityCryptoBatchEffect)(nil),           // 19: remoteagent.core.v1.SecurityCryptoBatchEffect
+	(*SecurityCryptoBatchResult)(nil),           // 20: remoteagent.core.v1.SecurityCryptoBatchResult
+	(*SecurityCryptoBatchDoneEvent)(nil),        // 21: remoteagent.core.v1.SecurityCryptoBatchDoneEvent
+	(*SecurityOpenEnvelopeOp)(nil),              // 22: remoteagent.core.v1.SecurityOpenEnvelopeOp
+	(*SecuritySealEnvelopeOp)(nil),              // 23: remoteagent.core.v1.SecuritySealEnvelopeOp
+	(*SecurityGetSessionSeedOp)(nil),            // 24: remoteagent.core.v1.SecurityGetSessionSeedOp
+	(*SecurityOpRequestEvent)(nil),              // 25: remoteagent.core.v1.SecurityOpRequestEvent
+	(*SecurityOpenEnvelopeResult)(nil),          // 26: remoteagent.core.v1.SecurityOpenEnvelopeResult
+	(*SecuritySealEnvelopeResult)(nil),          // 27: remoteagent.core.v1.SecuritySealEnvelopeResult
+	(*SecurityOpResultEffect)(nil),              // 28: remoteagent.core.v1.SecurityOpResultEffect
+	(*DemoMachine)(nil),                         // 29: remoteagent.core.v1.DemoMachine
+	(*DemoSession)(nil),                         // 30: remoteagent.core.v1.DemoSession
+	(*DemoDevice)(nil),                          // 31: remoteagent.core.v1.DemoDevice
+	(*DemoSessionEvents)(nil),                   // 32: remoteagent.core.v1.DemoSessionEvents
+	(*SeedDemoWorldEvent)(nil),                  // 33: remoteagent.core.v1.SeedDemoWorldEvent
+	(*CacheWriteStoredEvents)(nil),              // 34: remoteagent.core.v1.CacheWriteStoredEvents
+	(*SecPin)(nil),                              // 35: remoteagent.core.v1.SecPin
+	(*SecMember)(nil),                           // 36: remoteagent.core.v1.SecMember
+	(*SecGrant)(nil),                            // 37: remoteagent.core.v1.SecGrant
+	(*SecParsedState)(nil),                      // 38: remoteagent.core.v1.SecParsedState
+	(*SecParsedLease)(nil),                      // 39: remoteagent.core.v1.SecParsedLease
+	(*SecParsedRecoveryStatement)(nil),          // 40: remoteagent.core.v1.SecParsedRecoveryStatement
+	(*SecKemPair)(nil),                          // 41: remoteagent.core.v1.SecKemPair
+	(*SecUnsignedState)(nil),                    // 42: remoteagent.core.v1.SecUnsignedState
+	(*SecParsedApproval)(nil),                   // 43: remoteagent.core.v1.SecParsedApproval
+	(*SecCallRequest)(nil),                      // 44: remoteagent.core.v1.SecCallRequest
+	(*SecParseStateCall)(nil),                   // 45: remoteagent.core.v1.SecParseStateCall
+	(*SecVerifyChainCall)(nil),                  // 46: remoteagent.core.v1.SecVerifyChainCall
+	(*SecGrantChallengeCall)(nil),               // 47: remoteagent.core.v1.SecGrantChallengeCall
+	(*SecOpenGrantWithDHCall)(nil),              // 48: remoteagent.core.v1.SecOpenGrantWithDHCall
+	(*SecHPKEWithDHCall)(nil),                   // 49: remoteagent.core.v1.SecHPKEWithDHCall
+	(*SecParseLeaseCall)(nil),                   // 50: remoteagent.core.v1.SecParseLeaseCall
+	(*SecVerifyLeaseCall)(nil),                  // 51: remoteagent.core.v1.SecVerifyLeaseCall
+	(*SecNewLeaseUnsignedCall)(nil),             // 52: remoteagent.core.v1.SecNewLeaseUnsignedCall
+	(*SecMarshalLeaseCall)(nil),                 // 53: remoteagent.core.v1.SecMarshalLeaseCall
+	(*SecParseRecoveryStatementCall)(nil),       // 54: remoteagent.core.v1.SecParseRecoveryStatementCall
+	(*SecVerifyRecoveryStatementCall)(nil),      // 55: remoteagent.core.v1.SecVerifyRecoveryStatementCall
+	(*SecNewRecoveryStatementUnsignedCall)(nil), // 56: remoteagent.core.v1.SecNewRecoveryStatementUnsignedCall
+	(*SecMarshalRecoveryStatementCall)(nil),     // 57: remoteagent.core.v1.SecMarshalRecoveryStatementCall
+	(*SecBuildStateCall)(nil),                   // 58: remoteagent.core.v1.SecBuildStateCall
+	(*SecMarshalStateCall)(nil),                 // 59: remoteagent.core.v1.SecMarshalStateCall
+	(*SecSealPrevSecretCall)(nil),               // 60: remoteagent.core.v1.SecSealPrevSecretCall
+	(*SecOpenPrevSecretCall)(nil),               // 61: remoteagent.core.v1.SecOpenPrevSecretCall
+	(*SecVerifyPairApprovalCall)(nil),           // 62: remoteagent.core.v1.SecVerifyPairApprovalCall
+	(*SecMachineReplacementOriginsCall)(nil),    // 63: remoteagent.core.v1.SecMachineReplacementOriginsCall
+	(*SecPairTrustDescriptorCall)(nil),          // 64: remoteagent.core.v1.SecPairTrustDescriptorCall
+	(*SecParsePairTrustDescriptorCall)(nil),     // 65: remoteagent.core.v1.SecParsePairTrustDescriptorCall
+	(*SecPairDomainCommitCall)(nil),             // 66: remoteagent.core.v1.SecPairDomainCommitCall
+	(*SecPairTranscriptCall)(nil),               // 67: remoteagent.core.v1.SecPairTranscriptCall
+	(*SecPairIdentityTranscriptCall)(nil),       // 68: remoteagent.core.v1.SecPairIdentityTranscriptCall
+	(*SecPairDomainTranscriptCall)(nil),         // 69: remoteagent.core.v1.SecPairDomainTranscriptCall
+	(*SecDerivePairSecretsCall)(nil),            // 70: remoteagent.core.v1.SecDerivePairSecretsCall
+	(*SecEd25519SeedPublicCall)(nil),            // 71: remoteagent.core.v1.SecEd25519SeedPublicCall
+	(*SecEd25519SeedSignCall)(nil),              // 72: remoteagent.core.v1.SecEd25519SeedSignCall
+	(*SecInflateBoundedCall)(nil),               // 73: remoteagent.core.v1.SecInflateBoundedCall
+	(*SecRequestIdentityCall)(nil),              // 74: remoteagent.core.v1.SecRequestIdentityCall
+	(*SecAccountDeleteSigningBytesCall)(nil),    // 75: remoteagent.core.v1.SecAccountDeleteSigningBytesCall
+	(*SecOpenNotifyEnvelopeCall)(nil),           // 76: remoteagent.core.v1.SecOpenNotifyEnvelopeCall
+	(*SecCallResponse)(nil),                     // 77: remoteagent.core.v1.SecCallResponse
+	(*v1.Envelope)(nil),                         // 78: remoteagent.v1.Envelope
+	(*v1.MachineMeta)(nil),                      // 79: remoteagent.v1.MachineMeta
+	(*v1.Session)(nil),                          // 80: remoteagent.v1.Session
+	(*v1.LiveSnapshot)(nil),                     // 81: remoteagent.v1.LiveSnapshot
+	(v1.DeviceKind)(0),                          // 82: remoteagent.v1.DeviceKind
+	(*v1.DeviceMeta)(nil),                       // 83: remoteagent.v1.DeviceMeta
+	(*v1.Event)(nil),                            // 84: remoteagent.v1.Event
+	(*v1.ProjectPrefs)(nil),                     // 85: remoteagent.v1.ProjectPrefs
+	(*v1.StoredEvent)(nil),                      // 86: remoteagent.v1.StoredEvent
+	(*v1.MachineReplacementProof)(nil),          // 87: remoteagent.v1.MachineReplacementProof
 }
 var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
-	0,   // 0: remoteagent.core.v1.SecurityKeySignEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
-	0,   // 1: remoteagent.core.v1.SecurityKeyAgreeEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
-	1,   // 2: remoteagent.core.v1.SecurityKeyGenerateEffect.key_kind:type_name -> remoteagent.core.v1.SecurityGenerateKind
-	11,  // 3: remoteagent.core.v1.SecurityKeyEncapsulatedEvent.pairs:type_name -> remoteagent.core.v1.SecurityKeyEncapsulatedPair
-	14,  // 4: remoteagent.core.v1.SecurityCryptoBatchItem.verify:type_name -> remoteagent.core.v1.CryptoBatchVerifyItem
-	15,  // 5: remoteagent.core.v1.SecurityCryptoBatchItem.aead_open:type_name -> remoteagent.core.v1.CryptoBatchAeadOpenItem
-	16,  // 6: remoteagent.core.v1.SecurityCryptoBatchItem.aead_seal:type_name -> remoteagent.core.v1.CryptoBatchAeadSealItem
-	17,  // 7: remoteagent.core.v1.SecurityCryptoBatchItem.sha256:type_name -> remoteagent.core.v1.CryptoBatchSha256Item
-	18,  // 8: remoteagent.core.v1.SecurityCryptoBatchEffect.items:type_name -> remoteagent.core.v1.SecurityCryptoBatchItem
-	20,  // 9: remoteagent.core.v1.SecurityCryptoBatchDoneEvent.results:type_name -> remoteagent.core.v1.SecurityCryptoBatchResult
-	90,  // 10: remoteagent.core.v1.SecurityOpenEnvelopeOp.envelope:type_name -> remoteagent.v1.Envelope
-	90,  // 11: remoteagent.core.v1.SecurityOpenHistoryOp.envelopes:type_name -> remoteagent.v1.Envelope
-	22,  // 12: remoteagent.core.v1.SecurityOpRequestEvent.open_envelope:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeOp
-	23,  // 13: remoteagent.core.v1.SecurityOpRequestEvent.seal_envelope:type_name -> remoteagent.core.v1.SecuritySealEnvelopeOp
-	24,  // 14: remoteagent.core.v1.SecurityOpRequestEvent.open_history:type_name -> remoteagent.core.v1.SecurityOpenHistoryOp
-	25,  // 15: remoteagent.core.v1.SecurityOpRequestEvent.get_session_seed:type_name -> remoteagent.core.v1.SecurityGetSessionSeedOp
-	90,  // 16: remoteagent.core.v1.SecuritySealEnvelopeResult.envelope:type_name -> remoteagent.v1.Envelope
-	29,  // 17: remoteagent.core.v1.SecurityOpenHistoryResult.items:type_name -> remoteagent.core.v1.SecurityOpenedHistoryItem
-	27,  // 18: remoteagent.core.v1.SecurityOpResultEffect.opened:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeResult
-	28,  // 19: remoteagent.core.v1.SecurityOpResultEffect.sealed:type_name -> remoteagent.core.v1.SecuritySealEnvelopeResult
-	30,  // 20: remoteagent.core.v1.SecurityOpResultEffect.history:type_name -> remoteagent.core.v1.SecurityOpenHistoryResult
-	91,  // 21: remoteagent.core.v1.DemoMachine.meta:type_name -> remoteagent.v1.MachineMeta
-	92,  // 22: remoteagent.core.v1.DemoSession.meta:type_name -> remoteagent.v1.Session
-	93,  // 23: remoteagent.core.v1.DemoSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
-	94,  // 24: remoteagent.core.v1.DemoDevice.kind:type_name -> remoteagent.v1.DeviceKind
-	95,  // 25: remoteagent.core.v1.DemoDevice.meta:type_name -> remoteagent.v1.DeviceMeta
-	96,  // 26: remoteagent.core.v1.DemoSessionEvents.events:type_name -> remoteagent.v1.Event
-	32,  // 27: remoteagent.core.v1.SeedDemoWorldEvent.machines:type_name -> remoteagent.core.v1.DemoMachine
-	33,  // 28: remoteagent.core.v1.SeedDemoWorldEvent.sessions:type_name -> remoteagent.core.v1.DemoSession
-	34,  // 29: remoteagent.core.v1.SeedDemoWorldEvent.devices:type_name -> remoteagent.core.v1.DemoDevice
-	97,  // 30: remoteagent.core.v1.SeedDemoWorldEvent.prefs:type_name -> remoteagent.v1.ProjectPrefs
-	35,  // 31: remoteagent.core.v1.SeedDemoWorldEvent.session_events:type_name -> remoteagent.core.v1.DemoSessionEvents
-	98,  // 32: remoteagent.core.v1.CacheWriteStoredEvents.events:type_name -> remoteagent.v1.StoredEvent
-	39,  // 33: remoteagent.core.v1.SecParsedState.members:type_name -> remoteagent.core.v1.SecMember
-	40,  // 34: remoteagent.core.v1.SecParsedState.grants:type_name -> remoteagent.core.v1.SecGrant
-	39,  // 35: remoteagent.core.v1.SecParsedRecoveryStatement.new_member:type_name -> remoteagent.core.v1.SecMember
-	41,  // 36: remoteagent.core.v1.SecUnsignedState.parsed:type_name -> remoteagent.core.v1.SecParsedState
-	40,  // 37: remoteagent.core.v1.SecUnsignedState.grants:type_name -> remoteagent.core.v1.SecGrant
-	94,  // 38: remoteagent.core.v1.SecParsedApproval.candidate_kind:type_name -> remoteagent.v1.DeviceKind
-	48,  // 39: remoteagent.core.v1.SecCallRequest.parse_state:type_name -> remoteagent.core.v1.SecParseStateCall
-	49,  // 40: remoteagent.core.v1.SecCallRequest.verify_chain:type_name -> remoteagent.core.v1.SecVerifyChainCall
-	50,  // 41: remoteagent.core.v1.SecCallRequest.grant_challenge:type_name -> remoteagent.core.v1.SecGrantChallengeCall
-	51,  // 42: remoteagent.core.v1.SecCallRequest.open_grant_with_dh:type_name -> remoteagent.core.v1.SecOpenGrantWithDHCall
-	52,  // 43: remoteagent.core.v1.SecCallRequest.hpke_seal_with_dh:type_name -> remoteagent.core.v1.SecHPKEWithDHCall
-	52,  // 44: remoteagent.core.v1.SecCallRequest.hpke_open_with_dh:type_name -> remoteagent.core.v1.SecHPKEWithDHCall
-	53,  // 45: remoteagent.core.v1.SecCallRequest.parse_lease:type_name -> remoteagent.core.v1.SecParseLeaseCall
-	54,  // 46: remoteagent.core.v1.SecCallRequest.verify_lease:type_name -> remoteagent.core.v1.SecVerifyLeaseCall
-	55,  // 47: remoteagent.core.v1.SecCallRequest.new_lease_unsigned:type_name -> remoteagent.core.v1.SecNewLeaseUnsignedCall
-	56,  // 48: remoteagent.core.v1.SecCallRequest.marshal_lease:type_name -> remoteagent.core.v1.SecMarshalLeaseCall
-	57,  // 49: remoteagent.core.v1.SecCallRequest.parse_recovery_statement:type_name -> remoteagent.core.v1.SecParseRecoveryStatementCall
-	58,  // 50: remoteagent.core.v1.SecCallRequest.verify_recovery_statement:type_name -> remoteagent.core.v1.SecVerifyRecoveryStatementCall
-	59,  // 51: remoteagent.core.v1.SecCallRequest.new_recovery_statement_unsigned:type_name -> remoteagent.core.v1.SecNewRecoveryStatementUnsignedCall
-	60,  // 52: remoteagent.core.v1.SecCallRequest.marshal_recovery_statement:type_name -> remoteagent.core.v1.SecMarshalRecoveryStatementCall
-	61,  // 53: remoteagent.core.v1.SecCallRequest.new_genesis_unsigned:type_name -> remoteagent.core.v1.SecNewGenesisUnsignedCall
-	62,  // 54: remoteagent.core.v1.SecCallRequest.new_state_unsigned:type_name -> remoteagent.core.v1.SecNewStateUnsignedCall
-	63,  // 55: remoteagent.core.v1.SecCallRequest.new_membership_state_unsigned:type_name -> remoteagent.core.v1.SecNewMembershipStateUnsignedCall
-	64,  // 56: remoteagent.core.v1.SecCallRequest.new_pair_state_unsigned:type_name -> remoteagent.core.v1.SecNewPairStateUnsignedCall
-	65,  // 57: remoteagent.core.v1.SecCallRequest.new_handoff_unsigned:type_name -> remoteagent.core.v1.SecNewHandoffUnsignedCall
-	66,  // 58: remoteagent.core.v1.SecCallRequest.new_recovery_unsigned:type_name -> remoteagent.core.v1.SecNewRecoveryUnsignedCall
-	67,  // 59: remoteagent.core.v1.SecCallRequest.new_recovery_key_rotation_unsigned:type_name -> remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall
-	68,  // 60: remoteagent.core.v1.SecCallRequest.marshal_state:type_name -> remoteagent.core.v1.SecMarshalStateCall
-	69,  // 61: remoteagent.core.v1.SecCallRequest.seal_prev_secret:type_name -> remoteagent.core.v1.SecSealPrevSecretCall
-	70,  // 62: remoteagent.core.v1.SecCallRequest.open_prev_secret:type_name -> remoteagent.core.v1.SecOpenPrevSecretCall
-	71,  // 63: remoteagent.core.v1.SecCallRequest.verify_pair_approval:type_name -> remoteagent.core.v1.SecVerifyPairApprovalCall
-	72,  // 64: remoteagent.core.v1.SecCallRequest.machine_replacement_origins:type_name -> remoteagent.core.v1.SecMachineReplacementOriginsCall
-	73,  // 65: remoteagent.core.v1.SecCallRequest.pair_trust_descriptor:type_name -> remoteagent.core.v1.SecPairTrustDescriptorCall
-	74,  // 66: remoteagent.core.v1.SecCallRequest.parse_pair_trust_descriptor:type_name -> remoteagent.core.v1.SecParsePairTrustDescriptorCall
-	75,  // 67: remoteagent.core.v1.SecCallRequest.pair_domain_commit:type_name -> remoteagent.core.v1.SecPairDomainCommitCall
-	76,  // 68: remoteagent.core.v1.SecCallRequest.pair_transcript:type_name -> remoteagent.core.v1.SecPairTranscriptCall
-	77,  // 69: remoteagent.core.v1.SecCallRequest.pair_identity_transcript:type_name -> remoteagent.core.v1.SecPairIdentityTranscriptCall
-	78,  // 70: remoteagent.core.v1.SecCallRequest.pair_domain_transcript:type_name -> remoteagent.core.v1.SecPairDomainTranscriptCall
-	79,  // 71: remoteagent.core.v1.SecCallRequest.derive_pair_secrets:type_name -> remoteagent.core.v1.SecDerivePairSecretsCall
-	80,  // 72: remoteagent.core.v1.SecCallRequest.ed25519_seed_public:type_name -> remoteagent.core.v1.SecEd25519SeedPublicCall
-	81,  // 73: remoteagent.core.v1.SecCallRequest.ed25519_seed_sign:type_name -> remoteagent.core.v1.SecEd25519SeedSignCall
-	82,  // 74: remoteagent.core.v1.SecCallRequest.device_id:type_name -> remoteagent.core.v1.SecDeviceIDCall
-	83,  // 75: remoteagent.core.v1.SecCallRequest.inflate_bounded:type_name -> remoteagent.core.v1.SecInflateBoundedCall
-	84,  // 76: remoteagent.core.v1.SecCallRequest.request_identity:type_name -> remoteagent.core.v1.SecRequestIdentityCall
-	85,  // 77: remoteagent.core.v1.SecCallRequest.account_delete_signing_bytes:type_name -> remoteagent.core.v1.SecAccountDeleteSigningBytesCall
-	86,  // 78: remoteagent.core.v1.SecCallRequest.open_notify_envelope:type_name -> remoteagent.core.v1.SecOpenNotifyEnvelopeCall
-	87,  // 79: remoteagent.core.v1.SecCallRequest.open_envelope_direct:type_name -> remoteagent.core.v1.SecOpenEnvelopeDirectCall
-	88,  // 80: remoteagent.core.v1.SecCallRequest.seal_envelope_direct:type_name -> remoteagent.core.v1.SecSealEnvelopeDirectCall
-	38,  // 81: remoteagent.core.v1.SecVerifyChainCall.pin:type_name -> remoteagent.core.v1.SecPin
-	38,  // 82: remoteagent.core.v1.SecGrantChallengeCall.pin:type_name -> remoteagent.core.v1.SecPin
-	38,  // 83: remoteagent.core.v1.SecOpenGrantWithDHCall.pin:type_name -> remoteagent.core.v1.SecPin
-	39,  // 84: remoteagent.core.v1.SecMarshalRecoveryStatementCall.new_member:type_name -> remoteagent.core.v1.SecMember
-	39,  // 85: remoteagent.core.v1.SecNewGenesisUnsignedCall.member:type_name -> remoteagent.core.v1.SecMember
-	44,  // 86: remoteagent.core.v1.SecNewGenesisUnsignedCall.kems:type_name -> remoteagent.core.v1.SecKemPair
-	39,  // 87: remoteagent.core.v1.SecNewStateUnsignedCall.members:type_name -> remoteagent.core.v1.SecMember
-	44,  // 88: remoteagent.core.v1.SecNewStateUnsignedCall.kems:type_name -> remoteagent.core.v1.SecKemPair
-	39,  // 89: remoteagent.core.v1.SecNewMembershipStateUnsignedCall.members:type_name -> remoteagent.core.v1.SecMember
-	44,  // 90: remoteagent.core.v1.SecNewMembershipStateUnsignedCall.kems:type_name -> remoteagent.core.v1.SecKemPair
-	39,  // 91: remoteagent.core.v1.SecNewPairStateUnsignedCall.candidate:type_name -> remoteagent.core.v1.SecMember
-	44,  // 92: remoteagent.core.v1.SecNewPairStateUnsignedCall.kems:type_name -> remoteagent.core.v1.SecKemPair
-	44,  // 93: remoteagent.core.v1.SecNewHandoffUnsignedCall.kems:type_name -> remoteagent.core.v1.SecKemPair
-	39,  // 94: remoteagent.core.v1.SecNewRecoveryUnsignedCall.new_member:type_name -> remoteagent.core.v1.SecMember
-	39,  // 95: remoteagent.core.v1.SecNewRecoveryUnsignedCall.members:type_name -> remoteagent.core.v1.SecMember
-	44,  // 96: remoteagent.core.v1.SecNewRecoveryUnsignedCall.kems:type_name -> remoteagent.core.v1.SecKemPair
-	44,  // 97: remoteagent.core.v1.SecNewRecoveryKeyRotationUnsignedCall.kems:type_name -> remoteagent.core.v1.SecKemPair
-	45,  // 98: remoteagent.core.v1.SecMarshalStateCall.unsigned:type_name -> remoteagent.core.v1.SecUnsignedState
-	99,  // 99: remoteagent.core.v1.SecMachineReplacementOriginsCall.proofs:type_name -> remoteagent.v1.MachineReplacementProof
-	38,  // 100: remoteagent.core.v1.SecPairTrustDescriptorCall.pin:type_name -> remoteagent.core.v1.SecPin
-	38,  // 101: remoteagent.core.v1.SecOpenNotifyEnvelopeCall.pin:type_name -> remoteagent.core.v1.SecPin
-	90,  // 102: remoteagent.core.v1.SecOpenNotifyEnvelopeCall.envelope:type_name -> remoteagent.v1.Envelope
-	38,  // 103: remoteagent.core.v1.SecOpenEnvelopeDirectCall.pin:type_name -> remoteagent.core.v1.SecPin
-	90,  // 104: remoteagent.core.v1.SecOpenEnvelopeDirectCall.envelope:type_name -> remoteagent.v1.Envelope
-	41,  // 105: remoteagent.core.v1.SecCallResponse.parsed_state:type_name -> remoteagent.core.v1.SecParsedState
-	42,  // 106: remoteagent.core.v1.SecCallResponse.parsed_lease:type_name -> remoteagent.core.v1.SecParsedLease
-	43,  // 107: remoteagent.core.v1.SecCallResponse.parsed_recovery:type_name -> remoteagent.core.v1.SecParsedRecoveryStatement
-	45,  // 108: remoteagent.core.v1.SecCallResponse.unsigned_state:type_name -> remoteagent.core.v1.SecUnsignedState
-	46,  // 109: remoteagent.core.v1.SecCallResponse.parsed_approval:type_name -> remoteagent.core.v1.SecParsedApproval
-	38,  // 110: remoteagent.core.v1.SecCallResponse.pin:type_name -> remoteagent.core.v1.SecPin
-	100, // 111: remoteagent.core.v1.SecCallResponse.notify:type_name -> remoteagent.v1.NotifyContent
-	27,  // 112: remoteagent.core.v1.SecCallResponse.opened:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeResult
-	90,  // 113: remoteagent.core.v1.SecCallResponse.envelope:type_name -> remoteagent.v1.Envelope
-	41,  // 114: remoteagent.core.v1.SecCallResponse.parsed_states:type_name -> remoteagent.core.v1.SecParsedState
-	115, // [115:115] is the sub-list for method output_type
-	115, // [115:115] is the sub-list for method input_type
-	115, // [115:115] is the sub-list for extension type_name
-	115, // [115:115] is the sub-list for extension extendee
-	0,   // [0:115] is the sub-list for field type_name
+	0,  // 0: remoteagent.core.v1.SecurityKeySignEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
+	0,  // 1: remoteagent.core.v1.SecurityKeyAgreeEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
+	1,  // 2: remoteagent.core.v1.SecurityKeyGenerateEffect.key_kind:type_name -> remoteagent.core.v1.SecurityGenerateKind
+	11, // 3: remoteagent.core.v1.SecurityKeyEncapsulatedEvent.pairs:type_name -> remoteagent.core.v1.SecurityKeyEncapsulatedPair
+	14, // 4: remoteagent.core.v1.SecurityCryptoBatchItem.verify:type_name -> remoteagent.core.v1.CryptoBatchVerifyItem
+	15, // 5: remoteagent.core.v1.SecurityCryptoBatchItem.aead_open:type_name -> remoteagent.core.v1.CryptoBatchAeadOpenItem
+	16, // 6: remoteagent.core.v1.SecurityCryptoBatchItem.aead_seal:type_name -> remoteagent.core.v1.CryptoBatchAeadSealItem
+	17, // 7: remoteagent.core.v1.SecurityCryptoBatchItem.sha256:type_name -> remoteagent.core.v1.CryptoBatchSha256Item
+	18, // 8: remoteagent.core.v1.SecurityCryptoBatchEffect.items:type_name -> remoteagent.core.v1.SecurityCryptoBatchItem
+	20, // 9: remoteagent.core.v1.SecurityCryptoBatchDoneEvent.results:type_name -> remoteagent.core.v1.SecurityCryptoBatchResult
+	78, // 10: remoteagent.core.v1.SecurityOpenEnvelopeOp.envelope:type_name -> remoteagent.v1.Envelope
+	22, // 11: remoteagent.core.v1.SecurityOpRequestEvent.open_envelope:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeOp
+	23, // 12: remoteagent.core.v1.SecurityOpRequestEvent.seal_envelope:type_name -> remoteagent.core.v1.SecuritySealEnvelopeOp
+	24, // 13: remoteagent.core.v1.SecurityOpRequestEvent.get_session_seed:type_name -> remoteagent.core.v1.SecurityGetSessionSeedOp
+	78, // 14: remoteagent.core.v1.SecuritySealEnvelopeResult.envelope:type_name -> remoteagent.v1.Envelope
+	26, // 15: remoteagent.core.v1.SecurityOpResultEffect.opened:type_name -> remoteagent.core.v1.SecurityOpenEnvelopeResult
+	27, // 16: remoteagent.core.v1.SecurityOpResultEffect.sealed:type_name -> remoteagent.core.v1.SecuritySealEnvelopeResult
+	79, // 17: remoteagent.core.v1.DemoMachine.meta:type_name -> remoteagent.v1.MachineMeta
+	80, // 18: remoteagent.core.v1.DemoSession.meta:type_name -> remoteagent.v1.Session
+	81, // 19: remoteagent.core.v1.DemoSession.checkpoint:type_name -> remoteagent.v1.LiveSnapshot
+	82, // 20: remoteagent.core.v1.DemoDevice.kind:type_name -> remoteagent.v1.DeviceKind
+	83, // 21: remoteagent.core.v1.DemoDevice.meta:type_name -> remoteagent.v1.DeviceMeta
+	84, // 22: remoteagent.core.v1.DemoSessionEvents.events:type_name -> remoteagent.v1.Event
+	29, // 23: remoteagent.core.v1.SeedDemoWorldEvent.machines:type_name -> remoteagent.core.v1.DemoMachine
+	30, // 24: remoteagent.core.v1.SeedDemoWorldEvent.sessions:type_name -> remoteagent.core.v1.DemoSession
+	31, // 25: remoteagent.core.v1.SeedDemoWorldEvent.devices:type_name -> remoteagent.core.v1.DemoDevice
+	85, // 26: remoteagent.core.v1.SeedDemoWorldEvent.prefs:type_name -> remoteagent.v1.ProjectPrefs
+	32, // 27: remoteagent.core.v1.SeedDemoWorldEvent.session_events:type_name -> remoteagent.core.v1.DemoSessionEvents
+	86, // 28: remoteagent.core.v1.CacheWriteStoredEvents.events:type_name -> remoteagent.v1.StoredEvent
+	36, // 29: remoteagent.core.v1.SecParsedState.members:type_name -> remoteagent.core.v1.SecMember
+	37, // 30: remoteagent.core.v1.SecParsedState.grants:type_name -> remoteagent.core.v1.SecGrant
+	36, // 31: remoteagent.core.v1.SecParsedRecoveryStatement.new_member:type_name -> remoteagent.core.v1.SecMember
+	38, // 32: remoteagent.core.v1.SecUnsignedState.parsed:type_name -> remoteagent.core.v1.SecParsedState
+	37, // 33: remoteagent.core.v1.SecUnsignedState.grants:type_name -> remoteagent.core.v1.SecGrant
+	82, // 34: remoteagent.core.v1.SecParsedApproval.candidate_kind:type_name -> remoteagent.v1.DeviceKind
+	45, // 35: remoteagent.core.v1.SecCallRequest.parse_state:type_name -> remoteagent.core.v1.SecParseStateCall
+	46, // 36: remoteagent.core.v1.SecCallRequest.verify_chain:type_name -> remoteagent.core.v1.SecVerifyChainCall
+	47, // 37: remoteagent.core.v1.SecCallRequest.grant_challenge:type_name -> remoteagent.core.v1.SecGrantChallengeCall
+	48, // 38: remoteagent.core.v1.SecCallRequest.open_grant_with_dh:type_name -> remoteagent.core.v1.SecOpenGrantWithDHCall
+	49, // 39: remoteagent.core.v1.SecCallRequest.hpke_seal_with_dh:type_name -> remoteagent.core.v1.SecHPKEWithDHCall
+	49, // 40: remoteagent.core.v1.SecCallRequest.hpke_open_with_dh:type_name -> remoteagent.core.v1.SecHPKEWithDHCall
+	50, // 41: remoteagent.core.v1.SecCallRequest.parse_lease:type_name -> remoteagent.core.v1.SecParseLeaseCall
+	51, // 42: remoteagent.core.v1.SecCallRequest.verify_lease:type_name -> remoteagent.core.v1.SecVerifyLeaseCall
+	52, // 43: remoteagent.core.v1.SecCallRequest.new_lease_unsigned:type_name -> remoteagent.core.v1.SecNewLeaseUnsignedCall
+	53, // 44: remoteagent.core.v1.SecCallRequest.marshal_lease:type_name -> remoteagent.core.v1.SecMarshalLeaseCall
+	54, // 45: remoteagent.core.v1.SecCallRequest.parse_recovery_statement:type_name -> remoteagent.core.v1.SecParseRecoveryStatementCall
+	55, // 46: remoteagent.core.v1.SecCallRequest.verify_recovery_statement:type_name -> remoteagent.core.v1.SecVerifyRecoveryStatementCall
+	56, // 47: remoteagent.core.v1.SecCallRequest.new_recovery_statement_unsigned:type_name -> remoteagent.core.v1.SecNewRecoveryStatementUnsignedCall
+	57, // 48: remoteagent.core.v1.SecCallRequest.marshal_recovery_statement:type_name -> remoteagent.core.v1.SecMarshalRecoveryStatementCall
+	58, // 49: remoteagent.core.v1.SecCallRequest.build_state:type_name -> remoteagent.core.v1.SecBuildStateCall
+	59, // 50: remoteagent.core.v1.SecCallRequest.marshal_state:type_name -> remoteagent.core.v1.SecMarshalStateCall
+	60, // 51: remoteagent.core.v1.SecCallRequest.seal_prev_secret:type_name -> remoteagent.core.v1.SecSealPrevSecretCall
+	61, // 52: remoteagent.core.v1.SecCallRequest.open_prev_secret:type_name -> remoteagent.core.v1.SecOpenPrevSecretCall
+	62, // 53: remoteagent.core.v1.SecCallRequest.verify_pair_approval:type_name -> remoteagent.core.v1.SecVerifyPairApprovalCall
+	63, // 54: remoteagent.core.v1.SecCallRequest.machine_replacement_origins:type_name -> remoteagent.core.v1.SecMachineReplacementOriginsCall
+	64, // 55: remoteagent.core.v1.SecCallRequest.pair_trust_descriptor:type_name -> remoteagent.core.v1.SecPairTrustDescriptorCall
+	65, // 56: remoteagent.core.v1.SecCallRequest.parse_pair_trust_descriptor:type_name -> remoteagent.core.v1.SecParsePairTrustDescriptorCall
+	66, // 57: remoteagent.core.v1.SecCallRequest.pair_domain_commit:type_name -> remoteagent.core.v1.SecPairDomainCommitCall
+	67, // 58: remoteagent.core.v1.SecCallRequest.pair_transcript:type_name -> remoteagent.core.v1.SecPairTranscriptCall
+	68, // 59: remoteagent.core.v1.SecCallRequest.pair_identity_transcript:type_name -> remoteagent.core.v1.SecPairIdentityTranscriptCall
+	69, // 60: remoteagent.core.v1.SecCallRequest.pair_domain_transcript:type_name -> remoteagent.core.v1.SecPairDomainTranscriptCall
+	70, // 61: remoteagent.core.v1.SecCallRequest.derive_pair_secrets:type_name -> remoteagent.core.v1.SecDerivePairSecretsCall
+	71, // 62: remoteagent.core.v1.SecCallRequest.ed25519_seed_public:type_name -> remoteagent.core.v1.SecEd25519SeedPublicCall
+	72, // 63: remoteagent.core.v1.SecCallRequest.ed25519_seed_sign:type_name -> remoteagent.core.v1.SecEd25519SeedSignCall
+	73, // 64: remoteagent.core.v1.SecCallRequest.inflate_bounded:type_name -> remoteagent.core.v1.SecInflateBoundedCall
+	74, // 65: remoteagent.core.v1.SecCallRequest.request_identity:type_name -> remoteagent.core.v1.SecRequestIdentityCall
+	75, // 66: remoteagent.core.v1.SecCallRequest.account_delete_signing_bytes:type_name -> remoteagent.core.v1.SecAccountDeleteSigningBytesCall
+	76, // 67: remoteagent.core.v1.SecCallRequest.open_notify_envelope:type_name -> remoteagent.core.v1.SecOpenNotifyEnvelopeCall
+	35, // 68: remoteagent.core.v1.SecVerifyChainCall.pin:type_name -> remoteagent.core.v1.SecPin
+	35, // 69: remoteagent.core.v1.SecGrantChallengeCall.pin:type_name -> remoteagent.core.v1.SecPin
+	35, // 70: remoteagent.core.v1.SecOpenGrantWithDHCall.pin:type_name -> remoteagent.core.v1.SecPin
+	36, // 71: remoteagent.core.v1.SecMarshalRecoveryStatementCall.new_member:type_name -> remoteagent.core.v1.SecMember
+	36, // 72: remoteagent.core.v1.SecBuildStateCall.member:type_name -> remoteagent.core.v1.SecMember
+	36, // 73: remoteagent.core.v1.SecBuildStateCall.members:type_name -> remoteagent.core.v1.SecMember
+	41, // 74: remoteagent.core.v1.SecBuildStateCall.kems:type_name -> remoteagent.core.v1.SecKemPair
+	37, // 75: remoteagent.core.v1.SecMarshalStateCall.grants:type_name -> remoteagent.core.v1.SecGrant
+	87, // 76: remoteagent.core.v1.SecMachineReplacementOriginsCall.proofs:type_name -> remoteagent.v1.MachineReplacementProof
+	35, // 77: remoteagent.core.v1.SecPairTrustDescriptorCall.pin:type_name -> remoteagent.core.v1.SecPin
+	35, // 78: remoteagent.core.v1.SecOpenNotifyEnvelopeCall.pin:type_name -> remoteagent.core.v1.SecPin
+	78, // 79: remoteagent.core.v1.SecOpenNotifyEnvelopeCall.envelope:type_name -> remoteagent.v1.Envelope
+	38, // 80: remoteagent.core.v1.SecCallResponse.parsed_state:type_name -> remoteagent.core.v1.SecParsedState
+	39, // 81: remoteagent.core.v1.SecCallResponse.parsed_lease:type_name -> remoteagent.core.v1.SecParsedLease
+	40, // 82: remoteagent.core.v1.SecCallResponse.parsed_recovery:type_name -> remoteagent.core.v1.SecParsedRecoveryStatement
+	42, // 83: remoteagent.core.v1.SecCallResponse.unsigned_state:type_name -> remoteagent.core.v1.SecUnsignedState
+	43, // 84: remoteagent.core.v1.SecCallResponse.parsed_approval:type_name -> remoteagent.core.v1.SecParsedApproval
+	35, // 85: remoteagent.core.v1.SecCallResponse.pin:type_name -> remoteagent.core.v1.SecPin
+	86, // [86:86] is the sub-list for method output_type
+	86, // [86:86] is the sub-list for method input_type
+	86, // [86:86] is the sub-list for extension type_name
+	86, // [86:86] is the sub-list for extension extendee
+	0,  // [0:86] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_security_proto_init() }
@@ -8343,19 +6964,17 @@ func file_remoteagent_core_v1_security_proto_init() {
 		(*SecurityCryptoBatchItem_AeadSeal)(nil),
 		(*SecurityCryptoBatchItem_Sha256)(nil),
 	}
-	file_remoteagent_core_v1_security_proto_msgTypes[24].OneofWrappers = []any{
+	file_remoteagent_core_v1_security_proto_msgTypes[23].OneofWrappers = []any{
 		(*SecurityOpRequestEvent_OpenEnvelope)(nil),
 		(*SecurityOpRequestEvent_SealEnvelope)(nil),
-		(*SecurityOpRequestEvent_OpenHistory)(nil),
 		(*SecurityOpRequestEvent_GetSessionSeed)(nil),
 	}
-	file_remoteagent_core_v1_security_proto_msgTypes[29].OneofWrappers = []any{
+	file_remoteagent_core_v1_security_proto_msgTypes[26].OneofWrappers = []any{
 		(*SecurityOpResultEffect_Opened)(nil),
 		(*SecurityOpResultEffect_Sealed)(nil),
-		(*SecurityOpResultEffect_History)(nil),
 		(*SecurityOpResultEffect_SessionSeed)(nil),
 	}
-	file_remoteagent_core_v1_security_proto_msgTypes[45].OneofWrappers = []any{
+	file_remoteagent_core_v1_security_proto_msgTypes[42].OneofWrappers = []any{
 		(*SecCallRequest_ParseState)(nil),
 		(*SecCallRequest_VerifyChain)(nil),
 		(*SecCallRequest_GrantChallenge)(nil),
@@ -8370,13 +6989,7 @@ func file_remoteagent_core_v1_security_proto_init() {
 		(*SecCallRequest_VerifyRecoveryStatement)(nil),
 		(*SecCallRequest_NewRecoveryStatementUnsigned)(nil),
 		(*SecCallRequest_MarshalRecoveryStatement)(nil),
-		(*SecCallRequest_NewGenesisUnsigned)(nil),
-		(*SecCallRequest_NewStateUnsigned)(nil),
-		(*SecCallRequest_NewMembershipStateUnsigned)(nil),
-		(*SecCallRequest_NewPairStateUnsigned)(nil),
-		(*SecCallRequest_NewHandoffUnsigned)(nil),
-		(*SecCallRequest_NewRecoveryUnsigned)(nil),
-		(*SecCallRequest_NewRecoveryKeyRotationUnsigned)(nil),
+		(*SecCallRequest_BuildState)(nil),
 		(*SecCallRequest_MarshalState)(nil),
 		(*SecCallRequest_SealPrevSecret)(nil),
 		(*SecCallRequest_OpenPrevSecret)(nil),
@@ -8391,13 +7004,10 @@ func file_remoteagent_core_v1_security_proto_init() {
 		(*SecCallRequest_DerivePairSecrets)(nil),
 		(*SecCallRequest_Ed25519SeedPublic)(nil),
 		(*SecCallRequest_Ed25519SeedSign)(nil),
-		(*SecCallRequest_DeviceId)(nil),
 		(*SecCallRequest_InflateBounded)(nil),
 		(*SecCallRequest_RequestIdentity)(nil),
 		(*SecCallRequest_AccountDeleteSigningBytes)(nil),
 		(*SecCallRequest_OpenNotifyEnvelope)(nil),
-		(*SecCallRequest_OpenEnvelopeDirect)(nil),
-		(*SecCallRequest_SealEnvelopeDirect)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -8405,7 +7015,7 @@ func file_remoteagent_core_v1_security_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_security_proto_rawDesc), len(file_remoteagent_core_v1_security_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   88,
+			NumMessages:   76,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

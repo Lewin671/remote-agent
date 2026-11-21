@@ -19,14 +19,8 @@ public  final class SecCallResponse extends
     errorCode_ = "";
     data_ = com.google.protobuf.ByteString.EMPTY;
     secondaryData_ = com.google.protobuf.ByteString.EMPTY;
-    tertiaryData_ = com.google.protobuf.ByteString.EMPTY;
-    info_ = com.google.protobuf.ByteString.EMPTY;
-    aad_ = com.google.protobuf.ByteString.EMPTY;
     text_ = "";
     strings_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
-    header_ = com.google.protobuf.ByteString.EMPTY;
-    originBytes_ = com.google.protobuf.ByteString.EMPTY;
-    parsedStates_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int ERROR_FIELD_NUMBER = 1;
@@ -419,91 +413,10 @@ public  final class SecCallResponse extends
     secondaryData_ = getDefaultInstance().getSecondaryData();
   }
 
-  public static final int TERTIARY_DATA_FIELD_NUMBER = 10;
-  private com.google.protobuf.ByteString tertiaryData_;
-  /**
-   * <code>bytes tertiary_data = 10 [json_name = "tertiaryData"];</code>
-   * @return The tertiaryData.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getTertiaryData() {
-    return tertiaryData_;
-  }
-  /**
-   * <code>bytes tertiary_data = 10 [json_name = "tertiaryData"];</code>
-   * @param value The tertiaryData to set.
-   */
-  private void setTertiaryData(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    tertiaryData_ = value;
-  }
-  /**
-   * <code>bytes tertiary_data = 10 [json_name = "tertiaryData"];</code>
-   */
-  private void clearTertiaryData() {
-
-    tertiaryData_ = getDefaultInstance().getTertiaryData();
-  }
-
-  public static final int INFO_FIELD_NUMBER = 11;
-  private com.google.protobuf.ByteString info_;
-  /**
-   * <code>bytes info = 11 [json_name = "info"];</code>
-   * @return The info.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getInfo() {
-    return info_;
-  }
-  /**
-   * <code>bytes info = 11 [json_name = "info"];</code>
-   * @param value The info to set.
-   */
-  private void setInfo(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    info_ = value;
-  }
-  /**
-   * <code>bytes info = 11 [json_name = "info"];</code>
-   */
-  private void clearInfo() {
-
-    info_ = getDefaultInstance().getInfo();
-  }
-
-  public static final int AAD_FIELD_NUMBER = 12;
-  private com.google.protobuf.ByteString aad_;
-  /**
-   * <code>bytes aad = 12 [json_name = "aad"];</code>
-   * @return The aad.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getAad() {
-    return aad_;
-  }
-  /**
-   * <code>bytes aad = 12 [json_name = "aad"];</code>
-   * @param value The aad to set.
-   */
-  private void setAad(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    aad_ = value;
-  }
-  /**
-   * <code>bytes aad = 12 [json_name = "aad"];</code>
-   */
-  private void clearAad() {
-
-    aad_ = getDefaultInstance().getAad();
-  }
-
-  public static final int TEXT_FIELD_NUMBER = 13;
+  public static final int TEXT_FIELD_NUMBER = 10;
   private java.lang.String text_;
   /**
-   * <code>string text = 13 [json_name = "text"];</code>
+   * <code>string text = 10 [json_name = "text"];</code>
    * @return The text.
    */
   @java.lang.Override
@@ -511,7 +424,7 @@ public  final class SecCallResponse extends
     return text_;
   }
   /**
-   * <code>string text = 13 [json_name = "text"];</code>
+   * <code>string text = 10 [json_name = "text"];</code>
    * @return The bytes for text.
    */
   @java.lang.Override
@@ -520,7 +433,7 @@ public  final class SecCallResponse extends
     return com.google.protobuf.ByteString.copyFromUtf8(text_);
   }
   /**
-   * <code>string text = 13 [json_name = "text"];</code>
+   * <code>string text = 10 [json_name = "text"];</code>
    * @param value The text to set.
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -531,14 +444,14 @@ public  final class SecCallResponse extends
     text_ = value;
   }
   /**
-   * <code>string text = 13 [json_name = "text"];</code>
+   * <code>string text = 10 [json_name = "text"];</code>
    */
   private void clearText() {
 
     text_ = getDefaultInstance().getText();
   }
   /**
-   * <code>string text = 13 [json_name = "text"];</code>
+   * <code>string text = 10 [json_name = "text"];</code>
    * @param value The bytes for text to set.
    */
   private void setTextBytes(
@@ -548,10 +461,10 @@ public  final class SecCallResponse extends
 
   }
 
-  public static final int STRINGS_FIELD_NUMBER = 14;
+  public static final int STRINGS_FIELD_NUMBER = 11;
   private com.google.protobuf.Internal.ProtobufList<java.lang.String> strings_;
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @return A list containing the strings.
    */
   @java.lang.Override
@@ -559,7 +472,7 @@ public  final class SecCallResponse extends
     return strings_;
   }
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @return The count of strings.
    */
   @java.lang.Override
@@ -567,7 +480,7 @@ public  final class SecCallResponse extends
     return strings_.size();
   }
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @param index The index of the element to return.
    * @return The strings at the given index.
    */
@@ -576,7 +489,7 @@ public  final class SecCallResponse extends
     return strings_.get(index);
   }
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @param index The index of the value to return.
    * @return The bytes of the strings at the given index.
    */
@@ -594,7 +507,7 @@ public  final class SecCallResponse extends
      }
   }
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @param index The index to set the value at.
    * @param value The strings to set.
    */
@@ -606,7 +519,7 @@ public  final class SecCallResponse extends
     strings_.set(index, value);
   }
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @param value The strings to add.
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -617,7 +530,7 @@ public  final class SecCallResponse extends
     strings_.add(value);
   }
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @param values The strings to add.
    */
   private void addAllStrings(
@@ -627,13 +540,13 @@ public  final class SecCallResponse extends
         values, strings_);
   }
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    */
   private void clearStrings() {
     strings_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   /**
-   * <code>repeated string strings = 14 [json_name = "strings"];</code>
+   * <code>repeated string strings = 11 [json_name = "strings"];</code>
    * @param value The bytes of the strings to add.
    */
   private void addStringsBytes(
@@ -643,24 +556,24 @@ public  final class SecCallResponse extends
     strings_.add(value.toStringUtf8());
   }
 
-  public static final int PIN_FIELD_NUMBER = 15;
+  public static final int PIN_FIELD_NUMBER = 12;
   private io.github.lewin671.remoteagent.core.proto.SecPin pin_;
   /**
-   * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+   * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
    */
   @java.lang.Override
   public boolean hasPin() {
     return ((bitField0_ & 0x00000020) != 0);
   }
   /**
-   * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+   * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
    */
   @java.lang.Override
   public io.github.lewin671.remoteagent.core.proto.SecPin getPin() {
     return pin_ == null ? io.github.lewin671.remoteagent.core.proto.SecPin.getDefaultInstance() : pin_;
   }
   /**
-   * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+   * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void setPin(io.github.lewin671.remoteagent.core.proto.SecPin value) {
@@ -669,7 +582,7 @@ public  final class SecCallResponse extends
     bitField0_ |= 0x00000020;
   }
   /**
-   * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+   * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
    */
   @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
   private void mergePin(io.github.lewin671.remoteagent.core.proto.SecPin value) {
@@ -684,358 +597,11 @@ public  final class SecCallResponse extends
     bitField0_ |= 0x00000020;
   }
   /**
-   * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+   * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
    */
   private void clearPin() {
     pin_ = null;
     bitField0_ = (bitField0_ & ~0x00000020);
-  }
-
-  public static final int NOTIFY_FIELD_NUMBER = 16;
-  private io.github.lewin671.remoteagent.proto.NotifyContent notify_;
-  /**
-   * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-   */
-  @java.lang.Override
-  public boolean hasNotify() {
-    return ((bitField0_ & 0x00000040) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.NotifyContent getNotify() {
-    return notify_ == null ? io.github.lewin671.remoteagent.proto.NotifyContent.getDefaultInstance() : notify_;
-  }
-  /**
-   * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNotify(io.github.lewin671.remoteagent.proto.NotifyContent value) {
-    value.getClass();  // minimal bytecode null check
-    notify_ = value;
-    bitField0_ |= 0x00000040;
-  }
-  /**
-   * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeNotify(io.github.lewin671.remoteagent.proto.NotifyContent value) {
-    value.getClass();  // minimal bytecode null check
-    if (notify_ != null &&
-        notify_ != io.github.lewin671.remoteagent.proto.NotifyContent.getDefaultInstance()) {
-      notify_ =
-        io.github.lewin671.remoteagent.proto.NotifyContent.newBuilder(notify_).mergeFrom(value).buildPartial();
-    } else {
-      notify_ = value;
-    }
-    bitField0_ |= 0x00000040;
-  }
-  /**
-   * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-   */
-  private void clearNotify() {
-    notify_ = null;
-    bitField0_ = (bitField0_ & ~0x00000040);
-  }
-
-  public static final int OPENED_FIELD_NUMBER = 17;
-  private io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult opened_;
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-   */
-  @java.lang.Override
-  public boolean hasOpened() {
-    return ((bitField0_ & 0x00000080) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult getOpened() {
-    return opened_ == null ? io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult.getDefaultInstance() : opened_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setOpened(io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult value) {
-    value.getClass();  // minimal bytecode null check
-    opened_ = value;
-    bitField0_ |= 0x00000080;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeOpened(io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult value) {
-    value.getClass();  // minimal bytecode null check
-    if (opened_ != null &&
-        opened_ != io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult.getDefaultInstance()) {
-      opened_ =
-        io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult.newBuilder(opened_).mergeFrom(value).buildPartial();
-    } else {
-      opened_ = value;
-    }
-    bitField0_ |= 0x00000080;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-   */
-  private void clearOpened() {
-    opened_ = null;
-    bitField0_ = (bitField0_ & ~0x00000080);
-  }
-
-  public static final int ENVELOPE_FIELD_NUMBER = 18;
-  private io.github.lewin671.remoteagent.proto.Envelope envelope_;
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-   */
-  @java.lang.Override
-  public boolean hasEnvelope() {
-    return ((bitField0_ & 0x00000100) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.Envelope getEnvelope() {
-    return envelope_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : envelope_;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    envelope_ = value;
-    bitField0_ |= 0x00000100;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-    value.getClass();  // minimal bytecode null check
-    if (envelope_ != null &&
-        envelope_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
-      envelope_ =
-        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(envelope_).mergeFrom(value).buildPartial();
-    } else {
-      envelope_ = value;
-    }
-    bitField0_ |= 0x00000100;
-  }
-  /**
-   * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-   */
-  private void clearEnvelope() {
-    envelope_ = null;
-    bitField0_ = (bitField0_ & ~0x00000100);
-  }
-
-  public static final int HEADER_FIELD_NUMBER = 19;
-  private com.google.protobuf.ByteString header_;
-  /**
-   * <code>bytes header = 19 [json_name = "header"];</code>
-   * @return The header.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getHeader() {
-    return header_;
-  }
-  /**
-   * <code>bytes header = 19 [json_name = "header"];</code>
-   * @param value The header to set.
-   */
-  private void setHeader(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    header_ = value;
-  }
-  /**
-   * <code>bytes header = 19 [json_name = "header"];</code>
-   */
-  private void clearHeader() {
-
-    header_ = getDefaultInstance().getHeader();
-  }
-
-  public static final int ORIGIN_BYTES_FIELD_NUMBER = 20;
-  private com.google.protobuf.ByteString originBytes_;
-  /**
-   * <code>bytes origin_bytes = 20 [json_name = "originBytes"];</code>
-   * @return The originBytes.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getOriginBytes() {
-    return originBytes_;
-  }
-  /**
-   * <code>bytes origin_bytes = 20 [json_name = "originBytes"];</code>
-   * @param value The originBytes to set.
-   */
-  private void setOriginBytes(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    originBytes_ = value;
-  }
-  /**
-   * <code>bytes origin_bytes = 20 [json_name = "originBytes"];</code>
-   */
-  private void clearOriginBytes() {
-
-    originBytes_ = getDefaultInstance().getOriginBytes();
-  }
-
-  public static final int EPOCH_FIELD_NUMBER = 21;
-  private long epoch_;
-  /**
-   * <code>uint64 epoch = 21 [json_name = "epoch"];</code>
-   * @return The epoch.
-   */
-  @java.lang.Override
-  public long getEpoch() {
-    return epoch_;
-  }
-  /**
-   * <code>uint64 epoch = 21 [json_name = "epoch"];</code>
-   * @param value The epoch to set.
-   */
-  private void setEpoch(long value) {
-    
-    epoch_ = value;
-  }
-  /**
-   * <code>uint64 epoch = 21 [json_name = "epoch"];</code>
-   */
-  private void clearEpoch() {
-
-    epoch_ = 0L;
-  }
-
-  public static final int CONTENT_EPOCH_FIELD_NUMBER = 22;
-  private long contentEpoch_;
-  /**
-   * <code>uint64 content_epoch = 22 [json_name = "contentEpoch"];</code>
-   * @return The contentEpoch.
-   */
-  @java.lang.Override
-  public long getContentEpoch() {
-    return contentEpoch_;
-  }
-  /**
-   * <code>uint64 content_epoch = 22 [json_name = "contentEpoch"];</code>
-   * @param value The contentEpoch to set.
-   */
-  private void setContentEpoch(long value) {
-    
-    contentEpoch_ = value;
-  }
-  /**
-   * <code>uint64 content_epoch = 22 [json_name = "contentEpoch"];</code>
-   */
-  private void clearContentEpoch() {
-
-    contentEpoch_ = 0L;
-  }
-
-  public static final int PARSED_STATES_FIELD_NUMBER = 23;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SecParsedState> parsedStates_;
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.SecParsedState> getParsedStatesList() {
-    return parsedStates_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SecParsedStateOrBuilder> 
-      getParsedStatesOrBuilderList() {
-    return parsedStates_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  @java.lang.Override
-  public int getParsedStatesCount() {
-    return parsedStates_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecParsedState getParsedStates(int index) {
-    return parsedStates_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  public io.github.lewin671.remoteagent.core.proto.SecParsedStateOrBuilder getParsedStatesOrBuilder(
-      int index) {
-    return parsedStates_.get(index);
-  }
-  private void ensureParsedStatesIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SecParsedState> tmp = parsedStates_;
-    if (!tmp.isModifiable()) {
-      parsedStates_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setParsedStates(
-      int index, io.github.lewin671.remoteagent.core.proto.SecParsedState value) {
-    value.getClass();  // minimal bytecode null check
-    ensureParsedStatesIsMutable();
-    parsedStates_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addParsedStates(io.github.lewin671.remoteagent.core.proto.SecParsedState value) {
-    value.getClass();  // minimal bytecode null check
-    ensureParsedStatesIsMutable();
-    parsedStates_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addParsedStates(
-      int index, io.github.lewin671.remoteagent.core.proto.SecParsedState value) {
-    value.getClass();  // minimal bytecode null check
-    ensureParsedStatesIsMutable();
-    parsedStates_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  private void addAllParsedStates(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SecParsedState> values) {
-    ensureParsedStatesIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, parsedStates_);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  private void clearParsedStates() {
-    parsedStates_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-   */
-  private void removeParsedStates(int index) {
-    ensureParsedStatesIsMutable();
-    parsedStates_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecCallResponse parseFrom(
@@ -1525,91 +1091,7 @@ public  final class SecCallResponse extends
     }
 
     /**
-     * <code>bytes tertiary_data = 10 [json_name = "tertiaryData"];</code>
-     * @return The tertiaryData.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getTertiaryData() {
-      return instance.getTertiaryData();
-    }
-    /**
-     * <code>bytes tertiary_data = 10 [json_name = "tertiaryData"];</code>
-     * @param value The tertiaryData to set.
-     * @return This builder for chaining.
-     */
-    public Builder setTertiaryData(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setTertiaryData(value);
-      return this;
-    }
-    /**
-     * <code>bytes tertiary_data = 10 [json_name = "tertiaryData"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearTertiaryData() {
-      copyOnWrite();
-      instance.clearTertiaryData();
-      return this;
-    }
-
-    /**
-     * <code>bytes info = 11 [json_name = "info"];</code>
-     * @return The info.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getInfo() {
-      return instance.getInfo();
-    }
-    /**
-     * <code>bytes info = 11 [json_name = "info"];</code>
-     * @param value The info to set.
-     * @return This builder for chaining.
-     */
-    public Builder setInfo(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setInfo(value);
-      return this;
-    }
-    /**
-     * <code>bytes info = 11 [json_name = "info"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearInfo() {
-      copyOnWrite();
-      instance.clearInfo();
-      return this;
-    }
-
-    /**
-     * <code>bytes aad = 12 [json_name = "aad"];</code>
-     * @return The aad.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getAad() {
-      return instance.getAad();
-    }
-    /**
-     * <code>bytes aad = 12 [json_name = "aad"];</code>
-     * @param value The aad to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAad(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setAad(value);
-      return this;
-    }
-    /**
-     * <code>bytes aad = 12 [json_name = "aad"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearAad() {
-      copyOnWrite();
-      instance.clearAad();
-      return this;
-    }
-
-    /**
-     * <code>string text = 13 [json_name = "text"];</code>
+     * <code>string text = 10 [json_name = "text"];</code>
      * @return The text.
      */
     @java.lang.Override
@@ -1617,7 +1099,7 @@ public  final class SecCallResponse extends
       return instance.getText();
     }
     /**
-     * <code>string text = 13 [json_name = "text"];</code>
+     * <code>string text = 10 [json_name = "text"];</code>
      * @return The bytes for text.
      */
     @java.lang.Override
@@ -1626,7 +1108,7 @@ public  final class SecCallResponse extends
       return instance.getTextBytes();
     }
     /**
-     * <code>string text = 13 [json_name = "text"];</code>
+     * <code>string text = 10 [json_name = "text"];</code>
      * @param value The text to set.
      * @return This builder for chaining.
      */
@@ -1637,7 +1119,7 @@ public  final class SecCallResponse extends
       return this;
     }
     /**
-     * <code>string text = 13 [json_name = "text"];</code>
+     * <code>string text = 10 [json_name = "text"];</code>
      * @return This builder for chaining.
      */
     public Builder clearText() {
@@ -1646,7 +1128,7 @@ public  final class SecCallResponse extends
       return this;
     }
     /**
-     * <code>string text = 13 [json_name = "text"];</code>
+     * <code>string text = 10 [json_name = "text"];</code>
      * @param value The bytes for text to set.
      * @return This builder for chaining.
      */
@@ -1658,7 +1140,7 @@ public  final class SecCallResponse extends
     }
 
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @return A list containing the strings.
      */
     @java.lang.Override
@@ -1668,7 +1150,7 @@ public  final class SecCallResponse extends
           instance.getStringsList());
     }
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @return The count of strings.
      */
     @java.lang.Override
@@ -1676,7 +1158,7 @@ public  final class SecCallResponse extends
       return instance.getStringsCount();
     }
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @param index The index of the element to return.
      * @return The strings at the given index.
      */
@@ -1685,7 +1167,7 @@ public  final class SecCallResponse extends
       return instance.getStrings(index);
     }
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @param index The index of the value to return.
      * @return The bytes of the strings at the given index.
      */
@@ -1695,7 +1177,7 @@ public  final class SecCallResponse extends
       return instance.getStringsBytes(index);
     }
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @param index The index to set the value at.
      * @param value The strings to set.
      * @return This builder for chaining.
@@ -1707,7 +1189,7 @@ public  final class SecCallResponse extends
       return this;
     }
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @param value The strings to add.
      * @return This builder for chaining.
      */
@@ -1718,7 +1200,7 @@ public  final class SecCallResponse extends
       return this;
     }
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @param values The strings to add.
      * @return This builder for chaining.
      */
@@ -1729,7 +1211,7 @@ public  final class SecCallResponse extends
       return this;
     }
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @return This builder for chaining.
      */
     public Builder clearStrings() {
@@ -1738,7 +1220,7 @@ public  final class SecCallResponse extends
       return this;
     }
     /**
-     * <code>repeated string strings = 14 [json_name = "strings"];</code>
+     * <code>repeated string strings = 11 [json_name = "strings"];</code>
      * @param value The bytes of the strings to add.
      * @return This builder for chaining.
      */
@@ -1750,21 +1232,21 @@ public  final class SecCallResponse extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+     * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
      */
     @java.lang.Override
     public boolean hasPin() {
       return instance.hasPin();
     }
     /**
-     * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+     * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
      */
     @java.lang.Override
     public io.github.lewin671.remoteagent.core.proto.SecPin getPin() {
       return instance.getPin();
     }
     /**
-     * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+     * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
      */
     public Builder setPin(io.github.lewin671.remoteagent.core.proto.SecPin value) {
       copyOnWrite();
@@ -1772,7 +1254,7 @@ public  final class SecCallResponse extends
       return this;
       }
     /**
-     * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+     * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
      */
     public Builder setPin(
         io.github.lewin671.remoteagent.core.proto.SecPin.Builder builderForValue) {
@@ -1781,7 +1263,7 @@ public  final class SecCallResponse extends
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+     * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
      */
     public Builder mergePin(io.github.lewin671.remoteagent.core.proto.SecPin value) {
       copyOnWrite();
@@ -1789,365 +1271,10 @@ public  final class SecCallResponse extends
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.SecPin pin = 15 [json_name = "pin"];</code>
+     * <code>.remoteagent.core.v1.SecPin pin = 12 [json_name = "pin"];</code>
      */
     public Builder clearPin() {  copyOnWrite();
       instance.clearPin();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-     */
-    @java.lang.Override
-    public boolean hasNotify() {
-      return instance.hasNotify();
-    }
-    /**
-     * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.NotifyContent getNotify() {
-      return instance.getNotify();
-    }
-    /**
-     * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-     */
-    public Builder setNotify(io.github.lewin671.remoteagent.proto.NotifyContent value) {
-      copyOnWrite();
-      instance.setNotify(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-     */
-    public Builder setNotify(
-        io.github.lewin671.remoteagent.proto.NotifyContent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setNotify(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-     */
-    public Builder mergeNotify(io.github.lewin671.remoteagent.proto.NotifyContent value) {
-      copyOnWrite();
-      instance.mergeNotify(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.NotifyContent notify = 16 [json_name = "notify"];</code>
-     */
-    public Builder clearNotify() {  copyOnWrite();
-      instance.clearNotify();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-     */
-    @java.lang.Override
-    public boolean hasOpened() {
-      return instance.hasOpened();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult getOpened() {
-      return instance.getOpened();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-     */
-    public Builder setOpened(io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult value) {
-      copyOnWrite();
-      instance.setOpened(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-     */
-    public Builder setOpened(
-        io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult.Builder builderForValue) {
-      copyOnWrite();
-      instance.setOpened(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-     */
-    public Builder mergeOpened(io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult value) {
-      copyOnWrite();
-      instance.mergeOpened(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 17 [json_name = "opened"];</code>
-     */
-    public Builder clearOpened() {  copyOnWrite();
-      instance.clearOpened();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-     */
-    @java.lang.Override
-    public boolean hasEnvelope() {
-      return instance.hasEnvelope();
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.Envelope getEnvelope() {
-      return instance.getEnvelope();
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-     */
-    public Builder setEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-      copyOnWrite();
-      instance.setEnvelope(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-     */
-    public Builder setEnvelope(
-        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
-      copyOnWrite();
-      instance.setEnvelope(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-     */
-    public Builder mergeEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
-      copyOnWrite();
-      instance.mergeEnvelope(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.Envelope envelope = 18 [json_name = "envelope"];</code>
-     */
-    public Builder clearEnvelope() {  copyOnWrite();
-      instance.clearEnvelope();
-      return this;
-    }
-
-    /**
-     * <code>bytes header = 19 [json_name = "header"];</code>
-     * @return The header.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getHeader() {
-      return instance.getHeader();
-    }
-    /**
-     * <code>bytes header = 19 [json_name = "header"];</code>
-     * @param value The header to set.
-     * @return This builder for chaining.
-     */
-    public Builder setHeader(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setHeader(value);
-      return this;
-    }
-    /**
-     * <code>bytes header = 19 [json_name = "header"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearHeader() {
-      copyOnWrite();
-      instance.clearHeader();
-      return this;
-    }
-
-    /**
-     * <code>bytes origin_bytes = 20 [json_name = "originBytes"];</code>
-     * @return The originBytes.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getOriginBytes() {
-      return instance.getOriginBytes();
-    }
-    /**
-     * <code>bytes origin_bytes = 20 [json_name = "originBytes"];</code>
-     * @param value The originBytes to set.
-     * @return This builder for chaining.
-     */
-    public Builder setOriginBytes(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setOriginBytes(value);
-      return this;
-    }
-    /**
-     * <code>bytes origin_bytes = 20 [json_name = "originBytes"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearOriginBytes() {
-      copyOnWrite();
-      instance.clearOriginBytes();
-      return this;
-    }
-
-    /**
-     * <code>uint64 epoch = 21 [json_name = "epoch"];</code>
-     * @return The epoch.
-     */
-    @java.lang.Override
-    public long getEpoch() {
-      return instance.getEpoch();
-    }
-    /**
-     * <code>uint64 epoch = 21 [json_name = "epoch"];</code>
-     * @param value The epoch to set.
-     * @return This builder for chaining.
-     */
-    public Builder setEpoch(long value) {
-      copyOnWrite();
-      instance.setEpoch(value);
-      return this;
-    }
-    /**
-     * <code>uint64 epoch = 21 [json_name = "epoch"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearEpoch() {
-      copyOnWrite();
-      instance.clearEpoch();
-      return this;
-    }
-
-    /**
-     * <code>uint64 content_epoch = 22 [json_name = "contentEpoch"];</code>
-     * @return The contentEpoch.
-     */
-    @java.lang.Override
-    public long getContentEpoch() {
-      return instance.getContentEpoch();
-    }
-    /**
-     * <code>uint64 content_epoch = 22 [json_name = "contentEpoch"];</code>
-     * @param value The contentEpoch to set.
-     * @return This builder for chaining.
-     */
-    public Builder setContentEpoch(long value) {
-      copyOnWrite();
-      instance.setContentEpoch(value);
-      return this;
-    }
-    /**
-     * <code>uint64 content_epoch = 22 [json_name = "contentEpoch"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearContentEpoch() {
-      copyOnWrite();
-      instance.clearContentEpoch();
-      return this;
-    }
-
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.SecParsedState> getParsedStatesList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getParsedStatesList());
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    @java.lang.Override
-    public int getParsedStatesCount() {
-      return instance.getParsedStatesCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecParsedState getParsedStates(int index) {
-      return instance.getParsedStates(index);
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder setParsedStates(
-        int index, io.github.lewin671.remoteagent.core.proto.SecParsedState value) {
-      copyOnWrite();
-      instance.setParsedStates(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder setParsedStates(
-        int index, io.github.lewin671.remoteagent.core.proto.SecParsedState.Builder builderForValue) {
-      copyOnWrite();
-      instance.setParsedStates(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder addParsedStates(io.github.lewin671.remoteagent.core.proto.SecParsedState value) {
-      copyOnWrite();
-      instance.addParsedStates(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder addParsedStates(
-        int index, io.github.lewin671.remoteagent.core.proto.SecParsedState value) {
-      copyOnWrite();
-      instance.addParsedStates(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder addParsedStates(
-        io.github.lewin671.remoteagent.core.proto.SecParsedState.Builder builderForValue) {
-      copyOnWrite();
-      instance.addParsedStates(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder addParsedStates(
-        int index, io.github.lewin671.remoteagent.core.proto.SecParsedState.Builder builderForValue) {
-      copyOnWrite();
-      instance.addParsedStates(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder addAllParsedStates(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SecParsedState> values) {
-      copyOnWrite();
-      instance.addAllParsedStates(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder clearParsedStates() {
-      copyOnWrite();
-      instance.clearParsedStates();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SecParsedState parsed_states = 23 [json_name = "parsedStates"];</code>
-     */
-    public Builder removeParsedStates(int index) {
-      copyOnWrite();
-      instance.removeParsedStates(index);
       return this;
     }
 
@@ -2177,28 +1304,14 @@ public  final class SecCallResponse extends
             "parsedApproval_",
             "data_",
             "secondaryData_",
-            "tertiaryData_",
-            "info_",
-            "aad_",
             "text_",
             "strings_",
             "pin_",
-            "notify_",
-            "opened_",
-            "envelope_",
-            "header_",
-            "originBytes_",
-            "epoch_",
-            "contentEpoch_",
-            "parsedStates_",
-            io.github.lewin671.remoteagent.core.proto.SecParsedState.class,
           };
           java.lang.String info =
-              "\u0000\u0017\u0000\u0001\u0001\u0017\u0017\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u1009\u0003\u0007\u1009" +
-              "\u0004\b\n\t\n\n\n\u000b\n\f\n\r\u0208\u000e\u021a\u000f\u1009\u0005\u0010\u1009" +
-              "\u0006\u0011\u1009\u0007\u0012\u1009\b\u0013\n\u0014\n\u0015\u0003\u0016\u0003\u0017" +
-              "\u001b";
+              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u1009" +
+              "\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u1009\u0003\u0007\u1009\u0004\b" +
+              "\n\t\n\n\u0208\u000b\u021a\f\u1009\u0005";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

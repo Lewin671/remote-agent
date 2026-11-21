@@ -1386,47 +1386,6 @@ func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEven
 			},
 		)
 
-	case *corev1.SecurityOpRequestEvent_OpenHistory:
-		if op.OpenHistory == nil {
-			emitErr(devicesec.ErrInvalid)
-			return e.DrainEffects()
-		}
-		items := make([]OpenItem, len(op.OpenHistory.Envelopes))
-		for i, env := range op.OpenHistory.Envelopes {
-			items[i] = OpenItem{
-				Env:       env,
-				SessionID: op.OpenHistory.SessionId,
-				History:   true,
-			}
-		}
-		return e.OpenBatch(nowMs, items, func(res []OpenResult) {
-			outItems := make([]*corev1.SecurityOpenedHistoryItem, len(res))
-			for i, r := range res {
-				item := &corev1.SecurityOpenedHistoryItem{
-					Seq: r.Header.Seq,
-				}
-				if r.Err != nil {
-					item.Error = r.Err.Error()
-					item.ErrorCode = ErrorCode(r.Err)
-					item.Unavailable = errors.Is(r.Err, ErrRecoveryHistoryUnavailable)
-					item.Unsupported = errors.Is(r.Err, ErrUnsupportedHistory)
-				} else {
-					item.Plaintext = r.Plain
-				}
-				outItems[i] = item
-			}
-			e.out = append(e.out, &corev1.Effect{
-				Effect: &corev1.Effect_SecurityOpResult{
-					SecurityOpResult: &corev1.SecurityOpResultEffect{
-						OpId: req.OpId,
-						Result: &corev1.SecurityOpResultEffect_History{
-							History: &corev1.SecurityOpenHistoryResult{Items: outItems},
-						},
-					},
-				},
-			})
-		})
-
 	case *corev1.SecurityOpRequestEvent_GetSessionSeed:
 		if op.GetSessionSeed == nil {
 			emitErr(devicesec.ErrInvalid)

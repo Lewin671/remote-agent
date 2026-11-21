@@ -2,8 +2,6 @@ package security
 
 import (
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
 	"maps"
 	"slices"
 
@@ -372,15 +370,10 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 		} else if c.VerifyChain.CheckLeaseWindow {
 			return errSecResp(ErrLeaseExpired)
 		}
-		parsedStates := make([]*corev1.SecParsedState, len(states))
-		for i, s := range states {
-			parsedStates[i] = stateToProto(s)
-		}
 		return &corev1.SecCallResponse{
-			Pin:          pinToProto(pin),
-			ParsedState:  parsedStates[len(parsedStates)-1],
-			ParsedStates: parsedStates,
-			ParsedLease:  parsedLease,
+			Pin:         pinToProto(pin),
+			ParsedState: stateToProto(head),
+			ParsedLease: parsedLease,
 		}
 
 	case *corev1.SecCallRequest_GrantChallenge:
@@ -653,224 +646,26 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 			ParsedRecovery: recoveryToProto(parsed),
 		}
 
-	case *corev1.SecCallRequest_NewGenesisUnsigned:
-		if c.NewGenesisUnsigned == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		dom, err := parseHash32(c.NewGenesisUnsigned.Domain)
-		if err != nil {
-			return errSecResp(err)
-		}
-		mem, err := memberFromProto(c.NewGenesisUnsigned.Member)
-		if err != nil {
-			return errSecResp(err)
-		}
-		recEd, err := parseEdPublic32(c.NewGenesisUnsigned.RecoveryEd)
-		if err != nil {
-			return errSecResp(err)
-		}
-		sender, err := makeKemSender(c.NewGenesisUnsigned.Kems, mem)
-		if err != nil {
-			return errSecResp(err)
-		}
-		s, err := devicesec.NewGenesis(c.NewGenesisUnsigned.Account, dom, mem, recEd, c.NewGenesisUnsigned.Secret, c.NewGenesisUnsigned.NowMs, sender)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return unsignedStateResp(s)
-
-	case *corev1.SecCallRequest_NewStateUnsigned:
-		if c.NewStateUnsigned == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		parent, err := devicesec.ParseState(c.NewStateUnsigned.ParentState)
-		if err != nil {
-			return errSecResp(err)
-		}
-		members, err := membersFromProto(c.NewStateUnsigned.Members)
-		if err != nil {
-			return errSecResp(err)
-		}
-		sender, err := makeKemSender(c.NewStateUnsigned.Kems, members...)
-		if err != nil {
-			return errSecResp(err)
-		}
-		s, err := devicesec.NewState(parent, members, c.NewStateUnsigned.Removed, c.NewStateUnsigned.Secret, c.NewStateUnsigned.PrevSecret, c.NewStateUnsigned.NowMs, sender)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return unsignedStateResp(s)
-
-	case *corev1.SecCallRequest_NewMembershipStateUnsigned:
-		if c.NewMembershipStateUnsigned == nil || len(c.NewMembershipStateUnsigned.PrevSecretNonce) != 12 {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		parent, err := devicesec.ParseState(c.NewMembershipStateUnsigned.ParentState)
-		if err != nil {
-			return errSecResp(err)
-		}
-		members, err := membersFromProto(c.NewMembershipStateUnsigned.Members)
-		if err != nil {
-			return errSecResp(err)
-		}
-		sender, err := makeKemSender(c.NewMembershipStateUnsigned.Kems, members...)
-		if err != nil {
-			return errSecResp(err)
-		}
-		s, err := devicesec.NewMembershipState(
-			parent,
-			members,
-			c.NewMembershipStateUnsigned.Removed,
-			c.NewMembershipStateUnsigned.OldSecret,
-			c.NewMembershipStateUnsigned.NewSecret,
-			c.NewMembershipStateUnsigned.NowMs,
-			sender,
-			bytes.NewReader(c.NewMembershipStateUnsigned.PrevSecretNonce),
-		)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return unsignedStateResp(s)
-
-	case *corev1.SecCallRequest_NewPairStateUnsigned:
-		if c.NewPairStateUnsigned == nil || len(c.NewPairStateUnsigned.PrevSecretNonce) != 12 {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		parent, err := devicesec.ParseState(c.NewPairStateUnsigned.ParentState)
-		if err != nil {
-			return errSecResp(err)
-		}
-		cand, err := memberFromProto(c.NewPairStateUnsigned.Candidate)
-		if err != nil {
-			return errSecResp(err)
-		}
-		allMembers := append(slices.Clone(parent.Core.Members), cand)
-		sender, err := makeKemSender(c.NewPairStateUnsigned.Kems, allMembers...)
-		if err != nil {
-			return errSecResp(err)
-		}
-		s, err := devicesec.NewPairState(
-			parent,
-			cand,
-			cand.XPublic[:],
-			c.NewPairStateUnsigned.OldSecret,
-			c.NewPairStateUnsigned.NewSecret,
-			c.NewPairStateUnsigned.NowMs,
-			sender,
-			bytes.NewReader(c.NewPairStateUnsigned.PrevSecretNonce),
-		)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return unsignedStateResp(s)
-
-	case *corev1.SecCallRequest_NewHandoffUnsigned:
-		if c.NewHandoffUnsigned == nil || len(c.NewHandoffUnsigned.PrevSecretNonce) != 12 {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		parent, err := devicesec.ParseState(c.NewHandoffUnsigned.ParentState)
-		if err != nil {
-			return errSecResp(err)
-		}
-		recEd, err := parseEdPublic32(c.NewHandoffUnsigned.RecoveryEd)
-		if err != nil {
-			return errSecResp(err)
-		}
-		sender, err := makeKemSender(c.NewHandoffUnsigned.Kems, parent.Core.Members...)
-		if err != nil {
-			return errSecResp(err)
-		}
-		s, err := devicesec.NewHandoff(
-			parent,
-			c.NewHandoffUnsigned.IncomingId,
-			recEd,
-			c.NewHandoffUnsigned.OldSecret,
-			c.NewHandoffUnsigned.NewSecret,
-			c.NewHandoffUnsigned.NowMs,
-			sender,
-			bytes.NewReader(c.NewHandoffUnsigned.PrevSecretNonce),
-		)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return unsignedStateResp(s)
-
-	case *corev1.SecCallRequest_NewRecoveryUnsigned:
-		if c.NewRecoveryUnsigned == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		parent, err := devicesec.ParseState(c.NewRecoveryUnsigned.ParentState)
-		if err != nil {
-			return errSecResp(err)
-		}
-		newMem, err := memberFromProto(c.NewRecoveryUnsigned.NewMember)
-		if err != nil {
-			return errSecResp(err)
-		}
-		members, err := membersFromProto(c.NewRecoveryUnsigned.Members)
-		if err != nil {
-			return errSecResp(err)
-		}
-		recEd, err := parseEdPublic32(c.NewRecoveryUnsigned.NewRecoveryEd)
-		if err != nil {
-			return errSecResp(err)
-		}
-		allMembers := append(slices.Clone(members), newMem)
-		sender, err := makeKemSender(c.NewRecoveryUnsigned.Kems, allMembers...)
-		if err != nil {
-			return errSecResp(err)
-		}
-		s, err := devicesec.NewRecovery(parent, newMem, members, c.NewRecoveryUnsigned.Secret, recEd, c.NewRecoveryUnsigned.NowMs, sender)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return unsignedStateResp(s)
-
-	case *corev1.SecCallRequest_NewRecoveryKeyRotationUnsigned:
-		if c.NewRecoveryKeyRotationUnsigned == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		parent, err := devicesec.ParseState(c.NewRecoveryKeyRotationUnsigned.ParentState)
-		if err != nil {
-			return errSecResp(err)
-		}
-		recEd, err := parseEdPublic32(c.NewRecoveryKeyRotationUnsigned.RecoveryEd)
-		if err != nil {
-			return errSecResp(err)
-		}
-		sender, err := makeKemSender(c.NewRecoveryKeyRotationUnsigned.Kems, parent.Core.Members...)
-		if err != nil {
-			return errSecResp(err)
-		}
-		s, err := devicesec.NewRecoveryKeyRotation(parent, c.NewRecoveryKeyRotationUnsigned.Secret, recEd, c.NewRecoveryKeyRotationUnsigned.NowMs, sender)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return unsignedStateResp(s)
+	case *corev1.SecCallRequest_BuildState:
+		return secBuildState(c.BuildState)
 
 	case *corev1.SecCallRequest_MarshalState:
-		if c.MarshalState == nil || c.MarshalState.Unsigned == nil {
+		if c.MarshalState == nil {
 			return errSecResp(devicesec.ErrInvalid)
 		}
-		core, err := devicesec.ParseCore(c.MarshalState.Unsigned.UnsignedCore)
+		core, err := devicesec.ParseCore(c.MarshalState.UnsignedCore)
 		if err != nil {
 			return errSecResp(err)
 		}
-		grants, err := grantsFromProto(c.MarshalState.Unsigned.Grants)
+		grants, err := grantsFromProto(c.MarshalState.Grants)
 		if err != nil {
 			return errSecResp(err)
 		}
 		s := devicesec.State{
 			Core:       core,
 			Grants:     grants,
-			PrevSecret: slices.Clone(c.MarshalState.Unsigned.PrevSecret),
+			PrevSecret: slices.Clone(c.MarshalState.PrevSecret),
 			Signature:  slices.Clone(c.MarshalState.Signature),
-		}
-		if len(c.MarshalState.Unsigned.SigningBytes) > 0 {
-			sb, err := s.SigningBytes()
-			if err != nil || !bytes.Equal(sb, c.MarshalState.Unsigned.SigningBytes) {
-				return errSecResp(devicesec.ErrInvalid)
-			}
 		}
 		raw, err := s.MarshalBinary()
 		if err != nil {
@@ -1070,12 +865,6 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 		}
 		return &corev1.SecCallResponse{Data: sig}
 
-	case *corev1.SecCallRequest_DeviceId:
-		if c.DeviceId == nil || len(c.DeviceId.EdPublic) != devicesec.Ed25519PublicKeySize {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		return &corev1.SecCallResponse{Text: devicesec.ID(c.DeviceId.EdPublic)}
-
 	case *corev1.SecCallRequest_InflateBounded:
 		if c.InflateBounded == nil {
 			return errSecResp(devicesec.ErrInvalid)
@@ -1117,15 +906,138 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 	case *corev1.SecCallRequest_OpenNotifyEnvelope:
 		return secOpenNotifyEnvelope(c.OpenNotifyEnvelope)
 
-	case *corev1.SecCallRequest_OpenEnvelopeDirect:
-		return secOpenEnvelopeDirect(c.OpenEnvelopeDirect)
-
-	case *corev1.SecCallRequest_SealEnvelopeDirect:
-		return secSealEnvelopeDirect(c.SealEnvelopeDirect)
-
 	default:
 		return errSecResp(devicesec.ErrInvalid)
 	}
+}
+
+func secBuildState(c *corev1.SecBuildStateCall) *corev1.SecCallResponse {
+	if c == nil {
+		return errSecResp(devicesec.ErrInvalid)
+	}
+	var (
+		s   devicesec.State
+		err error
+	)
+	switch c.Kind {
+	case 1: // Genesis
+		var dom devicesec.Hash
+		var mem devicesec.Member
+		var recEd [32]byte
+		dom, err = parseHash32(c.Domain)
+		if err == nil {
+			mem, err = memberFromProto(c.Member)
+		}
+		if err == nil {
+			recEd, err = parseEdPublic32(c.RecoveryEd)
+		}
+		var sender *dhHPKESender
+		if err == nil {
+			sender, err = makeKemSender(c.Kems, mem)
+		}
+		if err == nil {
+			s, err = devicesec.NewGenesis(c.Account, dom, mem, recEd, c.Secret, c.NowMs, sender)
+		}
+	case 2, 7: // Membership / CustomState
+		var parent devicesec.State
+		var members []devicesec.Member
+		var sender *dhHPKESender
+		parent, err = devicesec.ParseState(c.ParentState)
+		if err == nil {
+			members, err = membersFromProto(c.Members)
+		}
+		if err == nil {
+			sender, err = makeKemSender(c.Kems, members...)
+		}
+		if err == nil {
+			if c.Kind == 2 {
+				if len(c.PrevSecretNonce) != 12 {
+					return errSecResp(devicesec.ErrInvalid)
+				}
+				s, err = devicesec.NewMembershipState(parent, members, c.Removed, c.OldSecret, c.Secret, c.NowMs, sender, bytes.NewReader(c.PrevSecretNonce))
+			} else {
+				s, err = devicesec.NewState(parent, members, c.Removed, c.Secret, c.PrevSecret, c.NowMs, sender)
+			}
+		}
+	case 3: // Pair
+		if len(c.PrevSecretNonce) != 12 {
+			return errSecResp(devicesec.ErrInvalid)
+		}
+		var parent devicesec.State
+		var cand devicesec.Member
+		var sender *dhHPKESender
+		parent, err = devicesec.ParseState(c.ParentState)
+		if err == nil {
+			cand, err = memberFromProto(c.Member)
+		}
+		if err == nil {
+			allMembers := append(slices.Clone(parent.Core.Members), cand)
+			sender, err = makeKemSender(c.Kems, allMembers...)
+		}
+		if err == nil {
+			s, err = devicesec.NewPairState(parent, cand, cand.XPublic[:], c.OldSecret, c.Secret, c.NowMs, sender, bytes.NewReader(c.PrevSecretNonce))
+		}
+	case 4: // Handoff
+		if len(c.PrevSecretNonce) != 12 {
+			return errSecResp(devicesec.ErrInvalid)
+		}
+		var parent devicesec.State
+		var recEd [32]byte
+		var sender *dhHPKESender
+		parent, err = devicesec.ParseState(c.ParentState)
+		if err == nil {
+			recEd, err = parseEdPublic32(c.RecoveryEd)
+		}
+		if err == nil {
+			sender, err = makeKemSender(c.Kems, parent.Core.Members...)
+		}
+		if err == nil {
+			s, err = devicesec.NewHandoff(parent, c.IncomingId, recEd, c.OldSecret, c.Secret, c.NowMs, sender, bytes.NewReader(c.PrevSecretNonce))
+		}
+	case 5: // Recovery
+		var parent devicesec.State
+		var newMem devicesec.Member
+		var members []devicesec.Member
+		var recEd [32]byte
+		var sender *dhHPKESender
+		parent, err = devicesec.ParseState(c.ParentState)
+		if err == nil {
+			newMem, err = memberFromProto(c.Member)
+		}
+		if err == nil {
+			members, err = membersFromProto(c.Members)
+		}
+		if err == nil {
+			recEd, err = parseEdPublic32(c.RecoveryEd)
+		}
+		if err == nil {
+			allMembers := append(slices.Clone(members), newMem)
+			sender, err = makeKemSender(c.Kems, allMembers...)
+		}
+		if err == nil {
+			s, err = devicesec.NewRecovery(parent, newMem, members, c.Secret, recEd, c.NowMs, sender)
+		}
+	case 6: // RecoveryKeyRotation
+		var parent devicesec.State
+		var recEd [32]byte
+		var sender *dhHPKESender
+		parent, err = devicesec.ParseState(c.ParentState)
+		if err == nil {
+			recEd, err = parseEdPublic32(c.RecoveryEd)
+		}
+		if err == nil {
+			sender, err = makeKemSender(c.Kems, parent.Core.Members...)
+		}
+		if err == nil {
+			s, err = devicesec.NewRecoveryKeyRotation(parent, c.Secret, recEd, c.NowMs, sender)
+		}
+	default:
+		return errSecResp(devicesec.ErrInvalid)
+	}
+	if err != nil {
+		return errSecResp(err)
+	}
+	return unsignedStateResp(s)
 }
 
 func secOpenNotifyEnvelope(c *corev1.SecOpenNotifyEnvelopeCall) *corev1.SecCallResponse {
@@ -1191,154 +1103,15 @@ func secOpenNotifyEnvelope(c *corev1.SecOpenNotifyEnvelopeCall) *corev1.SecCallR
 	if err != nil {
 		return errSecResp(err)
 	}
-	body, _, err := ValidateAndDecodeBody(vh, plain)
+	body, unpacked, err := ValidateAndDecodeBody(vh, plain)
 	if err != nil {
 		return errSecResp(err)
 	}
-	n, ok := body.(*v1.NotifyContent)
-	if !ok {
+	if _, ok := body.(*v1.NotifyContent); !ok {
 		return errSecResp(devicesec.ErrInvalid)
 	}
 	return &corev1.SecCallResponse{
-		Header:        slices.Clone(ct.Header),
+		Data:          unpacked,
 		SecondaryData: headSec,
-		Notify:        n,
-		Epoch:         vh.Epoch,
-		ContentEpoch:  vh.ContentEpoch,
-	}
-}
-
-func secOpenEnvelopeDirect(c *corev1.SecOpenEnvelopeDirectCall) *corev1.SecCallResponse {
-	if c == nil || c.Envelope == nil {
-		return errSecResp(devicesec.ErrInvalid)
-	}
-	pin, err := parsePin(c.Pin)
-	if err != nil {
-		return errSecResp(err)
-	}
-	if len(c.States) == 0 {
-		return errSecResp(devicesec.ErrInvalid)
-	}
-	states, byHash, _, err := parseAndVerifyChain(pin, c.States, c.RecoveryProofs)
-	if err != nil {
-		return errSecResp(err)
-	}
-	head := states[len(states)-1]
-	ct, err := FromProtoEnvelope(c.Envelope)
-	if err != nil {
-		return errSecResp(err)
-	}
-	h, err := devicesec.ParseHeader(ct.Header)
-	if err != nil {
-		return errSecResp(err)
-	}
-	s, ok := byHash[h.State]
-	if !ok {
-		return errSecResp(devicesec.ErrStale)
-	}
-	if _, err := ct.VerifyOrigin(s, head, c.Live, uint64(max(0, c.NowMs))); err != nil {
-		return errSecResp(err)
-	}
-	epochs, err := deriveEpochSecretsFromHead(states, c.ContentSecret)
-	if err != nil {
-		return errSecResp(err)
-	}
-	var sec []byte
-	if arr, ok := epochs[h.ContentEpoch]; ok {
-		sec = arr[:]
-	} else if len(c.ContentSecret) == 32 {
-		sec = c.ContentSecret
-	} else {
-		return errSecResp(devicesec.ErrStale)
-	}
-	vh, plain, err := devicesec.OpenCipher(sec, c.SessionSeed, ct)
-	if err != nil {
-		return errSecResp(err)
-	}
-	_, unpacked, err := ValidateAndDecodeBody(vh, plain)
-	if err != nil {
-		return errSecResp(err)
-	}
-	return &corev1.SecCallResponse{
-		Header:       slices.Clone(ct.Header),
-		Epoch:        vh.Epoch,
-		ContentEpoch: vh.ContentEpoch,
-		Opened: &corev1.SecurityOpenEnvelopeResult{
-			Header:       slices.Clone(ct.Header),
-			Plaintext:    unpacked,
-			Epoch:        vh.Epoch,
-			ContentEpoch: vh.ContentEpoch,
-			Seq:          vh.Seq,
-			Sender:       vh.Sender,
-			Purpose:      uint32(vh.Purpose),
-			MachineId:    vh.Machine,
-			SessionId:    vh.Session,
-			RequestId:    vh.Request,
-			DeadlineMs:   int64(vh.Deadline),
-		},
-	}
-}
-
-func secSealEnvelopeDirect(c *corev1.SecSealEnvelopeDirectCall) *corev1.SecCallResponse {
-	if c == nil || len(c.Secret) != 32 || len(c.Nonce) != 12 {
-		return errSecResp(devicesec.ErrInvalid)
-	}
-	dom, err := parseHash32(c.Domain)
-	if err != nil {
-		return errSecResp(err)
-	}
-	sh, err := parseHash32(c.StateHash)
-	if err != nil {
-		return errSecResp(err)
-	}
-	purpose := devicesec.Purpose(c.Purpose)
-	h := devicesec.Header{
-		Account:      c.Account,
-		Domain:       dom,
-		Epoch:        c.Epoch,
-		State:        sh,
-		ContentEpoch: c.ContentEpoch,
-		Sender:       c.Sender,
-		Kind:         purpose.Kind(),
-		Purpose:      purpose,
-		Machine:      c.MachineId,
-		Session:      c.SessionId,
-		Request:      c.RequestId,
-		Seq:          c.Seq,
-		Deadline:     uint64(max(0, c.DeadlineMs)),
-		Compression:  0,
-	}
-	headerBytes, key, nonce, err := devicesec.PrepareCiphertext(c.Secret, c.SessionSeed, h, len(c.Plaintext), bytes.NewReader(c.Nonce))
-	if err != nil {
-		return errSecResp(err)
-	}
-	blk, err := aes.NewCipher(key)
-	if err != nil {
-		return errSecResp(err)
-	}
-	aead, err := cipher.NewGCM(blk)
-	if err != nil {
-		return errSecResp(err)
-	}
-	cipherBytes := aead.Seal(nil, nonce, c.Plaintext, headerBytes)
-	ct, originMsg, err := devicesec.AssembleCiphertext(headerBytes, nonce, cipherBytes)
-	if err != nil {
-		return errSecResp(err)
-	}
-	projBytes, err := Projection(h).Marshal()
-	if err != nil {
-		return errSecResp(err)
-	}
-	return &corev1.SecCallResponse{
-		Header:        slices.Clone(headerBytes),
-		Data:          slices.Clone(ct.Cipher),
-		SecondaryData: slices.Clone(nonce),
-		OriginBytes:   originMsg,
-		Envelope: &v1.Envelope{
-			Header:         projBytes,
-			Nonce:          slices.Clone(nonce),
-			Ciphertext:     slices.Clone(ct.Cipher),
-			SecurityHeader: slices.Clone(headerBytes),
-		},
 	}
 }

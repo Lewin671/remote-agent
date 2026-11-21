@@ -538,11 +538,15 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 			})
 
 		case transport.CoordAuthorize:
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_DirectAuthorize{
-					DirectAuthorize: &corev1.DirectAuthorizeEffect{},
-				},
-			})
+			if e.secEngine != nil && e.secEngine.Locked() {
+				e.requestSyncSecurity(ctx, true)
+			} else {
+				ctx.emit(&corev1.Effect{
+					Effect: &corev1.Effect_DirectAuthorize{
+						DirectAuthorize: &corev1.DirectAuthorizeEffect{},
+					},
+				})
+			}
 
 		case transport.CoordKeySign:
 			if e.secEngine != nil && e.secEngine.Locked() {

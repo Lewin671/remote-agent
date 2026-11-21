@@ -33,10 +33,6 @@ out: remoteagent.v1.Command
 out: remoteagent.v1.Envelope
 out: remoteagent.v1.Header
 out: remoteagent.v1.ProjectPrefs
-out: remoteagent.v1.DeviceMeta
-out: remoteagent.v1.TerminalFrame
-out: remoteagent.v1.ImagePayload
-out: remoteagent.v1.NotifyContent
 
 # Strict validation (reject unknown fields recursively on Unmarshal)
 strict: remoteagent.v1.Envelope

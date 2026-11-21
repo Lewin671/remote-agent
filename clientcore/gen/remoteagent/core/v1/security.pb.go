@@ -1616,57 +1616,6 @@ func (m *SecuritySealEnvelopeOp) Unmarshal(b []byte) error {
 	return nil
 }
 
-type SecurityOpenHistoryOp struct {
-	SessionId string
-	Envelopes []*v1.Envelope
-}
-
-func (m *SecurityOpenHistoryOp) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *SecurityOpenHistoryOp) GetEnvelopes() []*v1.Envelope {
-	if m != nil {
-		return m.Envelopes
-	}
-	return nil
-}
-
-func (m *SecurityOpenHistoryOp) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &v1.Envelope{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Envelopes = append(m.Envelopes, elem)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type SecurityGetSessionSeedOp struct {
 	SessionId string
 }
@@ -1716,10 +1665,6 @@ type SecurityOpRequestEvent_SealEnvelope struct{ SealEnvelope *SecuritySealEnvel
 
 func (*SecurityOpRequestEvent_SealEnvelope) isSecurityOpRequestEvent_Op() {}
 
-type SecurityOpRequestEvent_OpenHistory struct{ OpenHistory *SecurityOpenHistoryOp }
-
-func (*SecurityOpRequestEvent_OpenHistory) isSecurityOpRequestEvent_Op() {}
-
 type SecurityOpRequestEvent_GetSessionSeed struct{ GetSessionSeed *SecurityGetSessionSeedOp }
 
 func (*SecurityOpRequestEvent_GetSessionSeed) isSecurityOpRequestEvent_Op() {}
@@ -1745,12 +1690,6 @@ func (m *SecurityOpRequestEvent) GetOpenEnvelope() *SecurityOpenEnvelopeOp {
 func (m *SecurityOpRequestEvent) GetSealEnvelope() *SecuritySealEnvelopeOp {
 	if x, ok := m.GetOp().(*SecurityOpRequestEvent_SealEnvelope); ok && x != nil {
 		return x.SealEnvelope
-	}
-	return nil
-}
-func (m *SecurityOpRequestEvent) GetOpenHistory() *SecurityOpenHistoryOp {
-	if x, ok := m.GetOp().(*SecurityOpRequestEvent_OpenHistory); ok && x != nil {
-		return x.OpenHistory
 	}
 	return nil
 }
@@ -1808,21 +1747,6 @@ func (m *SecurityOpRequestEvent) Unmarshal(b []byte) error {
 				continue
 			}
 		case 4:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityOpenHistoryOp
-				if cur, ok := m.Op.(*SecurityOpRequestEvent_OpenHistory); ok && cur != nil {
-					sub = cur.OpenHistory
-				}
-				if sub == nil {
-					sub = &SecurityOpenHistoryOp{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Op = &SecurityOpRequestEvent_OpenHistory{OpenHistory: sub}
-				continue
-			}
-		case 5:
 			if wtyp == litewire.BytesType {
 				var sub *SecurityGetSessionSeedOp
 				if cur, ok := m.Op.(*SecurityOpRequestEvent_GetSessionSeed); ok && cur != nil {
@@ -1993,100 +1917,6 @@ func (m *SecuritySealEnvelopeResult) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-type SecurityOpenedHistoryItem struct {
-	Seq         uint64
-	Plaintext   []byte
-	Unavailable bool
-	Unsupported bool
-	Error       string
-	ErrorCode   string
-}
-
-func (m *SecurityOpenedHistoryItem) GetSeq() uint64 {
-	if m != nil {
-		return m.Seq
-	}
-	return 0
-}
-func (m *SecurityOpenedHistoryItem) GetPlaintext() []byte {
-	if m != nil {
-		return m.Plaintext
-	}
-	return nil
-}
-func (m *SecurityOpenedHistoryItem) GetUnavailable() bool {
-	if m != nil {
-		return m.Unavailable
-	}
-	return false
-}
-func (m *SecurityOpenedHistoryItem) GetUnsupported() bool {
-	if m != nil {
-		return m.Unsupported
-	}
-	return false
-}
-func (m *SecurityOpenedHistoryItem) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
-}
-func (m *SecurityOpenedHistoryItem) GetErrorCode() string {
-	if m != nil {
-		return m.ErrorCode
-	}
-	return ""
-}
-
-func (m *SecurityOpenedHistoryItem) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *SecurityOpenedHistoryItem) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *SecurityOpenedHistoryItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.Seq))
-	b = litewire.AppendBytes(b, 2, m.Plaintext)
-	b = litewire.AppendBool(b, 3, m.Unavailable)
-	b = litewire.AppendBool(b, 4, m.Unsupported)
-	b = litewire.AppendString(b, 5, m.Error)
-	b = litewire.AppendString(b, 6, m.ErrorCode)
-	return b
-}
-
-type SecurityOpenHistoryResult struct {
-	Items []*SecurityOpenedHistoryItem
-}
-
-func (m *SecurityOpenHistoryResult) GetItems() []*SecurityOpenedHistoryItem {
-	if m != nil {
-		return m.Items
-	}
-	return nil
-}
-
-func (m *SecurityOpenHistoryResult) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *SecurityOpenHistoryResult) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *SecurityOpenHistoryResult) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Items {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
-		}
-	}
-	return b
-}
-
 type SecurityOpResultEffect struct {
 	OpId      uint64
 	Error     string
@@ -2102,10 +1932,6 @@ func (*SecurityOpResultEffect_Opened) isSecurityOpResultEffect_Result() {}
 type SecurityOpResultEffect_Sealed struct{ Sealed *SecuritySealEnvelopeResult }
 
 func (*SecurityOpResultEffect_Sealed) isSecurityOpResultEffect_Result() {}
-
-type SecurityOpResultEffect_History struct{ History *SecurityOpenHistoryResult }
-
-func (*SecurityOpResultEffect_History) isSecurityOpResultEffect_Result() {}
 
 type SecurityOpResultEffect_SessionSeed struct{ SessionSeed []byte }
 
@@ -2147,12 +1973,6 @@ func (m *SecurityOpResultEffect) GetSealed() *SecuritySealEnvelopeResult {
 	}
 	return nil
 }
-func (m *SecurityOpResultEffect) GetHistory() *SecurityOpenHistoryResult {
-	if x, ok := m.GetResult().(*SecurityOpResultEffect_History); ok && x != nil {
-		return x.History
-	}
-	return nil
-}
 func (m *SecurityOpResultEffect) GetSessionSeed() []byte {
 	if x, ok := m.GetResult().(*SecurityOpResultEffect_SessionSeed); ok && x != nil {
 		return x.SessionSeed
@@ -2186,15 +2006,9 @@ func (m *SecurityOpResultEffect) AppendMarshal(b []byte) []byte {
 				b = litewire.AppendMessage(b, 5, x.Sealed)
 			}
 		}
-	case *SecurityOpResultEffect_History:
-		if x != nil {
-			if x.History != nil {
-				b = litewire.AppendMessage(b, 6, x.History)
-			}
-		}
 	case *SecurityOpResultEffect_SessionSeed:
 		if x != nil {
-			b = litewire.AppendBytesAlways(b, 7, x.SessionSeed)
+			b = litewire.AppendBytesAlways(b, 6, x.SessionSeed)
 		}
 	}
 	return b
@@ -3126,165 +2940,6 @@ func (m *SecParsedState) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-func (m *SecParsedState) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.StateHash = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.CoreHash = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Account = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Domain = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.AuthorityId = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryEd = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Parent = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Epoch = v
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ContentEpoch = v
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IssuedAt = v
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				elem := &SecMember{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Members = append(m.Members, elem)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Removed = append(m.Removed, v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.BytesType {
-				elem := &SecGrant{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Grants = append(m.Grants, elem)
-				continue
-			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.PrevSecret = v
-				continue
-			}
-		case 15:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Signature = v
-				continue
-			}
-		case 16:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.SigningBytes = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type SecParsedLease struct {
 	Domain       []byte
 	Head         []byte
@@ -3595,76 +3250,6 @@ func (m *SecUnsignedState) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-func (m *SecUnsignedState) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Parsed == nil {
-					m.Parsed = &SecParsedState{}
-				}
-				if err := litewire.ReadMessage(&b, m.Parsed); err != nil {
-					return err
-				}
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.UnsignedCore = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				elem := &SecGrant{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Grants = append(m.Grants, elem)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.PrevSecret = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.SigningBytes = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.StateHash = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type SecParsedApproval struct {
 	AccountId                string
 	PairingId                string
@@ -3831,37 +3416,9 @@ type SecCallRequest_MarshalRecoveryStatement struct {
 
 func (*SecCallRequest_MarshalRecoveryStatement) isSecCallRequest_Call() {}
 
-type SecCallRequest_NewGenesisUnsigned struct{ NewGenesisUnsigned *SecNewGenesisUnsignedCall }
+type SecCallRequest_BuildState struct{ BuildState *SecBuildStateCall }
 
-func (*SecCallRequest_NewGenesisUnsigned) isSecCallRequest_Call() {}
-
-type SecCallRequest_NewStateUnsigned struct{ NewStateUnsigned *SecNewStateUnsignedCall }
-
-func (*SecCallRequest_NewStateUnsigned) isSecCallRequest_Call() {}
-
-type SecCallRequest_NewMembershipStateUnsigned struct {
-	NewMembershipStateUnsigned *SecNewMembershipStateUnsignedCall
-}
-
-func (*SecCallRequest_NewMembershipStateUnsigned) isSecCallRequest_Call() {}
-
-type SecCallRequest_NewPairStateUnsigned struct{ NewPairStateUnsigned *SecNewPairStateUnsignedCall }
-
-func (*SecCallRequest_NewPairStateUnsigned) isSecCallRequest_Call() {}
-
-type SecCallRequest_NewHandoffUnsigned struct{ NewHandoffUnsigned *SecNewHandoffUnsignedCall }
-
-func (*SecCallRequest_NewHandoffUnsigned) isSecCallRequest_Call() {}
-
-type SecCallRequest_NewRecoveryUnsigned struct{ NewRecoveryUnsigned *SecNewRecoveryUnsignedCall }
-
-func (*SecCallRequest_NewRecoveryUnsigned) isSecCallRequest_Call() {}
-
-type SecCallRequest_NewRecoveryKeyRotationUnsigned struct {
-	NewRecoveryKeyRotationUnsigned *SecNewRecoveryKeyRotationUnsignedCall
-}
-
-func (*SecCallRequest_NewRecoveryKeyRotationUnsigned) isSecCallRequest_Call() {}
+func (*SecCallRequest_BuildState) isSecCallRequest_Call() {}
 
 type SecCallRequest_MarshalState struct{ MarshalState *SecMarshalStateCall }
 
@@ -3925,10 +3482,6 @@ type SecCallRequest_Ed25519SeedSign struct{ Ed25519SeedSign *SecEd25519SeedSignC
 
 func (*SecCallRequest_Ed25519SeedSign) isSecCallRequest_Call() {}
 
-type SecCallRequest_DeviceId struct{ DeviceId *SecDeviceIDCall }
-
-func (*SecCallRequest_DeviceId) isSecCallRequest_Call() {}
-
 type SecCallRequest_InflateBounded struct{ InflateBounded *SecInflateBoundedCall }
 
 func (*SecCallRequest_InflateBounded) isSecCallRequest_Call() {}
@@ -3946,14 +3499,6 @@ func (*SecCallRequest_AccountDeleteSigningBytes) isSecCallRequest_Call() {}
 type SecCallRequest_OpenNotifyEnvelope struct{ OpenNotifyEnvelope *SecOpenNotifyEnvelopeCall }
 
 func (*SecCallRequest_OpenNotifyEnvelope) isSecCallRequest_Call() {}
-
-type SecCallRequest_OpenEnvelopeDirect struct{ OpenEnvelopeDirect *SecOpenEnvelopeDirectCall }
-
-func (*SecCallRequest_OpenEnvelopeDirect) isSecCallRequest_Call() {}
-
-type SecCallRequest_SealEnvelopeDirect struct{ SealEnvelopeDirect *SecSealEnvelopeDirectCall }
-
-func (*SecCallRequest_SealEnvelopeDirect) isSecCallRequest_Call() {}
 
 func (m *SecCallRequest) GetCall() isSecCallRequest_Call {
 	if m != nil {
@@ -4045,45 +3590,9 @@ func (m *SecCallRequest) GetMarshalRecoveryStatement() *SecMarshalRecoveryStatem
 	}
 	return nil
 }
-func (m *SecCallRequest) GetNewGenesisUnsigned() *SecNewGenesisUnsignedCall {
-	if x, ok := m.GetCall().(*SecCallRequest_NewGenesisUnsigned); ok && x != nil {
-		return x.NewGenesisUnsigned
-	}
-	return nil
-}
-func (m *SecCallRequest) GetNewStateUnsigned() *SecNewStateUnsignedCall {
-	if x, ok := m.GetCall().(*SecCallRequest_NewStateUnsigned); ok && x != nil {
-		return x.NewStateUnsigned
-	}
-	return nil
-}
-func (m *SecCallRequest) GetNewMembershipStateUnsigned() *SecNewMembershipStateUnsignedCall {
-	if x, ok := m.GetCall().(*SecCallRequest_NewMembershipStateUnsigned); ok && x != nil {
-		return x.NewMembershipStateUnsigned
-	}
-	return nil
-}
-func (m *SecCallRequest) GetNewPairStateUnsigned() *SecNewPairStateUnsignedCall {
-	if x, ok := m.GetCall().(*SecCallRequest_NewPairStateUnsigned); ok && x != nil {
-		return x.NewPairStateUnsigned
-	}
-	return nil
-}
-func (m *SecCallRequest) GetNewHandoffUnsigned() *SecNewHandoffUnsignedCall {
-	if x, ok := m.GetCall().(*SecCallRequest_NewHandoffUnsigned); ok && x != nil {
-		return x.NewHandoffUnsigned
-	}
-	return nil
-}
-func (m *SecCallRequest) GetNewRecoveryUnsigned() *SecNewRecoveryUnsignedCall {
-	if x, ok := m.GetCall().(*SecCallRequest_NewRecoveryUnsigned); ok && x != nil {
-		return x.NewRecoveryUnsigned
-	}
-	return nil
-}
-func (m *SecCallRequest) GetNewRecoveryKeyRotationUnsigned() *SecNewRecoveryKeyRotationUnsignedCall {
-	if x, ok := m.GetCall().(*SecCallRequest_NewRecoveryKeyRotationUnsigned); ok && x != nil {
-		return x.NewRecoveryKeyRotationUnsigned
+func (m *SecCallRequest) GetBuildState() *SecBuildStateCall {
+	if x, ok := m.GetCall().(*SecCallRequest_BuildState); ok && x != nil {
+		return x.BuildState
 	}
 	return nil
 }
@@ -4171,12 +3680,6 @@ func (m *SecCallRequest) GetEd25519SeedSign() *SecEd25519SeedSignCall {
 	}
 	return nil
 }
-func (m *SecCallRequest) GetDeviceId() *SecDeviceIDCall {
-	if x, ok := m.GetCall().(*SecCallRequest_DeviceId); ok && x != nil {
-		return x.DeviceId
-	}
-	return nil
-}
 func (m *SecCallRequest) GetInflateBounded() *SecInflateBoundedCall {
 	if x, ok := m.GetCall().(*SecCallRequest_InflateBounded); ok && x != nil {
 		return x.InflateBounded
@@ -4198,18 +3701,6 @@ func (m *SecCallRequest) GetAccountDeleteSigningBytes() *SecAccountDeleteSigning
 func (m *SecCallRequest) GetOpenNotifyEnvelope() *SecOpenNotifyEnvelopeCall {
 	if x, ok := m.GetCall().(*SecCallRequest_OpenNotifyEnvelope); ok && x != nil {
 		return x.OpenNotifyEnvelope
-	}
-	return nil
-}
-func (m *SecCallRequest) GetOpenEnvelopeDirect() *SecOpenEnvelopeDirectCall {
-	if x, ok := m.GetCall().(*SecCallRequest_OpenEnvelopeDirect); ok && x != nil {
-		return x.OpenEnvelopeDirect
-	}
-	return nil
-}
-func (m *SecCallRequest) GetSealEnvelopeDirect() *SecSealEnvelopeDirectCall {
-	if x, ok := m.GetCall().(*SecCallRequest_SealEnvelopeDirect); ok && x != nil {
-		return x.SealEnvelopeDirect
 	}
 	return nil
 }
@@ -4433,107 +3924,17 @@ func (m *SecCallRequest) Unmarshal(b []byte) error {
 			}
 		case 15:
 			if wtyp == litewire.BytesType {
-				var sub *SecNewGenesisUnsignedCall
-				if cur, ok := m.Call.(*SecCallRequest_NewGenesisUnsigned); ok && cur != nil {
-					sub = cur.NewGenesisUnsigned
+				var sub *SecBuildStateCall
+				if cur, ok := m.Call.(*SecCallRequest_BuildState); ok && cur != nil {
+					sub = cur.BuildState
 				}
 				if sub == nil {
-					sub = &SecNewGenesisUnsignedCall{}
+					sub = &SecBuildStateCall{}
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
-				m.Call = &SecCallRequest_NewGenesisUnsigned{NewGenesisUnsigned: sub}
-				continue
-			}
-		case 16:
-			if wtyp == litewire.BytesType {
-				var sub *SecNewStateUnsignedCall
-				if cur, ok := m.Call.(*SecCallRequest_NewStateUnsigned); ok && cur != nil {
-					sub = cur.NewStateUnsigned
-				}
-				if sub == nil {
-					sub = &SecNewStateUnsignedCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_NewStateUnsigned{NewStateUnsigned: sub}
-				continue
-			}
-		case 17:
-			if wtyp == litewire.BytesType {
-				var sub *SecNewMembershipStateUnsignedCall
-				if cur, ok := m.Call.(*SecCallRequest_NewMembershipStateUnsigned); ok && cur != nil {
-					sub = cur.NewMembershipStateUnsigned
-				}
-				if sub == nil {
-					sub = &SecNewMembershipStateUnsignedCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_NewMembershipStateUnsigned{NewMembershipStateUnsigned: sub}
-				continue
-			}
-		case 18:
-			if wtyp == litewire.BytesType {
-				var sub *SecNewPairStateUnsignedCall
-				if cur, ok := m.Call.(*SecCallRequest_NewPairStateUnsigned); ok && cur != nil {
-					sub = cur.NewPairStateUnsigned
-				}
-				if sub == nil {
-					sub = &SecNewPairStateUnsignedCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_NewPairStateUnsigned{NewPairStateUnsigned: sub}
-				continue
-			}
-		case 19:
-			if wtyp == litewire.BytesType {
-				var sub *SecNewHandoffUnsignedCall
-				if cur, ok := m.Call.(*SecCallRequest_NewHandoffUnsigned); ok && cur != nil {
-					sub = cur.NewHandoffUnsigned
-				}
-				if sub == nil {
-					sub = &SecNewHandoffUnsignedCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_NewHandoffUnsigned{NewHandoffUnsigned: sub}
-				continue
-			}
-		case 20:
-			if wtyp == litewire.BytesType {
-				var sub *SecNewRecoveryUnsignedCall
-				if cur, ok := m.Call.(*SecCallRequest_NewRecoveryUnsigned); ok && cur != nil {
-					sub = cur.NewRecoveryUnsigned
-				}
-				if sub == nil {
-					sub = &SecNewRecoveryUnsignedCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_NewRecoveryUnsigned{NewRecoveryUnsigned: sub}
-				continue
-			}
-		case 21:
-			if wtyp == litewire.BytesType {
-				var sub *SecNewRecoveryKeyRotationUnsignedCall
-				if cur, ok := m.Call.(*SecCallRequest_NewRecoveryKeyRotationUnsigned); ok && cur != nil {
-					sub = cur.NewRecoveryKeyRotationUnsigned
-				}
-				if sub == nil {
-					sub = &SecNewRecoveryKeyRotationUnsignedCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_NewRecoveryKeyRotationUnsigned{NewRecoveryKeyRotationUnsigned: sub}
+				m.Call = &SecCallRequest_BuildState{BuildState: sub}
 				continue
 			}
 		case 22:
@@ -4746,21 +4147,6 @@ func (m *SecCallRequest) Unmarshal(b []byte) error {
 				m.Call = &SecCallRequest_Ed25519SeedSign{Ed25519SeedSign: sub}
 				continue
 			}
-		case 36:
-			if wtyp == litewire.BytesType {
-				var sub *SecDeviceIDCall
-				if cur, ok := m.Call.(*SecCallRequest_DeviceId); ok && cur != nil {
-					sub = cur.DeviceId
-				}
-				if sub == nil {
-					sub = &SecDeviceIDCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_DeviceId{DeviceId: sub}
-				continue
-			}
 		case 37:
 			if wtyp == litewire.BytesType {
 				var sub *SecInflateBoundedCall
@@ -4819,36 +4205,6 @@ func (m *SecCallRequest) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Call = &SecCallRequest_OpenNotifyEnvelope{OpenNotifyEnvelope: sub}
-				continue
-			}
-		case 41:
-			if wtyp == litewire.BytesType {
-				var sub *SecOpenEnvelopeDirectCall
-				if cur, ok := m.Call.(*SecCallRequest_OpenEnvelopeDirect); ok && cur != nil {
-					sub = cur.OpenEnvelopeDirect
-				}
-				if sub == nil {
-					sub = &SecOpenEnvelopeDirectCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_OpenEnvelopeDirect{OpenEnvelopeDirect: sub}
-				continue
-			}
-		case 42:
-			if wtyp == litewire.BytesType {
-				var sub *SecSealEnvelopeDirectCall
-				if cur, ok := m.Call.(*SecCallRequest_SealEnvelopeDirect); ok && cur != nil {
-					sub = cur.SealEnvelopeDirect
-				}
-				if sub == nil {
-					sub = &SecSealEnvelopeDirectCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Call = &SecCallRequest_SealEnvelopeDirect{SealEnvelopeDirect: sub}
 				continue
 			}
 		}
@@ -5910,60 +5266,116 @@ func (m *SecMarshalRecoveryStatementCall) Unmarshal(b []byte) error {
 	return nil
 }
 
-type SecNewGenesisUnsignedCall struct {
-	Account    string
-	Domain     []byte
-	Member     *SecMember
-	RecoveryEd []byte
-	Secret     []byte
-	NowMs      uint64
-	Kems       []*SecKemPair
+type SecBuildStateCall struct {
+	Kind            uint32
+	Account         string
+	Domain          []byte
+	ParentState     []byte
+	Member          *SecMember
+	Members         []*SecMember
+	Removed         []string
+	IncomingId      string
+	RecoveryEd      []byte
+	Secret          []byte
+	OldSecret       []byte
+	PrevSecret      []byte
+	PrevSecretNonce []byte
+	NowMs           uint64
+	Kems            []*SecKemPair
 }
 
-func (m *SecNewGenesisUnsignedCall) GetAccount() string {
+func (m *SecBuildStateCall) GetKind() uint32 {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *SecBuildStateCall) GetAccount() string {
 	if m != nil {
 		return m.Account
 	}
 	return ""
 }
-func (m *SecNewGenesisUnsignedCall) GetDomain() []byte {
+func (m *SecBuildStateCall) GetDomain() []byte {
 	if m != nil {
 		return m.Domain
 	}
 	return nil
 }
-func (m *SecNewGenesisUnsignedCall) GetMember() *SecMember {
+func (m *SecBuildStateCall) GetParentState() []byte {
+	if m != nil {
+		return m.ParentState
+	}
+	return nil
+}
+func (m *SecBuildStateCall) GetMember() *SecMember {
 	if m != nil {
 		return m.Member
 	}
 	return nil
 }
-func (m *SecNewGenesisUnsignedCall) GetRecoveryEd() []byte {
+func (m *SecBuildStateCall) GetMembers() []*SecMember {
+	if m != nil {
+		return m.Members
+	}
+	return nil
+}
+func (m *SecBuildStateCall) GetRemoved() []string {
+	if m != nil {
+		return m.Removed
+	}
+	return nil
+}
+func (m *SecBuildStateCall) GetIncomingId() string {
+	if m != nil {
+		return m.IncomingId
+	}
+	return ""
+}
+func (m *SecBuildStateCall) GetRecoveryEd() []byte {
 	if m != nil {
 		return m.RecoveryEd
 	}
 	return nil
 }
-func (m *SecNewGenesisUnsignedCall) GetSecret() []byte {
+func (m *SecBuildStateCall) GetSecret() []byte {
 	if m != nil {
 		return m.Secret
 	}
 	return nil
 }
-func (m *SecNewGenesisUnsignedCall) GetNowMs() uint64 {
+func (m *SecBuildStateCall) GetOldSecret() []byte {
+	if m != nil {
+		return m.OldSecret
+	}
+	return nil
+}
+func (m *SecBuildStateCall) GetPrevSecret() []byte {
+	if m != nil {
+		return m.PrevSecret
+	}
+	return nil
+}
+func (m *SecBuildStateCall) GetPrevSecretNonce() []byte {
+	if m != nil {
+		return m.PrevSecretNonce
+	}
+	return nil
+}
+func (m *SecBuildStateCall) GetNowMs() uint64 {
 	if m != nil {
 		return m.NowMs
 	}
 	return 0
 }
-func (m *SecNewGenesisUnsignedCall) GetKems() []*SecKemPair {
+func (m *SecBuildStateCall) GetKems() []*SecKemPair {
 	if m != nil {
 		return m.Kems
 	}
 	return nil
 }
 
-func (m *SecNewGenesisUnsignedCall) Unmarshal(b []byte) error {
+func (m *SecBuildStateCall) Unmarshal(b []byte) error {
 	for len(b) > 0 {
 		num, wtyp, err := litewire.ReadTag(&b)
 		if err != nil {
@@ -5971,6 +5383,15 @@ func (m *SecNewGenesisUnsignedCall) Unmarshal(b []byte) error {
 		}
 		switch num {
 		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Kind = uint32(v)
+				continue
+			}
+		case 2:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
@@ -5979,7 +5400,7 @@ func (m *SecNewGenesisUnsignedCall) Unmarshal(b []byte) error {
 				m.Account = v
 				continue
 			}
-		case 2:
+		case 3:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadBytes(&b)
 				if err != nil {
@@ -5988,7 +5409,16 @@ func (m *SecNewGenesisUnsignedCall) Unmarshal(b []byte) error {
 				m.Domain = v
 				continue
 			}
-		case 3:
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.ParentState = v
+				continue
+			}
+		case 5:
 			if wtyp == litewire.BytesType {
 				if m.Member == nil {
 					m.Member = &SecMember{}
@@ -5998,120 +5428,7 @@ func (m *SecNewGenesisUnsignedCall) Unmarshal(b []byte) error {
 				}
 				continue
 			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryEd = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Secret = v
-				continue
-			}
 		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NowMs = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				elem := &SecKemPair{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Kems = append(m.Kems, elem)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type SecNewStateUnsignedCall struct {
-	ParentState []byte
-	Members     []*SecMember
-	Removed     []string
-	Secret      []byte
-	PrevSecret  []byte
-	NowMs       uint64
-	Kems        []*SecKemPair
-}
-
-func (m *SecNewStateUnsignedCall) GetParentState() []byte {
-	if m != nil {
-		return m.ParentState
-	}
-	return nil
-}
-func (m *SecNewStateUnsignedCall) GetMembers() []*SecMember {
-	if m != nil {
-		return m.Members
-	}
-	return nil
-}
-func (m *SecNewStateUnsignedCall) GetRemoved() []string {
-	if m != nil {
-		return m.Removed
-	}
-	return nil
-}
-func (m *SecNewStateUnsignedCall) GetSecret() []byte {
-	if m != nil {
-		return m.Secret
-	}
-	return nil
-}
-func (m *SecNewStateUnsignedCall) GetPrevSecret() []byte {
-	if m != nil {
-		return m.PrevSecret
-	}
-	return nil
-}
-func (m *SecNewStateUnsignedCall) GetNowMs() uint64 {
-	if m != nil {
-		return m.NowMs
-	}
-	return 0
-}
-func (m *SecNewStateUnsignedCall) GetKems() []*SecKemPair {
-	if m != nil {
-		return m.Kems
-	}
-	return nil
-}
-
-func (m *SecNewStateUnsignedCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ParentState = v
-				continue
-			}
-		case 2:
 			if wtyp == litewire.BytesType {
 				elem := &SecMember{}
 				if err := litewire.ReadMessage(&b, elem); err != nil {
@@ -6120,415 +5437,16 @@ func (m *SecNewStateUnsignedCall) Unmarshal(b []byte) error {
 				m.Members = append(m.Members, elem)
 				continue
 			}
-		case 3:
+		case 7:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
 					return err
 				}
 				m.Removed = append(m.Removed, v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Secret = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.PrevSecret = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NowMs = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				elem := &SecKemPair{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Kems = append(m.Kems, elem)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type SecNewMembershipStateUnsignedCall struct {
-	ParentState     []byte
-	Members         []*SecMember
-	Removed         []string
-	OldSecret       []byte
-	NewSecret       []byte
-	NowMs           uint64
-	PrevSecretNonce []byte
-	Kems            []*SecKemPair
-}
-
-func (m *SecNewMembershipStateUnsignedCall) GetParentState() []byte {
-	if m != nil {
-		return m.ParentState
-	}
-	return nil
-}
-func (m *SecNewMembershipStateUnsignedCall) GetMembers() []*SecMember {
-	if m != nil {
-		return m.Members
-	}
-	return nil
-}
-func (m *SecNewMembershipStateUnsignedCall) GetRemoved() []string {
-	if m != nil {
-		return m.Removed
-	}
-	return nil
-}
-func (m *SecNewMembershipStateUnsignedCall) GetOldSecret() []byte {
-	if m != nil {
-		return m.OldSecret
-	}
-	return nil
-}
-func (m *SecNewMembershipStateUnsignedCall) GetNewSecret() []byte {
-	if m != nil {
-		return m.NewSecret
-	}
-	return nil
-}
-func (m *SecNewMembershipStateUnsignedCall) GetNowMs() uint64 {
-	if m != nil {
-		return m.NowMs
-	}
-	return 0
-}
-func (m *SecNewMembershipStateUnsignedCall) GetPrevSecretNonce() []byte {
-	if m != nil {
-		return m.PrevSecretNonce
-	}
-	return nil
-}
-func (m *SecNewMembershipStateUnsignedCall) GetKems() []*SecKemPair {
-	if m != nil {
-		return m.Kems
-	}
-	return nil
-}
-
-func (m *SecNewMembershipStateUnsignedCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ParentState = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &SecMember{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Members = append(m.Members, elem)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Removed = append(m.Removed, v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.OldSecret = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.NewSecret = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NowMs = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.PrevSecretNonce = v
 				continue
 			}
 		case 8:
-			if wtyp == litewire.BytesType {
-				elem := &SecKemPair{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Kems = append(m.Kems, elem)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type SecNewPairStateUnsignedCall struct {
-	ParentState     []byte
-	Candidate       *SecMember
-	OldSecret       []byte
-	NewSecret       []byte
-	NowMs           uint64
-	PrevSecretNonce []byte
-	Kems            []*SecKemPair
-}
-
-func (m *SecNewPairStateUnsignedCall) GetParentState() []byte {
-	if m != nil {
-		return m.ParentState
-	}
-	return nil
-}
-func (m *SecNewPairStateUnsignedCall) GetCandidate() *SecMember {
-	if m != nil {
-		return m.Candidate
-	}
-	return nil
-}
-func (m *SecNewPairStateUnsignedCall) GetOldSecret() []byte {
-	if m != nil {
-		return m.OldSecret
-	}
-	return nil
-}
-func (m *SecNewPairStateUnsignedCall) GetNewSecret() []byte {
-	if m != nil {
-		return m.NewSecret
-	}
-	return nil
-}
-func (m *SecNewPairStateUnsignedCall) GetNowMs() uint64 {
-	if m != nil {
-		return m.NowMs
-	}
-	return 0
-}
-func (m *SecNewPairStateUnsignedCall) GetPrevSecretNonce() []byte {
-	if m != nil {
-		return m.PrevSecretNonce
-	}
-	return nil
-}
-func (m *SecNewPairStateUnsignedCall) GetKems() []*SecKemPair {
-	if m != nil {
-		return m.Kems
-	}
-	return nil
-}
-
-func (m *SecNewPairStateUnsignedCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ParentState = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				if m.Candidate == nil {
-					m.Candidate = &SecMember{}
-				}
-				if err := litewire.ReadMessage(&b, m.Candidate); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.OldSecret = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.NewSecret = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NowMs = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.PrevSecretNonce = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				elem := &SecKemPair{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Kems = append(m.Kems, elem)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type SecNewHandoffUnsignedCall struct {
-	ParentState     []byte
-	IncomingId      string
-	RecoveryEd      []byte
-	OldSecret       []byte
-	NewSecret       []byte
-	NowMs           uint64
-	PrevSecretNonce []byte
-	Kems            []*SecKemPair
-}
-
-func (m *SecNewHandoffUnsignedCall) GetParentState() []byte {
-	if m != nil {
-		return m.ParentState
-	}
-	return nil
-}
-func (m *SecNewHandoffUnsignedCall) GetIncomingId() string {
-	if m != nil {
-		return m.IncomingId
-	}
-	return ""
-}
-func (m *SecNewHandoffUnsignedCall) GetRecoveryEd() []byte {
-	if m != nil {
-		return m.RecoveryEd
-	}
-	return nil
-}
-func (m *SecNewHandoffUnsignedCall) GetOldSecret() []byte {
-	if m != nil {
-		return m.OldSecret
-	}
-	return nil
-}
-func (m *SecNewHandoffUnsignedCall) GetNewSecret() []byte {
-	if m != nil {
-		return m.NewSecret
-	}
-	return nil
-}
-func (m *SecNewHandoffUnsignedCall) GetNowMs() uint64 {
-	if m != nil {
-		return m.NowMs
-	}
-	return 0
-}
-func (m *SecNewHandoffUnsignedCall) GetPrevSecretNonce() []byte {
-	if m != nil {
-		return m.PrevSecretNonce
-	}
-	return nil
-}
-func (m *SecNewHandoffUnsignedCall) GetKems() []*SecKemPair {
-	if m != nil {
-		return m.Kems
-	}
-	return nil
-}
-
-func (m *SecNewHandoffUnsignedCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ParentState = v
-				continue
-			}
-		case 2:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
@@ -6537,7 +5455,7 @@ func (m *SecNewHandoffUnsignedCall) Unmarshal(b []byte) error {
 				m.IncomingId = v
 				continue
 			}
-		case 3:
+		case 9:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadBytes(&b)
 				if err != nil {
@@ -6546,7 +5464,16 @@ func (m *SecNewHandoffUnsignedCall) Unmarshal(b []byte) error {
 				m.RecoveryEd = v
 				continue
 			}
-		case 4:
+		case 10:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Secret = v
+				continue
+			}
+		case 11:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadBytes(&b)
 				if err != nil {
@@ -6555,25 +5482,16 @@ func (m *SecNewHandoffUnsignedCall) Unmarshal(b []byte) error {
 				m.OldSecret = v
 				continue
 			}
-		case 5:
+		case 12:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadBytes(&b)
 				if err != nil {
 					return err
 				}
-				m.NewSecret = v
+				m.PrevSecret = v
 				continue
 			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NowMs = v
-				continue
-			}
-		case 7:
+		case 13:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadBytes(&b)
 				if err != nil {
@@ -6582,130 +5500,7 @@ func (m *SecNewHandoffUnsignedCall) Unmarshal(b []byte) error {
 				m.PrevSecretNonce = v
 				continue
 			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				elem := &SecKemPair{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Kems = append(m.Kems, elem)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type SecNewRecoveryUnsignedCall struct {
-	ParentState   []byte
-	NewMember     *SecMember
-	Members       []*SecMember
-	Secret        []byte
-	NewRecoveryEd []byte
-	NowMs         uint64
-	Kems          []*SecKemPair
-}
-
-func (m *SecNewRecoveryUnsignedCall) GetParentState() []byte {
-	if m != nil {
-		return m.ParentState
-	}
-	return nil
-}
-func (m *SecNewRecoveryUnsignedCall) GetNewMember() *SecMember {
-	if m != nil {
-		return m.NewMember
-	}
-	return nil
-}
-func (m *SecNewRecoveryUnsignedCall) GetMembers() []*SecMember {
-	if m != nil {
-		return m.Members
-	}
-	return nil
-}
-func (m *SecNewRecoveryUnsignedCall) GetSecret() []byte {
-	if m != nil {
-		return m.Secret
-	}
-	return nil
-}
-func (m *SecNewRecoveryUnsignedCall) GetNewRecoveryEd() []byte {
-	if m != nil {
-		return m.NewRecoveryEd
-	}
-	return nil
-}
-func (m *SecNewRecoveryUnsignedCall) GetNowMs() uint64 {
-	if m != nil {
-		return m.NowMs
-	}
-	return 0
-}
-func (m *SecNewRecoveryUnsignedCall) GetKems() []*SecKemPair {
-	if m != nil {
-		return m.Kems
-	}
-	return nil
-}
-
-func (m *SecNewRecoveryUnsignedCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ParentState = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				if m.NewMember == nil {
-					m.NewMember = &SecMember{}
-				}
-				if err := litewire.ReadMessage(&b, m.NewMember); err != nil {
-					return err
-				}
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				elem := &SecMember{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Members = append(m.Members, elem)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Secret = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.NewRecoveryEd = v
-				continue
-			}
-		case 6:
+		case 14:
 			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
 				if err != nil {
@@ -6714,106 +5509,7 @@ func (m *SecNewRecoveryUnsignedCall) Unmarshal(b []byte) error {
 				m.NowMs = v
 				continue
 			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				elem := &SecKemPair{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Kems = append(m.Kems, elem)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type SecNewRecoveryKeyRotationUnsignedCall struct {
-	ParentState []byte
-	Secret      []byte
-	RecoveryEd  []byte
-	NowMs       uint64
-	Kems        []*SecKemPair
-}
-
-func (m *SecNewRecoveryKeyRotationUnsignedCall) GetParentState() []byte {
-	if m != nil {
-		return m.ParentState
-	}
-	return nil
-}
-func (m *SecNewRecoveryKeyRotationUnsignedCall) GetSecret() []byte {
-	if m != nil {
-		return m.Secret
-	}
-	return nil
-}
-func (m *SecNewRecoveryKeyRotationUnsignedCall) GetRecoveryEd() []byte {
-	if m != nil {
-		return m.RecoveryEd
-	}
-	return nil
-}
-func (m *SecNewRecoveryKeyRotationUnsignedCall) GetNowMs() uint64 {
-	if m != nil {
-		return m.NowMs
-	}
-	return 0
-}
-func (m *SecNewRecoveryKeyRotationUnsignedCall) GetKems() []*SecKemPair {
-	if m != nil {
-		return m.Kems
-	}
-	return nil
-}
-
-func (m *SecNewRecoveryKeyRotationUnsignedCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ParentState = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Secret = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryEd = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NowMs = v
-				continue
-			}
-		case 5:
+		case 15:
 			if wtyp == litewire.BytesType {
 				elem := &SecKemPair{}
 				if err := litewire.ReadMessage(&b, elem); err != nil {
@@ -6831,13 +5527,27 @@ func (m *SecNewRecoveryKeyRotationUnsignedCall) Unmarshal(b []byte) error {
 }
 
 type SecMarshalStateCall struct {
-	Unsigned  *SecUnsignedState
-	Signature []byte
+	UnsignedCore []byte
+	Grants       []*SecGrant
+	PrevSecret   []byte
+	Signature    []byte
 }
 
-func (m *SecMarshalStateCall) GetUnsigned() *SecUnsignedState {
+func (m *SecMarshalStateCall) GetUnsignedCore() []byte {
 	if m != nil {
-		return m.Unsigned
+		return m.UnsignedCore
+	}
+	return nil
+}
+func (m *SecMarshalStateCall) GetGrants() []*SecGrant {
+	if m != nil {
+		return m.Grants
+	}
+	return nil
+}
+func (m *SecMarshalStateCall) GetPrevSecret() []byte {
+	if m != nil {
+		return m.PrevSecret
 	}
 	return nil
 }
@@ -6857,15 +5567,32 @@ func (m *SecMarshalStateCall) Unmarshal(b []byte) error {
 		switch num {
 		case 1:
 			if wtyp == litewire.BytesType {
-				if m.Unsigned == nil {
-					m.Unsigned = &SecUnsignedState{}
-				}
-				if err := litewire.ReadMessage(&b, m.Unsigned); err != nil {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
 					return err
 				}
+				m.UnsignedCore = v
 				continue
 			}
 		case 2:
+			if wtyp == litewire.BytesType {
+				elem := &SecGrant{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Grants = append(m.Grants, elem)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.PrevSecret = v
+				continue
+			}
+		case 4:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadBytes(&b)
 				if err != nil {
@@ -7754,41 +6481,6 @@ func (m *SecEd25519SeedSignCall) Unmarshal(b []byte) error {
 	return nil
 }
 
-type SecDeviceIDCall struct {
-	EdPublic []byte
-}
-
-func (m *SecDeviceIDCall) GetEdPublic() []byte {
-	if m != nil {
-		return m.EdPublic
-	}
-	return nil
-}
-
-func (m *SecDeviceIDCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.EdPublic = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type SecInflateBoundedCall struct {
 	Compressed []byte
 	Limit      uint32
@@ -8107,430 +6799,6 @@ func (m *SecOpenNotifyEnvelopeCall) Unmarshal(b []byte) error {
 	return nil
 }
 
-type SecOpenEnvelopeDirectCall struct {
-	Pin            *SecPin
-	States         [][]byte
-	RecoveryProofs [][]byte
-	ContentSecret  []byte
-	SessionSeed    []byte
-	Live           bool
-	NowMs          int64
-	Envelope       *v1.Envelope
-}
-
-func (m *SecOpenEnvelopeDirectCall) GetPin() *SecPin {
-	if m != nil {
-		return m.Pin
-	}
-	return nil
-}
-func (m *SecOpenEnvelopeDirectCall) GetStates() [][]byte {
-	if m != nil {
-		return m.States
-	}
-	return nil
-}
-func (m *SecOpenEnvelopeDirectCall) GetRecoveryProofs() [][]byte {
-	if m != nil {
-		return m.RecoveryProofs
-	}
-	return nil
-}
-func (m *SecOpenEnvelopeDirectCall) GetContentSecret() []byte {
-	if m != nil {
-		return m.ContentSecret
-	}
-	return nil
-}
-func (m *SecOpenEnvelopeDirectCall) GetSessionSeed() []byte {
-	if m != nil {
-		return m.SessionSeed
-	}
-	return nil
-}
-func (m *SecOpenEnvelopeDirectCall) GetLive() bool {
-	if m != nil {
-		return m.Live
-	}
-	return false
-}
-func (m *SecOpenEnvelopeDirectCall) GetNowMs() int64 {
-	if m != nil {
-		return m.NowMs
-	}
-	return 0
-}
-func (m *SecOpenEnvelopeDirectCall) GetEnvelope() *v1.Envelope {
-	if m != nil {
-		return m.Envelope
-	}
-	return nil
-}
-
-func (m *SecOpenEnvelopeDirectCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Pin == nil {
-					m.Pin = &SecPin{}
-				}
-				if err := litewire.ReadMessage(&b, m.Pin); err != nil {
-					return err
-				}
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.States = append(m.States, v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryProofs = append(m.RecoveryProofs, v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ContentSecret = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionSeed = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Live = litewire.DecodeBool(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NowMs = int64(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				if m.Envelope == nil {
-					m.Envelope = &v1.Envelope{}
-				}
-				if err := litewire.ReadMessage(&b, m.Envelope); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type SecSealEnvelopeDirectCall struct {
-	Secret       []byte
-	SessionSeed  []byte
-	Account      string
-	Domain       []byte
-	Epoch        uint64
-	StateHash    []byte
-	ContentEpoch uint64
-	Sender       string
-	Purpose      uint32
-	MachineId    string
-	SessionId    string
-	RequestId    string
-	Seq          uint64
-	DeadlineMs   int64
-	Plaintext    []byte
-	Nonce        []byte
-}
-
-func (m *SecSealEnvelopeDirectCall) GetSecret() []byte {
-	if m != nil {
-		return m.Secret
-	}
-	return nil
-}
-func (m *SecSealEnvelopeDirectCall) GetSessionSeed() []byte {
-	if m != nil {
-		return m.SessionSeed
-	}
-	return nil
-}
-func (m *SecSealEnvelopeDirectCall) GetAccount() string {
-	if m != nil {
-		return m.Account
-	}
-	return ""
-}
-func (m *SecSealEnvelopeDirectCall) GetDomain() []byte {
-	if m != nil {
-		return m.Domain
-	}
-	return nil
-}
-func (m *SecSealEnvelopeDirectCall) GetEpoch() uint64 {
-	if m != nil {
-		return m.Epoch
-	}
-	return 0
-}
-func (m *SecSealEnvelopeDirectCall) GetStateHash() []byte {
-	if m != nil {
-		return m.StateHash
-	}
-	return nil
-}
-func (m *SecSealEnvelopeDirectCall) GetContentEpoch() uint64 {
-	if m != nil {
-		return m.ContentEpoch
-	}
-	return 0
-}
-func (m *SecSealEnvelopeDirectCall) GetSender() string {
-	if m != nil {
-		return m.Sender
-	}
-	return ""
-}
-func (m *SecSealEnvelopeDirectCall) GetPurpose() uint32 {
-	if m != nil {
-		return m.Purpose
-	}
-	return 0
-}
-func (m *SecSealEnvelopeDirectCall) GetMachineId() string {
-	if m != nil {
-		return m.MachineId
-	}
-	return ""
-}
-func (m *SecSealEnvelopeDirectCall) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *SecSealEnvelopeDirectCall) GetRequestId() string {
-	if m != nil {
-		return m.RequestId
-	}
-	return ""
-}
-func (m *SecSealEnvelopeDirectCall) GetSeq() uint64 {
-	if m != nil {
-		return m.Seq
-	}
-	return 0
-}
-func (m *SecSealEnvelopeDirectCall) GetDeadlineMs() int64 {
-	if m != nil {
-		return m.DeadlineMs
-	}
-	return 0
-}
-func (m *SecSealEnvelopeDirectCall) GetPlaintext() []byte {
-	if m != nil {
-		return m.Plaintext
-	}
-	return nil
-}
-func (m *SecSealEnvelopeDirectCall) GetNonce() []byte {
-	if m != nil {
-		return m.Nonce
-	}
-	return nil
-}
-
-func (m *SecSealEnvelopeDirectCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Secret = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionSeed = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Account = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Domain = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Epoch = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.StateHash = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ContentEpoch = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Sender = v
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Purpose = uint32(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		case 13:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Seq = v
-				continue
-			}
-		case 14:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DeadlineMs = int64(v)
-				continue
-			}
-		case 15:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Plaintext = v
-				continue
-			}
-		case 16:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Nonce = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type SecCallResponse struct {
 	Error          string
 	ErrorCode      string
@@ -8541,20 +6809,9 @@ type SecCallResponse struct {
 	ParsedApproval *SecParsedApproval
 	Data           []byte
 	SecondaryData  []byte
-	TertiaryData   []byte
-	Info           []byte
-	Aad            []byte
 	Text           string
 	Strings        []string
 	Pin            *SecPin
-	Notify         *v1.NotifyContent
-	Opened         *SecurityOpenEnvelopeResult
-	Envelope       *v1.Envelope
-	Header         []byte
-	OriginBytes    []byte
-	Epoch          uint64
-	ContentEpoch   uint64
-	ParsedStates   []*SecParsedState
 }
 
 func (m *SecCallResponse) GetError() string {
@@ -8611,24 +6868,6 @@ func (m *SecCallResponse) GetSecondaryData() []byte {
 	}
 	return nil
 }
-func (m *SecCallResponse) GetTertiaryData() []byte {
-	if m != nil {
-		return m.TertiaryData
-	}
-	return nil
-}
-func (m *SecCallResponse) GetInfo() []byte {
-	if m != nil {
-		return m.Info
-	}
-	return nil
-}
-func (m *SecCallResponse) GetAad() []byte {
-	if m != nil {
-		return m.Aad
-	}
-	return nil
-}
 func (m *SecCallResponse) GetText() string {
 	if m != nil {
 		return m.Text
@@ -8644,54 +6883,6 @@ func (m *SecCallResponse) GetStrings() []string {
 func (m *SecCallResponse) GetPin() *SecPin {
 	if m != nil {
 		return m.Pin
-	}
-	return nil
-}
-func (m *SecCallResponse) GetNotify() *v1.NotifyContent {
-	if m != nil {
-		return m.Notify
-	}
-	return nil
-}
-func (m *SecCallResponse) GetOpened() *SecurityOpenEnvelopeResult {
-	if m != nil {
-		return m.Opened
-	}
-	return nil
-}
-func (m *SecCallResponse) GetEnvelope() *v1.Envelope {
-	if m != nil {
-		return m.Envelope
-	}
-	return nil
-}
-func (m *SecCallResponse) GetHeader() []byte {
-	if m != nil {
-		return m.Header
-	}
-	return nil
-}
-func (m *SecCallResponse) GetOriginBytes() []byte {
-	if m != nil {
-		return m.OriginBytes
-	}
-	return nil
-}
-func (m *SecCallResponse) GetEpoch() uint64 {
-	if m != nil {
-		return m.Epoch
-	}
-	return 0
-}
-func (m *SecCallResponse) GetContentEpoch() uint64 {
-	if m != nil {
-		return m.ContentEpoch
-	}
-	return 0
-}
-func (m *SecCallResponse) GetParsedStates() []*SecParsedState {
-	if m != nil {
-		return m.ParsedStates
 	}
 	return nil
 }
@@ -8725,33 +6916,12 @@ func (m *SecCallResponse) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBytes(b, 8, m.Data)
 	b = litewire.AppendBytes(b, 9, m.SecondaryData)
-	b = litewire.AppendBytes(b, 10, m.TertiaryData)
-	b = litewire.AppendBytes(b, 11, m.Info)
-	b = litewire.AppendBytes(b, 12, m.Aad)
-	b = litewire.AppendString(b, 13, m.Text)
+	b = litewire.AppendString(b, 10, m.Text)
 	for _, v := range m.Strings {
-		b = litewire.AppendStringAlways(b, 14, v)
+		b = litewire.AppendStringAlways(b, 11, v)
 	}
 	if m.Pin != nil {
-		b = litewire.AppendMessage(b, 15, m.Pin)
-	}
-	if m.Notify != nil {
-		b = litewire.AppendMessage(b, 16, m.Notify)
-	}
-	if m.Opened != nil {
-		b = litewire.AppendMessage(b, 17, m.Opened)
-	}
-	if m.Envelope != nil {
-		b = litewire.AppendMessage(b, 18, m.Envelope)
-	}
-	b = litewire.AppendBytes(b, 19, m.Header)
-	b = litewire.AppendBytes(b, 20, m.OriginBytes)
-	b = litewire.AppendVarint(b, 21, uint64(m.Epoch))
-	b = litewire.AppendVarint(b, 22, uint64(m.ContentEpoch))
-	for _, v := range m.ParsedStates {
-		if v != nil {
-			b = litewire.AppendMessage(b, 23, v)
-		}
+		b = litewire.AppendMessage(b, 12, m.Pin)
 	}
 	return b
 }

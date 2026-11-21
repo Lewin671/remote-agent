@@ -3390,57 +3390,6 @@ func (m *TerminalFrame) GetHistoryRequest() *TerminalHistoryRequest {
 	return nil
 }
 
-func (m *TerminalFrame) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *TerminalFrame) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *TerminalFrame) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	switch x := m.Kind.(type) {
-	case *TerminalFrame_Snapshot:
-		if x != nil {
-			if x.Snapshot != nil {
-				b = litewire.AppendMessage(b, 1, x.Snapshot)
-			}
-		}
-	case *TerminalFrame_Output:
-		if x != nil {
-			b = litewire.AppendBytesAlways(b, 2, x.Output)
-		}
-	case *TerminalFrame_HistoryPage:
-		if x != nil {
-			if x.HistoryPage != nil {
-				b = litewire.AppendMessage(b, 4, x.HistoryPage)
-			}
-		}
-	case *TerminalFrame_Closed:
-		if x != nil {
-			b = litewire.AppendStringAlways(b, 3, x.Closed)
-		}
-	case *TerminalFrame_Input:
-		if x != nil {
-			b = litewire.AppendBytesAlways(b, 10, x.Input)
-		}
-	case *TerminalFrame_Resize:
-		if x != nil {
-			if x.Resize != nil {
-				b = litewire.AppendMessage(b, 11, x.Resize)
-			}
-		}
-	case *TerminalFrame_HistoryRequest:
-		if x != nil {
-			if x.HistoryRequest != nil {
-				b = litewire.AppendMessage(b, 12, x.HistoryRequest)
-			}
-		}
-	}
-	return b
-}
-
 func (m *TerminalFrame) Unmarshal(b []byte) error {
 	for len(b) > 0 {
 		num, wtyp, err := litewire.ReadTag(&b)
@@ -3584,22 +3533,6 @@ func (m *TerminalSnapshot) GetRows() int32 {
 	return 0
 }
 
-func (m *TerminalSnapshot) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *TerminalSnapshot) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *TerminalSnapshot) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.Data)
-	b = litewire.AppendInt32(b, 2, int32(m.Cols))
-	b = litewire.AppendInt32(b, 3, int32(m.Rows))
-	return b
-}
-
 func (m *TerminalSnapshot) Unmarshal(b []byte) error {
 	for len(b) > 0 {
 		num, wtyp, err := litewire.ReadTag(&b)
@@ -3662,21 +3595,6 @@ func (m *TerminalHistoryRequest) GetCursor() string {
 		return m.Cursor
 	}
 	return ""
-}
-
-func (m *TerminalHistoryRequest) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *TerminalHistoryRequest) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *TerminalHistoryRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RequestId)
-	b = litewire.AppendString(b, 2, m.Cursor)
-	return b
 }
 
 func (m *TerminalHistoryRequest) Unmarshal(b []byte) error {
@@ -3746,25 +3664,6 @@ func (m *TerminalHistoryPage) GetError() string {
 		return m.Error
 	}
 	return ""
-}
-
-func (m *TerminalHistoryPage) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *TerminalHistoryPage) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *TerminalHistoryPage) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RequestId)
-	for _, v := range m.Lines {
-		b = litewire.AppendStringAlways(b, 2, v)
-	}
-	b = litewire.AppendString(b, 3, m.NextCursor)
-	b = litewire.AppendString(b, 4, m.Error)
-	return b
 }
 
 func (m *TerminalHistoryPage) Unmarshal(b []byte) error {
@@ -3845,22 +3744,6 @@ func (m *TerminalResize) GetFit() bool {
 		return m.Fit
 	}
 	return false
-}
-
-func (m *TerminalResize) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *TerminalResize) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *TerminalResize) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Cols))
-	b = litewire.AppendInt32(b, 2, int32(m.Rows))
-	b = litewire.AppendBool(b, 3, m.Fit)
-	return b
 }
 
 func (m *TerminalResize) Unmarshal(b []byte) error {
@@ -3981,33 +3864,6 @@ func (m *NotifyContent) GetMachineName() string {
 		return m.MachineName
 	}
 	return ""
-}
-
-func (m *NotifyContent) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *NotifyContent) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *NotifyContent) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.SessionId)
-	b = litewire.AppendInt32(b, 3, int32(m.Kind))
-	b = litewire.AppendString(b, 4, m.Title)
-	b = litewire.AppendString(b, 5, m.Text)
-	if m.Approval != nil {
-		b = litewire.AppendMessage(b, 6, m.Approval)
-	}
-	b = litewire.AppendVarint(b, 7, uint64(m.SourceEventSeq))
-	b = litewire.AppendVarint(b, 8, uint64(m.SharedFileCount))
-	if m.DiskStatus != nil {
-		b = litewire.AppendMessage(b, 9, m.DiskStatus)
-	}
-	b = litewire.AppendString(b, 10, m.MachineName)
-	return b
 }
 
 func (m *NotifyContent) Unmarshal(b []byte) error {
@@ -4180,26 +4036,6 @@ func (m *NotifyApproval) GetToolInput() string {
 	return ""
 }
 
-func (m *NotifyApproval) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *NotifyApproval) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *NotifyApproval) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.ApprovalId)
-	b = litewire.AppendString(b, 2, m.ToolName)
-	b = litewire.AppendString(b, 3, m.Description)
-	b = litewire.AppendString(b, 4, m.Command)
-	b = litewire.AppendBool(b, 5, m.Truncated)
-	b = litewire.AppendVarint(b, 6, uint64(m.DeadlineMs))
-	b = litewire.AppendString(b, 7, m.ToolInput)
-	return b
-}
-
 func (m *NotifyApproval) Unmarshal(b []byte) error {
 	for len(b) > 0 {
 		num, wtyp, err := litewire.ReadTag(&b)
@@ -4312,23 +4148,6 @@ func (m *ImagePayload) GetData() []byte {
 		return m.Data
 	}
 	return nil
-}
-
-func (m *ImagePayload) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *ImagePayload) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *ImagePayload) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Format))
-	b = litewire.AppendInt32(b, 2, int32(m.Width))
-	b = litewire.AppendInt32(b, 3, int32(m.Height))
-	b = litewire.AppendBytes(b, 4, m.Data)
-	return b
 }
 
 func (m *ImagePayload) Unmarshal(b []byte) error {

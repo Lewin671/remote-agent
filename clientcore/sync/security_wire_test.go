@@ -939,4 +939,33 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	if buf := h.eng.Buffer(sid); buf == nil || buf.PrefixLen() != 1 {
 		t.Fatalf("expected wire direct event from trusted machine to ingest seq 1, got %v", buf)
 	}
+
+	// When secEngine is locked, CoordAuthorize triggers SyncSecurityEffect, and a failed SecurityRecordEvent closes the authorizing gate.
+	authEffs := h.eng.Run(func(ctx *StepContext) {
+		h.eng.emitCoordEffects(ctx, []transport.CoordEffect{transport.CoordAuthorize{}})
+	}).Effects
+	var authSyncOp uint64
+	for _, eff := range authEffs {
+		if ss := eff.GetSyncSecurity(); ss != nil {
+			authSyncOp = ss.OpId
+		}
+		if eff.GetDirectAuthorize() != nil {
+			t.Fatalf("expected CoordAuthorize with locked secEngine to emit SyncSecurityEffect, not DirectAuthorizeEffect")
+		}
+	}
+	if authSyncOp == 0 {
+		t.Fatalf("expected CoordAuthorize with locked secEngine to emit SyncSecurityEffect")
+	}
+	h.step(&corev1.Event{
+		Event: &corev1.Event_SecurityRecord{
+			SecurityRecord: &corev1.SecurityRecordEvent{
+				OpId:              authSyncOp,
+				NetworkGeneration: 1,
+				Error:             "sync failed",
+			},
+		},
+	})
+	if h.eng.activeSecOpID != 0 {
+		t.Fatalf("expected failed SecurityRecordEvent to clear activeSecOpID, got %d", h.eng.activeSecOpID)
+	}
 }
