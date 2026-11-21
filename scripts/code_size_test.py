@@ -18,12 +18,14 @@ class RulesTest(unittest.TestCase):
     def test_classification(self):
         cases = {
             "web/src/app.tsx": ("web", "product"),
+            "web/src/transport/peer/wire.js": ("web", "product"),
             "web/src/app.test.tsx": ("web", "test"),
             "web/src/gen/x.ts": None,
             "web/src/i18n/generated.ts": None,
             "web/src/dev/gallery.tsx": None,
             "web/service-worker.ts": None,
             "android/app/src/main/java/A.kt": ("android", "product"),
+            "android/core/src/main/java/A.java": ("android", "product"),
             "android/app/src/test/java/ATest.kt": ("android", "test"),
             "android/app/src/androidTest/java/ATest.kt": ("android", "test"),
             "android/app/src/main/gen/A.kt": None,

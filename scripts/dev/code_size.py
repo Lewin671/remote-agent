@@ -49,12 +49,12 @@ class Target:
 
 
 TARGETS = [
-    # Web: web/src .ts/.tsx; web/src/dev is dev-only scaffolding, not shipped UI.
-    Target("web", ("web/src/",), (".ts", ".tsx"),
+    # Web: web/src .ts/.tsx/.js; web/src/dev is dev-only scaffolding, not shipped UI.
+    Target("web", ("web/src/",), (".ts", ".tsx", ".js"),
            ignored=lambda p: p.startswith(("web/src/gen/", "web/src/i18n/generated", "web/src/dev/")),
            test=lambda p: ".test." in p.rsplit("/", 1)[-1]),
-    # Android: any .kt; "/test" covers src/test, androidTest is named explicitly.
-    Target("android", ("android/",), (".kt",),
+    # Android: .kt/.java; "/test" covers src/test, androidTest is named explicitly.
+    Target("android", ("android/",), (".kt", ".java"),
            ignored=lambda p: "/gen/" in p or _generated_name(p),
            test=lambda p: "/test" in p or "/androidTest/" in p),
     # iOS: any .swift; SwiftPM .build, protobuf output and generated wrappers are out.
