@@ -8,25 +8,33 @@ import (
 )
 
 // The wasm build must not pull in packages that bloat it or break the core's
-// rules (architecture.md, 体积与性能预算): fmt and reflect cost tens of KB each,
-// protobuf-go brings reflection, and the core never does network I/O or uses
-// the main module's internals. Forbidden packages are banned as direct imports
-// anywhere under clientcore/ or shared/, and may appear transitively only behind
-// explicit gateways (crypto/ed25519, compress/flate in shared/devicesec) whose
-// sensitive paths are dead-code-banned by shared/deps_test.go.
+// rules (architecture.md, 体积与性能预算): fmt, reflect, math/big, math/rand*, and
+// crypto/rand stay out except behind the single explicit crypto/ed25519 gateway
+// imported solely by shared/peerwire (needed for Ed25519 verify in direct
+// signaling). No package may bypass this check via crypto/internal/*.
 func TestCoreWasmDependencies(t *testing.T) {
 	const coreModule = "github.com/Lewin671/remote-agent/"
-	forbidden := map[string]bool{
-		"fmt": true, "reflect": true, "encoding/json": true, "encoding/hex": true,
-		"encoding/binary": true, "crypto/rand": true, "math/rand": true, "math/rand/v2": true,
-		"math/big": true, "net": true, "regexp": true, "context": true,
+	neverAllowed := map[string]bool{
+		"encoding/json": true, "encoding/hex": true, "encoding/binary": true,
+		"net": true, "regexp": true, "context": true,
 		"crypto/ecdh": true, "crypto/hpke": true, "log": true, "log/slog": true,
+	}
+	forbidden := map[string]bool{
+		"fmt": true, "reflect": true, "crypto/rand": true,
+		"math/rand": true, "math/rand/v2": true, "math/big": true,
 		"os": true,
 	}
-	gateways := map[string][]string{
-		"crypto/ed25519": nil,
-		"compress/flate": {"shared/devicesec"},
+	for k := range neverAllowed {
+		forbidden[k] = true
 	}
+	const ed25519GatewayPkg = coreModule + "shared/peerwire"
+
+	isDisallowedPrefix := func(imp string) bool {
+		return strings.HasPrefix(imp, "net/") ||
+			strings.HasPrefix(imp, "google.golang.org/protobuf") ||
+			strings.HasPrefix(imp, coreModule+"internal")
+	}
+
 	cmd := exec.Command("go", "list", "-deps", "-f", "{{.ImportPath}}\t{{join .Imports \" \"}}", "./cmd/corewasm")
 	cmd.Dir = ".."
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
@@ -39,34 +47,31 @@ func TestCoreWasmDependencies(t *testing.T) {
 		pkg, imports, _ := strings.Cut(line, "\t")
 		graph[pkg] = strings.Fields(imports)
 	}
+	edImporters := map[string]bool{}
 	for pkg, imports := range graph {
-		if !strings.HasPrefix(pkg, coreModule+"clientcore/") && !strings.HasPrefix(pkg, coreModule+"shared/") {
-			continue
-		}
 		for _, imp := range imports {
-			if forbidden[imp] || strings.HasPrefix(imp, "net/") ||
-				strings.HasPrefix(imp, "google.golang.org/protobuf") ||
-				strings.HasPrefix(imp, coreModule+"internal") {
+			if imp == "crypto/ed25519" {
+				edImporters[pkg] = true
+				if pkg != ed25519GatewayPkg {
+					t.Errorf("%s imports crypto/ed25519; only %s may import it", pkg, ed25519GatewayPkg)
+				}
+			}
+			if neverAllowed[imp] || isDisallowedPrefix(imp) {
+				t.Errorf("core wasm dependency %s imports forbidden package %s", pkg, imp)
+			}
+			if (strings.HasPrefix(pkg, coreModule+"clientcore/") || strings.HasPrefix(pkg, coreModule+"shared/")) && forbidden[imp] {
 				t.Errorf("%s directly imports forbidden package %s", pkg, imp)
 			}
 		}
 	}
-	allowedViaGateway := func(importer, imp string) bool {
-		only, ok := gateways[imp]
-		if !ok {
-			return false
-		}
-		if len(only) == 0 {
-			return true
-		}
-		rel := strings.TrimPrefix(importer, coreModule)
-		for _, prefix := range only {
-			if rel == prefix || strings.HasPrefix(rel, prefix+"/") {
-				return true
-			}
-		}
-		return false
+	if !edImporters[ed25519GatewayPkg] {
+		t.Fatalf("expected %s to import crypto/ed25519 in wasm build graph", ed25519GatewayPkg)
 	}
+
+	// BFS every clientcore/shared package in the wasm build without skipping crypto/internal/*.
+	// Only two exact edges are exempted:
+	//   1) shared/peerwire -> crypto/ed25519 (reaches fmt/reflect/math/big/math/rand*/crypto/rand),
+	//   2) crypto/internal/sysrand -> os, time (reached under Go 1.26 FIPS AES/HMAC/SHA256).
 	type step struct{ pkg, via string }
 	var queue []step
 	seen := map[string]bool{}
@@ -80,23 +85,20 @@ func TestCoreWasmDependencies(t *testing.T) {
 		s := queue[0]
 		queue = queue[1:]
 		for _, imp := range graph[s.pkg] {
+			if s.pkg == ed25519GatewayPkg && imp == "crypto/ed25519" {
+				continue
+			}
+			if s.pkg == "crypto/internal/sysrand" && (imp == "os" || imp == "time") {
+				continue
+			}
+			if forbidden[imp] || isDisallowedPrefix(imp) {
+				t.Errorf("core wasm %s reaches %s via %s outside permitted gateways", s.via, imp, s.pkg)
+			}
 			if seen[imp] {
-				continue
-			}
-			if (strings.HasPrefix(s.pkg, coreModule+"clientcore/") || strings.HasPrefix(s.pkg, coreModule+"shared/")) &&
-				allowedViaGateway(s.pkg, imp) {
-				continue
-			}
-			if strings.HasPrefix(imp, "crypto/internal/") {
 				continue
 			}
 			seen[imp] = true
 			queue = append(queue, step{imp, s.via})
-			if forbidden[imp] || strings.HasPrefix(imp, "net/") ||
-				strings.HasPrefix(imp, "google.golang.org/protobuf") ||
-				strings.HasPrefix(imp, coreModule+"internal") {
-				t.Errorf("core wasm %s reaches %s via %s outside permitted gateways", s.via, imp, s.pkg)
-			}
 		}
 	}
 }
