@@ -170,8 +170,6 @@ public  final class Event extends
     SECURITY_RECORD(451),
     SECURITY_KEY_SIGNED(452),
     SECURITY_KEY_AGREED(453),
-    SECURITY_KEY_GENERATED(454),
-    SECURITY_KEY_ENCAPSULATED(455),
     SECURITY_CRYPTO_BATCH_DONE(456),
     SECURITY_OP_REQUEST(457),
     SEED_DEMO_WORLD(458),
@@ -339,8 +337,6 @@ public  final class Event extends
         case 451: return SECURITY_RECORD;
         case 452: return SECURITY_KEY_SIGNED;
         case 453: return SECURITY_KEY_AGREED;
-        case 454: return SECURITY_KEY_GENERATED;
-        case 455: return SECURITY_KEY_ENCAPSULATED;
         case 456: return SECURITY_CRYPTO_BATCH_DONE;
         case 457: return SECURITY_OP_REQUEST;
         case 458: return SEED_DEMO_WORLD;
@@ -8133,110 +8129,6 @@ public  final class Event extends
     }
   }
 
-  public static final int SECURITY_KEY_GENERATED_FIELD_NUMBER = 454;
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecurityKeyGenerated() {
-    return eventCase_ == 454;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent getSecurityKeyGenerated() {
-    if (eventCase_ == 454) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecurityKeyGenerated(io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 454;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSecurityKeyGenerated(io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 454 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 454;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-   */
-  private void clearSecurityKeyGenerated() {
-    if (eventCase_ == 454) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int SECURITY_KEY_ENCAPSULATED_FIELD_NUMBER = 455;
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecurityKeyEncapsulated() {
-    return eventCase_ == 455;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent getSecurityKeyEncapsulated() {
-    if (eventCase_ == 455) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecurityKeyEncapsulated(io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 455;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSecurityKeyEncapsulated(io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 455 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 455;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-   */
-  private void clearSecurityKeyEncapsulated() {
-    if (eventCase_ == 455) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
   public static final int SECURITY_CRYPTO_BATCH_DONE_FIELD_NUMBER = 456;
   /**
    * <code>.remoteagent.core.v1.SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456 [json_name = "securityCryptoBatchDone"];</code>
@@ -15897,102 +15789,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecurityKeyGenerated() {
-      return instance.hasSecurityKeyGenerated();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent getSecurityKeyGenerated() {
-      return instance.getSecurityKeyGenerated();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-     */
-    public Builder setSecurityKeyGenerated(io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent value) {
-      copyOnWrite();
-      instance.setSecurityKeyGenerated(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-     */
-    public Builder setSecurityKeyGenerated(
-        io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecurityKeyGenerated(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-     */
-    public Builder mergeSecurityKeyGenerated(io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent value) {
-      copyOnWrite();
-      instance.mergeSecurityKeyGenerated(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-     */
-    public Builder clearSecurityKeyGenerated() {
-      copyOnWrite();
-      instance.clearSecurityKeyGenerated();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecurityKeyEncapsulated() {
-      return instance.hasSecurityKeyEncapsulated();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent getSecurityKeyEncapsulated() {
-      return instance.getSecurityKeyEncapsulated();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-     */
-    public Builder setSecurityKeyEncapsulated(io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent value) {
-      copyOnWrite();
-      instance.setSecurityKeyEncapsulated(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-     */
-    public Builder setSecurityKeyEncapsulated(
-        io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecurityKeyEncapsulated(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-     */
-    public Builder mergeSecurityKeyEncapsulated(io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent value) {
-      copyOnWrite();
-      instance.mergeSecurityKeyEncapsulated(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-     */
-    public Builder clearSecurityKeyEncapsulated() {
-      copyOnWrite();
-      instance.clearSecurityKeyEncapsulated();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456 [json_name = "securityCryptoBatchDone"];</code>
      */
     @java.lang.Override
@@ -16524,14 +16320,12 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchDoneEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent.class,
             io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent.class,
           };
           java.lang.String info =
-              "\u0000\u009e\u0001\u0000\u0001\u01ca\u009e\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u009c\u0001\u0000\u0001\u01ca\u009c\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -16553,8 +16347,8 @@ public  final class Event extends
               "<\u0000\u0194<\u0000\u0195<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000" +
               "\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0" +
               "<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000" +
-              "\u01a7<\u0000\u01c2<\u0000\u01c3<\u0000\u01c4<\u0000\u01c5<\u0000\u01c6<\u0000\u01c7" +
-              "<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000";
+              "\u01a7<\u0000\u01c2<\u0000\u01c3<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9" +
+              "<\u0000\u01ca<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

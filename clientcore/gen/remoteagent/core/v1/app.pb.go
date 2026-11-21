@@ -6454,14 +6454,6 @@ type Event_SecurityKeyAgreed struct{ SecurityKeyAgreed *SecurityKeyAgreedEvent }
 
 func (*Event_SecurityKeyAgreed) isEvent_Event() {}
 
-type Event_SecurityKeyGenerated struct{ SecurityKeyGenerated *SecurityKeyGeneratedEvent }
-
-func (*Event_SecurityKeyGenerated) isEvent_Event() {}
-
-type Event_SecurityKeyEncapsulated struct{ SecurityKeyEncapsulated *SecurityKeyEncapsulatedEvent }
-
-func (*Event_SecurityKeyEncapsulated) isEvent_Event() {}
-
 type Event_SecurityCryptoBatchDone struct{ SecurityCryptoBatchDone *SecurityCryptoBatchDoneEvent }
 
 func (*Event_SecurityCryptoBatchDone) isEvent_Event() {}
@@ -7371,18 +7363,6 @@ func (m *Event) GetSecurityKeySigned() *SecurityKeySignedEvent {
 func (m *Event) GetSecurityKeyAgreed() *SecurityKeyAgreedEvent {
 	if x, ok := m.GetEvent().(*Event_SecurityKeyAgreed); ok && x != nil {
 		return x.SecurityKeyAgreed
-	}
-	return nil
-}
-func (m *Event) GetSecurityKeyGenerated() *SecurityKeyGeneratedEvent {
-	if x, ok := m.GetEvent().(*Event_SecurityKeyGenerated); ok && x != nil {
-		return x.SecurityKeyGenerated
-	}
-	return nil
-}
-func (m *Event) GetSecurityKeyEncapsulated() *SecurityKeyEncapsulatedEvent {
-	if x, ok := m.GetEvent().(*Event_SecurityKeyEncapsulated); ok && x != nil {
-		return x.SecurityKeyEncapsulated
 	}
 	return nil
 }
@@ -9671,36 +9651,6 @@ func (m *Event) Unmarshal(b []byte) error {
 				m.Event = &Event_SecurityKeyAgreed{SecurityKeyAgreed: sub}
 				continue
 			}
-		case 454:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityKeyGeneratedEvent
-				if cur, ok := m.Event.(*Event_SecurityKeyGenerated); ok && cur != nil {
-					sub = cur.SecurityKeyGenerated
-				}
-				if sub == nil {
-					sub = &SecurityKeyGeneratedEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_SecurityKeyGenerated{SecurityKeyGenerated: sub}
-				continue
-			}
-		case 455:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityKeyEncapsulatedEvent
-				if cur, ok := m.Event.(*Event_SecurityKeyEncapsulated); ok && cur != nil {
-					sub = cur.SecurityKeyEncapsulated
-				}
-				if sub == nil {
-					sub = &SecurityKeyEncapsulatedEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_SecurityKeyEncapsulated{SecurityKeyEncapsulated: sub}
-				continue
-			}
 		case 456:
 			if wtyp == litewire.BytesType {
 				var sub *SecurityCryptoBatchDoneEvent
@@ -11482,18 +11432,6 @@ type Effect_SecurityKeyAgree struct{ SecurityKeyAgree *SecurityKeyAgreeEffect }
 
 func (*Effect_SecurityKeyAgree) isEffect_Effect() {}
 
-type Effect_SecurityKeyGenerate struct{ SecurityKeyGenerate *SecurityKeyGenerateEffect }
-
-func (*Effect_SecurityKeyGenerate) isEffect_Effect() {}
-
-type Effect_SecurityKeyEncapsulate struct{ SecurityKeyEncapsulate *SecurityKeyEncapsulateEffect }
-
-func (*Effect_SecurityKeyEncapsulate) isEffect_Effect() {}
-
-type Effect_SecurityKeyDiscard struct{ SecurityKeyDiscard *SecurityKeyDiscardEffect }
-
-func (*Effect_SecurityKeyDiscard) isEffect_Effect() {}
-
 type Effect_SecurityCryptoBatch struct{ SecurityCryptoBatch *SecurityCryptoBatchEffect }
 
 func (*Effect_SecurityCryptoBatch) isEffect_Effect() {}
@@ -11793,24 +11731,6 @@ func (m *Effect) GetSecurityKeySign() *SecurityKeySignEffect {
 func (m *Effect) GetSecurityKeyAgree() *SecurityKeyAgreeEffect {
 	if x, ok := m.GetEffect().(*Effect_SecurityKeyAgree); ok && x != nil {
 		return x.SecurityKeyAgree
-	}
-	return nil
-}
-func (m *Effect) GetSecurityKeyGenerate() *SecurityKeyGenerateEffect {
-	if x, ok := m.GetEffect().(*Effect_SecurityKeyGenerate); ok && x != nil {
-		return x.SecurityKeyGenerate
-	}
-	return nil
-}
-func (m *Effect) GetSecurityKeyEncapsulate() *SecurityKeyEncapsulateEffect {
-	if x, ok := m.GetEffect().(*Effect_SecurityKeyEncapsulate); ok && x != nil {
-		return x.SecurityKeyEncapsulate
-	}
-	return nil
-}
-func (m *Effect) GetSecurityKeyDiscard() *SecurityKeyDiscardEffect {
-	if x, ok := m.GetEffect().(*Effect_SecurityKeyDiscard); ok && x != nil {
-		return x.SecurityKeyDiscard
 	}
 	return nil
 }
@@ -12124,24 +12044,6 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.SecurityKeyAgree != nil {
 				b = litewire.AppendMessage(b, 131, x.SecurityKeyAgree)
-			}
-		}
-	case *Effect_SecurityKeyGenerate:
-		if x != nil {
-			if x.SecurityKeyGenerate != nil {
-				b = litewire.AppendMessage(b, 132, x.SecurityKeyGenerate)
-			}
-		}
-	case *Effect_SecurityKeyEncapsulate:
-		if x != nil {
-			if x.SecurityKeyEncapsulate != nil {
-				b = litewire.AppendMessage(b, 133, x.SecurityKeyEncapsulate)
-			}
-		}
-	case *Effect_SecurityKeyDiscard:
-		if x != nil {
-			if x.SecurityKeyDiscard != nil {
-				b = litewire.AppendMessage(b, 134, x.SecurityKeyDiscard)
 			}
 		}
 	case *Effect_SecurityCryptoBatch:

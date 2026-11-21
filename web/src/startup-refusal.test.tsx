@@ -7,7 +7,7 @@ import { ConnectError, Code } from "@connectrpc/connect";
 import { App } from "./App";
 import * as remote from "./remote";
 import * as storage from "./storage";
-vi.mock("./authority-setup", () => ({ authorityStartup: vi.fn(async () => ({ kind: "empty" })) }));
+vi.mock("./authority-startup", () => ({ authorityStartup: vi.fn(async () => ({ kind: "empty" })) }));
 vi.mock("./security-operation", async importOriginal => ({ ...await importOriginal<object>(), authorityExitAdvice: vi.fn(async () => ({ message: "安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。" })) }));
 vi.mock("./views/AuthoritySetup", () => ({ AccountEntry: () => <p>创建账户 加入已有账户 用恢复码找回管理权</p> }));
 vi.mock("./views/Pairing", () => ({ Setup: () => <p>重新配对</p> }));

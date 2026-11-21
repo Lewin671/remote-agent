@@ -698,9 +698,13 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				drainEffects(h.step(&corev1.Event{
+				stepRes := h.step(&corev1.Event{
 					Event: &corev1.Event_SecurityKeyAgreed{SecurityKeyAgreed: &corev1.SecurityKeyAgreedEvent{OpId: k.SecurityKeyAgree.OpId, Shared: shared}},
-				}).Effects)
+				})
+				if stepRes.Dirty.SyncState || stepRes.Dirty.Home {
+					t.Fatalf("expected SecurityKeyAgreed not to mark SyncState/Home dirty when membership unchanged, got %+v", stepRes.Dirty)
+				}
+				drainEffects(stepRes.Effects)
 			case *corev1.Effect_DirectKeyAgree:
 				agreeQueue = append(agreeQueue, k.DirectKeyAgree)
 			case *corev1.Effect_DirectKeySign:

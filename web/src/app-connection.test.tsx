@@ -7,7 +7,7 @@ import { DemoRemote } from "./dev/demo";
 import { patchSyncState } from "./test/remote-fixture";
 import * as remoteModule from "./remote";
 import * as storage from "./storage";
-import * as authoritySetup from "./authority-setup";
+import * as authoritySetup from "./authority-startup";
 import { Home } from "./views/Home";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;

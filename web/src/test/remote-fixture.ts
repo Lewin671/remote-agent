@@ -6,8 +6,9 @@ import {
   type MessageShape,
 } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { unpackSecurity } from "../device-security-client";
-import { parseHeader, requestIdentity } from "../device-security";
+import { parseTestHeader, testRequestIdentity, unpackTestBody } from "./stored-security-fixture";
+import { Purpose, type Member } from "../device-security";
+import { SecurityOpenEnvelopeOpSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { type Envelope } from "../gen/remoteagent/v1/envelope_pb";
 import { Remote } from "../remote";
 import { GoSecurityFixture, webMember } from "./security-fixture";
@@ -189,9 +190,9 @@ export class SyntheticRemote extends Remote {
               if (res.result) {
                 const original = await this.world.fixture.open(this.machine,request.command);
                 const opened = await this.world.fixture.open(this.member.account.deviceId,res.result);
-                const proof = fromBinary(CommandResultSchema,unpackSecurity(parseHeader(new Uint8Array(res.result.securityHeader)),opened.plaintext));
+                const proof = fromBinary(CommandResultSchema,unpackTestBody(parseTestHeader(new Uint8Array(res.result.securityHeader)),opened.plaintext));
                 if (!proof.outcome) {
-                  const binding=await requestIdentity(parseHeader(new Uint8Array(request.command.securityHeader)),unpackSecurity(parseHeader(new Uint8Array(request.command.securityHeader)),original.plaintext));
+                  const binding=await testRequestIdentity(parseTestHeader(new Uint8Array(request.command.securityHeader)),unpackTestBody(parseTestHeader(new Uint8Array(request.command.securityHeader)),original.plaintext));
                   proof.outcome="executed"; proof.reason="completed"; proof.resultAvailable=true;
                   proof.requestKeyHash=binding.key; proof.payloadHash=binding.payload;
                   res.result=await this.seal({...opened.header,compression:0},CommandResultSchema,proof);
@@ -249,6 +250,28 @@ export class SyntheticRemote extends Remote {
       endedMs: 0n,
     };
   }
+  async seedSession(sessionId: string, seed = this.seed) {
+    const keyEnv = await this.world.fixture.seal(
+      this.machine,
+      { kind: 3, machineId: this.machine, sessionId, seq: 1n },
+      seed,
+    );
+    const self = this as unknown as {
+      ensureSecurityRecordLoaded(): Promise<void>;
+      ensureHost(): { securityOp(op: { case: "openEnvelope"; value: ReturnType<typeof create<typeof SecurityOpenEnvelopeOpSchema>> }): Promise<unknown> };
+    };
+    await self.ensureSecurityRecordLoaded();
+    await self.ensureHost().securityOp({
+      case: "openEnvelope",
+      value: create(SecurityOpenEnvelopeOpSchema, {
+        envelope: keyEnv,
+        expectedPurpose: Purpose.SessionKey,
+        machineId: this.machine,
+        sessionId,
+        history: true,
+      }),
+    });
+  }
   static async create() {
     const world = await GoSecurityFixture.create();
     const member = await webMember(world);
@@ -256,7 +279,7 @@ export class SyntheticRemote extends Remote {
     const r = new SyntheticRemote(world, member, seed);
     const identity = await member.sdk.localIdentity();
     (r as unknown as { trustedMembers: Map<string, unknown> }).trustedMembers =
-      new Map(identity.state.core.members.map((m) => [m.id, m]));
+      new Map(identity.state.core.members.map((m: Member) => [m.id, m]));
     const machineMeta = await r.seal(
       { kind: 4, seq: 1n },
       MachineMetaSchema,
@@ -277,6 +300,7 @@ export class SyntheticRemote extends Remote {
         ],
       }),
     };
+    await r.seedSession("s", seed);
     patchSyncState(r, {
       sessions: new Map([
         [
@@ -292,10 +316,6 @@ export class SyntheticRemote extends Remote {
         ],
       ]),
     });
-    (r as unknown as { sessionSeeds: Map<string, B> }).sessionSeeds.set(
-      "s",
-      seed,
-    );
     return r;
   }
   async addClient() {

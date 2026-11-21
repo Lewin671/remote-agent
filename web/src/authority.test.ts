@@ -1,22 +1,21 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { beforeAll, expect, inject, it } from "vitest";
-import { ed25519, x25519 } from "@noble/curves/ed25519.js";
+import { ed25519SeedPublic, x25519SeedPublicKey } from "./core/sec-call";
 import { Authority, authoritySigningTime } from "./authority";
 import { makePairApproval } from "./pair-approval";
 import { RecoveryCode } from "./recovery";
 import { concat, deviceID, fromHex } from "./crypto";
 import {
   b64, unb64, leaseBytes, openGrant, openPrevSecret, parseLease,
-  parseState, pinOf, recoveryBytes, sealGrant, sealPrevSecret, signLease,
-  signRecoveryStatement, stateBytes, verifyChain, verifyTransition,
-  parseRecoveryStatement, coreBytes, hash, type SecurityState,
+  pinOf, recoveryBytes, signLease,
+  stateBytes, verifyChain, type SecurityState,
 } from "./device-security";
 import { DeviceKind } from "./gen/remoteagent/v1/relay_pb";
 import vectors from "./testdata/authority/vectors.json";
 type B = Uint8Array<ArrayBuffer>;
 const fill = (n: number, b: number): B => new Uint8Array(n).fill(b);
-const pub = (b: number): B => new Uint8Array(ed25519.getPublicKey(fill(32, b)));
-const xp = (b: number): B => new Uint8Array(x25519.getPublicKey(fill(32, b)));
+const pub = (b: number): B => ed25519SeedPublic(fill(32, b));
+const xp = (b: number): Promise<B> => x25519SeedPublicKey(fill(32, b));
 const now = 1700000000000n;
 const random = { grantEkm: () => fill(32, 0x71), prevNonce: fill(12, 0x72), recoveryNonce: fill(32, 0x73) };
 const oracle = inject("authorityOracleBinary");
@@ -43,10 +42,10 @@ beforeAll(async () => {
   states.pairMachine = await Authority.pair(states.genesis, machine, s(0x41), s(0x42), signer, now + 1n, random);
   states.pairClient = await Authority.pair(states.pairMachine, client, s(0x42), s(0x43), signer, now + 2n, random);
   states.remove = await Authority.remove(states.pairClient, [machine.id], s(0x43), s(0x44), signer, now + 3n, random);
-  states.rotateX = await Authority.rotateX(states.remove, client.id, xp(0x25), s(0x44), s(0x45), signer, 1n, random);
+  states.rotateX = await Authority.rotateX(states.remove, client.id, await xp(0x25), s(0x44), s(0x45), signer, 1n, random);
   states.veto = await Authority.veto(states.rotateX, pub(0x32), s(0x45), signer, 1n, random);
   states.handoff = await Authority.handoff(states.veto, client.id, pub(0x33), s(0x45), s(0x46), signer, now + 4n, random);
-  const recovered = await Authority.recovery(states.veto, incoming, [{ ...client, x: xp(0x25) }, incoming], s(0x47), await edKey(0x14), s(0x32), pub(0x33), 1n, random);
+  const recovered = await Authority.recovery(states.veto, incoming, [{ ...client, x: await xp(0x25) }, incoming], s(0x47), await edKey(0x14), s(0x32), pub(0x33), 1n, random);
   states.recovery = recovered.state;
   const lease = await signLease(states.veto, signer, 1n, now + 100n);
   const handoffLease = await signLease(states.handoff, await edKey(0x13), now + 4n);
@@ -92,15 +91,6 @@ it("preserves backward history and tombstones on handoff and cuts history on rec
   expect(states.recovery.prevSecret).toHaveLength(0);
   expect(states.veto.core.contentEpoch).toBe(states.rotateX.core.contentEpoch);
 });
-it("sealGrant and sealPrevSecret match Go fixed-randomness bytes", async () => {
-  const g = states.genesis;
-  const grant = await sealGrant(authority, g.core, await hash("ra3/core\0", await coreBytes(g.core)), fill(32, 0x41), fill(32, 0x71));
-  expect(grant).toEqual((await parseState(unb64(vectors.States.genesis))).grants[0]);
-  const padded = new Uint8Array(64); padded.set(authority.x, 16);
-  const view = { ...authority, x: padded.subarray(16, 48) };
-  expect(await sealGrant(view, g.core, await hash("ra3/core\0", await coreBytes(g.core)), fill(32, 0x41), fill(32, 0x71))).toEqual(grant);
-  expect(await sealPrevSecret(fill(32, 0x42), fill(32, 0x41), fill(12, 0x72))).toEqual(states.pairMachine.prevSecret);
-});
 it("production randomness produces valid independent grants and chains", async () => {
   const g = await Authority.genesis(await deviceID(pub(0x61)), fill(32, 0x51), authority, pub(0x31), fill(32, 0x41), signer, now);
   const next = await Authority.pair(g, client, fill(32, 0x41), fill(32, 0x42), signer, now);
@@ -113,8 +103,6 @@ it("rejects Machine as genesis, handoff and recovery authority or recovery state
   await expect(Authority.genesis(await deviceID(pub(0x61)), fill(32, 0x51), machine, pub(0x31), fill(32, 0x41), await edKey(0x12), now)).rejects.toThrow();
   await expect(Authority.handoff(states.pairMachine, machine.id, pub(0x32), fill(32, 0x42), fill(32, 0x43), signer, now)).rejects.toThrow();
   await expect(Authority.recovery(states.pairMachine, machine, [machine], fill(32, 0x43), await edKey(0x12), fill(32, 0x31), pub(0x32), now)).rejects.toThrow();
-  const r = await parseRecoveryStatement(unb64(output.Recovery));
-  await expect(signRecoveryStatement({ ...r, newMember: machine, newAuthorityID: machine.id }, fill(32, 0x32))).rejects.toThrow();
   const bad = { ...states.genesis, core: { ...states.genesis.core, authorityID: machine.id, members: [machine] } };
   await expect(signLease(bad, await edKey(0x12), now)).rejects.toThrow();
 });
@@ -127,7 +115,7 @@ it("rejects wrong signers, illegal deltas, no-op rotations and retired identitie
   await expect(Authority.veto(states.veto, pub(0x32), fill(32, 0x45), signer, now)).rejects.toThrow();
   await expect(Authority.membership(states.pairClient, [authority], [], fill(32, 0x43), fill(32, 0x44), signer, now)).rejects.toThrow();
   await expect(Authority.recovery(states.veto, incoming, [incoming], fill(32, 0x47), await edKey(0x14), fill(32, 0x32), pub(0x33), now)).rejects.toThrow();
-  await expect(Authority.recovery(states.veto, incoming, [{ ...client, x: xp(0x25) }, incoming], fill(32, 0x47), await edKey(0x14), fill(32, 0x31), pub(0x33), now)).rejects.toThrow();
+  await expect(Authority.recovery(states.veto, incoming, [{ ...client, x: await xp(0x25) }, incoming], fill(32, 0x47), await edKey(0x14), fill(32, 0x31), pub(0x33), now)).rejects.toThrow();
 });
 it("honors Android signing time floors and renewal thresholds", () => {
   const lease = parseLease(unb64(output.Lease));
@@ -155,5 +143,6 @@ it("rejects unauthorized replacement approvals and tampered signatures", async (
   await expect(makePairApproval(states.veto, signer, "bad", incoming.ed, DeviceKind.CLIENT, now)).rejects.toThrow();
   await expect(makePairApproval(states.veto, await edKey(0x12), id, incoming.ed, DeviceKind.CLIENT, now)).rejects.toThrow();
   const altered = structuredClone(states.handoff); altered.signature[0] ^= 1;
-  await expect(verifyTransition(states.veto, altered)).rejects.toThrow();
+  const pin = await pinOf(states.genesis);
+  await expect(verifyChain(pin, [states.genesis, states.pairMachine, states.pairClient, states.remove, states.rotateX, states.veto, altered])).rejects.toThrow();
 });

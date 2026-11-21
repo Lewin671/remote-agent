@@ -1,6 +1,7 @@
 import * as i18n from "./i18n";
 import type { SharedFile } from "./gen/remoteagent/v1/event_pb";
-import { hasQuotaExceeded, OpfsSharedFileStore, type SharedFileStore } from "./shared-file-store";
+import type { Remote } from "./remote";
+import { hasQuotaExceeded, OpfsSharedFileStore, sharedFileStore, type SharedFileStore } from "./shared-file-store";
 
 export const DEFAULT_SHARED_FILE_CHUNK_BYTES = 786_432;
 /** Files strictly larger than 50 MB are saved to disk on completion without local OPFS/memory caching. */
@@ -888,4 +889,20 @@ export class SharedFileManager {
     await this.store.clearAll();
     this.emit();
   }
+}
+
+const sharedFileManagers = new WeakMap<Remote, SharedFileManager>();
+
+/** Lazily instantiates and caches the SharedFileManager for a Remote instance. */
+export function sharedFilesOf(remote: Remote): SharedFileManager {
+  let mgr = sharedFileManagers.get(remote);
+  if (!mgr) {
+    mgr = new SharedFileManager({
+      ...remote.sharedFilesHost(),
+      store: sharedFileStore,
+    });
+    remote.subscribe(() => mgr!.onConnectivityChange());
+    sharedFileManagers.set(remote, mgr);
+  }
+  return mgr;
 }

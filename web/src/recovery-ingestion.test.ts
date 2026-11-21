@@ -1,12 +1,15 @@
-import { create, toBinary } from "@bufbuild/protobuf";
+import { fromBinary, create, toBinary } from "@bufbuild/protobuf";
 import { expect, it, vi } from "vitest";
+import { getCoreHost } from "./core/host";
+import { renderText } from "./core/text";
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import {
   DeviceMetaSchema,
   MachineMetaSchema,
   ProjectPrefsSchema,
 } from "./gen/remoteagent/v1/remote_pb";
-import { RpcEffectSchema } from "./gen/remoteagent/core/v1/app_pb";
+import { SecurityOpenEnvelopeOpSchema } from "./gen/remoteagent/core/v1/security_pb";
+import { Purpose, SecurityError } from "./device-security";
 import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
 import {
   GoSecurityFixture,
@@ -38,38 +41,33 @@ async function setup() {
     ),
   );
   const retained = await webMember(world);
-  const oldClientMeta = await retained.sdk.seal(
+  const oldClientMeta = await world.fixture.seal(
+    retained.account.deviceId,
     {
       kind: 13,
-      purpose: 13,
-      machine: "",
-      session: "",
-      request: retained.account.deviceId,
+      requestId: retained.account.deviceId,
       seq: 1n,
-      deadline: 0n,
-      compression: 0,
+      sender: retained.account.deviceId,
     },
     toBinary(
       DeviceMetaSchema,
       create(DeviceMetaSchema, { name: "offline-client" }),
     ),
   );
-  const oldPrefs = await retained.sdk.seal(
+  const oldPrefs = await world.fixture.seal(
+    retained.account.deviceId,
     {
       kind: 12,
-      purpose: 12,
-      machine: "",
-      session: "",
-      request: "project-prefs",
+      requestId: "project-prefs",
       seq: 1n,
-      deadline: 0n,
-      compression: 0,
+      sender: retained.account.deviceId,
     },
     toBinary(ProjectPrefsSchema, create(ProjectPrefsSchema, { schema: 1 })),
   );
   await world.fixture.recover();
   const member = await webMember(world);
   const r = new SyntheticRemote(world, member, seed);
+  await r.seedSession("s", seed);
   patchSyncState(r, {
     sessions: new Map([
       [
@@ -85,22 +83,37 @@ async function setup() {
       ],
     ]),
   });
-  (r as unknown as { sessionSeeds: Map<string, Uint8Array<ArrayBuffer>> }).sessionSeeds.set("s", seed);
   const after = await r.seal(
     { kind: 1, sessionId: "s", seq: 2n },
     EventSchema,
     event(2n, "readable suffix"),
   );
   const fetchEvents = async (rows: Array<{ seq: bigint; envelope: Envelope }>) => {
-    (r as unknown as { api: object }).api = {
+    const row = await r.sessionRow("s", "rec", seed);
+    row.lastSeq = rows.reduce((m, item) => (item.seq > m ? item.seq : m), 0n);
+    const local = r as unknown as {
+      token: string;
+      tokenExpires: number;
+      api: object;
+      openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void;
+    };
+    local.token = "tok";
+    local.tokenExpires = Date.now() + 7 * 86_400_000;
+    local.api = {
+      listMachines: async () => ({
+        machines: [{ id: world.machine, online: true, lastSeenMs: 0n }],
+      }),
+      listRemoteSessions: async () => ({ sessions: [row] }),
+      listDevices: async () => ({ devices: [] }),
+      getAccountPrefs: async () => ({}),
       getEvents: async () => ({ events: rows, more: false }),
     };
-    return r.executeRpc(
-      create(RpcEffectSchema, {
-        opId: 1n,
-        kind: { case: "getEvents", value: { sessionId: "s", afterSeq: 0n, limit: 50 } },
-      }),
-    );
+    local.openStreamLeg = (legId, _t, cb) => cb.onReady(legId, BigInt(Date.now()));
+    r.start();
+    const host = getCoreHost(r);
+    host.watchSession("s");
+    host.sessionOpen("s");
+    return host;
   };
   return {
     r,
@@ -119,18 +132,22 @@ async function setup() {
 it("advances over verified unavailable history and continues with the readable suffix", async () => {
   const f = await setup();
   try {
-    const res = await f.fetchEvents([
+    const host = await f.fetchEvents([
       { seq: 1n, envelope: f.before },
       { seq: 2n, envelope: f.after },
     ]);
-    expect(res.event.case).toBe("eventsPageFetched");
-    if (res.event.case !== "eventsPageFetched") throw new Error("unexpected event");
-    expect(res.event.value.error).toBe("");
-    expect(res.event.value.events.map((e) => e.seq)).toEqual([1n, 2n]);
-    expect(res.event.value.events[0].unavailable).toBe(true);
-    expect(res.event.value.events[1].event?.kind).toMatchObject({
+    await vi.waitFor(() => {
+      const timeline = host.viewSession("s").timeline;
+      expect(timeline?.loaded).toBe(true);
+      expect(timeline?.items.length).toBe(1);
+    });
+    const timeline = host.viewSession("s").timeline!;
+    expect(renderText(timeline.error)).toBe("");
+    expect(timeline.unavailableCount).toBe(1);
+    expect(timeline.historyPartial).toBe(true);
+    expect(timeline.items[0]?.kind).toMatchObject({
       case: "agentMessage",
-      value: { text: "readable suffix" },
+      value: { markdown: "readable suffix" },
     });
   } finally {
     await f.r.dispose();
@@ -149,12 +166,52 @@ for (const damage of ["signature", "route", "current-cipher"] as const)
       if (damage === "signature") envelope.signature[0] ^= 1;
       if (damage === "current-cipher") envelope.ciphertext[0] ^= 1;
       vi.spyOn(console, "warn").mockImplementation(() => undefined);
-      const res = await f.fetchEvents([{ seq: damage === "signature" ? 1n : 2n, envelope }]);
-      expect(res.event.case).toBe("eventsPageFetched");
-      if (res.event.case !== "eventsPageFetched") throw new Error("unexpected event");
-      expect(res.event.value.events).toHaveLength(1);
-      expect(res.event.value.events[0].broken).toBe(true);
-      expect(res.event.value.events[0].unavailable).toBe(false);
+      const seq = damage === "signature" ? 1n : 2n;
+      let err: unknown;
+      try {
+        await (
+          f.r as unknown as {
+            ensureHost(): {
+              securityOp(op: {
+                case: "openEnvelope";
+                value: ReturnType<typeof create<typeof SecurityOpenEnvelopeOpSchema>>;
+              }): Promise<unknown>;
+            };
+          }
+        )
+          .ensureHost()
+          .securityOp({
+            case: "openEnvelope",
+            value: create(SecurityOpenEnvelopeOpSchema, {
+              envelope,
+              expectedPurpose: Purpose.Event,
+              machineId: f.world.machine,
+              sessionId: "s",
+              seq,
+              history: true,
+              overrideSessionSeed: f.seed,
+            }),
+          });
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(SecurityError);
+      expect((err as SecurityError).code).not.toBe("unavailable");
+
+      const host = await f.fetchEvents(
+        damage === "signature"
+          ? [{ seq: 1n, envelope }]
+          : [{ seq: 1n, envelope: f.before }, { seq: 2n, envelope }],
+      );
+      await vi.waitFor(() => {
+        const timeline = host.viewSession("s").timeline;
+        expect(renderText(timeline?.error)).not.toBe("");
+      });
+      const timeline = host.viewSession("s").timeline!;
+      if (damage === "signature") {
+        expect(timeline.unavailableCount).toBe(0);
+      }
+      expect(timeline.items).toHaveLength(0);
     } finally {
       await f.r.dispose();
     }
@@ -205,19 +262,33 @@ it("keeps signed members when one offline member's metadata predates recovery", 
 
 it("retained clients still read the old plaintext when their keys are available", async () => {
   const f = await setup();
+  const retainedRemote = new SyntheticRemote(f.world, f.retained, f.seed);
   try {
     await f.retained.sdk.sync();
-    const opened = await f.retained.sdk.openMessage(
-      f.before,
-      EventSchema,
-      true,
-      f.seed,
-    );
-    expect(opened.msg.kind).toMatchObject({
+    const internal = retainedRemote as unknown as {
+      ensureSecurityRecordLoaded(): Promise<void>;
+      ensureHost(): { securityOp(op: { case: "openEnvelope"; value: ReturnType<typeof create<typeof SecurityOpenEnvelopeOpSchema>> }): Promise<{ result: { case: string; value?: { plaintext: Uint8Array } } }> };
+    };
+    await internal.ensureSecurityRecordLoaded();
+    const opened = await internal.ensureHost().securityOp({
+      case: "openEnvelope",
+      value: create(SecurityOpenEnvelopeOpSchema, {
+        envelope: f.before,
+        expectedPurpose: Purpose.Event,
+        machineId: f.world.machine,
+        sessionId: "s",
+        history: true,
+        overrideSessionSeed: f.seed,
+      }),
+    });
+    if (opened.result.case !== "opened" || !opened.result.value) throw new Error("expected opened envelope");
+    const msg = fromBinary(EventSchema, opened.result.value.plaintext);
+    expect(msg.kind).toMatchObject({
       case: "agentMessage",
       value: { text: "before recovery" },
     });
   } finally {
+    retainedRemote.stop();
     await f.r.dispose();
   }
 }, 20000);

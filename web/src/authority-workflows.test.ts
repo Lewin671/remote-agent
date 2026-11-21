@@ -10,10 +10,11 @@ import { loadAccount, type StoredAccount } from "./storage";
 import * as securityStore from "./device-security-store";
 import * as accountStore from "./storage";
 import { loadSecurity, securitySetupStatus } from "./device-security-store";
-import { DeviceSecurityClient } from "./device-security-client";
+import { ed25519SeedPublic } from "./core/sec-call";
 import { signLogin, deviceID, newDeviceKey, openMessage, importSessionKey } from "./crypto";
-import { newSecurityKey, pairDomainCommit, equal, stateBytes, stateHash, leaseBytes, signLease, Purpose, parseLease } from "./device-security";
+import { newSecurityKey, openGrant, pairDomainCommit, equal, stateBytes, stateHash, leaseBytes, signLease, Purpose, parseLease } from "./device-security";
 import { derivePair, newPairKey, pairDomainTranscript } from "./pair";
+import { sealTestEnvelope } from "./test/stored-security-fixture";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Authority } from "./authority";
 import { PairingService, DeviceKind, PutSecurityStateRequestSchema, DeviceRegistrationSchema, MachineService } from "./gen/remoteagent/v1/relay_pb";
@@ -77,12 +78,18 @@ it("replays an accepted state after a lost ack, preserves unchanged-head recover
   expect(c.security.recoveryStatusStale).toBe(true); fetch.mockRestore();
 });
 
-async function pairCandidate(c: Awaited<ReturnType<typeof clients>>, kind = DeviceKind.CLIENT, replacesDeviceId = "", loseApprovalAck = false) {
+type WorkflowClients = Awaited<ReturnType<typeof clients>>;
+async function pairCandidate(
+  c: Omit<WorkflowClients, "authority"> & { authority: WorkflowClients["authority"] | Remote["authority"] },
+  kind = DeviceKind.CLIENT,
+  replacesDeviceId = "",
+  loseApprovalAck = false,
+) {
   const initiation = await AuthorityPairing.start(c.authority, c.pairing, "https://app.example.com", replacesDeviceId);
   expect(initiation.code).toMatch(/^\d{8}$/);
   const link = new URL(initiation.url); expect(link.hash).toContain("c=");
   const api = createClient(PairingService, createConnectTransport({ baseUrl: server.url, useBinaryFormat: true }));
-  const device = await newDeviceKey(), x = await newSecurityKey(), key = newPairKey();
+  const device = await newDeviceKey(), x = await newSecurityKey(), key = await newPairKey();
   const ed = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
   const xp = new Uint8Array(await crypto.subtle.exportKey("raw", x.publicKey));
   const joined = await api.joinPairing({ code: initiation.code, joinerPublic: key.pub, joinerKind: kind, devicePublicKey: ed, deviceHpkePublicKey: xp, protocolVersion: RELAY_PROTOCOL_VERSION });
@@ -110,7 +117,7 @@ it("rejects a pairing candidate using the authority Ed key before any state sign
   const r = await loadSecurity(), own = r.states.at(-1)!.core.members.find((m) => m.id === account.deviceId)!;
   const initiation = await AuthorityPairing.start(c.authority, c.pairing, "https://app.example.com");
   const api = createClient(PairingService, createConnectTransport({ baseUrl: server.url, useBinaryFormat: true }));
-  const ephemeral = newPairKey(), x = await newSecurityKey();
+  const ephemeral = await newPairKey(), x = await newSecurityKey();
   await api.joinPairing({ code: initiation.code, protocolVersion: RELAY_PROTOCOL_VERSION, joinerKind: DeviceKind.CLIENT,
     joinerPublic: ephemeral.pub, devicePublicKey: own.ed,
     deviceHpkePublicKey: new Uint8Array(await crypto.subtle.exportKey("raw", x.publicKey)) });
@@ -228,8 +235,7 @@ it("initiates real pairing and retains delivery until candidate registration/rec
   // The real Remote writer above signed and durably saved the public offer;
   // the coordinator below consumes the corresponding verified public key.
   const decoded = RecoveryCode.decode(code.code)!;
-  const { ed25519 } = await import("@noble/curves/ed25519.js");
-  const recoveryEd = new Uint8Array(ed25519.getPublicKey(decoded.seed)); decoded.seed.fill(0);
+  const recoveryEd = ed25519SeedPublic(decoded.seed); decoded.seed.fill(0);
   vi.stubGlobal("indexedDB", local);
   await candidate.initiation.finishPairingOperation();
   expect(await readSecurityOperation()).toBeUndefined();
@@ -510,9 +516,9 @@ it("retains canceled delivery until explicit candidate removal, and refuses Mach
 it("rechecks the foreground generation immediately before signing and after storing the exact request", async () => {
   const { account } = await createAccount(), c = await clients(account);
   await c.authority.prepareRecovery();
-  const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
-  const hold = vi.spyOn(crypto.subtle, "encrypt").mockImplementation(async (...args) => {
-    const bytes = await encrypt(...args); c.authority.lifecycle.pause(); return bytes;
+  const exportKey = crypto.subtle.exportKey.bind(crypto.subtle);
+  const hold = vi.spyOn(crypto.subtle, "exportKey").mockImplementation(async (...args) => {
+    const bytes = await exportKey(...args); c.authority.lifecycle.pause(); return bytes;
   });
   const sign = vi.spyOn(crypto.subtle, "sign"); const put = vi.spyOn(c.api, "putSecurityState");
   await expect(c.authority.publishRecovery()).rejects.toThrow("暂停");
@@ -546,19 +552,22 @@ it("separates machine revocation, archive rejoin with retained sessions, and per
     return { id, machine };
   };
   const candidate = await pairCandidate(c, DeviceKind.MACHINE), first = await enroll(candidate);
-  const { buildRecord, parseChain } = await import("./device-security-store");
+  const { parseChain } = await import("./device-security-store");
   const chain = await parseChain(candidate.msg.securityStates), admin = await loadSecurity();
-  const record = await buildRecord(admin.pin, chain.states, chain.proofs, first.id, candidate.x.privateKey);
-  record.lease = parseLease(new Uint8Array(candidate.msg.lease));
-  const { MemorySecurityStorage } = await import("./test/security-fixture");
-  const security = new DeviceSecurityClient(first.id, candidate.device.privateKey, async () => { throw new Error("no machine pull required"); }, () => true, new MemorySecurityStorage(record));
-  const meta = await security.seal({ kind: 4, purpose: Purpose.MachineMeta, machine: first.id, session: "", request: "", seq: 1n, deadline: 0n, compression: 0 },
-    toBinary(MachineMetaSchema, create(MachineMetaSchema, { hostname: "fixture-computer", protocolVersion: PEER_PROTOCOL_VERSION })));
+  const head = chain.states.at(-1)!;
+  const secret = await openGrant(admin.pin, head, first.id, candidate.x.privateKey);
+  const hh = await stateHash(head);
+  const sealMachine = (purpose: Purpose, kind: number, session: string, plain: Uint8Array, seed?: Uint8Array) =>
+    sealTestEnvelope(secret, seed, {
+      account: admin.pin.account, domain: admin.pin.domain, epoch: head.core.epoch, state: hh,
+      contentEpoch: head.core.contentEpoch, sender: first.id, kind, purpose, machine: first.id,
+      session, request: "", seq: 1n, deadline: 0n, compression: 0,
+    }, plain, candidate.device.privateKey);
+  const meta = await sealMachine(Purpose.MachineMeta, 4, "", toBinary(MachineMetaSchema, create(MachineMetaSchema, { hostname: "fixture-computer", protocolVersion: PEER_PROTOCOL_VERSION })));
   await first.machine.putMachine({ meta });
   const sessionId = "retained-session", seed = Authority.newSecret();
-  const sessionMeta = await security.seal({ kind: 2, purpose: Purpose.SessionMeta, machine: first.id, session: sessionId, request: "", seq: 1n, deadline: 0n, compression: 0 },
-    toBinary(SessionSchema, create(SessionSchema, { id: sessionId })), seed);
-  const sessionKey = await security.seal({ kind: 3, purpose: Purpose.SessionKey, machine: first.id, session: sessionId, request: "", seq: 1n, deadline: 0n, compression: 0 }, seed);
+  const sessionMeta = await sealMachine(Purpose.SessionMeta, 2, sessionId, toBinary(SessionSchema, create(SessionSchema, { id: sessionId })), seed);
+  const sessionKey = await sealMachine(Purpose.SessionKey, 3, sessionId, seed);
   await first.machine.putSession({ sessionId, meta: sessionMeta, key: sessionKey });
   await expect(c.authority.deleteMachineRecords(first.id)).rejects.toThrow();
   await c.authority.removeDevice(first.id);

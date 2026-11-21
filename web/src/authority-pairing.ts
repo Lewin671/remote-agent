@@ -1,6 +1,11 @@
 import * as l10n from "./i18n";
 import type { Client } from "@connectrpc/connect";
-import { AuthorityClient } from "./authority-client";
+import type { AuthorityClient } from "./authority-client";
+
+type PairingAuthority = Pick<
+  AuthorityClient,
+  "account" | "lifecycle" | "security" | "hasMachineArchive" | "resumeSecurityOperation" | "approvePairing"
+>;
 import { Authority } from "./authority";
 import { pairDomainCommit, pairTrustDescriptor, equal, SecurityError } from "./device-security";
 import { derivePair, newPairKey, pairDomainTranscript, type PairKey, type PairSecrets } from "./pair";
@@ -24,11 +29,11 @@ export class AuthorityPairing {
   private secrets?: PairSecrets;
   private constructor(
     readonly code: string, readonly url: string, readonly pairingId: string,
-    readonly expires: bigint, private readonly authority: AuthorityClient,
+    readonly expires: bigint, private readonly authority: PairingAuthority,
     private readonly api: Client<typeof PairingService>, private readonly key: PairKey,
     private readonly trust: B, private readonly replacesDeviceId: string,
   ) {}
-  static async start(authority: AuthorityClient, api: Client<typeof PairingService>, web: string, replacesDeviceId = "") {
+  static async start(authority: PairingAuthority, api: Client<typeof PairingService>, web: string, replacesDeviceId = "") {
     await authority.resumeSecurityOperation();
     return authority.lifecycle.run(async (check) => {
       if (await readSecurityOperation()) throw new Error(l10n.t("security.finish_the_current_security_operation_first"));
@@ -41,7 +46,7 @@ export class AuthorityPairing {
         throw new Error(l10n.t("security.only_a_removed_computer_s_archive_can_be_rejoined"));
       if (replacesDeviceId && !await authority.hasMachineArchive(replacesDeviceId)) throw new Error(l10n.t("security.the_computer_s_archive_was_deleted_join_as_a"));
       check();
-      const key = newPairKey(), trust = pairTrustDescriptor(record.pin, record.memberID);
+      const key = await newPairKey(), trust = pairTrustDescriptor(record.pin, record.memberID);
       const commit = await pairDomainCommit(new Uint8Array(key.pub), trust);
       check();
       const reply = await api.createPairing({ commit });
@@ -99,7 +104,6 @@ export class AuthorityPairing {
   async finishPairingOperation() { await this.authority.resumeSecurityOperation(); }
   async cancel() {
     this.stopped = true;
-    this.key.priv.fill(0);
     this.secrets?.key.fill(0);
     await this.authority.lifecycle.run(async (check) => {
       check();

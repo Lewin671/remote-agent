@@ -22,6 +22,7 @@ public  final class SecurityRecordEvent extends
     recoveryProofs_ = emptyProtobufList();
     lease_ = com.google.protobuf.ByteString.EMPTY;
     error_ = "";
+    contentKeys_ = emptyProtobufList();
   }
   public static final int OP_ID_FIELD_NUMBER = 1;
   private long opId_;
@@ -576,6 +577,103 @@ public  final class SecurityRecordEvent extends
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
 
+  }
+
+  public static final int CONTENT_KEYS_FIELD_NUMBER = 17;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SecurityContentKey> contentKeys_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SecurityContentKey> getContentKeysList() {
+    return contentKeys_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SecurityContentKeyOrBuilder> 
+      getContentKeysOrBuilderList() {
+    return contentKeys_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  @java.lang.Override
+  public int getContentKeysCount() {
+    return contentKeys_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityContentKey getContentKeys(int index) {
+    return contentKeys_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SecurityContentKeyOrBuilder getContentKeysOrBuilder(
+      int index) {
+    return contentKeys_.get(index);
+  }
+  private void ensureContentKeysIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SecurityContentKey> tmp = contentKeys_;
+    if (!tmp.isModifiable()) {
+      contentKeys_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setContentKeys(
+      int index, io.github.lewin671.remoteagent.core.proto.SecurityContentKey value) {
+    value.getClass();  // minimal bytecode null check
+    ensureContentKeysIsMutable();
+    contentKeys_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addContentKeys(io.github.lewin671.remoteagent.core.proto.SecurityContentKey value) {
+    value.getClass();  // minimal bytecode null check
+    ensureContentKeysIsMutable();
+    contentKeys_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addContentKeys(
+      int index, io.github.lewin671.remoteagent.core.proto.SecurityContentKey value) {
+    value.getClass();  // minimal bytecode null check
+    ensureContentKeysIsMutable();
+    contentKeys_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  private void addAllContentKeys(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SecurityContentKey> values) {
+    ensureContentKeysIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, contentKeys_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  private void clearContentKeys() {
+    contentKeys_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  private void removeContentKeys(int index) {
+    ensureContentKeysIsMutable();
+    contentKeys_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent parseFrom(
@@ -1247,6 +1345,108 @@ public  final class SecurityRecordEvent extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SecurityContentKey> getContentKeysList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getContentKeysList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    @java.lang.Override
+    public int getContentKeysCount() {
+      return instance.getContentKeysCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityContentKey getContentKeys(int index) {
+      return instance.getContentKeys(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder setContentKeys(
+        int index, io.github.lewin671.remoteagent.core.proto.SecurityContentKey value) {
+      copyOnWrite();
+      instance.setContentKeys(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder setContentKeys(
+        int index, io.github.lewin671.remoteagent.core.proto.SecurityContentKey.Builder builderForValue) {
+      copyOnWrite();
+      instance.setContentKeys(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder addContentKeys(io.github.lewin671.remoteagent.core.proto.SecurityContentKey value) {
+      copyOnWrite();
+      instance.addContentKeys(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder addContentKeys(
+        int index, io.github.lewin671.remoteagent.core.proto.SecurityContentKey value) {
+      copyOnWrite();
+      instance.addContentKeys(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder addContentKeys(
+        io.github.lewin671.remoteagent.core.proto.SecurityContentKey.Builder builderForValue) {
+      copyOnWrite();
+      instance.addContentKeys(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder addContentKeys(
+        int index, io.github.lewin671.remoteagent.core.proto.SecurityContentKey.Builder builderForValue) {
+      copyOnWrite();
+      instance.addContentKeys(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder addAllContentKeys(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SecurityContentKey> values) {
+      copyOnWrite();
+      instance.addAllContentKeys(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder clearContentKeys() {
+      copyOnWrite();
+      instance.clearContentKeys();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+     */
+    public Builder removeContentKeys(int index) {
+      copyOnWrite();
+      instance.removeContentKeys(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityRecordEvent)
   }
   @java.lang.Override
@@ -1279,11 +1479,13 @@ public  final class SecurityRecordEvent extends
             "removed_",
             "cleared_",
             "error_",
+            "contentKeys_",
+            io.github.lewin671.remoteagent.core.proto.SecurityContentKey.class,
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0000\u0001\u0010\u0010\u0000\u0002\u0000\u0001\u0003\u0002\u0003" +
+              "\u0000\u0011\u0000\u0000\u0001\u0011\u0011\u0000\u0003\u0000\u0001\u0003\u0002\u0003" +
               "\u0003\u0003\u0004\u0208\u0005\n\u0006\n\u0007\u001c\b\u001c\t\n\n\u0002\u000b\u0007" +
-              "\f\u0002\r\u0007\u000e\u0007\u000f\u0007\u0010\u0208";
+              "\f\u0002\r\u0007\u000e\u0007\u000f\u0007\u0010\u0208\u0011\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

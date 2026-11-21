@@ -264,8 +264,9 @@ it("shows a display copy only where it belongs and in the format it claims", asy
   const { ImageFormat } = await import("./gen/remoteagent/v1/event_pb");
   const { create } = await import("@bufbuild/protobuf");
   const r = await probe();
-  patchSyncState(r, { sessions: new Map([...r.sessions, ["s1", { ...r.sessions.get("s")!, id: "s1" }]]) });
-  (r as any).sessionSeeds.set("s1", r.seed);
+  const base = r.sessions.get("s")!;
+  await r.seedSession("s1", r.seed);
+  patchSyncState(r, { sessions: new Map([["s", base], ["s1", { ...base, id: "s1" }]]) });
   const png = Uint8Array.from([
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3,
   ]);
@@ -554,7 +555,6 @@ it("restores, for the next visit's first paint, the model lists and settings the
   // 500 ms network delays. This test asserts persistence, not latency.
   vi.spyOn(first as any, "pause").mockResolvedValue(undefined);
   vi.spyOn(first.security, "localIdentity").mockResolvedValue(identity);
-  vi.spyOn(first.security, "historicalMachines").mockResolvedValue(new Set());
   (first as unknown as { seed(): void; syncDemoToCore(): void }).seed(); // the demo's machines, online
   (first as unknown as { syncDemoToCore(): void }).syncDemoToCore();
   expect(first.cachedModels("mac", Agent.CODEX)).toBeUndefined();
@@ -565,7 +565,6 @@ it("restores, for the next visit's first paint, the model lists and settings the
   // The next visit knows them before any machine answers.
   const next = trackDemo(Kept.open());
   vi.spyOn(next.security, "localIdentity").mockResolvedValue(identity);
-  vi.spyOn(next.security, "historicalMachines").mockResolvedValue(new Set());
   await next.warmed();
   expect(
     next.cachedModels("mac", Agent.CODEX)?.models.map((m) => m.displayName),
@@ -733,7 +732,7 @@ it("revokes a removed machine and retains its archive when the head moves withou
   release();
   const snap = await pull;
   const { EventSchema: CoreEventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
-  getCoreHost(r).dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: snap as never } }));
+  getCoreHost(r).dispatch(create(CoreEventSchema, { event: { case: "securityRecord", value: snap as never } }));
   expect(r.devices.get(r.machine)).toBeUndefined();
   expect(r.sessions.get("s")).toBeTruthy();
   expect(r.machines.get(r.machine)?.online).toBe(false);
@@ -780,29 +779,34 @@ it("bootstraps current owner state from a checkpoint without loading a history p
 });
 
 it("installs the lease forwarded by the Remote state-page adapter after a head change", async () => {
+  const { CommandSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { validLease } = await import("./device-security");
   const r = await probe();
   const other = await r.addClient();
   await r.world.fixture.remove([other.account.deviceId]);
   // Use Remote's constructor adapter, not the fixture's direct SDK fetcher.
   const security = (
     r as unknown as {
-      security: import("./device-security-client").DeviceSecurityClient;
+      security: import("./authority-security").AuthoritySecurity;
     }
   ).security;
-  await security.sync();
+  const synced = await security.sync();
+  expect(synced.lease).toBeDefined();
+  await expect(validLease(synced.lease, synced.states.at(-1)!, synced.floor)).resolves.toBeUndefined();
+  await (r as unknown as { pushSecurityRecord(rec: typeof synced): Promise<void> }).pushSecurityRecord(synced);
   await expect(
-    security.seal(
+    (r as unknown as { sealSecureMessage: (...args: unknown[]) => Promise<{ envelope: Envelope }> }).sealSecureMessage(
       {
-        purpose: 5,
         kind: 5,
-        compression: 0,
-        session: "",
+        machineId: r.machine,
+        sessionId: "",
+        requestId: "adapter-request-123",
         seq: 0n,
-        machine: r.machine,
-        request: "adapter-request-123",
-        deadline: BigInt(Date.now() + 60000),
+        deadlineMs: BigInt(Date.now() + 60000),
+        sender: r.account.deviceId,
       },
-      new Uint8Array(),
+      CommandSchema,
+      create(CommandSchema),
     ),
   ).resolves.toBeDefined();
 });
@@ -1114,11 +1118,10 @@ it("seals terminal frames with purpose-specific domains and a default deadline",
     TerminalResizeSchema,
   } = await import("./gen/remoteagent/v1/remote_pb");
   const seed = new Uint8Array(32).fill(9);
+  await r.seedSession("s", seed);
   const internal = r as unknown as {
-    sessionSeeds: Map<string, Uint8Array>;
-    sealSecureMessage: (...args: unknown[]) => Promise<Envelope>;
+    sealSecureMessage: (...args: unknown[]) => Promise<{ envelope: Envelope }>;
   };
-  internal.sessionSeeds.set("s", seed);
   const nowBefore = Date.now();
   let seq = 1n;
   for (const kind of [
@@ -1126,7 +1129,7 @@ it("seals terminal frames with purpose-specific domains and a default deadline",
     { case: "resize" as const, value: create(TerminalResizeSchema, { cols: 80, rows: 24 }) },
     { case: "historyRequest" as const, value: create(TerminalHistoryRequestSchema, {}) },
   ]) {
-    const env = await internal.sealSecureMessage.call(
+    const { envelope: env } = await internal.sealSecureMessage.call(
       r,
       {
         kind: PayloadKind.TERMINAL_INPUT,
@@ -1348,10 +1351,11 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
   expect(cleared.resultJson).toEqual(new Uint8Array());
 });
 
-it("pushes updated SecuritySnapshot to hostBridge when security.install adds a machine", async () => {
+it("pushes updated SecurityRecord to hostBridge when security.install adds a machine", async () => {
   const r = await probe();
+  const { getCoreHost } = await import("./core/host");
   await (r as unknown as { ensureHost: () => unknown }).ensureHost();
-  const host = (r as unknown as { hostBridge: { dispatchEvent: (ev: { event?: { case?: string; value?: { trustedMachineIds?: string[] } } }) => void } }).hostBridge;
+  const host = (r as unknown as { hostBridge: { dispatchEvent: (ev: { event?: { case?: string; value?: unknown } }) => void } }).hostBridge;
   const spy = vi.spyOn(host, "dispatchEvent");
 
   const enrolled = await r.world.fixture.enroll(r.world.fixture.phone.json.member, 1);
@@ -1362,6 +1366,9 @@ it("pushes updated SecuritySnapshot to hostBridge when security.install adds a m
 
   await r.security.install(current, [addedState], [undefined]);
 
-  const snapCall = spy.mock.calls.find(([ev]) => ev.event?.case === "securitySnapshot");
-  expect(snapCall?.[0].event?.value?.trustedMachineIds).toContain(enrolled.json.member);
+  await vi.waitFor(() => {
+    expect(spy.mock.calls.some(([ev]) => ev.event?.case === "securityRecord")).toBe(true);
+    expect((r as unknown as { trustedMembers: Map<string, unknown> }).trustedMembers.has(enrolled.json.member)).toBe(true);
+    expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
+  });
 });

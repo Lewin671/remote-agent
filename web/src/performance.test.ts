@@ -114,7 +114,7 @@ it("serializes the main stream and drops a bounded backlog", async () => {
     (r as any).tokenExpires = Date.now() + 7 * 86_400_000;
   });
   let release!: () => void;
-  const handler = vi.spyOn(r as any, "unpackStreamFrame").mockImplementation(
+  const handler = vi.spyOn(r as any, "mapStreamFrame").mockImplementation(
     () =>
       new Promise<undefined>((resolve) => {
         release = () => resolve(undefined);

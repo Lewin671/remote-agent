@@ -1,5 +1,5 @@
 import * as l10n from "./i18n";
-import { inflateBounded } from "./inflate";
+import { ed25519SeedPublic, ed25519SeedSign, inflateBounded } from "./core/sec-call";
 // End-to-end encryption, matching internal/e2e in Go: HKDF-SHA256 key
 // derivation from the account root key, AES-256-GCM envelopes whose
 // serialized header is the additional data, and Ed25519 signatures.
@@ -94,12 +94,9 @@ async function deriveBits(root: CryptoKey, info: string): Promise<Uint8Array<Arr
 /** The account key pair, which signs device registrations. */
 export async function accountKey(root: CryptoKey): Promise<{ publicKey: Uint8Array; sign(msg: Uint8Array): Uint8Array }> {
   const seed = await deriveBits(root, "account-sign");
-  // Only joining and pairing sign with the account key: the curve code is
-  // fetched then, not with the page.
-  const { ed25519 } = await import("@noble/curves/ed25519.js");
   return {
-    publicKey: ed25519.getPublicKey(seed),
-    sign: (msg) => ed25519.sign(msg, seed),
+    publicKey: ed25519SeedPublic(seed),
+    sign: (msg) => ed25519SeedSign(seed, msg),
   };
 }
 
@@ -126,10 +123,9 @@ export async function importSessionKey(raw: Uint8Array<ArrayBuffer>): Promise<Cr
 
 export class OpenError extends Error {}
 
-// Payloads are packed with fflate rather than the browser's own
-// CompressionStream: "deflate-raw" came to browsers later than the rest
-// of what this page needs, and a page that cannot unpack cannot read
-// anything a daemon sends.
+// Payloads are unpacked inside clientcore via SecCall rather than the
+// browser's own CompressionStream: "deflate-raw" came to browsers later than
+// the rest of what this page needs.
 //
 // Bound accepted compressed pairing payloads; current history uses device security.
 export const MAX_UNPACKED = 64 << 20;

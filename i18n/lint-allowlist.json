@@ -4778,5 +4778,65 @@
     "path": "clientcore/security/seccall.go",
     "literal": "remote-agent/v1/delete-account\\x00",
     "reason": "Fixed cryptographic domain-separation constant for Ed25519 account-deletion signatures; never displayed to users."
+  },
+  {
+    "path": "web/src/authority-security.ts",
+    "literal": "storage",
+    "reason": "Internal SecurityError code token mapped to localized prose by errorText(); moved out of deleted device-security-client.ts and never displayed raw."
+  },
+  {
+    "path": "web/src/authority-security.ts",
+    "literal": "untrusted",
+    "reason": "Internal SecurityError code token mapped to localized prose by errorText(); moved out of deleted device-security-client.ts and never displayed raw."
+  },
+  {
+    "path": "web/src/authority-security.ts",
+    "literal": "clock",
+    "reason": "Internal SecurityError code token mapped to localized prose by errorText(); moved out of deleted device-security-client.ts and never displayed raw."
+  },
+  {
+    "path": "web/src/authority-security.ts",
+    "literal": "stale",
+    "reason": "Internal SecurityError code token mapped to localized prose by errorText(); moved out of deleted device-security-client.ts and never displayed raw."
+  },
+  {
+    "path": "web/src/authority-security.ts",
+    "literal": "capacity",
+    "reason": "Internal SecurityError code token mapped to localized prose by errorText(); moved out of deleted device-security-client.ts and never displayed raw."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "stale",
+    "reason": "Internal core SecurityOpResult errorCode token inspected before mapping to SecurityError; never rendered to users."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "lease",
+    "reason": "Internal SecurityError code token and error substring check mapped to localized prose; never rendered to users."
+  },
+  {
+    "path": "web/src/device-security.ts",
+    "literal": "lease",
+    "reason": "Internal SecurityError code token mapped to localized prose by errorText(); never rendered to users."
+  },
+  {
+    "path": "web/src/pair.ts",
+    "literal": "derivePairSecrets",
+    "reason": "Internal SecCallRequest protobuf oneof case discriminant; never displayed to users."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "getAccountPrefs",
+    "reason": "Internal RpcRequestEffect protobuf oneof case discriminant; never displayed to users."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "lease",
+    "reason": "Internal SecurityError code comparison inside errorText() before returning localized message; never displayed to users."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "lease",
+    "reason": "Internal SecurityError code token caught internally to fall back to generic notification text; never rendered to users."
   }
 ]

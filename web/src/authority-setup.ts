@@ -6,6 +6,7 @@ import { Code, ConnectError, createClient, type Client } from "@connectrpc/conne
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { Authority, authoritySigningTime } from "./authority";
 import { acceptRecoveryPublicProfile } from "./account-public";
+import { ed25519SeedPublic, ed25519SeedSign } from "./core/security-executor";
 import { accountKey, checkServer, concat, deviceID, importRoot, newDeviceKey, signLogin, utf8, REGISTER_CONTEXT } from "./crypto";
 import { buildRecord, initializeSecurity, loadSecurity, parseChain, securitySetupStatus, type SecurityRecord } from "./device-security-store";
 import { equal, leaseBytes, parseLease, parseState, verifyLease, newSecurityKey, pinOf, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, type Pin, type RecoveryStatement, type SecurityState, type Member } from "./device-security";
@@ -53,21 +54,7 @@ interface UnsignedRecoveryDraft extends Omit<RecoveryDraft, "target" | "proof"> 
   secret: B;
   now: bigint;
 }
-export type AuthorityStartup =
-  | { kind: "create" | "recovery"; phase: SecurityOperation["phase"]; codeSaved: boolean; recoveryId?: string; readyMs?: bigint }
-  | { kind: "registration" }
-  | { kind: "account"; pending: boolean }
-  | { kind: "empty" };
-export async function authorityStartup(): Promise<AuthorityStartup> {
-  const pending = await readSecurityOperation<RecoveryDraft>();
-  if (pending?.kind === "create" || pending?.kind === "recovery") return {
-    kind: pending.kind, phase: pending.phase, codeSaved: pending.codeSaved,
-    recoveryId: pending.kind === "recovery" ? pending.local.recoveryId : undefined,
-    readyMs: pending.kind === "recovery" ? pending.local.readyMs : undefined,
-  };
-  if (await loadRegistration()) return { kind: "registration" };
-  return await loadAccount() ? { kind: "account", pending: !!pending } : { kind: "empty" };
-}
+export { authorityStartup, type AuthorityStartup } from "./authority-startup";
 export function authorityServices(server: string) {
   const transport = createConnectTransport({ baseUrl: apiBase(server), fetch: relayFetch, useBinaryFormat: true, defaultTimeoutMs: 15000 });
   return { auth: createClient(AuthService, transport), recovery: createClient(RecoveryService, transport),
@@ -204,9 +191,8 @@ export class AuthoritySetup {
       const decoded = RecoveryCode.decode(code);
       if (!decoded) throw new Error(l10n.t("security.invalid_recovery_code"));
       try {
-        const { ed25519 } = await import("@noble/curves/ed25519.js");
-        const pub = new Uint8Array(ed25519.getPublicKey(decoded.seed));
-        const context = await this.context(server, pub, (b) => Promise.resolve(new Uint8Array(ed25519.sign(b, decoded.seed))), "", decoded.genesis, check, local);
+        const pub = ed25519SeedPublic(decoded.seed);
+        const context = await this.context(server, pub, (b) => Promise.resolve(ed25519SeedSign(decoded.seed, b)), "", decoded.genesis, check, local);
         return context.pin;
       } finally { decoded.seed.fill(0); }
     });
@@ -234,8 +220,7 @@ export class AuthoritySetup {
       const decoded = RecoveryCode.decode(code);
       if (!decoded) throw new Error(l10n.t("security.invalid_recovery_code"));
       try {
-        const { ed25519 } = await import("@noble/curves/ed25519.js");
-        const publicKey = new Uint8Array(ed25519.getPublicKey(decoded.seed));
+        const publicKey = ed25519SeedPublic(decoded.seed);
         let local: SecurityRecord | undefined;
         const status = await securitySetupStatus();
         if (status === "ready") {
@@ -243,7 +228,7 @@ export class AuthoritySetup {
           if (account?.server !== server) throw new SecurityError("conflict");
           local = await loadSecurity();
         } else if (status !== "missing") throw new SecurityError("storage");
-        const chain = await this.context(server, publicKey, (b) => Promise.resolve(new Uint8Array(ed25519.sign(b, decoded.seed))), "", decoded.genesis, check, local);
+        const chain = await this.context(server, publicKey, (b) => Promise.resolve(ed25519SeedSign(decoded.seed, b)), "", decoded.genesis, check, local);
         if (![RecoveryPhase.UNSPECIFIED, RecoveryPhase.PENDING, RecoveryPhase.READY].includes(chain.phase)) throw new Error(l10n.t("security.apply_again_with_the_current_recovery_code"));
         const device = await newDeviceKey(), x = await newSecurityKey(), fresh = await Authority.newRecovery();
         try {
@@ -276,8 +261,7 @@ export class AuthoritySetup {
   }
   private async signEmergencyDraft(op: SecurityOperation<UnsignedRecoveryDraft>, seed: B, check: () => void) {
     const l = op.local, parent = l.states.at(-1)!;
-    const { ed25519 } = await import("@noble/curves/ed25519.js");
-    if (!equal(ed25519.getPublicKey(seed), parent.core.recoveryEd)) throw new SecurityError("untrusted");
+    if (!equal(ed25519SeedPublic(seed), parent.core.recoveryEd)) throw new SecurityError("untrusted");
     check();
     const { state: target, statement: proof } = await Authority.recovery(parent, l.member,
       parent.core.members.filter((m) => m.id !== parent.core.authorityID).concat(l.member), l.secret,
@@ -302,9 +286,8 @@ export class AuthoritySetup {
       if (!decoded) throw new Error(l10n.t("security.invalid_recovery_code"));
       try {
         if (!equal(decoded.genesis, op.local.pin.genesis.slice(0, 10))) throw new SecurityError("untrusted");
-        const { ed25519 } = await import("@noble/curves/ed25519.js");
-        const pub = new Uint8Array(ed25519.getPublicKey(decoded.seed));
-        const chain = await this.context(op.server, pub, (b) => Promise.resolve(new Uint8Array(ed25519.sign(b, decoded.seed))), "", decoded.genesis, check);
+        const pub = ed25519SeedPublic(decoded.seed);
+        const chain = await this.context(op.server, pub, (b) => Promise.resolve(ed25519SeedSign(decoded.seed, b)), "", decoded.genesis, check);
         if (!equal(await stateHash(chain.states.at(-1)!), op.parent)) throw new SecurityError("conflict");
         await this.signEmergencyDraft(op, decoded.seed, check);
       } finally { decoded.seed.fill(0); }

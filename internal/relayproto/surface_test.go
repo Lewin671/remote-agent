@@ -136,8 +136,8 @@ func formatScalarOrNamed(fd protoreflect.FieldDescriptor) string {
 }
 
 var (
-	directedSchemaLineRe  = regexp.MustCompile(`(?m)^\s*"DirectedPeerFrame":\s*\{(.*)\},\s*$`)
-	directedSchemaEntryRe = regexp.MustCompile(`\{\s*(\d+)\s*,\s*"([^"]+)"\s*,\s*(true|false)\s*\}`)
+	directedSchemaLineRe  = regexp.MustCompile(`(?m)^DirectedPeerFrame:([^\n` + "`" + `]+)$`)
+	directedSchemaEntryRe = regexp.MustCompile(`(\d+):([^,\s*]+)(\*)?`)
 )
 
 func collectDirectedPeerFrameSchema(t *testing.T, entries map[string]string) {
@@ -157,7 +157,7 @@ func collectDirectedPeerFrameSchema(t *testing.T, entries map[string]string) {
 	for _, m := range matches {
 		fieldNum := string(m[1])
 		ruleType := string(m[2])
-		if string(m[3]) == "true" {
+		if string(m[3]) == "*" {
 			ruleType += ":repeated"
 		}
 		entries["schema DirectedPeerFrame."+fieldNum] = ruleType

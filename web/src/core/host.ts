@@ -1,12 +1,17 @@
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Tray, TrayItem } from "../attach";
-import { newRequestID } from "../crypto";
+import { newRequestID, UnsupportedHistoryError } from "../crypto";
 import * as l10n from "../i18n";
 import { PEER_PROTOCOL_VERSION } from "../protocol";
 import { pushPrefs, pushState, pushSupported, setPushPrefs, type PushPrefs } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { checkUpdate } from "../update";
+import { SecurityError, toSecurityCode } from "./sec-call";
+
+function makeSecErr(code: SecurityError["code"]): SecurityError {
+  return new SecurityError(code);
+}
 import {
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
@@ -78,17 +83,24 @@ import {
   type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
+  SecurityConfigEventSchema,
+  SecurityOpRequestEventSchema,
+  SecurityRecordEventSchema,
+  type SecurityCryptoBatchEffect,
+  type SecurityKeyAgreeEffect,
+  type SecurityKeySignEffect,
+  type SecurityOpRequestEvent,
+  type SecurityOpResultEffect,
+  type SecurityRecordEvent,
+} from "../gen/remoteagent/core/v1/security_pb";
+import {
   CommandRouteLeg,
-  DirectAuthorizeDoneEventSchema,
   DirectBulkTransferBeginEventSchema,
   DirectBulkTransferDoneEventSchema,
   DirectPreferenceEntrySchema,
   DirectPreferencesLoadedEventSchema,
   DirectRefreshDiagnosticsActionSchema,
   DirectRetryNowActionSchema,
-  DirectSecurityInstalledEventSchema,
-  DirectSecurityMemberSchema,
-  DirectSecuritySnapshotEventSchema,
   DirectSignalDeliveryEventSchema,
   DirectSignalReceivedEventSchema,
   TerminalStreamEventKind,
@@ -242,22 +254,6 @@ export interface StreamLegCallbacks {
   onClosed(legId: bigint, info: Omit<StreamClosedEvent, "$typeName" | "legId">): void;
 }
 
-export interface DirectSecuritySnapshotInput {
-  member: boolean;
-  account: string;
-  domain: Uint8Array<ArrayBuffer>;
-  head: string;
-  headHash: Uint8Array<ArrayBuffer>;
-  epoch: bigint;
-  startedAtMs: bigint;
-  leaseNotAfterMs: bigint;
-  selfId: string;
-  selfEdPublic: Uint8Array<ArrayBuffer>;
-  selfXPublic: Uint8Array<ArrayBuffer>;
-  members: Array<{ deviceId: string; edPublic: Uint8Array<ArrayBuffer>; xPublic: Uint8Array<ArrayBuffer>; isSelf: boolean; kind: number }>;
-  rejected: boolean;
-}
-
 export interface HostBridge {
   start(): void;
   stop(): void;
@@ -272,9 +268,7 @@ export interface HostBridge {
   ensureSession(sessionId: string): Promise<void>;
   retrySession(sessionId: string): void;
   retryEvents(sessionId: string): void;
-  dispatchDirectSecuritySnapshot(snap: DirectSecuritySnapshotInput): void;
-  dispatchDirectSecurityInstalled(installed: { member: boolean; account: string; head: string }): void;
-  dispatchDirectAuthorizeDone(ok: boolean): void;
+  securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect>;
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
   dispatchDirectSignalDelivery(frameId: Uint8Array<ArrayBuffer>, status: number, retryAfterMs: number): void;
   beginDirectBulkTransfer(params: {
@@ -309,7 +303,10 @@ export interface CoreExecutor {
   closeStreamLeg(legId: bigint): void;
   ensureToken(opId: bigint, forceLogin: boolean, timeoutMs: bigint): Promise<TokenResultEvent>;
   discardToken(token: string): void;
-  syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent>;
+  securityConfig?(): { account: string; deviceId: string } | undefined;
+  readCachedSecurityRecord?(): Promise<SecurityRecordEvent | undefined>;
+  syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecurityRecordEvent>;
+  syncSecuritySnapshot?(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent>;
   readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent>;
   readEventsCache(
     opId: bigint,
@@ -331,6 +328,9 @@ export interface CoreExecutor {
   saveScheduleSeen?(machineId: string, tokens: ScheduleSeenToken[]): Promise<void>;
   dismissScheduleNotifications?(runs: ScheduleNotificationRef[]): void;
   setWatchedSessions?(sessionIds: string[]): void;
+  securityKeySign?(eff: SecurityKeySignEffect): void;
+  securityKeyAgree?(eff: SecurityKeyAgreeEffect): void;
+  securityCryptoBatch?(eff: SecurityCryptoBatchEffect): void;
   directKeySign?(eff: DirectKeySignEffect): void;
   directKeyAgree?(eff: DirectKeyAgreeEffect): void;
   directSignalSend?(eff: DirectSignalSendEffect): void;
@@ -786,6 +786,10 @@ export class CoreHost {
   private lastProjectPrefEvent?: Event;
   private bootstrapped = false;
   private preloadedBootstrap?: CacheBootstrapLoadedEvent;
+  private securityConfigured = false;
+  private securityRecordDispatched = false;
+  private nextSecurityOpId = 1n;
+  private securityOpWaiters = new Map<bigint, { resolve: (eff: SecurityOpResultEffect) => void; reject: (err: Error) => void }>();
   private readonly scheduleCacheReads = new Map<bigint, Promise<void>>();
 
   constructor(remote?: Remote, opts: CoreHostOptions = {}) {
@@ -811,9 +815,7 @@ export class CoreHost {
         ensureSession: (sid) => this.ensureSession(sid),
         retrySession: (sid) => this.retrySession(sid),
         retryEvents: (sid) => this.retryEvents(sid),
-        dispatchDirectSecuritySnapshot: (snap) => this.dispatchDirectSecuritySnapshot(snap),
-        dispatchDirectSecurityInstalled: (installed) => this.dispatchDirectSecurityInstalled(installed),
-        dispatchDirectAuthorizeDone: (ok) => this.dispatchDirectAuthorizeDone(ok),
+        securityOp: (op) => this.securityOp(op),
         dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
         dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
           this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
@@ -873,6 +875,34 @@ export class CoreHost {
   /** Bound initial schedule cache hydration when opening on #/tasks. */
   static readonly WARM_SCHEDULE_CACHE_TIMEOUT_MS = 120;
 
+  private ensureSecurityConfigured() {
+    if (this.closed || this.securityConfigured) return;
+    const cfg = this.executor?.securityConfig?.();
+    if (!cfg) return;
+    this.securityConfigured = true;
+    this.emit({
+      case: "securityConfig",
+      value: create(SecurityConfigEventSchema, {
+        account: cfg.account,
+        deviceId: cfg.deviceId,
+        inlineCrypto: false,
+      }),
+    });
+  }
+
+  private async ensureSecurityRecordPreloaded() {
+    if (this.closed || this.securityRecordDispatched || !this.executor?.securityConfig?.()) return;
+    try {
+      const rec = await this.executor.readCachedSecurityRecord?.();
+      if (rec && !this.closed && !this.securityRecordDispatched) {
+        this.securityRecordDispatched = true;
+        this.emit({ case: "securityRecord", value: rec });
+      }
+    } catch {
+      // Missing local security record falls back to live syncSecurity.
+    }
+  }
+
   /** Reads IndexedDB bootstrap (and schedule cache on task routes) before first render
    * so sub-route refreshes never flash empty or missing-device states. */
   async warmLocalCache(
@@ -880,6 +910,9 @@ export class CoreHost {
     raceTimeout: <T>(work: Promise<T>, ms: number) => Promise<T | undefined> = defaultRaceTimeout,
   ): Promise<void> {
     if (this.closed || !this.executor) return;
+    this.ensureSecurityConfigured();
+    await this.ensureSecurityRecordPreloaded();
+    if (this.closed) return;
     if (!this.bootstrapped) {
       try {
         const boot = await raceTimeout(
@@ -938,6 +971,7 @@ export class CoreHost {
     }, CLOCK_TICK_MS);
     const available = this.remote ? this.remote.network : typeof navigator === "undefined" || navigator.onLine !== false;
     this.emitClock();
+    this.ensureSecurityConfigured();
     const storedPrefs = this.readStoredDirectPreferences();
     if (storedPrefs.length > 0) {
       this.emit({
@@ -983,7 +1017,15 @@ export class CoreHost {
     this.clearTimers();
     clearInterval(this.clockTimer);
     this.clockTimer = undefined;
+    this.rejectSecurityOps();
     if (!this.closed) this.emit({ case: "syncLifecycle", value: create(SyncLifecycleActionSchema, { kind: SyncLifecycleKind.STOP }) });
+  }
+
+  private rejectSecurityOps() {
+    for (const w of this.securityOpWaiters.values()) {
+      w.reject(makeSecErr("unavailable"));
+    }
+    this.securityOpWaiters.clear();
   }
 
   setForeground(active: boolean) {
@@ -1675,41 +1717,16 @@ export class CoreHost {
     };
   }
 
-  dispatchDirectSecuritySnapshot(snap: DirectSecuritySnapshotInput) {
-    if (this.closed) return;
-    this.emit({
-      case: "directSecuritySnapshot",
-      value: create(DirectSecuritySnapshotEventSchema, {
-        member: snap.member,
-        account: snap.account,
-        domain: snap.domain,
-        head: snap.head,
-        headHash: snap.headHash,
-        epoch: snap.epoch,
-        startedAtMs: snap.startedAtMs,
-        leaseNotAfterMs: snap.leaseNotAfterMs,
-        selfId: snap.selfId,
-        selfEdPublic: snap.selfEdPublic,
-        selfXPublic: snap.selfXPublic,
-        members: snap.members.map((m) => create(DirectSecurityMemberSchema, m)),
-        rejected: snap.rejected,
-      }),
-    });
-  }
-
-  dispatchDirectSecurityInstalled(installed: { member: boolean; account: string; head: string }) {
-    if (this.closed) return;
-    this.emit({
-      case: "directSecurityInstalled",
-      value: create(DirectSecurityInstalledEventSchema, installed),
-    });
-  }
-
-  dispatchDirectAuthorizeDone(ok: boolean) {
-    if (this.closed) return;
-    this.emit({
-      case: "directAuthorizeDone",
-      value: create(DirectAuthorizeDoneEventSchema, { ok }),
+  securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect> {
+    if (this.closed) return Promise.reject(makeSecErr("unavailable"));
+    this.ensureSecurityConfigured();
+    const opId = this.nextSecurityOpId++;
+    return new Promise<SecurityOpResultEffect>((resolve, reject) => {
+      this.securityOpWaiters.set(opId, { resolve, reject });
+      this.emit({
+        case: "securityOpRequest",
+        value: create(SecurityOpRequestEventSchema, { opId, op }),
+      });
     });
   }
 
@@ -2110,6 +2127,10 @@ export class CoreHost {
     if (ev.event.case === "cacheBootstrapLoaded") {
       this.bootstrapped = true;
     }
+    if (ev.event.case === "securityRecord") {
+      this.ensureSecurityConfigured();
+      this.securityRecordDispatched = true;
+    }
     if (ev.event.case === "newSessionSubmit") {
       ev = this.enrichNewSessionSubmit(ev);
     }
@@ -2243,10 +2264,37 @@ export class CoreHost {
 
       case "syncSecurity": {
         const { opId, networkGeneration, touch } = val.value;
-        void this.executor?.syncSecurity(opId, networkGeneration, touch).then(
-          (value) => !this.closed && this.emit({ case: "securitySnapshot", value }),
-          (err) => !this.closed && this.emit({ case: "securitySnapshot", value: create(SecuritySnapshotEventSchema, { opId, networkGeneration, error: errorMessage(err) }) }),
-        );
+        if (this.executor?.securityConfig?.()) {
+          void this.executor.syncSecurity(opId, networkGeneration, touch).then(
+            (value) => !this.closed && this.emit({ case: "securityRecord", value }),
+            (err) =>
+              !this.closed &&
+              this.emit({
+                case: "securityRecord",
+                value: create(SecurityRecordEventSchema, { opId, networkGeneration, error: errorMessage(err) }),
+              }),
+          );
+        } else if (this.executor?.syncSecuritySnapshot) {
+          void this.executor.syncSecuritySnapshot(opId, networkGeneration, touch).then(
+            (value) => !this.closed && this.emit({ case: "securitySnapshot", value }),
+            (err) =>
+              !this.closed &&
+              this.emit({
+                case: "securitySnapshot",
+                value: create(SecuritySnapshotEventSchema, { opId, networkGeneration, error: errorMessage(err) }),
+              }),
+          );
+        } else if (this.executor?.syncSecurity) {
+          void this.executor.syncSecurity(opId, networkGeneration, touch).then(
+            (value) => !this.closed && this.emit({ case: "securityRecord", value }),
+            (err) =>
+              !this.closed &&
+              this.emit({
+                case: "securityRecord",
+                value: create(SecurityRecordEventSchema, { opId, networkGeneration, error: errorMessage(err) }),
+              }),
+          );
+        }
         break;
       }
 
@@ -2258,7 +2306,10 @@ export class CoreHost {
           this.preloadedBootstrap = undefined;
           const read = boot
             ? Promise.resolve(create(CacheBootstrapLoadedEventSchema, { ...boot, opId }))
-            : this.cacheWriteQueue.then(() => this.executor?.readBootstrapCache(opId));
+            : this.cacheWriteQueue.then(async () => {
+                await this.ensureSecurityRecordPreloaded();
+                return this.executor?.readBootstrapCache(opId);
+              });
           void read.then(
             (value) => !this.closed && value && this.emit({ case: "cacheBootstrapLoaded", value }),
             (err) => !this.closed && this.emit({ case: "cacheBootstrapLoaded", value: create(CacheBootstrapLoadedEventSchema, { opId, error: errorMessage(err) }) }),
@@ -2702,12 +2753,36 @@ export class CoreHost {
       }
 
       case "securityKeySign":
+        this.executor?.securityKeySign?.(val.value);
+        break;
+
       case "securityKeyAgree":
-      case "securityKeyGenerate":
-      case "securityKeyEncapsulate":
-      case "securityKeyDiscard":
+        this.executor?.securityKeyAgree?.(val.value);
+        break;
+
       case "securityCryptoBatch":
-      case "securityOpResult":
+        this.executor?.securityCryptoBatch?.(val.value);
+        break;
+
+      case "securityOpResult": {
+        const res = val.value;
+        const w = this.securityOpWaiters.get(res.opId);
+        if (w) {
+          this.securityOpWaiters.delete(res.opId);
+          if (res.error) {
+            if (res.errorCode === "unsupported_history") {
+              w.reject(new UnsupportedHistoryError());
+            } else if (res.errorCode === "stale" && res.error.toLowerCase().includes("lease")) {
+              w.reject(makeSecErr("lease"));
+            } else {
+              w.reject(makeSecErr(toSecurityCode(res.errorCode)));
+            }
+          } else {
+            w.resolve(res);
+          }
+        }
+        break;
+      }
       case undefined:
         break;
 
@@ -2866,6 +2941,7 @@ export class CoreHost {
       for (const fn of list) fn(false);
     }
     this.retryNowWaiters.clear();
+    this.rejectSecurityOps();
     this.core.close();
   }
 }

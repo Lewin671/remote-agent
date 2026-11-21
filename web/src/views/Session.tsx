@@ -43,7 +43,7 @@ import { Markdown } from "../markdown";
 import { canAnimate, easeBetween, useExit, useKnob } from "../motion";
 import { shortPath, shortenPath } from "../model";
 import { type Remote } from "../remote";
-import { previewBlobForFile, saveBlobAsDownload } from "../shared-files";
+import { previewBlobForFile, saveBlobAsDownload, sharedFilesOf } from "../shared-files";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { skeletonMessage } from "../skeleton";
 import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, StateMark, useRemote, type Mark } from "../ui";
@@ -631,13 +631,14 @@ export function SessionScreenView({
 
   useEffect(() => {
     if (!remote) return;
-    remote.sharedFiles.setCurrentSession(sid);
-    remote.sharedFiles.setAutoOpenHandler((targetSid, file, blob) => {
+    const files = sharedFilesOf(remote);
+    files.setCurrentSession(sid);
+    files.setAutoOpenHandler((targetSid, file, blob) => {
       if (targetSid === sid) openSharedFile(file, blob);
     });
     return () => {
-      remote.sharedFiles.setCurrentSession(undefined);
-      remote.sharedFiles.setAutoOpenHandler(undefined);
+      files.setCurrentSession(undefined);
+      files.setAutoOpenHandler(undefined);
     };
   }, [remote, sid, openSharedFile]);
 

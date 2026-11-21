@@ -9,10 +9,10 @@ import { resumeRegistration } from "./remote";
 import { DeviceRegistrationSchema, RegisterDeviceRequestSchema, RegisterDeviceResponseSchema, PairApprovalSchema, DeviceKind } from "./gen/remoteagent/v1/relay_pb";
 import { buildRecord } from "./device-security-store";
 import { parseState, parseRecoveryStatement, unb64, pinOf, stateHash } from "./device-security";
-import { ed25519 } from "@noble/curves/ed25519.js";
+import { ed25519SeedPublic } from "./core/sec-call";
 import vectors from "./testdata/authority/vectors.json";
 const server = "https://relay.example.com";
-const pub = new Uint8Array(ed25519.getPublicKey(new Uint8Array(32).fill(0x61)));
+const pub = ed25519SeedPublic(new Uint8Array(32).fill(0x61));
 const genesis = await parseState(unb64(vectors.States.genesis));
 const pin = await pinOf(genesis);
 beforeEach(() => {

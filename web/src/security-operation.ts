@@ -4,6 +4,8 @@ import { equal, SecurityError } from "./device-security";
 import { securityEntry, updateSecurityEntry, type SecurityRecord } from "./device-security-store";
 
 type B = Uint8Array<ArrayBuffer>;
+/** Delivery cannot complete; the candidate must be explicitly removed. */
+export class PairingDeliveryError extends Error {}
 export type OperationPhase = "PREPARED" | "PUBLISHED" | "DELIVERED";
 export interface SecurityOperation<L = unknown> {
   id: string;

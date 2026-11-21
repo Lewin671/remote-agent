@@ -3,8 +3,8 @@ import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import fixture from "../../testdata/transport/prepared-command.json";
 import { SyntheticRemote } from "./test/remote-fixture";
 import { webMember } from "./test/security-fixture";
-import { DeviceSecurityClient, unpackSecurity } from "./device-security-client";
-import { parseHeader } from "./device-security";
+import { AuthoritySecurity } from "./authority-security";
+import { parseTestHeader, unpackTestBody } from "./test/stored-security-fixture";
 import { CommandSchema, CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
 import { type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { newSlot, restoreSlot } from "./remote";
@@ -24,9 +24,9 @@ test("create retries and a fresh client preserve the first payload bytes across 
     function install(target: SyntheticRemote) {
       (target as unknown as { api: unknown }).api = {
         forward: async (q: { command: Envelope }) => {
-          const h = parseHeader(new Uint8Array(q.command.securityHeader));
+          const h = parseTestHeader(new Uint8Array(q.command.securityHeader));
           const opened = await r.world.fixture.open(r.machine, q.command);
-          bodies.push(unpackSecurity(h, opened.plaintext));
+          bodies.push(unpackTestBody(h, opened.plaintext));
           epochs.push(h.contentEpoch);
           return { result: await target.seal({ kind: 6, requestId: h.request }, CommandResultSchema, create(CommandResultSchema)) };
         },
@@ -35,7 +35,7 @@ test("create retries and a fresh client preserve the first payload bytes across 
     install(r);
     await r.machineCommand(r.machine, plain.kind, slot);
     await webMember(r.world);
-    await (r as unknown as { security: DeviceSecurityClient }).security.sync();
+    await (r as unknown as { security: AuthoritySecurity }).security.sync();
     await r.machineCommand(r.machine, { case: "createSession", value: { env: { different: "ignored" } } }, slot);
     fresh = new SyntheticRemote(r.world, r.member, r.seed);
     install(fresh);

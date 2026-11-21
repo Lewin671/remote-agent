@@ -11,7 +11,7 @@ import * as operations from "./security-operation";
 import * as storage from "./storage";
 import { App } from "./App";
 import * as pairing from "./pairing";
-import * as bootstrap from "./authority-setup";
+import * as bootstrap from "./authority-startup";
 import * as security from "./device-security-store";
 import { Remote } from "./remote";
 import * as remoteModule from "./remote";

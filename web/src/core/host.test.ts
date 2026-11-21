@@ -21,6 +21,7 @@ import {
   type Event,
   type RpcEffect,
 } from "../gen/remoteagent/core/v1/app_pb";
+import { SecurityRecordEventSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { Agent, SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
@@ -71,6 +72,12 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
     },
     discardToken() {},
     async syncSecurity(opId, networkGeneration) {
+      return create(SecurityRecordEventSchema, {
+        opId,
+        networkGeneration,
+      });
+    },
+    async syncSecuritySnapshot(opId, networkGeneration) {
       return create(SecuritySnapshotEventSchema, {
         opId,
         isMember: true,

@@ -247,9 +247,14 @@ func (e *Engine) handleSecurityKeySigned(ctx *StepContext, ev *corev1.SecurityKe
 }
 
 func (e *Engine) handleSecurityKeyAgreed(ctx *StepContext, ev *corev1.SecurityKeyAgreedEvent) {
+	prevMember := e.security.IsMember
+	prevLoaded := e.security.Loaded
 	effs := e.secEngine.HandleKeyAgreed(e.nowMs, ev)
 	e.emitRawEffects(ctx, effs)
-	e.syncSecurityStateFromEngine(ctx, true)
+	snap := e.secEngine.Snapshot()
+	if snap.IsMember != prevMember || snap.Loaded != prevLoaded {
+		e.syncSecurityStateFromEngine(ctx, true)
+	}
 }
 
 func (e *Engine) handleSecurityCryptoBatchDone(ctx *StepContext, ev *corev1.SecurityCryptoBatchDoneEvent) {

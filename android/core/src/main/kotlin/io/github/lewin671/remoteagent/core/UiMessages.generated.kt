@@ -267,7 +267,6 @@ object UiMessages {
     fun errorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe(): UiMessage = UiMessage("errors.history_keys_unavailable_records_from_before_recovery_cannot_be", emptyMap())
     fun errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed(): UiMessage = UiMessage("errors.invalid_ciphertext_signature_key_or_content_verification_failed", emptyMap())
     fun errorsInvalidPairingApprovalSignature(): UiMessage = UiMessage("errors.invalid_pairing_approval_signature", emptyMap())
-    fun errorsInvalidSessionSeed(): UiMessage = UiMessage("errors.invalid_session_seed", emptyMap())
     fun errorsItMayHaveBeenDeletedOrBelongToA(): UiMessage = UiMessage("errors.it_may_have_been_deleted_or_belong_to_a", emptyMap())
     fun errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd(): UiMessage = UiMessage("errors.membership_chain_conflict_security_operations_stopped_verify_devices_and", emptyMap())
     fun errorsNamesCanOnlyBeChangedOnThatDevice(): UiMessage = UiMessage("errors.names_can_only_be_changed_on_that_device", emptyMap())

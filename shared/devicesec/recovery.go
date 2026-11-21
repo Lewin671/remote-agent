@@ -159,7 +159,14 @@ func NewRecovery(parent State, newMember Member, members []Member, secret []byte
 	if m, ok := c.Member(newMember.ID); !ok || m != newMember {
 		return State{}, ErrInvalid
 	}
-	return NewStateForCore(c, secret, nil, hpke)
+	s, err := NewStateForCore(c, secret, nil, hpke)
+	if err != nil {
+		return State{}, err
+	}
+	if err := recoveryDelta(parent, s); err != nil {
+		return State{}, err
+	}
+	return s, nil
 }
 
 // NewRecoveryStatement builds the unsigned statement authorizing exactly next

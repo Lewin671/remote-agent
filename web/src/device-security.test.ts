@@ -1,12 +1,5 @@
-import {
-  parseLease,
-  validLease,
-  verifyLease,
-  leaseSignBytes,
-} from "./device-security";
 import { describe, it, expect } from "vitest";
 import vectors from "../../internal/deviceauth/testdata/domain-v3.json";
-import envelopeVector from "../../internal/e2e/testdata/v3-vectors.json";
 import { concat, fromHex, hex } from "./crypto";
 import {
   buildRecord,
@@ -15,29 +8,20 @@ import {
 } from "./device-security-store";
 import {
   b64,
-  fromEnvelope,
-  headerBytes,
   newSecurityKey,
   openGrant,
   openPrevSecret,
-  openWire,
-  parseHeader,
+  parseLease,
   parseRecoveryStatement,
   parseState,
-  parseWire,
-  Purpose,
   recoveryBytes,
   SecurityError,
   stateBytes,
-  toEnvelope,
   unb64,
-  verifyGenesis,
+  validLease,
+  verifyChain,
+  verifyLease,
   verifyRecovery,
-  verifyStateSignature,
-  verifyTransition,
-  verifyWire,
-  wireBytes,
-  Writer,
 } from "./device-security";
 
 const state = async (s: { state: string }) => parseState(unb64(s.state));
@@ -62,9 +46,11 @@ async function xFromHex(h: string): Promise<CryptoKey> {
 
 describe("ordinary authority handoff", () => {
   it("accepts a retiring-authority signature and preserves the historical key walk", async () => {
-    const parent = await state(vectors.handoff_parent),
+    const genesis = await state(vectors.genesis),
+      added = await state(vectors.added),
+      parent = await state(vectors.handoff_parent),
       next = await state(vectors.handoff);
-    await verifyTransition(parent, next);
+    await verifyChain(pin, [genesis, added, parent, next]);
     await verifyLease(parseLease(unb64(vectors.handoff_lease)), next);
     expect(
       next.core.members.some((m) => m.id === parent.core.authorityID),
@@ -95,12 +81,15 @@ describe("independent signed leases", () => {
     await expect(validLease(first, head, first.notAfter)).rejects.toMatchObject(
       { code: "lease" },
     );
-    expect(() =>
-      leaseSignBytes({
-        ...first,
-        notAfter: first.issuedAt + BigInt(72 * 60 * 60 * 1000) + 1n,
-      }),
-    ).toThrow();
+    await expect(
+      verifyLease(
+        {
+          ...first,
+          notAfter: first.issuedAt + BigInt(72 * 60 * 60 * 1000) + 1n,
+        },
+        head,
+      ),
+    ).rejects.toThrow();
   });
 });
 describe("protocol-10 state chain: Go interoperability", () => {
@@ -109,22 +98,21 @@ describe("protocol-10 state chain: Go interoperability", () => {
     const added = await state(vectors.added);
     const renewal = await state(vectors.renewal);
     const recovery = await state(vectors.recovery);
-    await verifyGenesis(pin, genesis);
+    await verifyChain(pin, [genesis]);
     expect(b64(await stateBytes(genesis))).toBe(vectors.genesis.state);
-    await verifyTransition(genesis, added);
-    await verifyTransition(added, renewal);
+    await verifyChain(pin, [genesis, added, renewal]);
     const proof = await parseRecoveryStatement(
       unb64(vectors.recovery_statement),
     );
     expect(b64(await recoveryBytes(proof))).toBe(vectors.recovery_statement);
-    await verifyTransition(renewal, recovery, proof);
+    await verifyChain(pin, [genesis, added, renewal, recovery], [undefined, undefined, undefined, proof]);
     expect(recovery.prevSecret.length).toBe(0);
     // The recovery statement binds the exact state.
     const changed = structuredClone(recovery);
     changed.core.issuedAt++;
-    await expect(verifyTransition(renewal, changed, proof)).rejects.toThrow(
-      SecurityError,
-    );
+    await expect(
+      verifyChain(pin, [genesis, added, renewal, changed], [undefined, undefined, undefined, proof]),
+    ).rejects.toThrow(SecurityError);
     await expect(verifyRecovery(proof, added, recovery)).rejects.toThrow();
   });
 
@@ -162,7 +150,7 @@ describe("protocol-10 state chain: Go interoperability", () => {
     ]) {
       const s = structuredClone(added);
       mutate(s);
-      await expect(verifyTransition(genesis, s)).rejects.toThrow();
+      await expect(verifyChain(pin, [genesis, s])).rejects.toThrow();
     }
   });
 
@@ -225,125 +213,15 @@ describe("protocol-10 state chain: Go interoperability", () => {
   });
 
   it("merges a recovery proof and checks the new authority", async () => {
+    const genesis = await state(vectors.genesis);
+    const added = await state(vectors.added);
     const renewal = await state(vectors.renewal);
     const recovery = await state(vectors.recovery);
     const proof = await parseRecoveryStatement(
       unb64(vectors.recovery_statement),
     );
-    await verifyTransition(renewal, recovery, proof);
+    await verifyChain(pin, [genesis, added, renewal, recovery], [undefined, undefined, undefined, proof]);
     expect(recovery.core.authorityID).toBe(proof.newAuthorityID);
     expect(recovery.core.recoveryEd).toEqual(proof.newRecoveryEd);
-  });
-});
-
-describe("protocol-10 envelope: Go interoperability", () => {
-  async function vector() {
-    const s = await parseState(unb64(envelopeVector.state));
-    const w = parseWire(
-      new Writer()
-        .lp(unb64(envelopeVector.header))
-        .lp(unb64(envelopeVector.nonce))
-        .lp(unb64(envelopeVector.cipher))
-        .lp(unb64(envelopeVector.origin))
-        .bytes(),
-    );
-    return { s, w };
-  }
-  it("opens the Go header and derives the same ciphertext", async () => {
-    const { s, w } = await vector();
-    expect(b64(w.header)).toBe(envelopeVector.header);
-    const opened = await openWire(
-      {
-        account: envelopeVector.account,
-        domain: fromHex(envelopeVector.domain),
-        genesis: new Uint8Array(32).fill(1),
-      },
-      s,
-      s,
-      w,
-      fromHex(envelopeVector.content_secret),
-      false,
-      0n,
-    );
-    expect(b64(opened.plaintext)).toBe(envelopeVector.plain);
-    const env = toEnvelope(w);
-    expect(env.header.length).toBeGreaterThan(0);
-    expect(b64(wireBytes(fromEnvelope(env)))).toBe(b64(wireBytes(w)));
-    const changed = structuredClone(w);
-    changed.origin[0] ^= 1;
-    await expect(
-      verifyWire(
-        {
-          account: envelopeVector.account,
-          domain: fromHex(envelopeVector.domain),
-          genesis: new Uint8Array(32).fill(1),
-        },
-        s,
-        s,
-        changed,
-        false,
-        0n,
-      ),
-    ).rejects.toThrow(SecurityError);
-    expect(() =>
-      parseWire(concat(wireBytes(w), new Uint8Array([0]))),
-    ).toThrow();
-  });
-
-  it("requires a live lease for control envelopes and no lease for history", async () => {
-    const { s, w } = await vector();
-    const pin = {
-      account: envelopeVector.account,
-      domain: fromHex(envelopeVector.domain),
-      genesis: new Uint8Array(32).fill(1),
-    };
-    const head = s.core.issuedAt + BigInt(72 * 60 * 60 * 1000);
-    await expect(
-      validLease(
-        parseLease(unb64(vectors.lease)),
-        await state(vectors.added),
-        head + 1n,
-      ),
-    ).rejects.toMatchObject({ code: "lease" });
-    await expect(
-      verifyWire(pin, s, s, w, false, head + 1n),
-    ).resolves.toBeDefined();
-  });
-
-  it("rejects control whose head state is from the future", async () => {
-    const { s, w } = await vector();
-    const pin = {
-      account: envelopeVector.account,
-      domain: fromHex(envelopeVector.domain),
-      genesis: new Uint8Array(32).fill(1),
-    };
-    const behind = s.core.issuedAt - BigInt(5 * 60 * 1000) - 1n;
-    await expect(verifyWire(pin, s, s, w, true, behind)).rejects.toMatchObject({
-      code: "clock",
-    });
-    await expect(
-      verifyWire(pin, s, s, w, false, behind),
-    ).resolves.toBeDefined();
-  });
-
-  it("round-trips a header and keeps every authenticated field", async () => {
-    const h = parseHeader(unb64(envelopeVector.header));
-    expect(h.purpose).toBe(Purpose.Command);
-    expect(h.kind).toBe(5);
-    expect(h.machine.length).toBe(32);
-    expect(b64(headerBytes(h))).toBe(envelopeVector.header);
-    const cloned = {
-      ...h,
-      kind: 10,
-      purpose: Purpose.Notify,
-      session: "session-1",
-      request: "notify:1:7",
-    };
-    expect(parseHeader(headerBytes(cloned)).request).toBe("notify:1:7");
-    expect(() => parseHeader(new Uint8Array([3]))).toThrow();
-    await verifyStateSignature(await parseState(unb64(envelopeVector.state)));
-    const bad = structuredClone(h) as typeof h & { contentEpoch: bigint };
-    bad.contentEpoch = h.epoch + 1n;
-    expect(() => headerBytes(bad)).toThrow();
   });
 });

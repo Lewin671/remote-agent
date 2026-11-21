@@ -132,7 +132,7 @@ func TestCoreRoundTrip(t *testing.T) {
 func TestCoreSecCallRoundTrip(t *testing.T) {
 	seedReq, err := proto.Marshal(&stdcorev1.SecCallRequest{
 		Call: &stdcorev1.SecCallRequest_Ed25519SeedPublic{
-			Ed25519SeedPublic: &stdcorev1.SecEd25519SeedPublicCall{Seed: make([]byte, 32)},
+			Ed25519SeedPublic: make([]byte, 32),
 		},
 	})
 	if err != nil {

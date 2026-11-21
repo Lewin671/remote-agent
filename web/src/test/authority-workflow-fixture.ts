@@ -8,7 +8,7 @@ import { AuthorityLifecycle, readSecurityOperation, claimSecurityOperation } fro
 import { AuthorityClient } from "../authority-client";
 import { loadAccount, type StoredAccount } from "../storage";
 import * as securityStore from "../device-security-store";
-import { DeviceSecurityClient } from "../device-security-client";
+import { AuthoritySecurity, type SecurityStorage } from "../authority-security";
 import { signLogin } from "../crypto";
 import { PairingService } from "../gen/remoteagent/v1/relay_pb";
 import { RELAY_PROTOCOL_VERSION } from "../protocol";
@@ -64,11 +64,12 @@ export async function clients(account: StoredAccount) {
   const { token } = await services.auth.login({ deviceId: account.deviceId, challenge, signature: await signLogin(account.devicePrivate, challenge), protocolVersion: RELAY_PROTOCOL_VERSION });
   const api = services.client(token);
   const pairing = createClient(PairingService, createConnectTransport({ baseUrl: account.server, useBinaryFormat: true, interceptors: [(next) => (req) => { req.header.set("Authorization", "Bearer " + token); return next(req); }] }));
-  const security = new DeviceSecurityClient(account.deviceId, account.devicePrivate, (afterEpoch, limit) => api.getSecurityStates({ afterEpoch, limit }), () => true, {
+  const storage: SecurityStorage = {
     loadSecurity: () => securityStore.loadSecurity(),
     installSecurity: (...args) => securityStore.installSecurity(...args),
     touchSecurity: (...args) => securityStore.touchSecurity(...args),
-  });
+  };
+  const security = new AuthoritySecurity(account.deviceId, account.devicePrivate, (afterEpoch: bigint, limit: number) => api.getSecurityStates({ afterEpoch, limit }), () => true, storage);
   const authority = new AuthorityClient(account, security, api, pairing, async (publicKey, check, persist, request) => { if (!request) await persist(publicKey); check(); return true; }, lifecycle());
   return { api, pairing, security, authority, token };
 }

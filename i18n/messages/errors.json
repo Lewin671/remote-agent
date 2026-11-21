@@ -940,22 +940,6 @@
     "zh-CN": "推送积压，正在重连"
   },
   {
-    "en": "Invalid session seed",
-    "key": "errors.invalid_session_seed",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "无效的会话种子"
-  },
-  {
     "en": "History has a gap. Retry.",
     "key": "errors.history_has_a_gap_retry",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",

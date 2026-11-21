@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { t } from "../i18n";
 import * as coreRuntime from "./runtime";
-import * as authoritySetup from "../authority-setup";
+import * as authoritySetup from "../authority-startup";
 import * as remoteModule from "../remote";
 import * as storage from "../storage";
 import { DemoRemote } from "../dev/demo";

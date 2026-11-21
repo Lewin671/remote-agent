@@ -547,39 +547,6 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect getSecurityKeyAgree();
 
   /**
-   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
-   * @return Whether the securityKeyGenerate field is set.
-   */
-  boolean hasSecurityKeyGenerate();
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
-   * @return The securityKeyGenerate.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect getSecurityKeyGenerate();
-
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
-   * @return Whether the securityKeyEncapsulate field is set.
-   */
-  boolean hasSecurityKeyEncapsulate();
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
-   * @return The securityKeyEncapsulate.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect getSecurityKeyEncapsulate();
-
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
-   * @return Whether the securityKeyDiscard field is set.
-   */
-  boolean hasSecurityKeyDiscard();
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
-   * @return The securityKeyDiscard.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect getSecurityKeyDiscard();
-
-  /**
    * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
    * @return Whether the securityCryptoBatch field is set.
    */

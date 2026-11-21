@@ -18,7 +18,12 @@ watchChunks();
 
 // The parts fetched on demand are fetched ahead once the page has settled:
 // the terminal, pairing, the pages of settings and tasks.
-fetchAhead([...pagesAhead, () => import("./views/Pairing"), () => import("./views/Terminal"), () => import("./sendimages"), () => import("@noble/curves/ed25519.js")]);
+fetchAhead([
+  ...pagesAhead,
+  function () { return import("./views/Pairing"); },
+  function () { return import("./views/Terminal"); },
+  function () { return import("./sendimages"); },
+]);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

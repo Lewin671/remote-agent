@@ -236,7 +236,6 @@
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "历史密钥不可用：恢复前的记录无法解密";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "密文无效：签名、密钥或内容校验失败";
 "errors_invalid_pairing_approval_signature" = "配对批准签名无效";
-"errors_invalid_session_seed" = "无效的会话种子";
 "errors_ios_already_registering_wait_for_the_result" = "已经在登记%1$@，稍等结果";
 "errors_ios_cannot_find_the_server_check_your_network" = "找不到服务器，检查一下网络";
 "errors_ios_cannot_open_the_computer_s_reply_command_execution_is" = "电脑的回复打不开，不确定指令有没有执行";

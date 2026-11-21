@@ -4,7 +4,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { SyntheticRemote } from "./test/remote-fixture";
 import { CommandError, newSlot } from "./remote";
 import { getCoreHost } from "./core/host";
-import { parseHeader, requestIdentity } from "./device-security";
+import { parseTestHeader, testRequestIdentity } from "./test/stored-security-fixture";
 import { EnvelopeSchema, PayloadKind, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { NotForwardedSchema } from "./gen/remoteagent/v1/relay_pb";
 import { CommandResultSchema, CommandSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -39,8 +39,8 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
     const sendRpcSpy = vi.spyOn(holder.directExec, "sendRpc").mockImplementation(async (_pcId, _reqId, reqEnvBytes, _timeoutMs, handoff) => {
       handoff();
       const env = fromBinary(EnvelopeSchema, reqEnvBytes);
-      const h = parseHeader(new Uint8Array(env.securityHeader));
-      const binding = await requestIdentity(h, makeCmdBytes());
+      const h = parseTestHeader(new Uint8Array(env.securityHeader));
+      const binding = await testRequestIdentity(h, makeCmdBytes());
       return await r.seal(
         { kind: PayloadKind.COMMAND_RESULT, requestId: h.request },
         CommandResultSchema,

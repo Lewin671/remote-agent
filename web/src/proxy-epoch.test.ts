@@ -8,7 +8,7 @@ import {Remote,apiBase} from "./remote";
 import {relayFetch} from "./transport";
 import {SyntheticRemote} from "./test/remote-fixture";
 import {CommandResultSchema} from "./gen/remoteagent/v1/remote_pb";
-import {parseHeader} from "./device-security";
+import { parseTestHeader } from "./test/stored-security-fixture";
 import type {Envelope} from "./gen/remoteagent/v1/envelope_pb";
 
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
@@ -31,7 +31,7 @@ test.each([true,false])("proxy-only command uses effective API origin (cached=%s
  let calls=0;
  (r as unknown as {api:unknown}).api={forward:async(q:{command:Envelope;relayEpoch:string})=>{
   calls++;expect(q.relayEpoch).toBe("proxied-epoch");
-  const header=parseHeader(new Uint8Array(q.command.securityHeader));
+  const header=parseTestHeader(new Uint8Array(q.command.securityHeader));
   return {result:await r.seal({kind:6,requestId:header.request},CommandResultSchema,create(CommandResultSchema))};
  }};
  try {

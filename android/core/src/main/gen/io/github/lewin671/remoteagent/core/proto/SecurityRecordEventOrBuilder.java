@@ -139,4 +139,18 @@ public interface SecurityRecordEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SecurityContentKey> 
+      getContentKeysList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityContentKey getContentKeys(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityContentKey content_keys = 17 [json_name = "contentKeys"];</code>
+   */
+  int getContentKeysCount();
 }

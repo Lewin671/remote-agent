@@ -4,7 +4,7 @@ import { ensureCore } from "./core/runtime";
 import { useLocale } from "./i18n";
 import { Startup } from "./Startup";
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
-import { authorityStartup } from "./authority-setup";
+import { authorityStartup } from "./authority-startup";
 import {
   lazy,
   Suspense,

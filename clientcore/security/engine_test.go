@@ -680,3 +680,129 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 		t.Fatalf("expected PrevSecret continuity mismatch to reject member state, recordErr=%q", recEng.recordErr)
 	}
 }
+
+func TestEngineRecoveryContentKeysAndNonEventUnavailable(t *testing.T) {
+	nowMs := int64(1_700_000_000_000)
+	acct, dom, gen, phone, machine, rec, _, sec2, rawStates, _, states := makeGenesisAndTwoStateRecord(t, uint64(nowMs))
+
+	// Add a secondary retained client before recovery so recovery removes phone while keeping retained.
+	retained := newTestIdentity(t, 6)
+	sec2Ret := bytes.Repeat([]byte{0x2b}, 32)
+	sRetU, err := devicesec.NewMembershipState(states[1], []devicesec.Member{phone.member(devicesec.Client), machine.member(devicesec.Machine), retained.member(devicesec.Client)}, nil, sec2, sec2Ret, uint64(nowMs+15), stdHPKESender{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sRetSB, _ := sRetU.SigningBytes()
+	sRetU.Signature = ed25519.Sign(phone.ed, sRetSB)
+	sRetRaw, _ := sRetU.MarshalBinary()
+	sRetParsed, err := devicesec.ParseState(sRetRaw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseRaw := append(slices.Clone(rawStates), sRetRaw)
+
+	// Seal both a pre-recovery Event and a pre-recovery Prefs object at sRetParsed.
+	seed := bytes.Repeat([]byte{0x77}, 32)
+	oldEv := sealEventProto(t, machine, dom, sRetParsed, sec2Ret, seed, acct, "sess-pre", 1, uint64(nowMs+15), "before rec")
+	shRet, _ := sRetParsed.Hash()
+	prefsPlain, _ := (&v1.ProjectPrefs{Schema: 1}).Marshal()
+	prefsHdr := devicesec.Header{
+		Account: acct, Domain: dom, Epoch: sRetParsed.Core.Epoch, State: shRet,
+		ContentEpoch: sRetParsed.Core.ContentEpoch, Sender: retained.id,
+		Kind: devicesec.Prefs.Kind(), Purpose: devicesec.Prefs, Request: "project-prefs", Seq: 1,
+	}
+	phb, pkey, pnonce, err := devicesec.PrepareCiphertext(sec2Ret, nil, prefsHdr, len(prefsPlain), bytes.NewReader(bytes.Repeat([]byte{8}, 12)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pblk, _ := aes.NewCipher(pkey)
+	paead, _ := cipher.NewGCM(pblk)
+	pct, pOriginMsg, err := devicesec.AssembleCiphertext(phb, pnonce, paead.Seal(nil, pnonce, prefsPlain, phb))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pct.Origin = ed25519.Sign(retained.ed, pOriginMsg)
+	oldPrefs, err := ToProtoEnvelope(pct)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Recover without PrevSecret onto the next ContentEpoch, replacing phone with newPhone while keeping retained.
+	newPhone := newTestIdentity(t, 4)
+	newRec := newTestIdentity(t, 5)
+	sec3 := bytes.Repeat([]byte{0x66}, 32)
+	recU, err := devicesec.NewRecovery(sRetParsed, newPhone.member(devicesec.Client), []devicesec.Member{machine.member(devicesec.Machine), newPhone.member(devicesec.Client), retained.member(devicesec.Client)}, sec3, [32]byte(newRec.edP), uint64(nowMs+20), stdHPKESender{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rsb, _ := recU.SigningBytes()
+	recU.Signature = ed25519.Sign(newPhone.ed, rsb)
+	recRaw, _ := recU.MarshalBinary()
+	recParsed, _ := devicesec.ParseState(recRaw)
+	stmtU, _ := devicesec.NewRecoveryStatement(sRetParsed, recParsed, rand.Reader)
+	stmtSB, _ := stmtU.SigningBytes()
+	stmtU.Signature = ed25519.Sign(rec.ed, stmtSB)
+	stmtRaw, _ := stmtU.MarshalBinary()
+	recLease, _ := devicesec.NewLease(recParsed, uint64(nowMs+20))
+	rlb, _ := recLease.SigningBytes()
+	recLease.Signature = ed25519.Sign(newPhone.ed, rlb)
+	recLeaseRaw, _ := recLease.MarshalBinary()
+	pool := &entropy.Pool{}
+
+	// (b) Without ContentKeys, pre-recovery historical Prefs/DeviceMeta also report ErrRecoveryHistoryUnavailable.
+	noKeysEng := NewEngine(pool)
+	noKeysEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: newPhone.id, InlineCrypto: true})
+	executeHostEffects(t, noKeysEng, newPhone, nowMs+100, noKeysEng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+		Account:        acct,
+		Domain:         dom[:],
+		Genesis:        gen[:],
+		States:         append(slices.Clone(baseRaw), recRaw),
+		RecoveryProofs: [][]byte{stmtRaw},
+		Lease:          recLeaseRaw,
+	}))
+	var noKeysRes []OpenResult
+	noKeysEng.OpenBatch(nowMs+100, []OpenItem{{Env: oldPrefs, ExpectedPurpose: devicesec.Prefs, RequestID: "project-prefs", Seq: 1, History: true}}, func(r []OpenResult) {
+		noKeysRes = r
+	})
+	if len(noKeysRes) != 1 || !errors.Is(noKeysRes[0].Err, ErrRecoveryHistoryUnavailable) {
+		t.Fatalf("expected ErrRecoveryHistoryUnavailable for pre-recovery Prefs without ContentKeys, got %+v", noKeysRes)
+	}
+
+	// (a) With pre-recovery ContentKeys in SecurityRecordEvent (plus a bogus attempt to inject head epoch),
+	// head epoch still requires real KeyAgree while retained epoch unlocks pre-recovery Event and Prefs.
+	retEng := NewEngine(pool)
+	retEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: retained.id, InlineCrypto: true})
+	effs := retEng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+		Account:        acct,
+		Domain:         dom[:],
+		Genesis:        gen[:],
+		States:         append(slices.Clone(baseRaw), recRaw),
+		RecoveryProofs: [][]byte{stmtRaw},
+		Lease:          recLeaseRaw,
+		ContentKeys: []*corev1.SecurityContentKey{
+			{ContentEpoch: sRetParsed.Core.ContentEpoch, Secret: sec2Ret},
+			{ContentEpoch: recParsed.Core.ContentEpoch, Secret: bytes.Repeat([]byte{0x99}, 32)},
+		},
+	})
+	var sawKeyAgree bool
+	for _, ef := range effs {
+		if ef.GetSecurityKeyAgree() != nil {
+			sawKeyAgree = true
+		}
+	}
+	if !sawKeyAgree {
+		t.Fatalf("expected live KeyAgree for head epoch even when ContentKeys contains head epoch")
+	}
+	executeHostEffects(t, retEng, retained, nowMs+100, effs)
+	retEng.SeedSessionKey("sess-pre", seed)
+	var retRes []OpenResult
+	retEng.OpenBatch(nowMs+100, []OpenItem{
+		{Env: oldEv, ExpectedPurpose: devicesec.Event, MachineID: machine.id, SessionID: "sess-pre", History: true},
+		{Env: oldPrefs, ExpectedPurpose: devicesec.Prefs, RequestID: "project-prefs", Seq: 1, History: true},
+	}, func(r []OpenResult) {
+		retRes = r
+	})
+	if len(retRes) != 2 || retRes[0].Err != nil || retRes[1].Err != nil {
+		t.Fatalf("expected retained client with ContentKeys to open pre-recovery Event and Prefs, got %+v", retRes)
+	}
+}

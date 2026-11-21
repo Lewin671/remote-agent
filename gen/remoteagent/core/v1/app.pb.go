@@ -5323,8 +5323,6 @@ type Event struct {
 	//	*Event_SecurityRecord
 	//	*Event_SecurityKeySigned
 	//	*Event_SecurityKeyAgreed
-	//	*Event_SecurityKeyGenerated
-	//	*Event_SecurityKeyEncapsulated
 	//	*Event_SecurityCryptoBatchDone
 	//	*Event_SecurityOpRequest
 	//	*Event_SeedDemoWorld
@@ -6715,24 +6713,6 @@ func (x *Event) GetSecurityKeyAgreed() *SecurityKeyAgreedEvent {
 	return nil
 }
 
-func (x *Event) GetSecurityKeyGenerated() *SecurityKeyGeneratedEvent {
-	if x != nil {
-		if x, ok := x.Event.(*Event_SecurityKeyGenerated); ok {
-			return x.SecurityKeyGenerated
-		}
-	}
-	return nil
-}
-
-func (x *Event) GetSecurityKeyEncapsulated() *SecurityKeyEncapsulatedEvent {
-	if x != nil {
-		if x, ok := x.Event.(*Event_SecurityKeyEncapsulated); ok {
-			return x.SecurityKeyEncapsulated
-		}
-	}
-	return nil
-}
-
 func (x *Event) GetSecurityCryptoBatchDone() *SecurityCryptoBatchDoneEvent {
 	if x != nil {
 		if x, ok := x.Event.(*Event_SecurityCryptoBatchDone); ok {
@@ -7389,14 +7369,6 @@ type Event_SecurityKeyAgreed struct {
 	SecurityKeyAgreed *SecurityKeyAgreedEvent `protobuf:"bytes,453,opt,name=security_key_agreed,json=securityKeyAgreed,proto3,oneof"`
 }
 
-type Event_SecurityKeyGenerated struct {
-	SecurityKeyGenerated *SecurityKeyGeneratedEvent `protobuf:"bytes,454,opt,name=security_key_generated,json=securityKeyGenerated,proto3,oneof"`
-}
-
-type Event_SecurityKeyEncapsulated struct {
-	SecurityKeyEncapsulated *SecurityKeyEncapsulatedEvent `protobuf:"bytes,455,opt,name=security_key_encapsulated,json=securityKeyEncapsulated,proto3,oneof"`
-}
-
 type Event_SecurityCryptoBatchDone struct {
 	SecurityCryptoBatchDone *SecurityCryptoBatchDoneEvent `protobuf:"bytes,456,opt,name=security_crypto_batch_done,json=securityCryptoBatchDone,proto3,oneof"`
 }
@@ -7706,10 +7678,6 @@ func (*Event_SecurityRecord) isEvent_Event() {}
 func (*Event_SecurityKeySigned) isEvent_Event() {}
 
 func (*Event_SecurityKeyAgreed) isEvent_Event() {}
-
-func (*Event_SecurityKeyGenerated) isEvent_Event() {}
-
-func (*Event_SecurityKeyEncapsulated) isEvent_Event() {}
 
 func (*Event_SecurityCryptoBatchDone) isEvent_Event() {}
 
@@ -9793,9 +9761,6 @@ type Effect struct {
 	//	*Effect_DirectRetryNowResult
 	//	*Effect_SecurityKeySign
 	//	*Effect_SecurityKeyAgree
-	//	*Effect_SecurityKeyGenerate
-	//	*Effect_SecurityKeyEncapsulate
-	//	*Effect_SecurityKeyDiscard
 	//	*Effect_SecurityCryptoBatch
 	//	*Effect_SecurityOpResult
 	Effect        isEffect_Effect `protobuf_oneof:"effect"`
@@ -10272,33 +10237,6 @@ func (x *Effect) GetSecurityKeyAgree() *SecurityKeyAgreeEffect {
 	return nil
 }
 
-func (x *Effect) GetSecurityKeyGenerate() *SecurityKeyGenerateEffect {
-	if x != nil {
-		if x, ok := x.Effect.(*Effect_SecurityKeyGenerate); ok {
-			return x.SecurityKeyGenerate
-		}
-	}
-	return nil
-}
-
-func (x *Effect) GetSecurityKeyEncapsulate() *SecurityKeyEncapsulateEffect {
-	if x != nil {
-		if x, ok := x.Effect.(*Effect_SecurityKeyEncapsulate); ok {
-			return x.SecurityKeyEncapsulate
-		}
-	}
-	return nil
-}
-
-func (x *Effect) GetSecurityKeyDiscard() *SecurityKeyDiscardEffect {
-	if x != nil {
-		if x, ok := x.Effect.(*Effect_SecurityKeyDiscard); ok {
-			return x.SecurityKeyDiscard
-		}
-	}
-	return nil
-}
-
 func (x *Effect) GetSecurityCryptoBatch() *SecurityCryptoBatchEffect {
 	if x != nil {
 		if x, ok := x.Effect.(*Effect_SecurityCryptoBatch); ok {
@@ -10514,18 +10452,6 @@ type Effect_SecurityKeyAgree struct {
 	SecurityKeyAgree *SecurityKeyAgreeEffect `protobuf:"bytes,131,opt,name=security_key_agree,json=securityKeyAgree,proto3,oneof"`
 }
 
-type Effect_SecurityKeyGenerate struct {
-	SecurityKeyGenerate *SecurityKeyGenerateEffect `protobuf:"bytes,132,opt,name=security_key_generate,json=securityKeyGenerate,proto3,oneof"`
-}
-
-type Effect_SecurityKeyEncapsulate struct {
-	SecurityKeyEncapsulate *SecurityKeyEncapsulateEffect `protobuf:"bytes,133,opt,name=security_key_encapsulate,json=securityKeyEncapsulate,proto3,oneof"`
-}
-
-type Effect_SecurityKeyDiscard struct {
-	SecurityKeyDiscard *SecurityKeyDiscardEffect `protobuf:"bytes,134,opt,name=security_key_discard,json=securityKeyDiscard,proto3,oneof"`
-}
-
 type Effect_SecurityCryptoBatch struct {
 	SecurityCryptoBatch *SecurityCryptoBatchEffect `protobuf:"bytes,135,opt,name=security_crypto_batch,json=securityCryptoBatch,proto3,oneof"`
 }
@@ -10629,12 +10555,6 @@ func (*Effect_DirectRetryNowResult) isEffect_Effect() {}
 func (*Effect_SecurityKeySign) isEffect_Effect() {}
 
 func (*Effect_SecurityKeyAgree) isEffect_Effect() {}
-
-func (*Effect_SecurityKeyGenerate) isEffect_Effect() {}
-
-func (*Effect_SecurityKeyEncapsulate) isEffect_Effect() {}
-
-func (*Effect_SecurityKeyDiscard) isEffect_Effect() {}
 
 func (*Effect_SecurityCryptoBatch) isEffect_Effect() {}
 
@@ -11099,7 +11019,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"projectKey\x12.\n" +
 	"\x13auto_mode_supported\x18\x02 \x01(\bR\x11autoModeSupported\x12\x1b\n" +
 	"\timage_ids\x18\x03 \x03(\tR\bimageIds\x12\x19\n" +
-	"\bfile_ids\x18\x04 \x03(\tR\afileIds\"\xcbw\n" +
+	"\bfile_ids\x18\x04 \x03(\tR\afileIds\"\xf0u\n" +
 	"\x05Event\x12I\n" +
 	"\rclock_updated\x18\x01 \x01(\v2\".remoteagent.core.v1.LocalCalendarH\x00R\fclockUpdated\x12Q\n" +
 	"\x10entropy_provided\x18\x02 \x01(\v2$.remoteagent.core.v1.EntropyProvidedH\x00R\x0fentropyProvided\x12Q\n" +
@@ -11253,9 +11173,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x0fsecurity_config\x18\xc2\x03 \x01(\v2(.remoteagent.core.v1.SecurityConfigEventH\x00R\x0esecurityConfig\x12T\n" +
 	"\x0fsecurity_record\x18\xc3\x03 \x01(\v2(.remoteagent.core.v1.SecurityRecordEventH\x00R\x0esecurityRecord\x12^\n" +
 	"\x13security_key_signed\x18\xc4\x03 \x01(\v2+.remoteagent.core.v1.SecurityKeySignedEventH\x00R\x11securityKeySigned\x12^\n" +
-	"\x13security_key_agreed\x18\xc5\x03 \x01(\v2+.remoteagent.core.v1.SecurityKeyAgreedEventH\x00R\x11securityKeyAgreed\x12g\n" +
-	"\x16security_key_generated\x18\xc6\x03 \x01(\v2..remoteagent.core.v1.SecurityKeyGeneratedEventH\x00R\x14securityKeyGenerated\x12p\n" +
-	"\x19security_key_encapsulated\x18\xc7\x03 \x01(\v21.remoteagent.core.v1.SecurityKeyEncapsulatedEventH\x00R\x17securityKeyEncapsulated\x12q\n" +
+	"\x13security_key_agreed\x18\xc5\x03 \x01(\v2+.remoteagent.core.v1.SecurityKeyAgreedEventH\x00R\x11securityKeyAgreed\x12q\n" +
 	"\x1asecurity_crypto_batch_done\x18\xc8\x03 \x01(\v21.remoteagent.core.v1.SecurityCryptoBatchDoneEventH\x00R\x17securityCryptoBatchDone\x12^\n" +
 	"\x13security_op_request\x18\xc9\x03 \x01(\v2+.remoteagent.core.v1.SecurityOpRequestEventH\x00R\x11securityOpRequest\x12R\n" +
 	"\x0fseed_demo_world\x18\xca\x03 \x01(\v2'.remoteagent.core.v1.SeedDemoWorldEventH\x00R\rseedDemoWorld\x12\x15\n" +
@@ -11426,7 +11344,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\amin_ids\x18\x01 \x01(\x05R\x06minIds\x12\x1d\n" +
 	"\n" +
 	"min_floats\x18\x02 \x01(\x05R\tminFloats\x12(\n" +
-	"\x10min_random_bytes\x18\x03 \x01(\x05R\x0eminRandomBytes\"\xbe%\n" +
+	"\x10min_random_bytes\x18\x03 \x01(\x05R\x0eminRandomBytes\"\x83#\n" +
 	"\x06Effect\x12;\n" +
 	"\x06render\x18\x01 \x01(\v2!.remoteagent.core.v1.RenderEffectH\x00R\x06render\x12H\n" +
 	"\vopen_stream\x18\x02 \x01(\v2%.remoteagent.core.v1.OpenStreamEffectH\x00R\n" +
@@ -11480,9 +11398,6 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x17direct_retry_now_result\x18q \x01(\v2/.remoteagent.core.v1.DirectRetryNowResultEffectH\x00R\x14directRetryNowResult\x12Y\n" +
 	"\x11security_key_sign\x18\x82\x01 \x01(\v2*.remoteagent.core.v1.SecurityKeySignEffectH\x00R\x0fsecurityKeySign\x12\\\n" +
 	"\x12security_key_agree\x18\x83\x01 \x01(\v2+.remoteagent.core.v1.SecurityKeyAgreeEffectH\x00R\x10securityKeyAgree\x12e\n" +
-	"\x15security_key_generate\x18\x84\x01 \x01(\v2..remoteagent.core.v1.SecurityKeyGenerateEffectH\x00R\x13securityKeyGenerate\x12n\n" +
-	"\x18security_key_encapsulate\x18\x85\x01 \x01(\v21.remoteagent.core.v1.SecurityKeyEncapsulateEffectH\x00R\x16securityKeyEncapsulate\x12b\n" +
-	"\x14security_key_discard\x18\x86\x01 \x01(\v2-.remoteagent.core.v1.SecurityKeyDiscardEffectH\x00R\x12securityKeyDiscard\x12e\n" +
 	"\x15security_crypto_batch\x18\x87\x01 \x01(\v2..remoteagent.core.v1.SecurityCryptoBatchEffectH\x00R\x13securityCryptoBatch\x12\\\n" +
 	"\x12security_op_result\x18\x88\x01 \x01(\v2+.remoteagent.core.v1.SecurityOpResultEffectH\x00R\x10securityOpResultB\b\n" +
 	"\x06effect\"D\n" +
@@ -11790,49 +11705,44 @@ var file_remoteagent_core_v1_app_proto_goTypes = []any{
 	(*SecurityRecordEvent)(nil),                // 219: remoteagent.core.v1.SecurityRecordEvent
 	(*SecurityKeySignedEvent)(nil),             // 220: remoteagent.core.v1.SecurityKeySignedEvent
 	(*SecurityKeyAgreedEvent)(nil),             // 221: remoteagent.core.v1.SecurityKeyAgreedEvent
-	(*SecurityKeyGeneratedEvent)(nil),          // 222: remoteagent.core.v1.SecurityKeyGeneratedEvent
-	(*SecurityKeyEncapsulatedEvent)(nil),       // 223: remoteagent.core.v1.SecurityKeyEncapsulatedEvent
-	(*SecurityCryptoBatchDoneEvent)(nil),       // 224: remoteagent.core.v1.SecurityCryptoBatchDoneEvent
-	(*SecurityOpRequestEvent)(nil),             // 225: remoteagent.core.v1.SecurityOpRequestEvent
-	(*SeedDemoWorldEvent)(nil),                 // 226: remoteagent.core.v1.SeedDemoWorldEvent
-	(*CacheWriteStoredEvents)(nil),             // 227: remoteagent.core.v1.CacheWriteStoredEvents
-	(CommandRouteLeg)(0),                       // 228: remoteagent.core.v1.CommandRouteLeg
-	(*ScheduleMachinePollEffect)(nil),          // 229: remoteagent.core.v1.ScheduleMachinePollEffect
-	(*DirectPreferenceEffect)(nil),             // 230: remoteagent.core.v1.DirectPreferenceEffect
-	(*RenameClientEffect)(nil),                 // 231: remoteagent.core.v1.RenameClientEffect
-	(*CheckUpdatesEffect)(nil),                 // 232: remoteagent.core.v1.CheckUpdatesEffect
-	(*PersistClientPrefsEffect)(nil),           // 233: remoteagent.core.v1.PersistClientPrefsEffect
-	(*PrepareCleanupSessionEffect)(nil),        // 234: remoteagent.core.v1.PrepareCleanupSessionEffect
-	(*UsageCacheWriteEffect)(nil),              // 235: remoteagent.core.v1.UsageCacheWriteEffect
-	(*SessionRestoreComposerEffect)(nil),       // 236: remoteagent.core.v1.SessionRestoreComposerEffect
-	(*SessionResendAttachmentsEffect)(nil),     // 237: remoteagent.core.v1.SessionResendAttachmentsEffect
-	(*ScheduleReadCacheEffect)(nil),            // 238: remoteagent.core.v1.ScheduleReadCacheEffect
-	(*ScheduleDeleteCacheEffect)(nil),          // 239: remoteagent.core.v1.ScheduleDeleteCacheEffect
-	(*ScheduleLoadSeenEffect)(nil),             // 240: remoteagent.core.v1.ScheduleLoadSeenEffect
-	(*ScheduleSaveSeenEffect)(nil),             // 241: remoteagent.core.v1.ScheduleSaveSeenEffect
-	(*ScheduleDismissNotificationsEffect)(nil), // 242: remoteagent.core.v1.ScheduleDismissNotificationsEffect
-	(*ScheduleNavigateEffect)(nil),             // 243: remoteagent.core.v1.ScheduleNavigateEffect
-	(*DirectKeySignEffect)(nil),                // 244: remoteagent.core.v1.DirectKeySignEffect
-	(*DirectKeyAgreeEffect)(nil),               // 245: remoteagent.core.v1.DirectKeyAgreeEffect
-	(*DirectSignalSendEffect)(nil),             // 246: remoteagent.core.v1.DirectSignalSendEffect
-	(*DirectPcCreateEffect)(nil),               // 247: remoteagent.core.v1.DirectPcCreateEffect
-	(*DirectPcDescribeEffect)(nil),             // 248: remoteagent.core.v1.DirectPcDescribeEffect
-	(*DirectPcSetRemoteEffect)(nil),            // 249: remoteagent.core.v1.DirectPcSetRemoteEffect
-	(*DirectPcAddCandidatesEffect)(nil),        // 250: remoteagent.core.v1.DirectPcAddCandidatesEffect
-	(*DirectPcConfirmEffect)(nil),              // 251: remoteagent.core.v1.DirectPcConfirmEffect
-	(*DirectPcCloseEffect)(nil),                // 252: remoteagent.core.v1.DirectPcCloseEffect
-	(*DirectDcReadStatsEffect)(nil),            // 253: remoteagent.core.v1.DirectDcReadStatsEffect
-	(*DirectAuthorizeEffect)(nil),              // 254: remoteagent.core.v1.DirectAuthorizeEffect
-	(*DirectBulkRouteEffect)(nil),              // 255: remoteagent.core.v1.DirectBulkRouteEffect
-	(*TerminalReopenEffect)(nil),               // 256: remoteagent.core.v1.TerminalReopenEffect
-	(*DirectRetryNowResultEffect)(nil),         // 257: remoteagent.core.v1.DirectRetryNowResultEffect
-	(*SecurityKeySignEffect)(nil),              // 258: remoteagent.core.v1.SecurityKeySignEffect
-	(*SecurityKeyAgreeEffect)(nil),             // 259: remoteagent.core.v1.SecurityKeyAgreeEffect
-	(*SecurityKeyGenerateEffect)(nil),          // 260: remoteagent.core.v1.SecurityKeyGenerateEffect
-	(*SecurityKeyEncapsulateEffect)(nil),       // 261: remoteagent.core.v1.SecurityKeyEncapsulateEffect
-	(*SecurityKeyDiscardEffect)(nil),           // 262: remoteagent.core.v1.SecurityKeyDiscardEffect
-	(*SecurityCryptoBatchEffect)(nil),          // 263: remoteagent.core.v1.SecurityCryptoBatchEffect
-	(*SecurityOpResultEffect)(nil),             // 264: remoteagent.core.v1.SecurityOpResultEffect
+	(*SecurityCryptoBatchDoneEvent)(nil),       // 222: remoteagent.core.v1.SecurityCryptoBatchDoneEvent
+	(*SecurityOpRequestEvent)(nil),             // 223: remoteagent.core.v1.SecurityOpRequestEvent
+	(*SeedDemoWorldEvent)(nil),                 // 224: remoteagent.core.v1.SeedDemoWorldEvent
+	(*CacheWriteStoredEvents)(nil),             // 225: remoteagent.core.v1.CacheWriteStoredEvents
+	(CommandRouteLeg)(0),                       // 226: remoteagent.core.v1.CommandRouteLeg
+	(*ScheduleMachinePollEffect)(nil),          // 227: remoteagent.core.v1.ScheduleMachinePollEffect
+	(*DirectPreferenceEffect)(nil),             // 228: remoteagent.core.v1.DirectPreferenceEffect
+	(*RenameClientEffect)(nil),                 // 229: remoteagent.core.v1.RenameClientEffect
+	(*CheckUpdatesEffect)(nil),                 // 230: remoteagent.core.v1.CheckUpdatesEffect
+	(*PersistClientPrefsEffect)(nil),           // 231: remoteagent.core.v1.PersistClientPrefsEffect
+	(*PrepareCleanupSessionEffect)(nil),        // 232: remoteagent.core.v1.PrepareCleanupSessionEffect
+	(*UsageCacheWriteEffect)(nil),              // 233: remoteagent.core.v1.UsageCacheWriteEffect
+	(*SessionRestoreComposerEffect)(nil),       // 234: remoteagent.core.v1.SessionRestoreComposerEffect
+	(*SessionResendAttachmentsEffect)(nil),     // 235: remoteagent.core.v1.SessionResendAttachmentsEffect
+	(*ScheduleReadCacheEffect)(nil),            // 236: remoteagent.core.v1.ScheduleReadCacheEffect
+	(*ScheduleDeleteCacheEffect)(nil),          // 237: remoteagent.core.v1.ScheduleDeleteCacheEffect
+	(*ScheduleLoadSeenEffect)(nil),             // 238: remoteagent.core.v1.ScheduleLoadSeenEffect
+	(*ScheduleSaveSeenEffect)(nil),             // 239: remoteagent.core.v1.ScheduleSaveSeenEffect
+	(*ScheduleDismissNotificationsEffect)(nil), // 240: remoteagent.core.v1.ScheduleDismissNotificationsEffect
+	(*ScheduleNavigateEffect)(nil),             // 241: remoteagent.core.v1.ScheduleNavigateEffect
+	(*DirectKeySignEffect)(nil),                // 242: remoteagent.core.v1.DirectKeySignEffect
+	(*DirectKeyAgreeEffect)(nil),               // 243: remoteagent.core.v1.DirectKeyAgreeEffect
+	(*DirectSignalSendEffect)(nil),             // 244: remoteagent.core.v1.DirectSignalSendEffect
+	(*DirectPcCreateEffect)(nil),               // 245: remoteagent.core.v1.DirectPcCreateEffect
+	(*DirectPcDescribeEffect)(nil),             // 246: remoteagent.core.v1.DirectPcDescribeEffect
+	(*DirectPcSetRemoteEffect)(nil),            // 247: remoteagent.core.v1.DirectPcSetRemoteEffect
+	(*DirectPcAddCandidatesEffect)(nil),        // 248: remoteagent.core.v1.DirectPcAddCandidatesEffect
+	(*DirectPcConfirmEffect)(nil),              // 249: remoteagent.core.v1.DirectPcConfirmEffect
+	(*DirectPcCloseEffect)(nil),                // 250: remoteagent.core.v1.DirectPcCloseEffect
+	(*DirectDcReadStatsEffect)(nil),            // 251: remoteagent.core.v1.DirectDcReadStatsEffect
+	(*DirectAuthorizeEffect)(nil),              // 252: remoteagent.core.v1.DirectAuthorizeEffect
+	(*DirectBulkRouteEffect)(nil),              // 253: remoteagent.core.v1.DirectBulkRouteEffect
+	(*TerminalReopenEffect)(nil),               // 254: remoteagent.core.v1.TerminalReopenEffect
+	(*DirectRetryNowResultEffect)(nil),         // 255: remoteagent.core.v1.DirectRetryNowResultEffect
+	(*SecurityKeySignEffect)(nil),              // 256: remoteagent.core.v1.SecurityKeySignEffect
+	(*SecurityKeyAgreeEffect)(nil),             // 257: remoteagent.core.v1.SecurityKeyAgreeEffect
+	(*SecurityCryptoBatchEffect)(nil),          // 258: remoteagent.core.v1.SecurityCryptoBatchEffect
+	(*SecurityOpResultEffect)(nil),             // 259: remoteagent.core.v1.SecurityOpResultEffect
 }
 var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	6,   // 0: remoteagent.core.v1.Screen.home:type_name -> remoteagent.core.v1.HomeScreenRequest
@@ -12077,96 +11987,91 @@ var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	219, // 239: remoteagent.core.v1.Event.security_record:type_name -> remoteagent.core.v1.SecurityRecordEvent
 	220, // 240: remoteagent.core.v1.Event.security_key_signed:type_name -> remoteagent.core.v1.SecurityKeySignedEvent
 	221, // 241: remoteagent.core.v1.Event.security_key_agreed:type_name -> remoteagent.core.v1.SecurityKeyAgreedEvent
-	222, // 242: remoteagent.core.v1.Event.security_key_generated:type_name -> remoteagent.core.v1.SecurityKeyGeneratedEvent
-	223, // 243: remoteagent.core.v1.Event.security_key_encapsulated:type_name -> remoteagent.core.v1.SecurityKeyEncapsulatedEvent
-	224, // 244: remoteagent.core.v1.Event.security_crypto_batch_done:type_name -> remoteagent.core.v1.SecurityCryptoBatchDoneEvent
-	225, // 245: remoteagent.core.v1.Event.security_op_request:type_name -> remoteagent.core.v1.SecurityOpRequestEvent
-	226, // 246: remoteagent.core.v1.Event.seed_demo_world:type_name -> remoteagent.core.v1.SeedDemoWorldEvent
-	3,   // 247: remoteagent.core.v1.RenderEffect.screens:type_name -> remoteagent.core.v1.ScreenTarget
-	1,   // 248: remoteagent.core.v1.ScheduleTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
-	1,   // 249: remoteagent.core.v1.CancelTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
-	75,  // 250: remoteagent.core.v1.CacheReadEffect.bootstrap:type_name -> remoteagent.core.v1.CacheReadBootstrap
-	76,  // 251: remoteagent.core.v1.CacheReadEffect.events:type_name -> remoteagent.core.v1.CacheReadEvents
-	78,  // 252: remoteagent.core.v1.CacheWriteEffect.write_events:type_name -> remoteagent.core.v1.CacheWriteEvents
-	79,  // 253: remoteagent.core.v1.CacheWriteEffect.set_session_open:type_name -> remoteagent.core.v1.CacheSessionOpen
-	135, // 254: remoteagent.core.v1.CacheWriteEffect.write_machine:type_name -> remoteagent.v1.Machine
-	136, // 255: remoteagent.core.v1.CacheWriteEffect.write_session:type_name -> remoteagent.v1.RemoteSession
-	136, // 256: remoteagent.core.v1.CacheWriteEffect.keep_session_owner:type_name -> remoteagent.v1.RemoteSession
-	227, // 257: remoteagent.core.v1.CacheWriteEffect.write_stored_events:type_name -> remoteagent.core.v1.CacheWriteStoredEvents
-	137, // 258: remoteagent.core.v1.CacheWriteEffect.write_prefs:type_name -> remoteagent.v1.AccountPrefsObject
-	140, // 259: remoteagent.core.v1.FetchSessionsPageRpc.after:type_name -> remoteagent.v1.SessionCursor
-	134, // 260: remoteagent.core.v1.PutAccountPrefsRpc.next_prefs:type_name -> remoteagent.v1.ProjectPrefs
-	142, // 261: remoteagent.core.v1.PutAccountPrefsRpc.sealed_envelope:type_name -> remoteagent.v1.Envelope
-	82,  // 262: remoteagent.core.v1.RpcEffect.fetch_lists:type_name -> remoteagent.core.v1.FetchListsRpc
-	83,  // 263: remoteagent.core.v1.RpcEffect.fetch_sessions_page:type_name -> remoteagent.core.v1.FetchSessionsPageRpc
-	84,  // 264: remoteagent.core.v1.RpcEffect.fetch_session_by_id:type_name -> remoteagent.core.v1.FetchSessionByIdRpc
-	85,  // 265: remoteagent.core.v1.RpcEffect.get_events:type_name -> remoteagent.core.v1.GetEventsRpc
-	86,  // 266: remoteagent.core.v1.RpcEffect.get_account_prefs:type_name -> remoteagent.core.v1.GetAccountPrefsRpc
-	87,  // 267: remoteagent.core.v1.RpcEffect.put_account_prefs:type_name -> remoteagent.core.v1.PutAccountPrefsRpc
-	88,  // 268: remoteagent.core.v1.RpcEffect.fetch_devices:type_name -> remoteagent.core.v1.FetchDevicesRpc
-	4,   // 269: remoteagent.core.v1.DispatchCommandEffect.route_hint:type_name -> remoteagent.core.v1.CommandRouteHint
-	228, // 270: remoteagent.core.v1.DispatchCommandEffect.route_leg:type_name -> remoteagent.core.v1.CommandRouteLeg
-	142, // 271: remoteagent.core.v1.DispatchCommandEffect.sealed_envelope:type_name -> remoteagent.v1.Envelope
-	5,   // 272: remoteagent.core.v1.NavigateEffect.route:type_name -> remoteagent.core.v1.NavigateRoute
-	67,  // 273: remoteagent.core.v1.Effect.render:type_name -> remoteagent.core.v1.RenderEffect
-	68,  // 274: remoteagent.core.v1.Effect.open_stream:type_name -> remoteagent.core.v1.OpenStreamEffect
-	69,  // 275: remoteagent.core.v1.Effect.close_stream:type_name -> remoteagent.core.v1.CloseStreamEffect
-	70,  // 276: remoteagent.core.v1.Effect.ensure_token:type_name -> remoteagent.core.v1.EnsureTokenEffect
-	71,  // 277: remoteagent.core.v1.Effect.discard_token:type_name -> remoteagent.core.v1.DiscardTokenEffect
-	72,  // 278: remoteagent.core.v1.Effect.sync_security:type_name -> remoteagent.core.v1.SyncSecurityEffect
-	73,  // 279: remoteagent.core.v1.Effect.schedule_timer:type_name -> remoteagent.core.v1.ScheduleTimerEffect
-	74,  // 280: remoteagent.core.v1.Effect.cancel_timer:type_name -> remoteagent.core.v1.CancelTimerEffect
-	77,  // 281: remoteagent.core.v1.Effect.cache_read:type_name -> remoteagent.core.v1.CacheReadEffect
-	80,  // 282: remoteagent.core.v1.Effect.cache_write:type_name -> remoteagent.core.v1.CacheWriteEffect
-	81,  // 283: remoteagent.core.v1.Effect.cache_delete:type_name -> remoteagent.core.v1.CacheDeleteEffect
-	89,  // 284: remoteagent.core.v1.Effect.rpc:type_name -> remoteagent.core.v1.RpcEffect
-	90,  // 285: remoteagent.core.v1.Effect.dispatch_command:type_name -> remoteagent.core.v1.DispatchCommandEffect
-	91,  // 286: remoteagent.core.v1.Effect.save_home_scope:type_name -> remoteagent.core.v1.SaveHomeScopeEffect
-	92,  // 287: remoteagent.core.v1.Effect.navigate:type_name -> remoteagent.core.v1.NavigateEffect
-	93,  // 288: remoteagent.core.v1.Effect.attachments_settled:type_name -> remoteagent.core.v1.AttachmentsSettledEffect
-	94,  // 289: remoteagent.core.v1.Effect.request_entropy:type_name -> remoteagent.core.v1.RequestEntropyEffect
-	229, // 290: remoteagent.core.v1.Effect.schedule_machine_poll:type_name -> remoteagent.core.v1.ScheduleMachinePollEffect
-	230, // 291: remoteagent.core.v1.Effect.direct_preference:type_name -> remoteagent.core.v1.DirectPreferenceEffect
-	231, // 292: remoteagent.core.v1.Effect.rename_client:type_name -> remoteagent.core.v1.RenameClientEffect
-	232, // 293: remoteagent.core.v1.Effect.check_updates:type_name -> remoteagent.core.v1.CheckUpdatesEffect
-	233, // 294: remoteagent.core.v1.Effect.persist_client_prefs:type_name -> remoteagent.core.v1.PersistClientPrefsEffect
-	234, // 295: remoteagent.core.v1.Effect.prepare_cleanup_session:type_name -> remoteagent.core.v1.PrepareCleanupSessionEffect
-	235, // 296: remoteagent.core.v1.Effect.usage_cache_write:type_name -> remoteagent.core.v1.UsageCacheWriteEffect
-	236, // 297: remoteagent.core.v1.Effect.session_restore_composer:type_name -> remoteagent.core.v1.SessionRestoreComposerEffect
-	237, // 298: remoteagent.core.v1.Effect.session_resend_attachments:type_name -> remoteagent.core.v1.SessionResendAttachmentsEffect
-	238, // 299: remoteagent.core.v1.Effect.schedule_read_cache:type_name -> remoteagent.core.v1.ScheduleReadCacheEffect
-	239, // 300: remoteagent.core.v1.Effect.schedule_delete_cache:type_name -> remoteagent.core.v1.ScheduleDeleteCacheEffect
-	240, // 301: remoteagent.core.v1.Effect.schedule_load_seen:type_name -> remoteagent.core.v1.ScheduleLoadSeenEffect
-	241, // 302: remoteagent.core.v1.Effect.schedule_save_seen:type_name -> remoteagent.core.v1.ScheduleSaveSeenEffect
-	242, // 303: remoteagent.core.v1.Effect.schedule_dismiss_notifications:type_name -> remoteagent.core.v1.ScheduleDismissNotificationsEffect
-	243, // 304: remoteagent.core.v1.Effect.schedule_navigate:type_name -> remoteagent.core.v1.ScheduleNavigateEffect
-	244, // 305: remoteagent.core.v1.Effect.direct_key_sign:type_name -> remoteagent.core.v1.DirectKeySignEffect
-	245, // 306: remoteagent.core.v1.Effect.direct_key_agree:type_name -> remoteagent.core.v1.DirectKeyAgreeEffect
-	246, // 307: remoteagent.core.v1.Effect.direct_signal_send:type_name -> remoteagent.core.v1.DirectSignalSendEffect
-	247, // 308: remoteagent.core.v1.Effect.direct_pc_create:type_name -> remoteagent.core.v1.DirectPcCreateEffect
-	248, // 309: remoteagent.core.v1.Effect.direct_pc_describe:type_name -> remoteagent.core.v1.DirectPcDescribeEffect
-	249, // 310: remoteagent.core.v1.Effect.direct_pc_set_remote:type_name -> remoteagent.core.v1.DirectPcSetRemoteEffect
-	250, // 311: remoteagent.core.v1.Effect.direct_pc_add_candidates:type_name -> remoteagent.core.v1.DirectPcAddCandidatesEffect
-	251, // 312: remoteagent.core.v1.Effect.direct_pc_confirm:type_name -> remoteagent.core.v1.DirectPcConfirmEffect
-	252, // 313: remoteagent.core.v1.Effect.direct_pc_close:type_name -> remoteagent.core.v1.DirectPcCloseEffect
-	253, // 314: remoteagent.core.v1.Effect.direct_dc_read_stats:type_name -> remoteagent.core.v1.DirectDcReadStatsEffect
-	254, // 315: remoteagent.core.v1.Effect.direct_authorize:type_name -> remoteagent.core.v1.DirectAuthorizeEffect
-	255, // 316: remoteagent.core.v1.Effect.direct_bulk_route:type_name -> remoteagent.core.v1.DirectBulkRouteEffect
-	256, // 317: remoteagent.core.v1.Effect.terminal_reopen:type_name -> remoteagent.core.v1.TerminalReopenEffect
-	257, // 318: remoteagent.core.v1.Effect.direct_retry_now_result:type_name -> remoteagent.core.v1.DirectRetryNowResultEffect
-	258, // 319: remoteagent.core.v1.Effect.security_key_sign:type_name -> remoteagent.core.v1.SecurityKeySignEffect
-	259, // 320: remoteagent.core.v1.Effect.security_key_agree:type_name -> remoteagent.core.v1.SecurityKeyAgreeEffect
-	260, // 321: remoteagent.core.v1.Effect.security_key_generate:type_name -> remoteagent.core.v1.SecurityKeyGenerateEffect
-	261, // 322: remoteagent.core.v1.Effect.security_key_encapsulate:type_name -> remoteagent.core.v1.SecurityKeyEncapsulateEffect
-	262, // 323: remoteagent.core.v1.Effect.security_key_discard:type_name -> remoteagent.core.v1.SecurityKeyDiscardEffect
-	263, // 324: remoteagent.core.v1.Effect.security_crypto_batch:type_name -> remoteagent.core.v1.SecurityCryptoBatchEffect
-	264, // 325: remoteagent.core.v1.Effect.security_op_result:type_name -> remoteagent.core.v1.SecurityOpResultEffect
-	95,  // 326: remoteagent.core.v1.EffectBatch.effects:type_name -> remoteagent.core.v1.Effect
-	327, // [327:327] is the sub-list for method output_type
-	327, // [327:327] is the sub-list for method input_type
-	327, // [327:327] is the sub-list for extension type_name
-	327, // [327:327] is the sub-list for extension extendee
-	0,   // [0:327] is the sub-list for field type_name
+	222, // 242: remoteagent.core.v1.Event.security_crypto_batch_done:type_name -> remoteagent.core.v1.SecurityCryptoBatchDoneEvent
+	223, // 243: remoteagent.core.v1.Event.security_op_request:type_name -> remoteagent.core.v1.SecurityOpRequestEvent
+	224, // 244: remoteagent.core.v1.Event.seed_demo_world:type_name -> remoteagent.core.v1.SeedDemoWorldEvent
+	3,   // 245: remoteagent.core.v1.RenderEffect.screens:type_name -> remoteagent.core.v1.ScreenTarget
+	1,   // 246: remoteagent.core.v1.ScheduleTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
+	1,   // 247: remoteagent.core.v1.CancelTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
+	75,  // 248: remoteagent.core.v1.CacheReadEffect.bootstrap:type_name -> remoteagent.core.v1.CacheReadBootstrap
+	76,  // 249: remoteagent.core.v1.CacheReadEffect.events:type_name -> remoteagent.core.v1.CacheReadEvents
+	78,  // 250: remoteagent.core.v1.CacheWriteEffect.write_events:type_name -> remoteagent.core.v1.CacheWriteEvents
+	79,  // 251: remoteagent.core.v1.CacheWriteEffect.set_session_open:type_name -> remoteagent.core.v1.CacheSessionOpen
+	135, // 252: remoteagent.core.v1.CacheWriteEffect.write_machine:type_name -> remoteagent.v1.Machine
+	136, // 253: remoteagent.core.v1.CacheWriteEffect.write_session:type_name -> remoteagent.v1.RemoteSession
+	136, // 254: remoteagent.core.v1.CacheWriteEffect.keep_session_owner:type_name -> remoteagent.v1.RemoteSession
+	225, // 255: remoteagent.core.v1.CacheWriteEffect.write_stored_events:type_name -> remoteagent.core.v1.CacheWriteStoredEvents
+	137, // 256: remoteagent.core.v1.CacheWriteEffect.write_prefs:type_name -> remoteagent.v1.AccountPrefsObject
+	140, // 257: remoteagent.core.v1.FetchSessionsPageRpc.after:type_name -> remoteagent.v1.SessionCursor
+	134, // 258: remoteagent.core.v1.PutAccountPrefsRpc.next_prefs:type_name -> remoteagent.v1.ProjectPrefs
+	142, // 259: remoteagent.core.v1.PutAccountPrefsRpc.sealed_envelope:type_name -> remoteagent.v1.Envelope
+	82,  // 260: remoteagent.core.v1.RpcEffect.fetch_lists:type_name -> remoteagent.core.v1.FetchListsRpc
+	83,  // 261: remoteagent.core.v1.RpcEffect.fetch_sessions_page:type_name -> remoteagent.core.v1.FetchSessionsPageRpc
+	84,  // 262: remoteagent.core.v1.RpcEffect.fetch_session_by_id:type_name -> remoteagent.core.v1.FetchSessionByIdRpc
+	85,  // 263: remoteagent.core.v1.RpcEffect.get_events:type_name -> remoteagent.core.v1.GetEventsRpc
+	86,  // 264: remoteagent.core.v1.RpcEffect.get_account_prefs:type_name -> remoteagent.core.v1.GetAccountPrefsRpc
+	87,  // 265: remoteagent.core.v1.RpcEffect.put_account_prefs:type_name -> remoteagent.core.v1.PutAccountPrefsRpc
+	88,  // 266: remoteagent.core.v1.RpcEffect.fetch_devices:type_name -> remoteagent.core.v1.FetchDevicesRpc
+	4,   // 267: remoteagent.core.v1.DispatchCommandEffect.route_hint:type_name -> remoteagent.core.v1.CommandRouteHint
+	226, // 268: remoteagent.core.v1.DispatchCommandEffect.route_leg:type_name -> remoteagent.core.v1.CommandRouteLeg
+	142, // 269: remoteagent.core.v1.DispatchCommandEffect.sealed_envelope:type_name -> remoteagent.v1.Envelope
+	5,   // 270: remoteagent.core.v1.NavigateEffect.route:type_name -> remoteagent.core.v1.NavigateRoute
+	67,  // 271: remoteagent.core.v1.Effect.render:type_name -> remoteagent.core.v1.RenderEffect
+	68,  // 272: remoteagent.core.v1.Effect.open_stream:type_name -> remoteagent.core.v1.OpenStreamEffect
+	69,  // 273: remoteagent.core.v1.Effect.close_stream:type_name -> remoteagent.core.v1.CloseStreamEffect
+	70,  // 274: remoteagent.core.v1.Effect.ensure_token:type_name -> remoteagent.core.v1.EnsureTokenEffect
+	71,  // 275: remoteagent.core.v1.Effect.discard_token:type_name -> remoteagent.core.v1.DiscardTokenEffect
+	72,  // 276: remoteagent.core.v1.Effect.sync_security:type_name -> remoteagent.core.v1.SyncSecurityEffect
+	73,  // 277: remoteagent.core.v1.Effect.schedule_timer:type_name -> remoteagent.core.v1.ScheduleTimerEffect
+	74,  // 278: remoteagent.core.v1.Effect.cancel_timer:type_name -> remoteagent.core.v1.CancelTimerEffect
+	77,  // 279: remoteagent.core.v1.Effect.cache_read:type_name -> remoteagent.core.v1.CacheReadEffect
+	80,  // 280: remoteagent.core.v1.Effect.cache_write:type_name -> remoteagent.core.v1.CacheWriteEffect
+	81,  // 281: remoteagent.core.v1.Effect.cache_delete:type_name -> remoteagent.core.v1.CacheDeleteEffect
+	89,  // 282: remoteagent.core.v1.Effect.rpc:type_name -> remoteagent.core.v1.RpcEffect
+	90,  // 283: remoteagent.core.v1.Effect.dispatch_command:type_name -> remoteagent.core.v1.DispatchCommandEffect
+	91,  // 284: remoteagent.core.v1.Effect.save_home_scope:type_name -> remoteagent.core.v1.SaveHomeScopeEffect
+	92,  // 285: remoteagent.core.v1.Effect.navigate:type_name -> remoteagent.core.v1.NavigateEffect
+	93,  // 286: remoteagent.core.v1.Effect.attachments_settled:type_name -> remoteagent.core.v1.AttachmentsSettledEffect
+	94,  // 287: remoteagent.core.v1.Effect.request_entropy:type_name -> remoteagent.core.v1.RequestEntropyEffect
+	227, // 288: remoteagent.core.v1.Effect.schedule_machine_poll:type_name -> remoteagent.core.v1.ScheduleMachinePollEffect
+	228, // 289: remoteagent.core.v1.Effect.direct_preference:type_name -> remoteagent.core.v1.DirectPreferenceEffect
+	229, // 290: remoteagent.core.v1.Effect.rename_client:type_name -> remoteagent.core.v1.RenameClientEffect
+	230, // 291: remoteagent.core.v1.Effect.check_updates:type_name -> remoteagent.core.v1.CheckUpdatesEffect
+	231, // 292: remoteagent.core.v1.Effect.persist_client_prefs:type_name -> remoteagent.core.v1.PersistClientPrefsEffect
+	232, // 293: remoteagent.core.v1.Effect.prepare_cleanup_session:type_name -> remoteagent.core.v1.PrepareCleanupSessionEffect
+	233, // 294: remoteagent.core.v1.Effect.usage_cache_write:type_name -> remoteagent.core.v1.UsageCacheWriteEffect
+	234, // 295: remoteagent.core.v1.Effect.session_restore_composer:type_name -> remoteagent.core.v1.SessionRestoreComposerEffect
+	235, // 296: remoteagent.core.v1.Effect.session_resend_attachments:type_name -> remoteagent.core.v1.SessionResendAttachmentsEffect
+	236, // 297: remoteagent.core.v1.Effect.schedule_read_cache:type_name -> remoteagent.core.v1.ScheduleReadCacheEffect
+	237, // 298: remoteagent.core.v1.Effect.schedule_delete_cache:type_name -> remoteagent.core.v1.ScheduleDeleteCacheEffect
+	238, // 299: remoteagent.core.v1.Effect.schedule_load_seen:type_name -> remoteagent.core.v1.ScheduleLoadSeenEffect
+	239, // 300: remoteagent.core.v1.Effect.schedule_save_seen:type_name -> remoteagent.core.v1.ScheduleSaveSeenEffect
+	240, // 301: remoteagent.core.v1.Effect.schedule_dismiss_notifications:type_name -> remoteagent.core.v1.ScheduleDismissNotificationsEffect
+	241, // 302: remoteagent.core.v1.Effect.schedule_navigate:type_name -> remoteagent.core.v1.ScheduleNavigateEffect
+	242, // 303: remoteagent.core.v1.Effect.direct_key_sign:type_name -> remoteagent.core.v1.DirectKeySignEffect
+	243, // 304: remoteagent.core.v1.Effect.direct_key_agree:type_name -> remoteagent.core.v1.DirectKeyAgreeEffect
+	244, // 305: remoteagent.core.v1.Effect.direct_signal_send:type_name -> remoteagent.core.v1.DirectSignalSendEffect
+	245, // 306: remoteagent.core.v1.Effect.direct_pc_create:type_name -> remoteagent.core.v1.DirectPcCreateEffect
+	246, // 307: remoteagent.core.v1.Effect.direct_pc_describe:type_name -> remoteagent.core.v1.DirectPcDescribeEffect
+	247, // 308: remoteagent.core.v1.Effect.direct_pc_set_remote:type_name -> remoteagent.core.v1.DirectPcSetRemoteEffect
+	248, // 309: remoteagent.core.v1.Effect.direct_pc_add_candidates:type_name -> remoteagent.core.v1.DirectPcAddCandidatesEffect
+	249, // 310: remoteagent.core.v1.Effect.direct_pc_confirm:type_name -> remoteagent.core.v1.DirectPcConfirmEffect
+	250, // 311: remoteagent.core.v1.Effect.direct_pc_close:type_name -> remoteagent.core.v1.DirectPcCloseEffect
+	251, // 312: remoteagent.core.v1.Effect.direct_dc_read_stats:type_name -> remoteagent.core.v1.DirectDcReadStatsEffect
+	252, // 313: remoteagent.core.v1.Effect.direct_authorize:type_name -> remoteagent.core.v1.DirectAuthorizeEffect
+	253, // 314: remoteagent.core.v1.Effect.direct_bulk_route:type_name -> remoteagent.core.v1.DirectBulkRouteEffect
+	254, // 315: remoteagent.core.v1.Effect.terminal_reopen:type_name -> remoteagent.core.v1.TerminalReopenEffect
+	255, // 316: remoteagent.core.v1.Effect.direct_retry_now_result:type_name -> remoteagent.core.v1.DirectRetryNowResultEffect
+	256, // 317: remoteagent.core.v1.Effect.security_key_sign:type_name -> remoteagent.core.v1.SecurityKeySignEffect
+	257, // 318: remoteagent.core.v1.Effect.security_key_agree:type_name -> remoteagent.core.v1.SecurityKeyAgreeEffect
+	258, // 319: remoteagent.core.v1.Effect.security_crypto_batch:type_name -> remoteagent.core.v1.SecurityCryptoBatchEffect
+	259, // 320: remoteagent.core.v1.Effect.security_op_result:type_name -> remoteagent.core.v1.SecurityOpResultEffect
+	95,  // 321: remoteagent.core.v1.EffectBatch.effects:type_name -> remoteagent.core.v1.Effect
+	322, // [322:322] is the sub-list for method output_type
+	322, // [322:322] is the sub-list for method input_type
+	322, // [322:322] is the sub-list for extension type_name
+	322, // [322:322] is the sub-list for extension extendee
+	0,   // [0:322] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_app_proto_init() }
@@ -12390,8 +12295,6 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Event_SecurityRecord)(nil),
 		(*Event_SecurityKeySigned)(nil),
 		(*Event_SecurityKeyAgreed)(nil),
-		(*Event_SecurityKeyGenerated)(nil),
-		(*Event_SecurityKeyEncapsulated)(nil),
 		(*Event_SecurityCryptoBatchDone)(nil),
 		(*Event_SecurityOpRequest)(nil),
 		(*Event_SeedDemoWorld)(nil),
@@ -12477,9 +12380,6 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Effect_DirectRetryNowResult)(nil),
 		(*Effect_SecurityKeySign)(nil),
 		(*Effect_SecurityKeyAgree)(nil),
-		(*Effect_SecurityKeyGenerate)(nil),
-		(*Effect_SecurityKeyEncapsulate)(nil),
-		(*Effect_SecurityKeyDiscard)(nil),
 		(*Effect_SecurityCryptoBatch)(nil),
 		(*Effect_SecurityOpResult)(nil),
 	}

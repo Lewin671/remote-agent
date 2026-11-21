@@ -20,10 +20,10 @@ import {
   accountKey,
 } from "../crypto";
 import {
-  DeviceSecurityClient,
+  AuthoritySecurity,
   type FetchStates,
   type SecurityStorage,
-} from "../device-security-client";
+} from "../authority-security";
 import { buildRecord, type SecurityRecord } from "../device-security-store";
 import {
   equal,
@@ -230,7 +230,7 @@ export class GoSecurityFixture {
     return chainFromJSON(await this.record(member));
   }
   fetcher(member: string): FetchStates {
-    return async (after, limit) => {
+    return async (after: bigint, limit: number) => {
       const json=await this.record(member);
       const { states, proofs } = await chainFromJSON(json);
       const out: { state: Uint8Array; recovery: Uint8Array }[] = [];
@@ -343,7 +343,7 @@ export async function webMember(
     deviceId: record.memberID,
     devicePrivate: client.signingKey,
   };
-  const sdk = new DeviceSecurityClient(
+  const sdk = new AuthoritySecurity(
     account.deviceId,
     account.devicePrivate,
     f.fixture.fetcher(record.memberID),

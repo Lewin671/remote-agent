@@ -33,6 +33,7 @@ import {
   failureNotice,
   fileSizeDone,
   formatEta,
+  sharedFilesOf,
   formatMediaDuration,
   kindName,
   previewBlobForFile,
@@ -77,20 +78,21 @@ function useWide(): boolean {
 }
 
 function useSharedFileState(remote: Remote, sessionId: string, file: SharedFile): SharedFileDerivedState {
+  const manager = sharedFilesOf(remote);
   useEffect(() => {
-    void remote.sharedFiles.hydrate(sessionId, file);
-  }, [remote, sessionId, file]);
+    void manager.hydrate(sessionId, file);
+  }, [manager, sessionId, file]);
 
   // Subscribe only to the shared-file store and read latest derived snapshot.
   const tick = useSyncExternalStore(
-    (cb) => remote.sharedFiles.subscribe(cb),
+    (cb) => manager.subscribe(cb),
     () => {
-      const st = remote.sharedFiles.stateOf(sessionId, file);
+      const st = manager.stateOf(sessionId, file);
       return `${st.status}:${st.downloadedBytes}:${st.etaSeconds ?? ""}:${st.failKind ?? ""}:${st.failReason ?? ""}:${st.waitingReconnect ? 1 : 0}`;
     },
   );
   void tick;
-  return remote.sharedFiles.stateOf(sessionId, file);
+  return manager.stateOf(sessionId, file);
 }
 
 interface MediaMeta {
@@ -565,7 +567,7 @@ export function SharedFileCard({
       icon: <TrashIcon />,
       red: true,
       group: 1,
-      onClick: () => void remote.sharedFiles.deleteLocal(sessionId, file.fileId),
+      onClick: () => void sharedFilesOf(remote).deleteLocal(sessionId, file.fileId),
     });
   } else if (state.status === "downloading") {
     menuItems.push(
@@ -573,13 +575,13 @@ export function SharedFileCard({
         id: "pause",
         label: i18n.t("shared_file.action_pause"),
         group: 0,
-        onClick: () => remote.sharedFiles.pause(sessionId, file.fileId),
+        onClick: () => sharedFilesOf(remote).pause(sessionId, file.fileId),
       },
       {
         id: "cancel",
         label: i18n.t("shared_file.action_cancel_download"),
         group: 0,
-        onClick: () => void remote.sharedFiles.cancel(sessionId, file.fileId),
+        onClick: () => void sharedFilesOf(remote).cancel(sessionId, file.fileId),
       },
     );
   } else if (state.status === "paused") {
@@ -589,13 +591,13 @@ export function SharedFileCard({
         label: i18n.t("shared_file.action_resume"),
         group: 0,
         onClick: () =>
-          void remote.sharedFiles.startDownload(sessionId, file, { autoOpenIfStaying: false }),
+          void sharedFilesOf(remote).startDownload(sessionId, file, { autoOpenIfStaying: false }),
       },
       {
         id: "cancel",
         label: i18n.t("shared_file.action_cancel_download"),
         group: 0,
-        onClick: () => void remote.sharedFiles.cancel(sessionId, file.fileId),
+        onClick: () => void sharedFilesOf(remote).cancel(sessionId, file.fileId),
       },
     );
   } else if (state.status === "failed") {
@@ -604,14 +606,14 @@ export function SharedFileCard({
       label: i18n.t("shared_file.action_retry"),
       group: 0,
       onClick: () =>
-        void remote.sharedFiles.startDownload(sessionId, file, { autoOpenIfStaying: false }),
+        void sharedFilesOf(remote).startDownload(sessionId, file, { autoOpenIfStaying: false }),
     });
     if (state.downloadedBytes > 0) {
       menuItems.push({
         id: "cancel",
         label: i18n.t("shared_file.action_cancel_download"),
         group: 0,
-        onClick: () => void remote.sharedFiles.cancel(sessionId, file.fileId),
+        onClick: () => void sharedFilesOf(remote).cancel(sessionId, file.fileId),
       });
     }
   } else if (state.status === "available") {
@@ -621,7 +623,7 @@ export function SharedFileCard({
       icon: <DownloadIcon />,
       group: 0,
       onClick: () =>
-        void remote.sharedFiles.startDownload(sessionId, file, { autoOpenIfStaying: false }),
+        void sharedFilesOf(remote).startDownload(sessionId, file, { autoOpenIfStaying: false }),
     });
   }
 
@@ -637,10 +639,10 @@ export function SharedFileCard({
       case "available":
       case "paused":
       case "failed":
-        void remote.sharedFiles.startDownload(sessionId, file, { autoOpenIfStaying: true });
+        void sharedFilesOf(remote).startDownload(sessionId, file, { autoOpenIfStaying: true });
         break;
       case "downloading":
-        remote.sharedFiles.pause(sessionId, file.fileId);
+        sharedFilesOf(remote).pause(sessionId, file.fileId);
         break;
       case "downloaded":
         if (state.blob) openFile(file, state.blob);

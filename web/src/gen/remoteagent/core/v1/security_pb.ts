@@ -8,7 +8,7 @@ import type { Envelope } from "../../v1/envelope_pb";
 import { file_remoteagent_v1_envelope } from "../../v1/envelope_pb";
 import type { Event } from "../../v1/event_pb";
 import { file_remoteagent_v1_event } from "../../v1/event_pb";
-import type { MachineReplacementProof, Session } from "../../v1/local_pb";
+import type { Session } from "../../v1/local_pb";
 import { file_remoteagent_v1_local } from "../../v1/local_pb";
 import type { DeviceKind, StoredEvent } from "../../v1/relay_pb";
 import { file_remoteagent_v1_relay } from "../../v1/relay_pb";
@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/core/v1/security.proto.
  */
 export const file_remoteagent_core_v1_security: GenFile = /*@__PURE__*/
-  fileDesc("CiJyZW1vdGVhZ2VudC9jb3JlL3YxL3NlY3VyaXR5LnByb3RvEhNyZW1vdGVhZ2VudC5jb3JlLnYxIlAKE1NlY3VyaXR5Q29uZmlnRXZlbnQSDwoHYWNjb3VudBgBIAEoCRIRCglkZXZpY2VfaWQYAiABKAkSFQoNaW5saW5lX2NyeXB0bxgDIAEoCCLWAgoTU2VjdXJpdHlSZWNvcmRFdmVudBINCgVvcF9pZBgBIAEoBBIQCghwdXNoX3NlcRgCIAEoBBIaChJuZXR3b3JrX2dlbmVyYXRpb24YAyABKAQSDwoHYWNjb3VudBgEIAEoCRIOCgZkb21haW4YBSABKAwSDwoHZ2VuZXNpcxgGIAEoDBIOCgZzdGF0ZXMYByADKAwSFwoPcmVjb3ZlcnlfcHJvb2ZzGAggAygMEg0KBWxlYXNlGAkgASgMEhAKCGZsb29yX21zGAogASgDEhgKEHJlY292ZXJ5X3BlbmRpbmcYCyABKAgSGQoRcmVjb3ZlcnlfcmVhZHlfbXMYDCABKAMSIAoYcmVjb3Zlcnlfb2JqZWN0c19wZW5kaW5nGA0gASgIEg8KB3JlbW92ZWQYDiABKAgSDwoHY2xlYXJlZBgPIAEoCBINCgVlcnJvchgQIAEoCSJ9ChVTZWN1cml0eUtleVNpZ25FZmZlY3QSDQoFb3BfaWQYASABKAQSNgoIa2V5X2tpbmQYAiABKA4yJC5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY3VyaXR5S2V5S2luZBIMCgRzbG90GAMgASgJEg8KB21lc3NhZ2UYBCABKAwiSQoWU2VjdXJpdHlLZXlTaWduZWRFdmVudBINCgVvcF9pZBgBIAEoBBIRCglzaWduYXR1cmUYAiABKAwSDQoFZXJyb3IYAyABKAkiggEKFlNlY3VyaXR5S2V5QWdyZWVFZmZlY3QSDQoFb3BfaWQYASABKAQSNgoIa2V5X2tpbmQYAiABKA4yJC5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY3VyaXR5S2V5S2luZBIMCgRzbG90GAMgASgJEhMKC3BlZXJfcHVibGljGAQgASgMIkYKFlNlY3VyaXR5S2V5QWdyZWVkRXZlbnQSDQoFb3BfaWQYASABKAQSDgoGc2hhcmVkGAIgASgMEg0KBWVycm9yGAMgASgJIoYBChlTZWN1cml0eUtleUdlbmVyYXRlRWZmZWN0Eg0KBW9wX2lkGAEgASgEEjsKCGtleV9raW5kGAIgASgOMikucmVtb3RlYWdlbnQuY29yZS52MS5TZWN1cml0eUdlbmVyYXRlS2luZBIMCgRzbG90GAMgASgJEg8KB3BlcnNpc3QYBCABKAgiTQoZU2VjdXJpdHlLZXlHZW5lcmF0ZWRFdmVudBINCgVvcF9pZBgBIAEoBBISCgpwdWJsaWNfa2V5GAIgASgMEg0KBWVycm9yGAMgASgJIkoKHFNlY3VyaXR5S2V5RW5jYXBzdWxhdGVFZmZlY3QSDQoFb3BfaWQYASABKAQSGwoTcmVjaXBpZW50X3hfcHVibGljcxgCIAMoDCI6ChtTZWN1cml0eUtleUVuY2Fwc3VsYXRlZFBhaXISCwoDZW5jGAEgASgMEg4KBnNoYXJlZBgCIAEoDCJ9ChxTZWN1cml0eUtleUVuY2Fwc3VsYXRlZEV2ZW50Eg0KBW9wX2lkGAEgASgEEj8KBXBhaXJzGAIgAygLMjAucmVtb3RlYWdlbnQuY29yZS52MS5TZWN1cml0eUtleUVuY2Fwc3VsYXRlZFBhaXISDQoFZXJyb3IYAyABKAkiKAoYU2VjdXJpdHlLZXlEaXNjYXJkRWZmZWN0EgwKBHNsb3QYASABKAkiTwoVQ3J5cHRvQmF0Y2hWZXJpZnlJdGVtEhIKCnB1YmxpY19rZXkYASABKAwSDwoHbWVzc2FnZRgCIAEoDBIRCglzaWduYXR1cmUYAyABKAwiVgoXQ3J5cHRvQmF0Y2hBZWFkT3Blbkl0ZW0SCwoDa2V5GAEgASgMEg0KBW5vbmNlGAIgASgMEgsKA2FhZBgDIAEoDBISCgpjaXBoZXJ0ZXh0GAQgASgMIlUKF0NyeXB0b0JhdGNoQWVhZFNlYWxJdGVtEgsKA2tleRgBIAEoDBINCgVub25jZRgCIAEoDBILCgNhYWQYAyABKAwSEQoJcGxhaW50ZXh0GAQgASgMIiUKFUNyeXB0b0JhdGNoU2hhMjU2SXRlbRIMCgRkYXRhGAEgASgMIqMCChdTZWN1cml0eUNyeXB0b0JhdGNoSXRlbRI8CgZ2ZXJpZnkYASABKAsyKi5yZW1vdGVhZ2VudC5jb3JlLnYxLkNyeXB0b0JhdGNoVmVyaWZ5SXRlbUgAEkEKCWFlYWRfb3BlbhgCIAEoCzIsLnJlbW90ZWFnZW50LmNvcmUudjEuQ3J5cHRvQmF0Y2hBZWFkT3Blbkl0ZW1IABJBCglhZWFkX3NlYWwYAyABKAsyLC5yZW1vdGVhZ2VudC5jb3JlLnYxLkNyeXB0b0JhdGNoQWVhZFNlYWxJdGVtSAASPAoGc2hhMjU2GAQgASgLMioucmVtb3RlYWdlbnQuY29yZS52MS5DcnlwdG9CYXRjaFNoYTI1Nkl0ZW1IAEIGCgRraW5kImcKGVNlY3VyaXR5Q3J5cHRvQmF0Y2hFZmZlY3QSDQoFb3BfaWQYASABKAQSOwoFaXRlbXMYAiADKAsyLC5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY3VyaXR5Q3J5cHRvQmF0Y2hJdGVtIkQKGVNlY3VyaXR5Q3J5cHRvQmF0Y2hSZXN1bHQSCgoCb2sYASABKAgSDAoEZGF0YRgCIAEoDBINCgVlcnJvchgDIAEoCSJ9ChxTZWN1cml0eUNyeXB0b0JhdGNoRG9uZUV2ZW50Eg0KBW9wX2lkGAEgASgEEj8KB3Jlc3VsdHMYAiADKAsyLi5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY3VyaXR5Q3J5cHRvQmF0Y2hSZXN1bHQSDQoFZXJyb3IYAyABKAki1wEKFlNlY3VyaXR5T3BlbkVudmVsb3BlT3ASKgoIZW52ZWxvcGUYASABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRIYChBleHBlY3RlZF9wdXJwb3NlGAIgASgNEhIKCm1hY2hpbmVfaWQYAyABKAkSEgoKc2Vzc2lvbl9pZBgEIAEoCRISCgpyZXF1ZXN0X2lkGAUgASgJEgsKA3NlcRgGIAEoBBIPCgdoaXN0b3J5GAcgASgIEh0KFW92ZXJyaWRlX3Nlc3Npb25fc2VlZBgIIAEoDCK0AQoWU2VjdXJpdHlTZWFsRW52ZWxvcGVPcBIPCgdwdXJwb3NlGAEgASgNEhIKCm1hY2hpbmVfaWQYAiABKAkSEgoKc2Vzc2lvbl9pZBgDIAEoCRISCgpyZXF1ZXN0X2lkGAQgASgJEgsKA3NlcRgFIAEoBBITCgtkZWFkbGluZV9tcxgGIAEoAxIRCglwbGFpbnRleHQYByABKAwSGAoQdXNlX3Nlc3Npb25fc2VlZBgIIAEoCCIuChhTZWN1cml0eUdldFNlc3Npb25TZWVkT3ASEgoKc2Vzc2lvbl9pZBgBIAEoCSKEAgoWU2VjdXJpdHlPcFJlcXVlc3RFdmVudBINCgVvcF9pZBgBIAEoBBJECg1vcGVuX2VudmVsb3BlGAIgASgLMisucmVtb3RlYWdlbnQuY29yZS52MS5TZWN1cml0eU9wZW5FbnZlbG9wZU9wSAASRAoNc2VhbF9lbnZlbG9wZRgDIAEoCzIrLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjdXJpdHlTZWFsRW52ZWxvcGVPcEgAEkkKEGdldF9zZXNzaW9uX3NlZWQYBCABKAsyLS5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY3VyaXR5R2V0U2Vzc2lvblNlZWRPcEgAQgQKAm9wIuQBChpTZWN1cml0eU9wZW5FbnZlbG9wZVJlc3VsdBIOCgZoZWFkZXIYASABKAwSEQoJcGxhaW50ZXh0GAIgASgMEg0KBWVwb2NoGAMgASgEEhUKDWNvbnRlbnRfZXBvY2gYBCABKAQSCwoDc2VxGAUgASgEEg4KBnNlbmRlchgGIAEoCRIPCgdwdXJwb3NlGAcgASgNEhIKCm1hY2hpbmVfaWQYCCABKAkSEgoKc2Vzc2lvbl9pZBgJIAEoCRISCgpyZXF1ZXN0X2lkGAogASgJEhMKC2RlYWRsaW5lX21zGAsgASgDIngKGlNlY3VyaXR5U2VhbEVudmVsb3BlUmVzdWx0EioKCGVudmVsb3BlGAEgASgLMhgucmVtb3RlYWdlbnQudjEuRW52ZWxvcGUSGAoQcmVxdWVzdF9rZXlfaGFzaBgCIAEoDBIUCgxwYXlsb2FkX2hhc2gYAyABKAwi8gEKFlNlY3VyaXR5T3BSZXN1bHRFZmZlY3QSDQoFb3BfaWQYASABKAQSDQoFZXJyb3IYAiABKAkSEgoKZXJyb3JfY29kZRgDIAEoCRJBCgZvcGVuZWQYBCABKAsyLy5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY3VyaXR5T3BlbkVudmVsb3BlUmVzdWx0SAASQQoGc2VhbGVkGAUgASgLMi8ucmVtb3RlYWdlbnQuY29yZS52MS5TZWN1cml0eVNlYWxFbnZlbG9wZVJlc3VsdEgAEhYKDHNlc3Npb25fc2VlZBgGIAEoDEgAQggKBnJlc3VsdCJyCgtEZW1vTWFjaGluZRISCgptYWNoaW5lX2lkGAEgASgJEg4KBm9ubGluZRgCIAEoCBIUCgxsYXN0X3NlZW5fbXMYAyABKAMSKQoEbWV0YRgEIAEoCzIbLnJlbW90ZWFnZW50LnYxLk1hY2hpbmVNZXRhIs0BCgtEZW1vU2Vzc2lvbhISCgpzZXNzaW9uX2lkGAEgASgJEhIKCm1hY2hpbmVfaWQYAiABKAkSEAoIbGFzdF9zZXEYAyABKAQSEgoKdXBkYXRlZF9tcxgEIAEoAxIXCg9saXN0ZWRfZW5kZWRfbXMYBSABKAMSJQoEbWV0YRgGIAEoCzIXLnJlbW90ZWFnZW50LnYxLlNlc3Npb24SMAoKY2hlY2twb2ludBgHIAEoCzIcLnJlbW90ZWFnZW50LnYxLkxpdmVTbmFwc2hvdCKdAQoKRGVtb0RldmljZRIRCglkZXZpY2VfaWQYASABKAkSKAoEa2luZBgCIAEoDjIaLnJlbW90ZWFnZW50LnYxLkRldmljZUtpbmQSEgoKY3JlYXRlZF9tcxgDIAEoAxIUCgxsYXN0X3NlZW5fbXMYBCABKAMSKAoEbWV0YRgFIAEoCzIaLnJlbW90ZWFnZW50LnYxLkRldmljZU1ldGEiTgoRRGVtb1Nlc3Npb25FdmVudHMSEgoKc2Vzc2lvbl9pZBgBIAEoCRIlCgZldmVudHMYAiADKAsyFS5yZW1vdGVhZ2VudC52MS5FdmVudCKbAgoSU2VlZERlbW9Xb3JsZEV2ZW50EjIKCG1hY2hpbmVzGAEgAygLMiAucmVtb3RlYWdlbnQuY29yZS52MS5EZW1vTWFjaGluZRIyCghzZXNzaW9ucxgCIAMoCzIgLnJlbW90ZWFnZW50LmNvcmUudjEuRGVtb1Nlc3Npb24SMAoHZGV2aWNlcxgDIAMoCzIfLnJlbW90ZWFnZW50LmNvcmUudjEuRGVtb0RldmljZRIrCgVwcmVmcxgEIAEoCzIcLnJlbW90ZWFnZW50LnYxLlByb2plY3RQcmVmcxI+Cg5zZXNzaW9uX2V2ZW50cxgFIAMoCzImLnJlbW90ZWFnZW50LmNvcmUudjEuRGVtb1Nlc3Npb25FdmVudHMiWQoWQ2FjaGVXcml0ZVN0b3JlZEV2ZW50cxISCgpzZXNzaW9uX2lkGAEgASgJEisKBmV2ZW50cxgCIAMoCzIbLnJlbW90ZWFnZW50LnYxLlN0b3JlZEV2ZW50IjoKBlNlY1BpbhIPCgdhY2NvdW50GAEgASgJEg4KBmRvbWFpbhgCIAEoDBIPCgdnZW5lc2lzGAMgASgMIkoKCVNlY01lbWJlchIKCgJpZBgBIAEoCRIRCgllZF9wdWJsaWMYAiABKAwSEAoIeF9wdWJsaWMYAyABKAwSDAoEa2luZBgEIAEoDSI6CghTZWNHcmFudBIRCglyZWNpcGllbnQYASABKAkSCwoDZW5jGAIgASgMEg4KBmNpcGhlchgDIAEoDCL8AgoOU2VjUGFyc2VkU3RhdGUSEgoKc3RhdGVfaGFzaBgBIAEoDBIRCgljb3JlX2hhc2gYAiABKAwSDwoHYWNjb3VudBgDIAEoCRIOCgZkb21haW4YBCABKAwSFAoMYXV0aG9yaXR5X2lkGAUgASgJEhMKC3JlY292ZXJ5X2VkGAYgASgMEg4KBnBhcmVudBgHIAEoDBINCgVlcG9jaBgIIAEoBBIVCg1jb250ZW50X2Vwb2NoGAkgASgEEhEKCWlzc3VlZF9hdBgKIAEoBBIvCgdtZW1iZXJzGAsgAygLMh4ucmVtb3RlYWdlbnQuY29yZS52MS5TZWNNZW1iZXISDwoHcmVtb3ZlZBgMIAMoCRItCgZncmFudHMYDSADKAsyHS5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY0dyYW50EhMKC3ByZXZfc2VjcmV0GA4gASgMEhEKCXNpZ25hdHVyZRgPIAEoDBIVCg1zaWduaW5nX2J5dGVzGBAgASgMIn4KDlNlY1BhcnNlZExlYXNlEg4KBmRvbWFpbhgBIAEoDBIMCgRoZWFkGAIgASgMEhEKCWlzc3VlZF9hdBgDIAEoBBIRCglub3RfYWZ0ZXIYBCABKAQSEQoJc2lnbmF0dXJlGAUgASgMEhUKDXNpZ25pbmdfYnl0ZXMYBiABKAwilAIKGlNlY1BhcnNlZFJlY292ZXJ5U3RhdGVtZW50Eg8KB2FjY291bnQYASABKAkSDgoGZG9tYWluGAIgASgMEg4KBnBhcmVudBgDIAEoDBIYChBuZXdfYXV0aG9yaXR5X2lkGAQgASgJEhcKD25ld19yZWNvdmVyeV9lZBgFIAEoDBIyCgpuZXdfbWVtYmVyGAYgASgLMh4ucmVtb3RlYWdlbnQuY29yZS52MS5TZWNNZW1iZXISEQoJaXNzdWVkX2F0GAcgASgEEhIKCnN0YXRlX2hhc2gYCCABKAwSDQoFbm9uY2UYCSABKAwSEQoJc2lnbmF0dXJlGAogASgMEhUKDXNpZ25pbmdfYnl0ZXMYCyABKAwiOAoKU2VjS2VtUGFpchIRCgltZW1iZXJfaWQYASABKAkSCwoDZW5jGAIgASgMEgoKAmRoGAMgASgMIs0BChBTZWNVbnNpZ25lZFN0YXRlEjMKBnBhcnNlZBgBIAEoCzIjLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjUGFyc2VkU3RhdGUSFQoNdW5zaWduZWRfY29yZRgCIAEoDBItCgZncmFudHMYAyADKAsyHS5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY0dyYW50EhMKC3ByZXZfc2VjcmV0GAQgASgMEhUKDXNpZ25pbmdfYnl0ZXMYBSABKAwSEgoKc3RhdGVfaGFzaBgGIAEoDCKpAgoRU2VjUGFyc2VkQXBwcm92YWwSEgoKYWNjb3VudF9pZBgBIAEoCRISCgpwYWlyaW5nX2lkGAIgASgJEhoKEmFwcHJvdmVyX2RldmljZV9pZBgDIAEoCRIbChNhcHByb3Zlcl9wdWJsaWNfa2V5GAQgASgMEhsKE2NhbmRpZGF0ZV9kZXZpY2VfaWQYBSABKAkSIwobY2FuZGlkYXRlX2RldmljZV9wdWJsaWNfa2V5GAYgASgMEjIKDmNhbmRpZGF0ZV9raW5kGAcgASgOMhoucmVtb3RlYWdlbnQudjEuRGV2aWNlS2luZBISCgpleHBpcmVzX21zGAggASgDEg0KBW5vbmNlGAkgASgMEhoKEnJlcGxhY2VzX2RldmljZV9pZBgKIAEoCSKJFAoOU2VjQ2FsbFJlcXVlc3QSPQoLcGFyc2Vfc3RhdGUYASABKAsyJi5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY1BhcnNlU3RhdGVDYWxsSAASPwoMdmVyaWZ5X2NoYWluGAIgASgLMicucmVtb3RlYWdlbnQuY29yZS52MS5TZWNWZXJpZnlDaGFpbkNhbGxIABJFCg9ncmFudF9jaGFsbGVuZ2UYAyABKAsyKi5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY0dyYW50Q2hhbGxlbmdlQ2FsbEgAEkkKEm9wZW5fZ3JhbnRfd2l0aF9kaBgEIAEoCzIrLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjT3BlbkdyYW50V2l0aERIQ2FsbEgAEkMKEWhwa2Vfc2VhbF93aXRoX2RoGAUgASgLMiYucmVtb3RlYWdlbnQuY29yZS52MS5TZWNIUEtFV2l0aERIQ2FsbEgAEkMKEWhwa2Vfb3Blbl93aXRoX2RoGAYgASgLMiYucmVtb3RlYWdlbnQuY29yZS52MS5TZWNIUEtFV2l0aERIQ2FsbEgAEj0KC3BhcnNlX2xlYXNlGAcgASgLMiYucmVtb3RlYWdlbnQuY29yZS52MS5TZWNQYXJzZUxlYXNlQ2FsbEgAEj8KDHZlcmlmeV9sZWFzZRgIIAEoCzInLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjVmVyaWZ5TGVhc2VDYWxsSAASSgoSbmV3X2xlYXNlX3Vuc2lnbmVkGAkgASgLMiwucmVtb3RlYWdlbnQuY29yZS52MS5TZWNOZXdMZWFzZVVuc2lnbmVkQ2FsbEgAEkEKDW1hcnNoYWxfbGVhc2UYCiABKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY01hcnNoYWxMZWFzZUNhbGxIABJWChhwYXJzZV9yZWNvdmVyeV9zdGF0ZW1lbnQYCyABKAsyMi5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY1BhcnNlUmVjb3ZlcnlTdGF0ZW1lbnRDYWxsSAASWAoZdmVyaWZ5X3JlY292ZXJ5X3N0YXRlbWVudBgMIAEoCzIzLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjVmVyaWZ5UmVjb3ZlcnlTdGF0ZW1lbnRDYWxsSAASYwofbmV3X3JlY292ZXJ5X3N0YXRlbWVudF91bnNpZ25lZBgNIAEoCzI4LnJlbW90ZWFnZW50LmNvcmUudjEuU2VjTmV3UmVjb3ZlcnlTdGF0ZW1lbnRVbnNpZ25lZENhbGxIABJaChptYXJzaGFsX3JlY292ZXJ5X3N0YXRlbWVudBgOIAEoCzI0LnJlbW90ZWFnZW50LmNvcmUudjEuU2VjTWFyc2hhbFJlY292ZXJ5U3RhdGVtZW50Q2FsbEgAEj0KC2J1aWxkX3N0YXRlGA8gASgLMiYucmVtb3RlYWdlbnQuY29yZS52MS5TZWNCdWlsZFN0YXRlQ2FsbEgAEkEKDW1hcnNoYWxfc3RhdGUYFiABKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY01hcnNoYWxTdGF0ZUNhbGxIABJGChBzZWFsX3ByZXZfc2VjcmV0GBcgASgLMioucmVtb3RlYWdlbnQuY29yZS52MS5TZWNTZWFsUHJldlNlY3JldENhbGxIABJGChBvcGVuX3ByZXZfc2VjcmV0GBggASgLMioucmVtb3RlYWdlbnQuY29yZS52MS5TZWNPcGVuUHJldlNlY3JldENhbGxIABJOChR2ZXJpZnlfcGFpcl9hcHByb3ZhbBgZIAEoCzIuLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjVmVyaWZ5UGFpckFwcHJvdmFsQ2FsbEgAElwKG21hY2hpbmVfcmVwbGFjZW1lbnRfb3JpZ2lucxgaIAEoCzI1LnJlbW90ZWFnZW50LmNvcmUudjEuU2VjTWFjaGluZVJlcGxhY2VtZW50T3JpZ2luc0NhbGxIABJQChVwYWlyX3RydXN0X2Rlc2NyaXB0b3IYGyABKAsyLy5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY1BhaXJUcnVzdERlc2NyaXB0b3JDYWxsSAASWwobcGFyc2VfcGFpcl90cnVzdF9kZXNjcmlwdG9yGBwgASgLMjQucmVtb3RlYWdlbnQuY29yZS52MS5TZWNQYXJzZVBhaXJUcnVzdERlc2NyaXB0b3JDYWxsSAASSgoScGFpcl9kb21haW5fY29tbWl0GB0gASgLMiwucmVtb3RlYWdlbnQuY29yZS52MS5TZWNQYWlyRG9tYWluQ29tbWl0Q2FsbEgAEkUKD3BhaXJfdHJhbnNjcmlwdBgeIAEoCzIqLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjUGFpclRyYW5zY3JpcHRDYWxsSAASVgoYcGFpcl9pZGVudGl0eV90cmFuc2NyaXB0GB8gASgLMjIucmVtb3RlYWdlbnQuY29yZS52MS5TZWNQYWlySWRlbnRpdHlUcmFuc2NyaXB0Q2FsbEgAElIKFnBhaXJfZG9tYWluX3RyYW5zY3JpcHQYICABKAsyMC5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY1BhaXJEb21haW5UcmFuc2NyaXB0Q2FsbEgAEkwKE2Rlcml2ZV9wYWlyX3NlY3JldHMYISABKAsyLS5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY0Rlcml2ZVBhaXJTZWNyZXRzQ2FsbEgAEkwKE2VkMjU1MTlfc2VlZF9wdWJsaWMYIiABKAsyLS5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY0VkMjU1MTlTZWVkUHVibGljQ2FsbEgAEkgKEWVkMjU1MTlfc2VlZF9zaWduGCMgASgLMisucmVtb3RlYWdlbnQuY29yZS52MS5TZWNFZDI1NTE5U2VlZFNpZ25DYWxsSAASRQoPaW5mbGF0ZV9ib3VuZGVkGCUgASgLMioucmVtb3RlYWdlbnQuY29yZS52MS5TZWNJbmZsYXRlQm91bmRlZENhbGxIABJHChByZXF1ZXN0X2lkZW50aXR5GCYgASgLMisucmVtb3RlYWdlbnQuY29yZS52MS5TZWNSZXF1ZXN0SWRlbnRpdHlDYWxsSAASXQocYWNjb3VudF9kZWxldGVfc2lnbmluZ19ieXRlcxgnIAEoCzI1LnJlbW90ZWFnZW50LmNvcmUudjEuU2VjQWNjb3VudERlbGV0ZVNpZ25pbmdCeXRlc0NhbGxIABJOChRvcGVuX25vdGlmeV9lbnZlbG9wZRgoIAEoCzIuLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjT3Blbk5vdGlmeUVudmVsb3BlQ2FsbEgAQgYKBGNhbGwiIAoRU2VjUGFyc2VTdGF0ZUNhbGwSCwoDcmF3GAEgASgMIrUBChJTZWNWZXJpZnlDaGFpbkNhbGwSKAoDcGluGAEgASgLMhsucmVtb3RlYWdlbnQuY29yZS52MS5TZWNQaW4SDgoGc3RhdGVzGAIgAygMEhcKD3JlY292ZXJ5X3Byb29mcxgDIAMoDBINCgVsZWFzZRgEIAEoDBIOCgZub3dfbXMYBSABKAMSEQoJbWVtYmVyX2lkGAYgASgJEhoKEmNoZWNrX2xlYXNlX3dpbmRvdxgHIAEoCCJjChVTZWNHcmFudENoYWxsZW5nZUNhbGwSKAoDcGluGAEgASgLMhsucmVtb3RlYWdlbnQuY29yZS52MS5TZWNQaW4SDQoFc3RhdGUYAiABKAwSEQoJbWVtYmVyX2lkGAMgASgJInAKFlNlY09wZW5HcmFudFdpdGhESENhbGwSKAoDcGluGAEgASgLMhsucmVtb3RlYWdlbnQuY29yZS52MS5TZWNQaW4SDQoFc3RhdGUYAiABKAwSEQoJbWVtYmVyX2lkGAMgASgJEgoKAmRoGAQgASgMIm8KEVNlY0hQS0VXaXRoREhDYWxsEhgKEHJlY2lwaWVudF9wdWJsaWMYASABKAwSCwoDZW5jGAIgASgMEgoKAmRoGAMgASgMEgwKBGluZm8YBCABKAwSCwoDYWFkGAUgASgMEgwKBGRhdGEYBiABKAwiIAoRU2VjUGFyc2VMZWFzZUNhbGwSCwoDcmF3GAEgASgMIl0KElNlY1ZlcmlmeUxlYXNlQ2FsbBINCgVsZWFzZRgBIAEoDBISCgpoZWFkX3N0YXRlGAIgASgMEg4KBm5vd19tcxgDIAEoAxIUCgxjaGVja193aW5kb3cYBCABKAgiPQoXU2VjTmV3TGVhc2VVbnNpZ25lZENhbGwSEgoKaGVhZF9zdGF0ZRgBIAEoDBIOCgZub3dfbXMYAiABKAQibAoTU2VjTWFyc2hhbExlYXNlQ2FsbBIOCgZkb21haW4YASABKAwSDAoEaGVhZBgCIAEoDBIRCglpc3N1ZWRfYXQYAyABKAQSEQoJbm90X2FmdGVyGAQgASgEEhEKCXNpZ25hdHVyZRgFIAEoDCIsCh1TZWNQYXJzZVJlY292ZXJ5U3RhdGVtZW50Q2FsbBILCgNyYXcYASABKAwiXQoeU2VjVmVyaWZ5UmVjb3ZlcnlTdGF0ZW1lbnRDYWxsEhEKCXN0YXRlbWVudBgBIAEoDBIUCgxwYXJlbnRfc3RhdGUYAiABKAwSEgoKbmV4dF9zdGF0ZRgDIAEoDCJeCiNTZWNOZXdSZWNvdmVyeVN0YXRlbWVudFVuc2lnbmVkQ2FsbBIUCgxwYXJlbnRfc3RhdGUYASABKAwSEgoKbmV4dF9zdGF0ZRgCIAEoDBINCgVub25jZRgDIAEoDCKCAgofU2VjTWFyc2hhbFJlY292ZXJ5U3RhdGVtZW50Q2FsbBIPCgdhY2NvdW50GAEgASgJEg4KBmRvbWFpbhgCIAEoDBIOCgZwYXJlbnQYAyABKAwSGAoQbmV3X2F1dGhvcml0eV9pZBgEIAEoCRIXCg9uZXdfcmVjb3ZlcnlfZWQYBSABKAwSMgoKbmV3X21lbWJlchgGIAEoCzIeLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjTWVtYmVyEhEKCWlzc3VlZF9hdBgHIAEoBBISCgpzdGF0ZV9oYXNoGAggASgMEg0KBW5vbmNlGAkgASgMEhEKCXNpZ25hdHVyZRgKIAEoDCKHAwoRU2VjQnVpbGRTdGF0ZUNhbGwSDAoEa2luZBgBIAEoDRIPCgdhY2NvdW50GAIgASgJEg4KBmRvbWFpbhgDIAEoDBIUCgxwYXJlbnRfc3RhdGUYBCABKAwSLgoGbWVtYmVyGAUgASgLMh4ucmVtb3RlYWdlbnQuY29yZS52MS5TZWNNZW1iZXISLwoHbWVtYmVycxgGIAMoCzIeLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjTWVtYmVyEg8KB3JlbW92ZWQYByADKAkSEwoLaW5jb21pbmdfaWQYCCABKAkSEwoLcmVjb3ZlcnlfZWQYCSABKAwSDgoGc2VjcmV0GAogASgMEhIKCm9sZF9zZWNyZXQYCyABKAwSEwoLcHJldl9zZWNyZXQYDCABKAwSGQoRcHJldl9zZWNyZXRfbm9uY2UYDSABKAwSDgoGbm93X21zGA4gASgEEi0KBGtlbXMYDyADKAsyHy5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY0tlbVBhaXIigwEKE1NlY01hcnNoYWxTdGF0ZUNhbGwSFQoNdW5zaWduZWRfY29yZRgBIAEoDBItCgZncmFudHMYAiADKAsyHS5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY0dyYW50EhMKC3ByZXZfc2VjcmV0GAMgASgMEhEKCXNpZ25hdHVyZRgEIAEoDCJOChVTZWNTZWFsUHJldlNlY3JldENhbGwSEgoKbmV3X3NlY3JldBgBIAEoDBISCgpvbGRfc2VjcmV0GAIgASgMEg0KBW5vbmNlGAMgASgMIjkKFVNlY09wZW5QcmV2U2VjcmV0Q2FsbBISCgpuZXdfc2VjcmV0GAEgASgMEgwKBGJsb2IYAiABKAwieQoZU2VjVmVyaWZ5UGFpckFwcHJvdmFsQ2FsbBIQCghhcHByb3ZhbBgBIAEoDBIRCglzaWduYXR1cmUYAiABKAwSGAoQZXhwZWN0ZWRfYWNjb3VudBgDIAEoCRIdChVleHBlY3RlZF9jYW5kaWRhdGVfaWQYBCABKAkilwEKIFNlY01hY2hpbmVSZXBsYWNlbWVudE9yaWdpbnNDYWxsEg8KB2FjY291bnQYASABKAkSGQoRdGFyZ2V0X21hY2hpbmVfaWQYAiABKAkSDgoGc3RhdGVzGAMgAygMEjcKBnByb29mcxgEIAMoCzInLnJlbW90ZWFnZW50LnYxLk1hY2hpbmVSZXBsYWNlbWVudFByb29mIlgKGlNlY1BhaXJUcnVzdERlc2NyaXB0b3JDYWxsEigKA3BpbhgBIAEoCzIbLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjUGluEhAKCGFwcHJvdmVyGAIgASgJIi4KH1NlY1BhcnNlUGFpclRydXN0RGVzY3JpcHRvckNhbGwSCwoDcmF3GAEgASgMIkYKF1NlY1BhaXJEb21haW5Db21taXRDYWxsEhEKCWluaXRpYXRvchgBIAEoDBIYChB0cnVzdF9kZXNjcmlwdG9yGAIgASgMInEKFVNlY1BhaXJUcmFuc2NyaXB0Q2FsbBISCgpwYWlyaW5nX2lkGAEgASgJEhgKEGluaXRpYXRvcl9wdWJsaWMYAiABKAwSFQoNam9pbmVyX3B1YmxpYxgDIAEoDBITCgtqb2luZXJfa2luZBgEIAEoBSKTAQodU2VjUGFpcklkZW50aXR5VHJhbnNjcmlwdENhbGwSEgoKcGFpcmluZ19pZBgBIAEoCRIYChBpbml0aWF0b3JfcHVibGljGAIgASgMEhUKDWpvaW5lcl9wdWJsaWMYAyABKAwSGAoQZGV2aWNlX2VkX3B1YmxpYxgEIAEoDBITCgtqb2luZXJfa2luZBgFIAEoBSLEAQobU2VjUGFpckRvbWFpblRyYW5zY3JpcHRDYWxsEhIKCnBhaXJpbmdfaWQYASABKAkSGAoQaW5pdGlhdG9yX3B1YmxpYxgCIAEoDBIVCg1qb2luZXJfcHVibGljGAMgASgMEhgKEGRldmljZV9lZF9wdWJsaWMYBCABKAwSFwoPZGV2aWNlX3hfcHVibGljGAUgASgMEhMKC2pvaW5lcl9raW5kGAYgASgFEhgKEHRydXN0X2Rlc2NyaXB0b3IYByABKAwiPgoYU2VjRGVyaXZlUGFpclNlY3JldHNDYWxsEg4KBnNoYXJlZBgBIAEoDBISCgp0cmFuc2NyaXB0GAIgASgMIigKGFNlY0VkMjU1MTlTZWVkUHVibGljQ2FsbBIMCgRzZWVkGAEgASgMIjcKFlNlY0VkMjU1MTlTZWVkU2lnbkNhbGwSDAoEc2VlZBgBIAEoDBIPCgdtZXNzYWdlGAIgASgMIjoKFVNlY0luZmxhdGVCb3VuZGVkQ2FsbBISCgpjb21wcmVzc2VkGAEgASgMEg0KBWxpbWl0GAIgASgNIlIKFlNlY1JlcXVlc3RJZGVudGl0eUNhbGwSDgoGaGVhZGVyGAEgASgMEhEKCXBsYWludGV4dBgCIAEoDBIVCg1oYXNfcGxhaW50ZXh0GAMgASgIIlkKIFNlY0FjY291bnREZWxldGVTaWduaW5nQnl0ZXNDYWxsEg8KB2FjY291bnQYASABKAkSEQoJaGVhZF9oYXNoGAIgASgMEhEKCWNoYWxsZW5nZRgDIAEoDCLRAQoZU2VjT3Blbk5vdGlmeUVudmVsb3BlQ2FsbBIoCgNwaW4YASABKAsyGy5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY1BpbhIOCgZzdGF0ZXMYAiADKAwSFwoPcmVjb3ZlcnlfcHJvb2ZzGAMgAygMEhEKCW1lbWJlcl9pZBgEIAEoCRIKCgJkaBgFIAEoDBIWCg5jb250ZW50X3NlY3JldBgGIAEoDBIqCghlbnZlbG9wZRgHIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlIuMDCg9TZWNDYWxsUmVzcG9uc2USDQoFZXJyb3IYASABKAkSEgoKZXJyb3JfY29kZRgCIAEoCRI5CgxwYXJzZWRfc3RhdGUYAyABKAsyIy5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY1BhcnNlZFN0YXRlEjkKDHBhcnNlZF9sZWFzZRgEIAEoCzIjLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjUGFyc2VkTGVhc2USSAoPcGFyc2VkX3JlY292ZXJ5GAUgASgLMi8ucmVtb3RlYWdlbnQuY29yZS52MS5TZWNQYXJzZWRSZWNvdmVyeVN0YXRlbWVudBI9Cg51bnNpZ25lZF9zdGF0ZRgGIAEoCzIlLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjVW5zaWduZWRTdGF0ZRI/Cg9wYXJzZWRfYXBwcm92YWwYByABKAsyJi5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY1BhcnNlZEFwcHJvdmFsEgwKBGRhdGEYCCABKAwSFgoOc2Vjb25kYXJ5X2RhdGEYCSABKAwSDAoEdGV4dBgKIAEoCRIPCgdzdHJpbmdzGAsgAygJEigKA3BpbhgMIAEoCzIbLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjUGluKt8BCg9TZWN1cml0eUtleUtpbmQSIQodU0VDVVJJVFlfS0VZX0tJTkRfVU5TUEVDSUZJRUQQABIfChtTRUNVUklUWV9LRVlfS0lORF9ERVZJQ0VfRUQQARIeChpTRUNVUklUWV9LRVlfS0lORF9ERVZJQ0VfWBACEiIKHlNFQ1VSSVRZX0tFWV9LSU5EX0NBTkRJREFURV9FRBADEiEKHVNFQ1VSSVRZX0tFWV9LSU5EX0NBTkRJREFURV9YEAQSIQodU0VDVVJJVFlfS0VZX0tJTkRfRVBIRU1FUkFMX1gQBSqFAQoUU2VjdXJpdHlHZW5lcmF0ZUtpbmQSJgoiU0VDVVJJVFlfR0VORVJBVEVfS0lORF9VTlNQRUNJRklFRBAAEiIKHlNFQ1VSSVRZX0dFTkVSQVRFX0tJTkRfRUQyNTUxORABEiEKHVNFQ1VSSVRZX0dFTkVSQVRFX0tJTkRfWDI1NTE5EAJiBnByb3RvMw", [file_remoteagent_v1_envelope, file_remoteagent_v1_event, file_remoteagent_v1_local, file_remoteagent_v1_relay, file_remoteagent_v1_remote]);
+  fileDesc("CiJyZW1vdGVhZ2VudC9jb3JlL3YxL3NlY3VyaXR5LnByb3RvEhNyZW1vdGVhZ2VudC5jb3JlLnYxIlAKE1NlY3VyaXR5Q29uZmlnRXZlbnQSDwoHYWNjb3VudBgBIAEoCRIRCglkZXZpY2VfaWQYAiABKAkSFQoNaW5saW5lX2NyeXB0bxgDIAEoCCI7ChJTZWN1cml0eUNvbnRlbnRLZXkSFQoNY29udGVudF9lcG9jaBgBIAEoBBIOCgZzZWNyZXQYAiABKAwilQMKE1NlY3VyaXR5UmVjb3JkRXZlbnQSDQoFb3BfaWQYASABKAQSEAoIcHVzaF9zZXEYAiABKAQSGgoSbmV0d29ya19nZW5lcmF0aW9uGAMgASgEEg8KB2FjY291bnQYBCABKAkSDgoGZG9tYWluGAUgASgMEg8KB2dlbmVzaXMYBiABKAwSDgoGc3RhdGVzGAcgAygMEhcKD3JlY292ZXJ5X3Byb29mcxgIIAMoDBINCgVsZWFzZRgJIAEoDBIQCghmbG9vcl9tcxgKIAEoAxIYChByZWNvdmVyeV9wZW5kaW5nGAsgASgIEhkKEXJlY292ZXJ5X3JlYWR5X21zGAwgASgDEiAKGHJlY292ZXJ5X29iamVjdHNfcGVuZGluZxgNIAEoCBIPCgdyZW1vdmVkGA4gASgIEg8KB2NsZWFyZWQYDyABKAgSDQoFZXJyb3IYECABKAkSPQoMY29udGVudF9rZXlzGBEgAygLMicucmVtb3RlYWdlbnQuY29yZS52MS5TZWN1cml0eUNvbnRlbnRLZXkifQoVU2VjdXJpdHlLZXlTaWduRWZmZWN0Eg0KBW9wX2lkGAEgASgEEjYKCGtleV9raW5kGAIgASgOMiQucmVtb3RlYWdlbnQuY29yZS52MS5TZWN1cml0eUtleUtpbmQSDAoEc2xvdBgDIAEoCRIPCgdtZXNzYWdlGAQgASgMIkkKFlNlY3VyaXR5S2V5U2lnbmVkRXZlbnQSDQoFb3BfaWQYASABKAQSEQoJc2lnbmF0dXJlGAIgASgMEg0KBWVycm9yGAMgASgJIoIBChZTZWN1cml0eUtleUFncmVlRWZmZWN0Eg0KBW9wX2lkGAEgASgEEjYKCGtleV9raW5kGAIgASgOMiQucmVtb3RlYWdlbnQuY29yZS52MS5TZWN1cml0eUtleUtpbmQSDAoEc2xvdBgDIAEoCRITCgtwZWVyX3B1YmxpYxgEIAEoDCJGChZTZWN1cml0eUtleUFncmVlZEV2ZW50Eg0KBW9wX2lkGAEgASgEEg4KBnNoYXJlZBgCIAEoDBINCgVlcnJvchgDIAEoCSJPChVDcnlwdG9CYXRjaFZlcmlmeUl0ZW0SEgoKcHVibGljX2tleRgBIAEoDBIPCgdtZXNzYWdlGAIgASgMEhEKCXNpZ25hdHVyZRgDIAEoDCJWChdDcnlwdG9CYXRjaEFlYWRPcGVuSXRlbRILCgNrZXkYASABKAwSDQoFbm9uY2UYAiABKAwSCwoDYWFkGAMgASgMEhIKCmNpcGhlcnRleHQYBCABKAwiVQoXQ3J5cHRvQmF0Y2hBZWFkU2VhbEl0ZW0SCwoDa2V5GAEgASgMEg0KBW5vbmNlGAIgASgMEgsKA2FhZBgDIAEoDBIRCglwbGFpbnRleHQYBCABKAwiJQoVQ3J5cHRvQmF0Y2hTaGEyNTZJdGVtEgwKBGRhdGEYASABKAwiowIKF1NlY3VyaXR5Q3J5cHRvQmF0Y2hJdGVtEjwKBnZlcmlmeRgBIAEoCzIqLnJlbW90ZWFnZW50LmNvcmUudjEuQ3J5cHRvQmF0Y2hWZXJpZnlJdGVtSAASQQoJYWVhZF9vcGVuGAIgASgLMiwucmVtb3RlYWdlbnQuY29yZS52MS5DcnlwdG9CYXRjaEFlYWRPcGVuSXRlbUgAEkEKCWFlYWRfc2VhbBgDIAEoCzIsLnJlbW90ZWFnZW50LmNvcmUudjEuQ3J5cHRvQmF0Y2hBZWFkU2VhbEl0ZW1IABI8CgZzaGEyNTYYBCABKAsyKi5yZW1vdGVhZ2VudC5jb3JlLnYxLkNyeXB0b0JhdGNoU2hhMjU2SXRlbUgAQgYKBGtpbmQiZwoZU2VjdXJpdHlDcnlwdG9CYXRjaEVmZmVjdBINCgVvcF9pZBgBIAEoBBI7CgVpdGVtcxgCIAMoCzIsLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjdXJpdHlDcnlwdG9CYXRjaEl0ZW0iRAoZU2VjdXJpdHlDcnlwdG9CYXRjaFJlc3VsdBIKCgJvaxgBIAEoCBIMCgRkYXRhGAIgASgMEg0KBWVycm9yGAMgASgJIn0KHFNlY3VyaXR5Q3J5cHRvQmF0Y2hEb25lRXZlbnQSDQoFb3BfaWQYASABKAQSPwoHcmVzdWx0cxgCIAMoCzIuLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjdXJpdHlDcnlwdG9CYXRjaFJlc3VsdBINCgVlcnJvchgDIAEoCSLXAQoWU2VjdXJpdHlPcGVuRW52ZWxvcGVPcBIqCghlbnZlbG9wZRgBIAEoCzIYLnJlbW90ZWFnZW50LnYxLkVudmVsb3BlEhgKEGV4cGVjdGVkX3B1cnBvc2UYAiABKA0SEgoKbWFjaGluZV9pZBgDIAEoCRISCgpzZXNzaW9uX2lkGAQgASgJEhIKCnJlcXVlc3RfaWQYBSABKAkSCwoDc2VxGAYgASgEEg8KB2hpc3RvcnkYByABKAgSHQoVb3ZlcnJpZGVfc2Vzc2lvbl9zZWVkGAggASgMIrQBChZTZWN1cml0eVNlYWxFbnZlbG9wZU9wEg8KB3B1cnBvc2UYASABKA0SEgoKbWFjaGluZV9pZBgCIAEoCRISCgpzZXNzaW9uX2lkGAMgASgJEhIKCnJlcXVlc3RfaWQYBCABKAkSCwoDc2VxGAUgASgEEhMKC2RlYWRsaW5lX21zGAYgASgDEhEKCXBsYWludGV4dBgHIAEoDBIYChB1c2Vfc2Vzc2lvbl9zZWVkGAggASgIIi4KGFNlY3VyaXR5R2V0U2Vzc2lvblNlZWRPcBISCgpzZXNzaW9uX2lkGAEgASgJIoQCChZTZWN1cml0eU9wUmVxdWVzdEV2ZW50Eg0KBW9wX2lkGAEgASgEEkQKDW9wZW5fZW52ZWxvcGUYAiABKAsyKy5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY3VyaXR5T3BlbkVudmVsb3BlT3BIABJECg1zZWFsX2VudmVsb3BlGAMgASgLMisucmVtb3RlYWdlbnQuY29yZS52MS5TZWN1cml0eVNlYWxFbnZlbG9wZU9wSAASSQoQZ2V0X3Nlc3Npb25fc2VlZBgEIAEoCzItLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjdXJpdHlHZXRTZXNzaW9uU2VlZE9wSABCBAoCb3Ai5AEKGlNlY3VyaXR5T3BlbkVudmVsb3BlUmVzdWx0Eg4KBmhlYWRlchgBIAEoDBIRCglwbGFpbnRleHQYAiABKAwSDQoFZXBvY2gYAyABKAQSFQoNY29udGVudF9lcG9jaBgEIAEoBBILCgNzZXEYBSABKAQSDgoGc2VuZGVyGAYgASgJEg8KB3B1cnBvc2UYByABKA0SEgoKbWFjaGluZV9pZBgIIAEoCRISCgpzZXNzaW9uX2lkGAkgASgJEhIKCnJlcXVlc3RfaWQYCiABKAkSEwoLZGVhZGxpbmVfbXMYCyABKAMieAoaU2VjdXJpdHlTZWFsRW52ZWxvcGVSZXN1bHQSKgoIZW52ZWxvcGUYASABKAsyGC5yZW1vdGVhZ2VudC52MS5FbnZlbG9wZRIYChByZXF1ZXN0X2tleV9oYXNoGAIgASgMEhQKDHBheWxvYWRfaGFzaBgDIAEoDCLyAQoWU2VjdXJpdHlPcFJlc3VsdEVmZmVjdBINCgVvcF9pZBgBIAEoBBINCgVlcnJvchgCIAEoCRISCgplcnJvcl9jb2RlGAMgASgJEkEKBm9wZW5lZBgEIAEoCzIvLnJlbW90ZWFnZW50LmNvcmUudjEuU2VjdXJpdHlPcGVuRW52ZWxvcGVSZXN1bHRIABJBCgZzZWFsZWQYBSABKAsyLy5yZW1vdGVhZ2VudC5jb3JlLnYxLlNlY3VyaXR5U2VhbEVudmVsb3BlUmVzdWx0SAASFgoMc2Vzc2lvbl9zZWVkGAYgASgMSABCCAoGcmVzdWx0InIKC0RlbW9NYWNoaW5lEhIKCm1hY2hpbmVfaWQYASABKAkSDgoGb25saW5lGAIgASgIEhQKDGxhc3Rfc2Vlbl9tcxgDIAEoAxIpCgRtZXRhGAQgASgLMhsucmVtb3RlYWdlbnQudjEuTWFjaGluZU1ldGEizQEKC0RlbW9TZXNzaW9uEhIKCnNlc3Npb25faWQYASABKAkSEgoKbWFjaGluZV9pZBgCIAEoCRIQCghsYXN0X3NlcRgDIAEoBBISCgp1cGRhdGVkX21zGAQgASgDEhcKD2xpc3RlZF9lbmRlZF9tcxgFIAEoAxIlCgRtZXRhGAYgASgLMhcucmVtb3RlYWdlbnQudjEuU2Vzc2lvbhIwCgpjaGVja3BvaW50GAcgASgLMhwucmVtb3RlYWdlbnQudjEuTGl2ZVNuYXBzaG90Ip0BCgpEZW1vRGV2aWNlEhEKCWRldmljZV9pZBgBIAEoCRIoCgRraW5kGAIgASgOMhoucmVtb3RlYWdlbnQudjEuRGV2aWNlS2luZBISCgpjcmVhdGVkX21zGAMgASgDEhQKDGxhc3Rfc2Vlbl9tcxgEIAEoAxIoCgRtZXRhGAUgASgLMhoucmVtb3RlYWdlbnQudjEuRGV2aWNlTWV0YSJOChFEZW1vU2Vzc2lvbkV2ZW50cxISCgpzZXNzaW9uX2lkGAEgASgJEiUKBmV2ZW50cxgCIAMoCzIVLnJlbW90ZWFnZW50LnYxLkV2ZW50IpsCChJTZWVkRGVtb1dvcmxkRXZlbnQSMgoIbWFjaGluZXMYASADKAsyIC5yZW1vdGVhZ2VudC5jb3JlLnYxLkRlbW9NYWNoaW5lEjIKCHNlc3Npb25zGAIgAygLMiAucmVtb3RlYWdlbnQuY29yZS52MS5EZW1vU2Vzc2lvbhIwCgdkZXZpY2VzGAMgAygLMh8ucmVtb3RlYWdlbnQuY29yZS52MS5EZW1vRGV2aWNlEisKBXByZWZzGAQgASgLMhwucmVtb3RlYWdlbnQudjEuUHJvamVjdFByZWZzEj4KDnNlc3Npb25fZXZlbnRzGAUgAygLMiYucmVtb3RlYWdlbnQuY29yZS52MS5EZW1vU2Vzc2lvbkV2ZW50cyJZChZDYWNoZVdyaXRlU3RvcmVkRXZlbnRzEhIKCnNlc3Npb25faWQYASABKAkSKwoGZXZlbnRzGAIgAygLMhsucmVtb3RlYWdlbnQudjEuU3RvcmVkRXZlbnQq3wEKD1NlY3VyaXR5S2V5S2luZBIhCh1TRUNVUklUWV9LRVlfS0lORF9VTlNQRUNJRklFRBAAEh8KG1NFQ1VSSVRZX0tFWV9LSU5EX0RFVklDRV9FRBABEh4KGlNFQ1VSSVRZX0tFWV9LSU5EX0RFVklDRV9YEAISIgoeU0VDVVJJVFlfS0VZX0tJTkRfQ0FORElEQVRFX0VEEAMSIQodU0VDVVJJVFlfS0VZX0tJTkRfQ0FORElEQVRFX1gQBBIhCh1TRUNVUklUWV9LRVlfS0lORF9FUEhFTUVSQUxfWBAFYgZwcm90bzM", [file_remoteagent_v1_envelope, file_remoteagent_v1_event, file_remoteagent_v1_local, file_remoteagent_v1_relay, file_remoteagent_v1_remote]);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityConfigEvent
@@ -51,6 +51,28 @@ export type SecurityConfigEvent = Message<"remoteagent.core.v1.SecurityConfigEve
  */
 export const SecurityConfigEventSchema: GenMessage<SecurityConfigEvent> = /*@__PURE__*/
   messageDesc(file_remoteagent_core_v1_security, 0);
+
+/**
+ * @generated from message remoteagent.core.v1.SecurityContentKey
+ */
+export type SecurityContentKey = Message<"remoteagent.core.v1.SecurityContentKey"> & {
+  /**
+   * @generated from field: uint64 content_epoch = 1;
+   */
+  contentEpoch: bigint;
+
+  /**
+   * @generated from field: bytes secret = 2;
+   */
+  secret: Uint8Array;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.SecurityContentKey.
+ * Use `create(SecurityContentKeySchema)` to create a new message.
+ */
+export const SecurityContentKeySchema: GenMessage<SecurityContentKey> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_security, 1);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityRecordEvent
@@ -135,6 +157,11 @@ export type SecurityRecordEvent = Message<"remoteagent.core.v1.SecurityRecordEve
    * @generated from field: string error = 16;
    */
   error: string;
+
+  /**
+   * @generated from field: repeated remoteagent.core.v1.SecurityContentKey content_keys = 17;
+   */
+  contentKeys: SecurityContentKey[];
 };
 
 /**
@@ -142,7 +169,7 @@ export type SecurityRecordEvent = Message<"remoteagent.core.v1.SecurityRecordEve
  * Use `create(SecurityRecordEventSchema)` to create a new message.
  */
 export const SecurityRecordEventSchema: GenMessage<SecurityRecordEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 1);
+  messageDesc(file_remoteagent_core_v1_security, 2);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityKeySignEffect
@@ -174,7 +201,7 @@ export type SecurityKeySignEffect = Message<"remoteagent.core.v1.SecurityKeySign
  * Use `create(SecurityKeySignEffectSchema)` to create a new message.
  */
 export const SecurityKeySignEffectSchema: GenMessage<SecurityKeySignEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 2);
+  messageDesc(file_remoteagent_core_v1_security, 3);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityKeySignedEvent
@@ -201,7 +228,7 @@ export type SecurityKeySignedEvent = Message<"remoteagent.core.v1.SecurityKeySig
  * Use `create(SecurityKeySignedEventSchema)` to create a new message.
  */
 export const SecurityKeySignedEventSchema: GenMessage<SecurityKeySignedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 3);
+  messageDesc(file_remoteagent_core_v1_security, 4);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityKeyAgreeEffect
@@ -233,7 +260,7 @@ export type SecurityKeyAgreeEffect = Message<"remoteagent.core.v1.SecurityKeyAgr
  * Use `create(SecurityKeyAgreeEffectSchema)` to create a new message.
  */
 export const SecurityKeyAgreeEffectSchema: GenMessage<SecurityKeyAgreeEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 4);
+  messageDesc(file_remoteagent_core_v1_security, 5);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityKeyAgreedEvent
@@ -260,154 +287,7 @@ export type SecurityKeyAgreedEvent = Message<"remoteagent.core.v1.SecurityKeyAgr
  * Use `create(SecurityKeyAgreedEventSchema)` to create a new message.
  */
 export const SecurityKeyAgreedEventSchema: GenMessage<SecurityKeyAgreedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 5);
-
-/**
- * @generated from message remoteagent.core.v1.SecurityKeyGenerateEffect
- */
-export type SecurityKeyGenerateEffect = Message<"remoteagent.core.v1.SecurityKeyGenerateEffect"> & {
-  /**
-   * @generated from field: uint64 op_id = 1;
-   */
-  opId: bigint;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecurityGenerateKind key_kind = 2;
-   */
-  keyKind: SecurityGenerateKind;
-
-  /**
-   * @generated from field: string slot = 3;
-   */
-  slot: string;
-
-  /**
-   * @generated from field: bool persist = 4;
-   */
-  persist: boolean;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecurityKeyGenerateEffect.
- * Use `create(SecurityKeyGenerateEffectSchema)` to create a new message.
- */
-export const SecurityKeyGenerateEffectSchema: GenMessage<SecurityKeyGenerateEffect> = /*@__PURE__*/
   messageDesc(file_remoteagent_core_v1_security, 6);
-
-/**
- * @generated from message remoteagent.core.v1.SecurityKeyGeneratedEvent
- */
-export type SecurityKeyGeneratedEvent = Message<"remoteagent.core.v1.SecurityKeyGeneratedEvent"> & {
-  /**
-   * @generated from field: uint64 op_id = 1;
-   */
-  opId: bigint;
-
-  /**
-   * @generated from field: bytes public_key = 2;
-   */
-  publicKey: Uint8Array;
-
-  /**
-   * @generated from field: string error = 3;
-   */
-  error: string;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecurityKeyGeneratedEvent.
- * Use `create(SecurityKeyGeneratedEventSchema)` to create a new message.
- */
-export const SecurityKeyGeneratedEventSchema: GenMessage<SecurityKeyGeneratedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 7);
-
-/**
- * @generated from message remoteagent.core.v1.SecurityKeyEncapsulateEffect
- */
-export type SecurityKeyEncapsulateEffect = Message<"remoteagent.core.v1.SecurityKeyEncapsulateEffect"> & {
-  /**
-   * @generated from field: uint64 op_id = 1;
-   */
-  opId: bigint;
-
-  /**
-   * @generated from field: repeated bytes recipient_x_publics = 2;
-   */
-  recipientXPublics: Uint8Array[];
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecurityKeyEncapsulateEffect.
- * Use `create(SecurityKeyEncapsulateEffectSchema)` to create a new message.
- */
-export const SecurityKeyEncapsulateEffectSchema: GenMessage<SecurityKeyEncapsulateEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 8);
-
-/**
- * @generated from message remoteagent.core.v1.SecurityKeyEncapsulatedPair
- */
-export type SecurityKeyEncapsulatedPair = Message<"remoteagent.core.v1.SecurityKeyEncapsulatedPair"> & {
-  /**
-   * @generated from field: bytes enc = 1;
-   */
-  enc: Uint8Array;
-
-  /**
-   * @generated from field: bytes shared = 2;
-   */
-  shared: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecurityKeyEncapsulatedPair.
- * Use `create(SecurityKeyEncapsulatedPairSchema)` to create a new message.
- */
-export const SecurityKeyEncapsulatedPairSchema: GenMessage<SecurityKeyEncapsulatedPair> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 9);
-
-/**
- * @generated from message remoteagent.core.v1.SecurityKeyEncapsulatedEvent
- */
-export type SecurityKeyEncapsulatedEvent = Message<"remoteagent.core.v1.SecurityKeyEncapsulatedEvent"> & {
-  /**
-   * @generated from field: uint64 op_id = 1;
-   */
-  opId: bigint;
-
-  /**
-   * @generated from field: repeated remoteagent.core.v1.SecurityKeyEncapsulatedPair pairs = 2;
-   */
-  pairs: SecurityKeyEncapsulatedPair[];
-
-  /**
-   * @generated from field: string error = 3;
-   */
-  error: string;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecurityKeyEncapsulatedEvent.
- * Use `create(SecurityKeyEncapsulatedEventSchema)` to create a new message.
- */
-export const SecurityKeyEncapsulatedEventSchema: GenMessage<SecurityKeyEncapsulatedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 10);
-
-/**
- * @generated from message remoteagent.core.v1.SecurityKeyDiscardEffect
- */
-export type SecurityKeyDiscardEffect = Message<"remoteagent.core.v1.SecurityKeyDiscardEffect"> & {
-  /**
-   * @generated from field: string slot = 1;
-   */
-  slot: string;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecurityKeyDiscardEffect.
- * Use `create(SecurityKeyDiscardEffectSchema)` to create a new message.
- */
-export const SecurityKeyDiscardEffectSchema: GenMessage<SecurityKeyDiscardEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 11);
 
 /**
  * @generated from message remoteagent.core.v1.CryptoBatchVerifyItem
@@ -434,7 +314,7 @@ export type CryptoBatchVerifyItem = Message<"remoteagent.core.v1.CryptoBatchVeri
  * Use `create(CryptoBatchVerifyItemSchema)` to create a new message.
  */
 export const CryptoBatchVerifyItemSchema: GenMessage<CryptoBatchVerifyItem> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 12);
+  messageDesc(file_remoteagent_core_v1_security, 7);
 
 /**
  * @generated from message remoteagent.core.v1.CryptoBatchAeadOpenItem
@@ -466,7 +346,7 @@ export type CryptoBatchAeadOpenItem = Message<"remoteagent.core.v1.CryptoBatchAe
  * Use `create(CryptoBatchAeadOpenItemSchema)` to create a new message.
  */
 export const CryptoBatchAeadOpenItemSchema: GenMessage<CryptoBatchAeadOpenItem> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 13);
+  messageDesc(file_remoteagent_core_v1_security, 8);
 
 /**
  * @generated from message remoteagent.core.v1.CryptoBatchAeadSealItem
@@ -498,7 +378,7 @@ export type CryptoBatchAeadSealItem = Message<"remoteagent.core.v1.CryptoBatchAe
  * Use `create(CryptoBatchAeadSealItemSchema)` to create a new message.
  */
 export const CryptoBatchAeadSealItemSchema: GenMessage<CryptoBatchAeadSealItem> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 14);
+  messageDesc(file_remoteagent_core_v1_security, 9);
 
 /**
  * @generated from message remoteagent.core.v1.CryptoBatchSha256Item
@@ -515,7 +395,7 @@ export type CryptoBatchSha256Item = Message<"remoteagent.core.v1.CryptoBatchSha2
  * Use `create(CryptoBatchSha256ItemSchema)` to create a new message.
  */
 export const CryptoBatchSha256ItemSchema: GenMessage<CryptoBatchSha256Item> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 15);
+  messageDesc(file_remoteagent_core_v1_security, 10);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityCryptoBatchItem
@@ -556,7 +436,7 @@ export type SecurityCryptoBatchItem = Message<"remoteagent.core.v1.SecurityCrypt
  * Use `create(SecurityCryptoBatchItemSchema)` to create a new message.
  */
 export const SecurityCryptoBatchItemSchema: GenMessage<SecurityCryptoBatchItem> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 16);
+  messageDesc(file_remoteagent_core_v1_security, 11);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityCryptoBatchEffect
@@ -578,7 +458,7 @@ export type SecurityCryptoBatchEffect = Message<"remoteagent.core.v1.SecurityCry
  * Use `create(SecurityCryptoBatchEffectSchema)` to create a new message.
  */
 export const SecurityCryptoBatchEffectSchema: GenMessage<SecurityCryptoBatchEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 17);
+  messageDesc(file_remoteagent_core_v1_security, 12);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityCryptoBatchResult
@@ -605,7 +485,7 @@ export type SecurityCryptoBatchResult = Message<"remoteagent.core.v1.SecurityCry
  * Use `create(SecurityCryptoBatchResultSchema)` to create a new message.
  */
 export const SecurityCryptoBatchResultSchema: GenMessage<SecurityCryptoBatchResult> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 18);
+  messageDesc(file_remoteagent_core_v1_security, 13);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityCryptoBatchDoneEvent
@@ -632,7 +512,7 @@ export type SecurityCryptoBatchDoneEvent = Message<"remoteagent.core.v1.Security
  * Use `create(SecurityCryptoBatchDoneEventSchema)` to create a new message.
  */
 export const SecurityCryptoBatchDoneEventSchema: GenMessage<SecurityCryptoBatchDoneEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 19);
+  messageDesc(file_remoteagent_core_v1_security, 14);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityOpenEnvelopeOp
@@ -684,7 +564,7 @@ export type SecurityOpenEnvelopeOp = Message<"remoteagent.core.v1.SecurityOpenEn
  * Use `create(SecurityOpenEnvelopeOpSchema)` to create a new message.
  */
 export const SecurityOpenEnvelopeOpSchema: GenMessage<SecurityOpenEnvelopeOp> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 20);
+  messageDesc(file_remoteagent_core_v1_security, 15);
 
 /**
  * @generated from message remoteagent.core.v1.SecuritySealEnvelopeOp
@@ -736,7 +616,7 @@ export type SecuritySealEnvelopeOp = Message<"remoteagent.core.v1.SecuritySealEn
  * Use `create(SecuritySealEnvelopeOpSchema)` to create a new message.
  */
 export const SecuritySealEnvelopeOpSchema: GenMessage<SecuritySealEnvelopeOp> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 21);
+  messageDesc(file_remoteagent_core_v1_security, 16);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityGetSessionSeedOp
@@ -753,7 +633,7 @@ export type SecurityGetSessionSeedOp = Message<"remoteagent.core.v1.SecurityGetS
  * Use `create(SecurityGetSessionSeedOpSchema)` to create a new message.
  */
 export const SecurityGetSessionSeedOpSchema: GenMessage<SecurityGetSessionSeedOp> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 22);
+  messageDesc(file_remoteagent_core_v1_security, 17);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityOpRequestEvent
@@ -793,7 +673,7 @@ export type SecurityOpRequestEvent = Message<"remoteagent.core.v1.SecurityOpRequ
  * Use `create(SecurityOpRequestEventSchema)` to create a new message.
  */
 export const SecurityOpRequestEventSchema: GenMessage<SecurityOpRequestEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 23);
+  messageDesc(file_remoteagent_core_v1_security, 18);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityOpenEnvelopeResult
@@ -860,7 +740,7 @@ export type SecurityOpenEnvelopeResult = Message<"remoteagent.core.v1.SecurityOp
  * Use `create(SecurityOpenEnvelopeResultSchema)` to create a new message.
  */
 export const SecurityOpenEnvelopeResultSchema: GenMessage<SecurityOpenEnvelopeResult> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 24);
+  messageDesc(file_remoteagent_core_v1_security, 19);
 
 /**
  * @generated from message remoteagent.core.v1.SecuritySealEnvelopeResult
@@ -887,7 +767,7 @@ export type SecuritySealEnvelopeResult = Message<"remoteagent.core.v1.SecuritySe
  * Use `create(SecuritySealEnvelopeResultSchema)` to create a new message.
  */
 export const SecuritySealEnvelopeResultSchema: GenMessage<SecuritySealEnvelopeResult> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 25);
+  messageDesc(file_remoteagent_core_v1_security, 20);
 
 /**
  * @generated from message remoteagent.core.v1.SecurityOpResultEffect
@@ -937,7 +817,7 @@ export type SecurityOpResultEffect = Message<"remoteagent.core.v1.SecurityOpResu
  * Use `create(SecurityOpResultEffectSchema)` to create a new message.
  */
 export const SecurityOpResultEffectSchema: GenMessage<SecurityOpResultEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 26);
+  messageDesc(file_remoteagent_core_v1_security, 21);
 
 /**
  * @generated from message remoteagent.core.v1.DemoMachine
@@ -969,7 +849,7 @@ export type DemoMachine = Message<"remoteagent.core.v1.DemoMachine"> & {
  * Use `create(DemoMachineSchema)` to create a new message.
  */
 export const DemoMachineSchema: GenMessage<DemoMachine> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 27);
+  messageDesc(file_remoteagent_core_v1_security, 22);
 
 /**
  * @generated from message remoteagent.core.v1.DemoSession
@@ -1016,7 +896,7 @@ export type DemoSession = Message<"remoteagent.core.v1.DemoSession"> & {
  * Use `create(DemoSessionSchema)` to create a new message.
  */
 export const DemoSessionSchema: GenMessage<DemoSession> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 28);
+  messageDesc(file_remoteagent_core_v1_security, 23);
 
 /**
  * @generated from message remoteagent.core.v1.DemoDevice
@@ -1053,7 +933,7 @@ export type DemoDevice = Message<"remoteagent.core.v1.DemoDevice"> & {
  * Use `create(DemoDeviceSchema)` to create a new message.
  */
 export const DemoDeviceSchema: GenMessage<DemoDevice> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 29);
+  messageDesc(file_remoteagent_core_v1_security, 24);
 
 /**
  * @generated from message remoteagent.core.v1.DemoSessionEvents
@@ -1075,7 +955,7 @@ export type DemoSessionEvents = Message<"remoteagent.core.v1.DemoSessionEvents">
  * Use `create(DemoSessionEventsSchema)` to create a new message.
  */
 export const DemoSessionEventsSchema: GenMessage<DemoSessionEvents> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 30);
+  messageDesc(file_remoteagent_core_v1_security, 25);
 
 /**
  * @generated from message remoteagent.core.v1.SeedDemoWorldEvent
@@ -1112,7 +992,7 @@ export type SeedDemoWorldEvent = Message<"remoteagent.core.v1.SeedDemoWorldEvent
  * Use `create(SeedDemoWorldEventSchema)` to create a new message.
  */
 export const SeedDemoWorldEventSchema: GenMessage<SeedDemoWorldEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 31);
+  messageDesc(file_remoteagent_core_v1_security, 26);
 
 /**
  * @generated from message remoteagent.core.v1.CacheWriteStoredEvents
@@ -1134,1713 +1014,7 @@ export type CacheWriteStoredEvents = Message<"remoteagent.core.v1.CacheWriteStor
  * Use `create(CacheWriteStoredEventsSchema)` to create a new message.
  */
 export const CacheWriteStoredEventsSchema: GenMessage<CacheWriteStoredEvents> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 32);
-
-/**
- * @generated from message remoteagent.core.v1.SecPin
- */
-export type SecPin = Message<"remoteagent.core.v1.SecPin"> & {
-  /**
-   * @generated from field: string account = 1;
-   */
-  account: string;
-
-  /**
-   * @generated from field: bytes domain = 2;
-   */
-  domain: Uint8Array;
-
-  /**
-   * @generated from field: bytes genesis = 3;
-   */
-  genesis: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecPin.
- * Use `create(SecPinSchema)` to create a new message.
- */
-export const SecPinSchema: GenMessage<SecPin> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 33);
-
-/**
- * @generated from message remoteagent.core.v1.SecMember
- */
-export type SecMember = Message<"remoteagent.core.v1.SecMember"> & {
-  /**
-   * @generated from field: string id = 1;
-   */
-  id: string;
-
-  /**
-   * @generated from field: bytes ed_public = 2;
-   */
-  edPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes x_public = 3;
-   */
-  xPublic: Uint8Array;
-
-  /**
-   * @generated from field: uint32 kind = 4;
-   */
-  kind: number;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecMember.
- * Use `create(SecMemberSchema)` to create a new message.
- */
-export const SecMemberSchema: GenMessage<SecMember> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 34);
-
-/**
- * @generated from message remoteagent.core.v1.SecGrant
- */
-export type SecGrant = Message<"remoteagent.core.v1.SecGrant"> & {
-  /**
-   * @generated from field: string recipient = 1;
-   */
-  recipient: string;
-
-  /**
-   * @generated from field: bytes enc = 2;
-   */
-  enc: Uint8Array;
-
-  /**
-   * @generated from field: bytes cipher = 3;
-   */
-  cipher: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecGrant.
- * Use `create(SecGrantSchema)` to create a new message.
- */
-export const SecGrantSchema: GenMessage<SecGrant> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 35);
-
-/**
- * @generated from message remoteagent.core.v1.SecParsedState
- */
-export type SecParsedState = Message<"remoteagent.core.v1.SecParsedState"> & {
-  /**
-   * @generated from field: bytes state_hash = 1;
-   */
-  stateHash: Uint8Array;
-
-  /**
-   * @generated from field: bytes core_hash = 2;
-   */
-  coreHash: Uint8Array;
-
-  /**
-   * @generated from field: string account = 3;
-   */
-  account: string;
-
-  /**
-   * @generated from field: bytes domain = 4;
-   */
-  domain: Uint8Array;
-
-  /**
-   * @generated from field: string authority_id = 5;
-   */
-  authorityId: string;
-
-  /**
-   * @generated from field: bytes recovery_ed = 6;
-   */
-  recoveryEd: Uint8Array;
-
-  /**
-   * @generated from field: bytes parent = 7;
-   */
-  parent: Uint8Array;
-
-  /**
-   * @generated from field: uint64 epoch = 8;
-   */
-  epoch: bigint;
-
-  /**
-   * @generated from field: uint64 content_epoch = 9;
-   */
-  contentEpoch: bigint;
-
-  /**
-   * @generated from field: uint64 issued_at = 10;
-   */
-  issuedAt: bigint;
-
-  /**
-   * @generated from field: repeated remoteagent.core.v1.SecMember members = 11;
-   */
-  members: SecMember[];
-
-  /**
-   * @generated from field: repeated string removed = 12;
-   */
-  removed: string[];
-
-  /**
-   * @generated from field: repeated remoteagent.core.v1.SecGrant grants = 13;
-   */
-  grants: SecGrant[];
-
-  /**
-   * @generated from field: bytes prev_secret = 14;
-   */
-  prevSecret: Uint8Array;
-
-  /**
-   * @generated from field: bytes signature = 15;
-   */
-  signature: Uint8Array;
-
-  /**
-   * @generated from field: bytes signing_bytes = 16;
-   */
-  signingBytes: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecParsedState.
- * Use `create(SecParsedStateSchema)` to create a new message.
- */
-export const SecParsedStateSchema: GenMessage<SecParsedState> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 36);
-
-/**
- * @generated from message remoteagent.core.v1.SecParsedLease
- */
-export type SecParsedLease = Message<"remoteagent.core.v1.SecParsedLease"> & {
-  /**
-   * @generated from field: bytes domain = 1;
-   */
-  domain: Uint8Array;
-
-  /**
-   * @generated from field: bytes head = 2;
-   */
-  head: Uint8Array;
-
-  /**
-   * @generated from field: uint64 issued_at = 3;
-   */
-  issuedAt: bigint;
-
-  /**
-   * @generated from field: uint64 not_after = 4;
-   */
-  notAfter: bigint;
-
-  /**
-   * @generated from field: bytes signature = 5;
-   */
-  signature: Uint8Array;
-
-  /**
-   * @generated from field: bytes signing_bytes = 6;
-   */
-  signingBytes: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecParsedLease.
- * Use `create(SecParsedLeaseSchema)` to create a new message.
- */
-export const SecParsedLeaseSchema: GenMessage<SecParsedLease> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 37);
-
-/**
- * @generated from message remoteagent.core.v1.SecParsedRecoveryStatement
- */
-export type SecParsedRecoveryStatement = Message<"remoteagent.core.v1.SecParsedRecoveryStatement"> & {
-  /**
-   * @generated from field: string account = 1;
-   */
-  account: string;
-
-  /**
-   * @generated from field: bytes domain = 2;
-   */
-  domain: Uint8Array;
-
-  /**
-   * @generated from field: bytes parent = 3;
-   */
-  parent: Uint8Array;
-
-  /**
-   * @generated from field: string new_authority_id = 4;
-   */
-  newAuthorityId: string;
-
-  /**
-   * @generated from field: bytes new_recovery_ed = 5;
-   */
-  newRecoveryEd: Uint8Array;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecMember new_member = 6;
-   */
-  newMember?: SecMember | undefined;
-
-  /**
-   * @generated from field: uint64 issued_at = 7;
-   */
-  issuedAt: bigint;
-
-  /**
-   * @generated from field: bytes state_hash = 8;
-   */
-  stateHash: Uint8Array;
-
-  /**
-   * @generated from field: bytes nonce = 9;
-   */
-  nonce: Uint8Array;
-
-  /**
-   * @generated from field: bytes signature = 10;
-   */
-  signature: Uint8Array;
-
-  /**
-   * @generated from field: bytes signing_bytes = 11;
-   */
-  signingBytes: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecParsedRecoveryStatement.
- * Use `create(SecParsedRecoveryStatementSchema)` to create a new message.
- */
-export const SecParsedRecoveryStatementSchema: GenMessage<SecParsedRecoveryStatement> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 38);
-
-/**
- * @generated from message remoteagent.core.v1.SecKemPair
- */
-export type SecKemPair = Message<"remoteagent.core.v1.SecKemPair"> & {
-  /**
-   * @generated from field: string member_id = 1;
-   */
-  memberId: string;
-
-  /**
-   * @generated from field: bytes enc = 2;
-   */
-  enc: Uint8Array;
-
-  /**
-   * @generated from field: bytes dh = 3;
-   */
-  dh: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecKemPair.
- * Use `create(SecKemPairSchema)` to create a new message.
- */
-export const SecKemPairSchema: GenMessage<SecKemPair> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 39);
-
-/**
- * @generated from message remoteagent.core.v1.SecUnsignedState
- */
-export type SecUnsignedState = Message<"remoteagent.core.v1.SecUnsignedState"> & {
-  /**
-   * @generated from field: remoteagent.core.v1.SecParsedState parsed = 1;
-   */
-  parsed?: SecParsedState | undefined;
-
-  /**
-   * @generated from field: bytes unsigned_core = 2;
-   */
-  unsignedCore: Uint8Array;
-
-  /**
-   * @generated from field: repeated remoteagent.core.v1.SecGrant grants = 3;
-   */
-  grants: SecGrant[];
-
-  /**
-   * @generated from field: bytes prev_secret = 4;
-   */
-  prevSecret: Uint8Array;
-
-  /**
-   * @generated from field: bytes signing_bytes = 5;
-   */
-  signingBytes: Uint8Array;
-
-  /**
-   * @generated from field: bytes state_hash = 6;
-   */
-  stateHash: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecUnsignedState.
- * Use `create(SecUnsignedStateSchema)` to create a new message.
- */
-export const SecUnsignedStateSchema: GenMessage<SecUnsignedState> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 40);
-
-/**
- * @generated from message remoteagent.core.v1.SecParsedApproval
- */
-export type SecParsedApproval = Message<"remoteagent.core.v1.SecParsedApproval"> & {
-  /**
-   * @generated from field: string account_id = 1;
-   */
-  accountId: string;
-
-  /**
-   * @generated from field: string pairing_id = 2;
-   */
-  pairingId: string;
-
-  /**
-   * @generated from field: string approver_device_id = 3;
-   */
-  approverDeviceId: string;
-
-  /**
-   * @generated from field: bytes approver_public_key = 4;
-   */
-  approverPublicKey: Uint8Array;
-
-  /**
-   * @generated from field: string candidate_device_id = 5;
-   */
-  candidateDeviceId: string;
-
-  /**
-   * @generated from field: bytes candidate_device_public_key = 6;
-   */
-  candidateDevicePublicKey: Uint8Array;
-
-  /**
-   * @generated from field: remoteagent.v1.DeviceKind candidate_kind = 7;
-   */
-  candidateKind: DeviceKind;
-
-  /**
-   * @generated from field: int64 expires_ms = 8;
-   */
-  expiresMs: bigint;
-
-  /**
-   * @generated from field: bytes nonce = 9;
-   */
-  nonce: Uint8Array;
-
-  /**
-   * @generated from field: string replaces_device_id = 10;
-   */
-  replacesDeviceId: string;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecParsedApproval.
- * Use `create(SecParsedApprovalSchema)` to create a new message.
- */
-export const SecParsedApprovalSchema: GenMessage<SecParsedApproval> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 41);
-
-/**
- * @generated from message remoteagent.core.v1.SecCallRequest
- */
-export type SecCallRequest = Message<"remoteagent.core.v1.SecCallRequest"> & {
-  /**
-   * @generated from oneof remoteagent.core.v1.SecCallRequest.call
-   */
-  call: {
-    /**
-     * @generated from field: remoteagent.core.v1.SecParseStateCall parse_state = 1;
-     */
-    value: SecParseStateCall;
-    case: "parseState";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecVerifyChainCall verify_chain = 2;
-     */
-    value: SecVerifyChainCall;
-    case: "verifyChain";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecGrantChallengeCall grant_challenge = 3;
-     */
-    value: SecGrantChallengeCall;
-    case: "grantChallenge";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecOpenGrantWithDHCall open_grant_with_dh = 4;
-     */
-    value: SecOpenGrantWithDHCall;
-    case: "openGrantWithDh";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecHPKEWithDHCall hpke_seal_with_dh = 5;
-     */
-    value: SecHPKEWithDHCall;
-    case: "hpkeSealWithDh";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecHPKEWithDHCall hpke_open_with_dh = 6;
-     */
-    value: SecHPKEWithDHCall;
-    case: "hpkeOpenWithDh";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecParseLeaseCall parse_lease = 7;
-     */
-    value: SecParseLeaseCall;
-    case: "parseLease";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecVerifyLeaseCall verify_lease = 8;
-     */
-    value: SecVerifyLeaseCall;
-    case: "verifyLease";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecNewLeaseUnsignedCall new_lease_unsigned = 9;
-     */
-    value: SecNewLeaseUnsignedCall;
-    case: "newLeaseUnsigned";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecMarshalLeaseCall marshal_lease = 10;
-     */
-    value: SecMarshalLeaseCall;
-    case: "marshalLease";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecParseRecoveryStatementCall parse_recovery_statement = 11;
-     */
-    value: SecParseRecoveryStatementCall;
-    case: "parseRecoveryStatement";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecVerifyRecoveryStatementCall verify_recovery_statement = 12;
-     */
-    value: SecVerifyRecoveryStatementCall;
-    case: "verifyRecoveryStatement";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecNewRecoveryStatementUnsignedCall new_recovery_statement_unsigned = 13;
-     */
-    value: SecNewRecoveryStatementUnsignedCall;
-    case: "newRecoveryStatementUnsigned";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecMarshalRecoveryStatementCall marshal_recovery_statement = 14;
-     */
-    value: SecMarshalRecoveryStatementCall;
-    case: "marshalRecoveryStatement";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecBuildStateCall build_state = 15;
-     */
-    value: SecBuildStateCall;
-    case: "buildState";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecMarshalStateCall marshal_state = 22;
-     */
-    value: SecMarshalStateCall;
-    case: "marshalState";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecSealPrevSecretCall seal_prev_secret = 23;
-     */
-    value: SecSealPrevSecretCall;
-    case: "sealPrevSecret";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecOpenPrevSecretCall open_prev_secret = 24;
-     */
-    value: SecOpenPrevSecretCall;
-    case: "openPrevSecret";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecVerifyPairApprovalCall verify_pair_approval = 25;
-     */
-    value: SecVerifyPairApprovalCall;
-    case: "verifyPairApproval";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecMachineReplacementOriginsCall machine_replacement_origins = 26;
-     */
-    value: SecMachineReplacementOriginsCall;
-    case: "machineReplacementOrigins";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecPairTrustDescriptorCall pair_trust_descriptor = 27;
-     */
-    value: SecPairTrustDescriptorCall;
-    case: "pairTrustDescriptor";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecParsePairTrustDescriptorCall parse_pair_trust_descriptor = 28;
-     */
-    value: SecParsePairTrustDescriptorCall;
-    case: "parsePairTrustDescriptor";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecPairDomainCommitCall pair_domain_commit = 29;
-     */
-    value: SecPairDomainCommitCall;
-    case: "pairDomainCommit";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecPairTranscriptCall pair_transcript = 30;
-     */
-    value: SecPairTranscriptCall;
-    case: "pairTranscript";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecPairIdentityTranscriptCall pair_identity_transcript = 31;
-     */
-    value: SecPairIdentityTranscriptCall;
-    case: "pairIdentityTranscript";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecPairDomainTranscriptCall pair_domain_transcript = 32;
-     */
-    value: SecPairDomainTranscriptCall;
-    case: "pairDomainTranscript";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecDerivePairSecretsCall derive_pair_secrets = 33;
-     */
-    value: SecDerivePairSecretsCall;
-    case: "derivePairSecrets";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecEd25519SeedPublicCall ed25519_seed_public = 34;
-     */
-    value: SecEd25519SeedPublicCall;
-    case: "ed25519SeedPublic";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecEd25519SeedSignCall ed25519_seed_sign = 35;
-     */
-    value: SecEd25519SeedSignCall;
-    case: "ed25519SeedSign";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecInflateBoundedCall inflate_bounded = 37;
-     */
-    value: SecInflateBoundedCall;
-    case: "inflateBounded";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecRequestIdentityCall request_identity = 38;
-     */
-    value: SecRequestIdentityCall;
-    case: "requestIdentity";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecAccountDeleteSigningBytesCall account_delete_signing_bytes = 39;
-     */
-    value: SecAccountDeleteSigningBytesCall;
-    case: "accountDeleteSigningBytes";
-  } | {
-    /**
-     * @generated from field: remoteagent.core.v1.SecOpenNotifyEnvelopeCall open_notify_envelope = 40;
-     */
-    value: SecOpenNotifyEnvelopeCall;
-    case: "openNotifyEnvelope";
-  } | { case: undefined; value?: undefined };
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecCallRequest.
- * Use `create(SecCallRequestSchema)` to create a new message.
- */
-export const SecCallRequestSchema: GenMessage<SecCallRequest> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 42);
-
-/**
- * @generated from message remoteagent.core.v1.SecParseStateCall
- */
-export type SecParseStateCall = Message<"remoteagent.core.v1.SecParseStateCall"> & {
-  /**
-   * @generated from field: bytes raw = 1;
-   */
-  raw: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecParseStateCall.
- * Use `create(SecParseStateCallSchema)` to create a new message.
- */
-export const SecParseStateCallSchema: GenMessage<SecParseStateCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 43);
-
-/**
- * @generated from message remoteagent.core.v1.SecVerifyChainCall
- */
-export type SecVerifyChainCall = Message<"remoteagent.core.v1.SecVerifyChainCall"> & {
-  /**
-   * @generated from field: remoteagent.core.v1.SecPin pin = 1;
-   */
-  pin?: SecPin | undefined;
-
-  /**
-   * @generated from field: repeated bytes states = 2;
-   */
-  states: Uint8Array[];
-
-  /**
-   * @generated from field: repeated bytes recovery_proofs = 3;
-   */
-  recoveryProofs: Uint8Array[];
-
-  /**
-   * @generated from field: bytes lease = 4;
-   */
-  lease: Uint8Array;
-
-  /**
-   * @generated from field: int64 now_ms = 5;
-   */
-  nowMs: bigint;
-
-  /**
-   * @generated from field: string member_id = 6;
-   */
-  memberId: string;
-
-  /**
-   * @generated from field: bool check_lease_window = 7;
-   */
-  checkLeaseWindow: boolean;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecVerifyChainCall.
- * Use `create(SecVerifyChainCallSchema)` to create a new message.
- */
-export const SecVerifyChainCallSchema: GenMessage<SecVerifyChainCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 44);
-
-/**
- * @generated from message remoteagent.core.v1.SecGrantChallengeCall
- */
-export type SecGrantChallengeCall = Message<"remoteagent.core.v1.SecGrantChallengeCall"> & {
-  /**
-   * @generated from field: remoteagent.core.v1.SecPin pin = 1;
-   */
-  pin?: SecPin | undefined;
-
-  /**
-   * @generated from field: bytes state = 2;
-   */
-  state: Uint8Array;
-
-  /**
-   * @generated from field: string member_id = 3;
-   */
-  memberId: string;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecGrantChallengeCall.
- * Use `create(SecGrantChallengeCallSchema)` to create a new message.
- */
-export const SecGrantChallengeCallSchema: GenMessage<SecGrantChallengeCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 45);
-
-/**
- * @generated from message remoteagent.core.v1.SecOpenGrantWithDHCall
- */
-export type SecOpenGrantWithDHCall = Message<"remoteagent.core.v1.SecOpenGrantWithDHCall"> & {
-  /**
-   * @generated from field: remoteagent.core.v1.SecPin pin = 1;
-   */
-  pin?: SecPin | undefined;
-
-  /**
-   * @generated from field: bytes state = 2;
-   */
-  state: Uint8Array;
-
-  /**
-   * @generated from field: string member_id = 3;
-   */
-  memberId: string;
-
-  /**
-   * @generated from field: bytes dh = 4;
-   */
-  dh: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecOpenGrantWithDHCall.
- * Use `create(SecOpenGrantWithDHCallSchema)` to create a new message.
- */
-export const SecOpenGrantWithDHCallSchema: GenMessage<SecOpenGrantWithDHCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 46);
-
-/**
- * @generated from message remoteagent.core.v1.SecHPKEWithDHCall
- */
-export type SecHPKEWithDHCall = Message<"remoteagent.core.v1.SecHPKEWithDHCall"> & {
-  /**
-   * @generated from field: bytes recipient_public = 1;
-   */
-  recipientPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes enc = 2;
-   */
-  enc: Uint8Array;
-
-  /**
-   * @generated from field: bytes dh = 3;
-   */
-  dh: Uint8Array;
-
-  /**
-   * @generated from field: bytes info = 4;
-   */
-  info: Uint8Array;
-
-  /**
-   * @generated from field: bytes aad = 5;
-   */
-  aad: Uint8Array;
-
-  /**
-   * @generated from field: bytes data = 6;
-   */
-  data: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecHPKEWithDHCall.
- * Use `create(SecHPKEWithDHCallSchema)` to create a new message.
- */
-export const SecHPKEWithDHCallSchema: GenMessage<SecHPKEWithDHCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 47);
-
-/**
- * @generated from message remoteagent.core.v1.SecParseLeaseCall
- */
-export type SecParseLeaseCall = Message<"remoteagent.core.v1.SecParseLeaseCall"> & {
-  /**
-   * @generated from field: bytes raw = 1;
-   */
-  raw: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecParseLeaseCall.
- * Use `create(SecParseLeaseCallSchema)` to create a new message.
- */
-export const SecParseLeaseCallSchema: GenMessage<SecParseLeaseCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 48);
-
-/**
- * @generated from message remoteagent.core.v1.SecVerifyLeaseCall
- */
-export type SecVerifyLeaseCall = Message<"remoteagent.core.v1.SecVerifyLeaseCall"> & {
-  /**
-   * @generated from field: bytes lease = 1;
-   */
-  lease: Uint8Array;
-
-  /**
-   * @generated from field: bytes head_state = 2;
-   */
-  headState: Uint8Array;
-
-  /**
-   * @generated from field: int64 now_ms = 3;
-   */
-  nowMs: bigint;
-
-  /**
-   * @generated from field: bool check_window = 4;
-   */
-  checkWindow: boolean;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecVerifyLeaseCall.
- * Use `create(SecVerifyLeaseCallSchema)` to create a new message.
- */
-export const SecVerifyLeaseCallSchema: GenMessage<SecVerifyLeaseCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 49);
-
-/**
- * @generated from message remoteagent.core.v1.SecNewLeaseUnsignedCall
- */
-export type SecNewLeaseUnsignedCall = Message<"remoteagent.core.v1.SecNewLeaseUnsignedCall"> & {
-  /**
-   * @generated from field: bytes head_state = 1;
-   */
-  headState: Uint8Array;
-
-  /**
-   * @generated from field: uint64 now_ms = 2;
-   */
-  nowMs: bigint;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecNewLeaseUnsignedCall.
- * Use `create(SecNewLeaseUnsignedCallSchema)` to create a new message.
- */
-export const SecNewLeaseUnsignedCallSchema: GenMessage<SecNewLeaseUnsignedCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 50);
-
-/**
- * @generated from message remoteagent.core.v1.SecMarshalLeaseCall
- */
-export type SecMarshalLeaseCall = Message<"remoteagent.core.v1.SecMarshalLeaseCall"> & {
-  /**
-   * @generated from field: bytes domain = 1;
-   */
-  domain: Uint8Array;
-
-  /**
-   * @generated from field: bytes head = 2;
-   */
-  head: Uint8Array;
-
-  /**
-   * @generated from field: uint64 issued_at = 3;
-   */
-  issuedAt: bigint;
-
-  /**
-   * @generated from field: uint64 not_after = 4;
-   */
-  notAfter: bigint;
-
-  /**
-   * @generated from field: bytes signature = 5;
-   */
-  signature: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecMarshalLeaseCall.
- * Use `create(SecMarshalLeaseCallSchema)` to create a new message.
- */
-export const SecMarshalLeaseCallSchema: GenMessage<SecMarshalLeaseCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 51);
-
-/**
- * @generated from message remoteagent.core.v1.SecParseRecoveryStatementCall
- */
-export type SecParseRecoveryStatementCall = Message<"remoteagent.core.v1.SecParseRecoveryStatementCall"> & {
-  /**
-   * @generated from field: bytes raw = 1;
-   */
-  raw: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecParseRecoveryStatementCall.
- * Use `create(SecParseRecoveryStatementCallSchema)` to create a new message.
- */
-export const SecParseRecoveryStatementCallSchema: GenMessage<SecParseRecoveryStatementCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 52);
-
-/**
- * @generated from message remoteagent.core.v1.SecVerifyRecoveryStatementCall
- */
-export type SecVerifyRecoveryStatementCall = Message<"remoteagent.core.v1.SecVerifyRecoveryStatementCall"> & {
-  /**
-   * @generated from field: bytes statement = 1;
-   */
-  statement: Uint8Array;
-
-  /**
-   * @generated from field: bytes parent_state = 2;
-   */
-  parentState: Uint8Array;
-
-  /**
-   * @generated from field: bytes next_state = 3;
-   */
-  nextState: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecVerifyRecoveryStatementCall.
- * Use `create(SecVerifyRecoveryStatementCallSchema)` to create a new message.
- */
-export const SecVerifyRecoveryStatementCallSchema: GenMessage<SecVerifyRecoveryStatementCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 53);
-
-/**
- * @generated from message remoteagent.core.v1.SecNewRecoveryStatementUnsignedCall
- */
-export type SecNewRecoveryStatementUnsignedCall = Message<"remoteagent.core.v1.SecNewRecoveryStatementUnsignedCall"> & {
-  /**
-   * @generated from field: bytes parent_state = 1;
-   */
-  parentState: Uint8Array;
-
-  /**
-   * @generated from field: bytes next_state = 2;
-   */
-  nextState: Uint8Array;
-
-  /**
-   * @generated from field: bytes nonce = 3;
-   */
-  nonce: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecNewRecoveryStatementUnsignedCall.
- * Use `create(SecNewRecoveryStatementUnsignedCallSchema)` to create a new message.
- */
-export const SecNewRecoveryStatementUnsignedCallSchema: GenMessage<SecNewRecoveryStatementUnsignedCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 54);
-
-/**
- * @generated from message remoteagent.core.v1.SecMarshalRecoveryStatementCall
- */
-export type SecMarshalRecoveryStatementCall = Message<"remoteagent.core.v1.SecMarshalRecoveryStatementCall"> & {
-  /**
-   * @generated from field: string account = 1;
-   */
-  account: string;
-
-  /**
-   * @generated from field: bytes domain = 2;
-   */
-  domain: Uint8Array;
-
-  /**
-   * @generated from field: bytes parent = 3;
-   */
-  parent: Uint8Array;
-
-  /**
-   * @generated from field: string new_authority_id = 4;
-   */
-  newAuthorityId: string;
-
-  /**
-   * @generated from field: bytes new_recovery_ed = 5;
-   */
-  newRecoveryEd: Uint8Array;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecMember new_member = 6;
-   */
-  newMember?: SecMember | undefined;
-
-  /**
-   * @generated from field: uint64 issued_at = 7;
-   */
-  issuedAt: bigint;
-
-  /**
-   * @generated from field: bytes state_hash = 8;
-   */
-  stateHash: Uint8Array;
-
-  /**
-   * @generated from field: bytes nonce = 9;
-   */
-  nonce: Uint8Array;
-
-  /**
-   * @generated from field: bytes signature = 10;
-   */
-  signature: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecMarshalRecoveryStatementCall.
- * Use `create(SecMarshalRecoveryStatementCallSchema)` to create a new message.
- */
-export const SecMarshalRecoveryStatementCallSchema: GenMessage<SecMarshalRecoveryStatementCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 55);
-
-/**
- * @generated from message remoteagent.core.v1.SecBuildStateCall
- */
-export type SecBuildStateCall = Message<"remoteagent.core.v1.SecBuildStateCall"> & {
-  /**
-   * 1=Genesis, 2=Membership, 3=Pair, 4=Handoff, 5=Recovery, 6=RecoveryKeyRotation, 7=CustomState
-   *
-   * @generated from field: uint32 kind = 1;
-   */
-  kind: number;
-
-  /**
-   * @generated from field: string account = 2;
-   */
-  account: string;
-
-  /**
-   * @generated from field: bytes domain = 3;
-   */
-  domain: Uint8Array;
-
-  /**
-   * @generated from field: bytes parent_state = 4;
-   */
-  parentState: Uint8Array;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecMember member = 5;
-   */
-  member?: SecMember | undefined;
-
-  /**
-   * @generated from field: repeated remoteagent.core.v1.SecMember members = 6;
-   */
-  members: SecMember[];
-
-  /**
-   * @generated from field: repeated string removed = 7;
-   */
-  removed: string[];
-
-  /**
-   * @generated from field: string incoming_id = 8;
-   */
-  incomingId: string;
-
-  /**
-   * @generated from field: bytes recovery_ed = 9;
-   */
-  recoveryEd: Uint8Array;
-
-  /**
-   * @generated from field: bytes secret = 10;
-   */
-  secret: Uint8Array;
-
-  /**
-   * @generated from field: bytes old_secret = 11;
-   */
-  oldSecret: Uint8Array;
-
-  /**
-   * @generated from field: bytes prev_secret = 12;
-   */
-  prevSecret: Uint8Array;
-
-  /**
-   * @generated from field: bytes prev_secret_nonce = 13;
-   */
-  prevSecretNonce: Uint8Array;
-
-  /**
-   * @generated from field: uint64 now_ms = 14;
-   */
-  nowMs: bigint;
-
-  /**
-   * @generated from field: repeated remoteagent.core.v1.SecKemPair kems = 15;
-   */
-  kems: SecKemPair[];
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecBuildStateCall.
- * Use `create(SecBuildStateCallSchema)` to create a new message.
- */
-export const SecBuildStateCallSchema: GenMessage<SecBuildStateCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 56);
-
-/**
- * @generated from message remoteagent.core.v1.SecMarshalStateCall
- */
-export type SecMarshalStateCall = Message<"remoteagent.core.v1.SecMarshalStateCall"> & {
-  /**
-   * @generated from field: bytes unsigned_core = 1;
-   */
-  unsignedCore: Uint8Array;
-
-  /**
-   * @generated from field: repeated remoteagent.core.v1.SecGrant grants = 2;
-   */
-  grants: SecGrant[];
-
-  /**
-   * @generated from field: bytes prev_secret = 3;
-   */
-  prevSecret: Uint8Array;
-
-  /**
-   * @generated from field: bytes signature = 4;
-   */
-  signature: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecMarshalStateCall.
- * Use `create(SecMarshalStateCallSchema)` to create a new message.
- */
-export const SecMarshalStateCallSchema: GenMessage<SecMarshalStateCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 57);
-
-/**
- * @generated from message remoteagent.core.v1.SecSealPrevSecretCall
- */
-export type SecSealPrevSecretCall = Message<"remoteagent.core.v1.SecSealPrevSecretCall"> & {
-  /**
-   * @generated from field: bytes new_secret = 1;
-   */
-  newSecret: Uint8Array;
-
-  /**
-   * @generated from field: bytes old_secret = 2;
-   */
-  oldSecret: Uint8Array;
-
-  /**
-   * @generated from field: bytes nonce = 3;
-   */
-  nonce: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecSealPrevSecretCall.
- * Use `create(SecSealPrevSecretCallSchema)` to create a new message.
- */
-export const SecSealPrevSecretCallSchema: GenMessage<SecSealPrevSecretCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 58);
-
-/**
- * @generated from message remoteagent.core.v1.SecOpenPrevSecretCall
- */
-export type SecOpenPrevSecretCall = Message<"remoteagent.core.v1.SecOpenPrevSecretCall"> & {
-  /**
-   * @generated from field: bytes new_secret = 1;
-   */
-  newSecret: Uint8Array;
-
-  /**
-   * @generated from field: bytes blob = 2;
-   */
-  blob: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecOpenPrevSecretCall.
- * Use `create(SecOpenPrevSecretCallSchema)` to create a new message.
- */
-export const SecOpenPrevSecretCallSchema: GenMessage<SecOpenPrevSecretCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 59);
-
-/**
- * @generated from message remoteagent.core.v1.SecVerifyPairApprovalCall
- */
-export type SecVerifyPairApprovalCall = Message<"remoteagent.core.v1.SecVerifyPairApprovalCall"> & {
-  /**
-   * @generated from field: bytes approval = 1;
-   */
-  approval: Uint8Array;
-
-  /**
-   * @generated from field: bytes signature = 2;
-   */
-  signature: Uint8Array;
-
-  /**
-   * @generated from field: string expected_account = 3;
-   */
-  expectedAccount: string;
-
-  /**
-   * @generated from field: string expected_candidate_id = 4;
-   */
-  expectedCandidateId: string;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecVerifyPairApprovalCall.
- * Use `create(SecVerifyPairApprovalCallSchema)` to create a new message.
- */
-export const SecVerifyPairApprovalCallSchema: GenMessage<SecVerifyPairApprovalCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 60);
-
-/**
- * @generated from message remoteagent.core.v1.SecMachineReplacementOriginsCall
- */
-export type SecMachineReplacementOriginsCall = Message<"remoteagent.core.v1.SecMachineReplacementOriginsCall"> & {
-  /**
-   * @generated from field: string account = 1;
-   */
-  account: string;
-
-  /**
-   * @generated from field: string target_machine_id = 2;
-   */
-  targetMachineId: string;
-
-  /**
-   * @generated from field: repeated bytes states = 3;
-   */
-  states: Uint8Array[];
-
-  /**
-   * @generated from field: repeated remoteagent.v1.MachineReplacementProof proofs = 4;
-   */
-  proofs: MachineReplacementProof[];
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecMachineReplacementOriginsCall.
- * Use `create(SecMachineReplacementOriginsCallSchema)` to create a new message.
- */
-export const SecMachineReplacementOriginsCallSchema: GenMessage<SecMachineReplacementOriginsCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 61);
-
-/**
- * @generated from message remoteagent.core.v1.SecPairTrustDescriptorCall
- */
-export type SecPairTrustDescriptorCall = Message<"remoteagent.core.v1.SecPairTrustDescriptorCall"> & {
-  /**
-   * @generated from field: remoteagent.core.v1.SecPin pin = 1;
-   */
-  pin?: SecPin | undefined;
-
-  /**
-   * @generated from field: string approver = 2;
-   */
-  approver: string;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecPairTrustDescriptorCall.
- * Use `create(SecPairTrustDescriptorCallSchema)` to create a new message.
- */
-export const SecPairTrustDescriptorCallSchema: GenMessage<SecPairTrustDescriptorCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 62);
-
-/**
- * @generated from message remoteagent.core.v1.SecParsePairTrustDescriptorCall
- */
-export type SecParsePairTrustDescriptorCall = Message<"remoteagent.core.v1.SecParsePairTrustDescriptorCall"> & {
-  /**
-   * @generated from field: bytes raw = 1;
-   */
-  raw: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecParsePairTrustDescriptorCall.
- * Use `create(SecParsePairTrustDescriptorCallSchema)` to create a new message.
- */
-export const SecParsePairTrustDescriptorCallSchema: GenMessage<SecParsePairTrustDescriptorCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 63);
-
-/**
- * @generated from message remoteagent.core.v1.SecPairDomainCommitCall
- */
-export type SecPairDomainCommitCall = Message<"remoteagent.core.v1.SecPairDomainCommitCall"> & {
-  /**
-   * @generated from field: bytes initiator = 1;
-   */
-  initiator: Uint8Array;
-
-  /**
-   * @generated from field: bytes trust_descriptor = 2;
-   */
-  trustDescriptor: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecPairDomainCommitCall.
- * Use `create(SecPairDomainCommitCallSchema)` to create a new message.
- */
-export const SecPairDomainCommitCallSchema: GenMessage<SecPairDomainCommitCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 64);
-
-/**
- * @generated from message remoteagent.core.v1.SecPairTranscriptCall
- */
-export type SecPairTranscriptCall = Message<"remoteagent.core.v1.SecPairTranscriptCall"> & {
-  /**
-   * @generated from field: string pairing_id = 1;
-   */
-  pairingId: string;
-
-  /**
-   * @generated from field: bytes initiator_public = 2;
-   */
-  initiatorPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes joiner_public = 3;
-   */
-  joinerPublic: Uint8Array;
-
-  /**
-   * @generated from field: int32 joiner_kind = 4;
-   */
-  joinerKind: number;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecPairTranscriptCall.
- * Use `create(SecPairTranscriptCallSchema)` to create a new message.
- */
-export const SecPairTranscriptCallSchema: GenMessage<SecPairTranscriptCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 65);
-
-/**
- * @generated from message remoteagent.core.v1.SecPairIdentityTranscriptCall
- */
-export type SecPairIdentityTranscriptCall = Message<"remoteagent.core.v1.SecPairIdentityTranscriptCall"> & {
-  /**
-   * @generated from field: string pairing_id = 1;
-   */
-  pairingId: string;
-
-  /**
-   * @generated from field: bytes initiator_public = 2;
-   */
-  initiatorPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes joiner_public = 3;
-   */
-  joinerPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes device_ed_public = 4;
-   */
-  deviceEdPublic: Uint8Array;
-
-  /**
-   * @generated from field: int32 joiner_kind = 5;
-   */
-  joinerKind: number;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecPairIdentityTranscriptCall.
- * Use `create(SecPairIdentityTranscriptCallSchema)` to create a new message.
- */
-export const SecPairIdentityTranscriptCallSchema: GenMessage<SecPairIdentityTranscriptCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 66);
-
-/**
- * @generated from message remoteagent.core.v1.SecPairDomainTranscriptCall
- */
-export type SecPairDomainTranscriptCall = Message<"remoteagent.core.v1.SecPairDomainTranscriptCall"> & {
-  /**
-   * @generated from field: string pairing_id = 1;
-   */
-  pairingId: string;
-
-  /**
-   * @generated from field: bytes initiator_public = 2;
-   */
-  initiatorPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes joiner_public = 3;
-   */
-  joinerPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes device_ed_public = 4;
-   */
-  deviceEdPublic: Uint8Array;
-
-  /**
-   * @generated from field: bytes device_x_public = 5;
-   */
-  deviceXPublic: Uint8Array;
-
-  /**
-   * @generated from field: int32 joiner_kind = 6;
-   */
-  joinerKind: number;
-
-  /**
-   * @generated from field: bytes trust_descriptor = 7;
-   */
-  trustDescriptor: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecPairDomainTranscriptCall.
- * Use `create(SecPairDomainTranscriptCallSchema)` to create a new message.
- */
-export const SecPairDomainTranscriptCallSchema: GenMessage<SecPairDomainTranscriptCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 67);
-
-/**
- * @generated from message remoteagent.core.v1.SecDerivePairSecretsCall
- */
-export type SecDerivePairSecretsCall = Message<"remoteagent.core.v1.SecDerivePairSecretsCall"> & {
-  /**
-   * @generated from field: bytes shared = 1;
-   */
-  shared: Uint8Array;
-
-  /**
-   * @generated from field: bytes transcript = 2;
-   */
-  transcript: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecDerivePairSecretsCall.
- * Use `create(SecDerivePairSecretsCallSchema)` to create a new message.
- */
-export const SecDerivePairSecretsCallSchema: GenMessage<SecDerivePairSecretsCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 68);
-
-/**
- * @generated from message remoteagent.core.v1.SecEd25519SeedPublicCall
- */
-export type SecEd25519SeedPublicCall = Message<"remoteagent.core.v1.SecEd25519SeedPublicCall"> & {
-  /**
-   * @generated from field: bytes seed = 1;
-   */
-  seed: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecEd25519SeedPublicCall.
- * Use `create(SecEd25519SeedPublicCallSchema)` to create a new message.
- */
-export const SecEd25519SeedPublicCallSchema: GenMessage<SecEd25519SeedPublicCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 69);
-
-/**
- * @generated from message remoteagent.core.v1.SecEd25519SeedSignCall
- */
-export type SecEd25519SeedSignCall = Message<"remoteagent.core.v1.SecEd25519SeedSignCall"> & {
-  /**
-   * @generated from field: bytes seed = 1;
-   */
-  seed: Uint8Array;
-
-  /**
-   * @generated from field: bytes message = 2;
-   */
-  message: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecEd25519SeedSignCall.
- * Use `create(SecEd25519SeedSignCallSchema)` to create a new message.
- */
-export const SecEd25519SeedSignCallSchema: GenMessage<SecEd25519SeedSignCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 70);
-
-/**
- * @generated from message remoteagent.core.v1.SecInflateBoundedCall
- */
-export type SecInflateBoundedCall = Message<"remoteagent.core.v1.SecInflateBoundedCall"> & {
-  /**
-   * @generated from field: bytes compressed = 1;
-   */
-  compressed: Uint8Array;
-
-  /**
-   * @generated from field: uint32 limit = 2;
-   */
-  limit: number;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecInflateBoundedCall.
- * Use `create(SecInflateBoundedCallSchema)` to create a new message.
- */
-export const SecInflateBoundedCallSchema: GenMessage<SecInflateBoundedCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 71);
-
-/**
- * @generated from message remoteagent.core.v1.SecRequestIdentityCall
- */
-export type SecRequestIdentityCall = Message<"remoteagent.core.v1.SecRequestIdentityCall"> & {
-  /**
-   * @generated from field: bytes header = 1;
-   */
-  header: Uint8Array;
-
-  /**
-   * @generated from field: bytes plaintext = 2;
-   */
-  plaintext: Uint8Array;
-
-  /**
-   * @generated from field: bool has_plaintext = 3;
-   */
-  hasPlaintext: boolean;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecRequestIdentityCall.
- * Use `create(SecRequestIdentityCallSchema)` to create a new message.
- */
-export const SecRequestIdentityCallSchema: GenMessage<SecRequestIdentityCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 72);
-
-/**
- * @generated from message remoteagent.core.v1.SecAccountDeleteSigningBytesCall
- */
-export type SecAccountDeleteSigningBytesCall = Message<"remoteagent.core.v1.SecAccountDeleteSigningBytesCall"> & {
-  /**
-   * @generated from field: string account = 1;
-   */
-  account: string;
-
-  /**
-   * @generated from field: bytes head_hash = 2;
-   */
-  headHash: Uint8Array;
-
-  /**
-   * @generated from field: bytes challenge = 3;
-   */
-  challenge: Uint8Array;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecAccountDeleteSigningBytesCall.
- * Use `create(SecAccountDeleteSigningBytesCallSchema)` to create a new message.
- */
-export const SecAccountDeleteSigningBytesCallSchema: GenMessage<SecAccountDeleteSigningBytesCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 73);
-
-/**
- * @generated from message remoteagent.core.v1.SecOpenNotifyEnvelopeCall
- */
-export type SecOpenNotifyEnvelopeCall = Message<"remoteagent.core.v1.SecOpenNotifyEnvelopeCall"> & {
-  /**
-   * @generated from field: remoteagent.core.v1.SecPin pin = 1;
-   */
-  pin?: SecPin | undefined;
-
-  /**
-   * @generated from field: repeated bytes states = 2;
-   */
-  states: Uint8Array[];
-
-  /**
-   * @generated from field: repeated bytes recovery_proofs = 3;
-   */
-  recoveryProofs: Uint8Array[];
-
-  /**
-   * @generated from field: string member_id = 4;
-   */
-  memberId: string;
-
-  /**
-   * @generated from field: bytes dh = 5;
-   */
-  dh: Uint8Array;
-
-  /**
-   * @generated from field: bytes content_secret = 6;
-   */
-  contentSecret: Uint8Array;
-
-  /**
-   * @generated from field: remoteagent.v1.Envelope envelope = 7;
-   */
-  envelope?: Envelope | undefined;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecOpenNotifyEnvelopeCall.
- * Use `create(SecOpenNotifyEnvelopeCallSchema)` to create a new message.
- */
-export const SecOpenNotifyEnvelopeCallSchema: GenMessage<SecOpenNotifyEnvelopeCall> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 74);
-
-/**
- * @generated from message remoteagent.core.v1.SecCallResponse
- */
-export type SecCallResponse = Message<"remoteagent.core.v1.SecCallResponse"> & {
-  /**
-   * @generated from field: string error = 1;
-   */
-  error: string;
-
-  /**
-   * @generated from field: string error_code = 2;
-   */
-  errorCode: string;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecParsedState parsed_state = 3;
-   */
-  parsedState?: SecParsedState | undefined;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecParsedLease parsed_lease = 4;
-   */
-  parsedLease?: SecParsedLease | undefined;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecParsedRecoveryStatement parsed_recovery = 5;
-   */
-  parsedRecovery?: SecParsedRecoveryStatement | undefined;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecUnsignedState unsigned_state = 6;
-   */
-  unsignedState?: SecUnsignedState | undefined;
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecParsedApproval parsed_approval = 7;
-   */
-  parsedApproval?: SecParsedApproval | undefined;
-
-  /**
-   * @generated from field: bytes data = 8;
-   */
-  data: Uint8Array;
-
-  /**
-   * @generated from field: bytes secondary_data = 9;
-   */
-  secondaryData: Uint8Array;
-
-  /**
-   * @generated from field: string text = 10;
-   */
-  text: string;
-
-  /**
-   * @generated from field: repeated string strings = 11;
-   */
-  strings: string[];
-
-  /**
-   * @generated from field: remoteagent.core.v1.SecPin pin = 12;
-   */
-  pin?: SecPin | undefined;
-};
-
-/**
- * Describes the message remoteagent.core.v1.SecCallResponse.
- * Use `create(SecCallResponseSchema)` to create a new message.
- */
-export const SecCallResponseSchema: GenMessage<SecCallResponse> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_security, 75);
+  messageDesc(file_remoteagent_core_v1_security, 27);
 
 /**
  * @generated from enum remoteagent.core.v1.SecurityKeyKind
@@ -2882,30 +1056,4 @@ export enum SecurityKeyKind {
  */
 export const SecurityKeyKindSchema: GenEnum<SecurityKeyKind> = /*@__PURE__*/
   enumDesc(file_remoteagent_core_v1_security, 0);
-
-/**
- * @generated from enum remoteagent.core.v1.SecurityGenerateKind
- */
-export enum SecurityGenerateKind {
-  /**
-   * @generated from enum value: SECURITY_GENERATE_KIND_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: SECURITY_GENERATE_KIND_ED25519 = 1;
-   */
-  ED25519 = 1,
-
-  /**
-   * @generated from enum value: SECURITY_GENERATE_KIND_X25519 = 2;
-   */
-  X25519 = 2,
-}
-
-/**
- * Describes the enum remoteagent.core.v1.SecurityGenerateKind.
- */
-export const SecurityGenerateKindSchema: GenEnum<SecurityGenerateKind> = /*@__PURE__*/
-  enumDesc(file_remoteagent_core_v1_security, 1);
 

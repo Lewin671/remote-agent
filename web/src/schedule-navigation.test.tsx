@@ -9,7 +9,7 @@ import { DemoRemote } from "./dev/demo";
 import { patchSyncState } from "./test/remote-fixture";
 import { Remote } from "./remote";
 import * as storage from "./storage";
-import * as authoritySetup from "./authority-setup";
+import * as authoritySetup from "./authority-startup";
 import * as remoteModule from "./remote";
 import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
 import { run, task, type ScheduleTaskJson } from "./test/schedule-fixture";

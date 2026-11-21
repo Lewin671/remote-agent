@@ -13,7 +13,6 @@ import {
   parseState,
   stateHash,
   verifyChain,
-  verifyTransition,
   type Pin,
   type RecoveryStatement,
   type SecurityState,
@@ -259,7 +258,7 @@ export async function extendRecord(
     const proof = proofs[i];
     if (s.core.issuedAt > BigInt(Date.now()) + BigInt(MAX_CLOCK_SKEW))
       throw new SecurityError("clock");
-    await verifyTransition(head, s, proof);
+    await verifyChain(next.pin, [...next.states, s], [...next.proofs, proof]);
     const member = s.core.members.some((m) => m.id === next.memberID);
     if (member) {
       const secret = await openGrant(next.pin, s, next.memberID, next.xPrivate);

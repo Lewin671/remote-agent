@@ -306,7 +306,6 @@
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"History keys unavailable: records from before recovery cannot be decrypted"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"Invalid ciphertext: signature, key, or content verification failed"</string>
     <string name="errors_invalid_pairing_approval_signature" formatted="false">"Invalid pairing approval signature"</string>
-    <string name="errors_invalid_session_seed" formatted="false">"Invalid session seed"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"It may have been deleted, or belong to a computer that was removed."</string>
     <string name="errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" formatted="false">"Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin."</string>
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"Names can only be changed on that device"</string>

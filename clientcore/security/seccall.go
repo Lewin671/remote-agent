@@ -10,8 +10,6 @@ import (
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
-const accountDeleteContext = "remote-agent/v1/delete-account\x00"
-
 type kemEntry struct {
 	enc [32]byte
 	dh  [32]byte
@@ -316,15 +314,12 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 	}
 	switch c := req.Call.(type) {
 	case *corev1.SecCallRequest_ParseState:
-		if c.ParseState == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		s, err := devicesec.ParseState(c.ParseState.Raw)
+		s, err := devicesec.ParseState(c.ParseState)
 		if err != nil {
 			return errSecResp(err)
 		}
 		return &corev1.SecCallResponse{
-			Data:        slices.Clone(c.ParseState.Raw),
+			Data:        slices.Clone(c.ParseState),
 			ParsedState: stateToProto(s),
 		}
 
@@ -412,50 +407,13 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 		}
 		return &corev1.SecCallResponse{Data: sec}
 
-	case *corev1.SecCallRequest_HpkeSealWithDh:
-		if c.HpkeSealWithDh == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		out, err := devicesec.HPKESealWithDH(
-			c.HpkeSealWithDh.RecipientPublic,
-			c.HpkeSealWithDh.Enc,
-			c.HpkeSealWithDh.Dh,
-			c.HpkeSealWithDh.Info,
-			c.HpkeSealWithDh.Aad,
-			c.HpkeSealWithDh.Data,
-		)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return &corev1.SecCallResponse{Data: out}
-
-	case *corev1.SecCallRequest_HpkeOpenWithDh:
-		if c.HpkeOpenWithDh == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		out, err := devicesec.HPKEOpenWithDH(
-			c.HpkeOpenWithDh.RecipientPublic,
-			c.HpkeOpenWithDh.Enc,
-			c.HpkeOpenWithDh.Dh,
-			c.HpkeOpenWithDh.Info,
-			c.HpkeOpenWithDh.Aad,
-			c.HpkeOpenWithDh.Data,
-		)
-		if err != nil {
-			return errSecResp(err)
-		}
-		return &corev1.SecCallResponse{Data: out}
-
 	case *corev1.SecCallRequest_ParseLease:
-		if c.ParseLease == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		l, err := devicesec.ParseLease(c.ParseLease.Raw)
+		l, err := devicesec.ParseLease(c.ParseLease)
 		if err != nil {
 			return errSecResp(err)
 		}
 		return &corev1.SecCallResponse{
-			Data:        slices.Clone(c.ParseLease.Raw),
+			Data:        slices.Clone(c.ParseLease),
 			ParsedLease: leaseToProto(l),
 		}
 
@@ -535,15 +493,12 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 		}
 
 	case *corev1.SecCallRequest_ParseRecoveryStatement:
-		if c.ParseRecoveryStatement == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		rs, err := devicesec.ParseRecoveryStatement(c.ParseRecoveryStatement.Raw)
+		rs, err := devicesec.ParseRecoveryStatement(c.ParseRecoveryStatement)
 		if err != nil {
 			return errSecResp(err)
 		}
 		return &corev1.SecCallResponse{
-			Data:           slices.Clone(c.ParseRecoveryStatement.Raw),
+			Data:           slices.Clone(c.ParseRecoveryStatement),
 			ParsedRecovery: recoveryToProto(rs),
 		}
 
@@ -680,16 +635,6 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 			ParsedState: stateToProto(parsed),
 		}
 
-	case *corev1.SecCallRequest_SealPrevSecret:
-		if c.SealPrevSecret == nil || len(c.SealPrevSecret.Nonce) != 12 {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		blob, err := devicesec.SealPrevSecret(c.SealPrevSecret.NewSecret, c.SealPrevSecret.OldSecret, bytes.NewReader(c.SealPrevSecret.Nonce))
-		if err != nil {
-			return errSecResp(err)
-		}
-		return &corev1.SecCallResponse{Data: blob}
-
 	case *corev1.SecCallRequest_OpenPrevSecret:
 		if c.OpenPrevSecret == nil {
 			return errSecResp(devicesec.ErrInvalid)
@@ -769,10 +714,7 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 		return &corev1.SecCallResponse{Data: raw}
 
 	case *corev1.SecCallRequest_ParsePairTrustDescriptor:
-		if c.ParsePairTrustDescriptor == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		pin, approver, err := devicesec.ParsePairTrustDescriptor(c.ParsePairTrustDescriptor.Raw)
+		pin, approver, err := devicesec.ParsePairTrustDescriptor(c.ParsePairTrustDescriptor)
 		if err != nil {
 			return errSecResp(err)
 		}
@@ -846,10 +788,7 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 		}
 
 	case *corev1.SecCallRequest_Ed25519SeedPublic:
-		if c.Ed25519SeedPublic == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		pub, err := devicesec.Ed25519PublicFromSeed(c.Ed25519SeedPublic.Seed)
+		pub, err := devicesec.Ed25519PublicFromSeed(c.Ed25519SeedPublic)
 		if err != nil {
 			return errSecResp(err)
 		}
@@ -874,34 +813,6 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 			return errSecResp(err)
 		}
 		return &corev1.SecCallResponse{Data: out}
-
-	case *corev1.SecCallRequest_RequestIdentity:
-		if c.RequestIdentity == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		h, err := devicesec.ParseHeader(c.RequestIdentity.Header)
-		if err != nil {
-			return errSecResp(err)
-		}
-		rk := devicesec.RequestIdentity(h)
-		resp := &corev1.SecCallResponse{Data: slices.Clone(rk[:])}
-		if c.RequestIdentity.HasPlaintext {
-			ph, err := devicesec.AuthorizedPayloadHash(h, c.RequestIdentity.Plaintext)
-			if err != nil {
-				return errSecResp(err)
-			}
-			resp.SecondaryData = slices.Clone(ph[:])
-		}
-		return resp
-
-	case *corev1.SecCallRequest_AccountDeleteSigningBytes:
-		if c.AccountDeleteSigningBytes == nil {
-			return errSecResp(devicesec.ErrInvalid)
-		}
-		b := []byte(accountDeleteContext + c.AccountDeleteSigningBytes.Account + "\x00")
-		b = append(b, c.AccountDeleteSigningBytes.HeadHash...)
-		b = append(b, c.AccountDeleteSigningBytes.Challenge...)
-		return &corev1.SecCallResponse{Data: b}
 
 	case *corev1.SecCallRequest_OpenNotifyEnvelope:
 		return secOpenNotifyEnvelope(c.OpenNotifyEnvelope)

@@ -5,7 +5,7 @@ import {SyntheticRemote} from "./test/remote-fixture";
 import {newSlot,CommandError} from "./remote";
 import {NotForwardedSchema} from "./gen/remoteagent/v1/relay_pb";
 import {CommandResultSchema} from "./gen/remoteagent/v1/remote_pb";
-import {parseHeader} from "./device-security";
+import { parseTestHeader } from "./test/stored-security-fixture";
 import type {Envelope} from "./gen/remoteagent/v1/envelope_pb";
 function gate<T>() {let resolve!:(v:T)=>void;const promise=new Promise<T>(r=>resolve=r);return {promise,resolve};}
 
@@ -20,7 +20,7 @@ test("an async preflight failure cannot retire a concurrently dispatched copy",a
  let delivered=0;
  holder.api={forward:async(q:{command:Envelope})=>{
   delivered++;await reply.promise;
-  const h=parseHeader(new Uint8Array(q.command.securityHeader));
+  const h=parseTestHeader(new Uint8Array(q.command.securityHeader));
   return {result:await r.seal({kind:6,requestId:h.request},CommandResultSchema,create(CommandResultSchema))};
  }};
  try {

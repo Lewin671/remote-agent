@@ -1658,28 +1658,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent getSecurityKeyAgreed();
 
   /**
-   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-   * @return Whether the securityKeyGenerated field is set.
-   */
-  boolean hasSecurityKeyGenerated();
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
-   * @return The securityKeyGenerated.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent getSecurityKeyGenerated();
-
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-   * @return Whether the securityKeyEncapsulated field is set.
-   */
-  boolean hasSecurityKeyEncapsulated();
-  /**
-   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
-   * @return The securityKeyEncapsulated.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent getSecurityKeyEncapsulated();
-
-  /**
    * <code>.remoteagent.core.v1.SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456 [json_name = "securityCryptoBatchDone"];</code>
    * @return Whether the securityCryptoBatchDone field is set.
    */

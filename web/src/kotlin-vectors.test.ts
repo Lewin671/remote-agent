@@ -1,10 +1,11 @@
 // Vectors made by the Android client (android/core, KotlinVectorsTest),
 // checked here: the reverse of vectors.json.
 import { create, fromBinary } from "@bufbuild/protobuf";
-import { ed25519 } from "@noble/curves/ed25519.js";
 import { expect as want, it } from "vitest";
 import v from "../../internal/e2e/testdata/kotlin-vectors.json";
+import { ed25519SeedPublic } from "./core/sec-call";
 import { accountKey, concat, deviceID, expect, fromHex, hex, importRoot, importSessionKey, LOGIN_CONTEXT, open, REGISTER_CONTEXT, utf8 } from "./crypto";
+import { verifyPublicSignature } from "./device-security";
 import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { derivePair, newPairKey, pairTranscript } from "./pair";
@@ -25,15 +26,15 @@ it("verifies Kotlin signatures", async () => {
   const reg = concat(utf8(REGISTER_CONTEXT), fromHex(v.register_signature.message));
   want(hex(acct.sign(reg))).toBe(v.register_signature.signature);
   const l = v.login_signature;
-  want(hex(ed25519.getPublicKey(fromHex(l.device_seed)))).toBe(l.device_public_key);
+  want(hex(ed25519SeedPublic(fromHex(l.device_seed)))).toBe(l.device_public_key);
   want(await deviceID(fromHex(l.device_public_key))).toBe(l.device_id);
-  want(ed25519.verify(fromHex(l.signature), concat(utf8(LOGIN_CONTEXT), fromHex(l.challenge)), fromHex(l.device_public_key))).toBe(true);
+  await want(verifyPublicSignature(fromHex(l.device_public_key), fromHex(l.signature), concat(utf8(LOGIN_CONTEXT), fromHex(l.challenge)))).resolves.toBeUndefined();
 });
 
 it("pairs with Kotlin", async () => {
   const p = v.pairing;
-  const init = newPairKey(fromHex(p.initiator_private));
-  const join = newPairKey(fromHex(p.joiner_private));
+  const init = await newPairKey(fromHex(p.initiator_private));
+  const join = await newPairKey(fromHex(p.joiner_private));
   want(hex(init.pub)).toBe(p.initiator_public);
   want(hex(join.pub)).toBe(p.joiner_public);
   const tr = await pairTranscript(p.pairing_id, init.pub, join.pub, p.joiner_kind);

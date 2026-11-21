@@ -455,6 +455,17 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 		return e.DrainEffects()
 	}
 
+	for _, ck := range ev.ContentKeys {
+		if ck == nil || ck.ContentEpoch == 0 || ck.ContentEpoch >= head.Core.ContentEpoch || len(ck.Secret) != 32 {
+			continue
+		}
+		if _, exists := e.epochSecrets[ck.ContentEpoch]; !exists {
+			var sec [32]byte
+			copy(sec[:], ck.Secret)
+			e.epochSecrets[ck.ContentEpoch] = sec
+		}
+	}
+
 	if _, haveHeadSecret := e.epochSecrets[head.Core.ContentEpoch]; haveHeadSecret {
 		if err := e.fillPrevSecrets(); err != nil {
 			delete(e.epochSecrets, head.Core.ContentEpoch)
@@ -823,7 +834,7 @@ func (e *Engine) checkLiveLease(nowMs int64) error {
 }
 
 func (e *Engine) isRecoveryUnavailable(item OpenItem, h devicesec.Header) bool {
-	if !item.History || h.Purpose != devicesec.Event {
+	if !item.History {
 		return false
 	}
 	for i, s := range e.states {

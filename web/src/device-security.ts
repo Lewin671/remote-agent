@@ -1,17 +1,33 @@
-// Protocol-10 device security. Authority is a Client role, independent of platform.
+// Thin S5 Web facade delegating device security parsing, chain/lease/recovery
+// verification, HPKE grant opening, and pair trust helpers to Go clientcore via SecCall.
+import { create } from "@bufbuild/protobuf";
+import { concat, utf8 } from "./crypto";
 import {
-  Aes256Gcm,
-  CipherSuite,
-  DhkemX25519HkdfSha256,
-  HkdfSha256,
-} from "@hpke/core";
-import { concat, utf8, deviceID } from "./crypto";
-import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
+  SecGrantChallengeCallSchema,
+  SecGrantSchema,
+  SecMarshalLeaseCallSchema,
+  SecMarshalRecoveryStatementCallSchema,
+  SecMemberSchema,
+  SecNewLeaseUnsignedCallSchema,
+  SecOpenGrantWithDHCallSchema,
+  SecOpenPrevSecretCallSchema,
+  SecPairDomainCommitCallSchema,
+  SecPairTrustDescriptorCallSchema,
+  SecVerifyChainCallSchema,
+  SecVerifyLeaseCallSchema,
+  SecVerifyRecoveryStatementCallSchema,
+  type SecParsedLease,
+  type SecParsedRecoveryStatement,
+  type SecParsedState,
+} from "./gen/remoteagent/core/v1/seccall_pb";
 import {
-  EnvelopeSchema,
-  HeaderSchema,
-  type Envelope,
-} from "./gen/remoteagent/v1/envelope_pb";
+  makeSecPin,
+  secCall,
+  SecurityError,
+  x25519DeriveWithPrivateKey,
+} from "./core/sec-call";
+
+export { SecurityError };
 
 type B = Uint8Array<ArrayBuffer>;
 export const VERSION = 3;
@@ -24,120 +40,37 @@ export const MAX_PAIR_CHAIN_BYTES = 800 << 10;
 export const LEASE = 72 * 60 * 60 * 1000;
 /** How far ahead of the local clock a state's IssuedAt may be. */
 export const MAX_CLOCK_SKEW = 5 * 60 * 1000;
-export class SecurityError extends Error {
-  constructor(
-    readonly code:
-      | "invalid"
-      | "untrusted"
-      | "stale"
-      | "unknown"
-      | "conflict"
-      | "pending"
-      | "capacity"
-      | "storage"
-      | "unavailable"
-      | "lease"
-      | "clock" = "invalid",
-  ) {
-    super(`security: ${code}`);
-  }
-}
+
 function requireOK(
   ok: unknown,
   code: SecurityError["code"] = "invalid",
 ): asserts ok {
   if (!ok) throw new SecurityError(code);
 }
-const ZERO = new Uint8Array(32);
 export function equal(a: Uint8Array, b: Uint8Array): boolean {
   return a.length === b.length && a.every((x, i) => x === b[i]);
 }
-function hash32(b: Uint8Array): void {
-  requireOK(b.length === 32);
+const u32be = (n: number): B => {
+  requireOK(Number.isInteger(n) && n >= 0 && n <= 0xffffffff);
+  const b = new Uint8Array(4);
+  new DataView(b.buffer).setUint32(0, n);
+  return b;
+};
+const u64be = (n: bigint): B => {
+  requireOK(n >= 0n && n <= 0xffffffffffffffffn);
+  const b = new Uint8Array(8);
+  new DataView(b.buffer).setBigUint64(0, n);
+  return b;
+};
+const lp = (b: Uint8Array): B => concat(u32be(b.length), b);
+const str = (s: string): B => lp(utf8(s));
+
+async function verifyEd(pub: B, signature: B, message: B): Promise<void> {
+  requireOK(pub.length === 32 && signature.length === 64, "untrusted");
+  const key = await crypto.subtle.importKey("raw", pub, "Ed25519", false, ["verify"]);
+  requireOK(await crypto.subtle.verify("Ed25519", key, signature, message), "untrusted");
 }
-function nonzero(b: Uint8Array): void {
-  hash32(b);
-  requireOK(!equal(b, ZERO));
-}
-const id = (s: string) => /^[0-9a-f]{32}$/.test(s);
-const opaque = (s: string) => /^[A-Za-z0-9_.:-]{1,128}$/.test(s);
-export class Writer {
-  private parts: B[] = [];
-  raw(b: Uint8Array): this {
-    this.parts.push(new Uint8Array(b));
-    return this;
-  }
-  u32(n: number): this {
-    requireOK(Number.isInteger(n) && n >= 0 && n <= 0xffffffff);
-    const b = new Uint8Array(4);
-    new DataView(b.buffer).setUint32(0, n);
-    return this.raw(b);
-  }
-  u64(n: bigint): this {
-    requireOK(n >= 0n && n <= 0xffffffffffffffffn);
-    const b = new Uint8Array(8);
-    new DataView(b.buffer).setBigUint64(0, n);
-    return this.raw(b);
-  }
-  lp(b: Uint8Array): this {
-    return this.u32(b.length).raw(b);
-  }
-  str(s: string): this {
-    return this.lp(utf8(s));
-  }
-  bytes(): B {
-    return concat(...this.parts);
-  }
-}
-export class Reader {
-  private at = 0;
-  constructor(private readonly b: B) {}
-  raw(n: number): B {
-    requireOK(
-      Number.isSafeInteger(n) && n >= 0 && n <= this.b.length - this.at,
-    );
-    const out = this.b.slice(this.at, this.at + n);
-    this.at += n;
-    return out;
-  }
-  u32(): number {
-    return new DataView(this.raw(4).buffer).getUint32(0);
-  }
-  u64(): bigint {
-    return new DataView(this.raw(8).buffer).getBigUint64(0);
-  }
-  lp(max: number): B {
-    const n = this.u32();
-    requireOK(n <= max);
-    return this.raw(n);
-  }
-  str(): string {
-    return new TextDecoder("utf-8", { fatal: true }).decode(this.lp(MAX_STATE));
-  }
-  done(): void {
-    requireOK(this.at === this.b.length);
-  }
-}
-export async function hash(label: string, ...parts: Uint8Array[]): Promise<B> {
-  return new Uint8Array(
-    await crypto.subtle.digest("SHA-256", concat(utf8(label), ...parts)),
-  );
-}
-async function verificationKey(pub: B): Promise<CryptoKey> {
-  requireOK(pub.length === 32, "untrusted");
-  return crypto.subtle.importKey("raw", pub, "Ed25519", false, ["verify"]);
-}
-async function verify(pub: B | CryptoKey, signature: B, message: B): Promise<void> {
-  requireOK(signature.length === 64, "untrusted");
-  const key = pub instanceof Uint8Array ? await verificationKey(pub) : pub;
-  requireOK(
-    await crypto.subtle.verify("Ed25519", key, signature, message),
-    "untrusted",
-  );
-}
-async function sign(key: CryptoKey, message: B): Promise<B> {
-  return new Uint8Array(await crypto.subtle.sign("Ed25519", key, message));
-}
+
 export interface Member {
   id: string;
   ed: B;
@@ -168,267 +101,10 @@ export interface SecurityState {
   prevSecret: B;
   signature: B;
 }
-// Only defensive immutable snapshots may memoize state-derived information.
-// Typed arrays cannot be frozen: accessors return copies of private bytes.
-const stateInfo = new WeakMap<SecurityState, {
-  hash?: Promise<B>;
-  keys: Map<string, Promise<CryptoKey>>;
-}>();
-function immutableObject<T extends object>(source: T): T {
-  const result = (Array.isArray(source) ? [] : {}) as T;
-  for (const [name, value] of Object.entries(source)) {
-    if (value instanceof Uint8Array) {
-      const bytes = new Uint8Array(value);
-      Object.defineProperty(result, name, { enumerable: true, get: () => bytes.slice() });
-    } else {
-      Object.defineProperty(result, name, { enumerable: true,
-        value: value && typeof value === "object" ? immutableObject(value) : value });
-    }
-  }
-  return Object.freeze(result);
-}
-export function immutableState(s: SecurityState): SecurityState {
-  if (stateInfo.has(s)) return s;
-  const snapshot = immutableObject(s);
-  stateInfo.set(snapshot, { keys: new Map() });
-  return snapshot;
-}
-async function originKey(s: SecurityState, m: Member): Promise<B | CryptoKey> {
-  const info = stateInfo.get(s);
-  if (!info) return m.ed;
-  let key = info.keys.get(m.id);
-  if (!key) {
-    key = verificationKey(m.ed);
-    info.keys.set(m.id, key);
-    key.catch(() => info.keys.delete(m.id));
-  }
-  return key;
-}
 export interface Pin {
   account: string;
   domain: B;
   genesis: B;
-}
-function validateMember(m: Member): void {
-  requireOK(
-    id(m.id) &&
-      (m.kind === 1 || m.kind === 2) &&
-      m.ed.length === 32 &&
-      m.x.length === 32,
-  );
-  nonzero(m.x);
-}
-async function validateCore(c: Core): Promise<void> {
-  requireOK(
-    id(c.account) &&
-      id(c.authorityID) &&
-      c.epoch > 0n &&
-      c.contentEpoch > 0n &&
-      c.contentEpoch <= c.epoch &&
-      c.issuedAt > 0n &&
-      c.members.length > 0 &&
-      c.members.length <= 128 &&
-      c.removed.length <= 128,
-  );
-  nonzero(c.domain);
-  nonzero(c.recoveryEd);
-  hash32(c.parent);
-  for (let i = 0; i < c.members.length; i++) {
-    const m = c.members[i];
-    validateMember(m);
-    requireOK(m.id === (await deviceID(m.ed)));
-    if (i) requireOK(c.members[i - 1].id < m.id);
-  }
-  const a = c.members.find((m) => m.id === c.authorityID);
-  requireOK(a?.kind === 2);
-  for (let i = 0; i < c.removed.length; i++) {
-    const rid = c.removed[i];
-    requireOK(
-      id(rid) &&
-        (!i || c.removed[i - 1] < rid) &&
-        !c.members.some((m) => m.id === rid) &&
-        rid !== c.authorityID,
-    );
-  }
-  if (c.epoch === 1n)
-    requireOK(
-      equal(c.parent, ZERO) &&
-        c.members.length === 1 &&
-        c.removed.length === 0 &&
-        c.contentEpoch === 1n,
-    );
-  else requireOK(!equal(c.parent, ZERO));
-}
-export async function coreBytes(c: Core): Promise<B> {
-  await validateCore(c);
-  const w = new Writer()
-    .u32(VERSION)
-    .str(c.account)
-    .raw(c.domain)
-    .str(c.authorityID)
-    .raw(c.recoveryEd)
-    .raw(c.parent)
-    .u64(c.epoch)
-    .u64(c.contentEpoch)
-    .u64(c.issuedAt)
-
-    .u32(c.members.length);
-  for (const m of c.members) w.str(m.id).raw(m.ed).raw(m.x).u32(m.kind);
-  w.u32(c.removed.length);
-  for (const r of c.removed) w.str(r);
-  return w.bytes();
-}
-export async function parseCore(b: B): Promise<Core> {
-  requireOK(b.length <= MAX_STATE);
-  const r = new Reader(b);
-  requireOK(r.u32() === VERSION);
-  const c: Core = {
-    account: r.str(),
-    domain: r.raw(32),
-    authorityID: r.str(),
-    recoveryEd: r.raw(32),
-    parent: r.raw(32),
-    epoch: r.u64(),
-    contentEpoch: r.u64(),
-    issuedAt: r.u64(),
-
-    members: [],
-    removed: [],
-  };
-  let n = r.u32();
-  requireOK(n <= 128);
-  for (let i = 0; i < n; i++)
-    c.members.push({
-      id: r.str(),
-      ed: r.raw(32),
-      x: r.raw(32),
-      kind: r.u32() as 1 | 2,
-    });
-  n = r.u32();
-  requireOK(n <= 128);
-  for (let i = 0; i < n; i++) c.removed.push(r.str());
-  r.done();
-  await validateCore(c);
-  return c;
-}
-function grantBytes(s: SecurityState): B {
-  requireOK(s.grants.length === s.core.members.length);
-  const w = new Writer().u32(s.grants.length);
-  for (let i = 0; i < s.grants.length; i++) {
-    const g = s.grants[i];
-    requireOK(
-      g.recipient === s.core.members[i].id &&
-        g.cipher.length === 48 &&
-        g.enc.length === 32,
-    );
-    nonzero(g.enc);
-    w.str(g.recipient).lp(g.enc).lp(g.cipher);
-  }
-  return w.bytes();
-}
-async function coreHash(s: SecurityState): Promise<B> {
-  return hash("ra3/core\0", await coreBytes(s.core));
-}
-export async function stateHash(s: SecurityState): Promise<B> {
-  const info = stateInfo.get(s);
-  if (!info) return computeStateHash(s);
-  if (!info.hash) {
-    const job = computeStateHash(s);
-    info.hash = job;
-    job.catch(() => { if (info.hash === job) info.hash = undefined; });
-  }
-  return (await info.hash).slice();
-}
-async function computeStateHash(s: SecurityState): Promise<B> {
-  const ch = await coreHash(s);
-  const g = grantBytes(s);
-  return hash("ra3/state\0", ch, g, new Writer().lp(s.prevSecret).bytes());
-}
-export async function stateSignBytes(s: SecurityState): Promise<B> {
-  const c = s.core;
-  return new Writer()
-    .raw(utf8("ra3/state-sig\0"))
-    .str(c.account)
-    .raw(c.domain)
-    .raw(c.parent)
-    .u64(c.epoch)
-    .u64(c.contentEpoch)
-    .u64(c.issuedAt)
-
-    .str(c.authorityID)
-    .raw(c.recoveryEd)
-    .raw(await stateHash(s))
-    .bytes();
-}
-export async function stateBytes(s: SecurityState): Promise<B> {
-  requireOK(s.signature.length === 64);
-  const b = new Writer()
-    .lp(await coreBytes(s.core))
-    .raw(grantBytes(s))
-    .lp(s.prevSecret)
-    .lp(s.signature)
-    .bytes();
-  requireOK(b.length <= MAX_STATE);
-  return b;
-}
-export async function parseState(b: B): Promise<SecurityState> {
-  requireOK(b.length <= MAX_STATE);
-  const r = new Reader(b);
-  const core = await parseCore(r.lp(MAX_STATE));
-  const n = r.u32();
-  requireOK(n <= 128);
-  const grants: Grant[] = [];
-  for (let i = 0; i < n; i++)
-    grants.push({ recipient: r.str(), enc: r.lp(32), cipher: r.lp(48) });
-  const prevSecret = r.lp(MAX_STATE);
-  const signature = r.lp(64);
-  r.done();
-  const s = { core, grants, prevSecret, signature };
-  // ParseState must accept only the canonical encoding, as Go does.
-  requireOK(equal(await stateBytes(s), b));
-  return s;
-}
-export async function verifyStateSignature(s: SecurityState): Promise<void> {
-  const m = s.core.members.find((m) => m.id === s.core.authorityID);
-  requireOK(m?.kind === 2, "untrusted");
-  await verify(m.ed, s.signature, await stateSignBytes(s));
-}
-export function stateAt(states: SecurityState[], epoch: bigint): SecurityState {
-  requireOK(epoch >= 1n && epoch <= BigInt(states.length));
-  return states[Number(epoch - 1n)];
-}
-export function pinOf(genesis: SecurityState): Promise<Pin> {
-  return (async () => {
-    requireOK(genesis.core.epoch === 1n);
-    return {
-      account: genesis.core.account,
-      domain: genesis.core.domain,
-      genesis: await stateHash(genesis),
-    };
-  })();
-}
-/** The pin only anchors account, domain and genesis; later transitions are
- * verified against each parent's authority member. */
-export async function verifyPin(p: Pin, s: SecurityState): Promise<void> {
-  requireOK(
-    s.core.account === p.account && equal(s.core.domain, p.domain),
-    "untrusted",
-  );
-  nonzero(p.genesis);
-  if (s.core.epoch === 1n)
-    requireOK(equal(await stateHash(s), p.genesis), "untrusted");
-}
-export async function verifyGenesis(p: Pin, s: SecurityState): Promise<void> {
-  await verifyPin(p, s);
-  requireOK(s.core.epoch === 1n, "untrusted");
-  const m = s.core.members.find((m) => m.id === s.core.authorityID);
-  requireOK(
-    m?.kind === 2 &&
-      s.core.members.length === 1 &&
-      s.core.members[0].id === m.id,
-    "untrusted",
-  );
-  await verifyStateSignature(s);
 }
 export interface RecoveryStatement {
   account: string;
@@ -438,368 +114,17 @@ export interface RecoveryStatement {
   newRecoveryEd: B;
   newMember: Member;
   issuedAt: bigint;
-
   stateHash: B;
   nonce: B;
   signature: B;
 }
-export async function recoverySignBytes(r: RecoveryStatement): Promise<B> {
-  const m = r.newMember;
-  requireOK(
-    id(r.account) &&
-      r.newAuthorityID === m.id &&
-      m.kind === 2 &&
-      id(r.newAuthorityID) &&
-      r.newRecoveryEd.length === 32 &&
-      !equal(r.newRecoveryEd, ZERO) &&
-      r.issuedAt > 0n &&
-      r.stateHash.length === 32 &&
-      r.nonce.length === 32,
-  );
-  validateMember(m);
-  requireOK(m.id === (await deviceID(m.ed)));
-  nonzero(r.domain);
-  nonzero(r.parent);
-  requireOK(!equal(r.stateHash, ZERO) && !equal(r.nonce, ZERO));
-  return new Writer()
-    .raw(utf8("ra3/recovery\0"))
-    .str(r.account)
-    .raw(r.domain)
-    .raw(r.parent)
-    .str(r.newAuthorityID)
-    .raw(r.newRecoveryEd)
-    .str(m.id)
-    .raw(m.ed)
-    .raw(m.x)
-    .u32(m.kind)
-    .u64(r.issuedAt)
-
-    .raw(r.stateHash)
-    .raw(r.nonce)
-    .bytes();
+export interface LeaseCertificate {
+  domain: B;
+  head: B;
+  issuedAt: bigint;
+  notAfter: bigint;
+  signature: B;
 }
-export async function recoveryBytes(r: RecoveryStatement): Promise<B> {
-  requireOK(r.signature.length === 64);
-  const b = new Writer()
-    .lp(await recoverySignBytes(r))
-    .lp(r.signature)
-    .bytes();
-  requireOK(b.length <= MAX_STATE);
-  return b;
-}
-export async function parseRecoveryStatement(b: B): Promise<RecoveryStatement> {
-  requireOK(b.length <= MAX_STATE);
-  const r = new Reader(b);
-  const body = r.lp(MAX_STATE);
-  const signature = r.lp(64);
-  r.done();
-  requireOK(signature.length === 64);
-  const label = utf8("ra3/recovery\0");
-  requireOK(
-    body.length >= label.length && equal(body.slice(0, label.length), label),
-  );
-  const d = new Reader(body.slice(label.length));
-  const out: RecoveryStatement = {
-    account: d.str(),
-    domain: d.raw(32),
-    parent: d.raw(32),
-    newAuthorityID: d.str(),
-    newRecoveryEd: d.raw(32),
-    newMember: {
-      id: d.str(),
-      ed: d.raw(32),
-      x: d.raw(32),
-      kind: d.u32() as 1 | 2,
-    },
-    issuedAt: d.u64(),
-
-    stateHash: d.raw(32),
-    nonce: d.raw(32),
-    signature,
-  };
-  d.done();
-  requireOK(equal(await recoverySignBytes(out), body));
-  return out;
-}
-export async function verifyRecovery(
-  r: RecoveryStatement,
-  parent: SecurityState,
-  next: SecurityState,
-): Promise<void> {
-  const parentHash = await stateHash(parent);
-  const nextHash = await stateHash(next);
-  const m = next.core.members.find((m) => m.id === next.core.authorityID);
-  requireOK(
-    r.account === parent.core.account &&
-      equal(r.domain, parent.core.domain) &&
-      equal(r.parent, parentHash) &&
-      r.newAuthorityID === next.core.authorityID &&
-      equal(r.newRecoveryEd, next.core.recoveryEd) &&
-      m !== undefined &&
-      equal(m.ed, r.newMember.ed) &&
-      equal(m.x, r.newMember.x) &&
-      m.kind === r.newMember.kind &&
-      r.newMember.id === m.id &&
-      r.issuedAt === next.core.issuedAt &&
-      equal(r.stateHash, nextHash),
-    "untrusted",
-  );
-  await verify(parent.core.recoveryEd, r.signature, await recoverySignBytes(r));
-}
-function sameMembers(a: Member[], b: Member[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every(
-      (m, i) =>
-        m.id === b[i].id &&
-        equal(m.ed, b[i].ed) &&
-        equal(m.x, b[i].x) &&
-        m.kind === b[i].kind,
-    )
-  );
-}
-function membershipDelta(parent: SecurityState, next: SecurityState): void {
-  const newlyRemoved: string[] = [];
-  let added = 0;
-  let rotated = 0;
-  for (const m of parent.core.members) {
-    const n = next.core.members.find((n) => n.id === m.id);
-    if (!n) newlyRemoved.push(m.id);
-    else if (!equal(n.ed, m.ed) || n.kind !== m.kind) throw new SecurityError();
-    else if (!equal(n.x, m.x)) rotated++;
-  }
-  for (const m of next.core.members)
-    if (!parent.core.members.some((o) => o.id === m.id)) {
-      if (parent.core.removed.includes(m.id)) throw new SecurityError();
-      added++;
-    }
-  // Removed is the accumulated tombstone set, not only this state's
-  // removals; a removed ID can never be re-added.
-  const wantRemoved = [...parent.core.removed, ...newlyRemoved].sort();
-  requireOK(
-    wantRemoved.join(",") === next.core.removed.join(",") &&
-      added <= 1 &&
-      rotated <= 1 &&
-      !(added && newlyRemoved.length) &&
-      !(rotated && (added || newlyRemoved.length)) &&
-      !(added === 0 && newlyRemoved.length === 0 && rotated === 0),
-  );
-}
-function recoveryDelta(parent: SecurityState, next: SecurityState): void {
-  const removed = [...parent.core.removed, parent.core.authorityID].sort();
-  requireOK(removed.join(",") === next.core.removed.join(","));
-  for (const m of parent.core.members) {
-    if (m.id === parent.core.authorityID) continue;
-    const n = next.core.members.find((n) => n.id === m.id);
-    requireOK(
-      n !== undefined &&
-        equal(n.ed, m.ed) &&
-        equal(n.x, m.x) &&
-        n.kind === m.kind,
-    );
-  }
-  for (const m of next.core.members) {
-    if (m.id === next.core.authorityID) continue;
-    requireOK(parent.core.members.some((o) => o.id === m.id));
-  }
-}
-/** Checks the signed transition from parent to next. A recovery transition
- * also needs the old phone's recovery statement. Content grants are not
- * opened here; the chain installer verifies PrevSecret with the new key. */
-export async function verifyTransition(
-  parent: SecurityState,
-  next: SecurityState,
-  recovery?: RecoveryStatement,
-): Promise<void> {
-  requireOK(
-    equal(next.core.parent, await stateHash(parent)) &&
-      next.core.epoch === parent.core.epoch + 1n &&
-      next.core.account === parent.core.account &&
-      equal(next.core.domain, parent.core.domain) &&
-      next.core.issuedAt >= parent.core.issuedAt,
-    "stale",
-  );
-  const authority = next.core.members.find(
-    (m) => m.id === next.core.authorityID,
-  );
-  requireOK(authority?.kind === 2);
-  if (recovery) {
-    await verifyRecovery(recovery, parent, next);
-    requireOK(
-      next.core.contentEpoch === parent.core.contentEpoch + 1n &&
-        next.prevSecret.length === 0,
-    );
-    requireOK(!next.core.members.some((m) => m.id === parent.core.authorityID));
-    requireOK(next.core.removed.includes(parent.core.authorityID));
-    await verifyStateSignature(next);
-    recoveryDelta(parent, next);
-    return;
-  }
-  const oldAuthority = parent.core.members.find(
-    (m) => m.id === parent.core.authorityID,
-  );
-  requireOK(oldAuthority !== undefined);
-  await verify(oldAuthority.ed, next.signature, await stateSignBytes(next));
-  if (next.core.authorityID !== parent.core.authorityID) {
-    requireOK(
-      parent.core.members.some((m) => m.id === next.core.authorityID) &&
-        !next.core.members.some((m) => m.id === parent.core.authorityID) &&
-        !equal(next.core.recoveryEd, parent.core.recoveryEd) &&
-        next.core.contentEpoch === parent.core.contentEpoch + 1n &&
-        next.prevSecret.length === 60,
-    );
-    recoveryDelta(parent, next);
-    return;
-  }
-  if (next.core.contentEpoch === parent.core.contentEpoch) {
-    requireOK(
-      !equal(next.core.recoveryEd, parent.core.recoveryEd) &&
-        next.core.removed.join(",") === parent.core.removed.join(",") &&
-        sameMembers(next.core.members, parent.core.members) &&
-        next.prevSecret.length === 0,
-    );
-  } else if (next.core.contentEpoch === parent.core.contentEpoch + 1n) {
-    requireOK(next.prevSecret.length === 60);
-    membershipDelta(parent, next);
-  } else {
-    throw new SecurityError();
-  }
-}
-export async function verifyChain(
-  p: Pin,
-  states: SecurityState[],
-  proofs: (RecoveryStatement | undefined)[] = [],
-): Promise<void> {
-  requireOK(states.length > 0 && states.length <= MAX_STATES);
-  requireOK(proofs.length === 0 || proofs.length === states.length);
-  await verifyGenesis(p, states[0]);
-  const now = BigInt(Date.now());
-  for (let i = 0; i < states.length; i++) {
-    if (states[i].core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
-      throw new SecurityError("clock");
-    if (i > 0) await verifyTransition(states[i - 1], states[i], proofs[i]);
-  }
-}
-const suite = () =>
-  new CipherSuite({
-    kem: new DhkemX25519HkdfSha256(),
-    kdf: new HkdfSha256(),
-    aead: new Aes256Gcm(),
-  });
-export async function newSecurityKey(): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey({ name: "X25519" }, false, [
-    "deriveBits",
-  ]) as Promise<CryptoKeyPair>;
-}
-/** Optional randomness is for reproducible cross-language tests only. */
-export async function sealGrant(
-  recipient: Member,
-  c: Core,
-  ch: B,
-  secret: B,
-  ekm?: B,
-): Promise<Grant> {
-  validateMember(recipient);
-  hash32(ch);
-  requireOK(secret.length === 32);
-  const hpke = suite();
-  const publicKey = await hpke.kem.importKey("raw", new Uint8Array(recipient.x).buffer, true);
-  const ctx = grantContext(c, ch, recipient.id);
-  const sender = await hpke.createSenderContext({
-    recipientPublicKey: publicKey,
-    info: concat(utf8("ra3/grant-info\0"), ctx),
-    ...(ekm ? { ekm } : {}),
-  });
-  return {
-    recipient: recipient.id,
-    enc: new Uint8Array(sender.enc),
-    cipher: new Uint8Array(await sender.seal(secret, concat(utf8("ra3/grant-aad\0"), ctx))),
-  };
-}
-
-export async function sealPrevSecret(
-  newSecret: B,
-  oldSecret: B,
-  nonce = crypto.getRandomValues(new Uint8Array(12)),
-): Promise<B> {
-  requireOK(newSecret.length === 32 && oldSecret.length === 32 && nonce.length === 12);
-  const key = await crypto.subtle.importKey("raw", newSecret, "AES-GCM", false, ["encrypt"]);
-  const cipher = new Uint8Array(await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: nonce, additionalData: utf8("ra3/prev-secret\0") },
-    key,
-    oldSecret,
-  ));
-  return concat(nonce, cipher);
-}
-
-/** The recovery seed stays in memory; callers must never persist it. */
-export async function signRecoveryStatement(r: RecoveryStatement, seed: B, beforeSign?: () => void): Promise<RecoveryStatement> {
-  requireOK(seed.length === 32);
-  const key = await crypto.subtle.importKey("pkcs8", concat(
-    new Uint8Array([0x30,0x2e,0x02,0x01,0x00,0x30,0x05,0x06,0x03,0x2b,0x65,0x70,0x04,0x22,0x04,0x20]), seed,
-  ), "Ed25519", false, ["sign"]);
-  const message = await recoverySignBytes(r);
-  beforeSign?.();
-  return { ...r, signature: await sign(key, message) };
-}
-function grantContext(c: Core, ch: B, recipient: string): B {
-  return new Writer()
-    .str(c.account)
-    .raw(c.domain)
-    .u64(c.contentEpoch)
-    .raw(ch)
-    .str(recipient)
-    .bytes();
-}
-export async function openGrant(
-  p: Pin,
-  s: SecurityState,
-  recipient: string,
-  xPrivate: CryptoKey,
-): Promise<B> {
-  await verifyPin(p, s);
-  // The caller verifies the chain first. A handoff state is signed by the
-  // retiring authority in its parent, so it has no standalone self-signature.
-  const m = s.core.members.find((m) => m.id === recipient);
-  requireOK(m, "untrusted");
-  const g = s.grants.find((g) => g.recipient === recipient);
-  requireOK(g, "untrusted");
-  const ctx = grantContext(s.core, await coreHash(s), recipient);
-  const rc = await suite().createRecipientContext({
-    recipientKey: xPrivate,
-    enc: g.enc,
-    info: concat(utf8("ra3/grant-info\0"), ctx),
-  });
-  const secret = new Uint8Array(
-    await rc.open(g.cipher, concat(utf8("ra3/grant-aad\0"), ctx)),
-  );
-  requireOK(secret.length === 32, "untrusted");
-  return secret;
-}
-export async function openPrevSecret(newSecret: B, blob: B): Promise<B> {
-  requireOK(newSecret.length === 32 && blob.length === 60);
-  const key = await crypto.subtle.importKey(
-    "raw",
-    newSecret,
-    "AES-GCM",
-    false,
-    ["decrypt"],
-  );
-  const out = new Uint8Array(
-    await crypto.subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: blob.slice(0, 12),
-        additionalData: utf8("ra3/prev-secret\0"),
-      },
-      key,
-      blob.slice(12),
-    ),
-  );
-  requireOK(out.length === 32, "untrusted");
-  return out;
-}
-
 export enum Purpose {
   Event = 1,
   SessionMeta = 2,
@@ -816,6 +141,8 @@ export enum Purpose {
   TerminalResize = 14,
   TerminalHistory = 15,
 }
+export const control = (p: Purpose) => p === Purpose.Command || p === Purpose.TerminalInput;
+
 export interface SecurityHeader {
   account: string;
   domain: B;
@@ -832,148 +159,6 @@ export interface SecurityHeader {
   deadline: bigint;
   compression: number;
 }
-export const control = (p: Purpose) =>
-  [
-    Purpose.Command,
-    Purpose.TerminalInput,
-    Purpose.TerminalResize,
-    Purpose.TerminalHistory,
-  ].includes(p);
-const sessionKey = (p: Purpose) =>
-  [
-    Purpose.Event,
-    Purpose.Image,
-    Purpose.TerminalOutput,
-    Purpose.TerminalInput,
-    Purpose.TerminalResize,
-    Purpose.TerminalHistory,
-  ].includes(p);
-function validateHeader(h: SecurityHeader): void {
-  requireOK(
-    id(h.account) &&
-      id(h.sender) &&
-      h.epoch > 0n &&
-      h.contentEpoch > 0n &&
-      h.contentEpoch <= h.epoch &&
-      [0, 1].includes(h.compression),
-  );
-  nonzero(h.domain);
-  nonzero(h.state);
-  requireOK(!h.machine || id(h.machine));
-  requireOK(!h.session || opaque(h.session));
-  requireOK(!h.request || opaque(h.request));
-  const kind = h.purpose === 14 || h.purpose === 15 ? 8 : Number(h.purpose);
-  requireOK(h.kind === kind && kind > 0 && kind <= 13 && kind !== 9);
-  switch (h.purpose) {
-    case Purpose.Prefs:
-      requireOK(
-        h.request === "project-prefs" && !h.machine && !h.session && h.seq > 0n,
-      );
-      break;
-    case Purpose.DeviceMeta:
-      requireOK(id(h.request) && !h.machine && !h.session && h.seq > 0n);
-      break;
-    case Purpose.MachineMeta:
-      requireOK(h.machine && !h.session && !h.request && h.seq > 0n);
-      break;
-    case Purpose.SessionMeta:
-    case Purpose.SessionKey:
-    case Purpose.Event:
-      requireOK(h.machine && h.session && !h.request && h.seq > 0n);
-      break;
-    case Purpose.Command:
-    case Purpose.Result:
-      requireOK(h.machine && h.request.length >= 16);
-      break;
-    case Purpose.TerminalInput:
-    case Purpose.TerminalResize:
-    case Purpose.TerminalHistory:
-    case Purpose.TerminalOutput:
-      requireOK(h.machine && h.session && h.request.length >= 16 && h.seq > 0n);
-      break;
-    case Purpose.Image:
-      requireOK(h.machine && h.session && h.request);
-      break;
-    case Purpose.Notify:
-      requireOK(h.machine && h.request && (h.session || h.request.startsWith("disk:")));
-      break;
-    default:
-      throw new SecurityError();
-  }
-  if (control(h.purpose)) requireOK(h.deadline > 0n);
-}
-export function headerBytes(h: SecurityHeader): B {
-  validateHeader(h);
-  return new Writer()
-    .u32(VERSION)
-    .str(h.account)
-    .raw(h.domain)
-    .u64(h.epoch)
-    .raw(h.state)
-    .u64(h.contentEpoch)
-    .str(h.sender)
-    .u32(h.kind)
-    .u32(h.purpose)
-    .str(h.machine)
-    .str(h.session)
-    .str(h.request)
-    .u64(h.seq)
-    .u64(h.deadline)
-    .u32(h.compression)
-    .bytes();
-}
-export function parseHeader(b: B): SecurityHeader {
-  requireOK(b.length <= 1024);
-  const r = new Reader(b);
-  requireOK(r.u32() === VERSION);
-  const h = {
-    account: r.str(),
-    domain: r.raw(32),
-    epoch: r.u64(),
-    state: r.raw(32),
-    contentEpoch: r.u64(),
-    sender: r.str(),
-    kind: r.u32(),
-    purpose: r.u32() as Purpose,
-    machine: r.str(),
-    session: r.str(),
-    request: r.str(),
-    seq: r.u64(),
-    deadline: r.u64(),
-    compression: r.u32(),
-  };
-  r.done();
-  validateHeader(h);
-  return h;
-}
-async function scope(h: SecurityHeader, s: SecurityState): Promise<Member> {
-  validateHeader(h);
-  requireOK(
-    h.account === s.core.account &&
-      equal(h.domain, s.core.domain) &&
-      h.epoch === s.core.epoch &&
-      h.contentEpoch === s.core.contentEpoch &&
-      equal(h.state, await stateHash(s)),
-    "stale",
-  );
-  const m = s.core.members.find((m) => m.id === h.sender);
-  requireOK(m, "untrusted");
-  if (h.machine)
-    requireOK(
-      s.core.members.some((m) => m.id === h.machine && m.kind === 1),
-      "untrusted",
-    );
-  if (h.purpose === Purpose.DeviceMeta) {
-    requireOK(h.sender === h.request, "untrusted");
-    requireOK(
-      s.core.members.some((m) => m.id === h.request && m.kind === 2),
-      "untrusted",
-    );
-  } else if (h.purpose === Purpose.Prefs || control(h.purpose))
-    requireOK(m.kind === 2, "untrusted");
-  else requireOK(m.kind === 1 && m.id === h.machine, "untrusted");
-  return m;
-}
 export interface FormedCipher {
   header: B;
   nonce: B;
@@ -981,233 +166,292 @@ export interface FormedCipher {
   origin: B;
 }
 export type SecureWire = FormedCipher;
-export async function commitment(c: FormedCipher): Promise<B> {
-  requireOK(
-    c.header.length <= 1024 &&
-      c.nonce.length === 12 &&
-      c.cipher.length >= 16 &&
-      c.cipher.length <= MAX_CIPHER,
-  );
-  parseHeader(c.header);
-  return hash(
-    "ra3/ciphertext\0",
-    new Writer().lp(c.header).lp(c.nonce).lp(c.cipher).bytes(),
-  );
+export interface PairTrust {
+  pin: Pin;
+  approver: string;
 }
-function originBytes(h: SecurityHeader, hh: B, commit: B): B {
-  return new Writer()
-    .raw(utf8("ra3/cipher-origin\0"))
-    .str(h.account)
-    .raw(h.domain)
-    .raw(h.state)
-    .str(h.sender)
-    .raw(hh)
-    .raw(commit)
-    .bytes();
-}
-export async function deriveContentKey(
-  secret: B,
-  seed: B | undefined,
-  h: SecurityHeader,
-): Promise<CryptoKey> {
-  requireOK(secret.length === 32);
-  validateHeader(h);
-  let salt: B = new Uint8Array();
-  if (sessionKey(h.purpose)) {
-    requireOK(seed?.length === 32);
-    salt = seed;
-  }
-  const ctx = new Writer()
-    .raw(utf8("ra3/content-key\0"))
-    .str(h.account)
-    .raw(h.domain)
-    .u64(h.epoch)
-    .raw(h.state)
-    .u64(h.contentEpoch)
-    .u32(h.purpose)
-    .str(h.sender)
-    .str(h.machine)
-    .str(h.session)
-    .str(h.request)
-    .u64(h.seq)
-    .bytes();
-  const root = await crypto.subtle.importKey("raw", secret, "HKDF", false, [
-    "deriveBits",
-  ]);
-  const purposeInfo = new Writer()
-    .raw(utf8("ra3/purpose-key\0"))
-    .str(h.account)
-    .raw(h.domain)
-    .u64(h.contentEpoch)
-    .u32(h.purpose)
-    .bytes();
-  const child = new Uint8Array(
-    await crypto.subtle.deriveBits(
-      {
-        name: "HKDF",
-        hash: "SHA-256",
-        salt: new Uint8Array(),
-        info: purposeInfo,
-      },
-      root,
-      256,
-    ),
-  );
-  const k = await crypto.subtle.importKey("raw", child, "HKDF", false, [
-    "deriveKey",
-  ]);
-  child.fill(0);
-  return crypto.subtle.deriveKey(
-    { name: "HKDF", hash: "SHA-256", salt, info: ctx },
-    k,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
-}
-/** Seals locally with an independent random nonce. */
-export async function formCipher(
-  secret: B,
-  seed: B | undefined,
-  h: SecurityHeader,
-  plaintext: B,
-  ed: CryptoKey,
-  beforeSign?: () => void,
-): Promise<FormedCipher> {
-  requireOK(plaintext.length <= MAX_CIPHER - 16);
-  const header = headerBytes(h);
-  const nonce = crypto.getRandomValues(new Uint8Array(12));
-  const cipher = new Uint8Array(
-    await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: nonce, additionalData: header },
-      await deriveContentKey(secret, seed, h),
-      plaintext,
-    ),
-  );
-  const c = { header, nonce, cipher, origin: new Uint8Array() };
-  const message = originBytes(h, await hash("", header), await commitment(c));
-  beforeSign?.();
-  c.origin = await sign(ed, message);
-  return c;
-}
-export async function verifyWire(
-  p: Pin,
-  s: SecurityState,
-  head: SecurityState,
-  w: SecureWire,
-  live: boolean,
-  now: bigint,
-): Promise<SecurityHeader> {
-  await verifyPin(p, s);
-  // s belongs to the already verified chain (handoff is signed by its parent).
-  const h = parseHeader(w.header);
-  const member = await scope(h, s);
-  if (live) {
-    requireOK(
-      head.core.members.some((m) => m.id === h.sender),
-      "untrusted",
-    );
-    if (control(h.purpose)) {
-      if (head.core.issuedAt > now + BigInt(MAX_CLOCK_SKEW))
-        throw new SecurityError("clock");
-      requireOK(head.core.contentEpoch === h.contentEpoch, "stale");
+
+const stateInfo = new WeakMap<SecurityState, {
+  raw?: B;
+  parsed?: SecParsedState;
+}>();
+
+function immutableObject<T extends object>(source: T): T {
+  const result = (Array.isArray(source) ? [] : {}) as T;
+  for (const [name, value] of Object.entries(source)) {
+    if (value instanceof Uint8Array) {
+      const bytes = new Uint8Array(value);
+      Object.defineProperty(result, name, { enumerable: true, get: () => bytes.slice() });
+    } else {
+      Object.defineProperty(result, name, {
+        enumerable: true,
+        value: value && typeof value === "object" ? immutableObject(value) : value,
+      });
     }
   }
-  const hh = await hash("", w.header);
-  const commit = await commitment(w);
-  await verify(await originKey(s, member), w.origin, originBytes(h, hh, commit));
-  return h;
+  return Object.freeze(result);
 }
-/** The body decoder must additionally enforce the authenticated purpose and
- * owner. This primitive alone must never dispatch terminal or command actions. */
-export async function openWire(
-  p: Pin,
-  s: SecurityState,
-  head: SecurityState,
-  w: SecureWire,
-  secret: B,
-  live: boolean,
-  now: bigint,
-  seed?: B,
-): Promise<{ header: SecurityHeader; plaintext: B }> {
-  const header = await verifyWire(p, s, head, w, live, now);
-  const key = await deriveContentKey(secret, seed, header);
-  const plaintext = new Uint8Array(
-    await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: w.nonce, additionalData: w.header },
-      key,
-      w.cipher,
-    ),
-  );
-  return { header, plaintext };
+
+export function immutableState(s: SecurityState): SecurityState {
+  if (stateInfo.has(s)) return s;
+  const snapshot = immutableObject(s);
+  stateInfo.set(snapshot, {});
+  return snapshot;
 }
-export function toEnvelope(w: SecureWire): Envelope {
-  const h = parseHeader(w.header);
-  return create(EnvelopeSchema, {
-    header: toBinary(
-      HeaderSchema,
-      create(HeaderSchema, {
-        version: VERSION,
-        kind: h.kind,
-        machineId: h.machine,
-        sessionId: h.session,
-        requestId: h.request,
-        seq: h.seq,
-        deadlineMs: h.deadline,
-        sender: h.sender,
-        compression: h.compression,
-      }),
-    ),
-    nonce: w.nonce,
-    ciphertext: w.cipher,
-    signature: w.origin,
-    securityHeader: w.header,
+
+const recoveryRawCache = new WeakMap<RecoveryStatement, B>();
+const leaseRawCache = new WeakMap<LeaseCertificate, B>();
+
+export function stateFromProto(ps: SecParsedState, _raw?: B): SecurityState {
+  const s: SecurityState = {
+    core: {
+      account: ps.account,
+      domain: new Uint8Array(ps.domain),
+      authorityID: ps.authorityId,
+      recoveryEd: new Uint8Array(ps.recoveryEd),
+      parent: new Uint8Array(ps.parent),
+      epoch: ps.epoch,
+      contentEpoch: ps.contentEpoch,
+      issuedAt: ps.issuedAt,
+      members: ps.members.map((m) => ({
+        id: m.id,
+        ed: new Uint8Array(m.edPublic),
+        x: new Uint8Array(m.xPublic),
+        kind: m.kind as 1 | 2,
+      })),
+      removed: [...ps.removed],
+    },
+    grants: ps.grants.map((g) => ({
+      recipient: g.recipient,
+      enc: new Uint8Array(g.enc),
+      cipher: new Uint8Array(g.cipher),
+    })),
+    prevSecret: new Uint8Array(ps.prevSecret),
+    signature: new Uint8Array(ps.signature),
+  };
+  return s;
+}
+
+export function memberToProto(m: Member) {
+  return create(SecMemberSchema, {
+    id: m.id,
+    edPublic: new Uint8Array(m.ed),
+    xPublic: new Uint8Array(m.x),
+    kind: m.kind,
   });
 }
-export function fromEnvelope(e: Envelope): SecureWire {
-  requireOK(e.securityHeader.length > 0);
-  const h = parseHeader(new Uint8Array(e.securityHeader));
-  const p = fromBinary(HeaderSchema, e.header);
-  requireOK(
-    p.version === VERSION &&
-      p.kind === h.kind &&
-      p.machineId === h.machine &&
-      p.sessionId === h.session &&
-      p.requestId === h.request &&
-      p.seq === h.seq &&
-      p.deadlineMs === h.deadline &&
-      p.sender === h.sender &&
-      p.compression === h.compression,
-    "untrusted",
+
+export function grantToProto(g: Grant) {
+  return create(SecGrantSchema, {
+    recipient: g.recipient,
+    enc: new Uint8Array(g.enc),
+    cipher: new Uint8Array(g.cipher),
+  });
+}
+
+function leaseFromProto(pl: SecParsedLease, raw?: B): LeaseCertificate {
+  const l: LeaseCertificate = {
+    domain: new Uint8Array(pl.domain),
+    head: new Uint8Array(pl.head),
+    issuedAt: pl.issuedAt,
+    notAfter: pl.notAfter,
+    signature: new Uint8Array(pl.signature),
+  };
+  if (raw) leaseRawCache.set(l, new Uint8Array(raw));
+  return l;
+}
+
+function recoveryFromProto(pr: SecParsedRecoveryStatement, raw?: B): RecoveryStatement {
+  const r: RecoveryStatement = {
+    account: pr.account,
+    domain: new Uint8Array(pr.domain),
+    parent: new Uint8Array(pr.parent),
+    newAuthorityID: pr.newAuthorityId,
+    newRecoveryEd: new Uint8Array(pr.newRecoveryEd),
+    newMember: {
+      id: pr.newMember?.id ?? "",
+      ed: new Uint8Array(pr.newMember?.edPublic ?? []),
+      x: new Uint8Array(pr.newMember?.xPublic ?? []),
+      kind: (pr.newMember?.kind ?? 1) as 1 | 2,
+    },
+    issuedAt: pr.issuedAt,
+    stateHash: new Uint8Array(pr.stateHash),
+    nonce: new Uint8Array(pr.nonce),
+    signature: new Uint8Array(pr.signature),
+  };
+  if (raw) recoveryRawCache.set(r, new Uint8Array(raw));
+  return r;
+}
+
+// Structural wire packing for IndexedDB SecurityState objects loaded without an in-memory cache;
+// Go parseState / verifyChain validates every invariant on receipt.
+function encodeStateStructural(s: SecurityState): B {
+  const cached = stateInfo.get(s);
+  if (cached?.raw) return new Uint8Array(cached.raw);
+  const c = s.core;
+  const coreParts: B[] = [
+    u32be(VERSION),
+    str(c.account),
+    c.domain,
+    str(c.authorityID),
+    c.recoveryEd,
+    c.parent,
+    u64be(c.epoch),
+    u64be(c.contentEpoch),
+    u64be(c.issuedAt),
+    u32be(c.members.length),
+    ...c.members.flatMap((m) => [str(m.id), m.ed, m.x, u32be(m.kind)]),
+    u32be(c.removed.length),
+    ...c.removed.map(str),
+  ];
+  const raw = concat(
+    lp(concat(...coreParts)),
+    u32be(s.grants.length),
+    ...s.grants.flatMap((g) => [str(g.recipient), lp(g.enc), lp(g.cipher)]),
+    lp(s.prevSecret),
+    lp(s.signature),
   );
+  requireOK(raw.length <= MAX_STATE, "capacity");
+  return raw;
+}
+
+function ensureParsedState(s: SecurityState): { raw: B; parsed: SecParsedState } {
+  const cached = stateInfo.get(s);
+  if (cached?.raw && cached?.parsed) {
+    return { raw: new Uint8Array(cached.raw), parsed: cached.parsed };
+  }
+  const raw = encodeStateStructural(s);
+  const parsed = secCall({ case: "parseState", value: raw }).parsedState!;
+  const meta = { raw, parsed };
+  if (stateInfo.has(s)) stateInfo.set(s, meta);
+  return meta;
+}
+
+export async function stateBytes(s: SecurityState): Promise<B> {
+  return ensureParsedState(s).raw;
+}
+
+export async function parseState(b: B): Promise<SecurityState> {
+  const resp = secCall({ case: "parseState", value: new Uint8Array(b) });
+  return stateFromProto(resp.parsedState!, b);
+}
+
+export async function stateHash(s: SecurityState): Promise<B> {
+  return new Uint8Array(ensureParsedState(s).parsed.stateHash);
+}
+
+export function stateAt(states: SecurityState[], epoch: bigint): SecurityState {
+  requireOK(epoch > 0n && epoch <= BigInt(states.length), "stale");
+  const s = states[Number(epoch - 1n)];
+  requireOK(s.core.epoch === epoch, "stale");
+  return s;
+}
+
+export async function pinOf(genesis: SecurityState): Promise<Pin> {
+  requireOK(genesis.core.epoch === 1n);
   return {
-    header: new Uint8Array(e.securityHeader),
-    nonce: new Uint8Array(e.nonce),
-    cipher: new Uint8Array(e.ciphertext),
-    origin: new Uint8Array(e.signature),
+    account: genesis.core.account,
+    domain: genesis.core.domain,
+    genesis: await stateHash(genesis),
   };
 }
-export function wireBytes(w: SecureWire): B {
-  requireOK(w.origin.length === 64);
-  return new Writer()
-    .lp(w.header)
-    .lp(w.nonce)
-    .lp(w.cipher)
-    .lp(w.origin)
-    .bytes();
+
+export async function recoveryBytes(r: RecoveryStatement): Promise<B> {
+  const cached = recoveryRawCache.get(r);
+  if (cached) return new Uint8Array(cached);
+  const resp = secCall({
+    case: "marshalRecoveryStatement",
+    value: create(SecMarshalRecoveryStatementCallSchema, {
+      account: r.account,
+      domain: new Uint8Array(r.domain),
+      parent: new Uint8Array(r.parent),
+      newAuthorityId: r.newAuthorityID,
+      newRecoveryEd: new Uint8Array(r.newRecoveryEd),
+      newMember: memberToProto(r.newMember),
+      issuedAt: r.issuedAt,
+      stateHash: new Uint8Array(r.stateHash),
+      nonce: new Uint8Array(r.nonce),
+      signature: new Uint8Array(r.signature),
+    }),
+  });
+  const raw = new Uint8Array(resp.data);
+  recoveryRawCache.set(r, raw);
+  return raw;
 }
-export function parseWire(b: B): SecureWire {
-  requireOK(b.length <= MAX_CIPHER + 4096);
-  const r = new Reader(b);
-  const w = {
-    header: r.lp(1024),
-    nonce: r.lp(12),
-    cipher: r.lp(MAX_CIPHER),
-    origin: r.lp(64),
-  };
-  r.done();
-  wireBytes(w);
-  return w;
+
+export async function parseRecoveryStatement(b: B): Promise<RecoveryStatement> {
+  const resp = secCall({ case: "parseRecoveryStatement", value: new Uint8Array(b) });
+  return recoveryFromProto(resp.parsedRecovery!, b);
+}
+
+export async function verifyRecovery(
+  r: RecoveryStatement,
+  parent: SecurityState,
+  next: SecurityState,
+): Promise<void> {
+  secCall({
+    case: "verifyRecoveryStatement",
+    value: create(SecVerifyRecoveryStatementCallSchema, {
+      statement: await recoveryBytes(r),
+      parentState: await stateBytes(parent),
+      nextState: await stateBytes(next),
+    }),
+  });
+}
+
+export async function verifyChain(
+  p: Pin,
+  states: SecurityState[],
+  proofs: (RecoveryStatement | undefined)[] = states.map(() => undefined),
+): Promise<void> {
+  requireOK(states.length > 0 && states.length <= MAX_STATES && proofs.length === states.length);
+  const rawStates = await Promise.all(states.map(stateBytes));
+  const rawProofs = await Promise.all(
+    proofs.map((pr) => (pr ? recoveryBytes(pr) : Promise.resolve(new Uint8Array()))),
+  );
+  secCall({
+    case: "verifyChain",
+    value: create(SecVerifyChainCallSchema, {
+      pin: makeSecPin(p.account, p.domain, p.genesis),
+      states: rawStates,
+      recoveryProofs: rawProofs,
+    }),
+  });
+}
+
+export async function newSecurityKey(): Promise<CryptoKeyPair> {
+  return crypto.subtle.generateKey({ name: "X25519" }, false, ["deriveBits"]) as Promise<CryptoKeyPair>;
+}
+
+export async function openGrant(
+  p: Pin,
+  s: SecurityState,
+  recipient: string,
+  xPrivate: CryptoKey,
+): Promise<B> {
+  const raw = await stateBytes(s);
+  const pin = makeSecPin(p.account, p.domain, p.genesis);
+  const chal = secCall({
+    case: "grantChallenge",
+    value: create(SecGrantChallengeCallSchema, { pin, state: raw, memberId: recipient }),
+  });
+  const dh = await x25519DeriveWithPrivateKey(xPrivate, chal.data);
+  const resp = secCall({
+    case: "openGrantWithDh",
+    value: create(SecOpenGrantWithDHCallSchema, { pin, state: raw, memberId: recipient, dh }),
+  });
+  return new Uint8Array(resp.data);
+}
+
+export async function openPrevSecret(newSecret: B, blob: B): Promise<B> {
+  const resp = secCall({
+    case: "openPrevSecret",
+    value: create(SecOpenPrevSecretCallSchema, {
+      newSecret: new Uint8Array(newSecret),
+      blob: new Uint8Array(blob),
+    }),
+  });
+  return new Uint8Array(resp.data);
 }
 
 export function b64(b: Uint8Array): string {
@@ -1215,6 +459,7 @@ export function b64(b: Uint8Array): string {
   for (const n of b) s += String.fromCharCode(n);
   return btoa(s);
 }
+
 export function unb64(s: string): B {
   requireOK(typeof s === "string" && s.length % 4 === 0);
   let bin: string;
@@ -1227,114 +472,74 @@ export function unb64(s: string): B {
   requireOK(b64(out) === s);
   return out;
 }
-export interface PairTrust {
-  pin: Pin;
-  approver: string;
-}
+
 export function pairTrustDescriptor(pin: Pin, approver: string): B {
-  requireOK(id(pin.account) && id(approver) && pin.genesis.length === 32);
-  nonzero(pin.domain);
-  nonzero(pin.genesis);
-  return new Writer()
-    .raw(utf8("ra3/pair-trust\0"))
-    .str(pin.account)
-    .raw(pin.domain)
-    .raw(pin.genesis)
-    .str(approver)
-    .bytes();
+  const resp = secCall({
+    case: "pairTrustDescriptor",
+    value: create(SecPairTrustDescriptorCallSchema, { pin: makeSecPin(pin.account, pin.domain, pin.genesis), approver }),
+  });
+  return new Uint8Array(resp.data);
 }
+
 export function parsePairTrustDescriptor(b: B): PairTrust {
-  const label = utf8("ra3/pair-trust\0");
-  requireOK(b.length > label.length && equal(b.slice(0, label.length), label));
-  const r = new Reader(b.slice(label.length));
-  const pin = {
-    account: r.str(),
-    domain: r.raw(32),
-    genesis: r.raw(32),
+  const resp = secCall({ case: "parsePairTrustDescriptor", value: new Uint8Array(b) });
+  const pin = resp.pin!;
+  return {
+    pin: {
+      account: pin.account,
+      domain: new Uint8Array(pin.domain),
+      genesis: new Uint8Array(pin.genesis),
+    },
+    approver: resp.text,
   };
-  const approver = r.str();
-  r.done();
-  requireOK(id(pin.account) && id(approver));
-  nonzero(pin.domain);
-  nonzero(pin.genesis);
-  return { pin, approver };
 }
+
 export async function pairDomainCommit(ephemeral: B, trust: B): Promise<B> {
-  requireOK(ephemeral.length === 32);
-  return hash(
-    "ra3/pair-commit\0",
-    new Writer().lp(ephemeral).lp(trust).bytes(),
-  );
+  const resp = secCall({
+    case: "pairDomainCommit",
+    value: create(SecPairDomainCommitCallSchema, { initiator: new Uint8Array(ephemeral), trustDescriptor: new Uint8Array(trust) }),
+  });
+  return new Uint8Array(resp.data);
 }
+
 export async function verifyPublicSignature(
   pub: B,
   signature: B,
   message: B,
 ): Promise<void> {
-  return verify(pub, signature, message);
+  return verifyEd(pub, signature, message);
 }
 
-/** Independent head lease; never a member-chain transition. */
-export interface LeaseCertificate {
-  domain: B;
-  head: B;
-  issuedAt: bigint;
-  notAfter: bigint;
-  signature: B;
-}
-export function leaseSignBytes(l: LeaseCertificate): B {
-  nonzero(l.domain);
-  nonzero(l.head);
-  requireOK(
-    l.issuedAt > 0n &&
-      l.notAfter > l.issuedAt &&
-      l.notAfter - l.issuedAt <= BigInt(LEASE),
-  );
-  return new Writer()
-    .raw(utf8("ra3/lease\0"))
-    .raw(l.domain)
-    .raw(l.head)
-    .u64(l.issuedAt)
-    .u64(l.notAfter)
-    .bytes();
-}
 export function leaseBytes(l: LeaseCertificate): B {
-  requireOK(l.signature.length === 64);
-  return new Writer().lp(leaseSignBytes(l)).lp(l.signature).bytes();
+  const cached = leaseRawCache.get(l);
+  if (cached) return new Uint8Array(cached);
+  const resp = secCall({
+    case: "marshalLease",
+    value: create(SecMarshalLeaseCallSchema, {
+      domain: new Uint8Array(l.domain),
+      head: new Uint8Array(l.head),
+      issuedAt: l.issuedAt,
+      notAfter: l.notAfter,
+      signature: new Uint8Array(l.signature),
+    }),
+  });
+  const raw = new Uint8Array(resp.data);
+  leaseRawCache.set(l, raw);
+  return raw;
 }
+
 export function parseLease(b: B): LeaseCertificate {
-  requireOK(b.length <= 256);
-  const r = new Reader(b),
-    body = r.lp(128),
-    signature = r.lp(64);
-  r.done();
-  const d = new Reader(body);
-  requireOK(equal(d.raw(10), utf8("ra3/lease\0")));
-  const l = {
-    domain: d.raw(32),
-    head: d.raw(32),
-    issuedAt: d.u64(),
-    notAfter: d.u64(),
-    signature,
-  };
-  d.done();
-  requireOK(equal(leaseBytes(l), b));
-  return l;
+  const resp = secCall({ case: "parseLease", value: new Uint8Array(b) });
+  return leaseFromProto(resp.parsedLease!, b);
 }
-export async function verifyLease(
-  l: LeaseCertificate,
-  head: SecurityState,
-): Promise<void> {
-  requireOK(
-    equal(l.domain, head.core.domain) &&
-      equal(l.head, await stateHash(head)) &&
-      l.issuedAt >= head.core.issuedAt,
-    "untrusted",
-  );
-  const m = head.core.members.find((m) => m.id === head.core.authorityID);
-  requireOK(m?.kind === 2, "untrusted");
-  await verify(m.ed, l.signature, leaseSignBytes(l));
+
+export async function verifyLease(l: LeaseCertificate, head: SecurityState): Promise<void> {
+  secCall({
+    case: "verifyLease",
+    value: create(SecVerifyLeaseCallSchema, { headState: await stateBytes(head), lease: leaseBytes(l), checkWindow: false, nowMs: 0n }),
+  });
 }
+
 export async function signLease(
   head: SecurityState,
   signer: CryptoKey,
@@ -1342,19 +547,29 @@ export async function signLease(
   floor = 0n,
   beforeSign?: () => void,
 ): Promise<LeaseCertificate> {
-  const issuedAt = [0n, now, head.core.issuedAt, floor].reduce((a, b) => a > b ? a : b);
-  const lease: LeaseCertificate = {
-    domain: head.core.domain,
-    head: await stateHash(head),
-    issuedAt,
-    notAfter: issuedAt + BigInt(LEASE),
-    signature: new Uint8Array(),
-  };
+  const effNow = [0n, now, head.core.issuedAt, floor].reduce((a, b) => (a > b ? a : b));
+  const unsigned = secCall({
+    case: "newLeaseUnsigned",
+    value: create(SecNewLeaseUnsignedCallSchema, { headState: await stateBytes(head), nowMs: effNow }),
+  });
+  const pl = unsigned.parsedLease!;
   beforeSign?.();
-  lease.signature = await sign(signer, leaseSignBytes(lease));
+  const sig = new Uint8Array(await crypto.subtle.sign("Ed25519", signer, new Uint8Array(pl.signingBytes)));
+  const marshaled = secCall({
+    case: "marshalLease",
+    value: create(SecMarshalLeaseCallSchema, {
+      domain: new Uint8Array(pl.domain),
+      head: new Uint8Array(pl.head),
+      issuedAt: pl.issuedAt,
+      notAfter: pl.notAfter,
+      signature: sig,
+    }),
+  });
+  const lease = leaseFromProto(marshaled.parsedLease!, new Uint8Array(marshaled.data));
   await verifyLease(lease, head);
   return lease;
 }
+
 export async function validLease(
   l: LeaseCertificate | undefined,
   head: SecurityState,
@@ -1362,14 +577,13 @@ export async function validLease(
 ): Promise<void> {
   requireOK(l, "lease");
   requireOK(equal(l.head, await stateHash(head)), "lease");
-  await verifyLease(l, head);
-  requireOK(l.issuedAt <= now + BigInt(MAX_CLOCK_SKEW), "clock");
-  requireOK(now < l.notAfter, "lease");
-}
-
-/** Hash the original unpacked authorization, independent of nonce/epoch. */
-export async function requestIdentity(h: SecurityHeader, plain: Uint8Array): Promise<{key: B; payload: B}> {
- const key = await hash("ra4/request-key\0", new Writer().str(h.account).raw(h.domain).str(h.sender).u32(h.purpose).str(h.machine).str(h.session).str(h.request).u64(h.seq).bytes());
- const payload = await hash("ra4/authorized-payload\0", new Writer().lp(key).u32(h.kind).u64(h.deadline).lp(plain).bytes());
- return {key,payload};
+  try {
+    secCall({
+      case: "verifyLease",
+      value: create(SecVerifyLeaseCallSchema, { headState: await stateBytes(head), lease: leaseBytes(l), checkWindow: true, nowMs: now }),
+    });
+  } catch (e) {
+    if (e instanceof SecurityError && e.code === "stale") throw new SecurityError("lease");
+    throw e;
+  }
 }

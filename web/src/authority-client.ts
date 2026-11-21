@@ -3,12 +3,12 @@ import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Code, ConnectError, type Client } from "@connectrpc/connect";
 import { Authority, authoritySigningTime } from "./authority";
 import { deviceID, importSessionKey, sealMessage } from "./crypto";
-import { DeviceSecurityClient } from "./device-security-client";
+import { AuthoritySecurity } from "./authority-security";
 import { type SecurityRecord } from "./device-security-store";
 import { equal, leaseBytes, parseLease, parseState, recoveryBytes, SecurityError, signLease, stateBytes, stateHash, verifyLease, type Member } from "./device-security";
 import { makePairApproval } from "./pair-approval";
 import { RecoveryCode } from "./recovery";
-import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, isAuthority, operation, readSecurityOperation, saveSecurityOperation, type SecurityOperation, requestAuthorityPersistence, markRecoveryCodeRotation, needsRecoveryCodeRotation } from "./security-operation";
+import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, isAuthority, operation, PairingDeliveryError, readSecurityOperation, saveSecurityOperation, type SecurityOperation, requestAuthorityPersistence, markRecoveryCodeRotation, needsRecoveryCodeRotation } from "./security-operation";
 import { loadAccountPublicProfile, type StoredAccount } from "./storage";
 import { ApprovePairingRequestSchema, ClientService, PairingService, PairingState, PutSecurityStateRequestSchema, DeviceKind, PairApprovalSchema, DeleteMachineRecordsRequestSchema } from "./gen/remoteagent/v1/relay_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -29,7 +29,7 @@ interface StateDraft {
   pair?: PairingDelivery;
 }
 /** Delivery cannot complete; the candidate must be explicitly removed. */
-export class PairingDeliveryError extends Error {}
+export { PairingDeliveryError } from "./security-operation";
 export interface HandoffOffer { id: string; recoveryEd: B }
 /** Uses only verified member kinds and already verified, self-signed metadata. */
 export function handoffCandidates(record: SecurityRecord, offers: HandoffOffer[]): HandoffOffer[] {
@@ -43,7 +43,7 @@ export class AuthorityClient {
   private codeDraft?: SecurityOperation<StateDraft | { recoveryEd: B; storagePersisted: boolean }>;
   constructor(
     readonly account: StoredAccount,
-    readonly security: DeviceSecurityClient,
+    readonly security: AuthoritySecurity,
     private readonly api: Client<typeof ClientService>,
     private readonly pairing: Client<typeof PairingService>,
     private readonly writeOffer: (publicKey: B, check: () => void, persist: (request: B) => Promise<void>, request?: B) => Promise<boolean>,

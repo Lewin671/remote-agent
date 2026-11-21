@@ -1,5 +1,4 @@
 import { DirectExecutor, peerFrameBody } from "./transport/direct-executor";
-import { buildDirectSecuritySnapshot } from "./transport/direct-security-snapshot";
 import { watchSecurityInstall } from "./device-security-store";
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
 import { abortable, ownedRound, PathChanged } from "./transport/recovery";
@@ -9,19 +8,17 @@ import { RelayPath } from "./transport/relay-path";
 import type { FrameStream } from "./transport/path";
 import { machineNotificationKinds } from "./machine-notifications";
 import * as l10n from "./i18n";
-import { rejectRetiredHistory, UnsupportedHistoryError } from "./crypto";
+import { UnsupportedHistoryError } from "./crypto";
 import { ComposerDraftStore, DraftTexts } from "./composer-drafts";
-import { readSecurityOperation } from "./security-operation";
-import { AuthorityClient, PairingDeliveryError, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
+import { AuthorityLifecycle, PairingDeliveryError, readSecurityOperation } from "./security-operation";
+import type { AuthorityClient, HandoffOffer } from "./authority-client";
 import type { AuthorityPairing } from "./authority-pairing";
 import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
-import { machineReplacementOrigins } from "./machine-replacement";
 import {
   CommandRouteLeg,
   disposeCoreHost,
   getCoreHost,
   type CoreExecutor,
-  type DirectSecuritySnapshotInput,
   type HostBridge,
   type StreamLegCallbacks,
 } from "./core/host";
@@ -41,12 +38,6 @@ import {
   EventsPageFetchedEventSchema,
   ListsFetchedEventSchema,
   OutcomeSource,
-  PlainAccountPrefsSchema,
-  PlainDeviceSchema,
-  PlainEventSchema,
-  PlainMachineSchema,
-  PlainSessionSchema,
-  SecuritySnapshotEventSchema,
   SessionByIdFetchedEventSchema,
   SessionsPageFetchedEventSchema,
   TokenResultEventSchema,
@@ -57,15 +48,19 @@ import {
   type CommandOutcomeEvent,
   type DispatchCommandEffect,
   type Event as CoreEvent,
-  type PlainAccountPrefs,
-  type PlainDevice,
-  type PlainEvent,
-  type PlainMachine,
-  type PlainSession,
   type RpcEffect,
   type SecuritySnapshotEvent,
   type TokenResultEvent,
 } from "./gen/remoteagent/core/v1/app_pb";
+import {
+  SecurityOpenEnvelopeOpSchema,
+  SecurityRecordEventSchema,
+  SecuritySealEnvelopeOpSchema,
+  type SecurityCryptoBatchEffect,
+  type SecurityKeyAgreeEffect,
+  type SecurityKeySignEffect,
+  type SecurityRecordEvent,
+} from "./gen/remoteagent/core/v1/security_pb";
 import type {
   DirectDcReadStatsEffect,
   DirectKeyAgreeEffect,
@@ -90,30 +85,24 @@ import {
 import { ConnState as CoreConnState } from "./gen/remoteagent/core/v1/home_view_pb";
 import type { SyncMachineView, SyncSessionView, SyncStateView } from "./gen/remoteagent/core/v1/sync_view_pb";
 import {
-  LiveSnapshotSchema,
   type LiveSnapshot,
 } from "./gen/remoteagent/v1/remote_pb";
 import type { SecurityRecord } from "./device-security-store";
 import { machineName } from "./model";
 import { DEFAULT_AGENT } from "./agents";
-import { SharedFileManager, type SharedFileChunkResult } from "./shared-files";
-import { sharedFileStore } from "./shared-file-store";
+import type { SharedFileChunkResult } from "./shared-files";
+import { WebSecurityExecutor } from "./core/security-executor";
 import {
-  DeviceSecurityClient,
-  RecoveryHistoryUnavailable,
-  validateSecurityBody,
+  AuthoritySecurity,
+  recordToSecurityEvent,
   type SecurityStorage,
-  type HistoryResult,
-} from "./device-security-client";
+} from "./authority-security";
 import {
   MAX_CLOCK_SKEW,
-  requestIdentity,
   equal,
-  parseHeader,
   Purpose,
   SecurityError,
   type Member,
-  type SecurityHeader,
 } from "./device-security";
 import {
   AuthService,
@@ -128,6 +117,7 @@ import {
   NotifyKind,
   PeerFrameSchema,
   ServerFrameSchema,
+  StoredEventSchema,
   TermHelloSchema,
   PairApprovalSchema,
   RegisterDeviceRequestSchema,
@@ -136,6 +126,7 @@ import {
   type Device,
   type Machine as RemoteMachine,
   type RemoteSession,
+  type StoredEvent,
 } from "./gen/remoteagent/v1/relay_pb";
 import { PeerFrameResultSchema } from "./gen/remoteagent/v1/transport_pb";
 import {
@@ -160,21 +151,17 @@ import {
   checkServer,
   concat,
   deviceID,
-  hex,
   newRequestID,
   signLogin,
-  expect,
 } from "./crypto";
 import {
   EnvelopeSchema,
-  HeaderSchema,
   type Envelope,
   type Header,
   PayloadKind,
 } from "./gen/remoteagent/v1/envelope_pb";
 import {
   Agent,
-  EventSchema,
   ImageFormat,
   SessionStatus,
 } from "./gen/remoteagent/v1/event_pb";
@@ -183,10 +170,8 @@ import {
   ImageUploadState,
   DaemonSettingsSchema,
   ListModelsResponseSchema,
-  SessionSchema,
   type DaemonSettings,
   type ListModelsResponse,
-  type MachineReplacementProof,
   type Session,
 } from "./gen/remoteagent/v1/local_pb";
 import {
@@ -194,7 +179,6 @@ import {
   CommandSchema,
   DeviceMetaSchema,
   ImagePayloadSchema,
-  MachineMetaSchema,
   ProjectPrefsSchema,
   TerminalFrameSchema,
   type CommandResult,
@@ -204,7 +188,7 @@ import {
   type TerminalFrame,
 } from "./gen/remoteagent/v1/remote_pb";
 import { describeBrowser, type DeviceInfo } from "./devices";
-import { fileUploadUpdateRequired, type Prepare, type Tray } from "./attach";
+import type { Prepare, Tray } from "./attach";
 import { modelLabel } from "./model";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
@@ -381,7 +365,25 @@ export async function joinWithApproval(
   return stored;
 }
 
-type CacheRefItem = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "event"; sessionId: string; raw: CachedEvent } | { kind: "prefs"; raw: AccountPrefsObject };
+const PAYLOAD_PURPOSES: Partial<Record<PayloadKind, Purpose>> = {
+  [PayloadKind.EVENT]: Purpose.Event,
+  [PayloadKind.SESSION_META]: Purpose.SessionMeta,
+  [PayloadKind.SESSION_KEY]: Purpose.SessionKey,
+  [PayloadKind.MACHINE_META]: Purpose.MachineMeta,
+  [PayloadKind.COMMAND]: Purpose.Command,
+  [PayloadKind.COMMAND_RESULT]: Purpose.Result,
+  [PayloadKind.TERMINAL_OUTPUT]: Purpose.TerminalOutput,
+  [PayloadKind.TERMINAL_INPUT]: Purpose.TerminalInput,
+  [PayloadKind.IMAGE]: Purpose.Image,
+  [PayloadKind.NOTIFY]: Purpose.Notify,
+  [PayloadKind.ACCOUNT_PREFS]: Purpose.Prefs,
+  [PayloadKind.DEVICE_META]: Purpose.DeviceMeta,
+};
+
+function purposeOf(kind: PayloadKind): Purpose {
+  return PAYLOAD_PURPOSES[kind] ?? Purpose.Event;
+}
+
 type CacheWritePayload = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "prefs"; raw: AccountPrefsObject } | { kind: "sessionOpen"; sessionId: string; open: boolean };
 
 const CONNECT_CODES: Partial<Record<Code, string>> = {
@@ -418,26 +420,42 @@ function syncSessionToView(sv: SyncSessionView): SessionView {
   };
 }
 
+export type AuthorityBridge = Pick<
+  AuthorityClient,
+  | "lifecycle"
+  | "account"
+  | "security"
+  | "isAuthority"
+  | "pending"
+  | "hasAccountPublicProfile"
+  | "needsRecoveryCodeRotation"
+  | "resumeSecurityOperation"
+  | "renewLeaseNow"
+  | "renewLeaseIfNeeded"
+  | "removeDevice"
+  | "deleteMachineRecords"
+  | "prepareRecovery"
+  | "prepareHandoffCode"
+  | "publishRecovery"
+  | "offerHandoff"
+  | "discardUnpublishedCode"
+  | "discardUnsignedStateDraft"
+  | "handoffAuthority"
+  | "hasMachineArchive"
+  | "approvePairing"
+>;
+
 export class Remote implements CoreExecutor {
   private hostBridge?: HostBridge;
   private syncStateView?: SyncStateView;
 
-  // Cache references assigned while unpacking server/cache payloads; unconsumed refs are released after Core dispatch.
-  private cacheRefSeq = 0;
-  private cacheRefs = new Map<string, CacheRefItem>();
-  private eventCacheRefs = new WeakMap<CoreEvent, string[]>();
   private persistedMachines = new Map<string, RemoteMachine>();
   private persistedSessions = new Map<string, RemoteSession>();
   private persistedOpen = new Set<string>();
-  private sessionReplacements = new Map<string, MachineReplacementProof[]>();
 
   private trustedMembers = new Map<string, Member>();
   private archiveMachines = new Set<string>();
-  private sessionSeeds = new Map<string, Uint8Array<ArrayBuffer>>();
   private watchedSessionIds: string[] = [];
-  private directEventChains = new Map<string, Promise<void>>();
-  private directEventPendingCount = new Map<string, number>();
-  private directEventPendingBytes = 0;
   private recoveryObjectsPending = false;
   private descriptionPending = false;
   private needsDescribeSelf = false;
@@ -445,14 +463,20 @@ export class Remote implements CoreExecutor {
   private devicesPushSeq = 1n;
   private reconcilingSecurity = 0;
   private coreSyncDepth = 0;
+  private securityRecordLoaded = false;
+  private securityRecordLoading?: Promise<void>;
+  private lastDispatchedRecord?: SecurityRecord;
+  private devicesSyncWaiters: Array<() => void> = [];
   private serverAhead = false;
   authorityDeviceId = "";
   clockWarning = "";
   authorityError = "";
 
-  readonly security: DeviceSecurityClient;
-  readonly authority: AuthorityClient;
+  readonly security: AuthoritySecurity;
+  readonly authority: AuthorityBridge;
+  private authorityClientPromise?: Promise<AuthorityClient>;
   directExec: DirectExecutor;
+  private readonly secExec: WebSecurityExecutor;
   readonly deviceLink: DeviceLink;
   readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
 
@@ -461,11 +485,8 @@ export class Remote implements CoreExecutor {
   private unwatchSecurityPush?: () => void;
   private securityTimer?: ReturnType<typeof setInterval>;
   private foreground = true;
-  private lastSecuritySyncAt = 0;
   private cachedSyncMachines = new Map<string, SyncMachineView>();
   private latestXPrivate?: CryptoKey;
-  private lastDirectSecurity?: DirectSecuritySnapshotInput;
-  private securitySyncRev = 0;
   private token = "";
   private tokenExpires = 0;
   private tokenWarmed = false;
@@ -482,9 +503,6 @@ export class Remote implements CoreExecutor {
   private legs = new Map<bigint, { ws: FrameStream; stopped: boolean }>();
   private listeners = new Set<() => void>();
   private version = 0;
-
-  // Legacy views/features kept on Remote until Step 4/5
-  private sharedFilesState?: SharedFileManager;
 
   network = typeof navigator === "undefined" || navigator.onLine !== false;
   removalVerified = false;
@@ -543,7 +561,7 @@ export class Remote implements CoreExecutor {
         interceptors: [auth],
       }),
     );
-    this.security = new DeviceSecurityClient(
+    this.security = new AuthoritySecurity(
       account.deviceId,
       account.devicePrivate,
       async (after, limit, signal) => {
@@ -571,6 +589,11 @@ export class Remote implements CoreExecutor {
       securityStorage,
       () => this.roundBudget(),
     );
+    this.secExec = new WebSecurityExecutor({
+      devicePrivate: () => this.account.devicePrivate,
+      xPrivate: () => this.latestXPrivate,
+      emit: (ev) => this.hostBridge?.dispatchEvent(ev),
+    });
     this.deviceLink = new DeviceLink(
       new RelayPath(
         (id) => {
@@ -593,15 +616,12 @@ export class Remote implements CoreExecutor {
       ),
     );
     this.directExec = this.newDirectExecutor();
-    this.security.onSync = (record, started) => {
-      this.lastSecuritySyncAt = started;
-      void this.syncDirectSecurityRecord(record, started);
-      this.pushSecuritySnapshot(record);
+    this.security.onSync = (record, _started) => {
+      void this.pushSecurityRecord(record);
     };
-    this.security.onSyncFailed = () => this.rejectDirectSecurity();
+    this.security.onSyncFailed = () => {};
     this.security.onInstall = (record) => {
-      this.handleDirectSecurityInstall(record);
-      this.pushSecuritySnapshot(record);
+      void this.pushSecurityRecord(record);
     };
     const pairing = createClient(
       PairingService,
@@ -613,15 +633,44 @@ export class Remote implements CoreExecutor {
         interceptors: [auth],
       }),
     );
-    this.authority = new AuthorityClient(
+    const lifecycle = new AuthorityLifecycle();
+    const loadAuthority = (): Promise<AuthorityClient> => {
+      return (this.authorityClientPromise ??= import("./authority-client").then(
+        ({ AuthorityClient }) =>
+          new AuthorityClient(
+            account,
+            this.security,
+            this.api,
+            pairing,
+            (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request),
+            lifecycle,
+            () => void this.watchPairingDelivery(),
+          ),
+      ));
+    };
+    this.authority = {
+      lifecycle,
       account,
-      this.security,
-      this.api,
-      pairing,
-      (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request),
-      undefined,
-      () => void this.watchPairingDelivery(),
-    );
+      security: this.security,
+      pending: () => readSecurityOperation(),
+      isAuthority: async () => (await loadAuthority()).isAuthority(),
+      hasAccountPublicProfile: async () => (await loadAuthority()).hasAccountPublicProfile(),
+      needsRecoveryCodeRotation: async () => (await loadAuthority()).needsRecoveryCodeRotation(),
+      resumeSecurityOperation: async () => (await loadAuthority()).resumeSecurityOperation(),
+      renewLeaseNow: async () => (await loadAuthority()).renewLeaseNow(),
+      renewLeaseIfNeeded: async () => (await loadAuthority()).renewLeaseIfNeeded(),
+      removeDevice: async (id) => (await loadAuthority()).removeDevice(id),
+      deleteMachineRecords: async (id) => (await loadAuthority()).deleteMachineRecords(id),
+      prepareRecovery: async () => (await loadAuthority()).prepareRecovery(),
+      prepareHandoffCode: async () => (await loadAuthority()).prepareHandoffCode(),
+      publishRecovery: async () => (await loadAuthority()).publishRecovery(),
+      offerHandoff: async () => (await loadAuthority()).offerHandoff(),
+      discardUnpublishedCode: async () => (await loadAuthority()).discardUnpublishedCode(),
+      discardUnsignedStateDraft: async () => (await loadAuthority()).discardUnsignedStateDraft(),
+      handoffAuthority: async (incoming, verifiedOffers) => (await loadAuthority()).handoffAuthority(incoming, verifiedOffers),
+      hasMachineArchive: async (id) => (await loadAuthority()).hasMachineArchive(id),
+      approvePairing: async (pair) => (await loadAuthority()).approvePairing(pair),
+    };
     this.startPairing = async (web, replacesDeviceId = "") =>
       (await import("./authority-pairing")).AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
   }
@@ -663,7 +712,6 @@ export class Remote implements CoreExecutor {
     this.version++;
     cleanup(
       () => this.deviceLink.changed(),
-      () => this.sharedFilesState?.onConnectivityChange(),
       ...[...this.listeners],
     );
   }
@@ -691,8 +739,7 @@ export class Remote implements CoreExecutor {
     if (this.directExec.isClosed) this.directExec = this.newDirectExecutor();
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = watchSecurityInstall((record) => {
-      this.handleDirectSecurityInstall(record);
-      this.pushSecuritySnapshot(record);
+      void this.pushSecurityRecord(record);
     });
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = watchSecurityPush(() => {
@@ -707,14 +754,13 @@ export class Remote implements CoreExecutor {
     this.authority.lifecycle.resume();
     void this.watchPairingDelivery();
     this.ensureHost().start();
-    if (this.lastDirectSecurity) {
-      this.hostBridge?.dispatchDirectSecuritySnapshot(this.lastDirectSecurity);
-    }
   }
 
   stop() {
     this.closed = true;
     this.directExec.close();
+    this.secExec.close();
+    while (this.devicesSyncWaiters.length) this.devicesSyncWaiters.shift()!();
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = undefined;
     this.unwatchSecurityPush?.();
@@ -837,138 +883,24 @@ export class Remote implements CoreExecutor {
     this.watchedSessionIds = [...sessionIds];
   }
 
-  private rejectDirectSecurity() {
-    this.lastDirectSecurity = {
-      member: false,
-      account: "",
-      domain: new Uint8Array(),
-      head: "",
-      headHash: new Uint8Array(),
-      epoch: 0n,
-      startedAtMs: 0n,
-      leaseNotAfterMs: 0n,
-      selfId: "",
-      selfEdPublic: new Uint8Array(),
-      selfXPublic: new Uint8Array(),
-      members: [],
-      rejected: true,
-    };
-    if (!this.closed) this.hostBridge?.dispatchDirectSecuritySnapshot(this.lastDirectSecurity);
-  }
-
-  private handleDirectSecurityInstall(record: SecurityRecord) {
-    const prev = this.lastDirectSecurity;
-    let headHex = "";
-    try {
-      headHex = hex(record.stateHash);
-    } catch {
-      headHex = "";
-    }
-    const account = record.pin.account;
-    if (!record.member || (prev && !prev.rejected && (account !== prev.account || headHex !== prev.head))) {
-      this.securitySyncRev++;
-      this.lastDirectSecurity = {
-        member: false,
-        account: "",
-        domain: new Uint8Array(),
-        head: "",
-        headHash: new Uint8Array(),
-        epoch: 0n,
-        startedAtMs: 0n,
-        leaseNotAfterMs: 0n,
-        selfId: "",
-        selfEdPublic: new Uint8Array(),
-        selfXPublic: new Uint8Array(),
-        members: [],
-        rejected: true,
-      };
-    }
-    this.latestXPrivate = record.member ? record.xPrivate : undefined;
-    if (!this.closed) {
-      this.hostBridge?.dispatchDirectSecurityInstalled({
-        member: record.member,
-        account,
-        head: headHex,
-      });
-    }
-  }
-
-  private async syncDirectSecurityRecord(record: SecurityRecord, started: number): Promise<void> {
-    const rev = ++this.securitySyncRev;
-    const built = await buildDirectSecuritySnapshot({
-      record,
-      started,
-      deviceId: this.account.deviceId,
-      devicePrivate: this.account.devicePrivate,
-    });
-    if (rev !== this.securitySyncRev || this.closed) return;
-    if (!built) {
-      this.rejectDirectSecurity();
-      return;
-    }
-    this.latestXPrivate = built.xPrivate;
-    this.lastDirectSecurity = built.snapshot;
-    this.hostBridge?.dispatchDirectSecuritySnapshot(built.snapshot);
-  }
-
-  private handleDirectEvent(machineId: string, pcId: bigint, env: Envelope, header: Header, size: number) {
+  private handleDirectEvent(machineId: string, pcId: bigint, env: Envelope, header: Header, _size: number) {
     if (this.closed) return;
     const sid = header.sessionId;
     if (!sid || header.seq <= 0n || !this.watchedSessionIds.includes(sid)) return;
-    if (this.cachedSessionMap.get(sid)?.machineId !== machineId) return;
-    if (header.sender !== machineId) return;
-    const seed = this.sessionSeeds.get(sid);
-    if (!seed || seed.byteLength === 0) return;
-
-    const entryBytes = Math.max(size, 64);
-    const curCount = this.directEventPendingCount.get(sid) ?? 0;
-    if (curCount >= 16 || this.directEventPendingBytes + entryBytes > 512 * 1024) return;
-    this.directEventPendingCount.set(sid, curCount + 1);
-    this.directEventPendingBytes += entryBytes;
-
-    const prev = this.directEventChains.get(sid) ?? Promise.resolve();
-    const next = prev
-      .then(async () => {
-        if (this.closed) return;
-        if (!this.watchedSessionIds.includes(sid) || this.cachedSessionMap.get(sid)?.machineId !== machineId) return;
-        const opened = await this.openSecureMessage(
-          env,
-          { kind: PayloadKind.EVENT, machineId, sessionId: sid, seq: header.seq },
-          EventSchema,
-          false,
-        );
-        if (this.closed) return;
-        if (opened.header.sender !== machineId) return;
-        if (opened.msg.sessionId !== sid || opened.msg.seq !== header.seq) return;
-        const plainEvent = create(PlainEventSchema, {
-          seq: header.seq,
-          event: opened.msg,
-          verified: header.version === 3,
-          approxBytes: BigInt(entryBytes),
-        });
-        this.hostBridge?.dispatchEvent(
-          create(CoreEventSchema, {
-            event: {
-              case: "directEventsReceived",
-              value: create(DirectEventsReceivedEventSchema, {
-                sessionId: sid,
-                machineId,
-                events: [plainEvent],
-                pcId,
-                sender: machineId,
-              }),
-            },
+    this.hostBridge?.dispatchEvent(
+      create(CoreEventSchema, {
+        event: {
+          case: "directEventsReceived",
+          value: create(DirectEventsReceivedEventSchema, {
+            sessionId: sid,
+            machineId,
+            pcId,
+            sender: machineId,
+            wireEnvelopes: [env],
           }),
-        );
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        const prevCount = this.directEventPendingCount.get(sid) ?? 0;
-        if (prevCount <= 1) this.directEventPendingCount.delete(sid);
-        else this.directEventPendingCount.set(sid, prevCount - 1);
-        this.directEventPendingBytes = Math.max(0, this.directEventPendingBytes - entryBytes);
-      });
-    this.directEventChains.set(sid, next);
+        },
+      }),
+    );
   }
 
   changePrefs(kind: "pin" | "unpin" | "hide" | "unhide", path: string) {
@@ -1004,7 +936,6 @@ export class Remote implements CoreExecutor {
 
     const nextSessions = new Map<string, SessionView>();
     for (const sv of view.sessions) {
-      if (sv.info?.machineReplacements.length) this.sessionReplacements.set(sv.sessionId, [...sv.info.machineReplacements]);
       nextSessions.set(sv.sessionId, syncSessionToView(sv));
     }
     this.cachedSessionMap = nextSessions;
@@ -1019,6 +950,7 @@ export class Remote implements CoreExecutor {
 
     this.cachedPrefPending.clear();
     if (view.prefsSyncing) this.cachedPrefPending.set("", "syncing");
+    while (this.devicesSyncWaiters.length) this.devicesSyncWaiters.shift()!();
     this.changed();
     if (!wasOnline && (this.conn as ConnState) === "online" && !this.closed) void restorePushPrefs(this);
   }
@@ -1140,15 +1072,10 @@ export class Remote implements CoreExecutor {
       if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) { drop(l10n.t("errors.push_backlog_reconnecting")); return; }
       processing = processing.then(async () => {
         if (state.stopped || this.legs.get(legId) !== state) return;
-        const refs: string[] = [];
-        let dispatched = false;
-        try {
-          const mapped = await this.unpackStreamFrame(frame.kind, refs);
-          if (!state.stopped && this.legs.get(legId) === state && mapped) {
-            dispatched = true;
-            callbacks.onFrame(legId, mapped, () => this.releaseCacheObjects(refs));
-          }
-        } finally { if (!dispatched) this.releaseCacheObjects(refs); }
+        const mapped = await this.mapStreamFrame(frame.kind);
+        if (mapped) {
+          callbacks.onFrame(legId, mapped);
+        }
       }).catch((e) => {
         if (!state.stopped && this.legs.get(legId) === state) drop(errorText(e));
       }).finally(() => { queuedBytes -= data.byteLength; queuedFrames--; });
@@ -1164,15 +1091,15 @@ export class Remote implements CoreExecutor {
     leg.ws.close();
   }
 
-  private async unpackStreamFrame(kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"], refs: string[]) {
+  private mapStreamFrame(kind: ReturnType<typeof fromBinary<typeof ServerFrameSchema>>["kind"]) {
     switch (kind.case) {
       case "heartbeat": return { case: "heartbeat" as const, value: true };
-      case "machineUpdated": return kind.value.machine ? { case: "machineUpdated" as const, value: await this.unpackMachine(kind.value.machine, refs) } : undefined;
+      case "machineUpdated": return kind.value.machine ? { case: "wireMachineUpdated" as const, value: kind.value.machine } : undefined;
       case "machineRemoved": return { case: "machineRemovedId" as const, value: kind.value.machineId };
-      case "sessionUpdated": return kind.value.session ? { case: "sessionUpdated" as const, value: await this.unpackSession(kind.value.session, true, refs) } : undefined;
-      case "eventsAppended": return { case: "eventsAppended" as const, value: create(EventsAppendedFrameSchema, { sessionId: kind.value.sessionId, events: await this.unpackEvents(kind.value.sessionId, kind.value.events, false, refs) }) };
-      case "accountPrefsUpdated": return { case: "accountPrefsUpdated" as const, value: await this.unpackAccountPrefs(kind.value.object, refs) };
-      case "deviceUpdated": return kind.value.device ? { case: "deviceUpdated" as const, value: await this.unpackDevice(kind.value.device) } : undefined;
+      case "sessionUpdated": return kind.value.session ? { case: "wireSessionUpdated" as const, value: kind.value.session } : undefined;
+      case "eventsAppended": return { case: "eventsAppended" as const, value: create(EventsAppendedFrameSchema, { sessionId: kind.value.sessionId, wireEvents: kind.value.events }) };
+      case "accountPrefsUpdated": return kind.value.object ? { case: "wireAccountPrefsUpdated" as const, value: kind.value.object } : undefined;
+      case "deviceUpdated": return kind.value.device ? { case: "wireDeviceUpdated" as const, value: kind.value.device } : undefined;
       case "deviceRemoved": return { case: "deviceRemovedId" as const, value: kind.value.deviceId };
       default: return undefined;
     }
@@ -1212,40 +1139,103 @@ export class Remote implements CoreExecutor {
     this.tokenWrites = this.tokenWrites.then(() => clearLoginToken(this.account.server, this.account.deviceId)).catch(() => undefined);
   }
 
+  securityConfig(): { account: string; deviceId: string } | undefined {
+    return { account: "", deviceId: this.account.deviceId };
+  }
+
+  syncSecuritySnapshot?(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent>;
+
+  securityKeySign(eff: SecurityKeySignEffect) {
+    void this.secExec.keySign(eff);
+  }
+
+  securityKeyAgree(eff: SecurityKeyAgreeEffect) {
+    void this.secExec.keyAgree(eff);
+  }
+
+  securityCryptoBatch(eff: SecurityCryptoBatchEffect) {
+    void this.secExec.cryptoBatch(eff);
+  }
+
   private applySecurityRecordSets(record: SecurityRecord) {
     const head = record.states[record.states.length - 1];
+    this.latestXPrivate = record.xPrivate;
     this.authorityDeviceId = head.core.authorityID;
     this.trustedMembers = new Map(head.core.members.map((m) => [m.id, m]));
     this.archiveMachines = new Set(record.states.flatMap((s) => s.core.members.filter((m) => m.kind === 1).map((m) => m.id)));
   }
 
-  private pushSecuritySnapshot(record: SecurityRecord): void {
+  private async toSecurityRecordEvent(
+    record: SecurityRecord,
+    opts: { opId?: bigint; pushSeq?: bigint; networkGeneration?: bigint; error?: string } = {},
+  ): Promise<SecurityRecordEvent> {
     this.applySecurityRecordSets(record);
-    if (this.coreSyncDepth === 0 && !this.closed) {
-      const pushSeq = this.securityPushSeq++;
-      const snap = this.snapshotFromRecord(0n, BigInt(this.networkGeneration), record, pushSeq);
-      this.hostBridge?.dispatchEvent(
-        create(CoreEventSchema, { event: { case: "securitySnapshot", value: snap } }),
-      );
-    }
-  }
-
-  private snapshotFromRecord(opId: bigint, networkGeneration: bigint, record: SecurityRecord, pushSeq = 0n): SecuritySnapshotEvent {
-    const head = record.states[record.states.length - 1];
-    if (record.member === false) {
-      return create(SecuritySnapshotEventSchema, { opId, pushSeq, isMember: false, selfDeviceId: this.account.deviceId, authorityDeviceId: this.authorityDeviceId, clockSkewed: this.serverAhead, networkGeneration });
-    }
-    return create(SecuritySnapshotEventSchema, {
-      opId, pushSeq, isMember: true, selfDeviceId: this.account.deviceId, authorityDeviceId: this.authorityDeviceId,
-      trustedMachineIds: head.core.members.filter((m) => m.kind === 1).map((m) => m.id),
-      trustedClientIds: head.core.members.filter((m) => m.kind === 2).map((m) => m.id),
-      archiveMachineIds: [...this.archiveMachines].filter((id) => this.trustedMembers.get(id)?.kind !== 1),
-      headEpoch: head.core.epoch, leaseEndMs: record.lease?.notAfter ?? 0n, clockSkewed: this.serverAhead,
-      recoveryPending: this.security.recoveryPending, recoveryReadyMs: this.security.recoveryReadyMs, recoveryObjectsPending: this.recoveryObjectsPending, networkGeneration,
+    return recordToSecurityEvent(record, {
+      opId: opts.opId ?? 0n,
+      pushSeq: opts.pushSeq ?? 0n,
+      networkGeneration: opts.networkGeneration ?? BigInt(this.networkGeneration),
+      recoveryPending: this.security.recoveryPending,
+      recoveryReadyMs: this.security.recoveryReadyMs,
+      recoveryObjectsPending: this.recoveryObjectsPending,
+      error: opts.error,
     });
   }
 
-  async syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecuritySnapshotEvent> {
+  async readCachedSecurityRecord(): Promise<SecurityRecordEvent | undefined> {
+    const rec = await this.security.verifiedRecord();
+    const ev = await this.toSecurityRecordEvent(rec);
+    if (this.hostBridge) {
+      this.securityRecordLoaded = true;
+      this.lastDispatchedRecord = rec;
+    }
+    return ev;
+  }
+
+  private async ensureSecurityRecordLoaded(knownRecord?: SecurityRecord): Promise<void> {
+    if (knownRecord) this.applySecurityRecordSets(knownRecord);
+    const prev = this.securityRecordLoading ?? Promise.resolve();
+    const job = prev
+      .catch(() => undefined)
+      .then(async () => {
+        const rec = knownRecord ?? (await this.security.verifiedRecord());
+        if (this.hostBridge && this.securityRecordLoaded && this.lastDispatchedRecord === rec) {
+          return;
+        }
+        const pushSeq = this.securityPushSeq++;
+        const ev = await this.toSecurityRecordEvent(rec, { pushSeq });
+        if (!this.closed) {
+          this.ensureHost().dispatchEvent(create(CoreEventSchema, { event: { case: "securityRecord", value: ev } }));
+          this.securityRecordLoaded = true;
+          this.lastDispatchedRecord = rec;
+        }
+      })
+      .finally(() => {
+        if (this.securityRecordLoading === job) {
+          this.securityRecordLoading = undefined;
+        }
+      });
+    this.securityRecordLoading = job;
+    return job;
+  }
+
+  private async pushSecurityRecord(record: SecurityRecord): Promise<void> {
+    this.applySecurityRecordSets(record);
+    if (this.coreSyncDepth === 0 && !this.closed && this.hostBridge) {
+      const pushSeq = this.securityPushSeq++;
+      try {
+        const ev = await this.toSecurityRecordEvent(record, { pushSeq });
+        if (!this.closed && this.hostBridge) {
+          this.hostBridge.dispatchEvent(create(CoreEventSchema, { event: { case: "securityRecord", value: ev } }));
+          this.securityRecordLoaded = true;
+          this.lastDispatchedRecord = record;
+        }
+      } catch {
+        // Record serialization failure will be retried on next sync.
+      }
+    }
+  }
+
+  async syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecurityRecordEvent> {
     const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
     const gen = Number(networkGeneration);
     if (gen > this.networkGeneration) { this.networkGeneration = gen; this.retireNetworkIO(); }
@@ -1255,61 +1245,51 @@ export class Remote implements CoreExecutor {
       const record = await this.security.sync(undefined, 5000, true);
       this.verifiedNetworkGeneration = this.networkGeneration;
       this.wakeRequired = false;
-      this.applySecurityRecordSets(record);
       this.maintainAuthority();
       if (this.recoveryObjectsPending) {
+        const preEv = await this.toSecurityRecordEvent(record, { opId: 0n, pushSeq: 0n, networkGeneration });
+        if (!this.closed) {
+          this.ensureHost().dispatchEvent(create(CoreEventSchema, { event: { case: "securityRecord", value: preEv } }));
+          this.securityRecordLoaded = true;
+          this.lastDispatchedRecord = record;
+        }
         try { await this.republishRecoveryObjects(record, this.api); this.recoveryObjectsPending = false; }
         catch { /* Retry on subsequent security sync. */ }
       }
       if (this.needsDescribeSelf) await this.describeSelf();
       if (record.member === false) { this.removalVerified = true; this.discardToken(); await this.tokenWrites; }
-      return this.snapshotFromRecord(opId, networkGeneration, record, pushSeq);
+      const ev = await this.toSecurityRecordEvent(record, { opId, pushSeq, networkGeneration });
+      if (this.hostBridge) {
+        this.securityRecordLoaded = true;
+        this.lastDispatchedRecord = record;
+      }
+      return ev;
     } catch (e) {
-      return create(SecuritySnapshotEventSchema, {
-        opId, pushSeq, selfDeviceId: this.account.deviceId,
-        clockSkewed: this.serverAhead || (e instanceof SecurityError && e.code === "clock"),
-        recoveryPending: this.security.recoveryPending, recoveryReadyMs: this.security.recoveryReadyMs,
-        recoveryObjectsPending: this.recoveryObjectsPending, networkGeneration, error: errorText(e),
+      return create(SecurityRecordEventSchema, {
+        opId,
+        pushSeq,
+        networkGeneration,
+        recoveryPending: this.security.recoveryPending,
+        recoveryReadyMs: this.security.recoveryReadyMs,
+        recoveryObjectsPending: this.recoveryObjectsPending,
+        error: errorText(e),
       });
     } finally { this.coreSyncDepth--; }
-  }
-
-  private stashCacheObject(item: CacheRefItem, refs?: string[]): string {
-    if (!this.cache) return "";
-    const id = `r${++this.cacheRefSeq}`;
-    this.cacheRefs.set(id, item);
-    refs?.push(id);
-    return id;
-  }
-
-  private releaseCacheObjects(refs: string[]) { for (const ref of refs) this.cacheRefs.delete(ref); }
-
-  private trackEventRefs<T extends CoreEvent>(ev: T, refs: string[]): T {
-    if (refs.length > 0) this.eventCacheRefs.set(ev, refs);
-    return ev;
-  }
-
-  releaseEventRefs(ev: CoreEvent) {
-    const refs = this.eventCacheRefs.get(ev);
-    if (refs) { this.eventCacheRefs.delete(ev); this.releaseCacheObjects(refs); }
   }
 
   async readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent> {
     await this.warmInfoOnce();
     const homeScopeToken = readStoredScopeToken();
     let scopeHmacKey = new Uint8Array(32);
-    const machines: PlainMachine[] = [], sessions: PlainSession[] = [];
-    let prefs: PlainAccountPrefs | undefined;
+    const wireMachines: RemoteMachine[] = [], wireSessions: RemoteSession[] = [];
+    let wirePrefs: AccountPrefsObject | undefined;
     if (!this.cache) { crypto.getRandomValues(scopeHmacKey); return create(CacheBootstrapLoadedEventSchema, { opId, homeScopeToken, scopeHmacKey }); }
     try {
       const existingKey = await this.cache.get(SCOPE_HMAC_KEY_VALUE);
       if (existingKey instanceof Uint8Array && existingKey.length === 32) scopeHmacKey = new Uint8Array(existingKey);
       else { crypto.getRandomValues(scopeHmacKey); await this.cache.set(SCOPE_HMAC_KEY_VALUE, scopeHmacKey); }
-      const identity = await this.security.localIdentity();
       const rec = await this.security.verifiedRecord();
-      this.trustedMembers = new Map(identity.state.core.members.map((m) => [m.id, m]));
-      this.authorityDeviceId = identity.state.core.authorityID;
-      this.archiveMachines = new Set(rec.states.flatMap((s) => s.core.members.filter((m) => m.kind === 1).map((m) => m.id)));
+      await this.ensureSecurityRecordLoaded(rec);
       for (const id of this.archiveMachines) if (!this.trustedMembers.has(id)) void this.keepValue("schedules:" + id, undefined);
 
       const [keptMachines, keptSessions, keptPrefs, keptOpen] = await Promise.all([
@@ -1322,22 +1302,21 @@ export class Remote implements CoreExecutor {
       if (valid(keptMachines) && keptMachines.bytes instanceof Uint8Array) {
         for (const m of fromBinary(ListMachinesResponseSchema, keptMachines.bytes).machines) {
           this.persistedMachines.set(m.id, m);
-          const unpacked = await this.unpackMachine(m, undefined, true);
-          machines.push(unpacked);
+          wireMachines.push(m);
         }
       }
       if (valid(keptSessions) && keptSessions.bytes instanceof Uint8Array) {
         for (const rs of fromBinary(ListRemoteSessionsResponseSchema, keptSessions.bytes).sessions) {
           this.persistedSessions.set(rs.sessionId, rs);
-          sessions.push(await this.unpackSession(rs, true, undefined, true));
+          wireSessions.push(rs);
         }
       }
       if (valid(keptPrefs) && keptPrefs.bytes instanceof Uint8Array) {
-        prefs = await this.unpackAccountPrefs(fromBinary(AccountPrefsObjectSchema, keptPrefs.bytes), undefined, true);
+        wirePrefs = fromBinary(AccountPrefsObjectSchema, keptPrefs.bytes);
       }
-      return create(CacheBootstrapLoadedEventSchema, { opId, machines, sessions, prefs, homeScopeToken, scopeHmacKey });
+      return create(CacheBootstrapLoadedEventSchema, { opId, wireMachines, wireSessions, wirePrefs, homeScopeToken, scopeHmacKey });
     } catch (e) {
-      return create(CacheBootstrapLoadedEventSchema, { opId, machines, sessions, prefs, homeScopeToken, scopeHmacKey, error: errorText(e) });
+      return create(CacheBootstrapLoadedEventSchema, { opId, wireMachines, wireSessions, wirePrefs, homeScopeToken, scopeHmacKey, error: errorText(e) });
     }
   }
 
@@ -1350,30 +1329,28 @@ export class Remote implements CoreExecutor {
       if (newest && knownLast !== undefined && rows.length && rows[rows.length - 1].seq > knownLast) {
         return create(CacheEventsLoadedEventSchema, { opId, sessionId, broken: true });
       }
-      const events = await this.unpackEvents(sessionId, rows, true);
-      return create(CacheEventsLoadedEventSchema, { opId, sessionId, events, broken: events.some((e) => e.broken), retired: events.some((e) => e.retired) });
+      const wireEvents: StoredEvent[] = rows.map((row) =>
+        create(StoredEventSchema, { seq: row.seq, ...(row.envelope ? { envelope: row.envelope } : {}) }),
+      );
+      return create(CacheEventsLoadedEventSchema, { opId, sessionId, wireEvents });
     } catch (e) {
       return create(CacheEventsLoadedEventSchema, { opId, sessionId, error: errorText(e) });
     }
   }
 
   private extractCacheWrite(eff: CacheWriteEffect): CacheWritePayload | undefined {
-    const take = (ref: string) => { const item = this.cacheRefs.get(ref); this.cacheRefs.delete(ref); return item; };
     switch (eff.kind.case) {
-      case "writeMachineRef": { const it = take(eff.kind.value); return it?.kind === "machine" ? { kind: "machine", raw: it.raw } : undefined; }
-      case "writeSessionRef":
-      case "keepSessionOwnerRef": { const it = take(eff.kind.value); return it?.kind === "session" ? { kind: "session", raw: it.raw } : undefined; }
-      case "writeEvents": {
+      case "writeMachine": return { kind: "machine", raw: eff.kind.value };
+      case "writeSession":
+      case "keepSessionOwner": return { kind: "session", raw: eff.kind.value };
+      case "writeStoredEvents": {
         if (!this.cache) return undefined;
-        const rows: CachedEvent[] = [];
-        for (const ref of eff.kind.value.cacheRefs) {
-          const it = take(ref);
-          if (it?.kind === "event") rows.push(it.raw);
-          else if (it?.kind === "events") rows.push(...it.raw);
-        }
-        return rows.length > 0 ? { kind: "events", sessionId: eff.kind.value.sessionId, raw: rows } : undefined;
+        const raw: CachedEvent[] = eff.kind.value.events.flatMap((se) =>
+          se.envelope ? [{ seq: se.seq, envelope: se.envelope }] : [],
+        );
+        return raw.length > 0 ? { kind: "events", sessionId: eff.kind.value.sessionId, raw } : undefined;
       }
-      case "writePrefsRef": { const it = take(eff.kind.value); return it?.kind === "prefs" ? { kind: "prefs", raw: it.raw } : undefined; }
+      case "writePrefs": return { kind: "prefs", raw: eff.kind.value };
       case "setSessionOpen": return { kind: "sessionOpen", sessionId: eff.kind.value.sessionId, open: eff.kind.value.open };
       default: return undefined;
     }
@@ -1409,7 +1386,6 @@ export class Remote implements CoreExecutor {
         await this.cache?.drop(eff.kind.value);
         this.persistedSessions.delete(eff.kind.value);
         this.persistedOpen.delete(eff.kind.value);
-        this.sessionSeeds.delete(eff.kind.value);
         this.forgetLocalSession(eff.kind.value);
         await this.persistSessionsList();
         await this.keepValue("open-sessions", { ids: [...this.persistedOpen] });
@@ -1422,18 +1398,12 @@ export class Remote implements CoreExecutor {
   private persistMachinesList = () => this.keepValue("machines", { bytes: toBinary(ListMachinesResponseSchema, create(ListMachinesResponseSchema, { machines: [...this.persistedMachines.values()] })) });
   private persistSessionsList = () => this.keepValue("sessions", { bytes: toBinary(ListRemoteSessionsResponseSchema, create(ListRemoteSessionsResponseSchema, { sessions: [...this.persistedSessions.values()] })) });
 
-  private rpcEv(event: CoreEvent["event"], refs: string[] = []): CoreEvent {
-    return this.trackEventRefs(create(CoreEventSchema, { event }), refs);
+  private rpcEv(event: CoreEvent["event"]): CoreEvent {
+    return create(CoreEventSchema, { event });
   }
 
   async executeRpc(eff: RpcEffect): Promise<CoreEvent> {
     const opId = eff.opId;
-    const refs: string[] = [];
-    const fail = (e: unknown, fallback: CoreEvent["event"]) => {
-      this.releaseCacheObjects(refs);
-      if (fallback.case === "eventsPageFetched") fallback.value.error = errorText(e);
-      return create(CoreEventSchema, { event: fallback });
-    };
     switch (eff.kind.case) {
       case "fetchLists":
         try {
@@ -1442,22 +1412,17 @@ export class Remote implements CoreExecutor {
             this.api.listRemoteSessions({ limit: eff.kind.value.limit || this.sessionPageSize }),
             this.api.listDevices({}),
           ]);
+          await this.ensureSecurityRecordLoaded();
           await this.maybeRepublishAndDescribe(dRes.devices);
-          const machines = await Promise.all(mRes.machines.map((m) => this.unpackMachine(m, refs)));
-          const sessions = await Promise.all(sRes.sessions.map((s) => this.unpackSession(s, true, refs)));
-          const devices = await this.unpackMemberDevices(dRes.devices);
-          return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, machines, sessions, next: sRes.next, devices }) }, refs);
+          return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, wireMachines: mRes.machines, wireSessions: sRes.sessions, next: sRes.next, wireDevices: dRes.devices }) });
         } catch (e) {
-          this.releaseCacheObjects(refs);
           return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, error: errorText(e) }) });
         }
       case "fetchSessionsPage":
         try {
           const res = await this.api.listRemoteSessions({ after: eff.kind.value.after, limit: eff.kind.value.limit || this.sessionPageSize });
-          const sessions = await Promise.all(res.sessions.map((s) => this.unpackSession(s, true, refs)));
-          return this.rpcEv({ case: "sessionsPageFetched", value: create(SessionsPageFetchedEventSchema, { opId, sessions, next: res.next }) }, refs);
+          return this.rpcEv({ case: "sessionsPageFetched", value: create(SessionsPageFetchedEventSchema, { opId, wireSessions: res.sessions, next: res.next }) });
         } catch (e) {
-          this.releaseCacheObjects(refs);
           return this.rpcEv({ case: "sessionsPageFetched", value: create(SessionsPageFetchedEventSchema, { opId, error: errorText(e) }) });
         }
       case "fetchSessionById": {
@@ -1465,10 +1430,8 @@ export class Remote implements CoreExecutor {
         try {
           const res = await this.api.listRemoteSessions({ sessionIds: [sid], limit: 1 });
           const found = res.sessions.find((s) => s.sessionId === sid);
-          const session = found ? await this.unpackSession(found, true, refs) : undefined;
-          return this.rpcEv({ case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, session }) }, refs);
+          return this.rpcEv({ case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, wireSession: found }) });
         } catch (e) {
-          this.releaseCacheObjects(refs);
           return this.rpcEv({ case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, error: errorText(e) }) });
         }
       }
@@ -1476,37 +1439,35 @@ export class Remote implements CoreExecutor {
         const { sessionId, afterSeq, limit } = eff.kind.value;
         try {
           const res = await this.api.getEvents({ sessionId, afterSeq, limit: limit || this.historyPageSize });
-          const events = await this.unpackEvents(sessionId, res.events, true, refs);
-          return this.rpcEv({ case: "eventsPageFetched", value: create(EventsPageFetchedEventSchema, { opId, sessionId, events, more: res.more }) }, refs);
+          return this.rpcEv({ case: "eventsPageFetched", value: create(EventsPageFetchedEventSchema, { opId, sessionId, wireEvents: res.events, more: res.more }) });
         } catch (e) {
-          return fail(e, { case: "eventsPageFetched", value: create(EventsPageFetchedEventSchema, { opId, sessionId }) });
+          return this.rpcEv({ case: "eventsPageFetched", value: create(EventsPageFetchedEventSchema, { opId, sessionId, error: errorText(e) }) });
         }
       }
       case "getAccountPrefs":
         try {
           const res = await this.api.getAccountPrefs({ objectId: eff.kind.value.objectId || PREFS_OBJECT });
-          return this.rpcEv({ case: "accountPrefsFetched", value: create(AccountPrefsFetchedEventSchema, { opId, prefs: await this.unpackAccountPrefs(res.object, refs) }) }, refs);
+          return this.rpcEv({ case: "accountPrefsFetched", value: create(AccountPrefsFetchedEventSchema, { opId, wirePrefs: res.object }) });
         } catch (e) {
-          this.releaseCacheObjects(refs);
           return this.rpcEv({ case: "accountPrefsFetched", value: create(AccountPrefsFetchedEventSchema, { opId, error: errorText(e) }) });
         }
       case "putAccountPrefs": {
-        const { objectId, expectedRevision, nextPrefs } = eff.kind.value;
+        const { objectId, expectedRevision, nextPrefs, sealedEnvelope } = eff.kind.value;
         try {
-          const env = await this.sealSecureMessage({ kind: PayloadKind.ACCOUNT_PREFS, requestId: objectId || PREFS_OBJECT, seq: expectedRevision + 1n, sender: this.account.deviceId }, ProjectPrefsSchema, nextPrefs ?? emptyPrefs());
+          const env = sealedEnvelope ?? (await this.sealSecureMessage({ kind: PayloadKind.ACCOUNT_PREFS, requestId: objectId || PREFS_OBJECT, seq: expectedRevision + 1n, sender: this.account.deviceId }, ProjectPrefsSchema, nextPrefs ?? emptyPrefs())).envelope;
           const res = await this.api.putAccountPrefs({ objectId: objectId || PREFS_OBJECT, expectedRevision, envelope: env });
-          return this.rpcEv({ case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, applied: res.applied, current: await this.unpackAccountPrefs(res.object, refs) }) }, refs);
+          return this.rpcEv({ case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, applied: res.applied, wireCurrent: res.object }) });
         } catch (e) {
-          this.releaseCacheObjects(refs);
-          const sealConflict = e instanceof SecurityError && (e.code === "clock" || e.code === "lease" || e.code === "conflict");
+          const sealConflict = e instanceof SecurityError && (e.code === "clock" || e.code === "lease" || e.code === "conflict" || e.code === "stale");
           return this.rpcEv({ case: "accountPrefsPutResult", value: create(AccountPrefsPutResultEventSchema, { opId, sealConflict, error: errorText(e) }) });
         }
       }
       case "fetchDevices":
         try {
           const res = await this.api.listDevices({});
+          await this.ensureSecurityRecordLoaded();
           await this.maybeRepublishAndDescribe(res.devices);
-          return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, devices: await this.unpackMemberDevices(res.devices) }) });
+          return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, wireDevices: res.devices }) });
         } catch (e) {
           return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, error: errorText(e) }) });
         }
@@ -1545,29 +1506,6 @@ export class Remote implements CoreExecutor {
   directPcConfirm(eff: DirectPcConfirmEffect) { this.directExec.pcConfirm(eff); }
   directPcClose(eff: DirectPcCloseEffect) { this.directExec.pcClose(eff); }
   directDcReadStats(eff: DirectDcReadStatsEffect) { void this.directExec.dcReadStats(eff); }
-  directAuthorize() {
-    void (async () => {
-      let ok = false;
-      try {
-        await this.checkNetworkSecurity();
-        const needSync =
-          Date.now() - this.lastSecuritySyncAt >= 10_000 ||
-          !this.lastDirectSecurity ||
-          this.lastDirectSecurity.rejected;
-        if (needSync) {
-          const synced = await this.security.sync(undefined, 5000);
-          ok = Boolean(synced?.member);
-        } else {
-          const rec = await this.security.verifiedRecord();
-          ok = Boolean(rec?.member);
-        }
-      } catch {
-        ok = false;
-      } finally {
-        if (!this.closed) this.hostBridge?.dispatchDirectAuthorizeDone(ok);
-      }
-    })();
-  }
 
   async executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent> {
     const directRoute = eff.routeLeg === CommandRouteLeg.DIRECT && eff.directPcId > 0n
@@ -1580,6 +1518,7 @@ export class Remote implements CoreExecutor {
       sessionId: eff.sessionId,
       deadlineMs: Number(eff.deadlineMs),
       commandBytes: new Uint8Array(eff.commandBytes),
+      sealedEnvelope: eff.sealedEnvelope,
       priorUnknown: eff.retryOfUnknown,
       directRoute,
       directTicketId: eff.directTicketId,
@@ -1595,6 +1534,7 @@ export class Remote implements CoreExecutor {
     sessionId: string;
     deadlineMs: number;
     commandBytes: Uint8Array<ArrayBuffer>;
+    sealedEnvelope?: Envelope;
     priorUnknown: boolean;
     directRoute?: { pcId: bigint; ticketId: bigint; timeoutMs: bigint };
     directTicketId?: bigint;
@@ -1635,11 +1575,19 @@ export class Remote implements CoreExecutor {
     let parsedCmd: ReturnType<typeof fromBinary<typeof CommandSchema>> | undefined;
     try { parsedCmd = fromBinary(CommandSchema, params.commandBytes); } catch { parsedCmd = undefined; }
 
-    let envelope: Envelope, binding: { key: Uint8Array; payload: Uint8Array };
+    let envelope: Envelope;
+    let requestKeyHash: Uint8Array<ArrayBuffer> | undefined;
+    let payloadHash: Uint8Array<ArrayBuffer> | undefined;
     try {
-      await this.checkNetworkSecurity();
-      envelope = await this.sealCommandBytes(params.machineId, params.sessionId, params.requestId, BigInt(params.deadlineMs), params.commandBytes);
-      binding = await requestIdentity(parseHeader(new Uint8Array(envelope.securityHeader)), params.commandBytes);
+      if (params.sealedEnvelope) {
+        envelope = params.sealedEnvelope;
+      } else {
+        await this.checkNetworkSecurity();
+        const sealed = await this.sealCommandBytes(params.machineId, params.sessionId, params.requestId, BigInt(params.deadlineMs), params.commandBytes);
+        envelope = sealed.envelope;
+        requestKeyHash = sealed.requestKeyHash;
+        payloadHash = sealed.payloadHash;
+      }
       if (params.hasFiles) {
         const issue = this.fileUploadIssue(params.machineId);
         if (issue) {
@@ -1656,7 +1604,7 @@ export class Remote implements CoreExecutor {
       if (params.priorUnknown) {
         return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: false, handedOff: true, transportCode: "unknown", transportDetail: errorText(e), routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
       }
-      const code = e instanceof SecurityError && e.code === "clock" ? "clock" : e instanceof SecurityError && e.code === "lease" ? "failed_precondition" : "security_unavailable";
+      const code = e instanceof SecurityError && e.code === "clock" ? "clock" : e instanceof SecurityError && (e.code === "lease" || e.code === "stale") ? "failed_precondition" : "security_unavailable";
       return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: code, transportDetail: errorText(e), routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
     }
 
@@ -1691,6 +1639,45 @@ export class Remote implements CoreExecutor {
       }
 
       const elapsedMs = performance.now() - routeStarted;
+      const attemptBound = res.attemptId === attemptId;
+      if (params.sealedEnvelope) {
+        if (
+          parsedCmd?.kind.case === "schedule" &&
+          parsedCmd.kind.value.operation === "list" &&
+          res.result &&
+          !(this.archiveMachines.has(params.machineId) && !this.trustedMembers.has(params.machineId))
+        ) {
+          try {
+            const { msg: schedMsg } = await this.openSecureMessage(
+              res.result,
+              { kind: PayloadKind.COMMAND_RESULT, machineId: params.machineId, sessionId: params.sessionId, requestId: params.requestId },
+              CommandResultSchema,
+            );
+            if (!schedMsg.errorCode && schedMsg.outcome === "executed" && schedMsg.kind.case === "schedule" && schedMsg.kind.value.resultJson.length) {
+              await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
+            }
+          } catch {
+            // Core will reject/report any unverified envelope.
+          }
+        }
+        return {
+          rawEnvelope: res.result,
+          elapsedMs,
+          observedBytes: BigInt(parsedCmd?.kind.case === "putImageChunk" ? parsedCmd.kind.value.data?.length ?? 0 : 0),
+          ok: attemptBound && (isDirect || res.outcome === "executed"),
+          outcome: mk({
+            source: OutcomeSource.DAEMON,
+            attemptBound,
+            outerOutcome: isDirect ? "" : res.outcome,
+            outerReason: isDirect ? "" : res.reason,
+            sealedResult: res.result,
+            handedOff,
+            routeWasDirect: isDirect,
+            elapsedMs,
+          }),
+        };
+      }
+
       let msg: CommandResult;
       try {
         msg = (await this.openSecureMessage(res.result, { kind: PayloadKind.COMMAND_RESULT, machineId: params.machineId, sessionId: params.sessionId, requestId: params.requestId }, CommandResultSchema)).msg;
@@ -1698,7 +1685,7 @@ export class Remote implements CoreExecutor {
         return {
           outcome: mk({
             source: OutcomeSource.DAEMON,
-            attemptBound: res.attemptId === attemptId,
+            attemptBound,
             signed: false,
             hashesMatch: false,
             handedOff,
@@ -1710,8 +1697,7 @@ export class Remote implements CoreExecutor {
           ok: false,
         };
       }
-      const hashesMatch = equal(msg.requestKeyHash, binding.key) && equal(msg.payloadHash, binding.payload) && (msg.outcome === "conflict" || msg.conflictKind === "");
-      const attemptBound = res.attemptId === attemptId;
+      const hashesMatch = !!requestKeyHash && !!payloadHash && equal(msg.requestKeyHash, requestKeyHash) && equal(msg.payloadHash, payloadHash) && (msg.outcome === "conflict" || msg.conflictKind === "");
       const outerMatchesInner = isDirect || (res.outcome === msg.outcome && res.reason === msg.reason);
       const bytes = BigInt(
         parsedCmd?.kind.case === "putImageChunk"
@@ -1806,154 +1792,52 @@ export class Remote implements CoreExecutor {
     }
   }
 
-  // --- Security Gate unpacking ---
+  // --- Security Helpers (backed by clientcore/security) ---
 
-  private async unpackMachine(m: RemoteMachine, refs?: string[], fromCache = false): Promise<PlainMachine> {
-    const cacheRef = !fromCache ? this.stashCacheObject({ kind: "machine", raw: m }, refs) : "";
-    let meta: MachineMeta | undefined, metaRev = 0n, metaBroken = false;
-    if (m.meta) {
-      try { ({ msg: meta, header: { seq: metaRev } } = await this.openSecureMessage(m.meta, { kind: PayloadKind.MACHINE_META, machineId: m.id }, MachineMetaSchema)); }
-      catch (e) { metaBroken = true; this.noteClock(e); }
-    }
-    return create(PlainMachineSchema, { machineId: m.id, online: !fromCache && m.online, lastSeenMs: m.lastSeenMs, meta, metaRev, metaBroken, cacheRef });
-  }
-
-  private async unpackSession(rs: RemoteSession, _historyAllowed: boolean, refs?: string[], fromCache = false): Promise<PlainSession> {
-    const cacheRef = !fromCache ? this.stashCacheObject({ kind: "session", raw: rs }, refs) : "";
-    let meta: Session | undefined, metaRev = 0n, checkpoint: LiveSnapshot | undefined, checkpointInvalid = false, retiredHistory = false, openFailed = false;
-    try {
-      rejectRetiredHistory(rs.key);
-      if (rs.key) {
-        const opened = await this.security.openHistory(rs.key);
-        const header = this.projectHeader(opened.header);
-        if (opened.plaintext.length !== 32) throw new Error(l10n.t("errors.invalid_session_seed"));
-        expect(header, { kind: PayloadKind.SESSION_KEY, machineId: rs.machineId, sessionId: rs.sessionId });
-        this.sessionSeeds.set(rs.sessionId, new Uint8Array(opened.plaintext));
-      }
-      if (rs.meta) {
-        ({ msg: meta, header: { seq: metaRev } } = await this.openSecureMessage(rs.meta, { kind: PayloadKind.SESSION_META, machineId: rs.machineId, sessionId: rs.sessionId }, SessionSchema));
-        if (meta.machineReplacements.length) this.sessionReplacements.set(rs.sessionId, [...meta.machineReplacements]);
-        if (meta.currentCheckpoint.length) {
-          const cp = fromBinary(LiveSnapshotSchema, meta.currentCheckpoint);
-          if (cp.session?.id !== rs.sessionId || cp.session.lastSeq > meta.lastSeq || cp.actions.some((e) => e.sessionId !== rs.sessionId || e.seq > meta!.lastSeq)) checkpointInvalid = true;
-          else checkpoint = cp;
-        }
-      }
-    } catch (e) {
-      if (e instanceof UnsupportedHistoryError) retiredHistory = true;
-      else { openFailed = true; this.noteClock(e); }
-    }
-    return create(PlainSessionSchema, { sessionId: rs.sessionId, machineId: rs.machineId, lastSeq: rs.lastSeq, updatedMs: rs.updatedMs, listedEndedMs: rs.endedMs, meta, metaRev, checkpoint, checkpointInvalid, retiredHistory, openFailed, cacheRef });
-  }
-
-  private async unpackMemberDevices(serverDevices: Device[]): Promise<PlainDevice[]> {
-    try {
-      const head = (await this.security.verifiedRecord()).states.at(-1);
-      if (head) {
-        return await Promise.all(head.core.members.map((m) => {
-          const hint = serverDevices.find((d) => d.id === m.id);
-          return hint ? this.unpackDevice(hint) : Promise.resolve(create(PlainDeviceSchema, { deviceId: m.id, kind: m.kind }));
-        }));
-      }
-    } catch { /* Fall back to trustedMembers when verifiedRecord is unavailable. */ }
-    return Promise.all(serverDevices.filter((d) => this.trustedMembers.has(d.id)).map((d) => this.unpackDevice(d)));
-  }
-
-  private async unpackDevice(d: Device): Promise<PlainDevice> {
-    let meta: DeviceMeta | undefined, metaRev = 0n, metaBroken = false;
-    if (d.meta?.securityHeader.length) {
-      try { ({ msg: meta, header: { seq: metaRev } } = await this.openSecureMessage(d.meta, { kind: PayloadKind.DEVICE_META, requestId: d.id }, DeviceMetaSchema)); }
-      catch (e) { if (!(e instanceof SecurityError) || e.code !== "unavailable") metaBroken = true; this.noteClock(e); }
-    }
-    return create(PlainDeviceSchema, { deviceId: d.id, kind: d.kind, createdMs: d.createdMs, lastSeenMs: d.lastSeenMs, meta, metaRev, metaBroken });
-  }
-
-  private async unpackAccountPrefs(o: AccountPrefsObject | undefined, refs?: string[], fromCache = false): Promise<PlainAccountPrefs> {
-    if (!o || !o.envelope || o.revision === 0n) return create(PlainAccountPrefsSchema, { revision: 0n, prefs: emptyPrefs() });
-    const cacheRef = !fromCache ? this.stashCacheObject({ kind: "prefs", raw: o }, refs) : "";
-    try {
-      const { msg, header } = await this.openSecureMessage(o.envelope, { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: o.revision }, ProjectPrefsSchema);
-      if (msg.schema !== 1 || header.seq !== o.revision) return create(PlainAccountPrefsSchema, { revision: o.revision, broken: true, cacheRef });
-      return create(PlainAccountPrefsSchema, { revision: o.revision, prefs: msg, cacheRef });
-    } catch (e) {
-      this.noteClock(e);
-      return create(PlainAccountPrefsSchema, { revision: o.revision, broken: true, cacheRef });
-    }
-  }
-
-  private async unpackEvents(sessionId: string, stored: Array<{ seq: bigint; envelope?: Envelope }>, history: boolean, refs?: string[]): Promise<PlainEvent[]> {
-    const machineId = this.sessions.get(sessionId)?.machineId ?? "";
-    const out: PlainEvent[] = [];
-    const historical = new Map<(typeof stored)[number], HistoryResult>();
-    if (history) {
-      const rows = stored.filter((se) => { try { return !!se.envelope && fromBinary(HeaderSchema, se.envelope.header).version === 3; } catch { return false; } });
-      if (rows.length) {
-        try {
-          const results = await this.security.openHistoryBatch(rows.map((se) => ({ envelope: se.envelope!, seed: this.sessionSeeds.get(sessionId) })));
-          rows.forEach((se, i) => historical.set(se, results[i]));
-        } catch (reason) { rows.forEach((se) => historical.set(se, { status: "rejected", reason })); }
-      }
-    }
-    const cacheEventRef = (se: (typeof stored)[number]) => se.envelope && refs ? this.stashCacheObject({ kind: "event", sessionId, raw: { seq: se.seq, envelope: se.envelope } }, refs) : "";
-    for (const se of stored) {
-      const opened = historical.get(se);
-      historical.delete(se);
-      try {
-        const { msg, size } = await this.openSecureMessage(se.envelope, { kind: PayloadKind.EVENT, machineId, sessionId, seq: se.seq }, EventSchema, history, opened);
-        if (msg.seq !== se.seq || msg.sessionId !== sessionId) throw new Error(l10n.t("errors.the_event_s_position_was_changed"));
-        const verified = fromBinary(HeaderSchema, se.envelope!.header).version === 3;
-        out.push(create(PlainEventSchema, { seq: se.seq, event: msg, verified, approxBytes: BigInt(Math.max(size, 64)), cacheRef: cacheEventRef(se) }));
-      } catch (e) {
-        if (e instanceof RecoveryHistoryUnavailable) {
-          out.push(create(PlainEventSchema, { seq: se.seq, unavailable: true, approxBytes: 64n, cacheRef: cacheEventRef(se) }));
-          continue;
-        }
-        out.push(create(PlainEventSchema, { seq: se.seq, broken: true, retired: e instanceof UnsupportedHistoryError }));
-        this.noteClock(e);
-        break;
-      }
-    }
-    return out;
-  }
-
-  // --- Security Helpers ---
-
-  private projectHeader(h: SecurityHeader) {
-    return create(HeaderSchema, { version: 3, kind: h.kind, machineId: h.machine, sessionId: h.session, requestId: h.request, seq: h.seq, deadlineMs: h.deadline, sender: h.sender, compression: h.compression });
-  }
-
-  private async historicalPlace(want: Parameters<typeof expect>[1], header: ReturnType<Remote["projectHeader"]>, history: boolean) {
-    if (history && [PayloadKind.EVENT, PayloadKind.IMAGE].includes(want.kind) && header.machineId !== want.machineId) {
-      const replacements = this.sessionReplacements.get(want.sessionId ?? "") ?? this.sessions.get(want.sessionId ?? "")?.info?.machineReplacements ?? [];
-      if ((await machineReplacementOrigins(await this.security.verifiedRecord(), want.machineId ?? "", replacements)).has(header.machineId)) {
-        return { ...want, machineId: header.machineId };
-      }
-    }
-    return want;
-  }
-
-  private async openSecureMessage<D extends DescMessage>(env: Envelope | undefined, want: Parameters<typeof expect>[1], schema: D, history = false, historical?: HistoryResult) {
+  private async openSecureMessage<D extends DescMessage>(
+    env: Envelope | undefined,
+    want: { kind: PayloadKind; machineId?: string; sessionId?: string; requestId?: string; seq?: bigint },
+    schema: D,
+    history = false,
+  ) {
     if (!env) throw new Error(l10n.t("errors.security_envelope_missing"));
     if ([PayloadKind.ACCOUNT_PREFS, PayloadKind.DEVICE_META, PayloadKind.MACHINE_META, PayloadKind.SESSION_META, PayloadKind.IMAGE].includes(want.kind)) history = true;
-    const seed = [PayloadKind.EVENT, PayloadKind.IMAGE, PayloadKind.TERMINAL_OUTPUT, PayloadKind.TERMINAL_INPUT].includes(want.kind) ? this.sessionSeeds.get(want.sessionId ?? "") : undefined;
-    rejectRetiredHistory(env);
     if (!history) await this.ensureWakeSecurity();
-    let out: Awaited<ReturnType<DeviceSecurityClient["openHistory"]>>;
+    await this.ensureSecurityRecordLoaded();
+    const res = await this.ensureHost().securityOp({
+      case: "openEnvelope",
+      value: create(SecurityOpenEnvelopeOpSchema, {
+        envelope: env,
+        expectedPurpose: purposeOf(want.kind),
+        machineId: want.machineId ?? "",
+        sessionId: want.sessionId ?? "",
+        requestId: want.requestId ?? "",
+        seq: want.seq ?? 0n,
+        history,
+      }),
+    });
+    if (res.result.case !== "opened") throw new SecurityError();
+    const opened = res.result.value;
     try {
-      out = historical?.status === "rejected" ? (() => { throw historical.reason; })()
-        : historical?.status === "fulfilled" ? historical.value
-          : history ? await this.security.openHistory(env, seed) : await this.security.openCurrent(env, seed);
-    } catch (e) {
-      if (e instanceof RecoveryHistoryUnavailable) expect(this.projectHeader(e.header), await this.historicalPlace(want, this.projectHeader(e.header), history));
-      throw e;
+      const msg = fromBinary(schema, opened.plaintext);
+      return {
+        header: {
+          version: 3,
+          kind: want.kind,
+          machineId: opened.machineId,
+          sessionId: opened.sessionId,
+          requestId: opened.requestId,
+          seq: opened.seq,
+          deadlineMs: opened.deadlineMs,
+          sender: opened.sender,
+        },
+        contentEpoch: opened.contentEpoch,
+        msg,
+        size: opened.plaintext.length,
+      };
+    } catch {
+      throw new Error(l10n.t("errors.security_body_type_or_direction_mismatch"));
     }
-    const header = this.projectHeader(out.header);
-    expect(header, await this.historicalPlace(want, header, history));
-    try {
-      const msg = fromBinary(schema, out.plaintext);
-      validateSecurityBody(out.header, schema.typeName, msg);
-      return { header, msg, size: out.plaintext.length };
-    } catch { throw new Error(l10n.t("errors.security_body_type_or_direction_mismatch")); }
   }
 
   private async checkNetworkSecurity() {
@@ -1970,23 +1854,40 @@ export class Remote implements CoreExecutor {
   }
 
   private async sealSecureMessage<D extends DescMessage>(
-    h: Omit<Partial<import("./gen/remoteagent/v1/envelope_pb").Header>, "$typeName">,
+    h: Omit<Partial<Header>, "$typeName">,
     schema: D, msg: MessageShape<D>, beforeSign?: () => void, preparedBytes?: Uint8Array<ArrayBuffer>,
-  ) {
+  ): Promise<{ envelope: Envelope; requestKeyHash: Uint8Array<ArrayBuffer>; payloadHash: Uint8Array<ArrayBuffer> }> {
     await this.ensureWakeSecurity();
     if (h.kind === PayloadKind.COMMAND) await this.checkNetworkSecurity();
-    let purpose = Number(h.kind) as Purpose;
+    await this.ensureSecurityRecordLoaded();
+    let purpose = purposeOf(h.kind ?? PayloadKind.UNSPECIFIED);
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
       const f = msg as unknown as { kind: { case?: string } };
       if (f.kind.case === "resize") purpose = Purpose.TerminalResize;
       else if (f.kind.case === "historyRequest") purpose = Purpose.TerminalHistory;
     }
-    const seed = purpose === Purpose.TerminalInput || purpose === Purpose.TerminalResize || purpose === Purpose.TerminalHistory ? this.sessionSeeds.get(h.sessionId ?? "") : undefined;
-    const plain = preparedBytes ?? (toBinary(schema, msg) as Uint8Array<ArrayBuffer>);
-    return this.security.seal({
-      kind: h.kind ?? PayloadKind.UNSPECIFIED, purpose, machine: h.machineId ?? "", session: h.sessionId ?? "", request: h.requestId ?? "",
-      seq: h.seq ?? 0n, deadline: h.deadlineMs ?? (h.kind === PayloadKind.TERMINAL_INPUT ? BigInt(Date.now() + 60000) : 0n), compression: 0,
-    }, plain, seed, beforeSign);
+    const useSessionSeed = purpose === Purpose.TerminalInput || purpose === Purpose.TerminalResize || purpose === Purpose.TerminalHistory;
+    const plaintext = preparedBytes ?? (toBinary(schema, msg) as Uint8Array<ArrayBuffer>);
+    beforeSign?.();
+    const res = await this.ensureHost().securityOp({
+      case: "sealEnvelope",
+      value: create(SecuritySealEnvelopeOpSchema, {
+        purpose,
+        machineId: h.machineId ?? "",
+        sessionId: h.sessionId ?? "",
+        requestId: h.requestId ?? "",
+        seq: h.seq ?? 0n,
+        deadlineMs: h.deadlineMs ?? (h.kind === PayloadKind.TERMINAL_INPUT ? BigInt(Date.now() + 60000) : 0n),
+        plaintext,
+        useSessionSeed,
+      }),
+    });
+    if (res.result.case !== "sealed" || !res.result.value.envelope) throw new SecurityError();
+    return {
+      envelope: res.result.value.envelope,
+      requestKeyHash: new Uint8Array(res.result.value.requestKeyHash),
+      payloadHash: new Uint8Array(res.result.value.payloadHash),
+    };
   }
 
   private roundBudget(): number { return this.everOnline || this.networkGeneration > 0 ? 3000 : SETUP_IDLE_MS; }
@@ -2104,7 +2005,7 @@ export class Remote implements CoreExecutor {
 
   protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
 
-  fileUploadIssue(machineId: string): string { return this.peer(machineId).capabilities?.fileUpload === true ? "" : fileUploadUpdateRequired(); }
+  fileUploadIssue(machineId: string): string { return this.peer(machineId).capabilities?.fileUpload === true ? "" : l10n.t("attachment.update_required"); }
 
   private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {
     if ((cmd?.case !== "send" && cmd?.case !== "createSession") || !cmd.value.fileIds?.length) return;
@@ -2255,24 +2156,23 @@ export class Remote implements CoreExecutor {
 
   // --- Shared Files / Schedules / Drafts / Outbox / Answers / Images / Terminal / Models / Settings / Devices ---
 
-  get sharedFiles(): SharedFileManager {
-    return (this.sharedFilesState ??= new SharedFileManager({
-      getChunk: (sid, fileId, offset) => this.getSharedFileChunk(sid, fileId, offset),
-      isConnected: (sid) => this.peer(this.sessions.get(sid)?.machineId).ready,
-      isMachineOnline: (sid) => {
+  sharedFilesHost() {
+    return {
+      getChunk: (sid: string, fileId: string, offset: bigint) => this.getSharedFileChunk(sid, fileId, offset),
+      isConnected: (sid: string) => this.peer(this.sessions.get(sid)?.machineId).ready,
+      isMachineOnline: (sid: string) => {
         const s = this.sessions.get(sid);
         return !!(s && this.peer(s.machineId).reachable);
       },
-      isSessionEnded: (sid) => {
+      isSessionEnded: (sid: string) => {
         const s = this.sessions.get(sid);
         return s?.info?.status === SessionStatus.EXITED || (s?.endedMs ?? 0n) > 0n;
       },
-      sharedFileChunkBytes: (sid) => {
+      sharedFileChunkBytes: (sid: string) => {
         const s = this.sessions.get(sid);
         return (s && this.peer(s.machineId).capabilities?.sharedFileChunkBytes) || 0;
       },
-      store: sharedFileStore,
-    }));
+    };
   }
 
   hasSharedFilesCapability(sid: string): boolean {
@@ -2540,11 +2440,11 @@ export class Remote implements CoreExecutor {
         sending = sending.then(async () => {
           if (closed || !ws.ready) return;
           seq++;
-          const env = await this.sealSecureMessage(
+          const env = (await this.sealSecureMessage(
             { kind: PayloadKind.TERMINAL_INPUT, machineId: s.machineId, sessionId: sid, requestId: streamId, seq, sender: this.account.deviceId },
             TerminalFrameSchema,
             create(TerminalFrameSchema, frame),
-          );
+          )).envelope;
           if (!closed && ws.ready) ws.send(toBinary(EnvelopeSchema, env));
         });
       },
@@ -2735,40 +2635,27 @@ export class Remote implements CoreExecutor {
   async loadDevices(_describe = true): Promise<void> {
     const devPushSeq = this.devicesPushSeq++;
     try {
-      await this.security.sync();
+      const record = await this.security.sync();
+      await this.ensureSecurityRecordLoaded(record);
       const res = await this.api.listDevices({});
       await this.maybeRepublishAndDescribe(res.devices);
-      const plainDevices = await this.unpackMemberDevices(res.devices);
-      const next = new Map<string, DeviceInfo>(
-        plainDevices.map((pd) => [
-          pd.deviceId,
-          {
-            id: pd.deviceId,
-            kind: pd.kind,
-            pairingIncomplete: pd.createdMs === 0n && !pd.meta,
-            createdMs: pd.createdMs,
-            lastSeenMs: pd.lastSeenMs,
-            meta: pd.meta,
-            metaRev: pd.metaRev,
+      const synced = new Promise<void>((resolve) => {
+        this.devicesSyncWaiters.push(resolve);
+      });
+      this.ensureHost().dispatchEvent(
+        create(CoreEventSchema, {
+          event: {
+            case: "devicesFetched",
+            value: create(DevicesFetchedEventSchema, {
+              opId: 0n,
+              pushSeq: devPushSeq,
+              wireDevices: res.devices,
+            }),
           },
-        ]),
+        }),
       );
-      this.cachedDeviceMap = next;
+      await synced;
       this.devicesStatus = "ready";
-      if (this.hostBridge) {
-        this.hostBridge.dispatchEvent(
-          create(CoreEventSchema, {
-            event: {
-              case: "devicesFetched",
-              value: create(DevicesFetchedEventSchema, {
-                opId: 0n,
-                pushSeq: devPushSeq,
-                devices: plainDevices,
-              }),
-            },
-          }),
-        );
-      }
       this.changed();
     } catch {
       this.devicesStatus = "error";
@@ -2778,6 +2665,7 @@ export class Remote implements CoreExecutor {
 
   async handoffCandidates(): Promise<HandoffOffer[]> {
     await this.loadDevices(false);
+    const { handoffCandidates: verifiedHandoffCandidates } = await import("./authority-client");
     return verifiedHandoffCandidates(
       await this.security.verifiedRecord(),
       [...this.devices.values()].flatMap((d) =>
@@ -2875,12 +2763,12 @@ export class Remote implements CoreExecutor {
       if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.device_information_could_not_be_verified"));
       const own = this.devices.get(this.account.deviceId);
       const revision = own?.metaRev ?? 0n;
-      const meta = await this.sealSecureMessage(
+      const meta = (await this.sealSecureMessage(
         { kind: PayloadKind.DEVICE_META, requestId: this.account.deviceId, seq: revision + 1n, sender: this.account.deviceId },
         DeviceMetaSchema,
         create(DeviceMetaSchema, { ...create(DeviceMetaSchema, own?.meta), handoffRecoveryEd: publicKey }),
         check,
-      );
+      )).envelope;
       request = create(PutDeviceMetaRequestSchema, { deviceId: this.account.deviceId, expectedRevision: revision, meta });
       check();
       await persist(toBinary(PutDeviceMetaRequestSchema, request));
@@ -2911,12 +2799,12 @@ export class Remote implements CoreExecutor {
       check();
       const cur = this.devices.get(id);
       const rev = cur?.metaRev ?? 0n;
-      const env = await this.sealSecureMessage(
+      const env = (await this.sealSecureMessage(
         { kind: PayloadKind.DEVICE_META, requestId: id, seq: rev + 1n, sender: this.account.deviceId },
         DeviceMetaSchema,
         create(DeviceMetaSchema, change(cur?.meta)),
         check,
-      );
+      )).envelope;
       check();
       const r = await this.api.putDeviceMeta({ deviceId: id, expectedRevision: rev, meta: env });
       check();
@@ -2931,36 +2819,48 @@ export class Remote implements CoreExecutor {
   private async republishRecoveryObjects(record: SecurityRecord, api = this.api) {
     const boundary = record.states.filter((_, i) => record.proofs[i]).at(-1)?.core.contentEpoch;
     if (!boundary) return;
+    await this.ensureSecurityRecordLoaded(record);
     for (let attempt = 0; attempt < 5; attempt++) {
       const { object: o } = await api.getAccountPrefs({ objectId: PREFS_OBJECT });
-      if (!o?.envelope || o.revision === 0n || parseHeader(new Uint8Array(o.envelope.securityHeader)).contentEpoch >= boundary) break;
+      if (!o?.envelope || o.revision === 0n) break;
       let snapshot;
       try {
-        snapshot = await this.security.openMessage(o.envelope, ProjectPrefsSchema, true);
+        snapshot = await this.openSecureMessage(
+          o.envelope,
+          { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: o.revision },
+          ProjectPrefsSchema,
+          true,
+        );
       } catch (e) {
         if (e instanceof SecurityError && e.code === "unavailable") break;
         throw e;
       }
-      if (snapshot.header.purpose !== Purpose.Prefs || snapshot.header.seq !== o.revision || snapshot.header.request !== PREFS_OBJECT) {
-        throw new SecurityError("untrusted");
-      }
-      const envelope = await this.security.seal(
-        { kind: 12, purpose: Purpose.Prefs, machine: "", session: "", request: PREFS_OBJECT, seq: o.revision + 1n, deadline: 0n, compression: 0 },
-        toBinary(ProjectPrefsSchema, snapshot.msg),
+      if (snapshot.contentEpoch >= boundary) break;
+      const { envelope } = await this.sealSecureMessage(
+        { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: o.revision + 1n, sender: this.account.deviceId },
+        ProjectPrefsSchema,
+        snapshot.msg,
       );
       if ((await api.putAccountPrefs({ objectId: PREFS_OBJECT, expectedRevision: o.revision, envelope })).applied) break;
       if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
     }
     for (let attempt = 0; attempt < 5; attempt++) {
       const own = (await api.listDevices({})).devices.find((d) => d.id === this.account.deviceId);
-      if (!own?.meta || parseHeader(new Uint8Array(own.meta.securityHeader)).contentEpoch >= boundary) break;
-      const snapshot = await this.security.openMessage(own.meta, DeviceMetaSchema, true);
-      if (snapshot.header.purpose !== Purpose.DeviceMeta || snapshot.header.sender !== own.id || snapshot.header.seq !== own.metaRevision) {
+      if (!own?.meta) break;
+      const snapshot = await this.openSecureMessage(
+        own.meta,
+        { kind: PayloadKind.DEVICE_META, requestId: own.id, seq: own.metaRevision },
+        DeviceMetaSchema,
+        true,
+      );
+      if (snapshot.header.sender !== own.id) {
         throw new SecurityError("untrusted");
       }
-      const meta = await this.security.seal(
-        { kind: 13, purpose: Purpose.DeviceMeta, machine: "", session: "", request: own.id, seq: own.metaRevision + 1n, deadline: 0n, compression: 0 },
-        toBinary(DeviceMetaSchema, snapshot.msg),
+      if (snapshot.contentEpoch >= boundary) break;
+      const { envelope: meta } = await this.sealSecureMessage(
+        { kind: PayloadKind.DEVICE_META, requestId: own.id, seq: own.metaRevision + 1n, sender: this.account.deviceId },
+        DeviceMetaSchema,
+        snapshot.msg,
       );
       if ((await api.putDeviceMeta({ deviceId: own.id, expectedRevision: own.metaRevision, meta })).applied) break;
       if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
@@ -2969,9 +2869,6 @@ export class Remote implements CoreExecutor {
 }
 
 export function errorText(e: unknown): string {
-  if (e instanceof RecoveryHistoryUnavailable) {
-    return l10n.t("errors.history_keys_unavailable_records_from_before_recovery_cannot_be");
-  }
   if (e instanceof SecurityError) {
     if (e.code === "lease") return l10n.t("errors.remote_control_expired_saving_changes_session_control_and_new");
     if (e.code === "unavailable") return l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current_remote");

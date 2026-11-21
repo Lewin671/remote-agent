@@ -51,7 +51,14 @@ func NewMembershipState(parent State, members []Member, removed []string, oldSec
 	if err != nil {
 		return State{}, err
 	}
-	return NewState(parent, members, removed, newSecret, prev, now, hpke)
+	s, err := NewState(parent, members, removed, newSecret, prev, now, hpke)
+	if err != nil {
+		return State{}, err
+	}
+	if err := membershipDelta(parent, s); err != nil {
+		return State{}, err
+	}
+	return s, nil
 }
 
 // NewPairState builds the unsigned state that adds one candidate.

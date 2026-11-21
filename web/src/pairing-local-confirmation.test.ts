@@ -37,7 +37,7 @@ async function peer(options: {
   badCommit?: boolean;
   calls: { registered: number; joined?: number };
 }) {
-  const initiator = newPairKey();
+  const initiator = await newPairKey();
   const trust = pairTrustDescriptor(pin(), approver);
   const commit = await pairDomainCommit(new Uint8Array(initiator.pub), trust);
   const id = crypto.randomUUID();

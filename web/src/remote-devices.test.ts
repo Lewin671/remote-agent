@@ -4,7 +4,6 @@ import { create, toBinary } from "@bufbuild/protobuf";
 import { afterEach, expect, it, vi } from "vitest";
 import { DeviceMetaSchema } from "./gen/remoteagent/v1/remote_pb";
 import { DeviceKind, DeviceSchema } from "./gen/remoteagent/v1/relay_pb";
-import { Purpose } from "./device-security";
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { SyntheticRemote } from "./test/remote-fixture";
 
@@ -63,9 +62,11 @@ it("preserves a verified handoff offer when renaming this device", async () => {
   const r = await probe(), self = r.member.account.deviceId;
   const handoffRecoveryEd = crypto.getRandomValues(new Uint8Array(32));
   let revision = 1n;
-  let envelope = await r.member.sdk.seal({ kind: 13, purpose: Purpose.DeviceMeta,
-    machine: "", session: "", request: self, seq: revision, deadline: 0n, compression: 0 },
-    toBinary(DeviceMetaSchema, create(DeviceMetaSchema, { name: "before", platform: "web", handoffRecoveryEd })));
+  let envelope = await r.world.fixture.seal(
+    self,
+    { kind: 13, requestId: self, seq: revision, sender: self },
+    toBinary(DeviceMetaSchema, create(DeviceMetaSchema, { name: "before", platform: "web", handoffRecoveryEd })),
+  );
   (r as unknown as { api: object }).api = {
     listDevices: async () => ({ devices: [create(DeviceSchema, { id: self, kind: DeviceKind.CLIENT, meta: envelope, metaRevision: revision })] }),
     putDeviceMeta: async (req: { expectedRevision: bigint; meta: Envelope }) => {

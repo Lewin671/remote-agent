@@ -615,24 +615,17 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 		t.Fatalf("OpenNotifyEnvelope failed: err=%s dataLen=%d title=%q", openN.Error, len(openN.Data), gotNotify.Title)
 	}
 
-	// Verify ed25519 seed & account_delete_signing_bytes helpers.
+	// Verify ed25519 seed signing helpers.
 	seed := bytes.Repeat([]byte{0x15}, 32)
-	pubR := SecCall(&corev1.SecCallRequest{Call: &corev1.SecCallRequest_Ed25519SeedPublic{Ed25519SeedPublic: &corev1.SecEd25519SeedPublicCall{Seed: seed}}})
-	delR := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_AccountDeleteSigningBytes{
-			AccountDeleteSigningBytes: &corev1.SecAccountDeleteSigningBytesCall{
-				Account:   devicesec.ID(pubR.Data),
-				HeadHash:  m2Resp.ParsedState.StateHash,
-				Challenge: []byte("chal-1"),
-			},
-		},
-	})
+	pubR := SecCall(&corev1.SecCallRequest{Call: &corev1.SecCallRequest_Ed25519SeedPublic{Ed25519SeedPublic: seed}})
+	msg := append([]byte("remote-agent/v1/delete-account\x00"+devicesec.ID(pubR.Data)+"\x00"), m2Resp.ParsedState.StateHash...)
+	msg = append(msg, []byte("chal-1")...)
 	sigDel := SecCall(&corev1.SecCallRequest{
 		Call: &corev1.SecCallRequest_Ed25519SeedSign{
-			Ed25519SeedSign: &corev1.SecEd25519SeedSignCall{Seed: seed, Message: delR.Data},
+			Ed25519SeedSign: &corev1.SecEd25519SeedSignCall{Seed: seed, Message: msg},
 		},
 	})
-	if !ed25519.Verify(pubR.Data, delR.Data, sigDel.Data) {
+	if !ed25519.Verify(pubR.Data, msg, sigDel.Data) {
 		t.Fatalf("Ed25519SeedSign verification failed")
 	}
 }

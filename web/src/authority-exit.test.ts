@@ -3,7 +3,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { AuthorityClient } from "./authority-client";
 import { authorityServices } from "./authority-setup";
-import { DeviceSecurityClient } from "./device-security-client";
+import { AuthoritySecurity } from "./authority-security";
 import { loadSecurity, updateSecurityEntry } from "./device-security-store";
 import { PairingService } from "./gen/remoteagent/v1/relay_pb";
 import { AuthorityLifecycle, claimSecurityOperation, operation, readSecurityOperation, saveSecurityOperation } from "./security-operation";
@@ -22,7 +22,7 @@ it("allows explicit exit from unsigned and uncertain signed offers but retains d
   vi.stubGlobal("fetch", unexpected);
   const services = authorityServices(account.server);
   const pairing = createClient(PairingService, createConnectTransport({ baseUrl: account.server }));
-  const security = new DeviceSecurityClient(account.deviceId, account.devicePrivate, unexpected, () => true);
+  const security = new AuthoritySecurity(account.deviceId, account.devicePrivate, unexpected, () => true);
   const authority = new AuthorityClient(account, security, services.client("synthetic-token"), pairing, unexpected, lifecycle);
   const sign = vi.spyOn(crypto.subtle, "sign");
   const record = await loadSecurity();

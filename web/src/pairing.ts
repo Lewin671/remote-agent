@@ -186,7 +186,7 @@ export async function joinByPairing(
     return (await loadAccount())!;
   }
   const pc = client(link.server);
-  const key = newPairKey();
+  const key = await newPairKey();
   if (existing && existing.server !== link.server)
     throw new Error(l10n.t("security.security_setup_must_use_the_original_account_s_server"));
   const peek = await pc.peekPairing({

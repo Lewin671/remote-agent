@@ -1,12 +1,13 @@
-import { create, toBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { expect, it, vi } from "vitest";
 import {
   ProjectPrefsSchema,
   MachineMetaSchema,
   DeviceMetaSchema,
 } from "./gen/remoteagent/v1/remote_pb";
+import { SecurityOpenEnvelopeOpSchema } from "./gen/remoteagent/core/v1/security_pb";
 import { SyntheticRemote } from "./test/remote-fixture";
-import { SecurityError } from "./device-security";
+import { Purpose, SecurityError } from "./device-security";
 it("reads stored prefs from a removed writer and rejects tampered provenance", async () => {
   const r = await SyntheticRemote.create();
   try {
@@ -24,16 +25,33 @@ it("reads stored prefs from a removed writer and rejects tampered provenance", a
     );
     await r.world.fixture.remove([writer.account.deviceId]);
     const local = r as any;
-    await local.security.sync();
-    const o = { revision: 1n, envelope: env };
-    const opened = await local.unpackAccountPrefs(o);
-    expect(opened.broken).toBe(false);
-    expect(opened.prefs.pinned.map((p: any) => p.path)).toEqual(["/stored"]);
-    const tampered = await local.unpackAccountPrefs({
-      ...o,
-      envelope: { ...env, signature: new Uint8Array(64) },
+    await local.ensureSecurityRecordLoaded(await local.security.sync());
+    const opened = await local.ensureHost().securityOp({
+      case: "openEnvelope",
+      value: create(SecurityOpenEnvelopeOpSchema, {
+        envelope: env,
+        expectedPurpose: Purpose.Prefs,
+        requestId: "project-prefs",
+        seq: 1n,
+        history: true,
+      }),
     });
-    expect(tampered.broken).toBe(true);
+    expect(opened.result.case).toBe("opened");
+    if (opened.result.case !== "opened") throw new Error("expected opened prefs");
+    const prefs = fromBinary(ProjectPrefsSchema, opened.result.value.plaintext);
+    expect(prefs.pinned.map((p: any) => p.path)).toEqual(["/stored"]);
+    await expect(
+      local.ensureHost().securityOp({
+        case: "openEnvelope",
+        value: create(SecurityOpenEnvelopeOpSchema, {
+          envelope: { ...env, signature: new Uint8Array(64) },
+          expectedPurpose: Purpose.Prefs,
+          requestId: "project-prefs",
+          seq: 1n,
+          history: true,
+        }),
+      }),
+    ).rejects.toThrow();
   } finally {
     await r.dispose();
   }
@@ -97,7 +115,7 @@ it("keeps returned archives across consecutive refreshes and removes only a dele
     await vi.waitFor(async () => {
       const snap = await (r as any).syncSecurity(0n, 0n, false);
       const { EventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
-      getCoreHost(r).dispatch(create(EventSchema, { event: { case: "securitySnapshot", value: snap } }));
+      getCoreHost(r).dispatch(create(EventSchema, { event: { case: "securityRecord", value: snap } }));
       expect((r as any).trustedMembers.has(r.machine)).toBe(false);
     });
     await refresh();

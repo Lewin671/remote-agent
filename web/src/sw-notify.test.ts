@@ -1,14 +1,14 @@
 import { t as message, localeStore } from "./i18n";
 import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
-import { deflateSync } from "fflate";
+import { deflateRawSync } from "node:zlib";
 import { IDBFactory } from "fake-indexeddb";
 import { NotifyContentSchema, type NotifyContent } from "./gen/remoteagent/v1/remote_pb";
 import { EnvelopeSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
-import { formCipher, fromEnvelope, parseHeader, stateHash, toEnvelope, type SecurityHeader } from "./device-security";
+import { stateHash, type SecurityHeader } from "./device-security";
 import { initializeSecurity, loadSecurity, touchSecurity } from "./device-security-store";
-import { rawSecurity, storedSecurity } from "./test/stored-security-fixture";
+import { parseTestHeader, rawSecurity, sealTestEnvelope, storedSecurity } from "./test/stored-security-fixture";
 import { GoSecurityFixture, recordFromJSON } from "./test/security-fixture";
 import { pushContent } from "./sw-notify";
 import rawSource from "./sw.js?raw";
@@ -29,7 +29,7 @@ it("opens the actual Go sender's signed and compressed NotifyContent using store
         kind: NotifyKind.SCHEDULED, machineId: f.machine, sessionId: "session",
         title: "Go 端任务名", text, sourceEventSeq: 7n,
       }))));
-    expect(parseHeader(fromEnvelope(env).header).compression).toBe(1);
+    expect(parseTestHeader(new Uint8Array(env.securityHeader)).compression).toBe(1);
     expect(await pushContent({ session: "session", tag: "session/scheduled:7/NOTIFY_KIND_SCHEDULED",
       content: btoa(String.fromCharCode(...toBinary(EnvelopeSchema, env))) })).toEqual({ title: "Go 端任务名", body: text });
     const turn = await f.fixture.seal(f.machine, { kind: 10, machineId: f.machine,
@@ -50,13 +50,13 @@ async function notification(fields: Partial<NotifyContent> = {}, header: Partial
     machineId: machine, sessionId: "session", kind: NotifyKind.SCHEDULED,
     machineName:"", title: "每天的研究任务", text: "结果摘要", sourceEventSeq: 7n, sharedFileCount: 0, ...fields,
   }));
-  if (compressed) body = deflateSync(body);
-  const env = toEnvelope(await formCipher(wrongKey ? new Uint8Array(32) : record.secret, undefined, {
+  if (compressed) body = deflateRawSync(body);
+  const env = await sealTestEnvelope(wrongKey ? new Uint8Array(32) : record.secret, undefined, {
     account: record.pin.account, domain: record.pin.domain, epoch: head.core.epoch,
     state: await stateHash(head), contentEpoch: head.core.contentEpoch, sender: machine,
     kind: 10, purpose: 10, machine, session: "session", request: fields.kind === NotifyKind.TURN_ENDED ? "notify:2:7" : "scheduled:7", seq: 0n,
     deadline: 0n, compression: compressed ? 1 : 0, ...header,
-  }, new Uint8Array(body), f.machineEd));
+  }, new Uint8Array(body), f.machineEd);
   const payload = (envelope: Envelope = env) => ({
     title: "remote-agent", body: generic.body, session: "session",
     tag: fields.kind === NotifyKind.TURN_ENDED ? "session/NOTIFY_KIND_TURN_ENDED" : "session/scheduled:7/NOTIFY_KIND_SCHEDULED",
@@ -175,7 +175,7 @@ it.each(["zh-CN","en"] as const)("receives verified machine-scoped data-only pus
  localeStore.overrideForTesting(locale);
  const f=await storedSecurity(),record=await loadSecurity(),head=record.states.at(-1)!,machine=head.core.members.find(m=>m.kind===1)!.id;
  const content=create(NotifyContentSchema,{kind:NotifyKind.MACHINE_DISK,machineId:machine,machineName:"电脑 A",diskStatus:{observedMs:1700000000000n,availableBytes:1_500_000_000n,pressure:3}});
- const env=toEnvelope(await formCipher(record.secret,undefined,{account:record.pin.account,domain:record.pin.domain,epoch:head.core.epoch,state:await stateHash(head),contentEpoch:head.core.contentEpoch,sender:machine,kind:10,purpose:10,machine,session:"",request:"disk:1700000000000:3",seq:0n,deadline:0n,compression:0},toBinary(NotifyContentSchema,content),f.machineEd));
+ const env=await sealTestEnvelope(record.secret,undefined,{account:record.pin.account,domain:record.pin.domain,epoch:head.core.epoch,state:await stateHash(head),contentEpoch:head.core.contentEpoch,sender:machine,kind:10,purpose:10,machine,session:"",request:"disk:1700000000000:3",seq:0n,deadline:0n,compression:0},toBinary(NotifyContentSchema,content),f.machineEd);
  const payload={session:"",machine,tag:`${machine}/NOTIFY_KIND_MACHINE_DISK`,content:btoa(String.fromCharCode(...toBinary(EnvelopeSchema,env)))};
  const result=await pushContent(payload);expect(result.machineId).toBe(machine);expect(result.body).toBe(locale==="en"?"Clean up now or sessions may not start.":"现在清理，否则会话可能启动不了。");
  expect((await pushContent({...payload,machine:"other"})).machineId).toBeUndefined();

@@ -236,7 +236,6 @@
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "History keys unavailable: records from before recovery cannot be decrypted";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "Invalid ciphertext: signature, key, or content verification failed";
 "errors_invalid_pairing_approval_signature" = "Invalid pairing approval signature";
-"errors_invalid_session_seed" = "Invalid session seed";
 "errors_ios_already_registering_wait_for_the_result" = "Already registering %1$@. Wait for the result.";
 "errors_ios_cannot_find_the_server_check_your_network" = "Cannot find the server. Check your network.";
 "errors_ios_cannot_open_the_computer_s_reply_command_execution_is" = "Cannot open the computer’s reply. Command execution is unconfirmed.";

@@ -32,6 +32,7 @@
 //   ?demo&notify=1#/s/s-notify              scheduled pushes' receipts: the computer's copy, the agent's own, a stopped run's
 
 import { localeStore, t, type Locale } from "../i18n";
+import { sharedFilesOf } from "../shared-files";
 import { seedDirect } from "./direct-demo";
 import { buildDemoUsageResponse } from "./usage-demo";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
@@ -116,6 +117,13 @@ import {
   type SecuritySnapshotEvent,
   type TokenResultEvent,
 } from "../gen/remoteagent/core/v1/app_pb";
+import {
+  DemoDeviceSchema,
+  DemoMachineSchema,
+  DemoSessionSchema,
+  SeedDemoWorldEventSchema,
+  type SecurityRecordEvent,
+} from "../gen/remoteagent/core/v1/security_pb";
 import { DeviceKind, SessionCursorSchema } from "../gen/remoteagent/v1/relay_pb";
 import {
   AgentSettingsSchema,
@@ -1538,6 +1546,7 @@ const longCommand = [
 
 export class DemoRemote extends Remote {
   // Locally authored samples, with no relay or account data.
+  get sharedFiles() { return sharedFilesOf(this); }
   override demoFlag(name: string): boolean { return this.opts.has(name); }
   private demoMachines = new Map<string, MachineView>();
   private demoSessions = new Map<string, SessionView>();
@@ -1617,7 +1626,29 @@ export class DemoRemote extends Remote {
     });
   }
   private demoBoot(opId: bigint) {
-    return create(CacheBootstrapLoadedEventSchema, { opId, machines: [...this.demoMachines.values()].map(this.plainMachine), sessions: [...this.demoSessions.values()].map(this.plainSession), prefs: this.demoPrefs(), homeScopeToken: this.demoScope(), scopeHmacKey: new Uint8Array(32) });
+    return create(CacheBootstrapLoadedEventSchema, { opId, homeScopeToken: this.demoScope(), scopeHmacKey: new Uint8Array(32) });
+  }
+  private demoWorld() {
+    return create(SeedDemoWorldEventSchema, {
+      machines: [...this.demoMachines.values()].map((m) =>
+        create(DemoMachineSchema, { machineId: m.id, online: m.online, lastSeenMs: m.lastSeenMs, meta: m.meta }),
+      ),
+      sessions: [...this.demoSessions.values()].map((s) =>
+        create(DemoSessionSchema, {
+          sessionId: s.id,
+          machineId: s.machineId,
+          lastSeq: s.lastSeq,
+          updatedMs: s.updatedMs,
+          listedEndedMs: s.endedMs,
+          meta: s.info,
+          checkpoint: this.demoCheckpoint(s),
+        }),
+      ),
+      devices: [...this.demoDevices.values()].map((d) =>
+        create(DemoDeviceSchema, { deviceId: d.id, kind: d.kind, createdMs: d.createdMs, lastSeenMs: d.lastSeenMs, meta: d.meta }),
+      ),
+      prefs: this.stored.prefs,
+    });
   }
   private pushFrame(legId: bigint, frame: NonNullable<import("../gen/remoteagent/core/v1/app_pb").StreamFrameEvent["frame"]>) {
     getCoreHost(this).dispatch(create(CoreEventSchema, { event: { case: "streamFrame", value: { legId, frame } } }));
@@ -1640,6 +1671,9 @@ export class DemoRemote extends Remote {
         host.start();
         this.demoBootConsumed = true;
         host.dispatch(create(CoreEventSchema, { event: { case: "cacheBootstrapLoaded", value: this.demoBoot(this.syncBootOpId) } }));
+        if (this.opts.get("list") !== "fail") {
+          host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld() } }));
+        }
         host.dispatch(create(CoreEventSchema, { event: { case: "securitySnapshot", value: this.demoSec(this.syncSecOpId, 0n, this.syncSecOpId === 0n ? ++this.demoSecurityPushSeq : 0n) } }));
         host.dispatch(create(CoreEventSchema, { event: { case: "tokenResult", value: this.demoToken(this.syncTokenOpId) } }));
         drainRpc();
@@ -1680,7 +1714,10 @@ export class DemoRemote extends Remote {
     if (this.demoSyncing) { this.syncTokenOpId = opId; return new Promise(() => {}); }
     return Promise.resolve(this.demoToken(opId));
   }
-  override syncSecurity(opId: bigint, networkGeneration: bigint): Promise<SecuritySnapshotEvent> {
+  override securityConfig() { return undefined; }
+  override readCachedSecurityRecord(): Promise<SecurityRecordEvent | undefined> { return Promise.resolve(undefined); }
+  override syncSecurity(): Promise<SecurityRecordEvent> { return new Promise(() => {}); }
+  override syncSecuritySnapshot(opId: bigint, networkGeneration: bigint): Promise<SecuritySnapshotEvent> {
     if (this.demoSyncing) { this.syncSecOpId = opId; return new Promise(() => {}); }
     return Promise.resolve(this.demoSec(opId, networkGeneration));
   }
@@ -1696,7 +1733,6 @@ export class DemoRemote extends Remote {
     callbacks.onReady(legId, BigInt(Date.now()));
   }
   override closeStreamLeg(legId: bigint) { if (this.demoStream?.legId === legId) this.demoStream = undefined; }
-  override directAuthorize() {}
 
   setDemoMainOnline(online: boolean) {
     const stream = this.demoStream;
