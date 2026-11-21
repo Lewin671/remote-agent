@@ -1495,7 +1495,7 @@ type EntropyProvided struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RandomIds     []string               `protobuf:"bytes,1,rep,name=random_ids,json=randomIds,proto3" json:"random_ids,omitempty"`
 	UnitFloats    []float64              `protobuf:"fixed64,2,rep,packed,name=unit_floats,json=unitFloats,proto3" json:"unit_floats,omitempty"`
-	Seed          []byte                 `protobuf:"bytes,3,opt,name=seed,proto3" json:"seed,omitempty"`
+	RandomBytes   []byte                 `protobuf:"bytes,3,opt,name=random_bytes,json=randomBytes,proto3" json:"random_bytes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1544,9 +1544,9 @@ func (x *EntropyProvided) GetUnitFloats() []float64 {
 	return nil
 }
 
-func (x *EntropyProvided) GetSeed() []byte {
+func (x *EntropyProvided) GetRandomBytes() []byte {
 	if x != nil {
-		return x.Seed
+		return x.RandomBytes
 	}
 	return nil
 }
@@ -9217,12 +9217,12 @@ func (x *AttachmentsSettledEffect) GetConsumed() bool {
 }
 
 type RequestEntropyEffect struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	MinIds        int32                  `protobuf:"varint,1,opt,name=min_ids,json=minIds,proto3" json:"min_ids,omitempty"`
-	MinFloats     int32                  `protobuf:"varint,2,opt,name=min_floats,json=minFloats,proto3" json:"min_floats,omitempty"`
-	MinSeedBytes  int32                  `protobuf:"varint,3,opt,name=min_seed_bytes,json=minSeedBytes,proto3" json:"min_seed_bytes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MinIds         int32                  `protobuf:"varint,1,opt,name=min_ids,json=minIds,proto3" json:"min_ids,omitempty"`
+	MinFloats      int32                  `protobuf:"varint,2,opt,name=min_floats,json=minFloats,proto3" json:"min_floats,omitempty"`
+	MinRandomBytes int32                  `protobuf:"varint,3,opt,name=min_random_bytes,json=minRandomBytes,proto3" json:"min_random_bytes,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RequestEntropyEffect) Reset() {
@@ -9269,9 +9269,9 @@ func (x *RequestEntropyEffect) GetMinFloats() int32 {
 	return 0
 }
 
-func (x *RequestEntropyEffect) GetMinSeedBytes() int32 {
+func (x *RequestEntropyEffect) GetMinRandomBytes() int32 {
 	if x != nil {
-		return x.MinSeedBytes
+		return x.MinRandomBytes
 	}
 	return 0
 }
@@ -10187,13 +10187,13 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x12yesterday_start_ms\x18\x03 \x01(\x03R\x10yesterdayStartMs\x12\"\n" +
 	"\rweek_start_ms\x18\x04 \x01(\x03R\vweekStartMs\x12\x19\n" +
 	"\bnow_year\x18\x05 \x01(\x05R\anowYear\x127\n" +
-	"\x06months\x18\x06 \x03(\v2\x1f.remoteagent.core.v1.MonthStartR\x06months\"e\n" +
+	"\x06months\x18\x06 \x03(\v2\x1f.remoteagent.core.v1.MonthStartR\x06months\"t\n" +
 	"\x0fEntropyProvided\x12\x1d\n" +
 	"\n" +
 	"random_ids\x18\x01 \x03(\tR\trandomIds\x12\x1f\n" +
 	"\vunit_floats\x18\x02 \x03(\x01R\n" +
-	"unitFloats\x12\x12\n" +
-	"\x04seed\x18\x03 \x01(\fR\x04seed\"\xa1\x01\n" +
+	"unitFloats\x12!\n" +
+	"\frandom_bytes\x18\x03 \x01(\fR\vrandomBytes\"\xa1\x01\n" +
 	"\x13SyncLifecycleAction\x12:\n" +
 	"\x04kind\x18\x01 \x01(\x0e2&.remoteagent.core.v1.SyncLifecycleKindR\x04kind\x12(\n" +
 	"\x10home_scope_token\x18\x02 \x01(\tR\x0ehomeScopeToken\x12$\n" +
@@ -10785,12 +10785,12 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"projectKey\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\tR\trequestId\x12\x1a\n" +
-	"\bconsumed\x18\x03 \x01(\bR\bconsumed\"t\n" +
+	"\bconsumed\x18\x03 \x01(\bR\bconsumed\"x\n" +
 	"\x14RequestEntropyEffect\x12\x17\n" +
 	"\amin_ids\x18\x01 \x01(\x05R\x06minIds\x12\x1d\n" +
 	"\n" +
-	"min_floats\x18\x02 \x01(\x05R\tminFloats\x12$\n" +
-	"\x0emin_seed_bytes\x18\x03 \x01(\x05R\fminSeedBytes\"\x85 \n" +
+	"min_floats\x18\x02 \x01(\x05R\tminFloats\x12(\n" +
+	"\x10min_random_bytes\x18\x03 \x01(\x05R\x0eminRandomBytes\"\x85 \n" +
 	"\x06Effect\x12;\n" +
 	"\x06render\x18\x01 \x01(\v2!.remoteagent.core.v1.RenderEffectH\x00R\x06render\x12H\n" +
 	"\vopen_stream\x18\x02 \x01(\v2%.remoteagent.core.v1.OpenStreamEffectH\x00R\n" +

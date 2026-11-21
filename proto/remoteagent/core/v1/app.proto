@@ -108,7 +108,7 @@ message LocalCalendar {
 message EntropyProvided {
   repeated string random_ids = 1;
   repeated double unit_floats = 2;
-  bytes seed = 3;
+  bytes random_bytes = 3;
 }
 
 enum SyncLifecycleKind {
@@ -864,7 +864,7 @@ message AttachmentsSettledEffect {
 message RequestEntropyEffect {
   int32 min_ids = 1;
   int32 min_floats = 2;
-  int32 min_seed_bytes = 3;
+  int32 min_random_bytes = 3;
 }
 
 message Effect {

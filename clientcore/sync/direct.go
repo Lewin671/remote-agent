@@ -85,11 +85,11 @@ func (e *Engine) handleTransportConfig(ctx *StepContext, ev *corev1.TransportCon
 	ctx.Dirty.MarkDirect()
 }
 
-func (e *Engine) handleDirectEntropySeed(ctx *StepContext, seed []byte) {
-	if len(seed) == 0 || e.transportCoord == nil {
+func (e *Engine) handleDirectRandomBytes(ctx *StepContext, raw []byte) {
+	if len(raw) == 0 {
 		return
 	}
-	e.emitCoordEffects(ctx, e.transportCoord.Seed(e.nowMs, seed))
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().ProvideRandomBytes(e.nowMs, raw))
 }
 
 func (e *Engine) handleDirectPreferencesLoaded(ctx *StepContext, ev *corev1.DirectPreferencesLoadedEvent) {
@@ -480,7 +480,7 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 			ctx.emit(&corev1.Effect{
 				Effect: &corev1.Effect_RequestEntropy{
 					RequestEntropy: &corev1.RequestEntropyEffect{
-						MinSeedBytes: int32(eff.MinSeedBytes),
+						MinRandomBytes: int32(eff.MinRandomBytes),
 					},
 				},
 			})

@@ -3,6 +3,7 @@ package transport
 import (
 	"crypto/ecdh"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -11,6 +12,12 @@ import (
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
+
+func testOSRandom(n int) []byte {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return b
+}
 
 type coordActor struct {
 	t        *testing.T
@@ -92,7 +99,7 @@ func TestCoordinatorLoopbackHandshakeControlAndDiagnostics(t *testing.T) {
 		ProtocolVersion: 17,
 		StunServers:     []string{"stun:127.0.0.1:3478"},
 	})
-	coord.Seed(now, []byte("deterministic-seed-32-bytes-long!!"))
+	coord.ProvideRandomBytes(now, testOSRandom(CoordEntropyRefillBytes))
 	coord.SetMainLeg(now, true)
 	coord.SetWatched(now, map[string][]string{daemon.id: {"sess-1", "sess-2"}})
 
@@ -136,7 +143,6 @@ func TestCoordinatorLoopbackHandshakeControlAndDiagnostics(t *testing.T) {
 	}
 	daemonPub := peerwire.Public{ID: []byte(daemon.id), Role: 2, Instance: daemonInst, Boot: daemonBoot, Sign: daemon.signPub[:], Box: daemon.xPub[:]}
 	clientMember := peerwire.Public{ID: []byte(client.id), Role: 1, Sign: client.signPub[:], Box: client.xPub[:]}
-	daemonDRBG := linkcore.NewDRBG([]byte("daemon-seed-32-bytes-long-abcdef"))
 
 	type dPC struct {
 		use       uint64
@@ -264,7 +270,7 @@ func TestCoordinatorLoopbackHandshakeControlAndDiagnostics(t *testing.T) {
 					Codec:      codec,
 					Connection: opened.Context.Connection,
 					Deadline:   opened.Context.Deadline,
-					Entropy:    daemonDRBG,
+					Entropy:    rand.Reader,
 					Allow:      func() bool { return true },
 				}, false, uint64(now))
 				if err != nil {
@@ -335,7 +341,7 @@ func TestCoordinatorUnsupportedAndTerminalReopen(t *testing.T) {
 	now := int64(1_700_000_000_000)
 
 	coord := NewCoordinator(CoordConfig{Supported: true, Account: "00000000000000000000000000000001", ProtocolVersion: 17})
-	coord.Seed(now, []byte("seed-for-unsupported-and-reopen!"))
+	coord.ProvideRandomBytes(now, testOSRandom(CoordEntropyRefillBytes))
 	coord.SetMainLeg(now, true)
 	coord.OnSecuritySnapshot(now, CoordSecuritySnapshot{
 		Member: true, Account: "00000000000000000000000000000001", Domain: domain,
@@ -392,4 +398,94 @@ func TestCoordinatorUnsupportedAndTerminalReopen(t *testing.T) {
 		t.Fatalf("expected CoordTerminalOpen when timer fires, got %+v", effs)
 	}
 	_ = codec
+}
+
+func TestCoordinatorEntropyPoolLowWaterExhaustionAndRefill(t *testing.T) {
+	client := newCoordActor(t, 5, 1)
+	daemon := newCoordActor(t, 6, 2)
+	domain := sha256.Sum256([]byte("ent-domain"))
+	headHash := sha256.Sum256([]byte("ent-head"))
+	now := int64(1_700_000_000_000)
+
+	coord := NewCoordinator(CoordConfig{
+		Supported:       true,
+		Account:         "00000000000000000000000000000001",
+		ProtocolVersion: 17,
+	})
+	effs := coord.Configure(now, CoordConfig{
+		Supported:       true,
+		Account:         "00000000000000000000000000000001",
+		ProtocolVersion: 17,
+	})
+	// Re-check initial low-water request on fresh Coordinator via Configure flip or direct ProvideRandomBytes.
+	effs = append(effs, coord.ProvideRandomBytes(now, testOSRandom(32))...) // < 48 B instance requirement
+	var sawNeed int
+	for _, e := range effs {
+		if ne, ok := e.(CoordNeedEntropy); ok {
+			sawNeed = ne.MinRandomBytes
+		}
+	}
+	if sawNeed < CoordEntropyRefillBytes {
+		t.Fatalf("expected CoordNeedEntropy >= %d when pool has < 48 B, got %d", CoordEntropyRefillBytes, sawNeed)
+	}
+	if coord.HasInstance() {
+		t.Fatal("expected HasInstance() == false with only 32 B")
+	}
+
+	// Engine RequestEntropy while pool lacks 16*8=128 B queues the jitter refill;
+	// also queue an outbound StartRound before instance/entropy is sufficient.
+	coord.SetMainLeg(now, true)
+	snapEffs := coord.OnSecuritySnapshot(now, CoordSecuritySnapshot{
+		Member: true, Account: "00000000000000000000000000000001", Domain: domain,
+		Head: "head-ent", HeadHash: headHash, Epoch: 1, StartedAt: now, LeaseNotAfter: now + 60_000,
+		SelfID: client.id, SelfEdPub: client.signPub, SelfXPub: client.xPub,
+		Members: []CoordMember{
+			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true},
+			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub},
+		},
+	})
+	for _, e := range snapEffs {
+		if a, ok := e.(CoordKeyAgree); ok {
+			coord.OnKeyAgreed(now, a.OpID, client.agree(daemon.xPub), true)
+		}
+	}
+	// Outbound start should be queued waiting for instance/entropy, not lost.
+	if len(coord.pendingStarts) != 1 || len(coord.rounds) != 0 {
+		t.Fatalf("expected queued pendingStart while pool insufficient, pendingStarts=%d rounds=%d", len(coord.pendingStarts), len(coord.rounds))
+	}
+
+	// Provide just 80 bytes: 32 + 80 = 112 B total. Enough for instance (48 B),
+	// 16 conn + 40 Seal = 56 B? 112-48 = 64 B left, Wait: Engine also wants 128 B!
+	// Engine gets skipped on 64 B -> round uses 16+40=56 B, leaving 8 B < low-water,
+	// so SignFrame IS emitted AND a low-water refill is requested!
+	effs = coord.ProvideRandomBytes(now, testOSRandom(80))
+	if !coord.HasInstance() {
+		t.Fatal("expected HasInstance() == true after >= 48 B")
+	}
+	var sawSign, sawRefill bool
+	for _, e := range effs {
+		if _, ok := e.(CoordKeySign); ok {
+			sawSign = true
+		}
+		if ne, ok := e.(CoordNeedEntropy); ok && ne.MinRandomBytes >= CoordEntropyRefillBytes {
+			sawRefill = true
+		}
+	}
+	if !sawSign || !sawRefill {
+		t.Fatalf("expected queued round to emit CoordKeySign (%v) and request low-water refill (%v)", sawSign, sawRefill)
+	}
+
+	// Refill a full 4096 B chunk: pool satisfies pending Engine units and stays above low-water.
+	effs = coord.ProvideRandomBytes(now, testOSRandom(CoordEntropyRefillBytes))
+	if coord.pendingEngineUnits != 0 {
+		t.Fatalf("expected pendingEngineUnits drained after 4096 B refill, got %d", coord.pendingEngineUnits)
+	}
+	if coord.EntropyAvailable() < CoordEntropyLowWater {
+		t.Fatalf("expected EntropyAvailable >= %d after refill, got %d", CoordEntropyLowWater, coord.EntropyAvailable())
+	}
+	for _, e := range effs {
+		if _, ok := e.(CoordNeedEntropy); ok {
+			t.Fatal("did not expect redundant CoordNeedEntropy while pool is healthy")
+		}
+	}
 }

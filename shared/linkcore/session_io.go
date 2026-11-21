@@ -93,6 +93,9 @@ type (
 	}
 	// PCClosed reports that the PC has closed, for whatever reason.
 	PCClosed struct{ ID uint64 }
+	// EntropyReady notifies Session that the caller refilled cfg.Entropy so
+	// frames queued on ErrNeedEntropy may be sealed now.
+	EntropyReady struct{}
 )
 
 type (
@@ -102,6 +105,9 @@ type (
 		Op      uint64
 		Message []byte
 	}
+	// NeedEntropy asks the caller to refill cfg.Entropy with at least Bytes
+	// fresh random bytes and deliver EntropyReady.
+	NeedEntropy struct{ Bytes int }
 	// TransmitFrame hands one sealed frame to the main connection. The
 	// executor rechecks Current and its own gates when the frame is written.
 	TransmitFrame struct {
@@ -182,8 +188,10 @@ func (PCCandidatesAdded) sessionEvent() {}
 func (PCLocalCandidate) sessionEvent()  {}
 func (PCStateChanged) sessionEvent()    {}
 func (PCClosed) sessionEvent()          {}
+func (EntropyReady) sessionEvent()      {}
 
 func (SignFrame) sessionEffect()       {}
+func (NeedEntropy) sessionEffect()     {}
 func (TransmitFrame) sessionEffect()   {}
 func (HandleControl) sessionEffect()   {}
 func (CreatePC) sessionEffect()        {}

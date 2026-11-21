@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/shared/peerwire"
@@ -738,5 +739,92 @@ func TestPeerUnsupportedAndSignalRejectedAndMarks(t *testing.T) {
 	}
 	if !closedPC || !e.s.pcs[0].signal.Closed {
 		t.Fatalf("expected use 1 PC closed as peer_unsupported (closedPC=%v signal.Closed=%v)", closedPC, e.s.pcs[0].signal.Closed)
+	}
+}
+
+type limitedEntropyReader struct {
+	buf []byte
+}
+
+func (r *limitedEntropyReader) Read(p []byte) (int, error) {
+	if len(r.buf) < len(p) {
+		return 0, ErrNeedEntropy
+	}
+	n := copy(p, r.buf)
+	copy(r.buf, r.buf[n:])
+	r.buf = r.buf[:len(r.buf)-n]
+	return n, nil
+}
+
+func (r *limitedEntropyReader) topUp(n int) {
+	extra := make([]byte, n)
+	_, _ = rand.Read(extra)
+	r.buf = append(r.buf, extra...)
+}
+
+func TestSessionQueuesAndResumesOnEntropyExhaustion(t *testing.T) {
+	a, b := orderedKeys(t)
+	codec := testCodec(t)
+	var now uint64 = 1_700_000_000_000
+	conn := make([]byte, 16)
+	_, _ = io.ReadFull(rand.Reader, conn)
+	deadline := now + 10000
+
+	rA := &limitedEntropyReader{} // empty initially: Probe queues on NeedEntropy
+	eA := &fakeEnd{t: t, which: 0, key: a, codec: codec, peer: b.pub, now: &now, pcs: map[uint64]*fakePC{}, ready: map[uint64]*fakePC{}}
+	eB := newFakeEnd(t, 1, b, a.pub, codec, conn, &now, deadline, false, nil)
+
+	sessA, fxA, err := NewSession(SessionConfig{
+		Self: a.pub, Peer: b.pub.Member(), Shared: a.shared(b.pub), Codec: codec,
+		Connection: conn, Deadline: deadline, Entropy: rA, Allow: func() bool { return true },
+	}, true, now)
+	if err != nil {
+		t.Fatalf("NewSession with exhausted entropy: %v", err)
+	}
+	eA.s = sessA
+	var needBytes int
+	for _, f := range fxA {
+		if ne, ok := f.(NeedEntropy); ok {
+			needBytes = ne.Bytes
+		}
+	}
+	if needBytes != peerwire.SealEntropy {
+		t.Fatalf("expected NeedEntropy(%d) on Probe, got %d", peerwire.SealEntropy, needBytes)
+	}
+	eA.apply(fxA)
+	if len(eA.sent) != 0 {
+		t.Fatal("Probe must not transmit before entropy arrives")
+	}
+
+	// Refill just enough for Probe (1 frame), then exhaust mid-handshake on Offers/Candidates.
+	rA.topUp(peerwire.SealEntropy)
+	eA.handle(EntropyReady{})
+	if len(eA.sent) != 1 || eA.sent[0].Type != 1 {
+		t.Fatalf("expected Probe after EntropyReady, got %+v", eA.sent)
+	}
+
+	pair := &fakePair{now: now, ends: [2]*fakeEnd{eA, eB}}
+	sawMidNeed := false
+	eA.observe = func(f Effect) {
+		if _, ok := f.(NeedEntropy); ok {
+			sawMidNeed = true
+			// Refill synchronously on the next step after queueing multiple frames.
+		}
+	}
+	for i := 0; i < 400 && !pair.allReady(); i++ {
+		if rA.buf == nil || len(rA.buf) < peerwire.SealEntropy {
+			// Let one step run while empty if we haven't observed mid-handshake NeedEntropy yet.
+			if i > 2 || sawMidNeed {
+				rA.topUp(512)
+				eA.handle(EntropyReady{})
+			}
+		}
+		pair.step()
+	}
+	if !sawMidNeed {
+		t.Fatal("expected NeedEntropy mid-handshake after initial refill")
+	}
+	if !pair.allReady() {
+		t.Fatalf("session did not establish after entropy refill: steps %v / %v", eA.s.Steps(), eB.s.Steps())
 	}
 }

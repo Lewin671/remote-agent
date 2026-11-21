@@ -560,8 +560,8 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	e.entropy.push(ev.RandomIds, ev.UnitFloats)
 	if ep := ev.GetEntropyProvided(); ep != nil {
 		e.entropy.push(ep.RandomIds, ep.UnitFloats)
-		if len(ep.Seed) > 0 {
-			e.handleDirectEntropySeed(ctx, ep.Seed)
+		if len(ep.RandomBytes) > 0 {
+			e.handleDirectRandomBytes(ctx, ep.RandomBytes)
 		}
 		return true, finalizeResult(ctx)
 	}

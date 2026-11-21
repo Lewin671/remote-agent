@@ -27,7 +27,7 @@ private val DEFAULT_SESSION_WINDOW: SessionWindowRequest =
 private const val CALENDAR_MONTH_HISTORY = 35
 private const val INITIAL_ENTROPY_IDS = 32
 private const val INITIAL_ENTROPY_FLOATS = 32
-private const val INITIAL_ENTROPY_SEED_BYTES = 32
+private const val INITIAL_ENTROPY_RANDOM_BYTES = 4096
 
 fun uiMessage(key: String, args: Map<String, Any> = emptyMap()): UiMessage = UiMessage(key, args)
 
@@ -373,7 +373,7 @@ class CoreHost(
                 if (!closed.get()) {
                     dispatchOnWorker(
                         CoreEvent.newBuilder()
-                            .setEntropyProvided(buildEntropyProvided(INITIAL_ENTROPY_IDS, INITIAL_ENTROPY_FLOATS, INITIAL_ENTROPY_SEED_BYTES))
+                            .setEntropyProvided(buildEntropyProvided(INITIAL_ENTROPY_IDS, INITIAL_ENTROPY_FLOATS, INITIAL_ENTROPY_RANDOM_BYTES))
                             .build(),
                     )
                     val nowMs = clock()
@@ -563,7 +563,7 @@ class CoreHost(
                 val floats = maxOf(req.minFloats, INITIAL_ENTROPY_FLOATS / 2)
                 dispatch(
                     CoreEvent.newBuilder()
-                        .setEntropyProvided(buildEntropyProvided(ids, floats, req.minSeedBytes))
+                        .setEntropyProvided(buildEntropyProvided(ids, floats, req.minRandomBytes))
                         .build(),
                 )
             }
@@ -598,7 +598,7 @@ class CoreHost(
         }
     }
 
-    private fun buildEntropyProvided(minIds: Int, minFloats: Int, minSeedBytes: Int = 0): EntropyProvided {
+    private fun buildEntropyProvided(minIds: Int, minFloats: Int, minRandomBytes: Int = 0): EntropyProvided {
         val b = EntropyProvided.newBuilder()
         val idBytes = ByteArray(16)
         repeat(minIds.coerceAtLeast(0)) {
@@ -608,10 +608,10 @@ class CoreHost(
         repeat(minFloats.coerceAtLeast(0)) {
             b.addUnitFloats(random.nextDouble())
         }
-        if (minSeedBytes > 0) {
-            val seed = ByteArray(maxOf(minSeedBytes, INITIAL_ENTROPY_SEED_BYTES))
-            random.nextBytes(seed)
-            b.setSeed(ByteString.copyFrom(seed))
+        if (minRandomBytes > 0) {
+            val raw = ByteArray(maxOf(minRandomBytes, INITIAL_ENTROPY_RANDOM_BYTES))
+            random.nextBytes(raw)
+            b.setRandomBytes(ByteString.copyFrom(raw))
         }
         return b.build()
     }

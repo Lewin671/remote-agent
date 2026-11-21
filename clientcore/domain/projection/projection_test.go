@@ -724,8 +724,9 @@ func TestLiteWireCompatibility(t *testing.T) {
 
 	t.Run("entropy-packed-double", func(t *testing.T) {
 		std := &stdcorev1.EntropyProvided{
-			RandomIds:  []string{"id1", "id2"},
-			UnitFloats: []float64{0.0, 0.25, 0.75, 1.0},
+			RandomIds:   []string{"id1", "id2"},
+			UnitFloats:  []float64{0.0, 0.25, 0.75, 1.0},
+			RandomBytes: []byte{1, 2, 3, 4},
 		}
 		wire, err := proto.Marshal(std)
 		if err != nil {
@@ -735,7 +736,7 @@ func TestLiteWireCompatibility(t *testing.T) {
 		if err := lite.Unmarshal(wire); err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(lite.RandomIds, std.RandomIds) || !reflect.DeepEqual(lite.UnitFloats, std.UnitFloats) {
+		if !reflect.DeepEqual(lite.RandomIds, std.RandomIds) || !reflect.DeepEqual(lite.UnitFloats, std.UnitFloats) || !bytes.Equal(lite.RandomBytes, std.RandomBytes) {
 			t.Fatalf("decoded EntropyProvided mismatch: %+v", lite)
 		}
 	})

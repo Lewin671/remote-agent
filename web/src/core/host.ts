@@ -831,6 +831,12 @@ export class CoreHost {
         unitFloats: randomFloats(INITIAL_ENTROPY_COUNT),
       }),
     );
+    this.emit({
+      case: "entropyProvided",
+      value: create(EntropyProvidedSchema, {
+        randomBytes: crypto.getRandomValues(new Uint8Array(4096)),
+      }),
+    });
     this.emit({ case: "scheduleLocalContext", value: scheduleLocalContext() });
   }
 
@@ -2323,8 +2329,8 @@ export class CoreHost {
       case "requestEntropy": {
         const minIds = Math.max(val.value.minIds, 16);
         const minFloats = Math.max(val.value.minFloats, 16);
-        const seed = val.value.minSeedBytes > 0
-          ? crypto.getRandomValues(new Uint8Array(Math.max(val.value.minSeedBytes, 32)))
+        const randomBytes = val.value.minRandomBytes > 0
+          ? crypto.getRandomValues(new Uint8Array(Math.max(val.value.minRandomBytes, 4096)))
           : new Uint8Array();
         this.pendingEvents.push({
           ev: create(EventSchema, {
@@ -2335,7 +2341,7 @@ export class CoreHost {
               value: create(EntropyProvidedSchema, {
                 randomIds: randomIds(minIds),
                 unitFloats: randomFloats(minFloats),
-                seed,
+                randomBytes,
               }),
             },
           }),

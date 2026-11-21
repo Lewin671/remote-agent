@@ -878,7 +878,7 @@ public struct PBCoreEntropyProvided: Sendable {
 
   public var unitFloats: [Double] = []
 
-  public var seed: Data = Data()
+  public var randomBytes: Data = Data()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4058,7 +4058,7 @@ public struct PBCoreRequestEntropyEffect: Sendable {
 
   public var minFloats: Int32 = 0
 
-  public var minSeedBytes: Int32 = 0
+  public var minRandomBytes: Int32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5464,7 +5464,7 @@ extension PBCoreLocalCalendar: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBCoreEntropyProvided: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EntropyProvided"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}random_ids\0\u{3}unit_floats\0\u{1}seed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}random_ids\0\u{3}unit_floats\0\u{3}random_bytes\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5474,7 +5474,7 @@ extension PBCoreEntropyProvided: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       switch fieldNumber {
       case 1: try { try decoder.decodeRepeatedStringField(value: &self.randomIds) }()
       case 2: try { try decoder.decodeRepeatedDoubleField(value: &self.unitFloats) }()
-      case 3: try { try decoder.decodeSingularBytesField(value: &self.seed) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.randomBytes) }()
       default: break
       }
     }
@@ -5487,8 +5487,8 @@ extension PBCoreEntropyProvided: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if !self.unitFloats.isEmpty {
       try visitor.visitPackedDoubleField(value: self.unitFloats, fieldNumber: 2)
     }
-    if !self.seed.isEmpty {
-      try visitor.visitSingularBytesField(value: self.seed, fieldNumber: 3)
+    if !self.randomBytes.isEmpty {
+      try visitor.visitSingularBytesField(value: self.randomBytes, fieldNumber: 3)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5496,7 +5496,7 @@ extension PBCoreEntropyProvided: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
   public static func ==(lhs: PBCoreEntropyProvided, rhs: PBCoreEntropyProvided) -> Bool {
     if lhs.randomIds != rhs.randomIds {return false}
     if lhs.unitFloats != rhs.unitFloats {return false}
-    if lhs.seed != rhs.seed {return false}
+    if lhs.randomBytes != rhs.randomBytes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -11908,7 +11908,7 @@ extension PBCoreAttachmentsSettledEffect: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RequestEntropyEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}min_ids\0\u{3}min_floats\0\u{3}min_seed_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}min_ids\0\u{3}min_floats\0\u{3}min_random_bytes\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -11918,7 +11918,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularInt32Field(value: &self.minIds) }()
       case 2: try { try decoder.decodeSingularInt32Field(value: &self.minFloats) }()
-      case 3: try { try decoder.decodeSingularInt32Field(value: &self.minSeedBytes) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.minRandomBytes) }()
       default: break
       }
     }
@@ -11931,8 +11931,8 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.minFloats != 0 {
       try visitor.visitSingularInt32Field(value: self.minFloats, fieldNumber: 2)
     }
-    if self.minSeedBytes != 0 {
-      try visitor.visitSingularInt32Field(value: self.minSeedBytes, fieldNumber: 3)
+    if self.minRandomBytes != 0 {
+      try visitor.visitSingularInt32Field(value: self.minRandomBytes, fieldNumber: 3)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -11940,7 +11940,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
   public static func ==(lhs: PBCoreRequestEntropyEffect, rhs: PBCoreRequestEntropyEffect) -> Bool {
     if lhs.minIds != rhs.minIds {return false}
     if lhs.minFloats != rhs.minFloats {return false}
-    if lhs.minSeedBytes != rhs.minSeedBytes {return false}
+    if lhs.minRandomBytes != rhs.minRandomBytes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

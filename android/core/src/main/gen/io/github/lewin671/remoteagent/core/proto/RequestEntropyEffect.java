@@ -68,30 +68,30 @@ public  final class RequestEntropyEffect extends
     minFloats_ = 0;
   }
 
-  public static final int MIN_SEED_BYTES_FIELD_NUMBER = 3;
-  private int minSeedBytes_;
+  public static final int MIN_RANDOM_BYTES_FIELD_NUMBER = 3;
+  private int minRandomBytes_;
   /**
-   * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
-   * @return The minSeedBytes.
+   * <code>int32 min_random_bytes = 3 [json_name = "minRandomBytes"];</code>
+   * @return The minRandomBytes.
    */
   @java.lang.Override
-  public int getMinSeedBytes() {
-    return minSeedBytes_;
+  public int getMinRandomBytes() {
+    return minRandomBytes_;
   }
   /**
-   * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
-   * @param value The minSeedBytes to set.
+   * <code>int32 min_random_bytes = 3 [json_name = "minRandomBytes"];</code>
+   * @param value The minRandomBytes to set.
    */
-  private void setMinSeedBytes(int value) {
+  private void setMinRandomBytes(int value) {
     
-    minSeedBytes_ = value;
+    minRandomBytes_ = value;
   }
   /**
-   * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+   * <code>int32 min_random_bytes = 3 [json_name = "minRandomBytes"];</code>
    */
-  private void clearMinSeedBytes() {
+  private void clearMinRandomBytes() {
 
-    minSeedBytes_ = 0;
+    minRandomBytes_ = 0;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect parseFrom(
@@ -248,30 +248,30 @@ public  final class RequestEntropyEffect extends
     }
 
     /**
-     * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
-     * @return The minSeedBytes.
+     * <code>int32 min_random_bytes = 3 [json_name = "minRandomBytes"];</code>
+     * @return The minRandomBytes.
      */
     @java.lang.Override
-    public int getMinSeedBytes() {
-      return instance.getMinSeedBytes();
+    public int getMinRandomBytes() {
+      return instance.getMinRandomBytes();
     }
     /**
-     * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
-     * @param value The minSeedBytes to set.
+     * <code>int32 min_random_bytes = 3 [json_name = "minRandomBytes"];</code>
+     * @param value The minRandomBytes to set.
      * @return This builder for chaining.
      */
-    public Builder setMinSeedBytes(int value) {
+    public Builder setMinRandomBytes(int value) {
       copyOnWrite();
-      instance.setMinSeedBytes(value);
+      instance.setMinRandomBytes(value);
       return this;
     }
     /**
-     * <code>int32 min_seed_bytes = 3 [json_name = "minSeedBytes"];</code>
+     * <code>int32 min_random_bytes = 3 [json_name = "minRandomBytes"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearMinSeedBytes() {
+    public Builder clearMinRandomBytes() {
       copyOnWrite();
-      instance.clearMinSeedBytes();
+      instance.clearMinRandomBytes();
       return this;
     }
 
@@ -293,7 +293,7 @@ public  final class RequestEntropyEffect extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "minIds_",
             "minFloats_",
-            "minSeedBytes_",
+            "minRandomBytes_",
           };
           java.lang.String info =
               "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0004\u0002\u0004" +

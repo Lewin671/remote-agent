@@ -11,6 +11,10 @@ import (
 // ErrSession refuses a session configuration.
 var ErrSession = errors.New("direct_session_refused")
 
+// ErrNeedEntropy indicates cfg.Entropy temporarily has fewer bytes than requested;
+// Session queues the pending seal and resumes when EntropyReady is delivered.
+var ErrNeedEntropy = errors.New("need_entropy")
+
 // SessionConfig fixes one authenticated connection round.
 type SessionConfig struct {
 	Self       peerwire.Public // this process: member keys, Instance and Boot
@@ -58,7 +62,16 @@ type Session struct {
 	peerScope                   PeerScope
 	nextOp, nextPC              uint64
 	signing                     map[uint64]*sealJob
+	waitingEntropy              []*pendingSeal
 	controls                    map[uint64]peerwire.Opened
+}
+
+type pendingSeal struct {
+	to   peerwire.Public
+	ctx  peerwire.Context
+	typ  uint64
+	body []byte
+	job  *sealJob
 }
 
 type cached struct {
@@ -204,6 +217,9 @@ func (s *Session) NextTimer() (due uint64, ok bool) {
 // Booted reports whether bootstrap completed on either peer-connection use.
 func (s *Session) Booted() bool { return s.pcs[0].signal.BootReady || s.pcs[1].signal.BootReady }
 
+// NeedsEntropy reports whether any pending frame is waiting for an EntropyReady refill.
+func (s *Session) NeedsEntropy() bool { return len(s.waitingEntropy) > 0 }
+
 // Peer returns the peer's public identity, including Instance/Boot learned during bootstrap.
 func (s *Session) Peer() peerwire.Public { return s.pcs[0].signal.Peer }
 
@@ -278,6 +294,8 @@ func (s *Session) Handle(e Event, now uint64) []Effect {
 		}
 	case RetireRound:
 		s.retire()
+	case EntropyReady:
+		s.drainEntropy()
 	case FrameSigned:
 		s.signed(e, now)
 	case ControlHandled:
@@ -331,6 +349,7 @@ func (s *Session) end(reason string) {
 		return
 	}
 	s.finishRound()
+	s.waitingEntropy = nil
 	s.ended = true
 	s.emit(SessionEnd{reason})
 }
@@ -459,24 +478,78 @@ func (s *Session) flush(now uint64) {
 }
 
 // seal prepares a frame and asks for its signature; job says where the
-// signed frame goes.
+// signed frame goes. If cfg.Entropy temporarily returns ErrNeedEntropy, the
+// seal is queued FIFO and resumed on EntropyReady.
 func (s *Session) seal(to peerwire.Public, c peerwire.Context, typ uint64, body []byte, job *sealJob) bool {
-	if len(s.signing) >= maxSigning {
+	if len(s.signing)+len(s.waitingEntropy) >= maxSigning {
 		return false
 	}
+	item := &pendingSeal{
+		to:   to,
+		ctx:  c,
+		typ:  typ,
+		body: append([]byte(nil), body...),
+		job:  job,
+	}
+	if len(s.waitingEntropy) > 0 {
+		s.waitingEntropy = append(s.waitingEntropy, item)
+		s.emit(NeedEntropy{Bytes: len(s.waitingEntropy) * peerwire.SealEntropy})
+		return true
+	}
+	ok, needEntropy := s.prepareSeal(item)
+	if needEntropy {
+		s.waitingEntropy = append(s.waitingEntropy, item)
+		s.emit(NeedEntropy{Bytes: len(s.waitingEntropy) * peerwire.SealEntropy})
+		return true
+	}
+	return ok
+}
+
+func (s *Session) prepareSeal(item *pendingSeal) (ok bool, needEntropy bool) {
 	entropy := make([]byte, peerwire.SealEntropy)
 	if _, err := io.ReadFull(s.cfg.Entropy, entropy); err != nil {
-		return false
+		if errors.Is(err, ErrNeedEntropy) {
+			return false, true
+		}
+		return false, false
 	}
-	u, err := s.cfg.Codec.Prepare(s.cfg.Self, to, s.cfg.Shared, c, typ, body, entropy)
+	u, err := s.cfg.Codec.Prepare(s.cfg.Self, item.to, s.cfg.Shared, item.ctx, item.typ, item.body, entropy)
 	if err != nil {
-		return false
+		return false, false
 	}
 	s.nextOp++
-	job.unsigned = u
-	s.signing[s.nextOp] = job
+	item.job.unsigned = u
+	s.signing[s.nextOp] = item.job
 	s.emit(SignFrame{s.nextOp, u.Message})
-	return true
+	return true, false
+}
+
+func (s *Session) drainEntropy() {
+	if s.ended {
+		s.waitingEntropy = nil
+		return
+	}
+	for len(s.waitingEntropy) > 0 {
+		item := s.waitingEntropy[0]
+		if s.retired && item.job.kind != jobReceipt {
+			s.waitingEntropy = s.waitingEntropy[1:]
+			continue
+		}
+		if item.job.kind == jobSignal && s.pcs[item.job.pc].sender != item.job.sender {
+			s.waitingEntropy = s.waitingEntropy[1:]
+			continue
+		}
+		ok, needEntropy := s.prepareSeal(item)
+		if needEntropy {
+			s.emit(NeedEntropy{Bytes: len(s.waitingEntropy) * peerwire.SealEntropy})
+			return
+		}
+		s.waitingEntropy = s.waitingEntropy[1:]
+		if !ok && item.job.kind == jobChallenge {
+			s.challengePending = false
+		}
+	}
+	s.waitingEntropy = nil
 }
 
 func (s *Session) openSent(raw []byte, now uint64) (peerwire.Opened, error) {

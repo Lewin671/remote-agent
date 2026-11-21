@@ -53,8 +53,8 @@ public interface EntropyProvidedOrBuilder extends
   double getUnitFloats(int index);
 
   /**
-   * <code>bytes seed = 3 [json_name = "seed"];</code>
-   * @return The seed.
+   * <code>bytes random_bytes = 3 [json_name = "randomBytes"];</code>
+   * @return The randomBytes.
    */
-  com.google.protobuf.ByteString getSeed();
+  com.google.protobuf.ByteString getRandomBytes();
 }

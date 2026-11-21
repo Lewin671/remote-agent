@@ -17,7 +17,7 @@ public  final class EntropyProvided extends
   private EntropyProvided() {
     randomIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
     unitFloats_ = emptyDoubleList();
-    seed_ = com.google.protobuf.ByteString.EMPTY;
+    randomBytes_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int RANDOM_IDS_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.ProtobufList<java.lang.String> randomIds_;
@@ -185,31 +185,31 @@ public  final class EntropyProvided extends
     unitFloats_ = emptyDoubleList();
   }
 
-  public static final int SEED_FIELD_NUMBER = 3;
-  private com.google.protobuf.ByteString seed_;
+  public static final int RANDOM_BYTES_FIELD_NUMBER = 3;
+  private com.google.protobuf.ByteString randomBytes_;
   /**
-   * <code>bytes seed = 3 [json_name = "seed"];</code>
-   * @return The seed.
+   * <code>bytes random_bytes = 3 [json_name = "randomBytes"];</code>
+   * @return The randomBytes.
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString getSeed() {
-    return seed_;
+  public com.google.protobuf.ByteString getRandomBytes() {
+    return randomBytes_;
   }
   /**
-   * <code>bytes seed = 3 [json_name = "seed"];</code>
-   * @param value The seed to set.
+   * <code>bytes random_bytes = 3 [json_name = "randomBytes"];</code>
+   * @param value The randomBytes to set.
    */
-  private void setSeed(com.google.protobuf.ByteString value) {
+  private void setRandomBytes(com.google.protobuf.ByteString value) {
     java.lang.Class<?> valueClass = value.getClass();
   
-    seed_ = value;
+    randomBytes_ = value;
   }
   /**
-   * <code>bytes seed = 3 [json_name = "seed"];</code>
+   * <code>bytes random_bytes = 3 [json_name = "randomBytes"];</code>
    */
-  private void clearSeed() {
+  private void clearRandomBytes() {
 
-    seed_ = getDefaultInstance().getSeed();
+    randomBytes_ = getDefaultInstance().getRandomBytes();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.EntropyProvided parseFrom(
@@ -471,30 +471,30 @@ public  final class EntropyProvided extends
     }
 
     /**
-     * <code>bytes seed = 3 [json_name = "seed"];</code>
-     * @return The seed.
+     * <code>bytes random_bytes = 3 [json_name = "randomBytes"];</code>
+     * @return The randomBytes.
      */
     @java.lang.Override
-    public com.google.protobuf.ByteString getSeed() {
-      return instance.getSeed();
+    public com.google.protobuf.ByteString getRandomBytes() {
+      return instance.getRandomBytes();
     }
     /**
-     * <code>bytes seed = 3 [json_name = "seed"];</code>
-     * @param value The seed to set.
+     * <code>bytes random_bytes = 3 [json_name = "randomBytes"];</code>
+     * @param value The randomBytes to set.
      * @return This builder for chaining.
      */
-    public Builder setSeed(com.google.protobuf.ByteString value) {
+    public Builder setRandomBytes(com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setSeed(value);
+      instance.setRandomBytes(value);
       return this;
     }
     /**
-     * <code>bytes seed = 3 [json_name = "seed"];</code>
+     * <code>bytes random_bytes = 3 [json_name = "randomBytes"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearSeed() {
+    public Builder clearRandomBytes() {
       copyOnWrite();
-      instance.clearSeed();
+      instance.clearRandomBytes();
       return this;
     }
 
@@ -516,7 +516,7 @@ public  final class EntropyProvided extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "randomIds_",
             "unitFloats_",
-            "seed_",
+            "randomBytes_",
           };
           java.lang.String info =
               "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0002\u0000\u0001\u021a\u0002#\u0003" +

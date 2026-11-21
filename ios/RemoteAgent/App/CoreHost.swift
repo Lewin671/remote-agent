@@ -5,6 +5,7 @@ import Foundation
 import Observation
 import RACore
 import RAProto
+import Security
 
 /// Main-actor observable snapshots published by `CoreHost` for the migrated screens.
 @MainActor
@@ -497,7 +498,7 @@ actor CoreHost: SyncEngine {
             $0.entropyProvided = .with {
                 $0.randomIds = initIds
                 $0.unitFloats = initFloats
-                $0.seed = Self.randomBytes(32)
+                $0.randomBytes = Self.randomBytes(4096)
             }
         }
         if !demoMode {
@@ -1654,12 +1655,12 @@ actor CoreHost: SyncEngine {
                 let floats = unitFloatPool
                 randomIdPool.removeAll(keepingCapacity: true)
                 unitFloatPool.removeAll(keepingCapacity: true)
-                let seedBytes = req.minSeedBytes > 0 ? Self.randomBytes(max(Int(req.minSeedBytes), 32)) : Data()
+                let randomBytes = req.minRandomBytes > 0 ? Self.randomBytes(max(Int(req.minRandomBytes), 4096)) : Data()
                 await dispatch {
                     $0.entropyProvided = .with {
                         $0.randomIds = ids
                         $0.unitFloats = floats
-                        if !seedBytes.isEmpty { $0.seed = seedBytes }
+                        if !randomBytes.isEmpty { $0.randomBytes = randomBytes }
                     }
                 }
 
@@ -2328,8 +2329,16 @@ actor CoreHost: SyncEngine {
     }
 
     private static func randomBytes(_ count: Int) -> Data {
+        let n = max(count, 1)
+        var data = Data(count: n)
+        let rc = data.withUnsafeMutableBytes { buf in
+            SecRandomCopyBytes(kSecRandomDefault, n, buf.baseAddress!)
+        }
+        if rc == errSecSuccess {
+            return data
+        }
         var rng = SystemRandomNumberGenerator()
-        return Data((0..<max(count, 1)).map { _ in UInt8.random(in: UInt8.min...UInt8.max, using: &rng) })
+        return Data((0..<n).map { _ in UInt8.random(in: UInt8.min...UInt8.max, using: &rng) })
     }
 
     private func replenishEntropy(minIds: Int, minFloats: Int) {
@@ -2655,7 +2664,7 @@ actor CoreHost: SyncEngine {
             $0.entropyProvided = .with {
                 $0.randomIds = (0..<16).map { _ in newRequestId() }
                 $0.unitFloats = (0..<16).map { _ in Double.random(in: 0..<1) }
-                $0.seed = Self.randomBytes(32)
+                $0.randomBytes = Self.randomBytes(4096)
             }
         })
         scanPre(await stepDemo {

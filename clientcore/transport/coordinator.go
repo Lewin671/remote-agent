@@ -13,6 +13,11 @@ const (
 	maxPendingSignalsPerPeer = 8
 	maxTransfersTracked      = 128
 	lateStatsSampleLeadMs    = 1500
+	// CoordEntropyRefillBytes is the chunk requested from the shell's OS CSPRNG.
+	CoordEntropyRefillBytes = 4096
+	// CoordEntropyLowWater triggers proactive background refill before exhaustion.
+	CoordEntropyLowWater = 1024
+	coordEntropyMaxBytes = 16384
 )
 
 // CoordConfig initializes a transport Coordinator.
@@ -51,8 +56,8 @@ type CoordSecuritySnapshot struct {
 type CoordEffect interface{ coordEffect() }
 
 type (
-	// CoordNeedEntropy asks the shell for random seed bytes.
-	CoordNeedEntropy struct{ MinSeedBytes int }
+	// CoordNeedEntropy asks the shell for fresh OS CSPRNG random bytes.
+	CoordNeedEntropy struct{ MinRandomBytes int }
 	// CoordKeySign asks the shell to Ed25519-sign Message using its local device key.
 	CoordKeySign struct {
 		OpID    uint64
@@ -232,31 +237,70 @@ type termState struct {
 	hasTimer   bool
 }
 
+// osEntropyPool buffers raw OS CSPRNG bytes supplied by the shell (no PRNG/expansion).
+type osEntropyPool struct {
+	buf []byte
+}
+
+func (p *osEntropyPool) avail() int { return len(p.buf) }
+
+func (p *osEntropyPool) appendBytes(raw []byte) {
+	if len(raw) == 0 || len(p.buf) >= coordEntropyMaxBytes {
+		return
+	}
+	if len(raw) > coordEntropyMaxBytes-len(p.buf) {
+		raw = raw[:coordEntropyMaxBytes-len(p.buf)]
+	}
+	p.buf = append(p.buf, raw...)
+}
+
+// Read implements io.Reader for linkcore.Session. It is all-or-nothing so a
+// temporarily short pool never consumes partial bytes before returning ErrNeedEntropy.
+func (p *osEntropyPool) Read(dst []byte) (int, error) {
+	if len(p.buf) < len(dst) {
+		return 0, linkcore.ErrNeedEntropy
+	}
+	n := copy(dst, p.buf[:len(dst)])
+	copy(p.buf, p.buf[n:])
+	p.buf = p.buf[:len(p.buf)-n]
+	return n, nil
+}
+
+func (p *osEntropyPool) takeUnitFloat() (float64, bool) {
+	var b [8]byte
+	if _, err := p.Read(b[:]); err != nil {
+		return 0, false
+	}
+	u := uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
+		uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56
+	return float64(u>>11) / (1 << 53), true
+}
+
 // Coordinator bridges the client transport Engine with shared/linkcore.Session,
-// shared/peerwire.Codec, deterministic entropy, control messages, and terminal
+// shared/peerwire.Codec, OS CSPRNG entropy pool, control messages, and terminal
 // stream reopen budgets.
 type Coordinator struct {
-	cfg    CoordConfig
-	engine *Engine
-	drbg   *linkcore.DRBG
+	cfg      CoordConfig
+	engine   *Engine
+	randPool osEntropyPool
 
-	seeded         bool
-	entropyAsked   bool
-	hasInstance    bool
-	instance       []byte // 16 bytes
-	boot           []byte // 32 bytes
-	mainOnline     bool
-	foreground     bool
-	snap           CoordSecuritySnapshot
-	hasSnap        bool
-	members        map[string]CoordMember
-	codec          *peerwire.Codec
-	selfPub        peerwire.Public
+	pendingEngineUnits int
+	entropyAsked       bool
+	hasInstance        bool
+	instance           []byte // 16 bytes
+	boot               []byte // 32 bytes
+	mainOnline         bool
+	foreground         bool
+	snap               CoordSecuritySnapshot
+	hasSnap            bool
+	members            map[string]CoordMember
+	codec              *peerwire.Codec
+	selfPub            peerwire.Public
 
-	dhCache        map[dhKey][]byte
-	agreeInFlight  map[dhKey]uint64
-	agreeOps       map[uint64]agreeOp
-	nextAgreeOp    uint64
+	dhCache       map[dhKey][]byte
+	agreeInFlight map[dhKey]uint64
+	agreeOps      map[uint64]agreeOp
+	nextAgreeOp   uint64
 
 	signOps        map[uint64]signOp
 	nextSignOp     uint64
@@ -267,17 +311,17 @@ type Coordinator struct {
 	pendingStarts  map[RoundID]*pendingRoundStart
 	pendingSignals []*pendingInboundSignal
 
-	hasEngineTick  bool
-	engineTickAt   int64
+	hasEngineTick bool
+	engineTickAt  int64
 
-	tickets        map[uint64]trackedTicket
-	nextTicketID   uint64
+	tickets      map[uint64]trackedTicket
+	nextTicketID uint64
 
-	transfers      map[string]Upload
-	transferOrder  []string
+	transfers     map[string]Upload
+	transferOrder []string
 
-	termBudget     linkcore.Budget
-	terms          map[string]*termState
+	termBudget linkcore.Budget
+	terms      map[string]*termState
 
 	out []CoordEffect
 }
@@ -290,7 +334,6 @@ func NewCoordinator(cfg CoordConfig) *Coordinator {
 	return &Coordinator{
 		cfg:           cfg,
 		engine:        NewEngine(cfg.Supported),
-		drbg:          linkcore.NewDRBG(nil),
 		foreground:    true,
 		members:       map[string]CoordMember{},
 		dhCache:       map[dhKey][]byte{},
@@ -317,31 +360,58 @@ func (c *Coordinator) take() []CoordEffect {
 // Engine exposes the underlying Engine for testing and status inspection.
 func (c *Coordinator) Engine() *Engine { return c.engine }
 
-// Seeded reports whether CSPRNG seed entropy has been installed in Coordinator.
-func (c *Coordinator) Seeded() bool { return c.seeded }
+// HasInstance reports whether initial instance/boot keys have been drawn from OS entropy.
+func (c *Coordinator) HasInstance() bool { return c.hasInstance }
 
-// Seed mixes CSPRNG seed bytes into Coordinator's DRBG and activates local
-// instance/boot keys on first seed.
-func (c *Coordinator) Seed(now int64, seed []byte) []CoordEffect {
-	if len(seed) > 0 {
-		c.drbg.Reseed(seed)
-		c.seeded = true
-		c.entropyAsked = false
-		if !c.hasInstance {
-			c.instance = make([]byte, 16)
-			c.boot = make([]byte, 32)
-			_, _ = c.drbg.Read(c.instance)
-			_, _ = c.drbg.Read(c.boot)
-			c.hasInstance = true
-			if len(c.selfPub.ID) > 0 {
-				c.selfPub.Instance = c.instance
-				c.selfPub.Boot = c.boot
-			}
-		}
-		if c.hasSnap && c.mainOnline && c.foreground && len(c.rounds) == 0 {
-			c.handleEngine(now, NetworkChanged{})
+// EntropyAvailable returns the number of buffered OS random bytes currently available.
+func (c *Coordinator) EntropyAvailable() int { return c.randPool.avail() }
+
+// ProvideRandomBytes adds raw OS CSPRNG bytes to Coordinator's entropy pool and
+// resumes any queued handshake starts, frame seals, or Engine jitter requests.
+func (c *Coordinator) ProvideRandomBytes(now int64, raw []byte) []CoordEffect {
+	if len(raw) == 0 {
+		return nil
+	}
+	wasHasInstance := c.hasInstance
+	c.entropyAsked = false
+	c.randPool.appendBytes(raw)
+	if !c.hasInstance && c.randPool.avail() >= 48 {
+		c.instance = make([]byte, 16)
+		c.boot = make([]byte, 32)
+		_, _ = c.randPool.Read(c.instance)
+		_, _ = c.randPool.Read(c.boot)
+		c.hasInstance = true
+		if len(c.selfPub.ID) > 0 {
+			c.selfPub.Instance = c.instance
+			c.selfPub.Boot = c.boot
 		}
 	}
+	if c.pendingEngineUnits > 0 && c.randPool.avail() >= c.pendingEngineUnits*8 {
+		n := c.pendingEngineUnits
+		c.pendingEngineUnits = 0
+		units := make([]float64, n)
+		for i := range units {
+			u, _ := c.randPool.takeUnitFloat()
+			units[i] = u
+		}
+		more := c.engine.Handle(now, Entropy{Units: units})
+		c.applyEngineEffects(now, more, nil)
+	}
+	for _, id := range c.sortedRoundIDs() {
+		r := c.rounds[id]
+		if r == nil || r.ended || !r.session.NeedsEntropy() {
+			continue
+		}
+		_ = c.stepSession(now, r, linkcore.EntropyReady{})
+	}
+	if c.hasInstance {
+		c.drainPendingStarts(now)
+		c.drainPendingSignalsReady(now)
+	}
+	if !wasHasInstance && c.hasInstance && c.hasSnap && c.mainOnline && c.foreground && len(c.rounds) == 0 && len(c.pendingStarts) == 0 {
+		c.handleEngine(now, NetworkChanged{})
+	}
+	c.maybeNeedPendingEntropy()
 	return c.take()
 }
 
@@ -357,8 +427,8 @@ func (c *Coordinator) Configure(now int64, cfg CoordConfig) []CoordEffect {
 		c.rebuildCodec()
 		c.emit(CoordChanged{})
 	}
-	if cfg.Supported && !c.seeded {
-		c.maybeNeedEntropy()
+	if cfg.Supported {
+		c.maybeLowWater()
 	}
 	return c.take()
 }
@@ -600,7 +670,7 @@ func (c *Coordinator) OnKeySigned(now int64, opID uint64, sig []byte) []CoordEff
 
 // OnSignalReceived admits and processes a PeerFrameDelivery sealed outer frame from the main WS.
 func (c *Coordinator) OnSignalReceived(now int64, raw []byte) []CoordEffect {
-	if !c.seeded || !c.hasInstance || c.codec == nil || len(raw) == 0 || len(raw) > InboundFrameMax {
+	if c.codec == nil || len(raw) == 0 || len(raw) > InboundFrameMax {
 		return nil
 	}
 	f, err := peerwire.Parse(raw, 5)
@@ -628,7 +698,11 @@ func (c *Coordinator) OnSignalReceived(now int64, raw []byte) []CoordEffect {
 		return nil
 	}
 	frozen := append([]byte(nil), raw...)
-	if shared, ready := c.ensureAgree(source, member.XPub); !ready {
+	shared, ready := c.ensureAgree(source, member.XPub)
+	if !c.hasInstance {
+		c.maybeNeedEntropy(CoordEntropyRefillBytes)
+	}
+	if !ready || !c.hasInstance {
 		if len(c.pendingSignals) >= maxPendingSignalsTotal || c.countPendingSignals(source) >= maxPendingSignalsPerPeer {
 			c.engine.SignalDone(source, len(frozen))
 			return c.take()
@@ -640,11 +714,10 @@ func (c *Coordinator) OnSignalReceived(now int64, raw []byte) []CoordEffect {
 			deadline: now + int64(RoundMs),
 		})
 		return c.take()
-	} else {
-		c.processSignalFrame(now, source, member, shared, frozen)
-		c.engine.SignalDone(source, len(frozen))
-		return c.take()
 	}
+	c.processSignalFrame(now, source, member, shared, frozen)
+	c.engine.SignalDone(source, len(frozen))
+	return c.take()
 }
 
 func (c *Coordinator) countPendingSignals(source string) int {
@@ -682,28 +755,71 @@ func (c *Coordinator) prunePendingSignals(now int64) {
 }
 
 func (c *Coordinator) flushPendingStarts(now int64, peerID string, xPub [32]byte, shared []byte) {
-	for id, ps := range c.pendingStarts {
-		if ps.machine != peerID || ps.xPub != xPub {
+	if !c.hasInstance {
+		return
+	}
+	c.drainPendingStarts(now)
+}
+
+func (c *Coordinator) drainPendingStarts(now int64) {
+	if !c.hasInstance || len(c.pendingStarts) == 0 {
+		return
+	}
+	ids := make([]RoundID, 0, len(c.pendingStarts))
+	for id := range c.pendingStarts {
+		ids = append(ids, id)
+	}
+	for i := 1; i < len(ids); i++ {
+		for j := i; j > 0 && ids[j] < ids[j-1]; j-- {
+			ids[j], ids[j-1] = ids[j-1], ids[j]
+		}
+	}
+	for _, id := range ids {
+		ps := c.pendingStarts[id]
+		if ps == nil {
+			continue
+		}
+		if now >= ps.deadlineAt || c.engine.rounds[id] == nil {
+			delete(c.pendingStarts, id)
+			continue
+		}
+		m, ok := c.members[ps.machine]
+		if !ok || m.XPub != ps.xPub {
+			delete(c.pendingStarts, id)
+			continue
+		}
+		shared, ready := c.dhCache[dhKey{peerID: m.ID, xPub: m.XPub}]
+		if !ready {
+			continue
+		}
+		if c.randPool.avail() < 16+peerwire.SealEntropy {
+			c.maybeNeedEntropy(CoordEntropyRefillBytes)
 			continue
 		}
 		delete(c.pendingStarts, id)
-		if now >= ps.deadlineAt || c.engine.rounds[id] == nil {
-			continue
-		}
-		m, ok := c.members[peerID]
-		if !ok {
-			continue
-		}
 		c.startOutboundRound(now, id, m, shared, ps.deadlineAt)
 	}
 }
 
 func (c *Coordinator) flushPendingSignals(now int64, peerID string, xPub [32]byte, shared []byte) {
-	member, hasMember := c.members[peerID]
+	if !c.hasInstance {
+		return
+	}
+	c.drainPendingSignalsReady(now)
+}
+
+func (c *Coordinator) drainPendingSignalsReady(now int64) {
+	if !c.hasInstance || len(c.pendingSignals) == 0 {
+		return
+	}
 	kept := c.pendingSignals[:0]
 	var toProcess []*pendingInboundSignal
 	for _, s := range c.pendingSignals {
-		if s.source == peerID && s.xPub == xPub {
+		if now >= s.deadline {
+			c.engine.SignalDone(s.source, len(s.raw))
+			continue
+		}
+		if _, ready := c.dhCache[dhKey{peerID: s.source, xPub: s.xPub}]; ready {
 			toProcess = append(toProcess, s)
 			continue
 		}
@@ -711,15 +827,17 @@ func (c *Coordinator) flushPendingSignals(now int64, peerID string, xPub [32]byt
 	}
 	c.pendingSignals = kept
 	for _, s := range toProcess {
-		if hasMember && member.XPub == xPub && now < s.deadline {
-			c.processSignalFrame(now, peerID, member, shared, s.raw)
+		member, hasMember := c.members[s.source]
+		shared := c.dhCache[dhKey{peerID: s.source, xPub: s.xPub}]
+		if hasMember && !member.Self && member.XPub == s.xPub && len(shared) == 32 && now < s.deadline {
+			c.processSignalFrame(now, s.source, member, shared, s.raw)
 		}
 		c.engine.SignalDone(s.source, len(s.raw))
 	}
 }
 
 func (c *Coordinator) processSignalFrame(now int64, source string, member CoordMember, shared []byte, raw []byte) {
-	if c.codec == nil || !c.seeded || !c.hasInstance {
+	if c.codec == nil || !c.hasInstance {
 		return
 	}
 	if c.engine.rounds == nil {
@@ -1127,11 +1245,12 @@ func (c *Coordinator) TerminalClosed(now int64, id string, opened, online bool) 
 		ts.hasTimer = false
 		return nil
 	}
-	unit := 0.5
-	if c.seeded {
-		unit = c.drbg.UnitFloat()
+	unit := 1.0
+	if u, ok := c.randPool.takeUnitFloat(); ok {
+		unit = u
+		c.maybeLowWater()
 	} else {
-		c.maybeNeedEntropy()
+		c.maybeNeedEntropy(CoordEntropyRefillBytes)
 	}
 	w := ts.reopen.Closed(now, opened, online, unit, &c.termBudget)
 	c.applyTermWake(ts, w)
@@ -1253,15 +1372,21 @@ func (c *Coordinator) applyEngineEffects(now int64, effs []Effect, observe func(
 		}
 		switch eff := eff.(type) {
 		case RequestEntropy:
-			if c.seeded {
+			if eff.Count > 0 && c.randPool.avail() >= eff.Count*8 {
 				units := make([]float64, eff.Count)
 				for i := range units {
-					units[i] = c.drbg.UnitFloat()
+					u, _ := c.randPool.takeUnitFloat()
+					units[i] = u
 				}
+				c.maybeLowWater()
 				more := c.engine.Handle(now, Entropy{Units: units})
 				c.applyEngineEffects(now, more, observe)
-			} else {
-				c.maybeNeedEntropy()
+			} else if eff.Count > 0 {
+				if eff.Count > c.pendingEngineUnits {
+					c.pendingEngineUnits = eff.Count
+				}
+				req := max(CoordEntropyRefillBytes, c.pendingEngineUnits*8)
+				c.maybeNeedEntropy(req)
 			}
 		case Authorize:
 			c.emit(CoordAuthorize{})
@@ -1318,16 +1443,52 @@ func (c *Coordinator) applyEngineEffects(now int64, effs []Effect, observe func(
 	}
 }
 
-func (c *Coordinator) maybeNeedEntropy() {
-	if c.cfg.Supported && !c.seeded && !c.entropyAsked {
+func (c *Coordinator) maybeNeedEntropy(minBytes int) {
+	if minBytes <= 0 {
+		minBytes = CoordEntropyRefillBytes
+	}
+	if !c.entropyAsked {
 		c.entropyAsked = true
-		c.emit(CoordNeedEntropy{MinSeedBytes: 32})
+		c.emit(CoordNeedEntropy{MinRandomBytes: minBytes})
+	}
+}
+
+func (c *Coordinator) maybeLowWater() {
+	if !c.cfg.Supported {
+		return
+	}
+	if !c.hasInstance || c.randPool.avail() < CoordEntropyLowWater {
+		c.maybeNeedEntropy(CoordEntropyRefillBytes)
+	}
+}
+
+func (c *Coordinator) maybeNeedPendingEntropy() {
+	need := 0
+	if !c.hasInstance && c.randPool.avail() < 48 {
+		need = CoordEntropyRefillBytes
+	}
+	if c.pendingEngineUnits > 0 && c.randPool.avail() < c.pendingEngineUnits*8 {
+		need = max(need, max(CoordEntropyRefillBytes, c.pendingEngineUnits*8))
+	}
+	if len(c.pendingStarts) > 0 && (!c.hasInstance || c.randPool.avail() < 16+peerwire.SealEntropy) {
+		need = max(need, CoordEntropyRefillBytes)
+	}
+	for _, r := range c.rounds {
+		if r != nil && !r.ended && r.session.NeedsEntropy() {
+			need = max(need, CoordEntropyRefillBytes)
+			break
+		}
+	}
+	if c.cfg.Supported && c.randPool.avail() < CoordEntropyLowWater {
+		need = max(need, CoordEntropyRefillBytes)
+	}
+	if need > 0 {
+		c.maybeNeedEntropy(need)
 	}
 }
 
 func (c *Coordinator) onStartRound(now int64, eff StartRound) {
-	if !c.seeded || !c.hasInstance || c.codec == nil {
-		c.maybeNeedEntropy()
+	if c.codec == nil {
 		return
 	}
 	m, ok := c.members[eff.Machine]
@@ -1335,7 +1496,18 @@ func (c *Coordinator) onStartRound(now int64, eff StartRound) {
 		c.handleEngine(now, RoundEnded{Round: eff.Round})
 		return
 	}
-	if shared, ok := c.ensureAgree(eff.Machine, m.XPub); ok {
+	shared, dhOK := c.ensureAgree(eff.Machine, m.XPub)
+	if !c.hasInstance || c.randPool.avail() < 16+peerwire.SealEntropy {
+		c.pendingStarts[eff.Round] = &pendingRoundStart{
+			round:      eff.Round,
+			machine:    eff.Machine,
+			deadlineAt: eff.DeadlineAt,
+			xPub:       m.XPub,
+		}
+		c.maybeNeedEntropy(CoordEntropyRefillBytes)
+		return
+	}
+	if dhOK {
 		c.startOutboundRound(now, eff.Round, m, shared, eff.DeadlineAt)
 	} else {
 		c.pendingStarts[eff.Round] = &pendingRoundStart{
@@ -1349,7 +1521,17 @@ func (c *Coordinator) onStartRound(now int64, eff StartRound) {
 
 func (c *Coordinator) startOutboundRound(now int64, id RoundID, member CoordMember, shared []byte, deadlineAt int64) {
 	conn := make([]byte, 16)
-	_, _ = c.drbg.Read(conn)
+	if _, err := c.randPool.Read(conn); err != nil {
+		c.pendingStarts[id] = &pendingRoundStart{
+			round:      id,
+			machine:    member.ID,
+			deadlineAt: deadlineAt,
+			xPub:       member.XPub,
+		}
+		c.maybeNeedEntropy(CoordEntropyRefillBytes)
+		return
+	}
+	c.maybeLowWater()
 	peer := peerwire.Public{
 		ID:   []byte(member.ID),
 		Role: 2,
@@ -1360,7 +1542,7 @@ func (c *Coordinator) startOutboundRound(now int64, id RoundID, member CoordMemb
 }
 
 func (c *Coordinator) createRound(now int64, id RoundID, machine string, peer peerwire.Public, shared, conn []byte, deadline uint64, initiate bool) *coordRound {
-	if c.codec == nil || len(shared) != 32 || len(conn) != 16 || !c.seeded || !c.hasInstance {
+	if c.codec == nil || len(shared) != 32 || len(conn) != 16 || !c.hasInstance {
 		return nil
 	}
 	if deadline <= uint64(now) {
@@ -1384,7 +1566,7 @@ func (c *Coordinator) createRound(now int64, id RoundID, machine string, peer pe
 		Codec:      c.codec,
 		Connection: append([]byte(nil), conn...),
 		Deadline:   deadline,
-		Entropy:    c.drbg,
+		Entropy:    &c.randPool,
 		Allow: func() bool {
 			return c.engine.SignalAuthorized(r.curNow, id)
 		},
@@ -1402,6 +1584,7 @@ func (c *Coordinator) createRound(now int64, id RoundID, machine string, peer pe
 	c.roundsByConn[string(conn)] = id
 	c.applySessionEffects(now, r, initial)
 	c.syncMarks(now, r)
+	c.maybeLowWater()
 	return r
 }
 
@@ -1413,6 +1596,7 @@ func (c *Coordinator) stepSession(now int64, r *coordRound, ev linkcore.Event) e
 	effects := r.session.Handle(ev, uint64(now))
 	c.applySessionEffects(now, r, effects)
 	c.syncMarks(now, r)
+	c.maybeLowWater()
 	return nil
 }
 
@@ -1561,6 +1745,9 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 
 		case linkcore.RoundDone:
 			// Readiness & retirement notifications are handled individually via ConfirmPC / SessionEnd.
+
+		case linkcore.NeedEntropy:
+			c.maybeNeedEntropy(max(CoordEntropyRefillBytes, eff.Bytes))
 
 		case linkcore.SessionEnd:
 			c.finishSession(now, r, eff.Reason)

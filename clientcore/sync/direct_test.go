@@ -3,6 +3,7 @@ package sync
 import (
 	"crypto/ecdh"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"testing"
@@ -14,6 +15,12 @@ import (
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
+
+func testSyncRandomBytes(n int) []byte {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return b
+}
 
 type directTestActor struct {
 	t        *testing.T
@@ -235,17 +242,16 @@ func (h *directSyncHarness) driveDirectHandshake() {
 		},
 	})
 	for _, eff := range res.Effects {
-		if re := eff.GetRequestEntropy(); re != nil && re.MinSeedBytes > 0 {
+		if re := eff.GetRequestEntropy(); re != nil && re.MinRandomBytes > 0 {
 			h.wantSeed = true
 		}
 	}
 	if !h.wantSeed {
-		h.t.Fatal("expected RequestEntropyEffect.MinSeedBytes after TransportConfigEvent")
+		h.t.Fatal("expected RequestEntropyEffect.MinRandomBytes after TransportConfigEvent")
 	}
 
-	seed := sha256.Sum256([]byte("sync-direct-seed"))
 	h.step(&corev1.Event{
-		Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{Seed: seed[:]}},
+		Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{RandomBytes: testSyncRandomBytes(transport.CoordEntropyRefillBytes)}},
 	})
 
 	var signalsToDaemon [][]byte
@@ -269,7 +275,6 @@ func (h *directSyncHarness) driveDirectHandshake() {
 	}
 	daemonPub := peerwire.Public{ID: []byte(h.daemon.id), Role: 2, Instance: daemonInst, Boot: daemonBoot, Sign: h.daemon.signPub[:], Box: h.daemon.xPub[:]}
 	clientMember := peerwire.Public{ID: []byte(h.client.id), Role: 1, Sign: h.client.signPub[:], Box: h.client.xPub[:]}
-	daemonDRBG := linkcore.NewDRBG([]byte("daemon-sync-drbg-32-bytes-seed!!"))
 	var daemonCapSent bool
 
 	var handleDaemonEffs func([]linkcore.Effect)
@@ -444,7 +449,7 @@ func (h *directSyncHarness) driveDirectHandshake() {
 					Codec:      h.codec,
 					Connection: opened.Context.Connection,
 					Deadline:   opened.Context.Deadline,
-					Entropy:    daemonDRBG,
+					Entropy:    rand.Reader,
 					Allow:      func() bool { return true },
 				}, false, uint64(h.now))
 				if err != nil {

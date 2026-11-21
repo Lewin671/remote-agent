@@ -1279,9 +1279,9 @@ func (m *LocalCalendar) Unmarshal(b []byte) error {
 }
 
 type EntropyProvided struct {
-	RandomIds  []string
-	UnitFloats []float64
-	Seed       []byte
+	RandomIds   []string
+	UnitFloats  []float64
+	RandomBytes []byte
 }
 
 func (m *EntropyProvided) GetRandomIds() []string {
@@ -1296,9 +1296,9 @@ func (m *EntropyProvided) GetUnitFloats() []float64 {
 	}
 	return nil
 }
-func (m *EntropyProvided) GetSeed() []byte {
+func (m *EntropyProvided) GetRandomBytes() []byte {
 	if m != nil {
-		return m.Seed
+		return m.RandomBytes
 	}
 	return nil
 }
@@ -1348,7 +1348,7 @@ func (m *EntropyProvided) Unmarshal(b []byte) error {
 				if err != nil {
 					return err
 				}
-				m.Seed = v
+				m.RandomBytes = v
 				continue
 			}
 		}
@@ -10505,9 +10505,9 @@ func (m *AttachmentsSettledEffect) AppendMarshal(b []byte) []byte {
 }
 
 type RequestEntropyEffect struct {
-	MinIds       int32
-	MinFloats    int32
-	MinSeedBytes int32
+	MinIds         int32
+	MinFloats      int32
+	MinRandomBytes int32
 }
 
 func (m *RequestEntropyEffect) GetMinIds() int32 {
@@ -10522,9 +10522,9 @@ func (m *RequestEntropyEffect) GetMinFloats() int32 {
 	}
 	return 0
 }
-func (m *RequestEntropyEffect) GetMinSeedBytes() int32 {
+func (m *RequestEntropyEffect) GetMinRandomBytes() int32 {
 	if m != nil {
-		return m.MinSeedBytes
+		return m.MinRandomBytes
 	}
 	return 0
 }
@@ -10541,7 +10541,7 @@ func (m *RequestEntropyEffect) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendInt32(b, 1, int32(m.MinIds))
 	b = litewire.AppendInt32(b, 2, int32(m.MinFloats))
-	b = litewire.AppendInt32(b, 3, int32(m.MinSeedBytes))
+	b = litewire.AppendInt32(b, 3, int32(m.MinRandomBytes))
 	return b
 }
 
