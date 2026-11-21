@@ -19,6 +19,7 @@ public  final class SecuritySealEnvelopeOp extends
     sessionId_ = "";
     requestId_ = "";
     plaintext_ = com.google.protobuf.ByteString.EMPTY;
+    overrideSessionSeed_ = com.google.protobuf.ByteString.EMPTY;
   }
   public static final int PURPOSE_FIELD_NUMBER = 1;
   private int purpose_;
@@ -293,6 +294,33 @@ public  final class SecuritySealEnvelopeOp extends
   private void clearUseSessionSeed() {
 
     useSessionSeed_ = false;
+  }
+
+  public static final int OVERRIDE_SESSION_SEED_FIELD_NUMBER = 9;
+  private com.google.protobuf.ByteString overrideSessionSeed_;
+  /**
+   * <code>bytes override_session_seed = 9 [json_name = "overrideSessionSeed"];</code>
+   * @return The overrideSessionSeed.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getOverrideSessionSeed() {
+    return overrideSessionSeed_;
+  }
+  /**
+   * <code>bytes override_session_seed = 9 [json_name = "overrideSessionSeed"];</code>
+   * @param value The overrideSessionSeed to set.
+   */
+  private void setOverrideSessionSeed(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    overrideSessionSeed_ = value;
+  }
+  /**
+   * <code>bytes override_session_seed = 9 [json_name = "overrideSessionSeed"];</code>
+   */
+  private void clearOverrideSessionSeed() {
+
+    overrideSessionSeed_ = getDefaultInstance().getOverrideSessionSeed();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeOp parseFrom(
@@ -679,6 +707,34 @@ public  final class SecuritySealEnvelopeOp extends
       return this;
     }
 
+    /**
+     * <code>bytes override_session_seed = 9 [json_name = "overrideSessionSeed"];</code>
+     * @return The overrideSessionSeed.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getOverrideSessionSeed() {
+      return instance.getOverrideSessionSeed();
+    }
+    /**
+     * <code>bytes override_session_seed = 9 [json_name = "overrideSessionSeed"];</code>
+     * @param value The overrideSessionSeed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOverrideSessionSeed(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setOverrideSessionSeed(value);
+      return this;
+    }
+    /**
+     * <code>bytes override_session_seed = 9 [json_name = "overrideSessionSeed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOverrideSessionSeed() {
+      copyOnWrite();
+      instance.clearOverrideSessionSeed();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecuritySealEnvelopeOp)
   }
   @java.lang.Override
@@ -703,10 +759,11 @@ public  final class SecuritySealEnvelopeOp extends
             "deadlineMs_",
             "plaintext_",
             "useSessionSeed_",
+            "overrideSessionSeed_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0000\u0000\u0001\u000b\u0002\u0208\u0003\u0208" +
-              "\u0004\u0208\u0005\u0003\u0006\u0002\u0007\n\b\u0007";
+              "\u0000\t\u0000\u0000\u0001\t\t\u0000\u0000\u0000\u0001\u000b\u0002\u0208\u0003\u0208" +
+              "\u0004\u0208\u0005\u0003\u0006\u0002\u0007\n\b\u0007\t\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

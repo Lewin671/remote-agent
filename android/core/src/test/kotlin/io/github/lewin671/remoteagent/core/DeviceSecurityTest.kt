@@ -17,24 +17,6 @@ class DeviceSecurityTest {
     private val env =
         Json.parseToJsonElement(File(System.getProperty("v3Vectors")).readText()).jsonObject
 
-    @Test
-    fun compressedProtocol10Envelopes() {
-        val head = added()
-        val fixtures = v["compressed_envelopes"]!!.jsonArray
-        assertEquals(3, fixtures.size)
-        for (fixture in fixtures) {
-            val item = fixture.jsonObject
-            fun bytes(key: String) = Base64.getDecoder().decode(s(item, key))
-            val wire = DeviceSecurity.parseWire(bytes("wire"))
-            val (header, packed) = DeviceSecurity.open(
-                head, head, false, head.core.issuedAt, wire,
-                s("content_secret_2").unhex(), bytes("seed"),
-            )
-            assertEquals(1u, header.compression)
-            assertArrayEquals(bytes("plain"), unpackSecurity(header, packed))
-        }
-    }
-
     private fun s(o: JsonObject, key: String) = o[key]!!.jsonPrimitive.content
 
     private fun s(key: String) = s(v, key)
@@ -66,11 +48,11 @@ class DeviceSecurityTest {
         assertEquals(s("account"), pin.account)
         assertEquals(s("domain"), pin.domain.hex())
         assertEquals(s(v["genesis"]!!.jsonObject, "hash"), pin.genesis.hex())
-        DeviceSecurity.verifyGenesis(pin, g)
-        DeviceSecurity.verifyTransition(g, added())
-        DeviceSecurity.verifyTransition(added(), renewal())
-        val statement = DeviceSecurity.parseRecoveryStatement(decode("recovery_statement"))
-        DeviceSecurity.verifyTransition(renewal(), recovery(), statement)
+        DeviceSecurity.verifyChain(
+            pin,
+            listOf(g, added(), renewal(), recovery()),
+            listOf(null, null, null, decode("recovery_statement")),
+        )
         assertEquals(
             s(v["recovery"]!!.jsonObject, "hash"),
             DeviceSecurity.stateHash(recovery()).hex(),
@@ -188,7 +170,7 @@ class DeviceSecurityTest {
                 1_700_000_000_000,
             )
         val pin = DeviceSecurity.pinOf(g)
-        DeviceSecurity.verifyGenesis(pin, g)
+        DeviceSecurity.verifyChain(pin, listOf(g))
         assertEquals(phone.id, g.core.authorityID)
         assertEquals(1uL, g.core.contentEpoch)
         val lease=HeadLease.sign(g,signer,1_700_000_000_000)
@@ -208,7 +190,7 @@ class DeviceSecurityTest {
                 signer,
                 1_700_000_100_000,
             )
-        DeviceSecurity.verifyTransition(g, next)
+        DeviceSecurity.verifyChain(pin, listOf(g, next))
         assertEquals(2uL, next.core.epoch)
         assertEquals(2uL, next.core.contentEpoch)
         assertEquals(60, next.prevSecret.size)
@@ -219,59 +201,23 @@ class DeviceSecurityTest {
     }
 
     @Test
-    fun opensTheGoEnvelopeAndSeparatesCounters() {
-        val state = DeviceSecurity.parseState(Base64.getDecoder().decode(s(env, "state")))
-        val secret = s(env, "content_secret").unhex()
-        val wire =
-            DeviceSecurity.Wire(
-                DeviceSecurity.Formed(
-                    Base64.getDecoder().decode(s(env, "header")),
-                    Base64.getDecoder().decode(s(env, "nonce")),
-                    Base64.getDecoder().decode(s(env, "cipher")),
-                    Base64.getDecoder().decode(s(env, "origin")),
-                )
-            )
-        val (h, plain) = DeviceSecurity.open(state, state, false, 0uL, wire, secret, null)
-        assertArrayEquals(Base64.getDecoder().decode(s(env, "plain")), plain)
-        assertArrayEquals(
-            Base64.getDecoder().decode(s(env, "header")),
-            DeviceSecurity.headerBytes(h),
-        )
-        assertArrayEquals(
-            wire.formed.cipher,
-            DeviceSecurity.parseWire(DeviceSecurity.wireBytes(wire)).formed.cipher,
-        )
-        val changed =
-            DeviceSecurity.Wire(
-                wire.formed.copy(
-                    cipher =
-                        wire.formed.cipher.copyOf().also { it[0] = (it[0].toInt() xor 1).toByte() }
-                )
-            )
-        reject { DeviceSecurity.verifyOrigin(state, state, false, 0uL, changed) }
-        assertFalse(
-            DeviceSecurity.contentKey(secret, null, h)
-                .contentEquals(DeviceSecurity.contentKey(secret, null, h.copy(seq = h.seq + 1uL)))
-        )
-    }
-
-    @Test
     fun rejectsTruncationAndForks() {
-        val raw = Base64.getDecoder().decode(s(env, "header"))
-        for (i in raw.indices) reject { DeviceSecurity.parseHeader(raw.copyOf(i)) }
-        reject { DeviceSecurity.parseHeader(raw + byteArrayOf(0)) }
         val g = genesis()
         val a = added()
-        reject { DeviceSecurity.verifyTransition(a, g) }
+        val pin = DeviceSecurity.pinOf(g)
+        reject { DeviceSecurity.verifyChain(pin, listOf(a, g)) }
+        val signer = SigningKey(s("phone_seed").unhex())
+        val otherMachine = Authority.newMember(SigningKey(ByteArray(32) { 0x44 }), ByteArray(32) { 0x45 }, 1u)
         val fork =
-            DeviceSecurity.parseState(
-                DeviceSecurity.stateBytes(
-                    a.copy(
-                        core = a.core.copy(parent = DeviceSecurity.stateHash(g).also { it[0] = 1 })
-                    )
-                )
+            Authority.pair(
+                g,
+                otherMachine,
+                s("content_secret_1").unhex(),
+                s("content_secret_2").unhex(),
+                signer,
+                1_700_000_150_000,
             )
-        reject { DeviceSecurity.verifyTransition(g, fork) }
+        reject { DeviceSecurity.verifyChain(pin, listOf(g, a, fork)) }
     }
 
     @Test
@@ -286,32 +232,6 @@ class DeviceSecurityTest {
         assertArrayEquals(seed, RecoveryCode.decode(text.lowercase().replace("-", " "))!!.seed)
         assertNull(RecoveryCode.decode("not a recovery code"))
         assertNull(RecoveryCode.decode(text + "Z"))
-    }
-
-    @Test
-    fun matchesGoNotificationRoutingIdentifiers() {
-        val g = genesis()
-        val h =
-            DeviceSecurity.Header(
-                g.core.account,
-                g.core.domain,
-                g.core.epoch,
-                DeviceSecurity.stateHash(g),
-                g.core.contentEpoch,
-                g.core.authorityID,
-                10u,
-                DeviceSecurity.Purpose.NOTIFY,
-                g.core.authorityID,
-                "s",
-                "notify:1:7",
-                0uL,
-                0uL,
-                0u,
-            )
-        assertEquals(
-            "notify:1:7",
-            DeviceSecurity.parseHeader(DeviceSecurity.headerBytes(h)).request,
-        )
     }
 
     @Test
@@ -401,7 +321,7 @@ class DeviceSecurityTest {
                 signer,
                 1_700_000_100_000,
             )
-        DeviceSecurity.verifyTransition(g, rotated)
+        DeviceSecurity.verifyChain(DeviceSecurity.pinOf(g), listOf(g, rotated))
         val m = rotated.core.member(phone.id)!!
         assertArrayEquals(phone.ed, m.ed)
         assertEquals(phone.id, m.id)
@@ -412,29 +332,55 @@ class DeviceSecurityTest {
     fun anExpiredLeasePausesControlButNotHistory() {
         val g = genesis()
         val state = added()
-        val secret = s("content_secret_2").unhex()
+        val lease = HeadLease.parse(decode("lease"))
         val signer = SigningKey(s("phone_seed").unhex())
-        val h =
-            DeviceSecurity.Header(
-                state.core.account,
-                state.core.domain,
-                state.core.epoch,
-                DeviceSecurity.stateHash(state),
-                state.core.contentEpoch,
+        val record =
+            DeviceSecurity.Record(
+                DeviceSecurity.pinOf(g),
+                listOf(g, state),
                 g.core.authorityID,
-                5u,
-                DeviceSecurity.Purpose.COMMAND,
-                state.core.members.first { it.kind == 1u }.id,
-                "",
-                "0123456789abcdef",
-                0uL,
-                (state.core.issuedAt+DeviceSecurity.LEASE_U),
-                0u,
+                s("phone_x").unhex(),
+                lease = lease,
             )
-        val wire =
-            DeviceSecurity.Wire(DeviceSecurity.form(secret, null, h, byteArrayOf(1, 2, 3), signer))
-        DeviceSecurity.verifyOrigin(state, state, true, (state.core.issuedAt+DeviceSecurity.LEASE_U), wire)
-        reject { HeadLease.parse(decode("lease")).valid(state,state.core.issuedAt+DeviceSecurity.LEASE_U+1uL) }
+        var now = lease.notAfter.toLong() - 1000L
+        val machineId = state.core.members.first { it.kind == 1u }.id
+        val cmdPlain =
+            io.github.lewin671.remoteagent.proto.Command.newBuilder()
+                .setInterrupt(
+                    io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
+                        .setSessionId("s1"),
+                )
+                .build()
+                .toByteArray()
+        CoreSecurityBridge(
+            TestSecurityStore(record),
+            g.core.authorityID,
+            signer,
+            clock = { now },
+        ).use { bridge ->
+            val env =
+                bridge.seal(
+                    DeviceSecurity.Purpose.COMMAND,
+                    machine = machineId,
+                    request = "0123456789abcdef",
+                    deadline = lease.notAfter + 60_000uL,
+                    plain = cmdPlain,
+                )
+            now = lease.notAfter.toLong()
+            val err =
+                runCatching {
+                    bridge.seal(
+                        DeviceSecurity.Purpose.COMMAND,
+                        machine = machineId,
+                        request = "0123456789abcdf0",
+                        deadline = lease.notAfter + 60_000uL,
+                        plain = cmdPlain,
+                    )
+                }.exceptionOrNull()
+            assertTrue(err is DeviceSecurity.Failure && err.code == "lease")
+            assertArrayEquals(cmdPlain, bridge.openHistory(env).second)
+        }
+        reject { lease.valid(state, lease.notAfter) }
     }
 
     @Test
@@ -454,7 +400,7 @@ class DeviceSecurityTest {
         val newRecovery = ByteArray(32) { 0x42 }
         val veto =
             Authority.veto(g, newRecovery, s("content_secret_1").unhex(), signer, 1_700_000_100_000)
-        DeviceSecurity.verifyTransition(g, veto)
+        DeviceSecurity.verifyChain(DeviceSecurity.pinOf(g), listOf(g, veto))
         assertArrayEquals(newRecovery, veto.core.recoveryEd)
         assertEquals(g.core.contentEpoch, veto.core.contentEpoch)
     }
@@ -514,7 +460,7 @@ class DeviceSecurityTest {
                 signer,
                 1_700_000_300_000,
             )
-        DeviceSecurity.verifyTransition(removed, readded)
+        DeviceSecurity.verifyChain(DeviceSecurity.pinOf(g), listOf(g, added, removed, readded))
         assertEquals(listOf(first.id), readded.core.removed)
         try {
             Authority.pair(

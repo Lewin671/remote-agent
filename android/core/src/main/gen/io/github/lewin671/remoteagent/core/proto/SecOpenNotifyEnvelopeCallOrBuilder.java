@@ -89,4 +89,10 @@ public interface SecOpenNotifyEnvelopeCallOrBuilder extends
    * @return The envelope.
    */
   io.github.lewin671.remoteagent.proto.Envelope getEnvelope();
+
+  /**
+   * <code>bytes purpose_key = 8 [json_name = "purposeKey"];</code>
+   * @return The purposeKey.
+   */
+  com.google.protobuf.ByteString getPurposeKey();
 }

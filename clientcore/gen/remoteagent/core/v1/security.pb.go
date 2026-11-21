@@ -1235,14 +1235,15 @@ func (m *SecurityOpenEnvelopeOp) Unmarshal(b []byte) error {
 }
 
 type SecuritySealEnvelopeOp struct {
-	Purpose        uint32
-	MachineId      string
-	SessionId      string
-	RequestId      string
-	Seq            uint64
-	DeadlineMs     int64
-	Plaintext      []byte
-	UseSessionSeed bool
+	Purpose             uint32
+	MachineId           string
+	SessionId           string
+	RequestId           string
+	Seq                 uint64
+	DeadlineMs          int64
+	Plaintext           []byte
+	UseSessionSeed      bool
+	OverrideSessionSeed []byte
 }
 
 func (m *SecuritySealEnvelopeOp) GetPurpose() uint32 {
@@ -1292,6 +1293,12 @@ func (m *SecuritySealEnvelopeOp) GetUseSessionSeed() bool {
 		return m.UseSessionSeed
 	}
 	return false
+}
+func (m *SecuritySealEnvelopeOp) GetOverrideSessionSeed() []byte {
+	if m != nil {
+		return m.OverrideSessionSeed
+	}
+	return nil
 }
 
 func (m *SecuritySealEnvelopeOp) Unmarshal(b []byte) error {
@@ -1371,6 +1378,15 @@ func (m *SecuritySealEnvelopeOp) Unmarshal(b []byte) error {
 					return err
 				}
 				m.UseSessionSeed = litewire.DecodeBool(v)
+				continue
+			}
+		case 9:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.OverrideSessionSeed = v
 				continue
 			}
 		}

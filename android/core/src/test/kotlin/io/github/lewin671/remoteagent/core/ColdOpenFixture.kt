@@ -29,38 +29,58 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
         listOf(genesis, head).map(DeviceSecurity::stateBytes), listOf(null, null),
     ).installed(emptyList(), emptyList(), HeadLease.sign(head, signer, now))
     val account = Account("https://example.com", byteArrayOf(), ByteArray(32) { 1 }, phone.id, record.pin.account)
+    private val machineRecord = DeviceSecurity.Record.fromChain(
+        head.core.account, head.core.domain, DeviceSecurity.stateHash(genesis), machine.id, ByteArray(32) { 4 },
+        listOf(genesis, head).map(DeviceSecurity::stateBytes), listOf(null, null),
+    ).installed(emptyList(), emptyList(), HeadLease.sign(head, signer, now))
 
     fun removeMachine(): DeviceSecurity.State = Authority.remove(record.head, listOf(machine.id),
         secret, ByteArray(32) { 12 }, signer, now)
 
-    private fun seal(purpose: DeviceSecurity.Purpose, sid: String, seq: Long, plain: ByteArray): Envelope {
-        val header = DeviceSecurity.Header(record.pin.account, record.pin.domain, head.core.epoch,
-            DeviceSecurity.stateHash(head), head.core.contentEpoch, machine.id, purpose.kind, purpose,
-            machine.id, sid, "", seq.toULong(), 0uL, 0u)
-        return DeviceSecurity.envelope(DeviceSecurity.Wire(DeviceSecurity.form(secret,
-            if (purpose.sessionKey) seed else null, header, plain, machineSigner)))
-    }
+    private inline fun <T> withBridge(
+        rec: DeviceSecurity.Record,
+        memberId: String,
+        key: SigningKey,
+        block: (CoreSecurityBridge) -> T,
+    ): T = CoreSecurityBridge(TestSecurityStore(rec), memberId, key, clock = { now }).use(block)
+
+    private fun CoreSecurityBridge.sealMachine(purpose: DeviceSecurity.Purpose, sid: String, seq: Long, plain: ByteArray): Envelope =
+        seal(
+            purpose = purpose,
+            machine = machine.id,
+            session = sid,
+            seq = seq.toULong(),
+            plain = plain,
+            seed = if (purpose.sessionKey) seed else null,
+        )
+
+    private fun seal(purpose: DeviceSecurity.Purpose, sid: String, seq: Long, plain: ByteArray): Envelope =
+        withBridge(machineRecord, machine.id, machineSigner) { it.sealMachine(purpose, sid, seq, plain) }
 
     fun machine(revision: Long, hostname: String): Machine = Machine.newBuilder().setId(machine.id)
         .setOnline(true).setMeta(seal(DeviceSecurity.Purpose.MACHINE_META, "", revision,
             MachineMeta.newBuilder().setHostname(hostname).build().toByteArray())).build()
 
     fun device(revision: Long, name: String): Device {
-        val purpose = DeviceSecurity.Purpose.DEVICE_META
-        val header = DeviceSecurity.Header(record.pin.account, record.pin.domain, head.core.epoch,
-            DeviceSecurity.stateHash(head), head.core.contentEpoch, phone.id, purpose.kind, purpose,
-            "", "", phone.id, revision.toULong(), 0uL, 0u)
-        val env = DeviceSecurity.envelope(DeviceSecurity.Wire(DeviceSecurity.form(secret, null, header,
-            DeviceMeta.newBuilder().setName(name).build().toByteArray(), signer)))
+        val env = withBridge(record, phone.id, signer) { bridge ->
+            bridge.seal(
+                purpose = DeviceSecurity.Purpose.DEVICE_META,
+                request = phone.id,
+                seq = revision.toULong(),
+                plain = DeviceMeta.newBuilder().setName(name).build().toByteArray(),
+            )
+        }
         return Device.newBuilder().setId(phone.id).setKind(DeviceKind.DEVICE_KIND_CLIENT).setMeta(env).build()
     }
 
-    val sessions = listOf("long", "short", "empty").associateWith { sid ->
-        RemoteSession.newBuilder().setSessionId(sid).setMachineId(machine.id)
-            .setKey(seal(DeviceSecurity.Purpose.SESSION_KEY, sid, 1, seed))
-            .setMeta(seal(DeviceSecurity.Purpose.SESSION_META, sid, 1,
-                Session.newBuilder().setId(sid).setTitle(sid).build().toByteArray()))
-            .setLastSeq(when (sid) { "long" -> historySize; "short" -> 2; else -> 0 }.toLong()).build()
+    val sessions = withBridge(machineRecord, machine.id, machineSigner) { bridge ->
+        listOf("long", "short", "empty").associateWith { sid ->
+            RemoteSession.newBuilder().setSessionId(sid).setMachineId(machine.id)
+                .setKey(bridge.sealMachine(DeviceSecurity.Purpose.SESSION_KEY, sid, 1, seed))
+                .setMeta(bridge.sealMachine(DeviceSecurity.Purpose.SESSION_META, sid, 1,
+                    Session.newBuilder().setId(sid).setTitle(sid).build().toByteArray()))
+                .setLastSeq(when (sid) { "long" -> historySize; "short" -> 2; else -> 0 }.toLong()).build()
+        }
     }
     fun session(sid: String, revision: Long, status: SessionStatus): RemoteSession =
         sessions.getValue(sid).toBuilder().setMeta(seal(DeviceSecurity.Purpose.SESSION_META, sid, revision,
@@ -71,12 +91,14 @@ internal class ColdOpenFixture(val historySize: Int = 501) {
         Session.newBuilder().setId("empty").setCwd("/scheduled").setTaskOwned(true)
             .setPendingApprovals(1).setStatus(SessionStatus.SESSION_STATUS_BLOCKED).build().toByteArray())).build()
 
-    val events = listOf("long", "short", "empty").associateWith { sid ->
-        (1..when (sid) { "long" -> historySize + 1; "short" -> 2; else -> 0 }).map { seq ->
-            val event = Event.newBuilder().setSeq(seq.toLong()).setSessionId(sid)
-                .setAgentMessage(AgentMessage.newBuilder().setText("Message $seq")).build()
-            StoredEvent.newBuilder().setSeq(seq.toLong())
-                .setEnvelope(seal(DeviceSecurity.Purpose.EVENT, sid, seq.toLong(), event.toByteArray())).build()
+    val events = withBridge(machineRecord, machine.id, machineSigner) { bridge ->
+        listOf("long", "short", "empty").associateWith { sid ->
+            (1..when (sid) { "long" -> historySize + 1; "short" -> 2; else -> 0 }).map { seq ->
+                val event = Event.newBuilder().setSeq(seq.toLong()).setSessionId(sid)
+                    .setAgentMessage(AgentMessage.newBuilder().setText("Message $seq")).build()
+                StoredEvent.newBuilder().setSeq(seq.toLong())
+                    .setEnvelope(bridge.sealMachine(DeviceSecurity.Purpose.EVENT, sid, seq.toLong(), event.toByteArray())).build()
+            }
         }
     }
 }

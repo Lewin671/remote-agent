@@ -817,6 +817,26 @@ func SecCall(req *corev1.SecCallRequest) *corev1.SecCallResponse {
 	case *corev1.SecCallRequest_OpenNotifyEnvelope:
 		return secOpenNotifyEnvelope(c.OpenNotifyEnvelope)
 
+	case *corev1.SecCallRequest_DerivePurposeKey:
+		if c.DerivePurposeKey == nil {
+			return errSecResp(devicesec.ErrInvalid)
+		}
+		dom, err := parseHash32(c.DerivePurposeKey.Domain)
+		if err != nil {
+			return errSecResp(err)
+		}
+		out, err := devicesec.DerivePurposeKeyRaw(
+			c.DerivePurposeKey.Secret,
+			c.DerivePurposeKey.AccountId,
+			dom,
+			c.DerivePurposeKey.ContentEpoch,
+			devicesec.Purpose(c.DerivePurposeKey.Purpose),
+		)
+		if err != nil {
+			return errSecResp(err)
+		}
+		return &corev1.SecCallResponse{Data: out}
+
 	default:
 		return errSecResp(devicesec.ErrInvalid)
 	}
@@ -961,6 +981,51 @@ func secOpenNotifyEnvelope(c *corev1.SecOpenNotifyEnvelopeCall) *corev1.SecCallR
 	}
 	if len(c.States) == 0 {
 		return errSecResp(devicesec.ErrInvalid)
+	}
+	if len(c.PurposeKey) != 0 {
+		if len(c.States) != 1 || len(c.PurposeKey) != 32 || len(c.ContentSecret) != 0 || len(c.Dh) != 0 {
+			return errSecResp(devicesec.ErrInvalid)
+		}
+		head, err := devicesec.ParseState(c.States[0])
+		if err != nil {
+			return errSecResp(err)
+		}
+		if err := pin.Verify(head); err != nil {
+			return errSecResp(err)
+		}
+		ct, err := FromProtoEnvelope(c.Envelope)
+		if err != nil {
+			return errSecResp(err)
+		}
+		h, err := devicesec.ParseHeader(ct.Header)
+		if err != nil {
+			return errSecResp(err)
+		}
+		if h.Purpose != devicesec.Notify {
+			return errSecResp(devicesec.ErrInvalid)
+		}
+		headHash, _ := head.Hash()
+		if h.State != headHash {
+			return errSecResp(devicesec.ErrStale)
+		}
+		vh, err := ct.VerifyOrigin(head, head, false, 0)
+		if err != nil {
+			return errSecResp(err)
+		}
+		_, plain, err := devicesec.OpenCipherWithPurposeKey(c.PurposeKey, nil, ct)
+		if err != nil {
+			return errSecResp(err)
+		}
+		body, unpacked, err := ValidateAndDecodeBody(vh, plain)
+		if err != nil {
+			return errSecResp(err)
+		}
+		if _, ok := body.(*v1.NotifyContent); !ok {
+			return errSecResp(devicesec.ErrInvalid)
+		}
+		return &corev1.SecCallResponse{
+			Data: unpacked,
+		}
 	}
 	states, byHash, _, err := parseAndVerifyChain(pin, c.States, c.RecoveryProofs)
 	if err != nil {

@@ -1,8 +1,5 @@
 # Protobuf lite keeps field names for reflection-based parsing.
 -keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
-# Bouncy Castle is still used for HKDF and HPKE (DeviceSecurity/E2e) via direct
-# lightweight classes; keep -dontwarn for optional desktop/JCE references in bcprov.
--dontwarn org.bouncycastle.**
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**

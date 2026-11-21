@@ -124,21 +124,20 @@ class Codex2RecoveryIngestionTest {
                 val signature = forged.signature.toByteArray()
                 signature[0] = (signature[0].toInt() xor 1).toByte()
                 forged.signature = com.google.protobuf.ByteString.copyFrom(signature)
-                val sdk =
-                    DeviceSecurityClient(
-                        stores.getValue(account.deviceId),
-                        account.deviceId,
-                        SigningKey(account.deviceSeed),
-                        fetchStates = { error("no fetch needed") },
+                CoreSecurityBridge(
+                    stores.getValue(account.deviceId),
+                    account.deviceId,
+                    SigningKey(account.deviceSeed),
+                    fetchStates = { error("no fetch needed") },
+                ).use { sdk ->
+                    val failure = runCatching {
+                        sdk.openHistory(forged.build(), d.sessionKeys.getValue("s"))
+                    }.exceptionOrNull()
+                    assertTrue(
+                        "invalid origin masked as key unavailability: $failure",
+                        failure is DeviceSecurity.Failure && failure.code == "untrusted",
                     )
-                val failure = runCatching {
-                    sdk.openHistory(forged.build(), d.sessionKeys.getValue("s"))
                 }
-                    .exceptionOrNull()
-                assertTrue(
-                    "invalid origin masked as key unavailability: $failure",
-                    failure is DeviceSecurity.Failure && failure.code == "untrusted",
-                )
             }
             if (damage == null) {
                 val r = fixtureRemote(account, http)

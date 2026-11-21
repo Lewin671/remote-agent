@@ -205,7 +205,15 @@ func (h Header) Scope(s State) error {
 }
 
 func DeriveKey(secret, sessionSeed []byte, h Header) ([]byte, error) {
-	if len(secret) != 32 || h.validate() != nil {
+	purposeKey, err := DerivePurposeKey(secret, h)
+	if err != nil {
+		return nil, err
+	}
+	return DeriveKeyFromPurposeKey(purposeKey, sessionSeed, h)
+}
+
+func DeriveKeyFromPurposeKey(purposeKey, sessionSeed []byte, h Header) ([]byte, error) {
+	if len(purposeKey) != 32 || h.validate() != nil {
 		return nil, ErrInvalid
 	}
 	var salt []byte
@@ -227,10 +235,6 @@ func DeriveKey(secret, sessionSeed []byte, h Header) ([]byte, error) {
 	e.Str(h.Session)
 	e.Str(h.Request)
 	e.U64(h.Seq)
-	purposeKey, err := DerivePurposeKey(secret, h)
-	if err != nil {
-		return nil, err
-	}
 	return hkdf.Key(sha256.New, purposeKey, salt, string(e.B), 32)
 }
 
@@ -401,6 +405,30 @@ func OpenCipher(secret, sessionSeed []byte, c Ciphertext) (Header, []byte, error
 	return openCipher(secret, sessionSeed, c)
 }
 
+// OpenCipherWithPurposeKey decrypts c using a pre-derived purpose key without re-checking origin.
+func OpenCipherWithPurposeKey(purposeKey, sessionSeed []byte, c Ciphertext) (Header, []byte, error) {
+	h, err := ParseHeader(c.Header)
+	if err != nil {
+		return h, nil, err
+	}
+	if _, err := c.Commitment(); err != nil {
+		return h, nil, err
+	}
+	key, err := DeriveKeyFromPurposeKey(purposeKey, sessionSeed, h)
+	if err != nil {
+		return h, nil, err
+	}
+	aead, err := gcm(key)
+	if err != nil {
+		return h, nil, err
+	}
+	plain, err := aead.Open(nil, c.Nonce, c.Cipher, c.Header)
+	if err != nil {
+		return h, nil, ErrUntrusted
+	}
+	return h, plain, nil
+}
+
 func openCipher(secret, sessionSeed []byte, c Ciphertext) (Header, []byte, error) {
 	h, key, err := DeriveCipherKey(secret, sessionSeed, c)
 	if err != nil {
@@ -465,14 +493,21 @@ func ParseWire(b []byte) (w Wire, err error) {
 	_, err = w.MarshalBinary()
 	return w, err
 }
-func DerivePurposeKey(secret []byte, h Header) ([]byte, error) {
-	if len(secret) != 32 || h.validate() != nil {
+func DerivePurposeKeyRaw(secret []byte, account string, domain Hash, contentEpoch uint64, purpose Purpose) ([]byte, error) {
+	if len(secret) != 32 || !deviceID(account) || domain == (Hash{}) || contentEpoch == 0 || purpose.Kind() == 0 {
 		return nil, ErrInvalid
 	}
 	e := Encoder{B: []byte("ra3/purpose-key\x00")}
-	e.Str(h.Account)
-	e.Raw(h.Domain[:])
-	e.U64(h.ContentEpoch)
-	e.U32(uint32(h.Purpose))
+	e.Str(account)
+	e.Raw(domain[:])
+	e.U64(contentEpoch)
+	e.U32(uint32(purpose))
 	return hkdf.Key(sha256.New, secret, nil, string(e.B), 32)
+}
+
+func DerivePurposeKey(secret []byte, h Header) ([]byte, error) {
+	if err := h.validate(); err != nil {
+		return nil, ErrInvalid
+	}
+	return DerivePurposeKeyRaw(secret, h.Account, h.Domain, h.ContentEpoch, h.Purpose)
 }

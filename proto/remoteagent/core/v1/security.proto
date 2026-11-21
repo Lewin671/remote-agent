@@ -154,6 +154,7 @@ message SecuritySealEnvelopeOp {
   int64 deadline_ms = 6;
   bytes plaintext = 7;
   bool use_session_seed = 8;
+  bytes override_session_seed = 9;
 }
 
 message SecurityGetSessionSeedOp {

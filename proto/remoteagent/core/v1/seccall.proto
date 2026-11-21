@@ -127,6 +127,7 @@ message SecCallRequest {
     SecEd25519SeedSignCall ed25519_seed_sign = 35;
     SecInflateBoundedCall inflate_bounded = 37;
     SecOpenNotifyEnvelopeCall open_notify_envelope = 40;
+    SecDerivePurposeKeyCall derive_purpose_key = 41;
   }
 }
 
@@ -300,6 +301,15 @@ message SecOpenNotifyEnvelopeCall {
   bytes dh = 5;
   bytes content_secret = 6;
   remoteagent.v1.Envelope envelope = 7;
+  bytes purpose_key = 8;
+}
+
+message SecDerivePurposeKeyCall {
+  bytes secret = 1;
+  string account_id = 2;
+  bytes domain = 3;
+  uint64 content_epoch = 4;
+  uint32 purpose = 5;
 }
 
 message SecCallResponse {

@@ -1,14 +1,9 @@
 package io.github.lewin671.remoteagent.core.transport
 
 import com.google.protobuf.ByteString
-import io.github.lewin671.remoteagent.core.SigningKey
 import io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect
 import io.github.lewin671.remoteagent.core.proto.DirectDcStateEvent
 import io.github.lewin671.remoteagent.core.proto.DirectDcStatsEvent
-import io.github.lewin671.remoteagent.core.proto.DirectKeyAgreeEffect
-import io.github.lewin671.remoteagent.core.proto.DirectKeyAgreedEvent
-import io.github.lewin671.remoteagent.core.proto.DirectKeySignEffect
-import io.github.lewin671.remoteagent.core.proto.DirectKeySignedEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcAddCandidatesEffect
 import io.github.lewin671.remoteagent.core.proto.DirectPcCandidatesAddedEvent
 import io.github.lewin671.remoteagent.core.proto.DirectPcCloseEffect
@@ -58,8 +53,6 @@ private fun decodeUtf8Strict(bytes: ByteArray): String =
  * Bulk AES-GCM and batch signature verification stay outside Core.
  */
 internal class DirectExecutor(
-    private val deviceSeed: () -> ByteArray?,
-    private val xPrivate: () -> ByteArray?,
     private val emit: (CoreEvent) -> Unit,
     private val onPushedEvent: (machineId: String, pcId: Long, env: Envelope, header: Header, size: Int) -> Unit,
     private val factory: RtcFactory? = null,
@@ -103,43 +96,6 @@ internal class DirectExecutor(
 
     fun detachAll() {
         leg = null
-    }
-
-    fun keySign(eff: DirectKeySignEffect) {
-        val sig = try {
-            val seed = deviceSeed()
-            if (seed == null || seed.size != 32) ByteArray(0)
-            else SigningKey(seed).sign(eff.message.toByteArray())
-        } catch (_: Exception) {
-            ByteArray(0)
-        }
-        emitEvent {
-            setDirectKeySigned(
-                DirectKeySignedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setSignature(ByteString.copyFrom(sig)),
-            )
-        }
-    }
-
-    fun keyAgree(eff: DirectKeyAgreeEffect) {
-        val secret = try {
-            val priv = xPrivate()
-            val peerPub = eff.peerXPublic.toByteArray()
-            if (priv == null || priv.size != 32 || peerPub.size != 32) null
-            else Corebind.x25519Shared(priv, peerPub)
-        } catch (_: Exception) {
-            null
-        }
-        emitEvent {
-            val b = DirectKeyAgreedEvent.newBuilder().setOpId(eff.opId)
-            if (secret != null && secret.size == 32) {
-                b.setSharedSecret(ByteString.copyFrom(secret)).setOk(true)
-            } else {
-                b.setOk(false)
-            }
-            setDirectKeyAgreed(b)
-        }
     }
 
     fun signalSend(eff: DirectSignalSendEffect): Boolean {

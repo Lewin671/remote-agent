@@ -715,7 +715,6 @@ class RemoteTest {
             for (sid in sids) {
                 assertEquals("cache missing events for $sid", eventsPerSession, memory.events(sid).size)
             }
-            assertEquals("expected zero leaked pending cache refs", 0, r.pendingCacheSizeForTest())
 
             // Cold start against the populated cache restores every event without network.
             val cold = fixtureRemote(r.account, http, memory)

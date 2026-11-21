@@ -305,7 +305,6 @@
 "errors_the_computer_s_reply_could_not_be_verified_command" = "The computer’s reply could not be verified. Command execution is uncertain.";
 "errors_the_draft_could_not_be_restored_you_can_still" = "The draft could not be restored. You can still type and send; retry when opening or editing next time.";
 "errors_the_draft_could_not_be_saved_locally_keep_the" = "The draft could not be saved locally. Keep the original images and text before closing the page.";
-"errors_the_event_s_position_was_changed" = "The event’s position was changed";
 "errors_the_plan_display_changed_review_it_again" = "The plan display changed. Review it again.";
 "errors_the_previous_operation_s_outcome_is_still_unknown_reload" = "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.";
 "errors_the_recovery_object_was_updated_concurrently_retrying_on_the" = "The recovery object was updated concurrently. Retrying on the next sync.";

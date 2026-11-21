@@ -1,6 +1,6 @@
 package io.github.lewin671.remoteagent.core
 
-/** A signed lease renews availability without changing membership history. */
+/** Lease certificate attesting head state freshness, backed by Go `clientcore` `SecCall`. */
 data class HeadLease(
     val domain: ByteArray,
     val head: ByteArray,
@@ -15,8 +15,7 @@ data class HeadLease(
                 head.size == 32 &&
                 head.any { it != 0.toByte() } &&
                 issuedAt > 0uL &&
-                notAfter > issuedAt &&
-                notAfter - issuedAt <= DeviceSecurity.LEASE_U,
+                notAfter > issuedAt,
         )
         return DeviceSecurity.Writer()
             .raw("ra3/lease\u0000".toByteArray())
@@ -27,61 +26,37 @@ data class HeadLease(
             .bytes()
     }
 
-    fun bytes(): ByteArray {
-        require(signature.size == 64)
-        return DeviceSecurity.Writer().lp(signBytes()).lp(signature).bytes()
-    }
+    fun bytes(): ByteArray =
+        SecCall.marshalLease(
+            domain = domain,
+            headHash = head,
+            issuedAt = issuedAt.toLong(),
+            notAfter = notAfter.toLong(),
+            signature = signature,
+        ).first
 
     fun verify(state: DeviceSecurity.State) {
-        val m =
-            state.core.member(state.core.authorityID) ?: throw DeviceSecurity.Failure("untrusted")
-        if (
-            !domain.contentEquals(state.core.domain) ||
-                !head.contentEquals(DeviceSecurity.stateHash(state)) ||
-                issuedAt < state.core.issuedAt ||
-                !verifyEd25519(m.ed, signBytes(), signature)
-        )
-            throw DeviceSecurity.Failure("untrusted")
+        SecCall.verifyLease(bytes(), DeviceSecurity.stateBytes(state), 0L, false)
     }
 
     fun valid(state: DeviceSecurity.State, now: ULong) {
-        verify(state)
-        if (issuedAt > now + DeviceSecurity.MAX_CLOCK_SKEW) throw DeviceSecurity.Failure("clock")
-        if (now >= notAfter) throw DeviceSecurity.Failure("lease")
+        SecCall.verifyLease(bytes(), DeviceSecurity.stateBytes(state), now.toLong(), true)
     }
 
     companion object {
-        fun parse(b: ByteArray): HeadLease {
-            require(b.size <= 256)
-            val r = DeviceSecurity.Reader(b)
-            val body = r.lp(128)
-            val sig = r.lp(64)
-            r.done()
-            val d = DeviceSecurity.Reader(body)
-            require(d.raw(10).contentEquals("ra3/lease\u0000".toByteArray()))
-            val l = HeadLease(d.raw(32), d.raw(32), d.u64(), d.u64(), sig)
-            d.done()
-            require(l.bytes().contentEquals(b))
-            return l
-        }
+        fun parse(b: ByteArray): HeadLease = SecCall.parseLease(b)
 
-        fun sign(
-            state: DeviceSecurity.State,
-            signer: SigningKey,
-            now: Long,
-            floor: ULong = 0uL,
-        ): HeadLease {
-            require(state.core.authorityID == deviceId(signer.publicKey))
-            val issued = maxOf(now.coerceAtLeast(0).toULong(), state.core.issuedAt, floor)
-            val l =
-                HeadLease(
-                    state.core.domain,
-                    DeviceSecurity.stateHash(state),
-                    issued,
-                    issued + DeviceSecurity.LEASE_U,
-                    byteArrayOf(),
-                )
-            return l.copy(signature = signer.sign(l.signBytes()))
+        fun sign(state: DeviceSecurity.State, signer: SigningKey, now: Long): HeadLease {
+            val headBytes = DeviceSecurity.stateBytes(state)
+            val (unsigned, signBytes) = SecCall.newLeaseUnsigned(headBytes, now)
+            val sig = signer.sign(signBytes)
+            return SecCall.marshalLease(
+                domain = unsigned.domain.toByteArray(),
+                headHash = unsigned.head.toByteArray(),
+                issuedAt = unsigned.issuedAt,
+                notAfter = unsigned.notAfter,
+                signature = sig,
+            ).second
         }
     }
 }

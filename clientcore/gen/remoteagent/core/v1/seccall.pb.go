@@ -963,6 +963,10 @@ type SecCallRequest_OpenNotifyEnvelope struct{ OpenNotifyEnvelope *SecOpenNotify
 
 func (*SecCallRequest_OpenNotifyEnvelope) isSecCallRequest_Call() {}
 
+type SecCallRequest_DerivePurposeKey struct{ DerivePurposeKey *SecDerivePurposeKeyCall }
+
+func (*SecCallRequest_DerivePurposeKey) isSecCallRequest_Call() {}
+
 func (m *SecCallRequest) GetCall() isSecCallRequest_Call {
 	if m != nil {
 		return m.Call
@@ -1134,6 +1138,12 @@ func (m *SecCallRequest) GetInflateBounded() *SecInflateBoundedCall {
 func (m *SecCallRequest) GetOpenNotifyEnvelope() *SecOpenNotifyEnvelopeCall {
 	if x, ok := m.GetCall().(*SecCallRequest_OpenNotifyEnvelope); ok && x != nil {
 		return x.OpenNotifyEnvelope
+	}
+	return nil
+}
+func (m *SecCallRequest) GetDerivePurposeKey() *SecDerivePurposeKeyCall {
+	if x, ok := m.GetCall().(*SecCallRequest_DerivePurposeKey); ok && x != nil {
+		return x.DerivePurposeKey
 	}
 	return nil
 }
@@ -1533,6 +1543,21 @@ func (m *SecCallRequest) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Call = &SecCallRequest_OpenNotifyEnvelope{OpenNotifyEnvelope: sub}
+				continue
+			}
+		case 41:
+			if wtyp == litewire.BytesType {
+				var sub *SecDerivePurposeKeyCall
+				if cur, ok := m.Call.(*SecCallRequest_DerivePurposeKey); ok && cur != nil {
+					sub = cur.DerivePurposeKey
+				}
+				if sub == nil {
+					sub = &SecDerivePurposeKeyCall{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Call = &SecCallRequest_DerivePurposeKey{DerivePurposeKey: sub}
 				continue
 			}
 		}
@@ -3511,6 +3536,7 @@ type SecOpenNotifyEnvelopeCall struct {
 	Dh             []byte
 	ContentSecret  []byte
 	Envelope       *v1.Envelope
+	PurposeKey     []byte
 }
 
 func (m *SecOpenNotifyEnvelopeCall) GetPin() *SecPin {
@@ -3552,6 +3578,12 @@ func (m *SecOpenNotifyEnvelopeCall) GetContentSecret() []byte {
 func (m *SecOpenNotifyEnvelopeCall) GetEnvelope() *v1.Envelope {
 	if m != nil {
 		return m.Envelope
+	}
+	return nil
+}
+func (m *SecOpenNotifyEnvelopeCall) GetPurposeKey() []byte {
+	if m != nil {
+		return m.PurposeKey
 	}
 	return nil
 }
@@ -3626,6 +3658,114 @@ func (m *SecOpenNotifyEnvelopeCall) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Envelope); err != nil {
 					return err
 				}
+				continue
+			}
+		case 8:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.PurposeKey = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecDerivePurposeKeyCall struct {
+	Secret       []byte
+	AccountId    string
+	Domain       []byte
+	ContentEpoch uint64
+	Purpose      uint32
+}
+
+func (m *SecDerivePurposeKeyCall) GetSecret() []byte {
+	if m != nil {
+		return m.Secret
+	}
+	return nil
+}
+func (m *SecDerivePurposeKeyCall) GetAccountId() string {
+	if m != nil {
+		return m.AccountId
+	}
+	return ""
+}
+func (m *SecDerivePurposeKeyCall) GetDomain() []byte {
+	if m != nil {
+		return m.Domain
+	}
+	return nil
+}
+func (m *SecDerivePurposeKeyCall) GetContentEpoch() uint64 {
+	if m != nil {
+		return m.ContentEpoch
+	}
+	return 0
+}
+func (m *SecDerivePurposeKeyCall) GetPurpose() uint32 {
+	if m != nil {
+		return m.Purpose
+	}
+	return 0
+}
+
+func (m *SecDerivePurposeKeyCall) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Secret = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.AccountId = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Domain = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ContentEpoch = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Purpose = uint32(v)
 				continue
 			}
 		}

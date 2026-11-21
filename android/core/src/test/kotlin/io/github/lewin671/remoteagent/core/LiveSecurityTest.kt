@@ -67,37 +67,37 @@ class LiveSecurityTest {
             removeAsAuthority(phone, victim.deviceId, http)
 
             val phoneStore = security.stores.getValue(phone.deviceId)
-            val phoneClient =
-                DeviceSecurityClient(
-                    phoneStore,
-                    phone.deviceId,
-                    SigningKey(phone.deviceSeed),
-                    fetchStates = { error("no state pull expected") },
-                )
             assertTrue(phoneStore.readSecurity().member)
-            try {
-                phoneClient.openMessage(prefsEnv, history = false, parse = ProjectPrefs::parseFrom)
-                fail("a removed sender's prefs accepted as live")
-            } catch (_: DeviceSecurity.Failure) {}
+            CoreSecurityBridge(
+                phoneStore,
+                phone.deviceId,
+                SigningKey(phone.deviceSeed),
+                fetchStates = { error("no state pull expected") },
+            ).use { phoneClient ->
+                try {
+                    phoneClient.openMessage(prefsEnv, history = false, parse = ProjectPrefs::parseFrom)
+                    fail("a removed sender's prefs accepted as live")
+                } catch (_: DeviceSecurity.Failure) {}
+            }
 
             // Installing the removal keeps the victim's record and its old key.
             val victimStore = security.stores.getValue(victim.deviceId)
             assertFalse(victimStore.readSecurity().member)
-            val victimClient =
-                DeviceSecurityClient(
-                    victimStore,
-                    victim.deviceId,
-                    SigningKey(victim.deviceSeed),
-                    fetchStates = { error("no state pull expected") },
-                )
-            val (_, opened) =
-                victimClient.openMessage(
-                    eventEnv,
-                    history = true,
-                    seed = sessionSeed,
-                    parse = Event::parseFrom,
-                )
-            assertArrayEquals(event.toByteArray(), opened.toByteArray())
+            CoreSecurityBridge(
+                victimStore,
+                victim.deviceId,
+                SigningKey(victim.deviceSeed),
+                fetchStates = { error("no state pull expected") },
+            ).use { victimClient ->
+                val (_, opened) =
+                    victimClient.openMessage(
+                        eventEnv,
+                        history = true,
+                        seed = sessionSeed,
+                        parse = Event::parseFrom,
+                    )
+                assertArrayEquals(event.toByteArray(), opened.toByteArray())
+            }
         } finally {
             server.close()
         }

@@ -70,7 +70,6 @@ dependencies {
     runtimeOnly(libs.moshi)
     api(libs.okhttp)
     api(libs.coroutines.core)
-    implementation(libs.bouncycastle)
 
     testImplementation(files(corebindClassesJar) { builtBy(extractCorebindJar) })
     testImplementation(libs.junit)

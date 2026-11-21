@@ -4838,5 +4838,50 @@
     "path": "web/src/sw-notify.ts",
     "literal": "lease",
     "reason": "Internal SecurityError code token caught internally to fall back to generic notification text; never rendered to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/CoreHost.kt",
+    "literal": "security key signer not configured",
+    "reason": "Internal error string sent over SecurityKeySignedEvent to Go clientcore when no signer is registered; never displayed directly to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/CoreHost.kt",
+    "literal": "security key agreement not configured",
+    "reason": "Internal error string sent over SecurityKeyAgreedEvent to Go clientcore when no key-agreement handler is registered; never displayed directly to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityExecutor.kt",
+    "literal": "security signer not configured",
+    "reason": "Internal error string returned to Go clientcore via SecurityKeySignedEvent when Ed25519 signer is absent; never displayed directly to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityExecutor.kt",
+    "literal": "empty message to sign",
+    "reason": "Internal validation error string returned to Go clientcore via SecurityKeySignedEvent on empty signing payload; never displayed directly to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityExecutor.kt",
+    "literal": "key sign failed",
+    "reason": "Internal fallback error string returned to Go clientcore via SecurityKeySignedEvent; never displayed directly to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityExecutor.kt",
+    "literal": "security key agreement key unavailable",
+    "reason": "Internal error string returned to Go clientcore via SecurityKeyAgreedEvent when X25519 key is unavailable or invalid length; never displayed directly to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityExecutor.kt",
+    "literal": "key agreement failed",
+    "reason": "Internal fallback error string returned to Go clientcore via SecurityKeyAgreedEvent; never displayed directly to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "authorization_unavailable",
+    "reason": "Internal CommandException code token matching existing non-lease/non-clock authorization failure path; never displayed directly to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "unsupported_history",
+    "reason": "Internal Go clientcore SecurityOpResult errorCode token inspected before mapping to UnsupportedHistoryException; never rendered to users."
   }
 ]

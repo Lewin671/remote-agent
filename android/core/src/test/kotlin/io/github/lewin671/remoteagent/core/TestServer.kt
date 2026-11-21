@@ -150,26 +150,27 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     AutoCloseable {
     private val store = TestSecurity.get(account.server)!!.stores.getValue(account.deviceId)
     private val local =
-        DeviceSecurityClient(
+        CoreSecurityBridge(
             store,
             account.deviceId,
             SigningKey(account.deviceSeed),
             account.accountId,
-        ) { after ->
-            val r = store.readSecurity()
-            val b =
-                io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse.newBuilder()
-                    .setHeadEpoch(r.head.core.epoch.toLong())
-                    .setLease(ByteString.copyFrom(r.lease?.bytes() ?: byteArrayOf()))
-            for (state in r.chain.filter { it.core.epoch > after }) {
-                val sb =
-                    io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
-                        .setState(ByteString.copyFrom(DeviceSecurity.stateBytes(state)))
-                r.proofs[state.core.epoch]?.let { sb.setRecovery(ByteString.copyFrom(it)) }
-                b.addStates(sb)
-            }
-            b.build()
-        }
+            fetchStates = { after ->
+                val r = store.readSecurity()
+                val b =
+                    io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse.newBuilder()
+                        .setHeadEpoch(r.head.core.epoch.toLong())
+                        .setLease(ByteString.copyFrom(r.lease?.bytes() ?: byteArrayOf()))
+                for (state in r.chain.filter { it.core.epoch > after }) {
+                    val sb =
+                        io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
+                            .setState(ByteString.copyFrom(DeviceSecurity.stateBytes(state)))
+                    r.proofs[state.core.epoch]?.let { sb.setRecovery(ByteString.copyFrom(it)) }
+                    b.addStates(sb)
+                }
+                b.build()
+            },
+        )
 
     private fun purposeOf(kind: PayloadKind): DeviceSecurity.Purpose =
         DeviceSecurity.Purpose.entries.first { it.value == kind.number.toUInt() }
@@ -186,36 +187,17 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
             seed,
         )
 
-    private fun now() = System.currentTimeMillis()
+    private fun openWithMeta(
+        env: Envelope,
+        seed: ByteArray? = null,
+    ): Triple<Header, ByteArray, io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult> {
+        val (opened, plain) = local.open(env, history = false, seed = seed)
+        return Triple(local.headerFromOpened(opened), plain, opened)
+    }
 
-    private fun open(env: Envelope): Pair<Header, ByteArray> {
-        val r = store.readSecurity()
-        val w = DeviceSecurity.fromEnvelope(env)
-        val canonical = DeviceSecurity.parseHeader(w.formed.header)
-        val s = r.stateAt(canonical.epoch) ?: throw DeviceSecurity.Failure("unknown state")
-        val key = r.contentKey(s.core.contentEpoch) ?: throw DeviceSecurity.Failure("unavailable")
-        val seed = if (canonical.purpose.sessionKey) sessionKeys[canonical.session] else null
-        val (h, plain) =
-            DeviceSecurity.open(
-                s,
-                r.head,
-                canonical.purpose.control,
-                maxOf(now().toULong(), r.floor),
-                w,
-                key,
-                seed,
-            )
-        return Header.newBuilder()
-            .setVersion(DeviceSecurity.VERSION)
-            .setKindValue(h.kind.toInt())
-            .setMachineId(h.machine)
-            .setSessionId(h.session)
-            .setRequestId(h.request)
-            .setSeq(h.seq.toLong())
-            .setDeadlineMs(h.deadline.toLong())
-            .setSender(h.sender)
-            .setCompressionValue(h.compression.toInt())
-            .build() to plain
+    private fun open(env: Envelope, seed: ByteArray? = null): Pair<Header, ByteArray> {
+        val (h, plain, _) = openWithMeta(env, seed)
+        return h to plain
     }
 
     val id = account.deviceId
@@ -429,7 +411,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                         }
                         if (!f.hasForwardCall()) return
                         val call = f.forwardCall
-                        val (h, pt) = open(call.command)
+                        val (h, pt, opened) = openWithMeta(call.command)
                         val cmd = Command.parseFrom(pt)
                         if (!cmd.hasGetLiveSnapshot()) {commands += h to cmd; commandPayloads += h to pt.copyOf()}
                         if (cmd.hasOpenTerminal()) serveTerminal(h, cmd)
@@ -476,7 +458,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                                     )
                                     .build()
                             } else answer(h, cmd)
-                        val binding=DeviceSecurity.requestIdentity(DeviceSecurity.parseHeader(call.command.securityHeader.toByteArray()),pt)
+                        val binding = local.requestIdentity(opened, pt)
                         val proof=result.toBuilder().setRequestKeyHash(ByteString.copyFrom(binding.first)).setPayloadHash(ByteString.copyFrom(binding.second)).apply {
                             if (result.outcome.isEmpty()) { setOutcome("executed"); setReason("completed"); setResultAvailable(true) }
                         }.build()
@@ -571,7 +553,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
-                    val (hh, raw) = open(Envelope.parseFrom(bytes.toByteArray()))
+                    val (hh, raw) = open(Envelope.parseFrom(bytes.toByteArray()), seed = sessionKeys[sid])
                     Envelopes.expect(
                         hh,
                         Place(
@@ -591,7 +573,10 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     private fun header(kind: PayloadKind) =
         Header.newBuilder().setKind(kind).setMachineId(id).setSender(id)
 
-    override fun close() = disconnect()
+    override fun close() {
+        disconnect()
+        local.close()
+    }
 
     companion object {
         suspend fun create(

@@ -972,4 +972,17 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	if h.eng.activeSecOpID != 0 {
 		t.Fatalf("expected failed SecurityRecordEvent to clear activeSecOpID, got %d", h.eng.activeSecOpID)
 	}
+
+	// Stale non-zero OpId must be ignored even when activeSecOpID == 0.
+	staleRes := h.step(&corev1.Event{
+		Event: &corev1.Event_SecurityRecord{
+			SecurityRecord: &corev1.SecurityRecordEvent{
+				OpId:    999999,
+				Cleared: true,
+			},
+		},
+	})
+	if !h.eng.security.Loaded || !h.eng.security.IsMember || h.eng.secEngine.Snapshot().Cleared || len(staleRes.Effects) != 0 {
+		t.Fatalf("expected stale SecurityRecordEvent with unexpected OpId to be ignored cleanly")
+	}
 }

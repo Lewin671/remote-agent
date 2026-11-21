@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
+	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
@@ -455,7 +456,7 @@ func TestEngineUnlockSealOpenAndBatchThresholds(t *testing.T) {
 			t.Fatal(err)
 		}
 		var sealRes SealResult
-		sealEffs := eng.SealEnvelope(nowMs+300, devicesec.Command, machine.id, "sess-1", "req-big-0123456789", 0, uint64(nowMs+60_000), bigPlain, false, func(sr SealResult) {
+		sealEffs := eng.SealEnvelope(nowMs+300, devicesec.Command, machine.id, "sess-1", "req-big-0123456789", 0, uint64(nowMs+60_000), bigPlain, false, nil, func(sr SealResult) {
 			sealRes = sr
 		})
 		var sawAeadSealBatch bool
@@ -524,7 +525,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 
 	// 1. ErrNeedEntropy on SealEnvelope with empty pool.
 	var sr SealResult
-	eng.SealEnvelope(nowMs+100, devicesec.Prefs, "", "", "project-prefs", 1, 0, []byte{0x08, 0x01}, false, func(res SealResult) {
+	eng.SealEnvelope(nowMs+100, devicesec.Prefs, "", "", "project-prefs", 1, 0, []byte{0x08, 0x01}, false, nil, func(res SealResult) {
 		sr = res
 	})
 	if !errors.Is(sr.Err, ErrNeedEntropy) {
@@ -804,5 +805,226 @@ func TestEngineRecoveryContentKeysAndNonEventUnavailable(t *testing.T) {
 	})
 	if len(retRes) != 2 || retRes[0].Err != nil || retRes[1].Err != nil {
 		t.Fatalf("expected retained client with ContentKeys to open pre-recovery Event and Prefs, got %+v", retRes)
+	}
+}
+
+func TestEngineApplyRecordGuardsTransientErrorAndRemovedHistory(t *testing.T) {
+	nowMs := int64(1_700_000_000_000)
+	acct, dom, gen, phone, machine, _, _, sec2, rawStates, leaseRaw, states := makeGenesisAndTwoStateRecord(t, uint64(nowMs))
+
+	// Pair removedClient in s2, seal an event at s2, then remove removedClient in s3 (with PrevSecret continuity).
+	seed := bytes.Repeat([]byte{0x77}, 32)
+	removedClient := newTestIdentity(t, 8)
+	sec2b := bytes.Repeat([]byte{0x44}, 32)
+	s2U, err := devicesec.NewMembershipState(states[1], []devicesec.Member{phone.member(devicesec.Client), machine.member(devicesec.Machine), removedClient.member(devicesec.Client)}, nil, sec2, sec2b, uint64(nowMs+15), stdHPKESender{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s2SB, _ := s2U.SigningBytes()
+	s2U.Signature = ed25519.Sign(phone.ed, s2SB)
+	s2Raw, _ := s2U.MarshalBinary()
+	s2Parsed, _ := devicesec.ParseState(s2Raw)
+	oldEv := sealEventProto(t, machine, dom, s2Parsed, sec2b, seed, acct, "sess-rem", 1, uint64(nowMs+15), "before removal")
+
+	sec3 := bytes.Repeat([]byte{0x55}, 32)
+	remU, err := devicesec.NewMembershipState(s2Parsed, []devicesec.Member{phone.member(devicesec.Client), machine.member(devicesec.Machine)}, []string{removedClient.id}, sec2b, sec3, uint64(nowMs+20), stdHPKESender{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rsb, _ := remU.SigningBytes()
+	remU.Signature = ed25519.Sign(phone.ed, rsb)
+	remRaw, err := remU.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	remParsed, _ := devicesec.ParseState(remRaw)
+	remLease, _ := devicesec.NewLease(remParsed, uint64(nowMs+20))
+	rlb, _ := remLease.SigningBytes()
+	remLease.Signature = ed25519.Sign(phone.ed, rlb)
+	remLeaseRaw, _ := remLease.MarshalBinary()
+
+	pool := &entropy.Pool{}
+	eng := NewEngine(pool)
+	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
+
+	// Zero-op with PushSeq 2 advances, PushSeq 1 and unsequenced PushSeq 0 are ignored.
+	executeHostEffects(t, eng, phone, nowMs+100, eng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+		PushSeq: 2,
+		Account: acct,
+		Domain:  dom[:],
+		Genesis: gen[:],
+		States:  rawStates,
+		Lease:   leaseRaw,
+	}))
+	if effs := eng.ApplyRecord(nowMs+101, &corev1.SecurityRecordEvent{PushSeq: 1, Cleared: true}); len(effs) != 0 || !eng.Snapshot().IsMember {
+		t.Fatalf("expected stale PushSeq=1 overwrite to be ignored")
+	}
+	if effs := eng.ApplyRecord(nowMs+102, &corev1.SecurityRecordEvent{PushSeq: 0, Cleared: true}); len(effs) != 0 || !eng.Snapshot().IsMember {
+		t.Fatalf("expected unsequenced PushSeq=0 overwrite to be ignored once PushSeq is active")
+	}
+
+	// Transient sync error preserves already loaded verified state.
+	eng.ApplyRecord(nowMs+103, &corev1.SecurityRecordEvent{PushSeq: 3, Error: "network timeout"})
+	if !eng.Snapshot().Loaded || !eng.Snapshot().IsMember {
+		t.Fatalf("expected transient error to preserve Loaded and IsMember: %+v", eng.Snapshot())
+	}
+
+	// Monotonic chain guard rejects shorter epoch even on fresh PushSeq.
+	eng.ApplyRecord(nowMs+104, &corev1.SecurityRecordEvent{
+		PushSeq: 4,
+		Account: acct,
+		Domain:  dom[:],
+		Genesis: gen[:],
+		States:  rawStates[:1],
+	})
+	if eng.Snapshot().HeadEpoch != states[1].Core.Epoch {
+		t.Fatalf("expected monotonic chain guard to keep epoch %d, got %d", states[1].Core.Epoch, eng.Snapshot().HeadEpoch)
+	}
+
+	// Removed client's engine: live sealing/opening rejected (ErrNotMember), historical read unlocks s2 via startUnlockForState.
+	remEng := NewEngine(pool)
+	remEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: removedClient.id, InlineCrypto: true})
+	applyEffs := remEng.ApplyRecord(nowMs+110, &corev1.SecurityRecordEvent{
+		PushSeq: 5,
+		Account: acct,
+		Domain:  dom[:],
+		Genesis: gen[:],
+		States:  append(append(slices.Clone(rawStates), s2Raw), remRaw),
+		Lease:   remLeaseRaw,
+	})
+	executeHostEffects(t, remEng, removedClient, nowMs+110, applyEffs)
+	if remEng.Snapshot().IsMember {
+		t.Fatalf("expected IsMember=false after removal")
+	}
+	if err := remEng.CanSeal(nowMs + 110); !errors.Is(err, ErrNotMember) {
+		t.Fatalf("expected ErrNotMember on CanSeal after removal, got %v", err)
+	}
+	// Reset cached epochSecrets to confirm OpenBatch(History: true) also lazily unlocks s2 via startUnlockForState.
+	clear(remEng.epochSecrets)
+	remEng.SeedSessionKey("sess-rem", seed)
+	var res []OpenResult
+	openEffs := remEng.OpenBatch(nowMs+110, []OpenItem{
+		{Env: oldEv, ExpectedPurpose: devicesec.Event, MachineID: machine.id, SessionID: "sess-rem", History: false},
+		{Env: oldEv, ExpectedPurpose: devicesec.Event, MachineID: machine.id, SessionID: "sess-rem", History: true},
+	}, func(r []OpenResult) {
+		res = r
+	})
+	executeHostEffects(t, remEng, removedClient, nowMs+110, openEffs)
+	if len(res) != 2 || !errors.Is(res[0].Err, ErrNotMember) || res[1].Err != nil {
+		t.Fatalf("expected live=ErrNotMember and history=ok for removed member, got %+v", res)
+	}
+}
+
+func TestEngineOverrideSessionSeedAndSecCallNotifyPurposeKey(t *testing.T) {
+	nowMs := int64(1_700_000_000_000)
+	acct, dom, gen, phone, machine, _, _, sec2, rawStates, leaseRaw, states := makeGenesisAndTwoStateRecord(t, uint64(nowMs))
+	entropyBytes := bytes.Repeat([]byte{0x23}, 256)
+	pool := &entropy.Pool{}
+	pool.Append(entropyBytes)
+	eng := NewEngine(pool)
+	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
+	executeHostEffects(t, eng, phone, nowMs+100, eng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+		Account: acct,
+		Domain:  dom[:],
+		Genesis: gen[:],
+		States:  rawStates,
+		Lease:   leaseRaw,
+	}))
+
+	overrideSeed := bytes.Repeat([]byte{0x5a}, 32)
+	msgRaw := litewire.AppendBytes(nil, 10, []byte("ls\n"))
+	var opRes *corev1.SecurityOpResultEffect
+	opEffs := eng.HandleSecurityOp(nowMs+100, &corev1.SecurityOpRequestEvent{
+		OpId: 77,
+		Op: &corev1.SecurityOpRequestEvent_SealEnvelope{
+			SealEnvelope: &corev1.SecuritySealEnvelopeOp{
+				Purpose:             uint32(devicesec.TerminalInput),
+				MachineId:           machine.id,
+				SessionId:           "sess-term",
+				RequestId:           "term-stream-123456",
+				Seq:                 1,
+				DeadlineMs:          nowMs + 60_000,
+				Plaintext:           msgRaw,
+				OverrideSessionSeed: overrideSeed,
+			},
+		},
+	})
+	for _, ef := range executeHostEffects(t, eng, phone, nowMs+100, opEffs) {
+		if r := ef.GetSecurityOpResult(); r != nil {
+			opRes = r
+		}
+	}
+	if opRes == nil || opRes.Error != "" || opRes.GetSealed() == nil || opRes.GetSealed().Envelope == nil {
+		t.Fatalf("expected SealEnvelope with OverrideSessionSeed to succeed, got %+v", opRes)
+	}
+	var opened []OpenResult
+	eng.OpenBatch(nowMs+100, []OpenItem{{
+		Env:             opRes.GetSealed().Envelope,
+		ExpectedPurpose: devicesec.TerminalInput,
+		MachineID:       machine.id,
+		SessionID:       "sess-term",
+		RequestID:       "term-stream-123456",
+		Seq:             1,
+		OverrideSeed:    overrideSeed,
+	}}, func(r []OpenResult) {
+		opened = r
+	})
+	if len(opened) != 1 || opened[0].Err != nil {
+		t.Fatalf("expected OpenBatch with OverrideSeed to succeed, got %+v", opened)
+	}
+
+	// DerivePurposeKey + OpenNotifyEnvelope using single head state (epoch > 1) and PurposeKey.
+	pkResp := SecCall(&corev1.SecCallRequest{
+		Call: &corev1.SecCallRequest_DerivePurposeKey{
+			DerivePurposeKey: &corev1.SecDerivePurposeKeyCall{
+				Secret:       sec2,
+				AccountId:    acct,
+				Domain:       dom[:],
+				ContentEpoch: states[1].Core.ContentEpoch,
+				Purpose:      uint32(devicesec.Notify),
+			},
+		},
+	})
+	if pkResp.Error != "" || len(pkResp.Data) != 32 {
+		t.Fatalf("DerivePurposeKey failed: %+v", pkResp)
+	}
+
+	sh2, _ := states[1].Hash()
+	var notifyPlain []byte
+	notifyPlain = litewire.AppendString(notifyPlain, 1, machine.id)
+	notifyPlain = litewire.AppendString(notifyPlain, 2, "s-n")
+	notifyPlain = litewire.AppendVarint(notifyPlain, 3, uint64(v1.NotifyKind_NOTIFY_KIND_TURN_ENDED))
+	notifyPlain = litewire.AppendString(notifyPlain, 4, "done")
+	notifyPlain = litewire.AppendString(notifyPlain, 5, "body")
+	nhb, nkey, nnonce, err := devicesec.PrepareCiphertext(sec2, nil, devicesec.Header{
+		Account: acct, Domain: dom, Epoch: states[1].Core.Epoch, State: sh2,
+		ContentEpoch: states[1].Core.ContentEpoch, Sender: machine.id,
+		Kind: devicesec.Notify.Kind(), Purpose: devicesec.Notify, Machine: machine.id, Session: "s-n", Request: "notif-1234567890", Seq: 1,
+	}, len(notifyPlain), bytes.NewReader(bytes.Repeat([]byte{9}, 12)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	nblk, _ := aes.NewCipher(nkey)
+	naead, _ := cipher.NewGCM(nblk)
+	nct, nOrigMsg, _ := devicesec.AssembleCiphertext(nhb, nnonce, naead.Seal(nil, nnonce, notifyPlain, nhb))
+	nct.Origin = ed25519.Sign(machine.ed, nOrigMsg)
+	nEnv, _ := ToProtoEnvelope(nct)
+
+	notifyResp := SecCall(&corev1.SecCallRequest{
+		Call: &corev1.SecCallRequest_OpenNotifyEnvelope{
+			OpenNotifyEnvelope: &corev1.SecOpenNotifyEnvelopeCall{
+				Pin:        &corev1.SecPin{Account: acct, Domain: dom[:], Genesis: gen[:]},
+				States:     [][]byte{rawStates[1]},
+				PurposeKey: pkResp.Data,
+				Envelope:   nEnv,
+			},
+		},
+	})
+	if notifyResp.Error != "" || len(notifyResp.Data) == 0 {
+		t.Fatalf("OpenNotifyEnvelope with PurposeKey failed: %+v", notifyResp)
+	}
+	var gotNotify v1.NotifyContent
+	if err := gotNotify.Unmarshal(notifyResp.Data); err != nil || gotNotify.Title != "done" || gotNotify.Text != "body" {
+		t.Fatalf("decoded NotifyContent mismatch: err=%v got=%+v", err, gotNotify)
 	}
 }

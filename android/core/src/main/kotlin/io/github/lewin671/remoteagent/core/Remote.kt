@@ -156,13 +156,6 @@ class Remote(
     internal val activeStreamForTest: FrameStream? get() = activeSocket
     private var activeLegJob: Job? = null
 
-    private sealed interface PendingCacheObject {
-        class MachineObj(val m: Machine) : PendingCacheObject
-        class SessionObj(val s: RemoteSession) : PendingCacheObject
-        class EventObj(val e: StoredEvent) : PendingCacheObject
-        class PrefsObj(val p: AccountPrefsObject) : PendingCacheObject
-    }
-
     private sealed interface CacheWritePayload {
         class MachineWrite(val m: Machine) : CacheWritePayload
         class SessionWrite(val s: RemoteSession) : CacheWritePayload
@@ -172,35 +165,8 @@ class Remote(
         class SessionOpenWrite(val sessionId: String, val open: Boolean) : CacheWritePayload
     }
 
-    private val nextCacheRefId = AtomicLong(1L)
-    // Unbounded while events are in flight; Core's synchronous onCacheWrite extracts
-    // accepted payloads and onProcessed cleans up any refs Core declined to cache.
-    private val pendingCacheObjects = HashMap<String, PendingCacheObject>(256)
     private val pendingCacheOps = ArrayDeque<suspend () -> Unit>()
     private var cacheWriterActive = false
-
-    private fun stashCacheObject(obj: PendingCacheObject, refs: MutableList<String>? = null): String {
-        if (cache == null) return ""
-        val ref = "c:${nextCacheRefId.getAndIncrement()}"
-        synchronized(pendingCacheObjects) {
-            pendingCacheObjects[ref] = obj
-        }
-        refs?.add(ref)
-        return ref
-    }
-
-    private fun takeCacheObject(ref: String): PendingCacheObject? =
-        synchronized(pendingCacheObjects) { pendingCacheObjects.remove(ref) }
-
-    private fun releaseCacheObjects(refs: List<String>) {
-        if (refs.isEmpty()) return
-        synchronized(pendingCacheObjects) {
-            for (ref in refs) pendingCacheObjects.remove(ref)
-        }
-    }
-
-    internal fun pendingCacheSizeForTest(): Int =
-        synchronized(pendingCacheObjects) { pendingCacheObjects.size }
 
     private fun enqueueCacheOp(op: suspend () -> Unit) {
         val start = synchronized(pendingCacheOps) {
@@ -235,14 +201,16 @@ class Remote(
 
     // --- Direct peer executor & Security ---
 
-    private val directSecurityLock = Any()
-    private var directSecurityRev = 0L
     @Volatile private var latestXPrivate: ByteArray? = null
-    @Volatile private var lastDirectSecurity: DirectSecuritySnapshotEvent? = null
+    private val securityConfigured = AtomicBoolean(false)
+    @Volatile private var securityRecordLoaded = false
+
+    private val securityExecutor = SecurityExecutor(
+        signer = { SigningKey(account.deviceSeed) },
+        xPrivate = { latestXPrivate ?: runCatching { security.record().peerBoxKey() }.getOrNull() },
+    )
 
     internal val directExecutor: DirectExecutor = DirectExecutor(
-        deviceSeed = { account.deviceSeed },
-        xPrivate = { synchronized(directSecurityLock) { latestXPrivate?.copyOf() } },
         emit = { ev -> coreHost.dispatch(ev) },
         onPushedEvent = { machineId, pcId, env, header, size ->
             handleDirectEvent(machineId, pcId, env, header, size)
@@ -290,63 +258,25 @@ class Remote(
     fun monotonicMillis(): Long = monotonic()
     @Volatile internal var parseServerFrame: (ByteArray) -> ServerFrame = ServerFrame::parseFrom
 
-    private fun rejectDirectSecurity() {
-        val rejected = DirectSecuritySnapshotEvent.newBuilder().setRejected(true).build()
-        synchronized(directSecurityLock) {
-            directSecurityRev++
-            latestXPrivate = null
-            lastDirectSecurity = rejected
+    private fun ensureSecurityConfigured() {
+        if (closed) return
+        if (securityConfigured.compareAndSet(false, true)) {
+            coreHost.sendSecurityConfig(account.accountId, account.deviceId, inlineCrypto = true)
         }
-        if (!closed) coreHost.dispatchDirectSecuritySnapshot(rejected)
     }
 
-    private fun emitDirectSecuritySnapshot(record: DeviceSecurity.Record, started: Long) {
-        val rev = synchronized(directSecurityLock) { ++directSecurityRev }
-        val snap = buildDirectSecuritySnapshot(
-            record = record,
-            expectedDeviceId = account.deviceId,
-            devicePublicKey = device.publicKey,
-            started = started,
-            nowMs = clock(),
-        )
-        val out = snap?.first ?: DirectSecuritySnapshotEvent.newBuilder().setRejected(true).build()
-        synchronized(directSecurityLock) {
-            if (rev != directSecurityRev || closed) return
-            latestXPrivate = snap?.second
-            lastDirectSecurity = out
-        }
-        coreHost.dispatchDirectSecuritySnapshot(out)
-    }
-
-    val security = DeviceSecurityClient(
+    val security = AuthoritySecurity(
         securityStorage ?: MissingDeviceSecurityStorage,
         account.deviceId,
-        device,
         expectedAccount = account.accountId.ifEmpty { null },
         clock = clock,
-        onSync = { record, started ->
-            emitDirectSecuritySnapshot(record, started)
-            pushSecuritySnapshotFromRecord(record, skipIfCoreSync = true)
+        onSync = { record, _ ->
+            runCatching { latestXPrivate = record.peerBoxKey() }
+            pushSecurityRecordFromRecord(record, skipIfCoreSync = true)
         },
-        onSyncFailed = { rejectDirectSecurity() },
         onInstall = { record ->
-            val prev = synchronized(directSecurityLock) { lastDirectSecurity }
-            val headHex = runCatching { DeviceSecurity.stateHash(record.head).hex() }.getOrDefault("")
-            if (!record.member || (prev != null && !prev.rejected && (record.pin.account != prev.account || headHex != prev.head))) {
-                synchronized(directSecurityLock) {
-                    directSecurityRev++
-                    latestXPrivate = null
-                    lastDirectSecurity = DirectSecuritySnapshotEvent.newBuilder().setRejected(true).build()
-                }
-            } else if (record.member) {
-                runCatching { record.peerBoxKey() }.getOrNull()?.let { xPriv ->
-                    synchronized(directSecurityLock) { latestXPrivate = xPriv }
-                }
-            }
-            if (!closed) {
-                coreHost.dispatchDirectSecurityInstalled(record.member, record.pin.account, headHex)
-            }
-            pushSecuritySnapshotFromRecord(record, skipIfCoreSync = false)
+            runCatching { latestXPrivate = record.peerBoxKey() }
+            pushSecurityRecordFromRecord(record, skipIfCoreSync = false)
         },
     ) { after ->
         api.client.getSecurityStates(
@@ -363,12 +293,8 @@ class Remote(
     }
 
     private val models = HashMap<String, Deferred<ListModelsResponse>>()
-    private val sessionKeys = ConcurrentHashMap<String, ByteArray>()
     @Volatile private var watchedSessionIds: List<String> = emptyList()
-    private val directEventLocks = ConcurrentHashMap<String, Mutex>()
-    private val directQueueLock = Any()
-    private val directQueueCounts = HashMap<String, Int>()
-    private var directQueueBytes = 0
+
     private val archiveMachines = ConcurrentHashMap.newKeySet<String>()
     private val trustedMembers = ConcurrentHashMap<String, DeviceSecurity.Member>()
     @Volatile private var recoveryObjectsPending = true
@@ -523,24 +449,8 @@ class Remote(
     // --- M2 Effect executors ---
 
     private fun wireCoreHost() {
-        coreHost.onDirectAuthorize = {
-            if (!closed) {
-                scope.launch(authorityJob) {
-                    var ok = false
-                    try {
-                        ok = security.sync(5_000L).member
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        ok = false
-                    } finally {
-                        if (!closed) coreHost.dispatchDirectAuthorizeDone(ok)
-                    }
-                }
-            }
-        }
-        coreHost.onDirectKeySign = { eff -> scope.launch { directExecutor.keySign(eff) } }
-        coreHost.onDirectKeyAgree = { eff -> scope.launch { directExecutor.keyAgree(eff) } }
+        coreHost.onSecurityKeySign = securityExecutor::keySign
+        coreHost.onSecurityKeyAgree = securityExecutor::keyAgree
         coreHost.onDirectSignalSend = { eff -> directExecutor.signalSend(eff) }
         coreHost.onDirectPcCreate = { eff -> scope.launch(directDispatcher) { directExecutor.pcCreate(eff) } }
         coreHost.onDirectPcDescribe = { eff -> scope.launch(directDispatcher) { directExecutor.pcDescribe(eff) } }
@@ -757,39 +667,54 @@ class Remote(
 
     private suspend fun syncSecurityForCore(opId: Long, networkGeneration: Long) =
         withContext(authorityJob) {
-            dispatchSyncedSecuritySnapshot(opId, networkGeneration)
+            dispatchSyncedSecurityRecord(opId, networkGeneration)
         }
 
-    private fun snapshotEventFromRecord(
-        opId: Long,
-        networkGeneration: Long,
+    private fun toSecurityRecordEvent(
         record: DeviceSecurity.Record,
+        opId: Long = 0L,
         pushSeq: Long = 0L,
-    ): SecuritySnapshotEvent {
+        networkGeneration: Long = this.networkGeneration,
+        error: String = "",
+    ): SecurityRecordEvent {
         refreshSecuritySets(record)
+        latestXPrivate = runCatching { record.peerBoxKey() }.getOrNull()
         val head = record.head
-        val b = SecuritySnapshotEvent.newBuilder()
+        val headHash = DeviceSecurity.stateHash(head)
+        val b = SecurityRecordEvent.newBuilder()
             .setOpId(opId)
             .setNetworkGeneration(networkGeneration)
-            .setSelfDeviceId(account.deviceId)
-            .setIsMember(record.member)
-            .setAuthorityDeviceId(head.core.authorityID)
-            .setHeadEpoch(head.core.epoch.toLong())
-            .setLeaseEndMs(record.leaseExpiration())
-            .setClockSkewed(serverAhead || security.clockSkew)
+            .setAccount(record.pin.account)
+            .setDomain(ByteString.copyFrom(record.pin.domain))
+            .setGenesis(ByteString.copyFrom(record.pin.genesis))
+            .setFloorMs(record.floor.toLong())
             .setRecoveryPending(security.recoveryPending)
             .setRecoveryReadyMs(security.recoveryReadyMs)
             .setRecoveryObjectsPending(recoveryObjectsPending)
         if (pushSeq != 0L) b.setPushSeq(pushSeq)
-        for (m in head.core.members) when (m.kind) {
-            1u -> b.addTrustedMachineIds(m.id)
-            2u -> b.addTrustedClientIds(m.id)
+        if (error.isNotEmpty()) b.setError(error)
+        for (s in record.chain) {
+            b.addStates(ByteString.copyFrom(DeviceSecurity.stateBytes(s)))
+            val proof = record.proofs[s.core.epoch]
+            b.addRecoveryProofs(if (proof == null) ByteString.EMPTY else ByteString.copyFrom(proof))
         }
-        archiveMachines.filter { trustedMembers[it]?.kind != 1u }.forEach { b.addArchiveMachineIds(it) }
+        record.lease?.takeIf { it.head.contentEquals(headHash) }?.let {
+            b.setLease(ByteString.copyFrom(it.bytes()))
+        }
+        val headContentEpoch = head.core.contentEpoch
+        for ((ep, sec) in record.cachedKeys()) {
+            if (ep > 0uL && ep < headContentEpoch && sec.size == KEY_SIZE) {
+                b.addContentKeys(
+                    SecurityContentKey.newBuilder()
+                        .setContentEpoch(ep.toLong())
+                        .setSecret(ByteString.copyFrom(sec)),
+                )
+            }
+        }
         return b.build()
     }
 
-    private fun dispatchLatestSecuritySnapshot(
+    private fun dispatchLatestSecurityRecord(
         fallback: DeviceSecurity.Record? = null,
         onProcessed: (() -> Unit)? = null,
     ) {
@@ -797,42 +722,54 @@ class Remote(
             onProcessed?.invoke()
             return
         }
+        ensureSecurityConfigured()
         synchronized(securitySnapshotLock) {
             if (closed) {
                 onProcessed?.invoke()
                 return
             }
+            val pushSeq = securityPushSeq.getAndIncrement()
             val ev = try {
                 val latest = runCatching { security.record() }.getOrElse { fallback ?: throw it }
-                val pushSeq = securityPushSeq.getAndIncrement()
-                snapshotEventFromRecord(0L, networkGeneration, latest, pushSeq)
+                toSecurityRecordEvent(latest, opId = 0L, pushSeq = pushSeq, networkGeneration = networkGeneration)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 report(e)
-                val pushSeq = securityPushSeq.getAndIncrement()
-                SecuritySnapshotEvent.newBuilder()
+                SecurityRecordEvent.newBuilder()
                     .setOpId(0L)
-                    .setNetworkGeneration(networkGeneration)
-                    .setSelfDeviceId(account.deviceId)
                     .setPushSeq(pushSeq)
-                    .setUnresolvedHost(unresolvedHost(e))
+                    .setNetworkGeneration(networkGeneration)
                     .setError(e.message ?: e.javaClass.simpleName)
-                    .setClockSkewed(serverAhead || security.clockSkew)
                     .build()
             }
-            coreHost.dispatch(CoreEvent.newBuilder().setSecuritySnapshot(ev).build(), onProcessed)
+            coreHost.dispatch(CoreEvent.newBuilder().setSecurityRecord(ev).build()) {
+                securityRecordLoaded = true
+                onProcessed?.invoke()
+            }
         }
     }
 
-    private fun pushSecuritySnapshotFromRecord(record: DeviceSecurity.Record, skipIfCoreSync: Boolean = true) {
+    private fun pushSecurityRecordFromRecord(record: DeviceSecurity.Record, skipIfCoreSync: Boolean = true) {
         if (closed || (skipIfCoreSync && coreSyncDepth.get() > 0)) return
-        dispatchLatestSecuritySnapshot(fallback = record)
+        dispatchLatestSecurityRecord(fallback = record)
     }
 
-    private suspend fun dispatchSyncedSecuritySnapshot(
+    private suspend fun ensureSecurityRecordLoaded() {
+        ensureSecurityConfigured()
+        if (securityRecordLoaded) return
+        val rec = runCatching { security.record() }.getOrNull() ?: return
+        val pushSeq = securityPushSeq.getAndIncrement()
+        val ev = toSecurityRecordEvent(rec, opId = 0L, pushSeq = pushSeq, networkGeneration = networkGeneration)
+        coreHost.dispatchSecurityRecordAndWait(ev)
+        securityRecordLoaded = true
+    }
+
+    private suspend fun dispatchSyncedSecurityRecord(
         opId: Long,
         networkGeneration: Long,
     ) {
+        ensureSecurityConfigured()
+        val pushSeq = if (opId == 0L) securityPushSeq.getAndIncrement() else 0L
         val ev =
             try {
                 coreSyncDepth.incrementAndGet()
@@ -840,6 +777,14 @@ class Remote(
                     try {
                         security.sync().also { r ->
                             runCatching { resumeSecurityOperation(dispatchSnapshot = false) }.onFailure { if (it !is DeviceSecurity.Failure) throw it }
+                            val preEv = toSecurityRecordEvent(
+                                r,
+                                opId = 0L,
+                                pushSeq = securityPushSeq.getAndIncrement(),
+                                networkGeneration = networkGeneration,
+                            )
+                            coreHost.dispatchSecurityRecordAndWait(preEv)
+                            securityRecordLoaded = true
                             try {
                                 recoveryObjectsPending = true
                                 republishRecoveryObjects(r)
@@ -854,23 +799,22 @@ class Remote(
                 synchronized(securitySnapshotLock) {
                     if (closed) return
                     val latest = runCatching { security.record() }.getOrNull() ?: record
-                    val built = snapshotEventFromRecord(opId, networkGeneration, latest)
-                    sendEvent { setSecuritySnapshot(built) }
+                    val built = toSecurityRecordEvent(latest, opId = opId, pushSeq = pushSeq, networkGeneration = networkGeneration)
+                    sendEvent { setSecurityRecord(built) }
+                    securityRecordLoaded = true
                 }
                 return
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 report(e)
-                SecuritySnapshotEvent.newBuilder()
+                SecurityRecordEvent.newBuilder()
                     .setOpId(opId)
+                    .setPushSeq(pushSeq)
                     .setNetworkGeneration(networkGeneration)
-                    .setSelfDeviceId(account.deviceId)
-                    .setUnresolvedHost(unresolvedHost(e))
                     .setError(e.message ?: e.javaClass.simpleName)
-                    .setClockSkewed(serverAhead || security.clockSkew)
                     .build()
             }
-        sendEvent { setSecuritySnapshot(ev) }
+        sendEvent { setSecurityRecord(ev) }
     }
 
     private fun refreshSecuritySets(record: DeviceSecurity.Record) {
@@ -961,8 +905,8 @@ class Remote(
             }
         }
 
-        fun sendFrame(refs: List<String> = emptyList(), block: StreamFrameEvent.Builder.() -> Unit) =
-            sendEvent(refs) { setStreamFrame(StreamFrameEvent.newBuilder().setLegId(legId).apply(block)) }
+        fun sendFrame(block: StreamFrameEvent.Builder.() -> Unit) =
+            sendEvent { setStreamFrame(StreamFrameEvent.newBuilder().setLegId(legId).apply(block)) }
 
         val socket = deviceLink.path.openStream(url, listener)
         legJob = scope.launch {
@@ -979,57 +923,32 @@ class Remote(
                         }
                         ServerFrame.KindCase.HEARTBEAT -> sendFrame { setHeartbeat(true) }
                         ServerFrame.KindCase.MACHINE_UPDATED -> {
-                            val refs = ArrayList<String>(1)
-                            try {
-                                val pm = openPlainMachine(frame.machineUpdated.machine, refs = refs)
-                                sendFrame(refs) { setMachineUpdated(pm) }
-                            } catch (t: Throwable) {
-                                releaseCacheObjects(refs)
-                                throw t
-                            }
+                            sendFrame { setWireMachineUpdated(frame.machineUpdated.machine) }
                         }
                         ServerFrame.KindCase.MACHINE_REMOVED -> {
                             sendFrame { setMachineRemovedId(frame.machineRemoved.machineId) }
                         }
                         ServerFrame.KindCase.SESSION_UPDATED -> {
-                            val refs = ArrayList<String>(1)
-                            try {
-                                val ps = openPlainSession(frame.sessionUpdated.session, refs = refs)
-                                sendFrame(refs) { setSessionUpdated(ps) }
-                            } catch (t: Throwable) {
-                                releaseCacheObjects(refs)
-                                throw t
-                            }
+                            sendFrame { setWireSessionUpdated(frame.sessionUpdated.session) }
                         }
                         ServerFrame.KindCase.EVENTS_APPENDED -> {
                             val ea = frame.eventsAppended
-                            val sid = ea.sessionId
-                            val machineId = ea.machineId.ifEmpty { sessionMachineId(sid) }
-                            val refs = ArrayList<String>(ea.eventsCount)
-                            try {
-                                val opened = ea.eventsList.map { openPlainEvent(sid, machineId, it, live = true, refs = refs) }
-                                sendFrame(refs) { setEventsAppended(EventsAppendedFrame.newBuilder().setSessionId(sid).addAllEvents(opened)) }
-                            } catch (t: Throwable) {
-                                releaseCacheObjects(refs)
-                                throw t
+                            sendFrame {
+                                setEventsAppended(
+                                    EventsAppendedFrame.newBuilder()
+                                        .setSessionId(ea.sessionId)
+                                        .addAllWireEvents(ea.eventsList),
+                                )
                             }
                         }
                         ServerFrame.KindCase.ACCOUNT_PREFS_UPDATED -> {
                             val obj = frame.accountPrefsUpdated.`object`
                             if (obj.objectId == PROJECT_PREFS) {
-                                val refs = ArrayList<String>(1)
-                                try {
-                                    val pp = openPlainPrefs(obj, refs = refs)
-                                    sendFrame(refs) { setAccountPrefsUpdated(pp) }
-                                } catch (t: Throwable) {
-                                    releaseCacheObjects(refs)
-                                    throw t
-                                }
+                                sendFrame { setWireAccountPrefsUpdated(obj) }
                             }
                         }
                         ServerFrame.KindCase.DEVICE_UPDATED -> {
-                            val pd = openPlainDevice(frame.deviceUpdated.device)
-                            sendFrame { setDeviceUpdated(pd) }
+                            sendFrame { setWireDeviceUpdated(frame.deviceUpdated.device) }
                         }
                         ServerFrame.KindCase.DEVICE_REMOVED -> {
                             sendFrame { setDeviceRemovedId(frame.deviceRemoved.deviceId) }
@@ -1121,292 +1040,24 @@ class Remote(
     private fun sessionMachineId(sessionId: String): String =
         coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sessionId }?.machineId.orEmpty()
 
-    private suspend fun ensureEpochForEnvelope(env: Envelope) {
-        if (env.securityHeader.isEmpty) return
-        val epoch = runCatching { DeviceSecurity.parseHeader(env.securityHeader.toByteArray()).epoch }.getOrNull() ?: return
-        if (security.stateAt(epoch) != null) return
-        coreSyncDepth.incrementAndGet()
-        try {
-            security.sync()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-        } finally {
-            coreSyncDepth.decrementAndGet()
-        }
-        dispatchLatestSecuritySnapshot()
-    }
-
-    private suspend fun openPlainMachine(
-        m: Machine,
-        fromCache: Boolean = false,
-        refs: MutableList<String>? = null,
-    ): PlainMachine {
-        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.MachineObj(m), refs) else ""
-        val b = PlainMachine.newBuilder()
-            .setMachineId(m.id)
-            .setOnline(m.online)
-            .setLastSeenMs(m.lastSeenMs)
-        if (cacheRef.isNotEmpty()) b.setCacheRef(cacheRef)
-        if (!m.hasMeta() || m.meta.securityHeader.isEmpty) return b.build()
-        return try {
-            if (!fromCache) ensureEpochForEnvelope(m.meta)
-            val (h, meta) = openSecureMessage(
-                m.meta,
-                Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
-                MachineMeta::parseFrom,
-                live = !fromCache,
-            )
-            b.setMeta(meta).setMetaRev(h.seq).build()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-            b.setMetaBroken(true).build()
-        }
-    }
-
-    private suspend fun openPlainSession(
-        rs: RemoteSession,
-        fromCache: Boolean = false,
-        refs: MutableList<String>? = null,
-    ): PlainSession {
-        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.SessionObj(rs), refs) else ""
-        val b = PlainSession.newBuilder()
-            .setSessionId(rs.sessionId)
-            .setMachineId(rs.machineId)
-            .setLastSeq(rs.lastSeq)
-            .setUpdatedMs(rs.updatedMs)
-            .setListedEndedMs(rs.endedMs)
-        if (cacheRef.isNotEmpty()) b.setCacheRef(cacheRef)
-
-        val hasKey = rs.hasKey() && (!rs.key.securityHeader.isEmpty || !rs.key.header.isEmpty)
-        if (!fromCache && rs.hasKey() && !rs.key.securityHeader.isEmpty) {
-            ensureEpochForEnvelope(rs.key)
-        }
-        if (hasKey) {
-            try {
-                val seed = openSecureKey(
-                    rs.key,
-                    Place(PayloadKind.PAYLOAD_KIND_SESSION_KEY, machineId = rs.machineId, sessionId = rs.sessionId),
-                )
-                if (seed.size != KEY_SIZE) throw OpenException("bad session key")
-                sessionKeys[rs.sessionId] = seed
-            } catch (_: UnsupportedHistoryException) {
-                return b.setRetiredHistory(true).build()
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                report(e)
-                return b.setOpenFailed(true).build()
-            }
-        }
-        if (sessionKeys[rs.sessionId] == null) {
-            return b.setOpenFailed(true).build()
-        }
-        if (rs.hasMeta() && (!rs.meta.securityHeader.isEmpty || !rs.meta.header.isEmpty)) {
-            try {
-                if (!fromCache) ensureEpochForEnvelope(rs.meta)
-                val (h, info) = openSecureMessage(
-                    rs.meta,
-                    Place(PayloadKind.PAYLOAD_KIND_SESSION_META, machineId = rs.machineId, sessionId = rs.sessionId),
-                    Session::parseFrom,
-                    live = !fromCache,
-                )
-                b.setMeta(info).setMetaRev(h.seq)
-                val checkpoint = info.currentCheckpoint.toByteArray()
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { LiveSnapshot.parseFrom(it) }
-                if (checkpoint != null) {
-                    val invalid = checkpoint.session.id != rs.sessionId ||
-                        ucmp(checkpoint.session.lastSeq, info.lastSeq) > 0 ||
-                        checkpoint.actionsList.any { it.sessionId != rs.sessionId || ucmp(it.seq, info.lastSeq) > 0 }
-                    if (invalid) b.setCheckpointInvalid(true) else b.setCheckpoint(checkpoint)
-                }
-            } catch (_: UnsupportedHistoryException) {
-                return b.setRetiredHistory(true).build()
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                report(e)
-                return b.setOpenFailed(true).build()
-            }
-        }
-        return b.build()
-    }
-
-    private fun handleDirectEvent(machineId: String, pcId: Long, env: Envelope, header: Header, size: Int) {
+    private fun handleDirectEvent(machineId: String, pcId: Long, env: Envelope, header: Header, @Suppress("UNUSED_PARAMETER") size: Int) {
         if (closed) return
         val sid = header.sessionId
         if (sid.isEmpty() || header.seq <= 0L) return
         if (sid !in watchedSessionIds) return
         if (sessionMachineId(sid) != machineId || header.sender != machineId) return
-        if (!sessionKeys.containsKey(sid)) return
-
-        val entryBytes = maxOf(size, 64)
-        val admitted = synchronized(directQueueLock) {
-            val cur = directQueueCounts[sid] ?: 0
-            if (cur >= 16 || directQueueBytes + entryBytes > 512 * 1024) {
-                false
-            } else {
-                directQueueCounts[sid] = cur + 1
-                directQueueBytes += entryBytes
-                true
-            }
-        }
-        if (!admitted) return
-
-        val lock = directEventLocks.computeIfAbsent(sid) { Mutex() }
-        scope.launch {
-            try {
-                lock.withLock {
-                    openDirectEvent(machineId, pcId, sid, env, header.seq, size)
-                }
-            } finally {
-                synchronized(directQueueLock) {
-                    val cur = directQueueCounts[sid] ?: 0
-                    if (cur <= 1) directQueueCounts.remove(sid) else directQueueCounts[sid] = cur - 1
-                    directQueueBytes = maxOf(0, directQueueBytes - entryBytes)
-                }
-            }
-        }
-    }
-
-    private suspend fun openDirectEvent(machineId: String, pcId: Long, sid: String, env: Envelope, seq: Long, size: Int) {
-        if (closed || sid !in watchedSessionIds || sessionMachineId(sid) != machineId || !sessionKeys.containsKey(sid)) return
-        try {
-            ensureEpochForEnvelope(env)
-            val (h, ev) = openSecureMessage(
-                env,
-                Place(PayloadKind.PAYLOAD_KIND_EVENT, machineId = machineId, sessionId = sid, seq = seq),
-                Event::parseFrom,
-                live = true,
-            )
-            if (closed || h.sender != machineId || ev.seq != seq || ev.sessionId != sid) return
-            val plain = PlainEvent.newBuilder()
-                .setSeq(seq)
-                .setEvent(ev)
-                .setVerified(true)
-                .setApproxBytes(maxOf(size, 64).toLong())
-                .build()
-            coreHost.dispatch(
-                CoreEvent.newBuilder()
-                    .setDirectEventsReceived(
-                        DirectEventsReceivedEvent.newBuilder()
-                            .setSessionId(sid)
-                            .setMachineId(machineId)
-                            .setPcId(pcId)
-                            .setSender(machineId)
-                            .addEvents(plain),
-                    )
-                    .build(),
-            )
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-        }
-    }
-
-    private suspend fun openPlainEvent(
-        sid: String,
-        machineId: String,
-        se: StoredEvent,
-        live: Boolean,
-        fromCache: Boolean = false,
-        refs: MutableList<String>? = null,
-    ): PlainEvent {
-        if (!se.hasEnvelope() || (se.envelope.securityHeader.isEmpty && se.envelope.header.isEmpty)) {
-            return PlainEvent.newBuilder().setSeq(se.seq).setUnavailable(true).build()
-        }
-        return try {
-            if (!fromCache) ensureEpochForEnvelope(se.envelope)
-            val (_, ev) = openSecureMessage(
-                se.envelope,
-                Place(PayloadKind.PAYLOAD_KIND_EVENT, machineId = machineId, sessionId = sid, seq = se.seq),
-                Event::parseFrom,
-                live = live,
-            )
-            if (ev.seq != se.seq || ev.sessionId != sid) {
-                throw OpenException(UiMessages.errorsTheEventSPositionWasChanged().messageText())
-            }
-            val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.EventObj(se), refs) else ""
-            PlainEvent.newBuilder()
-                .setSeq(se.seq)
-                .setEvent(ev)
-                .setVerified(true)
-                .setApproxBytes(se.envelope.serializedSize.toLong())
-                .apply { if (cacheRef.isNotEmpty()) setCacheRef(cacheRef) }
-                .build()
-        } catch (_: RecoveryHistoryUnavailable) {
-            val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.EventObj(se), refs) else ""
-            PlainEvent.newBuilder()
-                .setSeq(se.seq)
-                .setUnavailable(true)
-                .apply { if (cacheRef.isNotEmpty()) setCacheRef(cacheRef) }
-                .build()
-        } catch (e: UnsupportedHistoryException) {
-            PlainEvent.newBuilder().setSeq(se.seq).setRetired(true).build()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-            PlainEvent.newBuilder().setSeq(se.seq).setBroken(true).build()
-        }
-    }
-
-    private suspend fun openPlainDevice(d: Device): PlainDevice {
-        val b = PlainDevice.newBuilder()
-            .setDeviceId(d.id)
-            .setKind(d.kind)
-            .setCreatedMs(d.createdMs)
-            .setLastSeenMs(d.lastSeenMs)
-        if (!d.hasMeta() || d.meta.securityHeader.isEmpty) return b.build()
-        return try {
-            ensureEpochForEnvelope(d.meta)
-            val (h, meta) = if (d.kind == DeviceKind.DEVICE_KIND_MACHINE) {
-                val (hdr, machineMeta) = openSecureMessage(
-                    d.meta,
-                    Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = d.id),
-                    MachineMeta::parseFrom,
-                    live = false,
+        coreHost.dispatch(
+            CoreEvent.newBuilder()
+                .setDirectEventsReceived(
+                    DirectEventsReceivedEvent.newBuilder()
+                        .setSessionId(sid)
+                        .setMachineId(machineId)
+                        .setPcId(pcId)
+                        .setSender(machineId)
+                        .addWireEnvelopes(env),
                 )
-                hdr to DeviceMeta.newBuilder().setName(machineMeta.hostname).build()
-            } else {
-                openSecureMessage(
-                    d.meta,
-                    Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = d.id),
-                    DeviceMeta::parseFrom,
-                    live = false,
-                )
-            }
-            b.setMeta(meta).setMetaRev(h.seq).build()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-            b.setMetaBroken(true).build()
-        }
-    }
-
-    private suspend fun openPlainPrefs(
-        o: AccountPrefsObject,
-        fromCache: Boolean = false,
-        refs: MutableList<String>? = null,
-    ): PlainAccountPrefs {
-        val cacheRef = if (!fromCache) stashCacheObject(PendingCacheObject.PrefsObj(o), refs) else ""
-        val b = PlainAccountPrefs.newBuilder().setRevision(o.revision)
-        if (cacheRef.isNotEmpty()) b.setCacheRef(cacheRef)
-        if (o.revision == 0L || !o.hasEnvelope() || o.envelope.securityHeader.isEmpty) {
-            return b.setPrefs(ProjectPrefs.newBuilder().setSchema(1).build()).build()
-        }
-        return try {
-            if (!fromCache) ensureEpochForEnvelope(o.envelope)
-            val (h, prefs) = openSecureMessage(
-                o.envelope,
-                Place(PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS, requestId = PROJECT_PREFS),
-                ProjectPrefs::parseFrom,
-                live = !fromCache,
-            )
-            b.setRevision(h.seq).setPrefs(prefs).build()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            report(e)
-            b.setBroken(true).build()
-        }
+                .build(),
+        )
     }
 
     // --- Storage Executor ---
@@ -1422,10 +1073,19 @@ class Remote(
                             cache?.removeBlob("schedule:$it")
                             removeUsageBlobs(it)
                         }
+                        ensureSecurityConfigured()
+                        val secEv = toSecurityRecordEvent(
+                            record,
+                            opId = 0L,
+                            pushSeq = securityPushSeq.getAndIncrement(),
+                            networkGeneration = networkGeneration,
+                        )
+                        coreHost.dispatchSecurityRecordAndWait(secEv)
+                        securityRecordLoaded = true
                     }
-                    b.addAllMachines(cache?.machines().orEmpty().map { openPlainMachine(it, fromCache = true) })
-                        .addAllSessions(cache?.sessions().orEmpty().map { openPlainSession(it, fromCache = true) })
-                    cache?.blob(PROJECT_PREFS)?.let { b.setPrefs(openPlainPrefs(AccountPrefsObject.parseFrom(it), fromCache = true)) }
+                    b.addAllWireMachines(cache?.machines().orEmpty())
+                        .addAllWireSessions(cache?.sessions().orEmpty())
+                    cache?.blob(PROJECT_PREFS)?.let { b.setWirePrefs(AccountPrefsObject.parseFrom(it)) }
                     homeScopeStore?.readToken()?.takeIf { it.isNotEmpty() }?.let { b.setHomeScopeToken(it) }
                     Keys.deriveKey(account.localKey, "home-scope").takeIf { it.isNotEmpty() }?.let { b.setScopeHmacKey(ByteString.copyFrom(it)) }
                 } catch (e: Exception) {
@@ -1446,16 +1106,7 @@ class Remote(
                 try {
                     val raw = if (req.newest) cache?.newestEvents(sid).orEmpty() else cache?.eventPage(sid, req.afterSeq).orEmpty()
                     val limited = if (req.limit > 0 && raw.size > req.limit) raw.take(req.limit) else raw
-                    val machineId = sessionMachineId(sid)
-                    var broken = false
-                    var retired = false
-                    val plain = limited.map { se ->
-                        openPlainEvent(sid, machineId, se, live = false, fromCache = true).also {
-                            if (it.broken) broken = true
-                            if (it.retired) retired = true
-                        }
-                    }
-                    b.addAllEvents(plain).setBroken(broken).setRetired(retired)
+                    b.addAllWireEvents(limited)
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     report(e)
@@ -1470,15 +1121,14 @@ class Remote(
     private fun extractCacheWrite(eff: CacheWriteEffect): CacheWritePayload? {
         if (cache == null) return null
         return when {
-            eff.hasWriteMachineRef() -> (takeCacheObject(eff.writeMachineRef) as? PendingCacheObject.MachineObj)?.let { CacheWritePayload.MachineWrite(it.m) }
-            eff.hasWriteSessionRef() -> (takeCacheObject(eff.writeSessionRef) as? PendingCacheObject.SessionObj)?.let { CacheWritePayload.SessionWrite(it.s) }
-            eff.hasKeepSessionOwnerRef() -> (takeCacheObject(eff.keepSessionOwnerRef) as? PendingCacheObject.SessionObj)?.let { CacheWritePayload.KeepOwnerWrite(it.s) }
-            eff.hasWriteEvents() -> {
-                val we = eff.writeEvents
-                val stored = we.cacheRefsList.mapNotNull { (takeCacheObject(it) as? PendingCacheObject.EventObj)?.e }
-                if (stored.isNotEmpty()) CacheWritePayload.EventsWrite(we.sessionId, stored) else null
+            eff.hasWriteMachine() -> CacheWritePayload.MachineWrite(eff.writeMachine)
+            eff.hasWriteSession() -> CacheWritePayload.SessionWrite(eff.writeSession)
+            eff.hasKeepSessionOwner() -> CacheWritePayload.KeepOwnerWrite(eff.keepSessionOwner)
+            eff.hasWriteStoredEvents() -> {
+                val we = eff.writeStoredEvents
+                if (we.eventsList.isNotEmpty()) CacheWritePayload.EventsWrite(we.sessionId, we.eventsList) else null
             }
-            eff.hasWritePrefsRef() -> (takeCacheObject(eff.writePrefsRef) as? PendingCacheObject.PrefsObj)?.let { CacheWritePayload.PrefsWrite(it.p) }
+            eff.hasWritePrefs() -> CacheWritePayload.PrefsWrite(eff.writePrefs)
             eff.hasSetSessionOpen() -> CacheWritePayload.SessionOpenWrite(eff.setSessionOpen.sessionId, eff.setSessionOpen.open)
             else -> null
         }
@@ -1502,7 +1152,6 @@ class Remote(
                     cache?.dropEvents(eff.dropEventsSessionId)
                 CacheDeleteEffect.KindCase.REMOVE_SESSION_ID -> {
                     val sid = eff.removeSessionId
-                    sessionKeys.remove(sid)
                     cache?.removeSession(sid)
                     runCatching { onSessionRemoved(sid) }
                 }
@@ -1525,35 +1174,24 @@ class Remote(
     // --- RPC Executor ---
 
     private inline fun sendEvent(
-        refs: List<String> = emptyList(),
         block: CoreEvent.Builder.() -> Unit,
-    ) = coreHost.dispatch(
-        CoreEvent.newBuilder().apply(block).build(),
-        onProcessed = if (refs.isEmpty()) null else ({ releaseCacheObjects(refs) }),
-    )
+    ) = coreHost.dispatch(CoreEvent.newBuilder().apply(block).build())
 
     private suspend inline fun <B> runRpc(
         make: () -> B,
         onError: B.(String, Boolean) -> Unit,
         crossinline emit: CoreEvent.Builder.(B) -> Unit,
-        block: B.(MutableList<String>) -> Unit,
+        block: B.() -> Unit,
     ) {
         val b = make()
-        val refs = ArrayList<String>()
-        var dispatched = false
         try {
-            try {
-                b.block(refs)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                report(e)
-                b.onError(rpcErrorString(e), unresolvedHost(e))
-            }
-            sendEvent(refs) { emit(b) }
-            dispatched = true
-        } finally {
-            if (!dispatched) releaseCacheObjects(refs)
+            b.block()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            report(e)
+            b.onError(rpcErrorString(e), unresolvedHost(e))
         }
+        sendEvent { emit(b) }
     }
 
     private suspend fun executeRpc(eff: RpcEffect) {
@@ -1563,7 +1201,7 @@ class Remote(
                 make = { ListsFetchedEvent.newBuilder().setOpId(opId) },
                 onError = { err, host -> setUnresolvedHost(host).setError(err) },
                 emit = { setListsFetched(it) },
-            ) { refs ->
+            ) {
                 val headers = Api.headers(currentToken())
                 coroutineScope {
                     val reqSessions = ListRemoteSessionsRequest.newBuilder().apply {
@@ -1575,23 +1213,23 @@ class Remote(
                     val machinesRes = ms.await()
                     val sessionsRes = ss.await()
                     val devicesRes = ds.await()
-                    addAllMachines(machinesRes.machinesList.map { openPlainMachine(it, refs = refs) })
-                    addAllSessions(sessionsRes.sessionsList.map { openPlainSession(it, refs = refs) })
+                    addAllWireMachines(machinesRes.machinesList)
+                    addAllWireSessions(sessionsRes.sessionsList)
                     if (sessionsRes.hasNext()) setNext(sessionsRes.next)
-                    addAllDevices(devicesRes.devicesList.map { openPlainDevice(it) })
+                    addAllWireDevices(devicesRes.devicesList)
                 }
             }
             RpcEffect.KindCase.FETCH_SESSIONS_PAGE -> runRpc(
                 make = { SessionsPageFetchedEvent.newBuilder().setOpId(opId) },
                 onError = { err, _ -> setError(err) },
                 emit = { setSessionsPageFetched(it) },
-            ) { refs ->
+            ) {
                 val req = ListRemoteSessionsRequest.newBuilder().apply {
                     if (eff.fetchSessionsPage.hasAfter()) setAfter(eff.fetchSessionsPage.after)
                     if (eff.fetchSessionsPage.limit > 0) setLimit(eff.fetchSessionsPage.limit)
                 }.build()
                 val res = api.client.listRemoteSessions(req, Api.headers(currentToken())).value()
-                addAllSessions(res.sessionsList.map { openPlainSession(it, refs = refs) })
+                addAllWireSessions(res.sessionsList)
                 if (res.hasNext()) setNext(res.next)
             }
             RpcEffect.KindCase.FETCH_SESSION_BY_ID -> {
@@ -1599,25 +1237,20 @@ class Remote(
                 val b = SessionByIdFetchedEvent.newBuilder().setOpId(opId)
                 var failure: Throwable? = null
                 var foundSession = false
-                val refs = ArrayList<String>(1)
                 try {
-                    try {
-                        val req = ListRemoteSessionsRequest.newBuilder().addSessionIds(sid).setLimit(1).build()
-                        val found = api.client.listRemoteSessions(req, Api.headers(currentToken())).value().sessionsList.firstOrNull { it.sessionId == sid }
-                        if (found != null) {
-                            b.setSession(openPlainSession(found, refs = refs))
-                            foundSession = true
-                        }
-                    } catch (e: Exception) {
-                        if (e is CancellationException) throw e
-                        report(e)
-                        failure = e
-                        b.setError(rpcErrorString(e))
+                    val req = ListRemoteSessionsRequest.newBuilder().addSessionIds(sid).setLimit(1).build()
+                    val found = api.client.listRemoteSessions(req, Api.headers(currentToken())).value().sessionsList.firstOrNull { it.sessionId == sid }
+                    if (found != null) {
+                        b.setWireSession(found)
+                        foundSession = true
                     }
-                    coreHost.dispatchAndWait(CoreEvent.newBuilder().setSessionByIdFetched(b).build())
-                } finally {
-                    releaseCacheObjects(refs)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    report(e)
+                    failure = e
+                    b.setError(rpcErrorString(e))
                 }
+                coreHost.dispatchAndWait(CoreEvent.newBuilder().setSessionByIdFetched(b).build())
                 pendingSessionLookups.remove(sid)?.forEach { w ->
                     if (failure != null) w.completeExceptionally(failure) else w.complete(foundSession)
                 }
@@ -1626,60 +1259,59 @@ class Remote(
                 make = { EventsPageFetchedEvent.newBuilder().setOpId(opId).setSessionId(eff.getEvents.sessionId) },
                 onError = { err, _ -> setError(err) },
                 emit = { setEventsPageFetched(it) },
-            ) { refs ->
+            ) {
                 val r = eff.getEvents
                 val req = GetEventsRequest.newBuilder().setSessionId(r.sessionId).setAfterSeq(r.afterSeq).setLimit(r.limit).build()
                 val res = api.client.getEvents(req, Api.headers(currentToken())).value()
-                val machineId = sessionMachineId(r.sessionId)
-                setMore(res.more).addAllEvents(res.eventsList.map { openPlainEvent(r.sessionId, machineId, it, live = false, refs = refs) })
+                setMore(res.more).addAllWireEvents(res.eventsList)
             }
             RpcEffect.KindCase.GET_ACCOUNT_PREFS -> runRpc(
                 make = { AccountPrefsFetchedEvent.newBuilder().setOpId(opId) },
                 onError = { err, _ -> setError(err) },
                 emit = { setAccountPrefsFetched(it) },
-            ) { refs ->
+            ) {
                 val objectId = eff.getAccountPrefs.objectId.ifEmpty { PROJECT_PREFS }
                 val obj = api.client.getAccountPrefs(GetAccountPrefsRequest.newBuilder().setObjectId(objectId).build(), Api.headers(currentToken())).value().`object`
-                setPrefs(openPlainPrefs(obj, refs = refs))
+                setWirePrefs(obj)
             }
             RpcEffect.KindCase.PUT_ACCOUNT_PREFS -> {
                 val putRpc = eff.putAccountPrefs
                 val objectId = putRpc.objectId.ifEmpty { PROJECT_PREFS }
                 val b = AccountPrefsPutResultEvent.newBuilder().setOpId(opId)
-                val refs = ArrayList<String>(1)
-                var dispatched = false
                 try {
-                    try {
-                        val env = withContext(cpuDispatcher) {
-                            security.seal(DeviceSecurity.Purpose.PREFS, request = objectId, seq = (putRpc.expectedRevision + 1).toULong(), plain = putRpc.nextPrefs.toByteArray())
-                        }
-                        val res = api.client.putAccountPrefs(
-                            PutAccountPrefsRequest.newBuilder().setObjectId(objectId).setExpectedRevision(putRpc.expectedRevision).setEnvelope(env).build(),
-                            Api.headers(currentToken()),
-                        ).value()
-                        b.setApplied(res.applied)
-                        if (res.hasObject()) b.setCurrent(openPlainPrefs(res.`object`, refs = refs))
-                    } catch (e: DeviceSecurity.Failure) {
-                        if (e.code == "conflict") b.setSealConflict(true)
-                        b.setError(e.message ?: e.code)
-                    } catch (e: Exception) {
-                        if (e is CancellationException) throw e
-                        report(e)
-                        b.setError(rpcErrorString(e))
+                    val env = if (putRpc.hasSealedEnvelope()) {
+                        putRpc.sealedEnvelope
+                    } else {
+                        sealEnvelopeOp(
+                            DeviceSecurity.Purpose.PREFS,
+                            request = objectId,
+                            seq = (putRpc.expectedRevision + 1).toULong(),
+                            plain = putRpc.nextPrefs.toByteArray(),
+                        ).envelope
                     }
-                    sendEvent(refs) { setAccountPrefsPutResult(b) }
-                    dispatched = true
-                } finally {
-                    if (!dispatched) releaseCacheObjects(refs)
+                    val res = api.client.putAccountPrefs(
+                        PutAccountPrefsRequest.newBuilder().setObjectId(objectId).setExpectedRevision(putRpc.expectedRevision).setEnvelope(env).build(),
+                        Api.headers(currentToken()),
+                    ).value()
+                    b.setApplied(res.applied)
+                    if (res.hasObject()) b.setWireCurrent(res.`object`)
+                } catch (e: DeviceSecurity.Failure) {
+                    if (e.code == "conflict") b.setSealConflict(true)
+                    b.setError(e.message ?: e.code)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    report(e)
+                    b.setError(rpcErrorString(e))
                 }
+                sendEvent { setAccountPrefsPutResult(b) }
             }
             RpcEffect.KindCase.FETCH_DEVICES -> runRpc(
                 make = { DevicesFetchedEvent.newBuilder().setOpId(opId) },
                 onError = { err, _ -> setError(err) },
                 emit = { setDevicesFetched(it) },
-            ) { _ ->
+            ) {
                 val ds = api.client.listDevices(ListDevicesRequest.getDefaultInstance(), Api.headers(currentToken())).value()
-                addAllDevices(ds.devicesList.map { openPlainDevice(it) })
+                addAllWireDevices(ds.devicesList)
             }
             else -> {}
         }
@@ -1729,7 +1361,7 @@ class Remote(
         attemptId: String,
         parsedCmd: Command?,
         authorized: Envelope,
-        binding: Pair<ByteArray, ByteArray>,
+        binding: Pair<ByteArray, ByteArray>?,
         prior: Boolean,
         bulk: Boolean,
         useDirect: Boolean,
@@ -1758,6 +1390,44 @@ class Remote(
             }
             val dtMs = elapsedMs()
             val attemptBound = res.attemptId == attemptId
+            if (binding == null) {
+                if (
+                    cache != null &&
+                    parsedCmd?.hasSchedule() == true &&
+                    parsedCmd.schedule.operation == "list" &&
+                    attemptBound &&
+                    (useDirect || res.outcome == "executed") &&
+                    currentScheduleMember(machineId)
+                ) {
+                    val msg = runCatching {
+                        openSecureMessage(
+                            res.result,
+                            Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machineId, sessionId = sessionId, requestId = requestId),
+                            CommandResult::parseFrom,
+                            bulk = bulk,
+                        ).second
+                    }.getOrNull()
+                    if (msg != null && msg.hasSchedule() && msg.errorCode.isEmpty() && msg.outcome == "executed") {
+                        cache.putBlob("schedule:$machineId", scheduleSnapshot(requestId, res.result))
+                        if (!currentScheduleMember(machineId)) cache.removeBlob("schedule:$machineId")
+                    }
+                }
+                return AttemptOutcome(
+                    outcome = baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
+                        .setAttemptBound(attemptBound)
+                        .apply { if (res.hasResult()) setSealedResult(res.result) }
+                        .setOuterOutcome(res.outcome)
+                        .setOuterReason(res.reason)
+                        .setHandedOff(handedOff)
+                        .setElapsedMs(dtMs)
+                        .build(),
+                    trusted = false,
+                    elapsedMs = dtMs,
+                    observedBytes = 0L,
+                    ok = false,
+                    handedOff = handedOff,
+                )
+            }
             val msg = try {
                 openSecureMessage(
                     res.result,
@@ -1915,17 +1585,9 @@ class Remote(
         val cmdBytes = eff.commandBytes.toByteArray()
         val parsedCmd = runCatching { Command.parseFrom(cmdBytes) }.getOrNull()
         val bulk = eff.bulkUpload || eff.routeHint == CommandRouteHint.COMMAND_ROUTE_HINT_BULK
-        val cpu = if (bulk) bulkCpuDispatcher else cpuDispatcher
 
         if (serverAhead || security.clockSkew) return localFailure("failed_precondition", "clock skew")
-
-        val (authorized, binding) = try {
-            withContext(cpu) {
-                security.sealCommand(eff.machineId, eff.sessionId, eff.requestId, deadline = eff.deadlineMs.toULong(), plain = cmdBytes)
-            }
-        } catch (e: LeaseExpiredException) {
-            return localFailure("failed_precondition", "lease expired")
-        }
+        if (!eff.hasSealedEnvelope()) return localFailure("failed_precondition", "missing sealed command")
 
         val useDirect = eff.routeLeg == CommandRouteLeg.COMMAND_ROUTE_LEG_DIRECT && eff.directPcId > 0L
         return executeCommandLeg(
@@ -1934,8 +1596,8 @@ class Remote(
             requestId = eff.requestId,
             attemptId = eff.attemptId,
             parsedCmd = parsedCmd,
-            authorized = authorized,
-            binding = binding,
+            authorized = eff.sealedEnvelope,
+            binding = null,
             prior = eff.retryOfUnknown,
             bulk = bulk,
             useDirect = useDirect,
@@ -1970,8 +1632,9 @@ class Remote(
         coreHost.sendDirectPreferencesLoaded(
             runCatching { directPrefs.allEnabled(account.server, account.deviceId) }.getOrDefault(emptyMap()),
         )
-        synchronized(directSecurityLock) { lastDirectSecurity }?.let {
-            coreHost.dispatchDirectSecuritySnapshot(it)
+        ensureSecurityConfigured()
+        runCatching { security.record() }.getOrNull()?.let {
+            pushSecurityRecordFromRecord(it, skipIfCoreSync = false)
         }
         val token = homeScopeStore?.readToken().orEmpty()
         val hmacKey = Keys.deriveKey(account.localKey, "home-scope")
@@ -2059,7 +1722,6 @@ class Remote(
                         try {
                             coreHost.close()
                         } finally {
-                            synchronized(pendingCacheObjects) { pendingCacheObjects.clear() }
                             synchronized(pendingCacheOps) {
                                 pendingCacheOps.clear()
                                 cacheWriterActive = false
@@ -2119,12 +1781,21 @@ class Remote(
     // --- Security Management & Recovery (preserved for Security screens & DeviceSecurity tests) ---
 
     suspend fun syncSecurity(budgetMs: Long = Long.MAX_VALUE) {
+        ensureSecurityConfigured()
         try {
             val r = withContext(dispatcher) {
                 coreSyncDepth.incrementAndGet()
                 try {
                     security.sync(budgetMs).also { synced ->
                         resumeSecurityOperation(dispatchSnapshot = false)
+                        val preEv = toSecurityRecordEvent(
+                            synced,
+                            opId = 0L,
+                            pushSeq = securityPushSeq.getAndIncrement(),
+                            networkGeneration = networkGeneration,
+                        )
+                        coreHost.dispatchSecurityRecordAndWait(preEv)
+                        securityRecordLoaded = true
                         try {
                             recoveryObjectsPending = true
                             republishRecoveryObjects(synced)
@@ -2151,15 +1822,14 @@ class Remote(
             if (e.code != "clock") throw e
         }
         val done = CompletableDeferred<Unit>()
-        dispatchLatestSecuritySnapshot { done.complete(Unit) }
+        dispatchLatestSecurityRecord { done.complete(Unit) }
         done.await()
     }
 
     suspend fun refreshDevices() {
         val pushSeq = devicesPushSeq.getAndIncrement()
         val ds = api.client.listDevices(ListDevicesRequest.getDefaultInstance(), Api.headers(currentToken())).value()
-        val plain = ds.devicesList.map { openPlainDevice(it) }
-        val ev = DevicesFetchedEvent.newBuilder().setOpId(0L).setPushSeq(pushSeq).addAllDevices(plain).build()
+        val ev = DevicesFetchedEvent.newBuilder().setOpId(0L).setPushSeq(pushSeq).addAllWireDevices(ds.devicesList).build()
         coreHost.dispatchAndWait(CoreEvent.newBuilder().setDevicesFetched(ev).build())
         updateProjectedStateNow()
     }
@@ -2175,22 +1845,28 @@ class Remote(
             parse: (ByteArray) -> T,
             upload: suspend (Envelope) -> Boolean,
         ): Boolean {
-            val h = DeviceSecurity.parseHeader(env.securityHeader.toByteArray())
-            if (h.contentEpoch >= boundary) return true
-            if (
-                h.purpose != purpose ||
-                h.seq != seq.toULong() ||
-                (purpose == DeviceSecurity.Purpose.PREFS && h.request != request) ||
-                (purpose == DeviceSecurity.Purpose.DEVICE_META && h.sender != account.deviceId)
-            ) {
-                throw DeviceSecurity.Failure("untrusted")
-            }
-            val snapshot = try {
-                security.openMessage(env, true, parse = parse).second
+            val (opened, snapshot) = try {
+                openSecureMessageWithMeta(
+                    env,
+                    Place(purpose.payloadKind(), requestId = request, seq = seq),
+                    parse,
+                    live = false,
+                )
             } catch (e: DeviceSecurity.Failure) {
                 if (e.code == "unavailable") return true else throw e
             }
-            return upload(security.seal(purpose, request = request, seq = (seq + 1).toULong(), plain = snapshot.toByteArray()))
+            if (purpose == DeviceSecurity.Purpose.DEVICE_META && opened.sender != account.deviceId) {
+                throw DeviceSecurity.Failure("untrusted")
+            }
+            if (opened.contentEpoch.toULong() >= boundary) return true
+            return upload(
+                sealEnvelopeOp(
+                    purpose,
+                    request = request,
+                    seq = (seq + 1).toULong(),
+                    plain = snapshot.toByteArray(),
+                ).envelope,
+            )
         }
         retryRecoveryPublication {
             val obj = api.client.getAccountPrefs(GetAccountPrefsRequest.newBuilder().setObjectId(PROJECT_PREFS).build(), headers).value().`object`
@@ -2244,7 +1920,7 @@ class Remote(
             api.client.putSecurityState(req, Api.headers(currentToken())).value()
             security.install(emptyList(), lease = cert)
             storage.clearSecurityOperation()
-            if (dispatchSnapshot) dispatchLatestSecuritySnapshot()
+            if (dispatchSnapshot) dispatchLatestSecurityRecord()
             return
         }
         if (op.kind != "state") {
@@ -2327,7 +2003,7 @@ class Remote(
         }
         storage.writeSecurityOperation(op.advanced(SecurityOperation.Phase.DELIVERED))
         storage.clearSecurityOperation()
-        if (dispatchSnapshot) dispatchLatestSecuritySnapshot()
+        if (dispatchSnapshot) dispatchLatestSecurityRecord()
     }
 
     private suspend fun retryCertificate(
@@ -2367,7 +2043,7 @@ class Remote(
                 security.record()
             } else null
         }
-        if (cleared != null) pushSecuritySnapshotFromRecord(cleared, skipIfCoreSync = false)
+        if (cleared != null) pushSecurityRecordFromRecord(cleared, skipIfCoreSync = false)
     }
 
     private suspend fun cancelPairDeliveryForRemoval(deviceId: String): Boolean = securityOperationLock.withLock {
@@ -2547,12 +2223,12 @@ class Remote(
                 ?: throw CommandException("not_found", UiMessages.settingsDeviceNotFound().messageText())
             val next = (current.meta?.toBuilder() ?: DeviceMeta.newBuilder()).also(change).build()
             try {
-                val env = security.seal(
+                val env = sealEnvelopeOp(
                     DeviceSecurity.Purpose.DEVICE_META,
                     request = id,
                     seq = (current.metaRev + 1).toULong(),
                     plain = next.toByteArray(),
-                )
+                ).envelope
                 val applied = api.client.putDeviceMeta(
                     PutDeviceMetaRequest.newBuilder()
                         .setDeviceId(id)
@@ -2704,7 +2380,6 @@ class Remote(
             )
         }
         val bulk = versioned.hasPutImageChunk() || versioned.hasGetSharedFileChunk()
-        val cpu = if (bulk) bulkCpuDispatcher else cpuDispatcher
         val routeHintValue = when {
             versioned.hasGetSharedFileChunk() || versioned.hasPutImageChunk() ->
                 CommandRouteHint.COMMAND_ROUTE_HINT_BULK_VALUE
@@ -2728,20 +2403,30 @@ class Remote(
         }
 
         val (authorized, binding) = try {
-            withContext(cpu) {
-                security.sealCommand(
-                    machineId,
-                    sessionId,
-                    requestId,
-                    deadline = deadlineMs.toULong(),
-                    plain = versioned.toByteArray(),
+            val sealed = sealEnvelopeOp(
+                DeviceSecurity.Purpose.COMMAND,
+                machineId = machineId,
+                sessionId = sessionId,
+                request = requestId,
+                deadline = deadlineMs.toULong(),
+                plain = versioned.toByteArray(),
+            )
+            sealed.envelope to (sealed.requestKeyHash.toByteArray() to sealed.payloadHash.toByteArray())
+        } catch (e: DeviceSecurity.Failure) {
+            when (e.code) {
+                "lease" -> throw CommandException(
+                    "failed_precondition",
+                    localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) },
+                )
+                "clock" -> throw CommandException(
+                    "failed_precondition",
+                    UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerRemoteControl().messageText(),
+                )
+                else -> throw CommandException(
+                    "authorization_unavailable",
+                    UiMessages.errorsAndroidSecurityAuthorizationOrTheCurrentRequestIsUnverifiedNothingWas().messageText(),
                 )
             }
-        } catch (e: LeaseExpiredException) {
-            throw CommandException(
-                "failed_precondition",
-                localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) },
-            )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             throw CommandException(
@@ -2950,7 +2635,7 @@ class Remote(
 
     suspend fun image(sid: String, imageId: String): ImageResult = withContext(dispatcher) {
         val s = state.value.sessions[sid] ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
-        if (sessionKeys[sid] == null) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
+        if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val cacheKey = "$sid/$imageId"
         var env = runCatching { cache?.image(cacheKey)?.let { Envelope.parseFrom(it) } }.getOrNull()
         if (env == null) {
@@ -2977,6 +2662,8 @@ class Remote(
             return@withContext ImageResult.Corrupt(RETIRED_HISTORY_ERROR)
         } catch (e: OpenException) {
             return@withContext ImageResult.Corrupt(e.display)
+        } catch (e: DeviceSecurity.Failure) {
+            return@withContext ImageResult.Corrupt(errorText(e, state.value))
         }
         if (detectFormat(payload.data.toByteArray()) != payload.format) {
             return@withContext ImageResult.Corrupt(UiMessages.errorsAndroidImageContentDoesNotMatchItsFormat().messageText())
@@ -3040,7 +2727,7 @@ class Remote(
 
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {
         val s = state.value.sessions[sid] ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
-        if (sessionKeys[sid] == null) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
+        if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val tok = currentToken()
         val streamId = newRequestId()
         val opened = CompletableDeferred<Unit>()
@@ -3189,51 +2876,38 @@ class Remote(
         if (System.getenv("RA_DEBUG_STACK") != null) e.printStackTrace()
     }
 
-    private fun projection(h: DeviceSecurity.Header): Header = Header.newBuilder()
-        .setVersion(DeviceSecurity.VERSION)
-        .setKindValue(h.kind.toInt())
-        .setMachineId(h.machine)
-        .setSessionId(h.session)
-        .setRequestId(h.request)
-        .setSeq(h.seq.toLong())
-        .setDeadlineMs(h.deadline.toLong())
-        .setSender(h.sender)
-        .setCompressionValue(h.compression.toInt())
-        .build()
+    private fun DeviceSecurity.Purpose.payloadKind(): PayloadKind =
+        PayloadKind.forNumber(kind.toInt()) ?: PayloadKind.PAYLOAD_KIND_UNSPECIFIED
 
-    private fun sessionReplacements(sid: String): List<MachineReplacementProof> =
-        coreHost.syncStateView.value.sessionsList
-            .firstOrNull { it.sessionId == sid && it.hasInfo() }
-            ?.info?.machineReplacementsList
-            ?: state.value.sessions[sid]?.info?.machineReplacementsList
-            ?: emptyList()
-
-    private fun historicalPlace(want: Place, header: Header, historical: Boolean): Place {
-        if (
-            historical &&
-            want.kind in setOf(PayloadKind.PAYLOAD_KIND_EVENT, PayloadKind.PAYLOAD_KIND_IMAGE) &&
-            header.machineId != want.machineId &&
-            header.machineId in machineReplacementOrigins(security.record(), want.machineId, sessionReplacements(want.sessionId))
-        ) {
-            return want.copy(machineId = header.machineId)
+    private fun throwSecurityOpError(res: SecurityOpResultEffect): Nothing {
+        when (res.errorCode) {
+            "unsupported_history" -> throw UnsupportedHistoryException()
+            "recovery_unavailable" -> throw DeviceSecurity.Failure("unavailable")
+            "stale" ->
+                if (res.error.contains("lease expired")) throw DeviceSecurity.Failure("lease")
+                else throw DeviceSecurity.Failure("stale")
+            "clock", "untrusted", "capacity" -> throw DeviceSecurity.Failure(res.errorCode)
+            else -> throw DeviceSecurity.Failure(res.errorCode.ifEmpty { "invalid" })
         }
-        return want
     }
 
-    private suspend fun openSecureKey(env: Envelope, want: Place): ByteArray {
-        rejectRetiredHistory(env)
-        val (header, raw) = withContext(cpuDispatcher) { security.openHistory(env) }
-        Envelopes.expect(projection(header), want)
-        return raw
+    private suspend fun hasSessionSeed(sid: String): Boolean {
+        ensureSecurityRecordLoaded()
+        val res = coreHost.securityOp {
+            setGetSessionSeed(SecurityGetSessionSeedOp.newBuilder().setSessionId(sid))
+        }
+        return res.error.isEmpty() && res.hasSessionSeed() && res.sessionSeed.size() == KEY_SIZE
     }
 
-    private suspend fun <T : com.google.protobuf.MessageLite> openSecureMessage(
+    private suspend fun <T : com.google.protobuf.MessageLite> openSecureMessageWithMeta(
         env: Envelope,
         want: Place,
         parse: (ByteArray) -> T,
         live: Boolean = true,
-        bulk: Boolean = false,
-    ): Pair<Header, T> {
+    ): Pair<SecurityOpenEnvelopeResult, T> {
+        ensureSecurityRecordLoaded()
+        val purpose = DeviceSecurity.Purpose.entries.firstOrNull { it.value == want.kind.number.toUInt() }
+            ?: throw DeviceSecurity.Failure("invalid")
         val history = !live || want.kind in setOf(
             PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS,
             PayloadKind.PAYLOAD_KIND_DEVICE_META,
@@ -3241,25 +2915,85 @@ class Remote(
             PayloadKind.PAYLOAD_KIND_SESSION_META,
             PayloadKind.PAYLOAD_KIND_IMAGE,
         )
-        rejectRetiredHistory(env)
-        val h = DeviceSecurity.parseHeader(env.securityHeader.toByteArray())
-        val seed = if (h.purpose.sessionKey) sessionKeys[h.session] else null
-        val (header, m) = try {
-            withContext(if (bulk) bulkCpuDispatcher else cpuDispatcher) {
-                security.openMessage(env, history, seed, parse)
-            }
-        } catch (e: RecoveryHistoryUnavailable) {
-            Envelopes.expect(projection(e.header), historicalPlace(want, projection(e.header), history))
-            throw e
+        val res = coreHost.securityOp {
+            setOpenEnvelope(
+                SecurityOpenEnvelopeOp.newBuilder()
+                    .setEnvelope(env)
+                    .setExpectedPurpose(purpose.value.toInt())
+                    .setMachineId(want.machineId)
+                    .setSessionId(want.sessionId)
+                    .setRequestId(want.requestId)
+                    .setSeq(want.seq)
+                    .setHistory(history),
+            )
         }
-        val projected = projection(header)
-        Envelopes.expect(projected, historicalPlace(want, projected, history))
-        return projected to m
+        if (res.error.isNotEmpty() || !res.hasOpened()) {
+            throwSecurityOpError(res)
+        }
+        val opened = res.opened
+        val msg = try {
+            parse(opened.plaintext.toByteArray())
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            throw OpenException("malformed content")
+        }
+        return opened to msg
+    }
+
+    private suspend fun <T : com.google.protobuf.MessageLite> openSecureMessage(
+        env: Envelope,
+        want: Place,
+        parse: (ByteArray) -> T,
+        live: Boolean = true,
+        @Suppress("UNUSED_PARAMETER") bulk: Boolean = false,
+    ): Pair<Header, T> {
+        val (opened, msg) = openSecureMessageWithMeta(env, want, parse, live = live)
+        val projected = Header.newBuilder()
+            .setVersion(DeviceSecurity.VERSION)
+            .setKind(want.kind)
+            .setMachineId(opened.machineId)
+            .setSessionId(opened.sessionId)
+            .setRequestId(opened.requestId)
+            .setSeq(opened.seq)
+            .setDeadlineMs(opened.deadlineMs)
+            .setSender(opened.sender)
+            .build()
+        return projected to msg
+    }
+
+    private suspend fun sealEnvelopeOp(
+        purpose: DeviceSecurity.Purpose,
+        machineId: String = "",
+        sessionId: String = "",
+        request: String = "",
+        seq: ULong = 0uL,
+        deadline: ULong = 0uL,
+        plain: ByteArray,
+        useSessionSeed: Boolean = purpose.sessionKey,
+    ): SecuritySealEnvelopeResult {
+        ensureSecurityRecordLoaded()
+        val res = coreHost.securityOp {
+            setSealEnvelope(
+                SecuritySealEnvelopeOp.newBuilder()
+                    .setPurpose(purpose.value.toInt())
+                    .setMachineId(machineId)
+                    .setSessionId(sessionId)
+                    .setRequestId(request)
+                    .setSeq(seq.toLong())
+                    .setDeadlineMs(deadline.toLong())
+                    .setPlaintext(ByteString.copyFrom(plain))
+                    .setUseSessionSeed(useSessionSeed),
+            )
+        }
+        if (res.error.isNotEmpty() || !res.hasSealed()) {
+            throwSecurityOpError(res)
+        }
+        return res.sealed
     }
 
     private suspend fun sealSecureMessage(h: Header, m: com.google.protobuf.MessageLite): Envelope {
         var purpose = DeviceSecurity.Purpose.entries.firstOrNull { it.value == h.kindValue.toUInt() }
-            ?: throw DeviceSecurity.Failure()
+            ?: throw DeviceSecurity.Failure("invalid")
         if (m is TerminalFrame) {
             purpose = when (m.kindCase) {
                 TerminalFrame.KindCase.INPUT -> DeviceSecurity.Purpose.TERMINAL_INPUT
@@ -3268,17 +3002,16 @@ class Remote(
                 else -> purpose
             }
         }
-        val seed = if (purpose.sessionKey) sessionKeys[h.sessionId] else null
-        return security.seal(
-            purpose,
-            h.machineId,
-            h.sessionId,
-            h.requestId,
-            h.seq.toULong(),
-            h.deadlineMs.toULong(),
-            m.toByteArray(),
-            seed,
-        )
+        return sealEnvelopeOp(
+            purpose = purpose,
+            machineId = h.machineId,
+            sessionId = h.sessionId,
+            request = h.requestId,
+            seq = h.seq.toULong(),
+            deadline = h.deadlineMs.toULong(),
+            plain = m.toByteArray(),
+            useSessionSeed = purpose.sessionKey,
+        ).envelope
     }
 }
 
@@ -3292,52 +3025,3 @@ internal fun scheduleSnapshot(request: String, envelope: Envelope): ByteArray = 
     put("request", request)
     put("envelope", java.util.Base64.getEncoder().encodeToString(envelope.toByteArray()))
 }.toString().toByteArray()
-
-internal fun buildDirectSecuritySnapshot(
-    record: DeviceSecurity.Record,
-    expectedDeviceId: String,
-    devicePublicKey: ByteArray,
-    started: Long,
-    nowMs: Long,
-): Pair<DirectSecuritySnapshotEvent, ByteArray>? = try {
-    val h = record.head
-    val floorLong = record.floor.coerceAtMost(0x7FFF_FFFF_FFFF_FFFFuL).toLong()
-    val at = maxOf(nowMs, floorLong)
-    val selfMember = h.core.member(record.memberID)
-    if (!record.member || record.memberID != expectedDeviceId || !Authority.leaseValid(record, at) || nowMs >= started + 20_000L || selfMember == null) {
-        null
-    } else {
-        val xPriv = record.peerBoxKey()
-        val xPub = X25519.publicKey(xPriv)
-        if (!devicePublicKey.contentEquals(selfMember.ed) || !xPub.contentEquals(selfMember.x)) {
-            null
-        } else {
-            val stateHashBytes = DeviceSecurity.stateHash(h)
-            val b = DirectSecuritySnapshotEvent.newBuilder()
-                .setMember(true)
-                .setAccount(record.pin.account)
-                .setDomain(ByteString.copyFrom(record.pin.domain))
-                .setHead(stateHashBytes.hex())
-                .setHeadHash(ByteString.copyFrom(stateHashBytes))
-                .setEpoch(h.core.epoch.toLong())
-                .setStartedAtMs(started)
-                .setLeaseNotAfterMs(record.leaseExpiration())
-                .setSelfId(selfMember.id)
-                .setSelfEdPublic(ByteString.copyFrom(selfMember.ed))
-                .setSelfXPublic(ByteString.copyFrom(selfMember.x))
-            for (m in h.core.members) {
-                b.addMembers(
-                    DirectSecurityMember.newBuilder()
-                        .setDeviceId(m.id)
-                        .setEdPublic(ByteString.copyFrom(m.ed))
-                        .setXPublic(ByteString.copyFrom(m.x))
-                        .setIsSelf(m.id == record.memberID)
-                        .setKind(m.kind.toInt()),
-                )
-            }
-            b.build() to xPriv
-        }
-    }
-} catch (_: Exception) {
-    null
-}

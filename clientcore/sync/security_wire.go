@@ -225,12 +225,10 @@ func (e *Engine) handleSecurityRecord(ctx *StepContext, ev *corev1.SecurityRecor
 		return
 	}
 	if ev.OpId != 0 {
-		if e.activeSecOpID != 0 && ev.OpId != e.activeSecOpID {
+		if ev.OpId != e.activeSecOpID {
 			return
 		}
-		if ev.OpId == e.activeSecOpID {
-			e.activeSecOpID = 0
-		}
+		e.activeSecOpID = 0
 	}
 	effs := e.secEngine.ApplyRecord(e.nowMs, ev)
 	e.emitRawEffects(ctx, effs)
@@ -244,6 +242,7 @@ func (e *Engine) handleSecurityRecord(ctx *StepContext, ev *corev1.SecurityRecor
 func (e *Engine) handleSecurityKeySigned(ctx *StepContext, ev *corev1.SecurityKeySignedEvent) {
 	effs := e.secEngine.HandleKeySigned(e.nowMs, ev)
 	e.emitRawEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
 }
 
 func (e *Engine) handleSecurityKeyAgreed(ctx *StepContext, ev *corev1.SecurityKeyAgreedEvent) {
@@ -255,6 +254,7 @@ func (e *Engine) handleSecurityKeyAgreed(ctx *StepContext, ev *corev1.SecurityKe
 	if snap.IsMember != prevMember || snap.Loaded != prevLoaded {
 		e.syncSecurityStateFromEngine(ctx, true)
 	}
+	e.maybeRequestEntropy(ctx)
 }
 
 func (e *Engine) handleSecurityCryptoBatchDone(ctx *StepContext, ev *corev1.SecurityCryptoBatchDoneEvent) {
@@ -263,8 +263,18 @@ func (e *Engine) handleSecurityCryptoBatchDone(ctx *StepContext, ev *corev1.Secu
 }
 
 func (e *Engine) handleSecurityOpRequest(ctx *StepContext, ev *corev1.SecurityOpRequestEvent) {
-	effs := e.secEngine.HandleSecurityOp(e.nowMs, ev)
+	var repls []*v1.MachineReplacementProof
+	if op := ev.GetOpenEnvelope(); op != nil && op.History && op.SessionId != "" {
+		repls = e.sessionReplacements[op.SessionId]
+		if len(repls) == 0 {
+			if sess := e.sessions[op.SessionId]; sess != nil && sess.Info != nil {
+				repls = sess.Info.MachineReplacements
+			}
+		}
+	}
+	effs := e.secEngine.HandleSecurityOp(e.nowMs, ev, repls...)
 	e.emitRawEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
 }
 
 func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldEvent) {
@@ -866,6 +876,7 @@ func (e *Engine) sealAndEmitCommandAttempt(ctx *StepContext, prep *PreparedComma
 		uint64(max(0, prep.DeadlineMs)),
 		prep.CommandBytes,
 		false,
+		nil,
 		func(sr security.SealResult) {
 			stepCtx := e.activeStepCtx
 			prep.Sealing = false
@@ -991,6 +1002,7 @@ func (e *Engine) sealAndEmitPrefsPut(ctx *StepContext, head *prefsQueueItem, bas
 		0,
 		raw,
 		false,
+		nil,
 		func(sr security.SealResult) {
 			stepCtx := e.activeStepCtx
 			if len(e.prefsQueue) == 0 || e.prefsQueue[0].OpID != head.OpID {

@@ -98,4 +98,16 @@ func TestCryptoVectors(t *testing.T) {
 	if _, err := X25519Shared(initPriv, make([]byte, 32)); err == nil {
 		t.Fatal("X25519Shared accepted all-zero peer key")
 	}
+
+	k1, err := HkdfSha256([]byte("secret"), []byte("salt"), []byte("info"), 32)
+	if err != nil || len(k1) != 32 {
+		t.Fatalf("HkdfSha256 failed: len=%d err=%v", len(k1), err)
+	}
+	k2, err := HkdfSha256([]byte("secret"), []byte("salt"), []byte("info"), 32)
+	if err != nil || !bytes.Equal(k1, k2) {
+		t.Fatalf("HkdfSha256 not deterministic: %v", err)
+	}
+	if _, err := HkdfSha256([]byte("secret"), nil, nil, 0); err == nil {
+		t.Fatal("HkdfSha256 accepted size=0")
+	}
 }

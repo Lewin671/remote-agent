@@ -105,7 +105,6 @@ data class RecoveryChain(
             if (chain.size > DeviceSecurity.MAX_STATES) throw DeviceSecurity.Failure("untrusted")
             if (chain[0].core.account != accountId) throw DeviceSecurity.Failure("untrusted")
             val pin = DeviceSecurity.pinOf(chain[0])
-            DeviceSecurity.verifyGenesis(pin, chain[0])
             if (expectedGenesis != null) {
                 // The code carries the domain's genesis prefix; a relay cannot
                 // swap in a forged chain for the same account.
@@ -115,16 +114,14 @@ data class RecoveryChain(
                 )
                     throw DeviceSecurity.Failure("untrusted")
             }
+            val proofList = List(chain.size) { i ->
+                if (i > 0) states[i].recovery.takeIf { it.size() > 0 }?.toByteArray() else null
+            }
+            DeviceSecurity.verifyChain(pin, chain, proofList)
             val proofs = HashMap<ULong, ByteArray>()
             chain.forEachIndexed { i, s ->
-                DeviceSecurity.verifyState(pin, s)
                 DeviceSecurity.requireNotFromFuture(s, now.toULong())
-                if (i > 0) {
-                    val raw = states[i].recovery.takeIf { it.size() > 0 }?.toByteArray()
-                    val proof = raw?.let { DeviceSecurity.parseRecoveryStatement(it) }
-                    DeviceSecurity.verifyTransition(chain[i - 1], s, proof)
-                    if (raw != null) proofs[s.core.epoch] = raw
-                }
+                proofList[i]?.let { proofs[s.core.epoch] = it }
             }
             return RecoveryChain(
                 accountId,

@@ -663,13 +663,9 @@ suspend fun joinByPairing(
     )
         throw PairException(UiMessages.securityAndroidPairingPayloadBelongsToAnotherSecurityDomain().messageText())
     val now = System.currentTimeMillis()
-    chain.forEachIndexed { i, state ->
-        DeviceSecurity.verifyState(pin, state)
+    DeviceSecurity.verifyChain(pin, chain, proofs)
+    for (state in chain) {
         DeviceSecurity.requireNotFromFuture(state, now.toULong())
-        if (i > 0) {
-            val proof = proofs[i]?.let { DeviceSecurity.parseRecoveryStatement(it) }
-            DeviceSecurity.verifyTransition(chain[i - 1], state, proof)
-        }
     }
     if (chain.last().core.authorityID != approver) throw PairException(UiMessages.securityAndroidPairingPayloadManagingClientMismatch().messageText(), retryable = false)
     val member =

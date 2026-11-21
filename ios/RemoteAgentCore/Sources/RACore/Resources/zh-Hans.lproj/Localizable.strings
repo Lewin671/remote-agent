@@ -305,7 +305,6 @@
 "errors_the_computer_s_reply_could_not_be_verified_command" = "电脑的回复未通过验证，不确定指令是否执行";
 "errors_the_draft_could_not_be_restored_you_can_still" = "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试";
 "errors_the_draft_could_not_be_saved_locally_keep_the" = "草稿没能保存到本机，关闭页面前请保留原图和文字";
-"errors_the_event_s_position_was_changed" = "事件的位置被改动";
 "errors_the_plan_display_changed_review_it_again" = "计划画面已变化，请重新核对";
 "errors_the_previous_operation_s_outcome_is_still_unknown_reload" = "上次操作的结果仍未知，请重新读取任务核实后再操作";
 "errors_the_recovery_object_was_updated_concurrently_retrying_on_the" = "恢复对象同时更新，将在下次同步重试";

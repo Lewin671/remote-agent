@@ -2,6 +2,7 @@ package io.github.lewin671.remoteagent.core
 
 import com.connectrpc.Code
 import com.connectrpc.ConnectException
+import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import okhttp3.OkHttpClient
 
@@ -17,7 +18,7 @@ object Authority {
     /** A fresh recovery seed and its Ed25519 public key (32 bytes). */
     fun newRecovery(): Pair<ByteArray, ByteArray> {
         val seed = randomBytes(32)
-        return seed to SigningKey(seed).publicKey
+        return seed to Corebind.ed25519PublicKey(seed)
     }
 
     private val DAY_MS = 24uL * 60uL * 60uL * 1000uL
@@ -90,6 +91,20 @@ object Authority {
         return DeviceSecurity.Member(deviceId(ed.publicKey), ed.publicKey, x, kind)
     }
 
+    private fun signBuiltState(
+        builder: io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.Builder,
+        signer: SigningKey,
+    ): DeviceSecurity.State {
+        val (unsigned, signBytes) = SecCall.buildState(builder)
+        val sig = signer.sign(signBytes)
+        return SecCall.marshalState(
+            unsignedCore = unsigned.unsignedCore,
+            grants = unsigned.grantsList.map(SecCall::grantFromProto),
+            prevSecret = unsigned.prevSecret.toByteArray(),
+            signature = sig,
+        ).second
+    }
+
     fun genesis(
         account: String,
         domain: ByteArray,
@@ -100,20 +115,18 @@ object Authority {
         now: Long,
     ): DeviceSecurity.State {
         check(domain.size == 32 && secret.size == 32 && recoveryEd.size == 32)
-        val core =
-            DeviceSecurity.Core(
-                account,
-                domain,
-                member.id,
-                recoveryEd,
-                ByteArray(32),
-                1uL,
-                1uL,
-                now.coerceAtLeast(1).toULong(),
-                listOf(member),
-                emptyList(),
-            )
-        return build(core, secret, ByteArray(0), signer)
+        return signBuiltState(
+            io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.newBuilder()
+                .setKind(1)
+                .setAccount(account)
+                .setDomain(com.google.protobuf.ByteString.copyFrom(domain))
+                .setMember(SecCall.toProto(member))
+                .setRecoveryEd(com.google.protobuf.ByteString.copyFrom(recoveryEd))
+                .setSecret(com.google.protobuf.ByteString.copyFrom(secret))
+                .setNowMs(now.coerceAtLeast(1))
+                .addAllKems(SecCall.encapsulateMembers(listOf(member))),
+            signer,
+        )
     }
 
     /** A normal state with a new content key: add, remove or X rotation. */
@@ -127,8 +140,20 @@ object Authority {
         now: Long,
     ): DeviceSecurity.State {
         check(oldSecret.size == 32 && newSecret.size == 32)
-        val prev = DeviceSecurity.sealPrevSecret(newSecret, oldSecret)
-        return buildState(parent, members, removed, newSecret, prev, signer, now)
+        val sortedMembers = sorted(members)
+        return signBuiltState(
+            io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.newBuilder()
+                .setKind(2)
+                .setParentState(com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(parent)))
+                .addAllMembers(sortedMembers.map(SecCall::toProto))
+                .addAllRemoved(removed.sorted())
+                .setOldSecret(com.google.protobuf.ByteString.copyFrom(oldSecret))
+                .setSecret(com.google.protobuf.ByteString.copyFrom(newSecret))
+                .setPrevSecretNonce(com.google.protobuf.ByteString.copyFrom(randomBytes(12)))
+                .setNowMs(now.coerceAtLeast(1))
+                .addAllKems(SecCall.encapsulateMembers(sortedMembers)),
+            signer,
+        )
     }
 
     /** Adds one candidate and seals the old content key for the existing members. */
@@ -199,19 +224,14 @@ object Authority {
         now: Long,
     ): DeviceSecurity.State {
         check(newRecoveryEd.size == 32 && secret.size == 32)
-        val core =
-            parent.core.copy(
-                parent = DeviceSecurity.stateHash(parent),
-                epoch = parent.core.epoch + 1uL,
-            )
-        val issued = maxOf(now.coerceAtLeast(1).toULong(), core.issuedAt)
-        return build(
-            core.copy(
-                recoveryEd = newRecoveryEd,
-                issuedAt = issued,
-            ),
-            secret,
-            ByteArray(0),
+        return signBuiltState(
+            io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.newBuilder()
+                .setKind(6)
+                .setParentState(com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(parent)))
+                .setRecoveryEd(com.google.protobuf.ByteString.copyFrom(newRecoveryEd))
+                .setSecret(com.google.protobuf.ByteString.copyFrom(secret))
+                .setNowMs(now.coerceAtLeast(1))
+                .addAllKems(SecCall.encapsulateMembers(parent.core.members)),
             signer,
         )
     }
@@ -232,24 +252,22 @@ object Authority {
                 recoveryEd.size == 32 &&
                 !recoveryEd.contentEquals(parent.core.recoveryEd),
         )
-        val core =
-            parent.core.copy(
-                parent = DeviceSecurity.stateHash(parent),
-                epoch = parent.core.epoch + 1uL,
-                contentEpoch = parent.core.contentEpoch + 1uL,
-                authorityID = incoming,
-                recoveryEd = recoveryEd,
-                issuedAt = maxOf(now.coerceAtLeast(1).toULong(), parent.core.issuedAt),
-                members = parent.core.members.filterNot { it.id == parent.core.authorityID },
-                removed = (parent.core.removed + parent.core.authorityID).sorted(),
-            )
-        return build(core, newSecret, DeviceSecurity.sealPrevSecret(newSecret, oldSecret), signer)
+        val remaining = parent.core.members.filterNot { it.id == parent.core.authorityID }
+        return signBuiltState(
+            io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.newBuilder()
+                .setKind(4)
+                .setParentState(com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(parent)))
+                .setIncomingId(incoming)
+                .setRecoveryEd(com.google.protobuf.ByteString.copyFrom(recoveryEd))
+                .setOldSecret(com.google.protobuf.ByteString.copyFrom(oldSecret))
+                .setSecret(com.google.protobuf.ByteString.copyFrom(newSecret))
+                .setPrevSecretNonce(com.google.protobuf.ByteString.copyFrom(randomBytes(12)))
+                .setNowMs(now.coerceAtLeast(1))
+                .addAllKems(SecCall.encapsulateMembers(remaining)),
+            signer,
+        )
     }
 
-    /**
-     * The recovery state: new authority member, new content key, no PrevSecret, old authority
-     * removed and never re-added.
-     */
     fun recovery(
         parent: DeviceSecurity.State,
         newMember: DeviceSecurity.Member,
@@ -267,68 +285,21 @@ object Authority {
                 secret.size == 32 &&
                 members.none { it.id == parent.core.authorityID },
         )
-        val core =
-            parent.core.copy(
-                parent = DeviceSecurity.stateHash(parent),
-                epoch = parent.core.epoch + 1uL,
-                contentEpoch = parent.core.contentEpoch + 1uL,
-                authorityID = newMember.id,
-                recoveryEd = newRecoveryEd,
-                issuedAt = maxOf(now.coerceAtLeast(1).toULong(), parent.core.issuedAt),
-                members = sorted(members),
-                removed = (parent.core.removed + parent.core.authorityID).distinct().sorted(),
+        val sortedMembers = sorted(members)
+        val state =
+            signBuiltState(
+                io.github.lewin671.remoteagent.core.proto.SecBuildStateCall.newBuilder()
+                    .setKind(5)
+                    .setParentState(com.google.protobuf.ByteString.copyFrom(DeviceSecurity.stateBytes(parent)))
+                    .setMember(SecCall.toProto(newMember))
+                    .addAllMembers(sortedMembers.map(SecCall::toProto))
+                    .setRecoveryEd(com.google.protobuf.ByteString.copyFrom(newRecoveryEd))
+                    .setSecret(com.google.protobuf.ByteString.copyFrom(secret))
+                    .setNowMs(now.coerceAtLeast(1))
+                    .addAllKems(SecCall.encapsulateMembers((sortedMembers + newMember).distinctBy { it.id })),
+                newSigner,
             )
-        val state = build(core, secret, ByteArray(0), newSigner)
-        val statement =
-            DeviceSecurity.RecoveryStatement(
-                core.account,
-                core.domain,
-                DeviceSecurity.stateHash(parent),
-                newMember.id,
-                newRecoveryEd,
-                newMember,
-                core.issuedAt,
-                DeviceSecurity.stateHash(state),
-                randomBytes(32),
-                ByteArray(0),
-            )
-        return state to DeviceSecurity.signRecoveryStatement(statement, oldRecoverySeed)
-    }
-
-    private fun buildState(
-        parent: DeviceSecurity.State,
-        members: List<DeviceSecurity.Member>,
-        removed: List<String>,
-        secret: ByteArray,
-        prevSecret: ByteArray,
-        signer: SigningKey,
-        now: Long,
-    ): DeviceSecurity.State {
-        check(secret.size == 32)
-        val core =
-            parent.core.copy(
-                parent = DeviceSecurity.stateHash(parent),
-                epoch = parent.core.epoch + 1uL,
-                contentEpoch = parent.core.contentEpoch + 1uL,
-                issuedAt = maxOf(now.coerceAtLeast(1).toULong(), parent.core.issuedAt),
-                members = sorted(members),
-                removed = removed.sorted(),
-            )
-        return build(core, secret, prevSecret, signer)
-    }
-
-    internal fun build(
-        core: DeviceSecurity.Core,
-        secret: ByteArray,
-        prevSecret: ByteArray,
-        signer: SigningKey,
-    ): DeviceSecurity.State {
-        val state = DeviceSecurity.State(core, emptyList(), prevSecret, ByteArray(0))
-        // Grants bind the hash of the canonical core, which DeviceSecurity computes itself.
-        val ch = sha256("ra3/core\u0000".toByteArray(), DeviceSecurity.coreBytes(core))
-        val grants = core.members.map { DeviceSecurity.sealGrant(it, core, ch, secret) }
-        val signed = state.copy(grants = grants)
-        return signed.copy(signature = signer.sign(DeviceSecurity.signBytes(signed)))
+        return state to DeviceSecurity.signRecoveryStatement(parent, state, oldRecoverySeed, randomBytes(32))
     }
 }
 
@@ -544,8 +515,7 @@ suspend fun createAccount(
         HeadLease.sign(
             prepared.record.head,
             SigningKey(prepared.account.deviceSeed),
-            now,
-            prepared.record.floor,
+            prepared.record.signingTime(now),
         )
     prepared = prepared.copy(record = prepared.record.installed(emptyList(), emptyList(), lease))
     persistDraft(prepared)

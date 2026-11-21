@@ -269,7 +269,6 @@
     <string name="errors_android_only_the_managing_client_can_veto_recovery" formatted="false">"Only the managing client can veto recovery"</string>
     <string name="errors_android_open_value1_to_renew">"Open %1$s to renew"</string>
     <string name="errors_android_pairing_approval_does_not_match_this_device_has_expired_or" formatted="false">"Pairing approval does not match this device, has expired, or has an invalid signature"</string>
-    <string name="errors_android_records_from_before_recovery_are_unreadable" formatted="false">"Records from before recovery are unreadable"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"Remote control authorization expired. Cannot save changes, control sessions, or upload new content. %1$s and retry. History remains viewable"</string>
     <string name="errors_android_remote_control_paused_value1_and_retry">"Remote control paused: %1$s and retry"</string>
     <string name="errors_android_remove_devices_on_the_managing_client" formatted="false">"Remove devices on the managing client"</string>
@@ -335,7 +334,6 @@
     <string name="errors_the_computer_s_reply_could_not_be_verified_command" formatted="false">"The computer’s reply could not be verified. Command execution is uncertain."</string>
     <string name="errors_the_draft_could_not_be_restored_you_can_still" formatted="false">"The draft could not be restored. You can still type and send; retry when opening or editing next time."</string>
     <string name="errors_the_draft_could_not_be_saved_locally_keep_the" formatted="false">"The draft could not be saved locally. Keep the original images and text before closing the page."</string>
-    <string name="errors_the_event_s_position_was_changed" formatted="false">"The event’s position was changed"</string>
     <string name="errors_the_plan_display_changed_review_it_again" formatted="false">"The plan display changed. Review it again."</string>
     <string name="errors_the_previous_operation_s_outcome_is_still_unknown_reload" formatted="false">"The previous operation’s outcome is still unknown. Reload and verify the task before continuing."</string>
     <string name="errors_the_recovery_object_was_updated_concurrently_retrying_on_the" formatted="false">"The recovery object was updated concurrently. Retrying on the next sync."</string>

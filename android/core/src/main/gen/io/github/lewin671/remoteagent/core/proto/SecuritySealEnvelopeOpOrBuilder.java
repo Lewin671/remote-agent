@@ -75,4 +75,10 @@ public interface SecuritySealEnvelopeOpOrBuilder extends
    * @return The useSessionSeed.
    */
   boolean getUseSessionSeed();
+
+  /**
+   * <code>bytes override_session_seed = 9 [json_name = "overrideSessionSeed"];</code>
+   * @return The overrideSessionSeed.
+   */
+  com.google.protobuf.ByteString getOverrideSessionSeed();
 }

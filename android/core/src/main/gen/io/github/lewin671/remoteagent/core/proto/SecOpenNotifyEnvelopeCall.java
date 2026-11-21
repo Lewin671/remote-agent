@@ -20,6 +20,7 @@ public  final class SecOpenNotifyEnvelopeCall extends
     memberId_ = "";
     dh_ = com.google.protobuf.ByteString.EMPTY;
     contentSecret_ = com.google.protobuf.ByteString.EMPTY;
+    purposeKey_ = com.google.protobuf.ByteString.EMPTY;
   }
   private int bitField0_;
   public static final int PIN_FIELD_NUMBER = 1;
@@ -362,6 +363,33 @@ public  final class SecOpenNotifyEnvelopeCall extends
   private void clearEnvelope() {
     envelope_ = null;
     bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int PURPOSE_KEY_FIELD_NUMBER = 8;
+  private com.google.protobuf.ByteString purposeKey_;
+  /**
+   * <code>bytes purpose_key = 8 [json_name = "purposeKey"];</code>
+   * @return The purposeKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getPurposeKey() {
+    return purposeKey_;
+  }
+  /**
+   * <code>bytes purpose_key = 8 [json_name = "purposeKey"];</code>
+   * @param value The purposeKey to set.
+   */
+  private void setPurposeKey(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    purposeKey_ = value;
+  }
+  /**
+   * <code>bytes purpose_key = 8 [json_name = "purposeKey"];</code>
+   */
+  private void clearPurposeKey() {
+
+    purposeKey_ = getDefaultInstance().getPurposeKey();
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecOpenNotifyEnvelopeCall parseFrom(
@@ -798,6 +826,34 @@ public  final class SecOpenNotifyEnvelopeCall extends
       return this;
     }
 
+    /**
+     * <code>bytes purpose_key = 8 [json_name = "purposeKey"];</code>
+     * @return The purposeKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getPurposeKey() {
+      return instance.getPurposeKey();
+    }
+    /**
+     * <code>bytes purpose_key = 8 [json_name = "purposeKey"];</code>
+     * @param value The purposeKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPurposeKey(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPurposeKey(value);
+      return this;
+    }
+    /**
+     * <code>bytes purpose_key = 8 [json_name = "purposeKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPurposeKey() {
+      copyOnWrite();
+      instance.clearPurposeKey();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecOpenNotifyEnvelopeCall)
   }
   @java.lang.Override
@@ -822,10 +878,11 @@ public  final class SecOpenNotifyEnvelopeCall extends
             "dh_",
             "contentSecret_",
             "envelope_",
+            "purposeKey_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0002\u0000\u0001\u1009\u0000\u0002" +
-              "\u001c\u0003\u001c\u0004\u0208\u0005\n\u0006\n\u0007\u1009\u0001";
+              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0002\u0000\u0001\u1009\u0000\u0002\u001c\u0003" +
+              "\u001c\u0004\u0208\u0005\n\u0006\n\u0007\u1009\u0001\b\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

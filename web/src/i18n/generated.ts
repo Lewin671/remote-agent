@@ -266,7 +266,6 @@ export interface MessageArgs {
   "errors.the_computer_s_reply_could_not_be_verified_command": { [name: string]: never };
   "errors.the_draft_could_not_be_restored_you_can_still": { [name: string]: never };
   "errors.the_draft_could_not_be_saved_locally_keep_the": { [name: string]: never };
-  "errors.the_event_s_position_was_changed": { [name: string]: never };
   "errors.the_plan_display_changed_review_it_again": { [name: string]: never };
   "errors.the_previous_operation_s_outcome_is_still_unknown_reload": { [name: string]: never };
   "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": { [name: string]: never };
@@ -2130,7 +2129,6 @@ export const messages = {
     "errors.the_computer_s_reply_could_not_be_verified_command": "The computer’s reply could not be verified. Command execution is uncertain.",
     "errors.the_draft_could_not_be_restored_you_can_still": "The draft could not be restored. You can still type and send; retry when opening or editing next time.",
     "errors.the_draft_could_not_be_saved_locally_keep_the": "The draft could not be saved locally. Keep the original images and text before closing the page.",
-    "errors.the_event_s_position_was_changed": "The event’s position was changed",
     "errors.the_plan_display_changed_review_it_again": "The plan display changed. Review it again.",
     "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
     "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": "The recovery object was updated concurrently. Retrying on the next sync.",
@@ -4526,7 +4524,6 @@ export const messages = {
     "errors.the_computer_s_reply_could_not_be_verified_command": "电脑的回复未通过验证，不确定指令是否执行",
     "errors.the_draft_could_not_be_restored_you_can_still": "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试",
     "errors.the_draft_could_not_be_saved_locally_keep_the": "草稿没能保存到本机，关闭页面前请保留原图和文字",
-    "errors.the_event_s_position_was_changed": "事件的位置被改动",
     "errors.the_plan_display_changed_review_it_again": "计划画面已变化，请重新核对",
     "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "上次操作的结果仍未知，请重新读取任务核实后再操作",
     "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": "恢复对象同时更新，将在下次同步重试",

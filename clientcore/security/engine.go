@@ -320,25 +320,23 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 	if ev == nil {
 		return nil
 	}
-	if ev.OpId == 0 && ev.PushSeq != 0 && ev.PushSeq <= e.lastPushSeq {
-		return nil
-	}
-	if ev.OpId == 0 && ev.PushSeq > e.lastPushSeq {
-		e.lastPushSeq = ev.PushSeq
+	if ev.OpId == 0 {
+		if ev.PushSeq != 0 {
+			if ev.PushSeq <= e.lastPushSeq {
+				return nil
+			}
+			e.lastPushSeq = ev.PushSeq
+		} else if e.lastPushSeq != 0 {
+			return nil
+		}
 	}
 	e.securityLocked = true
 	if ev.NetworkGeneration > e.netGen {
 		e.netGen = ev.NetworkGeneration
 	}
-	if ev.FloorMs > e.floorMs {
-		e.floorMs = ev.FloorMs
-	}
-	e.recoveryPending = ev.RecoveryPending
-	e.recoveryReadyMs = ev.RecoveryReadyMs
-	e.recoveryObjectsPending = ev.RecoveryObjectsPending
 
-	if ev.Removed || ev.Cleared || ev.Error != "" {
-		e.loaded = ev.Removed || ev.Error == ""
+	if ev.Removed || ev.Cleared {
+		e.loaded = ev.Removed
 		if ev.Cleared {
 			e.loaded = false
 		}
@@ -346,12 +344,31 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 		e.removed = ev.Removed
 		e.cleared = ev.Cleared
 		e.recordErr = ev.Error
-		if ev.Removed || ev.Cleared {
-			e.resetChainState()
-			e.flushUnlockWaiters(e.lastNowMs, ErrNotMember)
+		e.recoveryPending = ev.RecoveryPending
+		e.recoveryReadyMs = ev.RecoveryReadyMs
+		e.recoveryObjectsPending = ev.RecoveryObjectsPending
+		e.resetChainState()
+		e.flushUnlockWaiters(e.lastNowMs, ErrNotMember)
+		return e.DrainEffects()
+	}
+	if ev.Error != "" {
+		e.recordErr = ev.Error
+		if !e.hasHead {
+			e.loaded = false
+			e.isMember = false
+			e.removed = false
+			e.cleared = false
+			e.flushUnlockWaiters(e.lastNowMs, errors.New(ev.Error))
 		}
 		return e.DrainEffects()
 	}
+
+	if ev.FloorMs > e.floorMs {
+		e.floorMs = ev.FloorMs
+	}
+	e.recoveryPending = ev.RecoveryPending
+	e.recoveryReadyMs = ev.RecoveryReadyMs
+	e.recoveryObjectsPending = ev.RecoveryObjectsPending
 
 	if len(ev.Domain) != 32 || len(ev.Genesis) != 32 || len(ev.States) == 0 {
 		e.recordErr = "invalid security record"
@@ -404,6 +421,9 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 	}
 
 	samePin := e.hasHead && e.pin == pin
+	if samePin && head.Core.Epoch < e.head.Core.Epoch {
+		return nil
+	}
 	sameHead := samePin && e.headHash == headHash
 	extendedFromPrev := samePin && len(parsedStates) >= len(e.states)
 	if extendedFromPrev && len(e.states) > 0 {
@@ -448,6 +468,10 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 
 	_, e.isMember = head.Core.Member(e.selfDeviceID)
 	if !e.isMember {
+		clear(e.peerShared)
+	}
+	selfIdx := e.latestSelfStateIndex()
+	if selfIdx < 0 {
 		clear(e.epochSecrets)
 		clear(e.peerShared)
 		e.unlocking = false
@@ -455,8 +479,9 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 		return e.DrainEffects()
 	}
 
+	targetState := e.states[selfIdx]
 	for _, ck := range ev.ContentKeys {
-		if ck == nil || ck.ContentEpoch == 0 || ck.ContentEpoch >= head.Core.ContentEpoch || len(ck.Secret) != 32 {
+		if ck == nil || ck.ContentEpoch == 0 || ck.ContentEpoch >= targetState.Core.ContentEpoch || len(ck.Secret) != 32 {
 			continue
 		}
 		if _, exists := e.epochSecrets[ck.ContentEpoch]; !exists {
@@ -466,9 +491,9 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 		}
 	}
 
-	if _, haveHeadSecret := e.epochSecrets[head.Core.ContentEpoch]; haveHeadSecret {
-		if err := e.fillPrevSecrets(); err != nil {
-			delete(e.epochSecrets, head.Core.ContentEpoch)
+	if _, haveTargetSecret := e.epochSecrets[targetState.Core.ContentEpoch]; haveTargetSecret {
+		if err := e.fillPrevSecretsFrom(selfIdx); err != nil {
+			delete(e.epochSecrets, targetState.Core.ContentEpoch)
 			e.isMember = false
 			e.recordErr = err.Error()
 			e.flushUnlockWaiters(e.lastNowMs, err)
@@ -479,7 +504,7 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 	}
 
 	if !e.unlocking {
-		e.startHeadUnlock()
+		e.startUnlockForState(selfIdx)
 	}
 	return e.DrainEffects()
 }
@@ -551,15 +576,29 @@ func parseAndVerifyChain(pin devicesec.Pin, rawStates, rawProofs [][]byte) ([]de
 	return states, byHash, proofPresent, nil
 }
 
-func (e *Engine) startHeadUnlock() {
-	enc, _, err := e.pin.GrantChallenge(e.head, e.selfDeviceID)
+func (e *Engine) latestSelfStateIndex() int {
+	for i := len(e.states) - 1; i >= 0; i-- {
+		if _, ok := e.states[i].Core.Member(e.selfDeviceID); ok {
+			return i
+		}
+	}
+	return -1
+}
+
+func (e *Engine) startUnlockForState(idx int) {
+	if idx < 0 || idx >= len(e.states) {
+		e.flushUnlockWaiters(e.lastNowMs, ErrNotMember)
+		return
+	}
+	target := e.states[idx]
+	enc, _, err := e.pin.GrantChallenge(target, e.selfDeviceID)
 	if err != nil {
 		e.flushUnlockWaiters(e.lastNowMs, err)
 		return
 	}
 	e.unlocking = true
 	gen := e.unlockGen
-	epoch := e.head.Core.ContentEpoch
+	epoch := target.Core.ContentEpoch
 	e.RequestKeyAgree(enc, false, func(shared []byte, err error) {
 		if gen != e.unlockGen {
 			return
@@ -569,7 +608,7 @@ func (e *Engine) startHeadUnlock() {
 			e.flushUnlockWaiters(e.lastNowMs, err)
 			return
 		}
-		sec, err := e.pin.OpenGrantWithDH(e.head, e.selfDeviceID, shared)
+		sec, err := e.pin.OpenGrantWithDH(target, e.selfDeviceID, shared)
 		if err != nil || len(sec) != 32 {
 			if err == nil {
 				err = devicesec.ErrUntrusted
@@ -580,7 +619,7 @@ func (e *Engine) startHeadUnlock() {
 		var arr [32]byte
 		copy(arr[:], sec)
 		e.epochSecrets[epoch] = arr
-		if err := e.fillPrevSecrets(); err != nil {
+		if err := e.fillPrevSecretsFrom(idx); err != nil {
 			delete(e.epochSecrets, epoch)
 			e.isMember = false
 			e.recordErr = err.Error()
@@ -591,8 +630,8 @@ func (e *Engine) startHeadUnlock() {
 	})
 }
 
-func (e *Engine) fillPrevSecrets() error {
-	e.minEpochSec = e.head.Core.ContentEpoch
+func (e *Engine) fillPrevSecretsFrom(idx int) error {
+	e.minEpochSec = e.states[idx].Core.ContentEpoch
 	for i := len(e.states) - 1; i >= 1; i-- {
 		s := e.states[i]
 		prev := e.states[i-1]
@@ -640,6 +679,10 @@ func (e *Engine) flushUnlockWaiters(nowMs int64, err error) {
 }
 
 func (e *Engine) withUnlocked(nowMs int64, fn func(nowMs int64, err error)) {
+	e.withUnlockedFor(nowMs, true, fn)
+}
+
+func (e *Engine) withUnlockedFor(nowMs int64, requireMember bool, fn func(nowMs int64, err error)) {
 	if !e.loaded || !e.hasHead {
 		if e.unlocking {
 			e.onUnlock = append(e.onUnlock, fn)
@@ -648,11 +691,16 @@ func (e *Engine) withUnlocked(nowMs int64, fn func(nowMs int64, err error)) {
 		fn(nowMs, ErrNotInitialized)
 		return
 	}
-	if !e.isMember {
+	if requireMember && !e.isMember {
 		fn(nowMs, ErrNotMember)
 		return
 	}
-	if _, ok := e.epochSecrets[e.head.Core.ContentEpoch]; ok {
+	idx := e.latestSelfStateIndex()
+	if idx < 0 {
+		fn(nowMs, ErrNotMember)
+		return
+	}
+	if _, ok := e.epochSecrets[e.states[idx].Core.ContentEpoch]; ok {
 		fn(nowMs, nil)
 		return
 	}
@@ -661,7 +709,7 @@ func (e *Engine) withUnlocked(nowMs int64, fn func(nowMs int64, err error)) {
 		return
 	}
 	e.onUnlock = append(e.onUnlock, fn)
-	e.startHeadUnlock()
+	e.startUnlockForState(idx)
 }
 
 // Snapshot builds the verified security summary snapshot for sync & views.
@@ -872,7 +920,7 @@ func (e *Engine) CanSeal(nowMs int64) error {
 // using CryptoBatch on Web when verify > 8 or any ciphertext > 16 KiB.
 func (e *Engine) OpenBatch(nowMs int64, items []OpenItem, onDone func(results []OpenResult)) []*corev1.Effect {
 	e.touchNow(nowMs)
-	e.withUnlocked(nowMs, func(curNow int64, unlockErr error) {
+	e.withUnlockedFor(nowMs, false, func(curNow int64, unlockErr error) {
 		results := make([]OpenResult, len(items))
 		if unlockErr != nil {
 			for i := range results {
@@ -956,6 +1004,10 @@ func (e *Engine) OpenBatch(nowMs int64, items []OpenItem, onDone func(results []
 				}
 			}
 			if !item.History {
+				if !e.isMember {
+					results[i].Err = ErrNotMember
+					continue
+				}
 				if err := e.checkLiveLease(curNow); err != nil {
 					results[i].Err = err
 					continue
@@ -1165,6 +1217,7 @@ func (e *Engine) SealEnvelope(
 	deadlineMs uint64,
 	plain []byte,
 	useSessionSeed bool,
+	overrideSeed []byte,
 	onDone func(SealResult),
 ) []*corev1.Effect {
 	e.touchNow(nowMs)
@@ -1179,7 +1232,12 @@ func (e *Engine) SealEnvelope(
 		}
 		sec := e.epochSecrets[e.head.Core.ContentEpoch]
 		var seed []byte
-		if useSessionSeed || purpose == devicesec.Event || purpose == devicesec.Image ||
+		if len(overrideSeed) == 32 {
+			seed = slices.Clone(overrideSeed)
+		} else if len(overrideSeed) != 0 {
+			onDone(SealResult{Err: devicesec.ErrInvalid})
+			return
+		} else if useSessionSeed || purpose == devicesec.Event || purpose == devicesec.Image ||
 			purpose == devicesec.TerminalInput || purpose == devicesec.TerminalResize ||
 			purpose == devicesec.TerminalHistory || purpose == devicesec.TerminalOutput {
 			cachedSeed, ok := e.sessionSeeds[sessionID]
@@ -1297,7 +1355,7 @@ func (e *Engine) SealEnvelope(
 }
 
 // HandleSecurityOp executes stateful shell bridge operations (for remaining S6/file/terminal callers).
-func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEvent) []*corev1.Effect {
+func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEvent, replacements ...*v1.MachineReplacementProof) []*corev1.Effect {
 	e.touchNow(nowMs)
 	if req == nil {
 		return nil
@@ -1328,6 +1386,7 @@ func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEven
 			RequestID:       op.OpenEnvelope.RequestId,
 			Seq:             op.OpenEnvelope.Seq,
 			History:         op.OpenEnvelope.History,
+			Replacements:    replacements,
 			OverrideSeed:    op.OpenEnvelope.OverrideSessionSeed,
 		}
 		return e.OpenBatch(nowMs, []OpenItem{item}, func(res []OpenResult) {
@@ -1375,6 +1434,7 @@ func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEven
 			uint64(max(0, op.SealEnvelope.DeadlineMs)),
 			op.SealEnvelope.Plaintext,
 			op.SealEnvelope.UseSessionSeed,
+			op.SealEnvelope.OverrideSessionSeed,
 			func(sr SealResult) {
 				if sr.Err != nil {
 					emitErr(sr.Err)

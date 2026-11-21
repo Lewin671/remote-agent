@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"crypto/ecdh"
 	"crypto/ed25519"
+	"crypto/hkdf"
+	"crypto/sha256"
 	"errors"
 )
 
@@ -66,4 +68,12 @@ func X25519Shared(privateKey, peerPublic []byte) ([]byte, error) {
 		return nil, err
 	}
 	return priv.ECDH(pub)
+}
+
+// HkdfSha256 derives size bytes of keying material with HKDF-SHA256.
+func HkdfSha256(secret, salt, info []byte, size int32) ([]byte, error) {
+	if size <= 0 || size > 8192 {
+		return nil, errBadKeySize
+	}
+	return hkdf.Key(sha256.New, bytes.Clone(secret), bytes.Clone(salt), string(info), int(size))
 }

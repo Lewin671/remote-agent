@@ -28,23 +28,23 @@ class HistoryOpenBenchmark {
             SigningKey(ByteArray(32) { 5 }).publicKey, secret, signer, 1_700_000_000_000,
         )
         val machineSigner = SigningKey(ByteArray(32) { 7 })
-        val machine = Authority.newMember(machineSigner, ByteArray(32) { 8 }, 1u)
+        val machineX = ByteArray(32) { 8 }
+        val machine = Authority.newMember(machineSigner, machineX, 1u)
         val state = Authority.pair(genesis, machine, secret, secret, signer, 1_700_000_000_001)
+        val lease = HeadLease.sign(state, signer, 1_700_000_000_001)
         val record = DeviceSecurity.Record.fromChain(
             state.core.account, state.core.domain, DeviceSecurity.stateHash(genesis), phone.id, x,
             listOf(genesis, state).map { DeviceSecurity.stateBytes(it) }, listOf(null, null),
-        )
+        ).installed(emptyList(), emptyList(), lease)
+        val machineRecord = DeviceSecurity.Record.fromChain(
+            state.core.account, state.core.domain, DeviceSecurity.stateHash(genesis), machine.id, machineX,
+            listOf(genesis, state).map { DeviceSecurity.stateBytes(it) }, listOf(null, null),
+        ).installed(emptyList(), emptyList(), lease)
         val seed = ByteArray(32) { 6 }
         val plain = "synthetic history message".toByteArray()
         // Each envelope has its own nonce and sequence, just as persisted history does.
-        val events = (1..300).map { seq ->
-            val header = DeviceSecurity.Header(
-                record.pin.account, record.pin.domain, state.core.epoch,
-                DeviceSecurity.stateHash(state), state.core.contentEpoch, machine.id,
-                DeviceSecurity.Purpose.EVENT.kind, DeviceSecurity.Purpose.EVENT,
-                machine.id, "test-session", "", seq.toULong(), 0uL, 0u,
-            )
-            DeviceSecurity.envelope(DeviceSecurity.Wire(DeviceSecurity.form(secret, seed, header, plain, machineSigner)))
+        val events = BenchmarkCoreSecurity(machineRecord, machine.id, machineSigner, machineX, 1_700_000_000_002).use { sealer ->
+            (1..300).map { seq -> sealer.sealEvent("test-session", seq.toLong(), seed, plain) }
         }
         try {
             val samples = mutableListOf<Long>()
@@ -53,9 +53,9 @@ class HistoryOpenBenchmark {
                 vault.initializeSecurity(record)
                 decrypts.clear()
                 parses = 0
-                val client = DeviceSecurityClient(vault, phone.id, signer, fetchStates = { error("no network") })
+                val client = BenchmarkCoreSecurity(vault.readSecurity(), phone.id, signer, x, 1_700_000_000_002)
                 val start = System.nanoTime()
-                for (event in events) assertArrayEquals(plain, client.openHistory(event, seed).second)
+                for (event in events) assertArrayEquals(plain, client.openHistory(event, seed))
                 val elapsed = (System.nanoTime() - start) / 1_000_000
                 samples += elapsed
                 val result = "sample=$sample events=${events.size} elapsedMs=$elapsed decrypts=$decrypts parses=$parses"

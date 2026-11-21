@@ -318,5 +318,16 @@ public interface SecCallRequestOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.SecOpenNotifyEnvelopeCall getOpenNotifyEnvelope();
 
+  /**
+   * <code>.remoteagent.core.v1.SecDerivePurposeKeyCall derive_purpose_key = 41 [json_name = "derivePurposeKey"];</code>
+   * @return Whether the derivePurposeKey field is set.
+   */
+  boolean hasDerivePurposeKey();
+  /**
+   * <code>.remoteagent.core.v1.SecDerivePurposeKeyCall derive_purpose_key = 41 [json_name = "derivePurposeKey"];</code>
+   * @return The derivePurposeKey.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecDerivePurposeKeyCall getDerivePurposeKey();
+
   public io.github.lewin671.remoteagent.core.proto.SecCallRequest.CallCase getCallCase();
 }

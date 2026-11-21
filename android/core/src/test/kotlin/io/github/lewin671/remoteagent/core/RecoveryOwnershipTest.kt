@@ -17,10 +17,9 @@ class RecoveryOwnershipTest {
         val fixture = ColdOpenFixture(2)
         val started = CompletableDeferred<Unit>()
         val stopped = CompletableDeferred<Unit>()
-        val security = DeviceSecurityClient(
+        val security = AuthoritySecurity(
             TestSecurityStore(fixture.record),
             fixture.phone.id,
-            SigningKey(ByteArray(32) { 1 }),
             clock = { fixture.now },
         ) {
             started.complete(Unit)

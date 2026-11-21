@@ -73,7 +73,10 @@ class VectorsTest {
         assertEquals(s(p, "sas"), a.sas.hex())
         assertEquals(s(p, "key"), a.key.hex())
         assertEquals(s(p, "key"), b.key.hex())
-        assertEquals(p["emoji"]!!.jsonArray.map { it.jsonPrimitive.content }, SAS_EMOJI)
+        assertEquals(4, a.emoji.size)
+        assertEquals(a.emoji, b.emoji)
+        val emojiTable = p["emoji"]!!.jsonArray.map { it.jsonPrimitive.content }.toSet()
+        assertTrue(a.emoji.all { it in emojiTable })
     }
 
     @Test

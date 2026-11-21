@@ -1249,17 +1249,18 @@ func (x *SecurityOpenEnvelopeOp) GetOverrideSessionSeed() []byte {
 }
 
 type SecuritySealEnvelopeOp struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Purpose        uint32                 `protobuf:"varint,1,opt,name=purpose,proto3" json:"purpose,omitempty"`
-	MachineId      string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	SessionId      string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	RequestId      string                 `protobuf:"bytes,4,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	Seq            uint64                 `protobuf:"varint,5,opt,name=seq,proto3" json:"seq,omitempty"`
-	DeadlineMs     int64                  `protobuf:"varint,6,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
-	Plaintext      []byte                 `protobuf:"bytes,7,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
-	UseSessionSeed bool                   `protobuf:"varint,8,opt,name=use_session_seed,json=useSessionSeed,proto3" json:"use_session_seed,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Purpose             uint32                 `protobuf:"varint,1,opt,name=purpose,proto3" json:"purpose,omitempty"`
+	MachineId           string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	SessionId           string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	RequestId           string                 `protobuf:"bytes,4,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Seq                 uint64                 `protobuf:"varint,5,opt,name=seq,proto3" json:"seq,omitempty"`
+	DeadlineMs          int64                  `protobuf:"varint,6,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
+	Plaintext           []byte                 `protobuf:"bytes,7,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
+	UseSessionSeed      bool                   `protobuf:"varint,8,opt,name=use_session_seed,json=useSessionSeed,proto3" json:"use_session_seed,omitempty"`
+	OverrideSessionSeed []byte                 `protobuf:"bytes,9,opt,name=override_session_seed,json=overrideSessionSeed,proto3" json:"override_session_seed,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SecuritySealEnvelopeOp) Reset() {
@@ -1346,6 +1347,13 @@ func (x *SecuritySealEnvelopeOp) GetUseSessionSeed() bool {
 		return x.UseSessionSeed
 	}
 	return false
+}
+
+func (x *SecuritySealEnvelopeOp) GetOverrideSessionSeed() []byte {
+	if x != nil {
+		return x.OverrideSessionSeed
+	}
+	return nil
 }
 
 type SecurityGetSessionSeedOp struct {
@@ -2317,7 +2325,7 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"request_id\x18\x05 \x01(\tR\trequestId\x12\x10\n" +
 	"\x03seq\x18\x06 \x01(\x04R\x03seq\x12\x18\n" +
 	"\ahistory\x18\a \x01(\bR\ahistory\x122\n" +
-	"\x15override_session_seed\x18\b \x01(\fR\x13overrideSessionSeed\"\x8a\x02\n" +
+	"\x15override_session_seed\x18\b \x01(\fR\x13overrideSessionSeed\"\xbe\x02\n" +
 	"\x16SecuritySealEnvelopeOp\x12\x18\n" +
 	"\apurpose\x18\x01 \x01(\rR\apurpose\x12\x1d\n" +
 	"\n" +
@@ -2330,7 +2338,8 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\vdeadline_ms\x18\x06 \x01(\x03R\n" +
 	"deadlineMs\x12\x1c\n" +
 	"\tplaintext\x18\a \x01(\fR\tplaintext\x12(\n" +
-	"\x10use_session_seed\x18\b \x01(\bR\x0euseSessionSeed\"9\n" +
+	"\x10use_session_seed\x18\b \x01(\bR\x0euseSessionSeed\x122\n" +
+	"\x15override_session_seed\x18\t \x01(\fR\x13overrideSessionSeed\"9\n" +
 	"\x18SecurityGetSessionSeedOp\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\xb6\x02\n" +

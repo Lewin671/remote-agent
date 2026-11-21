@@ -119,25 +119,12 @@ class DirectExecutorTest {
         val pushed = CopyOnWriteArrayList<String>()
 
         val executor = DirectExecutor(
-            deviceSeed = { seed },
-            xPrivate = { xPriv },
             emit = { events.add(it) },
             onPushedEvent = { _, _, _, hdr, _ -> pushed.add(hdr.requestId) },
             factory = RtcFactory { _, l -> StubPeerConnection(l, report, emitSyncOnCreate = true).also { pc = it } },
         )
 
-        // 1. Key sign & agree
-        executor.keySign(DirectKeySignEffect.newBuilder().setOpId(1L).setMessage(ByteString.copyFromUtf8("hello")).build())
-        val signedEv = events.last().directKeySigned
-        assertEquals(1L, signedEv.opId)
-        assertTrue(Corebind.ed25519Verify(SigningKey(seed).publicKey, "hello".toByteArray(), signedEv.signature.toByteArray()))
-
-        executor.keyAgree(DirectKeyAgreeEffect.newBuilder().setOpId(2L).setPeerXPublic(ByteString.copyFrom(peerXPub)).build())
-        val agreedEv = events.last().directKeyAgreed
-        assertTrue(agreedEv.ok)
-        assertArrayEquals(Corebind.x25519Shared(xPriv, peerXPub), agreedEv.sharedSecret.toByteArray())
-
-        // 2. Synchronous callbacks during factory.create() must not lose pcId events before DirectPcCreatedEvent
+        // 1. Synchronous callbacks during factory.create() must not lose pcId events before DirectPcCreatedEvent
         executor.pcCreate(DirectPcCreateEffect.newBuilder().setPcId(10L).setMachineId("m-1").setRoundId(100L).setUse(1).setGeneration(5L).build())
         assertTrue(events.any { it.hasDirectPcState() && it.directPcState.pcId == 10L })
         assertTrue(events.any { it.hasDirectPcLocalCandidate() && it.directPcLocalCandidate.pcId == 10L })
@@ -227,8 +214,6 @@ class DirectExecutorTest {
         val events = CopyOnWriteArrayList<CoreEvent>()
         val createdPcs = ArrayList<Pair<StubPeerConnection, RtcPeerListener>>()
         val executor = DirectExecutor(
-            deviceSeed = { null },
-            xPrivate = { null },
             emit = { events.add(it) },
             onPushedEvent = { _, _, _, _, _ -> },
             factory = RtcFactory { _, l ->

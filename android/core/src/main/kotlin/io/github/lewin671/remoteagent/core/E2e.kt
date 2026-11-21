@@ -13,9 +13,6 @@ import io.github.lewin671.remoteagent.proto.Compression
 import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.PayloadKind
-import org.bouncycastle.crypto.digests.SHA256Digest
-import org.bouncycastle.crypto.generators.HKDFBytesGenerator
-import org.bouncycastle.crypto.params.HKDFParameters
 import java.security.GeneralSecurityException
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -51,11 +48,8 @@ fun hmacSha256(key: ByteArray, message: ByteArray): ByteArray =
     javax.crypto.Mac.getInstance("HmacSHA256").apply { init(javax.crypto.spec.SecretKeySpec(key, "HmacSHA256")) }.doFinal(message)
 
 /** HKDF-SHA256 with the given salt and info. */
-fun hkdf(secret: ByteArray, salt: ByteArray?, info: ByteArray, size: Int): ByteArray {
-    val gen = HKDFBytesGenerator(SHA256Digest())
-    gen.init(HKDFParameters(secret, salt, info))
-    return ByteArray(size).also { gen.generateBytes(it, 0, size) }
-}
+fun hkdf(secret: ByteArray, salt: ByteArray?, info: ByteArray, size: Int): ByteArray =
+    Corebind.hkdfSha256(secret, salt ?: ByteArray(0), info, size)
 
 /** An Ed25519 key pair from a 32-byte seed. */
 class SigningKey(seed: ByteArray) {

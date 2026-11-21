@@ -155,9 +155,8 @@ class CoreHost(
     var onNavigate: (NavigateEffect) -> Unit = {}
     var onAttachmentsSettled: (AttachmentsSettledEffect) -> Unit = {}
     var onDirectPreference: (DirectPreferenceEffect) -> Unit = {}
-    var onDirectAuthorize: () -> Unit = {}
-    var onDirectKeySign: (DirectKeySignEffect) -> Unit = {}
-    var onDirectKeyAgree: (DirectKeyAgreeEffect) -> Unit = {}
+    var onSecurityKeySign: ((SecurityKeySignEffect) -> SecurityKeySignedEvent)? = null
+    var onSecurityKeyAgree: ((SecurityKeyAgreeEffect) -> SecurityKeyAgreedEvent)? = null
     var onDirectSignalSend: (DirectSignalSendEffect) -> Unit = {}
     var onDirectPcCreate: (DirectPcCreateEffect) -> Unit = {}
     var onDirectPcDescribe: (DirectPcDescribeEffect) -> Unit = {}
@@ -186,7 +185,9 @@ class CoreHost(
     var onHydrateUsageCache: (String) -> Unit = {}
 
     private val nextDirectCallId = AtomicLong(1L)
+    private val nextSecurityOpSeq = AtomicLong(1L)
     private val bulkRouteWaiters = ConcurrentHashMap<Long, CompletableDeferred<DirectBulkRouteEffect>>()
+    private val pendingSecurityOps = ConcurrentHashMap<Long, CompletableDeferred<SecurityOpResultEffect>>()
     private val retryNowWaiters = ConcurrentHashMap<String, MutableList<CompletableDeferred<Boolean>>>()
     private val terminalReopenListeners = ConcurrentHashMap<String, () -> Unit>()
 
@@ -570,9 +571,30 @@ class CoreHost(
             Effect.EffectCase.USAGE_CACHE_WRITE -> {
                 onUsageCacheWrite(effect.usageCacheWrite)
             }
-            Effect.EffectCase.DIRECT_AUTHORIZE -> onDirectAuthorize()
-            Effect.EffectCase.DIRECT_KEY_SIGN -> onDirectKeySign(effect.directKeySign)
-            Effect.EffectCase.DIRECT_KEY_AGREE -> onDirectKeyAgree(effect.directKeyAgree)
+            Effect.EffectCase.SECURITY_KEY_SIGN -> {
+                val eff = effect.securityKeySign
+                val signed =
+                    onSecurityKeySign?.invoke(eff)
+                        ?: SecurityKeySignedEvent.newBuilder()
+                            .setOpId(eff.opId)
+                            .setError("security key signer not configured")
+                            .build()
+                dispatchOnWorker(CoreEvent.newBuilder().setSecurityKeySigned(signed).build())
+            }
+            Effect.EffectCase.SECURITY_KEY_AGREE -> {
+                val eff = effect.securityKeyAgree
+                val agreed =
+                    onSecurityKeyAgree?.invoke(eff)
+                        ?: SecurityKeyAgreedEvent.newBuilder()
+                            .setOpId(eff.opId)
+                            .setError("security key agreement not configured")
+                            .build()
+                dispatchOnWorker(CoreEvent.newBuilder().setSecurityKeyAgreed(agreed).build())
+            }
+            Effect.EffectCase.SECURITY_OP_RESULT -> {
+                val res = effect.securityOpResult
+                pendingSecurityOps.remove(res.opId)?.complete(res)
+            }
             Effect.EffectCase.DIRECT_SIGNAL_SEND -> onDirectSignalSend(effect.directSignalSend)
             Effect.EffectCase.DIRECT_PC_CREATE -> onDirectPcCreate(effect.directPcCreate)
             Effect.EffectCase.DIRECT_PC_DESCRIBE -> onDirectPcDescribe(effect.directPcDescribe)
@@ -1439,21 +1461,39 @@ class CoreHost(
         setDirectPreferencesLoaded(b)
     }
 
-    fun dispatchDirectSecuritySnapshot(snap: DirectSecuritySnapshotEvent) = send {
-        setDirectSecuritySnapshot(snap)
-    }
-
-    fun dispatchDirectSecurityInstalled(member: Boolean, account: String, head: String) = send {
-        setDirectSecurityInstalled(
-            DirectSecurityInstalledEvent.newBuilder()
-                .setMember(member)
+    fun sendSecurityConfig(account: String, deviceId: String, inlineCrypto: Boolean = true) = send {
+        setSecurityConfig(
+            SecurityConfigEvent.newBuilder()
                 .setAccount(account)
-                .setHead(head),
+                .setDeviceId(deviceId)
+                .setInlineCrypto(inlineCrypto),
         )
     }
 
-    fun dispatchDirectAuthorizeDone(ok: Boolean) = send {
-        setDirectAuthorizeDone(DirectAuthorizeDoneEvent.newBuilder().setOk(ok))
+    fun dispatchSecurityRecord(ev: SecurityRecordEvent) = send {
+        setSecurityRecord(ev)
+    }
+
+    suspend fun dispatchSecurityRecordAndWait(ev: SecurityRecordEvent): EffectBatch =
+        dispatchAndWait(CoreEvent.newBuilder().setSecurityRecord(ev).build())
+
+    suspend fun securityOp(configure: SecurityOpRequestEvent.Builder.() -> Unit): SecurityOpResultEffect {
+        if (closed.get()) throw IllegalStateException("core closed")
+        val opId = nextSecurityOpSeq.getAndIncrement()
+        val deferred = CompletableDeferred<SecurityOpResultEffect>()
+        pendingSecurityOps[opId] = deferred
+        val req = SecurityOpRequestEvent.newBuilder().setOpId(opId).apply(configure).build()
+        dispatch(CoreEvent.newBuilder().setSecurityOpRequest(req).build())
+        return try {
+            if (closed.get() && !deferred.isCompleted) {
+                pendingSecurityOps.remove(opId, deferred)
+                throw IllegalStateException("core closed")
+            }
+            deferred.await()
+        } catch (t: Throwable) {
+            pendingSecurityOps.remove(opId, deferred)
+            throw t
+        }
     }
 
     fun dispatchDirectSignal(raw: ByteArray) {
@@ -1845,6 +1885,11 @@ class CoreHost(
             }
             for ((k, w) in bulkRouteWaiters.entries.toList()) {
                 if (bulkRouteWaiters.remove(k, w)) w.complete(DirectBulkRouteEffect.getDefaultInstance())
+            }
+            for ((k, w) in pendingSecurityOps.entries.toList()) {
+                if (pendingSecurityOps.remove(k, w)) {
+                    w.completeExceptionally(IllegalStateException("core closed"))
+                }
             }
             synchronized(retryNowWaiters) {
                 for (list in retryNowWaiters.values) list.forEach { it.complete(false) }

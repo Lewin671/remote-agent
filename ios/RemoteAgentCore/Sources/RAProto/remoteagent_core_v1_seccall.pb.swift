@@ -499,6 +499,14 @@ public struct PBSecCallRequest: Sendable {
     set {call = .openNotifyEnvelope(newValue)}
   }
 
+  public var derivePurposeKey: PBSecDerivePurposeKeyCall {
+    get {
+      if case .derivePurposeKey(let v)? = call {return v}
+      return PBSecDerivePurposeKeyCall()
+    }
+    set {call = .derivePurposeKey(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Call: Equatable, Sendable {
@@ -530,6 +538,7 @@ public struct PBSecCallRequest: Sendable {
     case ed25519SeedSign(PBSecEd25519SeedSignCall)
     case inflateBounded(PBSecInflateBoundedCall)
     case openNotifyEnvelope(PBSecOpenNotifyEnvelopeCall)
+    case derivePurposeKey(PBSecDerivePurposeKeyCall)
 
   }
 
@@ -1078,12 +1087,34 @@ public struct PBSecOpenNotifyEnvelopeCall: Sendable {
   /// Clears the value of `envelope`. Subsequent reads from it will return its default value.
   public mutating func clearEnvelope() {self._envelope = nil}
 
+  public var purposeKey: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _pin: PBSecPin? = nil
   fileprivate var _envelope: PBEnvelope? = nil
+}
+
+public struct PBSecDerivePurposeKeyCall: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var secret: Data = Data()
+
+  public var accountID: String = String()
+
+  public var domain: Data = Data()
+
+  public var contentEpoch: UInt64 = 0
+
+  public var purpose: UInt32 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 public struct PBSecCallResponse: @unchecked Sendable {
@@ -1777,7 +1808,7 @@ extension PBSecParsedApproval: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBSecCallRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecCallRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}parse_state\0\u{3}verify_chain\0\u{3}grant_challenge\0\u{3}open_grant_with_dh\0\u{4}\u{3}parse_lease\0\u{3}verify_lease\0\u{3}new_lease_unsigned\0\u{3}marshal_lease\0\u{3}parse_recovery_statement\0\u{3}verify_recovery_statement\0\u{3}new_recovery_statement_unsigned\0\u{3}marshal_recovery_statement\0\u{3}build_state\0\u{4}\u{7}marshal_state\0\u{4}\u{2}open_prev_secret\0\u{3}verify_pair_approval\0\u{3}machine_replacement_origins\0\u{3}pair_trust_descriptor\0\u{3}parse_pair_trust_descriptor\0\u{3}pair_domain_commit\0\u{3}pair_transcript\0\u{3}pair_identity_transcript\0\u{3}pair_domain_transcript\0\u{3}derive_pair_secrets\0\u{3}ed25519_seed_public\0\u{3}ed25519_seed_sign\0\u{4}\u{2}inflate_bounded\0\u{4}\u{3}open_notify_envelope\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}parse_state\0\u{3}verify_chain\0\u{3}grant_challenge\0\u{3}open_grant_with_dh\0\u{4}\u{3}parse_lease\0\u{3}verify_lease\0\u{3}new_lease_unsigned\0\u{3}marshal_lease\0\u{3}parse_recovery_statement\0\u{3}verify_recovery_statement\0\u{3}new_recovery_statement_unsigned\0\u{3}marshal_recovery_statement\0\u{3}build_state\0\u{4}\u{7}marshal_state\0\u{4}\u{2}open_prev_secret\0\u{3}verify_pair_approval\0\u{3}machine_replacement_origins\0\u{3}pair_trust_descriptor\0\u{3}parse_pair_trust_descriptor\0\u{3}pair_domain_commit\0\u{3}pair_transcript\0\u{3}pair_identity_transcript\0\u{3}pair_domain_transcript\0\u{3}derive_pair_secrets\0\u{3}ed25519_seed_public\0\u{3}ed25519_seed_sign\0\u{4}\u{2}inflate_bounded\0\u{4}\u{3}open_notify_envelope\0\u{3}derive_purpose_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2124,6 +2155,19 @@ extension PBSecCallRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
           self.call = .openNotifyEnvelope(v)
         }
       }()
+      case 41: try {
+        var v: PBSecDerivePurposeKeyCall?
+        var hadOneofValue = false
+        if let current = self.call {
+          hadOneofValue = true
+          if case .derivePurposeKey(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.call = .derivePurposeKey(v)
+        }
+      }()
       default: break
       }
     }
@@ -2246,6 +2290,10 @@ extension PBSecCallRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     case .openNotifyEnvelope?: try {
       guard case .openNotifyEnvelope(let v)? = self.call else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 40)
+    }()
+    case .derivePurposeKey?: try {
+      guard case .derivePurposeKey(let v)? = self.call else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
     }()
     case nil: break
     }
@@ -3379,7 +3427,7 @@ extension PBSecInflateBoundedCall: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBSecOpenNotifyEnvelopeCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecOpenNotifyEnvelopeCall"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pin\0\u{1}states\0\u{3}recovery_proofs\0\u{3}member_id\0\u{1}dh\0\u{3}content_secret\0\u{1}envelope\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}pin\0\u{1}states\0\u{3}recovery_proofs\0\u{3}member_id\0\u{1}dh\0\u{3}content_secret\0\u{1}envelope\0\u{3}purpose_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3394,6 +3442,7 @@ extension PBSecOpenNotifyEnvelopeCall: SwiftProtobuf.Message, SwiftProtobuf._Mes
       case 5: try { try decoder.decodeSingularBytesField(value: &self.dh) }()
       case 6: try { try decoder.decodeSingularBytesField(value: &self.contentSecret) }()
       case 7: try { try decoder.decodeSingularMessageField(value: &self._envelope) }()
+      case 8: try { try decoder.decodeSingularBytesField(value: &self.purposeKey) }()
       default: break
       }
     }
@@ -3425,6 +3474,9 @@ extension PBSecOpenNotifyEnvelopeCall: SwiftProtobuf.Message, SwiftProtobuf._Mes
     try { if let v = self._envelope {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
     } }()
+    if !self.purposeKey.isEmpty {
+      try visitor.visitSingularBytesField(value: self.purposeKey, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3436,6 +3488,57 @@ extension PBSecOpenNotifyEnvelopeCall: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if lhs.dh != rhs.dh {return false}
     if lhs.contentSecret != rhs.contentSecret {return false}
     if lhs._envelope != rhs._envelope {return false}
+    if lhs.purposeKey != rhs.purposeKey {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSecDerivePurposeKeyCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SecDerivePurposeKeyCall"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}secret\0\u{3}account_id\0\u{1}domain\0\u{3}content_epoch\0\u{1}purpose\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.secret) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.accountID) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.domain) }()
+      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.contentEpoch) }()
+      case 5: try { try decoder.decodeSingularUInt32Field(value: &self.purpose) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.secret.isEmpty {
+      try visitor.visitSingularBytesField(value: self.secret, fieldNumber: 1)
+    }
+    if !self.accountID.isEmpty {
+      try visitor.visitSingularStringField(value: self.accountID, fieldNumber: 2)
+    }
+    if !self.domain.isEmpty {
+      try visitor.visitSingularBytesField(value: self.domain, fieldNumber: 3)
+    }
+    if self.contentEpoch != 0 {
+      try visitor.visitSingularUInt64Field(value: self.contentEpoch, fieldNumber: 4)
+    }
+    if self.purpose != 0 {
+      try visitor.visitSingularUInt32Field(value: self.purpose, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSecDerivePurposeKeyCall, rhs: PBSecDerivePurposeKeyCall) -> Bool {
+    if lhs.secret != rhs.secret {return false}
+    if lhs.accountID != rhs.accountID {return false}
+    if lhs.domain != rhs.domain {return false}
+    if lhs.contentEpoch != rhs.contentEpoch {return false}
+    if lhs.purpose != rhs.purpose {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

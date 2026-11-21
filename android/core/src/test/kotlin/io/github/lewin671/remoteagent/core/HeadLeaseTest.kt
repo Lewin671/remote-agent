@@ -60,10 +60,9 @@ class HeadLeaseTest {
             )
         val store = TestSecurityStore(record)
         val sdk =
-            DeviceSecurityClient(
+            AuthoritySecurity(
                 store,
                 state.core.authorityID,
-                signer,
                 fetchStates = { error("unused") },
             )
         val time = sdk.signingTime(9000)
@@ -86,7 +85,7 @@ class HeadLeaseTest {
         resumed.checkSecurityProgressFrom(draft)
         assertTrue(resumed.record.includesInstallation(draft.record))
         assertFalse(draft.record.includesInstallation(resumed.record))
-        val renewed = HeadLease.sign(next, signer, 9000, record.floor)
+        val renewed = HeadLease.sign(next, signer, record.signingTime(9000))
         renewed.verify(next)
         assertEquals(20000uL, renewed.issuedAt)
         val later = HeadLease.sign(state, signer, 21000)
@@ -151,9 +150,11 @@ class HeadLeaseTest {
             Json.parseToJsonElement(File(System.getProperty("domainVectors")).readText()).jsonObject
         fun raw(key: String) =
             Base64.getDecoder().decode(v[key]!!.jsonObject["state"]!!.jsonPrimitive.content)
+        val g = DeviceSecurity.parseState(raw("genesis"))
+        val added = DeviceSecurity.parseState(raw("added"))
         val parent = DeviceSecurity.parseState(raw("handoff_parent"))
         val next = DeviceSecurity.parseState(raw("handoff"))
-        DeviceSecurity.verifyTransition(parent, next)
+        DeviceSecurity.verifyChain(DeviceSecurity.pinOf(g), listOf(g, added, parent, next))
         HeadLease.parse(Base64.getDecoder().decode(v["handoff_lease"]!!.jsonPrimitive.content))
             .verify(next)
         assertNull(next.core.member(parent.core.authorityID))
@@ -279,21 +280,28 @@ class HeadLeaseTest {
         assertFalse(Authority.leaseValid(tamperedRecord, 20000L))
         assertFalse(Authority.leaseValid(record, lease.notAfter.toLong()))
 
-        val sdk =
-            DeviceSecurityClient(
-                TestSecurityStore(record),
-                state.core.authorityID,
-                signer,
-                fetchStates = { error("unused") },
-                clock = { 20000L },
-            )
-        val plain = byteArrayOf(10, 20, 30)
-        val (env, binding) = sdk.sealCommand(machine.id, "", "request-1234567890", 50000uL, plain)
-        val (opened, openedPlain) = sdk.openOwnCommand(env)
-        assertArrayEquals(plain, openedPlain)
-        val expected = kotlinx.coroutines.runBlocking { sdk.commandIdentity(env) }
-        assertArrayEquals(expected.first, binding.first)
-        assertArrayEquals(expected.second, binding.second)
-        assertEquals(DeviceSecurity.Purpose.COMMAND, opened.purpose)
+        CoreSecurityBridge(
+            TestSecurityStore(record),
+            state.core.authorityID,
+            signer,
+            fetchStates = { error("unused") },
+            clock = { 20000L },
+        ).use { sdk ->
+            val plain =
+                io.github.lewin671.remoteagent.proto.Command.newBuilder()
+                    .setInterrupt(
+                        io.github.lewin671.remoteagent.proto.InterruptRequest.newBuilder()
+                            .setSessionId("s1"),
+                    )
+                    .build()
+                    .toByteArray()
+            val (env, binding) = sdk.sealCommand(machine.id, "", "request-1234567890", 50000uL, plain)
+            val (opened, openedPlain) = sdk.open(env, expectedPurpose = DeviceSecurity.Purpose.COMMAND)
+            assertArrayEquals(plain, openedPlain)
+            val expected = sdk.requestIdentity(opened, openedPlain)
+            assertArrayEquals(expected.first, binding.first)
+            assertArrayEquals(expected.second, binding.second)
+            assertEquals(DeviceSecurity.Purpose.COMMAND.value.toInt(), opened.purpose)
+        }
     }
 }

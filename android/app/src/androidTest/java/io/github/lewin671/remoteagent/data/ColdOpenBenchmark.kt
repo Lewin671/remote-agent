@@ -33,26 +33,28 @@ class ColdOpenBenchmark {
             SigningKey(ByteArray(32) { 5 }).publicKey, secret, signer, 1_700_000_000_000,
         )
         val machineSigner = SigningKey(ByteArray(32) { 7 })
-        val machine = Authority.newMember(machineSigner, ByteArray(32) { 8 }, 1u)
+        val machineX = ByteArray(32) { 8 }
+        val machine = Authority.newMember(machineSigner, machineX, 1u)
         val state = Authority.pair(genesis, machine, secret, secret, signer, 1_700_000_000_001)
+        val lease = HeadLease.sign(state, signer, 1_700_000_000_001)
         val record = DeviceSecurity.Record.fromChain(
             state.core.account, state.core.domain, DeviceSecurity.stateHash(genesis), phone.id, x,
             listOf(genesis, state).map { DeviceSecurity.stateBytes(it) }, listOf(null, null),
-        )
+        ).installed(emptyList(), emptyList(), lease)
+        val machineRecord = DeviceSecurity.Record.fromChain(
+            state.core.account, state.core.domain, DeviceSecurity.stateHash(genesis), machine.id, machineX,
+            listOf(genesis, state).map { DeviceSecurity.stateBytes(it) }, listOf(null, null),
+        ).installed(emptyList(), emptyList(), lease)
         val account = Account("https://example.com", ByteArray(0), ByteArray(32) { 1 }, phone.id, record.pin.account)
         val seed = ByteArray(32) { 6 }
-        val stored = (1..1100).map { seq ->
-            val event = Event.newBuilder().setSeq(seq.toLong()).setSessionId("test-session")
-                .setAgentMessage(AgentMessage.newBuilder().setText("Synthetic message $seq")).build()
-            val header = DeviceSecurity.Header(
-                record.pin.account, record.pin.domain, state.core.epoch,
-                DeviceSecurity.stateHash(state), state.core.contentEpoch, machine.id,
-                DeviceSecurity.Purpose.EVENT.kind, DeviceSecurity.Purpose.EVENT,
-                machine.id, "test-session", "", seq.toULong(), 0uL, 0u,
-            )
-            StoredEvent.newBuilder().setSeq(seq.toLong()).setEnvelope(
-                DeviceSecurity.envelope(DeviceSecurity.Wire(DeviceSecurity.form(secret, seed, header, event.toByteArray(), machineSigner)))
-            ).build()
+        val stored = BenchmarkCoreSecurity(machineRecord, machine.id, machineSigner, machineX, 1_700_000_000_002).use { sealer ->
+            (1..1100).map { seq ->
+                val event = Event.newBuilder().setSeq(seq.toLong()).setSessionId("test-session")
+                    .setAgentMessage(AgentMessage.newBuilder().setText("Synthetic message $seq")).build()
+                StoredEvent.newBuilder().setSeq(seq.toLong()).setEnvelope(
+                    sealer.sealEvent("test-session", seq.toLong(), seed, event.toByteArray()),
+                ).build()
+            }
         }
         try {
             for (sample in 0..3) for (newestFirst in listOf(false, true)) {
@@ -81,7 +83,7 @@ class ColdOpenBenchmark {
                         .code(200).message("OK").header("Content-Type", "application/proto").body(response.toByteArray().toResponseBody("application/proto".toMediaType())).build()
                 }.build()
                 val api = Api(account.server, http)
-                val security = DeviceSecurityClient(vault, phone.id, signer, fetchStates = { error("no real network") })
+                val security = BenchmarkCoreSecurity(vault.readSecurity(), phone.id, signer, x, 1_700_000_000_002)
                 try {
                     val start = System.nanoTime()
                     val token = if (newestFirst) vault.loadLoginToken(account)!!.value else {
@@ -95,7 +97,7 @@ class ColdOpenBenchmark {
                         val page = api.client.getEvents(GetEventsRequest.newBuilder().setSessionId("test-session")
                             .setAfterSeq(after).setLimit(500).build(), Api.headers(token)).value()
                         for (event in page.eventsList) {
-                            val opened = Event.parseFrom(security.openHistory(event.envelope, seed).second)
+                            val opened = Event.parseFrom(security.openHistory(event.envelope, seed))
                             assertEquals(event.seq, opened.seq)
                         }
                         after = page.eventsList.last().seq

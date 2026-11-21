@@ -225,20 +225,6 @@
     "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效"
   },
   {
-    "en": "Records from before recovery are unreadable",
-    "key": "errors.android_records_from_before_recovery_are_unreadable",
-    "notes": "Android DeviceSecurityClient 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "恢复前的记录不可读"
-  },
-  {
     "en": "Remote control authorization expired. Cannot save changes, control sessions, or upload new content. {value1} and retry. History remains viewable",
     "key": "errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
@@ -970,22 +956,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "历史记录未能继续加载，请重试"
-  },
-  {
-    "en": "The event’s position was changed",
-    "key": "errors.the_event_s_position_was_changed",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "事件的位置被改动"
   },
   {
     "en": "This request has not been verified by the computer yet. Wait for sync.",

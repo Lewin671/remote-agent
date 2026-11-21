@@ -50,7 +50,7 @@ class SyncTimeFloorTest {
                 var certificate = if (response == "certificate") lease else null
                 var failPull = response == "network failure"
                 fun sdk() =
-                    DeviceSecurityClient(
+                    CoreSecurityBridge(
                         store,
                         phone.id,
                         SigningKey(hex("phone_seed")),
@@ -74,33 +74,32 @@ class SyncTimeFloorTest {
                     store.readSecurity().floor >= lease.notAfter,
                 )
                 clock = lease.issuedAt.toLong()
-                val reopened = sdk()
-                val failure = runCatching {
-                    reopened.seal(
-                        DeviceSecurity.Purpose.PREFS,
-                        request = "project-prefs",
-                        seq = 1uL,
-                        plain = byteArrayOf(1),
+                sdk().use { reopened ->
+                    val failure = runCatching {
+                        reopened.seal(
+                            DeviceSecurity.Purpose.PREFS,
+                            request = "project-prefs",
+                            seq = 1uL,
+                            plain = byteArrayOf(1),
+                        )
+                    }.exceptionOrNull()
+                    assertTrue(
+                        "clock rollback resurrected content publication",
+                        failure is DeviceSecurity.Failure && failure.code == "lease",
+                    )
+                    clock = lease.notAfter.toLong()
+                    certificate = renewed
+                    failPull = false
+                    reopened.sync()
+                    assertNotNull(
+                        reopened.seal(
+                            DeviceSecurity.Purpose.PREFS,
+                            request = "project-prefs",
+                            seq = 1uL,
+                            plain = byteArrayOf(1),
+                        ),
                     )
                 }
-                    .exceptionOrNull()
-                assertTrue(
-                    "clock rollback resurrected content publication",
-                    failure is DeviceSecurity.Failure && failure.code == "lease",
-                )
-                clock = lease.notAfter.toLong()
-                certificate = renewed
-                failPull = false
-                reopened.sync()
-                assertNotNull(
-                    reopened.seal(
-                        DeviceSecurity.Purpose.PREFS,
-                        request = "project-prefs",
-                        seq = 1uL,
-                        plain = byteArrayOf(1),
-                    ),
-                )
-                reopened.close()
             }
         }
 }

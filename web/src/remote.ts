@@ -1247,7 +1247,7 @@ export class Remote implements CoreExecutor {
       this.wakeRequired = false;
       this.maintainAuthority();
       if (this.recoveryObjectsPending) {
-        const preEv = await this.toSecurityRecordEvent(record, { opId: 0n, pushSeq: 0n, networkGeneration });
+        const preEv = await this.toSecurityRecordEvent(record, { opId: 0n, pushSeq: this.securityPushSeq++, networkGeneration });
         if (!this.closed) {
           this.ensureHost().dispatchEvent(create(CoreEventSchema, { event: { case: "securityRecord", value: preEv } }));
           this.securityRecordLoaded = true;

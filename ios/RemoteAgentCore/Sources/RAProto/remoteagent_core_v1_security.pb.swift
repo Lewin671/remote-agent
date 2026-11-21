@@ -486,6 +486,8 @@ public struct PBSecuritySealEnvelopeOp: Sendable {
 
   public var useSessionSeed: Bool = false
 
+  public var overrideSessionSeed: Data = Data()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1686,7 +1688,7 @@ extension PBSecurityOpenEnvelopeOp: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBSecuritySealEnvelopeOp: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecuritySealEnvelopeOp"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}purpose\0\u{3}machine_id\0\u{3}session_id\0\u{3}request_id\0\u{1}seq\0\u{3}deadline_ms\0\u{1}plaintext\0\u{3}use_session_seed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}purpose\0\u{3}machine_id\0\u{3}session_id\0\u{3}request_id\0\u{1}seq\0\u{3}deadline_ms\0\u{1}plaintext\0\u{3}use_session_seed\0\u{3}override_session_seed\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1702,6 +1704,7 @@ extension PBSecuritySealEnvelopeOp: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 6: try { try decoder.decodeSingularInt64Field(value: &self.deadlineMs) }()
       case 7: try { try decoder.decodeSingularBytesField(value: &self.plaintext) }()
       case 8: try { try decoder.decodeSingularBoolField(value: &self.useSessionSeed) }()
+      case 9: try { try decoder.decodeSingularBytesField(value: &self.overrideSessionSeed) }()
       default: break
       }
     }
@@ -1732,6 +1735,9 @@ extension PBSecuritySealEnvelopeOp: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.useSessionSeed != false {
       try visitor.visitSingularBoolField(value: self.useSessionSeed, fieldNumber: 8)
     }
+    if !self.overrideSessionSeed.isEmpty {
+      try visitor.visitSingularBytesField(value: self.overrideSessionSeed, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1744,6 +1750,7 @@ extension PBSecuritySealEnvelopeOp: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.deadlineMs != rhs.deadlineMs {return false}
     if lhs.plaintext != rhs.plaintext {return false}
     if lhs.useSessionSeed != rhs.useSessionSeed {return false}
+    if lhs.overrideSessionSeed != rhs.overrideSessionSeed {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
