@@ -509,4 +509,29 @@ import Testing
         try? await Task.sleep(for: .milliseconds(50))
         #expect(streams.count == 1)
     }
+
+    @Test func offlineReopenSignalDeactivatesAndAllowsConnectIfNeededWhenOnline() async {
+        let streams = Streams()
+        let online = Flag()
+        let recorder = CoreRecorder()
+        let t = terminal(streams, online: online, recorder: recorder)
+
+        t.connect()
+        await eventually { streams.count == 1 }
+        streams.listener(0).onFrame(snapshot("s0"))
+        await eventually { t.state == .live }
+
+        online.on = false
+        streams.listener(0).onClose("c0")
+        await eventually { t.state.isClosed }
+
+        // A reopen signal arriving before peer readiness must transition to disposed/inactive so `connectIfNeeded` works later.
+        recorder.triggerReopen()
+        await eventually { recorder.recorded.last == RecordedEvent(kind: .disposed, opened: false) }
+
+        online.on = true
+        t.connectIfNeeded()
+        await eventually { streams.count == 2 }
+        t.close()
+    }
 }

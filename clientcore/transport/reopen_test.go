@@ -19,7 +19,22 @@ func TestReopen(t *testing.T) {
 	if w := r.MainOnline(now, true, &b); !w.Open {
 		t.Fatal("reopens at once when the main connection is back")
 	}
-	// Failing again before it was stable: 0.5 × 1 s, then 0.5 × 2 s.
+	// A transient open failure during an active reopen streak keeps backing off and retrying.
+	if w := r.Closed(now, false, true, 0.5, &b); w.Open || !w.Set || w.At != now+500 {
+		t.Fatalf("transient reopen failure must schedule backoff timer at +500ms, got %+v", w)
+	}
+	now += 500
+	if w := r.Timer(now, true, &b); !w.Open {
+		t.Fatalf("expected reopen after transient streak timer at %d, got %+v", now, w)
+	}
+	// Reset streak cleanly and verify opened closures still back off via 0.5 x 1 s, 0.5 x 2 s.
+	w := r.Live(now)
+	now = w.At
+	r.Timer(now, true, &b)
+	now += 2000
+	if w := r.Closed(now, true, true, 0.5, &b); !w.Open {
+		t.Fatal("first close after stability reopens at once")
+	}
 	for _, wait := range []int64{500, 1000} {
 		w := r.Closed(now, true, true, 0.5, &b)
 		if w.Open || !w.Set || w.At != now+wait {
@@ -33,7 +48,7 @@ func TestReopen(t *testing.T) {
 			t.Fatalf("opens after %d", wait)
 		}
 	}
-	w := r.Live(now)
+	w = r.Live(now)
 	now = w.At
 	r.Timer(now, true, &b)
 	now += 2000

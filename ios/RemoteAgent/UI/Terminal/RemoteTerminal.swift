@@ -137,7 +137,7 @@ final class RemoteTerminal {
         reopenCancel?()
         self.link = link
         reopenCancel = link.subscribeReopen(terminalId) { [weak self] in
-            guard let self, self.active, self.link?.online() == true else { return }
+            guard let self, self.active else { return }
             self.openAttempt()
         }
     }

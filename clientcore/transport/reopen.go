@@ -40,15 +40,15 @@ func (r *Reopen) Live(now int64) Wake {
 }
 
 // Closed: the stream closed or failed to open. A failure while reopening
-// counts toward the backoff (unit is the jitter draw). A stream that never
-// opened, or with the main connection offline, waits for MainOnline.
+// counts toward the backoff (unit is the jitter draw). An initial open failure
+// (not yet in a reopen streak) or an offline main connection waits for MainOnline.
 func (r *Reopen) Closed(now int64, opened, online bool, unit float64, b *linkcore.Budget) Wake {
 	r.stable = false
 	r.needs = true
 	if r.streak {
 		r.rec.Failed(now, unit)
 	}
-	if !opened || !online {
+	if (!opened && !r.streak) || !online {
 		return r.next(Wake{})
 	}
 	return r.try(now, online, b)
