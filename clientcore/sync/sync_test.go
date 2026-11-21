@@ -400,6 +400,10 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 					{SessionId: "s_page2", MachineId: "m1", ListedEndedMs: 500, UpdatedMs: 500},
 					{SessionId: "s_gone", MachineId: "m1", ListedEndedMs: 900, UpdatedMs: 900},
 				},
+				Devices: []*corev1.PlainDevice{
+					{DeviceId: "d_keep", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1, Meta: &v1.DeviceMeta{Name: "initial-name"}},
+					{DeviceId: "d_removed", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1},
+				},
 				Next: &v1.SessionCursor{EndedMs: 400, SessionId: "c"},
 			},
 		},
@@ -464,8 +468,44 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 			},
 		},
 	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 72,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: "d_pushed", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+				},
+			},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 74,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{
+						DeviceId: "d_keep",
+						Kind:     v1.DeviceKind_DEVICE_KIND_CLIENT,
+						MetaRev:  2,
+						Meta:     &v1.DeviceMeta{Name: "live-name"},
+					},
+				},
+			},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 76,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: "d_removed"},
+			},
+		},
+	})
 
-	// Server's stale snapshot returns: contains m1, m3(stale!), omits m2 and s_pushed, next=EndedMs:700.
+	// Server's stale snapshot returns: contains m1, m3(stale!), omits m2, s_pushed, and d_pushed, next=EndedMs:700.
 	// So s_page2 (500 < 700) is past cursor (kept in memory, unlisted), s_gone (900 > 700) was deleted (unlisted/removed).
 	_, listsRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 80,
@@ -479,6 +519,11 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 				Sessions: []*corev1.PlainSession{
 					{SessionId: "s_live", MachineId: "m1", UpdatedMs: now},
 				},
+				Devices: []*corev1.PlainDevice{
+					{DeviceId: "d_keep", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1, Meta: &v1.DeviceMeta{Name: "stale-name"}},
+					{DeviceId: "d_removed", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1}, // pushed removed! must NOT resurrect
+					{DeviceId: "d_listed", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, MetaRev: 1},
+				},
 				Next: &v1.SessionCursor{EndedMs: 700, SessionId: "z"},
 			},
 		},
@@ -489,6 +534,18 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 	}
 	if e.MachineEntry("m3") != nil {
 		t.Fatalf("removed machine m3 must not be resurrected by stale ListsFetched")
+	}
+	if e.devices["d_pushed"] == nil {
+		t.Fatalf("pushed device d_pushed should survive ListsFetched omission")
+	}
+	if got := e.devices["d_keep"]; got == nil || got.MetaRev != 2 || got.Meta.GetName() != "live-name" {
+		t.Fatalf("live-pushed device d_keep metadata should beat stale ListsFetched, got %+v", got)
+	}
+	if e.devices["d_removed"] != nil {
+		t.Fatalf("removed device d_removed must not be resurrected by stale ListsFetched")
+	}
+	if e.devices["d_listed"] == nil {
+		t.Fatalf("expected d_listed from ListsFetched")
 	}
 	if e.SessionEntry("s_pushed") == nil {
 		t.Fatalf("pushed session s_pushed should survive ListsFetched omission")
@@ -504,6 +561,72 @@ func TestPaginationAndPushRemovalRaces(t *testing.T) {
 	}
 	if !unlistedGone {
 		t.Fatalf("expected s_gone (ended before cursor) to emit UnlistSessionId")
+	}
+
+	// DeviceUpdated arriving while FetchDevices (opId != 0) is in flight must also survive.
+	devRes := e.Run(func(ctx *StepContext) {
+		e.startRefreshDevices(ctx, true)
+	})
+	var devicesOp uint64
+	for _, eff := range devRes.Effects {
+		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchDevices() != nil {
+			devicesOp = rpc.OpId
+		}
+	}
+	if devicesOp == 0 {
+		t.Fatalf("expected FetchDevicesRpc")
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 82,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: "d_dev_pushed", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+				},
+			},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 84,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: "d_dev_bounce", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+				},
+			},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 86,
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: legID,
+				Frame: &corev1.StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: "d_dev_bounce"},
+			},
+		},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 88,
+		Event: &corev1.Event_DevicesFetched{
+			DevicesFetched: &corev1.DevicesFetchedEvent{
+				OpId: devicesOp,
+				Devices: []*corev1.PlainDevice{
+					{DeviceId: "d_dev_listed", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+					{DeviceId: "d_dev_bounce", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+				},
+			},
+		},
+	})
+	if e.devices["d_dev_pushed"] == nil {
+		t.Fatalf("pushed device d_dev_pushed should survive in-flight FetchDevices response")
+	}
+	if e.devices["d_dev_listed"] == nil {
+		t.Fatalf("expected d_dev_listed from DevicesFetched")
+	}
+	if e.devices["d_dev_bounce"] != nil {
+		t.Fatalf("updated-then-removed device d_dev_bounce must stay removed after DevicesFetched")
 	}
 
 	// Old page 2 arrives AFTER refresh bumped listingGen -> must be ignored.

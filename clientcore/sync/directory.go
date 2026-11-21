@@ -75,6 +75,7 @@ func (e *Engine) startRefresh(ctx *StepContext) {
 	e.refreshSnapshotM = maps.Clone(e.machinePushes)
 	e.refreshSnapshotS = maps.Clone(e.sessionPushes)
 	e.refreshSnapshotR = maps.Clone(e.removedPushes)
+	e.refreshSnapshotD = maps.Clone(e.devicePushes)
 
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{
@@ -94,6 +95,7 @@ func (e *Engine) startRefreshDevices(ctx *StepContext, force bool) {
 	}
 	e.devicesOpID = e.allocOpID()
 	e.devicesSnapshotR = maps.Clone(e.removedPushes)
+	e.devicesSnapshotD = maps.Clone(e.devicePushes)
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_Rpc{
 			Rpc: &corev1.RpcEffect{
@@ -216,6 +218,7 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 	mp := e.refreshSnapshotM
 	sp := e.refreshSnapshotS
 	rp := e.refreshSnapshotR
+	dp := e.refreshSnapshotD
 
 	mids := make(map[string]bool, len(ev.Machines))
 	for _, m := range ev.Machines {
@@ -320,7 +323,7 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 		e.putSession(ctx, s, true)
 	}
 
-	e.reconcileDevices(ev.Devices, rp, false)
+	e.reconcileDevices(ev.Devices, rp, dp, false)
 	e.w.World.SessionsNext = pageNext
 	e.w.World.HasMoreSessions = pageNext != nil
 
@@ -398,7 +401,7 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 	if ev == nil {
 		return
 	}
-	var removedSnapshot map[string]uint64
+	var removedSnapshot, deviceSnapshot map[string]uint64
 	switch {
 	case ev.OpId != 0:
 		if ev.OpId != e.devicesOpID {
@@ -406,19 +409,21 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 		}
 		e.devicesOpID = 0
 		removedSnapshot = e.devicesSnapshotR
+		deviceSnapshot = e.devicesSnapshotD
 	case ev.PushSeq != 0:
 		if ev.PushSeq <= e.lastDevicesPushSeq {
 			return
 		}
 		e.lastDevicesPushSeq = ev.PushSeq
 		removedSnapshot = nil
+		deviceSnapshot = nil
 	default:
 		return
 	}
 	if ev.Error != "" {
 		return
 	}
-	e.reconcileDevices(ev.Devices, removedSnapshot, true)
+	e.reconcileDevices(ev.Devices, removedSnapshot, deviceSnapshot, true)
 	ctx.Dirty.MarkAll()
 }
 
@@ -676,7 +681,7 @@ func (e *Engine) removeSession(ctx *StepContext, sid string, dropFromCache bool)
 	}
 }
 
-func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot map[string]uint64, allowEmpty bool) {
+func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot, deviceSnapshot map[string]uint64, allowEmpty bool) {
 	if len(items) == 0 && !allowEmpty {
 		return
 	}
@@ -686,6 +691,11 @@ func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot m
 			continue
 		}
 		next[d.DeviceId] = plainToDeviceEntry(d)
+	}
+	for id, cur := range e.devices {
+		if cur != nil && pushedSince(e.devicePushes, deviceSnapshot, id) {
+			next[id] = cur
+		}
 	}
 	e.devices = next
 }

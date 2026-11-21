@@ -393,11 +393,13 @@ type Engine struct {
 	refreshSnapshotM   map[string]uint64
 	refreshSnapshotS   map[string]uint64
 	refreshSnapshotR   map[string]uint64
+	refreshSnapshotD   map[string]uint64
 	pageOpID           uint64
 	pageListingGen     uint64
 	devicesOpID        uint64
 	lastDevicesPushSeq uint64
 	devicesSnapshotR   map[string]uint64
+	devicesSnapshotD   map[string]uint64
 	sessionByIDOps     map[uint64]string
 	sessionByIDFailed  map[string]bool
 	machinePushes      map[string]uint64
