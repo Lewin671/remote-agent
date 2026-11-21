@@ -135,8 +135,6 @@ class RaApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        // Direct-path lines carry fixed words and times only (DirectDiag), so they may go to logcat.
-        io.github.lewin671.remoteagent.core.transport.DirectDiag.sink = { Log.i("$TAG.direct", it) }
         // Kept light: a push may start the process just to show a notification.
         Push.createChannels(this)
         // Images shared last time have reached the other app by now.

@@ -18,10 +18,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.PairingUiState
+import io.github.lewin671.remoteagent.core.proto.DirectPathChoice
+import io.github.lewin671.remoteagent.core.proto.DirectRouteState
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
-import io.github.lewin671.remoteagent.core.transport.DirectDiag
-import io.github.lewin671.remoteagent.core.transport.DirectStage
-import io.github.lewin671.remoteagent.core.transport.RouteName
 import io.github.lewin671.remoteagent.core.transport.RtcDataChannel
 import io.github.lewin671.remoteagent.core.transport.RtcDataChannelListener
 import io.github.lewin671.remoteagent.core.transport.RtcFactory
@@ -273,10 +272,9 @@ class DirectTransportE2ETest {
 
             // Wait until Direct path establishes initially
             fun isDirectConnected(): Boolean =
-                remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)
+                remote.directRouteReport(machineId).state == DirectRouteState.DIRECT_ROUTE_STATE_CONNECTED
 
             suspend fun waitDirectReady(timeoutMs: Long = 30_000) {
-                DirectDiag.sink = { android.util.Log.i("DirectDiag", it) }
                 android.util.Log.i("DirectE2E", "waitDirectReady start")
                 val deadline = System.currentTimeMillis() + timeoutMs
                 while (System.currentTimeMillis() < deadline) {
@@ -287,7 +285,7 @@ class DirectTransportE2ETest {
                     }
                     delay(100)
                 }
-                error("Direct path did not become ready within ${timeoutMs}ms; state=${remote.peer(machineId)?.directStatus}")
+                error("Direct path did not become ready within ${timeoutMs}ms; report=${remote.directRouteReport(machineId)}")
             }
             waitDirectReady()
 
@@ -304,25 +302,27 @@ class DirectTransportE2ETest {
             run {
                 val deadline = connectStart + 60_000
                 while (System.currentTimeMillis() < deadline) {
-                    val st = remote.peer(machineId)?.directStatus
+                    val st = remote.directRouteReport(machineId)
                     val now = System.currentTimeMillis() - connectStart
-                    if (connectedMs < 0 && st?.stage in setOf(DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE)) connectedMs = now
+                    val connected = st.state == DirectRouteState.DIRECT_ROUTE_STATE_CONNECTED
+                    if (connectedMs < 0 && connected) connectedMs = now
                     // Direct read path is ready immediately under direct-first.
-                    if (warmStartMs < 0 && st?.stage == DirectStage.DIRECT_ACTIVE) warmStartMs = now
-                    if (st?.readDirect == true) {
+                    if (warmStartMs < 0 && connected) warmStartMs = now
+                    if (st.readRoute == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT) {
                         readUpgradeMs = now - maxOf(warmStartMs, 0)
                         break
                     }
                     delay(20)
                 }
             }
-            assertTrue("Read path should upgrade to Direct by warm-up alone; status=${remote.peer(machineId)?.directStatus}", readUpgradeMs >= 0)
+            val finalReport = remote.directRouteReport(machineId)
+            assertTrue("Read path should upgrade to Direct by warm-up alone; report=$finalReport", readUpgradeMs >= 0)
             assertTrue("Read upgrade must happen within 7 s of the warm-up starting (took ${readUpgradeMs}ms)", readUpgradeMs <= 7_000)
             metrics.put("directConnectedMs", connectedMs)
             metrics.put("warmUpStartMs", warmStartMs)
             metrics.put("readUpgradeMs", readUpgradeMs)
-            metrics.put("readDirectMs", remote.peer(machineId)?.directStatus?.readDirectMs)
-            metrics.put("readRelayMs", remote.peer(machineId)?.directStatus?.readRelayMs)
+            metrics.put("readDirectMs", if (finalReport.hasDirectReadMs) finalReport.directReadMs else null)
+            metrics.put("readRelayMs", if (finalReport.hasRelayReadMs) finalReport.relayReadMs else null)
             waitDirectReady()
 
             android.util.Log.i("DirectE2E", "step // 3. >16 MiB")
@@ -334,7 +334,7 @@ class DirectTransportE2ETest {
             val wantSha1 = f1.getString("sha256Hex")
             val chunkSize = 768 * 1024
             val dlStart = System.currentTimeMillis()
-            val startedDirect = remote.filePath(machineId) == RouteName.DIRECT
+            val startedDirect = remote.filePath(machineId) == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT
             var upgradedAtMs = if (startedDirect) 0L else -1L
             var relayChunksBytes = 0L
             var relayChunksMs = 0L
@@ -346,13 +346,13 @@ class DirectTransportE2ETest {
             var relayStartMs = System.currentTimeMillis()
             var directStartMs = if (startedDirect) dlStart else -1L
             while (offset < totalBytes24M) {
-                val isDirectNow = remote.filePath(machineId) == RouteName.DIRECT
+                val isDirectNow = remote.filePath(machineId) == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT
                 val cStart = System.currentTimeMillis()
                 val res = retryNotSent { remote.getSharedFileChunk(sessionId, fid1, offset) }
                 val cElapsed = System.currentTimeMillis() - cStart
                 out1.write(res.data.toByteArray())
                 offset += res.data.size()
-                if (!isDirectNow && remote.filePath(machineId) == RouteName.DIRECT) {
+                if (!isDirectNow && remote.filePath(machineId) == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT) {
                     upgradedAtMs = System.currentTimeMillis() - dlStart
                     acceptedAtUpgrade = ctrlGet(ctrlBase, "/accepted-count").getInt("count")
                     directStartMs = System.currentTimeMillis()
@@ -373,8 +373,9 @@ class DirectTransportE2ETest {
             metrics.put("bulkUpgradeMs", upgradedAtMs)
             metrics.put("acceptedAtUpgrade", acceptedAtUpgrade)
             metrics.put("acceptedAfterDirectDl", acceptedAfterDl)
-            metrics.put("relayBulkMibPerSec", remote.peer(machineId)?.directStatus?.bulkRelayMibPerSec)
-            metrics.put("directBulkMibPerSec", remote.peer(machineId)?.directStatus?.bulkDirectMibPerSec)
+            val dlReport = remote.directRouteReport(machineId)
+            metrics.put("relayBulkMibPerSec", if (dlReport.hasRelayFileMibps) dlReport.relayFileMibps else null)
+            metrics.put("directBulkMibPerSec", if (dlReport.hasDirectFileMibps) dlReport.directFileMibps else null)
 
             // Verify redesigned UI displays on DeviceScreen and ConnCheckSheet while upgraded
             ui.runOnUiThread { }
@@ -409,7 +410,7 @@ class DirectTransportE2ETest {
             var fallbackMs = -1L
             while (off2 < totalBytes24M) {
                 android.util.Log.i("DirectE2E", "dl2 off=${off2 / chunkSize} path=${remote.filePath(machineId)} dropped=$dropped")
-                if (!dropped && remote.filePath(machineId) == RouteName.DIRECT && off2 >= 8L * chunkSize) {
+                if (!dropped && remote.filePath(machineId) == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT && off2 >= 8L * chunkSize) {
                     dropped = true
                     val tDrop = System.currentTimeMillis()
                     val chunkDeferred = async { retryNotSent { remote.getSharedFileChunk(sessionId, fid2, off2) } }
@@ -417,7 +418,7 @@ class DirectTransportE2ETest {
                     rtcWrapper.dropActiveConnections()
                     val resumedChunk = chunkDeferred.await()
                     fallbackMs = System.currentTimeMillis() - tDrop
-                    assertEquals(RouteName.RELAY, remote.filePath(machineId))
+                    assertEquals(DirectPathChoice.DIRECT_PATH_CHOICE_RELAY, remote.filePath(machineId))
                     out2.write(resumedChunk.data.toByteArray())
                     off2 += resumedChunk.data.size()
                     continue
@@ -473,8 +474,9 @@ class DirectTransportE2ETest {
             // 6a) Local switch Off
             remote.setDirectEnabled(machineId, false)
             delay(500)
-            assertEquals(DirectStage.OFF, remote.peer(machineId)?.directStatus?.stage)
-            assertEquals(RouteName.RELAY, remote.filePath(machineId))
+            val offReport = remote.directRouteReport(machineId)
+            assertTrue(!offReport.enabled || offReport.state == DirectRouteState.DIRECT_ROUTE_STATE_NONE)
+            assertEquals(DirectPathChoice.DIRECT_PATH_CHOICE_RELAY, remote.filePath(machineId))
             val probeOff = retryNotSent { remote.getSharedFileChunk(sessionId, fid1, 0L) }
             assertEquals(chunkSize, probeOff.data.size())
             remote.setDirectEnabled(machineId, true)
@@ -495,7 +497,7 @@ class DirectTransportE2ETest {
             }
             delay(6_000)
             assertFalse("Remote DirectPolicy=Off must keep Direct disabled", isDirectConnected())
-            assertEquals(RouteName.RELAY, remote.filePath(machineId))
+            assertEquals(DirectPathChoice.DIRECT_PATH_CHOICE_RELAY, remote.filePath(machineId))
             val probePolicy = retryNotSent { remote.getSharedFileChunk(sessionId, fid1, 0L) }
             assertEquals(chunkSize, probePolicy.data.size())
             ctrlPost(ctrlBase, "/set-direct-policy", JSONObject().put("machineId", machineId).put("enabled", true))
@@ -529,7 +531,7 @@ class DirectTransportE2ETest {
             remote.setDirectEnabled(machineId, true)
             delay(12_000)
             assertFalse("UDP dropped must stay on relay", isDirectConnected())
-            assertEquals(RouteName.RELAY, remote.filePath(machineId))
+            assertEquals(DirectPathChoice.DIRECT_PATH_CHOICE_RELAY, remote.filePath(machineId))
             assertEquals(chunkSize, retryNotSent { remote.getSharedFileChunk(sessionId, fid1, 0L) }.data.size())
             rtcWrapper.blockUdp = false
             remote.setDirectEnabled(machineId, false)
@@ -543,10 +545,10 @@ class DirectTransportE2ETest {
             // Upgrade fid1 back to DIRECT under relay 150ms injection, then clear relay delay for raw approval RTT.
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 150).put("resetCount", true))
             for (warmIdx in 0 until 64) {
-                if (remote.filePath(machineId) == RouteName.DIRECT) break
+                if (remote.filePath(machineId) == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT) break
                 retryNotSent { remote.getSharedFileChunk(sessionId, fid1, (warmIdx % 32).toLong() * chunkSize) }
             }
-            assertEquals(RouteName.DIRECT, remote.filePath(machineId))
+            assertEquals(DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT, remote.filePath(machineId))
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 0).put("bulkMs", 350).put("resetCount", true))
 
             // Measure baseline (0 bulk load) approval latency first

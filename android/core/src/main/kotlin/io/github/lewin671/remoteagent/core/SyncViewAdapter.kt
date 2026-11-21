@@ -207,7 +207,6 @@ fun coreTextToMessageText(t: CoreText?): MessageText {
 }
 
 internal fun SyncStateView.toRemoteState(
-    peers: Map<String, PeerState>,
     networkAvailable: Boolean,
 ): RemoteState {
     val conn = when (connection) {
@@ -223,16 +222,13 @@ internal fun SyncStateView.toRemoteState(
     }
     val machineMap = machinesList.associate { m ->
         val base = MachineView(m.machineId, m.online, m.lastSeenMs, m.meta.takeIf { m.hasMeta() }, m.metaRev)
-        val p = peers[m.machineId] ?: RelayPath.discovery(base)
-        val directReady = m.directReady || !p.relayRequired
+        val directReady = m.directReady
         val computed = RelayPath.discovery(base, ready = directReady || conn == ConnState.ONLINE, authorized = !removed, unlinked = !m.reachable && m.unlinked).copy(
             reachable = m.reachable || directReady,
             relayRequired = !directReady,
             knownOffline = !directReady && !m.online,
-            protocolVersion = m.protocolVersion.takeIf { it > 0 } ?: p.protocolVersion,
-            capabilities = if (m.hasMeta() && m.meta.hasCapabilities()) m.meta.capabilities else p.capabilities,
-            fileDirect = p.fileDirect,
-            directStatus = p.directStatus,
+            protocolVersion = m.protocolVersion.takeIf { it > 0 },
+            capabilities = if (m.hasMeta() && m.meta.hasCapabilities()) m.meta.capabilities else null,
         )
         m.machineId to base.copy(linkState = computed)
     }

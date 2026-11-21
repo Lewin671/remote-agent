@@ -3,10 +3,6 @@ package io.github.lewin671.remoteagent.core
 import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.proto.*
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
-import io.github.lewin671.remoteagent.core.transport.DirectDiag
-import io.github.lewin671.remoteagent.core.transport.DirectFailReason
-import io.github.lewin671.remoteagent.core.transport.DirectStage
-import io.github.lewin671.remoteagent.core.transport.DirectStatus
 import io.github.lewin671.remoteagent.corebind.Core
 import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.Agent
@@ -20,8 +16,9 @@ import kotlinx.coroutines.flow.*
 import java.security.SecureRandom
 import java.time.Instant
 import java.time.ZoneId
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.roundToInt
+import java.util.concurrent.atomic.AtomicLong
 
 const val CORE_ENDED_PAGE = 30
 const val CORE_SESSION_WINDOW_LIMIT = 80
@@ -30,6 +27,7 @@ private val DEFAULT_SESSION_WINDOW: SessionWindowRequest =
 private const val CALENDAR_MONTH_HISTORY = 35
 private const val INITIAL_ENTROPY_IDS = 32
 private const val INITIAL_ENTROPY_FLOATS = 32
+private const val INITIAL_ENTROPY_SEED_BYTES = 32
 
 fun uiMessage(key: String, args: Map<String, Any> = emptyMap()): UiMessage = UiMessage(key, args)
 
@@ -157,6 +155,17 @@ class CoreHost(
     var onNavigate: (NavigateEffect) -> Unit = {}
     var onAttachmentsSettled: (AttachmentsSettledEffect) -> Unit = {}
     var onDirectPreference: (DirectPreferenceEffect) -> Unit = {}
+    var onDirectAuthorize: () -> Unit = {}
+    var onDirectKeySign: (DirectKeySignEffect) -> Unit = {}
+    var onDirectKeyAgree: (DirectKeyAgreeEffect) -> Unit = {}
+    var onDirectSignalSend: (DirectSignalSendEffect) -> Unit = {}
+    var onDirectPcCreate: (DirectPcCreateEffect) -> Unit = {}
+    var onDirectPcDescribe: (DirectPcDescribeEffect) -> Unit = {}
+    var onDirectPcSetRemote: (DirectPcSetRemoteEffect) -> Unit = {}
+    var onDirectPcAddCandidates: (DirectPcAddCandidatesEffect) -> Unit = {}
+    var onDirectPcConfirm: (DirectPcConfirmEffect) -> Unit = {}
+    var onDirectPcClose: (DirectPcCloseEffect) -> Unit = {}
+    var onDirectDcReadStats: (DirectDcReadStatsEffect) -> Unit = {}
     var onRenameClient: (RenameClientEffect) -> Unit = {}
     var onCheckUpdates: (CheckUpdatesEffect) -> Unit = {}
     var onPersistClientPrefs: (PersistClientPrefsEffect) -> Unit = {}
@@ -176,6 +185,11 @@ class CoreHost(
     var onUsageCacheWrite: (UsageCacheWriteEffect) -> Unit = {}
     var onHydrateUsageCache: (String) -> Unit = {}
 
+    private val nextDirectCallId = AtomicLong(1L)
+    private val bulkRouteWaiters = ConcurrentHashMap<Long, CompletableDeferred<DirectBulkRouteEffect>>()
+    private val retryNowWaiters = ConcurrentHashMap<String, MutableList<CompletableDeferred<Boolean>>>()
+    private val terminalReopenListeners = ConcurrentHashMap<String, () -> Unit>()
+
     private var homeEndedLimit: Int = CORE_ENDED_PAGE
     private var projectKey: String = ""
     private var projectManage: Boolean = true
@@ -184,6 +198,7 @@ class CoreHost(
     private var newSessionProjectKey: String = ""
     private var machineStatusId: String = ""
     private var machineSettingsId: String = ""
+    private var directDiagnosticsId: String = ""
     private var quotaMachineId: String = ""
     private var quotaFilterAgent: Agent = Agent.AGENT_UNSPECIFIED
     private var clientDetailId: String = ""
@@ -255,6 +270,13 @@ class CoreHost(
         { if (it.viewCase == ViewModel.ViewCase.MACHINE_SETTINGS) it.machineSettings else null },
     )
     val machineSettingsView: StateFlow<MachineSettingsViewModel> = machineSettingsSlot.flow.asStateFlow()
+
+    private val directDiagnosticsSlot = registerScreen(
+        ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS, DirectDiagnosticsViewModel.getDefaultInstance(),
+        { directDiagnosticsId.takeIf { it.isNotEmpty() }?.let { Screen.newBuilder().setDirectDiagnostics(DirectDiagnosticsScreenRequest.newBuilder().setMachineId(it)).build() } },
+        { if (it.viewCase == ViewModel.ViewCase.DIRECT_DIAGNOSTICS) it.directDiagnostics else null },
+    )
+    val directDiagnosticsView: StateFlow<DirectDiagnosticsViewModel> = directDiagnosticsSlot.flow.asStateFlow()
 
     private val quotaSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_QUOTA, QuotaViewModel.getDefaultInstance(),
@@ -351,7 +373,7 @@ class CoreHost(
                 if (!closed.get()) {
                     dispatchOnWorker(
                         CoreEvent.newBuilder()
-                            .setEntropyProvided(buildEntropyProvided(INITIAL_ENTROPY_IDS, INITIAL_ENTROPY_FLOATS))
+                            .setEntropyProvided(buildEntropyProvided(INITIAL_ENTROPY_IDS, INITIAL_ENTROPY_FLOATS, INITIAL_ENTROPY_SEED_BYTES))
                             .build(),
                     )
                     val nowMs = clock()
@@ -541,18 +563,42 @@ class CoreHost(
                 val floats = maxOf(req.minFloats, INITIAL_ENTROPY_FLOATS / 2)
                 dispatch(
                     CoreEvent.newBuilder()
-                        .setEntropyProvided(buildEntropyProvided(ids, floats))
+                        .setEntropyProvided(buildEntropyProvided(ids, floats, req.minSeedBytes))
                         .build(),
                 )
             }
             Effect.EffectCase.USAGE_CACHE_WRITE -> {
                 onUsageCacheWrite(effect.usageCacheWrite)
             }
+            Effect.EffectCase.DIRECT_AUTHORIZE -> onDirectAuthorize()
+            Effect.EffectCase.DIRECT_KEY_SIGN -> onDirectKeySign(effect.directKeySign)
+            Effect.EffectCase.DIRECT_KEY_AGREE -> onDirectKeyAgree(effect.directKeyAgree)
+            Effect.EffectCase.DIRECT_SIGNAL_SEND -> onDirectSignalSend(effect.directSignalSend)
+            Effect.EffectCase.DIRECT_PC_CREATE -> onDirectPcCreate(effect.directPcCreate)
+            Effect.EffectCase.DIRECT_PC_DESCRIBE -> onDirectPcDescribe(effect.directPcDescribe)
+            Effect.EffectCase.DIRECT_PC_SET_REMOTE -> onDirectPcSetRemote(effect.directPcSetRemote)
+            Effect.EffectCase.DIRECT_PC_ADD_CANDIDATES -> onDirectPcAddCandidates(effect.directPcAddCandidates)
+            Effect.EffectCase.DIRECT_PC_CONFIRM -> onDirectPcConfirm(effect.directPcConfirm)
+            Effect.EffectCase.DIRECT_PC_CLOSE -> onDirectPcClose(effect.directPcClose)
+            Effect.EffectCase.DIRECT_DC_READ_STATS -> onDirectDcReadStats(effect.directDcReadStats)
+            Effect.EffectCase.DIRECT_BULK_ROUTE -> {
+                val res = effect.directBulkRoute
+                bulkRouteWaiters.remove(res.callId)?.complete(res)
+            }
+            Effect.EffectCase.DIRECT_RETRY_NOW_RESULT -> {
+                val res = effect.directRetryNowResult
+                val list = synchronized(retryNowWaiters) { retryNowWaiters.remove(res.machineId) }
+                list?.forEach { it.complete(res.started) }
+            }
+            Effect.EffectCase.TERMINAL_REOPEN -> {
+                val tid = effect.terminalReopen.terminalId
+                terminalReopenListeners[tid]?.invoke()
+            }
             else -> {}
         }
     }
 
-    private fun buildEntropyProvided(minIds: Int, minFloats: Int): EntropyProvided {
+    private fun buildEntropyProvided(minIds: Int, minFloats: Int, minSeedBytes: Int = 0): EntropyProvided {
         val b = EntropyProvided.newBuilder()
         val idBytes = ByteArray(16)
         repeat(minIds.coerceAtLeast(0)) {
@@ -561,6 +607,11 @@ class CoreHost(
         }
         repeat(minFloats.coerceAtLeast(0)) {
             b.addUnitFloats(random.nextDouble())
+        }
+        if (minSeedBytes > 0) {
+            val seed = ByteArray(maxOf(minSeedBytes, INITIAL_ENTROPY_SEED_BYTES))
+            random.nextBytes(seed)
+            b.setSeed(ByteString.copyFrom(seed))
         }
         return b.build()
     }
@@ -789,6 +840,14 @@ class CoreHost(
         matches = { machineId.isNotEmpty() && it.machineId == machineId },
         screen = { Screen.newBuilder().setMachineSettings(MachineSettingsScreenRequest.newBuilder().setMachineId(machineId)).build() },
         extract = { if (it.viewCase == ViewModel.ViewCase.MACHINE_SETTINGS) it.machineSettings else null },
+    )
+
+    fun snapshotDirectDiagnosticsView(machineId: String): DirectDiagnosticsViewModel = snapshotSlot(
+        ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS,
+        directDiagnosticsSlot,
+        matches = { machineId.isNotEmpty() && it.machineId == machineId },
+        screen = { Screen.newBuilder().setDirectDiagnostics(DirectDiagnosticsScreenRequest.newBuilder().setMachineId(machineId)).build() },
+        extract = { if (it.viewCase == ViewModel.ViewCase.DIRECT_DIAGNOSTICS) it.directDiagnostics else null },
     )
 
     fun snapshotQuotaView(machineId: String, filterAgent: Agent = Agent.AGENT_UNSPECIFIED): QuotaViewModel = snapshotSlot(
@@ -1313,12 +1372,179 @@ class CoreHost(
         )
     }
 
-    fun reportMachineDirectStatus(machineId: String, report: DirectRouteReport) = send {
-        setMachineDirectStatus(
-            MachineDirectStatusEvent.newBuilder()
-                .setMachineId(machineId)
-                .setReport(report),
+    fun openDirectDiagnostics(machineId: String) = dispatchAction {
+        directDiagnosticsId = machineId
+        if (machineId.isNotEmpty()) {
+            sendOnWorker {
+                setDirectRefreshDiagnostics(DirectRefreshDiagnosticsAction.newBuilder().setMachineId(machineId))
+            }
+            refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS)
+        }
+    }
+
+    fun closeDirectDiagnostics(machineId: String) = dispatchAction {
+        if (directDiagnosticsId == machineId) directDiagnosticsId = ""
+    }
+
+    fun refreshDirectDiagnostics(machineId: String) {
+        if (machineId.isEmpty() || closed.get()) return
+        dispatchAction {
+            directDiagnosticsId = machineId
+            sendOnWorker {
+                setDirectRefreshDiagnostics(DirectRefreshDiagnosticsAction.newBuilder().setMachineId(machineId))
+            }
+            refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS)
+        }
+    }
+
+    suspend fun retryDirectNow(machineId: String): Boolean {
+        if (machineId.isEmpty() || closed.get()) return false
+        val waiter = CompletableDeferred<Boolean>()
+        synchronized(retryNowWaiters) {
+            retryNowWaiters.getOrPut(machineId) { ArrayList() }.add(waiter)
+        }
+        send { setDirectRetryNow(DirectRetryNowAction.newBuilder().setMachineId(machineId)) }
+        return try {
+            waiter.await()
+        } catch (e: CancellationException) {
+            synchronized(retryNowWaiters) {
+                retryNowWaiters[machineId]?.remove(waiter)
+                if (retryNowWaiters[machineId]?.isEmpty() == true) retryNowWaiters.remove(machineId)
+            }
+            throw e
+        }
+    }
+
+    fun sendTransportConfig(
+        supported: Boolean,
+        account: String,
+        protocolVersion: Int,
+        stunServers: List<String>,
+        platformAgent: String = "android",
+    ) = send {
+        setTransportConfig(
+            TransportConfigEvent.newBuilder()
+                .setSupported(supported)
+                .setAccount(account)
+                .setProtocolVersion(protocolVersion)
+                .addAllStunServers(stunServers)
+                .setPlatformAgent(platformAgent),
         )
+    }
+
+    fun sendDirectPreferencesLoaded(entries: Map<String, Boolean>) = send {
+        val b = DirectPreferencesLoadedEvent.newBuilder()
+        for ((id, enabled) in entries) {
+            b.addEntries(DirectPreferenceEntry.newBuilder().setMachineId(id).setEnabled(enabled))
+        }
+        setDirectPreferencesLoaded(b)
+    }
+
+    fun dispatchDirectSecuritySnapshot(snap: DirectSecuritySnapshotEvent) = send {
+        setDirectSecuritySnapshot(snap)
+    }
+
+    fun dispatchDirectSignal(raw: ByteArray) {
+        if (raw.isEmpty() || closed.get()) return
+        send { setDirectSignalReceived(DirectSignalReceivedEvent.newBuilder().setRaw(ByteString.copyFrom(raw))) }
+    }
+
+    fun dispatchDirectSignalDelivery(frameId: ByteArray, status: Int, retryAfterMs: Long) {
+        if (frameId.isEmpty() || closed.get()) return
+        send {
+            setDirectSignalDelivery(
+                DirectSignalDeliveryEvent.newBuilder()
+                    .setFrameId(ByteString.copyFrom(frameId))
+                    .setStatus(status)
+                    .setRetryAfterMs(maxOf(0L, retryAfterMs)),
+            )
+        }
+    }
+
+    suspend fun beginDirectBulkTransfer(
+        machineId: String,
+        routeHint: Int = 0,
+        bulkFileKey: String = "",
+        bulkBytes: Long = 0L,
+        bulkUpload: Boolean = false,
+        deadlineMs: Long,
+        forceRelay: Boolean = false,
+        uploadTransferId: String = "",
+        uploadHasFilename: Boolean = false,
+        interactiveDual: Boolean = false,
+    ): DirectBulkRouteEffect {
+        if (closed.get()) return DirectBulkRouteEffect.getDefaultInstance()
+        val callId = nextDirectCallId.getAndIncrement()
+        val waiter = CompletableDeferred<DirectBulkRouteEffect>()
+        bulkRouteWaiters[callId] = waiter
+        val ev = CoreEvent.newBuilder()
+            .setDirectBulkTransferBegin(
+                DirectBulkTransferBeginEvent.newBuilder()
+                    .setCallId(callId)
+                    .setMachineId(machineId)
+                    .setRouteHint(routeHint)
+                    .setBulkFileKey(bulkFileKey)
+                    .setBulkBytes(bulkBytes)
+                    .setBulkUpload(bulkUpload)
+                    .setDeadlineMs(deadlineMs)
+                    .setForceRelay(forceRelay)
+                    .setUploadTransferId(uploadTransferId)
+                    .setUploadHasFilename(uploadHasFilename)
+                    .setInteractiveDual(interactiveDual),
+            )
+            .build()
+        if (mailbox.trySend { if (!closed.get()) dispatchOnWorker(ev) else waiter.complete(DirectBulkRouteEffect.getDefaultInstance()) }.isFailure) {
+            bulkRouteWaiters.remove(callId, waiter)
+            return DirectBulkRouteEffect.getDefaultInstance()
+        }
+        return try {
+            waiter.await()
+        } catch (e: CancellationException) {
+            bulkRouteWaiters.remove(callId, waiter)
+            throw e
+        }
+    }
+
+    fun finishDirectBulkTransfer(
+        ticketId: Long,
+        routeWasDirect: Boolean,
+        ok: Boolean,
+        elapsedMs: Double,
+        observedBytes: Long,
+        finishUploadTransferId: String = "",
+        machineId: String = "",
+    ) {
+        if (closed.get()) return
+        if (ticketId == 0L && finishUploadTransferId.isEmpty()) return
+        send {
+            setDirectBulkTransferDone(
+                DirectBulkTransferDoneEvent.newBuilder()
+                    .setTicketId(ticketId)
+                    .setRouteWasDirect(routeWasDirect)
+                    .setOk(ok)
+                    .setElapsedMs(elapsedMs)
+                    .setObservedBytes(observedBytes)
+                    .setFinishUploadTransferId(finishUploadTransferId)
+                    .setMachineId(machineId),
+            )
+        }
+    }
+
+    fun sendTerminalStream(terminalId: String, kind: TerminalStreamEventKind, opened: Boolean) {
+        if (terminalId.isEmpty() || closed.get()) return
+        send {
+            setTerminalStream(
+                TerminalStreamEvent.newBuilder()
+                    .setTerminalId(terminalId)
+                    .setKind(kind)
+                    .setOpened(opened),
+            )
+        }
+    }
+
+    fun onTerminalReopen(terminalId: String, listener: () -> Unit): () -> Unit {
+        terminalReopenListeners[terminalId] = listener
+        return { terminalReopenListeners.remove(terminalId, listener) }
     }
 
     fun reportNotificationPrefs(
@@ -1547,6 +1773,7 @@ class CoreHost(
         quota: QuotaViewModel? = null,
         devices: DevicesViewModel? = null,
         clientDetail: ClientDetailViewModel? = null,
+        directDiagnostics: DirectDiagnosticsViewModel? = null,
         schedules: SchedulesViewModel? = null,
         scheduleDetail: ScheduleDetailViewModel? = null,
         scheduleForm: ScheduleFormViewModel? = null,
@@ -1560,6 +1787,7 @@ class CoreHost(
         overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULES, schedulesSlot, schedules)
         overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_DETAIL, scheduleDetailSlot, scheduleDetail)
         overrideSlot(ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM, scheduleFormSlot, scheduleForm)
+        overrideSlot(ScreenTarget.SCREEN_TARGET_DIRECT_DIAGNOSTICS, directDiagnosticsSlot, directDiagnostics)
         home?.let { homeSlot.flow.value = it }
         project?.let { projectSlot.flow.value = it }
         newSession?.let { newSessionSlot.flow.value = it }
@@ -1570,6 +1798,7 @@ class CoreHost(
         quota?.let { quotaSlot.flow.value = it }
         devices?.let { devicesSlot.flow.value = it }
         clientDetail?.let { clientDetailSlot.flow.value = it }
+        directDiagnostics?.let { directDiagnosticsSlot.flow.value = it }
         usage?.let { overrideSlot(ScreenTarget.SCREEN_TARGET_USAGE, usageSlot, it) }
         if (scheduleStrips.isNotEmpty()) {
             synchronized(scheduleStripWatchers) {
@@ -1602,85 +1831,19 @@ class CoreHost(
                 machinePollTimers.values.forEach { it.cancel() }
                 machinePollTimers.clear()
             }
+            for ((k, w) in bulkRouteWaiters.entries.toList()) {
+                if (bulkRouteWaiters.remove(k, w)) w.complete(DirectBulkRouteEffect.getDefaultInstance())
+            }
+            synchronized(retryNowWaiters) {
+                for (list in retryNowWaiters.values) list.forEach { it.complete(false) }
+                retryNowWaiters.clear()
+            }
+            terminalReopenListeners.clear()
             mailbox.close()
             if (ownsScope) scope.cancel()
             synchronized(coreLock) { core.close() }
         }
     }
-}
-
-fun DirectStatus.toRouteReport(): DirectRouteReport {
-    val s = this
-    return DirectRouteReport.newBuilder().apply {
-        enabled = s.enabled
-        capable = s.supported
-        state = when {
-            !s.supported -> DirectRouteState.DIRECT_ROUTE_STATE_UNSUPPORTED
-            !s.enabled || s.stage == DirectStage.OFF -> DirectRouteState.DIRECT_ROUTE_STATE_NONE
-            s.stage == DirectStage.TRYING -> DirectRouteState.DIRECT_ROUTE_STATE_CONNECTING
-            s.stage == DirectStage.CONNECTED_RELAY || s.stage == DirectStage.DIRECT_ACTIVE ->
-                DirectRouteState.DIRECT_ROUTE_STATE_CONNECTED
-            s.reason == DirectFailReason.PEER_UNSUPPORTED -> DirectRouteState.DIRECT_ROUTE_STATE_UNSUPPORTED
-            else -> DirectRouteState.DIRECT_ROUTE_STATE_NONE
-        }
-        setReason(
-            when {
-                !s.enabled || s.stage == DirectStage.OFF -> DirectRouteReason.DIRECT_ROUTE_REASON_DISABLED
-                s.reason == DirectFailReason.PEER_UNSUPPORTED -> DirectRouteReason.DIRECT_ROUTE_REASON_PEER_UNSUPPORTED
-                s.reason == DirectFailReason.NO_RESPONSE -> DirectRouteReason.DIRECT_ROUTE_REASON_NO_RESPONSE
-                s.reason == DirectFailReason.NO_TRAVERSAL -> DirectRouteReason.DIRECT_ROUTE_REASON_NO_TRAVERSAL
-                s.reason == DirectFailReason.FAILED -> DirectRouteReason.DIRECT_ROUTE_REASON_FAILED
-                s.reason == DirectFailReason.AT_CAP -> DirectRouteReason.DIRECT_ROUTE_REASON_AT_CAP
-                s.reason == DirectFailReason.SECURITY_PENDING -> DirectRouteReason.DIRECT_ROUTE_REASON_SECURITY_PENDING
-                s.reason == DirectFailReason.STARTING -> DirectRouteReason.DIRECT_ROUTE_REASON_STARTING
-                else -> DirectRouteReason.DIRECT_ROUTE_REASON_UNSPECIFIED
-            },
-        )
-        fileRoute = if (s.fileDirect) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
-        readRoute = if (s.readDirect) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
-        warming = false
-        compared = s.readSlow || s.fileSlow
-        readSlow = s.readSlow
-        fileSlow = s.fileSlow
-        hasDiagnostics = DirectDiag.lines().isNotEmpty() ||
-            s.reason == DirectFailReason.NO_RESPONSE ||
-            s.reason == DirectFailReason.NO_TRAVERSAL ||
-            s.reason == DirectFailReason.FAILED
-        s.bulkDirectMibPerSec?.let {
-            hasDirectFileMibps = true
-            directFileMibps = it
-        }
-        s.bulkRelayMibPerSec?.let {
-            hasRelayFileMibps = true
-            relayFileMibps = it
-        }
-        s.readDirectMs?.let {
-            hasDirectReadMs = true
-            directReadMs = it.roundToInt()
-        }
-        s.readRelayMs?.let {
-            hasRelayReadMs = true
-            relayReadMs = it.roundToInt()
-        }
-        val activeMs = when {
-            s.readDirect -> s.readDirectMs
-            s.stage == DirectStage.CONNECTED_RELAY || s.stage == DirectStage.DIRECT_ACTIVE -> s.readRelayMs
-            else -> null
-        }
-        activeMs?.let {
-            hasActiveRttMs = true
-            activeRttMs = it.roundToInt()
-        }
-    }.build()
-}
-
-fun buildDirectViews(online: Boolean, prefEnabled: Boolean, status: DirectStatus): DirectViewsResponse {
-    val req = DirectViewsRequest.newBuilder()
-        .setOnline(online)
-        .setPrefEnabled(prefEnabled)
-        .setReport(status.toRouteReport())
-        .build()
-    return DirectViewsResponse.parseFrom(Corebind.buildDirectViews(req.toByteArray()))
 }
 
 const val USAGE_RETENTION_DAYS = 90

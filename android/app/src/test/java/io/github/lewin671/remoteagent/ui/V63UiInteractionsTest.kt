@@ -46,11 +46,8 @@ import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
 import io.github.lewin671.remoteagent.core.proto.SessionDockView
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
+import io.github.lewin671.remoteagent.core.proto.SessionDirectChipView
 import io.github.lewin671.remoteagent.core.proto.Text as CoreText
-import io.github.lewin671.remoteagent.core.transport.DirectFailReason
-import io.github.lewin671.remoteagent.core.transport.DirectStage
-import io.github.lewin671.remoteagent.core.transport.DirectStatus
-import io.github.lewin671.remoteagent.core.transport.PeerState
 import io.github.lewin671.remoteagent.data.ThemeMode
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -374,50 +371,47 @@ class V63UiInteractionsTest {
     @Test
     fun sessionTopBarDirectBadgeOpensPopoverSurvivesRelayFallbackAndNavigatesToConnection() {
         val baseVm = ScreenGoldenLoader.sessionView("session_approval_flow", "pendingApprovalDock")
-        val directPeer = PeerState(
-            reachable = true,
-            ready = true,
-            directStatus = DirectStatus(
-                supported = true,
-                enabled = true,
-                stage = DirectStage.DIRECT_ACTIVE,
-                readDirect = true,
-                fileDirect = true,
-                readDirectMs = 14.0,
-            ),
-        )
-        val relayPeer = PeerState(
-            reachable = true,
-            ready = true,
-            directStatus = DirectStatus(
-                supported = true,
-                enabled = true,
-                stage = DirectStage.UNCONNECTED,
-                reason = DirectFailReason.NO_TRAVERSAL,
-            ),
-        )
-        val directState = RemoteState(
+        val state = RemoteState(
             conn = ConnState.ONLINE,
             link = Link.ONLINE,
             loaded = true,
             synced = true,
-            machines = mapOf("m1" to MachineView("m1", online = true, lastSeenMs = 0L, linkState = directPeer)),
-        )
-        val relayState = directState.copy(
-            machines = mapOf("m1" to MachineView("m1", online = true, lastSeenMs = 0L, linkState = relayPeer)),
+            machines = mapOf("m1" to MachineView("m1", online = true, lastSeenMs = 0L)),
         )
         val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), Api.defaultHttp())
         var connectionOpened = ""
         val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {}, deviceConnection = { connectionOpened = it })
-        val header = baseVm.header.toBuilder().setMachineId("m1").build()
-        val vm = baseVm.toBuilder().setHeader(header).build()
+        val directChip = SessionDirectChipView.newBuilder()
+            .setVisible(true)
+            .setActive(true)
+            .setReadDirect(true)
+            .setFileDirect(true)
+            .setLabelText(coreLit("直连"))
+            .setPopoverTitle(coreLit("已通过直连连接到电脑 · 14 ms"))
+            .setPopoverBody(coreLit("加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。"))
+            .setPopoverFoot(coreLit("直连稳定"))
+            .build()
+        val directHeader = baseVm.header.toBuilder()
+            .setMachineId("m1")
+            .setComputerOnline(true)
+            .setComputerUnlinked(false)
+            .setDirectChip(directChip)
+            .build()
+        val directVm = baseVm.toBuilder().setHeader(directHeader).build()
+        val relayHeader = baseVm.header.toBuilder()
+            .setMachineId("m1")
+            .setComputerOnline(true)
+            .setComputerUnlinked(false)
+            .clearDirectChip()
+            .build()
+        val relayVm = baseVm.toBuilder().setHeader(relayHeader).build()
         try {
-            remote.showForTest(directState, sessions = mapOf(vm.sessionId to vm))
+            remote.showForTest(state, sessions = mapOf(directVm.sessionId to directVm))
             ui.setContent {
                 RaTheme(ThemeMode.LIGHT) {
                     CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                         Box(Modifier.fillMaxSize()) {
-                            SessionScreen(vm.sessionId)
+                            SessionScreen(directVm.sessionId)
                         }
                     }
                 }
@@ -428,7 +422,7 @@ class V63UiInteractionsTest {
             ui.onNodeWithText("加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。").assertIsDisplayed()
 
             // Mid-open drop to relay: popover remains open and reflects relay fallback copy.
-            ui.runOnIdle { remote.showForTest(relayState, sessions = mapOf(vm.sessionId to vm)) }
+            ui.runOnIdle { remote.showForTest(state, sessions = mapOf(relayVm.sessionId to relayVm)) }
             ui.waitForIdle()
             ui.onNodeWithText("已切回中继").assertIsDisplayed()
 

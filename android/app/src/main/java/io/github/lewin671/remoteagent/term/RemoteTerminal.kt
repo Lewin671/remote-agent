@@ -17,17 +17,17 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.TermConn
 import io.github.lewin671.remoteagent.core.TermListener
-import io.github.lewin671.remoteagent.core.transport.TerminalRecovery
+import io.github.lewin671.remoteagent.core.proto.TerminalStreamEventKind
 import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.proto.TerminalFrame
 import io.github.lewin671.remoteagent.proto.TerminalResize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * A session's terminal: a Termux emulator fed by the remote byte stream
@@ -37,14 +37,11 @@ import java.io.ByteArrayOutputStream
  * stream is dropped and reopened for a fresh snapshot rather than skipping
  * bytes.
  */
-class RemoteTerminal internal constructor(
+class RemoteTerminal(
     private val remote: Remote,
     private val sessionId: String,
     private val scope: CoroutineScope,
-    private val recovery: TerminalRecovery,
 ) {
-    constructor(remote: Remote, sessionId: String, scope: CoroutineScope) :
-        this(remote, sessionId, scope, TerminalRecovery(remote::monotonicMillis))
     sealed interface State {
         data object Connecting : State
         /** The screen shows the remote terminal and what is typed goes to it. */
@@ -53,6 +50,10 @@ class RemoteTerminal internal constructor(
     }
 
     val history = TerminalHistory(scope)
+    private val terminalId = "term-${nextId.getAndIncrement()}"
+    private var unsubReopen: (() -> Unit)? = null
+    @Volatile private var active = false
+    @Volatile private var liveNotified = false
     fun loadHistory(fresh: Boolean = false) {
         if (_state.value != State.Live) return
         history.request(fresh) { id, cursor ->
@@ -94,8 +95,6 @@ class RemoteTerminal internal constructor(
     private var autoFit = false
     private var released = false
     private var frames = TerminalFrames(MAX_BACKLOG)
-    private var reopenJob: Job? = null
-    private var stabilityJob: Job? = null
 
     val session = TerminalSession(10000, SessionClient(), object : TerminalSession.Sink {
         override fun onInput(data: ByteArray) = send(data)
@@ -103,70 +102,42 @@ class RemoteTerminal internal constructor(
     })
 
     fun connectIfNeeded() {
-        if (_state.value is State.Closed || (conn == null && job?.isActive != true)) {
-            resumeConnect()
+        if (conn != null || job?.isActive == true) return
+        if (!active || _state.value !is State.Closed) {
+            connect()
         }
     }
 
     fun connect() {
-        reopenJob?.cancel(); reopenJob = null
-        stabilityJob?.cancel(); stabilityJob = null
-        recovery.reset()
+        active = true
+        ensureReopenSubscription()
+        remote.coreHost.sendTerminalStream(terminalId, TerminalStreamEventKind.TERMINAL_STREAM_EVENT_KIND_MANUAL_RECONNECT, false)
         openAttempt()
     }
 
-    private fun resumeConnect() {
-        if (reopenJob?.isActive == true) return
-        if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) { close(); return }
-        scheduleTakeOrDelay(generation)
-    }
-
-    private fun scheduleReopen(expectedGen: Int) {
-        if (expectedGen != generation || reopenJob?.isActive == true) return
-        if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) return
-        stabilityJob?.cancel(); stabilityJob = null
-        recovery.recordFailureIfUnstabilized()
-        scheduleTakeOrDelay(expectedGen)
-    }
-
-    private fun scheduleTakeOrDelay(expectedGen: Int) {
-        if (expectedGen != generation || reopenJob?.isActive == true) return
-        if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) return
-        val waitMs: Long = recovery.takeOrDelayMs() ?: run {
-            openAttempt()
-            return
-        }
-        val nextGen = ++generation
-        frames.close()
-        val previous = conn
-        conn = null
-        job?.cancel()
-        previous?.close()
-        if (_state.value !is State.Closed) {
-            _state.value = State.Closed(UiMessages.terminalAndroidClosed().messageText())
-        }
-        reopenJob = scope.launch {
-            var pendingDelay: Long = waitMs
-            while (pendingDelay > 0L) {
-                delay(pendingDelay)
-                if (nextGen != generation) return@launch
-                if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) return@launch
-                val nextWait = recovery.takeOrDelayMs()
-                if (nextWait == null) break
-                pendingDelay = nextWait
-            }
-            main.post {
-                reopenJob = null
-                if (nextGen == generation) openAttempt()
+    private fun ensureReopenSubscription() {
+        if (unsubReopen == null) {
+            unsubReopen = remote.coreHost.onTerminalReopen(terminalId) {
+                main.post {
+                    if (active) openAttempt()
+                }
             }
         }
+    }
+
+    private fun reportClosed(opened: Boolean) {
+        if (!active) return
+        val wasOpened = opened || liveNotified
+        liveNotified = false
+        remote.coreHost.sendTerminalStream(terminalId, TerminalStreamEventKind.TERMINAL_STREAM_EVENT_KIND_CLOSED, wasOpened)
     }
 
     private fun openAttempt() {
-        reopenJob?.cancel(); reopenJob = null
-        stabilityJob?.cancel(); stabilityJob = null
         history.close()
         if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) { close(); return }
+        active = true
+        ensureReopenSubscription()
+        liveNotified = false
         job?.cancel()
         val previous = conn
         conn = null
@@ -186,8 +157,12 @@ class RemoteTerminal internal constructor(
                 TerminalFrames.Offer.SCHEDULE -> main.postDelayed({ flush() }, FRAME_INTERVAL_MS)
                 TerminalFrames.Offer.OVERFLOW -> main.post {
                     if (gen == generation) {
+                        val wasOpened = conn != null
                         history.disconnected()
-                        scheduleReopen(gen)
+                        conn?.close()
+                        conn = null
+                        _state.value = State.Closed(UiMessages.terminalAndroidClosed().messageText())
+                        reportClosed(wasOpened)
                     }
                 }
                 else -> {}
@@ -213,8 +188,8 @@ class RemoteTerminal internal constructor(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 if (gen == generation) {
-                    recovery.recordFailureIfUnstabilized()
                     _state.value = State.Closed(displayError(e).messageText())
+                    reportClosed(false)
                 }
             }
         }
@@ -258,12 +233,10 @@ class RemoteTerminal internal constructor(
                 if (_state.value !is State.Closed) {
                     val opened = conn != null
                     _state.value = State.Closed(f.closed.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.terminalAndroidClosed().messageText())
-                    // A real leg can fail after the main path is already ready.
-                    // Opening failures have no connection and do not spin here.
                     if (opened) {
                         val gen = generation
                         main.post {
-                            if (gen == generation) scheduleReopen(gen)
+                            if (gen == generation) reportClosed(true)
                         }
                     }
                 }
@@ -303,18 +276,9 @@ class RemoteTerminal internal constructor(
         if (!pictured || conn == null) return
         if (_state.value == State.Connecting) _state.value = State.Live
         fitOnOpen()
-        if (stabilityJob?.isActive != true) {
-            val liveGen = generation
-            stabilityJob = scope.launch {
-                delay(5_000L)
-                if (liveGen == generation && _state.value == State.Live) {
-                    main.post {
-                        if (liveGen == generation && _state.value == State.Live) {
-                            recovery.onStabilized()
-                        }
-                    }
-                }
-            }
+        if (!liveNotified) {
+            liveNotified = true
+            remote.coreHost.sendTerminalStream(terminalId, TerminalStreamEventKind.TERMINAL_STREAM_EVENT_KIND_LIVE, true)
         }
     }
 
@@ -336,8 +300,11 @@ class RemoteTerminal internal constructor(
     }
 
     fun close() {
-        reopenJob?.cancel(); reopenJob = null
-        stabilityJob?.cancel(); stabilityJob = null
+        active = false
+        liveNotified = false
+        unsubReopen?.invoke()
+        unsubReopen = null
+        remote.coreHost.sendTerminalStream(terminalId, TerminalStreamEventKind.TERMINAL_STREAM_EVENT_KIND_DISPOSED, false)
         history.disconnected()
         generation++
         frames.close()
@@ -408,6 +375,7 @@ class RemoteTerminal internal constructor(
     }
 
     companion object {
+        private val nextId = AtomicInteger(1)
         /** Bytes received but not yet shown before the stream is restarted. */
         const val MAX_BACKLOG = 2L * 1024 * 1024
         private const val FRAME_INTERVAL_MS = 33L

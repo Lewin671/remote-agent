@@ -14,10 +14,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CommandException
+import io.github.lewin671.remoteagent.core.proto.DirectPathChoice
+import io.github.lewin671.remoteagent.core.proto.DirectRouteState
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
-import io.github.lewin671.remoteagent.core.transport.DirectDiag
-import io.github.lewin671.remoteagent.core.transport.DirectStage
-import io.github.lewin671.remoteagent.core.transport.RouteName
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.Command
@@ -116,7 +115,6 @@ class ApprovalLatencyE2ETest {
 
         RaApp.instance.testRtcFactory = AndroidRtcFactory(RaApp.instance)
         RaApp.instance.testStunUrls = listOf("stun:$stunHost:$stunPort")
-        DirectDiag.sink = { android.util.Log.i("DirectDiag", it) }
 
         // Account and pairing, as in the full direct suite.
         ui.waitUntil(30_000) { RaApp.instance.remote.value != null || ui.onAllNodesWithText("创建账户").fetchSemanticsNodes().isNotEmpty() }
@@ -317,25 +315,25 @@ class ApprovalLatencyE2ETest {
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 150).put("resetCount", true))
             val connectStart = System.currentTimeMillis()
             remote.setDirectEnabled(machineId, true)
-            ui.waitUntil(60_000) { remote.peer(machineId)?.directStatus?.stage in setOf(DirectStage.CONNECTED_RELAY, DirectStage.DIRECT_ACTIVE) }
+            ui.waitUntil(60_000) { remote.directRouteReport(machineId).state == DirectRouteState.DIRECT_ROUTE_STATE_CONNECTED }
             delay(700)
-            ui.waitUntil(30_000) { remote.peer(machineId)?.directStatus?.readDirect == true }
+            ui.waitUntil(30_000) { remote.directRouteReport(machineId).readRoute == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT }
             val chunkSize = 768 * 1024
             val f1 = ctrlPost(ctrlBase, "/create-shared-file", JSONObject().put("sessionId", sessionId).put("sizeBytes", 24 * 1024 * 1024).put("seed", 11))
             val fid1 = f1.getString("fileId")
             for (warmIdx in 0 until 96) {
-                if (remote.filePath(machineId) == RouteName.DIRECT) break
+                if (remote.filePath(machineId) == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT) break
                 retryNotSent { remote.getSharedFileChunk(sessionId, fid1, (warmIdx % 32).toLong() * chunkSize) }
             }
-            assertEquals("bulk path must upgrade to direct", RouteName.DIRECT, remote.filePath(machineId))
+            assertEquals("bulk path must upgrade to direct", DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT, remote.filePath(machineId))
             metrics.put("directReadyMs", System.currentTimeMillis() - connectStart)
             ctrlPost(ctrlBase, "/set-relay-delay", JSONObject().put("ms", 0).put("bulkMs", 350).put("resetCount", true))
             delay(3_000) // let the transport settle
 
-            fun status() = remote.peer(machineId)?.directStatus
+            fun isReadDirect() = remote.directRouteReport(machineId).readRoute == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT
             // Direct path up, no bulk load.
             mark("case direct_idle")
-            val idle = (1..rounds).map { approvalRound("idle", it) { "file=${remote.filePath(machineId)} readDirect=${status()?.readDirect}" } }
+            val idle = (1..rounds).map { approvalRound("idle", it) { "file=${remote.filePath(machineId)} readDirect=${isReadDirect()}" } }
             metrics.put("approvalDirectIdleMs", stats(idle))
 
             // Direct path saturated by one bulk worker (the full suite's load).
@@ -363,7 +361,7 @@ class ApprovalLatencyE2ETest {
             }
             delay(300)
             val sat = (1..rounds).map {
-                approvalRound("sat", it) { "file=${remote.filePath(machineId)} readDirect=${status()?.readDirect} bulk=${succeeded.get()}/${attempted.get()}" }
+                approvalRound("sat", it) { "file=${remote.filePath(machineId)} readDirect=${isReadDirect()} bulk=${succeeded.get()}/${attempted.get()}" }
             }
             saturating.set(false)
             worker.cancelAndJoin()

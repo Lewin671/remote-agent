@@ -4698,5 +4698,10 @@
     "path": "internal/daemon/quota_probe.go",
     "literal": "duration_ms",
     "reason": "Structured log message or attribute key for the local daemon log; never rendered to users."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/transport/DirectExecutor.kt",
+    "literal": "closed",
+    "reason": "Internal WebRTC PeerConnection closed token sent to Core Coordinator in DirectPcRemoteSetEvent/DirectPcCandidatesAddedEvent; never rendered to users."
   }
 ]

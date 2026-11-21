@@ -149,8 +149,6 @@ class DeviceSecurityClient(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            val code = (e as? DeviceSecurity.Failure)?.message?.takeIf { it.matches(Regex("[a-z_]{1,24}")) } ?: "-"
-            io.github.lewin671.remoteagent.core.transport.DirectDiag.trace("security sync failed kind=${e::class.simpleName} code=$code budget=$budgetMs")
             onSyncFailed()
             throw e
         }

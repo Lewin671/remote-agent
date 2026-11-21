@@ -2,16 +2,14 @@ package io.github.lewin671.remoteagent.core.transport
 
 import com.google.protobuf.ByteString
 import io.github.lewin671.remoteagent.core.cleanup
-import io.github.lewin671.remoteagent.core.peer.Schema
-import io.github.lewin671.remoteagent.core.peer.Wire
+import io.github.lewin671.remoteagent.core.proto.DirectStateKind
+import io.github.lewin671.remoteagent.core.proto.DirectStatsReport
 import io.github.lewin671.remoteagent.proto.Fragment
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -20,13 +18,55 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 private const val FRAME_BYTES = 16 shl 10
 private const val PAYLOAD_BYTES = FRAME_BYTES - 128
+
+private fun sha256(bytes: ByteArray): ByteArray =
+    MessageDigest.getInstance("SHA-256").digest(bytes)
+
+private fun hexBytes(bytes: ByteArray): String = buildString(bytes.size * 2) {
+    for (b in bytes) append(String.format(Locale.ROOT, "%02x", b.toInt() and 0xff))
+}
+
+private fun decodeStrictUtf8(bytes: ByteArray): String = try {
+    StandardCharsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+        .decode(ByteBuffer.wrap(bytes))
+        .toString()
+} catch (_: Exception) {
+    throw PathChanged()
+}
+
+private val BARE_LF_OR_CR = Regex("""(^|[^\r])\n|\r(?!\n)""")
+
+/** Minimal platform sanity check before calling WebRTC SDP APIs; semantic validation lives in shared/peerwire. */
+internal fun validateMinimalSDP(bytes: ByteArray): String {
+    if (bytes.isEmpty() || bytes.size > 60 * 1024) throw PathChanged()
+    if (bytes.size >= 3 &&
+        bytes[0] == 0xef.toByte() &&
+        bytes[1] == 0xbb.toByte() &&
+        bytes[2] == 0xbf.toByte()
+    ) throw PathChanged()
+    val raw = decodeStrictUtf8(bytes)
+    if (!raw.endsWith("\r\n") ||
+        '\u0000' in raw ||
+        raw.any { it == '\u000B' || it == '\u000C' || it == '\u0085' || it == '\u2028' || it == '\u2029' } ||
+        BARE_LF_OR_CR.containsMatchIn(raw)
+    ) throw PathChanged()
+    if ("m=application " !in raw || "a=fingerprint:sha-256 " !in raw) throw PathChanged()
+    return raw
+}
 
 /** Shared by both PC uses and replacement connections; hints never reset it. */
 internal class DirectBudget(private val maxPeers: Int = 4) {
@@ -97,27 +137,28 @@ internal class DirectBudget(private val maxPeers: Int = 4) {
 
 internal class DirectChannelOptions(
     val peer: String,
-    val connection: ByteArray,
+    val roundId: Long,
     val use: Int,
     val generation: Long,
-    val deadline: Long,
     val budget: DirectBudget,
     val valid: () -> Boolean,
     val stun: List<String>,
     val factory: RtcFactory,
     val candidate: (RtcIceCandidate?) -> Unit,
-    val state: (RtcPeerState) -> Unit,
+    val state: (DirectStateKind, String) -> Unit,
+    val dcState: ((Boolean) -> Unit)? = null,
+    val stunError: ((Int, String) -> Unit)? = null,
     val frame: (ByteArray) -> Unit,
     val closed: () -> Unit,
     val open: (() -> Unit)? = null,
     val probe: ((Double) -> Unit)? = null,
     val clock: () -> Long = System::currentTimeMillis,
-    val monotonic: () -> Long = ::monotonicMillis,
+    val monotonic: () -> Long = { System.nanoTime() / 1_000_000L },
     val dispatcher: CoroutineDispatcher = Dispatchers.Default,
     val receiveDispatcher: CoroutineDispatcher = Dispatchers.Default,
 )
 
-/** Framed DataChannel adapter. SDK objects, SDP and candidates stay below Link. */
+/** Framed DataChannel adapter; signaling, state machine, and routing policy live in Go Core. */
 internal class DirectChannel(private val options: DirectChannelOptions) {
     private class PartialMessage(
         val count: Int,
@@ -128,6 +169,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         val until: Long,
     )
 
+    private val connOwner = options.roundId.toString()
     private val random = SecureRandom()
     private val lifetimeJob = SupervisorJob()
     private val scope = CoroutineScope(lifetimeJob + options.dispatcher)
@@ -136,30 +178,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     private val wake = Channel<Unit>(Channel.CONFLATED)
     private val incoming = Channel<ByteArray>(Channel.UNLIMITED)
 
-    private val bornAt = options.clock()
-    @Volatile private var connectedAt = 0L
-    @Volatile private var channelAt = 0L
-    @Volatile private var confirmedAt = 0L
-    @Volatile private var endReason: String? = null
-    @Volatile private var firstProbeAt = 0L
-    @Volatile private var firstEchoAt = 0L
-    @Volatile private var echoes = 0
-
-    /** Records why the channel ends (the first reason wins) and closes it. */
-    private fun closeWhy(reason: String) {
-        if (endReason == null) endReason = reason
-        close()
-    }
-
-    /** The gate that made [valid] false. */
-    private fun gateReason(): String = when {
-        ended -> "ended"
-        !options.valid() -> "not_allowed"
-        else -> "round_deadline"
-    }
-
     @Volatile private var confirmed = false
-    @Volatile private var stunReady = false
     @Volatile private var ended = false
     @Volatile private var lastProbeAt = 0L
     private var missedProbes = 0
@@ -176,11 +195,10 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     private val tickJob: Job
 
     init {
-        val owner = Wire.hex(options.connection)
         if (!options.valid() ||
             options.stun.size > 2 ||
             options.stun.any { url -> !url.startsWith("stun:") || (url.contains("?") && !url.endsWith("?transport=udp")) } ||
-            !options.budget.acquire(options.peer, owner, options.use)
+            !options.budget.acquire(options.peer, connOwner, options.use)
         ) {
             throw PathChanged()
         }
@@ -190,7 +208,6 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 options.stun,
                 object : RtcPeerListener {
                     override fun onIceCandidate(candidate: RtcIceCandidate) {
-                        if (candidate.isSrflx) stunReady = true
                         if (valid()) options.candidate(candidate)
                     }
 
@@ -200,26 +217,43 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
 
                     override fun onConnectionStateChange(state: RtcPeerState) {
                         if (ended) return
-                        if (state == RtcPeerState.CONNECTED && connectedAt == 0L) connectedAt = options.clock()
-                        options.state(state)
+                        options.state(DirectStateKind.DIRECT_STATE_KIND_CONN, state.name.lowercase())
                         if (state == RtcPeerState.FAILED || state == RtcPeerState.CLOSED || state == RtcPeerState.DISCONNECTED) {
-                            closeWhy("pc_" + state.name.lowercase())
+                            close()
                         }
                     }
 
+                    override fun onIceConnectionStateChange(state: String) {
+                        if (!ended) options.state(DirectStateKind.DIRECT_STATE_KIND_ICE, state)
+                    }
+
+                    override fun onIceGatheringStateChange(state: String) {
+                        if (!ended) options.state(DirectStateKind.DIRECT_STATE_KIND_GATHER, state)
+                    }
+
+                    override fun onIceCandidateError(errorCode: Int, address: String) {
+                        if (!ended) options.stunError?.invoke(errorCode, address)
+                    }
+
                     override fun onUnexpectedDataChannel() {
-                        closeWhy("unexpected_data_channel")
+                        close()
                     }
                 },
             )
             val dataListener = object : RtcDataChannelListener {
                 override fun onStateChange() {
                     val s = data.state()
+                    if (ended) return
                     if (s == RtcChannelState.OPEN) {
-                        if (channelAt == 0L) channelAt = options.clock()
+                        options.state(DirectStateKind.DIRECT_STATE_KIND_DC, "open")
+                        options.dcState?.invoke(true)
                         wake.trySend(Unit)
                         options.open?.invoke()
-                    } else if (s == RtcChannelState.CLOSED) closeWhy("dc0_closed")
+                    } else if (s == RtcChannelState.CLOSED) {
+                        options.state(DirectStateKind.DIRECT_STATE_KIND_DC, "closed")
+                        options.dcState?.invoke(false)
+                        close()
+                    }
                 }
 
                 override fun onBufferedAmountChange(previousAmount: Long) {
@@ -229,7 +263,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 override fun onMessage(data: ByteArray) {
                     if (!valid()) return
                     if (data.size > FRAME_BYTES) {
-                        closeWhy("frame_too_large")
+                        close()
                         return
                     }
                     incoming.trySend(data)
@@ -237,7 +271,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             }
             val probeListener = object : RtcDataChannelListener {
                 override fun onStateChange() {
-                    if (probe.state() == RtcChannelState.CLOSED) closeWhy("dc1_closed")
+                    if (probe.state() == RtcChannelState.CLOSED) close()
                 }
 
                 override fun onBufferedAmountChange(previousAmount: Long) {}
@@ -249,9 +283,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                         reply[0] = 1
                         probe.send(reply, true)
                     } else if (data[0] == 1.toByte()) {
-                        if (firstEchoAt == 0L) firstEchoAt = options.clock()
-                        echoes++
-                        val id = Wire.hex(data.copyOfRange(1, 17))
+                        val id = hexBytes(data.copyOfRange(1, 17))
                         val startNs = probes.remove(id)
                         if (startNs != null) {
                             synchronized(stateLock) { missedProbes = 0 }
@@ -275,7 +307,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 try {
                     receive(msg)
                 } catch (_: Exception) {
-                    closeWhy("receive_error")
+                    close()
                     break
                 }
             }
@@ -285,7 +317,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             while (isActive && !ended) {
                 delay(100)
                 if (!valid() || (confirmed && (data.state() == RtcChannelState.CLOSED || probe.state() == RtcChannelState.CLOSED))) {
-                    closeWhy(if (!valid()) gateReason() else "channel_closed")
+                    close()
                     return@launch
                 }
                 val now = options.monotonic()
@@ -309,7 +341,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     }
                 }
                 if (tooManyMissed) {
-                    closeWhy("probes_missed")
+                    close()
                     return@launch
                 }
                 if (ready && probe.state() == RtcChannelState.OPEN && now - lastProbeAt >= 1000L) {
@@ -317,36 +349,30 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     val raw = ByteArray(17)
                     random.nextBytes(raw)
                     raw[0] = 0
-                    if (firstProbeAt == 0L) firstProbeAt = options.clock()
-                    probes[Wire.hex(raw.copyOfRange(1, 17))] = System.nanoTime()
-                    probe.send(raw, true)
+                    probes[hexBytes(raw.copyOfRange(1, 17))] = System.nanoTime()
+                    if (!probe.send(raw, true)) {
+                        close()
+                        return@launch
+                    }
                 }
             }
         }
     }
 
-    private val connOwner = Wire.hex(options.connection)
-
-    private fun valid(): Boolean = !ended && options.valid() && (confirmed || options.clock() < options.deadline)
+    private fun valid(): Boolean = !ended && options.valid()
 
     val ready: Boolean
         get() = confirmed && valid() && data.state() == RtcChannelState.OPEN
 
-    val traversalReady: Boolean
-        get() = stunReady
-
     val queuedBytes: Long
         get() = data.bufferedAmount()
-
-    val aborted: Boolean
-        get() = ended
 
     suspend fun description(offer: Boolean, restart: Boolean = false): ByteArray {
         if (!valid()) throw PathChanged()
         val sdp = if (offer) pc.createOffer(restart) else pc.createAnswer()
         if (!valid() || sdp.isEmpty()) throw PathChanged()
-        val raw = Wire.utf8(sdp)
-        io.github.lewin671.remoteagent.core.peer.Sdp.inspectSDP(raw)
+        val raw = sdp.toByteArray(StandardCharsets.UTF_8)
+        validateMinimalSDP(raw)
         pc.setLocalDescription(offer, sdp)
         if (!valid()) throw PathChanged()
         return raw
@@ -354,8 +380,8 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
 
     suspend fun remote(raw: ByteArray, offer: Boolean) {
         if (!valid()) throw PathChanged()
-        io.github.lewin671.remoteagent.core.peer.Sdp.inspectSDP(raw)
-        pc.setRemoteDescription(offer, Wire.text(raw))
+        val sdp = validateMinimalSDP(raw)
+        pc.setRemoteDescription(offer, sdp)
         if (!valid()) throw PathChanged()
     }
 
@@ -368,11 +394,20 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     fun confirm() {
         val queued = synchronized(stateLock) {
             if (!valid()) return
-            if (confirmedAt == 0L) confirmedAt = options.clock()
             confirmed = true
             waiting.toList().also { waiting.clear() }
         }
         for (raw in queued) deliver(raw)
+    }
+
+    suspend fun readStats(): DirectStatsReport {
+        val report = runCatching { pc.readStats() }.getOrDefault(DirectStatsReport.getDefaultInstance())
+        return if (report.dcState.isNotEmpty()) {
+            report
+        } else {
+            val dcState = runCatching { data.state().name.lowercase() }.getOrDefault("")
+            if (dcState.isNotEmpty()) report.toBuilder().setDcState(dcState).build() else report
+        }
     }
 
     suspend fun write(raw: ByteArray, handoff: () -> Unit) {
@@ -397,7 +432,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
     }
 
     private suspend fun writeNow(raw: ByteArray, handoff: () -> Unit) {
-        val hash = Wire.hash(raw)
+        val hash = sha256(raw)
         val id = ByteArray(16)
         random.nextBytes(id)
         val count = (raw.size + PAYLOAD_BYTES - 1) / PAYLOAD_BYTES
@@ -428,15 +463,31 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             }
             if (index == 0) handoff()
             if (!data.send(frame, true)) {
-                closeWhy("send_failed")
+                close()
                 throw PathChanged()
             }
         }
     }
 
+    private fun hasUnknownFragmentFields(raw: ByteArray): Boolean {
+        val input = com.google.protobuf.CodedInputStream.newInstance(raw)
+        while (true) {
+            val tag = input.readTag()
+            if (tag == 0) return false
+            val field = com.google.protobuf.WireFormat.getTagFieldNumber(tag)
+            val wire = com.google.protobuf.WireFormat.getTagWireType(tag)
+            val ok = when (field) {
+                1, 5, 7 -> wire == com.google.protobuf.WireFormat.WIRETYPE_LENGTH_DELIMITED
+                2, 3, 4, 6 -> wire == com.google.protobuf.WireFormat.WIRETYPE_VARINT
+                else -> false
+            }
+            if (!ok || !input.skipField(tag)) return true
+        }
+    }
+
     private fun receive(raw: ByteArray) {
         if (!valid()) return
-        Schema.normalize(raw, "Fragment")
+        if (hasUnknownFragmentFields(raw)) return
         val frame = Fragment.parseFrom(raw)
         if (frame.messageId.size() != 16 ||
             frame.ciphertextSha256.size() != 32 ||
@@ -447,7 +498,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             frame.fragment.isEmpty
         ) return
 
-        val key = Wire.hex(frame.messageId.toByteArray())
+        val key = hexBytes(frame.messageId.toByteArray())
         val fragBytes = frame.fragment.toByteArray()
         val msgHash = frame.ciphertextSha256.toByteArray()
         var completed: ByteArray? = null
@@ -495,12 +546,12 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         }
 
         if (mismatch) {
-            closeWhy("fragment_mismatch")
+            close()
             return
         }
         val full = completed ?: return
         val hashValid = try {
-            msgHash.contentEquals(Wire.hash(full))
+            msgHash.contentEquals(sha256(full))
         } catch (e: Exception) {
             options.budget.free(options.peer, 1, full.size, 1)
             throw e
@@ -534,18 +585,11 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         synchronized(stateLock) {
             if (ended) return
             ended = true
-            if (endReason == null) endReason = "closed_by_owner"
             toFreeParts = partial.values.toList()
             partial.clear()
             toFreeWaiting = waiting.toList()
             waiting.clear()
         }
-        val endedAt = options.clock()
-        DirectDiag.note(
-            "attempt use=${options.use} gen=${options.generation} end=$endReason at=${endedAt - bornAt}" +
-                " connected=${DirectDiag.ms(bornAt, connectedAt)} channel=${DirectDiag.ms(bornAt, channelAt)} confirm=${DirectDiag.ms(bornAt, confirmedAt)}" +
-                " probe=${DirectDiag.ms(bornAt, firstProbeAt)} echo=${DirectDiag.ms(bornAt, firstEchoAt)} echoes=$echoes",
-        )
         for (part in toFreeParts) options.budget.free(options.peer, 1, part.bytes, part.parts.size)
         for (raw in toFreeWaiting) options.budget.free(options.peer, 1, raw.size, 1)
         probes.clear()

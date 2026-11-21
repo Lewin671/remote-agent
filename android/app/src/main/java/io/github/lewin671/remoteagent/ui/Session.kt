@@ -80,7 +80,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import kotlin.math.roundToInt
-import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CORE_SESSION_WINDOW_LIMIT
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
@@ -398,15 +397,14 @@ private fun SessionTopBar(
     BackHandler(enabled = taskOwned && !dark) { nav.task(header.machineId, header.scheduledTaskId) }
     val back = { if (taskOwned) nav.task(header.machineId, header.scheduledTaskId) else nav.back() }
 
-    val peer = state.peer(header.machineId)
-    val ds = peer.directStatus
-    val directActive = !header.exited && peer.reachable &&
-        ds.stage == DirectStage.DIRECT_ACTIVE && (ds.readDirect || ds.fileDirect)
+    val online = header.computerOnline && !header.computerUnlinked
+    val chip = if (header.hasDirectChip()) header.directChip else null
+    val directActive = !header.exited && online && chip != null && chip.active
     var directOpen by remember(sid) { mutableStateOf(false) }
-    LaunchedEffect(header.exited, peer.reachable) {
-        if (header.exited || !peer.reachable) directOpen = false
+    LaunchedEffect(header.exited, online) {
+        if (header.exited || !online) directOpen = false
     }
-    val showDirectBadge = !dark && (directActive || directOpen)
+    val showDirectBadge = !dark && ((!header.exited && online && chip?.visible == true) || directOpen)
     val computer = if (header.hasComputerName()) uiText(header.computerName) else machineLabel(state, header.machineId)
 
     Box(Modifier.fillMaxWidth()) {
@@ -449,7 +447,8 @@ private fun SessionTopBar(
                             Text(" · ", style = T.s12, color = sub)
                             Ic(Lucide.Zap, 12.dp, sub)
                             Spacer(Modifier.width(3.dp))
-                            Text(copy(UiMessages.transportDirect()), style = T.s12, color = sub, maxLines = 1)
+                            val label = if (chip != null && chip.hasLabelText()) uiText(chip.labelText).ifEmpty { copy(UiMessages.transportDirect()) } else copy(UiMessages.transportDirect())
+                            Text(label, style = T.s12, color = sub, maxLines = 1)
                         }
                     }
                 }
@@ -462,8 +461,6 @@ private fun SessionTopBar(
                 onDismissRequest = { directOpen = false },
                 properties = PopupProperties(focusable = true, dismissOnBackPress = true, dismissOnClickOutside = true),
             ) {
-                val rttDirect = ds.readDirectMs?.roundToInt()
-                val rttRelay = ds.readRelayMs?.roundToInt()
                 val popBg = if (p.dark) p.raised else p.paper
                 Column(
                     Modifier
@@ -484,15 +481,21 @@ private fun SessionTopBar(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 StatusMark(if (isDirect) MarkKind.ONLINE else MarkKind.OFF, color = if (isDirect) p.green else p.faint)
                                 val title = when {
-                                    isDirect && rttDirect != null -> copy(UiMessages.transportPopoverDirectTitleRtt(name = computer, ms = rttDirect.toString()))
+                                    isDirect && chip != null && chip.hasPopoverTitle() -> uiText(chip.popoverTitle)
                                     isDirect -> copy(UiMessages.transportPopoverDirectTitle(name = computer))
-                                    rttRelay != null -> copy(UiMessages.transportPopoverRelayTitleRtt(name = computer, ms = rttRelay.toString()))
+                                    chip != null && chip.hasPopoverTitle() && !chip.active -> uiText(chip.popoverTitle)
                                     else -> copy(UiMessages.transportPopoverRelayTitle(name = computer))
                                 }
                                 Text(title, style = T.s15b.digits(), color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
+                            val body = when {
+                                isDirect && chip != null && chip.hasPopoverBody() -> uiText(chip.popoverBody)
+                                isDirect -> copy(UiMessages.transportPopoverDirectBody())
+                                chip != null && chip.hasPopoverBody() && !chip.active -> uiText(chip.popoverBody)
+                                else -> copy(UiMessages.transportPopoverRelayBody())
+                            }
                             Text(
-                                copy(if (isDirect) UiMessages.transportPopoverDirectBody() else UiMessages.transportPopoverRelayBody()),
+                                body,
                                 style = T.s13,
                                 color = p.ink2,
                                 modifier = Modifier.padding(top = 6.dp),
@@ -505,9 +508,8 @@ private fun SessionTopBar(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         val footerStatus = when {
-                            !directActive -> copy(UiMessages.transportPopoverSwitchedRelay())
-                            ds.readDirect && !ds.fileDirect -> copy(UiMessages.transportPopoverReadOnly())
-                            ds.fileDirect && !ds.readDirect -> copy(UiMessages.transportPopoverFileOnly())
+                            !directActive -> if (chip != null && !chip.active && chip.hasPopoverFoot()) uiText(chip.popoverFoot) else copy(UiMessages.transportPopoverSwitchedRelay())
+                            chip?.hasPopoverFoot() == true -> uiText(chip.popoverFoot)
                             else -> copy(UiMessages.transportPopoverStable())
                         }
                         Text(footerStatus, style = T.s13, color = p.ink2, modifier = Modifier.weight(1f, fill = false))

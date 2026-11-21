@@ -85,6 +85,7 @@ import io.github.lewin671.remoteagent.core.proto.ConnProbeState
 import io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView
 import io.github.lewin671.remoteagent.core.proto.MachineListCardView
 import io.github.lewin671.remoteagent.core.proto.MachinePollMode
+import io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel
 import io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel
 import io.github.lewin671.remoteagent.core.proto.MachineStatusDot
 import io.github.lewin671.remoteagent.core.proto.NotificationsView
@@ -782,9 +783,11 @@ fun DeviceScreen(
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
+    val scope = rememberCoroutineScope()
     val initialVm = remember(remote, id) { remote.coreHost.snapshotMachineSettingsView(id) }
     val rawVm by remote.machineSettingsView.collectAsState()
     val vm = if (rawVm.machineId == id) rawVm else initialVm
+    val diagVm by remote.coreHost.directDiagnosticsView.collectAsState()
     val remove = rememberAction(authority = true)
     LaunchedEffect(id) { remote.coreHost.openMachineSettings(id) }
     if (vm.showStatusEntry) {
@@ -812,6 +815,7 @@ fun DeviceScreen(
     DeviceScreenContent(
         vm = vm,
         state = state,
+        directDiagnostics = diagVm,
         openDirect = openDirect,
         initialAgent = initialAgent,
         isAuthority = state.isAuthority,
@@ -822,7 +826,10 @@ fun DeviceScreen(
         onOpenQuota = { nav.quota(id) },
         onOpenUsage = { nav.openUsage(id, Agent.AGENT_UNSPECIFIED, "") },
         onToggleDirect = { enabled -> remote.coreHost.updateDirectPreference(id, enabled) },
-        onRetryDirect = { remote.retryDirect(id) },
+        onRetryDirect = { scope.launch { remote.retryDirect(id) } },
+        onRefreshDirectDiag = { remote.coreHost.refreshDirectDiagnostics(id) },
+        onOpenDirectDiag = { remote.coreHost.openDirectDiagnostics(id) },
+        onCloseDirectDiag = { remote.coreHost.closeDirectDiagnostics(id) },
         onOpenStorage = { nav.deviceStorage(id) },
         onOpenProjects = { nav.manageMachineProjects(id) },
         onRetrySettings = { remote.coreHost.openMachineSettings(id) },
@@ -856,6 +863,7 @@ fun DeviceScreen(
 internal fun DeviceScreenContent(
     vm: MachineSettingsViewModel,
     state: RemoteState = RemoteState(),
+    directDiagnostics: DirectDiagnosticsViewModel = DirectDiagnosticsViewModel.getDefaultInstance(),
     openDirect: Boolean = false,
     initialAgent: Agent? = null,
     isAuthority: Boolean = false,
@@ -866,7 +874,10 @@ internal fun DeviceScreenContent(
     onOpenQuota: () -> Unit = {},
     onOpenUsage: () -> Unit = {},
     onToggleDirect: (Boolean) -> Unit = {},
-    onRetryDirect: () -> Boolean = { false },
+    onRetryDirect: () -> Unit = {},
+    onRefreshDirectDiag: () -> Unit = {},
+    onOpenDirectDiag: () -> Unit = {},
+    onCloseDirectDiag: () -> Unit = {},
     onOpenStorage: () -> Unit = {},
     onOpenProjects: (String) -> Unit = {},
     onRetrySettings: () -> Unit = {},
@@ -877,7 +888,6 @@ internal fun DeviceScreenContent(
     onRemove: () -> Unit = {},
     onDeleteRecords: (() -> Unit)? = null,
     onToggleAgent: ((Agent, Boolean) -> Unit)? = null,
-    directDiagLinesOverride: List<String>? = null,
 ) {
     val copy = uiText()
     val p = pal
@@ -1399,10 +1409,13 @@ internal fun DeviceScreenContent(
             machineId = vm.machineId,
             state = state,
             view = vm.connection,
+            diagVm = directDiagnostics,
             onToggle = onToggleDirect,
             onRetry = onRetryDirect,
+            onRefreshDiag = onRefreshDirectDiag,
+            onOpenDiag = onOpenDirectDiag,
+            onCloseDiag = onCloseDirectDiag,
             onClose = { showDirectSheet = false },
-            diagLinesOverride = directDiagLinesOverride,
         )
     }
 

@@ -49,24 +49,22 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.runtime.DisposableEffect
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.transport.DirectDiag
-import io.github.lewin671.remoteagent.core.transport.DirectFailReason
-import io.github.lewin671.remoteagent.core.transport.DirectStage
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupView
+import io.github.lewin671.remoteagent.core.proto.DiagCheckMark
+import io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val IP_PORT_STRIP = Regex("""(\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b|\[[0-9a-fA-F:]+\](?::\d+)?)""")
-
 /**
- * Unified direct-connection sheet/dialog rendered from Core's [ConnectionGroupView] and live
- * [DirectDiag] diagnostics inside [DeviceScreen] (phone modal sheet / wide tablet centered dialog).
+ * Unified direct-connection sheet/dialog rendered strictly from Core's [ConnectionGroupView] and
+ * [DirectDiagnosticsViewModel] inside [DeviceScreen] (phone modal sheet / wide tablet centered dialog).
  */
 private data class PlainDiagCheckRow(
     val mark: MarkKind,
@@ -82,10 +80,13 @@ internal fun DirectConnectionSheet(
     machineId: String,
     state: RemoteState,
     view: ConnectionGroupView,
+    diagVm: DirectDiagnosticsViewModel,
     onToggle: (Boolean) -> Unit,
-    onRetry: () -> Boolean,
+    onRetry: () -> Unit,
+    onRefreshDiag: () -> Unit = {},
+    onOpenDiag: () -> Unit = {},
+    onCloseDiag: () -> Unit = {},
     onClose: () -> Unit,
-    diagLinesOverride: List<String>? = null,
 ) {
     val copy = uiText()
     val p = pal
@@ -104,15 +105,15 @@ internal fun DirectConnectionSheet(
     val clipboard = LocalClipboardManager.current
     var copyFeedback by remember { mutableStateOf(CopyFeedback.IDLE) }
     var cooldown by remember { mutableStateOf(false) }
-    var retryInitiated by remember { mutableStateOf(false) }
     var prevRunning by remember { mutableStateOf(false) }
-    var diagLines by remember(machineId, state, diagLinesOverride) {
-        mutableStateOf(diagLinesOverride ?: DirectDiag.lines())
-    }
 
-    val status = state.machines[machineId]?.pathState?.directStatus
-    val connected = status?.stage == DirectStage.DIRECT_ACTIVE && (status.readDirect || status.fileDirect)
-    val running = status?.stage == DirectStage.TRYING
+    val matchingDiag = diagVm.machineId.isEmpty() || diagVm.machineId == machineId
+    val connected = (matchingDiag && diagVm.connected) ||
+        view.stage == ConnectionGroupStage.CONNECTION_GROUP_STAGE_DIRECT
+    val running = (matchingDiag && diagVm.trying) ||
+        view.stage == ConnectionGroupStage.CONNECTION_GROUP_STAGE_CONNECTING ||
+        view.stage == ConnectionGroupStage.CONNECTION_GROUP_STAGE_MEASURING
+    val peerOutdated = !connected && matchingDiag && diagVm.peerOutdated
     var wasDiagShown by remember(machineId) { mutableStateOf(view.showDiagnosticsEntry) }
     LaunchedEffect(view.showDiagnosticsEntry, connected, view.toggleChecked) {
         if (connected || !view.toggleChecked) {
@@ -122,12 +123,16 @@ internal fun DirectConnectionSheet(
         }
     }
 
-    LaunchedEffect(machineId, running, diagLinesOverride) {
-        diagLines = diagLinesOverride ?: DirectDiag.lines()
+    DisposableEffect(machineId) {
+        onOpenDiag()
+        onDispose { onCloseDiag() }
+    }
+    LaunchedEffect(machineId, running) {
+        onRefreshDiag()
         if (running) {
             while (true) {
                 delay(1000)
-                diagLines = diagLinesOverride ?: DirectDiag.lines()
+                onRefreshDiag()
             }
         }
     }
@@ -137,7 +142,6 @@ internal fun DirectConnectionSheet(
             delay(2000)
             cooldown = false
         }
-        if (connected) retryInitiated = false
         prevRunning = running
     }
     LaunchedEffect(cooldown) {
@@ -153,65 +157,46 @@ internal fun DirectConnectionSheet(
         }
     }
 
-    val peerOutdated = !connected && status?.reason == DirectFailReason.PEER_UNSUPPORTED
-    val noReply = !connected && !peerOutdated && status?.reason == DirectFailReason.NO_RESPONSE
-    val probeBlocked = !connected && !peerOutdated && !noReply &&
-        diagLines.any { it.contains("no_stun", ignoreCase = true) || it.contains("no_local", ignoreCase = true) }
-    val natBlocked = !connected && !peerOutdated && !noReply && !probeBlocked &&
-        (status?.reason == DirectFailReason.NO_TRAVERSAL || status?.stage == DirectStage.UNCONNECTED)
-
-    val title = when {
-        connected -> copy(UiMessages.transportDiagConnectedTitle())
-        peerOutdated -> copy(UiMessages.transportReasonPeerUnsupported())
-        noReply -> copy(UiMessages.transportDiagTitleNoReply())
-        probeBlocked -> copy(UiMessages.transportDiagTitleProbeBlocked())
-        natBlocked -> copy(UiMessages.transportReasonNoTraversal())
-        else -> copy(UiMessages.transportDiagTitleGeneric())
-    }
-    val body = when {
-        connected -> copy(UiMessages.transportDiagConnectedBody())
-        peerOutdated -> copy(UiMessages.transportDiagExplainPeerOld())
-        noReply -> copy(UiMessages.transportDiagExplainNoReply())
-        probeBlocked -> copy(UiMessages.transportDiagExplainProbeBlocked())
-        natBlocked -> copy(UiMessages.transportDiagExplainNat())
-        else -> copy(UiMessages.transportDiagExplainGeneric())
-    }
-
-    val peerCheck = when {
-        peerOutdated -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPeer()), copy(UiMessages.transportDiagPeerOldDesc()), copy(UiMessages.transportDiagStatusPeerOld()))
-        noReply -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPeer()), copy(UiMessages.transportDiagPeerNoReplyDesc()), copy(UiMessages.transportDiagStatusNoReply()))
-        else -> PlainDiagCheckRow(MarkKind.ONLINE, copy(UiMessages.transportDiagCheckPeer()), null, copy(UiMessages.transportDiagStatusOk()))
-    }
-    val pathCheck = when {
-        connected -> PlainDiagCheckRow(MarkKind.ONLINE, copy(UiMessages.transportDiagCheckPath()), null, copy(UiMessages.transportDiagStatusConnected()))
-        running -> PlainDiagCheckRow(MarkKind.RUNNING, copy(UiMessages.transportDiagCheckPath()), null, copy(UiMessages.transportDiagStatusChecking()))
-        peerOutdated || noReply -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPath()), null, copy(UiMessages.transportDiagStatusNotStarted()))
-        probeBlocked -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPath()), copy(UiMessages.transportDiagPathUdpBlocked()), copy(UiMessages.transportDiagStatusBlocked()))
-        natBlocked -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPath()), copy(UiMessages.transportDiagPathNat()), copy(UiMessages.transportDiagStatusBlocked()))
-        else -> PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckPath()), copy(UiMessages.transportDiagPathFailed()), copy(UiMessages.transportDiagStatusBlocked()))
-    }
-    val retryCheck = if (peerOutdated) {
-        PlainDiagCheckRow(MarkKind.OFF, copy(UiMessages.transportDiagCheckRetry()), copy(UiMessages.transportDiagRetryWaitDesc()), copy(UiMessages.transportDiagStatusWaitUpdate()))
+    val title = if (matchingDiag) {
+        uiText(diagVm.titleText).ifEmpty { uiText(diagVm.verdictText) }
+    } else ""
+    val body = if (matchingDiag) {
+        uiText(diagVm.bodyText)
+    } else ""
+    val checks = if (matchingDiag && diagVm.checksList.isNotEmpty()) {
+        diagVm.checksList.map { c ->
+            val mark = when (c.mark) {
+                DiagCheckMark.DIAG_CHECK_MARK_ONLINE -> MarkKind.ONLINE
+                DiagCheckMark.DIAG_CHECK_MARK_RUN -> MarkKind.RUNNING
+                else -> MarkKind.OFF
+            }
+            PlainDiagCheckRow(
+                mark = mark,
+                label = uiText(c.labelText),
+                detail = uiText(c.detailText).takeIf { it.isNotEmpty() },
+                status = uiText(c.statusText),
+            )
+        }
     } else {
-        PlainDiagCheckRow(MarkKind.ONLINE, copy(UiMessages.transportDiagCheckRetry()), copy(UiMessages.transportDiagRetryAutoDesc()), copy(UiMessages.transportDiagStatusEnabled()))
+        emptyList()
     }
-    val checks = listOf(peerCheck, pathCheck, retryCheck)
 
-    val retryDisabled = running || cooldown || connected || peerOutdated || status?.supported == false
+    val canRetryVm = !matchingDiag || diagVm.machineId.isEmpty() || (diagVm.supported && diagVm.canRetry)
+    val retryDisabled = running || cooldown || connected || peerOutdated || !supported || !canRetryVm
     val computerName = machineLabel(state, machineId)
+    val diagLines = if (matchingDiag) diagVm.reportLinesList.map { uiText(it) } else emptyList()
     val reportPayload = remember(title, diagLines, computerName) {
         buildString {
-            appendLine(copy(UiMessages.transportDiagReportTitle()))
-            appendLine(copy(UiMessages.transportDiagReportVerdict(verdict = title)))
-            appendLine("Client: Android ${android.os.Build.VERSION.RELEASE}")
+            if (diagLines.any { it.isNotEmpty() }) {
+                for (line in diagLines) appendLine(line)
+            } else {
+                appendLine(copy(UiMessages.transportDiagReportTitle()))
+                if (title.isNotEmpty()) appendLine(copy(UiMessages.transportDiagReportVerdict(verdict = title)))
+                appendLine("Client: Android ${android.os.Build.VERSION.RELEASE}")
+                appendLine(copy(UiMessages.transportDiagVerdictNone()))
+            }
             if (computerName.isNotEmpty()) appendLine("Computer: $computerName")
             appendLine("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
-            val recent = diagLines.takeLast(3).asReversed()
-            if (recent.isEmpty()) {
-                appendLine(copy(UiMessages.transportDiagVerdictNone()))
-            } else {
-                for (line in recent) appendLine(IP_PORT_STRIP.replace(line, "[redacted]"))
-            }
         }.trim()
     }
 
@@ -237,41 +222,45 @@ internal fun DirectConnectionSheet(
         }
         if (view.showDiagnosticsEntry || (wasDiagShown && running && !connected)) {
             FieldLabel(copy(UiMessages.transportDiagSectionAuto()))
-            Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }.padding(horizontal = 12.dp, vertical = 2.dp)) {
-                Text(body, style = T.s13, color = p.ink2)
+            if (body.isNotEmpty()) {
+                Column(Modifier.semantics { liveRegion = LiveRegionMode.Polite }.padding(horizontal = 12.dp, vertical = 2.dp)) {
+                    Text(body, style = T.s13, color = p.ink2)
+                }
+                Spacer(Modifier.height(6.dp))
             }
-            Spacer(Modifier.height(6.dp))
-            SheetList {
-                checks.forEachIndexed { idx, row ->
-                    Row(
-                        Modifier.fillMaxWidth().heightIn(min = 50.dp)
-                            .then(if (idx > 0) Modifier.topLine(p.sep, 34.dp) else Modifier)
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
-                            .semantics(mergeDescendants = true) {},
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Box(Modifier.width(8.dp), contentAlignment = Alignment.Center) {
-                            StatusMark(row.mark, color = if (row.mark == MarkKind.ONLINE) p.green else if (row.mark == MarkKind.RUNNING) p.ink else p.faint)
+            if (checks.isNotEmpty()) {
+                SheetList {
+                    checks.forEachIndexed { idx, row ->
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 50.dp)
+                                .then(if (idx > 0) Modifier.topLine(p.sep, 34.dp) else Modifier)
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                .semantics(mergeDescendants = true) {},
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Box(Modifier.width(8.dp), contentAlignment = Alignment.Center) {
+                                StatusMark(row.mark, color = if (row.mark == MarkKind.ONLINE) p.green else if (row.mark == MarkKind.RUNNING) p.ink else p.faint)
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(row.label, style = T.s15, color = p.ink)
+                                if (!row.detail.isNullOrEmpty()) Text(row.detail, style = T.s13, color = p.ink2)
+                            }
+                            Text(row.status, style = T.s13, color = p.ink2)
                         }
-                        Column(Modifier.weight(1f)) {
-                            Text(row.label, style = T.s15, color = p.ink)
-                            if (!row.detail.isNullOrEmpty()) Text(row.detail, style = T.s13, color = p.ink2)
-                        }
-                        Text(row.status, style = T.s13, color = p.ink2)
                     }
                 }
+                Spacer(Modifier.height(14.dp))
             }
-            Spacer(Modifier.height(14.dp))
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .disabledAlpha(!retryDisabled)
                     .clip(Radii.Pill)
                     .background(p.btn)
                     .clickable(enabled = !retryDisabled, role = Role.Button) {
-                        retryInitiated = true
-                        if (!onRetry()) cooldown = true
-                        diagLines = diagLinesOverride ?: DirectDiag.lines()
+                        cooldown = true
+                        onRetry()
+                        onRefreshDiag()
                     }
                     .padding(horizontal = 22.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,

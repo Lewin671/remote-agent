@@ -117,7 +117,7 @@ class Remote(
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
     @Volatile private var relayObservation = RemoteState()
-    private val directTransfers = LinkedHashMap<String, UploadKind>()
+    private val resolvedStunUrls = stunUrls ?: DirectExecutor.defaultStunUrls(account.server)
     private val scope = CoroutineScope(SupervisorJob() + this.dispatcher)
     private val usageHydratedMachines = ConcurrentHashMap.newKeySet<String>()
 
@@ -231,77 +231,26 @@ class Remote(
         }
     }
 
-    // --- Direct peer engine & Security ---
+    // --- Direct peer executor & Security ---
 
-    private val _directPeers = MutableStateFlow<Map<String, PeerState>>(emptyMap())
-    private val lastDirectReady = ConcurrentHashMap<String, Boolean>()
-    private val lastDirectReports = ConcurrentHashMap<String, DirectRouteReport>()
+    private val directSecurityLock = Any()
+    private var directSecurityRev = 0L
+    @Volatile private var latestXPrivate: ByteArray? = null
+    @Volatile private var lastDirectSecurity: DirectSecuritySnapshotEvent? = null
 
-    internal val direct: DirectEngine = DirectEngine(
-        account = account,
-        rtcFactory = rtcFactory,
-        preferenceStore = directPrefs,
-        authorize = { security.sync(5_000L); Unit },
-        changed = { if (!closed) scope.launch { if (!closed) onDirectChanged() } },
+    internal val directExecutor: DirectExecutor = DirectExecutor(
+        deviceSeed = { account.deviceSeed },
+        xPrivate = { synchronized(directSecurityLock) { latestXPrivate?.copyOf() } },
+        emit = { ev -> coreHost.dispatch(ev) },
+        onPushedEvent = { machineId, pcId, env, header, size ->
+            handleDirectEvent(machineId, pcId, env, header, size)
+        },
+        factory = rtcFactory,
         clock = clock,
         monotonic = monotonic,
-        stunUrls = stunUrls ?: DirectEngine.defaultStunUrls(account.server),
         dispatcher = directDispatcher,
-        jitter = directJitter ?: { java.util.concurrent.ThreadLocalRandom.current().nextDouble() },
+        bulkReceiveDispatcher = bulkCpuDispatcher,
     )
-
-    @Synchronized
-    private fun onDirectChanged() {
-        if (closed) return
-        val syncState = coreHost.syncStateView.value
-        val seen = HashSet<String>(syncState.machinesList.size)
-        val updatedPeers = LinkedHashMap<String, PeerState>()
-        for (m in syncState.machinesList) {
-            val id = m.machineId
-            seen.add(id)
-            val ready = direct.ready(id, RouteHint.Read)
-            if (lastDirectReady.put(id, ready) != ready) {
-                coreHost.notifyMachineRouteStatus(id, ready)
-            }
-            val base = MachineView(id, m.online, m.lastSeenMs, if (m.hasMeta()) m.meta else null, m.metaRev)
-            updatedPeers[id] = RelayPath.discovery(base).copy(
-                reachable = ready || m.online,
-                relayRequired = !ready,
-                knownOffline = !ready && !m.online,
-                protocolVersion = if (ready) PROTOCOL_VERSION else m.protocolVersion.takeIf { it > 0 },
-                capabilities = direct.capabilities(id) ?: m.meta.takeIf { m.hasMeta() && it.hasCapabilities() }?.capabilities,
-                fileDirect = direct.filePath(id) == RouteName.DIRECT,
-                directStatus = direct.directStatus(id),
-            )
-        }
-        val stale = lastDirectReady.keys.filter { it !in seen }
-        for (id in stale) {
-            if (lastDirectReady.remove(id) == true) {
-                coreHost.notifyMachineRouteStatus(id, false)
-            }
-        }
-        _directPeers.value = updatedPeers
-        publishDirectReports(syncState.machinesList.map { it.machineId })
-    }
-
-    private fun effectiveDirectStatus(machineId: String): io.github.lewin671.remoteagent.core.transport.DirectStatus {
-        val overrideStatus = testStateOverride?.machines?.get(machineId)?.pathState?.directStatus
-            ?: return direct.directStatus(machineId)
-        val enabled = direct.directStatus(machineId).enabled
-        return if (enabled) overrideStatus
-        else overrideStatus.copy(enabled = false, stage = io.github.lewin671.remoteagent.core.transport.DirectStage.OFF)
-    }
-
-    private fun publishDirectReports(machineIds: List<String>) {
-        for (id in machineIds) {
-            val report = effectiveDirectStatus(id).toRouteReport()
-            if (lastDirectReports.put(id, report) != report) {
-                coreHost.reportMachineDirectStatus(id, report)
-            }
-        }
-    }
-
-    fun directStatusReport(machineId: String): DirectRouteReport = effectiveDirectStatus(machineId).toRouteReport()
 
     internal var deviceLink = DeviceLink(RelayPath(
         api = api,
@@ -310,7 +259,7 @@ class Remote(
         renew = { used, _ -> if (used != null) discardToken(used); currentToken() },
         observe = { id ->
             relayObservation.let {
-                val directReady = direct.ready(id, RouteHint.Read)
+                val directReady = coreHost.syncStateView.value.machinesList.firstOrNull { m -> m.machineId == id }?.directReady == true
                 val base = RelayPath.discovery(
                     it.machines[id],
                     ready = directReady || it.conn == ConnState.ONLINE,
@@ -322,20 +271,85 @@ class Remote(
                     relayRequired = !directReady,
                     knownOffline = !directReady && it.machines[id]?.online == false,
                     protocolVersion = if (directReady) PROTOCOL_VERSION else base.protocolVersion,
-                    capabilities = direct.capabilities(id) ?: base.capabilities,
-                    fileDirect = direct.filePath(id) == RouteName.DIRECT,
-                    directStatus = direct.directStatus(id),
+                    capabilities = base.capabilities,
                 )
             }
         },
     ))
 
     fun peer(machineId: String?) = state.value.peer(machineId)
-    fun directEnabled(machineId: String): Boolean = direct.enabled(machineId)
-    fun setDirectEnabled(machineId: String, enabled: Boolean) = direct.setEnabled(machineId, enabled)
-    fun filePath(machineId: String): RouteName = direct.filePath(machineId)
+    fun directEnabled(machineId: String): Boolean =
+        runCatching { directPrefs.isEnabled(account.server, account.deviceId, machineId) }.getOrDefault(true)
+    fun setDirectEnabled(machineId: String, enabled: Boolean) = coreHost.updateDirectPreference(machineId, enabled)
+    fun directRouteReport(machineId: String): DirectRouteReport = coreHost.snapshotDirectDiagnosticsView(machineId).report
+    fun filePath(machineId: String): DirectPathChoice =
+        if (directRouteReport(machineId).fileRoute == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT
+        else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
     fun monotonicMillis(): Long = monotonic()
     @Volatile internal var parseServerFrame: (ByteArray) -> ServerFrame = ServerFrame::parseFrom
+
+    private fun rejectDirectSecurity() {
+        val rejected = DirectSecuritySnapshotEvent.newBuilder().setRejected(true).build()
+        synchronized(directSecurityLock) {
+            directSecurityRev++
+            latestXPrivate = null
+            lastDirectSecurity = rejected
+        }
+        if (!closed) coreHost.dispatchDirectSecuritySnapshot(rejected)
+    }
+
+    private fun emitDirectSecuritySnapshot(record: DeviceSecurity.Record, started: Long) {
+        val rev = synchronized(directSecurityLock) { ++directSecurityRev }
+        val snap = try {
+            val h = record.head
+            val floorLong = record.floor.coerceAtMost(0x7FFF_FFFF_FFFF_FFFFuL).toLong()
+            val at = maxOf(clock(), floorLong)
+            val selfMember = h.core.member(record.memberID)
+            if (!record.member || record.memberID != account.deviceId || !Authority.leaseValid(record, at) || clock() >= started + 20_000L || selfMember == null) {
+                null
+            } else {
+                val xPriv = record.peerBoxKey()
+                val xPub = X25519.publicKey(xPriv)
+                val edPub = device.publicKey
+                if (!edPub.contentEquals(selfMember.ed) || !xPub.contentEquals(selfMember.x)) {
+                    null
+                } else {
+                    val stateHashBytes = DeviceSecurity.stateHash(h)
+                    val b = DirectSecuritySnapshotEvent.newBuilder()
+                        .setMember(true)
+                        .setAccount(record.pin.account)
+                        .setDomain(ByteString.copyFrom(record.pin.domain))
+                        .setHead(stateHashBytes.hex())
+                        .setHeadHash(ByteString.copyFrom(stateHashBytes))
+                        .setEpoch(h.core.epoch.toLong())
+                        .setStartedAtMs(started)
+                        .setLeaseNotAfterMs(record.leaseExpiration())
+                        .setSelfId(selfMember.id)
+                        .setSelfEdPublic(ByteString.copyFrom(selfMember.ed))
+                        .setSelfXPublic(ByteString.copyFrom(selfMember.x))
+                    for (m in h.core.members) {
+                        b.addMembers(
+                            DirectSecurityMember.newBuilder()
+                                .setDeviceId(m.id)
+                                .setEdPublic(ByteString.copyFrom(m.ed))
+                                .setXPublic(ByteString.copyFrom(m.x))
+                                .setIsSelf(m.id == record.memberID),
+                        )
+                    }
+                    b.build() to xPriv
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+        val out = snap?.first ?: DirectSecuritySnapshotEvent.newBuilder().setRejected(true).build()
+        synchronized(directSecurityLock) {
+            if (rev != directSecurityRev || closed) return
+            latestXPrivate = snap?.second
+            lastDirectSecurity = out
+        }
+        coreHost.dispatchDirectSecuritySnapshot(out)
+    }
 
     val security = DeviceSecurityClient(
         securityStorage ?: MissingDeviceSecurityStorage,
@@ -344,12 +358,17 @@ class Remote(
         expectedAccount = account.accountId.ifEmpty { null },
         clock = clock,
         onSync = { record, started ->
-            direct.synced(record, started)
+            emitDirectSecuritySnapshot(record, started)
             pushSecuritySnapshotFromRecord(record, skipIfCoreSync = true)
         },
-        onSyncFailed = { direct.invalidate("sync_failed") },
+        onSyncFailed = { rejectDirectSecurity() },
         onInstall = { record ->
-            direct.install(record)
+            val prev = synchronized(directSecurityLock) { lastDirectSecurity }
+            val headHex = runCatching { DeviceSecurity.stateHash(record.head).hex() }.getOrNull()
+            if (!record.member || (prev != null && !prev.rejected && (record.pin.account != prev.account || headHex != prev.head))) {
+                rejectDirectSecurity()
+            }
+            emitDirectSecuritySnapshot(record, clock())
             pushSecuritySnapshotFromRecord(record, skipIfCoreSync = false)
         },
     ) { after ->
@@ -396,6 +415,7 @@ class Remote(
     val settingsView: StateFlow<SettingsViewModel> get() = coreHost.settingsView
     val machineStatusView: StateFlow<MachineStatusViewModel> get() = coreHost.machineStatusView
     val machineSettingsView: StateFlow<MachineSettingsViewModel> get() = coreHost.machineSettingsView
+    val directDiagnosticsView: StateFlow<DirectDiagnosticsViewModel> get() = coreHost.directDiagnosticsView
     val quotaView: StateFlow<QuotaViewModel> get() = coreHost.quotaView
     val devicesView: StateFlow<DevicesViewModel> get() = coreHost.devicesView
     val clientDetailView: StateFlow<ClientDetailViewModel> get() = coreHost.clientDetailView
@@ -468,33 +488,27 @@ class Remote(
     val state: StateFlow<RemoteState> = _state.asStateFlow()
 
     private fun updateProjectedStateNow() {
-        val next = testStateOverride ?: coreHost.syncStateView.value.toRemoteState(_directPeers.value, networkAvailable)
+        val next = testStateOverride ?: coreHost.syncStateView.value.toRemoteState(networkAvailable)
         relayObservation = next
         _state.value = next
     }
 
     init {
         coreHost.onDirectPreference = { eff ->
-            direct.setEnabled(eff.machineId, eff.enabled)
-            val report = effectiveDirectStatus(eff.machineId).toRouteReport()
-            lastDirectReports[eff.machineId] = report
-            coreHost.reportMachineDirectStatus(eff.machineId, report)
+            runCatching { directPrefs.setEnabled(account.server, account.deviceId, eff.machineId, eff.enabled) }
         }
         coreHost.onRender = { targets ->
             if (io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SYNC_STATE in targets) {
                 updateProjectedStateNow()
-                publishDirectReports(coreHost.syncStateView.value.machinesList.map { it.machineId })
-                syncDirectSubscriptions()
             }
         }
         scope.launch {
             combine(
                 coreHost.syncStateView,
-                _directPeers,
                 _networkAvailableFlow,
                 _testStateFlow,
-            ) { syncView, peers, net, override ->
-                (override ?: syncView.toRemoteState(peers, net)).also { relayObservation = it }
+            ) { syncView, net, override ->
+                (override ?: syncView.toRemoteState(net)).also { relayObservation = it }
             }.collect { _state.value = it }
         }
     }
@@ -532,15 +546,27 @@ class Remote(
     // --- M2 Effect executors ---
 
     private fun wireCoreHost() {
-        direct.setEventHandler { machineId, env, header, size ->
-            handleDirectEvent(machineId, env, header, size)
+        coreHost.onDirectAuthorize = {
+            if (!closed) {
+                scope.launch(authorityJob) {
+                    runCatching { security.sync(5_000L) }
+                }
+            }
         }
+        coreHost.onDirectKeySign = { eff -> scope.launch { directExecutor.keySign(eff) } }
+        coreHost.onDirectKeyAgree = { eff -> scope.launch { directExecutor.keyAgree(eff) } }
+        coreHost.onDirectSignalSend = { eff -> directExecutor.signalSend(eff) }
+        coreHost.onDirectPcCreate = { eff -> scope.launch(directDispatcher) { directExecutor.pcCreate(eff) } }
+        coreHost.onDirectPcDescribe = { eff -> scope.launch(directDispatcher) { directExecutor.pcDescribe(eff) } }
+        coreHost.onDirectPcSetRemote = { eff -> scope.launch(directDispatcher) { directExecutor.pcSetRemote(eff) } }
+        coreHost.onDirectPcAddCandidates = { eff -> scope.launch(directDispatcher) { directExecutor.pcAddCandidates(eff) } }
+        coreHost.onDirectPcConfirm = { eff -> directExecutor.pcConfirm(eff) }
+        coreHost.onDirectPcClose = { eff -> scope.launch(directDispatcher) { directExecutor.pcClose(eff) } }
+        coreHost.onDirectDcReadStats = { eff -> scope.launch(directDispatcher) { directExecutor.dcReadStats(eff) } }
         coreHost.onWatchedSessionsChanged = { ids ->
             watchedSessionIds = ids
-            syncDirectSubscriptions()
         }
         watchedSessionIds = coreHost.watchedSessionIds()
-        syncDirectSubscriptions()
         coreHost.onSaveHomeScope = { eff ->
             homeScopeStore?.writeToken(eff.scopeToken.ifEmpty { encodeHomeScopeToken(account.localKey, eff.scopeKey) })
         }
@@ -900,8 +926,16 @@ class Remote(
                         try {
                             val current = streamMutex.withLock { activeLegId == legId && activeSocket === stream }
                             if (!current || !running) return@launch
-                            if (deliveryBody != null) direct.receive(deliveryBody, stream)
-                            else if (resultBody != null) direct.result(resultBody, stream)
+                            if (deliveryBody != null) {
+                                coreHost.dispatchDirectSignal(deliveryBody)
+                            } else if (resultBody != null) {
+                                val res = PeerFrameResult.parseFrom(resultBody)
+                                coreHost.dispatchDirectSignalDelivery(
+                                    res.frameId.toByteArray(),
+                                    res.statusValue,
+                                    res.retryAfterMs.toLong(),
+                                )
+                            }
                         } catch (_: Exception) {
                         } finally {
                             peerJobs.decrementAndGet()
@@ -944,7 +978,7 @@ class Remote(
         fun sendFrame(refs: List<String> = emptyList(), block: StreamFrameEvent.Builder.() -> Unit) =
             sendEvent(refs) { setStreamFrame(StreamFrameEvent.newBuilder().setLegId(legId).apply(block)) }
 
-        val socket = deviceLink.router.path.openStream(url, listener)
+        val socket = deviceLink.path.openStream(url, listener)
         legJob = scope.launch {
             var notifyClose = true
             try {
@@ -954,7 +988,7 @@ class Remote(
                     when (frame.kindCase) {
                         ServerFrame.KindCase.READY -> {
                             serverAhead = clock() - frame.ready.serverTimeMs > DeviceSecurity.MAX_CLOCK_SKEW.toLong()
-                            direct.attach(socket)
+                            directExecutor.attachLeg(socket)
                             sendEvent { setStreamReady(StreamReadyEvent.newBuilder().setLegId(legId).setServerTimeMs(frame.ready.serverTimeMs)) }
                         }
                         ServerFrame.KindCase.HEARTBEAT -> sendFrame { setHeartbeat(true) }
@@ -1024,7 +1058,7 @@ class Remote(
                 streamError.compareAndSet(null, e)
             } finally {
                 if (closed.compareAndSet(false, true)) {
-                    direct.detach(socket)
+                    directExecutor.detachLeg(socket)
                     cleanup({ socket.cancel() }, { frames.cancel() })
                     val wasCurrent = streamMutex.withLock {
                         if (activeLegId == legId) {
@@ -1079,7 +1113,7 @@ class Remote(
                 null to null
             }
         }
-        toClose.first?.let { direct.detach(it) }
+        toClose.first?.let { directExecutor.detachLeg(it) }
         toClose.second?.cancel()
         toClose.first?.cancel()
     }
@@ -1212,21 +1246,10 @@ class Remote(
         return b.build()
     }
 
-    private fun syncDirectSubscriptions() {
-        val byMachine = LinkedHashMap<String, MutableList<String>>()
-        for (sid in watchedSessionIds) {
-            val machineId = sessionMachineId(sid)
-            if (machineId.isEmpty()) continue
-            val list = byMachine.getOrPut(machineId) { ArrayList() }
-            if (list.size < 4 && sid !in list) list.add(sid)
-        }
-        direct.setWatchedSessions(byMachine)
-    }
-
-    private fun handleDirectEvent(machineId: String, env: Envelope, header: DeviceSecurity.Header, size: Int) {
+    private fun handleDirectEvent(machineId: String, pcId: Long, env: Envelope, header: Header, size: Int) {
         if (closed) return
-        val sid = header.session
-        if (sid.isEmpty() || header.seq == 0uL || header.seq > 0x7FFF_FFFF_FFFF_FFFFuL) return
+        val sid = header.sessionId
+        if (sid.isEmpty() || header.seq <= 0L) return
         if (sid !in watchedSessionIds) return
         if (sessionMachineId(sid) != machineId || header.sender != machineId) return
         if (!sessionKeys.containsKey(sid)) return
@@ -1248,7 +1271,7 @@ class Remote(
         scope.launch {
             try {
                 lock.withLock {
-                    openDirectEvent(machineId, sid, env, header, size)
+                    openDirectEvent(machineId, pcId, sid, env, header.seq, size)
                 }
             } finally {
                 synchronized(directQueueLock) {
@@ -1260,9 +1283,8 @@ class Remote(
         }
     }
 
-    private suspend fun openDirectEvent(machineId: String, sid: String, env: Envelope, header: DeviceSecurity.Header, size: Int) {
+    private suspend fun openDirectEvent(machineId: String, pcId: Long, sid: String, env: Envelope, seq: Long, size: Int) {
         if (closed || sid !in watchedSessionIds || sessionMachineId(sid) != machineId || !sessionKeys.containsKey(sid)) return
-        val seq = header.seq.toLong()
         try {
             ensureEpochForEnvelope(env)
             val (h, ev) = openSecureMessage(
@@ -1284,6 +1306,8 @@ class Remote(
                         DirectEventsReceivedEvent.newBuilder()
                             .setSessionId(sid)
                             .setMachineId(machineId)
+                            .setPcId(pcId)
+                            .setSender(machineId)
                             .addEvents(plain),
                     )
                     .build(),
@@ -1503,7 +1527,6 @@ class Remote(
                     cache?.removeBlob("schedule:$mid")
                     removeUsageBlobs(mid)
                     cache?.removeMachine(mid)
-                    direct.invalidate("machine_removed")
                 }
                 else -> {}
             }
@@ -1700,80 +1723,194 @@ class Remote(
         coreHost.dispatch(CoreEvent.newBuilder().setCommandOutcome(outcome).build())
     }
 
-    private class UnverifiedReplyException(val attemptBound: Boolean) : Exception()
-
-    private class SealedDeliveryResult(
-        val msg: CommandResult,
-        val envelope: Envelope,
-        val attemptBound: Boolean,
-        val hashesMatch: Boolean,
-        val outerMatchesInner: Boolean,
-        val outerOutcome: String,
-        val outerReason: String,
+    private class AttemptOutcome(
+        val outcome: CommandOutcomeEvent,
+        val trusted: Boolean,
+        val elapsedMs: Double,
+        val observedBytes: Long,
+        val ok: Boolean,
+        val msg: CommandResult? = null,
+        val connectError: ConnectException? = null,
+        val refusal: PathRefusal? = null,
+        val otherError: Exception? = null,
+        val handedOff: Boolean = false,
     )
 
-    private suspend fun sendAndOpenCommand(
+    private suspend fun executeCommandLeg(
         machineId: String,
         sessionId: String,
         requestId: String,
+        attemptId: String,
         parsedCmd: Command?,
         authorized: Envelope,
         binding: Pair<ByteArray, ByteArray>,
         prior: Boolean,
-        delivery: PathAttempt,
         bulk: Boolean,
-        tracking: DirectEngine.RouteTracker?,
-    ): SealedDeliveryResult {
-        val startedMs = monotonic()
+        useDirect: Boolean,
+        directPcId: Long,
+        directTimeoutMs: Long,
+    ): AttemptOutcome {
+        var handedOff = false
+        val handoff: () -> Unit = { handedOff = true }
+        val relayAttempt = if (useDirect) null else deviceLink.path.attempt(attemptId, handoff)
         val startedNs = System.nanoTime()
-        delivery.prepare(prior)
-        val res = delivery.send(machineId, authorized)
-        val attemptBound = res.attemptId == delivery.attemptId
-        val (openedHeader, msg) = try {
-            openSecureMessage(
-                res.result,
-                Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machineId, sessionId = sessionId, requestId = requestId),
-                CommandResult::parseFrom,
-                bulk = bulk,
+        fun elapsedMs(): Double = maxOf((System.nanoTime() - startedNs) / 1_000_000.0, 0.01)
+        fun baseOutcome(source: OutcomeSource): CommandOutcomeEvent.Builder =
+            CommandOutcomeEvent.newBuilder()
+                .setRequestId(requestId)
+                .setAttemptId(attemptId)
+                .setSource(source)
+                .setRouteWasDirect(useDirect)
+
+        return try {
+            val res = if (useDirect) {
+                val env = directExecutor.sendRpc(directPcId, requestId, authorized.toByteArray(), directTimeoutMs, handoff)
+                ForwardResponse.newBuilder().setResult(env).setAttemptId(attemptId).build()
+            } else {
+                relayAttempt!!.prepare(prior)
+                relayAttempt.send(machineId, authorized)
+            }
+            val dtMs = elapsedMs()
+            val attemptBound = res.attemptId == attemptId
+            val msg = try {
+                openSecureMessage(
+                    res.result,
+                    Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machineId, sessionId = sessionId, requestId = requestId),
+                    CommandResult::parseFrom,
+                    bulk = bulk,
+                ).second
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                return AttemptOutcome(
+                    outcome = baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
+                        .setAttemptBound(attemptBound)
+                        .setSigned(false)
+                        .setHashesMatch(false)
+                        .setHandedOff(handedOff)
+                        .setElapsedMs(dtMs)
+                        .build(),
+                    trusted = false,
+                    elapsedMs = dtMs,
+                    observedBytes = 0L,
+                    ok = false,
+                    handedOff = handedOff,
+                )
+            }
+            val hashesMatch = msg.requestKeyHash.toByteArray().contentEquals(binding.first) &&
+                msg.payloadHash.toByteArray().contentEquals(binding.second) &&
+                (msg.outcome == "conflict" || msg.conflictKind.isEmpty())
+            val outerMatchesInner = useDirect || (res.outcome == msg.outcome && res.reason == msg.reason)
+            val outerOutcome = if (useDirect) msg.outcome else res.outcome
+            val outerReason = if (useDirect) msg.reason else res.reason
+            val obsBytes = when {
+                parsedCmd?.hasPutImageChunk() == true -> parsedCmd.putImageChunk.data.size().toLong()
+                msg.hasGetSharedFileChunk() -> msg.getSharedFileChunk.data.size().toLong()
+                else -> 0L
+            }
+            val category = verifiedOutcome(msg, binding.first, binding.second, outerOutcome, outerReason)
+            val trusted = hashesMatch && attemptBound && outerMatchesInner && category != Outcome.UNKNOWN
+            val ok = trusted && msg.errorCode.isEmpty() && category == Outcome.EXECUTED
+            if (ok &&
+                parsedCmd?.hasSchedule() == true &&
+                parsedCmd.schedule.operation == "list" &&
+                msg.hasSchedule() &&
+                currentScheduleMember(machineId)
+            ) {
+                cache?.putBlob("schedule:$machineId", scheduleSnapshot(requestId, res.result))
+                if (!currentScheduleMember(machineId)) cache?.removeBlob("schedule:$machineId")
+            }
+            AttemptOutcome(
+                outcome = baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
+                    .setAttemptBound(attemptBound)
+                    .setSigned(true)
+                    .setHashesMatch(hashesMatch)
+                    .setOuterMatchesInner(outerMatchesInner)
+                    .setOuterOutcome(outerOutcome)
+                    .setOuterReason(outerReason)
+                    .setResult(msg)
+                    .setHandedOff(handedOff)
+                    .setElapsedMs(dtMs)
+                    .setObservedBytes(obsBytes)
+                    .build(),
+                trusted = trusted,
+                elapsedMs = dtMs,
+                observedBytes = obsBytes,
+                ok = ok,
+                msg = msg,
+                handedOff = handedOff,
             )
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
-            throw UnverifiedReplyException(attemptBound)
-        }
-        val hashesMatch =
-            openedHeader.kind == PayloadKind.PAYLOAD_KIND_COMMAND_RESULT &&
-                msg.requestKeyHash.toByteArray().contentEquals(binding.first) &&
-                msg.payloadHash.toByteArray().contentEquals(binding.second) &&
-                (msg.outcome == "conflict" || msg.conflictKind.isEmpty())
-        val outerMatchesInner = delivery.direct || (res.outcome == msg.outcome && res.reason == msg.reason)
-        val outerOutcome = if (delivery.direct) msg.outcome else res.outcome
-        val outerReason = if (delivery.direct) msg.reason else res.reason
-        if (tracking != null && hashesMatch && attemptBound && outerMatchesInner && msg.errorCode.isEmpty() &&
-            verifiedOutcome(msg, binding.first, binding.second, outerOutcome, outerReason) == Outcome.EXECUTED
-        ) {
-            val bytes = when {
-                parsedCmd?.hasPutImageChunk() == true -> parsedCmd.putImageChunk.data.size()
-                msg.hasGetSharedFileChunk() -> msg.getSharedFileChunk.data.size()
-                else -> 0
+        } catch (_: PathChanged) {
+            val dtMs = elapsedMs()
+            AttemptOutcome(
+                outcome = baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
+                    .setNotForwarded(!handedOff)
+                    .setHandedOff(handedOff)
+                    .setTransportCode("path_changed")
+                    .setElapsedMs(dtMs)
+                    .build(),
+                trusted = false,
+                elapsedMs = dtMs,
+                observedBytes = 0L,
+                ok = false,
+                otherError = PathChanged(),
+                handedOff = handedOff,
+            )
+        } catch (ce: ConnectException) {
+            val dtMs = elapsedMs()
+            val refusal = relayAttempt?.refusal(ce)
+            val ev = if (refusal != null) {
+                baseOutcome(OutcomeSource.OUTCOME_SOURCE_SERVER).setNotForwarded(true).setAttemptBound(true)
+                    .setOuterReason(refusal.reason).setTransportCode(mapConnectCode(ce.code))
+                    .setTransportDetail(ce.message ?: "").setElapsedMs(dtMs).build()
+            } else {
+                baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handedOff).setHandedOff(handedOff)
+                    .setTransportCode(if (unresolvedHost(ce)) "unresolved_host" else mapConnectCode(ce.code))
+                    .setTransportDetail(ce.message ?: "").setElapsedMs(dtMs).build()
             }
-            val monoMs = maxOf((monotonic() - startedMs).toDouble(), (System.nanoTime() - startedNs) / 1_000_000.0, 0.01)
-            tracking.observe(delivery.direct, bytes, monoMs)
+            AttemptOutcome(
+                outcome = ev,
+                trusted = false,
+                elapsedMs = dtMs,
+                observedBytes = 0L,
+                ok = false,
+                connectError = ce,
+                refusal = refusal,
+                handedOff = handedOff,
+            )
+        } catch (e: IOException) {
+            val dtMs = elapsedMs()
+            AttemptOutcome(
+                outcome = baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handedOff).setHandedOff(handedOff)
+                    .setTransportCode(if (unresolvedHost(e)) "unresolved_host" else "network")
+                    .setTransportDetail(e.message ?: e.javaClass.simpleName).setElapsedMs(dtMs).build(),
+                trusted = false,
+                elapsedMs = dtMs,
+                observedBytes = 0L,
+                ok = false,
+                otherError = e,
+                handedOff = handedOff,
+            )
+        } catch (e: Exception) {
+            val dtMs = elapsedMs()
+            AttemptOutcome(
+                outcome = baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
+                    .setNotForwarded(!handedOff)
+                    .setHandedOff(handedOff)
+                    .setTransportCode("failed_precondition")
+                    .setTransportDetail(e.message ?: e.javaClass.simpleName)
+                    .setElapsedMs(dtMs)
+                    .build(),
+                trusted = false,
+                elapsedMs = dtMs,
+                observedBytes = 0L,
+                ok = false,
+                otherError = e,
+                handedOff = handedOff,
+            )
         }
-        return SealedDeliveryResult(msg, res.result, attemptBound, hashesMatch, outerMatchesInner, outerOutcome, outerReason)
-    }
-
-    private class LegOutcomeException(val outcome: CommandOutcomeEvent) : Exception()
-
-    private fun isInteractiveCommand(cmd: Command?): Boolean = when (cmd?.kindCase) {
-        Command.KindCase.SEND,
-        Command.KindCase.INTERRUPT,
-        Command.KindCase.RESOLVE_APPROVAL,
-        Command.KindCase.ANSWER_QUESTION,
-        Command.KindCase.ANSWER_PLAN,
-        Command.KindCase.CANCEL_INPUT,
-        Command.KindCase.RESUME_INPUT -> true
-        else -> false
     }
 
     internal suspend fun dispatchSingleCommand(
@@ -1791,13 +1928,7 @@ class Remote(
 
         val cmdBytes = eff.commandBytes.toByteArray()
         val parsedCmd = runCatching { Command.parseFrom(cmdBytes) }.getOrNull()
-        val routeHint = when (eff.routeHint) {
-            CommandRouteHint.COMMAND_ROUTE_HINT_READ -> RouteHint.Read
-            CommandRouteHint.COMMAND_ROUTE_HINT_BULK ->
-                RouteHint.Bulk(eff.bulkFileKey, if (eff.bulkUpload) UploadKind.FILE else null, eff.bulkBytes.toInt())
-            else -> null
-        }
-        val bulk = eff.bulkUpload || routeHint is RouteHint.Bulk
+        val bulk = eff.bulkUpload || eff.routeHint == CommandRouteHint.COMMAND_ROUTE_HINT_BULK
         val cpu = if (bulk) bulkCpuDispatcher else cpuDispatcher
 
         if (serverAhead || security.clockSkew) return localFailure("failed_precondition", "clock skew")
@@ -1810,130 +1941,21 @@ class Remote(
             return localFailure("failed_precondition", "lease expired")
         }
 
-        suspend fun executeLeg(delivery: PathAttempt, tracking: DirectEngine.RouteTracker?, handedOffRef: () -> Boolean): Pair<Boolean, CommandOutcomeEvent> {
-            fun baseOutcome(source: OutcomeSource, directRoute: Boolean = delivery.direct) =
-                CommandOutcomeEvent.newBuilder()
-                    .setRequestId(eff.requestId)
-                    .setAttemptId(eff.attemptId)
-                    .setSource(source)
-                    .setRouteWasDirect(directRoute)
-
-            return try {
-                val res = sendAndOpenCommand(
-                    eff.machineId, eff.sessionId, eff.requestId, parsedCmd, authorized, binding,
-                    eff.retryOfUnknown, delivery, bulk, tracking,
-                )
-                val ev = baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
-                    .setAttemptBound(res.attemptBound)
-                    .setSigned(true)
-                    .setHashesMatch(res.hashesMatch)
-                    .setOuterMatchesInner(res.outerMatchesInner)
-                    .setOuterOutcome(res.outerOutcome)
-                    .setOuterReason(res.outerReason)
-                    .setResult(res.msg)
-                    .build()
-                val category = verifiedOutcome(res.msg, binding.first, binding.second, res.outerOutcome, res.outerReason)
-                val trusted = res.hashesMatch && res.attemptBound && res.outerMatchesInner && category != Outcome.UNKNOWN
-                if (trusted &&
-                    parsedCmd?.hasSchedule() == true &&
-                    parsedCmd.schedule.operation == "list" &&
-                    res.msg.hasSchedule() &&
-                    res.msg.errorCode.isEmpty() &&
-                    currentScheduleMember(eff.machineId)
-                ) {
-                    cache?.putBlob("schedule:${eff.machineId}", scheduleSnapshot(eff.requestId, res.envelope))
-                    if (!currentScheduleMember(eff.machineId)) cache?.removeBlob("schedule:${eff.machineId}")
-                }
-                trusted to ev
-            } catch (e: UnverifiedReplyException) {
-                false to baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON).setAttemptBound(e.attemptBound).setSigned(false).setHashesMatch(false).build()
-            } catch (_: PathChanged) {
-                val handed = handedOffRef()
-                false to baseOutcome(if (handed) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
-                    .setNotForwarded(!handed).setTransportCode("path_changed").build()
-            } catch (ce: ConnectException) {
-                val handed = handedOffRef()
-                val refusal = delivery.refusal(ce)
-                val ev = if (refusal != null) {
-                    baseOutcome(OutcomeSource.OUTCOME_SOURCE_SERVER).setNotForwarded(true).setAttemptBound(true)
-                        .setOuterReason(refusal.reason).setTransportCode(mapConnectCode(ce.code)).setTransportDetail(ce.message ?: "").build()
-                } else {
-                    baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handed)
-                        .setTransportCode(if (unresolvedHost(ce)) "unresolved_host" else mapConnectCode(ce.code))
-                        .setTransportDetail(ce.message ?: "").build()
-                }
-                false to ev
-            } catch (e: IOException) {
-                val handed = handedOffRef()
-                false to baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handed)
-                    .setTransportCode(if (unresolvedHost(e)) "unresolved_host" else "network")
-                    .setTransportDetail(e.message ?: e.javaClass.simpleName).build()
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                val handed = handedOffRef()
-                false to baseOutcome(if (handed) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
-                    .setNotForwarded(!handed)
-                    .setTransportCode("failed_precondition")
-                    .setTransportDetail(e.message ?: e.javaClass.simpleName)
-                    .build()
-            }
-        }
-
-        if (!eff.forceRelay && isInteractiveCommand(parsedCmd) && direct.ready(eff.machineId, RouteHint.Read)) {
-            val directHandedOff = java.util.concurrent.atomic.AtomicBoolean(false)
-            val relayHandedOff = java.util.concurrent.atomic.AtomicBoolean(false)
-            val directAttempt = direct.attemptInteractive(eff.machineId, { directHandedOff.set(true) }, attemptId = eff.attemptId)
-            if (directAttempt != null) {
-                val relayAttempt = deviceLink.router.path.attempt(eff.attemptId) { relayHandedOff.set(true) }
-                return try {
-                    deviceLink.router.dual(
-                        primary = {
-                            val (trusted, ev) = executeLeg(directAttempt, null) { directHandedOff.get() }
-                            if (trusted) DualLegResult.Trusted(ev) else DualLegResult.Untrusted(LegOutcomeException(ev))
-                        },
-                        fallback = {
-                            val (trusted, ev) = executeLeg(relayAttempt, null) { relayHandedOff.get() }
-                            if (trusted) DualLegResult.Trusted(ev) else DualLegResult.Untrusted(LegOutcomeException(ev))
-                        },
-                    )
-                } catch (failed: LegOutcomeException) {
-                    val out = failed.outcome
-                    // RelayPath.send invokes handoff() on entry before the HTTP call; a bound NotForwarded refusal
-                    // proves the relay server never forwarded its leg, so only overwrite if Direct also handed off.
-                    val serverNotForwarded =
-                        out.source == OutcomeSource.OUTCOME_SOURCE_SERVER && out.notForwarded && out.attemptBound
-                    val relayPossiblyForwarded = relayHandedOff.get() && !serverNotForwarded
-                    if (directHandedOff.get() || relayPossiblyForwarded) {
-                        val b = out.toBuilder().setNotForwarded(false)
-                        if (out.source == OutcomeSource.OUTCOME_SOURCE_LOCAL || out.source == OutcomeSource.OUTCOME_SOURCE_SERVER) {
-                            b.setSource(OutcomeSource.OUTCOME_SOURCE_TRANSPORT)
-                        }
-                        b.build()
-                    } else {
-                        out
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    val anyHandedOff = directHandedOff.get() || relayHandedOff.get()
-                    CommandOutcomeEvent.newBuilder()
-                        .setRequestId(eff.requestId)
-                        .setAttemptId(eff.attemptId)
-                        .setSource(if (anyHandedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
-                        .setNotForwarded(!anyHandedOff)
-                        .setTransportCode("failed_precondition")
-                        .setTransportDetail(e.message ?: e.javaClass.simpleName)
-                        .build()
-                }
-            }
-        }
-
-        var handedOff = false
-        val handoff: () -> Unit = { handedOff = true }
-        val tracking = routeHint?.let { direct.track(eff.machineId, it) }
-        val directAttempt =
-            if (!eff.forceRelay && routeHint != null) direct.attempt(eff.machineId, routeHint, handoff, attemptId = eff.attemptId) else null
-        val delivery: PathAttempt = directAttempt ?: deviceLink.router.path.attempt(eff.attemptId, handoff)
-        return executeLeg(delivery, tracking) { handedOff }.second
+        val useDirect = eff.routeLeg == CommandRouteLeg.COMMAND_ROUTE_LEG_DIRECT && eff.directPcId > 0L
+        return executeCommandLeg(
+            machineId = eff.machineId,
+            sessionId = eff.sessionId,
+            requestId = eff.requestId,
+            attemptId = eff.attemptId,
+            parsedCmd = parsedCmd,
+            authorized = authorized,
+            binding = binding,
+            prior = eff.retryOfUnknown,
+            bulk = bulk,
+            useDirect = useDirect,
+            directPcId = eff.directPcId,
+            directTimeoutMs = eff.directTimeoutMs,
+        ).outcome
     }
 
     private fun mapConnectCode(code: Code): String = when (code) {
@@ -1947,9 +1969,23 @@ class Remote(
 
     fun start() {
         running = true
-        direct.setForeground(true)
-        onDirectChanged()
         if (!authorityJob.isActive) authorityJob = SupervisorJob(scope.coroutineContext[Job])
+        if (rtcFactory != null) {
+            scope.launch(Dispatchers.Default) { runCatching { rtcFactory.prewarm() } }
+        }
+        coreHost.sendTransportConfig(
+            supported = rtcFactory != null,
+            account = account.accountId,
+            protocolVersion = PROTOCOL_VERSION,
+            stunServers = resolvedStunUrls,
+            platformAgent = "android",
+        )
+        coreHost.sendDirectPreferencesLoaded(
+            runCatching { directPrefs.allEnabled(account.server, account.deviceId) }.getOrDefault(emptyMap()),
+        )
+        synchronized(directSecurityLock) { lastDirectSecurity }?.let {
+            coreHost.dispatchDirectSecuritySnapshot(it)
+        }
         val token = homeScopeStore?.readToken().orEmpty()
         val hmacKey = Keys.deriveKey(account.localKey, "home-scope")
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START, token, hmacKey)
@@ -1959,16 +1995,12 @@ class Remote(
     fun stop() {
         running = false
         authorityJob.cancel()
-        direct.detachAll()
-        direct.setForeground(false)
-        onDirectChanged()
+        directExecutor.detachAll()
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)
         scope.launch { closeStreamLeg(0L) }
     }
 
     fun foregroundChanged(foreground: Boolean) {
-        direct.setForeground(foreground)
-        onDirectChanged()
         coreHost.syncLifecycle(
             if (foreground) SyncLifecycleKind.SYNC_LIFECYCLE_KIND_FOREGROUND
             else SyncLifecycleKind.SYNC_LIFECYCLE_KIND_BACKGROUND,
@@ -1987,12 +2019,13 @@ class Remote(
             inFlightLoginJob?.cancel()
             inFlightLoginJob = null
             security.networkChanged()
-            direct.invalidate("network")
         }
         coreHost.networkChanged(available, signature)
     }
 
-    fun retryDirect(machineId: String): Boolean = direct.retryNow(machineId)
+    suspend fun retryDirect(machineId: String): Boolean = coreHost.retryDirectNow(machineId)
+
+    fun refreshDirectDiagnostics(machineId: String) = coreHost.refreshDirectDiagnostics(machineId)
 
     fun setNetwork(available: Boolean) = networkChanged(if (available) "up" else "none", available)
 
@@ -2027,7 +2060,7 @@ class Remote(
         closed = true
         running = false
         cleanup(
-            { direct.close() },
+            { directExecutor.close() },
             { deviceLink.closeStreams() },
             { security.close() },
             { cache?.close() },
@@ -2068,12 +2101,31 @@ class Remote(
         for ((key, response) in modelLists) {
             models["${key.first}/${key.second.number}"] = CompletableDeferred(response)
         }
+        coreHost.dispatchOnWorker(
+            CoreEvent.newBuilder()
+                .setTransportConfig(
+                    TransportConfigEvent.newBuilder()
+                        .setSupported(rtcFactory != null)
+                        .setAccount(account.accountId)
+                        .setProtocolVersion(PROTOCOL_VERSION)
+                        .addAllStunServers(resolvedStunUrls)
+                        .setPlatformAgent("android"),
+                )
+                .build(),
+        )
+        coreHost.dispatchOnWorker(
+            CoreEvent.newBuilder()
+                .setDirectPreferencesLoaded(
+                    DirectPreferencesLoadedEvent.newBuilder().apply {
+                        for ((id, en) in runCatching { directPrefs.allEnabled(account.server, account.deviceId) }.getOrDefault(emptyMap())) {
+                            addEntries(DirectPreferenceEntry.newBuilder().setMachineId(id).setEnabled(en))
+                        }
+                    },
+                )
+                .build(),
+        )
         coreHost.showViewsForTest(sessions = sessions)
         seedCoreForTest(coreHost, account.deviceId, state, modelLists)
-        for (m in state.machines.values) {
-            direct.setEnabled(m.id, m.pathState.directStatus.enabled)
-        }
-        publishDirectReports(state.machines.keys.toList())
     }
 
     // --- Security Management & Recovery (preserved for Security screens & DeviceSecurity tests) ---
@@ -2632,19 +2684,6 @@ class Remote(
         }
     }
 
-    private fun directHint(machineId: String, sessionId: String, cmd: Command): RouteHint? =
-        when (cmd.kindCase) {
-            Command.KindCase.GET_SHARED_FILE_CHUNK ->
-                RouteHint.Bulk(file = "$sessionId/${cmd.getSharedFileChunk.fileId}")
-            Command.KindCase.PUT_IMAGE_CHUNK -> {
-                val id = cmd.putImageChunk.transferId
-                val upload = directTransfers["$machineId/$id"] ?: return null
-                RouteHint.Bulk(file = id, upload = upload, bytes = cmd.putImageChunk.data.size())
-            }
-            Command.KindCase.GET_IMAGE_UPLOAD_STATUS -> null
-            else -> if (cmd.isReadOnlyCommand()) RouteHint.Read else null
-        }
-
     private suspend fun sendMachineCommand(
         machineId: String,
         cmd: Command,
@@ -2678,7 +2717,28 @@ class Remote(
         }
         val bulk = versioned.hasPutImageChunk() || versioned.hasGetSharedFileChunk()
         val cpu = if (bulk) bulkCpuDispatcher else cpuDispatcher
-        val routeHint = directHint(machineId, sessionId, versioned)
+        val routeHintValue = when {
+            versioned.hasGetSharedFileChunk() || versioned.hasPutImageChunk() ->
+                CommandRouteHint.COMMAND_ROUTE_HINT_BULK_VALUE
+            versioned.isReadOnlyCommand() && !versioned.hasGetImageUploadStatus() ->
+                CommandRouteHint.COMMAND_ROUTE_HINT_READ_VALUE
+            else -> CommandRouteHint.COMMAND_ROUTE_HINT_UNSPECIFIED_VALUE
+        }
+        val bulkFileKey = when {
+            versioned.hasGetSharedFileChunk() -> "$sessionId/${versioned.getSharedFileChunk.fileId}"
+            versioned.hasPutImageChunk() -> versioned.putImageChunk.transferId
+            else -> ""
+        }
+        val bulkBytes = if (versioned.hasPutImageChunk()) versioned.putImageChunk.data.size().toLong() else 0L
+        val bulkUpload = versioned.hasPutImageChunk()
+        val uploadTransferId = if (versioned.hasBeginImageUpload()) versioned.beginImageUpload.transferId else ""
+        val uploadHasFilename = versioned.hasBeginImageUpload() && versioned.beginImageUpload.fileName.isNotEmpty()
+        val finishUploadTransferId = when {
+            versioned.hasCompleteImageUpload() -> versioned.completeImageUpload.transferId
+            versioned.hasAbortImageUpload() -> versioned.abortImageUpload.transferId
+            else -> ""
+        }
+
         val (authorized, binding) = try {
             withContext(cpu) {
                 security.sealCommand(
@@ -2701,139 +2761,129 @@ class Remote(
                 UiMessages.errorsAndroidSecurityAuthorizationOrTheCurrentRequestIsUnverifiedNothingWas().messageText(),
             )
         }
-        val interactive = isInteractiveCommand(versioned)
+
         var forceRelay = false
         var attempt = 0
         while (true) {
             requireFileSupport(machineId, hasFiles, uncertain)
-            var handedOff = false
-            var directHandedOff = false
-            val handoff: () -> Unit = { handedOff = true }
-            val tracking = routeHint?.let { direct.track(machineId, it) }
-            val delivery: PathAttempt =
-                (if (routeHint != null && !forceRelay) direct.attempt(machineId, routeHint, handoff) else null)
-                    ?: deviceLink.router.path.attempt(handoff)
-            val dualDirect = if (!forceRelay && interactive && direct.ready(machineId, RouteHint.Read)) {
-                direct.attemptInteractive(machineId, { directHandedOff = true })
-            } else null
-            val directLegFailed = java.util.concurrent.atomic.AtomicBoolean(false)
-            val attemptStartedUncertain = uncertain
-            try {
-                suspend fun runSingle(leg: PathAttempt): Pair<CommandResult, Envelope> {
-                    val res = sendAndOpenCommand(
-                        machineId, sessionId, requestId, versioned, authorized, binding,
-                        attemptStartedUncertain, leg, routeHint is RouteHint.Bulk, if (leg === delivery) tracking else null,
-                    )
-                    val msg = res.msg
-                    val category = verifiedOutcome(msg, binding.first, binding.second, res.outerOutcome, res.outerReason)
-                    val verified = res.hashesMatch && res.attemptBound && res.outerMatchesInner
-                    if (!verified || category == Outcome.UNKNOWN) {
-                        throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(), fromDaemon = true, outcome = Outcome.UNKNOWN)
-                    }
-                    if ((category == Outcome.EXECUTED && !msg.resultAvailable) || (category == Outcome.CONFLICT && msg.conflictKind == "identity")) {
-                        throw CommandException(
-                            msg.errorCode,
-                            (if (category == Outcome.EXECUTED) UiMessages.errorsExecutedResultUnavailable() else UiMessages.errorsRequestIdentityConflict()).messageText(),
-                            fromDaemon = true,
-                            outcome = category,
-                            conflictKind = msg.conflictKind,
-                            resultAvailable = msg.resultAvailable,
-                        )
-                    }
-                    if (msg.errorCode.isNotEmpty() || category != Outcome.EXECUTED) {
-                        throw CommandException(
-                            msg.errorCode,
-                            msg.errorMessage.ifEmpty { msg.errorCode },
-                            fromDaemon = true,
-                            readOnly = versioned.isReadOnlyCommand(),
-                            outcome = category,
-                            conflictKind = msg.conflictKind,
-                            resultAvailable = msg.resultAvailable,
-                        )
-                    }
-                    return msg to res.envelope
-                }
+            val attemptId = newRequestId()
+            val dec = if (routeHintValue != 0 || uploadTransferId.isNotEmpty()) {
+                coreHost.beginDirectBulkTransfer(
+                    machineId = machineId,
+                    routeHint = routeHintValue,
+                    bulkFileKey = bulkFileKey,
+                    bulkBytes = bulkBytes,
+                    bulkUpload = bulkUpload,
+                    deadlineMs = deadlineMs,
+                    forceRelay = forceRelay,
+                    uploadTransferId = uploadTransferId,
+                    uploadHasFilename = uploadHasFilename,
+                )
+            } else {
+                DirectBulkRouteEffect.getDefaultInstance()
+            }
+            val useDirect = dec.useDirect && !forceRelay && dec.pcId > 0L
+            val res = try {
+                executeCommandLeg(
+                    machineId = machineId,
+                    sessionId = sessionId,
+                    requestId = requestId,
+                    attemptId = attemptId,
+                    parsedCmd = versioned,
+                    authorized = authorized,
+                    binding = binding,
+                    prior = uncertain,
+                    bulk = bulk,
+                    useDirect = useDirect,
+                    directPcId = dec.pcId,
+                    directTimeoutMs = dec.timeoutMs,
+                )
+            } finally {
+                // Report completion asynchronously to Core Coordinator without blocking caller.
+            }
+            coreHost.finishDirectBulkTransfer(
+                ticketId = dec.ticketId,
+                routeWasDirect = useDirect,
+                ok = res.ok,
+                elapsedMs = res.elapsedMs,
+                observedBytes = res.observedBytes,
+                finishUploadTransferId = finishUploadTransferId,
+                machineId = machineId,
+            )
+            if (res.handedOff) uncertain = true
 
-                val (msg, resultEnvelope) = if (dualDirect?.direct == true) {
-                    val outcome = deviceLink.router.dual<Result<Pair<CommandResult, Envelope>>>(
-                        primary = {
-                            try {
-                                DualLegResult.Trusted(Result.success(runSingle(dualDirect)))
-                            } catch (ce: CommandException) {
-                                if (ce.fromDaemon && ce.outcome != Outcome.UNKNOWN) {
-                                    DualLegResult.Trusted(Result.failure(ce))
-                                } else {
-                                    directLegFailed.set(true)
-                                    DualLegResult.Untrusted(ce)
-                                }
-                            } catch (t: Throwable) {
-                                directLegFailed.set(true)
-                                DualLegResult.Untrusted(t)
-                            }
-                        },
-                        fallback = {
-                            try {
-                                DualLegResult.Trusted(Result.success(runSingle(delivery)))
-                            } catch (ce: CommandException) {
-                                if (ce.fromDaemon && ce.outcome != Outcome.UNKNOWN) {
-                                    DualLegResult.Trusted(Result.failure(ce))
-                                } else {
-                                    DualLegResult.Untrusted(ce)
-                                }
-                            } catch (t: Throwable) {
-                                DualLegResult.Untrusted(t)
-                            }
-                        },
+            val ev = res.outcome
+            val msg = res.msg
+            if (ev.source == OutcomeSource.OUTCOME_SOURCE_DAEMON) {
+                if (!ev.signed || !ev.hashesMatch || !ev.attemptBound || !ev.outerMatchesInner || msg == null) {
+                    throw CommandException(
+                        CommandException.UNKNOWN,
+                        UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),
+                        failureKind = if (!ev.signed) CommandFailureKind.REPLY_UNVERIFIED else CommandFailureKind.RAW,
+                        fromDaemon = true,
+                        outcome = Outcome.UNKNOWN,
                     )
-                    outcome.getOrThrow()
-                } else {
-                    runSingle(delivery)
                 }
-                if (handedOff || directHandedOff) uncertain = true
-                if (versioned.hasBeginImageUpload()) {
-                    if (directTransfers.size >= 128) directTransfers.keys.firstOrNull()?.let { directTransfers.remove(it) }
-                    val req = versioned.beginImageUpload
-                    directTransfers["$machineId/${req.transferId}"] = if (req.fileName.isNotEmpty()) UploadKind.FILE else UploadKind.IMAGE
+                val category = verifiedOutcome(msg, binding.first, binding.second, ev.outerOutcome, ev.outerReason)
+                if (category == Outcome.UNKNOWN) {
+                    throw CommandException(
+                        CommandException.UNKNOWN,
+                        UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),
+                        fromDaemon = true,
+                        outcome = Outcome.UNKNOWN,
+                    )
                 }
-                if (versioned.hasCompleteImageUpload()) directTransfers.remove("$machineId/${versioned.completeImageUpload.transferId}")
-                if (versioned.hasAbortImageUpload()) directTransfers.remove("$machineId/${versioned.abortImageUpload.transferId}")
-                if (versioned.hasSchedule() && versioned.schedule.operation == "list" && msg.hasSchedule() && currentScheduleMember(machineId)) {
-                    cache?.putBlob("schedule:$machineId", scheduleSnapshot(requestId, resultEnvelope))
-                    if (!currentScheduleMember(machineId)) cache?.removeBlob("schedule:$machineId")
+                if ((category == Outcome.EXECUTED && !msg.resultAvailable) || (category == Outcome.CONFLICT && msg.conflictKind == "identity")) {
+                    throw CommandException(
+                        msg.errorCode,
+                        (if (category == Outcome.EXECUTED) UiMessages.errorsExecutedResultUnavailable() else UiMessages.errorsRequestIdentityConflict()).messageText(),
+                        fromDaemon = true,
+                        outcome = category,
+                        conflictKind = msg.conflictKind,
+                        resultAvailable = msg.resultAvailable,
+                    )
+                }
+                if (msg.errorCode.isNotEmpty() || category != Outcome.EXECUTED) {
+                    throw CommandException(
+                        msg.errorCode,
+                        msg.errorMessage.ifEmpty { msg.errorCode },
+                        fromDaemon = true,
+                        readOnly = versioned.isReadOnlyCommand(),
+                        outcome = category,
+                        conflictKind = msg.conflictKind,
+                        resultAvailable = msg.resultAvailable,
+                    )
                 }
                 return@withContext msg
-            } catch (_: UnverifiedReplyException) {
-                if (directLegFailed.get()) forceRelay = true
-                throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED, outcome = Outcome.UNKNOWN)
-            } catch (changed: PathChanged) {
-                if (directLegFailed.get()) forceRelay = true
-                if (handedOff || directHandedOff) uncertain = true
-                if (delivery.direct && routeHint != null && !forceRelay) {
-                    forceRelay = true
-                    tracking?.failed()
-                    val put = versioned.takeIf { it.hasPutImageChunk() }?.putImageChunk
-                    if (put != null) {
-                        machineCommand(
-                            machineId,
-                            Command.newBuilder()
-                                .setGetImageUploadStatus(
-                                    io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder()
-                                        .setTransferId(put.transferId)
-                                        .build(),
-                                )
-                                .build(),
-                        )
-                    }
-                    continue
+            }
+
+            if (useDirect && routeHintValue != 0 && !forceRelay) {
+                forceRelay = true
+                if (versioned.hasPutImageChunk()) {
+                    machineCommand(
+                        machineId,
+                        Command.newBuilder()
+                            .setGetImageUploadStatus(
+                                io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder()
+                                    .setTransferId(versioned.putImageChunk.transferId)
+                                    .build(),
+                            )
+                            .build(),
+                    )
                 }
+                continue
+            }
+
+            if (res.otherError is PathChanged) {
                 if (uncertain) {
-                    throw CommandException(CommandException.UNKNOWN, errorText(changed, state.value), outcome = Outcome.UNKNOWN)
+                    throw CommandException(CommandException.UNKNOWN, errorText(res.otherError, state.value), outcome = Outcome.UNKNOWN)
                 }
-                throw changed
-            } catch (ce: ConnectException) {
-                val refusal = delivery.refusal(ce)
-                if (directHandedOff || (handedOff && refusal == null)) uncertain = true
-                if (delivery.direct) tracking?.failed()
+                throw res.otherError
+            }
+
+            val ce = res.connectError
+            if (ce != null) {
+                val refusal = res.refusal
                 if (refusal != null && !uncertain) {
                     val msgText = if (refusal.reason == "machine_offline") UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText()
                     else if (ce.code == Code.UNAVAILABLE) (ce.message ?: ce.code.name.lowercase()).messageText()
@@ -2850,7 +2900,7 @@ class Remote(
                 }
                 if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                     attempt++
-                    delivery.refreshAuth(uncertain)
+                    discardToken(currentToken())
                     continue
                 }
                 if (ce.code in setOf(Code.DEADLINE_EXCEEDED, Code.UNKNOWN, Code.INTERNAL_ERROR, Code.CANCELED, Code.ABORTED) &&
@@ -2861,17 +2911,22 @@ class Remote(
                     kotlinx.coroutines.delay(1_000L * attempt)
                     continue
                 }
-                if (ce.code == Code.UNAUTHENTICATED) delivery.refreshAuth(uncertain)
+                if (ce.code == Code.UNAUTHENTICATED) discardToken(currentToken())
                 throw CommandException(CommandException.UNKNOWN, errorText(ce, state.value), outcome = Outcome.UNKNOWN)
-            } catch (e: Exception) {
-                if (handedOff || directHandedOff) uncertain = true
-                if (delivery.direct && e !is CommandException && e !is CancellationException) tracking?.failed()
-                if (e is CommandException) throw e
-                if (uncertain) {
-                    throw CommandException(CommandException.UNKNOWN, errorText(e, state.value), outcome = Outcome.UNKNOWN)
-                }
-                throw e
             }
+
+            val err = res.otherError
+            if (err is CommandException) throw err
+            if (uncertain && err != null) {
+                throw CommandException(CommandException.UNKNOWN, errorText(err, state.value), outcome = Outcome.UNKNOWN)
+            }
+            if (err != null) throw err
+            throw CommandException(
+                CommandException.UNKNOWN,
+                if (ev.transportDetail.isNotEmpty()) ev.transportDetail.messageText()
+                else UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),
+                outcome = Outcome.UNKNOWN,
+            )
         }
         throw IllegalStateException()
     }
@@ -3046,7 +3101,7 @@ class Remote(
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
         try {
-            val ws = deviceLink.router.path.openStream(
+            val ws = deviceLink.path.openStream(
                 url,
                 object : FrameListener() {
                     override fun onOpen(stream: FrameStream) {

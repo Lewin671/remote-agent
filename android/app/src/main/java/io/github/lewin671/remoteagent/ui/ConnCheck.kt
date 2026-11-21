@@ -1,7 +1,8 @@
 package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.buildDirectViews
+import io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage
+import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
 import io.github.lewin671.remoteagent.core.proto.ConnCheckDirectRowView
 
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,11 +44,13 @@ import kotlinx.coroutines.delay
 @Composable
 fun ConnCheckSheet(state: RemoteState, onClose: () -> Unit) {
     val remote = LocalRemote.current
+    val settingsView by remote.settingsView.collectAsState()
     ConnCheckSheet(
         state, onClose, remote.account.server,
         { remote.state.value.machines.values.filter { it.pathState.reachable }.map { it.id } },
         { remote.pingServer() }, { remote.pingMachine(it) },
         { remote.reconnectNow() },
+        settingsView = settingsView,
         onProbeStatus = { s, ms, err -> remote.coreHost.reportConnCheckStatus(s, ms, err) },
     )
 }
@@ -62,6 +66,7 @@ internal fun ConnCheckSheet(
     reconnectNow: () -> Unit,
     clock: () -> Long = System::currentTimeMillis,
     onProbeStatus: (io.github.lewin671.remoteagent.core.proto.ConnProbeState, Int, String) -> Unit = { _, _, _ -> },
+    settingsView: SettingsViewModel = SettingsViewModel.getDefaultInstance(),
 ) {
     val copy = uiText()
     val p = pal
@@ -159,11 +164,9 @@ internal fun ConnCheckSheet(
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
                 val directRow: ConnCheckDirectRowView? = if (m.pathState.reachable && !m.pathState.unlinked) {
-                    buildDirectViews(
-                        online = true,
-                        prefEnabled = m.pathState.directStatus.enabled,
-                        status = m.pathState.directStatus,
-                    ).connCheckDirect
+                    settingsView.machinesList.firstOrNull { it.machineId == m.id }
+                        ?.takeIf { it.hasDirectRow() }
+                        ?.directRow
                 } else {
                     null
                 }
@@ -205,7 +208,12 @@ internal fun ConnCheckSheet(
         val locale = LocalMessageLocale.current
         val foot = buildList {
             add(copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()))
-            if (list.any { it.pathState.reachable && !it.pathState.directStatus.supported }) {
+            val onlineIds = list.asSequence().filter { it.pathState.reachable && !it.pathState.unlinked }.map { it.id }.toSet()
+            if (settingsView.machinesList.any {
+                it.machineId in onlineIds &&
+                    it.hasDirectRow() &&
+                    it.directRow.stage == ConnectionGroupStage.CONNECTION_GROUP_STAGE_UNSUPPORTED
+            }) {
                 add(copy(UiMessages.transportConnFooterUnsupportedApp()))
             }
         }.joinToString(if (locale.startsWith("zh")) "" else " ")
