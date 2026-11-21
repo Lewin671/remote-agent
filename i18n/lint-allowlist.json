@@ -4703,5 +4703,10 @@
     "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/transport/DirectExecutor.kt",
     "literal": "closed",
     "reason": "Internal WebRTC PeerConnection closed token sent to Core Coordinator in DirectPcRemoteSetEvent/DirectPcCandidatesAddedEvent; never rendered to users."
+  },
+  {
+    "path": "shared/linkcore/session.go",
+    "literal": "need_entropy",
+    "reason": "Internal Go sentinel error returned by entropy readers when the shell byte pool needs refill; handled internally by linkcore and never displayed to users."
   }
 ]
