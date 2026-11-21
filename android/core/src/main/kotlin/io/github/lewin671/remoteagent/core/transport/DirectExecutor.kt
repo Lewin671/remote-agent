@@ -39,7 +39,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
@@ -438,13 +437,5 @@ internal class DirectExecutor(
         for ((_, p) in pendSnapshot) {
             p.response.completeExceptionally(PathChanged())
         }
-    }
-
-    companion object {
-        fun defaultStunUrls(server: String): List<String> = runCatching {
-            val host = URI(server).host ?: return emptyList()
-            val formatted = if (":" in host && !host.startsWith("[")) "[$host]" else host
-            listOf("stun:$formatted:3478")
-        }.getOrDefault(emptyList())
     }
 }

@@ -97,7 +97,7 @@ func TestCoordinatorLoopbackHandshakeControlAndDiagnostics(t *testing.T) {
 		Supported:       true,
 		Account:         "00000000000000000000000000000001",
 		ProtocolVersion: 17,
-		StunServers:     []string{"stun:127.0.0.1:3478"},
+		ServerHost:      "127.0.0.1",
 	})
 	coord.ProvideRandomBytes(now, testOSRandom(CoordEntropyRefillBytes))
 	coord.SetMainLeg(now, true)
@@ -116,8 +116,8 @@ func TestCoordinatorLoopbackHandshakeControlAndDiagnostics(t *testing.T) {
 		SelfEdPub:     client.signPub,
 		SelfXPub:      client.xPub,
 		Members: []CoordMember{
-			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true},
-			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub},
+			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true, Kind: MemberKindClient},
+			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub, Kind: MemberKindMachine},
 		},
 	})
 
@@ -348,8 +348,8 @@ func TestCoordinatorUnsupportedAndTerminalReopen(t *testing.T) {
 		Head: "h2", HeadHash: headHash, Epoch: 1, StartedAt: now, LeaseNotAfter: now + 60_000,
 		SelfID: client.id, SelfEdPub: client.signPub, SelfXPub: client.xPub,
 		Members: []CoordMember{
-			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true},
-			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub},
+			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true, Kind: MemberKindClient},
+			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub, Kind: MemberKindMachine},
 		},
 	})
 	var opID uint64
@@ -440,8 +440,8 @@ func TestCoordinatorEntropyPoolLowWaterExhaustionAndRefill(t *testing.T) {
 		Head: "head-ent", HeadHash: headHash, Epoch: 1, StartedAt: now, LeaseNotAfter: now + 60_000,
 		SelfID: client.id, SelfEdPub: client.signPub, SelfXPub: client.xPub,
 		Members: []CoordMember{
-			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true},
-			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub},
+			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true, Kind: MemberKindClient},
+			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub, Kind: MemberKindMachine},
 		},
 	})
 	for _, e := range snapEffs {
@@ -487,5 +487,385 @@ func TestCoordinatorEntropyPoolLowWaterExhaustionAndRefill(t *testing.T) {
 		if _, ok := e.(CoordNeedEntropy); ok {
 			t.Fatal("did not expect redundant CoordNeedEntropy while pool is healthy")
 		}
+	}
+}
+
+func driveEstablishedCoordRound(t *testing.T, serverHost, configuredStun string) (*Coordinator, *coordActor, *coordActor, int64, []string, RoundID, uint64) {
+	t.Helper()
+	client := newCoordActor(t, 11, 1)
+	daemon := newCoordActor(t, 12, 2)
+	domain := sha256.Sum256([]byte("d-helper"))
+	headHash := sha256.Sum256([]byte("h-helper"))
+	acct := "00000000000000000000000000000001"
+	codec, err := peerwire.NewCodec(acct, domain, headHash, 1, 17)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := int64(1_700_000_000_000)
+	coord := NewCoordinator(CoordConfig{
+		Supported:       true,
+		Account:         acct,
+		ProtocolVersion: 17,
+		ServerHost:      serverHost,
+		ConfiguredStun:  configuredStun,
+	})
+	coord.ProvideRandomBytes(now, testOSRandom(CoordEntropyRefillBytes))
+	coord.SetMainLeg(now, true)
+	effs := coord.OnSecuritySnapshot(now, CoordSecuritySnapshot{
+		Member: true, Account: acct, Domain: domain,
+		Head: "head-helper", HeadHash: headHash, Epoch: 1, StartedAt: now, LeaseNotAfter: now + 600_000,
+		SelfID: client.id, SelfEdPub: client.signPub, SelfXPub: client.xPub,
+		Members: []CoordMember{
+			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true, Kind: MemberKindClient},
+			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub, Kind: MemberKindMachine},
+		},
+	})
+	for _, e := range effs {
+		if a, ok := e.(CoordKeyAgree); ok {
+			effs = coord.OnKeyAgreed(now, a.OpID, client.agree(daemon.xPub), true)
+		}
+	}
+
+	daemonInst := make([]byte, 16)
+	daemonBoot := make([]byte, 32)
+	for i := range daemonInst {
+		daemonInst[i] = byte(i + 21)
+		daemonBoot[i] = byte(i + 53)
+	}
+	daemonPub := peerwire.Public{ID: []byte(daemon.id), Role: 2, Instance: daemonInst, Boot: daemonBoot, Sign: daemon.signPub[:], Box: daemon.xPub[:]}
+	clientMember := peerwire.Public{ID: []byte(client.id), Role: 1, Sign: client.signPub[:], Box: client.xPub[:]}
+
+	type pcState struct {
+		use       uint64
+		sdp       []byte
+		remote    []byte
+		connected bool
+	}
+	clientPCs := map[uint64]*pcState{}
+	daemonPCs := map[uint64]*pcState{}
+	var daemonSess *linkcore.Session
+	var toDaemon, toClient [][]byte
+	var gotStun []string
+	var readPC uint64
+	var signQ []CoordKeySign
+
+	var handleC func([]CoordEffect)
+	var txD [][]byte
+	var handleD func([]linkcore.Effect)
+	handleD = func(effs []linkcore.Effect) {
+		for _, e := range effs {
+			switch e := e.(type) {
+			case linkcore.SignFrame:
+				sig := ed25519.Sign(daemon.signPriv, e.Message)
+				handleD(daemonSess.Handle(linkcore.FrameSigned{Op: e.Op, Signature: sig}, uint64(now)))
+			case linkcore.TransmitFrame:
+				txD = append(txD, e.Raw)
+			case linkcore.CreatePC:
+				daemonPCs[e.ID] = &pcState{use: e.Use}
+				handleD(daemonSess.Handle(linkcore.PCCreated{ID: e.ID, OK: true}, uint64(now)))
+			case linkcore.DescribePC:
+				p := daemonPCs[e.ID]
+				p.sdp = fakeCoordSDP(int(e.ID + 200))
+				handleD(daemonSess.Handle(linkcore.PCDescribed{ID: e.ID, OK: true, SDP: p.sdp}, uint64(now)))
+			case linkcore.SetRemotePC:
+				daemonPCs[e.ID].remote = e.SDP
+				handleD(daemonSess.Handle(linkcore.PCRemoteSet{ID: e.ID, OK: true}, uint64(now)))
+			case linkcore.AddCandidatesPC:
+				handleD(daemonSess.Handle(linkcore.PCCandidatesAdded{ID: e.ID, OK: true}, uint64(now)))
+			}
+		}
+	}
+	handleC = func(list []CoordEffect) {
+		for _, e := range list {
+			switch e := e.(type) {
+			case CoordKeySign:
+				signQ = append(signQ, e)
+			case CoordSignalSend:
+				toDaemon = append(toDaemon, peerwire.PB(
+					peerwire.B(1, []byte(client.id)),
+					peerwire.B(2, e.ToDevice),
+					peerwire.U(3, uint64(e.FrameClass)),
+					peerwire.B(4, e.FrameID),
+					peerwire.B(5, e.Sealed),
+				))
+				coord.OnSignalDelivery(now, e.FrameID, 1, 0)
+			case CoordPcCreate:
+				if e.Use == UseRead && gotStun == nil {
+					gotStun = append([]string(nil), e.STUN...)
+					readPC = e.PCID
+				}
+				clientPCs[e.PCID] = &pcState{use: uint64(e.Use)}
+				handleC(coord.OnPcCreated(now, e.PCID, true))
+			case CoordPcDescribe:
+				p := clientPCs[e.PCID]
+				p.sdp = fakeCoordSDP(int(e.PCID))
+				handleC(coord.OnPcDescription(now, e.PCID, p.sdp, true))
+			case CoordPcSetRemote:
+				clientPCs[e.PCID].remote = e.SDP
+				handleC(coord.OnPcRemoteSet(now, e.PCID, true, ""))
+			case CoordPcAddCandidates:
+				handleC(coord.OnPcCandidatesAdded(now, e.PCID, true, ""))
+			}
+		}
+	}
+	handleC(effs)
+	_ = toClient
+	for step := 0; step < 30 && !coord.Ready(now, daemon.id, Hint{Use: UseRead}); step++ {
+		for len(signQ) > 0 {
+			s := signQ[0]
+			signQ = signQ[1:]
+			handleC(coord.OnKeySigned(now, s.OpID, ed25519.Sign(client.signPriv, s.Message)))
+		}
+		for len(toDaemon) > 0 {
+			raw := toDaemon[0]
+			toDaemon = toDaemon[1:]
+			if daemonSess == nil {
+				opened, err := codec.Open(raw, clientMember, daemonPub, daemon.agree(client.xPub), uint64(now))
+				if err != nil {
+					t.Fatal(err)
+				}
+				sess, initEffs, err := linkcore.NewSession(linkcore.SessionConfig{
+					Self: daemonPub,
+					Peer: peerwire.Public{
+						ID: []byte(client.id), Role: 1,
+						Instance: opened.Context.SenderInstance, Boot: opened.Context.SenderBoot,
+						Sign: client.signPub[:], Box: client.xPub[:],
+					},
+					Shared:     daemon.agree(client.xPub),
+					Codec:      codec,
+					Connection: opened.Context.Connection,
+					Deadline:   opened.Context.Deadline,
+					Entropy:    rand.Reader,
+					Allow:      func() bool { return true },
+				}, false, uint64(now))
+				if err != nil {
+					t.Fatal(err)
+				}
+				daemonSess = sess
+				handleD(initEffs)
+			}
+			handleD(daemonSess.Handle(linkcore.FrameReceived{Raw: raw}, uint64(now)))
+		}
+		for len(txD) > 0 {
+			raw := txD[0]
+			txD = txD[1:]
+			handleC(coord.OnSignalReceived(now, raw))
+		}
+		for cid, cpc := range clientPCs {
+			for did, dpc := range daemonPCs {
+				if !cpc.connected && !dpc.connected && cpc.use == dpc.use && cpc.sdp != nil && dpc.sdp != nil &&
+					string(dpc.remote) == string(cpc.sdp) && string(cpc.remote) == string(dpc.sdp) {
+					cpc.connected, dpc.connected = true, true
+					handleC(coord.OnPcState(now, cid, StateConn, "connected"))
+					handleC(coord.OnDcState(now, cid, true))
+					handleD(daemonSess.Handle(linkcore.PCStateChanged{ID: did, State: linkcore.PCConnected, Valid: true}, uint64(now)))
+				}
+			}
+		}
+		now += 25
+		handleC(coord.OnEngineTimer(now))
+		handleC(coord.OnSessionTimer(now))
+		if daemonSess != nil {
+			handleD(daemonSess.Handle(linkcore.Tick{}, uint64(now)))
+		}
+	}
+	if !coord.Ready(now, daemon.id, Hint{Use: UseRead}) {
+		t.Fatalf("expected coordinator read path ready")
+	}
+	var rid RoundID
+	for id := range coord.rounds {
+		rid = id
+	}
+	return coord, client, daemon, now, gotStun, rid, readPC
+}
+
+func TestCoordinatorNextTimersNoBusyLoopAfterDeadline(t *testing.T) {
+	coord, _, _, now, _, rid, readPC := driveEstablishedCoordRound(t, "2001:db8::1", "")
+	r := coord.rounds[rid]
+	if r == nil {
+		t.Fatal("expected active round")
+	}
+	// Advance past RoundMs deadline AND past RetainUntil (Deadline + 300_000 ms).
+	afterDeadline := int64(r.session.Deadline()) + 100
+	coord.OnSessionTimer(afterDeadline)
+	_, _, sessAt, sessOK, _, _ := coord.NextTimers(afterDeadline)
+	if sessOK {
+		t.Fatalf("established live round past Deadline must not spin NextTimers, got sessOK=%v sessAt=%d (now=%d)", sessOK, sessAt, afterDeadline)
+	}
+
+	pastRetain := int64(r.session.RetainUntil()) + 100
+	coord.OnSessionTimer(pastRetain)
+	_, _, sessAt, sessOK, _, _ = coord.NextTimers(pastRetain)
+	if sessOK {
+		t.Fatalf("unretired live round past RetainUntil must not spin NextTimers, got sessOK=%v sessAt=%d (now=%d)", sessOK, sessAt, pastRetain)
+	}
+
+	// Closing all remaining PCs after deadlineTicked ends the session immediately.
+	coord.OnPcClosed(pastRetain+10, readPC)
+	for id, rem := range coord.rounds {
+		if id == rid && !rem.ended {
+			t.Fatalf("expected post-deadline round to end once live PCs close")
+		}
+	}
+
+	// Retired round must schedule RetainUntil and end cleanly when RetainUntil fires.
+	client2 := newCoordActor(t, 13, 1)
+	daemon2 := newCoordActor(t, 14, 2)
+	dom2 := sha256.Sum256([]byte("d-retire"))
+	hh2 := sha256.Sum256([]byte("h-retire"))
+	acct2 := "00000000000000000000000000000001"
+	t2 := int64(1_700_000_000_000)
+	coord2 := NewCoordinator(CoordConfig{Supported: true, Account: acct2, ProtocolVersion: 17, ServerHost: "127.0.0.1"})
+	coord2.ProvideRandomBytes(t2, testOSRandom(CoordEntropyRefillBytes))
+	coord2.SetMainLeg(t2, true)
+	effs2 := coord2.OnSecuritySnapshot(t2, CoordSecuritySnapshot{
+		Member: true, Account: acct2, Domain: dom2, Head: "head-retire", HeadHash: hh2, Epoch: 1,
+		StartedAt: t2, LeaseNotAfter: t2 + 600_000, SelfID: client2.id, SelfEdPub: client2.signPub, SelfXPub: client2.xPub,
+		Members: []CoordMember{
+			{ID: client2.id, EdPub: client2.signPub, XPub: client2.xPub, Self: true, Kind: MemberKindClient},
+			{ID: daemon2.id, EdPub: daemon2.signPub, XPub: daemon2.xPub, Kind: MemberKindMachine},
+		},
+	})
+	for _, e := range effs2 {
+		if a, ok := e.(CoordKeyAgree); ok {
+			coord2.OnKeyAgreed(t2, a.OpID, client2.agree(daemon2.xPub), true)
+		}
+	}
+	if len(coord2.rounds) != 1 {
+		t.Fatalf("expected 1 unconfirmed round before retire, got %d", len(coord2.rounds))
+	}
+	var rid2 RoundID
+	var r2 *coordRound
+	for id, r := range coord2.rounds {
+		rid2, r2 = id, r
+	}
+	retireAt := t2 + 100
+	_ = coord2.stepSession(retireAt, r2, linkcore.RetireRound{})
+	if !r2.session.View().Retired || r2.ended {
+		t.Fatalf("expected unconfirmed round retired without ending, retired=%v ended=%v", r2.session.View().Retired, r2.ended)
+	}
+	_, _, retAt, retOK, _, _ := coord2.NextTimers(retireAt)
+	if !retOK || retAt != int64(r2.session.RetainUntil()) {
+		t.Fatalf("expected retired round NextTimers at RetainUntil=%d, got ok=%v at=%d", r2.session.RetainUntil(), retOK, retAt)
+	}
+	coord2.OnSessionTimer(retAt)
+	if !r2.ended || coord2.rounds[rid2] != nil {
+		t.Fatalf("expected retired round to terminate when RetainUntil timer fires, ended=%v", r2.ended)
+	}
+	_ = now
+}
+
+func TestCoordinatorFiltersNonMachineMembers(t *testing.T) {
+	client := newCoordActor(t, 21, 1)
+	phone := newCoordActor(t, 22, 1)
+	daemon := newCoordActor(t, 23, 2)
+	domain := sha256.Sum256([]byte("filter-domain"))
+	headHash := sha256.Sum256([]byte("filter-head"))
+	acct := "00000000000000000000000000000001"
+	codec, _ := peerwire.NewCodec(acct, domain, headHash, 1, 17)
+	now := int64(1_700_000_000_000)
+
+	coord := NewCoordinator(CoordConfig{Supported: true, Account: acct, ProtocolVersion: 17, ServerHost: "ra.example.com"})
+	coord.ProvideRandomBytes(now, testOSRandom(CoordEntropyRefillBytes))
+	coord.SetMainLeg(now, true)
+	effs := coord.OnSecuritySnapshot(now, CoordSecuritySnapshot{
+		Member: true, Account: acct, Domain: domain,
+		Head: "head-filter", HeadHash: headHash, Epoch: 1, StartedAt: now, LeaseNotAfter: now + 60_000,
+		SelfID: client.id, SelfEdPub: client.signPub, SelfXPub: client.xPub,
+		Members: []CoordMember{
+			{ID: client.id, EdPub: client.signPub, XPub: client.xPub, Self: true, Kind: MemberKindClient},
+			{ID: phone.id, EdPub: phone.signPub, XPub: phone.xPub, Kind: MemberKindClient},
+			{ID: daemon.id, EdPub: daemon.signPub, XPub: daemon.xPub, Kind: MemberKindMachine},
+		},
+	})
+	for _, e := range effs {
+		if a, ok := e.(CoordKeyAgree); ok && a.PeerID == phone.id {
+			t.Fatalf("must not initiate key agree with non-machine client member %s", phone.id)
+		}
+	}
+	if len(coord.engine.machines) != 1 || coord.engine.machines[0] != daemon.id {
+		t.Fatalf("expected only machine member %s in engine.machines, got %v", daemon.id, coord.engine.machines)
+	}
+
+	// Inbound signal from a non-machine member must be dropped before opening or starting a round.
+	phonePub := peerwire.Public{ID: []byte(phone.id), Role: 1, Instance: testOSRandom(16), Boot: testOSRandom(32), Sign: phone.signPub[:], Box: phone.xPub[:]}
+	clientPub := peerwire.Public{ID: []byte(client.id), Role: 1, Sign: client.signPub[:], Box: client.xPub[:]}
+	c := peerwire.NewContext(phonePub, clientPub, testOSRandom(16), 0, 1, 1, uint64(now), 2, false)
+	c.Deadline = uint64(now + 9000)
+	unsigned, err := codec.Prepare(phonePub, clientPub, phone.agree(client.xPub), c, 1, nil, testOSRandom(peerwire.SealEntropy))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig := ed25519.Sign(phone.signPriv, unsigned.Message)
+	raw, err := unsigned.Finish(sig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roundsBefore := len(coord.rounds)
+	coord.OnSignalReceived(now, raw)
+	if len(coord.rounds) != roundsBefore || len(coord.pendingSignals) != 0 {
+		t.Fatalf("expected inbound signal from non-machine %s to be ignored", phone.id)
+	}
+}
+
+func TestCoordinatorSecurityInstalledAuthorizeDoneAndStun(t *testing.T) {
+	coord, _, daemon, now, stun, _, _ := driveEstablishedCoordRound(t, "2001:db8::1", "")
+	if len(stun) != 1 || stun[0] != "stun:[2001:db8::1]:3478" {
+		t.Fatalf("expected Core-computed IPv6 STUN list, got %v", stun)
+	}
+	// Configure with override STUN caps at 2 and updates CoordPcCreate list.
+	coord.Configure(now+1, CoordConfig{
+		Supported: true, Account: "00000000000000000000000000000001", ProtocolVersion: 17,
+		ServerHost: "ignored.example.com", ConfiguredStun: "stun:a:3478, stun:b:3478, stun:c:3478",
+	})
+	if len(coord.stunServers) != 2 || coord.stunServers[0] != "stun:a:3478" || coord.stunServers[1] != "stun:b:3478" {
+		t.Fatalf("expected capped override STUN list, got %v", coord.stunServers)
+	}
+
+	// Matching OnSecurityInstalled must be a no-op (keep existing direct readiness).
+	effs := coord.OnSecurityInstalled(now+2, true, "00000000000000000000000000000001", "head-helper")
+	if len(effs) != 0 || !coord.Ready(now+2, daemon.id, Hint{Use: UseRead}) {
+		t.Fatalf("matching SecurityInstalled must preserve readiness and emit no effects, got %+v", effs)
+	}
+
+	// Mismatched head OnSecurityInstalled invalidates active rounds and asks Authorize (without granting freshness).
+	effs = coord.OnSecurityInstalled(now+3, true, "00000000000000000000000000000001", "head-new")
+	var sawAuth bool
+	for _, e := range effs {
+		if _, ok := e.(CoordAuthorize); ok {
+			sawAuth = true
+		}
+	}
+	if !sawAuth || coord.Ready(now+3, daemon.id, Hint{Use: UseRead}) || !coord.engine.authorizing {
+		t.Fatalf("expected SecurityInstalled with new head to invalidate & trigger Authorize, sawAuth=%v authorizing=%v", sawAuth, coord.engine.authorizing)
+	}
+
+	// OnAuthorizeDone closes the authorizing gate even when sync was skipped/failed.
+	coord.OnAuthorizeDone(now+4, false)
+	if coord.engine.authorizing {
+		t.Fatal("expected OnAuthorizeDone to clear authorizing gate")
+	}
+}
+
+func TestCoordinatorPerUsePeerUnsupported(t *testing.T) {
+	coord, _, _, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	if r == nil || !r.everReady {
+		t.Fatal("expected everReady round")
+	}
+	// Suppose peer reports Unsupported for Bulk (Use=2) after Read (Use=1) already succeeded.
+	coord.applySessionEffects(now, r, []linkcore.Effect{linkcore.PeerUnsupported{Class: 1, Type: 3, Use: uint64(UseBulk)}})
+	effs := func() []CoordEffect {
+		coord.finishSession(now+1, r, "paths_closed")
+		return coord.take()
+	}()
+	// Round must NOT be classified as EndPeerUnsupported while Read had succeeded.
+	_ = effs
+	rounds, _, _ := coord.Diagnostics(r.machine)
+	if len(rounds) == 0 {
+		t.Fatal("expected diagnostic round recorded")
+	}
+	if rounds[len(rounds)-1].End == EndPeerUnsupported {
+		t.Fatalf("per-use Unsupported on UseBulk after Read became ready must not mark EndPeerUnsupported: %+v", rounds[len(rounds)-1])
 	}
 }

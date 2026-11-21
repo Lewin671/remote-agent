@@ -1584,6 +1584,28 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent getDirectPreferencesLoaded();
 
   /**
+   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+   * @return Whether the directSecurityInstalled field is set.
+   */
+  boolean hasDirectSecurityInstalled();
+  /**
+   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+   * @return The directSecurityInstalled.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent getDirectSecurityInstalled();
+
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+   * @return Whether the directAuthorizeDone field is set.
+   */
+  boolean hasDirectAuthorizeDone();
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+   * @return The directAuthorizeDone.
+   */
+  io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent getDirectAuthorizeDone();
+
+  /**
    * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
    * @return The nowMs.
    */

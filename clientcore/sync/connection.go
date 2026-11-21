@@ -100,9 +100,19 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		clear(e.directReady)
 		clear(e.sessionByIDOps)
 		clear(e.sessionByIDFailed)
+		clear(e.lateDirectTickets)
+		clear(e.lateDirectDeadline)
+		for _, prep := range e.inFlightCmds {
+			for _, l := range prep.ActiveLegs {
+				if l != nil {
+					l.TicketID = 0
+				}
+			}
+		}
 		e.updateLivePollers(ctx)
 		e.cancelAllTimers(ctx)
 		c := e.ensureTransportCoord()
+		c.ClearTickets()
 		e.emitCoordEffects(ctx, c.SetMainLeg(e.nowMs, false))
 		e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, false))
 		ctx.Dirty.MarkAll()

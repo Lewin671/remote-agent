@@ -147,6 +147,32 @@ public  final class DirectSecurityMember extends
     isSelf_ = false;
   }
 
+  public static final int KIND_FIELD_NUMBER = 5;
+  private int kind_;
+  /**
+   * <code>uint32 kind = 5 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  @java.lang.Override
+  public int getKind() {
+    return kind_;
+  }
+  /**
+   * <code>uint32 kind = 5 [json_name = "kind"];</code>
+   * @param value The kind to set.
+   */
+  private void setKind(int value) {
+    
+    kind_ = value;
+  }
+  /**
+   * <code>uint32 kind = 5 [json_name = "kind"];</code>
+   */
+  private void clearKind() {
+
+    kind_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DirectSecurityMember parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -377,6 +403,34 @@ public  final class DirectSecurityMember extends
       return this;
     }
 
+    /**
+     * <code>uint32 kind = 5 [json_name = "kind"];</code>
+     * @return The kind.
+     */
+    @java.lang.Override
+    public int getKind() {
+      return instance.getKind();
+    }
+    /**
+     * <code>uint32 kind = 5 [json_name = "kind"];</code>
+     * @param value The kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKind(int value) {
+      copyOnWrite();
+      instance.setKind(value);
+      return this;
+    }
+    /**
+     * <code>uint32 kind = 5 [json_name = "kind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearKind() {
+      copyOnWrite();
+      instance.clearKind();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DirectSecurityMember)
   }
   @java.lang.Override
@@ -397,10 +451,11 @@ public  final class DirectSecurityMember extends
             "edPublic_",
             "xPublic_",
             "isSelf_",
+            "kind_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\n" +
-              "\u0003\n\u0004\u0007";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\n" +
+              "\u0003\n\u0004\u0007\u0005\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -508,10 +508,4 @@ final class DirectExecutor: @unchecked Sendable {
         for entry in channels { entry.channel?.close() }
         for p in pendings { p.resolve(.failure(PathChanged())) }
     }
-
-    static func defaultStunUrls(server: String) -> [String] {
-        guard let host = URL(string: server)?.host, !host.isEmpty else { return [] }
-        let formatted = (host.contains(":") && !host.hasPrefix("[")) ? "[\(host)]" : host
-        return ["stun:\(formatted):3478"]
-    }
 }

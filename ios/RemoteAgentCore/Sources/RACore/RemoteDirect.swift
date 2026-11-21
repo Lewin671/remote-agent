@@ -81,7 +81,7 @@ extension Remote {
             },
             installed: { [weak self] record in
                 Task {
-                    await self?.emitDirectSecuritySnapshot(record, started: nil)
+                    await self?.handleDirectSecurityInstall(record)
                     await self?.pushObservedSecuritySnapshot(record)
                 }
             }
@@ -103,7 +103,18 @@ extension Remote {
     public func authorizeDirect() {
         guard !closed else { return }
         Task {
-            _ = try? await securitySession().sync()
+            var ok = false
+            do {
+                let record = try await securitySession().sync()
+                ok = record.member
+            } catch {
+                ok = false
+            }
+            if !closed {
+                var ev = PBCoreEvent()
+                ev.directAuthorizeDone = .with { $0.ok = ok }
+                await emitCoreEvent(ev)
+            }
         }
     }
 
@@ -164,56 +175,42 @@ extension Remote {
         Task { await self.emitCoreEvent(ev) }
     }
 
-    func emitDirectSecuritySnapshot(_ record: DeviceSecurity.Record, started: UInt64?) async {
+    func handleDirectSecurityInstall(_ record: DeviceSecurity.Record) async {
+        let headHex = (try? DeviceSecurity.stateHash(record.state).hex) ?? ""
+        directSecurityLock.withLock { state in
+            let prev = state.lastSnapshot
+            let changed = !record.member || (prev != nil && !(prev?.rejected ?? true) && (record.pin.account != prev?.account || headHex != prev?.head))
+            if changed {
+                state.rev &+= 1
+                state.xPrivateRaw = nil
+                state.lastSnapshot = PBCoreDirectSecuritySnapshotEvent.with { $0.rejected = true }
+            } else if record.member, let xKey = try? record.xKey {
+                state.xPrivateRaw = xKey.rawRepresentation
+            }
+        }
+        guard !closed else { return }
+        var ev = PBCoreEvent()
+        ev.directSecurityInstalled = .with {
+            $0.member = record.member
+            $0.account = record.pin.account
+            $0.head = headHex
+        }
+        await emitCoreEvent(ev)
+    }
+
+    func emitDirectSecuritySnapshot(_ record: DeviceSecurity.Record, started: UInt64) async {
         let rev = directSecurityLock.withLock { state -> UInt64 in
             state.rev &+= 1
             return state.rev
         }
         let nowMs = clock()
-        let startedMs = started.map { Int64(min($0, UInt64(Int64.max))) } ?? nowMs
-        var built: (snapshot: PBCoreDirectSecuritySnapshotEvent, xPrivateRaw: Data)?
-        do {
-            let head = record.state
-            let at = max(UInt64(max(0, nowMs)), record.floor)
-            if record.member,
-               record.memberID == account.deviceId,
-               let lease = record.lease,
-               nowMs < startedMs + 20_000,
-               let selfMember = head.core.member(record.memberID) {
-                try lease.valid(head, now: at)
-                let xKey = try record.xKey
-                let xPub = xKey.publicKey.rawRepresentation
-                let edPub = device.publicKey
-                if edPub == selfMember.ed && xPub == selfMember.x {
-                    let stateHash = try DeviceSecurity.stateHash(head)
-                    let snap = PBCoreDirectSecuritySnapshotEvent.with {
-                        $0.member = true
-                        $0.account = record.pin.account
-                        $0.domain = record.pin.domain
-                        $0.head = stateHash.hex
-                        $0.headHash = stateHash
-                        $0.epoch = head.core.epoch
-                        $0.startedAtMs = startedMs
-                        $0.leaseNotAfterMs = Int64(min(lease.notAfter, UInt64(Int64.max)))
-                        $0.selfID = selfMember.id
-                        $0.selfEdPublic = selfMember.ed
-                        $0.selfXPublic = selfMember.x
-                        $0.members = head.core.members.map { m in
-                            PBCoreDirectSecurityMember.with {
-                                $0.deviceID = m.id
-                                $0.edPublic = m.ed
-                                $0.xPublic = m.x
-                                $0.isSelf = (m.id == record.memberID)
-                            }
-                        }
-                    }
-                    built = (snap, xKey.rawRepresentation)
-                }
-            }
-        } catch {
-            built = nil
-        }
-        let builtSnapshot = built
+        let builtSnapshot = Self.buildDirectSecuritySnapshot(
+            record: record,
+            expectedDeviceID: account.deviceId,
+            devicePublicKey: device.publicKey,
+            started: started,
+            nowMs: nowMs
+        )
         let out = builtSnapshot?.snapshot ?? PBCoreDirectSecuritySnapshotEvent.with { $0.rejected = true }
         let committed = directSecurityLock.withLock { state -> Bool in
             guard state.rev == rev else { return false }
@@ -225,6 +222,59 @@ extension Remote {
         var ev = PBCoreEvent()
         ev.directSecuritySnapshot = out
         await hostHooks?.onCoreEvent(ev)
+    }
+
+    static func buildDirectSecuritySnapshot(
+        record: DeviceSecurity.Record,
+        expectedDeviceID: String,
+        devicePublicKey: Data,
+        started: UInt64,
+        nowMs: Int64
+    ) -> (snapshot: PBCoreDirectSecuritySnapshotEvent, xPrivateRaw: Data)? {
+        let startedMs = Int64(min(started, UInt64(Int64.max)))
+        do {
+            let head = record.state
+            let at = max(UInt64(max(0, nowMs)), record.floor)
+            guard record.member,
+                  record.memberID == expectedDeviceID,
+                  let lease = record.lease,
+                  nowMs < startedMs + 20_000,
+                  let selfMember = head.core.member(record.memberID) else {
+                return nil
+            }
+            try lease.valid(head, now: at)
+            let xKey = try record.xKey
+            let xPub = xKey.publicKey.rawRepresentation
+            guard devicePublicKey == selfMember.ed, xPub == selfMember.x else {
+                return nil
+            }
+            let stateHash = try DeviceSecurity.stateHash(head)
+            let snap = PBCoreDirectSecuritySnapshotEvent.with {
+                $0.member = true
+                $0.account = record.pin.account
+                $0.domain = record.pin.domain
+                $0.head = stateHash.hex
+                $0.headHash = stateHash
+                $0.epoch = head.core.epoch
+                $0.startedAtMs = startedMs
+                $0.leaseNotAfterMs = Int64(min(lease.notAfter, UInt64(Int64.max)))
+                $0.selfID = selfMember.id
+                $0.selfEdPublic = selfMember.ed
+                $0.selfXPublic = selfMember.x
+                $0.members = head.core.members.map { m in
+                    PBCoreDirectSecurityMember.with {
+                        $0.deviceID = m.id
+                        $0.edPublic = m.ed
+                        $0.xPublic = m.x
+                        $0.isSelf = (m.id == record.memberID)
+                        $0.kind = UInt32(m.kind)
+                    }
+                }
+            }
+            return (snap, xKey.rawRepresentation)
+        } catch {
+            return nil
+        }
     }
 
     func handleDirectEvent(

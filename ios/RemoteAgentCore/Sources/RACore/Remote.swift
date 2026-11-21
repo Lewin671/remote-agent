@@ -209,7 +209,8 @@ public final actor Remote {
     }
 
     nonisolated let directPreferences: any DirectPreferenceStore
-    public nonisolated let directStunServers: [String]
+    public nonisolated let directServerHost: String
+    public nonisolated let directConfiguredStun: String
     public nonisolated let directSupported: Bool
     nonisolated let directSecurityLock: OSAllocatedUnfairLock<DirectSecurityHolder>
     private nonisolated let coreEventChain: SerialChain
@@ -332,7 +333,13 @@ public final actor Remote {
     ) throws {
         self.account = account
         self.directPreferences = directPreferences
-        self.directStunServers = directStun ?? DirectExecutor.defaultStunUrls(server: account.server)
+        if let overrideStun = directStun {
+            self.directServerHost = ""
+            self.directConfiguredStun = overrideStun.joined(separator: ",")
+        } else {
+            self.directServerHost = URL(string: account.server)?.host ?? ""
+            self.directConfiguredStun = ""
+        }
         self.directSupported = rtc != nil
         self.securityStorage = securityStorage
         self.http = http

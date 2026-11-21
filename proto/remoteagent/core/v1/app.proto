@@ -640,6 +640,8 @@ message Event {
     DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419;
     TerminalStreamEvent terminal_stream = 420;
     DirectPreferencesLoadedEvent direct_preferences_loaded = 421;
+    DirectSecurityInstalledEvent direct_security_installed = 422;
+    DirectAuthorizeDoneEvent direct_authorize_done = 423;
   }
   int64 now_ms = 98;
   int64 mono_ms = 99;

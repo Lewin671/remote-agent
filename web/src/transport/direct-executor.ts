@@ -32,12 +32,6 @@ import { PathChanged, abortable } from "./recovery";
 
 const utf8Dec = new TextDecoder("utf-8", { fatal: true });
 
-/** Configured STUN server URLs for this browser origin (max 2). */
-export function stunServers(host: string, configured?: string): string[] {
-  const list = (configured ?? "").split(",").map((url) => url.trim()).filter(Boolean);
-  return list.length ? list.slice(0, 2) : [`stun:${host.includes(":") ? `[${host}]` : host}:3478`];
-}
-
 /** Reads the bounded ServerFrame body without re-encoding signed peer bytes. */
 export function peerFrameBody(raw: Uint8Array<ArrayBuffer>, field: 11 | 12): Uint8Array<ArrayBuffer> | undefined {
   if (raw.length > 65540 || raw[0] !== ((field << 3) | 2)) return;

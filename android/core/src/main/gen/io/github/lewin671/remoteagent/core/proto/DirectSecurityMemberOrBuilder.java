@@ -39,4 +39,10 @@ public interface DirectSecurityMemberOrBuilder extends
    * @return The isSelf.
    */
   boolean getIsSelf();
+
+  /**
+   * <code>uint32 kind = 5 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  int getKind();
 }

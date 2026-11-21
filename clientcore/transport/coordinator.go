@@ -18,6 +18,12 @@ const (
 	// CoordEntropyLowWater triggers proactive background refill before exhaustion.
 	CoordEntropyLowWater = 1024
 	coordEntropyMaxBytes = 16384
+	// MemberKindMachine matches DeviceKind.DEVICE_KIND_MACHINE (1) in security heads.
+	MemberKindMachine uint32 = 1
+	// MemberKindClient matches DeviceKind.DEVICE_KIND_CLIENT (2) in security heads.
+	MemberKindClient uint32 = 2
+	defaultTicketTTLMs int64  = 120_000
+	ticketPruneGraceMs int64  = 60_000
 )
 
 // CoordConfig initializes a transport Coordinator.
@@ -25,7 +31,8 @@ type CoordConfig struct {
 	Supported       bool
 	Account         string
 	ProtocolVersion uint64
-	StunServers     []string
+	ServerHost      string
+	ConfiguredStun  string
 }
 
 // CoordMember describes one device member in the verified directory.
@@ -34,6 +41,11 @@ type CoordMember struct {
 	EdPub [32]byte
 	XPub  [32]byte
 	Self  bool
+	Kind  uint32
+}
+
+func (m CoordMember) isMachine() bool {
+	return !m.Self && m.Kind == MemberKindMachine
 }
 
 // CoordSecuritySnapshot is the verified member/lease/codec snapshot supplied by the shell.
@@ -221,13 +233,17 @@ type coordRound struct {
 	anyPC          bool
 	sampledLate    bool
 	everReady      bool
-	peerUnsupp     bool
+	roundUnsupp    bool
+	useUnsupp      [3]bool
+	attemptedUse   [3]bool
+	deadlineTicked bool
 	ended          bool
 }
 
 type trackedTicket struct {
-	ticket    Ticket
-	useDirect bool
+	ticket     Ticket
+	useDirect  bool
+	deadlineMs int64
 }
 
 type termState struct {
@@ -280,8 +296,9 @@ func (p *osEntropyPool) takeUnitFloat() (float64, bool) {
 // shared/peerwire.Codec, OS CSPRNG entropy pool, control messages, and terminal
 // stream reopen budgets.
 type Coordinator struct {
-	cfg      CoordConfig
-	engine   *Engine
+	cfg         CoordConfig
+	stunServers []string
+	engine      *Engine
 	randPool osEntropyPool
 
 	pendingEngineUnits int
@@ -333,6 +350,7 @@ func NewCoordinator(cfg CoordConfig) *Coordinator {
 	}
 	return &Coordinator{
 		cfg:           cfg,
+		stunServers:   StunServers(cfg.ServerHost, cfg.ConfiguredStun),
 		engine:        NewEngine(cfg.Supported),
 		foreground:    true,
 		members:       map[string]CoordMember{},
@@ -415,13 +433,15 @@ func (c *Coordinator) ProvideRandomBytes(now int64, raw []byte) []CoordEffect {
 	return c.take()
 }
 
-// Configure updates static transport config (such as STUN URLs or support flag).
+// Configure updates static transport config (such as STUN host/override or support flag).
 func (c *Coordinator) Configure(now int64, cfg CoordConfig) []CoordEffect {
 	if cfg.ProtocolVersion == 0 {
 		cfg.ProtocolVersion = 17
 	}
-	changed := cfg.Supported != c.cfg.Supported || cfg.Account != c.cfg.Account || !slicesEqual(cfg.StunServers, c.cfg.StunServers)
+	newStun := StunServers(cfg.ServerHost, cfg.ConfiguredStun)
+	changed := cfg.Supported != c.cfg.Supported || cfg.Account != c.cfg.Account || !slicesEqual(newStun, c.stunServers)
 	c.cfg = cfg
+	c.stunServers = newStun
 	if changed {
 		c.handleEngine(now, SetSupported{Supported: cfg.Supported})
 		c.rebuildCodec()
@@ -505,6 +525,7 @@ func (c *Coordinator) RefreshDiagnostics(now int64, machineID string) []CoordEff
 // OnEngineTimer runs when TIMER_KIND_DIRECT_ENGINE fires.
 func (c *Coordinator) OnEngineTimer(now int64) []CoordEffect {
 	c.hasEngineTick = false
+	c.PruneTickets(now)
 	c.handleEngine(now, Tick{})
 	return c.take()
 }
@@ -512,6 +533,7 @@ func (c *Coordinator) OnEngineTimer(now int64) []CoordEffect {
 // OnSessionTimer runs when TIMER_KIND_DIRECT_SESSION fires.
 func (c *Coordinator) OnSessionTimer(now int64) []CoordEffect {
 	c.prunePendingSignals(now)
+	c.PruneTickets(now)
 	for id := range c.pendingStarts {
 		if ps := c.pendingStarts[id]; now >= ps.deadlineAt {
 			delete(c.pendingStarts, id)
@@ -529,6 +551,9 @@ func (c *Coordinator) OnSessionTimer(now int64) []CoordEffect {
 			c.handleEngine(now, DiagSampleWanted{Round: r.id, Use: UseRead})
 			c.handleEngine(now, DiagSampleWanted{Round: r.id, Use: UseBulk})
 		}
+		if now >= int64(r.session.Deadline()) {
+			r.deadlineTicked = true
+		}
 		if err := c.stepSession(now, r, linkcore.Tick{}); err != nil {
 			continue
 		}
@@ -539,7 +564,6 @@ func (c *Coordinator) OnSessionTimer(now int64) []CoordEffect {
 // OnSecuritySnapshot installs a verified directory/lease/codec snapshot.
 func (c *Coordinator) OnSecuritySnapshot(now int64, snap CoordSecuritySnapshot) []CoordEffect {
 	prevSelfX := c.snap.SelfXPub
-	prevHead := c.snap.Head
 	c.snap = snap
 	c.hasSnap = true
 	if prevSelfX != snap.SelfXPub {
@@ -550,7 +574,7 @@ func (c *Coordinator) OnSecuritySnapshot(now int64, snap CoordSecuritySnapshot) 
 	var machines []string
 	for _, m := range snap.Members {
 		c.members[m.ID] = m
-		if !m.Self {
+		if m.isMachine() {
 			machines = append(machines, m.ID)
 		}
 	}
@@ -566,13 +590,6 @@ func (c *Coordinator) OnSecuritySnapshot(now int64, snap CoordSecuritySnapshot) 
 	}
 	c.rebuildCodec()
 
-	if prevHead != snap.Head {
-		c.handleEngine(now, SecurityInstalled{
-			Member:  snap.Member,
-			Account: snap.Account,
-			Head:    snap.Head,
-		})
-	}
 	c.handleEngine(now, SecuritySynced{
 		Member:        snap.Member,
 		Account:       snap.Account,
@@ -585,12 +602,28 @@ func (c *Coordinator) OnSecuritySnapshot(now int64, snap CoordSecuritySnapshot) 
 
 	if snap.Member {
 		for _, m := range snap.Members {
-			if m.Self {
+			if !m.isMachine() {
 				continue
 			}
 			c.ensureAgree(m.ID, m.XPub)
 		}
 	}
+	return c.take()
+}
+
+// OnSecurityInstalled invalidates active rounds if the installed record changed heads or ended membership.
+func (c *Coordinator) OnSecurityInstalled(now int64, member bool, account, head string) []CoordEffect {
+	c.handleEngine(now, SecurityInstalled{
+		Member:  member,
+		Account: account,
+		Head:    head,
+	})
+	return c.take()
+}
+
+// OnAuthorizeDone closes the Engine's authorizing gate after a security sync attempt completes or skips.
+func (c *Coordinator) OnAuthorizeDone(now int64, ok bool) []CoordEffect {
+	c.handleEngine(now, AuthorizeDone{OK: ok})
 	return c.take()
 }
 
@@ -693,7 +726,7 @@ func (c *Coordinator) OnSignalReceived(now int64, raw []byte) []CoordEffect {
 		return nil
 	}
 	member, ok := c.members[source]
-	if !ok || member.Self {
+	if !ok || !member.isMachine() {
 		c.engine.SignalDone(source, len(raw))
 		return nil
 	}
@@ -784,7 +817,7 @@ func (c *Coordinator) drainPendingStarts(now int64) {
 			continue
 		}
 		m, ok := c.members[ps.machine]
-		if !ok || m.XPub != ps.xPub {
+		if !ok || !m.isMachine() || m.XPub != ps.xPub {
 			delete(c.pendingStarts, id)
 			continue
 		}
@@ -829,7 +862,7 @@ func (c *Coordinator) drainPendingSignalsReady(now int64) {
 	for _, s := range toProcess {
 		member, hasMember := c.members[s.source]
 		shared := c.dhCache[dhKey{peerID: s.source, xPub: s.xPub}]
-		if hasMember && !member.Self && member.XPub == s.xPub && len(shared) == 32 && now < s.deadline {
+		if hasMember && member.isMachine() && member.XPub == s.xPub && len(shared) == 32 && now < s.deadline {
 			c.processSignalFrame(now, s.source, member, shared, s.raw)
 		}
 		c.engine.SignalDone(s.source, len(s.raw))
@@ -1077,9 +1110,15 @@ func (c *Coordinator) OnPcClosed(now int64, pcID uint64) []CoordEffect {
 		return nil
 	}
 	r.dcOpen[b.use] = false
+	if r.globalPC[b.use] == pcID {
+		r.globalPC[b.use] = 0
+	}
 	_ = c.stepSession(now, r, linkcore.PCClosed{ID: b.localID})
 	c.markPCClosed(now, r, b)
 	delete(c.pcs, pcID)
+	if !r.ended && r.deadlineTicked && r.globalPC[UseRead] == 0 && r.globalPC[UseBulk] == 0 {
+		_ = c.stepSession(now, r, linkcore.Tick{})
+	}
 	return c.take()
 }
 
@@ -1117,6 +1156,10 @@ func (c *Coordinator) PushedEventAllowed(now int64, id RoundID, use Use, machine
 
 // PrepareAttempt chooses Direct vs Relay for a read or bulk command/transfer and returns a tracked ticket.
 func (c *Coordinator) PrepareAttempt(now int64, machineID string, h Hint, deadlineMs int64, forceRelay bool) RouteDecision {
+	ticketDeadline := deadlineMs
+	if ticketDeadline <= 0 {
+		ticketDeadline = now + defaultTicketTTLMs
+	}
 	if !forceRelay {
 		if ticket, ok := c.engine.Attempt(now, machineID, h); ok {
 			if r := c.rounds[ticket.Round]; r != nil {
@@ -1124,7 +1167,7 @@ func (c *Coordinator) PrepareAttempt(now int64, machineID string, h Hint, deadli
 				if pcID := r.globalPC[u]; pcID != 0 {
 					c.nextTicketID++
 					tid := c.nextTicketID
-					c.tickets[tid] = trackedTicket{ticket: ticket, useDirect: true}
+					c.tickets[tid] = trackedTicket{ticket: ticket, useDirect: true, deadlineMs: ticketDeadline}
 					return RouteDecision{
 						UseDirect: true,
 						PCID:      pcID,
@@ -1138,7 +1181,7 @@ func (c *Coordinator) PrepareAttempt(now int64, machineID string, h Hint, deadli
 	t := c.engine.Track(machineID, h)
 	c.nextTicketID++
 	tid := c.nextTicketID
-	c.tickets[tid] = trackedTicket{ticket: t, useDirect: false}
+	c.tickets[tid] = trackedTicket{ticket: t, useDirect: false, deadlineMs: ticketDeadline}
 	return RouteDecision{UseDirect: false, TicketID: tid}
 }
 
@@ -1156,9 +1199,13 @@ func (c *Coordinator) PrepareInteractive(now int64, machineID string, deadlineMs
 	if pcID == 0 {
 		return RouteDecision{}, false
 	}
+	ticketDeadline := deadlineMs
+	if ticketDeadline <= 0 {
+		ticketDeadline = now + defaultTicketTTLMs
+	}
 	c.nextTicketID++
 	tid := c.nextTicketID
-	c.tickets[tid] = trackedTicket{ticket: ticket, useDirect: true}
+	c.tickets[tid] = trackedTicket{ticket: ticket, useDirect: true, deadlineMs: ticketDeadline}
 	return RouteDecision{
 		UseDirect: true,
 		PCID:      pcID,
@@ -1191,6 +1238,32 @@ func (c *Coordinator) FailTicket(now int64, ticketID uint64) []CoordEffect {
 		c.applyEngineEffects(now, effs, nil)
 	}
 	return c.take()
+}
+
+// ReleaseTicket drops an uncompleted ticket without reporting a direct failure or observation.
+func (c *Coordinator) ReleaseTicket(ticketID uint64) {
+	if ticketID != 0 {
+		delete(c.tickets, ticketID)
+	}
+}
+
+// PruneTickets sweeps abandoned tickets whose deadline + grace window has passed.
+func (c *Coordinator) PruneTickets(now int64) {
+	for id, t := range c.tickets {
+		if now >= t.deadlineMs+ticketPruneGraceMs {
+			delete(c.tickets, id)
+		}
+	}
+}
+
+// ClearTickets drops all tracked route tickets (e.g., on sync stop).
+func (c *Coordinator) ClearTickets() {
+	clear(c.tickets)
+}
+
+// PendingTicketCount returns the number of currently tracked tickets (for diagnostics/tests).
+func (c *Coordinator) PendingTicketCount() int {
+	return len(c.tickets)
 }
 
 // BeginTransfer records upload kind metadata (UploadImage vs UploadFile) for PutImageChunk routing.
@@ -1314,16 +1387,19 @@ func (c *Coordinator) NextTimers(now int64) (engineAt int64, engineOK bool, sess
 		if r.ended {
 			continue
 		}
+		v := r.session.View()
 		if due, ok := r.session.NextTimer(); ok {
 			addSess(int64(due))
 		}
-		if !r.sampledLate && !r.session.View().Established && r.session.Deadline() > lateStatsSampleLeadMs {
+		if !v.Retired && !r.sampledLate && !v.Established && r.session.Deadline() > lateStatsSampleLeadMs {
 			addSess(int64(r.session.Deadline()) - lateStatsSampleLeadMs)
 		}
-		if !r.session.View().Retired {
+		if !v.Retired && !r.deadlineTicked {
 			addSess(int64(r.session.Deadline()))
 		}
-		addSess(int64(r.session.RetainUntil()))
+		if v.Retired {
+			addSess(int64(r.session.RetainUntil()))
+		}
 	}
 	for _, ps := range c.pendingStarts {
 		addSess(ps.deadlineAt)
@@ -1492,7 +1568,7 @@ func (c *Coordinator) onStartRound(now int64, eff StartRound) {
 		return
 	}
 	m, ok := c.members[eff.Machine]
-	if !ok || m.Self {
+	if !ok || !m.isMachine() {
 		c.handleEngine(now, RoundEnded{Round: eff.Round})
 		return
 	}
@@ -1651,6 +1727,7 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			r.globalPC[u] = pcID
 			c.pcs[pcID] = &pcBinding{roundID: r.id, localID: eff.ID, use: u}
 			r.anyPC = true
+			r.attemptedUse[u] = true
 			c.handleEngine(now, DiagAttempt{Round: r.id, Use: u})
 			c.emit(CoordPcCreate{
 				RoundID:    r.id,
@@ -1658,7 +1735,7 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 				PCID:       pcID,
 				Use:        u,
 				Generation: eff.Generation,
-				STUN:       append([]string(nil), c.cfg.StunServers...),
+				STUN:       append([]string(nil), c.stunServers...),
 			})
 
 		case linkcore.DescribePC:
@@ -1722,10 +1799,12 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			c.emit(CoordPcClose{PCID: pcID, Reason: eff.Reason})
 
 		case linkcore.PeerUnsupported:
-			r.peerUnsupp = true
 			c.handleEngine(now, DiagSignal{Round: r.id, Note: NoteUnsupported})
 			if eff.Use == 0 {
+				r.roundUnsupp = true
 				c.retireAndFailUnsupported(now, r)
+			} else if eff.Use == uint64(UseRead) || eff.Use == uint64(UseBulk) {
+				r.useUnsupp[eff.Use] = true
 			}
 
 		case linkcore.SignalRejected:
@@ -1772,7 +1851,22 @@ func (c *Coordinator) finishSession(now int64, r *coordRound, reason string) {
 	}
 	var failure Failure
 	timedOut := reason == "round_deadline"
-	if r.peerUnsupp {
+	allUsesUnsupp := false
+	if !r.roundUnsupp && !r.everReady && (r.useUnsupp[UseRead] || r.useUnsupp[UseBulk]) {
+		allAttempted := true
+		anyAttempted := false
+		for _, u := range []Use{UseRead, UseBulk} {
+			if r.attemptedUse[u] {
+				anyAttempted = true
+				if !r.useUnsupp[u] {
+					allAttempted = false
+					break
+				}
+			}
+		}
+		allUsesUnsupp = allAttempted && (anyAttempted || r.useUnsupp[UseRead] || r.useUnsupp[UseBulk])
+	}
+	if r.roundUnsupp || allUsesUnsupp {
 		failure = FailurePeerUnsupported
 	} else if timedOut && !r.everReady {
 		if !r.session.Booted() {

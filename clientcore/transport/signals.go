@@ -27,7 +27,11 @@ func StunServers(host, configured string) []string {
 	if len(list) > 0 {
 		return list
 	}
-	if strings.Contains(host, ":") {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return nil
+	}
+	if strings.Contains(host, ":") && !strings.HasPrefix(host, "[") {
 		host = "[" + host + "]"
 	}
 	return []string{"stun:" + host + ":3478"}

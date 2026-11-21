@@ -6,7 +6,6 @@ import * as l10n from "../i18n";
 import { PROTOCOL_VERSION } from "../protocol";
 import { pushPrefs, pushState, pushSupported, setPushPrefs, type PushPrefs } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
-import { stunServers } from "../transport/direct-executor";
 import { checkUpdate } from "../update";
 import {
   CacheBootstrapLoadedEventSchema,
@@ -80,12 +79,14 @@ import {
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
   CommandRouteLeg,
+  DirectAuthorizeDoneEventSchema,
   DirectBulkTransferBeginEventSchema,
   DirectBulkTransferDoneEventSchema,
   DirectPreferenceEntrySchema,
   DirectPreferencesLoadedEventSchema,
   DirectRefreshDiagnosticsActionSchema,
   DirectRetryNowActionSchema,
+  DirectSecurityInstalledEventSchema,
   DirectSecurityMemberSchema,
   DirectSecuritySnapshotEventSchema,
   DirectSignalDeliveryEventSchema,
@@ -253,7 +254,7 @@ export interface DirectSecuritySnapshotInput {
   selfId: string;
   selfEdPublic: Uint8Array<ArrayBuffer>;
   selfXPublic: Uint8Array<ArrayBuffer>;
-  members: Array<{ deviceId: string; edPublic: Uint8Array<ArrayBuffer>; xPublic: Uint8Array<ArrayBuffer>; isSelf: boolean }>;
+  members: Array<{ deviceId: string; edPublic: Uint8Array<ArrayBuffer>; xPublic: Uint8Array<ArrayBuffer>; isSelf: boolean; kind: number }>;
   rejected: boolean;
 }
 
@@ -272,6 +273,8 @@ export interface HostBridge {
   retrySession(sessionId: string): void;
   retryEvents(sessionId: string): void;
   dispatchDirectSecuritySnapshot(snap: DirectSecuritySnapshotInput): void;
+  dispatchDirectSecurityInstalled(installed: { member: boolean; account: string; head: string }): void;
+  dispatchDirectAuthorizeDone(ok: boolean): void;
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
   dispatchDirectSignalDelivery(frameId: Uint8Array<ArrayBuffer>, status: number, retryAfterMs: number): void;
   beginDirectBulkTransfer(params: {
@@ -809,6 +812,8 @@ export class CoreHost {
         retrySession: (sid) => this.retrySession(sid),
         retryEvents: (sid) => this.retryEvents(sid),
         dispatchDirectSecuritySnapshot: (snap) => this.dispatchDirectSecuritySnapshot(snap),
+        dispatchDirectSecurityInstalled: (installed) => this.dispatchDirectSecurityInstalled(installed),
+        dispatchDirectAuthorizeDone: (ok) => this.dispatchDirectAuthorizeDone(ok),
         dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
         dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
           this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
@@ -941,13 +946,15 @@ export class CoreHost {
       });
     }
     const serverHost = this.remote ? new URL(this.remote.account.server).hostname : "localhost";
+    const configuredStun = import.meta.env.VITE_DIRECT_STUN_URL ?? "";
     this.emit({
       case: "transportConfig",
       value: create(TransportConfigEventSchema, {
         supported: typeof RTCPeerConnection !== "undefined",
         account: "",
         protocolVersion: PROTOCOL_VERSION,
-        stunServers: stunServers(serverHost, import.meta.env.VITE_DIRECT_STUN_URL),
+        serverHost,
+        configuredStun,
         platformAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
       }),
     });
@@ -1687,6 +1694,22 @@ export class CoreHost {
         members: snap.members.map((m) => create(DirectSecurityMemberSchema, m)),
         rejected: snap.rejected,
       }),
+    });
+  }
+
+  dispatchDirectSecurityInstalled(installed: { member: boolean; account: string; head: string }) {
+    if (this.closed) return;
+    this.emit({
+      case: "directSecurityInstalled",
+      value: create(DirectSecurityInstalledEventSchema, installed),
+    });
+  }
+
+  dispatchDirectAuthorizeDone(ok: boolean) {
+    if (this.closed) return;
+    this.emit({
+      case: "directAuthorizeDone",
+      value: create(DirectAuthorizeDoneEventSchema, { ok }),
     });
   }
 

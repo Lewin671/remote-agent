@@ -111,6 +111,7 @@ type DirectSecurityMember struct {
 	EdPublic []byte
 	XPublic  []byte
 	IsSelf   bool
+	Kind     uint32
 }
 
 func (m *DirectSecurityMember) GetDeviceId() string {
@@ -136,6 +137,12 @@ func (m *DirectSecurityMember) GetIsSelf() bool {
 		return m.IsSelf
 	}
 	return false
+}
+func (m *DirectSecurityMember) GetKind() uint32 {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
 }
 
 func (m *DirectSecurityMember) Unmarshal(b []byte) error {
@@ -179,6 +186,15 @@ func (m *DirectSecurityMember) Unmarshal(b []byte) error {
 					return err
 				}
 				m.IsSelf = litewire.DecodeBool(v)
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Kind = uint32(v)
 				continue
 			}
 		}
@@ -506,7 +522,8 @@ type TransportConfigEvent struct {
 	Supported       bool
 	Account         string
 	ProtocolVersion uint32
-	StunServers     []string
+	ServerHost      string
+	ConfiguredStun  string
 	PlatformAgent   string
 }
 
@@ -528,11 +545,17 @@ func (m *TransportConfigEvent) GetProtocolVersion() uint32 {
 	}
 	return 0
 }
-func (m *TransportConfigEvent) GetStunServers() []string {
+func (m *TransportConfigEvent) GetServerHost() string {
 	if m != nil {
-		return m.StunServers
+		return m.ServerHost
 	}
-	return nil
+	return ""
+}
+func (m *TransportConfigEvent) GetConfiguredStun() string {
+	if m != nil {
+		return m.ConfiguredStun
+	}
+	return ""
 }
 func (m *TransportConfigEvent) GetPlatformAgent() string {
 	if m != nil {
@@ -581,10 +604,19 @@ func (m *TransportConfigEvent) Unmarshal(b []byte) error {
 				if err != nil {
 					return err
 				}
-				m.StunServers = append(m.StunServers, v)
+				m.ServerHost = v
 				continue
 			}
 		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ConfiguredStun = v
+				continue
+			}
+		case 6:
 			if wtyp == litewire.BytesType {
 				v, err := litewire.ReadString(&b)
 				if err != nil {
@@ -2127,6 +2159,108 @@ func (m *DirectPreferencesLoadedEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Entries = append(m.Entries, elem)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type DirectSecurityInstalledEvent struct {
+	Member  bool
+	Account string
+	Head    string
+}
+
+func (m *DirectSecurityInstalledEvent) GetMember() bool {
+	if m != nil {
+		return m.Member
+	}
+	return false
+}
+func (m *DirectSecurityInstalledEvent) GetAccount() string {
+	if m != nil {
+		return m.Account
+	}
+	return ""
+}
+func (m *DirectSecurityInstalledEvent) GetHead() string {
+	if m != nil {
+		return m.Head
+	}
+	return ""
+}
+
+func (m *DirectSecurityInstalledEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Member = litewire.DecodeBool(v)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Account = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Head = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type DirectAuthorizeDoneEvent struct {
+	Ok bool
+}
+
+func (m *DirectAuthorizeDoneEvent) GetOk() bool {
+	if m != nil {
+		return m.Ok
+	}
+	return false
+}
+
+func (m *DirectAuthorizeDoneEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Ok = litewire.DecodeBool(v)
 				continue
 			}
 		}

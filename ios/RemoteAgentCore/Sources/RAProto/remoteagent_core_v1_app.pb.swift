@@ -3258,6 +3258,22 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .directPreferencesLoaded(newValue)}
   }
 
+  public var directSecurityInstalled: PBCoreDirectSecurityInstalledEvent {
+    get {
+      if case .directSecurityInstalled(let v)? = _storage._event {return v}
+      return PBCoreDirectSecurityInstalledEvent()
+    }
+    set {_uniqueStorage()._event = .directSecurityInstalled(newValue)}
+  }
+
+  public var directAuthorizeDone: PBCoreDirectAuthorizeDoneEvent {
+    get {
+      if case .directAuthorizeDone(let v)? = _storage._event {return v}
+      return PBCoreDirectAuthorizeDoneEvent()
+    }
+    set {_uniqueStorage()._event = .directAuthorizeDone(newValue)}
+  }
+
   public var nowMs: Int64 {
     get {return _storage._nowMs}
     set {_uniqueStorage()._nowMs = newValue}
@@ -3424,6 +3440,8 @@ public struct PBCoreEvent: @unchecked Sendable {
     case directBulkTransferDone(PBCoreDirectBulkTransferDoneEvent)
     case terminalStream(PBCoreTerminalStreamEvent)
     case directPreferencesLoaded(PBCoreDirectPreferencesLoadedEvent)
+    case directSecurityInstalled(PBCoreDirectSecurityInstalledEvent)
+    case directAuthorizeDone(PBCoreDirectAuthorizeDoneEvent)
 
   }
 
@@ -8044,7 +8062,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{3}direct_security_snapshot\0\u{3}direct_signal_received\0\u{3}direct_signal_delivery\0\u{3}direct_key_signed\0\u{3}direct_key_agreed\0\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{3}direct_security_snapshot\0\u{3}direct_signal_received\0\u{3}direct_signal_delivery\0\u{3}direct_key_signed\0\u{3}direct_key_agreed\0\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{3}direct_security_installed\0\u{3}direct_authorize_done\0")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -9948,6 +9966,32 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
             _storage._event = .directPreferencesLoaded(v)
           }
         }()
+        case 422: try {
+          var v: PBCoreDirectSecurityInstalledEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .directSecurityInstalled(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .directSecurityInstalled(v)
+          }
+        }()
+        case 423: try {
+          var v: PBCoreDirectAuthorizeDoneEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .directAuthorizeDone(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .directAuthorizeDone(v)
+          }
+        }()
         default: break
         }
       }
@@ -10547,6 +10591,14 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case .directPreferencesLoaded?: try {
         guard case .directPreferencesLoaded(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 421)
+      }()
+      case .directSecurityInstalled?: try {
+        guard case .directSecurityInstalled(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 422)
+      }()
+      case .directAuthorizeDone?: try {
+        guard case .directAuthorizeDone(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 423)
       }()
       default: break
       }

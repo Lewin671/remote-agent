@@ -53,6 +53,7 @@ message DirectSecurityMember {
   bytes ed_public = 2;
   bytes x_public = 3;
   bool is_self = 4;
+  uint32 kind = 5;
 }
 
 message DirectPreferenceEntry {
@@ -86,8 +87,9 @@ message TransportConfigEvent {
   bool supported = 1;
   string account = 2;
   uint32 protocol_version = 3;
-  repeated string stun_servers = 4;
-  string platform_agent = 5;
+  string server_host = 4;
+  string configured_stun = 5;
+  string platform_agent = 6;
 }
 
 message DirectSecuritySnapshotEvent {
@@ -222,6 +224,16 @@ message TerminalStreamEvent {
 
 message DirectPreferencesLoadedEvent {
   repeated DirectPreferenceEntry entries = 1;
+}
+
+message DirectSecurityInstalledEvent {
+  bool member = 1;
+  string account = 2;
+  string head = 3;
+}
+
+message DirectAuthorizeDoneEvent {
+  bool ok = 1;
 }
 
 // ---- Effects (Core -> Shell) ----

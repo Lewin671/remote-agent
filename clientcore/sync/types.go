@@ -420,10 +420,12 @@ type Engine struct {
 	homeScopeToken string
 	scopeHMACKey   []byte
 
-	inFlightCmds    map[string]*PreparedCommand
-	reqIDByAttempt  map[string]string
-	attemptTrackers map[string]*AttemptTracker
-	retryReqByTimer map[string]string // timer key -> request_id
+	inFlightCmds       map[string]*PreparedCommand
+	reqIDByAttempt     map[string]string
+	attemptTrackers    map[string]*AttemptTracker
+	retryReqByTimer    map[string]string // timer key -> request_id
+	lateDirectTickets  map[string]uint64 // attempt_id -> orphaned direct ticket_id after settle
+	lateDirectDeadline map[string]int64  // attempt_id -> expiry deadline ms
 
 	transportCoord         *transport.Coordinator
 	platformAgent          string
@@ -461,10 +463,12 @@ func NewEngine() *Engine {
 		pinnedSessions:    make(map[string]bool),
 		livePollInFlight:  make(map[string]string),
 		livePollReqToSid:  make(map[string]string),
-		inFlightCmds:      make(map[string]*PreparedCommand),
-		reqIDByAttempt:    make(map[string]string),
-		attemptTrackers:   make(map[string]*AttemptTracker),
-		retryReqByTimer:   make(map[string]string),
+		inFlightCmds:       make(map[string]*PreparedCommand),
+		reqIDByAttempt:     make(map[string]string),
+		attemptTrackers:    make(map[string]*AttemptTracker),
+		retryReqByTimer:    make(map[string]string),
+		lateDirectTickets:  make(map[string]uint64),
+		lateDirectDeadline: make(map[string]int64),
 		transportCoord: transport.NewCoordinator(transport.CoordConfig{
 			ProtocolVersion: uint64(ProtocolVersion),
 		}),
@@ -635,6 +639,10 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleDirectPreferencesLoaded(ctx, k.DirectPreferencesLoaded)
 	case *corev1.Event_DirectSecuritySnapshot:
 		e.handleDirectSecuritySnapshot(ctx, k.DirectSecuritySnapshot)
+	case *corev1.Event_DirectSecurityInstalled:
+		e.handleDirectSecurityInstalled(ctx, k.DirectSecurityInstalled)
+	case *corev1.Event_DirectAuthorizeDone:
+		e.handleDirectAuthorizeDone(ctx, k.DirectAuthorizeDone)
 	case *corev1.Event_DirectSignalReceived:
 		e.handleDirectSignalReceived(ctx, k.DirectSignalReceived)
 	case *corev1.Event_DirectSignalDelivery:

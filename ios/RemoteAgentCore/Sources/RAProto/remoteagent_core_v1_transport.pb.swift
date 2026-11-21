@@ -278,6 +278,8 @@ public struct PBCoreDirectSecurityMember: Sendable {
 
   public var isSelf: Bool = false
 
+  public var kind: UInt32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -356,7 +358,9 @@ public struct PBCoreTransportConfigEvent: Sendable {
 
   public var protocolVersion: UInt32 = 0
 
-  public var stunServers: [String] = []
+  public var serverHost: String = String()
+
+  public var configuredStun: String = String()
 
   public var platformAgent: String = String()
 
@@ -726,6 +730,34 @@ public struct PBCoreDirectPreferencesLoadedEvent: Sendable {
   public init() {}
 }
 
+public struct PBCoreDirectSecurityInstalledEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var member: Bool = false
+
+  public var account: String = String()
+
+  public var head: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBCoreDirectAuthorizeDoneEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ok: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct PBCoreDirectKeySignEffect: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1017,7 +1049,7 @@ extension PBCoreDirectIceCandidate: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBCoreDirectSecurityMember: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectSecurityMember"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}ed_public\0\u{3}x_public\0\u{3}is_self\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}ed_public\0\u{3}x_public\0\u{3}is_self\0\u{1}kind\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1029,6 +1061,7 @@ extension PBCoreDirectSecurityMember: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 2: try { try decoder.decodeSingularBytesField(value: &self.edPublic) }()
       case 3: try { try decoder.decodeSingularBytesField(value: &self.xPublic) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.isSelf) }()
+      case 5: try { try decoder.decodeSingularUInt32Field(value: &self.kind) }()
       default: break
       }
     }
@@ -1047,6 +1080,9 @@ extension PBCoreDirectSecurityMember: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.isSelf != false {
       try visitor.visitSingularBoolField(value: self.isSelf, fieldNumber: 4)
     }
+    if self.kind != 0 {
+      try visitor.visitSingularUInt32Field(value: self.kind, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1055,6 +1091,7 @@ extension PBCoreDirectSecurityMember: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.edPublic != rhs.edPublic {return false}
     if lhs.xPublic != rhs.xPublic {return false}
     if lhs.isSelf != rhs.isSelf {return false}
+    if lhs.kind != rhs.kind {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1217,7 +1254,7 @@ extension PBCoreDirectStatsReport: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreTransportConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TransportConfigEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}supported\0\u{1}account\0\u{3}protocol_version\0\u{3}stun_servers\0\u{3}platform_agent\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}supported\0\u{1}account\0\u{3}protocol_version\0\u{3}server_host\0\u{3}configured_stun\0\u{3}platform_agent\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1228,8 +1265,9 @@ extension PBCoreTransportConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 1: try { try decoder.decodeSingularBoolField(value: &self.supported) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.account) }()
       case 3: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
-      case 4: try { try decoder.decodeRepeatedStringField(value: &self.stunServers) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.platformAgent) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.serverHost) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.configuredStun) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.platformAgent) }()
       default: break
       }
     }
@@ -1245,11 +1283,14 @@ extension PBCoreTransportConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.protocolVersion != 0 {
       try visitor.visitSingularUInt32Field(value: self.protocolVersion, fieldNumber: 3)
     }
-    if !self.stunServers.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.stunServers, fieldNumber: 4)
+    if !self.serverHost.isEmpty {
+      try visitor.visitSingularStringField(value: self.serverHost, fieldNumber: 4)
+    }
+    if !self.configuredStun.isEmpty {
+      try visitor.visitSingularStringField(value: self.configuredStun, fieldNumber: 5)
     }
     if !self.platformAgent.isEmpty {
-      try visitor.visitSingularStringField(value: self.platformAgent, fieldNumber: 5)
+      try visitor.visitSingularStringField(value: self.platformAgent, fieldNumber: 6)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1258,7 +1299,8 @@ extension PBCoreTransportConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.supported != rhs.supported {return false}
     if lhs.account != rhs.account {return false}
     if lhs.protocolVersion != rhs.protocolVersion {return false}
-    if lhs.stunServers != rhs.stunServers {return false}
+    if lhs.serverHost != rhs.serverHost {return false}
+    if lhs.configuredStun != rhs.configuredStun {return false}
     if lhs.platformAgent != rhs.platformAgent {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -2144,6 +2186,76 @@ extension PBCoreDirectPreferencesLoadedEvent: SwiftProtobuf.Message, SwiftProtob
 
   public static func ==(lhs: PBCoreDirectPreferencesLoadedEvent, rhs: PBCoreDirectPreferencesLoadedEvent) -> Bool {
     if lhs.entries != rhs.entries {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreDirectSecurityInstalledEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DirectSecurityInstalledEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}member\0\u{1}account\0\u{1}head\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.member) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.account) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.head) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.member != false {
+      try visitor.visitSingularBoolField(value: self.member, fieldNumber: 1)
+    }
+    if !self.account.isEmpty {
+      try visitor.visitSingularStringField(value: self.account, fieldNumber: 2)
+    }
+    if !self.head.isEmpty {
+      try visitor.visitSingularStringField(value: self.head, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreDirectSecurityInstalledEvent, rhs: PBCoreDirectSecurityInstalledEvent) -> Bool {
+    if lhs.member != rhs.member {return false}
+    if lhs.account != rhs.account {return false}
+    if lhs.head != rhs.head {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBCoreDirectAuthorizeDoneEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DirectAuthorizeDoneEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ok\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.ok) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.ok != false {
+      try visitor.visitSingularBoolField(value: self.ok, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreDirectAuthorizeDoneEvent, rhs: PBCoreDirectAuthorizeDoneEvent) -> Bool {
+    if lhs.ok != rhs.ok {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

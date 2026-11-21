@@ -16,7 +16,8 @@ public  final class TransportConfigEvent extends
     TransportConfigEventOrBuilder {
   private TransportConfigEvent() {
     account_ = "";
-    stunServers_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    serverHost_ = "";
+    configuredStun_ = "";
     platformAgent_ = "";
   }
   public static final int SUPPORTED_FIELD_NUMBER = 1;
@@ -119,105 +120,106 @@ public  final class TransportConfigEvent extends
     protocolVersion_ = 0;
   }
 
-  public static final int STUN_SERVERS_FIELD_NUMBER = 4;
-  private com.google.protobuf.Internal.ProtobufList<java.lang.String> stunServers_;
+  public static final int SERVER_HOST_FIELD_NUMBER = 4;
+  private java.lang.String serverHost_;
   /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @return A list containing the stunServers.
+   * <code>string server_host = 4 [json_name = "serverHost"];</code>
+   * @return The serverHost.
    */
   @java.lang.Override
-  public java.util.List<java.lang.String> getStunServersList() {
-    return stunServers_;
+  public java.lang.String getServerHost() {
+    return serverHost_;
   }
   /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @return The count of stunServers.
-   */
-  @java.lang.Override
-  public int getStunServersCount() {
-    return stunServers_.size();
-  }
-  /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @param index The index of the element to return.
-   * @return The stunServers at the given index.
-   */
-  @java.lang.Override
-  public java.lang.String getStunServers(int index) {
-    return stunServers_.get(index);
-  }
-  /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @param index The index of the value to return.
-   * @return The bytes of the stunServers at the given index.
+   * <code>string server_host = 4 [json_name = "serverHost"];</code>
+   * @return The bytes for serverHost.
    */
   @java.lang.Override
   public com.google.protobuf.ByteString
-      getStunServersBytes(int index) {
-    return com.google.protobuf.ByteString.copyFromUtf8(
-        stunServers_.get(index));
-  }
-  private void ensureStunServersIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
-        stunServers_;  if (!tmp.isModifiable()) {
-      stunServers_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
+      getServerHostBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(serverHost_);
   }
   /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @param index The index to set the value at.
-   * @param value The stunServers to set.
+   * <code>string server_host = 4 [json_name = "serverHost"];</code>
+   * @param value The serverHost to set.
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setStunServers(
-      int index, java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-    ensureStunServersIsMutable();
-    stunServers_.set(index, value);
-  }
-  /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @param value The stunServers to add.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addStunServers(
+  private void setServerHost(
       java.lang.String value) {
     value.getClass();  // minimal bytecode null check
-    ensureStunServersIsMutable();
-    stunServers_.add(value);
+
+    serverHost_ = value;
   }
   /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @param values The stunServers to add.
+   * <code>string server_host = 4 [json_name = "serverHost"];</code>
    */
-  private void addAllStunServers(
-      java.lang.Iterable<java.lang.String> values) {
-    ensureStunServersIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, stunServers_);
+  private void clearServerHost() {
+
+    serverHost_ = getDefaultInstance().getServerHost();
   }
   /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
+   * <code>string server_host = 4 [json_name = "serverHost"];</code>
+   * @param value The bytes for serverHost to set.
    */
-  private void clearStunServers() {
-    stunServers_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
-  }
-  /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @param value The bytes of the stunServers to add.
-   */
-  private void addStunServersBytes(
+  private void setServerHostBytes(
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
-    ensureStunServersIsMutable();
-    stunServers_.add(value.toStringUtf8());
+    serverHost_ = value.toStringUtf8();
+
   }
 
-  public static final int PLATFORM_AGENT_FIELD_NUMBER = 5;
+  public static final int CONFIGURED_STUN_FIELD_NUMBER = 5;
+  private java.lang.String configuredStun_;
+  /**
+   * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+   * @return The configuredStun.
+   */
+  @java.lang.Override
+  public java.lang.String getConfiguredStun() {
+    return configuredStun_;
+  }
+  /**
+   * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+   * @return The bytes for configuredStun.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getConfiguredStunBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(configuredStun_);
+  }
+  /**
+   * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+   * @param value The configuredStun to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setConfiguredStun(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    configuredStun_ = value;
+  }
+  /**
+   * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+   */
+  private void clearConfiguredStun() {
+
+    configuredStun_ = getDefaultInstance().getConfiguredStun();
+  }
+  /**
+   * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+   * @param value The bytes for configuredStun to set.
+   */
+  private void setConfiguredStunBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    configuredStun_ = value.toStringUtf8();
+
+  }
+
+  public static final int PLATFORM_AGENT_FIELD_NUMBER = 6;
   private java.lang.String platformAgent_;
   /**
-   * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+   * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
    * @return The platformAgent.
    */
   @java.lang.Override
@@ -225,7 +227,7 @@ public  final class TransportConfigEvent extends
     return platformAgent_;
   }
   /**
-   * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+   * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
    * @return The bytes for platformAgent.
    */
   @java.lang.Override
@@ -234,7 +236,7 @@ public  final class TransportConfigEvent extends
     return com.google.protobuf.ByteString.copyFromUtf8(platformAgent_);
   }
   /**
-   * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+   * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
    * @param value The platformAgent to set.
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -245,14 +247,14 @@ public  final class TransportConfigEvent extends
     platformAgent_ = value;
   }
   /**
-   * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+   * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
    */
   private void clearPlatformAgent() {
 
     platformAgent_ = getDefaultInstance().getPlatformAgent();
   }
   /**
-   * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+   * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
    * @param value The bytes for platformAgent to set.
    */
   private void setPlatformAgentBytes(
@@ -465,99 +467,105 @@ public  final class TransportConfigEvent extends
     }
 
     /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-     * @return A list containing the stunServers.
+     * <code>string server_host = 4 [json_name = "serverHost"];</code>
+     * @return The serverHost.
      */
     @java.lang.Override
-    public java.util.List<java.lang.String>
-        getStunServersList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getStunServersList());
+    public java.lang.String getServerHost() {
+      return instance.getServerHost();
     }
     /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-     * @return The count of stunServers.
-     */
-    @java.lang.Override
-    public int getStunServersCount() {
-      return instance.getStunServersCount();
-    }
-    /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-     * @param index The index of the element to return.
-     * @return The stunServers at the given index.
-     */
-    @java.lang.Override
-    public java.lang.String getStunServers(int index) {
-      return instance.getStunServers(index);
-    }
-    /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-     * @param index The index of the value to return.
-     * @return The bytes of the stunServers at the given index.
+     * <code>string server_host = 4 [json_name = "serverHost"];</code>
+     * @return The bytes for serverHost.
      */
     @java.lang.Override
     public com.google.protobuf.ByteString
-        getStunServersBytes(int index) {
-      return instance.getStunServersBytes(index);
+        getServerHostBytes() {
+      return instance.getServerHostBytes();
     }
     /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-     * @param index The index to set the value at.
-     * @param value The stunServers to set.
+     * <code>string server_host = 4 [json_name = "serverHost"];</code>
+     * @param value The serverHost to set.
      * @return This builder for chaining.
      */
-    public Builder setStunServers(
-        int index, java.lang.String value) {
-      copyOnWrite();
-      instance.setStunServers(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-     * @param value The stunServers to add.
-     * @return This builder for chaining.
-     */
-    public Builder addStunServers(
+    public Builder setServerHost(
         java.lang.String value) {
       copyOnWrite();
-      instance.addStunServers(value);
+      instance.setServerHost(value);
       return this;
     }
     /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-     * @param values The stunServers to add.
+     * <code>string server_host = 4 [json_name = "serverHost"];</code>
      * @return This builder for chaining.
      */
-    public Builder addAllStunServers(
-        java.lang.Iterable<java.lang.String> values) {
+    public Builder clearServerHost() {
       copyOnWrite();
-      instance.addAllStunServers(values);
+      instance.clearServerHost();
       return this;
     }
     /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
+     * <code>string server_host = 4 [json_name = "serverHost"];</code>
+     * @param value The bytes for serverHost to set.
      * @return This builder for chaining.
      */
-    public Builder clearStunServers() {
-      copyOnWrite();
-      instance.clearStunServers();
-      return this;
-    }
-    /**
-     * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-     * @param value The bytes of the stunServers to add.
-     * @return This builder for chaining.
-     */
-    public Builder addStunServersBytes(
+    public Builder setServerHostBytes(
         com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.addStunServersBytes(value);
+      instance.setServerHostBytes(value);
       return this;
     }
 
     /**
-     * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+     * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+     * @return The configuredStun.
+     */
+    @java.lang.Override
+    public java.lang.String getConfiguredStun() {
+      return instance.getConfiguredStun();
+    }
+    /**
+     * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+     * @return The bytes for configuredStun.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getConfiguredStunBytes() {
+      return instance.getConfiguredStunBytes();
+    }
+    /**
+     * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+     * @param value The configuredStun to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConfiguredStun(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setConfiguredStun(value);
+      return this;
+    }
+    /**
+     * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearConfiguredStun() {
+      copyOnWrite();
+      instance.clearConfiguredStun();
+      return this;
+    }
+    /**
+     * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+     * @param value The bytes for configuredStun to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConfiguredStunBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setConfiguredStunBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
      * @return The platformAgent.
      */
     @java.lang.Override
@@ -565,7 +573,7 @@ public  final class TransportConfigEvent extends
       return instance.getPlatformAgent();
     }
     /**
-     * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+     * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
      * @return The bytes for platformAgent.
      */
     @java.lang.Override
@@ -574,7 +582,7 @@ public  final class TransportConfigEvent extends
       return instance.getPlatformAgentBytes();
     }
     /**
-     * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+     * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
      * @param value The platformAgent to set.
      * @return This builder for chaining.
      */
@@ -585,7 +593,7 @@ public  final class TransportConfigEvent extends
       return this;
     }
     /**
-     * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+     * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
      * @return This builder for chaining.
      */
     public Builder clearPlatformAgent() {
@@ -594,7 +602,7 @@ public  final class TransportConfigEvent extends
       return this;
     }
     /**
-     * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+     * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
      * @param value The bytes for platformAgent to set.
      * @return This builder for chaining.
      */
@@ -624,12 +632,13 @@ public  final class TransportConfigEvent extends
             "supported_",
             "account_",
             "protocolVersion_",
-            "stunServers_",
+            "serverHost_",
+            "configuredStun_",
             "platformAgent_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0007\u0002\u0208" +
-              "\u0003\u000b\u0004\u021a\u0005\u0208";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0007\u0002\u0208" +
+              "\u0003\u000b\u0004\u0208\u0005\u0208\u0006\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

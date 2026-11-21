@@ -790,7 +790,10 @@ func TestStunServers(t *testing.T) {
 		want       []string
 	}{
 		{"ra.example.com", "", []string{"stun:ra.example.com:3478"}},
+		{"", "", nil},
+		{"   ", "", nil},
 		{"2001:db8::1", "", []string{"stun:[2001:db8::1]:3478"}},
+		{"[2001:db8::1]", "", []string{"stun:[2001:db8::1]:3478"}},
 		{"ra.example.com", "stun:stun.example.com:3478, stun:[2001:db8::2]:3478", []string{"stun:stun.example.com:3478", "stun:[2001:db8::2]:3478"}},
 		{"ra.example.com", " , ", []string{"stun:ra.example.com:3478"}},
 		{"ra.example.com", "stun:a:3478,stun:b:3478,stun:c:3478", []string{"stun:a:3478", "stun:b:3478"}},

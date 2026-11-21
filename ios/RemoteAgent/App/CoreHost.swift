@@ -98,7 +98,8 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     var account: Account { get }
     var state: Feed<RemoteState> { get }
     var directSupported: Bool { get }
-    var directStunServers: [String] { get }
+    var directServerHost: String { get }
+    var directConfiguredStun: String { get }
     func installCoreHooks(_ hooks: Remote.CoreHooks) async
     func publishSyncState(_ snapshot: RemoteState) async
     func setNetworkGeneration(_ gen: UInt64) async
@@ -138,7 +139,8 @@ protocol CoreHostExecutor: AnyObject, Sendable {
 
 extension CoreHostExecutor {
     var directSupported: Bool { false }
-    var directStunServers: [String] { [] }
+    var directServerHost: String { "" }
+    var directConfiguredStun: String { "" }
     func cachedScheduleResultJson(_ machineId: String) async -> Data? { nil }
     func deleteScheduleCache(_ machineId: String) async {}
     func loadDirectPreferences() -> [String: Bool] { [:] }
@@ -504,13 +506,15 @@ actor CoreHost: SyncEngine {
         if !demoMode {
             let acct = executor.account
             let supported = executor.directSupported
-            let stunServers = executor.directStunServers
+            let serverHost = executor.directServerHost
+            let configuredStun = executor.directConfiguredStun
             await dispatch {
                 $0.transportConfig = .with {
                     $0.supported = supported
                     $0.account = acct.accountId
                     $0.protocolVersion = UInt32(protocolVersion)
-                    $0.stunServers = stunServers
+                    $0.serverHost = serverHost
+                    $0.configuredStun = configuredStun
                     $0.platformAgent = "ios"
                 }
             }

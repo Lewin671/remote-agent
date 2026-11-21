@@ -173,9 +173,4 @@ import Testing
         #expect(closedFor101 == 0)
         #expect(closedFor102 == 1)
     }
-
-    @Test func defaultStunFormatting() {
-        #expect(DirectExecutor.defaultStunUrls(server: "https://example.com:8443") == ["stun:example.com:3478"])
-        #expect(DirectExecutor.defaultStunUrls(server: "https://[::1]:8443") == ["stun:[::1]:3478"])
-    }
 }

@@ -35,37 +35,36 @@ public interface TransportConfigEventOrBuilder extends
   int getProtocolVersion();
 
   /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @return A list containing the stunServers.
+   * <code>string server_host = 4 [json_name = "serverHost"];</code>
+   * @return The serverHost.
    */
-  java.util.List<java.lang.String>
-      getStunServersList();
+  java.lang.String getServerHost();
   /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @return The count of stunServers.
-   */
-  int getStunServersCount();
-  /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @param index The index of the element to return.
-   * @return The stunServers at the given index.
-   */
-  java.lang.String getStunServers(int index);
-  /**
-   * <code>repeated string stun_servers = 4 [json_name = "stunServers"];</code>
-   * @param index The index of the element to return.
-   * @return The stunServers at the given index.
+   * <code>string server_host = 4 [json_name = "serverHost"];</code>
+   * @return The bytes for serverHost.
    */
   com.google.protobuf.ByteString
-      getStunServersBytes(int index);
+      getServerHostBytes();
 
   /**
-   * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+   * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+   * @return The configuredStun.
+   */
+  java.lang.String getConfiguredStun();
+  /**
+   * <code>string configured_stun = 5 [json_name = "configuredStun"];</code>
+   * @return The bytes for configuredStun.
+   */
+  com.google.protobuf.ByteString
+      getConfiguredStunBytes();
+
+  /**
+   * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
    * @return The platformAgent.
    */
   java.lang.String getPlatformAgent();
   /**
-   * <code>string platform_agent = 5 [json_name = "platformAgent"];</code>
+   * <code>string platform_agent = 6 [json_name = "platformAgent"];</code>
    * @return The bytes for platformAgent.
    */
   com.google.protobuf.ByteString

@@ -19,7 +19,7 @@ import {
   DirectSignalSendEffectSchema,
   DirectStateKind,
 } from "../gen/remoteagent/core/v1/transport_pb";
-import { DirectExecutor, peerFrameBody, stunServers } from "./direct-executor";
+import { DirectExecutor, peerFrameBody } from "./direct-executor";
 import { PathChanged } from "./recovery";
 import { fakeRTC } from "../test/peer/fake-rtc";
 
@@ -29,14 +29,7 @@ describe("DirectExecutor", () => {
     vi.useRealTimers();
   });
 
-  it("normalizes STUN server lists and extracts bounded ServerFrame peer bodies", () => {
-    expect(stunServers("example.com")).toEqual(["stun:example.com:3478"]);
-    expect(stunServers("2001:db8::1")).toEqual(["stun:[2001:db8::1]:3478"]);
-    expect(stunServers("example.com", "stun:a.example.com:3478, stun:b.example.com:3478, stun:c.example.com:3478")).toEqual([
-      "stun:a.example.com:3478",
-      "stun:b.example.com:3478",
-    ]);
-
+  it("extracts bounded ServerFrame peer bodies", () => {
     const delivery = create(PeerFrameDeliverySchema, {
       fromDevice: new Uint8Array(16).fill(1),
       toDevice: new Uint8Array(16).fill(2),

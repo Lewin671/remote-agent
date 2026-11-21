@@ -273,6 +273,14 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 	if prep.ActiveLegs == nil {
 		prep.ActiveLegs = make(map[string]*CommandLeg)
 	} else {
+		if e.transportCoord != nil {
+			for _, l := range prep.ActiveLegs {
+				if l != nil && l.TicketID != 0 {
+					e.transportCoord.ReleaseTicket(l.TicketID)
+					l.TicketID = 0
+				}
+			}
+		}
 		clear(prep.ActiveLegs)
 	}
 	prep.DualMode = false
@@ -365,6 +373,22 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 	}
 	if ev.AttemptId != "" {
 		delete(e.reqIDByAttempt, ev.AttemptId)
+		if lateTicketID, isLate := e.lateDirectTickets[ev.AttemptId]; isLate {
+			delete(e.lateDirectTickets, ev.AttemptId)
+			delete(e.lateDirectDeadline, ev.AttemptId)
+			if c := e.transportCoord; c != nil && lateTicketID != 0 {
+				daemonOK := ev.Source == corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON &&
+					classifyDaemonOutcome(ev, true) != outcome.Unknown
+				if daemonOK {
+					e.emitCoordEffects(ctx, c.ObserveTicket(e.nowMs, lateTicketID, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
+				} else if ev.RouteWasDirect {
+					e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, lateTicketID))
+				} else {
+					c.ReleaseTicket(lateTicketID)
+				}
+			}
+			return
+		}
 	}
 	prep := e.inFlightCmds[ev.RequestId]
 	if prep == nil {
@@ -396,17 +420,32 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 		if ev.Source == corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON {
 			cat := classifyDaemonOutcome(ev, priorBefore)
 			daemonOK = cat != outcome.Unknown
-			if daemonOK && ticketID != 0 {
-				e.emitCoordEffects(ctx, c.ObserveTicket(e.nowMs, ticketID, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
-			} else if !daemonOK && ev.RouteWasDirect && ticketID != 0 {
-				e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ticketID))
+			if ticketID != 0 {
+				if daemonOK {
+					e.emitCoordEffects(ctx, c.ObserveTicket(e.nowMs, ticketID, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
+				} else if ev.RouteWasDirect {
+					e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ticketID))
+				} else {
+					c.ReleaseTicket(ticketID)
+				}
+				if leg != nil {
+					leg.TicketID = 0
+				}
 			}
-		} else if ev.RouteWasDirect && ticketID != 0 {
-			e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ticketID))
+		} else if ticketID != 0 {
+			if ev.RouteWasDirect {
+				e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ticketID))
+			} else {
+				c.ReleaseTicket(ticketID)
+			}
+			if leg != nil {
+				leg.TicketID = 0
+			}
 		}
 
 		if prep.DualMode && leg != nil {
 			if daemonOK {
+				e.releaseOrDeferLegs(prep, leg.AttemptID)
 				prep.DualMode = false
 				clear(prep.ActiveLegs)
 			} else {
@@ -659,6 +698,7 @@ func (e *Engine) settleCommand(
 	for aid := range prep.PendingAttempts {
 		delete(e.reqIDByAttempt, aid)
 	}
+	e.releaseOrDeferLegs(prep, "")
 	clear(prep.PendingAttempts)
 	clear(prep.ActiveLegs)
 	prep.DualMode = false
@@ -736,6 +776,32 @@ func isTransientRetryCode(code string) bool {
 	return false
 }
 
+func (e *Engine) releaseOrDeferLegs(prep *PreparedCommand, skipAttemptID string) {
+	c := e.transportCoord
+	if c == nil || prep == nil || len(prep.ActiveLegs) == 0 {
+		return
+	}
+	dl := prep.RecoveryDeadlineMs
+	if dl <= 0 {
+		dl = prep.DeadlineMs
+	}
+	if dl <= 0 {
+		dl = e.nowMs + 120_000
+	}
+	for id, l := range prep.ActiveLegs {
+		if id == skipAttemptID || l == nil || l.TicketID == 0 {
+			continue
+		}
+		if !l.Done && l.Direct && l.AttemptID != "" {
+			e.lateDirectTickets[l.AttemptID] = l.TicketID
+			e.lateDirectDeadline[l.AttemptID] = dl
+		} else {
+			c.ReleaseTicket(l.TicketID)
+		}
+		l.TicketID = 0
+	}
+}
+
 func routeHintFor(cmd *v1.Command) corev1.CommandRouteHint {
 	if cmd == nil {
 		return corev1.CommandRouteHint_COMMAND_ROUTE_HINT_UNSPECIFIED
@@ -746,7 +812,8 @@ func routeHintFor(cmd *v1.Command) corev1.CommandRouteHint {
 		*v1.Command_GetSettings,
 		*v1.Command_GetLiveSnapshot,
 		*v1.Command_GetMachineStatus,
-		*v1.Command_GetUsageStats:
+		*v1.Command_GetUsageStats,
+		*v1.Command_GetImageUploadStatus:
 		return corev1.CommandRouteHint_COMMAND_ROUTE_HINT_READ
 	case *v1.Command_Schedule:
 		if k.Schedule != nil && (k.Schedule.Operation == "list" || k.Schedule.Operation == "get") {

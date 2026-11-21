@@ -1,4 +1,5 @@
 import { DirectExecutor, peerFrameBody } from "./transport/direct-executor";
+import { buildDirectSecuritySnapshot } from "./transport/direct-security-snapshot";
 import { watchSecurityInstall } from "./device-security-store";
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
 import { abortable, ownedRound, PathChanged } from "./transport/recovery";
@@ -111,7 +112,6 @@ import {
   parseHeader,
   Purpose,
   SecurityError,
-  validLease,
   type Member,
   type SecurityHeader,
 } from "./device-security";
@@ -850,52 +850,58 @@ export class Remote implements CoreExecutor {
   }
 
   private handleDirectSecurityInstall(record: SecurityRecord) {
-    this.latestXPrivate = record.xPrivate;
     const prev = this.lastDirectSecurity;
-    if (!record.member || (prev && !prev.rejected && (record.pin.account !== prev.account || hex(record.stateHash) !== prev.head))) {
-      this.rejectDirectSecurity();
+    let headHex = "";
+    try {
+      headHex = hex(record.stateHash);
+    } catch {
+      headHex = "";
+    }
+    const account = record.pin.account;
+    if (!record.member || (prev && !prev.rejected && (account !== prev.account || headHex !== prev.head))) {
+      this.securitySyncRev++;
+      this.lastDirectSecurity = {
+        member: false,
+        account: "",
+        domain: new Uint8Array(),
+        head: "",
+        headHash: new Uint8Array(),
+        epoch: 0n,
+        startedAtMs: 0n,
+        leaseNotAfterMs: 0n,
+        selfId: "",
+        selfEdPublic: new Uint8Array(),
+        selfXPublic: new Uint8Array(),
+        members: [],
+        rejected: true,
+      };
+    }
+    this.latestXPrivate = record.member ? record.xPrivate : undefined;
+    if (!this.closed) {
+      this.hostBridge?.dispatchDirectSecurityInstalled({
+        member: record.member,
+        account,
+        head: headHex,
+      });
     }
   }
 
   private async syncDirectSecurityRecord(record: SecurityRecord, started: number): Promise<void> {
     const rev = ++this.securitySyncRev;
-    try {
-      const head = record.states[record.states.length - 1];
-      await validLease(record.lease, head, BigInt(Math.max(Date.now(), Number(record.floor))));
-      const selfMember = head.core.members.find((m) => m.id === record.memberID);
-      if (!record.member || record.memberID !== this.account.deviceId || Date.now() >= started + 20_000 || !selfMember) {
-        if (rev === this.securitySyncRev) this.rejectDirectSecurity();
-        return;
-      }
-      if (rev !== this.securitySyncRev || this.closed) return;
-      this.latestXPrivate = record.xPrivate;
-      const snap: DirectSecuritySnapshotInput = {
-        member: true,
-        account: record.pin.account,
-        domain: new Uint8Array(record.pin.domain),
-        head: hex(record.stateHash),
-        headHash: new Uint8Array(record.stateHash),
-        epoch: head.core.epoch,
-        startedAtMs: BigInt(started),
-        leaseNotAfterMs: record.lease?.notAfter ?? 0n,
-        selfId: selfMember.id,
-        selfEdPublic: new Uint8Array(selfMember.ed),
-        selfXPublic: new Uint8Array(selfMember.x),
-        members: head.core.members.map((m) => ({
-          deviceId: m.id,
-          edPublic: new Uint8Array(m.ed),
-          xPublic: new Uint8Array(m.x),
-          isSelf: m.id === record.memberID,
-        })),
-        rejected: false,
-      };
-      this.lastDirectSecurity = snap;
-      this.hostBridge?.dispatchDirectSecuritySnapshot(snap);
-    } catch {
-      if (rev === this.securitySyncRev) {
-        this.rejectDirectSecurity();
-      }
+    const built = await buildDirectSecuritySnapshot({
+      record,
+      started,
+      deviceId: this.account.deviceId,
+      devicePrivate: this.account.devicePrivate,
+    });
+    if (rev !== this.securitySyncRev || this.closed) return;
+    if (!built) {
+      this.rejectDirectSecurity();
+      return;
     }
+    this.latestXPrivate = built.xPrivate;
+    this.lastDirectSecurity = built.snapshot;
+    this.hostBridge?.dispatchDirectSecuritySnapshot(built.snapshot);
   }
 
   private handleDirectEvent(machineId: string, pcId: bigint, env: Envelope, header: Header, size: number) {
@@ -1534,14 +1540,24 @@ export class Remote implements CoreExecutor {
   directDcReadStats(eff: DirectDcReadStatsEffect) { void this.directExec.dcReadStats(eff); }
   directAuthorize() {
     void (async () => {
+      let ok = false;
       try {
         await this.checkNetworkSecurity();
-        if (Date.now() - this.lastSecuritySyncAt >= 10_000) {
-          await this.security.sync(undefined, 5000);
+        const needSync =
+          Date.now() - this.lastSecuritySyncAt >= 10_000 ||
+          !this.lastDirectSecurity ||
+          this.lastDirectSecurity.rejected;
+        if (needSync) {
+          const synced = await this.security.sync(undefined, 5000);
+          ok = Boolean(synced?.member);
+        } else {
+          const rec = await this.security.verifiedRecord();
+          ok = Boolean(rec?.member);
         }
-        await this.security.verifiedRecord();
       } catch {
-        /* Wait for next sync/main reconnect. */
+        ok = false;
+      } finally {
+        if (!this.closed) this.hostBridge?.dispatchDirectAuthorizeDone(ok);
       }
     })();
   }

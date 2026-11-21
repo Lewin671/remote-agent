@@ -1285,15 +1285,34 @@ class RemoteTest {
         flow1.first { it.timeline.loaded }
         r.coreHost.dispatchAndWait(
             io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setDirectEventsReceived(
-                    io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder()
-                        .setMachineId(m1Id)
-                        .setSessionId("s-pair-1")
-                        .addEvents(
-                            io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
-                                .setSeq(1L)
-                                .setVerified(true)
-                                .setEvent(agent("direct-after-install").setSessionId("s-pair-1").setSeq(1).build()),
+                .setStreamFrame(
+                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                        .setLegId(1L)
+                        .setDeviceUpdated(
+                            io.github.lewin671.remoteagent.core.proto.PlainDevice.newBuilder()
+                                .setDeviceId(m1Id)
+                                .setKind(DeviceKind.DEVICE_KIND_MACHINE),
+                        ),
+                )
+                .build(),
+        )
+        kotlinx.coroutines.withTimeout(5_000L) {
+            r.coreHost.syncStateView.first { view -> view.devicesList.any { it.deviceId == m1Id && it.trusted } }
+        }
+        r.coreHost.dispatchAndWait(
+            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                .setStreamFrame(
+                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                        .setLegId(1L)
+                        .setEventsAppended(
+                            io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.newBuilder()
+                                .setSessionId("s-pair-1")
+                                .addEvents(
+                                    io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
+                                        .setSeq(1L)
+                                        .setVerified(true)
+                                        .setEvent(agent("relay-after-install").setSessionId("s-pair-1").setSeq(1).build()),
+                                ),
                         ),
                 )
                 .build(),
@@ -1335,15 +1354,34 @@ class RemoteTest {
         flow2.first { it.timeline.loaded }
         r.coreHost.dispatchAndWait(
             io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setDirectEventsReceived(
-                    io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder()
-                        .setMachineId(m2Id)
-                        .setSessionId("s-pair-2")
-                        .addEvents(
-                            io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
-                                .setSeq(1L)
-                                .setVerified(true)
-                                .setEvent(agent("direct-after-finish").setSessionId("s-pair-2").setSeq(1).build()),
+                .setStreamFrame(
+                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                        .setLegId(1L)
+                        .setDeviceUpdated(
+                            io.github.lewin671.remoteagent.core.proto.PlainDevice.newBuilder()
+                                .setDeviceId(m2Id)
+                                .setKind(DeviceKind.DEVICE_KIND_MACHINE),
+                        ),
+                )
+                .build(),
+        )
+        kotlinx.coroutines.withTimeout(5_000L) {
+            r.coreHost.syncStateView.first { view -> view.devicesList.any { it.deviceId == m2Id && it.trusted } }
+        }
+        r.coreHost.dispatchAndWait(
+            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                .setStreamFrame(
+                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                        .setLegId(1L)
+                        .setEventsAppended(
+                            io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.newBuilder()
+                                .setSessionId("s-pair-2")
+                                .addEvents(
+                                    io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
+                                        .setSeq(1L)
+                                        .setVerified(true)
+                                        .setEvent(agent("relay-after-finish").setSessionId("s-pair-2").setSeq(1).build()),
+                                ),
                         ),
                 )
                 .build(),
@@ -1410,20 +1448,39 @@ class RemoteTest {
                 r.security.signingTime(System.currentTimeMillis()),
             )
             r.security.install(listOf(state1))
+            r.coreHost.dispatchAndWait(
+                io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                    .setStreamFrame(
+                        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                            .setLegId(1L)
+                            .setDeviceUpdated(
+                                io.github.lewin671.remoteagent.core.proto.PlainDevice.newBuilder()
+                                    .setDeviceId(m1Id)
+                                    .setKind(DeviceKind.DEVICE_KIND_MACHINE),
+                            ),
+                    )
+                    .build(),
+            )
+            kotlinx.coroutines.withTimeout(5_000L) {
+                r.coreHost.syncStateView.first { view -> view.devicesList.any { it.deviceId == m1Id && it.trusted } }
+            }
 
             val flow1 = r.watchSession("s-pair-sync-race")
             flow1.first { it.timeline.loaded }
             r.coreHost.dispatchAndWait(
                 io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                    .setDirectEventsReceived(
-                        io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder()
-                            .setMachineId(m1Id)
-                            .setSessionId("s-pair-sync-race")
-                            .addEvents(
-                                io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
-                                    .setSeq(1L)
-                                    .setVerified(true)
-                                    .setEvent(agent("direct-during-sync").setSessionId("s-pair-sync-race").setSeq(1).build()),
+                    .setStreamFrame(
+                        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                            .setLegId(1L)
+                            .setEventsAppended(
+                                io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.newBuilder()
+                                    .setSessionId("s-pair-sync-race")
+                                    .addEvents(
+                                        io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
+                                            .setSeq(1L)
+                                            .setVerified(true)
+                                            .setEvent(agent("relay-during-sync").setSessionId("s-pair-sync-race").setSeq(1).build()),
+                                    ),
                             ),
                     )
                     .build(),
@@ -1433,18 +1490,22 @@ class RemoteTest {
 
             syncRelease.countDown()
             syncJob.join()
+            org.junit.Assert.assertTrue(r.coreHost.syncStateView.value.devicesList.any { it.deviceId == m1Id && it.trusted })
 
             r.coreHost.dispatchAndWait(
                 io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                    .setDirectEventsReceived(
-                        io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent.newBuilder()
-                            .setMachineId(m1Id)
-                            .setSessionId("s-pair-sync-race")
-                            .addEvents(
-                                io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
-                                    .setSeq(2L)
-                                    .setVerified(true)
-                                    .setEvent(agent("direct-after-sync").setSessionId("s-pair-sync-race").setSeq(2).build()),
+                    .setStreamFrame(
+                        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
+                            .setLegId(1L)
+                            .setEventsAppended(
+                                io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.newBuilder()
+                                    .setSessionId("s-pair-sync-race")
+                                    .addEvents(
+                                        io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
+                                            .setSeq(2L)
+                                            .setVerified(true)
+                                            .setEvent(agent("relay-after-sync").setSessionId("s-pair-sync-race").setSeq(2).build()),
+                                    ),
                             ),
                     )
                     .build(),

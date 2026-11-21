@@ -117,7 +117,9 @@ class Remote(
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
     @Volatile private var relayObservation = RemoteState()
-    private val resolvedStunUrls = stunUrls ?: DirectExecutor.defaultStunUrls(account.server)
+    private val directServerHost: String =
+        if (stunUrls != null) "" else runCatching { java.net.URI(account.server).host.orEmpty() }.getOrDefault("")
+    private val directConfiguredStun: String = stunUrls?.joinToString(",") ?: ""
     private val scope = CoroutineScope(SupervisorJob() + this.dispatcher)
     private val usageHydratedMachines = ConcurrentHashMap.newKeySet<String>()
 
@@ -300,48 +302,13 @@ class Remote(
 
     private fun emitDirectSecuritySnapshot(record: DeviceSecurity.Record, started: Long) {
         val rev = synchronized(directSecurityLock) { ++directSecurityRev }
-        val snap = try {
-            val h = record.head
-            val floorLong = record.floor.coerceAtMost(0x7FFF_FFFF_FFFF_FFFFuL).toLong()
-            val at = maxOf(clock(), floorLong)
-            val selfMember = h.core.member(record.memberID)
-            if (!record.member || record.memberID != account.deviceId || !Authority.leaseValid(record, at) || clock() >= started + 20_000L || selfMember == null) {
-                null
-            } else {
-                val xPriv = record.peerBoxKey()
-                val xPub = X25519.publicKey(xPriv)
-                val edPub = device.publicKey
-                if (!edPub.contentEquals(selfMember.ed) || !xPub.contentEquals(selfMember.x)) {
-                    null
-                } else {
-                    val stateHashBytes = DeviceSecurity.stateHash(h)
-                    val b = DirectSecuritySnapshotEvent.newBuilder()
-                        .setMember(true)
-                        .setAccount(record.pin.account)
-                        .setDomain(ByteString.copyFrom(record.pin.domain))
-                        .setHead(stateHashBytes.hex())
-                        .setHeadHash(ByteString.copyFrom(stateHashBytes))
-                        .setEpoch(h.core.epoch.toLong())
-                        .setStartedAtMs(started)
-                        .setLeaseNotAfterMs(record.leaseExpiration())
-                        .setSelfId(selfMember.id)
-                        .setSelfEdPublic(ByteString.copyFrom(selfMember.ed))
-                        .setSelfXPublic(ByteString.copyFrom(selfMember.x))
-                    for (m in h.core.members) {
-                        b.addMembers(
-                            DirectSecurityMember.newBuilder()
-                                .setDeviceId(m.id)
-                                .setEdPublic(ByteString.copyFrom(m.ed))
-                                .setXPublic(ByteString.copyFrom(m.x))
-                                .setIsSelf(m.id == record.memberID),
-                        )
-                    }
-                    b.build() to xPriv
-                }
-            }
-        } catch (_: Exception) {
-            null
-        }
+        val snap = buildDirectSecuritySnapshot(
+            record = record,
+            expectedDeviceId = account.deviceId,
+            devicePublicKey = device.publicKey,
+            started = started,
+            nowMs = clock(),
+        )
         val out = snap?.first ?: DirectSecuritySnapshotEvent.newBuilder().setRejected(true).build()
         synchronized(directSecurityLock) {
             if (rev != directSecurityRev || closed) return
@@ -364,11 +331,21 @@ class Remote(
         onSyncFailed = { rejectDirectSecurity() },
         onInstall = { record ->
             val prev = synchronized(directSecurityLock) { lastDirectSecurity }
-            val headHex = runCatching { DeviceSecurity.stateHash(record.head).hex() }.getOrNull()
+            val headHex = runCatching { DeviceSecurity.stateHash(record.head).hex() }.getOrDefault("")
             if (!record.member || (prev != null && !prev.rejected && (record.pin.account != prev.account || headHex != prev.head))) {
-                rejectDirectSecurity()
+                synchronized(directSecurityLock) {
+                    directSecurityRev++
+                    latestXPrivate = null
+                    lastDirectSecurity = DirectSecuritySnapshotEvent.newBuilder().setRejected(true).build()
+                }
+            } else if (record.member) {
+                runCatching { record.peerBoxKey() }.getOrNull()?.let { xPriv ->
+                    synchronized(directSecurityLock) { latestXPrivate = xPriv }
+                }
             }
-            emitDirectSecuritySnapshot(record, clock())
+            if (!closed) {
+                coreHost.dispatchDirectSecurityInstalled(record.member, record.pin.account, headHex)
+            }
             pushSecuritySnapshotFromRecord(record, skipIfCoreSync = false)
         },
     ) { after ->
@@ -549,7 +526,16 @@ class Remote(
         coreHost.onDirectAuthorize = {
             if (!closed) {
                 scope.launch(authorityJob) {
-                    runCatching { security.sync(5_000L) }
+                    var ok = false
+                    try {
+                        ok = security.sync(5_000L).member
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        ok = false
+                    } finally {
+                        if (!closed) coreHost.dispatchDirectAuthorizeDone(ok)
+                    }
                 }
             }
         }
@@ -1977,7 +1963,8 @@ class Remote(
             supported = rtcFactory != null,
             account = account.accountId,
             protocolVersion = PROTOCOL_VERSION,
-            stunServers = resolvedStunUrls,
+            serverHost = directServerHost,
+            configuredStun = directConfiguredStun,
             platformAgent = "android",
         )
         coreHost.sendDirectPreferencesLoaded(
@@ -2108,7 +2095,8 @@ class Remote(
                         .setSupported(rtcFactory != null)
                         .setAccount(account.accountId)
                         .setProtocolVersion(PROTOCOL_VERSION)
-                        .addAllStunServers(resolvedStunUrls)
+                        .setServerHost(directServerHost)
+                        .setConfiguredStun(directConfiguredStun)
                         .setPlatformAgent("android"),
                 )
                 .build(),
@@ -3304,3 +3292,52 @@ internal fun scheduleSnapshot(request: String, envelope: Envelope): ByteArray = 
     put("request", request)
     put("envelope", java.util.Base64.getEncoder().encodeToString(envelope.toByteArray()))
 }.toString().toByteArray()
+
+internal fun buildDirectSecuritySnapshot(
+    record: DeviceSecurity.Record,
+    expectedDeviceId: String,
+    devicePublicKey: ByteArray,
+    started: Long,
+    nowMs: Long,
+): Pair<DirectSecuritySnapshotEvent, ByteArray>? = try {
+    val h = record.head
+    val floorLong = record.floor.coerceAtMost(0x7FFF_FFFF_FFFF_FFFFuL).toLong()
+    val at = maxOf(nowMs, floorLong)
+    val selfMember = h.core.member(record.memberID)
+    if (!record.member || record.memberID != expectedDeviceId || !Authority.leaseValid(record, at) || nowMs >= started + 20_000L || selfMember == null) {
+        null
+    } else {
+        val xPriv = record.peerBoxKey()
+        val xPub = X25519.publicKey(xPriv)
+        if (!devicePublicKey.contentEquals(selfMember.ed) || !xPub.contentEquals(selfMember.x)) {
+            null
+        } else {
+            val stateHashBytes = DeviceSecurity.stateHash(h)
+            val b = DirectSecuritySnapshotEvent.newBuilder()
+                .setMember(true)
+                .setAccount(record.pin.account)
+                .setDomain(ByteString.copyFrom(record.pin.domain))
+                .setHead(stateHashBytes.hex())
+                .setHeadHash(ByteString.copyFrom(stateHashBytes))
+                .setEpoch(h.core.epoch.toLong())
+                .setStartedAtMs(started)
+                .setLeaseNotAfterMs(record.leaseExpiration())
+                .setSelfId(selfMember.id)
+                .setSelfEdPublic(ByteString.copyFrom(selfMember.ed))
+                .setSelfXPublic(ByteString.copyFrom(selfMember.x))
+            for (m in h.core.members) {
+                b.addMembers(
+                    DirectSecurityMember.newBuilder()
+                        .setDeviceId(m.id)
+                        .setEdPublic(ByteString.copyFrom(m.ed))
+                        .setXPublic(ByteString.copyFrom(m.x))
+                        .setIsSelf(m.id == record.memberID)
+                        .setKind(m.kind.toInt()),
+                )
+            }
+            b.build() to xPriv
+        }
+    }
+} catch (_: Exception) {
+    null
+}

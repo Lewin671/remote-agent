@@ -257,12 +257,14 @@
               "deviceId": "dev-1",
               "edPublic": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=",
               "xPublic": "BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=",
-              "isSelf": true
+              "isSelf": true,
+              "kind": 2
             },
             {
               "deviceId": "m1",
               "edPublic": "BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU=",
-              "xPublic": "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY="
+              "xPublic": "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY=",
+              "kind": 1
             }
           ]
         }

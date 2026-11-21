@@ -177,9 +177,11 @@ func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) 
 		e.onCommandRetryTimer(ctx, ev.Key)
 	case corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE:
 		e.directEngineScheduled = false
+		e.pruneLateDirectTickets()
 		e.emitCoordEffects(ctx, e.ensureTransportCoord().OnEngineTimer(e.nowMs))
 	case corev1.TimerKind_TIMER_KIND_DIRECT_SESSION:
 		e.directSessionScheduled = false
+		e.pruneLateDirectTickets()
 		e.emitCoordEffects(ctx, e.ensureTransportCoord().OnSessionTimer(e.nowMs))
 	case corev1.TimerKind_TIMER_KIND_TERMINAL_REOPEN:
 		e.directTermScheduled = false

@@ -228,6 +228,68 @@ func (h *directSyncHarness) connectMainAndList(sessionID string) {
 	})
 }
 
+func attachDirectForSyncTest(
+	t *testing.T,
+	eng *Engine,
+	now int64,
+	account string,
+	client, daemon *directTestActor,
+	domain, headHash [32]byte,
+	sessions []string,
+) (newNow int64, readPCID, bulkPCID uint64, wantSeed bool) {
+	t.Helper()
+	h := &directSyncHarness{
+		t:        t,
+		eng:      eng,
+		now:      now,
+		client:   client,
+		daemon:   daemon,
+		account:  account,
+		domain:   domain,
+		headHash: headHash,
+	}
+	var err error
+	h.codec, err = peerwire.NewCodec(account, domain, headHash, 1, 17)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sessions) > 0 {
+		h.step(&corev1.Event{
+			Event: &corev1.Event_DirectSecuritySnapshot{
+				DirectSecuritySnapshot: &corev1.DirectSecuritySnapshotEvent{Rejected: true},
+			},
+		})
+	}
+	h.driveDirectHandshake()
+	return h.now, h.readPCID, h.bulkPCID, h.wantSeed
+}
+
+func connectDirectForExistingEngine(
+	t *testing.T,
+	eng *Engine,
+	now int64,
+	client, daemon *directTestActor,
+) (readPCID uint64, updatedNow int64) {
+	t.Helper()
+	h := &directSyncHarness{
+		t:        t,
+		eng:      eng,
+		now:      now,
+		client:   client,
+		daemon:   daemon,
+		account:  "00000000000000000000000000000001",
+		domain:   sha256.Sum256([]byte("direct-sync-domain")),
+		headHash: sha256.Sum256([]byte("direct-sync-head")),
+	}
+	var err error
+	h.codec, err = peerwire.NewCodec(h.account, h.domain, h.headHash, 1, uint64(ProtocolVersion))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.driveDirectHandshake()
+	return h.readPCID, h.now
+}
+
 func (h *directSyncHarness) driveDirectHandshake() {
 	h.t.Helper()
 	res := h.step(&corev1.Event{
@@ -236,7 +298,7 @@ func (h *directSyncHarness) driveDirectHandshake() {
 				Supported:       true,
 				Account:         h.account,
 				ProtocolVersion: ProtocolVersion,
-				StunServers:     []string{"stun:127.0.0.1:3478"},
+				ServerHost:      "127.0.0.1",
 				PlatformAgent:   "TestBrowser/1.0",
 			},
 		},
@@ -403,15 +465,15 @@ func (h *directSyncHarness) driveDirectHandshake() {
 				SelfEdPublic:    h.client.signPub[:],
 				SelfXPublic:     h.client.xPub[:],
 				Members: []*corev1.DirectSecurityMember{
-					{DeviceId: h.client.id, EdPublic: h.client.signPub[:], XPublic: h.client.xPub[:], IsSelf: true},
-					{DeviceId: h.daemon.id, EdPublic: h.daemon.signPub[:], XPublic: h.daemon.xPub[:]},
+					{DeviceId: h.client.id, EdPublic: h.client.signPub[:], XPublic: h.client.xPub[:], IsSelf: true, Kind: transport.MemberKindClient},
+					{DeviceId: h.daemon.id, EdPublic: h.daemon.signPub[:], XPublic: h.daemon.xPub[:], Kind: transport.MemberKindMachine},
 				},
 			},
 		},
 	})
 	drainEffects(snapRes.Effects)
 
-	for step := 0; step < 40 && !h.eng.directReady[h.daemon.id]; step++ {
+	for step := 0; step < 40 && !h.eng.ensureTransportCoord().Ready(h.now, h.daemon.id, transport.Hint{Use: transport.UseRead}); step++ {
 		for len(agreeQueue) > 0 {
 			a := agreeQueue[0]
 			agreeQueue = agreeQueue[1:]
@@ -503,8 +565,11 @@ func (h *directSyncHarness) driveDirectHandshake() {
 			handleDaemonEffs(h.daemonSec.Handle(linkcore.Tick{}, uint64(h.now)))
 		}
 	}
-	if !h.eng.directReady[h.daemon.id] {
+	if !h.eng.ensureTransportCoord().Ready(h.now, h.daemon.id, transport.Hint{Use: transport.UseRead}) {
 		h.t.Fatalf("expected direct path ready after handshake, status=%+v", h.eng.ensureTransportCoord().Status(h.now, h.daemon.id))
+	}
+	if h.eng.machines[h.daemon.id] != nil && !h.eng.directReady[h.daemon.id] {
+		h.t.Fatalf("expected directReady[%s]=true after handshake", h.daemon.id)
 	}
 }
 
@@ -795,5 +860,158 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 	}
 	if !reopened {
 		t.Fatal("expected TerminalReopenEffect after timer fired")
+	}
+
+	// 7) D.5: PcId == 0 must be rejected even for trusted machine & valid seq.
+	bufBefore := h.eng.Buffer(sid).PrefixLen()
+	h.step(&corev1.Event{
+		Event: &corev1.Event_DirectEventsReceived{
+			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
+				MachineId: h.daemon.id,
+				SessionId: sid,
+				PcId:      0,
+				Sender:    h.daemon.id,
+				Events:    []*corev1.PlainEvent{{Seq: uint64(bufBefore + 1), Verified: true, Event: &v1.Event{Seq: uint64(bufBefore + 1), SessionId: sid}}},
+			},
+		},
+	})
+	if h.eng.Buffer(sid).PrefixLen() != bufBefore {
+		t.Fatalf("expected PcId=0 direct event to be rejected")
+	}
+
+	// 8) D.7 & D.9: ticket cleanup on relay failure / bulk failure / dual-send late direct failure,
+	// GetImageUploadStatus read hint, and DirectAuthorizeDone / DirectSecurityInstalled events.
+	coord := h.eng.ensureTransportCoord()
+	if got := routeHintFor(&v1.Command{Kind: &v1.Command_GetImageUploadStatus{GetImageUploadStatus: &v1.GetImageUploadStatusRequest{}}}); got != corev1.CommandRouteHint_COMMAND_ROUTE_HINT_READ {
+		t.Fatalf("expected READ hint for GetImageUploadStatus, got %v", got)
+	}
+
+	// Capture baseline ticket count (e.g. unanswered GetLiveSnapshot poll from connectMainAndList).
+	basePending := coord.PendingTicketCount()
+
+	// Dual-send: Relay wins first, then Direct sibling fails late -> FailTicket runs & PendingTicketCount returns to basePending.
+	dsRes := h.eng.Run(func(ctx *StepContext) {
+		h.eng.SubmitCommand(ctx, SubmitCommandParams{
+			SlotKey:   "slot-late-fail",
+			MachineID: h.daemon.id,
+			SessionID: sid,
+			Command:   &v1.Command{Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "race"}}},
+		})
+	})
+	var dLeg, rLeg *corev1.DispatchCommandEffect
+	for _, eff := range dsRes.Effects {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+				dLeg = dc
+			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
+				rLeg = dc
+			}
+		}
+	}
+	if dLeg == nil || rLeg == nil || coord.PendingTicketCount() != basePending+1 {
+		t.Fatalf("expected active direct ticket during dual-send, base=%d pending=%d", basePending, coord.PendingTicketCount())
+	}
+	h.step(&corev1.Event{
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         rLeg.RequestId,
+				AttemptId:         rLeg.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				AttemptBound:      true,
+				Signed:            true,
+				HashesMatch:       true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "executed",
+				Result:            &v1.CommandResult{Outcome: "executed", Reason: "executed", ResultAvailable: true},
+			},
+		},
+	})
+	if len(h.eng.lateDirectTickets) != 1 {
+		t.Fatalf("expected unfinished direct leg deferred to lateDirectTickets after relay win, got %+v", h.eng.lateDirectTickets)
+	}
+	h.step(&corev1.Event{
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:      dLeg.RequestId,
+				AttemptId:      dLeg.AttemptId,
+				Source:         corev1.OutcomeSource_OUTCOME_SOURCE_TRANSPORT,
+				NotForwarded:   true,
+				RouteWasDirect: true,
+				DirectTicketId: dLeg.DirectTicketId,
+				TransportCode:  "timeout",
+			},
+		},
+	})
+	if len(h.eng.lateDirectTickets) != 0 || coord.PendingTicketCount() != basePending {
+		t.Fatalf("expected late direct outcome to consume ticket and clear map, late=%d pending=%d base=%d", len(h.eng.lateDirectTickets), coord.PendingTicketCount(), basePending)
+	}
+
+	// Bulk relay failure must also release ticket cleanly.
+	bulkRes := h.step(&corev1.Event{
+		Event: &corev1.Event_DirectBulkTransferBegin{
+			DirectBulkTransferBegin: &corev1.DirectBulkTransferBeginEvent{
+				CallId:      77,
+				MachineId:   h.daemon.id,
+				RouteHint:   uint32(corev1.CommandRouteHint_COMMAND_ROUTE_HINT_BULK),
+				BulkFileKey: sid + "/f-fail",
+				BulkBytes:   128,
+				DeadlineMs:  h.now + 30_000,
+				ForceRelay:  true,
+			},
+		},
+	})
+	var bulkTicket uint64
+	for _, eff := range bulkRes.Effects {
+		if br := eff.GetDirectBulkRoute(); br != nil && br.CallId == 77 {
+			bulkTicket = br.TicketId
+		}
+	}
+	if bulkTicket == 0 || coord.PendingTicketCount() != basePending+1 {
+		t.Fatalf("expected tracked relay bulk ticket, tid=%d pending=%d base=%d", bulkTicket, coord.PendingTicketCount(), basePending)
+	}
+	h.step(&corev1.Event{
+		Event: &corev1.Event_DirectBulkTransferDone{
+			DirectBulkTransferDone: &corev1.DirectBulkTransferDoneEvent{
+				TicketId:       bulkTicket,
+				RouteWasDirect: false,
+				Ok:             false,
+				MachineId:      h.daemon.id,
+			},
+		},
+	})
+	if coord.PendingTicketCount() != basePending {
+		t.Fatalf("expected failed relay bulk transfer to release ticket, pending=%d base=%d", coord.PendingTicketCount(), basePending)
+	}
+
+	// DirectSecurityInstalledEvent with changed head invalidates & emits DirectAuthorizeEffect, then DirectAuthorizeDoneEvent clears authorizing.
+	instRes := h.step(&corev1.Event{
+		Event: &corev1.Event_DirectSecurityInstalled{
+			DirectSecurityInstalled: &corev1.DirectSecurityInstalledEvent{
+				Member:  true,
+				Account: h.account,
+				Head:    "head-rotated",
+			},
+		},
+	})
+	var sawDirectAuth bool
+	for _, eff := range instRes.Effects {
+		if eff.GetDirectAuthorize() != nil {
+			sawDirectAuth = true
+		}
+	}
+	if !sawDirectAuth || h.eng.directReady[h.daemon.id] {
+		t.Fatalf("expected DirectSecurityInstalled head mismatch to invalidate directReady and emit DirectAuthorize, sawAuth=%v", sawDirectAuth)
+	}
+	h.step(&corev1.Event{
+		Event: &corev1.Event_DirectAuthorizeDone{
+			DirectAuthorizeDone: &corev1.DirectAuthorizeDoneEvent{Ok: false},
+		},
+	})
+	h.step(&corev1.Event{
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP}},
+	})
+	if coord.PendingTicketCount() != 0 {
+		t.Fatalf("expected SYNC_LIFECYCLE_KIND_STOP to clear all tickets, pending=%d", coord.PendingTicketCount())
 	}
 }

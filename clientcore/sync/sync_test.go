@@ -1849,6 +1849,23 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
 	legID, listsOp := startAndConnect(t, e, now)
+	client := newDirectTestActor(t, 11, 1)
+	m1Actor := newDirectTestActor(t, 12, 2)
+	m2Actor := newDirectTestActor(t, 13, 2)
+	m1, m2 := m1Actor.id, m2Actor.id
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 35,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				PushSeq:           2,
+				IsMember:          true,
+				SelfDeviceId:      client.id,
+				AuthorityDeviceId: client.id,
+				LeaseEndMs:        now + 86_400_000,
+				TrustedMachineIds: []string{m1, m2},
+			},
+		},
+	})
 
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 40,
@@ -1856,11 +1873,11 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 			ListsFetched: &corev1.ListsFetchedEvent{
 				OpId: listsOp,
 				Machines: []*corev1.PlainMachine{
-					{MachineId: "m1", Online: true},
-					{MachineId: "m2", Online: true},
+					{MachineId: m1, Online: true},
+					{MachineId: m2, Online: true},
 				},
 				Sessions: []*corev1.PlainSession{
-					{SessionId: "s1", MachineId: "m1", LastSeq: 2, UpdatedMs: now},
+					{SessionId: "s1", MachineId: m1, LastSeq: 2, UpdatedMs: now},
 				},
 			},
 		},
@@ -1906,15 +1923,19 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 			},
 		},
 	})
+	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
+	now = hsNow
 
 	// 1. Direct event seq=3 arrives before relay: updates display prefix and LastSeq,
 	// does NOT advance ServerLastSeq, and emits NO CacheWriteEffect_WriteEvents.
 	_, directRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 80,
+		NowMs: now + 10,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m1",
+				MachineId: m1,
 				SessionId: "s1",
+				PcId:      readPCID,
+				Sender:    m1,
 				Events: []*corev1.PlainEvent{
 					{Seq: 3, Verified: true, CacheRef: "should-be-stripped", Event: &v1.Event{Seq: 3, SessionId: "s1"}},
 				},
@@ -1938,7 +1959,7 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 
 	// 2. Relay EventsAppended arrives with seq=3 later: deduplicates and writes CacheRef.
 	_, relayRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 90,
+		NowMs: now + 20,
 		Event: &corev1.Event_StreamFrame{
 			StreamFrame: &corev1.StreamFrameEvent{
 				LegId: legID,
@@ -1973,11 +1994,13 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 
 	// 3. Cross-machine spoofing, untrusted machine, and defensive Broken/Retired items are ignored.
 	_, spoofRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 95,
+		NowMs: now + 25,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m2", // wrong owner for s1
+				MachineId: m2, // wrong owner for s1
 				SessionId: "s1",
+				PcId:      readPCID,
+				Sender:    m2,
 				Events:    []*corev1.PlainEvent{{Seq: 4, Verified: true, Event: &v1.Event{Seq: 4, SessionId: "s1"}}},
 			},
 		},
@@ -1986,11 +2009,13 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 		t.Fatalf("cross-machine direct event must be rejected")
 	}
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 96,
+		NowMs: now + 26,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m1",
+				MachineId: m1,
 				SessionId: "s1",
+				PcId:      readPCID,
+				Sender:    m1,
 				Events:    []*corev1.PlainEvent{{Seq: 4, Broken: true, Retired: true}},
 			},
 		},
@@ -2004,14 +2029,30 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
 	legID, listsOp := startAndConnect(t, e, now)
+	client := newDirectTestActor(t, 21, 1)
+	m1Actor := newDirectTestActor(t, 22, 2)
+	m1 := m1Actor.id
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 35,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				PushSeq:           2,
+				IsMember:          true,
+				SelfDeviceId:      client.id,
+				AuthorityDeviceId: client.id,
+				LeaseEndMs:        now + 86_400_000,
+				TrustedMachineIds: []string{m1},
+			},
+		},
+	})
 
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 40,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
 				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 40, UpdatedMs: now}},
+				Machines: []*corev1.PlainMachine{{MachineId: m1, Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: m1, LastSeq: 40, UpdatedMs: now}},
 			},
 		},
 	})
@@ -2046,16 +2087,20 @@ func TestDirectAheadGapDoesNotFalseErrorAndTriggersServerGapFill(t *testing.T) {
 			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: fetchOp, SessionId: "s1", Events: initEvents, More: false},
 		},
 	})
+	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
+	now = hsNow
 
 	// Direct delivers seq=42 while seq=41 (>16KiB) is still uploading to server.
 	// Direct gap event must be dropped rather than entering EventBuffer.pending,
 	// without emitting a premature GetEvents RPC or marking a gap error.
 	_, directRes := e.HandleEvent(&corev1.Event{
-		NowMs: now + 80,
+		NowMs: now + 10,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m1",
+				MachineId: m1,
 				SessionId: "s1",
+				PcId:      readPCID,
+				Sender:    m1,
 				Events:    []*corev1.PlainEvent{{Seq: 42, Verified: true, Event: &v1.Event{Seq: 42, SessionId: "s1"}}},
 			},
 		},
@@ -2153,14 +2198,30 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
 	legID, listsOp := startAndConnect(t, e, now)
+	client := newDirectTestActor(t, 31, 1)
+	m1Actor := newDirectTestActor(t, 32, 2)
+	m1 := m1Actor.id
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 35,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				PushSeq:           2,
+				IsMember:          true,
+				SelfDeviceId:      client.id,
+				AuthorityDeviceId: client.id,
+				LeaseEndMs:        now + 86_400_000,
+				TrustedMachineIds: []string{m1},
+			},
+		},
+	})
 
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 40,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
 				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1, UpdatedMs: now}},
+				Machines: []*corev1.PlainMachine{{MachineId: m1, Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: m1, LastSeq: 1, UpdatedMs: now}},
 			},
 		},
 	})
@@ -2194,10 +2255,12 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 			},
 		},
 	})
+	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
+	now = hsNow
 
 	// Drop relay stream so e.w.World.Connection leaves ConnConnected.
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 80,
+		NowMs: now + 10,
 		Event: &corev1.Event_StreamClosed{
 			StreamClosed: &corev1.StreamClosedEvent{LegId: legID, Error: "dropped"},
 		},
@@ -2208,11 +2271,13 @@ func TestDirectEventsWhileRelayDisconnectedDoNotMarkRelayConnected(t *testing.T)
 
 	// Direct events arrive while relay is disconnected: buffer updates, e.w.World.Connection does NOT become ConnConnected.
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 90,
+		NowMs: now + 20,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m1",
+				MachineId: m1,
 				SessionId: "s1",
+				PcId:      readPCID,
+				Sender:    m1,
 				Events:    []*corev1.PlainEvent{{Seq: 2, Verified: true, Event: &v1.Event{Seq: 2, SessionId: "s1"}}},
 			},
 		},
@@ -2229,13 +2294,29 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
 	_, listsOp := startAndConnect(t, e, now)
+	client := newDirectTestActor(t, 41, 1)
+	m1Actor := newDirectTestActor(t, 42, 2)
+	m1 := m1Actor.id
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 35,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				PushSeq:           2,
+				IsMember:          true,
+				SelfDeviceId:      client.id,
+				AuthorityDeviceId: client.id,
+				LeaseEndMs:        now + 86_400_000,
+				TrustedMachineIds: []string{m1},
+			},
+		},
+	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 40,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
 				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1200, UpdatedMs: now}},
+				Machines: []*corev1.PlainMachine{{MachineId: m1, Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: m1, LastSeq: 1200, UpdatedMs: now}},
 			},
 		},
 	})
@@ -2276,15 +2357,19 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 			prefixOp1 = rpc.OpId
 		}
 	}
+	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+72, client, m1Actor)
+	now = hsNow
 
 	// Two ahead-of-tail direct events [1202, 1203] arrive while tailRequested is active:
 	// must be dropped and never enter pending or blank ShownEvents [701..1200].
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 75,
+		NowMs: now + 5,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m1",
+				MachineId: m1,
 				SessionId: "s1",
+				PcId:      readPCID,
+				Sender:    m1,
 				Events: []*corev1.PlainEvent{
 					{Seq: 1202, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1202, SessionId: "s1"}},
 					{Seq: 1203, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1203, SessionId: "s1"}},
@@ -2305,7 +2390,7 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 		p1 = append(p1, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
 	}
 	_, p1Res := e.HandleEvent(&corev1.Event{
-		NowMs: now + 80,
+		NowMs: now + 10,
 		Event: &corev1.Event_EventsPageFetched{
 			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: prefixOp1, SessionId: "s1", Events: p1, More: true},
 		},
@@ -2321,7 +2406,7 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 		p2 = append(p2, &corev1.PlainEvent{Seq: seq, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: seq, SessionId: "s1"}})
 	}
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 90,
+		NowMs: now + 20,
 		Event: &corev1.Event_EventsPageFetched{
 			EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: prefixOp2, SessionId: "s1", Events: p2, More: false},
 		},
@@ -2335,11 +2420,13 @@ func TestDirectAheadDuringTailFirstPreservesTailAndClearsTailRequested(t *testin
 	}
 	// Now live contiguous direct event 1201 matches prefixLen+1 and is appended immediately.
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 95,
+		NowMs: now + 25,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m1",
+				MachineId: m1,
 				SessionId: "s1",
+				PcId:      readPCID,
+				Sender:    m1,
 				Events:    []*corev1.PlainEvent{{Seq: 1201, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1201, SessionId: "s1"}}},
 			},
 		},
@@ -2353,13 +2440,29 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 	e := NewEngine()
 	now := int64(1_700_000_000_000)
 	legID, listsOp := startAndConnect(t, e, now)
+	client := newDirectTestActor(t, 51, 1)
+	m1Actor := newDirectTestActor(t, 52, 2)
+	m1 := m1Actor.id
+	e.HandleEvent(&corev1.Event{
+		NowMs: now + 35,
+		Event: &corev1.Event_SecuritySnapshot{
+			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
+				PushSeq:           2,
+				IsMember:          true,
+				SelfDeviceId:      client.id,
+				AuthorityDeviceId: client.id,
+				LeaseEndMs:        now + 86_400_000,
+				TrustedMachineIds: []string{m1},
+			},
+		},
+	})
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 40,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
 				OpId:     listsOp,
-				Machines: []*corev1.PlainMachine{{MachineId: "m1", Online: true}},
-				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: "m1", LastSeq: 1, UpdatedMs: now}},
+				Machines: []*corev1.PlainMachine{{MachineId: m1, Online: true}},
+				Sessions: []*corev1.PlainSession{{SessionId: "s1", MachineId: m1, LastSeq: 1, UpdatedMs: now}},
 			},
 		},
 	})
@@ -2393,15 +2496,19 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 			},
 		},
 	})
+	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+75, client, m1Actor)
+	now = hsNow
 
 	// Direct batch [2, 4] when prefix=1 accepts only contiguous 2 and drops gapped 4;
 	// direct [1] (already in prefix) is also ignored; direct [3] later succeeds.
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 80,
+		NowMs: now + 10,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m1",
+				MachineId: m1,
 				SessionId: "s1",
+				PcId:      readPCID,
+				Sender:    m1,
 				Events: []*corev1.PlainEvent{
 					{Seq: 1, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 1, SessionId: "s1"}},
 					{Seq: 2, Verified: true, ApproxBytes: 64, Event: &v1.Event{Seq: 2, SessionId: "s1"}},
@@ -2568,15 +2675,19 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 	}
 
 	// Verify end-to-end core flow: untrusted direct events are dropped before sync refresh,
-	// and accepted after SecuritySnapshot adds the newly paired machine.
+	// and accepted with a valid confirmed direct PC after SecuritySnapshot adds the newly paired machine.
 	e, legID := setup()
+	client := newDirectTestActor(t, 61, 1)
+	mNewActor := newDirectTestActor(t, 62, 2)
+	mNew := mNewActor.id
+	e.w.LivePushConnected = true
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 5,
 		Event: &corev1.Event_StreamFrame{
 			StreamFrame: &corev1.StreamFrameEvent{
 				LegId: legID,
 				Frame: &corev1.StreamFrameEvent_SessionUpdated{
-					SessionUpdated: &corev1.PlainSession{SessionId: "s-new", MachineId: "m-new", UpdatedMs: now},
+					SessionUpdated: &corev1.PlainSession{SessionId: "s-new", MachineId: mNew, UpdatedMs: now},
 				},
 			},
 		},
@@ -2599,7 +2710,7 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 		NowMs: now + 8,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m-new",
+				MachineId: mNew,
 				SessionId: "s-new",
 				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, ApproxBytes: 32, Event: &v1.Event{Seq: 1, SessionId: "s-new"}}},
 			},
@@ -2607,7 +2718,7 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 	})
 	buf := e.Buffer("s-new")
 	if buf.PrefixLen() != 0 {
-		t.Fatalf("expected untrusted m-new direct event to be dropped before security refresh, got prefix=%d", buf.PrefixLen())
+		t.Fatalf("expected untrusted %s direct event to be dropped before security refresh, got prefix=%d", mNew, buf.PrefixLen())
 	}
 	_, devRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 8,
@@ -2615,7 +2726,7 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 			StreamFrame: &corev1.StreamFrameEvent{
 				LegId: legID,
 				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: "m-new", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: mNew, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
 				},
 			},
 		},
@@ -2634,25 +2745,29 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 		Event: &corev1.Event_SecuritySnapshot{
 			SecuritySnapshot: &corev1.SecuritySnapshotEvent{
 				OpId:              secOp,
+				PushSeq:           2,
 				IsMember:          true,
-				SelfDeviceId:      "c-self",
-				TrustedMachineIds: []string{"m-known", "m-new"},
-				TrustedClientIds:  []string{"c-self", "c-known"},
+				SelfDeviceId:      client.id,
+				TrustedMachineIds: []string{"m-known", mNew},
+				TrustedClientIds:  []string{client.id, "c-known"},
 			},
 		},
 	})
+	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+10, client, mNewActor)
 	e.HandleEvent(&corev1.Event{
-		NowMs: now + 10,
+		NowMs: hsNow + 5,
 		Event: &corev1.Event_DirectEventsReceived{
 			DirectEventsReceived: &corev1.DirectEventsReceivedEvent{
-				MachineId: "m-new",
+				MachineId: mNew,
 				SessionId: "s-new",
+				PcId:      readPCID,
+				Sender:    mNew,
 				Events:    []*corev1.PlainEvent{{Seq: 1, Verified: true, ApproxBytes: 32, Event: &v1.Event{Seq: 1, SessionId: "s-new"}}},
 			},
 		},
 	})
 	if buf.PrefixLen() != 1 {
-		t.Fatalf("expected direct event from m-new to be ingested after SecuritySnapshot refresh, got prefix=%d", buf.PrefixLen())
+		t.Fatalf("expected direct event from %s to be ingested after SecuritySnapshot refresh, got prefix=%d", mNew, buf.PrefixLen())
 	}
 }
 

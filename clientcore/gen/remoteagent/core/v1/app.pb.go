@@ -6069,6 +6069,14 @@ type Event_DirectPreferencesLoaded struct{ DirectPreferencesLoaded *DirectPrefer
 
 func (*Event_DirectPreferencesLoaded) isEvent_Event() {}
 
+type Event_DirectSecurityInstalled struct{ DirectSecurityInstalled *DirectSecurityInstalledEvent }
+
+func (*Event_DirectSecurityInstalled) isEvent_Event() {}
+
+type Event_DirectAuthorizeDone struct{ DirectAuthorizeDone *DirectAuthorizeDoneEvent }
+
+func (*Event_DirectAuthorizeDone) isEvent_Event() {}
+
 func (m *Event) GetEvent() isEvent_Event {
 	if m != nil {
 		return m.Event
@@ -6930,6 +6938,18 @@ func (m *Event) GetTerminalStream() *TerminalStreamEvent {
 func (m *Event) GetDirectPreferencesLoaded() *DirectPreferencesLoadedEvent {
 	if x, ok := m.GetEvent().(*Event_DirectPreferencesLoaded); ok && x != nil {
 		return x.DirectPreferencesLoaded
+	}
+	return nil
+}
+func (m *Event) GetDirectSecurityInstalled() *DirectSecurityInstalledEvent {
+	if x, ok := m.GetEvent().(*Event_DirectSecurityInstalled); ok && x != nil {
+		return x.DirectSecurityInstalled
+	}
+	return nil
+}
+func (m *Event) GetDirectAuthorizeDone() *DirectAuthorizeDoneEvent {
+	if x, ok := m.GetEvent().(*Event_DirectAuthorizeDone); ok && x != nil {
+		return x.DirectAuthorizeDone
 	}
 	return nil
 }
@@ -9108,6 +9128,36 @@ func (m *Event) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Event = &Event_DirectPreferencesLoaded{DirectPreferencesLoaded: sub}
+				continue
+			}
+		case 422:
+			if wtyp == litewire.BytesType {
+				var sub *DirectSecurityInstalledEvent
+				if cur, ok := m.Event.(*Event_DirectSecurityInstalled); ok && cur != nil {
+					sub = cur.DirectSecurityInstalled
+				}
+				if sub == nil {
+					sub = &DirectSecurityInstalledEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectSecurityInstalled{DirectSecurityInstalled: sub}
+				continue
+			}
+		case 423:
+			if wtyp == litewire.BytesType {
+				var sub *DirectAuthorizeDoneEvent
+				if cur, ok := m.Event.(*Event_DirectAuthorizeDone); ok && cur != nil {
+					sub = cur.DirectAuthorizeDone
+				}
+				if sub == nil {
+					sub = &DirectAuthorizeDoneEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_DirectAuthorizeDone{DirectAuthorizeDone: sub}
 				continue
 			}
 		case 98:

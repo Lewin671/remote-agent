@@ -1416,7 +1416,8 @@ class CoreHost(
         supported: Boolean,
         account: String,
         protocolVersion: Int,
-        stunServers: List<String>,
+        serverHost: String,
+        configuredStun: String,
         platformAgent: String = "android",
     ) = send {
         setTransportConfig(
@@ -1424,7 +1425,8 @@ class CoreHost(
                 .setSupported(supported)
                 .setAccount(account)
                 .setProtocolVersion(protocolVersion)
-                .addAllStunServers(stunServers)
+                .setServerHost(serverHost)
+                .setConfiguredStun(configuredStun)
                 .setPlatformAgent(platformAgent),
         )
     }
@@ -1439,6 +1441,19 @@ class CoreHost(
 
     fun dispatchDirectSecuritySnapshot(snap: DirectSecuritySnapshotEvent) = send {
         setDirectSecuritySnapshot(snap)
+    }
+
+    fun dispatchDirectSecurityInstalled(member: Boolean, account: String, head: String) = send {
+        setDirectSecurityInstalled(
+            DirectSecurityInstalledEvent.newBuilder()
+                .setMember(member)
+                .setAccount(account)
+                .setHead(head),
+        )
+    }
+
+    fun dispatchDirectAuthorizeDone(ok: Boolean) = send {
+        setDirectAuthorizeDone(DirectAuthorizeDoneEvent.newBuilder().setOk(ok))
     }
 
     fun dispatchDirectSignal(raw: ByteArray) {

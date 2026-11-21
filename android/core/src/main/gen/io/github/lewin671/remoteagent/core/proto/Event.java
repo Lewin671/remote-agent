@@ -164,6 +164,8 @@ public  final class Event extends
     DIRECT_BULK_TRANSFER_DONE(419),
     TERMINAL_STREAM(420),
     DIRECT_PREFERENCES_LOADED(421),
+    DIRECT_SECURITY_INSTALLED(422),
+    DIRECT_AUTHORIZE_DONE(423),
     EVENT_NOT_SET(0);
     private final int value;
     private EventCase(int value) {
@@ -322,6 +324,8 @@ public  final class Event extends
         case 419: return DIRECT_BULK_TRANSFER_DONE;
         case 420: return TERMINAL_STREAM;
         case 421: return DIRECT_PREFERENCES_LOADED;
+        case 422: return DIRECT_SECURITY_INSTALLED;
+        case 423: return DIRECT_AUTHORIZE_DONE;
         case 0: return EVENT_NOT_SET;
         default: return null;
       }
@@ -7779,6 +7783,110 @@ public  final class Event extends
     }
   }
 
+  public static final int DIRECT_SECURITY_INSTALLED_FIELD_NUMBER = 422;
+  /**
+   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectSecurityInstalled() {
+    return eventCase_ == 422;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent getDirectSecurityInstalled() {
+    if (eventCase_ == 422) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectSecurityInstalled(io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 422;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectSecurityInstalled(io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 422 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 422;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+   */
+  private void clearDirectSecurityInstalled() {
+    if (eventCase_ == 422) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DIRECT_AUTHORIZE_DONE_FIELD_NUMBER = 423;
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDirectAuthorizeDone() {
+    return eventCase_ == 423;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent getDirectAuthorizeDone() {
+    if (eventCase_ == 423) {
+       return (io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectAuthorizeDone(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 423;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDirectAuthorizeDone(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 423 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 423;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+   */
+  private void clearDirectAuthorizeDone() {
+    if (eventCase_ == 423) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
   public static final int NOW_MS_FIELD_NUMBER = 98;
   private long nowMs_;
   /**
@@ -14971,6 +15079,102 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectSecurityInstalled() {
+      return instance.hasDirectSecurityInstalled();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent getDirectSecurityInstalled() {
+      return instance.getDirectSecurityInstalled();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+     */
+    public Builder setDirectSecurityInstalled(io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent value) {
+      copyOnWrite();
+      instance.setDirectSecurityInstalled(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+     */
+    public Builder setDirectSecurityInstalled(
+        io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectSecurityInstalled(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+     */
+    public Builder mergeDirectSecurityInstalled(io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent value) {
+      copyOnWrite();
+      instance.mergeDirectSecurityInstalled(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectSecurityInstalledEvent direct_security_installed = 422 [json_name = "directSecurityInstalled"];</code>
+     */
+    public Builder clearDirectSecurityInstalled() {
+      copyOnWrite();
+      instance.clearDirectSecurityInstalled();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDirectAuthorizeDone() {
+      return instance.hasDirectAuthorizeDone();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent getDirectAuthorizeDone() {
+      return instance.getDirectAuthorizeDone();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+     */
+    public Builder setDirectAuthorizeDone(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent value) {
+      copyOnWrite();
+      instance.setDirectAuthorizeDone(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+     */
+    public Builder setDirectAuthorizeDone(
+        io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectAuthorizeDone(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+     */
+    public Builder mergeDirectAuthorizeDone(io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent value) {
+      copyOnWrite();
+      instance.mergeDirectAuthorizeDone(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DirectAuthorizeDoneEvent direct_authorize_done = 423 [json_name = "directAuthorizeDone"];</code>
+     */
+    public Builder clearDirectAuthorizeDone() {
+      copyOnWrite();
+      instance.clearDirectAuthorizeDone();
+      return this;
+    }
+
+    /**
      * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
      * @return The nowMs.
      */
@@ -15352,9 +15556,11 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent.class,
             io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectSecurityInstalledEvent.class,
+            io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent.class,
           };
           java.lang.String info =
-              "\u0000\u0093\u0001\u0000\u0001\u01a5\u0093\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u0095\u0001\u0000\u0001\u01a7\u0095\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -15375,7 +15581,8 @@ public  final class Event extends
               "\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0191<\u0000\u0192<\u0000\u0193" +
               "<\u0000\u0194<\u0000\u0195<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000" +
               "\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0" +
-              "<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000";
+              "<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000" +
+              "\u01a7<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

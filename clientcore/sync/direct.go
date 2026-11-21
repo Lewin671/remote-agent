@@ -73,7 +73,8 @@ func (e *Engine) handleTransportConfig(ctx *StepContext, ev *corev1.TransportCon
 		Supported:       ev.Supported,
 		Account:         ev.Account,
 		ProtocolVersion: pv,
-		StunServers:     append([]string(nil), ev.StunServers...),
+		ServerHost:      ev.ServerHost,
+		ConfiguredStun:  ev.ConfiguredStun,
 	})
 	e.emitCoordEffects(ctx, effs)
 	e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, e.foreground))
@@ -143,6 +144,7 @@ func (e *Engine) handleDirectSecuritySnapshot(ctx *StepContext, ev *corev1.Direc
 			EdPub: edPub,
 			XPub:  xPub,
 			Self:  m.IsSelf,
+			Kind:  m.Kind,
 		})
 	}
 	snap := transport.CoordSecuritySnapshot{
@@ -160,6 +162,20 @@ func (e *Engine) handleDirectSecuritySnapshot(ctx *StepContext, ev *corev1.Direc
 		Members:       members,
 	}
 	e.emitCoordEffects(ctx, c.OnSecuritySnapshot(e.nowMs, snap))
+}
+
+func (e *Engine) handleDirectSecurityInstalled(ctx *StepContext, ev *corev1.DirectSecurityInstalledEvent) {
+	if ev == nil {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnSecurityInstalled(e.nowMs, ev.Member, ev.Account, ev.Head))
+}
+
+func (e *Engine) handleDirectAuthorizeDone(ctx *StepContext, ev *corev1.DirectAuthorizeDoneEvent) {
+	if ev == nil {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, ev.Ok))
 }
 
 func (e *Engine) handleDirectSignalReceived(ctx *StepContext, ev *corev1.DirectSignalReceivedEvent) {
@@ -430,6 +446,8 @@ func (e *Engine) handleDirectBulkTransferDone(ctx *StepContext, ev *corev1.Direc
 			e.emitCoordEffects(ctx, c.ObserveTicket(e.nowMs, ev.TicketId, ev.RouteWasDirect, ev.ObservedBytes, ev.ElapsedMs))
 		} else if ev.RouteWasDirect {
 			e.emitCoordEffects(ctx, c.FailTicket(e.nowMs, ev.TicketId))
+		} else {
+			c.ReleaseTicket(ev.TicketId)
 		}
 	}
 }
@@ -672,7 +690,24 @@ func toProtoCandidate(c peerwire.Candidate) *corev1.DirectIceCandidate {
 	}
 }
 
+func (e *Engine) pruneLateDirectTickets() {
+	if len(e.lateDirectTickets) == 0 {
+		return
+	}
+	for aid, tid := range e.lateDirectTickets {
+		dl := e.lateDirectDeadline[aid]
+		if e.nowMs >= dl+60_000 {
+			delete(e.lateDirectTickets, aid)
+			delete(e.lateDirectDeadline, aid)
+			if e.transportCoord != nil && tid != 0 {
+				e.transportCoord.ReleaseTicket(tid)
+			}
+		}
+	}
+}
+
 func (e *Engine) syncDirectTimers(ctx *StepContext) {
+	e.pruneLateDirectTickets()
 	if e.transportCoord == nil {
 		return
 	}
