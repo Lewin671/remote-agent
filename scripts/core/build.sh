@@ -103,12 +103,10 @@ core_output_current() {
   [[ -z "$newer" ]]
 }
 
-# Upper bound reference for core.wasm after brotli (quality 11, 24-bit window).
+# Measure core.wasm after brotli (quality 11, 24-bit window).
 # Web's release gate enforces first-paint JS+CSS+wasm brotli total via
 # web/scripts/check-first-paint-budget.mjs so single-file logic moves into Core
 # are measured against net Web bundle reduction.
-CORE_WASM_BROTLI_MAX=1575000
-
 check_wasm_size() {
   local wasm="$1" size
   if ! command -v node >/dev/null 2>&1; then
@@ -124,9 +122,6 @@ process.stdout.write(String(zlib.brotliCompressSync(data, { params: {
   [p.BROTLI_PARAM_QUALITY]: 11, [p.BROTLI_PARAM_LGWIN]: 24, [p.BROTLI_PARAM_SIZE_HINT]: data.length,
 } }).length));
 ' "$wasm")"
-  if (( size > CORE_WASM_BROTLI_MAX )); then
-    echo "note: core.wasm is $size bytes after brotli (reference $CORE_WASM_BROTLI_MAX; enforced jointly with JS/CSS by web/scripts/check-first-paint-budget.mjs)"
-  fi
   WASM_BROTLI_SIZE="$size"
 }
 
@@ -152,7 +147,7 @@ build_web() {
   )
   check_wasm_size "$out/core.wasm"
   cp -f "$wasm_exec" "$out/wasm_exec.js"
-  echo "built web: $out/core.wasm ($WASM_BROTLI_SIZE bytes brotli, limit $CORE_WASM_BROTLI_MAX; $out/wasm_exec.js)"
+  echo "built web: $out/core.wasm ($WASM_BROTLI_SIZE bytes brotli; $out/wasm_exec.js)"
 }
 
 build_android() {

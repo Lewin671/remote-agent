@@ -2,10 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { brotliCompressSync, constants as zlibConstants } from "node:zlib";
 
-// 2026-11-17 Web first-paint baseline: wasm (~1,256 KiB) + JS (~595 KiB) = 1,851 KiB (1,895,424 B).
-// Budget: +15% => 2,179,738 B (docs/architecture.md 体积与性能预算).
-const BASELINE_BYTES = 1_895_424;
-const BUDGET_BYTES = Math.round(BASELINE_BYTES * 1.15);
+// 2026-11-21 user decision: Web first-paint JS + CSS + wasm (brotli) upper bound set to 2,400,000 B
+// (pre-S4 main measured 1,899,024 B; post-S4 S4-wiring ~2,159,175 B; see docs/architecture.md).
+const BUDGET_BYTES = 2_400_000;
 
 const distDir = resolve(import.meta.dirname, "../dist");
 const indexHtml = readFileSync(resolve(distDir, "index.html"), "utf8");
@@ -51,7 +50,7 @@ for (const u of [...urls].sort()) {
 
 const fpTotal = fpJs + fpCss + fpWasm;
 console.log(
-  `web first-paint brotli: fpJs=${fpJs} B, fpCss=${fpCss} B, fpWasm=${fpWasm} B, fpTotal=${fpTotal} B, budget=${BUDGET_BYTES} B (baseline=${BASELINE_BYTES} B +15%)`,
+  `web first-paint brotli: fpJs=${fpJs} B, fpCss=${fpCss} B, fpWasm=${fpWasm} B, fpTotal=${fpTotal} B, budget=${BUDGET_BYTES} B`,
 );
 
 if (fpWasm === 0 || fpJs === 0) {

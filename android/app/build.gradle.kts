@@ -82,6 +82,10 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            ndk {
+                // Release APK ships arm64-v8a only; debug / .dev retain x86_64 for emulators.
+                abiFilters += "arm64-v8a"
+            }
             // Without a release key the release build is signed with the
             // debug key, which is enough to test it with R8.
             signingConfig = if (signingFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
