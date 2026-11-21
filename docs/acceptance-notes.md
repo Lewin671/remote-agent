@@ -2622,3 +2622,36 @@ p95 增量为 **−0.003 ms**，满足 <5 ms 门槛。计时覆盖已认证的�
 - **iOS**：`ConnectHardwareKeyboard = false` 下在 `iPhone 18 Pro` 模拟器串行执行 `ios/scripts/check.sh`（Swift package 测试、`buf generate` 一致性、`RemoteAgentTests`）与 `ios/scripts/check.sh ui`（全套 UI 自动化）均以退出码 `0` 通过。
 - **隔离 E2E 与无头 Playwright 验证**：通过 `scripts/dev/e2e-up.sh` / `dev-env.sh` 启动隔离 relay 与新配对守护进程，在无头浏览器完成账户初始化、四图确认配对、实时电脑页 4 模块查看、WebRTC 直连协商、Codex 停用切换与重载持久化校验，以及 `#/settings` 与电脑页在 `390x844` / `1440x900` 暗色模式与 `200%` 根字号（`32px`）下 `scrollWidth <= clientWidth` 无水平溢出与无原生 `<select>` 验证。
 - **未覆盖**：真机端到端安装、iOS 真机推送与真机屏幕交互仍沿用既有限制（见 [plan](plan.md)）。
+
+## S4 共享核心直连与终端恢复接线验收（2026-11-21）
+
+在独立工作分支 `wt/s4-wiring`（基于 `v0.94.2` / `f38f590cb`，尚未合入 `main` 与发布）完成直连选路、诊断视图、系统随机数字节池（去除 `shared/linkcore` 自写 DRBG）及终端重连恢复进入共享 Go 核心 `clientcore` 后的三端收口验收与隔离真实 CLI 端到端验证。全部端到端测试均从当前检出构建本地隔离 `remote-agent-server`、本地独立 STUN（UDP 3478）与隔离 `daemon`（独立状态目录与 tmux socket，不连日常账户或真机），真实 CLI 使用 Claude Code `v2.1.322`（daemon 同步探测到 Codex `0.166.0`、Antigravity `1.5.14`）。
+
+### 隔离真实 CLI 端到端
+
+- **网页端（终版重编 `core.wasm`，Chromium 无头 Playwright，全部为直接浏览器界面操作）**：
+  - 通过 UI 完成建号（setup token）、协议 10 配对码接入隔离 Mac daemon 与四图确认；电脑页确认 `直连 / 用于文件 / 正在使用` 与弹层 `正在用直连 · 8 ms`（`daemon.log` `probes_echoed=84`）。
+  - 在弹层关闭 `允许直连` 后经中继浏览目录选中隔离项目目录，重新开启后自动恢复 `正在用直连`（`probes_echoed=96`）。
+  - 新建 Claude Code 会话并随首条消息发送 `920,000 B`（`898.4 KB`）文件附件，在 daemon 上传目录核对 SHA-256（`d1450b2924da76262bce8d887892ef33d3506541778e188cf9240175cae5f144`）一致；在`终端`页通过键盘确认目录信任弹窗，收到 Claude Code `E2E_OK` 回复（`本轮用时 3 秒 · 30k tokens`）。
+  - 停留在实时分屏 `终端` 视图不刷新浏览器、杀掉并重启中继：`server.log` 于 `+2 秒` 记录 `machine connected`、`+4 秒` 自动 `terminal stream joined`，页面恢复 `● 已连接`、实时终端画面与会话顶栏 `⚡ 直连`（气泡显示 `7 ms`，`daemon.log` `probes_echoed=95`）。
+- **Android 端（`arm64` 模拟器，Debug APK 经 `adb reverse` 访问隔离中继，全部为模拟器直接触摸界面操作）**：
+  - 通过 UI 完成建号、协议 10 配对与直连建立（无测试 hook；DTLS 与 ICE 连通，电脑页显示 `直连 / 用于文件 / 正在使用`）。
+  - 关闭 `允许直连` 走中继完成 `新任务` 目录浏览，重新开启后自动恢复 `正在用直连`。
+  - 发起 Claude Code 会话并从模拟器发送 `920,000 B` 文件（daemon 端 SHA-256 精确匹配），通过终端按键工具栏确认目录信任，收到 `E2E_OK`（`本轮用时 4 秒`）与实时终端画面；切后台（Home）后直连按规则关闭（`dc0_closed`/`paths_closed`），切回前台自动重建。
+  - 在三类场景复测中继重启自动恢复：停留在`终端`标签经历约 70 秒长断网重启中继（+20 秒自动 `terminal stream joined`，切`聊天`页显示 `⚡ 直连`）、停留在`终端`标签 2 秒快重启（+3 秒自动 `terminal stream joined` 且实时画面恢复）、停留在`聊天`标签重启中继后再切回`终端`（+1 秒自动接通）。
+- **iOS 端（`iPhone 18 Pro` 模拟器，Debug 构建，部分流程由 `Launch.swift` 启动参数与 Darwin 调试信号驱动）**：
+  - 使用 `-joinServer` / `-joinCode` 启动加入与 `debug.join.confirm` 完成协议 10 配对，随后关闭临时网页管理端仅保留 iOS 模拟器、daemon 与中继。
+  - 通过 `debug.route` + `debug.app.open` 验证电脑页建立直连（`daemon.log` `probes_echoed=59`、`ice=connected`）。
+  - 隔离 CLI 启动 Claude Code 会话后切至 `terminal/<id>`，`server.log` 记录 `terminal stream joined`；通过 `debug.term.down` / `debug.term.enter` 确认目录信任，`debug.term.dump` 确认实时终端且回复 `E2E_OK`。
+  - 停留在 `terminal/<id>` 杀掉并重启中继：`server.log` 于 `+1 秒` 记录 `machine connected`、`+6 秒` 自动 `terminal stream joined`，无需点「重新连接」即恢复 `state: live` 终端画面；切至 `machine-direct/<id>` 截图显示 `正在用直连 21 ms`。
+- **未覆盖**：Android/iOS 真机（Pixel 3、iPhone）与真实移动网络（Wi-Fi↔蜂窝切换、真实 NAT 穿透）、iOS 后台/前台与无调试信号纯手势交互、Android Release R8 包端到端、多电脑切换及第 2–4 期热备压测。
+
+### 最终产物体积与代码行数变化
+
+- **产物体积（Go `1.26.11`，`-s -w`）**：
+  - **网页**：`core.wasm` 原始 `10,425,675 B`、brotli（q11）`1,838,798 B`；首屏下载合计 brotli `2,168,713 B`（`fpJs=303,126 B` + `fpCss=26,789 B` + `fpWasm=1,838,798 B`，门限 `2,400,000 B`）。
+  - **Android release APK**：`unzip -lv` 确认仅含 `arm64-v8a`（无 `x86_64`），`lib/arm64-v8a/libgojni.so` 为 Stored（不压缩）`7,275,136 B`（超出 6 MB 上限，待定见 [plan](plan.md#待确认)）。
+  - **iOS `Corebind.xcframework`**：`ios-arm64` 切片文件 `8,769,336 B`（`__TEXT` `5,174,234 B` 约 `4.93 MiB`，非零填充 `__TEXT+__DATA_CONST+__DATA` `6,325,937 B` 约 `6.03 MiB`）。
+- **相对基线 `f38f590cb` 的代码行数变化**：
+  - **新口径**（`scripts/dev/code_size.py`，含 `.js` 与 `.java`）：`web` `43,752 → 42,212`（`-1,540`），`android` `61,707 → 58,806`（`-2,901`），`ios` `61,712 → 60,788`（`-924`），`clientcore` `40,358 → 44,488`（`+4,130`），客户端合计 `207,529 → 206,294`（`-1,235`）；测试合计 `101,906 → 100,885`（`-1,021`）；`root-go` 参考 `70,623 → 70,787`（`+164`）。
+  - **旧口径**（按 `f38f590cb` 版脚本统计，不含 `.js` 与 `.java`）：`web` `43,194 → 41,993`（`-1,201`），`android` `52,412 → 50,740`（`-1,672`），`ios` `61,712 → 60,788`（`-924`），`clientcore` `40,358 → 44,488`（`+4,130`），客户端合计 `197,676 → 198,009`（`+333`，因未计入本次在网页 `.js` 与 Android `.java` 删去的 `-339` / `-1,229` 行）；测试合计 `101,807 → 100,786`（`-1,021`）。

@@ -24,7 +24,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令；网页、Android、iOS 的独立入口、新建/编辑、运行历史、对话定时条与静默轮折叠、加密离线快照和修订订阅；任务级完成通知与接管说明已实现；网页按运行显示未读，打开详情或对应对话已读，界面按 client-v54 | 三端本地真实 Claude Code 链路：网页与 Android 为界面操作，iOS 为 DEBUG 动作；自动检查与各端证据边界见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)和 v52 改版记录 | 真机界面及推送送达、iPad、多台真实电脑、实际睡眠/DST 和客户端 Codex 路线，见「待确认 › 定时任务」 |
-| 传输模块与直连 | 协议 15 的 0a/0b 已随 v0.75.2 发布；0c 四端活性与换网恢复及 iMac 正式恢复测量完成；1b 分类队列、2/4/2 池与完整审批隔离完成本地验收；S4 已将直连选路、诊断状态与终端恢复重连状态机合入 `clientcore`，并在网页、Android、iOS 三端完成接线与过渡桥接清理（含 `1c/1d/1e` 统一「连接」组、人话排障与共享 WebRTC/终端执行器）；第 2–4 期完整双路热备与真机扩展仍待推进 | [0b 正式首条测量](acceptance-notes.md#重定基与-imac-正式测量2026-11-14)、[0c 本地恢复验收](acceptance-notes.md#传输-0c-中继活性与换网2026-11-14)、[0c 正式恢复测量](acceptance-notes.md#0c-imac-正式恢复测量2026-11-14)、[1b 分类调度验收](acceptance-notes.md#1b-分类调度与完整审批验收2026-11-15) 与 `1c/1d` 本地测试；S4a 网页、S4b Android 已通过隔离真实 CLI 验收，iOS 与四端收口见 S4 收口验收 | 0c 真机网络验收、Pixel 3 及 iPhone 真机直连验收、第 2–4 期，以及「待确认 › 传输模块与直连」 |
+| 传输模块与直连 | 协议 15 的 0a/0b 已随 v0.75.2 发布；0c 四端活性与换网恢复及 iMac 正式恢复测量完成；1b 分类队列、2/4/2 池与完整审批隔离完成本地验收；S4 已将直连选路、诊断状态与终端恢复重连状态机合入 `clientcore`，并在网页、Android、iOS 三端完成接线与过渡桥接清理（含 `1c/1d/1e` 统一「连接」组、人话排障与共享 WebRTC/终端执行器）；第 2–4 期完整双路热备与真机扩展仍待推进 | [0b 正式首条测量](acceptance-notes.md#重定基与-imac-正式测量2026-11-14)、[0c 本地恢复验收](acceptance-notes.md#传输-0c-中继活性与换网2026-11-14)、[0c 正式恢复测量](acceptance-notes.md#0c-imac-正式恢复测量2026-11-14)、[1b 分类调度验收](acceptance-notes.md#1b-分类调度与完整审批验收2026-11-15) 与 `1c/1d` 本地测试；S4 三端隔离真实 CLI 验收（网页直接 UI、Android 模拟器直接 UI、iOS 模拟器由启动参数与调试信号驱动）见 [S4 验收记录](acceptance-notes.md#s4-共享核心直连与终端恢复接线验收2026-11-21) | 0c 真机网络验收、Pixel 3 及 iPhone 真机直连与交互验收、第 2–4 期，以及「待确认 › 传输模块与直连」 |
 | 测试与开发夹具 | 实例状态目录、共享准备步骤、受限并行与正确的增量输入依赖 | 各端完整前后对照与五轮 CPU 高负载复跑，用例和断言保留，见[第二轮记录](acceptance-notes.md#测试提速第二轮2026-11-04) | 改动仍在任务分支；机制审计候选尚未决定，未自动改隐私、协议或存储格式 |
 
 当前主线已合入的基准协议为 15（当前 `wt/v63-web-android-ui` 任务分支按协议 17 推进：在 16 的直连开关基础上完成按电脑 CLI 启停开关与被动模型用量/输出速度统计，覆盖 daemon、server、共享核心 `clientcore`、网页端与 Android 端；iOS 协议与核心已升级至 17，对应原生设置开关与用量视图待接入），daemon、server、网页和 App 需要一起升级；不同协议版本互相拒绝。14→15 的安全状态手动升级见[开发说明](development.md#安全状态-v3-到-v4-的一次性手动升级)；0b 不改变协议或存储格式。定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
@@ -40,12 +40,13 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - 规则测试只在 Go；三端检查总耗时不比上一版明显变长（不超过 10%）；wasm 和原生库体积在预算内
 - 隔离环境用真实 CLI 走完该步涉及的界面，三端各一遍；发版并上线
 
-第一次全局架构审查（2026-11-17）的整理项，在会话、定时、设置三个界面的核心合入后集中做：`sync` 只出结构化原因、文案由 `screens` 生成；草稿和目录选择按 key 区分（宽屏双栏和多弹层会串状态）；金样导出二进制并改用真实 daemon 产出的夹具；壳里按显示文字做逻辑的地方改成结构化字段。lite 生成器已改为写完再补长度（2026-11-20），按客户端白名单裁字段评估后不做（上限约 3～4 KB brotli）；S4 收口后 `core.wasm` brotli 为 `1,829,377 B`，网页首屏合计 brotli 为 `2,159,175 B`（门限 `2,179,738 B`），见 [architecture · 体积与性能预算](architecture.md#体积与性能预算)。
+第一次全局架构审查（2026-11-17）的整理项，在会话、定时、设置三个界面的核心合入后集中做：`sync` 只出结构化原因、文案由 `screens` 生成；草稿和目录选择按 key 区分（宽屏双栏和多弹层会串状态）；金样导出二进制并改用真实 daemon 产出的夹具；壳里按显示文字做逻辑的地方改成结构化字段。lite 生成器已改为写完再补长度（2026-11-20），按客户端白名单裁字段评估后不做（上限约 3～4 KB brotli）；S4 收口后 `core.wasm` brotli 为 `1,838,798 B`，网页首屏合计 brotli 为 `2,168,713 B`（门限 `2,400,000 B`），见 [architecture · 体积与性能预算](architecture.md#体积与性能预算)。
 
 **直连传输与终端恢复已迁入共享核心并完成三端接线（S4）**：
-- Go 共享包（`shared/linkcore`、`shared/peerwire`）、`clientcore/transport`（直连状态机、退避/选路、诊断、终端重连恢复）与三端（S4a 网页、S4b Android、S4c iOS）均已接通，并在三端合入后删除过渡期 `DirectViews` / `MachineDirectStatusEvent` / `MachineRouteStatusEvent` 桥接。WebRTC、socket、计时器执行与私钥仍留在各端；下一步是继续设备安全原语与安全流程迁移。
-- 已确定的体积预算：网页以首屏 JS + CSS + wasm 合计 brotli `≤ 2,179,738 B`（2026-11-17 基线 `1,895,424 B + 15%`）作为 `pnpm build` 强制门限（大块加解密继续由 WebCrypto 执行）；Android 6 MB 预算以 **APK 内每个 ABI 的压缩体积（`gzip -9`）**为准，正式包继续同时保留 `arm64-v8a` 与 `x86_64`。
-- 三端直连行为已按 [transport.md](transport.md) 在 `clientcore/transport` 统一：就绪即优先 + `1.5× + 20 ms` + `60 s` 起指数等待；一轮最后一条路径关闭即退役；换安全 head 不记为失败；主连接恢复、网络换代、打开开关使现有轮次整体失效；后台关闭全部直连；不支持 WebRTC 不发起；状态带「确有重试排定」；退避熵不足时取满上限；「重新尝试」2 秒冷却、不清失败计数、证明过期先授权；信令步骤在 20 秒新鲜期内不再重复同步；并移除 `clientcore/sync/recovery.go` 中与 `shared/linkcore` 重复的退避与活性逻辑。
+- Go 共享包（`shared/linkcore`、`shared/peerwire`）、`clientcore/transport`（直连状态机、退避/选路、诊断、终端重连恢复，退避熵改用壳通过 Effect 注入的操作系统 CSPRNG 字节池）与三端（S4a 网页、S4b Android、S4c iOS）均已完成接线并拆除过渡桥接。WebRTC、socket、计时器执行和私钥留在各端，签名、密钥协商、HPKE 封装走 Effect 由壳执行；核心里不自写加密原语。
+- 后续顺序：安全原语与安全门（S5）→ 安全流程（S6）。协议版本不变；安全流程那步会改客户端本地安全记录的格式，届时选一次性手动升级或重新配对。
+- 已确定的体积预算：2026-11-21 用户决定将网页首屏 JS + CSS + wasm 合计 brotli 上限放宽至 **`2,400,000 B`**（S4 前 `main` 实测 `1,899,024 B`，S4 后 `2,168,713 B`，由 `pnpm build` 门禁校验；大块加解密继续由 WebCrypto 执行）；Android release APK 仅打包 `arm64-v8a`（`.so` 在 APK 内为 Stored 不压缩；debug / `.dev` 保留 `x86_64`；当前 `arm64-v8a` 超 6 MB，口径待定见「待确认」）。
+- 三端直连行为已按 [transport.md](transport.md) 在 `clientcore/transport` 统一：就绪即优先 + `1.5× + 20 ms` + `60 s` 起指数等待；一轮最后一条路径关闭即退役；换安全 head 不记为失败；主连接恢复、网络换代、打开开关使现有轮次整体失效；后台关闭全部直连；不支持 WebRTC 不发起；状态带「确有重试排定」；退避熵不足时取满上限；STUN 列表由核心随 Effect 给出；「重新尝试」2 秒冷却、不清失败计数、证明过期先授权；信令步骤在 20 秒新鲜期内不再重复同步；并移除 `clientcore/sync/recovery.go` 中与 `shared/linkcore` 重复的退避与活性逻辑。
 
 下面的事项在迁移间隙照常推进。
 
@@ -66,7 +67,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 ### 直连实施与验收
 
-依赖顺序为 **0a → 0b → 0c → 1 → 2 → 3 → 4**，每期 daemon + 网页 → Android → iOS，阶段完成须涵盖四端。已发布产品仍只走中继；0a/0b 已随 v0.75.2 发布，0c 已实现，本地全量、真实 CLI 与 iMac 正式恢复测量通过；1b 分类调度与 1c daemon/网页只读、bulk 直连完成本地验收；1d/1e 原生移动 DirectPath 与网页直连均已迁入共享核心 `clientcore/transport`（iOS 真机端到端与 Pixel 3 真机直连及第 2–4 期仍待完成）；设计、初始资源/时间预算与决策理由只由 [transport.md](transport.md) 维护。各期可独立发布，但只能在同一协议内关闭直连，不能退回上一期旧协议。第 0a 冻结最终结果格式并按规则升级；第 1 期先以四端实际 SDK 验信令/SDP/候选、以假路径跑终端状态机，再冻结其余 wire。第 2/3 期只启用已有能力；可扩展类型与协议升级边界见设计。
+依赖顺序为 **0a → 0b → 0c → 1 → 2 → 3 → 4**，每期 daemon + 网页 → Android → iOS，阶段完成须涵盖四端。已发布产品仍只走中继；0a/0b 已随 v0.75.2 发布，0c 已实现，本地全量、真实 CLI 与 iMac 正式恢复测量通过；1b 分类调度与 1c daemon/网页只读、bulk 直连完成本地验收；1d/1e 原生移动 DirectPath 与网页直连均已迁入共享核心 `clientcore/transport` 并在隔离模拟器/浏览器环境走通（iPhone/Pixel 3 真机端到端与第 2–4 期仍待完成）；设计、初始资源/时间预算与决策理由只由 [transport.md](transport.md) 维护。各期可独立发布，但只能在同一协议内关闭直连，不能退回上一期旧协议。第 0a 冻结最终结果格式并按规则升级；第 1 期先以四端实际 SDK 验信令/SDP/候选、以假路径跑终端状态机，再冻结其余 wire。第 2/3 期只启用已有能力；可扩展类型与协议升级边界见设计。
 
 | 期次 | 当前状态与下一步 | 验收标准 |
 |---|---|---|
@@ -101,12 +102,13 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 所有还没定的问题和待实测的行为都列在这里，有了结论就写进对应的文档，再从这里删掉。
 
+- **arm64 超 6 MB，待定**：Android release APK 已确定仅打包 `arm64-v8a`（debug / `.dev` 继续保留 `x86_64` 给模拟器使用），`.so` 在 APK 内以 Stored（不压缩）存放，`lib/arm64-v8a/libgojni.so` 实测为 `7,275,136 B`（> 6 MB）。要决定是放宽 `arm64` 预算、继续裁剪还是调整构建/链接策略，数字见 [architecture · 体积与性能预算](architecture.md#体积与性能预算)。
 - Codex 命令中心在进程内新建会话也会使用 StartupDraftPump；此入口的完整真实消息链路尚未验收。本次有界等待仅保护托管 CLI 进程的首次确认阶段，后续内部切换仍依靠逐条提交证据和图片失败清理，见 [codex-notes](codex-notes.md#10-屏幕和输入) 和[本轮验收](acceptance-notes.md#codex-loading-有界等待与清理2026-11-06)。
 
 
 ### 传输模块与直连
 
-- **1d/1e 原生移动 DirectPath**：Android 1d 与 iOS 1e 的直连状态机、用途选路、统一诊断视图与终端恢复均已在 `clientcore/transport` 共享核心之上完成三端接线并拆除过渡桥接（Android/WebRTC 与 iOS/RAWebRTC 各自保留平台 WebRTC/Timer/密钥/加密执行器）。Android 在自建模拟器上与隔离 server、daemon 的直连、升级、退路、续传和关闭路径验证通过，**Pixel 3 真机直连尚未达成**（见 1d 报告）；iOS 与三端真机端到端直连及真实移动网络表现仍待在真机上补充测量与验证。审批 p99 按[调度与端到端两个口径](transport.md#2-路径与资源隔离)分别写门槛，Android 端到端在 iMac 模拟器上的测量与上限见[验收](acceptance-notes.md#transport-1d-approval-2026-11-16)，网页与 iOS 的真机端到端数字仍待补测；1c 的本地边界见[验收记录](acceptance-notes.md#transport-1c-2026-11-15)，不将网页或 Pion 结果替代真机验收。
+- **1d/1e 原生移动 DirectPath**：Android 1d 与 iOS 1e 的直连状态机、用途选路、统一诊断视图与终端恢复均已在 `clientcore/transport` 共享核心之上完成三端接线并拆除过渡桥接（Android/WebRTC 与 iOS/RAWebRTC 各自保留平台 WebRTC/Timer/密钥/加密执行器）。Android 模拟器与 iOS 模拟器（其中 iOS 由启动参数与调试信号驱动）均已与隔离 server、daemon 走通直连、终端及中继重启自动恢复，**Pixel 3 及 iPhone 真机直连与真实移动网络尚未验证**（见 [S4 验收记录](acceptance-notes.md#s4-共享核心直连与终端恢复接线验收2026-11-21)）。审批 p99 按[调度与端到端两个口径](transport.md#2-路径与资源隔离)分别写门槛，Android 端到端在 iMac 模拟器上的测量与上限见[验收](acceptance-notes.md#transport-1d-approval-2026-11-16)，网页与 iOS 的真机端到端数字仍待补测；1c 的本地边界见[验收记录](acceptance-notes.md#transport-1c-2026-11-15)，不将网页或 Pion 结果替代真机验收。
 
 - **0c 真机网络验收**：[iMac 正式恢复测量](acceptance-notes.md#0c-imac-正式恢复测量2026-11-14)已完成；仍需安排 Android/iPhone/PWA 真机 Wi-Fi↔蜂窝、同接口地址更新与后台/前台测试，故障注入不能代替真实移动网络。纯中继下普通池饱和的交互隔离已完成 [1b 本地验收](acceptance-notes.md#1b-分类调度与完整审批验收2026-11-15)，不代替真机网络验收。
 
