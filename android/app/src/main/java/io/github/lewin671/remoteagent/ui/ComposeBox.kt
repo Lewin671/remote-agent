@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -29,9 +28,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +46,7 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -117,46 +115,35 @@ fun ComposeBox(
 
     Box(modifier.fillMaxWidth().composerPickerEvents(menu), contentAlignment = Alignment.TopCenter) {
         Box(Modifier.widthIn(max = ChatMax).fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {
-            val currentText = rememberUpdatedState(text)
-            val currentOnText = rememberUpdatedState(onText)
-            val currentPlaceholder = rememberUpdatedState(placeholder)
-            val currentOnFocus = rememberUpdatedState(onFocus)
-            val currentCanSend = rememberUpdatedState(canSend)
-            val currentInterrupt = rememberUpdatedState(interrupt)
-            val currentOnSend = rememberUpdatedState(onSend)
-            val currentOnQueue = rememberUpdatedState(onQueue)
-            val movableField = remember(focusRequester) {
-                movableContentOf<Modifier, Int> { m, lines ->
-                    BasicTextField(
-                        currentText.value, currentOnText.value,
-                        m.then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-                            .onFocusChanged { currentOnFocus.value(it.isFocused) }
-                            .onPreviewKeyEvent { ev ->
-                                if (ev.type != KeyEventType.KeyDown || ev.key != Key.Enter) return@onPreviewKeyEvent false
-                                val queueFn = currentOnQueue.value
-                                when {
-                                    ev.isAltPressed && !ev.isCtrlPressed && !ev.isMetaPressed && queueFn != null -> {
-                                        if (currentCanSend.value) queueFn()
-                                        true
-                                    }
-                                    (ev.isCtrlPressed || ev.isMetaPressed) && !ev.isAltPressed && !currentInterrupt.value -> {
-                                        if (currentCanSend.value) currentOnSend.value()
-                                        true
-                                    }
-                                    else -> false
+            val field: @Composable (Modifier, Int) -> Unit = { m, lines ->
+                BasicTextField(
+                    text, onText,
+                    m.then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                        .onFocusChanged { onFocus(it.isFocused) }
+                        .onPreviewKeyEvent { ev ->
+                            if (ev.type != KeyEventType.KeyDown || ev.key != Key.Enter) return@onPreviewKeyEvent false
+                            when {
+                                ev.isAltPressed && !ev.isCtrlPressed && !ev.isMetaPressed && onQueue != null -> {
+                                    if (canSend) onQueue()
+                                    true
                                 }
-                            },
-                        textStyle = T.s17.copy(color = p.ink),
-                        cursorBrush = SolidColor(p.blue),
-                        maxLines = lines,
-                        decorationBox = { inner ->
-                            Box {
-                                if (currentText.value.isEmpty()) Text(currentPlaceholder.value, style = T.s17, color = p.ink3, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                inner()
+                                (ev.isCtrlPressed || ev.isMetaPressed) && !ev.isAltPressed && !interrupt -> {
+                                    if (canSend) onSend()
+                                    true
+                                }
+                                else -> false
                             }
                         },
-                    )
-                }
+                    textStyle = T.s17.copy(color = p.ink),
+                    cursorBrush = SolidColor(p.blue),
+                    maxLines = lines,
+                    decorationBox = { inner ->
+                        Box {
+                            if (text.isEmpty()) Text(placeholder, style = T.s17, color = p.ink3, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            inner()
+                        }
+                    },
+                )
             }
             val triggerSend: () -> Unit = {
                 if (interrupt) onInterrupt?.invoke() else onSend()
@@ -169,7 +156,7 @@ fun ComposeBox(
 
             if (tools != null) {
                 Column(Modifier.fillMaxWidth().glass(p, Radii.R22, onGrey = LocalOnSoft.current).animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter).padding(start = 7.dp, end = 7.dp, top = 10.dp, bottom = 7.dp)) {
-                    movableField(Modifier.fillMaxWidth().heightIn(min = 26.dp).padding(horizontal = 8.dp, vertical = 2.dp), 8)
+                    field(Modifier.fillMaxWidth().heightIn(min = 26.dp).padding(horizontal = 8.dp, vertical = 2.dp), 8)
                     top?.invoke()
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         AttachButton(onPlus, onFile, plusEnabled, menu)
@@ -186,34 +173,104 @@ fun ComposeBox(
                         .animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter),
                 ) {
                     pendingTray?.invoke()
-                    if (useTwoRow) {
-                        Column(Modifier.fillMaxWidth().padding(start = 7.dp, end = 7.dp, top = 10.dp, bottom = 7.dp)) {
-                            top?.invoke()
-                            movableField(Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(horizontal = 8.dp, vertical = 2.dp), 6)
-                            Row(
-                                Modifier.fillMaxWidth().padding(top = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                AttachButton(onPlus, onFile, plusEnabled, menu)
-                                Spacer(Modifier.weight(1f))
-                                if (showSendAfter && onQueue != null) {
-                                    SendAfterButton(enabled = canSend, onClick = onQueue)
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 7.dp, end = 7.dp, top = if (useTwoRow) 10.dp else 7.dp, bottom = 7.dp),
+                    ) {
+                        top?.invoke()
+                        ComposerInputLayout(
+                            useTwoRow = useTwoRow,
+                            attach = { AttachButton(onPlus, onFile, plusEnabled, menu) },
+                            field = {
+                                val fieldMod = if (useTwoRow) {
+                                    Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(horizontal = 8.dp, vertical = 2.dp)
+                                } else {
+                                    Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp)
                                 }
-                                send()
-                            }
-                        }
-                    } else {
-                        Column(Modifier.fillMaxWidth().padding(7.dp)) {
-                            top?.invoke()
-                            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                AttachButton(onPlus, onFile, plusEnabled, menu)
-                                movableField(Modifier.weight(1f).heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp), 6)
-                                send()
-                            }
-                        }
+                                field(fieldMod, 6)
+                            },
+                            trailing = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    if (showSendAfter) {
+                                        onQueue?.let { SendAfterButton(enabled = canSend, onClick = it) }
+                                    }
+                                    send()
+                                }
+                            },
+                        )
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Places attach (`+`), the text field, and trailing action buttons in either one row or two rows
+ * without moving the text field across composition branches, so focus and IME stay intact.
+ */
+@Composable
+private fun ComposerInputLayout(
+    useTwoRow: Boolean,
+    attach: @Composable () -> Unit,
+    field: @Composable () -> Unit,
+    trailing: @Composable () -> Unit,
+) {
+    Layout(
+        content = {
+            attach()
+            field()
+            trailing()
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val attachPlaceable = measurables[0].measure(loose)
+        val trailingPlaceable = measurables[2].measure(loose)
+        if (!useTwoRow) {
+            val gapPx = 8.dp.roundToPx()
+            val fieldConstraints = if (constraints.hasBoundedWidth) {
+                val fieldW = (constraints.maxWidth - attachPlaceable.width - trailingPlaceable.width - gapPx * 2).coerceAtLeast(0)
+                constraints.copy(minWidth = fieldW, maxWidth = fieldW, minHeight = 0)
+            } else {
+                loose
+            }
+            val fieldPlaceable = measurables[1].measure(fieldConstraints)
+            val width = if (constraints.hasBoundedWidth) {
+                constraints.maxWidth
+            } else {
+                attachPlaceable.width + gapPx + fieldPlaceable.width + gapPx + trailingPlaceable.width
+            }
+            val height = maxOf(attachPlaceable.height, fieldPlaceable.height, trailingPlaceable.height)
+            layout(width, height) {
+                attachPlaceable.placeRelative(0, height - attachPlaceable.height)
+                fieldPlaceable.placeRelative(attachPlaceable.width + gapPx, height - fieldPlaceable.height)
+                trailingPlaceable.placeRelative(width - trailingPlaceable.width, height - trailingPlaceable.height)
+            }
+        } else {
+            val rowGapPx = 6.dp.roundToPx()
+            val fieldConstraints = if (constraints.hasBoundedWidth) {
+                constraints.copy(minWidth = constraints.maxWidth, maxWidth = constraints.maxWidth, minHeight = 0)
+            } else {
+                loose
+            }
+            val fieldPlaceable = measurables[1].measure(fieldConstraints)
+            val width = if (constraints.hasBoundedWidth) {
+                constraints.maxWidth
+            } else {
+                maxOf(fieldPlaceable.width, attachPlaceable.width + trailingPlaceable.width)
+            }
+            val bottomRowHeight = maxOf(attachPlaceable.height, trailingPlaceable.height)
+            val height = fieldPlaceable.height + rowGapPx + bottomRowHeight
+            layout(width, height) {
+                fieldPlaceable.placeRelative(0, 0)
+                val bottomY = fieldPlaceable.height + rowGapPx
+                attachPlaceable.placeRelative(0, bottomY + (bottomRowHeight - attachPlaceable.height) / 2)
+                trailingPlaceable.placeRelative(width - trailingPlaceable.width, bottomY + (bottomRowHeight - trailingPlaceable.height) / 2)
             }
         }
     }
