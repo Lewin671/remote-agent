@@ -22,6 +22,7 @@ import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.Fragment
 import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.PayloadKind
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
@@ -211,11 +212,81 @@ class DirectExecutorTest {
         while (dataCh.sent.size < 2) kotlinx.coroutines.delay(5)
         val countBeforeClose = events.size
         executor.pcClose(DirectPcCloseEffect.newBuilder().setPcId(10L).setReason("done").build())
+        kotlinx.coroutines.withTimeout(2_000L) {
+            while (!pc!!.closed) kotlinx.coroutines.delay(5)
+        }
         assertTrue(pc!!.closed)
         assertTrue(pendingRpc.await().exceptionOrNull() is PathChanged)
         assertFalse(events.drop(countBeforeClose).any { it.hasDirectPcClosed() })
 
         executor.close()
+    }
+
+    @Test
+    fun replacedPcLateCallbacksAreIgnored() = runBlocking {
+        val events = CopyOnWriteArrayList<CoreEvent>()
+        val createdPcs = ArrayList<Pair<StubPeerConnection, RtcPeerListener>>()
+        val executor = DirectExecutor(
+            deviceSeed = { null },
+            xPrivate = { null },
+            emit = { events.add(it) },
+            onPushedEvent = { _, _, _, _, _ -> },
+            factory = RtcFactory { _, l ->
+                StubPeerConnection(l, DirectStatsReport.getDefaultInstance()).also { createdPcs.add(it to l) }
+            },
+        )
+        try {
+            executor.pcCreate(DirectPcCreateEffect.newBuilder().setPcId(10L).setMachineId("m-1").setRoundId(100L).setUse(0).setGeneration(1L).build())
+            executor.pcCreate(DirectPcCreateEffect.newBuilder().setPcId(10L).setMachineId("m-1").setRoundId(101L).setUse(0).setGeneration(2L).build())
+            assertEquals(2, createdPcs.size)
+            val (pc1, listener1) = createdPcs[0]
+            val beforeLate = events.size
+
+            // Fire late callbacks on replaced pc1 -> zero events should be emitted.
+            listener1.onIceCandidate(RtcIceCandidate("candidate:9 1 udp 1 192.0.2.9 9999 typ host", "0", 0, false))
+            listener1.onConnectionStateChange(RtcPeerState.FAILED)
+            pc1.channels.getValue(0).close()
+            pc1.channels.getValue(0).open()
+            kotlinx.coroutines.delay(50)
+            assertEquals(beforeLate, events.size)
+
+            // Replacement pc2 still handles describe normally.
+            executor.pcDescribe(DirectPcDescribeEffect.newBuilder().setPcId(10L).setOffer(true).build())
+            assertTrue(events.drop(beforeLate).any { it.hasDirectPcDescription() && it.directPcDescription.pcId == 10L && it.directPcDescription.ok })
+        } finally {
+            executor.close()
+        }
+    }
+
+    @Test
+    fun remoteStartPrewarmsRtcFactoryOffCallerThread() = runBlocking {
+        val callerThread = Thread.currentThread()
+        val prewarmedOn = CompletableDeferred<Thread>()
+        val account = io.github.lewin671.remoteagent.core.Account(
+            server = "https://example.com",
+            root = ByteArray(32) { 1 },
+            deviceSeed = ByteArray(32) { 2 },
+            deviceId = "0123456789abcdef0123456789abcdef",
+        )
+        val remote = io.github.lewin671.remoteagent.core.Remote(
+            account = account,
+            http = okhttp3.OkHttpClient(),
+            rtcFactory = object : RtcFactory {
+                override fun create(stunUrls: List<String>, listener: RtcPeerListener): RtcPeerConnection =
+                    error("unused")
+
+                override fun prewarm() {
+                    prewarmedOn.complete(Thread.currentThread())
+                }
+            },
+        )
+        try {
+            remote.start()
+            val workerThread = kotlinx.coroutines.withTimeout(3_000L) { prewarmedOn.await() }
+            assertTrue(workerThread !== callerThread)
+        } finally {
+            remote.close()
+        }
     }
 
     private fun sha256Bytes(data: ByteArray): ByteArray =

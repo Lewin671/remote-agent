@@ -269,7 +269,7 @@ final class DirectChannel: @unchecked Sendable {
         if valid() { options.candidate(nil) }
     }
     fileprivate func peerState(_ state: RtcPeerState) {
-        if isEnded { return }
+        guard valid() else { return }
         let stateToken = switch state {
         case .new: "new"
         case .connecting: "connecting"
@@ -282,15 +282,16 @@ final class DirectChannel: @unchecked Sendable {
         if state == .failed || state == .closed || state == .disconnected { close() }
     }
     fileprivate func iceConnState(_ state: String) {
-        if !isEnded && !state.isEmpty { options.state(.ice, state) }
+        if valid() && !state.isEmpty { options.state(.ice, state) }
     }
     fileprivate func iceGatherState(_ state: String) {
-        if !isEnded && !state.isEmpty { options.state(.gather, state) }
+        if valid() && !state.isEmpty { options.state(.gather, state) }
     }
     fileprivate func iceCandidateError(code: Int, address: String) {
-        if !isEnded { options.stunError?(code, address) }
+        if valid() { options.stunError?(code, address) }
     }
     fileprivate func dataChanged() {
+        guard valid() else { return }
         if data.state == .open {
             wake.signal()
             options.dcState?(true)
@@ -306,7 +307,7 @@ final class DirectChannel: @unchecked Sendable {
         if raw.count > frameBytes { close(); return }
         incoming.yield(raw)
     }
-    fileprivate func probeChanged() { if probe.state == .closed { close() } }
+    fileprivate func probeChanged() { if valid() && probe.state == .closed { close() } }
     fileprivate func probeMessage(_ raw: Data) {
         guard ready, raw.count == 17 else { return }
         let bytes = [UInt8](raw)
@@ -322,6 +323,10 @@ final class DirectChannel: @unchecked Sendable {
 
     private func tickOnce() {
         guard valid() else { close(); return }
+        if lock.withLock({ confirmed }) && (data.state == .closed || probe.state == .closed) {
+            close()
+            return
+        }
         let now = options.monotonic()
         var expired: [Partial] = []
         var tooMany = false
@@ -518,7 +523,10 @@ final class DirectChannel: @unchecked Sendable {
         for part in parts { options.budget.free(options.peer, 1, part.bytes, part.parts.count) }
         for raw in held { options.budget.free(options.peer, 1, raw.count, 1) }
         wake.signal(); incoming.finish(); tick?.cancel()
-        cleanup({ [pc] in pc?.close() }, { [options] in options.closed() }, { [self] in releaseReservation() })
+        cleanup({ [options] in options.closed() }, { [self] in releaseReservation() })
+        let peerConn = pc
+        // PeerConnection.close() can block inside libwebrtc locks; never stall callers or Swift's cooperative pool.
+        DispatchQueue.global(qos: .utility).async { peerConn?.close() }
     }
 
     private func releaseReservation() {

@@ -167,10 +167,88 @@ import Testing
 
         // Closing 101 by Core must NOT emit directPcClosed for 101 (while peer 102 disconnecting does emit 102).
         exec.pcClose(.with { $0.pcID = 101; $0.reason = "done" })
-        try await Task.sleep(nanoseconds: 50_000_000)
+        let closeDeadline = Date().addingTimeInterval(2)
+        while Date() < closeDeadline && !emitted.items.contains(where: { if case .directPcClosed(let c)? = $0.event { return c.pcID == 102 }; return false }) {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
         let closedFor101 = emitted.items.filter { if case .directPcClosed(let c)? = $0.event { return c.pcID == 101 }; return false }.count
         let closedFor102 = emitted.items.filter { if case .directPcClosed(let c)? = $0.event { return c.pcID == 102 }; return false }.count
         #expect(closedFor101 == 0)
         #expect(closedFor102 == 1)
+    }
+
+    @Test func blockingPcCloseDoesNotBlockExecutor() async throws {
+        let net = FakeRtcNet()
+        let factory = FakeRtcFactory(net: net)
+        let emitted = Recorder<PBCoreEvent>()
+        let exec = DirectExecutor(
+            deviceSeed: { nil },
+            xPrivateKey: { nil },
+            emit: { ev in emitted.append(ev) },
+            onPushedEvent: { _, _, _, _, _ in },
+            factory: factory
+        )
+        defer { net.releaseClose(); exec.close() }
+
+        exec.pcCreate(.with {
+            $0.roundID = 20; $0.machineID = "m1"; $0.pcID = 201; $0.use = 0; $0.generation = 1; $0.stunServers = ["stun:127.0.0.1:3478"]
+        })
+        net.holdClose()
+        exec.pcClose(.with { $0.pcID = 201; $0.reason = "done" })
+        // pcClose must return immediately without waiting on pc.close().
+        #expect(net.closeFinished == 0)
+
+        let enterDeadline = Date().addingTimeInterval(2)
+        while Date() < enterDeadline && net.closeEntered == 0 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        #expect(net.closeEntered >= 1)
+        net.releaseClose()
+
+        let finishDeadline = Date().addingTimeInterval(2)
+        while Date() < finishDeadline && net.closeFinished == 0 {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        #expect(net.closeFinished >= 1)
+    }
+
+    @Test func replacedPcLateCallbacksDoNotTouchSuccessor() async throws {
+        let net = FakeRtcNet()
+        let factory = FakeRtcFactory(net: net)
+        let emitted = Recorder<PBCoreEvent>()
+        let exec = DirectExecutor(
+            deviceSeed: { nil },
+            xPrivateKey: { nil },
+            emit: { ev in emitted.append(ev) },
+            onPushedEvent: { _, _, _, _, _ in },
+            factory: factory
+        )
+        defer { exec.close() }
+
+        exec.pcCreate(.with {
+            $0.roundID = 30; $0.machineID = "m1"; $0.pcID = 301; $0.use = 0; $0.generation = 1; $0.stunServers = ["stun:127.0.0.1:3478"]
+        })
+        let pc1 = try #require(net.all.first)
+
+        // Replace pcID 301 with a fresh PC; pc1 becomes stale.
+        exec.pcCreate(.with {
+            $0.roundID = 31; $0.machineID = "m1"; $0.pcID = 301; $0.use = 0; $0.generation = 2; $0.stunServers = ["stun:127.0.0.1:3478"]
+        })
+        let pc2 = try #require(net.all.last)
+        #expect(pc1 !== pc2)
+        let beforeLate = emitted.items.count
+
+        // Late SDK callbacks from pc1 must be suppressed and must not close pc2.
+        pc1.listener.onIceCandidate(RtcIceCandidate(candidate: "candidate:9 1 udp 1 192.0.2.9 9999 typ host", sdpMid: "0", sdpMLineIndex: 0, isSrflx: false))
+        pc1.listener.onConnectionStateChange(.failed)
+        pc1.channels[0]?.set(.closed)
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        let lateEvents = Array(emitted.items.dropFirst(beforeLate))
+        #expect(lateEvents.isEmpty)
+
+        // Successor pc2 still describes and reads stats normally.
+        await exec.pcDescribe(.with { $0.pcID = 301; $0.offer = true })
+        #expect(emitted.items.contains { if case .directPcDescription(let d)? = $0.event { return d.pcID == 301 && d.ok }; return false })
     }
 }

@@ -207,8 +207,9 @@ final class DirectExecutor: @unchecked Sendable {
                 },
                 stun: eff.stunServers,
                 factory: rtc,
-                candidate: { [weak self] cand in
-                    self?.emitEvent {
+                candidate: { [weak self, weak entry] cand in
+                    guard let self, let entry, self.lock.withLock({ !self.closed && self.pcs[pcID] === entry }) else { return }
+                    self.emitEvent {
                         $0.directPcLocalCandidate = .with {
                             $0.pcID = pcID
                             if let cand {
@@ -219,8 +220,9 @@ final class DirectExecutor: @unchecked Sendable {
                         }
                     }
                 },
-                state: { [weak self] kind, value in
-                    self?.emitEvent {
+                state: { [weak self, weak entry] kind, value in
+                    guard let self, let entry, self.lock.withLock({ !self.closed && self.pcs[pcID] === entry }) else { return }
+                    self.emitEvent {
                         $0.directPcState = .with {
                             $0.pcID = pcID
                             $0.kind = kind
@@ -228,16 +230,18 @@ final class DirectExecutor: @unchecked Sendable {
                         }
                     }
                 },
-                dcState: { [weak self] open in
-                    self?.emitEvent {
+                dcState: { [weak self, weak entry] open in
+                    guard let self, let entry, self.lock.withLock({ !self.closed && self.pcs[pcID] === entry }) else { return }
+                    self.emitEvent {
                         $0.directDcState = .with {
                             $0.pcID = pcID
                             $0.open = open
                         }
                     }
                 },
-                stunError: { [weak self] code, address in
-                    self?.emitEvent {
+                stunError: { [weak self, weak entry] code, address in
+                    guard let self, let entry, self.lock.withLock({ !self.closed && self.pcs[pcID] === entry }) else { return }
+                    self.emitEvent {
                         $0.directPcStunError = .with {
                             $0.pcID = pcID
                             $0.code = Int32(code)

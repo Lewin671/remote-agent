@@ -129,6 +129,9 @@ class DirectChannelTest {
         } finally {
             channel.close()
         }
+        kotlinx.coroutines.withTimeout(2_000L) {
+            while (!fakePc!!.closed) kotlinx.coroutines.delay(5)
+        }
         assertTrue(fakePc!!.closed)
     }
 
@@ -233,6 +236,92 @@ class DirectChannelTest {
             assertEquals(DirectCandFamily.DIRECT_CAND_FAMILY_V4, stats.pairsList[0].localFamily)
         } finally {
             channel.close()
+        }
+    }
+
+    @Test
+    fun silentDataChannelCloseDetectedOnTick() = runBlocking {
+        var fakePc: FakePeerConnection? = null
+        val closed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val channel = DirectChannel(
+            DirectChannelOptions(
+                peer = "m-1",
+                roundId = 12L,
+                use = 0,
+                generation = 1L,
+                budget = DirectBudget(),
+                valid = { true },
+                stun = emptyList(),
+                factory = RtcFactory { _, l -> FakePeerConnection(l).also { fakePc = it } },
+                candidate = {},
+                state = { _, _ -> },
+                frame = {},
+                closed = { closed.set(true) },
+            ),
+        )
+        try {
+            val data = fakePc!!.channels.getValue(0)
+            data.open()
+            channel.confirm()
+            assertTrue(channel.ready)
+
+            // Transition state silently without invoking listener.onStateChange().
+            data.chState = RtcChannelState.CLOSED
+            kotlinx.coroutines.withTimeout(3_000L) {
+                while (!closed.get()) kotlinx.coroutines.delay(20)
+            }
+            assertTrue(closed.get())
+        } finally {
+            channel.close()
+        }
+    }
+
+    @Test
+    fun blockingPcCloseDoesNotBlockChannelCloseAndReleasesBudget() = runBlocking {
+        val enterLatch = java.util.concurrent.CountDownLatch(1)
+        val releaseLatch = java.util.concurrent.CountDownLatch(1)
+        val closed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val budget = DirectBudget()
+        val blockingFactory = RtcFactory { _, listener ->
+            object : RtcPeerConnection {
+                override fun createDataChannel(label: String, id: Int, ordered: Boolean, maxRetransmits: Int?, listener: RtcDataChannelListener) =
+                    FakeDataChannel(label, listener)
+                override suspend fun createOffer(iceRestart: Boolean) = ""
+                override suspend fun createAnswer() = ""
+                override suspend fun setLocalDescription(offer: Boolean, sdp: String) {}
+                override suspend fun setRemoteDescription(offer: Boolean, sdp: String) {}
+                override suspend fun addIceCandidate(candidate: String, sdpMid: String, sdpMLineIndex: Int, usernameFragment: String) {}
+                override fun close() {
+                    enterLatch.countDown()
+                    releaseLatch.await()
+                }
+            }
+        }
+        val channel = DirectChannel(
+            DirectChannelOptions(
+                peer = "m-1",
+                roundId = 13L,
+                use = 0,
+                generation = 1L,
+                budget = budget,
+                valid = { true },
+                stun = emptyList(),
+                factory = blockingFactory,
+                candidate = {},
+                state = { _, _ -> },
+                frame = {},
+                closed = { closed.set(true) },
+            ),
+        )
+        try {
+            channel.close()
+            // pc.close() is still blocked, yet channel.close() returned, closed fired, and budget was released.
+            assertTrue(enterLatch.await(2, java.util.concurrent.TimeUnit.SECONDS))
+            assertTrue(closed.get())
+            assertTrue(budget.acquire("m-1", "99", 0))
+            budget.release("m-1", 0)
+        } finally {
+            releaseLatch.countDown()
         }
     }
 }

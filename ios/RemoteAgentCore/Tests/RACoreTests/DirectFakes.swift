@@ -65,6 +65,7 @@ final class FakeRtcChannel: RtcDataChannel, @unchecked Sendable {
     var state: RtcChannelState { lock.withLock { _state } }
     var bufferedAmount: Int { 0 }
     func set(_ s: RtcChannelState) { lock.withLock { _state = s }; listener.onStateChange(); owner?.net.onEvent?() }
+    func setSilent(_ s: RtcChannelState) { lock.withLock { _state = s } }
     func send(_ data: Data) -> Bool {
         guard state == .open, let owner, let peer = owner.peer, !owner.net.blackhole else { return state == .open }
         let target = peer.channels[id]

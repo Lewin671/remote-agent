@@ -101,6 +101,67 @@ import Testing
         #expect(closedA.get())
         #expect(budgetA.isEmpty && budgetB.isEmpty)
     }
+
+    @Test func silentDataChannelCloseDetectedOnTick() async throws {
+        let net = FakeRtcNet()
+        let factory = FakeRtcFactory(net: net)
+        let budgetA = DirectBudget()
+        let budgetB = DirectBudget()
+        let closedA = Box(false)
+
+        let chA = try DirectChannel(DirectChannelOptions(
+            peer: "m1",
+            roundId: 3,
+            use: 0,
+            generation: 1,
+            budget: budgetA,
+            valid: { true },
+            stun: ["stun:127.0.0.1:3478"],
+            factory: factory,
+            candidate: { _ in },
+            state: { _, _ in },
+            frame: { _ in },
+            closed: { closedA.withValue { $0 = true } }
+        ))
+        let chB = try DirectChannel(DirectChannelOptions(
+            peer: "m1",
+            roundId: 4,
+            use: 0,
+            generation: 1,
+            budget: budgetB,
+            valid: { true },
+            stun: ["stun:127.0.0.1:3478"],
+            factory: factory,
+            candidate: { _ in },
+            state: { _, _ in },
+            frame: { _ in },
+            closed: {}
+        ))
+        defer { chA.close(); chB.close() }
+
+        let offer = try await chA.description(offer: true)
+        try await chB.remote(offer, offer: true)
+        let answer = try await chB.description(offer: false)
+        try await chA.remote(answer, offer: false)
+        chA.confirm()
+        chB.confirm()
+
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline && (!chA.ready || !chB.ready) {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        #expect(chA.ready)
+
+        // SDK transitions DataChannel state to .closed without emitting onStateChange().
+        let pcA = try #require(net.all.first)
+        try #require(pcA.channels[0]).setSilent(.closed)
+
+        let closeDeadline = Date().addingTimeInterval(3)
+        while Date() < closeDeadline && !closedA.get() {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(closedA.get())
+    }
 }
 
 private final class Box<T>: @unchecked Sendable {

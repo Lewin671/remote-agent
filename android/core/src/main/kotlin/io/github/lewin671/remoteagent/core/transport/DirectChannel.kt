@@ -216,7 +216,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     }
 
                     override fun onConnectionStateChange(state: RtcPeerState) {
-                        if (ended) return
+                        if (!valid()) return
                         options.state(DirectStateKind.DIRECT_STATE_KIND_CONN, state.name.lowercase())
                         if (state == RtcPeerState.FAILED || state == RtcPeerState.CLOSED || state == RtcPeerState.DISCONNECTED) {
                             close()
@@ -224,26 +224,26 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                     }
 
                     override fun onIceConnectionStateChange(state: String) {
-                        if (!ended) options.state(DirectStateKind.DIRECT_STATE_KIND_ICE, state)
+                        if (valid()) options.state(DirectStateKind.DIRECT_STATE_KIND_ICE, state)
                     }
 
                     override fun onIceGatheringStateChange(state: String) {
-                        if (!ended) options.state(DirectStateKind.DIRECT_STATE_KIND_GATHER, state)
+                        if (valid()) options.state(DirectStateKind.DIRECT_STATE_KIND_GATHER, state)
                     }
 
                     override fun onIceCandidateError(errorCode: Int, address: String) {
-                        if (!ended) options.stunError?.invoke(errorCode, address)
+                        if (valid()) options.stunError?.invoke(errorCode, address)
                     }
 
                     override fun onUnexpectedDataChannel() {
-                        close()
+                        if (valid()) close()
                     }
                 },
             )
             val dataListener = object : RtcDataChannelListener {
                 override fun onStateChange() {
                     val s = data.state()
-                    if (ended) return
+                    if (!valid()) return
                     if (s == RtcChannelState.OPEN) {
                         options.state(DirectStateKind.DIRECT_STATE_KIND_DC, "open")
                         options.dcState?.invoke(true)
@@ -271,7 +271,7 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             }
             val probeListener = object : RtcDataChannelListener {
                 override fun onStateChange() {
-                    if (probe.state() == RtcChannelState.CLOSED) close()
+                    if (valid() && probe.state() == RtcChannelState.CLOSED) close()
                 }
 
                 override fun onBufferedAmountChange(previousAmount: Long) {}
@@ -598,10 +598,11 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
         tickJob.cancel()
         lifetimeJob.cancel()
         cleanup(
-            { pc.close() },
             { options.closed() },
             { releaseReservation() },
         )
+        // WebRTC PeerConnection.close() can block inside native locks; run off-caller so callers and DirectBudget never stall.
+        CoroutineScope(Dispatchers.IO).launch { runCatching { pc.close() } }
     }
 
     private fun releaseReservation() {

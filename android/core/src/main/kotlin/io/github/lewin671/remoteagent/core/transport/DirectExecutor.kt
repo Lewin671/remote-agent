@@ -190,33 +190,41 @@ internal class DirectExecutor(
                     stun = eff.stunServersList,
                     factory = rtc,
                     candidate = { cand ->
-                        val b = DirectPcLocalCandidateEvent.newBuilder().setPcId(eff.pcId)
-                        if (cand == null) b.setEndOfCandidates(true) else b.setCandidate(cand.candidate)
-                        emitEvent { setDirectPcLocalCandidate(b) }
+                        if (!closed.get() && pcs[eff.pcId] === entry) {
+                            val b = DirectPcLocalCandidateEvent.newBuilder().setPcId(eff.pcId)
+                            if (cand == null) b.setEndOfCandidates(true) else b.setCandidate(cand.candidate)
+                            emitEvent { setDirectPcLocalCandidate(b) }
+                        }
                     },
                     state = { kind: DirectStateKind, value: String ->
-                        emitEvent {
-                            setDirectPcState(
-                                DirectPcStateEvent.newBuilder()
-                                    .setPcId(eff.pcId)
-                                    .setKind(kind)
-                                    .setValue(value),
-                            )
+                        if (!closed.get() && pcs[eff.pcId] === entry) {
+                            emitEvent {
+                                setDirectPcState(
+                                    DirectPcStateEvent.newBuilder()
+                                        .setPcId(eff.pcId)
+                                        .setKind(kind)
+                                        .setValue(value),
+                                )
+                            }
                         }
                     },
                     dcState = { open ->
-                        emitEvent {
-                            setDirectDcState(DirectDcStateEvent.newBuilder().setPcId(eff.pcId).setOpen(open))
+                        if (!closed.get() && pcs[eff.pcId] === entry) {
+                            emitEvent {
+                                setDirectDcState(DirectDcStateEvent.newBuilder().setPcId(eff.pcId).setOpen(open))
+                            }
                         }
                     },
                     stunError = { code, address ->
-                        emitEvent {
-                            setDirectPcStunError(
-                                DirectPcStunErrorEvent.newBuilder()
-                                    .setPcId(eff.pcId)
-                                    .setCode(code)
-                                    .setAddress(address),
-                            )
+                        if (!closed.get() && pcs[eff.pcId] === entry) {
+                            emitEvent {
+                                setDirectPcStunError(
+                                    DirectPcStunErrorEvent.newBuilder()
+                                        .setPcId(eff.pcId)
+                                        .setCode(code)
+                                        .setAddress(address),
+                                )
+                            }
                         }
                     },
                     frame = { raw -> handleDcFrame(eff.pcId, entry, raw) },
