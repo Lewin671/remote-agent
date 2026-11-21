@@ -1633,20 +1633,6 @@
     "zh-CN": "bad key or nonce size"
   },
   {
-    "en": "bad session key",
-    "key": "errors.ios_crypto_bad_session_key",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "bad session key"
-  },
-  {
     "en": "envelope does not open",
     "key": "errors.ios_crypto_envelope_does_not_open",
     "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",

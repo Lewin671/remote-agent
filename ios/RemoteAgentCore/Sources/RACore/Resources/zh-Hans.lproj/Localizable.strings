@@ -242,7 +242,6 @@
 "errors_ios_cli_s_own_mode" = "CLI 自己的模式";
 "errors_ios_could_not_read_this_phone_s_account_state_management" = "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。";
 "errors_ios_crypto_bad_key_nonce_size" = "bad key or nonce size";
-"errors_ios_crypto_bad_session_key" = "bad session key";
 "errors_ios_crypto_envelope_does_not_open" = "envelope does not open";
 "errors_ios_crypto_envelope_location" = "envelope is not where it belongs";
 "errors_ios_crypto_malformed_content" = "malformed content";

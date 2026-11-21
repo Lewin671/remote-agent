@@ -207,7 +207,7 @@ final class PhonePairing: @unchecked Sendable {
         _ = try await phone.api.pairing.revealPairing(
             request: reveal, headers: Api.headers(token: phone.token)
         ).value()
-        let transcript = Pairing.domainTranscript(
+        let transcript = try Pairing.domainTranscript(
             pairingId: pairingID, initiatorPublic: ephemeral.publicKey,
             joinerPublic: st.joinerPublic, devicePublic: st.devicePublicKey,
             hpkePublic: st.deviceHpkePublicKey, joinerKind: st.joinerKind.rawValue, trust: trust)
@@ -234,7 +234,7 @@ final class PhonePairing: @unchecked Sendable {
         // The documented phone order: sign the joining state, upload it, then
         // hand the chain over in the encrypted pairing payload.
         try await phone.commit(added.state)
-        let transcript = Pairing.domainTranscript(
+        let transcript = try Pairing.domainTranscript(
             pairingId: pairingID, initiatorPublic: ephemeral.publicKey,
             joinerPublic: st.joinerPublic, devicePublic: st.devicePublicKey,
             hpkePublic: st.deviceHpkePublicKey, joinerKind: kind.rawValue, trust: trust)

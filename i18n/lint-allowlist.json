@@ -4883,5 +4883,15 @@
     "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
     "literal": "unsupported_history",
     "reason": "Internal Go clientcore SecurityOpResult errorCode token inspected before mapping to UnsupportedHistoryException; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/CoreSecurityRunner.swift",
+    "literal": "unsupported_history",
+    "reason": "Internal Go clientcore SecurityOpResult errorCode token inspected before mapping to UnsupportedHistoryError; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/CoreSecurityRunner.swift",
+    "literal": "recovery_unavailable",
+    "reason": "Internal Go clientcore SecurityOpResult errorCode token inspected before mapping to DeviceSecurity.Failure.unavailable; never rendered to users."
   }
 ]

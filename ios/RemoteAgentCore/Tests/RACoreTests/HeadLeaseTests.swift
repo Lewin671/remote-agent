@@ -26,9 +26,14 @@ import Testing
       try DeviceSecurity.parseState(
         Data(base64Encoded: (v[key] as! [String: Any])["state"] as! String)!)
     }
+    let genesis = try stateField("genesis")
+    let added = try stateField("added")
     let parent = try stateField("handoff_parent")
     let handoff = try stateField("handoff")
-    try DeviceSecurity.verifyTransition(parent: parent, next: handoff)
+    try DeviceSecurity.verifyChain(
+      pin: try DeviceSecurity.pin(for: genesis),
+      states: [genesis, added, parent, handoff],
+      proofs: [nil, nil, nil, nil])
     try DeviceSecurity.HeadLease.parse(Data(base64Encoded: v["handoff_lease"] as! String)!).verify(
       handoff)
     #expect(handoff.core.member(parent.core.authorityID) == nil && handoff.prevSecret.count == 60)

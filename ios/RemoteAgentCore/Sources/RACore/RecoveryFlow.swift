@@ -1,5 +1,4 @@
 import Connect
-import CryptoKit
 import Foundation
 import RAProto
 
@@ -170,7 +169,7 @@ extension AuthorityBootstrap {
             && response.accountPublicKey == material.publicKey && response.deviceID == id
             && chain.head.core.authorityID == id && DeviceSecurity.stateHash(chain.head) == DeviceSecurity.stateHash(target), .conflict)
         let secret = try DeviceSecurity.openGrant(pin, chain.head, recipient: id,
-            x: Curve25519.KeyAgreement.PrivateKey(rawRepresentation: material.x))
+            xPrivate: material.x)
         let record = try DeviceSecurity.Record(pin: pin, states: Dictionary(uniqueKeysWithValues: chain.states.map { ($0.core.epoch, $0) }),
             memberID: id, xPrivate: material.x, member: true, floor: max(UInt64(max(clock(), 1)), target.core.issuedAt),
             secret: secret, recovery: chain.proofs)

@@ -52,7 +52,7 @@ struct RecoveryIngestionTests {
             accountId: record.pin.account)
         let remote = try Remote(
             account: account, http: HTTP(), securityStorage: TestSecurityStore(record))
-        await remote.prepareRecoveryIngestion(machine: machine.deviceId, seed: seed)
+        await remote.prepareRecoveryIngestion(machine: machine.deviceId, seed: seed, fixture: fixture, machineAccount: machine)
         header.seq = 2
         var next = PBEvent()
         next.sessionID = "s"
@@ -69,7 +69,7 @@ struct RecoveryIngestionTests {
             w.remote.close()
             TestSecurity.remove(w.server)
         }
-        await w.remote.prepareRecoveryIngestion(machine: w.machine.deviceId, seed: w.seed)
+        await w.remote.prepareRecoveryIngestion(machine: w.machine.deviceId, seed: w.seed, fixture: w.fixture, machineAccount: w.machine)
         var header = PBHeader()
         header.kind = .event
         header.machineID = w.machine.deviceId
@@ -98,9 +98,16 @@ struct RecoveryIngestionTests {
         }
         var forged = w.before
         forged.signature[0] ^= 1
-        let security = try await w.remote.securitySession()
         do {
-            _ = try await security.openHistory(forged, sessionSeed: w.seed)
+            _ = try await w.remote.openEnvelopeOp(
+                envelope: forged,
+                expectedPurpose: .event,
+                machineId: w.machine.deviceId,
+                sessionId: "s",
+                seq: 1,
+                history: true,
+                overrideSessionSeed: w.seed
+            )
             Issue.record("forged origin accepted")
         } catch { #expect(error as? DeviceSecurity.Failure == .untrusted) }
         let decoded = await w.remote.decodeRecoveryEvent(seq: 1, machine: w.machine.deviceId, envelope: forged)
@@ -126,14 +133,49 @@ struct RecoveryIngestionTests {
 }
 
 extension Remote {
-    func prepareRecoveryIngestion(machine: String, seed: Data) {
+    func prepareRecoveryIngestion(machine: String, seed: Data, fixture: TestSecurity, machineAccount: Account) async {
         sessionMachines["s"] = machine
-        sessionKeys["s"] = seed
+        var kh = PBHeader()
+        kh.kind = .sessionKey
+        kh.machineID = machine
+        kh.sessionID = "s"
+        kh.seq = 1
+        if let env = try? fixture.seal(machineAccount, kh, seed) {
+            _ = try? await openEnvelopeOp(
+                envelope: env,
+                expectedPurpose: .sessionKey,
+                machineId: machine,
+                sessionId: "s",
+                history: true
+            )
+        }
     }
     func decodeRecoveryEvent(seq: UInt64, machine: String, envelope: PBEnvelope, history: Bool = true) async -> PBCorePlainEvent {
-        var event = PBStoredEvent()
-        event.seq = seq
-        event.envelope = envelope
-        return await decodeEvents([event], machineId: machine, sessionId: "s", history: history, trackRef: false).first!
+        var out = PBCorePlainEvent()
+        out.seq = seq
+        do {
+            let res = try await openEnvelopeOp(
+                envelope: envelope,
+                expectedPurpose: .event,
+                machineId: machine,
+                sessionId: "s",
+                seq: seq,
+                history: history
+            )
+            let pb = try PBEvent(serializedBytes: res.plaintext)
+            out.event = pb
+            out.verified = true
+        } catch DeviceSecurity.Failure.unavailable {
+            var slot = PBEvent()
+            slot.seq = seq
+            slot.sessionID = "s"
+            out.event = slot
+            out.unavailable = true
+        } catch is UnsupportedHistoryError {
+            out.retired = true
+        } catch {
+            out.broken = true
+        }
+        return out
     }
 }

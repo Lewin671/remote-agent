@@ -107,7 +107,7 @@ import UIKit
         try vault.saveRegistrationBootstrap(account, record: updated)
         let installed = try vault.readSecurity()
         #expect(installed.pin == pin && installed.memberID == old.memberID)
-        #expect(try installed.xKey.rawRepresentation == newX)
+        #expect(installed.xPrivateRaw == newX)
         #expect(installed.floor >= old.floor && installed.floorSaved >= old.floorSaved)
         #expect(try installed.contentSecret(1) == secret)
         #expect(try vault.accountPublicProfile(pin: pin)?.publicKey == keys.account.publicKey)

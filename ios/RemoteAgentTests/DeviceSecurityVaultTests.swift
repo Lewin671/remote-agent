@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import RAProto
 import Security
@@ -23,14 +22,12 @@ import Testing
                 hex: "0502f489b4cebe52e25e238aabf226f4c573cf68b01b33af4dfa0d8329873bec")!,
             genesis: Data(
                 hex: "52fb306d06ee6fe8fa2e3165ad3a10650fdd46288a35dbd38d0f7a37bf69437f")!)
-        let x = try Curve25519.KeyAgreement.PrivateKey(
-            rawRepresentation: Data(
-                hex: "7268259908c56878cd0168407c6940971ddc77b6905e89bb2be57325683ecadd")!)
+        let x = Data(hex: "7268259908c56878cd0168407c6940971ddc77b6905e89bb2be57325683ecadd")!
         let secret = try DeviceSecurity.openGrant(
-            pin, state, recipient: state.core.authorityID, x: x)
+            pin, state, recipient: state.core.authorityID, xPrivate: x)
         return try DeviceSecurity.Record(
             pin: pin, states: [1: state], memberID: state.core.authorityID,
-            xPrivate: x.rawRepresentation, member: true, secret: secret)
+            xPrivate: x, member: true, secret: secret)
     }
     @Test func timeFloorAndNotifyRepairUseTheProtectedCurrentState() throws {
         defer { try? vault.clear() }

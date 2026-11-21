@@ -91,7 +91,7 @@ private func enabledGate() -> AuthorityGate {
 private func coordinator(_ account: Account, _ vault: AuthorityTestVault, http: HTTP = HTTP(),
                          gate: AuthorityGate = enabledGate(), clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) throws -> AuthorityCoordinator {
     let api = try Api(server: account.server, http: http)
-    let security = DeviceSecurityClient(store: vault, memberID: account.deviceId, signingKey: try SigningKey(seed: account.deviceSeed),
+    let security = AuthoritySecurity(store: vault, memberID: account.deviceId, signingKey: try SigningKey(seed: account.deviceSeed),
         clock: { UInt64(max(clock(), 1)) }, fetchStates: { after in
             let token = try await login(api: api, account: account)
             var request = PBGetSecurityStatesRequest(); request.afterEpoch = after; request.limit = 8
@@ -155,7 +155,7 @@ struct AuthorityWorkflowTests {
         #expect(status.readyMs >= UInt64(Date().timeIntervalSince1970 * 1000) + 47 * 60 * 60 * 1000)
         do { _ = try await recovery.completeRecovery(); Issue.record("completed before 48 hours") } catch {}
         let api = try Api(server: server.url, http: HTTP())
-        let security = DeviceSecurityClient(store: vault, memberID: account.deviceId, signingKey: try SigningKey(seed: account.deviceSeed), fetchStates: { after in
+        let security = AuthoritySecurity(store: vault, memberID: account.deviceId, signingKey: try SigningKey(seed: account.deviceSeed), fetchStates: { after in
             var req = PBGetSecurityStatesRequest(); req.afterEpoch = after
             return try await api.client.getSecurityStates(request: req, headers: Api.headers(token: login(api: api, account: account))).value()
         })
@@ -677,18 +677,35 @@ extension AuthorityWorkflowTests {
             return value.member.id
         }
         func pullLists() async -> PBCoreListsFetchedEvent {
-            _ = await remote.syncSecuritySnapshot(opId: 1, networkGeneration: 0, touch: false)
+            _ = await remote.syncSecurityRecord(opId: 1, networkGeneration: 0, touch: false)
             let fetched = await remote.executeRpc(PBCoreRpcEffect.with {
                 $0.opID = 2
                 $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
             }).listsFetched
             var s = RemoteState(); s.conn = .online; s.link = .online; s.synced = true
-            for m in fetched.machines {
-                s.machines[m.machineID] = MachineView(id: m.machineID, online: m.online, lastSeenMs: m.lastSeenMs, meta: m.hasMeta ? m.meta : nil, metaRev: m.metaRev)
-                s.currentMachines.insert(m.machineID)
+            for m in fetched.wireMachines {
+                var meta: PBMachineMeta?
+                var metaRev: UInt64 = 0
+                if m.hasMeta, let opened = try? await remote.openSecureMessage(
+                    envelope: m.meta, want: Place(.machineMeta, machineId: m.id), as: PBMachineMeta.self) {
+                    meta = opened.1; metaRev = opened.0.seq
+                }
+                s.machines[m.id] = MachineView(id: m.id, online: m.online, lastSeenMs: m.lastSeenMs, meta: meta, metaRev: metaRev)
+                s.currentMachines.insert(m.id)
             }
-            for sess in fetched.sessions {
-                s.sessions[sess.sessionID] = SessionView(id: sess.sessionID, machineId: sess.machineID, info: sess.hasMeta ? sess.meta : nil, metaRev: sess.metaRev, lastSeq: sess.lastSeq, updatedMs: sess.updatedMs, listedEndedMs: sess.listedEndedMs)
+            for rs in fetched.wireSessions {
+                if rs.hasKey {
+                    _ = try? await remote.openEnvelopeOp(
+                        envelope: rs.key, expectedPurpose: .sessionKey,
+                        machineId: rs.machineID, sessionId: rs.sessionID, history: true)
+                }
+                var info: PBSession?
+                var metaRev: UInt64 = 0
+                if rs.hasMeta, let opened = try? await remote.openSecureMessage(
+                    envelope: rs.meta, want: Place(.sessionMeta, machineId: rs.machineID, sessionId: rs.sessionID), as: PBSession.self) {
+                    info = opened.1; metaRev = opened.0.seq
+                }
+                s.sessions[rs.sessionID] = SessionView(id: rs.sessionID, machineId: rs.machineID, info: info, metaRev: metaRev, lastSeq: rs.lastSeq, updatedMs: rs.updatedMs, listedEndedMs: rs.endedMs)
             }
             await remote.publishSyncState(s)
             return fetched

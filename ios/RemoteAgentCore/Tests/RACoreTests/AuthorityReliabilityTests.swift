@@ -41,7 +41,7 @@ import Testing
         let record = try DeviceSecurity.Record.parse(material.chain)
         try store.initializeSecurity(record)
         let count = Counter()
-        let client = DeviceSecurityClient(store: store, memberID: record.memberID,
+        let client = AuthoritySecurity(store: store, memberID: record.memberID,
             signingKey: try SigningKey(seed: material.seed), fetchStates: { _ in
                 let n = count.increment()
                 if n == 3 { throw URLError(.notConnectedToInternet) }

@@ -12,29 +12,28 @@ public let registerContext = "remote-agent/v1/register\u{0}"
 public let loginContext = "remote-agent/v1/login\u{0}"
 
 /// An Ed25519 key pair from a 32-byte seed.
-///
-/// CryptoKit salts its Ed25519 signatures, so two signatures of one message
-/// differ; each still verifies under RFC 8032, which is all a peer checks.
 public struct SigningKey: Sendable {
-    private let priv: Curve25519.Signing.PrivateKey
+    private let seed: Data
     public let publicKey: Data
 
     public init(seed: Data) throws {
         guard seed.count == keySize else { throw CryptoError(L10nMessage.errorsIosCryptoSigningSeedBytes(count: keySize)) }
-        priv = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)
-        publicKey = priv.publicKey.rawRepresentation
+        self.seed = seed
+        do {
+            self.publicKey = try SecCall.ed25519PublicKey(seed)
+        } catch {
+            throw CryptoError(L10nMessage.errorsIosCryptoSigningSeedBytes(count: keySize))
+        }
     }
 
     public func sign(_ message: Data) -> Data {
-        // Signing with a valid key does not fail; CryptoKit only throws on allocation failure.
-        (try? priv.signature(for: message)) ?? Data()
+        (try? SecCall.ed25519Sign(seed, message)) ?? Data()
     }
 }
 
 public func verifyEd25519(publicKey: Data, message: Data, signature: Data) -> Bool {
-    guard publicKey.count == 32, signature.count == 64,
-          let key = try? Curve25519.Signing.PublicKey(rawRepresentation: publicKey) else { return false }
-    return key.isValidSignature(signature, for: message)
+    guard publicKey.count == 32, signature.count == 64 else { return false }
+    return SecCall.ed25519Verify(publicKey, message, signature)
 }
 
 public struct CryptoError: Error, CustomStringConvertible, Equatable {

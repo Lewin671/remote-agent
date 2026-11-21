@@ -1,30 +1,9 @@
-import CryptoKit
 import Foundation
 import RAProto
 import Testing
 
 @testable import RACore
 
-// Only test keys implement this generator; production always uses CryptoKit's
-// Curve25519 generator. HPKE itself and grant-context serialization are shared.
-private struct FixedHPKEPublic: HPKEDiffieHellmanPublicKey {
-  typealias EphemeralPrivateKey = FixedHPKEPrivate
-  let key: Curve25519.KeyAgreement.PublicKey
-  init<D: ContiguousBytes>(_ bytes: D, kem: HPKE.KEM) throws {
-    key = try .init(bytes, kem: kem)
-  }
-  func hpkeRepresentation(kem: HPKE.KEM) throws -> Data { try key.hpkeRepresentation(kem: kem) }
-}
-private struct FixedHPKEPrivate: HPKEDiffieHellmanPrivateKeyGeneration {
-  let key: Curve25519.KeyAgreement.PrivateKey
-  init() { key = try! .init(rawRepresentation: Data(repeating: 99, count: 32)) }
-  var publicKey: FixedHPKEPublic {
-    try! .init(key.publicKey.rawRepresentation, kem: .Curve25519_HKDF_SHA256)
-  }
-  func sharedSecretFromKeyAgreement(with publicKeyShare: FixedHPKEPublic) throws -> SharedSecret {
-    try key.sharedSecretFromKeyAgreement(with: publicKeyShare.key)
-  }
-}
 private struct AuthorityEntry: Codable {
   var Name: String
   var State: Data
@@ -47,11 +26,8 @@ private struct AuthorityVector: Codable {
   }
   func authority() -> Authority {
     Authority(
-      seal: { member, core, hash, secret in
-        try S.sealGrant(
-          recipient: member, core: core, coreHash: hash, secret: secret,
-          key: FixedHPKEPublic(member.x, kem: .Curve25519_HKDF_SHA256))
-      }, nonce: { Data(repeating: 88, count: $0) })
+      ephemeral: { Data(repeating: 99, count: 32) },
+      nonce: { Data(repeating: 88, count: $0) })
   }
   private func generate(_ a: Authority) throws -> (AuthorityVector, [S.State]) {
     let admin = try member(1)
@@ -124,7 +100,6 @@ private struct AuthorityVector: Codable {
       if let raw = a.Proof, let refRaw = e.Proof {
         var proof = try S.RecoveryStatement.parse(raw)
         let reference = try S.RecoveryStatement.parse(refRaw)
-        #expect(try proof.signBytes() == reference.signBytes())
         proof.signature = reference.signature
         #expect(try proof.bytes() == refRaw)
       } else {
@@ -132,7 +107,6 @@ private struct AuthorityVector: Codable {
       }
       var lease = try S.HeadLease.parse(a.Lease)
       let reference = try S.HeadLease.parse(e.Lease)
-      #expect(try lease.signBytes() == reference.signBytes())
       lease.signature = reference.signature
       #expect(try lease.bytes() == e.Lease)
     }
@@ -173,9 +147,8 @@ private struct AuthorityVector: Codable {
         let b: UInt8 =
           m.id == (try member(1).id)
           ? 1 : m.id == (try member(2).id) ? 2 : m.id == (try member(3, .machine).id) ? 3 : 4
-        let x = try Curve25519.KeyAgreement.PrivateKey(
-          rawRepresentation: fill(i == 3 && b == 3 ? 70 : b + 10))
-        #expect(try S.openGrant(pin, state, recipient: m.id, x: x).count == 32)
+        let x = fill(i == 3 && b == 3 ? 70 : b + 10)
+        #expect(try S.openGrant(pin, state, recipient: m.id, xPrivate: x).count == 32)
       }
     }
     var tampered = states[0]
@@ -183,7 +156,7 @@ private struct AuthorityVector: Codable {
     #expect(throws: (any Error).self) {
       try S.openGrant(
         pin, tampered, recipient: tampered.core.authorityID,
-        x: Curve25519.KeyAgreement.PrivateKey(rawRepresentation: fill(11)))
+        xPrivate: fill(11))
     }
   }
   @Test func machineAndUnauthorizedSignersCannotBecomeAuthority() throws {

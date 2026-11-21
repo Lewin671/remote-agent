@@ -5,19 +5,25 @@ import Testing
 @testable import RACore
 
 extension DeviceSecurityTests {
-    private func historyEnvelope(_ state: S.State, seq: UInt64 = 1) throws -> PBEnvelope {
+    private func historyEnvelope(_ state: S.State, chain: [S.State], seq: UInt64 = 1) async throws -> PBEnvelope {
         let signer = try SigningKey(seed: hex("machine_seed"))
         let machine = deviceId(publicKey: signer.publicKey)
-        let header = S.Header(
-            account: state.core.account, domain: state.core.domain, epoch: state.core.epoch,
-            state: try S.stateHash(state), contentEpoch: state.core.contentEpoch,
-            sender: machine, kind: S.Purpose.event.kind, purpose: .event, machine: machine,
-            session: "batch-session", request: "", seq: seq, deadline: 0, compression: 0)
-        var event = PBEvent(); event.sessionID = header.session; event.seq = seq
+        let machineX = try hex("machine_x")
+        let p = try pin()
+        let secret = try S.openGrant(p, state, recipient: machine, xPrivate: machineX)
+        let statesMap = Dictionary(uniqueKeysWithValues: chain.map { ($0.core.epoch, $0) })
+        let machineRecord = try S.Record(
+            pin: p, states: statesMap, memberID: machine, xPrivate: machineX, member: true,
+            secret: secret, lease: signedLease(state))
+        let machineSdk = try TestCoreSecurity(
+            store: MemorySecurityStore(machineRecord), memberID: machine, signingKey: signer,
+            clock: { state.core.issuedAt })
+        defer { Task { await machineSdk.close() } }
+        var event = PBEvent(); event.sessionID = "batch-session"; event.seq = seq
         event.agentMessage = .with { $0.text = "verified history" }
-        return try S.envelope(.init(formed: S.form(
-            secret: hex("content_secret_2"), sessionSeed: Data(repeating: 7, count: 32),
-            header: header, plaintext: event.serializedData(), signingKey: signer)))
+        return try await machineSdk.seal(
+            purpose: .event, machine: machine, session: "batch-session", seq: seq,
+            plaintext: event.serializedData(), sessionSeed: Data(repeating: 7, count: 32))
     }
 
     @Test func historyBatchReadsOnceButVerifiesEveryEnvelopeAndRefreshesNextBatch() async throws {
@@ -26,14 +32,15 @@ extension DeviceSecurityTests {
             memberID: genesis.core.authorityID, xPrivate: hex("phone_x"), member: true,
             secret: hex("content_secret_2"))
         let store = HistoryBatchStore(record)
-        let sdk = DeviceSecurityClient(store: store, memberID: record.memberID,
+        let sdk = try TestCoreSecurity(store: store, memberID: record.memberID,
             signingKey: try SigningKey(seed: hex("phone_seed")),
             fetchStates: { _ in throw S.Failure.unknown })
-        let old = try historyEnvelope(added), recent = try historyEnvelope(renewal, seq: 2)
+        let old = try await historyEnvelope(added, chain: [genesis, added])
+        let recent = try await historyEnvelope(renewal, chain: [genesis, added, renewal], seq: 2)
         var signature = old; signature.signature[signature.signature.startIndex] ^= 1
         var cipher = old; cipher.ciphertext[cipher.ciphertext.startIndex] ^= 1
-        var route = old; var projected = try PBHeader(serializedBytes: route.header)
-        projected.seq += 1; route.header = try projected.serializedData()
+        var route = old
+        if !route.securityHeader.isEmpty { route.securityHeader[route.securityHeader.endIndex - 1] ^= 1 }
         let seed = Data(repeating: 7, count: 32)
         let results = try await sdk.openHistoryBatch([old, signature, cipher, route, recent], sessionSeed: seed)
         #expect(store.reads == 1)
@@ -56,22 +63,25 @@ extension DeviceSecurityTests {
             memberID: genesis.core.authorityID, xPrivate: hex("phone_x"), member: true,
             secret: hex("content_secret_2"))
         let raw = try S.stateBytes(renewal)
-        let sdk = DeviceSecurityClient(store: MemorySecurityStore(record), memberID: record.memberID,
+        let sdk = try TestCoreSecurity(store: MemorySecurityStore(record), memberID: record.memberID,
             signingKey: try SigningKey(seed: hex("phone_seed")), clock: { renewal.core.issuedAt },
             fetchStates: { after in
                 #expect(after == 2)
                 return .with { $0.headEpoch = 3; $0.states = [.with { $0.state = raw }] }
             })
+        defer { Task { await sdk.close() } }
         let seed = Data(repeating: 7, count: 32)
-        let old = try historyEnvelope(added), future = try historyEnvelope(renewal)
+        let old = try await historyEnvelope(added, chain: [genesis, added])
+        let future = try await historyEnvelope(renewal, chain: [genesis, added, renewal])
         let results = try await sdk.openHistoryBatch([old, future, old], sessionSeed: seed)
         for result in results { #expect(try !result.get().1.isEmpty) }
         #expect(try await sdk.identity().1.core.epoch == 3)
 
         let attempts = Counter()
-        let offline = DeviceSecurityClient(store: MemorySecurityStore(record), memberID: record.memberID,
+        let offline = try TestCoreSecurity(store: MemorySecurityStore(record), memberID: record.memberID,
             signingKey: try SigningKey(seed: hex("phone_seed")),
             fetchStates: { _ in attempts.increment(); throw S.Failure.unavailable })
+        defer { Task { await offline.close() } }
         let partial = try await offline.openHistoryBatch([old, future, future, old], sessionSeed: seed)
         #expect(try !partial[0].get().1.isEmpty)
         #expect(throws: S.Failure.unavailable) { try partial[1].get() }
@@ -87,12 +97,14 @@ extension DeviceSecurityTests {
         let store = MemorySecurityStore(try S.Record(pin: pin(), states: [1: genesis, 2: added],
             memberID: genesis.core.authorityID, xPrivate: hex("phone_x"), member: true,
             secret: hex("content_secret_2")))
-        let sdk = DeviceSecurityClient(store: store, memberID: genesis.core.authorityID,
+        let sdk = try TestCoreSecurity(store: store, memberID: genesis.core.authorityID,
             signingKey: phone, clock: { added.core.issuedAt }, fetchStates: { _ in throw S.Failure.unknown })
+        defer { Task { await sdk.close() } }
+        var cmd = PBCommand(); cmd.interrupt.sessionID = "s"
         let command = try await sdk.seal(purpose: .command,
             machine: added.core.members.first { $0.kind == 1 }!.id,
             request: "batch-control-request", deadline: added.core.issuedAt + S.lease,
-            plaintext: Data([1]))
+            plaintext: cmd.serializedData())
         let results = try await sdk.openHistoryBatch([command])
         #expect(throws: S.Failure.self) { try results[0].get() }
     }

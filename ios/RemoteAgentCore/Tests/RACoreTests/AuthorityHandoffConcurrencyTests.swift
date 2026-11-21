@@ -28,7 +28,7 @@ struct AuthorityHandoffConcurrencyTests {
             return request
         }
         let api = try Api(server: server.url, http: http)
-        let security = DeviceSecurityClient(store: vault, memberID: account.deviceId, signingKey: try SigningKey(seed: account.deviceSeed), fetchStates: { after in
+        let security = AuthoritySecurity(store: vault, memberID: account.deviceId, signingKey: try SigningKey(seed: account.deviceSeed), fetchStates: { after in
             var request = PBGetSecurityStatesRequest(); request.afterEpoch = after
             return try await api.client.getSecurityStates(request: request, headers: Api.headers(token: login(api: api, account: account))).value()
         })

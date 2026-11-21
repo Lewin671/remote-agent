@@ -3,7 +3,6 @@ import Connect
 // Android's core/PairFlow.kt: the phone shows a code, this device joins with
 // it, both show four emoji, and after the user checks them the phone seals
 // the signed state chain (no account root) for this device.
-import CryptoKit
 import Foundation
 import RAProto
 import os
@@ -148,8 +147,9 @@ public func joinByPairing(
         try DeviceSecurity.check(identity.server == link.server && identity.pairingID == peek.pairingID && identity.seed.count == 32 && identity.x.count == 32 && (existing == nil || existing!.deviceSeed == identity.seed), .conflict)
     }
     let devicePublic = try SigningKey(seed: deviceSeed).publicKey
-    let x = try identity.map { try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: $0.x) } ?? Curve25519.KeyAgreement.PrivateKey()
-    let xPublic = x.publicKey.rawRepresentation
+    let xPrivate = identity?.x ?? randomBytes(keySize)
+    try DeviceSecurity.check(xPrivate.count == keySize, .conflict)
+    let xPublic = try SecCall.x25519PublicKey(xPrivate)
     var join = PBJoinPairingRequest()
     join.protocolVersion = relayProtocolVersion
     join.deviceHpkePublicKey = xPublic
@@ -157,7 +157,7 @@ public func joinByPairing(
     join.joinerPublic = key.publicKey
     join.joinerKind = .client
     join.devicePublicKey = devicePublic
-    try persistIdentity(PairingIdentity(server: link.server, pairingID: peek.pairingID, seed: deviceSeed, x: x.rawRepresentation))
+    try persistIdentity(PairingIdentity(server: link.server, pairingID: peek.pairingID, seed: deviceSeed, x: xPrivate))
     let joined: PBJoinPairingResponse
     do {
         joined = try await api.pairing.joinPairing(request: join).value()
@@ -186,7 +186,7 @@ public func joinByPairing(
         try DeviceSecurity.pairDomainCommit(ephemeral: st.initiatorPublic, trust: st.trust)
             == peek.commit
     else { throw PairError(L10nMessage.securityIosTheManagingClientSTrustInformationDoesNotMatch()) }
-    let tr = Pairing.domainTranscript(
+    let tr = try Pairing.domainTranscript(
         pairingId: id, initiatorPublic: st.initiatorPublic, joinerPublic: key.publicKey,
         devicePublic: devicePublic, hpkePublic: xPublic, joinerKind: PBDeviceKind.client.rawValue,
         trust: st.trust)
@@ -255,7 +255,7 @@ public func joinByPairing(
     guard head.core.authorityID == approver, head.core.member(candidate.id) != nil,
         chain.contains(where: { $0.core.member(candidate.id) != nil })
     else { throw PairError(L10nMessage.securityIosTheNewStateDidNotAddThisDevice()) }
-    let secret = try DeviceSecurity.openGrant(pin, head, recipient: candidate.id, x: x)
+    let secret = try DeviceSecurity.openGrant(pin, head, recipient: candidate.id, xPrivate: xPrivate)
     let acct = Account(
         server: link.server, root: existing?.root ?? Data(), deviceSeed: deviceSeed,
         deviceId: candidate.id, accountId: pin.account)
@@ -266,7 +266,7 @@ public func joinByPairing(
         if let proof = proofs[i] { proofMap[state.core.epoch] = proof }
     }
     let record = try DeviceSecurity.Record(
-        pin: pin, states: states, memberID: candidate.id, xPrivate: x.rawRepresentation,
+        pin: pin, states: states, memberID: candidate.id, xPrivate: xPrivate,
         member: true, secret: secret,
         contentKeys: [head.core.contentEpoch: secret], recovery: proofMap, lease: try DeviceSecurity.HeadLease.parse(payload.lease))
     var reg = PBDeviceRegistration()

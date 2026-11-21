@@ -38,20 +38,40 @@ extension Remote {
         await refreshDevices()
     }
 
+    private func decodeDeviceMeta(_ device: PBDevice) async -> (meta: PBDeviceMeta?, rev: UInt64) {
+        guard device.hasMeta, device.kind == .client else {
+            return (nil, device.metaRevision)
+        }
+        do {
+            let opened = try await openEnvelopeOp(
+                envelope: device.meta,
+                expectedPurpose: .deviceMeta,
+                requestId: device.id,
+                history: true
+            )
+            try DeviceSecurity.check(opened.seq >= device.metaRevision, .stale)
+            let meta = try PBDeviceMeta(serializedBytes: opened.plaintext)
+            return (meta, opened.seq)
+        } catch {
+            report(error)
+            return (nil, 0)
+        }
+    }
+
     public func handoffCandidates() async throws -> [DeviceView] {
         let listed = try await withAuthRetry { [api] headers in
             try await api.client.listDevices(request: .init(), headers: headers).value()
         }
         var views: [DeviceView] = []
         for d in listed.devices {
-            let decoded = await decodeDevice(d)
+            let decoded = await decodeDeviceMeta(d)
             views.append(DeviceView(
-                id: decoded.deviceID,
-                kind: decoded.kind,
-                createdMs: decoded.createdMs,
-                meta: decoded.hasMeta ? decoded.meta : nil,
-                metaRev: decoded.metaRev,
-                lastSeenMs: decoded.lastSeenMs
+                id: d.id,
+                kind: d.kind,
+                createdMs: d.createdMs,
+                meta: decoded.meta,
+                metaRev: decoded.rev,
+                lastSeenMs: d.lastSeenMs
             ))
         }
         return try await authorityCoordinator().handoffCandidates(views)
@@ -63,14 +83,14 @@ extension Remote {
             try await api.client.listDevices(request: .init(), headers: headers).value()
         }
         let r = try securityIdentity()
-        let decoded: PBCorePlainDevice?
+        let decoded: (meta: PBDeviceMeta?, rev: UInt64)?
         if let target = listed.devices.first(where: { $0.id == incoming }) {
-            decoded = await decodeDevice(target)
+            decoded = await decodeDeviceMeta(target)
         } else {
             decoded = nil
         }
         guard r.1.core.member(incoming)?.kind == 2,
-              let offer = decoded?.meta.handoffRecoveryEd,
+              let offer = decoded?.meta?.handoffRecoveryEd,
               offer.count == 32 else { throw DeviceSecurity.Failure.untrusted }
         try await authorityCoordinator().handoffAuthority(
             incoming: incoming, offer: offer, verifiedHead: DeviceSecurity.stateHash(r.1))

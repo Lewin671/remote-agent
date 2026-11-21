@@ -68,7 +68,7 @@ extension AuthorityCoordinator {
         try DeviceSecurity.check(initiation.replacesDeviceID.isEmpty || kind == .machine, .untrusted)
         let member = try DeviceSecurity.member(ed: st.devicePublicKey, x: st.deviceHpkePublicKey,
             kind: kind == .machine ? .machine : .client)
-        let transcript = Pairing.domainTranscript(pairingId: initiation.pairingID,
+        let transcript = try Pairing.domainTranscript(pairingId: initiation.pairingID,
             initiatorPublic: initiation.key.publicKey, joinerPublic: st.joinerPublic,
             devicePublic: st.devicePublicKey, hpkePublic: st.deviceHpkePublicKey,
             joinerKind: kind.rawValue, trust: initiation.trust)

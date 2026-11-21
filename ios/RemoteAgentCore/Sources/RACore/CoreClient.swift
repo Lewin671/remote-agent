@@ -26,6 +26,9 @@ public final class CoreClient: @unchecked Sendable {
         do {
             let output = try raw.dispatch(input)
             return try PBCoreEffectBatch(serializedBytes: output)
+        } catch let error as NSError where error.domain == "Foundation._GenericObjCError" && error.code == 0 {
+            // Go returns an empty []byte(nil) for an empty batch, which gomobile maps to (nil, nil).
+            return PBCoreEffectBatch()
         } catch {
             throw CoreClientError.bind(error.localizedDescription)
         }
@@ -37,6 +40,8 @@ public final class CoreClient: @unchecked Sendable {
         do {
             let output = try raw.view(input)
             return try PBCoreViewModel(serializedBytes: output)
+        } catch let error as NSError where error.domain == "Foundation._GenericObjCError" && error.code == 0 {
+            return PBCoreViewModel()
         } catch {
             throw CoreClientError.bind(error.localizedDescription)
         }

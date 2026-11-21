@@ -57,7 +57,7 @@ import Testing
         try vault.savePublicProfile(AccountPublicProfile(publicKey: keys.account.publicKey, pin: pin))
         let account = Account(server: "https://relay.example.com", root: Data(), deviceSeed: seed, deviceId: member.id, accountId: pin.account)
         let gate = AuthorityGate(); gate.set(active: true, protectedDataAvailable: true)
-        let security = DeviceSecurityClient(store: vault, memberID: member.id, signingKey: signer,
+        let security = AuthoritySecurity(store: vault, memberID: member.id, signingKey: signer,
             fetchStates: { _ in throw UserError("unexpected network call") })
         let coordinator = AuthorityCoordinator(account: account, api: try Api(server: account.server, http: HTTP()),
             storage: vault, security: security, gate: gate, token: { throw UserError("unexpected token call") })

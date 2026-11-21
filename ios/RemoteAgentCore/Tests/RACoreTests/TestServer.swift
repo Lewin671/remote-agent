@@ -454,8 +454,8 @@ actor FakeDaemon {
             if case .openTerminal(let open)? = cmd.kind { serveTerminal(open) }
             result = await answer(h, cmd)
         }
-        guard let authHeader = try? DeviceSecurity.parseHeader(call.command.securityHeader) else { return }
-        let binding = DeviceSecurity.requestIdentity(authHeader,pt)
+        guard let pin = try? security.store(account.deviceId)?.readSecurity().pin else { return }
+        let binding = testRequestIdentity(pin: pin, header: h, plaintext: pt)
         result.requestKeyHash=binding.key; result.payloadHash=binding.payload
         if result.outcome.isEmpty { result.outcome="executed"; result.reason="completed"; result.resultAvailable=true }
         var rh = header(.commandResult)

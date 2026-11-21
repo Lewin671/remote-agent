@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import Testing
 
@@ -31,27 +30,25 @@ import Testing
             throw S.Failure.invalid
         }
         let stmt = try S.RecoveryStatement.parse(stmtRaw)
-        try S.verifyTransition(parent: parent, next: recovery, recovery: stmt)
-        #expect(recovery.prevSecret.isEmpty)
         let pin = try S.pin(for: genesis)
-        let machineX = try Curve25519.KeyAgreement.PrivateKey(
-            rawRepresentation: try hex(v, "machine_x"))
+        try S.verifyChain(pin: pin, states: [genesis, parent, recovery], proofs: [nil, nil, stmt])
+        #expect(recovery.prevSecret.isEmpty)
+        let machineX = try hex(v, "machine_x")
         guard let machine = recovery.core.members.first(where: { $0.kind == S.Kind.machine.rawValue })
         else { throw S.Failure.invalid }
-        _ = try S.openGrant(pin, recovery, recipient: machine.id, x: machineX)
+        _ = try S.openGrant(pin, recovery, recipient: machine.id, xPrivate: machineX)
         #expect(recovery.core.member(parent.core.authorityID) == nil)
         let newSeed = try hex(v, "new_phone_seed")
-        let newX = try Curve25519.KeyAgreement.PrivateKey(
-            rawRepresentation: try hex(v, "new_phone_x"))
+        let newX = try hex(v, "new_phone_x")
         let newID = deviceId(publicKey: try SigningKey(seed: newSeed).publicKey)
-        let secret = try S.openGrant(pin, recovery, recipient: newID, x: newX)
+        let secret = try S.openGrant(pin, recovery, recipient: newID, xPrivate: newX)
         let record = try S.Record(
             pin: pin,
             states: [
                 genesis.core.epoch: genesis, parent.core.epoch: parent,
                 recovery.core.epoch: recovery,
             ],
-            memberID: newID, xPrivate: newX.rawRepresentation, member: true,
+            memberID: newID, xPrivate: newX, member: true,
             secret: secret,
             recovery: [recovery.core.epoch: stmt])
         #expect(try record.contentSecret(recovery.core.contentEpoch) == secret)
@@ -80,6 +77,11 @@ import Testing
         let machine = states[4].core.members.first { $0.kind == S.Kind.machine.rawValue }!
         readd.core.members.append(machine)
         readd.core.members.sort { $0.id < $1.id }
-        #expect(throws: S.Failure.self) { try S.membershipDelta(states[5], readd) }
+        #expect(throws: S.Failure.self) {
+            try S.verifyChain(
+                pin: pin,
+                states: Array(states[0...5]) + [readd],
+                proofs: Array(repeating: nil, count: 7))
+        }
     }
 }

@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import RAProto
 import Testing
@@ -9,18 +8,70 @@ import Testing
     typealias S = DeviceSecurity
     let v: [String: Any]
     init() throws { v = try loadJSON("internal/deviceauth/testdata/domain-v3.json") }
-    @Test func compressedProtocol10Envelopes() throws {
-        let head = try state("added")
+    @Test func compressedProtocol10Envelopes() async throws {
+        let genesis = try state("genesis"), head = try state("added")
+        let record = try S.Record(
+            pin: pin(), states: [1: genesis, 2: head], memberID: head.core.authorityID,
+            xPrivate: try phoneX(), member: true, secret: try hex("content_secret_2"),
+            lease: try signedLease(head))
+        let sdk = try TestCoreSecurity(
+            store: MemorySecurityStore(record), memberID: head.core.authorityID,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { head.core.issuedAt })
+        defer { Task { await sdk.close() } }
         let fixtures = v["compressed_envelopes"] as! [[String: String]]
         #expect(fixtures.count == 3)
+        func parseWireEnvelope(_ raw: Data) throws -> PBEnvelope {
+            var idx = raw.startIndex
+            func readLP() throws -> Data {
+                guard idx + 4 <= raw.endIndex else { throw S.Failure.invalid }
+                let len = Int(raw[idx]) << 24 | Int(raw[idx + 1]) << 16 | Int(raw[idx + 2]) << 8 | Int(raw[idx + 3])
+                idx += 4
+                guard len >= 0, idx + len <= raw.endIndex else { throw S.Failure.invalid }
+                defer { idx += len }
+                return Data(raw[idx..<(idx + len)])
+            }
+            var env = PBEnvelope()
+            env.securityHeader = try readLP()
+            env.nonce = try readLP()
+            env.ciphertext = try readLP()
+            env.signature = try readLP()
+            guard idx == raw.endIndex else { throw S.Failure.invalid }
+            var r = S.Reader(data: env.securityHeader)
+            let version = try r.u32()
+            _ = try r.str() // account
+            _ = try r.raw(32) // domain
+            _ = try r.u64() // epoch
+            _ = try r.raw(32) // state
+            _ = try r.u64() // contentEpoch
+            let sender = try r.str()
+            let kind = try r.u32()
+            _ = try r.u32() // purpose
+            let machine = try r.str()
+            let session = try r.str()
+            let request = try r.str()
+            let seq = try r.u64()
+            let deadline = try r.u64()
+            let compression = try r.u32()
+            try r.done()
+            var proj = PBHeader()
+            proj.version = version
+            proj.kind = PBPayloadKind(rawValue: Int(kind)) ?? .unspecified
+            proj.machineID = machine
+            proj.sessionID = session
+            proj.requestID = request
+            proj.seq = seq
+            proj.deadlineMs = Int64(bitPattern: deadline)
+            proj.sender = sender
+            proj.compression = PBCompression(rawValue: Int(compression)) ?? .none
+            env.header = try proj.serializedData()
+            return env
+        }
         for fixture in fixtures {
-            let wire = try S.parseWire(Data(base64Encoded: fixture["wire"]!)!)
-            let (header, packed) = try S.open(
-                wire, state: head, head: head, live: false, now: head.core.issuedAt,
-                secret: hex("content_secret_2"),
-                sessionSeed: Data(base64Encoded: fixture["seed"]!)!)
-            #expect(header.compression == 1)
-            #expect(try unpackSecurity(header, packed) == Data(base64Encoded: fixture["plain"]!)!)
+            let env = try parseWireEnvelope(Data(base64Encoded: fixture["wire"]!)!)
+            let (_, plain) = try await sdk.openHistory(
+                env, sessionSeed: Data(base64Encoded: fixture["seed"]!)!)
+            #expect(plain == Data(base64Encoded: fixture["plain"]!)!)
         }
     }
 
@@ -32,10 +83,11 @@ import Testing
             pin: pin(), states: [1: genesis, 2: head], memberID: machine,
             xPrivate: hex("machine_x"), member: true, secret: hex("content_secret_2"),
             lease: signedLease(head))
-        let sdk = DeviceSecurityClient(
+        let sdk = try TestCoreSecurity(
             store: MemorySecurityStore(record), memberID: machine,
             signingKey: try SigningKey(seed: hex("machine_seed")),
             clock: { head.core.issuedAt }, fetchStates: { _ in PBGetSecurityStatesResponse() })
+        defer { Task { await sdk.close() } }
         var content = PBNotifyContent()
         content.machineID = machine
         content.sessionID = "session"
@@ -74,24 +126,19 @@ import Testing
         return try S.RecoveryStatement.parse(raw)
     }
     func pin() throws -> S.Pin { try S.pin(for: try state("genesis")) }
-    func phoneX() throws -> Curve25519.KeyAgreement.PrivateKey {
-        try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: try hex("phone_x"))
-    }
-    func machineX() throws -> Curve25519.KeyAgreement.PrivateKey {
-        try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: try hex("machine_x"))
-    }
+    func phoneX() throws -> Data { try hex("phone_x") }
+    func machineX() throws -> Data { try hex("machine_x") }
 
-    private func signedLease(_ state:S.State) throws -> S.HeadLease {
-        var l=S.HeadLease(domain:state.core.domain,head:try S.stateHash(state),issuedAt:state.core.issuedAt,notAfter:state.core.issuedAt+S.lease,signature:Data())
-        l.signature=try SigningKey(seed:hex("phone_seed")).sign(l.signBytes());return l
+    func signedLease(_ state:S.State) throws -> S.HeadLease {
+        try S.HeadLease.sign(state, signer: try SigningKey(seed: hex("phone_seed")), now: Int64(state.core.issuedAt))
     }
     @Test func committedLeaseAndKeyCacheSurviveStaleSameHeadWrites() throws {
         let genesis=try state("genesis"), head=try state("added")
-        let secret=try S.openGrant(pin(),head,recipient:genesis.core.authorityID,x:phoneX())
+        let secret=try S.openGrant(pin(),head,recipient:genesis.core.authorityID,xPrivate:phoneX())
         var old=try S.Record(pin:pin(),states:[1:genesis,2:head],memberID:genesis.core.authorityID,xPrivate:hex("phone_x"),member:true,secret:secret)
         let first=try S.HeadLease.parse(Data(base64Encoded:v.s("lease"))!)
         let renewed=try S.HeadLease.parse(Data(base64Encoded:v.s("renewed_lease"))!)
-        let bootstrap = try S.Record(pin:pin(),states:[1:genesis],memberID:genesis.core.authorityID,xPrivate:hex("phone_x"),member:true,secret:S.openGrant(pin(),genesis,recipient:genesis.core.authorityID,x:phoneX()))
+        let bootstrap = try S.Record(pin:pin(),states:[1:genesis],memberID:genesis.core.authorityID,xPrivate:hex("phone_x"),member:true,secret:S.openGrant(pin(),genesis,recipient:genesis.core.authorityID,xPrivate:phoneX()))
         #expect(try old.includesInstallation(bootstrap))
         #expect(try !bootstrap.includesInstallation(old))
         old.lease=renewed;old.floor=renewed.notAfter;old.contentKeys[1]=Data(repeating:42,count:32)
@@ -112,13 +159,13 @@ import Testing
             let o = v["added"] as! [String: Any]
             return Data(base64Encoded: o.s("state"))!
         }())
-        let phone = try S.openGrant(p, added, recipient: genesis.core.authorityID, x: phoneX())
+        let phone = try S.openGrant(p, added, recipient: genesis.core.authorityID, xPrivate: phoneX())
         #expect(phone == (try hex("content_secret_2")))
-        let machine = try S.openGrant(p, added, recipient: (try state("added")).core.members[1].id, x: machineX())
+        let machine = try S.openGrant(p, added, recipient: (try state("added")).core.members[1].id, xPrivate: machineX())
         #expect(machine == (try hex("content_secret_2")))
         // The old authority client has no grant in the recovery state.
         #expect(throws: S.Failure.self) {
-            _ = try S.openGrant(p, recovery, recipient: genesis.core.authorityID, x: phoneX())
+            _ = try S.openGrant(p, recovery, recipient: genesis.core.authorityID, xPrivate: phoneX())
         }
         #expect(recovery.prevSecret.isEmpty)
         #expect(recovery.core.contentEpoch == renewal.core.contentEpoch + 1)
@@ -135,18 +182,22 @@ import Testing
         #expect(throws: S.Failure.self) { try S.verifyTransition(parent: genesis, next: bad) }
         bad = renewal
         bad.core.issuedAt += 1
-        #expect(throws: S.Failure.self) { try S.verifyTransition(parent: added, next: bad) }
+        #expect(throws: S.Failure.self) {
+            try S.verifyChain(pin: p, states: [genesis, added, bad], proofs: [nil, nil, nil])
+        }
         bad = renewal
         bad.signature[0] ^= 1
-        #expect(throws: S.Failure.self) { try S.verifyTransition(parent: added, next: bad) }
+        #expect(throws: S.Failure.self) {
+            try S.verifyChain(pin: p, states: [genesis, added, bad], proofs: [nil, nil, nil])
+        }
         let recovery = try state("recovery")
         #expect(throws: S.Failure.self) {
-            try S.verifyTransition(parent: renewal, next: recovery, recovery: nil)
+            try S.verifyChain(pin: p, states: [genesis, added, renewal, recovery], proofs: [nil, nil, nil, nil])
         }
         var replay = recovery
         replay.core.removed = []
         #expect(throws: S.Failure.self) {
-            try S.verifyTransition(parent: renewal, next: replay, recovery: stmt)
+            try S.verifyChain(pin: p, states: [genesis, added, renewal, replay], proofs: [nil, nil, nil, stmt])
         }
         #expect(throws: S.Failure.self) {
             try S.verifyChain(pin: p, states: [try state("genesis"), recovery], proofs: [nil, nil])
@@ -160,7 +211,7 @@ import Testing
         let renewal = try state("renewal")
         let recovery = try state("recovery")
         let machine = added.core.members[1]
-        let machineKey = try S.openGrant(p, recovery, recipient: machine.id, x: machineX())
+        let machineKey = try S.openGrant(p, recovery, recipient: machine.id, xPrivate: machineX())
         let states: [UInt64: S.State] = [
             genesis.core.epoch: genesis, added.core.epoch: added,
             renewal.core.epoch: renewal, recovery.core.epoch: recovery,
@@ -201,7 +252,7 @@ import Testing
             pin: p, states: [1: genesis], memberID: genesis.core.authorityID,
             xPrivate: try hex("phone_x"), member: true,
             secret: try hex("content_secret_1"))
-        let client = DeviceSecurityClient(
+        let client = AuthoritySecurity(
             store: MemorySecurityStore(base), memberID: genesis.core.authorityID,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
             clock: { 1_700_000_000_001 },
@@ -234,44 +285,116 @@ import Testing
         }
     }
 
-    @Test func liveControlAlsoChecksTheHeadsIssuedAt() throws {
+    @Test func liveControlAlsoChecksTheHeadsIssuedAt() async throws {
+        let genesis = try state("genesis")
         let added = try state("added")
         let secret = try hex("content_secret_2")
         let signer = try SigningKey(seed: try hex("phone_seed"))
         let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
         let phone = deviceId(publicKey: signer.publicKey)
-        let header = S.Header(
-            account: added.core.account, domain: added.core.domain, epoch: added.core.epoch,
-            state: try S.stateHash(added), contentEpoch: added.core.contentEpoch,
-            sender: phone,
-            kind: S.Purpose.command.kind, purpose: .command, machine: machine, session: "",
-            request: randomHex(16), seq: 0, deadline: 1, compression: 0)
-        let wire = S.Wire(
-            formed: try S.form(
-                secret: secret, sessionSeed: nil, header: header, plaintext: Data([1]),
-                signingKey: signer))
+        let lease = try S.HeadLease.parse(Data(base64Encoded: v.s("lease"))!)
+        let record = try S.Record(
+            pin: pin(), states: [1: genesis, 2: added], memberID: phone,
+            xPrivate: try phoneX(), member: true, secret: secret, lease: lease)
+        let phoneSdk = try TestCoreSecurity(
+            store: MemorySecurityStore(record), memberID: phone, signingKey: signer,
+            clock: { added.core.issuedAt })
+        defer { Task { await phoneSdk.close() } }
+        var cmd = PBCommand(); cmd.interrupt.sessionID = "s"
+        let env = try await phoneSdk.seal(
+            purpose: .command, machine: machine, request: randomHex(16),
+            deadline: lease.notAfter, plaintext: cmd.serializedData())
+
+        let mSeed = try hex("machine_seed")
+        let mXPriv = try machineX()
+        let mRecord = try S.Record(
+            pin: pin(), states: [1: genesis, 2: added], memberID: machine,
+            xPrivate: mXPriv, member: true, secret: secret, lease: lease)
+        let earlyRunner = try CoreSecurityRunner(executor: SecurityExecutor(
+            signer: { try? SigningKey(seed: mSeed) },
+            xPrivate: { mXPriv }))
+        defer { earlyRunner.close() }
+        try earlyRunner.syncRecord(mRecord, nowMs: 1_600_000_000_000)
         #expect(throws: S.Failure.clock) {
-            _ = try S.open(
-                wire, state: added, head: added, live: true, now: 1_600_000_000_000,
-                secret: secret, sessionSeed: nil)
+            _ = try earlyRunner.runOp {
+                $0.openEnvelope = .with {
+                    $0.envelope = env
+                    $0.expectedPurpose = S.Purpose.command.rawValue
+                    $0.machineID = machine
+                    $0.history = false
+                }
+            }
         }
-        _ = try S.open(
-            wire, state: added, head: added, live: true, now: added.core.issuedAt,
-            secret: secret, sessionSeed: nil)
+        try earlyRunner.syncRecord(mRecord, nowMs: Int64(added.core.issuedAt))
+        _ = try earlyRunner.runOp {
+            $0.openEnvelope = .with {
+                $0.envelope = env
+                $0.expectedPurpose = S.Purpose.command.rawValue
+                $0.machineID = machine
+                $0.history = false
+            }
+        }
     }
 
-    @Test func deviceMetaIsSelfOnly() throws {
+    @Test func deviceMetaIsSelfOnly() async throws {
+        let genesis = try state("genesis")
         let added = try state("added")
         let phone = added.core.authorityID
         let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
-        var h = S.Header(
-            account: added.core.account, domain: added.core.domain, epoch: added.core.epoch,
-            state: try S.stateHash(added), contentEpoch: added.core.contentEpoch, sender: phone,
-            kind: S.Purpose.deviceMeta.kind, purpose: .deviceMeta, machine: "", session: "",
-            request: phone, seq: 1, deadline: 0, compression: 0)
-        _ = try S.scope(h, added)
-        h.request = machine
-        #expect(throws: S.Failure.self) { _ = try S.scope(h, added) }
+        let record = try S.Record(
+            pin: pin(), states: [1: genesis, 2: added], memberID: phone,
+            xPrivate: try phoneX(), member: true, secret: try hex("content_secret_2"),
+            lease: signedLease(added))
+        let sdk = try TestCoreSecurity(
+            store: MemorySecurityStore(record), memberID: phone,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { added.core.issuedAt })
+        defer { Task { await sdk.close() } }
+        let meta = try PBDeviceMeta.with { $0.name = "phone" }.serializedData()
+        let good = try await sdk.seal(purpose: .deviceMeta, request: phone, seq: 1, plaintext: meta)
+        _ = try await sdk.openHistory(good, expectedPurpose: .deviceMeta, request: phone, seq: 1)
+        await #expect(throws: S.Failure.self) {
+            _ = try await sdk.seal(purpose: .deviceMeta, request: machine, seq: 1, plaintext: meta)
+        }
+    }
+
+    private func validTestPlaintext(for purpose: S.Purpose, machine: String, session: String, seq: UInt64) throws -> Data {
+        switch purpose {
+        case .event:
+            var ev = PBEvent(); ev.sessionID = session; ev.seq = seq; ev.agentMessage.text = "ok"
+            return try ev.serializedData()
+        case .sessionMeta:
+            return try PBSession.with { $0.id = session }.serializedData()
+        case .sessionKey:
+            return Data(repeating: 7, count: 32)
+        case .machineMeta:
+            return try PBMachineMeta().serializedData()
+        case .command:
+            var cmd = PBCommand(); cmd.interrupt.sessionID = session
+            return try cmd.serializedData()
+        case .result:
+            return try PBCommandResult().serializedData()
+        case .terminalOutput:
+            return try PBTerminalFrame.with { $0.output = Data("ok".utf8) }.serializedData()
+        case .terminalInput:
+            return try PBTerminalFrame.with { $0.input = Data("k".utf8) }.serializedData()
+        case .terminalResize:
+            return try PBTerminalFrame.with { $0.resize.cols = 80; $0.resize.rows = 24 }.serializedData()
+        case .terminalHistory:
+            return try PBTerminalFrame.with { $0.historyRequest = PBTerminalHistoryRequest() }.serializedData()
+        case .notify:
+            return try PBNotifyContent.with {
+                $0.machineID = machine
+                $0.sessionID = session
+                $0.kind = .turnEnded
+            }.serializedData()
+        case .image:
+            return try PBImagePayload.with { $0.format = .png; $0.data = Data([1, 2, 3]) }.serializedData()
+        case .prefs:
+            return try PBProjectPrefs.with { $0.schema = 1 }.serializedData()
+        case .deviceMeta:
+            return try PBDeviceMeta().serializedData()
+        }
     }
 
     @Test(arguments: [S.Purpose.event, .sessionMeta, .sessionKey, .machineMeta, .command,
@@ -290,16 +413,18 @@ import Testing
             secret: hex("content_secret_2"), lease: first)
         let store = MemorySecurityStore(record)
         let clock = PublicationClock(first.issuedAt)
-        let sdk = DeviceSecurityClient(store: store, memberID: member.id, signingKey: key,
+        let sdk = try TestCoreSecurity(store: store, memberID: member.id, signingKey: key,
             clock: { clock.now() }, fetchStates: { _ in
                 var res = PBGetSecurityStatesResponse(); res.headEpoch = 2; res.lease = renewedRaw
                 return res
             })
+        defer { Task { await sdk.close() } }
         let standalone = purpose == .prefs || purpose == .deviceMeta
         let noSession = standalone || [.machineMeta, .command, .result].contains(purpose)
         let noRequest = [S.Purpose.event, .sessionMeta, .sessionKey, .machineMeta].contains(purpose)
         let request = purpose == .prefs ? "project-prefs" : purpose == .deviceMeta ? member.id : noRequest ? "" : "lease-request-123456"
-        let plain = Data([1,2,3]), seed = Data(repeating:7,count:32)
+        let plain = try validTestPlaintext(for: purpose, machine: machine, session: "lease-session", seq: 1)
+        let seed = Data(repeating:7,count:32)
         func seal() async throws -> PBEnvelope {
             try await sdk.seal(purpose: purpose, machine: standalone ? "" : machine,
                 session: noSession ? "" : "lease-session", request: request, seq: 1,
@@ -308,7 +433,9 @@ import Testing
         let stored = try await seal()
         clock.set(first.notAfter)
         await #expect(throws: S.Failure.lease) { try await seal() }
-        if !purpose.control { #expect(try await sdk.openHistory(stored, sessionSeed: seed).1 == plain) }
+        if !purpose.control {
+            #expect(try await sdk.openHistory(stored, expectedPurpose: purpose, sessionSeed: seed).1 == plain)
+        }
         let renewed = try await sdk.sync()
         #expect(renewed.states.count == 2)
         _ = try await seal()
@@ -326,7 +453,7 @@ import Testing
             secret: hex("content_secret_2"), lease: lease)
         let store = MemorySecurityStore(record)
         let clock = PublicationClock(floor)
-        let sdk = DeviceSecurityClient(store: store, memberID: phone, signingKey: key,
+        let sdk = try TestCoreSecurity(store: store, memberID: phone, signingKey: key,
             clock: { clock.now() }, fetchStates: { _ in
                 #expect(try store.readSecurity().floor == lease.notAfter)
                 throw S.Failure.unavailable
@@ -336,7 +463,7 @@ import Testing
         await #expect(throws: S.Failure.unavailable) { try await sdk.sync() }
         #expect(try store.readSecurity().floor == lease.notAfter)
         clock.set(lease.issuedAt)
-        let reopened = DeviceSecurityClient(store: store, memberID: phone, signingKey: key,
+        let reopened = try TestCoreSecurity(store: store, memberID: phone, signingKey: key,
             clock: { clock.now() }, fetchStates: { _ in throw S.Failure.unavailable })
         for client in [sdk, reopened] {
             await #expect(throws: S.Failure.lease) {
@@ -356,38 +483,60 @@ import Testing
 
     @Test func sealingUsesIndependentRandomNonces() async throws {
         let p = try pin()
+        let genesis = try state("genesis")
         let added = try state("added")
         let phone = added.core.authorityID
         let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
         let secret = try hex("content_secret_2")
+        let lease = try signedLease(added)
         let record = try S.Record(
-            pin: p, states: [1: try state("genesis"), 2: added], memberID: phone,
+            pin: p, states: [1: genesis, 2: added], memberID: phone,
             xPrivate: try hex("phone_x"), member: true,
             secret: secret)
         let store = MemorySecurityStore(record)
-        let client = DeviceSecurityClient(
+        let client = try TestCoreSecurity(
             store: store, memberID: phone,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
             clock: { added.core.issuedAt },
             fetchStates: { _ in throw S.Failure.storage })
+        defer { Task { await client.close() } }
+        let mSeed = try hex("machine_seed")
+        let mXPriv = try machineX()
+        let mRecord = try S.Record(
+            pin: pin(), states: [1: genesis, 2: added], memberID: machine,
+            xPrivate: mXPriv, member: true, secret: secret, lease: lease)
+        let mRunner = try CoreSecurityRunner(executor: SecurityExecutor(
+            signer: { try? SigningKey(seed: mSeed) },
+            xPrivate: { mXPriv }))
+        defer { mRunner.close() }
+        try mRunner.syncRecord(mRecord, nowMs: Int64(added.core.issuedAt))
+        var cmd = PBCommand(); cmd.interrupt.sessionID = "s"
+        let cmdPlain = try cmd.serializedData()
         var nonces: Set<Data> = []
         for _ in 1...3 {
             let env = try await client.seal(
                 purpose: .command, machine: machine, request: "0123456789abcdef",
-                deadline: 1_700_000_200_000, plaintext: Data("go".utf8))
-            let h = try S.parseHeader(env.securityHeader)
-            #expect(h.epoch == added.core.epoch)
+                deadline: 1_700_000_200_000, plaintext: cmdPlain)
+            let res = try mRunner.runOp {
+                $0.openEnvelope = .with {
+                    $0.envelope = env
+                    $0.expectedPurpose = S.Purpose.command.rawValue
+                    $0.machineID = machine
+                }
+            }
+            #expect(res.opened.epoch == added.core.epoch)
             #expect(nonces.insert(env.nonce).inserted)
         }
         // Reopening also uses a fresh random nonce.
-        let reopened = DeviceSecurityClient(
+        let reopened = try TestCoreSecurity(
             store: store, memberID: phone,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
             clock: { added.core.issuedAt },
             fetchStates: { _ in throw S.Failure.storage })
+        defer { Task { await reopened.close() } }
         let env = try await reopened.seal(
             purpose: .command, machine: machine, request: "0123456789abcdef",
-            deadline: 1_700_000_200_000, plaintext: Data("go".utf8))
+            deadline: 1_700_000_200_000, plaintext: cmdPlain)
         #expect(nonces.insert(env.nonce).inserted)
     }
 
@@ -397,31 +546,64 @@ import Testing
         let added = try state("added")
         let phone = added.core.authorityID
         let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
-        let secret = try hex("content_secret_2")
-        var h = S.Header(
-            account: added.core.account, domain: added.core.domain, epoch: added.core.epoch,
-            state: try S.stateHash(added), contentEpoch: added.core.contentEpoch, sender: phone,
-            kind: S.Purpose.command.kind, purpose: .command, machine: machine, session: "",
-            request: "0123456789abcdef", seq: 0, deadline: (added.core.issuedAt + S.lease),
-            compression: 0)
-        let formed = try S.form(
-            secret: secret, sessionSeed: nil, header: h, plaintext: Data("no".utf8),
-            signingKey: try SigningKey(seed: try hex("phone_seed")))
-        let wire = S.Wire(formed: formed)
-        _ = try S.verifyOrigin(wire, state: added, head: added, live: true, now: (added.core.issuedAt + S.lease))
-        #expect(throws: S.Failure.self) {
-            try signedLease(added).valid(added,now: added.core.issuedAt+S.lease+1)
+        let addedLease = try signedLease(added)
+        let cmd = try PBCommand.with { $0.interrupt.sessionID = "s" }.serializedData()
+        let fullRecord = try S.Record(
+            pin: p, states: [1: genesis, 2: added], memberID: phone, xPrivate: try hex("phone_x"),
+            member: true, secret: try hex("content_secret_2"), lease: addedLease)
+        let fullSdk = try TestCoreSecurity(
+            store: MemorySecurityStore(fullRecord), memberID: phone,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { added.core.issuedAt + S.lease + 1 })
+        defer { Task { await fullSdk.close() } }
+        // Expired head lease refuses control seal.
+        await #expect(throws: S.Failure.lease) {
+            _ = try await fullSdk.seal(
+                purpose: .command, machine: machine, request: "0123456789abcdef",
+                deadline: added.core.issuedAt + S.lease, plaintext: cmd)
         }
-        // A stale content epoch is refused for control.
-        h.contentEpoch = genesis.core.contentEpoch
-        #expect(throws: S.Failure.self) {
-            _ = try S.verifyOrigin(
-                S.Wire(
-                    formed: try S.form(
-                        secret: secret, sessionSeed: nil, header: h, plaintext: Data("no".utf8),
-                        signingKey: try SigningKey(seed: try hex("phone_seed")))),
-                state: added, head: added, live: true, now: (added.core.issuedAt + S.lease))
+        // Stale content epoch sealed under added (epoch 2) cannot open live against head = handoff_parent (epoch 3).
+        let addedRecord = try S.Record(
+            pin: p, states: [1: genesis, 2: added], memberID: phone, xPrivate: try hex("phone_x"),
+            member: true, secret: try hex("content_secret_2"), lease: addedLease)
+        let addedSdk = try TestCoreSecurity(
+            store: MemorySecurityStore(addedRecord), memberID: phone,
+            signingKey: try SigningKey(seed: try hex("phone_seed")),
+            clock: { added.core.issuedAt })
+        defer { Task { await addedSdk.close() } }
+        let staleCmdEnv = try await addedSdk.seal(
+            purpose: .command, machine: machine, request: "0123456789abcdef",
+            deadline: added.core.issuedAt + S.lease, plaintext: cmd)
+        let mSeed = try hex("machine_seed")
+        let mXPriv = try machineX()
+        let handoffParent = try state("handoff_parent")
+        let handoffSecret = try S.openGrant(p, handoffParent, recipient: machine, xPrivate: mXPriv)
+        let mHeadRecord = try S.Record(
+            pin: p, states: [1: genesis, 2: added, 3: handoffParent], memberID: machine, xPrivate: mXPriv,
+            member: true, secret: handoffSecret, lease: try signedLease(handoffParent))
+        let mHeadRunner = try CoreSecurityRunner(executor: SecurityExecutor(
+            signer: { try? SigningKey(seed: mSeed) },
+            xPrivate: { mXPriv }))
+        defer { mHeadRunner.close() }
+        try mHeadRunner.syncRecord(mHeadRecord, nowMs: Int64(handoffParent.core.issuedAt))
+        #expect(throws: S.Failure.stale) {
+            _ = try mHeadRunner.runOp {
+                $0.openEnvelope = .with {
+                    $0.envelope = staleCmdEnv
+                    $0.expectedPurpose = S.Purpose.command.rawValue
+                    $0.machineID = machine
+                    $0.history = false
+                }
+            }
         }
+        let mFullRecord = try S.Record(
+            pin: p, states: [1: genesis, 2: added], memberID: machine, xPrivate: mXPriv,
+            member: true, secret: try hex("content_secret_2"), lease: addedLease)
+        let mRunner = try CoreSecurityRunner(executor: SecurityExecutor(
+            signer: { try? SigningKey(seed: mSeed) },
+            xPrivate: { mXPriv }))
+        defer { mRunner.close() }
+        try mRunner.syncRecord(mFullRecord, nowMs: Int64(added.core.issuedAt))
         // Installing a state changes the content key.
         let base = try S.Record(
             pin: p, states: [1: genesis], memberID: phone, xPrivate: try hex("phone_x"),
@@ -429,7 +611,7 @@ import Testing
             secret: try hex("content_secret_1"))
         let store = MemorySecurityStore(base)
         let leaseRaw = try signedLease(added).bytes()
-        let client = DeviceSecurityClient(
+        let client = try TestCoreSecurity(
             store: store, memberID: phone,
             signingKey: try SigningKey(seed: try hex("phone_seed")),
             clock: { added.core.issuedAt },
@@ -444,38 +626,67 @@ import Testing
                 }
                 return res
             })
+        defer { Task { await client.close() } }
         let installed = try await client.sync()
         #expect(installed.headEpoch == 2)
         let env = try await client.seal(
             purpose: .command, machine: machine, request: "0123456789abcdef",
-            deadline: (added.core.issuedAt + S.lease), plaintext: Data("go".utf8))
-        let header = try S.parseHeader(env.securityHeader)
-        #expect(header.epoch == 2 && header.contentEpoch == 2)
+            deadline: (added.core.issuedAt + S.lease), plaintext: cmd)
+        let opened = try mRunner.runOp {
+            $0.openEnvelope = .with {
+                $0.envelope = env
+                $0.expectedPurpose = S.Purpose.command.rawValue
+                $0.machineID = machine
+                $0.history = false
+            }
+        }.opened
+        #expect(opened.epoch == 2 && opened.contentEpoch == 2)
     }
 
-    @Test func readsAStoredStateOnlyAsHistory() throws {
+    @Test func readsAStoredStateOnlyAsHistory() async throws {
         let added = try state("added")
         let p = try pin()
         let genesis = try state("genesis")
-        let wire = try S.Wire(
-            formed: S.Cipher(
-                header: try S.headerBytes(
-                    S.Header(
-                        account: added.core.account, domain: added.core.domain,
-                        epoch: added.core.epoch, state: try S.stateHash(added),
-                        contentEpoch: added.core.contentEpoch,
-                        sender: added.core.authorityID, kind: S.Purpose.event.kind,
-                        purpose: .event,
-                        machine: added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id,
-                        session: "session", request: "", seq: 1, deadline: 0, compression: 0)),
-                nonce: randomBytes(12), cipher: randomBytes(16), origin: randomBytes(64)))
-        #expect(throws: S.Failure.self) {
-            _ = try S.verifyOrigin(wire, state: added, head: genesis, live: true, now: 0)
+        let phone = added.core.authorityID
+        let machine = added.core.members.first { $0.kind == S.Kind.machine.rawValue }!.id
+        let mRecord = try S.Record(
+            pin: p, states: [1: genesis, 2: added], memberID: machine, xPrivate: try machineX(),
+            member: true, secret: try hex("content_secret_2"), lease: try signedLease(added))
+        let mSdk = try TestCoreSecurity(
+            store: MemorySecurityStore(mRecord), memberID: machine,
+            signingKey: try SigningKey(seed: try hex("machine_seed")),
+            clock: { added.core.issuedAt })
+        defer { Task { await mSdk.close() } }
+        var ev = PBEvent(); ev.sessionID = "session"; ev.seq = 1; ev.agentMessage.text = "hi"
+        var bad = try await mSdk.seal(
+            purpose: .event, machine: machine, session: "session", seq: 1,
+            plaintext: ev.serializedData(), sessionSeed: Data(repeating: 7, count: 32))
+        bad.signature[0] ^= 1
+        let phoneSeed = try hex("phone_seed")
+        let phoneXPriv = try hex("phone_x")
+        let genRunner = try CoreSecurityRunner(executor: SecurityExecutor(
+            signer: { try? SigningKey(seed: phoneSeed) },
+            xPrivate: { phoneXPriv }))
+        defer { genRunner.close() }
+        let genRecord = try S.Record(
+            pin: p, states: [1: genesis], memberID: phone, xPrivate: phoneXPriv,
+            member: true, secret: try hex("content_secret_1"), lease: try signedLease(genesis))
+        try genRunner.syncRecord(genRecord, nowMs: Int64(added.core.issuedAt))
+        for history in [false, true] {
+            #expect(throws: S.Failure.self) {
+                _ = try genRunner.runOp {
+                    $0.openEnvelope = .with {
+                        $0.envelope = bad
+                        $0.expectedPurpose = S.Purpose.event.rawValue
+                        $0.machineID = machine
+                        $0.sessionID = "session"
+                        $0.seq = 1
+                        $0.history = history
+                        $0.overrideSessionSeed = Data(repeating: 7, count: 32)
+                    }
+                }
+            }
         }
-        #expect(throws: S.Failure.self) {
-            _ = try S.verifyOrigin(wire, state: added, head: nil, live: false, now: 0)
-        }
-        #expect(p.account == added.core.account)
     }
 }
 
@@ -486,8 +697,7 @@ final class MemorySecurityStore: DeviceSecurity.Storage, @unchecked Sendable {
     init(_ record: DeviceSecurity.Record) {
         var r=record
         if r.lease == nil, let signer=try? SigningKey(seed:Data(repeating:0x11,count:32)), deviceId(publicKey:signer.publicKey)==r.state.core.authorityID {
-            var l=DeviceSecurity.HeadLease(domain:r.state.core.domain,head:try! DeviceSecurity.stateHash(r.state),issuedAt:r.state.core.issuedAt,notAfter:r.state.core.issuedAt+DeviceSecurity.lease,signature:Data())
-            l.signature=try! signer.sign(l.signBytes());r.lease=l
+            r.lease = try? DeviceSecurity.HeadLease.sign(r.state, signer: signer, now: Int64(r.state.core.issuedAt))
         }
         self.record=r
     }
@@ -525,7 +735,8 @@ extension DeviceSecurityTests {
  @Test func receivesDataOnlyMachineDiskNotification() async throws {
   let genesis=try state("genesis"),head=try state("added"),machine=head.core.members.first { $0.kind == 1 }!.id
   let record=try S.Record(pin:pin(),states:[1:genesis,2:head],memberID:machine,xPrivate:hex("machine_x"),member:true,secret:hex("content_secret_2"),lease:signedLease(head))
-  let sdk=DeviceSecurityClient(store:MemorySecurityStore(record),memberID:machine,signingKey:try SigningKey(seed:hex("machine_seed")),clock:{head.core.issuedAt},fetchStates:{_ in PBGetSecurityStatesResponse()})
+  let sdk=try TestCoreSecurity(store:MemorySecurityStore(record),memberID:machine,signingKey:try SigningKey(seed:hex("machine_seed")),clock:{head.core.issuedAt},fetchStates:{_ in PBGetSecurityStatesResponse()})
+  defer { Task { await sdk.close() } }
   var c=PBNotifyContent();c.kind = .machineDisk;c.machineID=machine;c.machineName="电脑 A";c.diskStatus.observedMs=1700000000000;c.diskStatus.availableBytes=1_500_000_000;c.diskStatus.pressure = .critical
   let env=try await sdk.seal(purpose:.notify,machine:machine,session:"",request:"disk:1700000000000:3",plaintext:c.serializedData())
   let key=try S.NotifyRecord(record:record).bytes()

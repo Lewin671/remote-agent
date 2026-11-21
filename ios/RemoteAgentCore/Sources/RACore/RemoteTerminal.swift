@@ -111,7 +111,7 @@ extension Remote {
     /// Joins a session's terminal stream. Frames are sealed with the session key
     /// and numbered; each side refuses frames out of order.
     public func openTerminal(_ sid: String, listener: any TermListener) async throws -> TermConn {
-        guard let machineId = machineIdForSessionIfKnown(sid), let key = sessionKeys[sid] else {
+        guard let machineId = machineIdForSessionIfKnown(sid), await hasSessionSeed(sid) else {
             throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
         }
         let tok = try await currentToken()
@@ -138,9 +138,6 @@ extension Remote {
             stream.end()
             throw UserError(L10nMessage.errorsCannotConnectToTerminal())
         }
-        let security: DeviceSecurityClient
-        do { security = try securitySession() }
-        catch { stream.end(); throw error }
         Task.detached {
             var last: UInt64 = 0
             while let bytes = try? await socket.receive() {
@@ -151,15 +148,22 @@ extension Remote {
                     break
                 }
                 do {
-                    let (h, frame) = try await security.openMessage(
-                        PBEnvelope(serializedBytes: bytes), as: PBTerminalFrame.self,
-                        history: false,
-                        sessionSeed: key)
-                    guard h.purpose == .terminalOutput, h.machine == machineId, h.session == sid,
-                        h.request == streamId
+                    let res = try await self.openEnvelopeOp(
+                        envelope: PBEnvelope(serializedBytes: bytes),
+                        expectedPurpose: .terminalOutput,
+                        machineId: machineId,
+                        sessionId: sid,
+                        requestId: streamId,
+                        history: false
+                    )
+                    guard res.purpose == DeviceSecurity.Purpose.terminalOutput.rawValue,
+                          res.machineID == machineId,
+                          res.sessionID == sid,
+                          res.requestID == streamId
                     else { throw DeviceSecurity.Failure.untrusted }
-                    if h.seq <= last { throw OpenError(L10nMessage.errorsTerminalFramesAreOutOfOrder()) }
-                    last = h.seq
+                    if res.seq <= last { throw OpenError(L10nMessage.errorsTerminalFramesAreOutOfOrder()) }
+                    last = res.seq
+                    let frame = try PBTerminalFrame(serializedBytes: res.plaintext)
                     listener.onFrame(frame)
                 } catch {
                     finish(errorText(error))
@@ -189,11 +193,18 @@ extension Remote {
                 case .historyRequest: purpose = .terminalHistory
                 default: throw DeviceSecurity.Failure.invalid
                 }
-                let env = try await security.seal(
-                    purpose: purpose, machine: machineId, session: sid, request: streamId, seq: seq,
-                    deadline: deadline, plaintext: frame.serializedData(), sessionSeed: key)
+                let sealed = try await self.sealEnvelopeOp(
+                    purpose: purpose,
+                    machineId: machineId,
+                    sessionId: sid,
+                    requestId: streamId,
+                    seq: seq,
+                    deadlineMs: Int64(bitPattern: deadline),
+                    plaintext: try frame.serializedData(),
+                    useSessionSeed: true
+                )
                 guard !closed.withLock({ $0 }) else { throw DeviceSecurity.Failure.storage }
-                return try env.serializedData()
+                return try sealed.envelope.serializedData()
             },
             finish: finish,
             closeLocal: { stream.end(cancelPath: false) })

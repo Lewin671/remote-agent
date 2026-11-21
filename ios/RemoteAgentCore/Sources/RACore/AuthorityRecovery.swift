@@ -84,8 +84,13 @@ extension AuthorityCoordinator {
             guard let own = rows.devices.first(where: { $0.id == account.deviceId }) else { throw DeviceSecurity.Failure.untrusted }
             var meta = PBDeviceMeta()
             if own.hasMeta {
-                let (h, old) = try await rpc(t) { [security] in try await security.openMessage(own.meta, as: PBDeviceMeta.self, history: true) }
-                try DeviceSecurity.check(h.sender == account.deviceId && h.request == account.deviceId && h.seq == own.metaRevision, .untrusted)
+                let record = try storage.readSecurity()
+                let nowMs = Int64(clamping: now(record))
+                let (h, old) = try await rpc(t) { [deviceId = account.deviceId] in
+                    try CoreSecurityRunner.openDeviceMeta(
+                        record: record, envelope: own.meta, deviceId: deviceId, clock: { nowMs })
+                }
+                try DeviceSecurity.check(h.sender == account.deviceId && h.requestID == account.deviceId && h.seq == own.metaRevision, .untrusted)
                 meta = old
             }
             if meta.handoffRecoveryEd == op.signed {
@@ -95,9 +100,13 @@ extension AuthorityCoordinator {
             let request: PBPutDeviceMetaRequest
             if op.result.isEmpty {
                 let bytes = try meta.serializedData()
-                let env = try await rpc(t) { [security, gate, account] in
-                    try await security.seal(purpose: .deviceMeta, request: account.deviceId, seq: own.metaRevision + 1,
-                        plaintext: bytes, authorityGate: gate, authorityTicket: t)
+                let record = try storage.readSecurity()
+                let nowMs = Int64(clamping: now(record))
+                let nextSeq = own.metaRevision + 1
+                let env = try await rpc(t) { [gate, account] in
+                    try CoreSecurityRunner.sealDeviceMeta(
+                        record: record, account: account, seq: nextSeq,
+                        plaintext: bytes, gate: gate, ticket: t, clock: { nowMs })
                 }
                 try DeviceSecurity.check(DeviceSecurity.stateHash(storage.readSecurity().state) == op.parent, .stale)
                 var ask = PBPutDeviceMetaRequest(); ask.deviceID = account.deviceId; ask.expectedRevision = own.metaRevision; ask.meta = env

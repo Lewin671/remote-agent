@@ -418,7 +418,6 @@ private func ownText(_ e: Error) -> String {
 
 /// Short text for an error, without content.
 public func errorText(_ e: Error) -> String {
-    if e is RecoveryHistoryUnavailable {return L10n.errorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe()}
     if let f=e as? DeviceSecurity.Failure {
         switch f {
         case .lease:return L10n.errorsIosRemoteControlExpiredSavingChangesSessionControlAndNew()

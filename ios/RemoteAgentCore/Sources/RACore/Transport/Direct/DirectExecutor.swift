@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import RAProto
 import SwiftProtobuf
@@ -58,8 +57,6 @@ final class DirectExecutor: @unchecked Sendable {
         }
     }
 
-    private let deviceSeed: @Sendable () -> Data?
-    private let xPrivateKey: @Sendable () -> Curve25519.KeyAgreement.PrivateKey?
     private let emit: @Sendable (PBCoreEvent) -> Void
     private let onPushedEvent: @Sendable (_ machineId: String, _ pcId: UInt64, _ env: PBEnvelope, _ header: PBHeader, _ size: Int) -> Void
     private let factory: (any RtcFactory)?
@@ -74,16 +71,12 @@ final class DirectExecutor: @unchecked Sendable {
     private var closed = false
 
     init(
-        deviceSeed: @escaping @Sendable () -> Data?,
-        xPrivateKey: @escaping @Sendable () -> Curve25519.KeyAgreement.PrivateKey?,
         emit: @escaping @Sendable (PBCoreEvent) -> Void,
         onPushedEvent: @escaping @Sendable (_ machineId: String, _ pcId: UInt64, _ env: PBEnvelope, _ header: PBHeader, _ size: Int) -> Void,
         factory: (any RtcFactory)? = nil,
         clock: @escaping @Sendable () -> UInt64 = { UInt64(Date().timeIntervalSince1970 * 1000) },
         monotonic: @escaping @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1e6 }
     ) {
-        self.deviceSeed = deviceSeed
-        self.xPrivateKey = xPrivateKey
         self.emit = emit
         self.onPushedEvent = onPushedEvent
         self.factory = factory
@@ -110,52 +103,6 @@ final class DirectExecutor: @unchecked Sendable {
 
     func detachAll() {
         lock.withLock { leg = nil }
-    }
-
-    func keySign(_ eff: PBCoreDirectKeySignEffect) {
-        let sig: Data
-        do {
-            if let seed = deviceSeed(), seed.count == 32 {
-                sig = try SigningKey(seed: seed).sign(eff.message)
-            } else {
-                sig = Data()
-            }
-        } catch {
-            sig = Data()
-        }
-        emitEvent {
-            $0.directKeySigned = .with {
-                $0.opID = eff.opID
-                $0.signature = sig
-            }
-        }
-    }
-
-    func keyAgree(_ eff: PBCoreDirectKeyAgreeEffect) {
-        let secret: Data?
-        do {
-            if let priv = xPrivateKey(), eff.peerXPublic.count == 32 {
-                let pub = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: eff.peerXPublic)
-                let shared = try priv.sharedSecretFromKeyAgreement(with: pub)
-                let bytes = shared.withUnsafeBytes { Data($0) }
-                secret = (bytes.count == 32 && bytes.contains { $0 != 0 }) ? bytes : nil
-            } else {
-                secret = nil
-            }
-        } catch {
-            secret = nil
-        }
-        emitEvent {
-            $0.directKeyAgreed = .with {
-                $0.opID = eff.opID
-                if let secret {
-                    $0.sharedSecret = secret
-                    $0.ok = true
-                } else {
-                    $0.ok = false
-                }
-            }
-        }
     }
 
     @discardableResult

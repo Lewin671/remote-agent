@@ -1,5 +1,6 @@
 import Foundation
 import RAProto
+import SwiftProtobuf
 
 extension Remote {
     /// Revalidates the cached signed ciphertext against its machine before opening it.
@@ -10,13 +11,14 @@ extension Remote {
         }
         guard let data = await cache?.blob(name: "schedules/" + machineID),
               let env = try? PBEnvelope(serializedBytes: data),
-              let h = try? PBHeader(serializedBytes: env.header), h.kind == .commandResult,
-              let (_, result) = try? await openSecureMessage(
+              let opened = try? await openEnvelopeOp(
                   envelope: env,
-                  want: Place(.commandResult, machineId: machineID, requestId: h.requestID),
-                  as: PBCommandResult.self,
+                  expectedPurpose: .result,
+                  machineId: machineID,
+                  requestId: "",
                   history: true
-              )
+              ),
+              let result = try? PBCommandResult(serializedBytes: opened.plaintext)
         else { return nil }
         guard currentScheduleMember(machineID) else {
             await cache?.removeBlob(name: "schedules/" + machineID)

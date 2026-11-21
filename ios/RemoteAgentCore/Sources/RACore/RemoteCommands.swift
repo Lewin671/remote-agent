@@ -59,9 +59,25 @@ extension Remote {
                 try await relayAttempt.prepare(prior: effect.retryOfUnknown)
             }
 
-            let stateHash = try await authorizationStateHash()
-            let (envelope, keyHash, payloadHash) = try await sealedForDispatch(
-                effect: effect, stateHash: stateHash)
+            let envelope: PBEnvelope
+            let keyHash: Data
+            let payloadHash: Data
+            if effect.hasSealedEnvelope {
+                envelope = effect.sealedEnvelope
+                keyHash = Data()
+                payloadHash = Data()
+            } else {
+                let auth = try await authorizeCommandBytes(
+                    machineId: effect.machineID,
+                    sessionId: effect.sessionID,
+                    requestId: effect.requestID,
+                    deadlineMs: effect.deadlineMs,
+                    commandBytes: effect.commandBytes
+                )
+                envelope = auth.envelope
+                keyHash = auth.keyHash
+                payloadHash = auth.payloadHash
+            }
             try Task.checkCancellation()
             if let cmd {
                 try requireFileCapability(machineId: effect.machineID, hasFiles: requiresFileCapability(cmd))
@@ -86,6 +102,35 @@ extension Remote {
             }
             ev.elapsedMs = elapsed()
             ev.handedOff = handedOffLock.withLock { $0 }
+
+            if effect.hasSealedEnvelope {
+                let bound = res.attemptID == effect.attemptID
+                if bound,
+                   let cmd, case .schedule(let req)? = cmd.kind, req.operation == "list",
+                   res.hasResult,
+                   let (_, msg) = try? await openSecureMessage(
+                       envelope: res.result,
+                       want: Place(
+                           .commandResult,
+                           machineId: effect.machineID,
+                           sessionId: effect.sessionID,
+                           requestId: effect.requestID),
+                       as: PBCommandResult.self),
+                   msg.outcome == "executed", msg.errorCode.isEmpty, msg.resultAvailable,
+                   case .schedule? = msg.kind,
+                   let envBytes = try? res.result.serializedData() {
+                    await keepScheduleSnapshot(effect.machineID, data: envBytes)
+                }
+                ev.source = .daemon
+                ev.notForwarded = false
+                ev.attemptBound = bound
+                ev.outerOutcome = useDirect ? "" : res.outcome
+                ev.outerReason = useDirect ? "" : res.reason
+                if res.hasResult {
+                    ev.sealedResult = res.result
+                }
+                return ev
+            }
 
             let (_, msg): (PBHeader, PBCommandResult)
             do {
@@ -201,28 +246,6 @@ extension Remote {
             ev.transportDetail = errorText(error)
             return ev
         }
-    }
-
-    private func sealedForDispatch(
-        effect: PBCoreDispatchCommandEffect,
-        stateHash: Data
-    ) async throws -> (PBEnvelope, Data, Data) {
-        if let cached = sealedCommands[effect.requestID], cached.stateHash == stateHash {
-            return (cached.envelope, cached.keyHash, cached.payloadHash)
-        }
-        let env = try await authorizeCommandBytes(
-            machineId: effect.machineID,
-            sessionId: effect.sessionID,
-            requestId: effect.requestID,
-            deadlineMs: effect.deadlineMs,
-            commandBytes: effect.commandBytes
-        )
-        let binding = try await securitySession().commandIdentity(env)
-        storeSealedCommand(
-            requestID: effect.requestID,
-            entry: SealedCommandEntry(
-                stateHash: stateHash, envelope: env, keyHash: binding.key, payloadHash: binding.payload))
-        return (env, binding.key, binding.payload)
     }
 
     // MARK: - Transitional Step 4 Command & Helper APIs (delete after Step 4 migration)
@@ -354,9 +377,9 @@ extension Remote {
                         try await self.authorizePrepared(p)
                     }
                 }
-                let envelope = try await auth.value
+                let authorized = try await auth.value
                 try Task.checkCancellation()
-                let binding = try await securitySession().commandIdentity(envelope)
+                let envelope = authorized.envelope
                 let res: PBForwardResponse
                 if useDirect {
                     let directEnv = try await directExecutor.sendRpc(
@@ -385,8 +408,8 @@ extension Remote {
                     throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), outcome: .unknown)
                 }
                 let bound = res.attemptID == attemptId
-                    && msg.requestKeyHash == binding.key
-                    && msg.payloadHash == binding.payload
+                    && msg.requestKeyHash == authorized.keyHash
+                    && msg.payloadHash == authorized.payloadHash
                     && (useDirect || (res.outcome == msg.outcome && res.reason == msg.reason))
                     && (msg.outcome == "conflict" || msg.conflictKind.isEmpty)
                 let category = Outcome(rawValue: msg.outcome) ?? .unknown
@@ -524,7 +547,6 @@ extension Remote {
 
     /// Transitional Step 3-4 helper used by `SessionScreen` -> `ProjectSettingsSheet` until Session migrates into Core.
     public func applyTransitionalPrefsOp(_ op: PrefsOp) async throws {
-        let client = try securitySession()
         let operation = newRequestId()
         let apiClient = api.client
         var askReq = PBGetAccountPrefsRequest()
@@ -534,19 +556,30 @@ extension Remote {
             let current = try await withAuthRetry { headers in
                 try await apiClient.getAccountPrefs(request: ask, headers: headers).value()
             }.object
-            let plain = try await decodeAccountPrefs(current, trackRef: false)
-            if plain.broken {
-                throw CommandError("failed_precondition", L10nMessage.errorsProjectPreferencesFormatIsNotSupported())
+            var base = PBProjectPrefs()
+            var rev = current.revision
+            if current.hasEnvelope && !current.envelope.securityHeader.isEmpty && current.revision > 0 {
+                do {
+                    let opened = try await openEnvelopeOp(
+                        envelope: current.envelope,
+                        expectedPurpose: .prefs,
+                        requestId: projectPrefsID,
+                        history: true
+                    )
+                    base = try PBProjectPrefs(serializedBytes: opened.plaintext)
+                    rev = max(current.revision, opened.seq)
+                } catch {
+                    throw CommandError("failed_precondition", L10nMessage.errorsProjectPreferencesFormatIsNotSupported())
+                }
             }
-            let base = plain.hasPrefs ? plain.prefs : PBProjectPrefs()
             if base.recentOps.contains(operation) { return }
             let next = applyPrefsOp(base: base, op: op, opId: operation, now: clock())
-            let env = try await client.seal(
+            let env = try await sealEnvelopeOp(
                 purpose: .prefs,
-                request: projectPrefsID,
-                seq: current.revision + 1,
+                requestId: projectPrefsID,
+                seq: rev + 1,
                 plaintext: try next.serializedData()
-            )
+            ).envelope
             var putReq = PBPutAccountPrefsRequest()
             putReq.objectID = projectPrefsID
             putReq.expectedRevision = current.revision
@@ -563,7 +596,7 @@ extension Remote {
     }
 
     public func image(_ sid: String, imageId: String) async throws -> ImageResult {
-        guard let machineId = machineIdForSessionIfKnown(sid), sessionKeys[sid] != nil else {
+        guard let machineId = machineIdForSessionIfKnown(sid), await hasSessionSeed(sid) else {
             throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
         }
         let cacheKey = "\(sid)/\(imageId)"

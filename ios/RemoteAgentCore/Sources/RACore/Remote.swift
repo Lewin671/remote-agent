@@ -5,7 +5,6 @@
 // DirectExecutor bypass, CipherCache I/O, and cryptographic opening/sealing, plus
 // transitional Step 4 `Feed` mirror pushed from Core's `SyncStateView`.
 import Connect
-import CryptoKit
 import Foundation
 import RAProto
 import SwiftProtobuf
@@ -52,8 +51,14 @@ public final class PreparedCommand: @unchecked Sendable {
     public var mayHaveRun: Bool { mayHaveRunFlag.withLock { $0 } }
     func markMayHaveRun() { mayHaveRunFlag.withLock { $0 = true } }
 
+    struct AuthorizedCommand: Sendable {
+        let envelope: PBEnvelope
+        let keyHash: Data
+        let payloadHash: Data
+    }
+
     private let sealLock = NSLock()
-    private var sealResult: SharedResult<PBEnvelope>?
+    private var sealResult: SharedResult<AuthorizedCommand>?
     private var sealID: UUID?
     private var sealState: Data?
     private var everAuthorized = false
@@ -75,8 +80,8 @@ public final class PreparedCommand: @unchecked Sendable {
     }
 
     func authorizationResult(
-        stateHash: Data, _ make: @escaping @Sendable (Bool) -> Task<PBEnvelope, Error>
-    ) -> SharedResult<PBEnvelope> {
+        stateHash: Data, _ make: @escaping @Sendable (Bool) -> Task<AuthorizedCommand, Error>
+    ) -> SharedResult<AuthorizedCommand> {
         sealLock.lock()
         defer { sealLock.unlock() }
         if let sealResult, sealState == stateHash { return sealResult }
@@ -84,12 +89,12 @@ public final class PreparedCommand: @unchecked Sendable {
         sealID = id
         sealState = stateHash
         let verifyObservation = !everAuthorized
-        let result = SharedResult<PBEnvelope>()
+        let result = SharedResult<AuthorizedCommand>()
         Task {
             do {
-                let envelope = try await make(verifyObservation).value
+                let authorized = try await make(verifyObservation).value
                 self.authorized(id)
-                result.resolve(.success(envelope))
+                result.resolve(.success(authorized))
             } catch {
                 self.clearAuthorization(id)
                 result.resolve(.failure(error))
@@ -199,20 +204,15 @@ public final actor Remote {
     nonisolated let sleep: Sleeper
     public nonisolated let authorityGate = AuthorityGate()
     let securityStorage: (any DeviceSecurity.Storage)?
-    var deviceSecurity: DeviceSecurityClient?
+    var deviceSecurity: AuthoritySecurity?
     var management: AuthorityCoordinator?
 
-    struct DirectSecurityHolder: Sendable {
-        var rev: UInt64 = 0
-        var xPrivateRaw: Data?
-        var lastSnapshot: PBCoreDirectSecuritySnapshotEvent?
-    }
-
+    nonisolated let latestXPrivateLock: OSAllocatedUnfairLock<Data?>
+    public nonisolated let securityExecutor: SecurityExecutor
     nonisolated let directPreferences: any DirectPreferenceStore
     public nonisolated let directServerHost: String
     public nonisolated let directConfiguredStun: String
     public nonisolated let directSupported: Bool
-    nonisolated let directSecurityLock: OSAllocatedUnfairLock<DirectSecurityHolder>
     private nonisolated let coreEventChain: SerialChain
     nonisolated let directExecutor: DirectExecutor
     var directTransfers: [String: UploadKind] = [:]
@@ -240,9 +240,8 @@ public final actor Remote {
     private var streamLegs: [UInt64: StreamLeg] = [:]
     private var activeLegId: UInt64?
 
-    // Security Gate & opaque cipher cache refs
+    // Security Gate & transport state
     let directGate: DirectEventQueueGate
-    var sessionKeys: [String: Data] = [:]
     var sessionMachines: [String: String] = [:] {
         didSet {
             if sessionMachines != oldValue { directGate.updateMachines(sessionMachines) }
@@ -253,13 +252,6 @@ public final actor Remote {
             if watchedSessionIds != oldValue { directGate.updateWatched(watchedSessionIds) }
         }
     }
-    var machineReplacements: [String: [PBMachineReplacementProof]] = [:]
-    var trustedMembers: [String: DeviceSecurity.Member] = [:]
-    var archiveMachines: Set<String> = []
-    var cacheRefs: [String: CachedCipherObject] = [:]
-    var cacheRefOrder: [String] = []
-    var sealedCommands: [String: SealedCommandEntry] = [:]
-    var sealedOrder: [String] = []
     var authorityDeviceId = ""
     var leaseEndMs: UInt64 = 0
     var recoveryPending = false
@@ -271,6 +263,10 @@ public final actor Remote {
     var verifiedNetworkGeneration: UInt64 = 0
     var coreSyncDepth = 0
     private var securityNetworkReset: (UInt64, Task<Void, Never>)?
+    var fallbackSecurityRunner: CoreSecurityRunner?
+    var securityConfiguredInCore = false
+    var securityRecordLoaded = false
+    var securityPushSeq: UInt64 = 1
     var models: [String: ModelList] = [:]
 
     // Transitional Step 4 dumb state feed (populated strictly by CoreHost from SyncStateView)
@@ -285,7 +281,10 @@ public final actor Remote {
         public var onRefreshDevices: @Sendable () async -> Void
         public var onSavePrefs: @Sendable (PrefsOp) async throws -> Void
         public var onLoadMoreSessions: @Sendable () async -> Void
-        public var onSecuritySnapshot: @Sendable (PBCoreSecuritySnapshotEvent) async -> Void
+        public var onSecurityConfig: (@Sendable (PBSecurityConfigEvent) async -> Void)?
+        public var onSecurityRecord: (@Sendable (PBSecurityRecordEvent) async -> Void)?
+        public var onSecurityRecordAndWait: (@Sendable (PBSecurityRecordEvent) async -> Void)?
+        public var onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)?
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
         public var onBeginDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect
         public var onFinishDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void
@@ -295,7 +294,10 @@ public final actor Remote {
             onRefreshDevices: @escaping @Sendable () async -> Void,
             onSavePrefs: @escaping @Sendable (PrefsOp) async throws -> Void,
             onLoadMoreSessions: @escaping @Sendable () async -> Void = {},
-            onSecuritySnapshot: @escaping @Sendable (PBCoreSecuritySnapshotEvent) async -> Void = { _ in },
+            onSecurityConfig: (@Sendable (PBSecurityConfigEvent) async -> Void)? = nil,
+            onSecurityRecord: (@Sendable (PBSecurityRecordEvent) async -> Void)? = nil,
+            onSecurityRecordAndWait: (@Sendable (PBSecurityRecordEvent) async -> Void)? = nil,
+            onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
             onBeginDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect = { _ in PBCoreDirectBulkRouteEffect() },
             onFinishDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void = { _ in }
@@ -305,7 +307,10 @@ public final actor Remote {
             self.onRefreshDevices = onRefreshDevices
             self.onSavePrefs = onSavePrefs
             self.onLoadMoreSessions = onLoadMoreSessions
-            self.onSecuritySnapshot = onSecuritySnapshot
+            self.onSecurityConfig = onSecurityConfig
+            self.onSecurityRecord = onSecurityRecord
+            self.onSecurityRecordAndWait = onSecurityRecordAndWait
+            self.onSecurityOp = onSecurityOp
             self.onCoreEvent = onCoreEvent
             self.onBeginDirectBulkTransfer = onBeginDirectBulkTransfer
             self.onFinishDirectBulkTransfer = onFinishDirectBulkTransfer
@@ -354,19 +359,18 @@ public final actor Remote {
         api = builtApi
         state = Feed(RemoteState())
         let holder = WeakRemote()
-        let seedCopy = account.deviceSeed
-        let secLock = OSAllocatedUnfairLock(initialState: DirectSecurityHolder())
+        let initialX = try? securityStorage?.readSecurity().xPrivateRaw
+        let xLock = OSAllocatedUnfairLock<Data?>(initialState: initialX)
         let gate = DirectEventQueueGate()
         let eventChain = SerialChain()
-        self.directSecurityLock = secLock
+        self.latestXPrivateLock = xLock
+        self.securityExecutor = SecurityExecutor(
+            signer: { [device] in device },
+            xPrivate: { [xLock] in xLock.withLock { $0 } }
+        )
         self.directGate = gate
         self.coreEventChain = eventChain
         directExecutor = DirectExecutor(
-            deviceSeed: { seedCopy },
-            xPrivateKey: {
-                guard let raw = secLock.withLock({ $0.xPrivateRaw }), raw.count == 32 else { return nil }
-                return try? Curve25519.KeyAgreement.PrivateKey(rawRepresentation: raw)
-            },
             emit: { ev in
                 eventChain.run {
                     await holder.remote?.emitCoreEvent(ev)
@@ -431,7 +435,7 @@ public final actor Remote {
             projected.linkState = peers[machine.id]
             return projected
         }
-        // Keep sessionMachines in sync so decodeEvents / image() know owner machine IDs.
+        // Keep sessionMachines in sync so directGate / terminal know owner machine IDs.
         if updated.sessions.contains(where: { sessionMachines[$0.key] != $0.value.machineId }) {
             var nextMachines = sessionMachines
             for (sid, s) in updated.sessions {
@@ -759,29 +763,22 @@ public final actor Remote {
                 case .heartbeat?:
                     await emit { $0.heartbeat = true }
                 case .machineUpdated(let u)?:
-                    let decoded = await decodeMachine(u.machine, trackRef: true)
-                    await emit { $0.machineUpdated = decoded }
+                    await emit { $0.wireMachineUpdated = u.machine }
                 case .machineRemoved(let u)?:
                     await emit { $0.machineRemovedID = u.machineID }
                 case .sessionUpdated(let u)?:
-                    let decoded = await decodeSession(u.session, trackRef: true)
-                    await emit { $0.sessionUpdated = decoded }
+                    await emit { $0.wireSessionUpdated = u.session }
                 case .eventsAppended(let a)?:
-                    let decoded = await decodeEvents(
-                        a.events, machineId: machineIdForSession(a.sessionID),
-                        sessionId: a.sessionID, history: false, trackRef: true)
                     await emit {
                         $0.eventsAppended.sessionID = a.sessionID
-                        $0.eventsAppended.events = decoded
+                        $0.eventsAppended.wireEvents = a.events
                     }
                 case .accountPrefsUpdated(let u)?:
                     if u.object.objectID == projectPrefsID {
-                        let decoded = try await decodeAccountPrefs(u.object, trackRef: true)
-                        await emit { $0.accountPrefsUpdated = decoded }
+                        await emit { $0.wireAccountPrefsUpdated = u.object }
                     }
                 case .deviceUpdated(let u)?:
-                    let decoded = await decodeDevice(u.device)
-                    await emit { $0.deviceUpdated = decoded }
+                    await emit { $0.wireDeviceUpdated = u.device }
                 case .deviceRemoved(let u)?:
                     await emit { $0.deviceRemovedID = u.deviceID }
                 default:
@@ -840,16 +837,34 @@ public final actor Remote {
             guard let raw = listed.devices.first(where: { $0.id == id }) else {
                 throw CommandError("not_found", L10nMessage.settingsDeviceNotFound())
             }
-            let decoded = await decodeDevice(raw)
-            var meta = decoded.hasMeta ? decoded.meta : PBDeviceMeta()
+            var metaRev = raw.metaRevision
+            var meta = PBDeviceMeta()
+            if raw.hasMeta && raw.kind == .client {
+                do {
+                    let opened = try await openEnvelopeOp(
+                        envelope: raw.meta,
+                        expectedPurpose: .deviceMeta,
+                        requestId: raw.id,
+                        history: true
+                    )
+                    try DeviceSecurity.check(opened.seq >= raw.metaRevision, .stale)
+                    meta = try PBDeviceMeta(serializedBytes: opened.plaintext)
+                    metaRev = opened.seq
+                } catch {
+                    report(error)
+                }
+            }
             change(&meta)
             do {
-                let env = try await securitySession().seal(
-                    purpose: .deviceMeta, request: id, seq: decoded.metaRev + 1,
-                    plaintext: meta.serializedData())
+                let env = try await sealEnvelopeOp(
+                    purpose: .deviceMeta,
+                    requestId: id,
+                    seq: metaRev + 1,
+                    plaintext: try meta.serializedData()
+                ).envelope
                 var req = PBPutDeviceMetaRequest()
                 req.deviceID = id
-                req.expectedRevision = decoded.metaRev
+                req.expectedRevision = metaRev
                 req.meta = env
                 let request = req
                 let result = try await withAuthRetry { [api] headers in
@@ -889,6 +904,12 @@ public final actor Remote {
         activeLegId = nil
         deviceLink.closeStreams()
         directExecutor.close()
+        fallbackSecurityRunner?.close()
+        fallbackSecurityRunner = nil
+        if let sec = deviceSecurity {
+            deviceSecurity = nil
+            Task { await sec.close() }
+        }
     }
 
     // MARK: - Transitional Step 3-4 Forwarding to Core
@@ -939,16 +960,10 @@ public final actor Remote {
     ) {
         state.set(shown)
         var nextMachines = sessionMachines
-        var nextKeys = sessionKeys
         for (sid, s) in shown.sessions {
             nextMachines[sid] = s.machineId
-            nextKeys[sid] = Data(repeating: 1, count: keySize)
         }
         if nextMachines != sessionMachines { sessionMachines = nextMachines }
-        if nextKeys != sessionKeys {
-            sessionKeys = nextKeys
-            directGate.updateKeys(nextKeys)
-        }
         for m in modelLists {
             let response = m.models
             models["\(m.machineId)/\(m.agent.rawValue)"] = ModelList(
@@ -968,7 +983,6 @@ final class DirectEventQueueGate: @unchecked Sendable {
     private var closed = false
     private var watched: Set<String> = []
     private var machines: [String: String] = [:]
-    private var keyedSessions: Set<String> = []
     private var chains: [String: SerialChain] = [:]
     private var counts: [String: Int] = [:]
     private var totalBytes = 0
@@ -986,30 +1000,12 @@ final class DirectEventQueueGate: @unchecked Sendable {
         machines = sessionMachines
     }
 
-    func updateKeys(_ sessionKeys: [String: Data]) {
-        let next = Set(sessionKeys.compactMap { $0.value.isEmpty ? nil : $0.key })
-        lock.lock()
-        defer { lock.unlock() }
-        keyedSessions = next
-    }
-
-    func setKey(_ sessionId: String, present: Bool) {
-        lock.lock()
-        defer { lock.unlock() }
-        if present {
-            keyedSessions.insert(sessionId)
-        } else {
-            keyedSessions.remove(sessionId)
-        }
-    }
-
     func markClosed() {
         lock.lock()
         defer { lock.unlock() }
         closed = true
         watched.removeAll()
         machines.removeAll()
-        keyedSessions.removeAll()
         chains.removeAll()
     }
 
@@ -1021,8 +1017,7 @@ final class DirectEventQueueGate: @unchecked Sendable {
         guard !closed,
               watched.contains(sessionId),
               machines[sessionId] == machineId,
-              sender == machineId,
-              keyedSessions.contains(sessionId) else {
+              sender == machineId else {
             return nil
         }
         let count = counts[sessionId, default: 0]

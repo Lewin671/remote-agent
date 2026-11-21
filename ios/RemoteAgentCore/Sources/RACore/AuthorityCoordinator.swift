@@ -8,13 +8,13 @@ public actor AuthorityCoordinator {
     let account: Account
     let api: Api
     let storage: any AuthorityStorage
-    let security: DeviceSecurityClient
+    let security: AuthoritySecurity
     public nonisolated let gate: AuthorityGate
     let token: @Sendable () async throws -> String
     let clock: @Sendable () -> Int64
     var busy = false
     public init(account: Account, api: Api, storage: any AuthorityStorage,
-                security: DeviceSecurityClient, gate: AuthorityGate,
+                security: AuthoritySecurity, gate: AuthorityGate,
                 clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
                 token: @escaping @Sendable () async throws -> String) {
         self.account = account; self.api = api; self.storage = storage
@@ -126,7 +126,7 @@ public actor AuthorityCoordinator {
             } else {
                 try DeviceSecurity.check(hash == op.parent, .conflict)
                 _ = try authority(t, head: op.parent)
-                try DeviceSecurity.verifyTransition(parent: r.state, next: target)
+                try r.verifyWithNext(target)
             }
         }
         let installed = r.states[target.core.epoch] != nil
@@ -200,7 +200,7 @@ public actor AuthorityCoordinator {
             let r = try committed.unwrap()
             return try gate.withPermit(t) {
                 let (state, delivery, suppliedLease) = try build(r)
-                try DeviceSecurity.verifyTransition(parent: r.state, next: state)
+                try r.verifyWithNext(state)
                 var request = PBPutSecurityStateRequest(); var item = PBSecurityState()
                 item.state = try DeviceSecurity.stateBytes(state); request.states = [item]
                 if let suppliedLease { request.lease = suppliedLease }

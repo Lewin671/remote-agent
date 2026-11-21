@@ -138,7 +138,7 @@ private final class Frames: TermListener, Sendable {
 private extension Remote {
     func hydrateExecutorState() async throws {
         _ = await ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
-        _ = await syncSecuritySnapshot(opId: 2, networkGeneration: 0, touch: false)
+        _ = await syncSecurityRecord(opId: 2, networkGeneration: 0, touch: false)
         let fetched = await executeRpc(PBCoreRpcEffect.with {
             $0.opID = 3
             $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
@@ -147,22 +147,48 @@ private extension Remote {
         s.conn = .online
         s.link = .online
         s.synced = true
-        for m in fetched.machines {
-            s.machines[m.machineID] = MachineView(
-                id: m.machineID, online: m.online, lastSeenMs: m.lastSeenMs,
-                meta: m.hasMeta ? m.meta : nil, metaRev: m.metaRev)
-            s.currentMachines.insert(m.machineID)
+        for m in fetched.wireMachines {
+            var meta: PBMachineMeta?
+            var metaRev: UInt64 = 0
+            if m.hasMeta, let opened = try? await openSecureMessage(
+                envelope: m.meta, want: Place(.machineMeta, machineId: m.id), as: PBMachineMeta.self) {
+                meta = opened.1
+                metaRev = opened.0.seq
+            }
+            s.machines[m.id] = MachineView(
+                id: m.id, online: m.online, lastSeenMs: m.lastSeenMs,
+                meta: meta, metaRev: metaRev)
+            s.currentMachines.insert(m.id)
         }
-        for sess in fetched.sessions {
-            s.sessions[sess.sessionID] = SessionView(
-                id: sess.sessionID, machineId: sess.machineID,
-                info: sess.hasMeta ? sess.meta : nil, metaRev: sess.metaRev,
-                lastSeq: sess.lastSeq, updatedMs: sess.updatedMs, listedEndedMs: sess.listedEndedMs)
+        for rs in fetched.wireSessions {
+            if rs.hasKey {
+                _ = try? await openEnvelopeOp(
+                    envelope: rs.key, expectedPurpose: .sessionKey,
+                    machineId: rs.machineID, sessionId: rs.sessionID, history: true)
+            }
+            var info: PBSession?
+            var metaRev: UInt64 = 0
+            if rs.hasMeta, let opened = try? await openSecureMessage(
+                envelope: rs.meta, want: Place(.sessionMeta, machineId: rs.machineID, sessionId: rs.sessionID), as: PBSession.self) {
+                info = opened.1
+                metaRev = opened.0.seq
+            }
+            s.sessions[rs.sessionID] = SessionView(
+                id: rs.sessionID, machineId: rs.machineID,
+                info: info, metaRev: metaRev,
+                lastSeq: rs.lastSeq, updatedMs: rs.updatedMs, listedEndedMs: rs.endedMs)
         }
-        for dev in fetched.devices {
-            s.devices[dev.deviceID] = DeviceView(
-                id: dev.deviceID, kind: dev.kind, createdMs: dev.createdMs,
-                meta: dev.hasMeta ? dev.meta : nil, metaRev: dev.metaRev, lastSeenMs: dev.lastSeenMs)
+        for dev in fetched.wireDevices {
+            var meta: PBDeviceMeta?
+            var metaRev = dev.metaRevision
+            if dev.hasMeta, dev.kind == .client, let opened = try? await openSecureMessage(
+                envelope: dev.meta, want: Place(.deviceMeta, requestId: dev.id), as: PBDeviceMeta.self) {
+                meta = opened.1
+                metaRev = opened.0.seq
+            }
+            s.devices[dev.id] = DeviceView(
+                id: dev.id, kind: dev.kind, createdMs: dev.createdMs,
+                meta: meta, metaRev: metaRev, lastSeenMs: dev.lastSeenMs)
         }
         publishSyncState(s)
     }
@@ -375,17 +401,17 @@ extension SyncServerTests {
             }
         }
 
-        @Test func installPublicationAndSyncEmitSecuritySnapshotHook() async throws {
+        @Test func installPublicationAndSyncEmitSecurityRecordHook() async throws {
             try await world { w in
                 let r = try await w.client()
                 try await r.hydrateExecutorState()
-                let snapshots = Mailbox<PBCoreSecuritySnapshotEvent>()
+                let records = Mailbox<PBSecurityRecordEvent>()
                 await r.installCoreHooks(Remote.CoreHooks(
                     onFetchSession: { _ in },
                     onRefresh: {},
                     onRefreshDevices: {},
                     onSavePrefs: { _ in },
-                    onSecuritySnapshot: { snapshots.put($0) }
+                    onSecurityRecord: { records.put($0) }
                 ))
                 let client = try await r.securitySession()
                 let newSeed = randomBytes(32)
@@ -399,15 +425,17 @@ extension SyncServerTests {
                     req.lease = try lease.bytes()
                 }
                 try await client.installPublication(req)
-                let snap = try await snapshots.take()
-                #expect(snap.trustedMachineIds.contains(enrolledAcct.deviceId))
+                let rec = try await records.take()
+                let head1 = try DeviceSecurity.parseState(try #require(rec.states.last))
+                #expect(head1.core.members.contains { $0.id == enrolledAcct.deviceId && $0.kind == 1 })
 
-                // Sync outside syncSecuritySnapshot also notifies onSecuritySnapshot.
+                // Sync outside syncSecurityRecord also notifies onSecurityRecord.
                 let seed2 = randomBytes(32)
                 let (acct2, _) = try await w.phone.enroll(seed: seed2, kind: .machine)
                 _ = try await client.sync()
-                let snap2 = try await snapshots.take()
-                #expect(snap2.trustedMachineIds.contains(acct2.deviceId))
+                let rec2 = try await records.take()
+                let head2 = try DeviceSecurity.parseState(try #require(rec2.states.last))
+                #expect(head2.core.members.contains { $0.id == acct2.deviceId && $0.kind == 1 })
             }
         }
     }

@@ -97,6 +97,7 @@ struct NewSessionAttachmentsSubmission {
 protocol CoreHostExecutor: AnyObject, Sendable {
     var account: Account { get }
     var state: Feed<RemoteState> { get }
+    var usesCoreSecurity: Bool { get }
     var directSupported: Bool { get }
     var directServerHost: String { get }
     var directConfiguredStun: String { get }
@@ -106,6 +107,7 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent
     func discardToken(_ rejected: String) async
     func syncSecuritySnapshot(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBCoreSecuritySnapshotEvent
+    func syncSecurityRecord(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBSecurityRecordEvent
     func openStream(legId: UInt64, token: String, callbacks: Remote.StreamCallbacks) async
     func closeStream(legId: UInt64) async
     func executeCacheRead(_ effect: PBCoreCacheReadEffect) async -> PBCoreEvent
@@ -121,11 +123,12 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func renameDevice(_ id: String, name: String) async throws
     func loadDirectPreferences() -> [String: Bool]
     func persistDirectPreference(_ machineId: String, enabled: Bool)
-    func cachedDirectSecuritySnapshot() -> PBCoreDirectSecuritySnapshotEvent?
     func authorizeDirect() async
     func detachDirectStreams()
     func handleDirectKeySign(_ eff: PBCoreDirectKeySignEffect)
     func handleDirectKeyAgree(_ eff: PBCoreDirectKeyAgreeEffect)
+    func handleSecurityKeySign(_ eff: PBSecurityKeySignEffect) -> PBSecurityKeySignedEvent
+    func handleSecurityKeyAgree(_ eff: PBSecurityKeyAgreeEffect) -> PBSecurityKeyAgreedEvent
     func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool
     func handleDirectPcCreate(_ eff: PBCoreDirectPcCreateEffect)
     func handleDirectPcDescribe(_ eff: PBCoreDirectPcDescribeEffect) async
@@ -138,18 +141,36 @@ protocol CoreHostExecutor: AnyObject, Sendable {
 }
 
 extension CoreHostExecutor {
+    var usesCoreSecurity: Bool { false }
     var directSupported: Bool { false }
     var directServerHost: String { "" }
     var directConfiguredStun: String { "" }
+    func syncSecuritySnapshot(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBCoreSecuritySnapshotEvent {
+        PBCoreSecuritySnapshotEvent()
+    }
+    func syncSecurityRecord(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBSecurityRecordEvent {
+        PBSecurityRecordEvent()
+    }
     func cachedScheduleResultJson(_ machineId: String) async -> Data? { nil }
     func deleteScheduleCache(_ machineId: String) async {}
     func loadDirectPreferences() -> [String: Bool] { [:] }
     func persistDirectPreference(_ machineId: String, enabled: Bool) {}
-    func cachedDirectSecuritySnapshot() -> PBCoreDirectSecuritySnapshotEvent? { nil }
     func authorizeDirect() async {}
     func detachDirectStreams() {}
     func handleDirectKeySign(_ eff: PBCoreDirectKeySignEffect) {}
     func handleDirectKeyAgree(_ eff: PBCoreDirectKeyAgreeEffect) {}
+    func handleSecurityKeySign(_ eff: PBSecurityKeySignEffect) -> PBSecurityKeySignedEvent {
+        .with {
+            $0.opID = eff.opID
+            $0.error = "security executor unavailable"
+        }
+    }
+    func handleSecurityKeyAgree(_ eff: PBSecurityKeyAgreeEffect) -> PBSecurityKeyAgreedEvent {
+        .with {
+            $0.opID = eff.opID
+            $0.error = "security executor unavailable"
+        }
+    }
     func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool { false }
     func handleDirectPcCreate(_ eff: PBCoreDirectPcCreateEffect) {}
     func handleDirectPcDescribe(_ eff: PBCoreDirectPcDescribeEffect) async {}
@@ -312,6 +333,8 @@ actor CoreHost: SyncEngine {
     private var hooksInstalled = false
     private var nextDirectCallID: UInt64 = 1
     private var bulkRouteWaiters: [UInt64: CheckedContinuation<PBCoreDirectBulkRouteEffect, Never>] = [:]
+    private var nextSecurityOpID: UInt64 = 1
+    private var securityOpWaiters: [UInt64: CheckedContinuation<PBSecurityOpResultEffect, Never>] = [:]
     private var retryNowWaiters: [String: [CheckedContinuation<Bool, Never>]] = [:]
     private var terminalReopenListeners: [String: (token: UUID, handler: @MainActor @Sendable () -> Void)] = [:]
     private var syncStateRenderNeeded = false
@@ -429,8 +452,21 @@ actor CoreHost: SyncEngine {
                     $0.homeLoadMoreEnded = PBCoreHomeLoadMoreEndedAction()
                 }
             },
-            onSecuritySnapshot: { [weak self] snapshot in
-                await self?.dispatchSecuritySnapshot(snapshot)
+            onSecurityConfig: { [weak self] cfg in
+                await self?.dispatch { $0.securityConfig = cfg }
+            },
+            onSecurityRecord: { [weak self] record in
+                await self?.dispatchSecurityRecord(record)
+            },
+            onSecurityRecordAndWait: { [weak self] record in
+                await self?.dispatchSecurityRecord(record)
+            },
+            onSecurityOp: { [weak self] req in
+                await self?.runSecurityOp(req) ?? .with {
+                    $0.opID = req.opID
+                    $0.error = "host closed"
+                    $0.errorCode = "storage"
+                }
             },
             onCoreEvent: { [weak self] ev in
                 await self?.dispatch(ev)
@@ -531,8 +567,14 @@ actor CoreHost: SyncEngine {
                     }
                 }
             }
-            if let snap = executor.cachedDirectSecuritySnapshot() {
-                await dispatch { $0.directSecuritySnapshot = snap }
+            if executor.usesCoreSecurity {
+                await dispatch {
+                    $0.securityConfig = .with {
+                        $0.account = acct.accountId
+                        $0.deviceID = acct.deviceId
+                        $0.inlineCrypto = true
+                    }
+                }
             }
         }
         let savedScope = defaults.homeScopeToken()
@@ -599,10 +641,56 @@ actor CoreHost: SyncEngine {
         await dispatch { $0.securitySnapshot = snap }
     }
 
+    private func dispatchSecurityRecord(_ record: PBSecurityRecordEvent) async {
+        guard !closed else { return }
+        var ev = record
+        if ev.pushSeq == 0 {
+            ev.pushSeq = securityPushSeq
+            securityPushSeq += 1
+        }
+        await dispatch { $0.securityRecord = ev }
+    }
+
+    private func runSecurityOp(_ req: PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect {
+        guard !closed, !demoMode else {
+            return .with {
+                $0.opID = req.opID
+                $0.error = "security host unavailable"
+                $0.errorCode = "storage"
+            }
+        }
+        let opID = nextSecurityOpID
+        nextSecurityOpID &+= 1
+        var outgoing = req
+        outgoing.opID = opID
+        let captured = outgoing
+        return await withCheckedContinuation { continuation in
+            securityOpWaiters[opID] = continuation
+            Task { await self.sendSecurityOp(opID: opID, request: captured) }
+        }
+    }
+
+    private func sendSecurityOp(opID: UInt64, request: PBSecurityOpRequestEvent) async {
+        guard !closed, !demoMode else {
+            securityOpWaiters.removeValue(forKey: opID)?.resume(returning: .with {
+                $0.opID = opID
+                $0.error = "host closed"
+                $0.errorCode = "storage"
+            })
+            return
+        }
+        await dispatch { $0.securityOpRequest = request }
+    }
+
     private func syncSecurityNow() async {
         guard !closed else { return }
-        let snap = await executor.syncSecuritySnapshot(opId: 0, networkGeneration: networkGen, touch: false)
-        await dispatchSecuritySnapshot(snap)
+        if executor.usesCoreSecurity {
+            let rec = await executor.syncSecurityRecord(opId: 0, networkGeneration: networkGen, touch: false)
+            await dispatchSecurityRecord(rec)
+        } else {
+            let snap = await executor.syncSecuritySnapshot(opId: 0, networkGeneration: networkGen, touch: false)
+            await dispatchSecuritySnapshot(snap)
+        }
     }
 
     private func handleNetworkChange(signature: String, available: Bool) async {
@@ -637,6 +725,15 @@ actor CoreHost: SyncEngine {
         bulkRouteWaiters.removeAll()
         for continuation in pendingBulk.values {
             continuation.resume(returning: PBCoreDirectBulkRouteEffect())
+        }
+        let pendingOps = securityOpWaiters
+        securityOpWaiters.removeAll()
+        for (opID, continuation) in pendingOps {
+            continuation.resume(returning: .with {
+                $0.opID = opID
+                $0.error = "host closed"
+                $0.errorCode = "storage"
+            })
         }
         let pendingRetry = retryNowWaiters
         retryNowWaiters.removeAll()
@@ -1587,12 +1684,21 @@ actor CoreHost: SyncEngine {
             case .syncSecurity(let s):
                 guard !demoMode else { continue }
                 spawnIO { host in
-                    let snap = await host.executor.syncSecuritySnapshot(
-                        opId: s.opID,
-                        networkGeneration: s.networkGeneration,
-                        touch: s.touch
-                    )
-                    await host.dispatch { $0.securitySnapshot = snap }
+                    if host.executor.usesCoreSecurity {
+                        let rec = await host.executor.syncSecurityRecord(
+                            opId: s.opID,
+                            networkGeneration: s.networkGeneration,
+                            touch: s.touch
+                        )
+                        await host.dispatch { $0.securityRecord = rec }
+                    } else {
+                        let snap = await host.executor.syncSecuritySnapshot(
+                            opId: s.opID,
+                            networkGeneration: s.networkGeneration,
+                            touch: s.touch
+                        )
+                        await host.dispatch { $0.securitySnapshot = snap }
+                    }
                 }
 
             case .scheduleTimer(let t):
@@ -1782,6 +1888,27 @@ actor CoreHost: SyncEngine {
                 spawnIO { host in
                     await host.executor.handleDirectDcReadStats(eff)
                 }
+
+            case .securityKeySign(let eff):
+                guard !demoMode else { continue }
+                let signed = executor.handleSecurityKeySign(eff)
+                await dispatch { $0.securityKeySigned = signed }
+
+            case .securityKeyAgree(let eff):
+                guard !demoMode else { continue }
+                let agreed = executor.handleSecurityKeyAgree(eff)
+                await dispatch { $0.securityKeyAgreed = agreed }
+
+            case .securityCryptoBatch(let eff):
+                await dispatch {
+                    $0.securityCryptoBatchDone = .with {
+                        $0.opID = eff.opID
+                        $0.error = "crypto batch unavailable on iOS"
+                    }
+                }
+
+            case .securityOpResult(let eff):
+                securityOpWaiters.removeValue(forKey: eff.opID)?.resume(returning: eff)
 
             case .directAuthorize:
                 spawnIO { host in

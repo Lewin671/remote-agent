@@ -1,131 +1,49 @@
-// Security Gate helpers for M2: decrypts/verifies sealed relay/cache payloads
-// into plaintext Core events, tracks opaque cacheRefs for CacheWriteEffect,
-// and executes RPC / CipherCache I/O on behalf of CoreHost.
+// Security Gate executor: syncs verified DeviceSecurity records into Go
+// `clientcore/security`, executes wire RPC / CipherCache I/O, and forwards raw
+// envelopes to Go without client-side protobuf decryption in Swift.
 import Connect
 import Foundation
 import RAProto
 import SwiftProtobuf
 
 extension Remote {
-    enum CachedCipherObject: Sendable {
-        case machine(PBMachine)
-        case session(PBRemoteSession)
-        case event(PBStoredEvent)
-        case prefs(PBAccountPrefsObject)
-    }
+    // MARK: - Security Record Sync
 
-    struct SealedCommandEntry {
-        let stateHash: Data
-        let envelope: PBEnvelope
-        let keyHash: Data
-        let payloadHash: Data
-    }
-
-    // MARK: - Bounded in-memory caches (cipher blobs by cacheRef + sealed commands by requestID)
-
-    func trackCacheRef(_ item: CachedCipherObject) -> String {
-        let ref = UUID().uuidString
-        cacheRefs[ref] = item
-        cacheRefOrder.append(ref)
-        let cap = 2048
-        if cacheRefOrder.count > cap {
-            let dropCount = cacheRefOrder.count - cap
-            for key in cacheRefOrder.prefix(dropCount) {
-                cacheRefs.removeValue(forKey: key)
-            }
-            cacheRefOrder.removeFirst(dropCount)
-        }
-        return ref
-    }
-
-    func storeSealedCommand(requestID: String, entry: SealedCommandEntry) {
-        sealedCommands[requestID] = entry
-        sealedOrder.removeAll { $0 == requestID }
-        sealedOrder.append(requestID)
-        let cap = 64
-        if sealedOrder.count > cap {
-            let dropCount = sealedOrder.count - cap
-            for key in sealedOrder.prefix(dropCount) {
-                sealedCommands.removeValue(forKey: key)
-            }
-            sealedOrder.removeFirst(dropCount)
-        }
-    }
-
-    // MARK: - Security Snapshot
-
-    private func applyAndBuildSnapshot(
-        opId: UInt64,
-        networkGeneration netGen: UInt64,
-        record: DeviceSecurity.Record,
-        expiration: UInt64,
-        archive: Set<String>,
-        recoveryPending: Bool,
-        recoveryReadyMs: UInt64,
-        maintenancePending: Bool,
-        recoveryStatusStale: Bool
-    ) async -> PBCoreSecuritySnapshotEvent {
+    func pushObservedSecurityRecord(_ record: DeviceSecurity.Record) async {
+        guard coreSyncDepth == 0, !closed, let client = deviceSecurity else { return }
+        await ensureSecurityConfigured()
         let head = record.state
         let members = Dictionary(uniqueKeysWithValues: head.core.members.map { ($0.id, $0) })
-
-        self.trustedMembers = members
-        self.archiveMachines = archive
-        self.authorityDeviceId = head.core.authorityID
-        self.leaseEndMs = expiration
-        self.recoveryPending = recoveryPending
-        self.recoveryReadyMs = recoveryReadyMs
-        self.recoveryObjectsPending = maintenancePending
-        self.recoveryStatusStale = recoveryStatusStale
-        self.clockSkewed = false
+        let archive = Set(record.states.values.flatMap(\.core.members).filter { $0.kind == 1 }.map(\.id))
         for id in archive where members[id]?.kind != 1 {
             await cache?.removeBlob(name: "schedules/" + id)
         }
-
-        var event = PBCoreSecuritySnapshotEvent()
-        event.opID = opId
-        event.networkGeneration = netGen
-        event.selfDeviceID = account.deviceId
-        event.isMember = record.member
-        event.authorityDeviceID = head.core.authorityID
-        event.trustedMachineIds = head.core.members.filter { $0.kind == 1 }.map(\.id)
-        event.trustedClientIds = head.core.members.filter { $0.kind == 2 }.map(\.id)
-        event.archiveMachineIds = Array(archive)
-        event.headEpoch = head.core.epoch
-        event.leaseEndMs = Int64(expiration)
-        event.clockSkewed = false
-        event.recoveryPending = recoveryPending
-        event.recoveryReadyMs = Int64(recoveryReadyMs)
-        event.recoveryObjectsPending = maintenancePending
-        return event
-    }
-
-    func pushObservedSecuritySnapshot(_ record: DeviceSecurity.Record) async {
-        guard coreSyncDepth == 0, !closed, let client = deviceSecurity else { return }
-        let expiration = record.lease?.notAfter ?? 0
-        let archive = Set(record.states.values.flatMap(\.core.members).filter { $0.kind == 1 }.map(\.id))
-        let event = await applyAndBuildSnapshot(
-            opId: 0,
-            networkGeneration: networkGeneration,
+        guard let ev = try? buildSecurityRecordEvent(
             record: record,
-            expiration: expiration,
-            archive: archive,
+            opId: 0,
+            pushSeq: nextSecurityPushSeq(),
+            networkGeneration: networkGeneration,
             recoveryPending: await client.recoveryPending,
             recoveryReadyMs: await client.recoveryReadyMs,
-            maintenancePending: recoveryObjectsPending,
-            recoveryStatusStale: await client.recoveryStatusStale
-        )
-        await hostHooks?.onSecuritySnapshot(event)
+            recoveryObjectsPending: recoveryObjectsPending
+        ) else { return }
+        if let onRecord = hostHooks?.onSecurityRecord {
+            await onRecord(ev)
+        } else {
+            try? ensureFallbackRunner().syncRecord(ev, nowMs: clock())
+        }
+        securityRecordLoaded = true
     }
 
-    public func syncSecuritySnapshot(
+    public func syncSecurityRecord(
         opId: UInt64,
         networkGeneration netGen: UInt64,
         touch: Bool
-    ) async -> PBCoreSecuritySnapshotEvent {
-        var event = PBCoreSecuritySnapshotEvent()
+    ) async -> PBSecurityRecordEvent {
+        var event = PBSecurityRecordEvent()
         event.opID = opId
         event.networkGeneration = netGen
-        event.selfDeviceID = account.deviceId
+        event.account = account.accountId
         coreSyncDepth += 1
         defer { coreSyncDepth -= 1 }
         do {
@@ -136,290 +54,71 @@ extension Remote {
             if touch {
                 try await client.touchAfterWake()
             }
-            let record = try await client.sync()
+            let synced = try await client.sync()
             var maintenancePending = false
-            if !record.recovery.isEmpty {
+            if !synced.recovery.isEmpty {
+                await ensureSecurityConfigured()
+                let preEv = try buildSecurityRecordEvent(
+                    record: synced,
+                    opId: 0,
+                    pushSeq: nextSecurityPushSeq(),
+                    networkGeneration: netGen,
+                    recoveryPending: await client.recoveryPending,
+                    recoveryReadyMs: await client.recoveryReadyMs,
+                    recoveryObjectsPending: recoveryObjectsPending
+                )
+                if let onWait = hostHooks?.onSecurityRecordAndWait {
+                    await onWait(preEv)
+                } else {
+                    try ensureFallbackRunner().syncRecord(preEv, nowMs: clock())
+                }
+                securityRecordLoaded = true
+                recoveryObjectsPending = true
                 do {
-                    try await republishRecoveryObjects(record)
+                    try await republishRecoveryObjects(synced)
+                    recoveryObjectsPending = false
                 } catch DeviceSecurity.Failure.lease {
+                    recoveryObjectsPending = false
                     maintenancePending = true
                 } catch {
+                    recoveryObjectsPending = false
                     throw error
                 }
             }
-            let expiration = try await client.leaseExpiration()
-            let archive = try await client.historicalMachines()
+            let latest = (try? await client.record()) ?? synced
+            let head = latest.state
+            let members = Dictionary(uniqueKeysWithValues: head.core.members.map { ($0.id, $0) })
+            let archive = Set(latest.states.values.flatMap(\.core.members).filter { $0.kind == 1 }.map(\.id))
+            for id in archive where members[id]?.kind != 1 {
+                await cache?.removeBlob(name: "schedules/" + id)
+            }
+            await ensureSecurityConfigured()
+            let built = try buildSecurityRecordEvent(
+                record: latest,
+                opId: opId,
+                pushSeq: nextSecurityPushSeq(),
+                networkGeneration: netGen,
+                recoveryPending: await client.recoveryPending,
+                recoveryReadyMs: await client.recoveryReadyMs,
+                recoveryObjectsPending: maintenancePending
+            )
+            if hostHooks?.onSecurityOp == nil {
+                try ensureFallbackRunner().syncRecord(built, nowMs: clock())
+            }
+            securityRecordLoaded = true
+            self.clockSkewed = false
             if netGen == self.networkGeneration {
                 self.verifiedNetworkGeneration = netGen
             }
-            return await applyAndBuildSnapshot(
-                opId: opId,
-                networkGeneration: netGen,
-                record: record,
-                expiration: expiration,
-                archive: archive,
-                recoveryPending: await client.recoveryPending,
-                recoveryReadyMs: await client.recoveryReadyMs,
-                maintenancePending: maintenancePending,
-                recoveryStatusStale: await client.recoveryStatusStale
-            )
+            return built
         } catch {
             if let secErr = error as? DeviceSecurity.Failure, secErr == .clock {
                 self.clockSkewed = true
-                event.clockSkewed = true
             }
             report(error)
             event.error = errorText(error)
-            event.unresolvedHost = unresolvedHost(error)
             return event
         }
-    }
-
-    // MARK: - Envelope Decryption Helpers
-
-    func decodeMachine(_ machine: PBMachine, trackRef: Bool) async -> PBCorePlainMachine {
-        var out = PBCorePlainMachine()
-        out.machineID = machine.id
-        out.online = machine.online
-        out.lastSeenMs = machine.lastSeenMs
-        if machine.hasMeta {
-            do {
-                let (h, meta) = try await openSecureMessage(
-                    envelope: machine.meta,
-                    want: Place(.machineMeta, machineId: machine.id),
-                    as: PBMachineMeta.self,
-                    history: !trackRef
-                )
-                out.meta = meta
-                out.metaRev = h.seq
-            } catch {
-                out.metaBroken = true
-                report(error)
-            }
-        }
-        if trackRef {
-            out.cacheRef = trackCacheRef(.machine(machine))
-        }
-        return out
-    }
-
-    func decodeSession(_ rs: PBRemoteSession, trackRef: Bool) async -> PBCorePlainSession {
-        var out = PBCorePlainSession()
-        out.sessionID = rs.sessionID
-        out.machineID = rs.machineID
-        out.lastSeq = rs.lastSeq
-        out.updatedMs = rs.updatedMs
-        out.listedEndedMs = rs.endedMs
-        do {
-            try rejectRetiredHistory(rs.key)
-            let opened = try await securitySession().openHistory(rs.key)
-            let kh = projection(opened.0)
-            let raw = opened.1
-            try Envelopes.expect(kh, Place(.sessionKey, machineId: rs.machineID, sessionId: rs.sessionID))
-            if raw.count != keySize {
-                throw OpenError(L10nMessage.errorsIosCryptoBadSessionKey())
-            }
-            if sessionKeys[rs.sessionID] != raw {
-                sessionKeys[rs.sessionID] = raw
-                directGate.setKey(rs.sessionID, present: !raw.isEmpty)
-            }
-            if rs.hasMeta {
-                let (mh, info) = try await openSecureMessage(
-                    envelope: rs.meta,
-                    want: Place(.sessionMeta, machineId: rs.machineID, sessionId: rs.sessionID),
-                    as: PBSession.self,
-                    history: !trackRef
-                )
-                out.meta = info
-                out.metaRev = mh.seq
-                machineReplacements[rs.sessionID] = info.machineReplacements
-                if !info.currentCheckpoint.isEmpty {
-                    if let cp = try? PBLiveSnapshot(serializedBytes: info.currentCheckpoint),
-                       cp.session.id == rs.sessionID,
-                       cp.session.lastSeq <= info.lastSeq,
-                       cp.actions.allSatisfy({ $0.sessionID == rs.sessionID && $0.seq <= info.lastSeq }) {
-                        out.checkpoint = cp
-                    } else {
-                        out.checkpointInvalid = true
-                    }
-                }
-            }
-        } catch is UnsupportedHistoryError {
-            out.retiredHistory = true
-        } catch {
-            out.openFailed = true
-            report(error)
-        }
-        if trackRef {
-            out.cacheRef = trackCacheRef(.session(rs))
-        }
-        return out
-    }
-
-    func decodeDevice(_ device: PBDevice) async -> PBCorePlainDevice {
-        var out = PBCorePlainDevice()
-        out.deviceID = device.id
-        out.kind = device.kind
-        out.createdMs = device.createdMs
-        out.lastSeenMs = device.lastSeenMs
-        if device.hasMeta, device.kind == .client {
-            do {
-                let (h, meta) = try await openSecureMessage(
-                    envelope: device.meta,
-                    want: Place(.deviceMeta, requestId: device.id),
-                    as: PBDeviceMeta.self
-                )
-                try DeviceSecurity.check(h.seq >= device.metaRevision, .stale)
-                out.meta = meta
-                out.metaRev = h.seq
-            } catch {
-                out.metaBroken = true
-                report(error)
-            }
-        } else {
-            out.metaRev = device.metaRevision
-        }
-        return out
-    }
-
-    func decodeAccountPrefs(_ obj: PBAccountPrefsObject, trackRef: Bool) async throws -> PBCorePlainAccountPrefs {
-        var out = PBCorePlainAccountPrefs()
-        out.revision = obj.revision
-        if obj.hasEnvelope && !obj.envelope.securityHeader.isEmpty && obj.revision > 0 {
-            do {
-                let (h, prefs) = try await openSecureMessage(
-                    envelope: obj.envelope,
-                    want: Place(.accountPrefs, requestId: projectPrefsID),
-                    as: PBProjectPrefs.self,
-                    history: true
-                )
-                out.revision = max(obj.revision, h.seq)
-                out.prefs = prefs
-            } catch {
-                out.broken = true
-                report(error)
-            }
-        }
-        if trackRef {
-            out.cacheRef = trackCacheRef(.prefs(obj))
-        }
-        return out
-    }
-
-    func decodeEvents(
-        _ stored: [PBStoredEvent],
-        machineId: String,
-        sessionId: String,
-        history: Bool,
-        trackRef: Bool
-    ) async -> [PBCorePlainEvent] {
-        guard !stored.isEmpty else { return [] }
-        guard let sessionSeed = sessionKeys[sessionId] else {
-            return stored.map { se in
-                var ev = PBCorePlainEvent()
-                ev.seq = se.seq
-                do {
-                    try rejectRetiredHistory(se.envelope)
-                    ev.broken = true
-                } catch is UnsupportedHistoryError {
-                    ev.retired = true
-                } catch {
-                    ev.broken = true
-                }
-                return ev
-            }
-        }
-
-        let batchSize = DeviceSecurityClient.historyBatchSize
-        var historyResults: [Int: Result<(DeviceSecurity.Header, Data), Error>] = [:]
-        var output: [PBCorePlainEvent] = []
-        output.reserveCapacity(stored.count)
-
-        for (index, se) in stored.enumerated() {
-            if history && index % batchSize == 0 {
-                let end = min(index + batchSize, stored.count)
-                let indices = (index..<end).filter {
-                    (try? PBHeader(serializedBytes: stored[$0].envelope.header).version) != 1
-                }
-                historyResults.removeAll(keepingCapacity: true)
-                if !indices.isEmpty {
-                    do {
-                        let results = try await securitySession().openHistoryBatch(
-                            indices.map { stored[$0].envelope },
-                            sessionSeed: sessionSeed
-                        )
-                        historyResults = Dictionary(uniqueKeysWithValues: zip(indices, results))
-                    } catch {
-                        historyResults = Dictionary(uniqueKeysWithValues: indices.map { ($0, .failure(error)) })
-                    }
-                }
-            }
-
-            var item = PBCorePlainEvent()
-            item.seq = se.seq
-            do {
-                try rejectRetiredHistory(se.envelope)
-                let opened: (DeviceSecurity.Header, Data)
-                if history {
-                    guard let entry = historyResults[index] else {
-                        throw DeviceSecurity.Failure.storage
-                    }
-                    opened = try entry.get()
-                } else {
-                    opened = try await securitySession().openCurrent(se.envelope, sessionSeed: sessionSeed)
-                }
-                let h = projection(opened.0)
-                let plain = opened.1
-                let place = try await historicalPlace(
-                    Place(.event, machineId: machineId, sessionId: sessionId, seq: se.seq),
-                    header: h,
-                    history: history
-                )
-                try Envelopes.expect(h, place)
-                guard let pb = try? PBEvent(serializedBytes: plain),
-                      pb.seq == se.seq,
-                      pb.sessionID == sessionId else {
-                    item.broken = true
-                    output.append(item)
-                    continue
-                }
-                item.event = pb
-                item.verified = true
-                item.approxBytes = Int64(plain.count) + 256
-                if trackRef {
-                    item.cacheRef = trackCacheRef(.event(se))
-                }
-            } catch let unavailable as RecoveryHistoryUnavailable {
-                do {
-                    let h = projection(unavailable.header)
-                    let place = try await historicalPlace(
-                        Place(.event, machineId: machineId, sessionId: sessionId, seq: se.seq),
-                        header: h,
-                        history: history
-                    )
-                    try Envelopes.expect(h, place)
-                    var slot = PBEvent()
-                    slot.seq = se.seq
-                    slot.sessionID = sessionId
-                    item.event = slot
-                    item.unavailable = true
-                    item.approxBytes = 256
-                    if trackRef {
-                        item.cacheRef = trackCacheRef(.event(se))
-                    }
-                } catch is UnsupportedHistoryError {
-                    item.retired = true
-                } catch {
-                    item.broken = true
-                }
-            } catch is UnsupportedHistoryError {
-                item.retired = true
-            } catch {
-                item.broken = true
-            }
-            output.append(item)
-        }
-        return output
     }
 
     // MARK: - Cache I/O Execution
@@ -431,32 +130,44 @@ extension Remote {
             var loaded = PBCoreCacheBootstrapLoadedEvent()
             loaded.opID = req.opID
             do {
-                let identity = try securityIdentity()
-                let client = try securitySession()
-                let members = Dictionary(uniqueKeysWithValues: identity.1.core.members.map { ($0.id, $0) })
-                let archive = try await client.historicalMachines()
-                self.trustedMembers = members
-                self.archiveMachines = archive
-                self.authorityDeviceId = identity.1.core.authorityID
-                self.leaseEndMs = try await client.leaseExpiration()
+                _ = try securityIdentity()
+                _ = try securitySession()
+                guard let securityStorage else { throw DeviceSecurity.Failure.storage }
+                let record = try securityStorage.readSecurity()
+                let members = Dictionary(uniqueKeysWithValues: record.state.core.members.map { ($0.id, $0) })
+                let archive = Set(record.states.values.flatMap { $0.core.members }.filter { $0.kind == 1 }.map { $0.id })
                 for id in archive where members[id]?.kind != 1 {
                     await cache?.removeBlob(name: "schedules/" + id)
                 }
+                await ensureSecurityConfigured()
+                let recEv = try buildSecurityRecordEvent(
+                    record: record,
+                    opId: 0,
+                    pushSeq: nextSecurityPushSeq(),
+                    networkGeneration: networkGeneration,
+                    recoveryPending: recoveryPending,
+                    recoveryReadyMs: recoveryReadyMs,
+                    recoveryObjectsPending: recoveryObjectsPending
+                )
+                if let onWait = hostHooks?.onSecurityRecordAndWait {
+                    await onWait(recEv)
+                } else {
+                    try? ensureFallbackRunner().syncRecord(recEv, nowMs: clock())
+                }
+                securityRecordLoaded = true
                 if let cache {
                     for var m in await cache.machines() {
                         guard members[m.id]?.kind == 1 || archive.contains(m.id) else { continue }
                         m.online = false
-                        loaded.machines.append(await decodeMachine(m, trackRef: false))
+                        loaded.wireMachines.append(m)
                     }
                     for s in await cache.sessions() {
                         guard members[s.machineID]?.kind == 1 || archive.contains(s.machineID) else { continue }
-                        loaded.sessions.append(await decodeSession(s, trackRef: false))
+                        loaded.wireSessions.append(s)
                     }
                     if let blob = await cache.blob(name: projectPrefsID),
                        let obj = try? PBAccountPrefsObject(serializedBytes: blob) {
-                        if let plainPrefs = try? await decodeAccountPrefs(obj, trackRef: false) {
-                            loaded.prefs = plainPrefs
-                        }
+                        loaded.wirePrefs = obj
                     }
                 }
             } catch {
@@ -469,20 +180,9 @@ extension Remote {
             loaded.opID = req.opID
             loaded.sessionID = req.sessionID
             if let cache {
-                let stored = req.newest
+                loaded.wireEvents = req.newest
                     ? await cache.newestEvents(sessionId: req.sessionID)
                     : await cache.eventPage(sessionId: req.sessionID, afterSeq: req.afterSeq)
-                let machineId = machineIdForSession(req.sessionID)
-                let decoded = await decodeEvents(
-                    stored,
-                    machineId: machineId,
-                    sessionId: req.sessionID,
-                    history: true,
-                    trackRef: false
-                )
-                loaded.events = decoded
-                loaded.retired = decoded.contains(where: \.retired)
-                loaded.broken = decoded.contains(where: \.broken)
             }
             event.cacheEventsLoaded = loaded
         case nil:
@@ -494,34 +194,21 @@ extension Remote {
     public func executeCacheWrite(_ effect: PBCoreCacheWriteEffect) async {
         guard let cache else { return }
         switch effect.kind {
-        case .writeMachineRef(let ref):
-            if case .machine(let m)? = cacheRefs[ref] {
-                await cache.putMachine(m)
+        case .writeMachine(let m):
+            await cache.putMachine(m)
+        case .writeSession(let rs):
+            await cache.putSession(rs)
+        case .keepSessionOwner(let rs):
+            await cache.keepOwner(rs)
+        case .writeStoredEvents(let batch):
+            if !batch.events.isEmpty {
+                await cache.putEvents(sessionId: batch.sessionID, events: batch.events)
             }
-        case .writeSessionRef(let ref):
-            if case .session(let rs)? = cacheRefs[ref] {
-                await cache.putSession(rs)
-            }
-        case .keepSessionOwnerRef(let ref):
-            if case .session(let rs)? = cacheRefs[ref] {
-                await cache.keepOwner(rs)
-            }
-        case .writeEvents(let batch):
-            let items: [PBStoredEvent] = batch.cacheRefs.compactMap { ref in
-                if case .event(let se)? = cacheRefs[ref] { return se }
-                return nil
-            }
-            if !items.isEmpty {
-                await cache.putEvents(sessionId: batch.sessionID, events: items)
-            }
-        case .writePrefsRef(let ref):
-            if case .prefs(let obj)? = cacheRefs[ref],
-               let data = try? obj.serializedData() {
+        case .writePrefs(let obj):
+            if let data = try? obj.serializedData() {
                 await cache.putBlob(name: projectPrefsID, data: data)
             }
-        case .setSessionOpen:
-            break
-        case nil:
+        case .writeMachineRef, .writeSessionRef, .keepSessionOwnerRef, .writeEvents, .writePrefsRef, .setSessionOpen, nil:
             break
         }
     }
@@ -534,9 +221,6 @@ extension Remote {
         case .dropEventsSessionID(let sid):
             await cache?.dropEvents(sessionId: sid)
         case .removeSessionID(let sid):
-            sessionKeys.removeValue(forKey: sid)
-            directGate.setKey(sid, present: false)
-            machineReplacements.removeValue(forKey: sid)
             await cache?.removeSession(id: sid)
             await onSessionRemoved?(sid)
             await self.sessionRemovalHandler(sid)
@@ -585,18 +269,12 @@ extension Remote {
                     async let d = apiClient.listDevices(request: .init(), headers: headers).value()
                     return try await (m, s, d)
                 }
-                for m in machinesResp.machines {
-                    res.machines.append(await decodeMachine(m, trackRef: true))
-                }
-                for s in sessionsResp.sessions {
-                    res.sessions.append(await decodeSession(s, trackRef: true))
-                }
+                res.wireMachines = machinesResp.machines
+                res.wireSessions = sessionsResp.sessions
                 if sessionsResp.hasNext {
                     res.next = sessionsResp.next
                 }
-                for d in devicesResp.devices {
-                    res.devices.append(await decodeDevice(d))
-                }
+                res.wireDevices = devicesResp.devices
             } catch {
                 res.error = errorText(error)
                 res.unresolvedHost = unresolvedHost(error)
@@ -616,9 +294,7 @@ extension Remote {
                 let page = try await withAuthRetry { headers in
                     try await apiClient.listRemoteSessions(request: ask, headers: headers).value()
                 }
-                for s in page.sessions {
-                    res.sessions.append(await decodeSession(s, trackRef: true))
-                }
+                res.wireSessions = page.sessions
                 if page.hasNext {
                     res.next = page.next
                 }
@@ -640,7 +316,7 @@ extension Remote {
                     try await apiClient.listRemoteSessions(request: ask, headers: headers).value()
                 }
                 if let rs = reply.sessions.first(where: { $0.sessionID == req.sessionID }) {
-                    res.session = await decodeSession(rs, trackRef: true)
+                    res.wireSession = rs
                 }
             } catch {
                 res.error = errorText(error)
@@ -662,14 +338,7 @@ extension Remote {
                 let reply = try await withAuthRetry { headers in
                     try await apiClient.getEvents(request: ask, headers: headers).value()
                 }
-                let machineId = machineIdForSession(req.sessionID)
-                res.events = await decodeEvents(
-                    reply.events,
-                    machineId: machineId,
-                    sessionId: req.sessionID,
-                    history: true,
-                    trackRef: true
-                )
+                res.wireEvents = reply.events
                 res.more = reply.more
             } catch {
                 res.error = errorText(error)
@@ -688,7 +357,7 @@ extension Remote {
                 let reply = try await withAuthRetry { headers in
                     try await apiClient.getAccountPrefs(request: ask, headers: headers).value()
                 }
-                res.prefs = try await decodeAccountPrefs(reply.object, trackRef: true)
+                res.wirePrefs = reply.object
             } catch {
                 res.error = errorText(error)
                 report(error)
@@ -700,20 +369,23 @@ extension Remote {
             res.opID = rpc.opID
             do {
                 let objectId = req.objectID.isEmpty ? projectPrefsID : req.objectID
-                let client = try securitySession()
                 let env: PBEnvelope
-                do {
-                    env = try await client.seal(
-                        purpose: .prefs,
-                        request: objectId,
-                        seq: req.expectedRevision + 1,
-                        plaintext: try req.nextPrefs.serializedData()
-                    )
-                } catch DeviceSecurity.Failure.conflict {
-                    res.sealConflict = true
-                    res.error = errorText(DeviceSecurity.Failure.conflict)
-                    event.accountPrefsPutResult = res
-                    return event
+                if req.hasSealedEnvelope {
+                    env = req.sealedEnvelope
+                } else {
+                    do {
+                        env = try await sealEnvelopeOp(
+                            purpose: .prefs,
+                            requestId: objectId,
+                            seq: req.expectedRevision + 1,
+                            plaintext: try req.nextPrefs.serializedData()
+                        ).envelope
+                    } catch DeviceSecurity.Failure.conflict {
+                        res.sealConflict = true
+                        res.error = errorText(DeviceSecurity.Failure.conflict)
+                        event.accountPrefsPutResult = res
+                        return event
+                    }
                 }
                 let apiClient = api.client
                 var putReq = PBPutAccountPrefsRequest()
@@ -726,15 +398,7 @@ extension Remote {
                 }
                 res.applied = reply.applied
                 if reply.hasObject {
-                    if reply.applied {
-                        var plain = PBCorePlainAccountPrefs()
-                        plain.revision = reply.object.revision
-                        plain.prefs = req.nextPrefs
-                        plain.cacheRef = trackCacheRef(.prefs(reply.object))
-                        res.current = plain
-                    } else {
-                        res.current = try await decodeAccountPrefs(reply.object, trackRef: true)
-                    }
+                    res.wireCurrent = reply.object
                 }
             } catch {
                 res.error = errorText(error)
@@ -750,9 +414,7 @@ extension Remote {
                 let reply = try await withAuthRetry { headers in
                     try await apiClient.listDevices(request: .init(), headers: headers).value()
                 }
-                for d in reply.devices {
-                    res.devices.append(await decodeDevice(d))
-                }
+                res.wireDevices = reply.devices
             } catch {
                 res.error = errorText(error)
                 report(error)

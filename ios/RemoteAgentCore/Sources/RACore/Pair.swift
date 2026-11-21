@@ -1,104 +1,75 @@
-// Pairing crypto, matching internal/e2e/pair.go, web/src/pair.ts and
-// Android's core/Pair.kt: X25519 keys, the initiator's commitment, the
-// transcript, and the four-emoji SAS.
-import CryptoKit
+// Pairing crypto, delegated to Go clientcore corebind + SecCall.
 import Foundation
-
-private let pairTranscriptContext = "remote-agent/v1/pair\u{0}"
 
 private let badPairKey = UserError(L10nMessage.securityInvalidPairingKey())
 
 /// One side's ephemeral X25519 key pair.
 public struct PairKey: Sendable {
-    private let priv: Curve25519.KeyAgreement.PrivateKey
+    private let priv: Data
     public let publicKey: Data
 
-    public init(privateKey: Data = randomBytes(32)) throws {
-        guard privateKey.count == 32 else { throw badPairKey }
-        priv = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: privateKey)
-        publicKey = priv.publicKey.rawRepresentation
+    public init(privateKey: Data = randomBytes(keySize)) throws {
+        guard privateKey.count == keySize,
+              let pub = try? SecCall.x25519PublicKey(privateKey)
+        else { throw badPairKey }
+        self.priv = privateKey
+        self.publicKey = pub
     }
 
     /// The shared secrets with the other side; rejects keys that give an all-zero result.
     public func derive(otherPublic: Data, transcript: Data) throws -> PairSecrets {
-        guard otherPublic.count == 32,
-            let other = try? Curve25519.KeyAgreement.PublicKey(rawRepresentation: otherPublic),
-            let secret = try? priv.sharedSecretFromKeyAgreement(with: other)
+        guard otherPublic.count == keySize,
+              let shared = try? SecCall.x25519Shared(priv, otherPublic),
+              shared.contains(where: { $0 != 0 })
         else { throw badPairKey }
-        let shared = secret.withUnsafeBytes { Data($0) }
-        // A low-order point gives zero whatever our key is: the secret would be no secret.
-        guard shared.contains(where: { $0 != 0 }) else { throw badPairKey }
-        return PairSecrets(
-            sas: hkdf(
-                secret: shared, salt: transcript, info: Data("remote-agent/v1/pair-sas".utf8),
-                size: 4),
-            key: hkdf(
-                secret: shared, salt: transcript, info: Data("remote-agent/v1/pair-key".utf8),
-                size: keySize
-            ))
+        let (key, sas, emoji) = try SecCall.derivePairSecrets(shared: shared, transcript: transcript)
+        return PairSecrets(sas: sas, key: key, emoji: emoji)
     }
 }
 
 public struct PairSecrets: Sendable {
     public let sas: Data
     public let key: Data
-    public var emoji: [String] { sas.map { sasEmoji[Int($0)] } }
+    public let emoji: [String]
 }
 
 public enum Pairing {
     public static func domainTranscript(
         pairingId: String, initiatorPublic: Data, joinerPublic: Data, devicePublic: Data,
         hpkePublic: Data, joinerKind: Int, trust: Data
-    ) -> Data {
-        let inner = identityTranscript(
-            pairingId: pairingId, initiatorPublic: initiatorPublic, joinerPublic: joinerPublic,
-            devicePublic: devicePublic, joinerKind: joinerKind)
-        return sha256(
-            Data("ra3/pair-domain\0".utf8) + u32be(inner.count) + inner + u32be(hpkePublic.count)
-                + hpkePublic + u32be(trust.count) + trust)
+    ) throws -> Data {
+        try SecCall.pairDomainTranscript(
+            pairingId: pairingId,
+            initiatorPublic: initiatorPublic,
+            joinerPublic: joinerPublic,
+            deviceEdPublic: devicePublic,
+            deviceXPublic: hpkePublic,
+            joinerKind: joinerKind,
+            trustDescriptor: trust
+        )
     }
+
     public static func identityTranscript(
         pairingId: String, initiatorPublic: Data, joinerPublic: Data, devicePublic: Data,
         joinerKind: Int
-    ) -> Data {
-        var n = UInt32(devicePublic.count).bigEndian
-        return sha256(
-            Data("remote-agent/v1/pair-identity\0".utf8)
-                + transcript(
-                    pairingId: pairingId, initiatorPublic: initiatorPublic,
-                    joinerPublic: joinerPublic,
-                    joinerKind: joinerKind) + withUnsafeBytes(of: &n) { Data($0) } + devicePublic)
+    ) throws -> Data {
+        try SecCall.pairIdentityTranscript(
+            pairingId: pairingId,
+            initiatorPublic: initiatorPublic,
+            joinerPublic: joinerPublic,
+            deviceEdPublic: devicePublic,
+            joinerKind: joinerKind
+        )
     }
 
     public static func transcript(
         pairingId: String, initiatorPublic: Data, joinerPublic: Data, joinerKind: Int
-    ) -> Data {
-        var t = Data(pairTranscriptContext.utf8)
-        for p in [Data(pairingId.utf8), initiatorPublic, joinerPublic] {
-            t += u32be(p.count)
-            t += p
-        }
-        t += u32be(joinerKind)
-        return sha256(t)
+    ) throws -> Data {
+        try SecCall.pairTranscript(
+            pairingId: pairingId,
+            initiatorPublic: initiatorPublic,
+            joinerPublic: joinerPublic,
+            joinerKind: joinerKind
+        )
     }
 }
-
-/// The 256 emoji a SAS byte maps to; the same table, in the same order, as every other client.
-public let sasEmoji: [String] = [
-    "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐔",
-    "🐧", "🐦", "🐤", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🐛", "🦋", "🐌", "🐞",
-    "🐜", "🦗", "🕷", "🦂", "🐢", "🐍", "🦎", "🦖", "🦕", "🐙", "🦑", "🦐", "🦞", "🦀", "🐡", "🐠",
-    "🐟", "🐬", "🐳", "🐋", "🦈", "🐊", "🐅", "🐆", "🦓", "🦍", "🦧", "🐘", "🦛", "🦏", "🐪", "🐫",
-    "🦒", "🦘", "🐃", "🐂", "🐄", "🐎", "🐖", "🐏", "🐑", "🦙", "🐐", "🦌", "🐕", "🐩", "🦮", "🐈",
-    "🐓", "🦃", "🦚", "🦜", "🦢", "🦩", "🕊", "🐇", "🦝", "🦨", "🦡", "🦦", "🦥", "🐁", "🐀", "🐿",
-    "🦔", "🌵", "🎄", "🌲", "🌳", "🌴", "🌱", "🌿", "☘", "🍀", "🎍", "🎋", "🍃", "🍂", "🍁", "🍄",
-    "🐚", "🌾", "💐", "🌷", "🌹", "🥀", "🌺", "🌸", "🌼", "🌻", "🌞", "🌝", "🌛", "🌜", "🌚", "🌕",
-    "🌖", "🌗", "🌘", "🌑", "🌒", "🌓", "🌔", "🌙", "🌎", "🌍", "🌏", "🪐", "💫", "⭐", "🌟", "✨",
-    "⚡", "☄", "💥", "🔥", "🌪", "🌈", "☀", "🌤", "⛅", "🌥", "☁", "🌦", "🌧", "⛈", "🌩", "🌨",
-    "❄", "☃", "⛄", "🌬", "💨", "💧", "💦", "☔", "☂", "🌊", "🍏", "🍎", "🍐", "🍊", "🍋", "🍌",
-    "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🍆", "🥑", "🥦", "🥬",
-    "🥒", "🌶", "🫑", "🌽", "🥕", "🧄", "🧅", "🥔", "🍠", "🥐", "🥯", "🍞", "🥖", "🥨", "🧀", "🥚",
-    "🍳", "🧈", "🥞", "🧇", "🥓", "🥩", "🍗", "🍖", "🌭", "🍔", "🍟", "🍕", "🥪", "🥙", "🧆", "🌮",
-    "🌯", "🥗", "🥘", "🥫", "🍝", "🍜", "🍲", "🍛", "🍣", "🍱", "🥟", "🦪", "🍤", "🍙", "🍚", "🍘",
-    "🍥", "🥠", "🥮", "🍢", "🍡", "🍧", "🍨", "🍦", "🥧", "🧁", "🍰", "🎂", "🍮", "🍭", "🍬", "🍫",
-]

@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import RAProto
 import SwiftProtobuf
@@ -97,9 +96,8 @@ final class TestSecurity: @unchecked Sendable {
         guard let head = states.values.max(by: { $0.core.epoch < $1.core.epoch }) else {
             throw TestFailure("empty synthetic chain")
         }
-        let xKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: x)
         let present = head.core.member(memberID) != nil
-        let secret = present ? try DeviceSecurity.openGrant(pin, head, recipient: memberID, x: xKey) : nil
+        let secret = present ? try DeviceSecurity.openGrant(pin, head, recipient: memberID, xPrivate: x) : nil
         return try DeviceSecurity.Record(
             pin: pin, states: states, memberID: memberID, xPrivate: x, member: present,
             secret: secret, recovery: recovery, lease: try DeviceSecurity.HeadLease.parse(Data(base64Encoded:o["lease"] as! String)!))

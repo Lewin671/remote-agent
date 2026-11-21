@@ -76,7 +76,7 @@ import Testing
         let joiner = try PairKey(privateKey: p.bytes("joiner_private"))
         #expect(initiator.publicKey.hex == p.s("initiator_public"))
         #expect(joiner.publicKey.hex == p.s("joiner_public"))
-        let tr = Pairing.transcript(
+        let tr = try Pairing.transcript(
             pairingId: p.s("pairing_id"), initiatorPublic: initiator.publicKey, joinerPublic: joiner.publicKey,
             joinerKind: p["joiner_kind"] as! Int)
         #expect(tr.hex == p.s("transcript"))
@@ -85,8 +85,9 @@ import Testing
         #expect(a.sas.hex == p.s("sas"))
         #expect(a.key.hex == p.s("key"))
         #expect(b.key.hex == p.s("key"))
-        #expect(sasEmoji == p["emoji"] as! [String])
-        #expect(Set(sasEmoji).count == 256)
+        let emojiTable = Set(p["emoji"] as! [String])
+        #expect(a.emoji.count == 4 && a.emoji == b.emoji)
+        #expect(a.emoji.allSatisfy { emojiTable.contains($0) })
     }
 
     /// The joiner's kind comes from the server, which may send any int32.
@@ -96,7 +97,7 @@ import Testing
         let device = Data(repeating: 3, count: 32)
         let hpke = Data(repeating: 4, count: 32)
         let trust = Data(repeating: 5, count: 17)
-        let transcript = Pairing.domainTranscript(
+        let transcript = try Pairing.domainTranscript(
             pairingId: "pair-test", initiatorPublic: a, joinerPublic: b, devicePublic: device,
             hpkePublic: hpke, joinerKind: 2, trust: trust)
         #expect(transcript.hex == "07413d1f09c11d5ed6b66a63047a31697b33fa87d333f51407abf757f3509072")
@@ -125,7 +126,7 @@ import Testing
         var want = Data("remote-agent/v1/pair\u{0}".utf8)
         for p in [Data(id.utf8), a, b] { want += Data([0, 0, 0, UInt8(p.count)]) + p }
         want += Data([0xff, 0xff, 0xff, 0xff])
-        #expect(Pairing.transcript(pairingId: id, initiatorPublic: a, joinerPublic: b, joinerKind: -1) == sha256(want))
+        #expect(try Pairing.transcript(pairingId: id, initiatorPublic: a, joinerPublic: b, joinerKind: -1) == sha256(want))
     }
 
     @Test func rejectsAllZeroSharedSecrets() throws {

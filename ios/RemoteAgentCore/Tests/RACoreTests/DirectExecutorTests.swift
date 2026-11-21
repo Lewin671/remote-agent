@@ -33,36 +33,13 @@ import Testing
         var items: [T] { lock.withLock { list } }
     }
 
-    @Test(.timeLimit(.minutes(1))) func keyOperationsAndSignalFraming() throws {
-        let seed = Data((0..<32).map { UInt8($0 + 1) })
-        let xPriv = Curve25519.KeyAgreement.PrivateKey()
-        let peerX = Curve25519.KeyAgreement.PrivateKey()
+    @Test(.timeLimit(.minutes(1))) func signalFraming() throws {
         let emitted = Recorder<PBCoreEvent>()
 
         let exec = DirectExecutor(
-            deviceSeed: { seed },
-            xPrivateKey: { xPriv },
             emit: { ev in emitted.append(ev) },
             onPushedEvent: { _, _, _, _, _ in }
         )
-
-        // Ed25519 signing
-        let msg = Data("sign-this-transcript".utf8)
-        exec.keySign(.with { $0.opID = 11; $0.message = msg })
-        let signed = try #require(emitted.items.first?.directKeySigned)
-        #expect(signed.opID == 11)
-        let pubEd = try Curve25519.Signing.PublicKey(rawRepresentation: SigningKey(seed: seed).publicKey)
-        #expect(pubEd.isValidSignature(signed.signature, for: msg))
-
-        // X25519 key agreement + invalid key rejection
-        exec.keyAgree(.with { $0.opID = 22; $0.peerID = "m1"; $0.peerXPublic = peerX.publicKey.rawRepresentation })
-        let agreed = try #require(emitted.items.last?.directKeyAgreed)
-        let expectedShared = try xPriv.sharedSecretFromKeyAgreement(with: peerX.publicKey).withUnsafeBytes { Data($0) }
-        #expect(agreed.opID == 22 && agreed.ok && agreed.sharedSecret == expectedShared)
-
-        exec.keyAgree(.with { $0.opID = 23; $0.peerID = "m1"; $0.peerXPublic = Data([1, 2, 3]) })
-        let badAgree = try #require(emitted.items.last?.directKeyAgreed)
-        #expect(badAgree.opID == 23 && !badAgree.ok)
 
         // Signal send over attached leg
         let signalEff = PBCoreDirectSignalSendEffect.with {
@@ -89,8 +66,6 @@ import Testing
         let pushed = Recorder<(String, UInt64, UInt64)>()
 
         let exec = DirectExecutor(
-            deviceSeed: { nil },
-            xPrivateKey: { nil },
             emit: { ev in emitted.append(ev) },
             onPushedEvent: { mid, pcId, _, hdr, _ in
                 pushed.append((mid, pcId, hdr.seq))
@@ -180,8 +155,6 @@ import Testing
         let factory = FakeRtcFactory(net: net)
         let emitted = Recorder<PBCoreEvent>()
         let exec = DirectExecutor(
-            deviceSeed: { nil },
-            xPrivateKey: { nil },
             emit: { ev in emitted.append(ev) },
             onPushedEvent: { _, _, _, _, _ in },
             factory: factory
@@ -213,8 +186,6 @@ import Testing
         let factory = FakeRtcFactory(net: net)
         let emitted = Recorder<PBCoreEvent>()
         let exec = DirectExecutor(
-            deviceSeed: { nil },
-            xPrivateKey: { nil },
             emit: { ev in emitted.append(ev) },
             onPushedEvent: { _, _, _, _, _ in },
             factory: factory

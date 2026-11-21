@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 extension DeviceSecurity {
@@ -36,21 +35,20 @@ extension DeviceSecurity {
             guard let head = states.values.max(by: { $0.core.epoch < $1.core.epoch }),
                 states.count == Int(head.core.epoch)
             else { throw Failure.invalid }
+            var orderedStates: [State] = []
+            var orderedProofs: [RecoveryStatement?] = []
+            orderedStates.reserveCapacity(Int(head.core.epoch))
+            orderedProofs.reserveCapacity(Int(head.core.epoch))
             for ep in 1...head.core.epoch {
-                try check(states[ep]?.core.epoch == ep, .storage)
+                guard let s = states[ep], s.core.epoch == ep else { throw Failure.storage }
+                orderedStates.append(s)
+                orderedProofs.append(recovery[ep])
             }
-            try verifyGenesis(pin, states[1]!)
-            if head.core.epoch > 1 {
-                for ep in 2...head.core.epoch {
-                    try verifyTransition(
-                        parent: states[ep - 1]!, next: states[ep]!, recovery: recovery[ep])
-                }
-            }
+            try DeviceSecurity.verifyChain(pin: pin, states: orderedStates, proofs: orderedProofs)
             try check((head.core.member(memberID) != nil) == member, .storage)
             if member {
                 guard let secret, secret.count == 32 else { throw Failure.storage }
-                let x = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate)
-                let opened = try openGrant(pin, head, recipient: memberID, x: x)
+                let opened = try openGrant(pin, head, recipient: memberID, xPrivate: xPrivate)
                 try check(opened == secret, .storage)
             } else if let secret {
                 // A removed device keeps the last content key it held so its
@@ -70,6 +68,20 @@ extension DeviceSecurity {
             self.contentKeys = contentKeys
             self.recovery = recovery
             self.lease = lease
+        }
+        public func verifyWithNext(_ next: State, recovery proof: RecoveryStatement? = nil) throws {
+            var chain: [State] = []
+            var proofs: [RecoveryStatement?] = []
+            chain.reserveCapacity(Int(headEpoch) + 1)
+            proofs.reserveCapacity(Int(headEpoch) + 1)
+            for ep in 1...headEpoch {
+                guard let s = states[ep] else { throw Failure.storage }
+                chain.append(s)
+                proofs.append(recovery[ep])
+            }
+            chain.append(next)
+            proofs.append(proof)
+            try DeviceSecurity.verifyChain(pin: pin, states: chain, proofs: proofs)
         }
         public func includesInstallation(_ older: Record) throws -> Bool {
             guard pin == older.pin, memberID == older.memberID, headEpoch >= older.headEpoch,
@@ -104,9 +116,8 @@ extension DeviceSecurity {
             }
             return next
         }
-        public var xKey: Curve25519.KeyAgreement.PrivateKey {
-            get throws { try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: xPrivate) }
-        }
+        public var xPrivateRaw: Data { xPrivate }
+
         /// The content key of `epoch`, from the cache or by walking PrevSecret
         /// back from the head. Reaching an empty PrevSecret is a recovery
         /// boundary: older content is unavailable to this device.
@@ -117,7 +128,7 @@ extension DeviceSecurity {
             // replaced the key and the head no longer names it.
             if let own = states.values.first(where: {
                 $0.core.contentEpoch == epoch && $0.core.member(memberID) != nil
-            }), let key = try? openGrant(pin, own, recipient: memberID, x: xKey) {
+            }), let key = try? openGrant(pin, own, recipient: memberID, xPrivate: xPrivate) {
                 return key
             }
             let head = state
