@@ -9,9 +9,11 @@ import "remoteagent/core/v1/project_view.proto";
 import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/session_view.proto";
 import "remoteagent/core/v1/schedules_view.proto";
+import "remoteagent/core/v1/security.proto";
 import "remoteagent/core/v1/sync_view.proto";
 import "remoteagent/core/v1/transport.proto";
 import "remoteagent/core/v1/usage_view.proto";
+import "remoteagent/v1/envelope.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
 import "remoteagent/v1/relay.proto";
@@ -222,6 +224,9 @@ message CacheBootstrapLoadedEvent {
   string home_scope_token = 5;
   bytes scope_hmac_key = 6;
   string error = 7;
+  repeated remoteagent.v1.Machine wire_machines = 10;
+  repeated remoteagent.v1.RemoteSession wire_sessions = 11;
+  remoteagent.v1.AccountPrefsObject wire_prefs = 12;
 }
 
 message CacheEventsLoadedEvent {
@@ -231,6 +236,7 @@ message CacheEventsLoadedEvent {
   bool broken = 4;
   bool retired = 5;
   string error = 6;
+  repeated remoteagent.v1.StoredEvent wire_events = 10;
 }
 
 message TokenResultEvent {
@@ -279,6 +285,7 @@ message StreamClosedEvent {
 message EventsAppendedFrame {
   string session_id = 1;
   repeated PlainEvent events = 2;
+  repeated remoteagent.v1.StoredEvent wire_events = 10;
 }
 
 message StreamFrameEvent {
@@ -292,6 +299,10 @@ message StreamFrameEvent {
     PlainAccountPrefs account_prefs_updated = 7;
     PlainDevice device_updated = 8;
     string device_removed_id = 9;
+    remoteagent.v1.Machine wire_machine_updated = 10;
+    remoteagent.v1.RemoteSession wire_session_updated = 11;
+    remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12;
+    remoteagent.v1.Device wire_device_updated = 13;
   }
 }
 
@@ -303,6 +314,9 @@ message ListsFetchedEvent {
   repeated PlainDevice devices = 5;
   string error = 6;
   bool unresolved_host = 7;
+  repeated remoteagent.v1.Machine wire_machines = 10;
+  repeated remoteagent.v1.RemoteSession wire_sessions = 11;
+  repeated remoteagent.v1.Device wire_devices = 12;
 }
 
 message SessionsPageFetchedEvent {
@@ -310,12 +324,14 @@ message SessionsPageFetchedEvent {
   repeated PlainSession sessions = 2;
   remoteagent.v1.SessionCursor next = 3;
   string error = 4;
+  repeated remoteagent.v1.RemoteSession wire_sessions = 10;
 }
 
 message SessionByIdFetchedEvent {
   uint64 op_id = 1;
   PlainSession session = 2;
   string error = 3;
+  remoteagent.v1.RemoteSession wire_session = 10;
 }
 
 message EventsPageFetchedEvent {
@@ -324,12 +340,14 @@ message EventsPageFetchedEvent {
   repeated PlainEvent events = 3;
   bool more = 4;
   string error = 5;
+  repeated remoteagent.v1.StoredEvent wire_events = 10;
 }
 
 message AccountPrefsFetchedEvent {
   uint64 op_id = 1;
   PlainAccountPrefs prefs = 2;
   string error = 3;
+  remoteagent.v1.AccountPrefsObject wire_prefs = 10;
 }
 
 message AccountPrefsPutResultEvent {
@@ -338,6 +356,7 @@ message AccountPrefsPutResultEvent {
   PlainAccountPrefs current = 3;
   bool seal_conflict = 4;
   string error = 5;
+  remoteagent.v1.AccountPrefsObject wire_current = 10;
 }
 
 message DevicesFetchedEvent {
@@ -345,6 +364,7 @@ message DevicesFetchedEvent {
   repeated PlainDevice devices = 2;
   string error = 3;
   uint64 push_seq = 4;
+  repeated remoteagent.v1.Device wire_devices = 10;
 }
 
 enum OutcomeSource {
@@ -374,6 +394,7 @@ message CommandOutcomeEvent {
   int64 observed_bytes = 16;
   bool handed_off = 17;
   uint64 direct_ticket_id = 18;
+  remoteagent.v1.Envelope sealed_result = 20;
 }
 
 message SessionWatchEvent {
@@ -400,6 +421,7 @@ message DirectEventsReceivedEvent {
   repeated PlainEvent events = 3;
   uint64 pc_id = 4;
   string sender = 5;
+  repeated remoteagent.v1.Envelope wire_envelopes = 10;
 }
 
 message SessionScheduleHint {
@@ -642,6 +664,17 @@ message Event {
     DirectPreferencesLoadedEvent direct_preferences_loaded = 421;
     DirectSecurityInstalledEvent direct_security_installed = 422;
     DirectAuthorizeDoneEvent direct_authorize_done = 423;
+
+    // Security engine (450-499 reserved for security).
+    SecurityConfigEvent security_config = 450;
+    SecurityRecordEvent security_record = 451;
+    SecurityKeySignedEvent security_key_signed = 452;
+    SecurityKeyAgreedEvent security_key_agreed = 453;
+    SecurityKeyGeneratedEvent security_key_generated = 454;
+    SecurityKeyEncapsulatedEvent security_key_encapsulated = 455;
+    SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456;
+    SecurityOpRequestEvent security_op_request = 457;
+    SeedDemoWorldEvent seed_demo_world = 458;
   }
   int64 now_ms = 98;
   int64 mono_ms = 99;
@@ -753,6 +786,11 @@ message CacheWriteEffect {
     CacheWriteEvents write_events = 4;
     string write_prefs_ref = 5;
     CacheSessionOpen set_session_open = 6;
+    remoteagent.v1.Machine write_machine = 7;
+    remoteagent.v1.RemoteSession write_session = 8;
+    remoteagent.v1.RemoteSession keep_session_owner = 9;
+    CacheWriteStoredEvents write_stored_events = 10;
+    remoteagent.v1.AccountPrefsObject write_prefs = 11;
   }
 }
 
@@ -792,6 +830,7 @@ message PutAccountPrefsRpc {
   string object_id = 1;
   uint64 expected_revision = 2;
   remoteagent.v1.ProjectPrefs next_prefs = 3;
+  remoteagent.v1.Envelope sealed_envelope = 10;
 }
 
 message FetchDevicesRpc {
@@ -835,6 +874,7 @@ message DispatchCommandEffect {
   uint64 direct_pc_id = 14;
   int64 direct_timeout_ms = 15;
   uint64 direct_ticket_id = 16;
+  remoteagent.v1.Envelope sealed_envelope = 20;
 }
 
 message SaveHomeScopeEffect {
@@ -917,6 +957,15 @@ message Effect {
     DirectBulkRouteEffect direct_bulk_route = 111;
     TerminalReopenEffect terminal_reopen = 112;
     DirectRetryNowResultEffect direct_retry_now_result = 113;
+
+    // Security engine (130-159 reserved for security).
+    SecurityKeySignEffect security_key_sign = 130;
+    SecurityKeyAgreeEffect security_key_agree = 131;
+    SecurityKeyGenerateEffect security_key_generate = 132;
+    SecurityKeyEncapsulateEffect security_key_encapsulate = 133;
+    SecurityKeyDiscardEffect security_key_discard = 134;
+    SecurityCryptoBatchEffect security_crypto_batch = 135;
+    SecurityOpResultEffect security_op_result = 136;
   }
 }
 

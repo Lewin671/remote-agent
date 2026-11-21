@@ -20,6 +20,7 @@
 in: remoteagent.core.v1.Screen
 in: remoteagent.core.v1.Event
 in: remoteagent.core.v1.EventBatch
+in: remoteagent.core.v1.SecCallRequest
 in: remoteagent.v1.LiveSnapshot
 
 # Core -> Shell (Size, AppendMarshal, Marshal)
@@ -27,7 +28,31 @@ out: remoteagent.core.v1.ViewModel
 out: remoteagent.core.v1.EffectBatch
 out: remoteagent.core.v1.Effect
 out: remoteagent.core.v1.ProjectionState
+out: remoteagent.core.v1.SecCallResponse
 out: remoteagent.v1.Command
+out: remoteagent.v1.Envelope
+out: remoteagent.v1.Header
+out: remoteagent.v1.ProjectPrefs
+out: remoteagent.v1.DeviceMeta
+out: remoteagent.v1.TerminalFrame
+out: remoteagent.v1.ImagePayload
+out: remoteagent.v1.NotifyContent
+
+# Strict validation (reject unknown fields recursively on Unmarshal)
+strict: remoteagent.v1.Envelope
+strict: remoteagent.v1.Header
+strict: remoteagent.v1.Event
+strict: remoteagent.v1.Session
+strict: remoteagent.v1.MachineMeta
+strict: remoteagent.v1.Command
+strict: remoteagent.v1.CommandResult
+strict: remoteagent.v1.TerminalFrame
+strict: remoteagent.v1.NotifyContent
+strict: remoteagent.v1.ImagePayload
+strict: remoteagent.v1.ProjectPrefs
+strict: remoteagent.v1.DeviceMeta
+strict: remoteagent.v1.MachineReplacementProof
+strict: remoteagent.v1.PairApproval
 
 # Core internal .Clone() call sites (enforced by Go compiler)
 clone: remoteagent.v1.AgentDefaults

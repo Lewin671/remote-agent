@@ -266,21 +266,33 @@ func originBytes(h Header, hh, commit Hash) []byte {
 	e.Raw(commit[:])
 	return e.B
 }
-func (c Ciphertext) verifyOrigin(s State, head State, live bool, now uint64) (Header, Hash, error) {
+// OriginVerifyInput checks header validity, ScopeAt(s, head, live, now), and
+// ciphertext commitment, returning the parsed header, sender Ed25519 public key,
+// and exact origin message bytes to verify without running Ed25519 in Go.
+func (c Ciphertext) OriginVerifyInput(s State, head State, live bool, now uint64) (Header, [32]byte, []byte, error) {
 	h, err := ParseHeader(c.Header)
 	if err != nil {
-		return h, Hash{}, err
+		return h, [32]byte{}, nil, err
 	}
 	if err := h.ScopeAt(s, head, live, now); err != nil {
-		return h, Hash{}, err
+		return h, [32]byte{}, nil, err
 	}
 	commit, err := c.Commitment()
 	if err != nil {
-		return h, commit, err
+		return h, [32]byte{}, nil, err
 	}
 	m, _ := s.Core.Member(h.Sender)
 	hh := Digest("", c.Header)
-	if !ed25519.Verify(m.EdPublic[:], originBytes(h, hh, commit), c.Origin) {
+	return h, m.EdPublic, originBytes(h, hh, commit), nil
+}
+
+func (c Ciphertext) verifyOrigin(s State, head State, live bool, now uint64) (Header, Hash, error) {
+	h, edPub, msg, err := c.OriginVerifyInput(s, head, live, now)
+	if err != nil {
+		return h, Hash{}, err
+	}
+	commit, _ := c.Commitment()
+	if !ed25519.Verify(edPub[:], msg, c.Origin) {
 		return h, commit, ErrUntrusted
 	}
 	return h, commit, nil
@@ -304,18 +316,43 @@ func (h Header) ScopeAt(s State, head State, live bool, now uint64) error {
 	return nil
 }
 
+// PrepareCiphertext marshals h, derives the 32-byte AES-GCM key, and reads a
+// 12-byte nonce from random for callers that seal the AEAD externally (e.g. WebCrypto).
+func PrepareCiphertext(secret, sessionSeed []byte, h Header, plainLen int, random io.Reader) (headerBytes, key, nonce []byte, err error) {
+	if plainLen < 0 || plainLen > MaxCipherBytes-16 {
+		return nil, nil, nil, ErrInvalid
+	}
+	headerBytes, err = h.MarshalBinary()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	key, err = DeriveKey(secret, sessionSeed, h)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	nonce = make([]byte, 12)
+	if _, err = io.ReadFull(random, nonce); err != nil {
+		return nil, nil, nil, err
+	}
+	return headerBytes, key, nonce, nil
+}
+
+// AssembleCiphertext wraps externally sealed AES-GCM ciphertext into a Ciphertext
+// and returns the canonical OriginBytes to sign.
+func AssembleCiphertext(headerBytes, nonce, cipherBytes []byte) (Ciphertext, []byte, error) {
+	c := Ciphertext{Header: headerBytes, Nonce: nonce, Cipher: cipherBytes}
+	msg, err := c.OriginBytes()
+	if err != nil {
+		return Ciphertext{}, nil, err
+	}
+	return c, msg, nil
+}
+
 // NewCiphertext encrypts plain under the key derived for h, with a 12-byte
 // nonce read from random. Origin is left empty: the sender named in h signs
 // OriginBytes.
 func NewCiphertext(secret, sessionSeed []byte, h Header, plain []byte, random io.Reader) (c Ciphertext, err error) {
-	if len(plain) > MaxCipherBytes-16 {
-		return c, ErrInvalid
-	}
-	c.Header, err = h.MarshalBinary()
-	if err != nil {
-		return c, err
-	}
-	key, err := DeriveKey(secret, sessionSeed, h)
+	headerBytes, key, nonce, err := PrepareCiphertext(secret, sessionSeed, h, len(plain), random)
 	if err != nil {
 		return c, err
 	}
@@ -323,10 +360,8 @@ func NewCiphertext(secret, sessionSeed []byte, h Header, plain []byte, random io
 	if err != nil {
 		return c, err
 	}
-	c.Nonce = make([]byte, 12)
-	if _, err = io.ReadFull(random, c.Nonce); err != nil {
-		return c, err
-	}
+	c.Header = headerBytes
+	c.Nonce = nonce
 	c.Cipher = aead.Seal(nil, c.Nonce, plain, c.Header)
 	return c, nil
 }
@@ -343,7 +378,10 @@ func (c Ciphertext) OriginBytes() ([]byte, error) {
 	}
 	return originBytes(h, Digest("", c.Header), commit), nil
 }
-func openCipher(secret, sessionSeed []byte, c Ciphertext) (Header, []byte, error) {
+
+// DeriveCipherKey validates c's header and commitment and returns the derived
+// 32-byte AES-GCM key so external AEAD implementations (e.g. WebCrypto) can open c.
+func DeriveCipherKey(secret, sessionSeed []byte, c Ciphertext) (Header, []byte, error) {
 	h, err := ParseHeader(c.Header)
 	if err != nil {
 		return h, nil, err
@@ -352,6 +390,19 @@ func openCipher(secret, sessionSeed []byte, c Ciphertext) (Header, []byte, error
 		return h, nil, err
 	}
 	key, err := DeriveKey(secret, sessionSeed, h)
+	if err != nil {
+		return h, nil, err
+	}
+	return h, key, nil
+}
+
+// OpenCipher decrypts c without re-checking origin (use after VerifyOrigin or external Ed25519 verify).
+func OpenCipher(secret, sessionSeed []byte, c Ciphertext) (Header, []byte, error) {
+	return openCipher(secret, sessionSeed, c)
+}
+
+func openCipher(secret, sessionSeed []byte, c Ciphertext) (Header, []byte, error) {
+	h, key, err := DeriveCipherKey(secret, sessionSeed, c)
 	if err != nil {
 		return h, nil, err
 	}

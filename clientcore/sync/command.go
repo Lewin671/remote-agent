@@ -71,6 +71,11 @@ type PreparedCommand struct {
 	BulkFileKey        string
 	BulkBytes          int64
 	BulkUpload         bool
+	Sealing            bool
+	SealingRetry       bool
+	SealedEnvelope     *v1.Envelope
+	RequestKeyHash     []byte
+	PayloadHash        []byte
 }
 
 // AttemptTracker preserves one unknown command per UI action slot until settled or explicitly abandoned.
@@ -134,7 +139,7 @@ func (e *Engine) SubmitCommand(ctx *StepContext, in SubmitCommandParams) (reques
 		}
 		deadline := e.nowMs + CommandTTLMs
 		prep = &PreparedCommand{
-			RequestID:          e.entropy.nextID(ctx),
+			RequestID:          e.nextID(ctx),
 			SlotKey:            in.SlotKey,
 			MachineID:          in.MachineID,
 			SessionID:          in.SessionID,
@@ -270,6 +275,11 @@ func (e *Engine) preflightAndEmit(ctx *StepContext, prep *PreparedCommand, retry
 }
 
 func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, retryOfUnknown bool) {
+	if e.secEngine != nil && e.secEngine.Locked() && prep.SealedEnvelope == nil {
+		e.inFlightCmds[prep.RequestID] = prep
+		e.sealAndEmitCommandAttempt(ctx, prep, retryOfUnknown)
+		return
+	}
 	if prep.ActiveLegs == nil {
 		prep.ActiveLegs = make(map[string]*CommandLeg)
 	} else {
@@ -318,6 +328,7 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 					DirectPcId:      dec.pcID,
 					DirectTimeoutMs: dec.timeoutMs,
 					DirectTicketId:  dec.ticketID,
+					SealedEnvelope:  prep.SealedEnvelope,
 				},
 			},
 		})
@@ -325,8 +336,8 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 
 	if !prep.ForceRelay && isInteractiveCommand(prep.Command) {
 		if dec, ok := e.transportCoord.PrepareInteractive(e.nowMs, prep.MachineID, prep.DeadlineMs); ok {
-			attemptD := e.entropy.nextID(ctx)
-			attemptR := e.entropy.nextID(ctx)
+			attemptD := e.nextID(ctx)
+			attemptR := e.nextID(ctx)
 			prep.DualMode = true
 			prep.DirectLegID = attemptD
 			prep.RelayLegID = attemptR
@@ -345,7 +356,7 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 		if h, ok := e.commandTransportHint(prep); ok {
 			dec := e.transportCoord.PrepareAttempt(e.nowMs, prep.MachineID, h, prep.DeadlineMs, prep.ForceRelay)
 			e.syncDirectTimers(ctx)
-			attemptID := e.entropy.nextID(ctx)
+			attemptID := e.nextID(ctx)
 			leg := corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY
 			var arg directRouteArg
 			if dec.UseDirect {
@@ -357,7 +368,7 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 		}
 	}
 
-	attemptID := e.entropy.nextID(ctx)
+	attemptID := e.nextID(ctx)
 	emitLeg(attemptID, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY, directRouteArg{})
 }
 
@@ -371,6 +382,16 @@ func (e *Engine) handleCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 	if ev == nil || ev.RequestId == "" {
 		return
 	}
+	if ev.Source == corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON && ev.SealedResult != nil && e.secEngine != nil {
+		if prep := e.inFlightCmds[ev.RequestId]; prep != nil && (ev.AttemptId == "" || prep.PendingAttempts[ev.AttemptId]) {
+			e.openSealedCommandOutcome(ctx, prep, ev)
+			return
+		}
+	}
+	e.finishCommandOutcome(ctx, ev)
+}
+
+func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcomeEvent) {
 	if ev.AttemptId != "" {
 		delete(e.reqIDByAttempt, ev.AttemptId)
 		if lateTicketID, isLate := e.lateDirectTickets[ev.AttemptId]; isLate {

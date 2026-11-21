@@ -2261,6 +2261,9 @@ type CacheBootstrapLoadedEvent struct {
 	HomeScopeToken string
 	ScopeHmacKey   []byte
 	Error          string
+	WireMachines   []*v1.Machine
+	WireSessions   []*v1.RemoteSession
+	WirePrefs      *v1.AccountPrefsObject
 }
 
 func (m *CacheBootstrapLoadedEvent) GetOpId() uint64 {
@@ -2304,6 +2307,24 @@ func (m *CacheBootstrapLoadedEvent) GetError() string {
 		return m.Error
 	}
 	return ""
+}
+func (m *CacheBootstrapLoadedEvent) GetWireMachines() []*v1.Machine {
+	if m != nil {
+		return m.WireMachines
+	}
+	return nil
+}
+func (m *CacheBootstrapLoadedEvent) GetWireSessions() []*v1.RemoteSession {
+	if m != nil {
+		return m.WireSessions
+	}
+	return nil
+}
+func (m *CacheBootstrapLoadedEvent) GetWirePrefs() *v1.AccountPrefsObject {
+	if m != nil {
+		return m.WirePrefs
+	}
+	return nil
 }
 
 func (m *CacheBootstrapLoadedEvent) Unmarshal(b []byte) error {
@@ -2377,6 +2398,34 @@ func (m *CacheBootstrapLoadedEvent) Unmarshal(b []byte) error {
 				m.Error = v
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &v1.Machine{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireMachines = append(m.WireMachines, elem)
+				continue
+			}
+		case 11:
+			if wtyp == litewire.BytesType {
+				elem := &v1.RemoteSession{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireSessions = append(m.WireSessions, elem)
+				continue
+			}
+		case 12:
+			if wtyp == litewire.BytesType {
+				if m.WirePrefs == nil {
+					m.WirePrefs = &v1.AccountPrefsObject{}
+				}
+				if err := litewire.ReadMessage(&b, m.WirePrefs); err != nil {
+					return err
+				}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -2386,12 +2435,13 @@ func (m *CacheBootstrapLoadedEvent) Unmarshal(b []byte) error {
 }
 
 type CacheEventsLoadedEvent struct {
-	OpId      uint64
-	SessionId string
-	Events    []*PlainEvent
-	Broken    bool
-	Retired   bool
-	Error     string
+	OpId       uint64
+	SessionId  string
+	Events     []*PlainEvent
+	Broken     bool
+	Retired    bool
+	Error      string
+	WireEvents []*v1.StoredEvent
 }
 
 func (m *CacheEventsLoadedEvent) GetOpId() uint64 {
@@ -2429,6 +2479,12 @@ func (m *CacheEventsLoadedEvent) GetError() string {
 		return m.Error
 	}
 	return ""
+}
+func (m *CacheEventsLoadedEvent) GetWireEvents() []*v1.StoredEvent {
+	if m != nil {
+		return m.WireEvents
+	}
+	return nil
 }
 
 func (m *CacheEventsLoadedEvent) Unmarshal(b []byte) error {
@@ -2490,6 +2546,15 @@ func (m *CacheEventsLoadedEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Error = v
+				continue
+			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &v1.StoredEvent{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireEvents = append(m.WireEvents, elem)
 				continue
 			}
 		}
@@ -3073,8 +3138,9 @@ func (m *StreamClosedEvent) Unmarshal(b []byte) error {
 }
 
 type EventsAppendedFrame struct {
-	SessionId string
-	Events    []*PlainEvent
+	SessionId  string
+	Events     []*PlainEvent
+	WireEvents []*v1.StoredEvent
 }
 
 func (m *EventsAppendedFrame) GetSessionId() string {
@@ -3086,6 +3152,12 @@ func (m *EventsAppendedFrame) GetSessionId() string {
 func (m *EventsAppendedFrame) GetEvents() []*PlainEvent {
 	if m != nil {
 		return m.Events
+	}
+	return nil
+}
+func (m *EventsAppendedFrame) GetWireEvents() []*v1.StoredEvent {
+	if m != nil {
+		return m.WireEvents
 	}
 	return nil
 }
@@ -3113,6 +3185,15 @@ func (m *EventsAppendedFrame) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Events = append(m.Events, elem)
+				continue
+			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &v1.StoredEvent{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireEvents = append(m.WireEvents, elem)
 				continue
 			}
 		}
@@ -3160,6 +3241,22 @@ func (*StreamFrameEvent_DeviceUpdated) isStreamFrameEvent_Frame() {}
 type StreamFrameEvent_DeviceRemovedId struct{ DeviceRemovedId string }
 
 func (*StreamFrameEvent_DeviceRemovedId) isStreamFrameEvent_Frame() {}
+
+type StreamFrameEvent_WireMachineUpdated struct{ WireMachineUpdated *v1.Machine }
+
+func (*StreamFrameEvent_WireMachineUpdated) isStreamFrameEvent_Frame() {}
+
+type StreamFrameEvent_WireSessionUpdated struct{ WireSessionUpdated *v1.RemoteSession }
+
+func (*StreamFrameEvent_WireSessionUpdated) isStreamFrameEvent_Frame() {}
+
+type StreamFrameEvent_WireAccountPrefsUpdated struct{ WireAccountPrefsUpdated *v1.AccountPrefsObject }
+
+func (*StreamFrameEvent_WireAccountPrefsUpdated) isStreamFrameEvent_Frame() {}
+
+type StreamFrameEvent_WireDeviceUpdated struct{ WireDeviceUpdated *v1.Device }
+
+func (*StreamFrameEvent_WireDeviceUpdated) isStreamFrameEvent_Frame() {}
 
 func (m *StreamFrameEvent) GetFrame() isStreamFrameEvent_Frame {
 	if m != nil {
@@ -3220,6 +3317,30 @@ func (m *StreamFrameEvent) GetDeviceRemovedId() string {
 		return x.DeviceRemovedId
 	}
 	return ""
+}
+func (m *StreamFrameEvent) GetWireMachineUpdated() *v1.Machine {
+	if x, ok := m.GetFrame().(*StreamFrameEvent_WireMachineUpdated); ok && x != nil {
+		return x.WireMachineUpdated
+	}
+	return nil
+}
+func (m *StreamFrameEvent) GetWireSessionUpdated() *v1.RemoteSession {
+	if x, ok := m.GetFrame().(*StreamFrameEvent_WireSessionUpdated); ok && x != nil {
+		return x.WireSessionUpdated
+	}
+	return nil
+}
+func (m *StreamFrameEvent) GetWireAccountPrefsUpdated() *v1.AccountPrefsObject {
+	if x, ok := m.GetFrame().(*StreamFrameEvent_WireAccountPrefsUpdated); ok && x != nil {
+		return x.WireAccountPrefsUpdated
+	}
+	return nil
+}
+func (m *StreamFrameEvent) GetWireDeviceUpdated() *v1.Device {
+	if x, ok := m.GetFrame().(*StreamFrameEvent_WireDeviceUpdated); ok && x != nil {
+		return x.WireDeviceUpdated
+	}
+	return nil
 }
 
 func (m *StreamFrameEvent) Unmarshal(b []byte) error {
@@ -3340,6 +3461,66 @@ func (m *StreamFrameEvent) Unmarshal(b []byte) error {
 				m.Frame = &StreamFrameEvent_DeviceRemovedId{DeviceRemovedId: v}
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				var sub *v1.Machine
+				if cur, ok := m.Frame.(*StreamFrameEvent_WireMachineUpdated); ok && cur != nil {
+					sub = cur.WireMachineUpdated
+				}
+				if sub == nil {
+					sub = &v1.Machine{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Frame = &StreamFrameEvent_WireMachineUpdated{WireMachineUpdated: sub}
+				continue
+			}
+		case 11:
+			if wtyp == litewire.BytesType {
+				var sub *v1.RemoteSession
+				if cur, ok := m.Frame.(*StreamFrameEvent_WireSessionUpdated); ok && cur != nil {
+					sub = cur.WireSessionUpdated
+				}
+				if sub == nil {
+					sub = &v1.RemoteSession{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Frame = &StreamFrameEvent_WireSessionUpdated{WireSessionUpdated: sub}
+				continue
+			}
+		case 12:
+			if wtyp == litewire.BytesType {
+				var sub *v1.AccountPrefsObject
+				if cur, ok := m.Frame.(*StreamFrameEvent_WireAccountPrefsUpdated); ok && cur != nil {
+					sub = cur.WireAccountPrefsUpdated
+				}
+				if sub == nil {
+					sub = &v1.AccountPrefsObject{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Frame = &StreamFrameEvent_WireAccountPrefsUpdated{WireAccountPrefsUpdated: sub}
+				continue
+			}
+		case 13:
+			if wtyp == litewire.BytesType {
+				var sub *v1.Device
+				if cur, ok := m.Frame.(*StreamFrameEvent_WireDeviceUpdated); ok && cur != nil {
+					sub = cur.WireDeviceUpdated
+				}
+				if sub == nil {
+					sub = &v1.Device{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Frame = &StreamFrameEvent_WireDeviceUpdated{WireDeviceUpdated: sub}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -3356,6 +3537,9 @@ type ListsFetchedEvent struct {
 	Devices        []*PlainDevice
 	Error          string
 	UnresolvedHost bool
+	WireMachines   []*v1.Machine
+	WireSessions   []*v1.RemoteSession
+	WireDevices    []*v1.Device
 }
 
 func (m *ListsFetchedEvent) GetOpId() uint64 {
@@ -3399,6 +3583,24 @@ func (m *ListsFetchedEvent) GetUnresolvedHost() bool {
 		return m.UnresolvedHost
 	}
 	return false
+}
+func (m *ListsFetchedEvent) GetWireMachines() []*v1.Machine {
+	if m != nil {
+		return m.WireMachines
+	}
+	return nil
+}
+func (m *ListsFetchedEvent) GetWireSessions() []*v1.RemoteSession {
+	if m != nil {
+		return m.WireSessions
+	}
+	return nil
+}
+func (m *ListsFetchedEvent) GetWireDevices() []*v1.Device {
+	if m != nil {
+		return m.WireDevices
+	}
+	return nil
 }
 
 func (m *ListsFetchedEvent) Unmarshal(b []byte) error {
@@ -3472,6 +3674,33 @@ func (m *ListsFetchedEvent) Unmarshal(b []byte) error {
 				m.UnresolvedHost = litewire.DecodeBool(v)
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &v1.Machine{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireMachines = append(m.WireMachines, elem)
+				continue
+			}
+		case 11:
+			if wtyp == litewire.BytesType {
+				elem := &v1.RemoteSession{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireSessions = append(m.WireSessions, elem)
+				continue
+			}
+		case 12:
+			if wtyp == litewire.BytesType {
+				elem := &v1.Device{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireDevices = append(m.WireDevices, elem)
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -3481,10 +3710,11 @@ func (m *ListsFetchedEvent) Unmarshal(b []byte) error {
 }
 
 type SessionsPageFetchedEvent struct {
-	OpId     uint64
-	Sessions []*PlainSession
-	Next     *v1.SessionCursor
-	Error    string
+	OpId         uint64
+	Sessions     []*PlainSession
+	Next         *v1.SessionCursor
+	Error        string
+	WireSessions []*v1.RemoteSession
 }
 
 func (m *SessionsPageFetchedEvent) GetOpId() uint64 {
@@ -3510,6 +3740,12 @@ func (m *SessionsPageFetchedEvent) GetError() string {
 		return m.Error
 	}
 	return ""
+}
+func (m *SessionsPageFetchedEvent) GetWireSessions() []*v1.RemoteSession {
+	if m != nil {
+		return m.WireSessions
+	}
+	return nil
 }
 
 func (m *SessionsPageFetchedEvent) Unmarshal(b []byte) error {
@@ -3556,6 +3792,15 @@ func (m *SessionsPageFetchedEvent) Unmarshal(b []byte) error {
 				m.Error = v
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &v1.RemoteSession{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireSessions = append(m.WireSessions, elem)
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -3565,9 +3810,10 @@ func (m *SessionsPageFetchedEvent) Unmarshal(b []byte) error {
 }
 
 type SessionByIdFetchedEvent struct {
-	OpId    uint64
-	Session *PlainSession
-	Error   string
+	OpId        uint64
+	Session     *PlainSession
+	Error       string
+	WireSession *v1.RemoteSession
 }
 
 func (m *SessionByIdFetchedEvent) GetOpId() uint64 {
@@ -3587,6 +3833,12 @@ func (m *SessionByIdFetchedEvent) GetError() string {
 		return m.Error
 	}
 	return ""
+}
+func (m *SessionByIdFetchedEvent) GetWireSession() *v1.RemoteSession {
+	if m != nil {
+		return m.WireSession
+	}
+	return nil
 }
 
 func (m *SessionByIdFetchedEvent) Unmarshal(b []byte) error {
@@ -3624,6 +3876,16 @@ func (m *SessionByIdFetchedEvent) Unmarshal(b []byte) error {
 				m.Error = v
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				if m.WireSession == nil {
+					m.WireSession = &v1.RemoteSession{}
+				}
+				if err := litewire.ReadMessage(&b, m.WireSession); err != nil {
+					return err
+				}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -3633,11 +3895,12 @@ func (m *SessionByIdFetchedEvent) Unmarshal(b []byte) error {
 }
 
 type EventsPageFetchedEvent struct {
-	OpId      uint64
-	SessionId string
-	Events    []*PlainEvent
-	More      bool
-	Error     string
+	OpId       uint64
+	SessionId  string
+	Events     []*PlainEvent
+	More       bool
+	Error      string
+	WireEvents []*v1.StoredEvent
 }
 
 func (m *EventsPageFetchedEvent) GetOpId() uint64 {
@@ -3669,6 +3932,12 @@ func (m *EventsPageFetchedEvent) GetError() string {
 		return m.Error
 	}
 	return ""
+}
+func (m *EventsPageFetchedEvent) GetWireEvents() []*v1.StoredEvent {
+	if m != nil {
+		return m.WireEvents
+	}
+	return nil
 }
 
 func (m *EventsPageFetchedEvent) Unmarshal(b []byte) error {
@@ -3723,6 +3992,15 @@ func (m *EventsPageFetchedEvent) Unmarshal(b []byte) error {
 				m.Error = v
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &v1.StoredEvent{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireEvents = append(m.WireEvents, elem)
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -3732,9 +4010,10 @@ func (m *EventsPageFetchedEvent) Unmarshal(b []byte) error {
 }
 
 type AccountPrefsFetchedEvent struct {
-	OpId  uint64
-	Prefs *PlainAccountPrefs
-	Error string
+	OpId      uint64
+	Prefs     *PlainAccountPrefs
+	Error     string
+	WirePrefs *v1.AccountPrefsObject
 }
 
 func (m *AccountPrefsFetchedEvent) GetOpId() uint64 {
@@ -3754,6 +4033,12 @@ func (m *AccountPrefsFetchedEvent) GetError() string {
 		return m.Error
 	}
 	return ""
+}
+func (m *AccountPrefsFetchedEvent) GetWirePrefs() *v1.AccountPrefsObject {
+	if m != nil {
+		return m.WirePrefs
+	}
+	return nil
 }
 
 func (m *AccountPrefsFetchedEvent) Unmarshal(b []byte) error {
@@ -3791,6 +4076,16 @@ func (m *AccountPrefsFetchedEvent) Unmarshal(b []byte) error {
 				m.Error = v
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				if m.WirePrefs == nil {
+					m.WirePrefs = &v1.AccountPrefsObject{}
+				}
+				if err := litewire.ReadMessage(&b, m.WirePrefs); err != nil {
+					return err
+				}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -3805,6 +4100,7 @@ type AccountPrefsPutResultEvent struct {
 	Current      *PlainAccountPrefs
 	SealConflict bool
 	Error        string
+	WireCurrent  *v1.AccountPrefsObject
 }
 
 func (m *AccountPrefsPutResultEvent) GetOpId() uint64 {
@@ -3836,6 +4132,12 @@ func (m *AccountPrefsPutResultEvent) GetError() string {
 		return m.Error
 	}
 	return ""
+}
+func (m *AccountPrefsPutResultEvent) GetWireCurrent() *v1.AccountPrefsObject {
+	if m != nil {
+		return m.WireCurrent
+	}
+	return nil
 }
 
 func (m *AccountPrefsPutResultEvent) Unmarshal(b []byte) error {
@@ -3891,6 +4193,16 @@ func (m *AccountPrefsPutResultEvent) Unmarshal(b []byte) error {
 				m.Error = v
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				if m.WireCurrent == nil {
+					m.WireCurrent = &v1.AccountPrefsObject{}
+				}
+				if err := litewire.ReadMessage(&b, m.WireCurrent); err != nil {
+					return err
+				}
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -3900,10 +4212,11 @@ func (m *AccountPrefsPutResultEvent) Unmarshal(b []byte) error {
 }
 
 type DevicesFetchedEvent struct {
-	OpId    uint64
-	Devices []*PlainDevice
-	Error   string
-	PushSeq uint64
+	OpId        uint64
+	Devices     []*PlainDevice
+	Error       string
+	PushSeq     uint64
+	WireDevices []*v1.Device
 }
 
 func (m *DevicesFetchedEvent) GetOpId() uint64 {
@@ -3929,6 +4242,12 @@ func (m *DevicesFetchedEvent) GetPushSeq() uint64 {
 		return m.PushSeq
 	}
 	return 0
+}
+func (m *DevicesFetchedEvent) GetWireDevices() []*v1.Device {
+	if m != nil {
+		return m.WireDevices
+	}
+	return nil
 }
 
 func (m *DevicesFetchedEvent) Unmarshal(b []byte) error {
@@ -3974,6 +4293,15 @@ func (m *DevicesFetchedEvent) Unmarshal(b []byte) error {
 				m.PushSeq = v
 				continue
 			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &v1.Device{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireDevices = append(m.WireDevices, elem)
+				continue
+			}
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
@@ -4001,6 +4329,7 @@ type CommandOutcomeEvent struct {
 	ObservedBytes     int64
 	HandedOff         bool
 	DirectTicketId    uint64
+	SealedResult      *v1.Envelope
 }
 
 func (m *CommandOutcomeEvent) GetRequestId() string {
@@ -4110,6 +4439,12 @@ func (m *CommandOutcomeEvent) GetDirectTicketId() uint64 {
 		return m.DirectTicketId
 	}
 	return 0
+}
+func (m *CommandOutcomeEvent) GetSealedResult() *v1.Envelope {
+	if m != nil {
+		return m.SealedResult
+	}
+	return nil
 }
 
 func (m *CommandOutcomeEvent) Unmarshal(b []byte) error {
@@ -4280,6 +4615,16 @@ func (m *CommandOutcomeEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.DirectTicketId = v
+				continue
+			}
+		case 20:
+			if wtyp == litewire.BytesType {
+				if m.SealedResult == nil {
+					m.SealedResult = &v1.Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.SealedResult); err != nil {
+					return err
+				}
 				continue
 			}
 		}
@@ -4463,11 +4808,12 @@ func (m *FetchSessionAction) Unmarshal(b []byte) error {
 }
 
 type DirectEventsReceivedEvent struct {
-	MachineId string
-	SessionId string
-	Events    []*PlainEvent
-	PcId      uint64
-	Sender    string
+	MachineId     string
+	SessionId     string
+	Events        []*PlainEvent
+	PcId          uint64
+	Sender        string
+	WireEnvelopes []*v1.Envelope
 }
 
 func (m *DirectEventsReceivedEvent) GetMachineId() string {
@@ -4499,6 +4845,12 @@ func (m *DirectEventsReceivedEvent) GetSender() string {
 		return m.Sender
 	}
 	return ""
+}
+func (m *DirectEventsReceivedEvent) GetWireEnvelopes() []*v1.Envelope {
+	if m != nil {
+		return m.WireEnvelopes
+	}
+	return nil
 }
 
 func (m *DirectEventsReceivedEvent) Unmarshal(b []byte) error {
@@ -4551,6 +4903,15 @@ func (m *DirectEventsReceivedEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.Sender = v
+				continue
+			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				elem := &v1.Envelope{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.WireEnvelopes = append(m.WireEnvelopes, elem)
 				continue
 			}
 		}
@@ -6077,6 +6438,42 @@ type Event_DirectAuthorizeDone struct{ DirectAuthorizeDone *DirectAuthorizeDoneE
 
 func (*Event_DirectAuthorizeDone) isEvent_Event() {}
 
+type Event_SecurityConfig struct{ SecurityConfig *SecurityConfigEvent }
+
+func (*Event_SecurityConfig) isEvent_Event() {}
+
+type Event_SecurityRecord struct{ SecurityRecord *SecurityRecordEvent }
+
+func (*Event_SecurityRecord) isEvent_Event() {}
+
+type Event_SecurityKeySigned struct{ SecurityKeySigned *SecurityKeySignedEvent }
+
+func (*Event_SecurityKeySigned) isEvent_Event() {}
+
+type Event_SecurityKeyAgreed struct{ SecurityKeyAgreed *SecurityKeyAgreedEvent }
+
+func (*Event_SecurityKeyAgreed) isEvent_Event() {}
+
+type Event_SecurityKeyGenerated struct{ SecurityKeyGenerated *SecurityKeyGeneratedEvent }
+
+func (*Event_SecurityKeyGenerated) isEvent_Event() {}
+
+type Event_SecurityKeyEncapsulated struct{ SecurityKeyEncapsulated *SecurityKeyEncapsulatedEvent }
+
+func (*Event_SecurityKeyEncapsulated) isEvent_Event() {}
+
+type Event_SecurityCryptoBatchDone struct{ SecurityCryptoBatchDone *SecurityCryptoBatchDoneEvent }
+
+func (*Event_SecurityCryptoBatchDone) isEvent_Event() {}
+
+type Event_SecurityOpRequest struct{ SecurityOpRequest *SecurityOpRequestEvent }
+
+func (*Event_SecurityOpRequest) isEvent_Event() {}
+
+type Event_SeedDemoWorld struct{ SeedDemoWorld *SeedDemoWorldEvent }
+
+func (*Event_SeedDemoWorld) isEvent_Event() {}
+
 func (m *Event) GetEvent() isEvent_Event {
 	if m != nil {
 		return m.Event
@@ -6950,6 +7347,60 @@ func (m *Event) GetDirectSecurityInstalled() *DirectSecurityInstalledEvent {
 func (m *Event) GetDirectAuthorizeDone() *DirectAuthorizeDoneEvent {
 	if x, ok := m.GetEvent().(*Event_DirectAuthorizeDone); ok && x != nil {
 		return x.DirectAuthorizeDone
+	}
+	return nil
+}
+func (m *Event) GetSecurityConfig() *SecurityConfigEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityConfig); ok && x != nil {
+		return x.SecurityConfig
+	}
+	return nil
+}
+func (m *Event) GetSecurityRecord() *SecurityRecordEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityRecord); ok && x != nil {
+		return x.SecurityRecord
+	}
+	return nil
+}
+func (m *Event) GetSecurityKeySigned() *SecurityKeySignedEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityKeySigned); ok && x != nil {
+		return x.SecurityKeySigned
+	}
+	return nil
+}
+func (m *Event) GetSecurityKeyAgreed() *SecurityKeyAgreedEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityKeyAgreed); ok && x != nil {
+		return x.SecurityKeyAgreed
+	}
+	return nil
+}
+func (m *Event) GetSecurityKeyGenerated() *SecurityKeyGeneratedEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityKeyGenerated); ok && x != nil {
+		return x.SecurityKeyGenerated
+	}
+	return nil
+}
+func (m *Event) GetSecurityKeyEncapsulated() *SecurityKeyEncapsulatedEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityKeyEncapsulated); ok && x != nil {
+		return x.SecurityKeyEncapsulated
+	}
+	return nil
+}
+func (m *Event) GetSecurityCryptoBatchDone() *SecurityCryptoBatchDoneEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityCryptoBatchDone); ok && x != nil {
+		return x.SecurityCryptoBatchDone
+	}
+	return nil
+}
+func (m *Event) GetSecurityOpRequest() *SecurityOpRequestEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityOpRequest); ok && x != nil {
+		return x.SecurityOpRequest
+	}
+	return nil
+}
+func (m *Event) GetSeedDemoWorld() *SeedDemoWorldEvent {
+	if x, ok := m.GetEvent().(*Event_SeedDemoWorld); ok && x != nil {
+		return x.SeedDemoWorld
 	}
 	return nil
 }
@@ -9160,6 +9611,141 @@ func (m *Event) Unmarshal(b []byte) error {
 				m.Event = &Event_DirectAuthorizeDone{DirectAuthorizeDone: sub}
 				continue
 			}
+		case 450:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityConfigEvent
+				if cur, ok := m.Event.(*Event_SecurityConfig); ok && cur != nil {
+					sub = cur.SecurityConfig
+				}
+				if sub == nil {
+					sub = &SecurityConfigEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityConfig{SecurityConfig: sub}
+				continue
+			}
+		case 451:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityRecordEvent
+				if cur, ok := m.Event.(*Event_SecurityRecord); ok && cur != nil {
+					sub = cur.SecurityRecord
+				}
+				if sub == nil {
+					sub = &SecurityRecordEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityRecord{SecurityRecord: sub}
+				continue
+			}
+		case 452:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityKeySignedEvent
+				if cur, ok := m.Event.(*Event_SecurityKeySigned); ok && cur != nil {
+					sub = cur.SecurityKeySigned
+				}
+				if sub == nil {
+					sub = &SecurityKeySignedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityKeySigned{SecurityKeySigned: sub}
+				continue
+			}
+		case 453:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityKeyAgreedEvent
+				if cur, ok := m.Event.(*Event_SecurityKeyAgreed); ok && cur != nil {
+					sub = cur.SecurityKeyAgreed
+				}
+				if sub == nil {
+					sub = &SecurityKeyAgreedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityKeyAgreed{SecurityKeyAgreed: sub}
+				continue
+			}
+		case 454:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityKeyGeneratedEvent
+				if cur, ok := m.Event.(*Event_SecurityKeyGenerated); ok && cur != nil {
+					sub = cur.SecurityKeyGenerated
+				}
+				if sub == nil {
+					sub = &SecurityKeyGeneratedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityKeyGenerated{SecurityKeyGenerated: sub}
+				continue
+			}
+		case 455:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityKeyEncapsulatedEvent
+				if cur, ok := m.Event.(*Event_SecurityKeyEncapsulated); ok && cur != nil {
+					sub = cur.SecurityKeyEncapsulated
+				}
+				if sub == nil {
+					sub = &SecurityKeyEncapsulatedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityKeyEncapsulated{SecurityKeyEncapsulated: sub}
+				continue
+			}
+		case 456:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityCryptoBatchDoneEvent
+				if cur, ok := m.Event.(*Event_SecurityCryptoBatchDone); ok && cur != nil {
+					sub = cur.SecurityCryptoBatchDone
+				}
+				if sub == nil {
+					sub = &SecurityCryptoBatchDoneEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityCryptoBatchDone{SecurityCryptoBatchDone: sub}
+				continue
+			}
+		case 457:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityOpRequestEvent
+				if cur, ok := m.Event.(*Event_SecurityOpRequest); ok && cur != nil {
+					sub = cur.SecurityOpRequest
+				}
+				if sub == nil {
+					sub = &SecurityOpRequestEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityOpRequest{SecurityOpRequest: sub}
+				continue
+			}
+		case 458:
+			if wtyp == litewire.BytesType {
+				var sub *SeedDemoWorldEvent
+				if cur, ok := m.Event.(*Event_SeedDemoWorld); ok && cur != nil {
+					sub = cur.SeedDemoWorld
+				}
+				if sub == nil {
+					sub = &SeedDemoWorldEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SeedDemoWorld{SeedDemoWorld: sub}
+				continue
+			}
 		case 98:
 			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
@@ -9751,6 +10337,26 @@ type CacheWriteEffect_SetSessionOpen struct{ SetSessionOpen *CacheSessionOpen }
 
 func (*CacheWriteEffect_SetSessionOpen) isCacheWriteEffect_Kind() {}
 
+type CacheWriteEffect_WriteMachine struct{ WriteMachine *v1.Machine }
+
+func (*CacheWriteEffect_WriteMachine) isCacheWriteEffect_Kind() {}
+
+type CacheWriteEffect_WriteSession struct{ WriteSession *v1.RemoteSession }
+
+func (*CacheWriteEffect_WriteSession) isCacheWriteEffect_Kind() {}
+
+type CacheWriteEffect_KeepSessionOwner struct{ KeepSessionOwner *v1.RemoteSession }
+
+func (*CacheWriteEffect_KeepSessionOwner) isCacheWriteEffect_Kind() {}
+
+type CacheWriteEffect_WriteStoredEvents struct{ WriteStoredEvents *CacheWriteStoredEvents }
+
+func (*CacheWriteEffect_WriteStoredEvents) isCacheWriteEffect_Kind() {}
+
+type CacheWriteEffect_WritePrefs struct{ WritePrefs *v1.AccountPrefsObject }
+
+func (*CacheWriteEffect_WritePrefs) isCacheWriteEffect_Kind() {}
+
 func (m *CacheWriteEffect) GetKind() isCacheWriteEffect_Kind {
 	if m != nil {
 		return m.Kind
@@ -9793,6 +10399,36 @@ func (m *CacheWriteEffect) GetSetSessionOpen() *CacheSessionOpen {
 	}
 	return nil
 }
+func (m *CacheWriteEffect) GetWriteMachine() *v1.Machine {
+	if x, ok := m.GetKind().(*CacheWriteEffect_WriteMachine); ok && x != nil {
+		return x.WriteMachine
+	}
+	return nil
+}
+func (m *CacheWriteEffect) GetWriteSession() *v1.RemoteSession {
+	if x, ok := m.GetKind().(*CacheWriteEffect_WriteSession); ok && x != nil {
+		return x.WriteSession
+	}
+	return nil
+}
+func (m *CacheWriteEffect) GetKeepSessionOwner() *v1.RemoteSession {
+	if x, ok := m.GetKind().(*CacheWriteEffect_KeepSessionOwner); ok && x != nil {
+		return x.KeepSessionOwner
+	}
+	return nil
+}
+func (m *CacheWriteEffect) GetWriteStoredEvents() *CacheWriteStoredEvents {
+	if x, ok := m.GetKind().(*CacheWriteEffect_WriteStoredEvents); ok && x != nil {
+		return x.WriteStoredEvents
+	}
+	return nil
+}
+func (m *CacheWriteEffect) GetWritePrefs() *v1.AccountPrefsObject {
+	if x, ok := m.GetKind().(*CacheWriteEffect_WritePrefs); ok && x != nil {
+		return x.WritePrefs
+	}
+	return nil
+}
 
 func (m *CacheWriteEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
@@ -9831,6 +10467,36 @@ func (m *CacheWriteEffect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.SetSessionOpen != nil {
 				b = litewire.AppendMessage(b, 6, x.SetSessionOpen)
+			}
+		}
+	case *CacheWriteEffect_WriteMachine:
+		if x != nil {
+			if x.WriteMachine != nil {
+				b = litewire.AppendMessage(b, 7, x.WriteMachine)
+			}
+		}
+	case *CacheWriteEffect_WriteSession:
+		if x != nil {
+			if x.WriteSession != nil {
+				b = litewire.AppendMessage(b, 8, x.WriteSession)
+			}
+		}
+	case *CacheWriteEffect_KeepSessionOwner:
+		if x != nil {
+			if x.KeepSessionOwner != nil {
+				b = litewire.AppendMessage(b, 9, x.KeepSessionOwner)
+			}
+		}
+	case *CacheWriteEffect_WriteStoredEvents:
+		if x != nil {
+			if x.WriteStoredEvents != nil {
+				b = litewire.AppendMessage(b, 10, x.WriteStoredEvents)
+			}
+		}
+	case *CacheWriteEffect_WritePrefs:
+		if x != nil {
+			if x.WritePrefs != nil {
+				b = litewire.AppendMessage(b, 11, x.WritePrefs)
 			}
 		}
 	}
@@ -10075,6 +10741,7 @@ type PutAccountPrefsRpc struct {
 	ObjectId         string
 	ExpectedRevision uint64
 	NextPrefs        *v1.ProjectPrefs
+	SealedEnvelope   *v1.Envelope
 }
 
 func (m *PutAccountPrefsRpc) GetObjectId() string {
@@ -10095,6 +10762,12 @@ func (m *PutAccountPrefsRpc) GetNextPrefs() *v1.ProjectPrefs {
 	}
 	return nil
 }
+func (m *PutAccountPrefsRpc) GetSealedEnvelope() *v1.Envelope {
+	if m != nil {
+		return m.SealedEnvelope
+	}
+	return nil
+}
 
 func (m *PutAccountPrefsRpc) Size() int { return len(m.AppendMarshal(nil)) }
 
@@ -10110,6 +10783,9 @@ func (m *PutAccountPrefsRpc) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 2, uint64(m.ExpectedRevision))
 	if m.NextPrefs != nil {
 		b = litewire.AppendMessage(b, 3, m.NextPrefs)
+	}
+	if m.SealedEnvelope != nil {
+		b = litewire.AppendMessage(b, 10, m.SealedEnvelope)
 	}
 	return b
 }
@@ -10303,6 +10979,7 @@ type DispatchCommandEffect struct {
 	DirectPcId      uint64
 	DirectTimeoutMs int64
 	DirectTicketId  uint64
+	SealedEnvelope  *v1.Envelope
 }
 
 func (m *DispatchCommandEffect) GetRequestId() string {
@@ -10401,6 +11078,12 @@ func (m *DispatchCommandEffect) GetDirectTicketId() uint64 {
 	}
 	return 0
 }
+func (m *DispatchCommandEffect) GetSealedEnvelope() *v1.Envelope {
+	if m != nil {
+		return m.SealedEnvelope
+	}
+	return nil
+}
 
 func (m *DispatchCommandEffect) Size() int { return len(m.AppendMarshal(nil)) }
 
@@ -10428,6 +11111,9 @@ func (m *DispatchCommandEffect) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendVarint(b, 14, uint64(m.DirectPcId))
 	b = litewire.AppendVarint(b, 15, uint64(m.DirectTimeoutMs))
 	b = litewire.AppendVarint(b, 16, uint64(m.DirectTicketId))
+	if m.SealedEnvelope != nil {
+		b = litewire.AppendMessage(b, 20, m.SealedEnvelope)
+	}
 	return b
 }
 
@@ -10788,6 +11474,34 @@ type Effect_DirectRetryNowResult struct{ DirectRetryNowResult *DirectRetryNowRes
 
 func (*Effect_DirectRetryNowResult) isEffect_Effect() {}
 
+type Effect_SecurityKeySign struct{ SecurityKeySign *SecurityKeySignEffect }
+
+func (*Effect_SecurityKeySign) isEffect_Effect() {}
+
+type Effect_SecurityKeyAgree struct{ SecurityKeyAgree *SecurityKeyAgreeEffect }
+
+func (*Effect_SecurityKeyAgree) isEffect_Effect() {}
+
+type Effect_SecurityKeyGenerate struct{ SecurityKeyGenerate *SecurityKeyGenerateEffect }
+
+func (*Effect_SecurityKeyGenerate) isEffect_Effect() {}
+
+type Effect_SecurityKeyEncapsulate struct{ SecurityKeyEncapsulate *SecurityKeyEncapsulateEffect }
+
+func (*Effect_SecurityKeyEncapsulate) isEffect_Effect() {}
+
+type Effect_SecurityKeyDiscard struct{ SecurityKeyDiscard *SecurityKeyDiscardEffect }
+
+func (*Effect_SecurityKeyDiscard) isEffect_Effect() {}
+
+type Effect_SecurityCryptoBatch struct{ SecurityCryptoBatch *SecurityCryptoBatchEffect }
+
+func (*Effect_SecurityCryptoBatch) isEffect_Effect() {}
+
+type Effect_SecurityOpResult struct{ SecurityOpResult *SecurityOpResultEffect }
+
+func (*Effect_SecurityOpResult) isEffect_Effect() {}
+
 func (m *Effect) GetEffect() isEffect_Effect {
 	if m != nil {
 		return m.Effect
@@ -11067,6 +11781,48 @@ func (m *Effect) GetTerminalReopen() *TerminalReopenEffect {
 func (m *Effect) GetDirectRetryNowResult() *DirectRetryNowResultEffect {
 	if x, ok := m.GetEffect().(*Effect_DirectRetryNowResult); ok && x != nil {
 		return x.DirectRetryNowResult
+	}
+	return nil
+}
+func (m *Effect) GetSecurityKeySign() *SecurityKeySignEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityKeySign); ok && x != nil {
+		return x.SecurityKeySign
+	}
+	return nil
+}
+func (m *Effect) GetSecurityKeyAgree() *SecurityKeyAgreeEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityKeyAgree); ok && x != nil {
+		return x.SecurityKeyAgree
+	}
+	return nil
+}
+func (m *Effect) GetSecurityKeyGenerate() *SecurityKeyGenerateEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityKeyGenerate); ok && x != nil {
+		return x.SecurityKeyGenerate
+	}
+	return nil
+}
+func (m *Effect) GetSecurityKeyEncapsulate() *SecurityKeyEncapsulateEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityKeyEncapsulate); ok && x != nil {
+		return x.SecurityKeyEncapsulate
+	}
+	return nil
+}
+func (m *Effect) GetSecurityKeyDiscard() *SecurityKeyDiscardEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityKeyDiscard); ok && x != nil {
+		return x.SecurityKeyDiscard
+	}
+	return nil
+}
+func (m *Effect) GetSecurityCryptoBatch() *SecurityCryptoBatchEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityCryptoBatch); ok && x != nil {
+		return x.SecurityCryptoBatch
+	}
+	return nil
+}
+func (m *Effect) GetSecurityOpResult() *SecurityOpResultEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityOpResult); ok && x != nil {
+		return x.SecurityOpResult
 	}
 	return nil
 }
@@ -11356,6 +12112,48 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.DirectRetryNowResult != nil {
 				b = litewire.AppendMessage(b, 113, x.DirectRetryNowResult)
+			}
+		}
+	case *Effect_SecurityKeySign:
+		if x != nil {
+			if x.SecurityKeySign != nil {
+				b = litewire.AppendMessage(b, 130, x.SecurityKeySign)
+			}
+		}
+	case *Effect_SecurityKeyAgree:
+		if x != nil {
+			if x.SecurityKeyAgree != nil {
+				b = litewire.AppendMessage(b, 131, x.SecurityKeyAgree)
+			}
+		}
+	case *Effect_SecurityKeyGenerate:
+		if x != nil {
+			if x.SecurityKeyGenerate != nil {
+				b = litewire.AppendMessage(b, 132, x.SecurityKeyGenerate)
+			}
+		}
+	case *Effect_SecurityKeyEncapsulate:
+		if x != nil {
+			if x.SecurityKeyEncapsulate != nil {
+				b = litewire.AppendMessage(b, 133, x.SecurityKeyEncapsulate)
+			}
+		}
+	case *Effect_SecurityKeyDiscard:
+		if x != nil {
+			if x.SecurityKeyDiscard != nil {
+				b = litewire.AppendMessage(b, 134, x.SecurityKeyDiscard)
+			}
+		}
+	case *Effect_SecurityCryptoBatch:
+		if x != nil {
+			if x.SecurityCryptoBatch != nil {
+				b = litewire.AppendMessage(b, 135, x.SecurityCryptoBatch)
+			}
+		}
+	case *Effect_SecurityOpResult:
+		if x != nil {
+			if x.SecurityOpResult != nil {
+				b = litewire.AppendMessage(b, 136, x.SecurityOpResult)
 			}
 		}
 	}

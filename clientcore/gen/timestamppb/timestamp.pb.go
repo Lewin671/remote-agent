@@ -6,8 +6,13 @@ import "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 
 // Timestamp mirrors google.protobuf.Timestamp without reflection or JSON runtime dependencies.
 type Timestamp struct {
-	Seconds int64
-	Nanos   int32
+	Seconds    int64
+	Nanos      int32
+	hasUnknown bool
+}
+
+func (m *Timestamp) HasUnknown() bool {
+	return m != nil && m.hasUnknown
 }
 
 func (m *Timestamp) GetSeconds() int64 {
@@ -79,6 +84,7 @@ func (m *Timestamp) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}

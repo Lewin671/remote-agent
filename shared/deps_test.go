@@ -70,6 +70,7 @@ var gateways = map[string][]string{
 var disallowedCalls = map[string][]string{
 	"crypto/ed25519": {"GenerateKey"},
 	"crypto/cipher":  {"NewGCMWithRandomNonce"},
+	"compress/flate": {"NewWriter", "NewWriterDict"},
 }
 
 func TestSharedImportsOnlyAllowedPackages(t *testing.T) {
@@ -120,7 +121,7 @@ func TestSharedImportsOnlyAllowedPackages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"shared/peerwire", "shared/linkcore"} {
+	for _, want := range []string{"shared/peerwire", "shared/linkcore", "shared/devicesec"} {
 		if !packages[want] {
 			t.Errorf("guard did not see %s", want)
 		}

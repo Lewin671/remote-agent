@@ -9,9 +9,9 @@ import (
 
 // The wasm build must not pull in packages that bloat it or break the core's
 // rules (architecture.md, 体积与性能预算): fmt, reflect, math/big, math/rand*, and
-// crypto/rand stay out except behind the single explicit crypto/ed25519 gateway
-// imported solely by shared/peerwire (needed for Ed25519 verify in direct
-// signaling). No package may bypass this check via crypto/internal/*.
+// crypto/rand stay out except behind the explicit crypto/ed25519 (shared/peerwire,
+// shared/devicesec) and inflate-only compress/flate (shared/devicesec) gateways.
+// No package may bypass this check via crypto/internal/*.
 func TestCoreWasmDependencies(t *testing.T) {
 	const coreModule = "github.com/Lewin671/remote-agent/"
 	neverAllowed := map[string]bool{
@@ -27,7 +27,13 @@ func TestCoreWasmDependencies(t *testing.T) {
 	for k := range neverAllowed {
 		forbidden[k] = true
 	}
-	const ed25519GatewayPkg = coreModule + "shared/peerwire"
+	ed25519Gateways := map[string]bool{
+		coreModule + "shared/peerwire":  true,
+		coreModule + "shared/devicesec": true,
+	}
+	flateGateways := map[string]bool{
+		coreModule + "shared/devicesec": true,
+	}
 
 	isDisallowedPrefix := func(imp string) bool {
 		return strings.HasPrefix(imp, "net/") ||
@@ -48,12 +54,19 @@ func TestCoreWasmDependencies(t *testing.T) {
 		graph[pkg] = strings.Fields(imports)
 	}
 	edImporters := map[string]bool{}
+	flateImporters := map[string]bool{}
 	for pkg, imports := range graph {
 		for _, imp := range imports {
 			if imp == "crypto/ed25519" {
 				edImporters[pkg] = true
-				if pkg != ed25519GatewayPkg {
-					t.Errorf("%s imports crypto/ed25519; only %s may import it", pkg, ed25519GatewayPkg)
+				if !ed25519Gateways[pkg] {
+					t.Errorf("%s imports crypto/ed25519; only shared/peerwire and shared/devicesec may import it", pkg)
+				}
+			}
+			if imp == "compress/flate" {
+				flateImporters[pkg] = true
+				if !flateGateways[pkg] {
+					t.Errorf("%s imports compress/flate; only shared/devicesec may import it", pkg)
 				}
 			}
 			if neverAllowed[imp] || isDisallowedPrefix(imp) {
@@ -64,14 +77,22 @@ func TestCoreWasmDependencies(t *testing.T) {
 			}
 		}
 	}
-	if !edImporters[ed25519GatewayPkg] {
-		t.Fatalf("expected %s to import crypto/ed25519 in wasm build graph", ed25519GatewayPkg)
+	for gw := range ed25519Gateways {
+		if !edImporters[gw] {
+			t.Fatalf("expected %s to import crypto/ed25519 in wasm build graph", gw)
+		}
+	}
+	for gw := range flateGateways {
+		if !flateImporters[gw] {
+			t.Fatalf("expected %s to import compress/flate in wasm build graph", gw)
+		}
 	}
 
 	// BFS every clientcore/shared package in the wasm build without skipping crypto/internal/*.
-	// Only two exact edges are exempted:
-	//   1) shared/peerwire -> crypto/ed25519 (reaches fmt/reflect/math/big/math/rand*/crypto/rand),
-	//   2) crypto/internal/sysrand -> os, time (reached under Go 1.26 FIPS AES/HMAC/SHA256).
+	// Only three exact edges are exempted:
+	//   1) shared/peerwire or shared/devicesec -> crypto/ed25519 (verified/seeded only; GenerateKey forbidden in shared/deps_test.go),
+	//   2) shared/devicesec -> compress/flate (inflate-only; NewWriter forbidden in shared/deps_test.go),
+	//   3) crypto/internal/sysrand -> os, time (reached under Go 1.26 FIPS AES/HMAC/SHA256).
 	type step struct{ pkg, via string }
 	var queue []step
 	seen := map[string]bool{}
@@ -85,7 +106,10 @@ func TestCoreWasmDependencies(t *testing.T) {
 		s := queue[0]
 		queue = queue[1:]
 		for _, imp := range graph[s.pkg] {
-			if s.pkg == ed25519GatewayPkg && imp == "crypto/ed25519" {
+			if ed25519Gateways[s.pkg] && imp == "crypto/ed25519" {
+				continue
+			}
+			if flateGateways[s.pkg] && imp == "compress/flate" {
 				continue
 			}
 			if s.pkg == "crypto/internal/sysrand" && (imp == "os" || imp == "time") {
@@ -131,7 +155,8 @@ func TestCoreLayerDependencies(t *testing.T) {
 	forbidden := map[string][]string{
 		"sync":      {"screens", "app"},
 		"transport": {"sync", "screens", "app"},
-		"domain":    {"sync", "transport", "screens", "app"},
+		"security":  {"sync", "transport", "screens", "app"},
+		"domain":    {"security", "sync", "transport", "screens", "app"},
 		"screens":   {"app"},
 	}
 	cmd := exec.Command("go", "list", "-f", "{{.ImportPath}} {{join .Deps \" \"}}", "./...")

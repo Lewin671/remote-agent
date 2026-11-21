@@ -38,4 +38,15 @@ public interface SessionByIdFetchedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+   * @return Whether the wireSession field is set.
+   */
+  boolean hasWireSession();
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+   * @return The wireSession.
+   */
+  io.github.lewin671.remoteagent.proto.RemoteSession getWireSession();
 }

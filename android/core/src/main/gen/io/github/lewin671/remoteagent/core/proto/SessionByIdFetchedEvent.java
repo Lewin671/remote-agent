@@ -140,6 +140,54 @@ public  final class SessionByIdFetchedEvent extends
 
   }
 
+  public static final int WIRE_SESSION_FIELD_NUMBER = 10;
+  private io.github.lewin671.remoteagent.proto.RemoteSession wireSession_;
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWireSession() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.RemoteSession getWireSession() {
+    return wireSession_ == null ? io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance() : wireSession_;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    wireSession_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeWireSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    if (wireSession_ != null &&
+        wireSession_ != io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance()) {
+      wireSession_ =
+        io.github.lewin671.remoteagent.proto.RemoteSession.newBuilder(wireSession_).mergeFrom(value).buildPartial();
+    } else {
+      wireSession_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+   */
+  private void clearWireSession() {
+    wireSession_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionByIdFetchedEvent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -361,6 +409,53 @@ public  final class SessionByIdFetchedEvent extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWireSession() {
+      return instance.hasWireSession();
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.RemoteSession getWireSession() {
+      return instance.getWireSession();
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+     */
+    public Builder setWireSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.setWireSession(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+     */
+    public Builder setWireSession(
+        io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+     */
+    public Builder mergeWireSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.mergeWireSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session = 10 [json_name = "wireSession"];</code>
+     */
+    public Builder clearWireSession() {  copyOnWrite();
+      instance.clearWireSession();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionByIdFetchedEvent)
   }
   @java.lang.Override
@@ -381,10 +476,11 @@ public  final class SessionByIdFetchedEvent extends
             "opId_",
             "session_",
             "error_",
+            "wireSession_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
-              "\u0000\u0003\u0208";
+              "\u0000\u0004\u0000\u0001\u0001\n\u0004\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
+              "\u0000\u0003\u0208\n\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

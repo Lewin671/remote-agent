@@ -18,6 +18,7 @@ public  final class CacheEventsLoadedEvent extends
     sessionId_ = "";
     events_ = emptyProtobufList();
     error_ = "";
+    wireEvents_ = emptyProtobufList();
   }
   public static final int OP_ID_FIELD_NUMBER = 1;
   private long opId_;
@@ -288,6 +289,103 @@ public  final class CacheEventsLoadedEvent extends
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
 
+  }
+
+  public static final int WIRE_EVENTS_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.StoredEvent> wireEvents_;
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.StoredEvent> getWireEventsList() {
+    return wireEvents_;
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.StoredEventOrBuilder> 
+      getWireEventsOrBuilderList() {
+    return wireEvents_;
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  @java.lang.Override
+  public int getWireEventsCount() {
+    return wireEvents_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.StoredEvent getWireEvents(int index) {
+    return wireEvents_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.StoredEventOrBuilder getWireEventsOrBuilder(
+      int index) {
+    return wireEvents_.get(index);
+  }
+  private void ensureWireEventsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.StoredEvent> tmp = wireEvents_;
+    if (!tmp.isModifiable()) {
+      wireEvents_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireEvents(
+      int index, io.github.lewin671.remoteagent.proto.StoredEvent value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireEventsIsMutable();
+    wireEvents_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addWireEvents(io.github.lewin671.remoteagent.proto.StoredEvent value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireEventsIsMutable();
+    wireEvents_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addWireEvents(
+      int index, io.github.lewin671.remoteagent.proto.StoredEvent value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireEventsIsMutable();
+    wireEvents_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  private void addAllWireEvents(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.StoredEvent> values) {
+    ensureWireEventsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, wireEvents_);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  private void clearWireEvents() {
+    wireEvents_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  private void removeWireEvents(int index) {
+    ensureWireEventsIsMutable();
+    wireEvents_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.CacheEventsLoadedEvent parseFrom(
@@ -671,6 +769,108 @@ public  final class CacheEventsLoadedEvent extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.StoredEvent> getWireEventsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getWireEventsList());
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    @java.lang.Override
+    public int getWireEventsCount() {
+      return instance.getWireEventsCount();
+    }/**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.StoredEvent getWireEvents(int index) {
+      return instance.getWireEvents(index);
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder setWireEvents(
+        int index, io.github.lewin671.remoteagent.proto.StoredEvent value) {
+      copyOnWrite();
+      instance.setWireEvents(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder setWireEvents(
+        int index, io.github.lewin671.remoteagent.proto.StoredEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireEvents(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder addWireEvents(io.github.lewin671.remoteagent.proto.StoredEvent value) {
+      copyOnWrite();
+      instance.addWireEvents(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder addWireEvents(
+        int index, io.github.lewin671.remoteagent.proto.StoredEvent value) {
+      copyOnWrite();
+      instance.addWireEvents(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder addWireEvents(
+        io.github.lewin671.remoteagent.proto.StoredEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.addWireEvents(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder addWireEvents(
+        int index, io.github.lewin671.remoteagent.proto.StoredEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.addWireEvents(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder addAllWireEvents(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.StoredEvent> values) {
+      copyOnWrite();
+      instance.addAllWireEvents(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder clearWireEvents() {
+      copyOnWrite();
+      instance.clearWireEvents();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+     */
+    public Builder removeWireEvents(int index) {
+      copyOnWrite();
+      instance.removeWireEvents(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.CacheEventsLoadedEvent)
   }
   @java.lang.Override
@@ -694,10 +894,12 @@ public  final class CacheEventsLoadedEvent extends
             "broken_",
             "retired_",
             "error_",
+            "wireEvents_",
+            io.github.lewin671.remoteagent.proto.StoredEvent.class,
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u0003\u0002\u0208" +
-              "\u0003\u001b\u0004\u0007\u0005\u0007\u0006\u0208";
+              "\u0000\u0007\u0000\u0000\u0001\n\u0007\u0000\u0002\u0000\u0001\u0003\u0002\u0208" +
+              "\u0003\u001b\u0004\u0007\u0005\u0007\u0006\u0208\n\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

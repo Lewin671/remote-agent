@@ -14,6 +14,7 @@ func (e *Engine) ensureTransportCoord() *transport.Coordinator {
 	if e.transportCoord == nil {
 		e.transportCoord = transport.NewCoordinator(transport.CoordConfig{
 			ProtocolVersion: uint64(PeerVersion),
+			Entropy:         e.entropy,
 		})
 	}
 	return e.transportCoord
@@ -75,6 +76,7 @@ func (e *Engine) handleTransportConfig(ctx *StepContext, ev *corev1.TransportCon
 		ProtocolVersion: pv,
 		ServerHost:      ev.ServerHost,
 		ConfiguredStun:  ev.ConfiguredStun,
+		Entropy:         e.entropy,
 	})
 	e.emitCoordEffects(ctx, effs)
 	e.emitCoordEffects(ctx, c.SetLifecycle(e.nowMs, e.foreground))
@@ -90,7 +92,7 @@ func (e *Engine) handleDirectRandomBytes(ctx *StepContext, raw []byte) {
 	if len(raw) == 0 {
 		return
 	}
-	e.emitCoordEffects(ctx, e.ensureTransportCoord().ProvideRandomBytes(e.nowMs, raw))
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().ProvideRandomBytesWithShared(e.nowMs, raw, false))
 }
 
 func (e *Engine) handleDirectPreferencesLoaded(ctx *StepContext, ev *corev1.DirectPreferencesLoadedEvent) {
@@ -110,7 +112,7 @@ func (e *Engine) handleDirectPreferencesLoaded(ctx *StepContext, ev *corev1.Dire
 }
 
 func (e *Engine) handleDirectSecuritySnapshot(ctx *StepContext, ev *corev1.DirectSecuritySnapshotEvent) {
-	if ev == nil {
+	if ev == nil || (e.secEngine != nil && e.secEngine.Locked()) {
 		return
 	}
 	c := e.ensureTransportCoord()
@@ -543,25 +545,46 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 			})
 
 		case transport.CoordKeySign:
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_DirectKeySign{
-					DirectKeySign: &corev1.DirectKeySignEffect{
-						OpId:    eff.OpID,
-						Message: eff.Message,
+			if e.secEngine != nil && e.secEngine.Locked() {
+				tid := eff.OpID
+				e.secEngine.RequestKeySign(eff.Message, func(sig []byte, err error) {
+					if err != nil {
+						return
+					}
+					e.emitCoordEffects(e.activeStepCtx, e.ensureTransportCoord().OnKeySigned(e.nowMs, tid, sig))
+				})
+				e.emitRawEffects(ctx, e.secEngine.DrainEffects())
+			} else {
+				ctx.emit(&corev1.Effect{
+					Effect: &corev1.Effect_DirectKeySign{
+						DirectKeySign: &corev1.DirectKeySignEffect{
+							OpId:    eff.OpID,
+							Message: eff.Message,
+						},
 					},
-				},
-			})
+				})
+			}
 
 		case transport.CoordKeyAgree:
-			ctx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_DirectKeyAgree{
-					DirectKeyAgree: &corev1.DirectKeyAgreeEffect{
-						OpId:         eff.OpID,
-						PeerId:       eff.PeerID,
-						PeerXPublic:  append([]byte(nil), eff.PeerXPub[:]...),
+			if e.secEngine != nil && e.secEngine.Locked() {
+				tid := eff.OpID
+				var peerX [32]byte
+				copy(peerX[:], eff.PeerXPub[:])
+				e.secEngine.RequestKeyAgree(peerX, true, func(shared []byte, err error) {
+					e.emitCoordEffects(e.activeStepCtx, e.ensureTransportCoord().OnKeyAgreed(e.nowMs, tid, shared, err == nil))
+				})
+				e.emitRawEffects(ctx, e.secEngine.DrainEffects())
+			} else {
+				ctx.emit(&corev1.Effect{
+					Effect: &corev1.Effect_DirectKeyAgree{
+						DirectKeyAgree: &corev1.DirectKeyAgreeEffect{
+							OpId:        eff.OpID,
+							PeerId:      eff.PeerID,
+							PeerXPublic: append([]byte(nil), eff.PeerXPub[:]...),
+						},
 					},
-				},
-			})
+				})
+			}
 
 		case transport.CoordSignalSend:
 			ctx.emit(&corev1.Effect{

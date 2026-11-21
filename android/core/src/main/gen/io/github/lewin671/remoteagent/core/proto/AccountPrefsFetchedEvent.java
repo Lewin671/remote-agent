@@ -140,6 +140,54 @@ public  final class AccountPrefsFetchedEvent extends
 
   }
 
+  public static final int WIRE_PREFS_FIELD_NUMBER = 10;
+  private io.github.lewin671.remoteagent.proto.AccountPrefsObject wirePrefs_;
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWirePrefs() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWirePrefs() {
+    return wirePrefs_ == null ? io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance() : wirePrefs_;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWirePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    value.getClass();  // minimal bytecode null check
+    wirePrefs_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeWirePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    value.getClass();  // minimal bytecode null check
+    if (wirePrefs_ != null &&
+        wirePrefs_ != io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance()) {
+      wirePrefs_ =
+        io.github.lewin671.remoteagent.proto.AccountPrefsObject.newBuilder(wirePrefs_).mergeFrom(value).buildPartial();
+    } else {
+      wirePrefs_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+   */
+  private void clearWirePrefs() {
+    wirePrefs_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -361,6 +409,53 @@ public  final class AccountPrefsFetchedEvent extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWirePrefs() {
+      return instance.hasWirePrefs();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWirePrefs() {
+      return instance.getWirePrefs();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+     */
+    public Builder setWirePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+      copyOnWrite();
+      instance.setWirePrefs(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+     */
+    public Builder setWirePrefs(
+        io.github.lewin671.remoteagent.proto.AccountPrefsObject.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWirePrefs(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+     */
+    public Builder mergeWirePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+      copyOnWrite();
+      instance.mergeWirePrefs(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+     */
+    public Builder clearWirePrefs() {  copyOnWrite();
+      instance.clearWirePrefs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AccountPrefsFetchedEvent)
   }
   @java.lang.Override
@@ -381,10 +476,11 @@ public  final class AccountPrefsFetchedEvent extends
             "opId_",
             "prefs_",
             "error_",
+            "wirePrefs_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
-              "\u0000\u0003\u0208";
+              "\u0000\u0004\u0000\u0001\u0001\n\u0004\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
+              "\u0000\u0003\u0208\n\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

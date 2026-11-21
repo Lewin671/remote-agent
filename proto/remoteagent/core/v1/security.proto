@@ -1,0 +1,710 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/v1/envelope.proto";
+import "remoteagent/v1/event.proto";
+import "remoteagent/v1/local.proto";
+import "remoteagent/v1/relay.proto";
+import "remoteagent/v1/remote.proto";
+
+// ---- Security Engine Configuration & Record Sync (S5) ----
+
+message SecurityConfigEvent {
+  string account = 1;
+  string device_id = 2;
+  // False on Web (heavy batch Ed25519 verify >8 and AEAD >16 KiB route via CryptoBatchEffect).
+  // True on Android/iOS (Core executes crypto synchronously in Go).
+  bool inline_crypto = 3;
+}
+
+message SecurityRecordEvent {
+  uint64 op_id = 1;
+  uint64 push_seq = 2;
+  uint64 network_generation = 3;
+  string account = 4;
+  bytes domain = 5;
+  bytes genesis = 6;
+  repeated bytes states = 7;
+  repeated bytes recovery_proofs = 8;
+  bytes lease = 9;
+  int64 floor_ms = 10;
+  bool recovery_pending = 11;
+  int64 recovery_ready_ms = 12;
+  bool recovery_objects_pending = 13;
+  bool removed = 14;
+  bool cleared = 15;
+  string error = 16;
+}
+
+// ---- Externalized Private-Key Effects & Events ----
+
+enum SecurityKeyKind {
+  SECURITY_KEY_KIND_UNSPECIFIED = 0;
+  SECURITY_KEY_KIND_DEVICE_ED = 1;
+  SECURITY_KEY_KIND_DEVICE_X = 2;
+  SECURITY_KEY_KIND_CANDIDATE_ED = 3;
+  SECURITY_KEY_KIND_CANDIDATE_X = 4;
+  SECURITY_KEY_KIND_EPHEMERAL_X = 5;
+}
+
+enum SecurityGenerateKind {
+  SECURITY_GENERATE_KIND_UNSPECIFIED = 0;
+  SECURITY_GENERATE_KIND_ED25519 = 1;
+  SECURITY_GENERATE_KIND_X25519 = 2;
+}
+
+message SecurityKeySignEffect {
+  uint64 op_id = 1;
+  SecurityKeyKind key_kind = 2;
+  string slot = 3;
+  bytes message = 4;
+}
+
+message SecurityKeySignedEvent {
+  uint64 op_id = 1;
+  bytes signature = 2;
+  string error = 3;
+}
+
+message SecurityKeyAgreeEffect {
+  uint64 op_id = 1;
+  SecurityKeyKind key_kind = 2;
+  string slot = 3;
+  bytes peer_public = 4;
+}
+
+message SecurityKeyAgreedEvent {
+  uint64 op_id = 1;
+  bytes shared = 2;
+  string error = 3;
+}
+
+message SecurityKeyGenerateEffect {
+  uint64 op_id = 1;
+  SecurityGenerateKind key_kind = 2;
+  string slot = 3;
+  bool persist = 4;
+}
+
+message SecurityKeyGeneratedEvent {
+  uint64 op_id = 1;
+  bytes public_key = 2;
+  string error = 3;
+}
+
+message SecurityKeyEncapsulateEffect {
+  uint64 op_id = 1;
+  repeated bytes recipient_x_publics = 2;
+}
+
+message SecurityKeyEncapsulatedPair {
+  bytes enc = 1;
+  bytes shared = 2;
+}
+
+message SecurityKeyEncapsulatedEvent {
+  uint64 op_id = 1;
+  repeated SecurityKeyEncapsulatedPair pairs = 2;
+  string error = 3;
+}
+
+message SecurityKeyDiscardEffect {
+  string slot = 1;
+}
+
+// ---- Web CryptoBatch Offload (verify > 8 items, AEAD > 16 KiB) ----
+
+message CryptoBatchVerifyItem {
+  bytes public_key = 1;
+  bytes message = 2;
+  bytes signature = 3;
+}
+
+message CryptoBatchAeadOpenItem {
+  bytes key = 1;
+  bytes nonce = 2;
+  bytes aad = 3;
+  bytes ciphertext = 4;
+}
+
+message CryptoBatchAeadSealItem {
+  bytes key = 1;
+  bytes nonce = 2;
+  bytes aad = 3;
+  bytes plaintext = 4;
+}
+
+message CryptoBatchSha256Item {
+  bytes data = 1;
+}
+
+message SecurityCryptoBatchItem {
+  oneof kind {
+    CryptoBatchVerifyItem verify = 1;
+    CryptoBatchAeadOpenItem aead_open = 2;
+    CryptoBatchAeadSealItem aead_seal = 3;
+    CryptoBatchSha256Item sha256 = 4;
+  }
+}
+
+message SecurityCryptoBatchEffect {
+  uint64 op_id = 1;
+  repeated SecurityCryptoBatchItem items = 2;
+}
+
+message SecurityCryptoBatchResult {
+  bool ok = 1;
+  bytes data = 2;
+  string error = 3;
+}
+
+message SecurityCryptoBatchDoneEvent {
+  uint64 op_id = 1;
+  repeated SecurityCryptoBatchResult results = 2;
+  string error = 3;
+}
+
+// ---- Stateful Shell Op Bridge (for workflows still in shells in S5) ----
+
+message SecurityOpenEnvelopeOp {
+  remoteagent.v1.Envelope envelope = 1;
+  uint32 expected_purpose = 2;
+  string machine_id = 3;
+  string session_id = 4;
+  string request_id = 5;
+  uint64 seq = 6;
+  bool history = 7;
+  bytes override_session_seed = 8;
+}
+
+message SecuritySealEnvelopeOp {
+  uint32 purpose = 1;
+  string machine_id = 2;
+  string session_id = 3;
+  string request_id = 4;
+  uint64 seq = 5;
+  int64 deadline_ms = 6;
+  bytes plaintext = 7;
+  bool use_session_seed = 8;
+}
+
+message SecurityOpenHistoryOp {
+  string session_id = 1;
+  repeated remoteagent.v1.Envelope envelopes = 2;
+}
+
+message SecurityGetSessionSeedOp {
+  string session_id = 1;
+}
+
+message SecurityOpRequestEvent {
+  uint64 op_id = 1;
+  oneof op {
+    SecurityOpenEnvelopeOp open_envelope = 2;
+    SecuritySealEnvelopeOp seal_envelope = 3;
+    SecurityOpenHistoryOp open_history = 4;
+    SecurityGetSessionSeedOp get_session_seed = 5;
+  }
+}
+
+message SecurityOpenEnvelopeResult {
+  bytes header = 1;
+  bytes plaintext = 2;
+  uint64 epoch = 3;
+  uint64 content_epoch = 4;
+  uint64 seq = 5;
+  string sender = 6;
+  uint32 purpose = 7;
+  string machine_id = 8;
+  string session_id = 9;
+  string request_id = 10;
+  int64 deadline_ms = 11;
+}
+
+message SecuritySealEnvelopeResult {
+  remoteagent.v1.Envelope envelope = 1;
+  bytes request_key_hash = 2;
+  bytes payload_hash = 3;
+}
+
+message SecurityOpenedHistoryItem {
+  uint64 seq = 1;
+  bytes plaintext = 2;
+  bool unavailable = 3;
+  bool unsupported = 4;
+  string error = 5;
+  string error_code = 6;
+}
+
+message SecurityOpenHistoryResult {
+  repeated SecurityOpenedHistoryItem items = 1;
+}
+
+message SecurityOpResultEffect {
+  uint64 op_id = 1;
+  string error = 2;
+  string error_code = 3;
+  oneof result {
+    SecurityOpenEnvelopeResult opened = 4;
+    SecuritySealEnvelopeResult sealed = 5;
+    SecurityOpenHistoryResult history = 6;
+    bytes session_seed = 7;
+  }
+}
+
+// ---- Demo/Gallery Mode Seeding (permanently locked out once real security is initialized) ----
+
+message DemoMachine {
+  string machine_id = 1;
+  bool online = 2;
+  int64 last_seen_ms = 3;
+  remoteagent.v1.MachineMeta meta = 4;
+}
+
+message DemoSession {
+  string session_id = 1;
+  string machine_id = 2;
+  uint64 last_seq = 3;
+  int64 updated_ms = 4;
+  int64 listed_ended_ms = 5;
+  remoteagent.v1.Session meta = 6;
+  remoteagent.v1.LiveSnapshot checkpoint = 7;
+}
+
+message DemoDevice {
+  string device_id = 1;
+  remoteagent.v1.DeviceKind kind = 2;
+  int64 created_ms = 3;
+  int64 last_seen_ms = 4;
+  remoteagent.v1.DeviceMeta meta = 5;
+}
+
+message DemoSessionEvents {
+  string session_id = 1;
+  repeated remoteagent.v1.Event events = 2;
+}
+
+message SeedDemoWorldEvent {
+  repeated DemoMachine machines = 1;
+  repeated DemoSession sessions = 2;
+  repeated DemoDevice devices = 3;
+  remoteagent.v1.ProjectPrefs prefs = 4;
+  repeated DemoSessionEvents session_events = 5;
+}
+
+// ---- Wire Cache Helpers ----
+
+message CacheWriteStoredEvents {
+  string session_id = 1;
+  repeated remoteagent.v1.StoredEvent events = 2;
+}
+
+// ---- Stateless SecCall API (for S6 authority/pair/recovery/store workflows & SW/Push notifications) ----
+
+message SecPin {
+  string account = 1;
+  bytes domain = 2;
+  bytes genesis = 3;
+}
+
+message SecMember {
+  string id = 1;
+  bytes ed_public = 2;
+  bytes x_public = 3;
+  uint32 kind = 4;
+}
+
+message SecGrant {
+  string recipient = 1;
+  bytes enc = 2;
+  bytes cipher = 3;
+}
+
+message SecParsedState {
+  bytes state_hash = 1;
+  bytes core_hash = 2;
+  string account = 3;
+  bytes domain = 4;
+  string authority_id = 5;
+  bytes recovery_ed = 6;
+  bytes parent = 7;
+  uint64 epoch = 8;
+  uint64 content_epoch = 9;
+  uint64 issued_at = 10;
+  repeated SecMember members = 11;
+  repeated string removed = 12;
+  repeated SecGrant grants = 13;
+  bytes prev_secret = 14;
+  bytes signature = 15;
+  bytes signing_bytes = 16;
+}
+
+message SecParsedLease {
+  bytes domain = 1;
+  bytes head = 2;
+  uint64 issued_at = 3;
+  uint64 not_after = 4;
+  bytes signature = 5;
+  bytes signing_bytes = 6;
+}
+
+message SecParsedRecoveryStatement {
+  string account = 1;
+  bytes domain = 2;
+  bytes parent = 3;
+  string new_authority_id = 4;
+  bytes new_recovery_ed = 5;
+  SecMember new_member = 6;
+  uint64 issued_at = 7;
+  bytes state_hash = 8;
+  bytes nonce = 9;
+  bytes signature = 10;
+  bytes signing_bytes = 11;
+}
+
+message SecKemPair {
+  string member_id = 1;
+  bytes enc = 2;
+  bytes dh = 3;
+}
+
+message SecUnsignedState {
+  SecParsedState parsed = 1;
+  bytes unsigned_core = 2;
+  repeated SecGrant grants = 3;
+  bytes prev_secret = 4;
+  bytes signing_bytes = 5;
+  bytes state_hash = 6;
+}
+
+message SecParsedApproval {
+  string account_id = 1;
+  string pairing_id = 2;
+  string approver_device_id = 3;
+  bytes approver_public_key = 4;
+  string candidate_device_id = 5;
+  bytes candidate_device_public_key = 6;
+  remoteagent.v1.DeviceKind candidate_kind = 7;
+  int64 expires_ms = 8;
+  bytes nonce = 9;
+  string replaces_device_id = 10;
+}
+
+message SecCallRequest {
+  oneof call {
+    SecParseStateCall parse_state = 1;
+    SecVerifyChainCall verify_chain = 2;
+    SecGrantChallengeCall grant_challenge = 3;
+    SecOpenGrantWithDHCall open_grant_with_dh = 4;
+    SecHPKEWithDHCall hpke_seal_with_dh = 5;
+    SecHPKEWithDHCall hpke_open_with_dh = 6;
+    SecParseLeaseCall parse_lease = 7;
+    SecVerifyLeaseCall verify_lease = 8;
+    SecNewLeaseUnsignedCall new_lease_unsigned = 9;
+    SecMarshalLeaseCall marshal_lease = 10;
+    SecParseRecoveryStatementCall parse_recovery_statement = 11;
+    SecVerifyRecoveryStatementCall verify_recovery_statement = 12;
+    SecNewRecoveryStatementUnsignedCall new_recovery_statement_unsigned = 13;
+    SecMarshalRecoveryStatementCall marshal_recovery_statement = 14;
+    SecNewGenesisUnsignedCall new_genesis_unsigned = 15;
+    SecNewStateUnsignedCall new_state_unsigned = 16;
+    SecNewMembershipStateUnsignedCall new_membership_state_unsigned = 17;
+    SecNewPairStateUnsignedCall new_pair_state_unsigned = 18;
+    SecNewHandoffUnsignedCall new_handoff_unsigned = 19;
+    SecNewRecoveryUnsignedCall new_recovery_unsigned = 20;
+    SecNewRecoveryKeyRotationUnsignedCall new_recovery_key_rotation_unsigned = 21;
+    SecMarshalStateCall marshal_state = 22;
+    SecSealPrevSecretCall seal_prev_secret = 23;
+    SecOpenPrevSecretCall open_prev_secret = 24;
+    SecVerifyPairApprovalCall verify_pair_approval = 25;
+    SecMachineReplacementOriginsCall machine_replacement_origins = 26;
+    SecPairTrustDescriptorCall pair_trust_descriptor = 27;
+    SecParsePairTrustDescriptorCall parse_pair_trust_descriptor = 28;
+    SecPairDomainCommitCall pair_domain_commit = 29;
+    SecPairTranscriptCall pair_transcript = 30;
+    SecPairIdentityTranscriptCall pair_identity_transcript = 31;
+    SecPairDomainTranscriptCall pair_domain_transcript = 32;
+    SecDerivePairSecretsCall derive_pair_secrets = 33;
+    SecEd25519SeedPublicCall ed25519_seed_public = 34;
+    SecEd25519SeedSignCall ed25519_seed_sign = 35;
+    SecDeviceIDCall device_id = 36;
+    SecInflateBoundedCall inflate_bounded = 37;
+    SecRequestIdentityCall request_identity = 38;
+    SecAccountDeleteSigningBytesCall account_delete_signing_bytes = 39;
+    SecOpenNotifyEnvelopeCall open_notify_envelope = 40;
+    SecOpenEnvelopeDirectCall open_envelope_direct = 41;
+    SecSealEnvelopeDirectCall seal_envelope_direct = 42;
+  }
+}
+
+message SecParseStateCall { bytes raw = 1; }
+message SecVerifyChainCall {
+  SecPin pin = 1;
+  repeated bytes states = 2;
+  repeated bytes recovery_proofs = 3;
+  bytes lease = 4;
+  int64 now_ms = 5;
+  string member_id = 6;
+  bool check_lease_window = 7;
+}
+message SecGrantChallengeCall {
+  SecPin pin = 1;
+  bytes state = 2;
+  string member_id = 3;
+}
+message SecOpenGrantWithDHCall {
+  SecPin pin = 1;
+  bytes state = 2;
+  string member_id = 3;
+  bytes dh = 4;
+}
+message SecHPKEWithDHCall {
+  bytes recipient_public = 1;
+  bytes enc = 2;
+  bytes dh = 3;
+  bytes info = 4;
+  bytes aad = 5;
+  bytes data = 6;
+}
+message SecParseLeaseCall { bytes raw = 1; }
+message SecVerifyLeaseCall {
+  bytes lease = 1;
+  bytes head_state = 2;
+  int64 now_ms = 3;
+  bool check_window = 4;
+}
+message SecNewLeaseUnsignedCall {
+  bytes head_state = 1;
+  uint64 now_ms = 2;
+}
+message SecMarshalLeaseCall {
+  bytes domain = 1;
+  bytes head = 2;
+  uint64 issued_at = 3;
+  uint64 not_after = 4;
+  bytes signature = 5;
+}
+message SecParseRecoveryStatementCall { bytes raw = 1; }
+message SecVerifyRecoveryStatementCall {
+  bytes statement = 1;
+  bytes parent_state = 2;
+  bytes next_state = 3;
+}
+message SecNewRecoveryStatementUnsignedCall {
+  bytes parent_state = 1;
+  bytes next_state = 2;
+  bytes nonce = 3;
+}
+message SecMarshalRecoveryStatementCall {
+  string account = 1;
+  bytes domain = 2;
+  bytes parent = 3;
+  string new_authority_id = 4;
+  bytes new_recovery_ed = 5;
+  SecMember new_member = 6;
+  uint64 issued_at = 7;
+  bytes state_hash = 8;
+  bytes nonce = 9;
+  bytes signature = 10;
+}
+message SecNewGenesisUnsignedCall {
+  string account = 1;
+  bytes domain = 2;
+  SecMember member = 3;
+  bytes recovery_ed = 4;
+  bytes secret = 5;
+  uint64 now_ms = 6;
+  repeated SecKemPair kems = 7;
+}
+message SecNewStateUnsignedCall {
+  bytes parent_state = 1;
+  repeated SecMember members = 2;
+  repeated string removed = 3;
+  bytes secret = 4;
+  bytes prev_secret = 5;
+  uint64 now_ms = 6;
+  repeated SecKemPair kems = 7;
+}
+message SecNewMembershipStateUnsignedCall {
+  bytes parent_state = 1;
+  repeated SecMember members = 2;
+  repeated string removed = 3;
+  bytes old_secret = 4;
+  bytes new_secret = 5;
+  uint64 now_ms = 6;
+  bytes prev_secret_nonce = 7;
+  repeated SecKemPair kems = 8;
+}
+message SecNewPairStateUnsignedCall {
+  bytes parent_state = 1;
+  SecMember candidate = 2;
+  bytes old_secret = 3;
+  bytes new_secret = 4;
+  uint64 now_ms = 5;
+  bytes prev_secret_nonce = 6;
+  repeated SecKemPair kems = 7;
+}
+message SecNewHandoffUnsignedCall {
+  bytes parent_state = 1;
+  string incoming_id = 2;
+  bytes recovery_ed = 3;
+  bytes old_secret = 4;
+  bytes new_secret = 5;
+  uint64 now_ms = 6;
+  bytes prev_secret_nonce = 7;
+  repeated SecKemPair kems = 8;
+}
+message SecNewRecoveryUnsignedCall {
+  bytes parent_state = 1;
+  SecMember new_member = 2;
+  repeated SecMember members = 3;
+  bytes secret = 4;
+  bytes new_recovery_ed = 5;
+  uint64 now_ms = 6;
+  repeated SecKemPair kems = 7;
+}
+message SecNewRecoveryKeyRotationUnsignedCall {
+  bytes parent_state = 1;
+  bytes secret = 2;
+  bytes recovery_ed = 3;
+  uint64 now_ms = 4;
+  repeated SecKemPair kems = 5;
+}
+message SecMarshalStateCall {
+  SecUnsignedState unsigned = 1;
+  bytes signature = 2;
+}
+message SecSealPrevSecretCall {
+  bytes new_secret = 1;
+  bytes old_secret = 2;
+  bytes nonce = 3;
+}
+message SecOpenPrevSecretCall {
+  bytes new_secret = 1;
+  bytes blob = 2;
+}
+message SecVerifyPairApprovalCall {
+  bytes approval = 1;
+  bytes signature = 2;
+  string expected_account = 3;
+  string expected_candidate_id = 4;
+}
+message SecMachineReplacementOriginsCall {
+  string account = 1;
+  string target_machine_id = 2;
+  repeated bytes states = 3;
+  repeated remoteagent.v1.MachineReplacementProof proofs = 4;
+}
+message SecPairTrustDescriptorCall {
+  SecPin pin = 1;
+  string approver = 2;
+}
+message SecParsePairTrustDescriptorCall { bytes raw = 1; }
+message SecPairDomainCommitCall {
+  bytes initiator = 1;
+  bytes trust_descriptor = 2;
+}
+message SecPairTranscriptCall {
+  string pairing_id = 1;
+  bytes initiator_public = 2;
+  bytes joiner_public = 3;
+  int32 joiner_kind = 4;
+}
+message SecPairIdentityTranscriptCall {
+  string pairing_id = 1;
+  bytes initiator_public = 2;
+  bytes joiner_public = 3;
+  bytes device_ed_public = 4;
+  int32 joiner_kind = 5;
+}
+message SecPairDomainTranscriptCall {
+  string pairing_id = 1;
+  bytes initiator_public = 2;
+  bytes joiner_public = 3;
+  bytes device_ed_public = 4;
+  bytes device_x_public = 5;
+  int32 joiner_kind = 6;
+  bytes trust_descriptor = 7;
+}
+message SecDerivePairSecretsCall {
+  bytes shared = 1;
+  bytes transcript = 2;
+}
+message SecEd25519SeedPublicCall { bytes seed = 1; }
+message SecEd25519SeedSignCall { bytes seed = 1; bytes message = 2; }
+message SecDeviceIDCall { bytes ed_public = 1; }
+message SecInflateBoundedCall { bytes compressed = 1; uint32 limit = 2; }
+message SecRequestIdentityCall {
+  bytes header = 1;
+  bytes plaintext = 2;
+  bool has_plaintext = 3;
+}
+message SecAccountDeleteSigningBytesCall {
+  string account = 1;
+  bytes head_hash = 2;
+  bytes challenge = 3;
+}
+message SecOpenNotifyEnvelopeCall {
+  SecPin pin = 1;
+  repeated bytes states = 2;
+  repeated bytes recovery_proofs = 3;
+  string member_id = 4;
+  bytes dh = 5;
+  bytes content_secret = 6;
+  remoteagent.v1.Envelope envelope = 7;
+}
+message SecOpenEnvelopeDirectCall {
+  SecPin pin = 1;
+  repeated bytes states = 2;
+  repeated bytes recovery_proofs = 3;
+  bytes content_secret = 4;
+  bytes session_seed = 5;
+  bool live = 6;
+  int64 now_ms = 7;
+  remoteagent.v1.Envelope envelope = 8;
+}
+message SecSealEnvelopeDirectCall {
+  bytes secret = 1;
+  bytes session_seed = 2;
+  string account = 3;
+  bytes domain = 4;
+  uint64 epoch = 5;
+  bytes state_hash = 6;
+  uint64 content_epoch = 7;
+  string sender = 8;
+  uint32 purpose = 9;
+  string machine_id = 10;
+  string session_id = 11;
+  string request_id = 12;
+  uint64 seq = 13;
+  int64 deadline_ms = 14;
+  bytes plaintext = 15;
+  bytes nonce = 16;
+}
+
+message SecCallResponse {
+  string error = 1;
+  string error_code = 2;
+  SecParsedState parsed_state = 3;
+  SecParsedLease parsed_lease = 4;
+  SecParsedRecoveryStatement parsed_recovery = 5;
+  SecUnsignedState unsigned_state = 6;
+  SecParsedApproval parsed_approval = 7;
+  bytes data = 8;
+  bytes secondary_data = 9;
+  bytes tertiary_data = 10;
+  bytes info = 11;
+  bytes aad = 12;
+  string text = 13;
+  repeated string strings = 14;
+  SecPin pin = 15;
+  remoteagent.v1.NotifyContent notify = 16;
+  SecurityOpenEnvelopeResult opened = 17;
+  remoteagent.v1.Envelope envelope = 18;
+  bytes header = 19;
+  bytes origin_bytes = 20;
+  uint64 epoch = 21;
+  uint64 content_epoch = 22;
+  repeated SecParsedState parsed_states = 23;
+}

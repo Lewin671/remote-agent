@@ -86,7 +86,7 @@ func (e *Engine) enqueuePrefsOp(ctx *StepContext, op *lists.FullPrefsOp, forSett
 		return false
 	}
 
-	opID := e.entropy.nextID(ctx)
+	opID := e.nextID(ctx)
 	item := prefsQueueItem{
 		OpID:        opID,
 		Path:        op.Path,
@@ -172,6 +172,31 @@ func (e *Engine) handleAccountPrefsFetched(ctx *StepContext, ev *corev1.AccountP
 	}
 	e.prefsBackoffMs = PrefsRetryInitialMs
 	e.prefs.LoadFailed = false
+	if ev.WirePrefs != nil || (e.secEngine != nil && e.secEngine.Locked() && ev.Prefs == nil) {
+		var slice []*v1.AccountPrefsObject
+		if ev.WirePrefs != nil {
+			slice = []*v1.AccountPrefsObject{ev.WirePrefs}
+		}
+		e.openWireDirectoryBatch(ctx, nil, nil, nil, slice, func(_ []decodedMachine, _ []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
+			stepCtx := e.activeStepCtx
+			var dp *decodedPrefs
+			if len(outP) > 0 {
+				dp = outP[0]
+			}
+			e.applyAccountPrefsDecoded(dp, true)
+			if dp != nil && dp.Wire != nil && dp.Wire.Revision > 0 {
+				stepCtx.emit(&corev1.Effect{
+					Effect: &corev1.Effect_CacheWrite{
+						CacheWrite: &corev1.CacheWriteEffect{
+							Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: dp.Wire},
+						},
+					},
+				})
+			}
+			stepCtx.Dirty.MarkAll()
+		})
+		return
+	}
 	e.applyAccountPrefs(ev.Prefs, true)
 	if ev.Prefs != nil && ev.Prefs.CacheRef != "" {
 		ctx.emit(&corev1.Effect{
@@ -190,6 +215,57 @@ func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPre
 	head.ActiveOpID = 0
 	if ev.Error != "" {
 		e.finishPrefsOp(ctx, text.Msg(text.KeyErrorsServerReturned, text.Str("value", ev.Error)))
+		return
+	}
+	if ev.WirePrefs != nil || (e.secEngine != nil && e.secEngine.Locked() && ev.Prefs == nil) {
+		headOpID := head.OpID
+		var slice []*v1.AccountPrefsObject
+		if ev.WirePrefs != nil {
+			slice = []*v1.AccountPrefsObject{ev.WirePrefs}
+		}
+		e.openWireDirectoryBatch(ctx, nil, nil, nil, slice, func(_ []decodedMachine, _ []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
+			stepCtx := e.activeStepCtx
+			if len(e.prefsQueue) == 0 || e.prefsQueue[0].OpID != headOpID {
+				return
+			}
+			curHead := &e.prefsQueue[0]
+			var dp *decodedPrefs
+			if len(outP) > 0 {
+				dp = outP[0]
+			}
+			if dp != nil && dp.Broken {
+				e.applyAccountPrefsDecoded(dp, true)
+				e.finishPrefsOp(stepCtx, text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed))
+				return
+			}
+			var baseRev uint64
+			var basePrefs *v1.ProjectPrefs
+			if dp != nil {
+				baseRev = dp.Revision
+				basePrefs = dp.Prefs
+			}
+			if curHead.Attempt == 0 {
+				curHead.InitialBase = baseRev
+			} else if baseRev > curHead.InitialBase {
+				e.w.ProjectChangedElsewhere = true
+			}
+			if basePrefs != nil && slices.Contains(basePrefs.RecentOps, curHead.OpID) {
+				e.applyAccountPrefsDecoded(dp, true)
+				if dp != nil && dp.Wire != nil && dp.Wire.Revision > 0 {
+					stepCtx.emit(&corev1.Effect{
+						Effect: &corev1.Effect_CacheWrite{
+							CacheWrite: &corev1.CacheWriteEffect{
+								Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: dp.Wire},
+							},
+						},
+					})
+				}
+				e.finishPrefsOp(stepCtx, nil)
+				return
+			}
+			nextPrefs := lists.ApplyPrefsOp(basePrefs, curHead.Op, curHead.OpID, e.nowMs)
+			e.sealAndEmitPrefsPut(stepCtx, curHead, baseRev, nextPrefs)
+		})
 		return
 	}
 	var baseRev uint64
@@ -220,6 +296,10 @@ func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPre
 	}
 
 	nextPrefs := lists.ApplyPrefsOp(basePrefs, head.Op, head.OpID, e.nowMs)
+	if e.secEngine != nil && e.secEngine.Locked() {
+		e.sealAndEmitPrefsPut(ctx, head, baseRev, nextPrefs)
+		return
+	}
 	head.Phase = prefsPhasePut
 	head.ActiveOpID = e.allocOpID()
 	ctx.emit(&corev1.Effect{
@@ -259,6 +339,25 @@ func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.Accoun
 			return
 		}
 		e.startNextPrefsOp(ctx)
+		return
+	}
+	if ev.WireCurrent != nil {
+		e.openWireDirectoryBatch(ctx, nil, nil, nil, []*v1.AccountPrefsObject{ev.WireCurrent}, func(_ []decodedMachine, _ []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
+			stepCtx := e.activeStepCtx
+			if len(outP) > 0 && outP[0] != nil {
+				e.applyAccountPrefsDecoded(outP[0], true)
+				if outP[0].Wire != nil && outP[0].Wire.Revision > 0 {
+					stepCtx.emit(&corev1.Effect{
+						Effect: &corev1.Effect_CacheWrite{
+							CacheWrite: &corev1.CacheWriteEffect{
+								Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: outP[0].Wire},
+							},
+						},
+					})
+				}
+			}
+			e.finishPrefsOp(stepCtx, nil)
+		})
 		return
 	}
 	if ev.Current != nil {
@@ -308,6 +407,19 @@ func (e *Engine) finishPrefsOp(ctx *StepContext, errText *corev1.Text) {
 }
 
 func (e *Engine) applyAccountPrefs(in *corev1.PlainAccountPrefs, forceAccept bool) {
+	if in == nil {
+		e.applyAccountPrefsDecoded(nil, forceAccept)
+		return
+	}
+	e.applyAccountPrefsDecoded(&decodedPrefs{
+		Revision: in.Revision,
+		Prefs:    in.Prefs,
+		Broken:   in.Broken,
+		CacheRef: in.CacheRef,
+	}, forceAccept)
+}
+
+func (e *Engine) applyAccountPrefsDecoded(in *decodedPrefs, forceAccept bool) {
 	if in == nil {
 		if !e.prefs.Loaded {
 			e.prefs = PrefsState{Loaded: true}

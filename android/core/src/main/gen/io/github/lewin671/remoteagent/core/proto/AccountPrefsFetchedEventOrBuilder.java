@@ -38,4 +38,15 @@ public interface AccountPrefsFetchedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+   * @return Whether the wirePrefs field is set.
+   */
+  boolean hasWirePrefs();
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 10 [json_name = "wirePrefs"];</code>
+   * @return The wirePrefs.
+   */
+  io.github.lewin671.remoteagent.proto.AccountPrefsObject getWirePrefs();
 }

@@ -7,7 +7,9 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/text"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 type eventFetchPhase uint8
@@ -347,7 +349,52 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 	}
 
 	wasBackfilling := b.backfilling
-	ok := e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, false, true, !wasBackfilling)
+	if len(ev.WireEvents) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Events) == 0) {
+		var machineID string
+		if s != nil {
+			machineID = s.MachineID
+		}
+		rawLen := len(ev.WireEvents)
+		var firstSeq, lastSeq uint64
+		if rawLen > 0 && ev.WireEvents[0] != nil {
+			firstSeq = ev.WireEvents[0].Seq
+		}
+		if rawLen > 0 && ev.WireEvents[rawLen-1] != nil {
+			lastSeq = ev.WireEvents[rawLen-1].Seq
+		}
+		lifeGen := e.lifecycleGen
+		e.openWireStoredEvents(ctx, ev.SessionId, machineID, ev.WireEvents, true, func(items []decodedEventItem) {
+			stepCtx := e.activeStepCtx
+			if e.lifecycleGen != lifeGen || e.buffers[ev.SessionId] != b {
+				return
+			}
+			e.finishCacheEventsLoaded(stepCtx, ev.SessionId, b, e.sessions[ev.SessionId], agent, wasBackfilling, rawLen, firstSeq, lastSeq, items)
+		})
+		return
+	}
+
+	var firstSeq, lastSeq uint64
+	if len(ev.Events) > 0 && ev.Events[0] != nil {
+		firstSeq = ev.Events[0].Seq
+	}
+	if len(ev.Events) > 0 && ev.Events[len(ev.Events)-1] != nil {
+		lastSeq = ev.Events[len(ev.Events)-1].Seq
+	}
+	e.finishCacheEventsLoaded(ctx, ev.SessionId, b, s, agent, wasBackfilling, len(ev.Events), firstSeq, lastSeq, plainEventsToDecoded(ev.Events))
+}
+
+func (e *Engine) finishCacheEventsLoaded(
+	ctx *StepContext,
+	sid string,
+	b *EventBuffer,
+	s *SessionEntry,
+	agent v1.Agent,
+	wasBackfilling bool,
+	rawCount int,
+	firstSeq, lastSeq uint64,
+	items []decodedEventItem,
+) {
+	ok := e.ingestDecodedEvents(ctx, sid, b, items, false, false, true, !wasBackfilling)
 	if b.retired {
 		b.awaitingCache = false
 		b.backfilling = false
@@ -356,41 +403,37 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		return
 	}
 	if !ok {
-		e.dropCorruptCacheAndRefetch(ctx, ev.SessionId, b, agent)
+		e.dropCorruptCacheAndRefetch(ctx, sid, b, agent)
 		return
 	}
 
 	if !wasBackfilling {
 		b.awaitingCache = false
-		if len(ev.Events) >= int(CacheEventPageSize) && ev.Events[0] != nil && ev.Events[0].Seq > 1 {
+		if rawCount >= int(CacheEventPageSize) && firstSeq > 1 {
 			b.tailRequested = true
 			b.backfilling = true
-			b.cacheFirstSeq = ev.Events[0].Seq
+			b.cacheFirstSeq = firstSeq
 			b.cacheAfterSeq = 0
-			e.requestNextCacheBackfill(ctx, ev.SessionId, b)
+			e.requestNextCacheBackfill(ctx, sid, b)
 			if e.running && e.w.World.Connection == lists.ConnConnected {
-				e.startFetchEvents(ctx, ev.SessionId)
+				e.startFetchEvents(ctx, sid)
 			}
 			ctx.Dirty.MarkSessionData()
 			return
 		}
 		if e.running && e.w.World.Connection == lists.ConnConnected {
-			e.startFetchEvents(ctx, ev.SessionId)
+			e.startFetchEvents(ctx, sid)
 		}
 		e.trimHistory(ctx)
 		ctx.Dirty.MarkSessionData()
 		return
 	}
 
-	var lastSeq uint64
-	if len(ev.Events) > 0 && ev.Events[len(ev.Events)-1] != nil {
-		lastSeq = ev.Events[len(ev.Events)-1].Seq
-	}
-	if len(ev.Events) < int(CacheEventPageSize) || lastSeq <= b.cacheAfterSeq || lastSeq+1 >= b.cacheFirstSeq {
+	if rawCount < int(CacheEventPageSize) || lastSeq <= b.cacheAfterSeq || lastSeq+1 >= b.cacheFirstSeq {
 		b.backfilling = false
 		b.awaitingCache = false
 		if e.running && e.w.World.Connection == lists.ConnConnected {
-			e.startFetchEvents(ctx, ev.SessionId)
+			e.startFetchEvents(ctx, sid)
 		}
 		e.trimHistory(ctx)
 		if s != nil {
@@ -401,7 +444,7 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		return
 	}
 	b.cacheAfterSeq = lastSeq
-	e.requestNextCacheBackfill(ctx, ev.SessionId, b)
+	e.requestNextCacheBackfill(ctx, sid, b)
 	// Keep intermediate backfill pages silent while tailRequested keeps tail visible.
 	if !b.tailRequested {
 		if s != nil {
@@ -562,9 +605,47 @@ func (e *Engine) handleEventsPageFetched(ctx *StepContext, ev *corev1.EventsPage
 		return
 	}
 
+	if len(ev.WireEvents) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Events) == 0) {
+		lifeGen := e.lifecycleGen
+		more := ev.More
+		var lastSeq uint64
+		if len(ev.WireEvents) > 0 && ev.WireEvents[len(ev.WireEvents)-1] != nil {
+			lastSeq = ev.WireEvents[len(ev.WireEvents)-1].Seq
+		}
+		e.openWireStoredEvents(ctx, ev.SessionId, s.MachineID, ev.WireEvents, true, func(items []decodedEventItem) {
+			stepCtx := e.activeStepCtx
+			if !e.running || b.fetchGen != lifeGen || e.buffers[ev.SessionId] != b {
+				return
+			}
+			curS := e.sessions[ev.SessionId]
+			if curS == nil {
+				b.fetching = false
+				return
+			}
+			e.finishEventsPageFetched(stepCtx, ev.SessionId, b, curS, more, lastSeq, items)
+		})
+		return
+	}
+
+	var lastSeq uint64
+	if len(ev.Events) > 0 && ev.Events[len(ev.Events)-1] != nil {
+		lastSeq = ev.Events[len(ev.Events)-1].Seq
+	}
+	e.finishEventsPageFetched(ctx, ev.SessionId, b, s, ev.More, lastSeq, plainEventsToDecoded(ev.Events))
+}
+
+func (e *Engine) finishEventsPageFetched(
+	ctx *StepContext,
+	sid string,
+	b *EventBuffer,
+	s *SessionEntry,
+	more bool,
+	lastSeq uint64,
+	items []decodedEventItem,
+) {
 	wasTailPrefix := b.fetchPhase == eventFetchPrefix && b.tailRequested
 	prevPrefix := len(b.prefix)
-	e.ingestEvents(ctx, ev.SessionId, b, ev.Events, false, true, true, !wasTailPrefix)
+	e.ingestDecodedEvents(ctx, sid, b, items, false, true, true, !wasTailPrefix)
 	if !wasTailPrefix || !b.tailRequested || b.errorText != nil {
 		if wasTailPrefix {
 			e.refreshSessionPending(s)
@@ -572,11 +653,7 @@ func (e *Engine) handleEventsPageFetched(ctx *StepContext, ev *corev1.EventsPage
 		}
 		ctx.Dirty.MarkSessionData()
 	}
-	var lastSeq uint64
-	if len(ev.Events) > 0 && ev.Events[len(ev.Events)-1] != nil {
-		lastSeq = ev.Events[len(ev.Events)-1].Seq
-	}
-	if !ev.More {
+	if !more {
 		end := lastSeq
 		if end == 0 {
 			end = b.fetchCursor
@@ -586,43 +663,43 @@ func (e *Engine) handleEventsPageFetched(ctx *StepContext, ev *corev1.EventsPage
 
 	switch b.fetchPhase {
 	case eventFetchNewer:
-		if ev.More && b.errorText == nil && lastSeq > b.fetchCursor {
+		if more && b.errorText == nil && lastSeq > b.fetchCursor {
 			b.fetchCursor = lastSeq
-			e.emitGetEvents(ctx, ev.SessionId, b, lastSeq)
+			e.emitGetEvents(ctx, sid, b, lastSeq)
 			return
 		}
 		b.fetching = false
 		if b.refetch {
-			e.startFetchEvents(ctx, ev.SessionId)
+			e.startFetchEvents(ctx, sid)
 		}
 		return
 
 	case eventFetchTail:
-		if ev.More && b.errorText == nil && lastSeq > b.fetchCursor {
+		if more && b.errorText == nil && lastSeq > b.fetchCursor {
 			b.fetchCursor = lastSeq
-			e.emitGetEvents(ctx, ev.SessionId, b, lastSeq)
+			e.emitGetEvents(ctx, sid, b, lastSeq)
 			return
 		}
 		b.fetchPhase = eventFetchPrefix
 		before := uint64(len(b.prefix))
 		if b.endSeq != nil && before >= *b.endSeq && len(b.pending) == 0 {
-			e.finishFetchCycle(ctx, ev.SessionId, b, s)
+			e.finishFetchCycle(ctx, sid, b, s)
 			return
 		}
 		b.fetchCursor = before
-		e.emitGetEvents(ctx, ev.SessionId, b, before)
+		e.emitGetEvents(ctx, sid, b, before)
 		return
 
 	case eventFetchPrefix:
 		before := uint64(len(b.prefix))
 		grew := len(b.prefix) > prevPrefix
 		doneEnd := b.endSeq != nil && before >= *b.endSeq && len(b.pending) == 0
-		if !ev.More || !grew || doneEnd {
-			e.finishFetchCycle(ctx, ev.SessionId, b, s)
+		if !more || !grew || doneEnd {
+			e.finishFetchCycle(ctx, sid, b, s)
 			return
 		}
 		b.fetchCursor = before
-		e.emitGetEvents(ctx, ev.SessionId, b, before)
+		e.emitGetEvents(ctx, sid, b, before)
 	}
 }
 
@@ -649,6 +726,22 @@ func (e *Engine) handleEventsAppended(ctx *StepContext, frame *corev1.EventsAppe
 	if b == nil {
 		return
 	}
+	if len(frame.WireEvents) > 0 {
+		var machineID string
+		if s := e.sessions[sid]; s != nil {
+			machineID = s.MachineID
+		}
+		lifeGen := e.lifecycleGen
+		e.openWireStoredEvents(ctx, sid, machineID, frame.WireEvents, false, func(items []decodedEventItem) {
+			stepCtx := e.activeStepCtx
+			if !e.running || e.lifecycleGen != lifeGen || e.buffers[sid] != b {
+				return
+			}
+			e.ingestDecodedEvents(stepCtx, sid, b, items, true, true, true, true)
+			stepCtx.Dirty.MarkSessionData()
+		})
+		return
+	}
 	e.ingestEvents(ctx, sid, b, frame.Events, true, true, true, true)
 	ctx.Dirty.MarkSessionData()
 }
@@ -672,7 +765,60 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 		return
 	}
 	roundID, machineID, use, ok := e.transportCoord.InboundDCContext(e.nowMs, ev.PcId)
-	if !ok || machineID != ev.MachineId || !e.transportCoord.PushedEventAllowed(e.nowMs, roundID, use, ev.MachineId, ev.Sender) {
+	if !ok || machineID != ev.MachineId {
+		return
+	}
+	if len(ev.WireEnvelopes) > 0 && e.secEngine != nil {
+		items := make([]security.OpenItem, len(ev.WireEnvelopes))
+		for i, env := range ev.WireEnvelopes {
+			items[i] = security.OpenItem{
+				Env:             env,
+				ExpectedPurpose: devicesec.Event,
+				MachineID:       ev.MachineId,
+				SessionID:       ev.SessionId,
+				History:         false,
+			}
+		}
+		effs := e.secEngine.OpenBatch(e.nowMs, items, func(results []security.OpenResult) {
+			stepCtx := e.activeStepCtx
+			if !e.running || !e.foreground || e.buffers[ev.SessionId] != b || b.tailRequested || e.transportCoord == nil {
+				return
+			}
+			curRoundID, curMachineID, curUse, curOK := e.transportCoord.InboundDCContext(e.nowMs, ev.PcId)
+			if !curOK || curMachineID != ev.MachineId {
+				return
+			}
+			expected := uint64(len(b.prefix)) + 1
+			var clean []decodedEventItem
+			for _, r := range results {
+				if r.Err != nil {
+					continue
+				}
+				if !e.transportCoord.PushedEventAllowed(e.nowMs, curRoundID, curUse, ev.MachineId, r.Header.Sender) {
+					continue
+				}
+				evMsg, ok := r.Body.(*v1.Event)
+				if !ok || evMsg == nil || evMsg.Seq == 0 || evMsg.Seq != expected || evMsg.SessionId != ev.SessionId {
+					continue
+				}
+				clean = append(clean, decodedEventItem{
+					Seq:         evMsg.Seq,
+					Event:       evMsg,
+					Verified:    true,
+					ApproxBytes: max(int64(len(r.Plain)), 64),
+				})
+				expected++
+			}
+			if len(clean) == 0 {
+				return
+			}
+			e.ingestDecodedEvents(stepCtx, ev.SessionId, b, clean, false, false, false, true)
+			stepCtx.Dirty.MarkSessionData()
+		})
+		e.emitRawEffects(ctx, effs)
+		return
+	}
+	if !e.transportCoord.PushedEventAllowed(e.nowMs, roundID, use, ev.MachineId, ev.Sender) {
 		return
 	}
 	expected := uint64(len(b.prefix)) + 1
@@ -699,11 +845,44 @@ func (e *Engine) handleDirectEvents(ctx *StepContext, ev *corev1.DirectEventsRec
 	ctx.Dirty.MarkSessionData()
 }
 
+func plainEventsToDecoded(items []*corev1.PlainEvent) []decodedEventItem {
+	out := make([]decodedEventItem, 0, len(items))
+	for _, pe := range items {
+		if pe == nil {
+			continue
+		}
+		out = append(out, decodedEventItem{
+			Seq:         pe.Seq,
+			Event:       pe.Event,
+			Broken:      pe.Broken,
+			Retired:     pe.Retired,
+			Unavailable: pe.Unavailable,
+			Verified:    pe.Verified,
+			ApproxBytes: pe.ApproxBytes,
+			CacheRef:    pe.CacheRef,
+		})
+	}
+	return out
+}
+
 func (e *Engine) ingestEvents(
 	ctx *StepContext,
 	sid string,
 	b *EventBuffer,
 	items []*corev1.PlainEvent,
+	fillGaps bool,
+	save bool,
+	fromServer bool,
+	notifyDirty bool,
+) bool {
+	return e.ingestDecodedEvents(ctx, sid, b, plainEventsToDecoded(items), fillGaps, save, fromServer, notifyDirty)
+}
+
+func (e *Engine) ingestDecodedEvents(
+	ctx *StepContext,
+	sid string,
+	b *EventBuffer,
+	items []decodedEventItem,
 	fillGaps bool,
 	save bool,
 	fromServer bool,
@@ -715,13 +894,14 @@ func (e *Engine) ingestEvents(
 	}
 	b.usedAtMs = e.monoMs
 	var cacheRefs []string
+	var rawStored []*v1.StoredEvent
 	var maxSeq uint64
 	advancedPrefix := false
 	changedEvents := false
 	ok := true
 
 	for _, pe := range items {
-		if pe == nil || pe.Seq == 0 {
+		if pe.Seq == 0 {
 			continue
 		}
 		if pe.Retired {
@@ -820,8 +1000,12 @@ func (e *Engine) ingestEvents(
 			}
 		}
 
-		if save && pe.CacheRef != "" && (pe.Verified || pe.Unavailable) {
-			cacheRefs = append(cacheRefs, pe.CacheRef)
+		if save && (pe.Verified || pe.Unavailable) {
+			if pe.RawStored != nil {
+				rawStored = append(rawStored, pe.RawStored)
+			} else if pe.CacheRef != "" {
+				cacheRefs = append(cacheRefs, pe.CacheRef)
+			}
 		}
 	}
 
@@ -840,7 +1024,20 @@ func (e *Engine) ingestEvents(
 			b.loaded = true
 		}
 	}
-	if len(cacheRefs) > 0 {
+	if len(rawStored) > 0 {
+		ctx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_CacheWrite{
+				CacheWrite: &corev1.CacheWriteEffect{
+					Kind: &corev1.CacheWriteEffect_WriteStoredEvents{
+						WriteStoredEvents: &corev1.CacheWriteStoredEvents{
+							SessionId: sid,
+							Events:    rawStored,
+						},
+					},
+				},
+			},
+		})
+	} else if len(cacheRefs) > 0 {
 		ctx.emit(&corev1.Effect{
 			Effect: &corev1.Effect_CacheWrite{
 				CacheWrite: &corev1.CacheWriteEffect{

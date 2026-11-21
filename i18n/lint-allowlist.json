@@ -4723,5 +4723,60 @@
     "path": "internal/updater/release.go",
     "literal": "relayProtocol",
     "reason": "latest.properties manifest field key name; lexical sink scanner false positive adjacent to errors.New."
+  },
+  {
+    "path": "clientcore/domain/entropy/pool.go",
+    "literal": "entropy: insufficient buffered OS random bytes",
+    "reason": "Internal Go sentinel error returned when the entropy pool needs refill from the host shell; handled internally and never displayed to users."
+  },
+  {
+    "path": "clientcore/security/engine.go",
+    "literal": "security: record not initialized",
+    "reason": "Internal Go sentinel error classified via ErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/engine.go",
+    "literal": "security: device is not a trusted member",
+    "reason": "Internal Go sentinel error classified via ErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/engine.go",
+    "literal": "security: lease expired",
+    "reason": "Internal Go sentinel error classified via ErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/engine.go",
+    "literal": "security: clock behind account state",
+    "reason": "Internal Go sentinel error classified via ErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/engine.go",
+    "literal": "security: content predates account recovery",
+    "reason": "Internal Go sentinel error classified via ErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/engine.go",
+    "literal": "security: retired envelope version",
+    "reason": "Internal Go sentinel error classified via ErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/engine.go",
+    "literal": "security: waiting for OS entropy",
+    "reason": "Internal Go sentinel error classified via ErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/replacement.go",
+    "literal": "remote-agent/v1/pair-approval\\x00",
+    "reason": "Fixed cryptographic domain-separation constant for Ed25519 pair-approval signatures; never displayed to users."
+  },
+  {
+    "path": "clientcore/security/replacement.go",
+    "literal": "security: invalid pair approval",
+    "reason": "Internal Go sentinel error returned during pair-approval verification; mapped to error codes and never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/seccall.go",
+    "literal": "remote-agent/v1/delete-account\\x00",
+    "reason": "Fixed cryptographic domain-separation constant for Ed25519 account-deletion signatures; never displayed to users."
   }
 ]

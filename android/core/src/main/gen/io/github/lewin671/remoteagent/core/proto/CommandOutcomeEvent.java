@@ -661,6 +661,54 @@ public  final class CommandOutcomeEvent extends
     directTicketId_ = 0L;
   }
 
+  public static final int SEALED_RESULT_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.proto.Envelope sealedResult_;
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSealedResult() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Envelope getSealedResult() {
+    return sealedResult_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : sealedResult_;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSealedResult(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    sealedResult_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSealedResult(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    if (sealedResult_ != null &&
+        sealedResult_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
+      sealedResult_ =
+        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(sealedResult_).mergeFrom(value).buildPartial();
+    } else {
+      sealedResult_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   */
+  private void clearSealedResult() {
+    sealedResult_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.CommandOutcomeEvent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1425,6 +1473,53 @@ public  final class CommandOutcomeEvent extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSealedResult() {
+      return instance.hasSealedResult();
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Envelope getSealedResult() {
+      return instance.getSealedResult();
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     */
+    public Builder setSealedResult(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.setSealedResult(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     */
+    public Builder setSealedResult(
+        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSealedResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     */
+    public Builder mergeSealedResult(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.mergeSealedResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+     */
+    public Builder clearSealedResult() {  copyOnWrite();
+      instance.clearSealedResult();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.CommandOutcomeEvent)
   }
   @java.lang.Override
@@ -1460,12 +1555,13 @@ public  final class CommandOutcomeEvent extends
             "observedBytes_",
             "handedOff_",
             "directTicketId_",
+            "sealedResult_",
           };
           java.lang.String info =
-              "\u0000\u0012\u0000\u0001\u0001\u0012\u0012\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0013\u0000\u0001\u0001\u0014\u0013\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\f\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u0208\n\u0208" +
               "\u000b\u1009\u0000\f\u0208\r\u0208\u000e\u0007\u000f\u0000\u0010\u0002\u0011\u0007" +
-              "\u0012\u0003";
+              "\u0012\u0003\u0014\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

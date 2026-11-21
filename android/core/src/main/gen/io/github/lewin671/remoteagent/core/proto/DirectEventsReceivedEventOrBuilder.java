@@ -65,4 +65,18 @@ public interface DirectEventsReceivedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getSenderBytes();
+
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.Envelope> 
+      getWireEnvelopesList();
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.Envelope getWireEnvelopes(int index);
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  int getWireEnvelopesCount();
 }

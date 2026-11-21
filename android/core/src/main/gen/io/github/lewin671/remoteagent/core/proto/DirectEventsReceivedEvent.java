@@ -19,6 +19,7 @@ public  final class DirectEventsReceivedEvent extends
     sessionId_ = "";
     events_ = emptyProtobufList();
     sender_ = "";
+    wireEnvelopes_ = emptyProtobufList();
   }
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
   private java.lang.String machineId_;
@@ -285,6 +286,103 @@ public  final class DirectEventsReceivedEvent extends
     checkByteStringIsUtf8(value);
     sender_ = value.toStringUtf8();
 
+  }
+
+  public static final int WIRE_ENVELOPES_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.Envelope> wireEnvelopes_;
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.Envelope> getWireEnvelopesList() {
+    return wireEnvelopes_;
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.EnvelopeOrBuilder> 
+      getWireEnvelopesOrBuilderList() {
+    return wireEnvelopes_;
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  @java.lang.Override
+  public int getWireEnvelopesCount() {
+    return wireEnvelopes_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Envelope getWireEnvelopes(int index) {
+    return wireEnvelopes_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.EnvelopeOrBuilder getWireEnvelopesOrBuilder(
+      int index) {
+    return wireEnvelopes_.get(index);
+  }
+  private void ensureWireEnvelopesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.Envelope> tmp = wireEnvelopes_;
+    if (!tmp.isModifiable()) {
+      wireEnvelopes_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireEnvelopes(
+      int index, io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireEnvelopesIsMutable();
+    wireEnvelopes_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addWireEnvelopes(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireEnvelopesIsMutable();
+    wireEnvelopes_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addWireEnvelopes(
+      int index, io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireEnvelopesIsMutable();
+    wireEnvelopes_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  private void addAllWireEnvelopes(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Envelope> values) {
+    ensureWireEnvelopesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, wireEnvelopes_);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  private void clearWireEnvelopes() {
+    wireEnvelopes_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+   */
+  private void removeWireEnvelopes(int index) {
+    ensureWireEnvelopesIsMutable();
+    wireEnvelopes_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DirectEventsReceivedEvent parseFrom(
@@ -661,6 +759,108 @@ public  final class DirectEventsReceivedEvent extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.Envelope> getWireEnvelopesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getWireEnvelopesList());
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    @java.lang.Override
+    public int getWireEnvelopesCount() {
+      return instance.getWireEnvelopesCount();
+    }/**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Envelope getWireEnvelopes(int index) {
+      return instance.getWireEnvelopes(index);
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder setWireEnvelopes(
+        int index, io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.setWireEnvelopes(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder setWireEnvelopes(
+        int index, io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireEnvelopes(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder addWireEnvelopes(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.addWireEnvelopes(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder addWireEnvelopes(
+        int index, io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.addWireEnvelopes(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder addWireEnvelopes(
+        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.addWireEnvelopes(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder addWireEnvelopes(
+        int index, io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.addWireEnvelopes(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder addAllWireEnvelopes(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.Envelope> values) {
+      copyOnWrite();
+      instance.addAllWireEnvelopes(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder clearWireEnvelopes() {
+      copyOnWrite();
+      instance.clearWireEnvelopes();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.Envelope wire_envelopes = 10 [json_name = "wireEnvelopes"];</code>
+     */
+    public Builder removeWireEnvelopes(int index) {
+      copyOnWrite();
+      instance.removeWireEnvelopes(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DirectEventsReceivedEvent)
   }
   @java.lang.Override
@@ -683,10 +883,12 @@ public  final class DirectEventsReceivedEvent extends
             io.github.lewin671.remoteagent.core.proto.PlainEvent.class,
             "pcId_",
             "sender_",
+            "wireEnvelopes_",
+            io.github.lewin671.remoteagent.proto.Envelope.class,
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u001b\u0004\u0003\u0005\u0208";
+              "\u0000\u0006\u0000\u0000\u0001\n\u0006\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u001b\u0004\u0003\u0005\u0208\n\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

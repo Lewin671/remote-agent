@@ -1606,6 +1606,113 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.DirectAuthorizeDoneEvent getDirectAuthorizeDone();
 
   /**
+   * <pre>
+   * Security engine (450-499 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityConfigEvent security_config = 450 [json_name = "securityConfig"];</code>
+   * @return Whether the securityConfig field is set.
+   */
+  boolean hasSecurityConfig();
+  /**
+   * <pre>
+   * Security engine (450-499 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityConfigEvent security_config = 450 [json_name = "securityConfig"];</code>
+   * @return The securityConfig.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent getSecurityConfig();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
+   * @return Whether the securityRecord field is set.
+   */
+  boolean hasSecurityRecord();
+  /**
+   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
+   * @return The securityRecord.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent getSecurityRecord();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeySignedEvent security_key_signed = 452 [json_name = "securityKeySigned"];</code>
+   * @return Whether the securityKeySigned field is set.
+   */
+  boolean hasSecurityKeySigned();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeySignedEvent security_key_signed = 452 [json_name = "securityKeySigned"];</code>
+   * @return The securityKeySigned.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent getSecurityKeySigned();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreedEvent security_key_agreed = 453 [json_name = "securityKeyAgreed"];</code>
+   * @return Whether the securityKeyAgreed field is set.
+   */
+  boolean hasSecurityKeyAgreed();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreedEvent security_key_agreed = 453 [json_name = "securityKeyAgreed"];</code>
+   * @return The securityKeyAgreed.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent getSecurityKeyAgreed();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
+   * @return Whether the securityKeyGenerated field is set.
+   */
+  boolean hasSecurityKeyGenerated();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 454 [json_name = "securityKeyGenerated"];</code>
+   * @return The securityKeyGenerated.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent getSecurityKeyGenerated();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
+   * @return Whether the securityKeyEncapsulated field is set.
+   */
+  boolean hasSecurityKeyEncapsulated();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 455 [json_name = "securityKeyEncapsulated"];</code>
+   * @return The securityKeyEncapsulated.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent getSecurityKeyEncapsulated();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456 [json_name = "securityCryptoBatchDone"];</code>
+   * @return Whether the securityCryptoBatchDone field is set.
+   */
+  boolean hasSecurityCryptoBatchDone();
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456 [json_name = "securityCryptoBatchDone"];</code>
+   * @return The securityCryptoBatchDone.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchDoneEvent getSecurityCryptoBatchDone();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
+   * @return Whether the securityOpRequest field is set.
+   */
+  boolean hasSecurityOpRequest();
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpRequestEvent security_op_request = 457 [json_name = "securityOpRequest"];</code>
+   * @return The securityOpRequest.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityOpRequestEvent getSecurityOpRequest();
+
+  /**
+   * <code>.remoteagent.core.v1.SeedDemoWorldEvent seed_demo_world = 458 [json_name = "seedDemoWorld"];</code>
+   * @return Whether the seedDemoWorld field is set.
+   */
+  boolean hasSeedDemoWorld();
+  /**
+   * <code>.remoteagent.core.v1.SeedDemoWorldEvent seed_demo_world = 458 [json_name = "seedDemoWorld"];</code>
+   * @return The seedDemoWorld.
+   */
+  io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent getSeedDemoWorld();
+
+  /**
    * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
    * @return The nowMs.
    */

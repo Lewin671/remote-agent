@@ -494,7 +494,7 @@ func (e *Engine) onConnectFailure(ctx *StepContext, unresolvedHost bool, errCode
 	} else if !e.everReady {
 		e.w.World.Connection = lists.ConnConnecting
 	}
-	e.recovery.Failed(e.monoMs, e.entropy.nextFloat(ctx))
+	e.recovery.Failed(e.monoMs, e.nextFloat(ctx))
 	e.beginConnect(ctx)
 	if wasConnected && e.everReady && !e.removed && e.running && e.foreground {
 		e.startDisplayGrace(ctx)
@@ -583,7 +583,7 @@ func classifyConnectError(unresolvedHost bool, errCode, errMsg string) *corev1.T
 }
 
 func (e *Engine) handleSecuritySnapshot(ctx *StepContext, ev *corev1.SecuritySnapshotEvent) {
-	if ev == nil {
+	if ev == nil || (e.secEngine != nil && e.secEngine.Locked()) {
 		return
 	}
 	switch {

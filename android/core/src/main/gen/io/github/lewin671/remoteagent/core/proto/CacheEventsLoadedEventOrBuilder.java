@@ -65,4 +65,18 @@ public interface CacheEventsLoadedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.StoredEvent> 
+      getWireEventsList();
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.StoredEvent getWireEvents(int index);
+  /**
+   * <code>repeated .remoteagent.v1.StoredEvent wire_events = 10 [json_name = "wireEvents"];</code>
+   */
+  int getWireEventsCount();
 }

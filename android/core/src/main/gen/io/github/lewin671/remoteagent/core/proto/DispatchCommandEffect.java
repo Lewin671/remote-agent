@@ -22,6 +22,7 @@ public  final class DispatchCommandEffect extends
     commandBytes_ = com.google.protobuf.ByteString.EMPTY;
     bulkFileKey_ = "";
   }
+  private int bitField0_;
   public static final int REQUEST_ID_FIELD_NUMBER = 1;
   private java.lang.String requestId_;
   /**
@@ -579,6 +580,54 @@ public  final class DispatchCommandEffect extends
   private void clearDirectTicketId() {
 
     directTicketId_ = 0L;
+  }
+
+  public static final int SEALED_ENVELOPE_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.proto.Envelope sealedEnvelope_;
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSealedEnvelope() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Envelope getSealedEnvelope() {
+    return sealedEnvelope_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : sealedEnvelope_;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSealedEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    sealedEnvelope_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSealedEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    if (sealedEnvelope_ != null &&
+        sealedEnvelope_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
+      sealedEnvelope_ =
+        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(sealedEnvelope_).mergeFrom(value).buildPartial();
+    } else {
+      sealedEnvelope_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+   */
+  private void clearSealedEnvelope() {
+    sealedEnvelope_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect parseFrom(
@@ -1267,6 +1316,53 @@ public  final class DispatchCommandEffect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSealedEnvelope() {
+      return instance.hasSealedEnvelope();
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Envelope getSealedEnvelope() {
+      return instance.getSealedEnvelope();
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+     */
+    public Builder setSealedEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.setSealedEnvelope(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+     */
+    public Builder setSealedEnvelope(
+        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSealedEnvelope(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+     */
+    public Builder mergeSealedEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.mergeSealedEnvelope(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 20 [json_name = "sealedEnvelope"];</code>
+     */
+    public Builder clearSealedEnvelope() {  copyOnWrite();
+      instance.clearSealedEnvelope();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DispatchCommandEffect)
   }
   @java.lang.Override
@@ -1283,6 +1379,7 @@ public  final class DispatchCommandEffect extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "requestId_",
             "attemptId_",
             "machineId_",
@@ -1299,11 +1396,12 @@ public  final class DispatchCommandEffect extends
             "directPcId_",
             "directTimeoutMs_",
             "directTicketId_",
+            "sealedEnvelope_",
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0000\u0001\u0010\u0010\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0011\u0000\u0001\u0001\u0014\u0011\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0002\u0006\n\u0007\f\b\u0007\t\u0007\n\u0208\u000b" +
-              "\u0002\f\u0007\r\f\u000e\u0003\u000f\u0002\u0010\u0003";
+              "\u0002\f\u0007\r\f\u000e\u0003\u000f\u0002\u0010\u0003\u0014\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

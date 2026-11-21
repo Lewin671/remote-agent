@@ -2701,6 +2701,13 @@ export class CoreHost {
         break;
       }
 
+      case "securityKeySign":
+      case "securityKeyAgree":
+      case "securityKeyGenerate":
+      case "securityKeyEncapsulate":
+      case "securityKeyDiscard":
+      case "securityCryptoBatch":
+      case "securityOpResult":
       case undefined:
         break;
 

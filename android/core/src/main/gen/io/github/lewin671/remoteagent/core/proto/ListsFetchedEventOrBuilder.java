@@ -86,4 +86,46 @@ public interface ListsFetchedEventOrBuilder extends
    * @return The unresolvedHost.
    */
   boolean getUnresolvedHost();
+
+  /**
+   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.Machine> 
+      getWireMachinesList();
+  /**
+   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.Machine getWireMachines(int index);
+  /**
+   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   */
+  int getWireMachinesCount();
+
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.RemoteSession> 
+      getWireSessionsList();
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.RemoteSession getWireSessions(int index);
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   */
+  int getWireSessionsCount();
+
+  /**
+   * <code>repeated .remoteagent.v1.Device wire_devices = 12 [json_name = "wireDevices"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.Device> 
+      getWireDevicesList();
+  /**
+   * <code>repeated .remoteagent.v1.Device wire_devices = 12 [json_name = "wireDevices"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.Device getWireDevices(int index);
+  /**
+   * <code>repeated .remoteagent.v1.Device wire_devices = 12 [json_name = "wireDevices"];</code>
+   */
+  int getWireDevicesCount();
 }

@@ -103,7 +103,10 @@ type Session struct {
 	ScheduledTaskId       string
 	TaskOwned             bool
 	ModeLocked            bool
+	hasUnknown            bool
 }
+
+func (m *Session) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *Session) GetId() string {
 	if m != nil {
@@ -484,6 +487,9 @@ func (m *Session) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.CreatedAt); err != nil {
 					return err
 				}
+				if m.CreatedAt.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 9:
@@ -674,6 +680,9 @@ func (m *Session) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.AttentionSince); err != nil {
 					return err
 				}
+				if m.AttentionSince.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 30:
@@ -683,6 +692,9 @@ func (m *Session) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, m.EndedAt); err != nil {
 					return err
+				}
+				if m.EndedAt.HasUnknown() {
+					m.hasUnknown = true
 				}
 				continue
 			}
@@ -719,6 +731,9 @@ func (m *Session) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.MachineReplacements = append(m.MachineReplacements, elem)
 				continue
 			}
@@ -750,6 +765,7 @@ func (m *Session) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -758,9 +774,12 @@ func (m *Session) Unmarshal(b []byte) error {
 }
 
 type MachineReplacementProof struct {
-	Approval  []byte
-	Signature []byte
+	Approval   []byte
+	Signature  []byte
+	hasUnknown bool
 }
+
+func (m *MachineReplacementProof) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *MachineReplacementProof) GetApproval() []byte {
 	if m != nil {
@@ -826,6 +845,7 @@ func (m *MachineReplacementProof) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -845,7 +865,10 @@ type CreateSessionRequest struct {
 	ImageIds        []string
 	StandardContext bool
 	FileIds         []string
+	hasUnknown      bool
 }
+
+func (m *CreateSessionRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *CreateSessionRequest) GetCwd() string {
 	if m != nil {
@@ -1025,6 +1048,7 @@ func (m *CreateSessionRequest) Unmarshal(b []byte) error {
 							continue
 						}
 					}
+					m.hasUnknown = true
 					if err := litewire.Skip(&raw, mnum, mwtyp); err != nil {
 						return err
 					}
@@ -1108,6 +1132,7 @@ func (m *CreateSessionRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1116,8 +1141,11 @@ func (m *CreateSessionRequest) Unmarshal(b []byte) error {
 }
 
 type CreateSessionResponse struct {
-	Session *Session
+	Session    *Session
+	hasUnknown bool
 }
+
+func (m *CreateSessionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *CreateSessionResponse) GetSession() *Session {
 	if m != nil {
@@ -1141,9 +1169,13 @@ func (m *CreateSessionResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Session); err != nil {
 					return err
 				}
+				if m.Session.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1152,13 +1184,16 @@ func (m *CreateSessionResponse) Unmarshal(b []byte) error {
 }
 
 type SendRequest struct {
-	SessionId string
-	Text      string
-	RequestId string
-	ImageIds  []string
-	Mode      SendMode
-	FileIds   []string
+	SessionId  string
+	Text       string
+	RequestId  string
+	ImageIds   []string
+	Mode       SendMode
+	FileIds    []string
+	hasUnknown bool
 }
+
+func (m *SendRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SendRequest) GetSessionId() string {
 	if m != nil {
@@ -1292,6 +1327,7 @@ func (m *SendRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1301,7 +1337,10 @@ func (m *SendRequest) Unmarshal(b []byte) error {
 
 type SendResponse struct {
 	QueuePosition int32
+	hasUnknown    bool
 }
+
+func (m *SendResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SendResponse) GetQueuePosition() int32 {
 	if m != nil {
@@ -1327,6 +1366,7 @@ func (m *SendResponse) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1335,8 +1375,11 @@ func (m *SendResponse) Unmarshal(b []byte) error {
 }
 
 type InterruptRequest struct {
-	SessionId string
+	SessionId  string
+	hasUnknown bool
 }
+
+func (m *InterruptRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *InterruptRequest) GetSessionId() string {
 	if m != nil {
@@ -1384,6 +1427,7 @@ func (m *InterruptRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1393,7 +1437,10 @@ func (m *InterruptRequest) Unmarshal(b []byte) error {
 
 type InterruptResponse struct {
 	Interrupted bool
+	hasUnknown  bool
 }
+
+func (m *InterruptResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *InterruptResponse) GetInterrupted() bool {
 	if m != nil {
@@ -1419,6 +1466,7 @@ func (m *InterruptResponse) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1427,8 +1475,11 @@ func (m *InterruptResponse) Unmarshal(b []byte) error {
 }
 
 type StopSessionRequest struct {
-	SessionId string
+	SessionId  string
+	hasUnknown bool
 }
+
+func (m *StopSessionRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *StopSessionRequest) GetSessionId() string {
 	if m != nil {
@@ -1476,6 +1527,7 @@ func (m *StopSessionRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1484,7 +1536,10 @@ func (m *StopSessionRequest) Unmarshal(b []byte) error {
 }
 
 type StopSessionResponse struct {
+	hasUnknown bool
 }
+
+func (m *StopSessionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *StopSessionResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -1492,6 +1547,7 @@ func (m *StopSessionResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1500,9 +1556,12 @@ func (m *StopSessionResponse) Unmarshal(b []byte) error {
 }
 
 type CancelInputRequest struct {
-	SessionId string
-	RequestId string
+	SessionId  string
+	RequestId  string
+	hasUnknown bool
 }
+
+func (m *CancelInputRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *CancelInputRequest) GetSessionId() string {
 	if m != nil {
@@ -1566,6 +1625,7 @@ func (m *CancelInputRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1574,7 +1634,10 @@ func (m *CancelInputRequest) Unmarshal(b []byte) error {
 }
 
 type CancelInputResponse struct {
+	hasUnknown bool
 }
+
+func (m *CancelInputResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *CancelInputResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -1582,6 +1645,7 @@ func (m *CancelInputResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1590,9 +1654,12 @@ func (m *CancelInputResponse) Unmarshal(b []byte) error {
 }
 
 type ResumeInputRequest struct {
-	SessionId string
-	RequestId string
+	SessionId  string
+	RequestId  string
+	hasUnknown bool
 }
+
+func (m *ResumeInputRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ResumeInputRequest) GetSessionId() string {
 	if m != nil {
@@ -1656,6 +1723,7 @@ func (m *ResumeInputRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1664,7 +1732,10 @@ func (m *ResumeInputRequest) Unmarshal(b []byte) error {
 }
 
 type ResumeInputResponse struct {
+	hasUnknown bool
 }
+
+func (m *ResumeInputResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ResumeInputResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -1672,6 +1743,7 @@ func (m *ResumeInputResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1686,7 +1758,10 @@ type ResolveApprovalRequest struct {
 	Message          string
 	Always           bool
 	ObservedEventSeq uint64
+	hasUnknown       bool
 }
+
+func (m *ResolveApprovalRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ResolveApprovalRequest) GetSessionId() string {
 	if m != nil {
@@ -1814,6 +1889,7 @@ func (m *ResolveApprovalRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1822,7 +1898,10 @@ func (m *ResolveApprovalRequest) Unmarshal(b []byte) error {
 }
 
 type ResolveApprovalResponse struct {
+	hasUnknown bool
 }
+
+func (m *ResolveApprovalResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ResolveApprovalResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -1830,6 +1909,7 @@ func (m *ResolveApprovalResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1844,7 +1924,10 @@ type AnswerQuestionRequest struct {
 	QuestionIndex    *int32
 	Options          []int32
 	ObservedEventSeq uint64
+	hasUnknown       bool
 }
+
+func (m *AnswerQuestionRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AnswerQuestionRequest) GetSessionId() string {
 	if m != nil {
@@ -2001,6 +2084,7 @@ func (m *AnswerQuestionRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2009,7 +2093,10 @@ func (m *AnswerQuestionRequest) Unmarshal(b []byte) error {
 }
 
 type AnswerQuestionResponse struct {
+	hasUnknown bool
 }
+
+func (m *AnswerQuestionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AnswerQuestionResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -2017,6 +2104,7 @@ func (m *AnswerQuestionResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2025,10 +2113,13 @@ func (m *AnswerQuestionResponse) Unmarshal(b []byte) error {
 }
 
 type SetModelRequest struct {
-	SessionId string
-	Model     string
-	Effort    string
+	SessionId  string
+	Model      string
+	Effort     string
+	hasUnknown bool
 }
+
+func (m *SetModelRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SetModelRequest) GetSessionId() string {
 	if m != nil {
@@ -2108,6 +2199,7 @@ func (m *SetModelRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2116,7 +2208,10 @@ func (m *SetModelRequest) Unmarshal(b []byte) error {
 }
 
 type SetModelResponse struct {
+	hasUnknown bool
 }
+
+func (m *SetModelResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SetModelResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -2124,6 +2219,7 @@ func (m *SetModelResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2132,8 +2228,11 @@ func (m *SetModelResponse) Unmarshal(b []byte) error {
 }
 
 type ListModelsRequest struct {
-	Agent Agent
+	Agent      Agent
+	hasUnknown bool
 }
+
+func (m *ListModelsRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ListModelsRequest) GetAgent() Agent {
 	if m != nil {
@@ -2181,6 +2280,7 @@ func (m *ListModelsRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2196,7 +2296,10 @@ type ModelInfo struct {
 	DefaultEffort   string
 	ContextWindow   int64
 	AutoUnavailable bool
+	hasUnknown      bool
 }
+
+func (m *ModelInfo) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ModelInfo) GetSlug() string {
 	if m != nil {
@@ -2321,6 +2424,7 @@ func (m *ModelInfo) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2331,7 +2435,10 @@ func (m *ModelInfo) Unmarshal(b []byte) error {
 type ListModelsResponse struct {
 	Models       []*ModelInfo
 	DefaultModel string
+	hasUnknown   bool
 }
+
+func (m *ListModelsResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ListModelsResponse) GetModels() []*ModelInfo {
 	if m != nil {
@@ -2373,6 +2480,9 @@ func (m *ListModelsResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Models = append(m.Models, elem)
 				continue
 			}
@@ -2386,6 +2496,7 @@ func (m *ListModelsResponse) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2394,9 +2505,12 @@ func (m *ListModelsResponse) Unmarshal(b []byte) error {
 }
 
 type SetApprovalModeRequest struct {
-	SessionId string
-	Mode      ApprovalMode
+	SessionId  string
+	Mode       ApprovalMode
+	hasUnknown bool
 }
+
+func (m *SetApprovalModeRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SetApprovalModeRequest) GetSessionId() string {
 	if m != nil {
@@ -2460,6 +2574,7 @@ func (m *SetApprovalModeRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2468,7 +2583,10 @@ func (m *SetApprovalModeRequest) Unmarshal(b []byte) error {
 }
 
 type SetApprovalModeResponse struct {
+	hasUnknown bool
 }
+
+func (m *SetApprovalModeResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SetApprovalModeResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -2476,6 +2594,7 @@ func (m *SetApprovalModeResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2484,9 +2603,12 @@ func (m *SetApprovalModeResponse) Unmarshal(b []byte) error {
 }
 
 type RenameSessionRequest struct {
-	SessionId string
-	Title     string
+	SessionId  string
+	Title      string
+	hasUnknown bool
 }
+
+func (m *RenameSessionRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *RenameSessionRequest) GetSessionId() string {
 	if m != nil {
@@ -2550,6 +2672,7 @@ func (m *RenameSessionRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2558,7 +2681,10 @@ func (m *RenameSessionRequest) Unmarshal(b []byte) error {
 }
 
 type RenameSessionResponse struct {
+	hasUnknown bool
 }
+
+func (m *RenameSessionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *RenameSessionResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -2566,6 +2692,7 @@ func (m *RenameSessionResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2574,8 +2701,11 @@ func (m *RenameSessionResponse) Unmarshal(b []byte) error {
 }
 
 type CompactRequest struct {
-	SessionId string
+	SessionId  string
+	hasUnknown bool
 }
+
+func (m *CompactRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *CompactRequest) GetSessionId() string {
 	if m != nil {
@@ -2623,6 +2753,7 @@ func (m *CompactRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2631,7 +2762,10 @@ func (m *CompactRequest) Unmarshal(b []byte) error {
 }
 
 type CompactResponse struct {
+	hasUnknown bool
 }
+
+func (m *CompactResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *CompactResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -2639,6 +2773,7 @@ func (m *CompactResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2651,7 +2786,10 @@ type AnswerPlanRequest struct {
 	Choice             PlanChoice
 	ObservedEventSeq   uint64
 	ObservedScreenHash []byte
+	hasUnknown         bool
 }
+
+func (m *AnswerPlanRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AnswerPlanRequest) GetSessionId() string {
 	if m != nil {
@@ -2748,6 +2886,7 @@ func (m *AnswerPlanRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2756,7 +2895,10 @@ func (m *AnswerPlanRequest) Unmarshal(b []byte) error {
 }
 
 type AnswerPlanResponse struct {
+	hasUnknown bool
 }
+
+func (m *AnswerPlanResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AnswerPlanResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -2764,6 +2906,7 @@ func (m *AnswerPlanResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2772,8 +2915,11 @@ func (m *AnswerPlanResponse) Unmarshal(b []byte) error {
 }
 
 type ListDirectoriesRequest struct {
-	Path string
+	Path       string
+	hasUnknown bool
 }
+
+func (m *ListDirectoriesRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ListDirectoriesRequest) GetPath() string {
 	if m != nil {
@@ -2821,6 +2967,7 @@ func (m *ListDirectoriesRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2829,11 +2976,14 @@ func (m *ListDirectoriesRequest) Unmarshal(b []byte) error {
 }
 
 type ListDirectoriesResponse struct {
-	Path   string
-	Parent string
-	Home   string
-	Dirs   []string
+	Path       string
+	Parent     string
+	Home       string
+	Dirs       []string
+	hasUnknown bool
 }
+
+func (m *ListDirectoriesResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ListDirectoriesResponse) GetPath() string {
 	if m != nil {
@@ -2904,6 +3054,7 @@ func (m *ListDirectoriesResponse) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2922,7 +3073,10 @@ type DaemonSettings struct {
 	IdleCloseMinutes       int32
 	DisabledAgents         []Agent
 	Revision               uint64
+	hasUnknown             bool
 }
+
+func (m *DaemonSettings) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *DaemonSettings) GetApprovalTimeoutSeconds() int32 {
 	if m != nil {
@@ -3081,6 +3235,9 @@ func (m *DaemonSettings) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Claude); err != nil {
 					return err
 				}
+				if m.Claude.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 6:
@@ -3099,6 +3256,9 @@ func (m *DaemonSettings) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, m.Antigravity); err != nil {
 					return err
+				}
+				if m.Antigravity.HasUnknown() {
+					m.hasUnknown = true
 				}
 				continue
 			}
@@ -3144,6 +3304,7 @@ func (m *DaemonSettings) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3152,10 +3313,13 @@ func (m *DaemonSettings) Unmarshal(b []byte) error {
 }
 
 type AgentDefaults struct {
-	Model  string
-	Effort string
-	Mode   ApprovalMode
+	Model      string
+	Effort     string
+	Mode       ApprovalMode
+	hasUnknown bool
 }
+
+func (m *AgentDefaults) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AgentDefaults) GetModel() string {
 	if m != nil {
@@ -3235,6 +3399,7 @@ func (m *AgentDefaults) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3243,7 +3408,10 @@ func (m *AgentDefaults) Unmarshal(b []byte) error {
 }
 
 type GetSettingsRequest struct {
+	hasUnknown bool
 }
+
+func (m *GetSettingsRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetSettingsRequest) Clone() *GetSettingsRequest {
 	if m == nil {
@@ -3272,6 +3440,7 @@ func (m *GetSettingsRequest) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3282,7 +3451,10 @@ func (m *GetSettingsRequest) Unmarshal(b []byte) error {
 type GetSettingsResponse struct {
 	Settings     *DaemonSettings
 	ImageStorage *ImageStorageUsage
+	hasUnknown   bool
 }
+
+func (m *GetSettingsResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetSettingsResponse) GetSettings() *DaemonSettings {
 	if m != nil {
@@ -3312,6 +3484,9 @@ func (m *GetSettingsResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Settings); err != nil {
 					return err
 				}
+				if m.Settings.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 2:
@@ -3322,9 +3497,13 @@ func (m *GetSettingsResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.ImageStorage); err != nil {
 					return err
 				}
+				if m.ImageStorage.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3337,7 +3516,10 @@ type UpdateSettingsRequest struct {
 	CleanImages   bool
 	ToggleAgent   *Agent
 	ToggleEnabled *bool
+	hasUnknown    bool
 }
+
+func (m *UpdateSettingsRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *UpdateSettingsRequest) GetSettings() *DaemonSettings {
 	if m != nil {
@@ -3419,6 +3601,9 @@ func (m *UpdateSettingsRequest) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Settings); err != nil {
 					return err
 				}
+				if m.Settings.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 2:
@@ -3451,6 +3636,7 @@ func (m *UpdateSettingsRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3461,7 +3647,10 @@ func (m *UpdateSettingsRequest) Unmarshal(b []byte) error {
 type UpdateSettingsResponse struct {
 	Settings     *DaemonSettings
 	ImageStorage *ImageStorageUsage
+	hasUnknown   bool
 }
+
+func (m *UpdateSettingsResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *UpdateSettingsResponse) GetSettings() *DaemonSettings {
 	if m != nil {
@@ -3491,6 +3680,9 @@ func (m *UpdateSettingsResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Settings); err != nil {
 					return err
 				}
+				if m.Settings.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 2:
@@ -3501,9 +3693,13 @@ func (m *UpdateSettingsResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.ImageStorage); err != nil {
 					return err
 				}
+				if m.ImageStorage.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3512,8 +3708,11 @@ func (m *UpdateSettingsResponse) Unmarshal(b []byte) error {
 }
 
 type ResumeSessionRequest struct {
-	SessionId string
+	SessionId  string
+	hasUnknown bool
 }
+
+func (m *ResumeSessionRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ResumeSessionRequest) GetSessionId() string {
 	if m != nil {
@@ -3561,6 +3760,7 @@ func (m *ResumeSessionRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3569,8 +3769,11 @@ func (m *ResumeSessionRequest) Unmarshal(b []byte) error {
 }
 
 type ResumeSessionResponse struct {
-	Session *Session
+	Session    *Session
+	hasUnknown bool
 }
+
+func (m *ResumeSessionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ResumeSessionResponse) GetSession() *Session {
 	if m != nil {
@@ -3594,9 +3797,13 @@ func (m *ResumeSessionResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Session); err != nil {
 					return err
 				}
+				if m.Session.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3605,8 +3812,11 @@ func (m *ResumeSessionResponse) Unmarshal(b []byte) error {
 }
 
 type ForkSessionRequest struct {
-	SessionId string
+	SessionId  string
+	hasUnknown bool
 }
+
+func (m *ForkSessionRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ForkSessionRequest) GetSessionId() string {
 	if m != nil {
@@ -3654,6 +3864,7 @@ func (m *ForkSessionRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3662,8 +3873,11 @@ func (m *ForkSessionRequest) Unmarshal(b []byte) error {
 }
 
 type ForkSessionResponse struct {
-	Session *Session
+	Session    *Session
+	hasUnknown bool
 }
+
+func (m *ForkSessionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ForkSessionResponse) GetSession() *Session {
 	if m != nil {
@@ -3687,9 +3901,13 @@ func (m *ForkSessionResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Session); err != nil {
 					return err
 				}
+				if m.Session.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3708,7 +3926,10 @@ type ImageUploadStatus struct {
 	ExpiresMs      int64
 	MaxChunkBytes  int32
 	FileId         string
+	hasUnknown     bool
 }
+
+func (m *ImageUploadStatus) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ImageUploadStatus) GetTransferId() string {
 	if m != nil {
@@ -3869,6 +4090,7 @@ func (m *ImageUploadStatus) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3882,7 +4104,10 @@ type BeginImageUploadRequest struct {
 	TotalBytes int64
 	Sha256     []byte
 	FileName   string
+	hasUnknown bool
 }
+
+func (m *BeginImageUploadRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *BeginImageUploadRequest) GetTransferId() string {
 	if m != nil {
@@ -3995,6 +4220,7 @@ func (m *BeginImageUploadRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4003,8 +4229,11 @@ func (m *BeginImageUploadRequest) Unmarshal(b []byte) error {
 }
 
 type BeginImageUploadResponse struct {
-	Status *ImageUploadStatus
+	Status     *ImageUploadStatus
+	hasUnknown bool
 }
+
+func (m *BeginImageUploadResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *BeginImageUploadResponse) GetStatus() *ImageUploadStatus {
 	if m != nil {
@@ -4028,9 +4257,13 @@ func (m *BeginImageUploadResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Status); err != nil {
 					return err
 				}
+				if m.Status.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4042,7 +4275,10 @@ type PutImageChunkRequest struct {
 	TransferId string
 	Offset     int64
 	Data       []byte
+	hasUnknown bool
 }
+
+func (m *PutImageChunkRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *PutImageChunkRequest) GetTransferId() string {
 	if m != nil {
@@ -4123,6 +4359,7 @@ func (m *PutImageChunkRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4131,8 +4368,11 @@ func (m *PutImageChunkRequest) Unmarshal(b []byte) error {
 }
 
 type PutImageChunkResponse struct {
-	Status *ImageUploadStatus
+	Status     *ImageUploadStatus
+	hasUnknown bool
 }
+
+func (m *PutImageChunkResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *PutImageChunkResponse) GetStatus() *ImageUploadStatus {
 	if m != nil {
@@ -4156,9 +4396,13 @@ func (m *PutImageChunkResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Status); err != nil {
 					return err
 				}
+				if m.Status.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4168,7 +4412,10 @@ func (m *PutImageChunkResponse) Unmarshal(b []byte) error {
 
 type GetImageUploadStatusRequest struct {
 	TransferId string
+	hasUnknown bool
 }
+
+func (m *GetImageUploadStatusRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetImageUploadStatusRequest) GetTransferId() string {
 	if m != nil {
@@ -4216,6 +4463,7 @@ func (m *GetImageUploadStatusRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4224,10 +4472,13 @@ func (m *GetImageUploadStatusRequest) Unmarshal(b []byte) error {
 }
 
 type GetSharedFileChunkRequest struct {
-	SessionId string
-	FileId    string
-	Offset    int64
+	SessionId  string
+	FileId     string
+	Offset     int64
+	hasUnknown bool
 }
+
+func (m *GetSharedFileChunkRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetSharedFileChunkRequest) GetSessionId() string {
 	if m != nil {
@@ -4307,6 +4558,7 @@ func (m *GetSharedFileChunkRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4317,7 +4569,10 @@ func (m *GetSharedFileChunkRequest) Unmarshal(b []byte) error {
 type GetSharedFileChunkResponse struct {
 	Data       []byte
 	TotalBytes *uint64
+	hasUnknown bool
 }
+
+func (m *GetSharedFileChunkResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetSharedFileChunkResponse) GetData() []byte {
 	if m != nil {
@@ -4359,6 +4614,7 @@ func (m *GetSharedFileChunkResponse) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4367,8 +4623,11 @@ func (m *GetSharedFileChunkResponse) Unmarshal(b []byte) error {
 }
 
 type GetImageUploadStatusResponse struct {
-	Status *ImageUploadStatus
+	Status     *ImageUploadStatus
+	hasUnknown bool
 }
+
+func (m *GetImageUploadStatusResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetImageUploadStatusResponse) GetStatus() *ImageUploadStatus {
 	if m != nil {
@@ -4392,9 +4651,13 @@ func (m *GetImageUploadStatusResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Status); err != nil {
 					return err
 				}
+				if m.Status.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4404,7 +4667,10 @@ func (m *GetImageUploadStatusResponse) Unmarshal(b []byte) error {
 
 type CompleteImageUploadRequest struct {
 	TransferId string
+	hasUnknown bool
 }
+
+func (m *CompleteImageUploadRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *CompleteImageUploadRequest) GetTransferId() string {
 	if m != nil {
@@ -4452,6 +4718,7 @@ func (m *CompleteImageUploadRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4460,8 +4727,11 @@ func (m *CompleteImageUploadRequest) Unmarshal(b []byte) error {
 }
 
 type CompleteImageUploadResponse struct {
-	Status *ImageUploadStatus
+	Status     *ImageUploadStatus
+	hasUnknown bool
 }
+
+func (m *CompleteImageUploadResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *CompleteImageUploadResponse) GetStatus() *ImageUploadStatus {
 	if m != nil {
@@ -4485,9 +4755,13 @@ func (m *CompleteImageUploadResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Status); err != nil {
 					return err
 				}
+				if m.Status.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4497,7 +4771,10 @@ func (m *CompleteImageUploadResponse) Unmarshal(b []byte) error {
 
 type AbortImageUploadRequest struct {
 	TransferId string
+	hasUnknown bool
 }
+
+func (m *AbortImageUploadRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AbortImageUploadRequest) GetTransferId() string {
 	if m != nil {
@@ -4545,6 +4822,7 @@ func (m *AbortImageUploadRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4553,7 +4831,10 @@ func (m *AbortImageUploadRequest) Unmarshal(b []byte) error {
 }
 
 type AbortImageUploadResponse struct {
+	hasUnknown bool
 }
+
+func (m *AbortImageUploadResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AbortImageUploadResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -4561,6 +4842,7 @@ func (m *AbortImageUploadResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4576,7 +4858,10 @@ type ImageStorageUsage struct {
 	ReclaimableBytes      int64
 	CacheBytes            int64
 	Sessions              []*ImageSessionStorage
+	hasUnknown            bool
 }
+
+func (m *ImageStorageUsage) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ImageStorageUsage) GetEmergencyReserveBytes() int64 {
 	if m != nil {
@@ -4702,10 +4987,14 @@ func (m *ImageStorageUsage) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Sessions = append(m.Sessions, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4717,7 +5006,10 @@ type ImageSessionStorage struct {
 	SessionId      string
 	Bytes          int64
 	ProtectedBytes int64
+	hasUnknown     bool
 }
+
+func (m *ImageSessionStorage) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ImageSessionStorage) GetSessionId() string {
 	if m != nil {
@@ -4781,6 +5073,7 @@ func (m *ImageSessionStorage) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4795,7 +5088,10 @@ type ScheduleRequest struct {
 	SpecJson         []byte
 	ExpectedRevision uint64
 	RequestId        string
+	hasUnknown       bool
 }
+
+func (m *ScheduleRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ScheduleRequest) GetOperation() string {
 	if m != nil {
@@ -4924,6 +5220,7 @@ func (m *ScheduleRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4933,7 +5230,10 @@ func (m *ScheduleRequest) Unmarshal(b []byte) error {
 
 type ScheduleResponse struct {
 	ResultJson []byte
+	hasUnknown bool
 }
+
+func (m *ScheduleResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ScheduleResponse) GetResultJson() []byte {
 	if m != nil {
@@ -4959,6 +5259,7 @@ func (m *ScheduleResponse) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4967,7 +5268,10 @@ func (m *ScheduleResponse) Unmarshal(b []byte) error {
 }
 
 type GetMachineStatusRequest struct {
+	hasUnknown bool
 }
+
+func (m *GetMachineStatusRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetMachineStatusRequest) Clone() *GetMachineStatusRequest {
 	if m == nil {
@@ -4996,6 +5300,7 @@ func (m *GetMachineStatusRequest) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -5010,7 +5315,10 @@ type DiskStatus struct {
 	Pressure              ResourcePressure
 	EmergencyReserveBytes uint64
 	DeferredWritesPaused  bool
+	hasUnknown            bool
 }
+
+func (m *DiskStatus) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *DiskStatus) GetObservedMs() int64 {
 	if m != nil {
@@ -5138,6 +5446,7 @@ func (m *DiskStatus) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -5149,7 +5458,10 @@ type MachineSample struct {
 	TimeMs          int64
 	CpuPercent      float64
 	MemoryUsedBytes uint64
+	hasUnknown      bool
 }
+
+func (m *MachineSample) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *MachineSample) GetTimeMs() int64 {
 	if m != nil {
@@ -5213,6 +5525,7 @@ func (m *MachineSample) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -5226,7 +5539,10 @@ type ResourceUsage struct {
 	SessionId   string
 	CpuPercent  float64
 	MemoryBytes uint64
+	hasUnknown  bool
 }
+
+func (m *ResourceUsage) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ResourceUsage) GetId() string {
 	if m != nil {
@@ -5320,6 +5636,7 @@ func (m *ResourceUsage) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -5328,9 +5645,12 @@ func (m *ResourceUsage) Unmarshal(b []byte) error {
 }
 
 type MachineBattery struct {
-	Percent  float64
-	Charging bool
+	Percent    float64
+	Charging   bool
+	hasUnknown bool
 }
+
+func (m *MachineBattery) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *MachineBattery) GetPercent() float64 {
 	if m != nil {
@@ -5379,6 +5699,7 @@ func (m *MachineBattery) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -5403,7 +5724,10 @@ type MachineStatus struct {
 	UptimeSeconds          uint64
 	Battery                *MachineBattery
 	Samples                []*MachineSample
+	hasUnknown             bool
 }
+
+func (m *MachineStatus) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *MachineStatus) GetObservedMs() int64 {
 	if m != nil {
@@ -5645,6 +5969,9 @@ func (m *MachineStatus) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Disk); err != nil {
 					return err
 				}
+				if m.Disk.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 11:
@@ -5663,6 +5990,9 @@ func (m *MachineStatus) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Sessions = append(m.Sessions, elem)
 				continue
 			}
@@ -5671,6 +6001,9 @@ func (m *MachineStatus) Unmarshal(b []byte) error {
 				elem := &ResourceUsage{}
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
+				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Processes = append(m.Processes, elem)
 				continue
@@ -5692,6 +6025,9 @@ func (m *MachineStatus) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Battery); err != nil {
 					return err
 				}
+				if m.Battery.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 16:
@@ -5700,10 +6036,14 @@ func (m *MachineStatus) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Samples = append(m.Samples, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -5720,7 +6060,10 @@ type GetUsageStatsRequest struct {
 	BucketBoundsMs  []int64
 	PrevStartMs     int64
 	IncludeDisabled bool
+	hasUnknown      bool
 }
+
+func (m *GetUsageStatsRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetUsageStatsRequest) GetPreset() UsageRangePreset {
 	if m != nil {
@@ -5902,6 +6245,7 @@ func (m *GetUsageStatsRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -5910,10 +6254,13 @@ func (m *GetUsageStatsRequest) Unmarshal(b []byte) error {
 }
 
 type UsageAgentSource struct {
-	Agent  Agent
-	State  UsageSourceState
-	Detail string
+	Agent      Agent
+	State      UsageSourceState
+	Detail     string
+	hasUnknown bool
 }
+
+func (m *UsageAgentSource) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *UsageAgentSource) GetAgent() Agent {
 	if m != nil {
@@ -5993,6 +6340,7 @@ func (m *UsageAgentSource) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -6016,7 +6364,10 @@ type UsageBucketPoint struct {
 	TtftP10Ms             float64
 	TtftP50Ms             float64
 	TtftP90Ms             float64
+	hasUnknown            bool
 }
+
+func (m *UsageBucketPoint) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *UsageBucketPoint) GetStartMs() int64 {
 	if m != nil {
@@ -6288,6 +6639,7 @@ func (m *UsageBucketPoint) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -6315,7 +6667,10 @@ type UsagePeriodSummary struct {
 	TtftP90Ms             float64
 	Recent10SpeedCount    uint64
 	Recent10SpeedP50      float64
+	hasUnknown            bool
 }
+
+func (m *UsagePeriodSummary) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *UsagePeriodSummary) GetUncachedInputTokens() uint64 {
 	if m != nil {
@@ -6651,6 +7006,7 @@ func (m *UsagePeriodSummary) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -6665,7 +7021,10 @@ type UsageSeries struct {
 	Current             *UsagePeriodSummary
 	Previous            *UsagePeriodSummary
 	Buckets             []*UsageBucketPoint
+	hasUnknown          bool
 }
+
+func (m *UsageSeries) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *UsageSeries) GetAgent() Agent {
 	if m != nil {
@@ -6789,6 +7148,9 @@ func (m *UsageSeries) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Current); err != nil {
 					return err
 				}
+				if m.Current.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 5:
@@ -6799,6 +7161,9 @@ func (m *UsageSeries) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Previous); err != nil {
 					return err
 				}
+				if m.Previous.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 6:
@@ -6807,10 +7172,14 @@ func (m *UsageSeries) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Buckets = append(m.Buckets, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -6830,7 +7199,10 @@ type UsageStatsResponse struct {
 	PreviousPeriodBackfilling bool
 	Sources                   []*UsageAgentSource
 	Series                    []*UsageSeries
+	hasUnknown                bool
 }
+
+func (m *UsageStatsResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *UsageStatsResponse) GetPreset() UsageRangePreset {
 	if m != nil {
@@ -7045,6 +7417,9 @@ func (m *UsageStatsResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Sources = append(m.Sources, elem)
 				continue
 			}
@@ -7054,10 +7429,14 @@ func (m *UsageStatsResponse) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Series = append(m.Series, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}

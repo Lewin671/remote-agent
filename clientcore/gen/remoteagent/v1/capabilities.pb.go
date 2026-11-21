@@ -25,7 +25,10 @@ type MachineCapabilities struct {
 	MachineStatus        bool
 	UsageStats           bool
 	CliSwitches          bool
+	hasUnknown           bool
 }
+
+func (m *MachineCapabilities) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *MachineCapabilities) GetImageUpload() bool {
 	if m != nil {
@@ -335,6 +338,7 @@ func (m *MachineCapabilities) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}

@@ -437,29 +437,11 @@ func (e *Endpoint) finishAccepted(key string, c Completion, now uint64) error {
 	return nil
 }
 func acceptedKey(h devicesec.Header) string {
-	e := devicesec.Encoder{}
-	e.Str(h.Account)
-	e.Raw(h.Domain[:])
-	e.Str(h.Sender)
-	e.U32(uint32(h.Purpose))
-	e.Str(h.Machine)
-	e.Str(h.Session)
-	e.Str(h.Request)
-	e.U64(h.Seq)
-	hash := devicesec.Digest("ra4/request-key\x00", e.B)
-	return string(hash[:])
+	id := devicesec.RequestIdentity(h)
+	return string(id[:])
 }
 func payloadHash(h devicesec.Header, plain []byte) (devicesec.Hash, error) {
-	plain, err := Unpack(h, plain)
-	if err != nil {
-		return devicesec.Hash{}, err
-	}
-	e := devicesec.Encoder{}
-	e.LP([]byte(acceptedKey(h)))
-	e.U32(h.Kind)
-	e.U64(h.Deadline)
-	e.LP(plain)
-	return devicesec.Digest("ra4/authorized-payload\x00", e.B), nil
+	return devicesec.AuthorizedPayloadHash(h, plain)
 }
 func acceptedResult(a accepted) ([]byte, error) {
 	if a.State != final {

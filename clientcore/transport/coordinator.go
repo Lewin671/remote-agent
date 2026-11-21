@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
@@ -14,10 +15,10 @@ const (
 	maxTransfersTracked      = 128
 	lateStatsSampleLeadMs    = 1500
 	// CoordEntropyRefillBytes is the chunk requested from the shell's OS CSPRNG.
-	CoordEntropyRefillBytes = 4096
+	CoordEntropyRefillBytes = entropy.RefillBytes
 	// CoordEntropyLowWater triggers proactive background refill before exhaustion.
-	CoordEntropyLowWater = 1024
-	coordEntropyMaxBytes = 16384
+	CoordEntropyLowWater = entropy.LowWaterBytes
+	coordEntropyMaxBytes = entropy.MaxBytes
 	// MemberKindMachine matches DeviceKind.DEVICE_KIND_MACHINE (1) in security heads.
 	MemberKindMachine uint32 = 1
 	// MemberKindClient matches DeviceKind.DEVICE_KIND_CLIENT (2) in security heads.
@@ -33,6 +34,7 @@ type CoordConfig struct {
 	ProtocolVersion uint64
 	ServerHost      string
 	ConfiguredStun  string
+	Entropy         *entropy.Pool
 }
 
 // CoordMember describes one device member in the verified directory.
@@ -253,43 +255,18 @@ type termState struct {
 	hasTimer   bool
 }
 
-// osEntropyPool buffers raw OS CSPRNG bytes supplied by the shell (no PRNG/expansion).
-type osEntropyPool struct {
-	buf []byte
+// coordEntropyReader adapts the shared *entropy.Pool to linkcore.Session's io.Reader,
+// mapping entropy.ErrNeedEntropy to linkcore.ErrNeedEntropy.
+type coordEntropyReader struct {
+	pool *entropy.Pool
 }
 
-func (p *osEntropyPool) avail() int { return len(p.buf) }
-
-func (p *osEntropyPool) appendBytes(raw []byte) {
-	if len(raw) == 0 || len(p.buf) >= coordEntropyMaxBytes {
-		return
+func (r coordEntropyReader) Read(dst []byte) (int, error) {
+	n, err := r.pool.Read(dst)
+	if err != nil {
+		return n, linkcore.ErrNeedEntropy
 	}
-	if len(raw) > coordEntropyMaxBytes-len(p.buf) {
-		raw = raw[:coordEntropyMaxBytes-len(p.buf)]
-	}
-	p.buf = append(p.buf, raw...)
-}
-
-// Read implements io.Reader for linkcore.Session. It is all-or-nothing so a
-// temporarily short pool never consumes partial bytes before returning ErrNeedEntropy.
-func (p *osEntropyPool) Read(dst []byte) (int, error) {
-	if len(p.buf) < len(dst) {
-		return 0, linkcore.ErrNeedEntropy
-	}
-	n := copy(dst, p.buf[:len(dst)])
-	copy(p.buf, p.buf[n:])
-	p.buf = p.buf[:len(p.buf)-n]
 	return n, nil
-}
-
-func (p *osEntropyPool) takeUnitFloat() (float64, bool) {
-	var b [8]byte
-	if _, err := p.Read(b[:]); err != nil {
-		return 0, false
-	}
-	u := uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
-		uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56
-	return float64(u>>11) / (1 << 53), true
 }
 
 // Coordinator bridges the client transport Engine with shared/linkcore.Session,
@@ -299,7 +276,7 @@ type Coordinator struct {
 	cfg         CoordConfig
 	stunServers []string
 	engine      *Engine
-	randPool osEntropyPool
+	randPool    *entropy.Pool
 
 	pendingEngineUnits int
 	entropyAsked       bool
@@ -345,8 +322,13 @@ type Coordinator struct {
 
 // NewCoordinator constructs a Coordinator wrapped around transport.Engine.
 func NewCoordinator(cfg CoordConfig) *Coordinator {
+	pool := cfg.Entropy
+	if pool == nil {
+		pool = &entropy.Pool{}
+	}
 	return &Coordinator{
 		cfg:           cfg,
+		randPool:      pool,
 		stunServers:   StunServers(cfg.ServerHost, cfg.ConfiguredStun),
 		engine:        NewEngine(cfg.Supported),
 		foreground:    true,
@@ -379,18 +361,23 @@ func (c *Coordinator) Engine() *Engine { return c.engine }
 func (c *Coordinator) HasInstance() bool { return c.hasInstance }
 
 // EntropyAvailable returns the number of buffered OS random bytes currently available.
-func (c *Coordinator) EntropyAvailable() int { return c.randPool.avail() }
+func (c *Coordinator) EntropyAvailable() int { return c.randPool.Avail() }
 
 // ProvideRandomBytes adds raw OS CSPRNG bytes to Coordinator's entropy pool and
 // resumes any queued handshake starts, frame seals, or Engine jitter requests.
 func (c *Coordinator) ProvideRandomBytes(now int64, raw []byte) []CoordEffect {
-	if len(raw) == 0 {
-		return nil
-	}
+	return c.ProvideRandomBytesWithShared(now, raw, true)
+}
+
+// DrainRandomWaiters appends raw (if appendBytes is true) and resumes any
+// queued Coordinator operations using the shared entropy pool.
+func (c *Coordinator) ProvideRandomBytesWithShared(now int64, raw []byte, appendBytes bool) []CoordEffect {
 	wasHasInstance := c.hasInstance
 	c.entropyAsked = false
-	c.randPool.appendBytes(raw)
-	if !c.hasInstance && c.randPool.avail() >= 48 {
+	if appendBytes && len(raw) > 0 {
+		c.randPool.Append(raw)
+	}
+	if !c.hasInstance && c.randPool.Avail() >= 48 {
 		c.instance = make([]byte, 16)
 		c.boot = make([]byte, 32)
 		_, _ = c.randPool.Read(c.instance)
@@ -401,12 +388,12 @@ func (c *Coordinator) ProvideRandomBytes(now int64, raw []byte) []CoordEffect {
 			c.selfPub.Boot = c.boot
 		}
 	}
-	if c.pendingEngineUnits > 0 && c.randPool.avail() >= c.pendingEngineUnits*8 {
+	if c.pendingEngineUnits > 0 && c.randPool.Avail() >= c.pendingEngineUnits*8 {
 		n := c.pendingEngineUnits
 		c.pendingEngineUnits = 0
 		units := make([]float64, n)
 		for i := range units {
-			u, _ := c.randPool.takeUnitFloat()
+			u, _ := c.randPool.TakeUnitFloat()
 			units[i] = u
 		}
 		more := c.engine.Handle(now, Entropy{Units: units})
@@ -819,7 +806,7 @@ func (c *Coordinator) drainPendingStarts(now int64) {
 		if !ready {
 			continue
 		}
-		if c.randPool.avail() < 16+peerwire.SealEntropy {
+		if c.randPool.Avail() < 16+peerwire.SealEntropy {
 			c.maybeNeedEntropy(CoordEntropyRefillBytes)
 			continue
 		}
@@ -1313,7 +1300,7 @@ func (c *Coordinator) TerminalClosed(now int64, id string, opened, online bool) 
 		return nil
 	}
 	unit := 1.0
-	if u, ok := c.randPool.takeUnitFloat(); ok {
+	if u, ok := c.randPool.TakeUnitFloat(); ok {
 		unit = u
 		c.maybeLowWater()
 	} else {
@@ -1442,10 +1429,10 @@ func (c *Coordinator) applyEngineEffects(now int64, effs []Effect, observe func(
 		}
 		switch eff := eff.(type) {
 		case RequestEntropy:
-			if eff.Count > 0 && c.randPool.avail() >= eff.Count*8 {
+			if eff.Count > 0 && c.randPool.Avail() >= eff.Count*8 {
 				units := make([]float64, eff.Count)
 				for i := range units {
-					u, _ := c.randPool.takeUnitFloat()
+					u, _ := c.randPool.TakeUnitFloat()
 					units[i] = u
 				}
 				c.maybeLowWater()
@@ -1527,20 +1514,20 @@ func (c *Coordinator) maybeLowWater() {
 	if !c.cfg.Supported {
 		return
 	}
-	if !c.hasInstance || c.randPool.avail() < CoordEntropyLowWater {
+	if !c.hasInstance || c.randPool.Avail() < CoordEntropyLowWater {
 		c.maybeNeedEntropy(CoordEntropyRefillBytes)
 	}
 }
 
 func (c *Coordinator) maybeNeedPendingEntropy() {
 	need := 0
-	if !c.hasInstance && c.randPool.avail() < 48 {
+	if !c.hasInstance && c.randPool.Avail() < 48 {
 		need = CoordEntropyRefillBytes
 	}
-	if c.pendingEngineUnits > 0 && c.randPool.avail() < c.pendingEngineUnits*8 {
+	if c.pendingEngineUnits > 0 && c.randPool.Avail() < c.pendingEngineUnits*8 {
 		need = max(need, max(CoordEntropyRefillBytes, c.pendingEngineUnits*8))
 	}
-	if len(c.pendingStarts) > 0 && (!c.hasInstance || c.randPool.avail() < 16+peerwire.SealEntropy) {
+	if len(c.pendingStarts) > 0 && (!c.hasInstance || c.randPool.Avail() < 16+peerwire.SealEntropy) {
 		need = max(need, CoordEntropyRefillBytes)
 	}
 	for _, r := range c.rounds {
@@ -1549,7 +1536,7 @@ func (c *Coordinator) maybeNeedPendingEntropy() {
 			break
 		}
 	}
-	if c.cfg.Supported && c.randPool.avail() < CoordEntropyLowWater {
+	if c.cfg.Supported && c.randPool.Avail() < CoordEntropyLowWater {
 		need = max(need, CoordEntropyRefillBytes)
 	}
 	if need > 0 {
@@ -1567,7 +1554,7 @@ func (c *Coordinator) onStartRound(now int64, eff StartRound) {
 		return
 	}
 	shared, dhOK := c.ensureAgree(eff.Machine, m.XPub)
-	if !c.hasInstance || c.randPool.avail() < 16+peerwire.SealEntropy {
+	if !c.hasInstance || c.randPool.Avail() < 16+peerwire.SealEntropy {
 		c.pendingStarts[eff.Round] = &pendingRoundStart{
 			round:      eff.Round,
 			machine:    eff.Machine,
@@ -1636,7 +1623,7 @@ func (c *Coordinator) createRound(now int64, id RoundID, machine string, peer pe
 		Codec:      c.codec,
 		Connection: append([]byte(nil), conn...),
 		Deadline:   deadline,
-		Entropy:    &c.randPool,
+		Entropy:    coordEntropyReader{pool: c.randPool},
 		Allow: func() bool {
 			return c.engine.SignalAuthorized(r.curNow, id)
 		},

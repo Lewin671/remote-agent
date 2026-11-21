@@ -38,4 +38,15 @@ public interface PutAccountPrefsRpcOrBuilder extends
    * @return The nextPrefs.
    */
   io.github.lewin671.remoteagent.proto.ProjectPrefs getNextPrefs();
+
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+   * @return Whether the sealedEnvelope field is set.
+   */
+  boolean hasSealedEnvelope();
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+   * @return The sealedEnvelope.
+   */
+  io.github.lewin671.remoteagent.proto.Envelope getSealedEnvelope();
 }

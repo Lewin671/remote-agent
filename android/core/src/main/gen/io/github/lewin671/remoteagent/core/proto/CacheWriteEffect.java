@@ -25,6 +25,11 @@ public  final class CacheWriteEffect extends
     WRITE_EVENTS(4),
     WRITE_PREFS_REF(5),
     SET_SESSION_OPEN(6),
+    WRITE_MACHINE(7),
+    WRITE_SESSION(8),
+    KEEP_SESSION_OWNER(9),
+    WRITE_STORED_EVENTS(10),
+    WRITE_PREFS(11),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -46,6 +51,11 @@ public  final class CacheWriteEffect extends
         case 4: return WRITE_EVENTS;
         case 5: return WRITE_PREFS_REF;
         case 6: return SET_SESSION_OPEN;
+        case 7: return WRITE_MACHINE;
+        case 8: return WRITE_SESSION;
+        case 9: return KEEP_SESSION_OWNER;
+        case 10: return WRITE_STORED_EVENTS;
+        case 11: return WRITE_PREFS;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -426,6 +436,266 @@ public  final class CacheWriteEffect extends
    */
   private void clearSetSessionOpen() {
     if (kindCase_ == 6) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int WRITE_MACHINE_FIELD_NUMBER = 7;
+  /**
+   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWriteMachine() {
+    return kindCase_ == 7;
+  }
+  /**
+   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Machine getWriteMachine() {
+    if (kindCase_ == 7) {
+       return (io.github.lewin671.remoteagent.proto.Machine) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.Machine.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWriteMachine(io.github.lewin671.remoteagent.proto.Machine value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 7;
+  }
+  /**
+   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWriteMachine(io.github.lewin671.remoteagent.proto.Machine value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 7 &&
+        kind_ != io.github.lewin671.remoteagent.proto.Machine.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.Machine.newBuilder((io.github.lewin671.remoteagent.proto.Machine) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 7;
+  }
+  /**
+   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+   */
+  private void clearWriteMachine() {
+    if (kindCase_ == 7) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int WRITE_SESSION_FIELD_NUMBER = 8;
+  /**
+   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWriteSession() {
+    return kindCase_ == 8;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.RemoteSession getWriteSession() {
+    if (kindCase_ == 8) {
+       return (io.github.lewin671.remoteagent.proto.RemoteSession) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWriteSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 8;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWriteSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 8 &&
+        kind_ != io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.RemoteSession.newBuilder((io.github.lewin671.remoteagent.proto.RemoteSession) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 8;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+   */
+  private void clearWriteSession() {
+    if (kindCase_ == 8) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int KEEP_SESSION_OWNER_FIELD_NUMBER = 9;
+  /**
+   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+   */
+  @java.lang.Override
+  public boolean hasKeepSessionOwner() {
+    return kindCase_ == 9;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.RemoteSession getKeepSessionOwner() {
+    if (kindCase_ == 9) {
+       return (io.github.lewin671.remoteagent.proto.RemoteSession) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setKeepSessionOwner(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 9;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeKeepSessionOwner(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 9 &&
+        kind_ != io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.RemoteSession.newBuilder((io.github.lewin671.remoteagent.proto.RemoteSession) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 9;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+   */
+  private void clearKeepSessionOwner() {
+    if (kindCase_ == 9) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int WRITE_STORED_EVENTS_FIELD_NUMBER = 10;
+  /**
+   * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWriteStoredEvents() {
+    return kindCase_ == 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents getWriteStoredEvents() {
+    if (kindCase_ == 10) {
+       return (io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents) kind_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWriteStoredEvents(io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWriteStoredEvents(io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 10 &&
+        kind_ != io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents.newBuilder((io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 10;
+  }
+  /**
+   * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+   */
+  private void clearWriteStoredEvents() {
+    if (kindCase_ == 10) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
+  public static final int WRITE_PREFS_FIELD_NUMBER = 11;
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWritePrefs() {
+    return kindCase_ == 11;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWritePrefs() {
+    if (kindCase_ == 11) {
+       return (io.github.lewin671.remoteagent.proto.AccountPrefsObject) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWritePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 11;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWritePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 11 &&
+        kind_ != io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.AccountPrefsObject.newBuilder((io.github.lewin671.remoteagent.proto.AccountPrefsObject) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 11;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   */
+  private void clearWritePrefs() {
+    if (kindCase_ == 11) {
       kindCase_ = 0;
       kind_ = null;
     }
@@ -864,6 +1134,246 @@ public  final class CacheWriteEffect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWriteMachine() {
+      return instance.hasWriteMachine();
+    }
+    /**
+     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Machine getWriteMachine() {
+      return instance.getWriteMachine();
+    }
+    /**
+     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+     */
+    public Builder setWriteMachine(io.github.lewin671.remoteagent.proto.Machine value) {
+      copyOnWrite();
+      instance.setWriteMachine(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+     */
+    public Builder setWriteMachine(
+        io.github.lewin671.remoteagent.proto.Machine.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWriteMachine(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+     */
+    public Builder mergeWriteMachine(io.github.lewin671.remoteagent.proto.Machine value) {
+      copyOnWrite();
+      instance.mergeWriteMachine(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+     */
+    public Builder clearWriteMachine() {
+      copyOnWrite();
+      instance.clearWriteMachine();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWriteSession() {
+      return instance.hasWriteSession();
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.RemoteSession getWriteSession() {
+      return instance.getWriteSession();
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+     */
+    public Builder setWriteSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.setWriteSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+     */
+    public Builder setWriteSession(
+        io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWriteSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+     */
+    public Builder mergeWriteSession(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.mergeWriteSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+     */
+    public Builder clearWriteSession() {
+      copyOnWrite();
+      instance.clearWriteSession();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+     */
+    @java.lang.Override
+    public boolean hasKeepSessionOwner() {
+      return instance.hasKeepSessionOwner();
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.RemoteSession getKeepSessionOwner() {
+      return instance.getKeepSessionOwner();
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+     */
+    public Builder setKeepSessionOwner(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.setKeepSessionOwner(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+     */
+    public Builder setKeepSessionOwner(
+        io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
+      copyOnWrite();
+      instance.setKeepSessionOwner(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+     */
+    public Builder mergeKeepSessionOwner(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.mergeKeepSessionOwner(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+     */
+    public Builder clearKeepSessionOwner() {
+      copyOnWrite();
+      instance.clearKeepSessionOwner();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWriteStoredEvents() {
+      return instance.hasWriteStoredEvents();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents getWriteStoredEvents() {
+      return instance.getWriteStoredEvents();
+    }
+    /**
+     * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+     */
+    public Builder setWriteStoredEvents(io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents value) {
+      copyOnWrite();
+      instance.setWriteStoredEvents(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+     */
+    public Builder setWriteStoredEvents(
+        io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWriteStoredEvents(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+     */
+    public Builder mergeWriteStoredEvents(io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents value) {
+      copyOnWrite();
+      instance.mergeWriteStoredEvents(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+     */
+    public Builder clearWriteStoredEvents() {
+      copyOnWrite();
+      instance.clearWriteStoredEvents();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWritePrefs() {
+      return instance.hasWritePrefs();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWritePrefs() {
+      return instance.getWritePrefs();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     */
+    public Builder setWritePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+      copyOnWrite();
+      instance.setWritePrefs(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     */
+    public Builder setWritePrefs(
+        io.github.lewin671.remoteagent.proto.AccountPrefsObject.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWritePrefs(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     */
+    public Builder mergeWritePrefs(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+      copyOnWrite();
+      instance.mergeWritePrefs(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+     */
+    public Builder clearWritePrefs() {
+      copyOnWrite();
+      instance.clearWritePrefs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.CacheWriteEffect)
   }
   @java.lang.Override
@@ -884,10 +1394,16 @@ public  final class CacheWriteEffect extends
             "kindCase_",
             io.github.lewin671.remoteagent.core.proto.CacheWriteEvents.class,
             io.github.lewin671.remoteagent.core.proto.CacheSessionOpen.class,
+            io.github.lewin671.remoteagent.proto.Machine.class,
+            io.github.lewin671.remoteagent.proto.RemoteSession.class,
+            io.github.lewin671.remoteagent.proto.RemoteSession.class,
+            io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents.class,
+            io.github.lewin671.remoteagent.proto.AccountPrefsObject.class,
           };
           java.lang.String info =
-              "\u0000\u0006\u0001\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u023b\u0000\u0002" +
-              "\u023b\u0000\u0003\u023b\u0000\u0004<\u0000\u0005\u023b\u0000\u0006<\u0000";
+              "\u0000\u000b\u0001\u0000\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u023b\u0000\u0002" +
+              "\u023b\u0000\u0003\u023b\u0000\u0004<\u0000\u0005\u023b\u0000\u0006<\u0000\u0007" +
+              "<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

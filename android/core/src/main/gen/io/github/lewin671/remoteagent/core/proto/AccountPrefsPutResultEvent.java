@@ -192,6 +192,54 @@ public  final class AccountPrefsPutResultEvent extends
 
   }
 
+  public static final int WIRE_CURRENT_FIELD_NUMBER = 10;
+  private io.github.lewin671.remoteagent.proto.AccountPrefsObject wireCurrent_;
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWireCurrent() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWireCurrent() {
+    return wireCurrent_ == null ? io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance() : wireCurrent_;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireCurrent(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    value.getClass();  // minimal bytecode null check
+    wireCurrent_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeWireCurrent(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    value.getClass();  // minimal bytecode null check
+    if (wireCurrent_ != null &&
+        wireCurrent_ != io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance()) {
+      wireCurrent_ =
+        io.github.lewin671.remoteagent.proto.AccountPrefsObject.newBuilder(wireCurrent_).mergeFrom(value).buildPartial();
+    } else {
+      wireCurrent_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+   */
+  private void clearWireCurrent() {
+    wireCurrent_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -469,6 +517,53 @@ public  final class AccountPrefsPutResultEvent extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWireCurrent() {
+      return instance.hasWireCurrent();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWireCurrent() {
+      return instance.getWireCurrent();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+     */
+    public Builder setWireCurrent(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+      copyOnWrite();
+      instance.setWireCurrent(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+     */
+    public Builder setWireCurrent(
+        io.github.lewin671.remoteagent.proto.AccountPrefsObject.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireCurrent(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+     */
+    public Builder mergeWireCurrent(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+      copyOnWrite();
+      instance.mergeWireCurrent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+     */
+    public Builder clearWireCurrent() {  copyOnWrite();
+      instance.clearWireCurrent();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AccountPrefsPutResultEvent)
   }
   @java.lang.Override
@@ -491,10 +586,11 @@ public  final class AccountPrefsPutResultEvent extends
             "current_",
             "sealConflict_",
             "error_",
+            "wireCurrent_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0003\u0002\u0007" +
-              "\u0003\u1009\u0000\u0004\u0007\u0005\u0208";
+              "\u0000\u0006\u0000\u0001\u0001\n\u0006\u0000\u0000\u0000\u0001\u0003\u0002\u0007" +
+              "\u0003\u1009\u0000\u0004\u0007\u0005\u0208\n\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

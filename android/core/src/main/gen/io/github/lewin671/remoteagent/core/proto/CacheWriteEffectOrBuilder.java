@@ -100,5 +100,60 @@ public interface CacheWriteEffectOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.CacheSessionOpen getSetSessionOpen();
 
+  /**
+   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+   * @return Whether the writeMachine field is set.
+   */
+  boolean hasWriteMachine();
+  /**
+   * <code>.remoteagent.v1.Machine write_machine = 7 [json_name = "writeMachine"];</code>
+   * @return The writeMachine.
+   */
+  io.github.lewin671.remoteagent.proto.Machine getWriteMachine();
+
+  /**
+   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+   * @return Whether the writeSession field is set.
+   */
+  boolean hasWriteSession();
+  /**
+   * <code>.remoteagent.v1.RemoteSession write_session = 8 [json_name = "writeSession"];</code>
+   * @return The writeSession.
+   */
+  io.github.lewin671.remoteagent.proto.RemoteSession getWriteSession();
+
+  /**
+   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+   * @return Whether the keepSessionOwner field is set.
+   */
+  boolean hasKeepSessionOwner();
+  /**
+   * <code>.remoteagent.v1.RemoteSession keep_session_owner = 9 [json_name = "keepSessionOwner"];</code>
+   * @return The keepSessionOwner.
+   */
+  io.github.lewin671.remoteagent.proto.RemoteSession getKeepSessionOwner();
+
+  /**
+   * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+   * @return Whether the writeStoredEvents field is set.
+   */
+  boolean hasWriteStoredEvents();
+  /**
+   * <code>.remoteagent.core.v1.CacheWriteStoredEvents write_stored_events = 10 [json_name = "writeStoredEvents"];</code>
+   * @return The writeStoredEvents.
+   */
+  io.github.lewin671.remoteagent.core.proto.CacheWriteStoredEvents getWriteStoredEvents();
+
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   * @return Whether the writePrefs field is set.
+   */
+  boolean hasWritePrefs();
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject write_prefs = 11 [json_name = "writePrefs"];</code>
+   * @return The writePrefs.
+   */
+  io.github.lewin671.remoteagent.proto.AccountPrefsObject getWritePrefs();
+
   public io.github.lewin671.remoteagent.core.proto.CacheWriteEffect.KindCase getKindCase();
 }

@@ -516,5 +516,90 @@ public interface EffectOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect getDirectRetryNowResult();
 
+  /**
+   * <pre>
+   * Security engine (130-159 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+   * @return Whether the securityKeySign field is set.
+   */
+  boolean hasSecurityKeySign();
+  /**
+   * <pre>
+   * Security engine (130-159 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+   * @return The securityKeySign.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect getSecurityKeySign();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+   * @return Whether the securityKeyAgree field is set.
+   */
+  boolean hasSecurityKeyAgree();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+   * @return The securityKeyAgree.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect getSecurityKeyAgree();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+   * @return Whether the securityKeyGenerate field is set.
+   */
+  boolean hasSecurityKeyGenerate();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+   * @return The securityKeyGenerate.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect getSecurityKeyGenerate();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+   * @return Whether the securityKeyEncapsulate field is set.
+   */
+  boolean hasSecurityKeyEncapsulate();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+   * @return The securityKeyEncapsulate.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect getSecurityKeyEncapsulate();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+   * @return Whether the securityKeyDiscard field is set.
+   */
+  boolean hasSecurityKeyDiscard();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+   * @return The securityKeyDiscard.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect getSecurityKeyDiscard();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+   * @return Whether the securityCryptoBatch field is set.
+   */
+  boolean hasSecurityCryptoBatch();
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+   * @return The securityCryptoBatch.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect getSecurityCryptoBatch();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+   * @return Whether the securityOpResult field is set.
+   */
+  boolean hasSecurityOpResult();
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+   * @return The securityOpResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect getSecurityOpResult();
+
   public io.github.lewin671.remoteagent.core.proto.Effect.EffectCase getEffectCase();
 }

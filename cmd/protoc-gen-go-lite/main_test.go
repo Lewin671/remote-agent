@@ -234,6 +234,87 @@ func TestReachableClosureAndPruning(t *testing.T) {
 	}
 }
 
+func TestStrictUnknownFieldDetection(t *testing.T) {
+	req := &pluginpb.CodeGeneratorRequest{
+		Parameter:      strPtr("paths=source_relative"),
+		FileToGenerate: []string{"remoteagent/v1/strict.proto"},
+		ProtoFile: []*descriptorpb.FileDescriptorProto{
+			{
+				Name:    strPtr("remoteagent/v1/strict.proto"),
+				Package: strPtr("remoteagent.v1"),
+				Syntax:  strPtr("proto3"),
+				Options: &descriptorpb.FileOptions{GoPackage: strPtr("example.com/gen/remoteagent/v1;v1")},
+				MessageType: []*descriptorpb.DescriptorProto{
+					{
+						Name: strPtr("StrictChild"),
+						Field: []*descriptorpb.FieldDescriptorProto{
+							{
+								Name:   strPtr("name"),
+								Number: int32Ptr(1),
+								Label:  labelPtr(descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL),
+								Type:   typePtr(descriptorpb.FieldDescriptorProto_TYPE_STRING),
+							},
+						},
+					},
+					{
+						Name: strPtr("StrictParent"),
+						Field: []*descriptorpb.FieldDescriptorProto{
+							{
+								Name:     strPtr("child"),
+								Number:   int32Ptr(1),
+								Label:    labelPtr(descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL),
+								Type:     typePtr(descriptorpb.FieldDescriptorProto_TYPE_MESSAGE),
+								TypeName: strPtr(".remoteagent.v1.StrictChild"),
+							},
+							{
+								Name:     strPtr("children"),
+								Number:   int32Ptr(2),
+								Label:    labelPtr(descriptorpb.FieldDescriptorProto_LABEL_REPEATED),
+								Type:     typePtr(descriptorpb.FieldDescriptorProto_TYPE_MESSAGE),
+								TypeName: strPtr(".remoteagent.v1.StrictChild"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	entriesFile := filepath.Join(t.TempDir(), "entries.txt")
+	if err := os.WriteFile(entriesFile, []byte("strict: remoteagent.v1.StrictParent\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	plugin, err := protogen.Options{}.New(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reach, err := computeReachable(plugin.Files, entriesFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range plugin.Files {
+		if f.Generate && fileHasReachable(f, reach) {
+			generateFile(plugin, f, reach)
+		}
+	}
+	resp := plugin.Response()
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %s", *resp.Error)
+	}
+	content := resp.File[0].GetContent()
+	for _, want := range []string{
+		"hasUnknown bool",
+		"func (m *StrictChild) HasUnknown() bool",
+		"func (m *StrictParent) HasUnknown() bool",
+		"m.hasUnknown = true",
+		"if m.Child.HasUnknown() {",
+		"if elem.HasUnknown() {",
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("generated strict code missing %q\n%s", want, content)
+		}
+	}
+}
+
 func TestUnknownEntryAndDirectiveReturnError(t *testing.T) {
 	req := &pluginpb.CodeGeneratorRequest{
 		Parameter:      strPtr("paths=source_relative"),

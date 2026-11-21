@@ -200,6 +200,14 @@ func main() {
 		return resultBytes(corebind.Reduce(agent, raw))
 	}))
 
+	api.Set("secCall", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		var raw []byte
+		if len(args) > 0 {
+			raw = bytesFromJS(args[0])
+		}
+		return resultBytes(corebind.SecCall(raw))
+	}))
+
 	js.Global().Set("__remoteAgentCore", api)
 	if cb := js.Global().Get("__remoteAgentCoreReady"); cb.Type() == js.TypeFunction {
 		cb.Invoke(api)

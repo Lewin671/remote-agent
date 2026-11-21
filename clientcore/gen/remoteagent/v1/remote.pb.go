@@ -50,7 +50,10 @@ type MachineMeta struct {
 	DisabledAgents   []Agent
 	SettingsRevision uint64
 	DaemonVersion    string
+	hasUnknown       bool
 }
+
+func (m *MachineMeta) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *MachineMeta) GetHostname() string {
 	if m != nil {
@@ -281,6 +284,9 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Agents = append(m.Agents, elem)
 				continue
 			}
@@ -292,6 +298,9 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Capabilities); err != nil {
 					return err
 				}
+				if m.Capabilities.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 11:
@@ -299,6 +308,9 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 				elem := &AgentQuota{}
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
+				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Quotas = append(m.Quotas, elem)
 				continue
@@ -317,6 +329,9 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 				elem := &ProjectSummary{}
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
+				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Projects = append(m.Projects, elem)
 				continue
@@ -337,6 +352,9 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, m.DiskStatus); err != nil {
 					return err
+				}
+				if m.DiskStatus.HasUnknown() {
+					m.hasUnknown = true
 				}
 				continue
 			}
@@ -382,6 +400,7 @@ func (m *MachineMeta) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -394,7 +413,10 @@ type ProjectSummary struct {
 	Ended           uint32
 	LatestCreatedMs int64
 	LatestEndedMs   int64
+	hasUnknown      bool
 }
+
+func (m *ProjectSummary) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ProjectSummary) GetPath() string {
 	if m != nil {
@@ -490,6 +512,7 @@ func (m *ProjectSummary) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -507,7 +530,10 @@ type AgentQuota struct {
 	Account         string
 	SourceSessionId string
 	Detail          string
+	hasUnknown      bool
 }
+
+func (m *AgentQuota) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AgentQuota) GetAgent() Agent {
 	if m != nil {
@@ -635,6 +661,9 @@ func (m *AgentQuota) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Windows = append(m.Windows, elem)
 				continue
 			}
@@ -693,6 +722,7 @@ func (m *AgentQuota) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -705,7 +735,10 @@ type QuotaWindow struct {
 	UsedPercent   *float64
 	ResetsAtMs    int64
 	WindowMinutes int64
+	hasUnknown    bool
 }
+
+func (m *QuotaWindow) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *QuotaWindow) GetName() string {
 	if m != nil {
@@ -808,6 +841,7 @@ func (m *QuotaWindow) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -822,7 +856,10 @@ type AgentInfo struct {
 	DefaultMode       ApprovalMode
 	DefaultModeSource DefaultModeSource
 	DefaultModeVaries bool
+	hasUnknown        bool
 }
+
+func (m *AgentInfo) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AgentInfo) GetAgent() Agent {
 	if m != nil {
@@ -950,6 +987,7 @@ func (m *AgentInfo) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -960,7 +998,10 @@ func (m *AgentInfo) Unmarshal(b []byte) error {
 type Command struct {
 	Kind            isCommand_Kind
 	ProtocolVersion uint32
+	hasUnknown      bool
 }
+
+func (m *Command) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 type isCommand_Kind interface{ isCommand_Kind() }
 type Command_Send struct{ Send *SendRequest }
@@ -1621,6 +1662,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_Send{Send: sub}
 				continue
 			}
@@ -1635,6 +1679,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_Interrupt{Interrupt: sub}
 				continue
@@ -1651,6 +1698,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_ResolveApproval{ResolveApproval: sub}
 				continue
 			}
@@ -1665,6 +1715,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_AnswerQuestion{AnswerQuestion: sub}
 				continue
@@ -1681,6 +1734,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_StopSession{StopSession: sub}
 				continue
 			}
@@ -1695,6 +1751,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_CancelInput{CancelInput: sub}
 				continue
@@ -1711,6 +1770,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_SetModel{SetModel: sub}
 				continue
 			}
@@ -1725,6 +1787,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_SetApprovalMode{SetApprovalMode: sub}
 				continue
@@ -1741,6 +1806,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_Compact{Compact: sub}
 				continue
 			}
@@ -1755,6 +1823,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_AnswerPlan{AnswerPlan: sub}
 				continue
@@ -1771,6 +1842,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_OpenTerminal{OpenTerminal: sub}
 				continue
 			}
@@ -1785,6 +1859,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_ResumeSession{ResumeSession: sub}
 				continue
@@ -1801,6 +1878,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_ResumeInput{ResumeInput: sub}
 				continue
 			}
@@ -1815,6 +1895,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_RenameSession{RenameSession: sub}
 				continue
@@ -1831,6 +1914,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_ForkSession{ForkSession: sub}
 				continue
 			}
@@ -1845,6 +1931,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_CreateSession{CreateSession: sub}
 				continue
@@ -1861,6 +1950,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_ListModels{ListModels: sub}
 				continue
 			}
@@ -1875,6 +1967,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_ListDirectories{ListDirectories: sub}
 				continue
@@ -1891,6 +1986,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_GetSettings{GetSettings: sub}
 				continue
 			}
@@ -1905,6 +2003,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_UpdateSettings{UpdateSettings: sub}
 				continue
@@ -1921,6 +2022,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_BeginImageUpload{BeginImageUpload: sub}
 				continue
 			}
@@ -1935,6 +2039,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_PutImageChunk{PutImageChunk: sub}
 				continue
@@ -1951,6 +2058,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_GetImageUploadStatus{GetImageUploadStatus: sub}
 				continue
 			}
@@ -1965,6 +2075,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_CompleteImageUpload{CompleteImageUpload: sub}
 				continue
@@ -1981,6 +2094,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_AbortImageUpload{AbortImageUpload: sub}
 				continue
 			}
@@ -1995,6 +2111,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_Schedule{Schedule: sub}
 				continue
@@ -2011,6 +2130,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_GetLiveSnapshot{GetLiveSnapshot: sub}
 				continue
 			}
@@ -2025,6 +2147,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Command_GetSharedFileChunk{GetSharedFileChunk: sub}
 				continue
@@ -2041,6 +2166,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_GetMachineStatus{GetMachineStatus: sub}
 				continue
 			}
@@ -2056,6 +2184,9 @@ func (m *Command) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Command_GetUsageStats{GetUsageStats: sub}
 				continue
 			}
@@ -2069,6 +2200,7 @@ func (m *Command) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2086,7 +2218,10 @@ type CommandResult struct {
 	PayloadHash     []byte
 	ResultAvailable bool
 	Kind            isCommandResult_Kind
+	hasUnknown      bool
 }
+
+func (m *CommandResult) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 type isCommandResult_Kind interface{ isCommandResult_Kind() }
 type CommandResult_Send struct{ Send *SendResponse }
@@ -2535,6 +2670,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_Send{Send: sub}
 				continue
 			}
@@ -2549,6 +2687,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_Interrupt{Interrupt: sub}
 				continue
@@ -2565,6 +2706,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_ResolveApproval{ResolveApproval: sub}
 				continue
 			}
@@ -2579,6 +2723,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_AnswerQuestion{AnswerQuestion: sub}
 				continue
@@ -2595,6 +2742,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_StopSession{StopSession: sub}
 				continue
 			}
@@ -2609,6 +2759,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_CancelInput{CancelInput: sub}
 				continue
@@ -2625,6 +2778,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_SetModel{SetModel: sub}
 				continue
 			}
@@ -2639,6 +2795,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_SetApprovalMode{SetApprovalMode: sub}
 				continue
@@ -2655,6 +2814,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_Compact{Compact: sub}
 				continue
 			}
@@ -2669,6 +2831,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_AnswerPlan{AnswerPlan: sub}
 				continue
@@ -2685,6 +2850,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_OpenTerminal{OpenTerminal: sub}
 				continue
 			}
@@ -2699,6 +2867,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_ResumeSession{ResumeSession: sub}
 				continue
@@ -2715,6 +2886,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_ResumeInput{ResumeInput: sub}
 				continue
 			}
@@ -2729,6 +2903,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_RenameSession{RenameSession: sub}
 				continue
@@ -2745,6 +2922,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_ForkSession{ForkSession: sub}
 				continue
 			}
@@ -2759,6 +2939,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_CreateSession{CreateSession: sub}
 				continue
@@ -2775,6 +2958,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_ListModels{ListModels: sub}
 				continue
 			}
@@ -2789,6 +2975,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_ListDirectories{ListDirectories: sub}
 				continue
@@ -2805,6 +2994,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_GetSettings{GetSettings: sub}
 				continue
 			}
@@ -2819,6 +3011,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_UpdateSettings{UpdateSettings: sub}
 				continue
@@ -2835,6 +3030,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_BeginImageUpload{BeginImageUpload: sub}
 				continue
 			}
@@ -2849,6 +3047,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_PutImageChunk{PutImageChunk: sub}
 				continue
@@ -2865,6 +3066,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_GetImageUploadStatus{GetImageUploadStatus: sub}
 				continue
 			}
@@ -2879,6 +3083,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_CompleteImageUpload{CompleteImageUpload: sub}
 				continue
@@ -2895,6 +3102,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_AbortImageUpload{AbortImageUpload: sub}
 				continue
 			}
@@ -2909,6 +3119,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_Schedule{Schedule: sub}
 				continue
@@ -2925,6 +3138,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_LiveSnapshot{LiveSnapshot: sub}
 				continue
 			}
@@ -2939,6 +3155,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &CommandResult_GetSharedFileChunk{GetSharedFileChunk: sub}
 				continue
@@ -2955,6 +3174,9 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_MachineStatus{MachineStatus: sub}
 				continue
 			}
@@ -2970,10 +3192,14 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &CommandResult_UsageStats{UsageStats: sub}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2982,9 +3208,12 @@ func (m *CommandResult) Unmarshal(b []byte) error {
 }
 
 type OpenTerminalRequest struct {
-	SessionId string
-	StreamId  string
+	SessionId  string
+	StreamId   string
+	hasUnknown bool
 }
+
+func (m *OpenTerminalRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *OpenTerminalRequest) GetSessionId() string {
 	if m != nil {
@@ -3048,6 +3277,7 @@ func (m *OpenTerminalRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3056,7 +3286,10 @@ func (m *OpenTerminalRequest) Unmarshal(b []byte) error {
 }
 
 type OpenTerminalResponse struct {
+	hasUnknown bool
 }
+
+func (m *OpenTerminalResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *OpenTerminalResponse) Unmarshal(b []byte) error {
 	for len(b) > 0 {
@@ -3064,6 +3297,1085 @@ func (m *OpenTerminalResponse) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type TerminalFrame struct {
+	Kind       isTerminalFrame_Kind
+	hasUnknown bool
+}
+
+func (m *TerminalFrame) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+type isTerminalFrame_Kind interface{ isTerminalFrame_Kind() }
+type TerminalFrame_Snapshot struct{ Snapshot *TerminalSnapshot }
+
+func (*TerminalFrame_Snapshot) isTerminalFrame_Kind() {}
+
+type TerminalFrame_Output struct{ Output []byte }
+
+func (*TerminalFrame_Output) isTerminalFrame_Kind() {}
+
+type TerminalFrame_HistoryPage struct{ HistoryPage *TerminalHistoryPage }
+
+func (*TerminalFrame_HistoryPage) isTerminalFrame_Kind() {}
+
+type TerminalFrame_Closed struct{ Closed string }
+
+func (*TerminalFrame_Closed) isTerminalFrame_Kind() {}
+
+type TerminalFrame_Input struct{ Input []byte }
+
+func (*TerminalFrame_Input) isTerminalFrame_Kind() {}
+
+type TerminalFrame_Resize struct{ Resize *TerminalResize }
+
+func (*TerminalFrame_Resize) isTerminalFrame_Kind() {}
+
+type TerminalFrame_HistoryRequest struct{ HistoryRequest *TerminalHistoryRequest }
+
+func (*TerminalFrame_HistoryRequest) isTerminalFrame_Kind() {}
+
+func (m *TerminalFrame) GetKind() isTerminalFrame_Kind {
+	if m != nil {
+		return m.Kind
+	}
+	return nil
+}
+func (m *TerminalFrame) GetSnapshot() *TerminalSnapshot {
+	if x, ok := m.GetKind().(*TerminalFrame_Snapshot); ok && x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+func (m *TerminalFrame) GetOutput() []byte {
+	if x, ok := m.GetKind().(*TerminalFrame_Output); ok && x != nil {
+		return x.Output
+	}
+	return nil
+}
+func (m *TerminalFrame) GetHistoryPage() *TerminalHistoryPage {
+	if x, ok := m.GetKind().(*TerminalFrame_HistoryPage); ok && x != nil {
+		return x.HistoryPage
+	}
+	return nil
+}
+func (m *TerminalFrame) GetClosed() string {
+	if x, ok := m.GetKind().(*TerminalFrame_Closed); ok && x != nil {
+		return x.Closed
+	}
+	return ""
+}
+func (m *TerminalFrame) GetInput() []byte {
+	if x, ok := m.GetKind().(*TerminalFrame_Input); ok && x != nil {
+		return x.Input
+	}
+	return nil
+}
+func (m *TerminalFrame) GetResize() *TerminalResize {
+	if x, ok := m.GetKind().(*TerminalFrame_Resize); ok && x != nil {
+		return x.Resize
+	}
+	return nil
+}
+func (m *TerminalFrame) GetHistoryRequest() *TerminalHistoryRequest {
+	if x, ok := m.GetKind().(*TerminalFrame_HistoryRequest); ok && x != nil {
+		return x.HistoryRequest
+	}
+	return nil
+}
+
+func (m *TerminalFrame) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *TerminalFrame) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalFrame) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	switch x := m.Kind.(type) {
+	case *TerminalFrame_Snapshot:
+		if x != nil {
+			if x.Snapshot != nil {
+				b = litewire.AppendMessage(b, 1, x.Snapshot)
+			}
+		}
+	case *TerminalFrame_Output:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 2, x.Output)
+		}
+	case *TerminalFrame_HistoryPage:
+		if x != nil {
+			if x.HistoryPage != nil {
+				b = litewire.AppendMessage(b, 4, x.HistoryPage)
+			}
+		}
+	case *TerminalFrame_Closed:
+		if x != nil {
+			b = litewire.AppendStringAlways(b, 3, x.Closed)
+		}
+	case *TerminalFrame_Input:
+		if x != nil {
+			b = litewire.AppendBytesAlways(b, 10, x.Input)
+		}
+	case *TerminalFrame_Resize:
+		if x != nil {
+			if x.Resize != nil {
+				b = litewire.AppendMessage(b, 11, x.Resize)
+			}
+		}
+	case *TerminalFrame_HistoryRequest:
+		if x != nil {
+			if x.HistoryRequest != nil {
+				b = litewire.AppendMessage(b, 12, x.HistoryRequest)
+			}
+		}
+	}
+	return b
+}
+
+func (m *TerminalFrame) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				var sub *TerminalSnapshot
+				if cur, ok := m.Kind.(*TerminalFrame_Snapshot); ok && cur != nil {
+					sub = cur.Snapshot
+				}
+				if sub == nil {
+					sub = &TerminalSnapshot{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
+				m.Kind = &TerminalFrame_Snapshot{Snapshot: sub}
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Kind = &TerminalFrame_Output{Output: v}
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				var sub *TerminalHistoryPage
+				if cur, ok := m.Kind.(*TerminalFrame_HistoryPage); ok && cur != nil {
+					sub = cur.HistoryPage
+				}
+				if sub == nil {
+					sub = &TerminalHistoryPage{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
+				m.Kind = &TerminalFrame_HistoryPage{HistoryPage: sub}
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Kind = &TerminalFrame_Closed{Closed: v}
+				continue
+			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Kind = &TerminalFrame_Input{Input: v}
+				continue
+			}
+		case 11:
+			if wtyp == litewire.BytesType {
+				var sub *TerminalResize
+				if cur, ok := m.Kind.(*TerminalFrame_Resize); ok && cur != nil {
+					sub = cur.Resize
+				}
+				if sub == nil {
+					sub = &TerminalResize{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
+				m.Kind = &TerminalFrame_Resize{Resize: sub}
+				continue
+			}
+		case 12:
+			if wtyp == litewire.BytesType {
+				var sub *TerminalHistoryRequest
+				if cur, ok := m.Kind.(*TerminalFrame_HistoryRequest); ok && cur != nil {
+					sub = cur.HistoryRequest
+				}
+				if sub == nil {
+					sub = &TerminalHistoryRequest{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
+				m.Kind = &TerminalFrame_HistoryRequest{HistoryRequest: sub}
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type TerminalSnapshot struct {
+	Data       []byte
+	Cols       int32
+	Rows       int32
+	hasUnknown bool
+}
+
+func (m *TerminalSnapshot) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *TerminalSnapshot) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+func (m *TerminalSnapshot) GetCols() int32 {
+	if m != nil {
+		return m.Cols
+	}
+	return 0
+}
+func (m *TerminalSnapshot) GetRows() int32 {
+	if m != nil {
+		return m.Rows
+	}
+	return 0
+}
+
+func (m *TerminalSnapshot) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *TerminalSnapshot) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalSnapshot) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.Data)
+	b = litewire.AppendInt32(b, 2, int32(m.Cols))
+	b = litewire.AppendInt32(b, 3, int32(m.Rows))
+	return b
+}
+
+func (m *TerminalSnapshot) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Data = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Cols = int32(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Rows = int32(v)
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type TerminalHistoryRequest struct {
+	RequestId  string
+	Cursor     string
+	hasUnknown bool
+}
+
+func (m *TerminalHistoryRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *TerminalHistoryRequest) GetRequestId() string {
+	if m != nil {
+		return m.RequestId
+	}
+	return ""
+}
+func (m *TerminalHistoryRequest) GetCursor() string {
+	if m != nil {
+		return m.Cursor
+	}
+	return ""
+}
+
+func (m *TerminalHistoryRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *TerminalHistoryRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalHistoryRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.RequestId)
+	b = litewire.AppendString(b, 2, m.Cursor)
+	return b
+}
+
+func (m *TerminalHistoryRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.RequestId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Cursor = v
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type TerminalHistoryPage struct {
+	RequestId  string
+	Lines      []string
+	NextCursor string
+	Error      string
+	hasUnknown bool
+}
+
+func (m *TerminalHistoryPage) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *TerminalHistoryPage) GetRequestId() string {
+	if m != nil {
+		return m.RequestId
+	}
+	return ""
+}
+func (m *TerminalHistoryPage) GetLines() []string {
+	if m != nil {
+		return m.Lines
+	}
+	return nil
+}
+func (m *TerminalHistoryPage) GetNextCursor() string {
+	if m != nil {
+		return m.NextCursor
+	}
+	return ""
+}
+func (m *TerminalHistoryPage) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+
+func (m *TerminalHistoryPage) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *TerminalHistoryPage) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalHistoryPage) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.RequestId)
+	for _, v := range m.Lines {
+		b = litewire.AppendStringAlways(b, 2, v)
+	}
+	b = litewire.AppendString(b, 3, m.NextCursor)
+	b = litewire.AppendString(b, 4, m.Error)
+	return b
+}
+
+func (m *TerminalHistoryPage) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.RequestId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Lines = append(m.Lines, v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.NextCursor = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Error = v
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type TerminalResize struct {
+	Cols       int32
+	Rows       int32
+	Fit        bool
+	hasUnknown bool
+}
+
+func (m *TerminalResize) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *TerminalResize) GetCols() int32 {
+	if m != nil {
+		return m.Cols
+	}
+	return 0
+}
+func (m *TerminalResize) GetRows() int32 {
+	if m != nil {
+		return m.Rows
+	}
+	return 0
+}
+func (m *TerminalResize) GetFit() bool {
+	if m != nil {
+		return m.Fit
+	}
+	return false
+}
+
+func (m *TerminalResize) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *TerminalResize) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *TerminalResize) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Cols))
+	b = litewire.AppendInt32(b, 2, int32(m.Rows))
+	b = litewire.AppendBool(b, 3, m.Fit)
+	return b
+}
+
+func (m *TerminalResize) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Cols = int32(v)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Rows = int32(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Fit = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type NotifyContent struct {
+	MachineId       string
+	SessionId       string
+	Kind            NotifyKind
+	Title           string
+	Text            string
+	Approval        *NotifyApproval
+	SourceEventSeq  uint64
+	SharedFileCount uint32
+	DiskStatus      *DiskStatus
+	MachineName     string
+	hasUnknown      bool
+}
+
+func (m *NotifyContent) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *NotifyContent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *NotifyContent) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *NotifyContent) GetKind() NotifyKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *NotifyContent) GetTitle() string {
+	if m != nil {
+		return m.Title
+	}
+	return ""
+}
+func (m *NotifyContent) GetText() string {
+	if m != nil {
+		return m.Text
+	}
+	return ""
+}
+func (m *NotifyContent) GetApproval() *NotifyApproval {
+	if m != nil {
+		return m.Approval
+	}
+	return nil
+}
+func (m *NotifyContent) GetSourceEventSeq() uint64 {
+	if m != nil {
+		return m.SourceEventSeq
+	}
+	return 0
+}
+func (m *NotifyContent) GetSharedFileCount() uint32 {
+	if m != nil {
+		return m.SharedFileCount
+	}
+	return 0
+}
+func (m *NotifyContent) GetDiskStatus() *DiskStatus {
+	if m != nil {
+		return m.DiskStatus
+	}
+	return nil
+}
+func (m *NotifyContent) GetMachineName() string {
+	if m != nil {
+		return m.MachineName
+	}
+	return ""
+}
+
+func (m *NotifyContent) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *NotifyContent) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *NotifyContent) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.MachineId)
+	b = litewire.AppendString(b, 2, m.SessionId)
+	b = litewire.AppendInt32(b, 3, int32(m.Kind))
+	b = litewire.AppendString(b, 4, m.Title)
+	b = litewire.AppendString(b, 5, m.Text)
+	if m.Approval != nil {
+		b = litewire.AppendMessage(b, 6, m.Approval)
+	}
+	b = litewire.AppendVarint(b, 7, uint64(m.SourceEventSeq))
+	b = litewire.AppendVarint(b, 8, uint64(m.SharedFileCount))
+	if m.DiskStatus != nil {
+		b = litewire.AppendMessage(b, 9, m.DiskStatus)
+	}
+	b = litewire.AppendString(b, 10, m.MachineName)
+	return b
+}
+
+func (m *NotifyContent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.SessionId = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Kind = NotifyKind(int32(v))
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Title = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Text = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				if m.Approval == nil {
+					m.Approval = &NotifyApproval{}
+				}
+				if err := litewire.ReadMessage(&b, m.Approval); err != nil {
+					return err
+				}
+				if m.Approval.HasUnknown() {
+					m.hasUnknown = true
+				}
+				continue
+			}
+		case 7:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.SourceEventSeq = v
+				continue
+			}
+		case 8:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.SharedFileCount = uint32(v)
+				continue
+			}
+		case 9:
+			if wtyp == litewire.BytesType {
+				if m.DiskStatus == nil {
+					m.DiskStatus = &DiskStatus{}
+				}
+				if err := litewire.ReadMessage(&b, m.DiskStatus); err != nil {
+					return err
+				}
+				if m.DiskStatus.HasUnknown() {
+					m.hasUnknown = true
+				}
+				continue
+			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineName = v
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type NotifyApproval struct {
+	ApprovalId  string
+	ToolName    string
+	Description string
+	Command     string
+	Truncated   bool
+	DeadlineMs  int64
+	ToolInput   string
+	hasUnknown  bool
+}
+
+func (m *NotifyApproval) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *NotifyApproval) GetApprovalId() string {
+	if m != nil {
+		return m.ApprovalId
+	}
+	return ""
+}
+func (m *NotifyApproval) GetToolName() string {
+	if m != nil {
+		return m.ToolName
+	}
+	return ""
+}
+func (m *NotifyApproval) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+func (m *NotifyApproval) GetCommand() string {
+	if m != nil {
+		return m.Command
+	}
+	return ""
+}
+func (m *NotifyApproval) GetTruncated() bool {
+	if m != nil {
+		return m.Truncated
+	}
+	return false
+}
+func (m *NotifyApproval) GetDeadlineMs() int64 {
+	if m != nil {
+		return m.DeadlineMs
+	}
+	return 0
+}
+func (m *NotifyApproval) GetToolInput() string {
+	if m != nil {
+		return m.ToolInput
+	}
+	return ""
+}
+
+func (m *NotifyApproval) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *NotifyApproval) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *NotifyApproval) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.ApprovalId)
+	b = litewire.AppendString(b, 2, m.ToolName)
+	b = litewire.AppendString(b, 3, m.Description)
+	b = litewire.AppendString(b, 4, m.Command)
+	b = litewire.AppendBool(b, 5, m.Truncated)
+	b = litewire.AppendVarint(b, 6, uint64(m.DeadlineMs))
+	b = litewire.AppendString(b, 7, m.ToolInput)
+	return b
+}
+
+func (m *NotifyApproval) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ApprovalId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ToolName = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Description = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Command = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Truncated = litewire.DecodeBool(v)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.DeadlineMs = int64(v)
+				continue
+			}
+		case 7:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ToolInput = v
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type ImagePayload struct {
+	Format     ImageFormat
+	Width      int32
+	Height     int32
+	Data       []byte
+	hasUnknown bool
+}
+
+func (m *ImagePayload) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *ImagePayload) GetFormat() ImageFormat {
+	if m != nil {
+		return m.Format
+	}
+	return 0
+}
+func (m *ImagePayload) GetWidth() int32 {
+	if m != nil {
+		return m.Width
+	}
+	return 0
+}
+func (m *ImagePayload) GetHeight() int32 {
+	if m != nil {
+		return m.Height
+	}
+	return 0
+}
+func (m *ImagePayload) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+func (m *ImagePayload) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *ImagePayload) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ImagePayload) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Format))
+	b = litewire.AppendInt32(b, 2, int32(m.Width))
+	b = litewire.AppendInt32(b, 3, int32(m.Height))
+	b = litewire.AppendBytes(b, 4, m.Data)
+	return b
+}
+
+func (m *ImagePayload) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Format = ImageFormat(int32(v))
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Width = int32(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Height = int32(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Data = v
+				continue
+			}
+		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3076,7 +4388,10 @@ type DeviceMeta struct {
 	Platform          string
 	Description       string
 	HandoffRecoveryEd []byte
+	hasUnknown        bool
 }
+
+func (m *DeviceMeta) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *DeviceMeta) GetName() string {
 	if m != nil {
@@ -3173,6 +4488,7 @@ func (m *DeviceMeta) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3181,12 +4497,15 @@ func (m *DeviceMeta) Unmarshal(b []byte) error {
 }
 
 type ProjectPrefs struct {
-	Schema    int32
-	Pinned    []*ProjectPref
-	Hidden    []*ProjectPref
-	RecentOps []string
-	Settings  []*ProjectSettings
+	Schema     int32
+	Pinned     []*ProjectPref
+	Hidden     []*ProjectPref
+	RecentOps  []string
+	Settings   []*ProjectSettings
+	hasUnknown bool
 }
+
+func (m *ProjectPrefs) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ProjectPrefs) GetSchema() int32 {
 	if m != nil {
@@ -3300,6 +4619,9 @@ func (m *ProjectPrefs) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Pinned = append(m.Pinned, elem)
 				continue
 			}
@@ -3308,6 +4630,9 @@ func (m *ProjectPrefs) Unmarshal(b []byte) error {
 				elem := &ProjectPref{}
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
+				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Hidden = append(m.Hidden, elem)
 				continue
@@ -3327,10 +4652,14 @@ func (m *ProjectPrefs) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Settings = append(m.Settings, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3339,12 +4668,15 @@ func (m *ProjectPrefs) Unmarshal(b []byte) error {
 }
 
 type ProjectSettings struct {
-	Path      string
-	Agent     Agent
-	MachineId string
-	UpdatedMs int64
-	Agents    []*AgentSettings
+	Path       string
+	Agent      Agent
+	MachineId  string
+	UpdatedMs  int64
+	Agents     []*AgentSettings
+	hasUnknown bool
 }
+
+func (m *ProjectSettings) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ProjectSettings) GetPath() string {
 	if m != nil {
@@ -3462,10 +4794,14 @@ func (m *ProjectSettings) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Agents = append(m.Agents, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3479,7 +4815,10 @@ type AgentSettings struct {
 	Effort          string
 	Mode            ApprovalMode
 	StandardContext bool
+	hasUnknown      bool
 }
+
+func (m *AgentSettings) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AgentSettings) GetAgent() Agent {
 	if m != nil {
@@ -3591,6 +4930,7 @@ func (m *AgentSettings) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3599,9 +4939,12 @@ func (m *AgentSettings) Unmarshal(b []byte) error {
 }
 
 type ProjectPref struct {
-	Path    string
-	SinceMs int64
+	Path       string
+	SinceMs    int64
+	hasUnknown bool
 }
+
+func (m *ProjectPref) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ProjectPref) GetPath() string {
 	if m != nil {
@@ -3665,6 +5008,7 @@ func (m *ProjectPref) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3673,8 +5017,11 @@ func (m *ProjectPref) Unmarshal(b []byte) error {
 }
 
 type GetLiveSnapshotRequest struct {
-	SessionId string
+	SessionId  string
+	hasUnknown bool
 }
+
+func (m *GetLiveSnapshotRequest) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *GetLiveSnapshotRequest) GetSessionId() string {
 	if m != nil {
@@ -3722,6 +5069,7 @@ func (m *GetLiveSnapshotRequest) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3736,7 +5084,10 @@ type LiveSnapshot struct {
 	PlanScreenHash []byte
 	PlanScreen     string
 	Running        bool
+	hasUnknown     bool
 }
+
+func (m *LiveSnapshot) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *LiveSnapshot) GetSession() *Session {
 	if m != nil {
@@ -3831,6 +5182,9 @@ func (m *LiveSnapshot) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Session); err != nil {
 					return err
 				}
+				if m.Session.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 2:
@@ -3838,6 +5192,9 @@ func (m *LiveSnapshot) Unmarshal(b []byte) error {
 				elem := &Event{}
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
+				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Actions = append(m.Actions, elem)
 				continue
@@ -3879,6 +5236,7 @@ func (m *LiveSnapshot) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}

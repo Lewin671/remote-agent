@@ -562,6 +562,102 @@ func NewRecoveryKeyRotation(parent State, secret []byte, recoveryEd [32]byte, no
 	return NewStateForCore(c, secret, nil, hpke)
 }
 
+func grantInfoAAD(c Core, ch Hash, id string) (info, aad []byte) {
+	ctx := grantContext(c, ch, id)
+	info = append([]byte("ra3/grant-info\x00"), ctx...)
+	aad = append([]byte("ra3/grant-aad\x00"), ctx...)
+	return info, aad
+}
+
+// CoreHash returns the canonical hash of c.
+func (c Core) Hash() (Hash, error) {
+	b, err := c.MarshalBinary()
+	if err != nil {
+		return Hash{}, err
+	}
+	return Digest("ra3/core\x00", b), nil
+}
+
+// BuildGrantWithDH seals secret to member using an externalized KEM output (enc, dh).
+func BuildGrantWithDH(c Core, ch Hash, m Member, enc [32]byte, dh, secret []byte) (Grant, error) {
+	if len(secret) != 32 || m.validate() != nil {
+		return Grant{}, ErrInvalid
+	}
+	info, aad := grantInfoAAD(c, ch, m.ID)
+	ct, err := HPKESealWithDH(m.XPublic[:], enc[:], dh, info, aad, secret)
+	if err != nil {
+		return Grant{}, err
+	}
+	return Grant{Recipient: m.ID, Enc: enc, Cipher: ct}, nil
+}
+
+// NewStateForCoreWithDH builds an unsigned State by sealing secret to each member
+// with precomputed (enc, dh) KEM outputs indexed by member.ID or in c.Members order.
+func NewStateForCoreWithDH(c Core, secret, prevSecret []byte, kemByMember map[string]struct{ Enc, DH [32]byte }) (State, error) {
+	s := State{Core: c, PrevSecret: bytes.Clone(prevSecret)}
+	if err := c.validate(); err != nil {
+		return State{}, err
+	}
+	ch, _ := s.coreHash()
+	for _, m := range c.Members {
+		k, ok := kemByMember[m.ID]
+		if !ok {
+			return State{}, ErrInvalid
+		}
+		g, err := BuildGrantWithDH(c, ch, m, k.Enc, k.DH[:], secret)
+		if err != nil {
+			return State{}, err
+		}
+		s.Grants = append(s.Grants, g)
+	}
+	if _, err := s.SigningBytes(); err != nil {
+		return State{}, err
+	}
+	return s, nil
+}
+
+// GrantChallenge returns the encapsulated ephemeral public key (enc) and member
+// record needed to compute dh = X25519(device_x, enc) externally for OpenGrantWithDH.
+func (p Pin) GrantChallenge(s State, id string) (enc [32]byte, m Member, err error) {
+	if err := p.Verify(s); err != nil {
+		return enc, m, err
+	}
+	m, ok := s.Core.Member(id)
+	if !ok {
+		return enc, m, ErrUntrusted
+	}
+	for _, g := range s.Grants {
+		if g.Recipient == id {
+			return g.Enc, m, nil
+		}
+	}
+	return enc, m, ErrInvalid
+}
+
+// OpenGrantWithDH opens id's content grant in s using an externalized KEM shared
+// secret dh = X25519(recipient_priv, g.Enc).
+func (p Pin) OpenGrantWithDH(s State, id string, dh []byte) ([]byte, error) {
+	if err := p.Verify(s); err != nil {
+		return nil, err
+	}
+	m, ok := s.Core.Member(id)
+	if !ok {
+		return nil, ErrUntrusted
+	}
+	ch, _ := s.coreHash()
+	for _, g := range s.Grants {
+		if g.Recipient == id {
+			info, aad := grantInfoAAD(s.Core, ch, id)
+			plain, err := HPKEOpenWithDH(m.XPublic[:], g.Enc[:], dh, info, aad, g.Cipher)
+			if err != nil || len(plain) != 32 {
+				return nil, ErrUntrusted
+			}
+			return plain, nil
+		}
+	}
+	return nil, ErrInvalid
+}
+
 // NewStateForCore seals secret to every member of c and returns the unsigned
 // state. The builders above derive c from a parent; this is the general form.
 func NewStateForCore(c Core, secret, prevSecret []byte, hpke HPKESender) (State, error) {
@@ -571,8 +667,8 @@ func NewStateForCore(c Core, secret, prevSecret []byte, hpke HPKESender) (State,
 	}
 	ch, _ := s.coreHash()
 	for _, m := range c.Members {
-		ctx := grantContext(c, ch, m.ID)
-		enc, ct, err := hpke.Seal(m.XPublic[:], append([]byte("ra3/grant-info\x00"), ctx...), append([]byte("ra3/grant-aad\x00"), ctx...), secret)
+		info, aad := grantInfoAAD(c, ch, m.ID)
+		enc, ct, err := hpke.Seal(m.XPublic[:], info, aad, secret)
 		if err != nil {
 			return State{}, err
 		}
@@ -604,8 +700,8 @@ func (p Pin) OpenGrant(s State, id string, recipient HPKERecipient) ([]byte, err
 	ch, _ := s.coreHash()
 	for _, g := range s.Grants {
 		if g.Recipient == id {
-			ctx := grantContext(s.Core, ch, id)
-			plain, err := recipient.Open(g.Enc[:], append([]byte("ra3/grant-info\x00"), ctx...), append([]byte("ra3/grant-aad\x00"), ctx...), g.Cipher)
+			info, aad := grantInfoAAD(s.Core, ch, id)
+			plain, err := recipient.Open(g.Enc[:], info, aad, g.Cipher)
 			if err != nil || len(plain) != 32 {
 				return nil, ErrUntrusted
 			}

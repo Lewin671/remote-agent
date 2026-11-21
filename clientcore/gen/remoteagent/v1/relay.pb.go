@@ -15,6 +15,444 @@ const (
 	DeviceKind_DEVICE_KIND_CLIENT      DeviceKind = 2
 )
 
+type NotifyKind int32
+
+const (
+	NotifyKind_NOTIFY_KIND_UNSPECIFIED  NotifyKind = 0
+	NotifyKind_NOTIFY_KIND_ATTENTION    NotifyKind = 1
+	NotifyKind_NOTIFY_KIND_TURN_ENDED   NotifyKind = 2
+	NotifyKind_NOTIFY_KIND_SECURITY     NotifyKind = 3
+	NotifyKind_NOTIFY_KIND_SCHEDULED    NotifyKind = 4
+	NotifyKind_NOTIFY_KIND_MACHINE_DISK NotifyKind = 5
+)
+
+type PairApproval struct {
+	AccountId                string
+	PairingId                string
+	ApproverDeviceId         string
+	ApproverPublicKey        []byte
+	CandidateDevicePublicKey []byte
+	CandidateKind            DeviceKind
+	ExpiresMs                int64
+	Nonce                    []byte
+	ReplacesDeviceId         string
+	hasUnknown               bool
+}
+
+func (m *PairApproval) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *PairApproval) GetAccountId() string {
+	if m != nil {
+		return m.AccountId
+	}
+	return ""
+}
+func (m *PairApproval) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *PairApproval) GetApproverDeviceId() string {
+	if m != nil {
+		return m.ApproverDeviceId
+	}
+	return ""
+}
+func (m *PairApproval) GetApproverPublicKey() []byte {
+	if m != nil {
+		return m.ApproverPublicKey
+	}
+	return nil
+}
+func (m *PairApproval) GetCandidateDevicePublicKey() []byte {
+	if m != nil {
+		return m.CandidateDevicePublicKey
+	}
+	return nil
+}
+func (m *PairApproval) GetCandidateKind() DeviceKind {
+	if m != nil {
+		return m.CandidateKind
+	}
+	return 0
+}
+func (m *PairApproval) GetExpiresMs() int64 {
+	if m != nil {
+		return m.ExpiresMs
+	}
+	return 0
+}
+func (m *PairApproval) GetNonce() []byte {
+	if m != nil {
+		return m.Nonce
+	}
+	return nil
+}
+func (m *PairApproval) GetReplacesDeviceId() string {
+	if m != nil {
+		return m.ReplacesDeviceId
+	}
+	return ""
+}
+
+func (m *PairApproval) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.AccountId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.PairingId = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ApproverDeviceId = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.ApproverPublicKey = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.CandidateDevicePublicKey = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CandidateKind = DeviceKind(int32(v))
+				continue
+			}
+		case 7:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ExpiresMs = int64(v)
+				continue
+			}
+		case 8:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Nonce = v
+				continue
+			}
+		case 9:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ReplacesDeviceId = v
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type Machine struct {
+	Id         string
+	Online     bool
+	Meta       *Envelope
+	LastSeenMs int64
+}
+
+func (m *Machine) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+func (m *Machine) GetOnline() bool {
+	if m != nil {
+		return m.Online
+	}
+	return false
+}
+func (m *Machine) GetMeta() *Envelope {
+	if m != nil {
+		return m.Meta
+	}
+	return nil
+}
+func (m *Machine) GetLastSeenMs() int64 {
+	if m != nil {
+		return m.LastSeenMs
+	}
+	return 0
+}
+
+func (m *Machine) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *Machine) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *Machine) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.Id)
+	b = litewire.AppendBool(b, 2, m.Online)
+	if m.Meta != nil {
+		b = litewire.AppendMessage(b, 3, m.Meta)
+	}
+	b = litewire.AppendVarint(b, 4, uint64(m.LastSeenMs))
+	return b
+}
+
+func (m *Machine) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Id = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Online = litewire.DecodeBool(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				if m.Meta == nil {
+					m.Meta = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Meta); err != nil {
+					return err
+				}
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.LastSeenMs = int64(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type RemoteSession struct {
+	MachineId string
+	SessionId string
+	Key       *Envelope
+	Meta      *Envelope
+	LastSeq   uint64
+	UpdatedMs int64
+	EndedMs   int64
+}
+
+func (m *RemoteSession) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *RemoteSession) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *RemoteSession) GetKey() *Envelope {
+	if m != nil {
+		return m.Key
+	}
+	return nil
+}
+func (m *RemoteSession) GetMeta() *Envelope {
+	if m != nil {
+		return m.Meta
+	}
+	return nil
+}
+func (m *RemoteSession) GetLastSeq() uint64 {
+	if m != nil {
+		return m.LastSeq
+	}
+	return 0
+}
+func (m *RemoteSession) GetUpdatedMs() int64 {
+	if m != nil {
+		return m.UpdatedMs
+	}
+	return 0
+}
+func (m *RemoteSession) GetEndedMs() int64 {
+	if m != nil {
+		return m.EndedMs
+	}
+	return 0
+}
+
+func (m *RemoteSession) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *RemoteSession) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *RemoteSession) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.MachineId)
+	b = litewire.AppendString(b, 2, m.SessionId)
+	if m.Key != nil {
+		b = litewire.AppendMessage(b, 3, m.Key)
+	}
+	if m.Meta != nil {
+		b = litewire.AppendMessage(b, 4, m.Meta)
+	}
+	b = litewire.AppendVarint(b, 5, uint64(m.LastSeq))
+	b = litewire.AppendVarint(b, 6, uint64(m.UpdatedMs))
+	b = litewire.AppendVarint(b, 7, uint64(m.EndedMs))
+	return b
+}
+
+func (m *RemoteSession) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.SessionId = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				if m.Key == nil {
+					m.Key = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Key); err != nil {
+					return err
+				}
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				if m.Meta == nil {
+					m.Meta = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Meta); err != nil {
+					return err
+				}
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.LastSeq = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.UpdatedMs = int64(v)
+				continue
+			}
+		case 7:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.EndedMs = int64(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type SessionCursor struct {
 	EndedMs   int64
 	SessionId string
@@ -71,6 +509,294 @@ func (m *SessionCursor) Unmarshal(b []byte) error {
 					return err
 				}
 				m.SessionId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type StoredEvent struct {
+	Seq      uint64
+	Envelope *Envelope
+}
+
+func (m *StoredEvent) GetSeq() uint64 {
+	if m != nil {
+		return m.Seq
+	}
+	return 0
+}
+func (m *StoredEvent) GetEnvelope() *Envelope {
+	if m != nil {
+		return m.Envelope
+	}
+	return nil
+}
+
+func (m *StoredEvent) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *StoredEvent) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *StoredEvent) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.Seq))
+	if m.Envelope != nil {
+		b = litewire.AppendMessage(b, 2, m.Envelope)
+	}
+	return b
+}
+
+func (m *StoredEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Seq = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				if m.Envelope == nil {
+					m.Envelope = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Envelope); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type Device struct {
+	Id           string
+	Kind         DeviceKind
+	CreatedMs    int64
+	Meta         *Envelope
+	MetaRevision uint64
+	LastSeenMs   int64
+}
+
+func (m *Device) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+func (m *Device) GetKind() DeviceKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *Device) GetCreatedMs() int64 {
+	if m != nil {
+		return m.CreatedMs
+	}
+	return 0
+}
+func (m *Device) GetMeta() *Envelope {
+	if m != nil {
+		return m.Meta
+	}
+	return nil
+}
+func (m *Device) GetMetaRevision() uint64 {
+	if m != nil {
+		return m.MetaRevision
+	}
+	return 0
+}
+func (m *Device) GetLastSeenMs() int64 {
+	if m != nil {
+		return m.LastSeenMs
+	}
+	return 0
+}
+
+func (m *Device) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Id = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Kind = DeviceKind(int32(v))
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CreatedMs = int64(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				if m.Meta == nil {
+					m.Meta = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Meta); err != nil {
+					return err
+				}
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.MetaRevision = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.LastSeenMs = int64(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type AccountPrefsObject struct {
+	ObjectId  string
+	Revision  uint64
+	Envelope  *Envelope
+	UpdatedMs int64
+}
+
+func (m *AccountPrefsObject) GetObjectId() string {
+	if m != nil {
+		return m.ObjectId
+	}
+	return ""
+}
+func (m *AccountPrefsObject) GetRevision() uint64 {
+	if m != nil {
+		return m.Revision
+	}
+	return 0
+}
+func (m *AccountPrefsObject) GetEnvelope() *Envelope {
+	if m != nil {
+		return m.Envelope
+	}
+	return nil
+}
+func (m *AccountPrefsObject) GetUpdatedMs() int64 {
+	if m != nil {
+		return m.UpdatedMs
+	}
+	return 0
+}
+
+func (m *AccountPrefsObject) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *AccountPrefsObject) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *AccountPrefsObject) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.ObjectId)
+	b = litewire.AppendVarint(b, 2, uint64(m.Revision))
+	if m.Envelope != nil {
+		b = litewire.AppendMessage(b, 3, m.Envelope)
+	}
+	b = litewire.AppendVarint(b, 4, uint64(m.UpdatedMs))
+	return b
+}
+
+func (m *AccountPrefsObject) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ObjectId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Revision = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				if m.Envelope == nil {
+					m.Envelope = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Envelope); err != nil {
+					return err
+				}
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.UpdatedMs = int64(v)
 				continue
 			}
 		}

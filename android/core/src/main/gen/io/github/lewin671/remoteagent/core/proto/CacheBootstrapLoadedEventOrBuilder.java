@@ -84,4 +84,43 @@ public interface CacheBootstrapLoadedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.Machine> 
+      getWireMachinesList();
+  /**
+   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.Machine getWireMachines(int index);
+  /**
+   * <code>repeated .remoteagent.v1.Machine wire_machines = 10 [json_name = "wireMachines"];</code>
+   */
+  int getWireMachinesCount();
+
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.RemoteSession> 
+      getWireSessionsList();
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.RemoteSession getWireSessions(int index);
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 11 [json_name = "wireSessions"];</code>
+   */
+  int getWireSessionsCount();
+
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
+   * @return Whether the wirePrefs field is set.
+   */
+  boolean hasWirePrefs();
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_prefs = 12 [json_name = "wirePrefs"];</code>
+   * @return The wirePrefs.
+   */
+  io.github.lewin671.remoteagent.proto.AccountPrefsObject getWirePrefs();
 }

@@ -17,6 +17,7 @@ public  final class SessionsPageFetchedEvent extends
   private SessionsPageFetchedEvent() {
     sessions_ = emptyProtobufList();
     error_ = "";
+    wireSessions_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int OP_ID_FIELD_NUMBER = 1;
@@ -236,6 +237,103 @@ public  final class SessionsPageFetchedEvent extends
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
 
+  }
+
+  public static final int WIRE_SESSIONS_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.RemoteSession> wireSessions_;
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.RemoteSession> getWireSessionsList() {
+    return wireSessions_;
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.RemoteSessionOrBuilder> 
+      getWireSessionsOrBuilderList() {
+    return wireSessions_;
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  @java.lang.Override
+  public int getWireSessionsCount() {
+    return wireSessions_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.RemoteSession getWireSessions(int index) {
+    return wireSessions_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.RemoteSessionOrBuilder getWireSessionsOrBuilder(
+      int index) {
+    return wireSessions_.get(index);
+  }
+  private void ensureWireSessionsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.RemoteSession> tmp = wireSessions_;
+    if (!tmp.isModifiable()) {
+      wireSessions_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireSessions(
+      int index, io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireSessionsIsMutable();
+    wireSessions_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addWireSessions(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireSessionsIsMutable();
+    wireSessions_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addWireSessions(
+      int index, io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    ensureWireSessionsIsMutable();
+    wireSessions_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  private void addAllWireSessions(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.RemoteSession> values) {
+    ensureWireSessionsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, wireSessions_);
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  private void clearWireSessions() {
+    wireSessions_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  private void removeWireSessions(int index) {
+    ensureWireSessionsIsMutable();
+    wireSessions_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionsPageFetchedEvent parseFrom(
@@ -561,6 +659,108 @@ public  final class SessionsPageFetchedEvent extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.RemoteSession> getWireSessionsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getWireSessionsList());
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    @java.lang.Override
+    public int getWireSessionsCount() {
+      return instance.getWireSessionsCount();
+    }/**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.RemoteSession getWireSessions(int index) {
+      return instance.getWireSessions(index);
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder setWireSessions(
+        int index, io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.setWireSessions(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder setWireSessions(
+        int index, io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireSessions(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder addWireSessions(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.addWireSessions(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder addWireSessions(
+        int index, io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.addWireSessions(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder addWireSessions(
+        io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
+      copyOnWrite();
+      instance.addWireSessions(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder addWireSessions(
+        int index, io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
+      copyOnWrite();
+      instance.addWireSessions(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder addAllWireSessions(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.RemoteSession> values) {
+      copyOnWrite();
+      instance.addAllWireSessions(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder clearWireSessions() {
+      copyOnWrite();
+      instance.clearWireSessions();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+     */
+    public Builder removeWireSessions(int index) {
+      copyOnWrite();
+      instance.removeWireSessions(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionsPageFetchedEvent)
   }
   @java.lang.Override
@@ -583,10 +783,12 @@ public  final class SessionsPageFetchedEvent extends
             io.github.lewin671.remoteagent.core.proto.PlainSession.class,
             "next_",
             "error_",
+            "wireSessions_",
+            io.github.lewin671.remoteagent.proto.RemoteSession.class,
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u0003\u0002\u001b" +
-              "\u0003\u1009\u0000\u0004\u0208";
+              "\u0000\u0005\u0000\u0001\u0001\n\u0005\u0000\u0002\u0000\u0001\u0003\u0002\u001b" +
+              "\u0003\u1009\u0000\u0004\u0208\n\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

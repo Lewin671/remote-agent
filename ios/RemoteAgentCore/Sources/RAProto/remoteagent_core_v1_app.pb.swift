@@ -1144,37 +1144,74 @@ public struct PBCorePlainAccountPrefs: Sendable {
   fileprivate var _prefs: PBProjectPrefs? = nil
 }
 
-public struct PBCoreCacheBootstrapLoadedEvent: Sendable {
+public struct PBCoreCacheBootstrapLoadedEvent: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var opID: UInt64 = 0
+  public var opID: UInt64 {
+    get {return _storage._opID}
+    set {_uniqueStorage()._opID = newValue}
+  }
 
-  public var machines: [PBCorePlainMachine] = []
+  public var machines: [PBCorePlainMachine] {
+    get {return _storage._machines}
+    set {_uniqueStorage()._machines = newValue}
+  }
 
-  public var sessions: [PBCorePlainSession] = []
+  public var sessions: [PBCorePlainSession] {
+    get {return _storage._sessions}
+    set {_uniqueStorage()._sessions = newValue}
+  }
 
   public var prefs: PBCorePlainAccountPrefs {
-    get {return _prefs ?? PBCorePlainAccountPrefs()}
-    set {_prefs = newValue}
+    get {return _storage._prefs ?? PBCorePlainAccountPrefs()}
+    set {_uniqueStorage()._prefs = newValue}
   }
   /// Returns true if `prefs` has been explicitly set.
-  public var hasPrefs: Bool {return self._prefs != nil}
+  public var hasPrefs: Bool {return _storage._prefs != nil}
   /// Clears the value of `prefs`. Subsequent reads from it will return its default value.
-  public mutating func clearPrefs() {self._prefs = nil}
+  public mutating func clearPrefs() {_uniqueStorage()._prefs = nil}
 
-  public var homeScopeToken: String = String()
+  public var homeScopeToken: String {
+    get {return _storage._homeScopeToken}
+    set {_uniqueStorage()._homeScopeToken = newValue}
+  }
 
-  public var scopeHmacKey: Data = Data()
+  public var scopeHmacKey: Data {
+    get {return _storage._scopeHmacKey}
+    set {_uniqueStorage()._scopeHmacKey = newValue}
+  }
 
-  public var error: String = String()
+  public var error: String {
+    get {return _storage._error}
+    set {_uniqueStorage()._error = newValue}
+  }
+
+  public var wireMachines: [PBMachine] {
+    get {return _storage._wireMachines}
+    set {_uniqueStorage()._wireMachines = newValue}
+  }
+
+  public var wireSessions: [PBRemoteSession] {
+    get {return _storage._wireSessions}
+    set {_uniqueStorage()._wireSessions = newValue}
+  }
+
+  public var wirePrefs: PBAccountPrefsObject {
+    get {return _storage._wirePrefs ?? PBAccountPrefsObject()}
+    set {_uniqueStorage()._wirePrefs = newValue}
+  }
+  /// Returns true if `wirePrefs` has been explicitly set.
+  public var hasWirePrefs: Bool {return _storage._wirePrefs != nil}
+  /// Clears the value of `wirePrefs`. Subsequent reads from it will return its default value.
+  public mutating func clearWirePrefs() {_uniqueStorage()._wirePrefs = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _prefs: PBCorePlainAccountPrefs? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBCoreCacheEventsLoadedEvent: Sendable {
@@ -1193,6 +1230,8 @@ public struct PBCoreCacheEventsLoadedEvent: Sendable {
   public var retired: Bool = false
 
   public var error: String = String()
+
+  public var wireEvents: [PBStoredEvent] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1363,6 +1402,8 @@ public struct PBCoreEventsAppendedFrame: Sendable {
 
   public var events: [PBCorePlainEvent] = []
 
+  public var wireEvents: [PBStoredEvent] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1441,6 +1482,38 @@ public struct PBCoreStreamFrameEvent: Sendable {
     set {frame = .deviceRemovedID(newValue)}
   }
 
+  public var wireMachineUpdated: PBMachine {
+    get {
+      if case .wireMachineUpdated(let v)? = frame {return v}
+      return PBMachine()
+    }
+    set {frame = .wireMachineUpdated(newValue)}
+  }
+
+  public var wireSessionUpdated: PBRemoteSession {
+    get {
+      if case .wireSessionUpdated(let v)? = frame {return v}
+      return PBRemoteSession()
+    }
+    set {frame = .wireSessionUpdated(newValue)}
+  }
+
+  public var wireAccountPrefsUpdated: PBAccountPrefsObject {
+    get {
+      if case .wireAccountPrefsUpdated(let v)? = frame {return v}
+      return PBAccountPrefsObject()
+    }
+    set {frame = .wireAccountPrefsUpdated(newValue)}
+  }
+
+  public var wireDeviceUpdated: PBDevice {
+    get {
+      if case .wireDeviceUpdated(let v)? = frame {return v}
+      return PBDevice()
+    }
+    set {frame = .wireDeviceUpdated(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Frame: Equatable, Sendable {
@@ -1452,6 +1525,10 @@ public struct PBCoreStreamFrameEvent: Sendable {
     case accountPrefsUpdated(PBCorePlainAccountPrefs)
     case deviceUpdated(PBCorePlainDevice)
     case deviceRemovedID(String)
+    case wireMachineUpdated(PBMachine)
+    case wireSessionUpdated(PBRemoteSession)
+    case wireAccountPrefsUpdated(PBAccountPrefsObject)
+    case wireDeviceUpdated(PBDevice)
 
   }
 
@@ -1484,6 +1561,12 @@ public struct PBCoreListsFetchedEvent: Sendable {
 
   public var unresolvedHost: Bool = false
 
+  public var wireMachines: [PBMachine] = []
+
+  public var wireSessions: [PBRemoteSession] = []
+
+  public var wireDevices: [PBDevice] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1511,6 +1594,8 @@ public struct PBCoreSessionsPageFetchedEvent: Sendable {
 
   public var error: String = String()
 
+  public var wireSessions: [PBRemoteSession] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1518,29 +1603,44 @@ public struct PBCoreSessionsPageFetchedEvent: Sendable {
   fileprivate var _next: PBSessionCursor? = nil
 }
 
-public struct PBCoreSessionByIdFetchedEvent: Sendable {
+public struct PBCoreSessionByIdFetchedEvent: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var opID: UInt64 = 0
+  public var opID: UInt64 {
+    get {return _storage._opID}
+    set {_uniqueStorage()._opID = newValue}
+  }
 
   public var session: PBCorePlainSession {
-    get {return _session ?? PBCorePlainSession()}
-    set {_session = newValue}
+    get {return _storage._session ?? PBCorePlainSession()}
+    set {_uniqueStorage()._session = newValue}
   }
   /// Returns true if `session` has been explicitly set.
-  public var hasSession: Bool {return self._session != nil}
+  public var hasSession: Bool {return _storage._session != nil}
   /// Clears the value of `session`. Subsequent reads from it will return its default value.
-  public mutating func clearSession() {self._session = nil}
+  public mutating func clearSession() {_uniqueStorage()._session = nil}
 
-  public var error: String = String()
+  public var error: String {
+    get {return _storage._error}
+    set {_uniqueStorage()._error = newValue}
+  }
+
+  public var wireSession: PBRemoteSession {
+    get {return _storage._wireSession ?? PBRemoteSession()}
+    set {_uniqueStorage()._wireSession = newValue}
+  }
+  /// Returns true if `wireSession` has been explicitly set.
+  public var hasWireSession: Bool {return _storage._wireSession != nil}
+  /// Clears the value of `wireSession`. Subsequent reads from it will return its default value.
+  public mutating func clearWireSession() {_uniqueStorage()._wireSession = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _session: PBCorePlainSession? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBCoreEventsPageFetchedEvent: Sendable {
@@ -1558,63 +1658,101 @@ public struct PBCoreEventsPageFetchedEvent: Sendable {
 
   public var error: String = String()
 
+  public var wireEvents: [PBStoredEvent] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 }
 
-public struct PBCoreAccountPrefsFetchedEvent: Sendable {
+public struct PBCoreAccountPrefsFetchedEvent: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var opID: UInt64 = 0
+  public var opID: UInt64 {
+    get {return _storage._opID}
+    set {_uniqueStorage()._opID = newValue}
+  }
 
   public var prefs: PBCorePlainAccountPrefs {
-    get {return _prefs ?? PBCorePlainAccountPrefs()}
-    set {_prefs = newValue}
+    get {return _storage._prefs ?? PBCorePlainAccountPrefs()}
+    set {_uniqueStorage()._prefs = newValue}
   }
   /// Returns true if `prefs` has been explicitly set.
-  public var hasPrefs: Bool {return self._prefs != nil}
+  public var hasPrefs: Bool {return _storage._prefs != nil}
   /// Clears the value of `prefs`. Subsequent reads from it will return its default value.
-  public mutating func clearPrefs() {self._prefs = nil}
+  public mutating func clearPrefs() {_uniqueStorage()._prefs = nil}
 
-  public var error: String = String()
+  public var error: String {
+    get {return _storage._error}
+    set {_uniqueStorage()._error = newValue}
+  }
+
+  public var wirePrefs: PBAccountPrefsObject {
+    get {return _storage._wirePrefs ?? PBAccountPrefsObject()}
+    set {_uniqueStorage()._wirePrefs = newValue}
+  }
+  /// Returns true if `wirePrefs` has been explicitly set.
+  public var hasWirePrefs: Bool {return _storage._wirePrefs != nil}
+  /// Clears the value of `wirePrefs`. Subsequent reads from it will return its default value.
+  public mutating func clearWirePrefs() {_uniqueStorage()._wirePrefs = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _prefs: PBCorePlainAccountPrefs? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct PBCoreAccountPrefsPutResultEvent: Sendable {
+public struct PBCoreAccountPrefsPutResultEvent: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var opID: UInt64 = 0
+  public var opID: UInt64 {
+    get {return _storage._opID}
+    set {_uniqueStorage()._opID = newValue}
+  }
 
-  public var applied: Bool = false
+  public var applied: Bool {
+    get {return _storage._applied}
+    set {_uniqueStorage()._applied = newValue}
+  }
 
   public var current: PBCorePlainAccountPrefs {
-    get {return _current ?? PBCorePlainAccountPrefs()}
-    set {_current = newValue}
+    get {return _storage._current ?? PBCorePlainAccountPrefs()}
+    set {_uniqueStorage()._current = newValue}
   }
   /// Returns true if `current` has been explicitly set.
-  public var hasCurrent: Bool {return self._current != nil}
+  public var hasCurrent: Bool {return _storage._current != nil}
   /// Clears the value of `current`. Subsequent reads from it will return its default value.
-  public mutating func clearCurrent() {self._current = nil}
+  public mutating func clearCurrent() {_uniqueStorage()._current = nil}
 
-  public var sealConflict: Bool = false
+  public var sealConflict: Bool {
+    get {return _storage._sealConflict}
+    set {_uniqueStorage()._sealConflict = newValue}
+  }
 
-  public var error: String = String()
+  public var error: String {
+    get {return _storage._error}
+    set {_uniqueStorage()._error = newValue}
+  }
+
+  public var wireCurrent: PBAccountPrefsObject {
+    get {return _storage._wireCurrent ?? PBAccountPrefsObject()}
+    set {_uniqueStorage()._wireCurrent = newValue}
+  }
+  /// Returns true if `wireCurrent` has been explicitly set.
+  public var hasWireCurrent: Bool {return _storage._wireCurrent != nil}
+  /// Clears the value of `wireCurrent`. Subsequent reads from it will return its default value.
+  public mutating func clearWireCurrent() {_uniqueStorage()._wireCurrent = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _current: PBCorePlainAccountPrefs? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBCoreDevicesFetchedEvent: Sendable {
@@ -1629,6 +1767,8 @@ public struct PBCoreDevicesFetchedEvent: Sendable {
   public var error: String = String()
 
   public var pushSeq: UInt64 = 0
+
+  public var wireDevices: [PBDevice] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1734,6 +1874,15 @@ public struct PBCoreCommandOutcomeEvent: @unchecked Sendable {
     set {_uniqueStorage()._directTicketID = newValue}
   }
 
+  public var sealedResult: PBEnvelope {
+    get {return _storage._sealedResult ?? PBEnvelope()}
+    set {_uniqueStorage()._sealedResult = newValue}
+  }
+  /// Returns true if `sealedResult` has been explicitly set.
+  public var hasSealedResult: Bool {return _storage._sealedResult != nil}
+  /// Clears the value of `sealedResult`. Subsequent reads from it will return its default value.
+  public mutating func clearSealedResult() {_uniqueStorage()._sealedResult = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1807,6 +1956,8 @@ public struct PBCoreDirectEventsReceivedEvent: Sendable {
   public var pcID: UInt64 = 0
 
   public var sender: String = String()
+
+  public var wireEnvelopes: [PBEnvelope] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3274,6 +3425,79 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .directAuthorizeDone(newValue)}
   }
 
+  /// Security engine (450-499 reserved for security).
+  public var securityConfig: PBSecurityConfigEvent {
+    get {
+      if case .securityConfig(let v)? = _storage._event {return v}
+      return PBSecurityConfigEvent()
+    }
+    set {_uniqueStorage()._event = .securityConfig(newValue)}
+  }
+
+  public var securityRecord: PBSecurityRecordEvent {
+    get {
+      if case .securityRecord(let v)? = _storage._event {return v}
+      return PBSecurityRecordEvent()
+    }
+    set {_uniqueStorage()._event = .securityRecord(newValue)}
+  }
+
+  public var securityKeySigned: PBSecurityKeySignedEvent {
+    get {
+      if case .securityKeySigned(let v)? = _storage._event {return v}
+      return PBSecurityKeySignedEvent()
+    }
+    set {_uniqueStorage()._event = .securityKeySigned(newValue)}
+  }
+
+  public var securityKeyAgreed: PBSecurityKeyAgreedEvent {
+    get {
+      if case .securityKeyAgreed(let v)? = _storage._event {return v}
+      return PBSecurityKeyAgreedEvent()
+    }
+    set {_uniqueStorage()._event = .securityKeyAgreed(newValue)}
+  }
+
+  public var securityKeyGenerated: PBSecurityKeyGeneratedEvent {
+    get {
+      if case .securityKeyGenerated(let v)? = _storage._event {return v}
+      return PBSecurityKeyGeneratedEvent()
+    }
+    set {_uniqueStorage()._event = .securityKeyGenerated(newValue)}
+  }
+
+  public var securityKeyEncapsulated: PBSecurityKeyEncapsulatedEvent {
+    get {
+      if case .securityKeyEncapsulated(let v)? = _storage._event {return v}
+      return PBSecurityKeyEncapsulatedEvent()
+    }
+    set {_uniqueStorage()._event = .securityKeyEncapsulated(newValue)}
+  }
+
+  public var securityCryptoBatchDone: PBSecurityCryptoBatchDoneEvent {
+    get {
+      if case .securityCryptoBatchDone(let v)? = _storage._event {return v}
+      return PBSecurityCryptoBatchDoneEvent()
+    }
+    set {_uniqueStorage()._event = .securityCryptoBatchDone(newValue)}
+  }
+
+  public var securityOpRequest: PBSecurityOpRequestEvent {
+    get {
+      if case .securityOpRequest(let v)? = _storage._event {return v}
+      return PBSecurityOpRequestEvent()
+    }
+    set {_uniqueStorage()._event = .securityOpRequest(newValue)}
+  }
+
+  public var seedDemoWorld: PBSeedDemoWorldEvent {
+    get {
+      if case .seedDemoWorld(let v)? = _storage._event {return v}
+      return PBSeedDemoWorldEvent()
+    }
+    set {_uniqueStorage()._event = .seedDemoWorld(newValue)}
+  }
+
   public var nowMs: Int64 {
     get {return _storage._nowMs}
     set {_uniqueStorage()._nowMs = newValue}
@@ -3442,6 +3666,16 @@ public struct PBCoreEvent: @unchecked Sendable {
     case directPreferencesLoaded(PBCoreDirectPreferencesLoadedEvent)
     case directSecurityInstalled(PBCoreDirectSecurityInstalledEvent)
     case directAuthorizeDone(PBCoreDirectAuthorizeDoneEvent)
+    /// Security engine (450-499 reserved for security).
+    case securityConfig(PBSecurityConfigEvent)
+    case securityRecord(PBSecurityRecordEvent)
+    case securityKeySigned(PBSecurityKeySignedEvent)
+    case securityKeyAgreed(PBSecurityKeyAgreedEvent)
+    case securityKeyGenerated(PBSecurityKeyGeneratedEvent)
+    case securityKeyEncapsulated(PBSecurityKeyEncapsulatedEvent)
+    case securityCryptoBatchDone(PBSecurityCryptoBatchDoneEvent)
+    case securityOpRequest(PBSecurityOpRequestEvent)
+    case seedDemoWorld(PBSeedDemoWorldEvent)
 
   }
 
@@ -3717,6 +3951,46 @@ public struct PBCoreCacheWriteEffect: Sendable {
     set {kind = .setSessionOpen(newValue)}
   }
 
+  public var writeMachine: PBMachine {
+    get {
+      if case .writeMachine(let v)? = kind {return v}
+      return PBMachine()
+    }
+    set {kind = .writeMachine(newValue)}
+  }
+
+  public var writeSession: PBRemoteSession {
+    get {
+      if case .writeSession(let v)? = kind {return v}
+      return PBRemoteSession()
+    }
+    set {kind = .writeSession(newValue)}
+  }
+
+  public var keepSessionOwner: PBRemoteSession {
+    get {
+      if case .keepSessionOwner(let v)? = kind {return v}
+      return PBRemoteSession()
+    }
+    set {kind = .keepSessionOwner(newValue)}
+  }
+
+  public var writeStoredEvents: PBCacheWriteStoredEvents {
+    get {
+      if case .writeStoredEvents(let v)? = kind {return v}
+      return PBCacheWriteStoredEvents()
+    }
+    set {kind = .writeStoredEvents(newValue)}
+  }
+
+  public var writePrefs: PBAccountPrefsObject {
+    get {
+      if case .writePrefs(let v)? = kind {return v}
+      return PBAccountPrefsObject()
+    }
+    set {kind = .writePrefs(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
@@ -3726,6 +4000,11 @@ public struct PBCoreCacheWriteEffect: Sendable {
     case writeEvents(PBCoreCacheWriteEvents)
     case writePrefsRef(String)
     case setSessionOpen(PBCoreCacheSessionOpen)
+    case writeMachine(PBMachine)
+    case writeSession(PBRemoteSession)
+    case keepSessionOwner(PBRemoteSession)
+    case writeStoredEvents(PBCacheWriteStoredEvents)
+    case writePrefs(PBAccountPrefsObject)
 
   }
 
@@ -3877,11 +4156,21 @@ public struct PBCorePutAccountPrefsRpc: Sendable {
   /// Clears the value of `nextPrefs`. Subsequent reads from it will return its default value.
   public mutating func clearNextPrefs() {self._nextPrefs = nil}
 
+  public var sealedEnvelope: PBEnvelope {
+    get {return _sealedEnvelope ?? PBEnvelope()}
+    set {_sealedEnvelope = newValue}
+  }
+  /// Returns true if `sealedEnvelope` has been explicitly set.
+  public var hasSealedEnvelope: Bool {return self._sealedEnvelope != nil}
+  /// Clears the value of `sealedEnvelope`. Subsequent reads from it will return its default value.
+  public mutating func clearSealedEnvelope() {self._sealedEnvelope = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _nextPrefs: PBProjectPrefs? = nil
+  fileprivate var _sealedEnvelope: PBEnvelope? = nil
 }
 
 public struct PBCoreFetchDevicesRpc: Sendable {
@@ -3977,46 +4266,105 @@ public struct PBCoreRpcEffect: Sendable {
   public init() {}
 }
 
-public struct PBCoreDispatchCommandEffect: Sendable {
+public struct PBCoreDispatchCommandEffect: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var requestID: String = String()
+  public var requestID: String {
+    get {return _storage._requestID}
+    set {_uniqueStorage()._requestID = newValue}
+  }
 
-  public var attemptID: String = String()
+  public var attemptID: String {
+    get {return _storage._attemptID}
+    set {_uniqueStorage()._attemptID = newValue}
+  }
 
-  public var machineID: String = String()
+  public var machineID: String {
+    get {return _storage._machineID}
+    set {_uniqueStorage()._machineID = newValue}
+  }
 
-  public var sessionID: String = String()
+  public var sessionID: String {
+    get {return _storage._sessionID}
+    set {_uniqueStorage()._sessionID = newValue}
+  }
 
-  public var deadlineMs: Int64 = 0
+  public var deadlineMs: Int64 {
+    get {return _storage._deadlineMs}
+    set {_uniqueStorage()._deadlineMs = newValue}
+  }
 
-  public var commandBytes: Data = Data()
+  public var commandBytes: Data {
+    get {return _storage._commandBytes}
+    set {_uniqueStorage()._commandBytes = newValue}
+  }
 
-  public var routeHint: PBCoreCommandRouteHint = .unspecified
+  public var routeHint: PBCoreCommandRouteHint {
+    get {return _storage._routeHint}
+    set {_uniqueStorage()._routeHint = newValue}
+  }
 
-  public var retryOfUnknown: Bool = false
+  public var retryOfUnknown: Bool {
+    get {return _storage._retryOfUnknown}
+    set {_uniqueStorage()._retryOfUnknown = newValue}
+  }
 
-  public var forceRelay: Bool = false
+  public var forceRelay: Bool {
+    get {return _storage._forceRelay}
+    set {_uniqueStorage()._forceRelay = newValue}
+  }
 
-  public var bulkFileKey: String = String()
+  public var bulkFileKey: String {
+    get {return _storage._bulkFileKey}
+    set {_uniqueStorage()._bulkFileKey = newValue}
+  }
 
-  public var bulkBytes: Int64 = 0
+  public var bulkBytes: Int64 {
+    get {return _storage._bulkBytes}
+    set {_uniqueStorage()._bulkBytes = newValue}
+  }
 
-  public var bulkUpload: Bool = false
+  public var bulkUpload: Bool {
+    get {return _storage._bulkUpload}
+    set {_uniqueStorage()._bulkUpload = newValue}
+  }
 
-  public var routeLeg: PBCoreCommandRouteLeg = .unspecified
+  public var routeLeg: PBCoreCommandRouteLeg {
+    get {return _storage._routeLeg}
+    set {_uniqueStorage()._routeLeg = newValue}
+  }
 
-  public var directPcID: UInt64 = 0
+  public var directPcID: UInt64 {
+    get {return _storage._directPcID}
+    set {_uniqueStorage()._directPcID = newValue}
+  }
 
-  public var directTimeoutMs: Int64 = 0
+  public var directTimeoutMs: Int64 {
+    get {return _storage._directTimeoutMs}
+    set {_uniqueStorage()._directTimeoutMs = newValue}
+  }
 
-  public var directTicketID: UInt64 = 0
+  public var directTicketID: UInt64 {
+    get {return _storage._directTicketID}
+    set {_uniqueStorage()._directTicketID = newValue}
+  }
+
+  public var sealedEnvelope: PBEnvelope {
+    get {return _storage._sealedEnvelope ?? PBEnvelope()}
+    set {_uniqueStorage()._sealedEnvelope = newValue}
+  }
+  /// Returns true if `sealedEnvelope` has been explicitly set.
+  public var hasSealedEnvelope: Bool {return _storage._sealedEnvelope != nil}
+  /// Clears the value of `sealedEnvelope`. Subsequent reads from it will return its default value.
+  public mutating func clearSealedEnvelope() {_uniqueStorage()._sealedEnvelope = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBCoreSaveHomeScopeEffect: Sendable {
@@ -4458,6 +4806,63 @@ public struct PBCoreEffect: Sendable {
     set {effect = .directRetryNowResult(newValue)}
   }
 
+  /// Security engine (130-159 reserved for security).
+  public var securityKeySign: PBSecurityKeySignEffect {
+    get {
+      if case .securityKeySign(let v)? = effect {return v}
+      return PBSecurityKeySignEffect()
+    }
+    set {effect = .securityKeySign(newValue)}
+  }
+
+  public var securityKeyAgree: PBSecurityKeyAgreeEffect {
+    get {
+      if case .securityKeyAgree(let v)? = effect {return v}
+      return PBSecurityKeyAgreeEffect()
+    }
+    set {effect = .securityKeyAgree(newValue)}
+  }
+
+  public var securityKeyGenerate: PBSecurityKeyGenerateEffect {
+    get {
+      if case .securityKeyGenerate(let v)? = effect {return v}
+      return PBSecurityKeyGenerateEffect()
+    }
+    set {effect = .securityKeyGenerate(newValue)}
+  }
+
+  public var securityKeyEncapsulate: PBSecurityKeyEncapsulateEffect {
+    get {
+      if case .securityKeyEncapsulate(let v)? = effect {return v}
+      return PBSecurityKeyEncapsulateEffect()
+    }
+    set {effect = .securityKeyEncapsulate(newValue)}
+  }
+
+  public var securityKeyDiscard: PBSecurityKeyDiscardEffect {
+    get {
+      if case .securityKeyDiscard(let v)? = effect {return v}
+      return PBSecurityKeyDiscardEffect()
+    }
+    set {effect = .securityKeyDiscard(newValue)}
+  }
+
+  public var securityCryptoBatch: PBSecurityCryptoBatchEffect {
+    get {
+      if case .securityCryptoBatch(let v)? = effect {return v}
+      return PBSecurityCryptoBatchEffect()
+    }
+    set {effect = .securityCryptoBatch(newValue)}
+  }
+
+  public var securityOpResult: PBSecurityOpResultEffect {
+    get {
+      if case .securityOpResult(let v)? = effect {return v}
+      return PBSecurityOpResultEffect()
+    }
+    set {effect = .securityOpResult(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Effect: Equatable, Sendable {
@@ -4507,6 +4912,14 @@ public struct PBCoreEffect: Sendable {
     case directBulkRoute(PBCoreDirectBulkRouteEffect)
     case terminalReopen(PBCoreTerminalReopenEffect)
     case directRetryNowResult(PBCoreDirectRetryNowResultEffect)
+    /// Security engine (130-159 reserved for security).
+    case securityKeySign(PBSecurityKeySignEffect)
+    case securityKeyAgree(PBSecurityKeyAgreeEffect)
+    case securityKeyGenerate(PBSecurityKeyGenerateEffect)
+    case securityKeyEncapsulate(PBSecurityKeyEncapsulateEffect)
+    case securityKeyDiscard(PBSecurityKeyDiscardEffect)
+    case securityCryptoBatch(PBSecurityCryptoBatchEffect)
+    case securityOpResult(PBSecurityOpResultEffect)
 
   }
 
@@ -6030,63 +6443,132 @@ extension PBCorePlainAccountPrefs: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreCacheBootstrapLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CacheBootstrapLoadedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}machines\0\u{1}sessions\0\u{1}prefs\0\u{3}home_scope_token\0\u{3}scope_hmac_key\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}machines\0\u{1}sessions\0\u{1}prefs\0\u{3}home_scope_token\0\u{3}scope_hmac_key\0\u{1}error\0\u{4}\u{3}wire_machines\0\u{3}wire_sessions\0\u{3}wire_prefs\0")
+
+  fileprivate class _StorageClass {
+    var _opID: UInt64 = 0
+    var _machines: [PBCorePlainMachine] = []
+    var _sessions: [PBCorePlainSession] = []
+    var _prefs: PBCorePlainAccountPrefs? = nil
+    var _homeScopeToken: String = String()
+    var _scopeHmacKey: Data = Data()
+    var _error: String = String()
+    var _wireMachines: [PBMachine] = []
+    var _wireSessions: [PBRemoteSession] = []
+    var _wirePrefs: PBAccountPrefsObject? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _opID = source._opID
+      _machines = source._machines
+      _sessions = source._sessions
+      _prefs = source._prefs
+      _homeScopeToken = source._homeScopeToken
+      _scopeHmacKey = source._scopeHmacKey
+      _error = source._error
+      _wireMachines = source._wireMachines
+      _wireSessions = source._wireSessions
+      _wirePrefs = source._wirePrefs
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.machines) }()
-      case 3: try { try decoder.decodeRepeatedMessageField(value: &self.sessions) }()
-      case 4: try { try decoder.decodeSingularMessageField(value: &self._prefs) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.homeScopeToken) }()
-      case 6: try { try decoder.decodeSingularBytesField(value: &self.scopeHmacKey) }()
-      case 7: try { try decoder.decodeSingularStringField(value: &self.error) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._opID) }()
+        case 2: try { try decoder.decodeRepeatedMessageField(value: &_storage._machines) }()
+        case 3: try { try decoder.decodeRepeatedMessageField(value: &_storage._sessions) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._prefs) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._homeScopeToken) }()
+        case 6: try { try decoder.decodeSingularBytesField(value: &_storage._scopeHmacKey) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 10: try { try decoder.decodeRepeatedMessageField(value: &_storage._wireMachines) }()
+        case 11: try { try decoder.decodeRepeatedMessageField(value: &_storage._wireSessions) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._wirePrefs) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
-    if !self.machines.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.machines, fieldNumber: 2)
-    }
-    if !self.sessions.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.sessions, fieldNumber: 3)
-    }
-    try { if let v = self._prefs {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
-    } }()
-    if !self.homeScopeToken.isEmpty {
-      try visitor.visitSingularStringField(value: self.homeScopeToken, fieldNumber: 5)
-    }
-    if !self.scopeHmacKey.isEmpty {
-      try visitor.visitSingularBytesField(value: self.scopeHmacKey, fieldNumber: 6)
-    }
-    if !self.error.isEmpty {
-      try visitor.visitSingularStringField(value: self.error, fieldNumber: 7)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._opID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._opID, fieldNumber: 1)
+      }
+      if !_storage._machines.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._machines, fieldNumber: 2)
+      }
+      if !_storage._sessions.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._sessions, fieldNumber: 3)
+      }
+      try { if let v = _storage._prefs {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      if !_storage._homeScopeToken.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._homeScopeToken, fieldNumber: 5)
+      }
+      if !_storage._scopeHmacKey.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._scopeHmacKey, fieldNumber: 6)
+      }
+      if !_storage._error.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 7)
+      }
+      if !_storage._wireMachines.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._wireMachines, fieldNumber: 10)
+      }
+      if !_storage._wireSessions.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._wireSessions, fieldNumber: 11)
+      }
+      try { if let v = _storage._wirePrefs {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreCacheBootstrapLoadedEvent, rhs: PBCoreCacheBootstrapLoadedEvent) -> Bool {
-    if lhs.opID != rhs.opID {return false}
-    if lhs.machines != rhs.machines {return false}
-    if lhs.sessions != rhs.sessions {return false}
-    if lhs._prefs != rhs._prefs {return false}
-    if lhs.homeScopeToken != rhs.homeScopeToken {return false}
-    if lhs.scopeHmacKey != rhs.scopeHmacKey {return false}
-    if lhs.error != rhs.error {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._opID != rhs_storage._opID {return false}
+        if _storage._machines != rhs_storage._machines {return false}
+        if _storage._sessions != rhs_storage._sessions {return false}
+        if _storage._prefs != rhs_storage._prefs {return false}
+        if _storage._homeScopeToken != rhs_storage._homeScopeToken {return false}
+        if _storage._scopeHmacKey != rhs_storage._scopeHmacKey {return false}
+        if _storage._error != rhs_storage._error {return false}
+        if _storage._wireMachines != rhs_storage._wireMachines {return false}
+        if _storage._wireSessions != rhs_storage._wireSessions {return false}
+        if _storage._wirePrefs != rhs_storage._wirePrefs {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6094,7 +6576,7 @@ extension PBCoreCacheBootstrapLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf.
 
 extension PBCoreCacheEventsLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CacheEventsLoadedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}session_id\0\u{1}events\0\u{1}broken\0\u{1}retired\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}session_id\0\u{1}events\0\u{1}broken\0\u{1}retired\0\u{1}error\0\u{4}\u{4}wire_events\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6108,6 +6590,7 @@ extension PBCoreCacheEventsLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 4: try { try decoder.decodeSingularBoolField(value: &self.broken) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.retired) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.wireEvents) }()
       default: break
       }
     }
@@ -6132,6 +6615,9 @@ extension PBCoreCacheEventsLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 6)
     }
+    if !self.wireEvents.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireEvents, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6142,6 +6628,7 @@ extension PBCoreCacheEventsLoadedEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.broken != rhs.broken {return false}
     if lhs.retired != rhs.retired {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.wireEvents != rhs.wireEvents {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6472,7 +6959,7 @@ extension PBCoreStreamClosedEvent: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreEventsAppendedFrame: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EventsAppendedFrame"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}events\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{1}events\0\u{4}\u{8}wire_events\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6482,6 +6969,7 @@ extension PBCoreEventsAppendedFrame: SwiftProtobuf.Message, SwiftProtobuf._Messa
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.events) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.wireEvents) }()
       default: break
       }
     }
@@ -6494,12 +6982,16 @@ extension PBCoreEventsAppendedFrame: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.events.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.events, fieldNumber: 2)
     }
+    if !self.wireEvents.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireEvents, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreEventsAppendedFrame, rhs: PBCoreEventsAppendedFrame) -> Bool {
     if lhs.sessionID != rhs.sessionID {return false}
     if lhs.events != rhs.events {return false}
+    if lhs.wireEvents != rhs.wireEvents {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6507,7 +6999,7 @@ extension PBCoreEventsAppendedFrame: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBCoreStreamFrameEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".StreamFrameEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}leg_id\0\u{1}heartbeat\0\u{3}machine_updated\0\u{3}machine_removed_id\0\u{3}session_updated\0\u{3}events_appended\0\u{3}account_prefs_updated\0\u{3}device_updated\0\u{3}device_removed_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}leg_id\0\u{1}heartbeat\0\u{3}machine_updated\0\u{3}machine_removed_id\0\u{3}session_updated\0\u{3}events_appended\0\u{3}account_prefs_updated\0\u{3}device_updated\0\u{3}device_removed_id\0\u{3}wire_machine_updated\0\u{3}wire_session_updated\0\u{3}wire_account_prefs_updated\0\u{3}wire_device_updated\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6605,6 +7097,58 @@ extension PBCoreStreamFrameEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.frame = .deviceRemovedID(v)
         }
       }()
+      case 10: try {
+        var v: PBMachine?
+        var hadOneofValue = false
+        if let current = self.frame {
+          hadOneofValue = true
+          if case .wireMachineUpdated(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.frame = .wireMachineUpdated(v)
+        }
+      }()
+      case 11: try {
+        var v: PBRemoteSession?
+        var hadOneofValue = false
+        if let current = self.frame {
+          hadOneofValue = true
+          if case .wireSessionUpdated(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.frame = .wireSessionUpdated(v)
+        }
+      }()
+      case 12: try {
+        var v: PBAccountPrefsObject?
+        var hadOneofValue = false
+        if let current = self.frame {
+          hadOneofValue = true
+          if case .wireAccountPrefsUpdated(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.frame = .wireAccountPrefsUpdated(v)
+        }
+      }()
+      case 13: try {
+        var v: PBDevice?
+        var hadOneofValue = false
+        if let current = self.frame {
+          hadOneofValue = true
+          if case .wireDeviceUpdated(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.frame = .wireDeviceUpdated(v)
+        }
+      }()
       default: break
       }
     }
@@ -6651,6 +7195,22 @@ extension PBCoreStreamFrameEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       guard case .deviceRemovedID(let v)? = self.frame else { preconditionFailure() }
       try visitor.visitSingularStringField(value: v, fieldNumber: 9)
     }()
+    case .wireMachineUpdated?: try {
+      guard case .wireMachineUpdated(let v)? = self.frame else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    }()
+    case .wireSessionUpdated?: try {
+      guard case .wireSessionUpdated(let v)? = self.frame else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+    }()
+    case .wireAccountPrefsUpdated?: try {
+      guard case .wireAccountPrefsUpdated(let v)? = self.frame else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+    }()
+    case .wireDeviceUpdated?: try {
+      guard case .wireDeviceUpdated(let v)? = self.frame else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -6666,7 +7226,7 @@ extension PBCoreStreamFrameEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBCoreListsFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ListsFetchedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}machines\0\u{1}sessions\0\u{1}next\0\u{1}devices\0\u{1}error\0\u{3}unresolved_host\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}machines\0\u{1}sessions\0\u{1}next\0\u{1}devices\0\u{1}error\0\u{3}unresolved_host\0\u{4}\u{3}wire_machines\0\u{3}wire_sessions\0\u{3}wire_devices\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6681,6 +7241,9 @@ extension PBCoreListsFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Message
       case 5: try { try decoder.decodeRepeatedMessageField(value: &self.devices) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.error) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.unresolvedHost) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.wireMachines) }()
+      case 11: try { try decoder.decodeRepeatedMessageField(value: &self.wireSessions) }()
+      case 12: try { try decoder.decodeRepeatedMessageField(value: &self.wireDevices) }()
       default: break
       }
     }
@@ -6712,6 +7275,15 @@ extension PBCoreListsFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Message
     if self.unresolvedHost != false {
       try visitor.visitSingularBoolField(value: self.unresolvedHost, fieldNumber: 7)
     }
+    if !self.wireMachines.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireMachines, fieldNumber: 10)
+    }
+    if !self.wireSessions.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireSessions, fieldNumber: 11)
+    }
+    if !self.wireDevices.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireDevices, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6723,6 +7295,9 @@ extension PBCoreListsFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Message
     if lhs.devices != rhs.devices {return false}
     if lhs.error != rhs.error {return false}
     if lhs.unresolvedHost != rhs.unresolvedHost {return false}
+    if lhs.wireMachines != rhs.wireMachines {return false}
+    if lhs.wireSessions != rhs.wireSessions {return false}
+    if lhs.wireDevices != rhs.wireDevices {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6730,7 +7305,7 @@ extension PBCoreListsFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreSessionsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionsPageFetchedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}sessions\0\u{1}next\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}sessions\0\u{1}next\0\u{1}error\0\u{4}\u{6}wire_sessions\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6742,6 +7317,7 @@ extension PBCoreSessionsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.sessions) }()
       case 3: try { try decoder.decodeSingularMessageField(value: &self._next) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.wireSessions) }()
       default: break
       }
     }
@@ -6764,6 +7340,9 @@ extension PBCoreSessionsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 4)
     }
+    if !self.wireSessions.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireSessions, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6772,6 +7351,7 @@ extension PBCoreSessionsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.sessions != rhs.sessions {return false}
     if lhs._next != rhs._next {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.wireSessions != rhs.wireSessions {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6779,43 +7359,90 @@ extension PBCoreSessionsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreSessionByIdFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionByIdFetchedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}session\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}session\0\u{1}error\0\u{4}\u{7}wire_session\0")
+
+  fileprivate class _StorageClass {
+    var _opID: UInt64 = 0
+    var _session: PBCorePlainSession? = nil
+    var _error: String = String()
+    var _wireSession: PBRemoteSession? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _opID = source._opID
+      _session = source._session
+      _error = source._error
+      _wireSession = source._wireSession
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._session) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.error) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._opID) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._session) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._wireSession) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
-    try { if let v = self._session {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
-    if !self.error.isEmpty {
-      try visitor.visitSingularStringField(value: self.error, fieldNumber: 3)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._opID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._opID, fieldNumber: 1)
+      }
+      try { if let v = _storage._session {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if !_storage._error.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 3)
+      }
+      try { if let v = _storage._wireSession {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreSessionByIdFetchedEvent, rhs: PBCoreSessionByIdFetchedEvent) -> Bool {
-    if lhs.opID != rhs.opID {return false}
-    if lhs._session != rhs._session {return false}
-    if lhs.error != rhs.error {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._opID != rhs_storage._opID {return false}
+        if _storage._session != rhs_storage._session {return false}
+        if _storage._error != rhs_storage._error {return false}
+        if _storage._wireSession != rhs_storage._wireSession {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6823,7 +7450,7 @@ extension PBCoreSessionByIdFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBCoreEventsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EventsPageFetchedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}session_id\0\u{1}events\0\u{1}more\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}session_id\0\u{1}events\0\u{1}more\0\u{1}error\0\u{4}\u{5}wire_events\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6836,6 +7463,7 @@ extension PBCoreEventsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 3: try { try decoder.decodeRepeatedMessageField(value: &self.events) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.more) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.wireEvents) }()
       default: break
       }
     }
@@ -6857,6 +7485,9 @@ extension PBCoreEventsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 5)
     }
+    if !self.wireEvents.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireEvents, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6866,6 +7497,7 @@ extension PBCoreEventsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.events != rhs.events {return false}
     if lhs.more != rhs.more {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.wireEvents != rhs.wireEvents {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6873,43 +7505,90 @@ extension PBCoreEventsPageFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreAccountPrefsFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AccountPrefsFetchedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}prefs\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}prefs\0\u{1}error\0\u{4}\u{7}wire_prefs\0")
+
+  fileprivate class _StorageClass {
+    var _opID: UInt64 = 0
+    var _prefs: PBCorePlainAccountPrefs? = nil
+    var _error: String = String()
+    var _wirePrefs: PBAccountPrefsObject? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _opID = source._opID
+      _prefs = source._prefs
+      _error = source._error
+      _wirePrefs = source._wirePrefs
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._prefs) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.error) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._opID) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._prefs) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._wirePrefs) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
-    try { if let v = self._prefs {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
-    if !self.error.isEmpty {
-      try visitor.visitSingularStringField(value: self.error, fieldNumber: 3)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._opID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._opID, fieldNumber: 1)
+      }
+      try { if let v = _storage._prefs {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if !_storage._error.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 3)
+      }
+      try { if let v = _storage._wirePrefs {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreAccountPrefsFetchedEvent, rhs: PBCoreAccountPrefsFetchedEvent) -> Bool {
-    if lhs.opID != rhs.opID {return false}
-    if lhs._prefs != rhs._prefs {return false}
-    if lhs.error != rhs.error {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._opID != rhs_storage._opID {return false}
+        if _storage._prefs != rhs_storage._prefs {return false}
+        if _storage._error != rhs_storage._error {return false}
+        if _storage._wirePrefs != rhs_storage._wirePrefs {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6917,53 +7596,104 @@ extension PBCoreAccountPrefsFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreAccountPrefsPutResultEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AccountPrefsPutResultEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}applied\0\u{1}current\0\u{3}seal_conflict\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}applied\0\u{1}current\0\u{3}seal_conflict\0\u{1}error\0\u{4}\u{5}wire_current\0")
+
+  fileprivate class _StorageClass {
+    var _opID: UInt64 = 0
+    var _applied: Bool = false
+    var _current: PBCorePlainAccountPrefs? = nil
+    var _sealConflict: Bool = false
+    var _error: String = String()
+    var _wireCurrent: PBAccountPrefsObject? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _opID = source._opID
+      _applied = source._applied
+      _current = source._current
+      _sealConflict = source._sealConflict
+      _error = source._error
+      _wireCurrent = source._wireCurrent
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeSingularBoolField(value: &self.applied) }()
-      case 3: try { try decoder.decodeSingularMessageField(value: &self._current) }()
-      case 4: try { try decoder.decodeSingularBoolField(value: &self.sealConflict) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.error) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._opID) }()
+        case 2: try { try decoder.decodeSingularBoolField(value: &_storage._applied) }()
+        case 3: try { try decoder.decodeSingularMessageField(value: &_storage._current) }()
+        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._sealConflict) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._wireCurrent) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.opID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
-    }
-    if self.applied != false {
-      try visitor.visitSingularBoolField(value: self.applied, fieldNumber: 2)
-    }
-    try { if let v = self._current {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    } }()
-    if self.sealConflict != false {
-      try visitor.visitSingularBoolField(value: self.sealConflict, fieldNumber: 4)
-    }
-    if !self.error.isEmpty {
-      try visitor.visitSingularStringField(value: self.error, fieldNumber: 5)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._opID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._opID, fieldNumber: 1)
+      }
+      if _storage._applied != false {
+        try visitor.visitSingularBoolField(value: _storage._applied, fieldNumber: 2)
+      }
+      try { if let v = _storage._current {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+      } }()
+      if _storage._sealConflict != false {
+        try visitor.visitSingularBoolField(value: _storage._sealConflict, fieldNumber: 4)
+      }
+      if !_storage._error.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 5)
+      }
+      try { if let v = _storage._wireCurrent {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreAccountPrefsPutResultEvent, rhs: PBCoreAccountPrefsPutResultEvent) -> Bool {
-    if lhs.opID != rhs.opID {return false}
-    if lhs.applied != rhs.applied {return false}
-    if lhs._current != rhs._current {return false}
-    if lhs.sealConflict != rhs.sealConflict {return false}
-    if lhs.error != rhs.error {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._opID != rhs_storage._opID {return false}
+        if _storage._applied != rhs_storage._applied {return false}
+        if _storage._current != rhs_storage._current {return false}
+        if _storage._sealConflict != rhs_storage._sealConflict {return false}
+        if _storage._error != rhs_storage._error {return false}
+        if _storage._wireCurrent != rhs_storage._wireCurrent {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6971,7 +7701,7 @@ extension PBCoreAccountPrefsPutResultEvent: SwiftProtobuf.Message, SwiftProtobuf
 
 extension PBCoreDevicesFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DevicesFetchedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}devices\0\u{1}error\0\u{3}push_seq\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}devices\0\u{1}error\0\u{3}push_seq\0\u{4}\u{6}wire_devices\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6983,6 +7713,7 @@ extension PBCoreDevicesFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.devices) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.error) }()
       case 4: try { try decoder.decodeSingularUInt64Field(value: &self.pushSeq) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.wireDevices) }()
       default: break
       }
     }
@@ -7001,6 +7732,9 @@ extension PBCoreDevicesFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.pushSeq != 0 {
       try visitor.visitSingularUInt64Field(value: self.pushSeq, fieldNumber: 4)
     }
+    if !self.wireDevices.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireDevices, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7009,6 +7743,7 @@ extension PBCoreDevicesFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.devices != rhs.devices {return false}
     if lhs.error != rhs.error {return false}
     if lhs.pushSeq != rhs.pushSeq {return false}
+    if lhs.wireDevices != rhs.wireDevices {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7016,7 +7751,7 @@ extension PBCoreDevicesFetchedEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBCoreCommandOutcomeEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CommandOutcomeEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{3}attempt_id\0\u{1}source\0\u{3}not_forwarded\0\u{3}attempt_bound\0\u{1}signed\0\u{3}hashes_match\0\u{3}outer_matches_inner\0\u{3}outer_outcome\0\u{3}outer_reason\0\u{1}result\0\u{3}transport_code\0\u{3}transport_detail\0\u{3}route_was_direct\0\u{3}elapsed_ms\0\u{3}observed_bytes\0\u{3}handed_off\0\u{3}direct_ticket_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{3}attempt_id\0\u{1}source\0\u{3}not_forwarded\0\u{3}attempt_bound\0\u{1}signed\0\u{3}hashes_match\0\u{3}outer_matches_inner\0\u{3}outer_outcome\0\u{3}outer_reason\0\u{1}result\0\u{3}transport_code\0\u{3}transport_detail\0\u{3}route_was_direct\0\u{3}elapsed_ms\0\u{3}observed_bytes\0\u{3}handed_off\0\u{3}direct_ticket_id\0\u{4}\u{2}sealed_result\0")
 
   fileprivate class _StorageClass {
     var _requestID: String = String()
@@ -7037,6 +7772,7 @@ extension PBCoreCommandOutcomeEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _observedBytes: Int64 = 0
     var _handedOff: Bool = false
     var _directTicketID: UInt64 = 0
+    var _sealedResult: PBEnvelope? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7065,6 +7801,7 @@ extension PBCoreCommandOutcomeEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _observedBytes = source._observedBytes
       _handedOff = source._handedOff
       _directTicketID = source._directTicketID
+      _sealedResult = source._sealedResult
     }
   }
 
@@ -7101,6 +7838,7 @@ extension PBCoreCommandOutcomeEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 16: try { try decoder.decodeSingularInt64Field(value: &_storage._observedBytes) }()
         case 17: try { try decoder.decodeSingularBoolField(value: &_storage._handedOff) }()
         case 18: try { try decoder.decodeSingularUInt64Field(value: &_storage._directTicketID) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._sealedResult) }()
         default: break
         }
       }
@@ -7167,6 +7905,9 @@ extension PBCoreCommandOutcomeEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if _storage._directTicketID != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._directTicketID, fieldNumber: 18)
       }
+      try { if let v = _storage._sealedResult {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7194,6 +7935,7 @@ extension PBCoreCommandOutcomeEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._observedBytes != rhs_storage._observedBytes {return false}
         if _storage._handedOff != rhs_storage._handedOff {return false}
         if _storage._directTicketID != rhs_storage._directTicketID {return false}
+        if _storage._sealedResult != rhs_storage._sealedResult {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -7335,7 +8077,7 @@ extension PBCoreFetchSessionAction: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBCoreDirectEventsReceivedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirectEventsReceivedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}events\0\u{3}pc_id\0\u{1}sender\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{1}events\0\u{3}pc_id\0\u{1}sender\0\u{4}\u{5}wire_envelopes\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7348,6 +8090,7 @@ extension PBCoreDirectEventsReceivedEvent: SwiftProtobuf.Message, SwiftProtobuf.
       case 3: try { try decoder.decodeRepeatedMessageField(value: &self.events) }()
       case 4: try { try decoder.decodeSingularUInt64Field(value: &self.pcID) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.sender) }()
+      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.wireEnvelopes) }()
       default: break
       }
     }
@@ -7369,6 +8112,9 @@ extension PBCoreDirectEventsReceivedEvent: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.sender.isEmpty {
       try visitor.visitSingularStringField(value: self.sender, fieldNumber: 5)
     }
+    if !self.wireEnvelopes.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.wireEnvelopes, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7378,6 +8124,7 @@ extension PBCoreDirectEventsReceivedEvent: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.events != rhs.events {return false}
     if lhs.pcID != rhs.pcID {return false}
     if lhs.sender != rhs.sender {return false}
+    if lhs.wireEnvelopes != rhs.wireEnvelopes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -8062,7 +8809,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{3}direct_security_snapshot\0\u{3}direct_signal_received\0\u{3}direct_signal_delivery\0\u{3}direct_key_signed\0\u{3}direct_key_agreed\0\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{3}direct_security_installed\0\u{3}direct_authorize_done\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}security_snapshot\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{3}direct_security_snapshot\0\u{3}direct_signal_received\0\u{3}direct_signal_delivery\0\u{3}direct_key_signed\0\u{3}direct_key_agreed\0\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{3}direct_security_installed\0\u{3}direct_authorize_done\0\u{4}\u{1b}security_config\0\u{3}security_record\0\u{3}security_key_signed\0\u{3}security_key_agreed\0\u{3}security_key_generated\0\u{3}security_key_encapsulated\0\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -9992,6 +10739,123 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
             _storage._event = .directAuthorizeDone(v)
           }
         }()
+        case 450: try {
+          var v: PBSecurityConfigEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityConfig(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityConfig(v)
+          }
+        }()
+        case 451: try {
+          var v: PBSecurityRecordEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityRecord(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityRecord(v)
+          }
+        }()
+        case 452: try {
+          var v: PBSecurityKeySignedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityKeySigned(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityKeySigned(v)
+          }
+        }()
+        case 453: try {
+          var v: PBSecurityKeyAgreedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityKeyAgreed(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityKeyAgreed(v)
+          }
+        }()
+        case 454: try {
+          var v: PBSecurityKeyGeneratedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityKeyGenerated(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityKeyGenerated(v)
+          }
+        }()
+        case 455: try {
+          var v: PBSecurityKeyEncapsulatedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityKeyEncapsulated(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityKeyEncapsulated(v)
+          }
+        }()
+        case 456: try {
+          var v: PBSecurityCryptoBatchDoneEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityCryptoBatchDone(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityCryptoBatchDone(v)
+          }
+        }()
+        case 457: try {
+          var v: PBSecurityOpRequestEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityOpRequest(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityOpRequest(v)
+          }
+        }()
+        case 458: try {
+          var v: PBSeedDemoWorldEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .seedDemoWorld(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .seedDemoWorld(v)
+          }
+        }()
         default: break
         }
       }
@@ -10600,6 +11464,42 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
         guard case .directAuthorizeDone(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 423)
       }()
+      case .securityConfig?: try {
+        guard case .securityConfig(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 450)
+      }()
+      case .securityRecord?: try {
+        guard case .securityRecord(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 451)
+      }()
+      case .securityKeySigned?: try {
+        guard case .securityKeySigned(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 452)
+      }()
+      case .securityKeyAgreed?: try {
+        guard case .securityKeyAgreed(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 453)
+      }()
+      case .securityKeyGenerated?: try {
+        guard case .securityKeyGenerated(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 454)
+      }()
+      case .securityKeyEncapsulated?: try {
+        guard case .securityKeyEncapsulated(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 455)
+      }()
+      case .securityCryptoBatchDone?: try {
+        guard case .securityCryptoBatchDone(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 456)
+      }()
+      case .securityOpRequest?: try {
+        guard case .securityOpRequest(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 457)
+      }()
+      case .seedDemoWorld?: try {
+        guard case .seedDemoWorld(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 458)
+      }()
       default: break
       }
     }
@@ -11139,7 +12039,7 @@ extension PBCoreCacheSessionOpen: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBCoreCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CacheWriteEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}write_machine_ref\0\u{3}write_session_ref\0\u{3}keep_session_owner_ref\0\u{3}write_events\0\u{3}write_prefs_ref\0\u{3}set_session_open\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}write_machine_ref\0\u{3}write_session_ref\0\u{3}keep_session_owner_ref\0\u{3}write_events\0\u{3}write_prefs_ref\0\u{3}set_session_open\0\u{3}write_machine\0\u{3}write_session\0\u{3}keep_session_owner\0\u{3}write_stored_events\0\u{3}write_prefs\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -11205,6 +12105,71 @@ extension PBCoreCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageI
           self.kind = .setSessionOpen(v)
         }
       }()
+      case 7: try {
+        var v: PBMachine?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .writeMachine(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .writeMachine(v)
+        }
+      }()
+      case 8: try {
+        var v: PBRemoteSession?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .writeSession(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .writeSession(v)
+        }
+      }()
+      case 9: try {
+        var v: PBRemoteSession?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .keepSessionOwner(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .keepSessionOwner(v)
+        }
+      }()
+      case 10: try {
+        var v: PBCacheWriteStoredEvents?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .writeStoredEvents(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .writeStoredEvents(v)
+        }
+      }()
+      case 11: try {
+        var v: PBAccountPrefsObject?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .writePrefs(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .writePrefs(v)
+        }
+      }()
       default: break
       }
     }
@@ -11239,6 +12204,26 @@ extension PBCoreCacheWriteEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     case .setSessionOpen?: try {
       guard case .setSessionOpen(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    }()
+    case .writeMachine?: try {
+      guard case .writeMachine(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+    }()
+    case .writeSession?: try {
+      guard case .writeSession(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+    }()
+    case .keepSessionOwner?: try {
+      guard case .keepSessionOwner(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+    }()
+    case .writeStoredEvents?: try {
+      guard case .writeStoredEvents(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    }()
+    case .writePrefs?: try {
+      guard case .writePrefs(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
     }()
     case nil: break
     }
@@ -11504,7 +12489,7 @@ extension PBCoreGetAccountPrefsRpc: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBCorePutAccountPrefsRpc: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PutAccountPrefsRpc"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}object_id\0\u{3}expected_revision\0\u{3}next_prefs\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}object_id\0\u{3}expected_revision\0\u{3}next_prefs\0\u{4}\u{7}sealed_envelope\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -11515,6 +12500,7 @@ extension PBCorePutAccountPrefsRpc: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 1: try { try decoder.decodeSingularStringField(value: &self.objectID) }()
       case 2: try { try decoder.decodeSingularUInt64Field(value: &self.expectedRevision) }()
       case 3: try { try decoder.decodeSingularMessageField(value: &self._nextPrefs) }()
+      case 10: try { try decoder.decodeSingularMessageField(value: &self._sealedEnvelope) }()
       default: break
       }
     }
@@ -11534,6 +12520,9 @@ extension PBCorePutAccountPrefsRpc: SwiftProtobuf.Message, SwiftProtobuf._Messag
     try { if let v = self._nextPrefs {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
     } }()
+    try { if let v = self._sealedEnvelope {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -11541,6 +12530,7 @@ extension PBCorePutAccountPrefsRpc: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.objectID != rhs.objectID {return false}
     if lhs.expectedRevision != rhs.expectedRevision {return false}
     if lhs._nextPrefs != rhs._nextPrefs {return false}
+    if lhs._sealedEnvelope != rhs._sealedEnvelope {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -11735,104 +12725,181 @@ extension PBCoreRpcEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 
 extension PBCoreDispatchCommandEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DispatchCommandEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{3}attempt_id\0\u{3}machine_id\0\u{3}session_id\0\u{3}deadline_ms\0\u{3}command_bytes\0\u{3}route_hint\0\u{3}retry_of_unknown\0\u{3}force_relay\0\u{3}bulk_file_key\0\u{3}bulk_bytes\0\u{3}bulk_upload\0\u{3}route_leg\0\u{3}direct_pc_id\0\u{3}direct_timeout_ms\0\u{3}direct_ticket_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{3}attempt_id\0\u{3}machine_id\0\u{3}session_id\0\u{3}deadline_ms\0\u{3}command_bytes\0\u{3}route_hint\0\u{3}retry_of_unknown\0\u{3}force_relay\0\u{3}bulk_file_key\0\u{3}bulk_bytes\0\u{3}bulk_upload\0\u{3}route_leg\0\u{3}direct_pc_id\0\u{3}direct_timeout_ms\0\u{3}direct_ticket_id\0\u{4}\u{4}sealed_envelope\0")
+
+  fileprivate class _StorageClass {
+    var _requestID: String = String()
+    var _attemptID: String = String()
+    var _machineID: String = String()
+    var _sessionID: String = String()
+    var _deadlineMs: Int64 = 0
+    var _commandBytes: Data = Data()
+    var _routeHint: PBCoreCommandRouteHint = .unspecified
+    var _retryOfUnknown: Bool = false
+    var _forceRelay: Bool = false
+    var _bulkFileKey: String = String()
+    var _bulkBytes: Int64 = 0
+    var _bulkUpload: Bool = false
+    var _routeLeg: PBCoreCommandRouteLeg = .unspecified
+    var _directPcID: UInt64 = 0
+    var _directTimeoutMs: Int64 = 0
+    var _directTicketID: UInt64 = 0
+    var _sealedEnvelope: PBEnvelope? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _requestID = source._requestID
+      _attemptID = source._attemptID
+      _machineID = source._machineID
+      _sessionID = source._sessionID
+      _deadlineMs = source._deadlineMs
+      _commandBytes = source._commandBytes
+      _routeHint = source._routeHint
+      _retryOfUnknown = source._retryOfUnknown
+      _forceRelay = source._forceRelay
+      _bulkFileKey = source._bulkFileKey
+      _bulkBytes = source._bulkBytes
+      _bulkUpload = source._bulkUpload
+      _routeLeg = source._routeLeg
+      _directPcID = source._directPcID
+      _directTimeoutMs = source._directTimeoutMs
+      _directTicketID = source._directTicketID
+      _sealedEnvelope = source._sealedEnvelope
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.attemptID) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      case 5: try { try decoder.decodeSingularInt64Field(value: &self.deadlineMs) }()
-      case 6: try { try decoder.decodeSingularBytesField(value: &self.commandBytes) }()
-      case 7: try { try decoder.decodeSingularEnumField(value: &self.routeHint) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.retryOfUnknown) }()
-      case 9: try { try decoder.decodeSingularBoolField(value: &self.forceRelay) }()
-      case 10: try { try decoder.decodeSingularStringField(value: &self.bulkFileKey) }()
-      case 11: try { try decoder.decodeSingularInt64Field(value: &self.bulkBytes) }()
-      case 12: try { try decoder.decodeSingularBoolField(value: &self.bulkUpload) }()
-      case 13: try { try decoder.decodeSingularEnumField(value: &self.routeLeg) }()
-      case 14: try { try decoder.decodeSingularUInt64Field(value: &self.directPcID) }()
-      case 15: try { try decoder.decodeSingularInt64Field(value: &self.directTimeoutMs) }()
-      case 16: try { try decoder.decodeSingularUInt64Field(value: &self.directTicketID) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._requestID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._attemptID) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._machineID) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
+        case 5: try { try decoder.decodeSingularInt64Field(value: &_storage._deadlineMs) }()
+        case 6: try { try decoder.decodeSingularBytesField(value: &_storage._commandBytes) }()
+        case 7: try { try decoder.decodeSingularEnumField(value: &_storage._routeHint) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._retryOfUnknown) }()
+        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._forceRelay) }()
+        case 10: try { try decoder.decodeSingularStringField(value: &_storage._bulkFileKey) }()
+        case 11: try { try decoder.decodeSingularInt64Field(value: &_storage._bulkBytes) }()
+        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._bulkUpload) }()
+        case 13: try { try decoder.decodeSingularEnumField(value: &_storage._routeLeg) }()
+        case 14: try { try decoder.decodeSingularUInt64Field(value: &_storage._directPcID) }()
+        case 15: try { try decoder.decodeSingularInt64Field(value: &_storage._directTimeoutMs) }()
+        case 16: try { try decoder.decodeSingularUInt64Field(value: &_storage._directTicketID) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._sealedEnvelope) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.requestID.isEmpty {
-      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 1)
-    }
-    if !self.attemptID.isEmpty {
-      try visitor.visitSingularStringField(value: self.attemptID, fieldNumber: 2)
-    }
-    if !self.machineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 3)
-    }
-    if !self.sessionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 4)
-    }
-    if self.deadlineMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.deadlineMs, fieldNumber: 5)
-    }
-    if !self.commandBytes.isEmpty {
-      try visitor.visitSingularBytesField(value: self.commandBytes, fieldNumber: 6)
-    }
-    if self.routeHint != .unspecified {
-      try visitor.visitSingularEnumField(value: self.routeHint, fieldNumber: 7)
-    }
-    if self.retryOfUnknown != false {
-      try visitor.visitSingularBoolField(value: self.retryOfUnknown, fieldNumber: 8)
-    }
-    if self.forceRelay != false {
-      try visitor.visitSingularBoolField(value: self.forceRelay, fieldNumber: 9)
-    }
-    if !self.bulkFileKey.isEmpty {
-      try visitor.visitSingularStringField(value: self.bulkFileKey, fieldNumber: 10)
-    }
-    if self.bulkBytes != 0 {
-      try visitor.visitSingularInt64Field(value: self.bulkBytes, fieldNumber: 11)
-    }
-    if self.bulkUpload != false {
-      try visitor.visitSingularBoolField(value: self.bulkUpload, fieldNumber: 12)
-    }
-    if self.routeLeg != .unspecified {
-      try visitor.visitSingularEnumField(value: self.routeLeg, fieldNumber: 13)
-    }
-    if self.directPcID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.directPcID, fieldNumber: 14)
-    }
-    if self.directTimeoutMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.directTimeoutMs, fieldNumber: 15)
-    }
-    if self.directTicketID != 0 {
-      try visitor.visitSingularUInt64Field(value: self.directTicketID, fieldNumber: 16)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._requestID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._requestID, fieldNumber: 1)
+      }
+      if !_storage._attemptID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._attemptID, fieldNumber: 2)
+      }
+      if !_storage._machineID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._machineID, fieldNumber: 3)
+      }
+      if !_storage._sessionID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._sessionID, fieldNumber: 4)
+      }
+      if _storage._deadlineMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._deadlineMs, fieldNumber: 5)
+      }
+      if !_storage._commandBytes.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._commandBytes, fieldNumber: 6)
+      }
+      if _storage._routeHint != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._routeHint, fieldNumber: 7)
+      }
+      if _storage._retryOfUnknown != false {
+        try visitor.visitSingularBoolField(value: _storage._retryOfUnknown, fieldNumber: 8)
+      }
+      if _storage._forceRelay != false {
+        try visitor.visitSingularBoolField(value: _storage._forceRelay, fieldNumber: 9)
+      }
+      if !_storage._bulkFileKey.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._bulkFileKey, fieldNumber: 10)
+      }
+      if _storage._bulkBytes != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._bulkBytes, fieldNumber: 11)
+      }
+      if _storage._bulkUpload != false {
+        try visitor.visitSingularBoolField(value: _storage._bulkUpload, fieldNumber: 12)
+      }
+      if _storage._routeLeg != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._routeLeg, fieldNumber: 13)
+      }
+      if _storage._directPcID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._directPcID, fieldNumber: 14)
+      }
+      if _storage._directTimeoutMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._directTimeoutMs, fieldNumber: 15)
+      }
+      if _storage._directTicketID != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._directTicketID, fieldNumber: 16)
+      }
+      try { if let v = _storage._sealedEnvelope {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreDispatchCommandEffect, rhs: PBCoreDispatchCommandEffect) -> Bool {
-    if lhs.requestID != rhs.requestID {return false}
-    if lhs.attemptID != rhs.attemptID {return false}
-    if lhs.machineID != rhs.machineID {return false}
-    if lhs.sessionID != rhs.sessionID {return false}
-    if lhs.deadlineMs != rhs.deadlineMs {return false}
-    if lhs.commandBytes != rhs.commandBytes {return false}
-    if lhs.routeHint != rhs.routeHint {return false}
-    if lhs.retryOfUnknown != rhs.retryOfUnknown {return false}
-    if lhs.forceRelay != rhs.forceRelay {return false}
-    if lhs.bulkFileKey != rhs.bulkFileKey {return false}
-    if lhs.bulkBytes != rhs.bulkBytes {return false}
-    if lhs.bulkUpload != rhs.bulkUpload {return false}
-    if lhs.routeLeg != rhs.routeLeg {return false}
-    if lhs.directPcID != rhs.directPcID {return false}
-    if lhs.directTimeoutMs != rhs.directTimeoutMs {return false}
-    if lhs.directTicketID != rhs.directTicketID {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._requestID != rhs_storage._requestID {return false}
+        if _storage._attemptID != rhs_storage._attemptID {return false}
+        if _storage._machineID != rhs_storage._machineID {return false}
+        if _storage._sessionID != rhs_storage._sessionID {return false}
+        if _storage._deadlineMs != rhs_storage._deadlineMs {return false}
+        if _storage._commandBytes != rhs_storage._commandBytes {return false}
+        if _storage._routeHint != rhs_storage._routeHint {return false}
+        if _storage._retryOfUnknown != rhs_storage._retryOfUnknown {return false}
+        if _storage._forceRelay != rhs_storage._forceRelay {return false}
+        if _storage._bulkFileKey != rhs_storage._bulkFileKey {return false}
+        if _storage._bulkBytes != rhs_storage._bulkBytes {return false}
+        if _storage._bulkUpload != rhs_storage._bulkUpload {return false}
+        if _storage._routeLeg != rhs_storage._routeLeg {return false}
+        if _storage._directPcID != rhs_storage._directPcID {return false}
+        if _storage._directTimeoutMs != rhs_storage._directTimeoutMs {return false}
+        if _storage._directTicketID != rhs_storage._directTicketID {return false}
+        if _storage._sealedEnvelope != rhs_storage._sealedEnvelope {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -12000,7 +13067,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Effect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{3}sync_security\0\u{3}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{4}\u{13}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{18}direct_key_sign\0\u{3}direct_key_agree\0\u{3}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{3}direct_authorize\0\u{3}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{3}sync_security\0\u{3}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{4}\u{13}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{18}direct_key_sign\0\u{3}direct_key_agree\0\u{3}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{3}direct_authorize\0\u{3}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_crypto_batch\0\u{3}security_op_result\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12606,6 +13673,97 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
           self.effect = .directRetryNowResult(v)
         }
       }()
+      case 130: try {
+        var v: PBSecurityKeySignEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityKeySign(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityKeySign(v)
+        }
+      }()
+      case 131: try {
+        var v: PBSecurityKeyAgreeEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityKeyAgree(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityKeyAgree(v)
+        }
+      }()
+      case 132: try {
+        var v: PBSecurityKeyGenerateEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityKeyGenerate(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityKeyGenerate(v)
+        }
+      }()
+      case 133: try {
+        var v: PBSecurityKeyEncapsulateEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityKeyEncapsulate(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityKeyEncapsulate(v)
+        }
+      }()
+      case 134: try {
+        var v: PBSecurityKeyDiscardEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityKeyDiscard(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityKeyDiscard(v)
+        }
+      }()
+      case 135: try {
+        var v: PBSecurityCryptoBatchEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityCryptoBatch(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityCryptoBatch(v)
+        }
+      }()
+      case 136: try {
+        var v: PBSecurityOpResultEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityOpResult(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityOpResult(v)
+        }
+      }()
       default: break
       }
     }
@@ -12800,6 +13958,34 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     case .directRetryNowResult?: try {
       guard case .directRetryNowResult(let v)? = self.effect else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 113)
+    }()
+    case .securityKeySign?: try {
+      guard case .securityKeySign(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 130)
+    }()
+    case .securityKeyAgree?: try {
+      guard case .securityKeyAgree(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 131)
+    }()
+    case .securityKeyGenerate?: try {
+      guard case .securityKeyGenerate(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 132)
+    }()
+    case .securityKeyEncapsulate?: try {
+      guard case .securityKeyEncapsulate(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 133)
+    }()
+    case .securityKeyDiscard?: try {
+      guard case .securityKeyDiscard(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 134)
+    }()
+    case .securityCryptoBatch?: try {
+      guard case .securityCryptoBatch(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 135)
+    }()
+    case .securityOpResult?: try {
+      guard case .securityOpResult(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 136)
     }()
     case nil: break
     }

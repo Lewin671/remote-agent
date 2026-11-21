@@ -47,4 +47,18 @@ public interface DevicesFetchedEventOrBuilder extends
    * @return The pushSeq.
    */
   long getPushSeq();
+
+  /**
+   * <code>repeated .remoteagent.v1.Device wire_devices = 10 [json_name = "wireDevices"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.Device> 
+      getWireDevicesList();
+  /**
+   * <code>repeated .remoteagent.v1.Device wire_devices = 10 [json_name = "wireDevices"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.Device getWireDevices(int index);
+  /**
+   * <code>repeated .remoteagent.v1.Device wire_devices = 10 [json_name = "wireDevices"];</code>
+   */
+  int getWireDevicesCount();
 }

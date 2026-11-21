@@ -140,6 +140,54 @@ public  final class PutAccountPrefsRpc extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int SEALED_ENVELOPE_FIELD_NUMBER = 10;
+  private io.github.lewin671.remoteagent.proto.Envelope sealedEnvelope_;
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSealedEnvelope() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Envelope getSealedEnvelope() {
+    return sealedEnvelope_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : sealedEnvelope_;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSealedEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    sealedEnvelope_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSealedEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    if (sealedEnvelope_ != null &&
+        sealedEnvelope_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
+      sealedEnvelope_ =
+        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(sealedEnvelope_).mergeFrom(value).buildPartial();
+    } else {
+      sealedEnvelope_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+   */
+  private void clearSealedEnvelope() {
+    sealedEnvelope_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.PutAccountPrefsRpc parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -361,6 +409,53 @@ public  final class PutAccountPrefsRpc extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSealedEnvelope() {
+      return instance.hasSealedEnvelope();
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Envelope getSealedEnvelope() {
+      return instance.getSealedEnvelope();
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+     */
+    public Builder setSealedEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.setSealedEnvelope(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+     */
+    public Builder setSealedEnvelope(
+        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSealedEnvelope(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+     */
+    public Builder mergeSealedEnvelope(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.mergeSealedEnvelope(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Envelope sealed_envelope = 10 [json_name = "sealedEnvelope"];</code>
+     */
+    public Builder clearSealedEnvelope() {  copyOnWrite();
+      instance.clearSealedEnvelope();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.PutAccountPrefsRpc)
   }
   @java.lang.Override
@@ -381,10 +476,11 @@ public  final class PutAccountPrefsRpc extends
             "objectId_",
             "expectedRevision_",
             "nextPrefs_",
+            "sealedEnvelope_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0003" +
-              "\u0003\u1009\u0000";
+              "\u0000\u0004\u0000\u0001\u0001\n\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0003" +
+              "\u0003\u1009\u0000\n\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

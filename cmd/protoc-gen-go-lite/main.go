@@ -24,6 +24,7 @@ type msgFlags struct {
 	marshal   bool
 	unmarshal bool
 	clone     bool
+	strict    bool
 }
 
 func (a msgFlags) or(b msgFlags) msgFlags {
@@ -31,6 +32,7 @@ func (a msgFlags) or(b msgFlags) msgFlags {
 		marshal:   a.marshal || b.marshal,
 		unmarshal: a.unmarshal || b.unmarshal,
 		clone:     a.clone || b.clone,
+		strict:    a.strict || b.strict,
 	}
 }
 
@@ -129,6 +131,8 @@ func computeReachable(files []*protogen.File, entriesPath string) (*reachSet, er
 			switch kind {
 			case "in":
 				flags = msgFlags{unmarshal: true}
+			case "strict":
+				flags = msgFlags{unmarshal: true, strict: true}
 			case "out":
 				flags = msgFlags{marshal: true}
 			case "clone":
@@ -391,8 +395,15 @@ func genMessage(g *protogen.GeneratedFile, msg *protogen.Message, reach *reachSe
 		}
 		g.P("\t", f.GoName, " ", fieldGoType(g, f))
 	}
+	if flags.strict {
+		g.P("\thasUnknown bool")
+	}
 	g.P("}")
 	g.P()
+	if flags.strict {
+		g.P("func (m *", name, ") HasUnknown() bool { return m != nil && m.hasUnknown }")
+		g.P()
+	}
 
 	for _, o := range msg.Oneofs {
 		if o.Desc.IsSynthetic() {
@@ -448,7 +459,7 @@ func genMessage(g *protogen.GeneratedFile, msg *protogen.Message, reach *reachSe
 		genMarshal(g, msg)
 	}
 	if flags.unmarshal {
-		genUnmarshal(g, msg)
+		genUnmarshal(g, msg, flags.strict)
 	}
 }
 
@@ -696,7 +707,7 @@ func emitMarshalPackedElem(g *protogen.GeneratedFile, indent, buf string, f *pro
 	}
 }
 
-func genUnmarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
+func genUnmarshal(g *protogen.GeneratedFile, msg *protogen.Message, strict bool) {
 	name := msg.GoIdent.GoName
 	readTag := g.QualifiedGoIdent(litewirePkg.Ident("ReadTag"))
 	skip := g.QualifiedGoIdent(litewirePkg.Ident("Skip"))
@@ -709,9 +720,12 @@ func genUnmarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
 		g.P("\t\tswitch num {")
 		for _, f := range msg.Fields {
 			g.P("\t\tcase ", f.Desc.Number(), ":")
-			emitUnmarshalField(g, f)
+			emitUnmarshalField(g, f, strict)
 		}
 		g.P("\t\t}")
+	}
+	if strict {
+		g.P("\t\tm.hasUnknown = true")
 	}
 	g.P("\t\tif err := ", skip, "(&b, num, wtyp); err != nil { return err }")
 	g.P("\t}")
@@ -720,7 +734,7 @@ func genUnmarshal(g *protogen.GeneratedFile, msg *protogen.Message) {
 	g.P()
 }
 
-func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
+func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field, strict bool) {
 	bytesType := g.QualifiedGoIdent(litewirePkg.Ident("BytesType"))
 	readBytesRaw := g.QualifiedGoIdent(litewirePkg.Ident("ReadBytesRaw"))
 	readMessage := g.QualifiedGoIdent(litewirePkg.Ident("ReadMessage"))
@@ -751,6 +765,9 @@ func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
 		if vf.Desc.Kind() == protoreflect.MessageKind {
 			g.P("\t\t\t\t\t\tif mwtyp == ", bytesType, " {")
 			g.P("\t\t\t\t\t\t\tif err := ", readMessage, "(&raw, mv); err != nil { return err }")
+			if strict {
+				g.P("\t\t\t\t\t\t\tif mv.HasUnknown() { m.hasUnknown = true }")
+			}
 			g.P("\t\t\t\t\t\t\tcontinue")
 			g.P("\t\t\t\t\t\t}")
 		} else {
@@ -760,6 +777,9 @@ func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
 			})
 		}
 		g.P("\t\t\t\t\t}")
+		if strict {
+			g.P("\t\t\t\t\tm.hasUnknown = true")
+		}
 		g.P("\t\t\t\t\tif err := ", skip, "(&raw, mnum, mwtyp); err != nil { return err }")
 		g.P("\t\t\t\t}")
 		g.P("\t\t\t\tif m.", f.GoName, " == nil { m.", f.GoName, " = make(", fieldGoType(g, f), ") }")
@@ -786,6 +806,9 @@ func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
 			g.P("\t\t\tif wtyp == ", bytesType, " {")
 			g.P("\t\t\t\telem := &", g.QualifiedGoIdent(f.Message.GoIdent), "{}")
 			g.P("\t\t\t\tif err := ", readMessage, "(&b, elem); err != nil { return err }")
+			if strict {
+				g.P("\t\t\t\tif elem.HasUnknown() { m.hasUnknown = true }")
+			}
 			g.P("\t\t\t\tm.", f.GoName, " = append(m.", f.GoName, ", elem)")
 			g.P("\t\t\t\tcontinue")
 			g.P("\t\t\t}")
@@ -806,10 +829,16 @@ func emitUnmarshalField(g *protogen.GeneratedFile, f *protogen.Field) {
 			g.P("\t\t\t\tif cur, ok := m.", f.Oneof.GoName, ".(*", wrap, "); ok && cur != nil { sub = cur.", f.GoName, " }")
 			g.P("\t\t\t\tif sub == nil { sub = &", g.QualifiedGoIdent(f.Message.GoIdent), "{} }")
 			g.P("\t\t\t\tif err := ", readMessage, "(&b, sub); err != nil { return err }")
+			if strict {
+				g.P("\t\t\t\tif sub.HasUnknown() { m.hasUnknown = true }")
+			}
 			g.P("\t\t\t\tm.", f.Oneof.GoName, " = &", wrap, "{", f.GoName, ": sub}")
 		} else {
 			g.P("\t\t\t\tif m.", f.GoName, " == nil { m.", f.GoName, " = &", g.QualifiedGoIdent(f.Message.GoIdent), "{} }")
 			g.P("\t\t\t\tif err := ", readMessage, "(&b, m.", f.GoName, "); err != nil { return err }")
+			if strict {
+				g.P("\t\t\t\tif m.", f.GoName, ".HasUnknown() { m.hasUnknown = true }")
+			}
 		}
 		g.P("\t\t\t\tcontinue")
 		g.P("\t\t\t}")

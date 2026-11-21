@@ -163,4 +163,15 @@ public interface CommandOutcomeEventOrBuilder extends
    * @return The directTicketId.
    */
   long getDirectTicketId();
+
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   * @return Whether the sealedResult field is set.
+   */
+  boolean hasSealedResult();
+  /**
+   * <code>.remoteagent.v1.Envelope sealed_result = 20 [json_name = "sealedResult"];</code>
+   * @return The sealedResult.
+   */
+  io.github.lewin671.remoteagent.proto.Envelope getSealedResult();
 }

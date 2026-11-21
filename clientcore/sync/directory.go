@@ -29,11 +29,50 @@ func (e *Engine) handleCacheBootstrapLoaded(ctx *StepContext, ev *corev1.CacheBo
 		return
 	}
 	e.bootstrapped = true
-	if ev.HomeScopeToken != "" && e.homeScopeToken == "" {
+	if len(ev.HomeScopeToken) > 0 && e.homeScopeToken == "" {
 		e.homeScopeToken = ev.HomeScopeToken
 	}
 	if len(ev.ScopeHmacKey) > 0 && len(e.scopeHMACKey) == 0 {
 		e.scopeHMACKey = append([]byte(nil), ev.ScopeHmacKey...)
+	}
+
+	if len(ev.WireMachines) > 0 || len(ev.WireSessions) > 0 || ev.WirePrefs != nil ||
+		(e.secEngine != nil && e.secEngine.Locked() && len(ev.Machines) == 0 && len(ev.Sessions) == 0 && ev.Prefs == nil) {
+		var prefsSlice []*v1.AccountPrefsObject
+		if ev.WirePrefs != nil {
+			prefsSlice = []*v1.AccountPrefsObject{ev.WirePrefs}
+		}
+		e.openWireDirectoryBatch(ctx, ev.WireMachines, ev.WireSessions, nil, prefsSlice, func(outM []decodedMachine, outS []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
+			stepCtx := e.activeStepCtx
+			if !e.w.World.MachinesListed {
+				for _, m := range outM {
+					if m.MachineID == "" {
+						continue
+					}
+					if _, exists := e.machines[m.MachineID]; !exists {
+						m.Online = false
+						e.storeMachine(decodedToMachineEntry(m))
+					}
+				}
+			}
+			if !e.w.World.SessionsListed {
+				for _, s := range outS {
+					if s.SessionID == "" {
+						continue
+					}
+					if _, exists := e.sessions[s.SessionID]; !exists {
+						e.storeSession(decodedToSessionEntry(s, nil))
+						e.listed[s.SessionID] = true
+					}
+				}
+			}
+			if !e.prefs.Loaded && len(outP) > 0 && outP[0] != nil {
+				e.applyAccountPrefsDecoded(outP[0], false)
+			}
+			e.updateLivePollers(stepCtx)
+			stepCtx.Dirty.MarkAll()
+		})
+		return
 	}
 
 	if !e.w.World.MachinesListed {
@@ -203,6 +242,22 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 		return
 	}
 
+	if len(ev.WireMachines) > 0 || len(ev.WireSessions) > 0 || len(ev.WireDevices) > 0 ||
+		(e.secEngine != nil && e.secEngine.Locked() && len(ev.Machines) == 0 && len(ev.Sessions) == 0 && len(ev.Devices) == 0) {
+		run := e.refreshRun
+		mp, sp, rp, dp := e.cloneRefreshSnapshots()
+		evNext := ev.Next
+		e.openWireDirectoryBatch(ctx, ev.WireMachines, ev.WireSessions, ev.WireDevices, nil, func(outM []decodedMachine, outS []decodedSession, outD []decodedDevice, _ []*decodedPrefs) {
+			stepCtx := e.activeStepCtx
+			if !e.running || e.refreshRun != run {
+				return
+			}
+			e.devicesApplyGen++
+			e.applyListsDecoded(stepCtx, outM, outS, e.buildAuthoritativeDevices(outD), evNext, mp, sp, rp, dp)
+		})
+		return
+	}
+
 	e.listBackoffMs = ListRetryInitialMs
 	e.listingGen++
 	e.pageOpID = 0
@@ -350,6 +405,40 @@ func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.Sessions
 		ctx.Dirty.Add(true, true, false)
 		return
 	}
+	if len(ev.WireSessions) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Sessions) == 0) {
+		gen := e.listingGen
+		evNext := ev.Next
+		e.openWireDirectoryBatch(ctx, nil, ev.WireSessions, nil, nil, func(_ []decodedMachine, outS []decodedSession, _ []decodedDevice, _ []*decodedPrefs) {
+			stepCtx := e.activeStepCtx
+			if !e.running || e.listingGen != gen || e.pageListingGen != e.listingGen {
+				return
+			}
+			e.w.SessionListErrorText = nil
+			e.w.World.SessionListError = ""
+			for _, s := range outS {
+				if s.SessionID != "" {
+					e.putSessionDecoded(stepCtx, s, false)
+				}
+			}
+			if evNext != nil && (evNext.EndedMs != 0 || evNext.SessionId != "") {
+				e.w.World.SessionsNext = &lists.SessionPlace{
+					EndedMs:   evNext.EndedMs,
+					SessionID: evNext.SessionId,
+				}
+				e.w.World.HasMoreSessions = true
+			} else {
+				e.w.World.SessionsNext = nil
+				e.w.World.HasMoreSessions = false
+			}
+			e.updateLivePollers(stepCtx)
+			e.syncDirectWatched(stepCtx)
+			if e.wantAllSessions && e.w.World.SessionsNext != nil {
+				e.RequestMoreSessions(stepCtx)
+			}
+			stepCtx.Dirty.Add(true, true, false)
+		})
+		return
+	}
 	e.w.SessionListErrorText = nil
 	e.w.World.SessionListError = ""
 	for _, s := range ev.Sessions {
@@ -384,6 +473,26 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 		return
 	}
 	delete(e.sessionByIDOps, ev.OpId)
+	if ev.WireSession != nil || (e.secEngine != nil && e.secEngine.Locked() && ev.Session == nil) {
+		if ev.Error != "" || ev.WireSession == nil || ev.WireSession.SessionId == "" {
+			if sid != "" {
+				e.sessionByIDFailed[sid] = true
+			}
+			ctx.Dirty.Add(false, true, false)
+			return
+		}
+		e.openWireDirectoryBatch(ctx, nil, []*v1.RemoteSession{ev.WireSession}, nil, nil, func(_ []decodedMachine, outS []decodedSession, _ []decodedDevice, _ []*decodedPrefs) {
+			stepCtx := e.activeStepCtx
+			if !e.running || len(outS) == 0 {
+				return
+			}
+			delete(e.sessionByIDFailed, sid)
+			e.putSessionDecoded(stepCtx, outS[0], false)
+			e.updateLivePollers(stepCtx)
+			stepCtx.Dirty.MarkAll()
+		})
+		return
+	}
 	if ev.Error != "" || ev.Session == nil || ev.Session.SessionId == "" {
 		if sid != "" {
 			e.sessionByIDFailed[sid] = true
@@ -421,6 +530,19 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 		return
 	}
 	if ev.Error != "" {
+		return
+	}
+	if len(ev.WireDevices) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Devices) == 0) {
+		e.devicesApplyGen++
+		devGen := e.devicesApplyGen
+		e.openWireDirectoryBatch(ctx, nil, nil, ev.WireDevices, nil, func(_ []decodedMachine, _ []decodedSession, outD []decodedDevice, _ []*decodedPrefs) {
+			stepCtx := e.activeStepCtx
+			if e.devicesApplyGen != devGen {
+				return
+			}
+			e.reconcileDecodedDevices(e.buildAuthoritativeDevices(outD), removedSnapshot, deviceSnapshot, true)
+			stepCtx.Dirty.MarkAll()
+		})
 		return
 	}
 	e.reconcileDevices(ev.Devices, removedSnapshot, deviceSnapshot, true)
@@ -515,6 +637,95 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.requestSyncSecurity(ctx, true)
 			ctx.Dirty.Add(true, false, false)
 		}
+	case *corev1.StreamFrameEvent_WireMachineUpdated:
+		if f.WireMachineUpdated != nil && f.WireMachineUpdated.Id != "" {
+			e.nextPushSeq++
+			e.machinePushes[f.WireMachineUpdated.Id] = e.nextPushSeq
+			legID := ev.LegId
+			wm := f.WireMachineUpdated
+			e.openWireDirectoryBatch(ctx, []*v1.Machine{wm}, nil, nil, nil, func(outM []decodedMachine, _ []decodedSession, _ []decodedDevice, _ []*decodedPrefs) {
+				stepCtx := e.activeStepCtx
+				if !e.running || e.legID != legID || len(outM) == 0 {
+					return
+				}
+				e.putMachineDecoded(stepCtx, outM[0], false, true)
+				if wm.Online && e.security.Loaded && !e.isTrustedMachine(wm.Id) {
+					e.requestSyncSecurity(stepCtx, true)
+				}
+				e.updateLivePollers(stepCtx)
+				stepCtx.Dirty.MarkAll()
+			})
+		}
+	case *corev1.StreamFrameEvent_WireSessionUpdated:
+		if f.WireSessionUpdated != nil && f.WireSessionUpdated.SessionId != "" {
+			sid := f.WireSessionUpdated.SessionId
+			e.nextPushSeq++
+			e.sessionPushes[sid] = e.nextPushSeq
+			legID := ev.LegId
+			ws := f.WireSessionUpdated
+			e.openWireDirectoryBatch(ctx, nil, []*v1.RemoteSession{ws}, nil, nil, func(_ []decodedMachine, outS []decodedSession, _ []decodedDevice, _ []*decodedPrefs) {
+				stepCtx := e.activeStepCtx
+				if !e.running || e.legID != legID || len(outS) == 0 {
+					return
+				}
+				prev := e.sessions[sid]
+				var prevServerSeq uint64
+				if prev != nil {
+					prevServerSeq = prev.ServerLastSeq
+				}
+				e.putSessionDecoded(stepCtx, outS[0], true)
+				updated := e.sessions[sid]
+				b := e.buffers[sid]
+				needGapFill := b != nil && len(b.pending) > 0 && updated != nil && updated.ServerLastSeq > uint64(len(b.prefix))
+				if ws.LastSeq > prevServerSeq || needGapFill {
+					if e.watchedSessions[sid] || b != nil {
+						e.startFetchEvents(stepCtx, sid)
+					}
+				}
+				e.updateLivePollers(stepCtx)
+				stepCtx.Dirty.MarkAll()
+			})
+		}
+	case *corev1.StreamFrameEvent_WireAccountPrefsUpdated:
+		if f.WireAccountPrefsUpdated != nil {
+			legID := ev.LegId
+			wp := f.WireAccountPrefsUpdated
+			e.openWireDirectoryBatch(ctx, nil, nil, nil, []*v1.AccountPrefsObject{wp}, func(_ []decodedMachine, _ []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
+				stepCtx := e.activeStepCtx
+				if !e.running || e.legID != legID || len(outP) == 0 || outP[0] == nil {
+					return
+				}
+				e.applyAccountPrefsDecoded(outP[0], true)
+				if outP[0].Wire != nil && outP[0].Wire.Revision > 0 {
+					stepCtx.emit(&corev1.Effect{
+						Effect: &corev1.Effect_CacheWrite{
+							CacheWrite: &corev1.CacheWriteEffect{
+								Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: outP[0].Wire},
+							},
+						},
+					})
+				}
+				stepCtx.Dirty.MarkAll()
+			})
+		}
+	case *corev1.StreamFrameEvent_WireDeviceUpdated:
+		if f.WireDeviceUpdated != nil && f.WireDeviceUpdated.Id != "" {
+			e.nextPushSeq++
+			e.devicePushes[f.WireDeviceUpdated.Id] = e.nextPushSeq
+			legID := ev.LegId
+			wd := f.WireDeviceUpdated
+			e.openWireDirectoryBatch(ctx, nil, nil, []*v1.Device{wd}, nil, func(_ []decodedMachine, _ []decodedSession, outD []decodedDevice, _ []*decodedPrefs) {
+				stepCtx := e.activeStepCtx
+				if !e.running || e.legID != legID || len(outD) == 0 {
+					return
+				}
+				e.devices[wd.Id] = decodedToDeviceEntry(outD[0])
+				if e.deviceKindNeedsSecuritySync(wd.Id, wd.Kind) {
+					e.requestSyncSecurity(stepCtx, true)
+				}
+				stepCtx.Dirty.Add(true, false, false)
+			})
+		}
 	}
 }
 
@@ -538,8 +749,23 @@ func (e *Engine) putMachine(ctx *StepContext, pm *corev1.PlainMachine, staleOnli
 	if pm == nil || pm.MachineId == "" {
 		return
 	}
-	cur := e.machines[pm.MachineId]
-	entry := plainToMachineEntry(pm)
+	e.putMachineDecoded(ctx, decodedMachine{
+		MachineID:  pm.MachineId,
+		Online:     pm.Online,
+		LastSeenMs: pm.LastSeenMs,
+		Meta:       pm.Meta,
+		MetaRev:    pm.MetaRev,
+		MetaBroken: pm.MetaBroken,
+		CacheRef:   pm.CacheRef,
+	}, staleOnline, writeCache)
+}
+
+func (e *Engine) putMachineDecoded(ctx *StepContext, dm decodedMachine, staleOnline bool, writeCache bool) {
+	if dm.MachineID == "" {
+		return
+	}
+	cur := e.machines[dm.MachineID]
+	entry := decodedToMachineEntry(dm)
 	if cur != nil {
 		if staleOnline {
 			entry.Online = cur.Online
@@ -555,14 +781,24 @@ func (e *Engine) putMachine(ctx *StepContext, pm *corev1.PlainMachine, staleOnli
 		}
 	}
 	e.storeMachine(entry)
-	if writeCache && pm.CacheRef != "" {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheWrite{
-				CacheWrite: &corev1.CacheWriteEffect{
-					Kind: &corev1.CacheWriteEffect_WriteMachineRef{WriteMachineRef: pm.CacheRef},
+	if writeCache {
+		if dm.Wire != nil {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_WriteMachine{WriteMachine: dm.Wire},
+					},
 				},
-			},
-		})
+			})
+		} else if dm.CacheRef != "" {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_WriteMachineRef{WriteMachineRef: dm.CacheRef},
+					},
+				},
+			})
+		}
 	}
 }
 
@@ -590,47 +826,87 @@ func (e *Engine) putSession(ctx *StepContext, ps *corev1.PlainSession, writeCach
 	if ps == nil || ps.SessionId == "" {
 		return
 	}
-	delete(e.sessionByIDFailed, ps.SessionId)
-	prev := e.sessions[ps.SessionId]
-	entry := plainToSessionEntry(ps, prev)
+	e.putSessionDecoded(ctx, decodedSession{
+		SessionID:         ps.SessionId,
+		MachineID:         ps.MachineId,
+		LastSeq:           ps.LastSeq,
+		UpdatedMs:         ps.UpdatedMs,
+		ListedEndedMs:     ps.ListedEndedMs,
+		Meta:              ps.Meta,
+		MetaRev:           ps.MetaRev,
+		Checkpoint:        ps.Checkpoint,
+		CheckpointInvalid: ps.CheckpointInvalid,
+		RetiredHistory:    ps.RetiredHistory,
+		OpenFailed:        ps.OpenFailed,
+		CacheRef:          ps.CacheRef,
+	}, writeCache)
+}
+
+func (e *Engine) putSessionDecoded(ctx *StepContext, ds decodedSession, writeCache bool) {
+	if ds.SessionID == "" {
+		return
+	}
+	delete(e.sessionByIDFailed, ds.SessionID)
+	prev := e.sessions[ds.SessionID]
+	entry := decodedToSessionEntry(ds, prev)
 	e.refreshSessionPending(entry)
 	e.storeSession(entry)
 
-	if ps.OpenFailed && ps.MachineId != "" && ps.CacheRef != "" && e.isTrustedMachine(ps.MachineId) {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheWrite{
-				CacheWrite: &corev1.CacheWriteEffect{
-					Kind: &corev1.CacheWriteEffect_KeepSessionOwnerRef{KeepSessionOwnerRef: ps.CacheRef},
+	if ds.OpenFailed && ds.MachineID != "" && e.isTrustedMachine(ds.MachineID) {
+		if ds.Wire != nil {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_KeepSessionOwner{KeepSessionOwner: ds.Wire},
+					},
 				},
-			},
-		})
-	} else if writeCache && ps.CacheRef != "" {
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_CacheWrite{
-				CacheWrite: &corev1.CacheWriteEffect{
-					Kind: &corev1.CacheWriteEffect_WriteSessionRef{WriteSessionRef: ps.CacheRef},
+			})
+		} else if ds.CacheRef != "" {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_KeepSessionOwnerRef{KeepSessionOwnerRef: ds.CacheRef},
+					},
 				},
-			},
-		})
+			})
+		}
+	} else if writeCache {
+		if ds.Wire != nil {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_WriteSession{WriteSession: ds.Wire},
+					},
+				},
+			})
+		} else if ds.CacheRef != "" {
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_CacheWrite{
+					CacheWrite: &corev1.CacheWriteEffect{
+						Kind: &corev1.CacheWriteEffect_WriteSessionRef{WriteSessionRef: ds.CacheRef},
+					},
+				},
+			})
+		}
 	}
-	if ps.RetiredHistory {
-		e.markSessionRetired(ps.SessionId)
+	if ds.RetiredHistory {
+		e.markSessionRetired(ds.SessionID)
 	}
-	if ps.OpenFailed {
+	if ds.OpenFailed {
 		ctx.emit(&corev1.Effect{
 			Effect: &corev1.Effect_CacheWrite{
 				CacheWrite: &corev1.CacheWriteEffect{
 					Kind: &corev1.CacheWriteEffect_SetSessionOpen{
-						SetSessionOpen: &corev1.CacheSessionOpen{SessionId: ps.SessionId, Open: false},
+						SetSessionOpen: &corev1.CacheSessionOpen{SessionId: ds.SessionID, Open: false},
 					},
 				},
 			},
 		})
 	}
-	if e.watchedSessions[ps.SessionId] && e.buffers[ps.SessionId] == nil {
-		e.startLoadEvents(ctx, ps.SessionId)
+	if e.watchedSessions[ds.SessionID] && e.buffers[ds.SessionID] == nil {
+		e.startLoadEvents(ctx, ds.SessionID)
 	}
-	if e.watchedSessions[ps.SessionId] {
+	if e.watchedSessions[ds.SessionID] {
 		e.syncDirectWatched(ctx)
 	}
 }
@@ -682,15 +958,34 @@ func (e *Engine) removeSession(ctx *StepContext, sid string, dropFromCache bool)
 }
 
 func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot, deviceSnapshot map[string]uint64, allowEmpty bool) {
+	decoded := make([]decodedDevice, 0, len(items))
+	for _, d := range items {
+		if d == nil || d.DeviceId == "" {
+			continue
+		}
+		decoded = append(decoded, decodedDevice{
+			DeviceID:   d.DeviceId,
+			Kind:       d.Kind,
+			CreatedMs:  d.CreatedMs,
+			LastSeenMs: d.LastSeenMs,
+			Meta:       d.Meta,
+			MetaRev:    d.MetaRev,
+			MetaBroken: d.MetaBroken,
+		})
+	}
+	e.reconcileDecodedDevices(decoded, removedSnapshot, deviceSnapshot, allowEmpty)
+}
+
+func (e *Engine) reconcileDecodedDevices(items []decodedDevice, removedSnapshot, deviceSnapshot map[string]uint64, allowEmpty bool) {
 	if len(items) == 0 && !allowEmpty {
 		return
 	}
 	next := make(map[string]*DeviceEntry, len(items))
 	for _, d := range items {
-		if d == nil || d.DeviceId == "" || pushedSince(e.removedPushes, removedSnapshot, d.DeviceId) {
+		if d.DeviceID == "" || pushedSince(e.removedPushes, removedSnapshot, d.DeviceID) {
 			continue
 		}
-		next[d.DeviceId] = plainToDeviceEntry(d)
+		next[d.DeviceID] = decodedToDeviceEntry(d)
 	}
 	for id, cur := range e.devices {
 		if cur != nil && pushedSince(e.devicePushes, deviceSnapshot, id) {
@@ -701,44 +996,73 @@ func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot, 
 }
 
 func plainToMachineEntry(pm *corev1.PlainMachine) *MachineEntry {
-	var meta *v1.MachineMeta
-	if pm.Meta != nil {
-		meta = pm.Meta.Clone()
-	}
-	return &MachineEntry{
-		Machine: lists.Machine{
-			ID:         pm.MachineId,
-			Online:     pm.Online,
-			LastSeenMs: pm.LastSeenMs,
-			Meta:       meta,
-		},
+	return decodedToMachineEntry(decodedMachine{
+		MachineID:  pm.MachineId,
+		Online:     pm.Online,
+		LastSeenMs: pm.LastSeenMs,
+		Meta:       pm.Meta,
 		MetaRev:    pm.MetaRev,
 		MetaBroken: pm.MetaBroken,
 		CacheRef:   pm.CacheRef,
+	})
+}
+
+func decodedToMachineEntry(dm decodedMachine) *MachineEntry {
+	var meta *v1.MachineMeta
+	if dm.Meta != nil {
+		meta = dm.Meta.Clone()
+	}
+	return &MachineEntry{
+		Machine: lists.Machine{
+			ID:         dm.MachineID,
+			Online:     dm.Online,
+			LastSeenMs: dm.LastSeenMs,
+			Meta:       meta,
+		},
+		MetaRev:    dm.MetaRev,
+		MetaBroken: dm.MetaBroken,
+		CacheRef:   dm.CacheRef,
 	}
 }
 
 func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEntry {
-	entry := &SessionEntry{
-		Session: lists.Session{
-			ID:            ps.SessionId,
-			MachineID:     ps.MachineId,
-			UpdatedMs:     ps.UpdatedMs,
-			ListedEndedMs: ps.ListedEndedMs,
-		},
+	return decodedToSessionEntry(decodedSession{
+		SessionID:         ps.SessionId,
+		MachineID:         ps.MachineId,
 		LastSeq:           ps.LastSeq,
-		ServerLastSeq:     ps.LastSeq,
+		UpdatedMs:         ps.UpdatedMs,
+		ListedEndedMs:     ps.ListedEndedMs,
+		Meta:              ps.Meta,
 		MetaRev:           ps.MetaRev,
+		Checkpoint:        ps.Checkpoint,
 		CheckpointInvalid: ps.CheckpointInvalid,
 		RetiredHistory:    ps.RetiredHistory,
 		OpenFailed:        ps.OpenFailed,
 		CacheRef:          ps.CacheRef,
+	}, prev)
+}
+
+func decodedToSessionEntry(ds decodedSession, prev *SessionEntry) *SessionEntry {
+	entry := &SessionEntry{
+		Session: lists.Session{
+			ID:            ds.SessionID,
+			MachineID:     ds.MachineID,
+			UpdatedMs:     ds.UpdatedMs,
+			ListedEndedMs: ds.ListedEndedMs,
+		},
+		LastSeq:           ds.LastSeq,
+		ServerLastSeq:     ds.LastSeq,
+		MetaRev:           ds.MetaRev,
+		CheckpointInvalid: ds.CheckpointInvalid,
+		RetiredHistory:    ds.RetiredHistory,
+		OpenFailed:        ds.OpenFailed,
+		CacheRef:          ds.CacheRef,
 	}
-	if ps.Meta != nil {
-		entry.setInfo(ps.Meta.Clone())
+	if ds.Meta != nil {
+		entry.setInfo(ds.Meta.Clone())
 	}
-	if ps.Checkpoint != nil {
-		entry.Checkpoint = ps.Checkpoint.Clone()
+	if ds.Checkpoint != nil {
+		entry.Checkpoint = ds.Checkpoint.Clone()
 	}
 	if prev != nil {
 		if entry.MachineID == "" {
@@ -757,7 +1081,7 @@ func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEn
 			entry.setInfo(prev.Info)
 			entry.MetaRev = prev.MetaRev
 		}
-		if entry.Checkpoint == nil && !ps.CheckpointInvalid {
+		if entry.Checkpoint == nil && !ds.CheckpointInvalid {
 			entry.Checkpoint = prev.Checkpoint
 		}
 		if entry.ListedEndedMs == 0 {
@@ -771,18 +1095,30 @@ func plainToSessionEntry(ps *corev1.PlainSession, prev *SessionEntry) *SessionEn
 }
 
 func plainToDeviceEntry(pd *corev1.PlainDevice) *DeviceEntry {
-	var meta *v1.DeviceMeta
-	if pd.Meta != nil {
-		meta = pd.Meta.Clone()
-	}
-	return &DeviceEntry{
-		ID:         pd.DeviceId,
+	return decodedToDeviceEntry(decodedDevice{
+		DeviceID:   pd.DeviceId,
 		Kind:       pd.Kind,
 		CreatedMs:  pd.CreatedMs,
 		LastSeenMs: pd.LastSeenMs,
-		Meta:       meta,
+		Meta:       pd.Meta,
 		MetaRev:    pd.MetaRev,
 		MetaBroken: pd.MetaBroken,
+	})
+}
+
+func decodedToDeviceEntry(dd decodedDevice) *DeviceEntry {
+	var meta *v1.DeviceMeta
+	if dd.Meta != nil {
+		meta = dd.Meta.Clone()
+	}
+	return &DeviceEntry{
+		ID:         dd.DeviceID,
+		Kind:       dd.Kind,
+		CreatedMs:  dd.CreatedMs,
+		LastSeenMs: dd.LastSeenMs,
+		Meta:       meta,
+		MetaRev:    dd.MetaRev,
+		MetaBroken: dd.MetaBroken,
 	}
 }
 
@@ -889,15 +1225,22 @@ func (e *Engine) isTrustedMachine(machineID string) bool {
 }
 
 func (e *Engine) deviceNeedsSecuritySync(d *corev1.PlainDevice) bool {
-	if !e.security.Loaded || d == nil || d.DeviceId == "" {
+	if d == nil {
 		return false
 	}
-	switch d.Kind {
+	return e.deviceKindNeedsSecuritySync(d.DeviceId, d.Kind)
+}
+
+func (e *Engine) deviceKindNeedsSecuritySync(deviceID string, kind v1.DeviceKind) bool {
+	if !e.security.Loaded || deviceID == "" {
+		return false
+	}
+	switch kind {
 	case v1.DeviceKind_DEVICE_KIND_MACHINE:
-		return !e.security.TrustedMachines[d.DeviceId]
+		return !e.security.TrustedMachines[deviceID]
 	case v1.DeviceKind_DEVICE_KIND_CLIENT:
-		return !e.security.TrustedClients[d.DeviceId]
+		return !e.security.TrustedClients[deviceID]
 	default:
-		return !e.security.TrustedMachines[d.DeviceId] && !e.security.TrustedClients[d.DeviceId]
+		return !e.security.TrustedMachines[deviceID] && !e.security.TrustedClients[deviceID]
 	}
 }

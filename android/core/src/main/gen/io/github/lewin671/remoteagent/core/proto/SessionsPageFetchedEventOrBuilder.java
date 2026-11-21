@@ -52,4 +52,18 @@ public interface SessionsPageFetchedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.RemoteSession> 
+      getWireSessionsList();
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.RemoteSession getWireSessions(int index);
+  /**
+   * <code>repeated .remoteagent.v1.RemoteSession wire_sessions = 10 [json_name = "wireSessions"];</code>
+   */
+  int getWireSessionsCount();
 }

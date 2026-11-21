@@ -3,7 +3,6 @@ package deviceauth
 import (
 	"bytes"
 	"compress/flate"
-	"io"
 	"sync"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -59,26 +58,7 @@ func pack(plain []byte) []byte {
 // Unpack has an independent expansion limit. Authority metadata verification
 // uses the smaller mutable cap, not the bulk payload's allowance.
 func Unpack(h devicesec.Header, p []byte) ([]byte, error) {
-	limit := devicesec.MaxCipherBytes
-	if h.Purpose.Mutable() {
-		limit = devicesec.MaxMutableBytes
-	}
-	if h.Compression == 0 {
-		if len(p) > limit {
-			return nil, devicesec.ErrCapacity
-		}
-		return p, nil
-	}
-	if h.Compression != 1 {
-		return nil, devicesec.ErrInvalid
-	}
-	r := flate.NewReader(bytes.NewReader(p))
-	defer r.Close()
-	out, err := io.ReadAll(io.LimitReader(r, int64(limit)+1))
-	if err != nil || len(out) > limit {
-		return nil, devicesec.ErrInvalid
-	}
-	return out, nil
+	return devicesec.Unpack(h, p)
 }
 func known(m protoreflect.Message) bool {
 	if len(m.GetUnknown()) != 0 {

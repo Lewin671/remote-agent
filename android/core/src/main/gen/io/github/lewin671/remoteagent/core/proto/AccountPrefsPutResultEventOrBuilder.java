@@ -50,4 +50,15 @@ public interface AccountPrefsPutResultEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+   * @return Whether the wireCurrent field is set.
+   */
+  boolean hasWireCurrent();
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_current = 10 [json_name = "wireCurrent"];</code>
+   * @return The wireCurrent.
+   */
+  io.github.lewin671.remoteagent.proto.AccountPrefsObject getWireCurrent();
 }

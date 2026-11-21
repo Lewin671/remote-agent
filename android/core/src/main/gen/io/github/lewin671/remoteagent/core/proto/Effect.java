@@ -65,6 +65,13 @@ public  final class Effect extends
     DIRECT_BULK_ROUTE(111),
     TERMINAL_REOPEN(112),
     DIRECT_RETRY_NOW_RESULT(113),
+    SECURITY_KEY_SIGN(130),
+    SECURITY_KEY_AGREE(131),
+    SECURITY_KEY_GENERATE(132),
+    SECURITY_KEY_ENCAPSULATE(133),
+    SECURITY_KEY_DISCARD(134),
+    SECURITY_CRYPTO_BATCH(135),
+    SECURITY_OP_RESULT(136),
     EFFECT_NOT_SET(0);
     private final int value;
     private EffectCase(int value) {
@@ -126,6 +133,13 @@ public  final class Effect extends
         case 111: return DIRECT_BULK_ROUTE;
         case 112: return TERMINAL_REOPEN;
         case 113: return DIRECT_RETRY_NOW_RESULT;
+        case 130: return SECURITY_KEY_SIGN;
+        case 131: return SECURITY_KEY_AGREE;
+        case 132: return SECURITY_KEY_GENERATE;
+        case 133: return SECURITY_KEY_ENCAPSULATE;
+        case 134: return SECURITY_KEY_DISCARD;
+        case 135: return SECURITY_CRYPTO_BATCH;
+        case 136: return SECURITY_OP_RESULT;
         case 0: return EFFECT_NOT_SET;
         default: return null;
       }
@@ -2539,6 +2553,390 @@ public  final class Effect extends
     }
   }
 
+  public static final int SECURITY_KEY_SIGN_FIELD_NUMBER = 130;
+  /**
+   * <pre>
+   * Security engine (130-159 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecurityKeySign() {
+    return effectCase_ == 130;
+  }
+  /**
+   * <pre>
+   * Security engine (130-159 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect getSecurityKeySign() {
+    if (effectCase_ == 130) {
+       return (io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect.getDefaultInstance();
+  }
+  /**
+   * <pre>
+   * Security engine (130-159 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurityKeySign(io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 130;
+  }
+  /**
+   * <pre>
+   * Security engine (130-159 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSecurityKeySign(io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 130 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 130;
+  }
+  /**
+   * <pre>
+   * Security engine (130-159 reserved for security).
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+   */
+  private void clearSecurityKeySign() {
+    if (effectCase_ == 130) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SECURITY_KEY_AGREE_FIELD_NUMBER = 131;
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecurityKeyAgree() {
+    return effectCase_ == 131;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect getSecurityKeyAgree() {
+    if (effectCase_ == 131) {
+       return (io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurityKeyAgree(io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 131;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSecurityKeyAgree(io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 131 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 131;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+   */
+  private void clearSecurityKeyAgree() {
+    if (effectCase_ == 131) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SECURITY_KEY_GENERATE_FIELD_NUMBER = 132;
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecurityKeyGenerate() {
+    return effectCase_ == 132;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect getSecurityKeyGenerate() {
+    if (effectCase_ == 132) {
+       return (io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurityKeyGenerate(io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 132;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSecurityKeyGenerate(io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 132 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 132;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+   */
+  private void clearSecurityKeyGenerate() {
+    if (effectCase_ == 132) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SECURITY_KEY_ENCAPSULATE_FIELD_NUMBER = 133;
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecurityKeyEncapsulate() {
+    return effectCase_ == 133;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect getSecurityKeyEncapsulate() {
+    if (effectCase_ == 133) {
+       return (io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurityKeyEncapsulate(io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 133;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSecurityKeyEncapsulate(io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 133 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 133;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+   */
+  private void clearSecurityKeyEncapsulate() {
+    if (effectCase_ == 133) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SECURITY_KEY_DISCARD_FIELD_NUMBER = 134;
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecurityKeyDiscard() {
+    return effectCase_ == 134;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect getSecurityKeyDiscard() {
+    if (effectCase_ == 134) {
+       return (io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurityKeyDiscard(io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 134;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSecurityKeyDiscard(io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 134 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 134;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+   */
+  private void clearSecurityKeyDiscard() {
+    if (effectCase_ == 134) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SECURITY_CRYPTO_BATCH_FIELD_NUMBER = 135;
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecurityCryptoBatch() {
+    return effectCase_ == 135;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect getSecurityCryptoBatch() {
+    if (effectCase_ == 135) {
+       return (io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurityCryptoBatch(io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 135;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSecurityCryptoBatch(io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 135 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 135;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+   */
+  private void clearSecurityCryptoBatch() {
+    if (effectCase_ == 135) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SECURITY_OP_RESULT_FIELD_NUMBER = 136;
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecurityOpResult() {
+    return effectCase_ == 136;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect getSecurityOpResult() {
+    if (effectCase_ == 136) {
+       return (io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecurityOpResult(io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 136;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSecurityOpResult(io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 136 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 136;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+   */
+  private void clearSecurityOpResult() {
+    if (effectCase_ == 136) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.Effect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4856,6 +5254,366 @@ public  final class Effect extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Security engine (130-159 reserved for security).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecurityKeySign() {
+      return instance.hasSecurityKeySign();
+    }
+    /**
+     * <pre>
+     * Security engine (130-159 reserved for security).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect getSecurityKeySign() {
+      return instance.getSecurityKeySign();
+    }
+    /**
+     * <pre>
+     * Security engine (130-159 reserved for security).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+     */
+    public Builder setSecurityKeySign(io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect value) {
+      copyOnWrite();
+      instance.setSecurityKeySign(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Security engine (130-159 reserved for security).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+     */
+    public Builder setSecurityKeySign(
+        io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurityKeySign(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Security engine (130-159 reserved for security).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+     */
+    public Builder mergeSecurityKeySign(io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect value) {
+      copyOnWrite();
+      instance.mergeSecurityKeySign(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Security engine (130-159 reserved for security).
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.SecurityKeySignEffect security_key_sign = 130 [json_name = "securityKeySign"];</code>
+     */
+    public Builder clearSecurityKeySign() {
+      copyOnWrite();
+      instance.clearSecurityKeySign();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecurityKeyAgree() {
+      return instance.hasSecurityKeyAgree();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect getSecurityKeyAgree() {
+      return instance.getSecurityKeyAgree();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+     */
+    public Builder setSecurityKeyAgree(io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect value) {
+      copyOnWrite();
+      instance.setSecurityKeyAgree(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+     */
+    public Builder setSecurityKeyAgree(
+        io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurityKeyAgree(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+     */
+    public Builder mergeSecurityKeyAgree(io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect value) {
+      copyOnWrite();
+      instance.mergeSecurityKeyAgree(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyAgreeEffect security_key_agree = 131 [json_name = "securityKeyAgree"];</code>
+     */
+    public Builder clearSecurityKeyAgree() {
+      copyOnWrite();
+      instance.clearSecurityKeyAgree();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecurityKeyGenerate() {
+      return instance.hasSecurityKeyGenerate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect getSecurityKeyGenerate() {
+      return instance.getSecurityKeyGenerate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+     */
+    public Builder setSecurityKeyGenerate(io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect value) {
+      copyOnWrite();
+      instance.setSecurityKeyGenerate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+     */
+    public Builder setSecurityKeyGenerate(
+        io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurityKeyGenerate(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+     */
+    public Builder mergeSecurityKeyGenerate(io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect value) {
+      copyOnWrite();
+      instance.mergeSecurityKeyGenerate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 132 [json_name = "securityKeyGenerate"];</code>
+     */
+    public Builder clearSecurityKeyGenerate() {
+      copyOnWrite();
+      instance.clearSecurityKeyGenerate();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecurityKeyEncapsulate() {
+      return instance.hasSecurityKeyEncapsulate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect getSecurityKeyEncapsulate() {
+      return instance.getSecurityKeyEncapsulate();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+     */
+    public Builder setSecurityKeyEncapsulate(io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect value) {
+      copyOnWrite();
+      instance.setSecurityKeyEncapsulate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+     */
+    public Builder setSecurityKeyEncapsulate(
+        io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurityKeyEncapsulate(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+     */
+    public Builder mergeSecurityKeyEncapsulate(io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect value) {
+      copyOnWrite();
+      instance.mergeSecurityKeyEncapsulate(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 133 [json_name = "securityKeyEncapsulate"];</code>
+     */
+    public Builder clearSecurityKeyEncapsulate() {
+      copyOnWrite();
+      instance.clearSecurityKeyEncapsulate();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecurityKeyDiscard() {
+      return instance.hasSecurityKeyDiscard();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect getSecurityKeyDiscard() {
+      return instance.getSecurityKeyDiscard();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+     */
+    public Builder setSecurityKeyDiscard(io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect value) {
+      copyOnWrite();
+      instance.setSecurityKeyDiscard(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+     */
+    public Builder setSecurityKeyDiscard(
+        io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurityKeyDiscard(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+     */
+    public Builder mergeSecurityKeyDiscard(io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect value) {
+      copyOnWrite();
+      instance.mergeSecurityKeyDiscard(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 134 [json_name = "securityKeyDiscard"];</code>
+     */
+    public Builder clearSecurityKeyDiscard() {
+      copyOnWrite();
+      instance.clearSecurityKeyDiscard();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecurityCryptoBatch() {
+      return instance.hasSecurityCryptoBatch();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect getSecurityCryptoBatch() {
+      return instance.getSecurityCryptoBatch();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+     */
+    public Builder setSecurityCryptoBatch(io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect value) {
+      copyOnWrite();
+      instance.setSecurityCryptoBatch(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+     */
+    public Builder setSecurityCryptoBatch(
+        io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurityCryptoBatch(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+     */
+    public Builder mergeSecurityCryptoBatch(io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect value) {
+      copyOnWrite();
+      instance.mergeSecurityCryptoBatch(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityCryptoBatchEffect security_crypto_batch = 135 [json_name = "securityCryptoBatch"];</code>
+     */
+    public Builder clearSecurityCryptoBatch() {
+      copyOnWrite();
+      instance.clearSecurityCryptoBatch();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecurityOpResult() {
+      return instance.hasSecurityOpResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect getSecurityOpResult() {
+      return instance.getSecurityOpResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+     */
+    public Builder setSecurityOpResult(io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect value) {
+      copyOnWrite();
+      instance.setSecurityOpResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+     */
+    public Builder setSecurityOpResult(
+        io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecurityOpResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+     */
+    public Builder mergeSecurityOpResult(io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect value) {
+      copyOnWrite();
+      instance.mergeSecurityOpResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityOpResultEffect security_op_result = 136 [json_name = "securityOpResult"];</code>
+     */
+    public Builder clearSecurityOpResult() {
+      copyOnWrite();
+      instance.clearSecurityOpResult();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.Effect)
   }
   @java.lang.Override
@@ -4920,14 +5678,23 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect.class,
             io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.class,
           };
           java.lang.String info =
-              "\u0000.\u0001\u0000\u0001q.\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003<\u0000" +
-              "\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b" +
-              "<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000(<\u0000" +
-              ")<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000" +
-              "I<\u0000J<\u0000K<\u0000L<\u0000d<\u0000e<\u0000f<\u0000g<\u0000h<\u0000i<\u0000" +
-              "j<\u0000k<\u0000l<\u0000m<\u0000n<\u0000o<\u0000p<\u0000q<\u0000";
+              "\u00005\u0001\u0000\u0001\u00885\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
+              "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
+              "<\u0000(<\u0000)<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G" +
+              "<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000d<\u0000e<\u0000f<\u0000g<\u0000h" +
+              "<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000n<\u0000o<\u0000p<\u0000q<\u0000\u0082" +
+              "<\u0000\u0083<\u0000\u0084<\u0000\u0085<\u0000\u0086<\u0000\u0087<\u0000\u0088<\u0000" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

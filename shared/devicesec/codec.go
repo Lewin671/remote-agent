@@ -162,6 +162,9 @@ func validID(s string) bool {
 	}
 	return true
 }
+// IsDeviceID reports whether s is a canonical 32-char lowercase hex device ID.
+func IsDeviceID(s string) bool { return deviceID(s) }
+
 func deviceID(s string) bool {
 	if len(s) != 32 {
 		return false

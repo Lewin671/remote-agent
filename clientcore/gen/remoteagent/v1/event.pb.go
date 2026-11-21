@@ -150,13 +150,16 @@ const (
 )
 
 type Event struct {
-	Seq       uint64
-	SessionId string
-	Time      *timestamppb.Timestamp
-	TurnId    string
-	Origin    *Origin
-	Kind      isEvent_Kind
+	Seq        uint64
+	SessionId  string
+	Time       *timestamppb.Timestamp
+	TurnId     string
+	Origin     *Origin
+	Kind       isEvent_Kind
+	hasUnknown bool
 }
+
+func (m *Event) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 type isEvent_Kind interface{ isEvent_Kind() }
 type Event_UserMessage struct{ UserMessage *UserMessage }
@@ -685,6 +688,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Time); err != nil {
 					return err
 				}
+				if m.Time.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 4:
@@ -704,6 +710,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Origin); err != nil {
 					return err
 				}
+				if m.Origin.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 10:
@@ -717,6 +726,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_UserMessage{UserMessage: sub}
 				continue
@@ -733,6 +745,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_AgentMessage{AgentMessage: sub}
 				continue
 			}
@@ -747,6 +762,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_Reasoning{Reasoning: sub}
 				continue
@@ -763,6 +781,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_ToolCall{ToolCall: sub}
 				continue
 			}
@@ -777,6 +798,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_TurnStarted{TurnStarted: sub}
 				continue
@@ -793,6 +817,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_TurnEnded{TurnEnded: sub}
 				continue
 			}
@@ -807,6 +834,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_TokenUsage{TokenUsage: sub}
 				continue
@@ -823,6 +853,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_TurnContext{TurnContext: sub}
 				continue
 			}
@@ -837,6 +870,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_ApprovalRequested{ApprovalRequested: sub}
 				continue
@@ -853,6 +889,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_ApprovalResolved{ApprovalResolved: sub}
 				continue
 			}
@@ -867,6 +906,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_QuestionAsked{QuestionAsked: sub}
 				continue
@@ -883,6 +925,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_QuestionAnswered{QuestionAnswered: sub}
 				continue
 			}
@@ -897,6 +942,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_SessionState{SessionState: sub}
 				continue
@@ -913,6 +961,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_InputState{InputState: sub}
 				continue
 			}
@@ -927,6 +978,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_PlanProposed{PlanProposed: sub}
 				continue
@@ -943,6 +997,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_SettingsChanged{SettingsChanged: sub}
 				continue
 			}
@@ -957,6 +1014,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_ToolStarted{ToolStarted: sub}
 				continue
@@ -973,6 +1033,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_ImageGenerated{ImageGenerated: sub}
 				continue
 			}
@@ -987,6 +1050,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
+				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
 				}
 				m.Kind = &Event_PlanAnswered{PlanAnswered: sub}
 				continue
@@ -1003,6 +1069,9 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_SessionForked{SessionForked: sub}
 				continue
 			}
@@ -1018,10 +1087,14 @@ func (m *Event) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, sub); err != nil {
 					return err
 				}
+				if sub.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Kind = &Event_ScheduledNotification{ScheduledNotification: sub}
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1037,7 +1110,10 @@ type Origin struct {
 	ObservedScreenHash []byte
 	ScheduledTaskId    string
 	ScheduledRunId     string
+	hasUnknown         bool
 }
+
+func (m *Origin) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *Origin) GetKind() OriginKind {
 	if m != nil {
@@ -1182,6 +1258,7 @@ func (m *Origin) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1208,7 +1285,10 @@ type ImageRef struct {
 	PreviewWidth   int32
 	PreviewHeight  int32
 	UploadId       string
+	hasUnknown     bool
 }
+
+func (m *ImageRef) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ImageRef) GetImageId() string {
 	if m != nil {
@@ -1529,6 +1609,7 @@ func (m *ImageRef) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1540,7 +1621,10 @@ type ImageGenerated struct {
 	CallId        string
 	RevisedPrompt string
 	Images        []*ImageRef
+	hasUnknown    bool
 }
+
+func (m *ImageGenerated) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ImageGenerated) GetCallId() string {
 	if m != nil {
@@ -1626,10 +1710,14 @@ func (m *ImageGenerated) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Images = append(m.Images, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1640,7 +1728,10 @@ func (m *ImageGenerated) Unmarshal(b []byte) error {
 type SessionForked struct {
 	SourceSessionId string
 	SourceTitle     string
+	hasUnknown      bool
 }
+
+func (m *SessionForked) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SessionForked) GetSourceSessionId() string {
 	if m != nil {
@@ -1704,6 +1795,7 @@ func (m *SessionForked) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1712,8 +1804,11 @@ func (m *SessionForked) Unmarshal(b []byte) error {
 }
 
 type PlanAnswered struct {
-	Choice int32
+	Choice     int32
+	hasUnknown bool
 }
+
+func (m *PlanAnswered) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *PlanAnswered) GetChoice() int32 {
 	if m != nil {
@@ -1761,6 +1856,7 @@ func (m *PlanAnswered) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1775,7 +1871,10 @@ type ToolStarted struct {
 	Input       string
 	ItemType    string
 	InputDigest string
+	hasUnknown  bool
 }
+
+func (m *ToolStarted) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ToolStarted) GetTitle() string {
 	if m != nil {
@@ -1903,6 +2002,7 @@ func (m *ToolStarted) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -1911,11 +2011,14 @@ func (m *ToolStarted) Unmarshal(b []byte) error {
 }
 
 type UserMessage struct {
-	Text      string
-	Images    []*ImageRef
-	RequestId string
-	Files     []*SentFile
+	Text       string
+	Images     []*ImageRef
+	RequestId  string
+	Files      []*SentFile
+	hasUnknown bool
 }
+
+func (m *UserMessage) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *UserMessage) GetText() string {
 	if m != nil {
@@ -2009,6 +2112,9 @@ func (m *UserMessage) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Images = append(m.Images, elem)
 				continue
 			}
@@ -2027,10 +2133,14 @@ func (m *UserMessage) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Files = append(m.Files, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2039,11 +2149,14 @@ func (m *UserMessage) Unmarshal(b []byte) error {
 }
 
 type SentFile struct {
-	FileId    string
-	Name      string
-	SizeBytes int64
-	Path      string
+	FileId     string
+	Name       string
+	SizeBytes  int64
+	Path       string
+	hasUnknown bool
 }
+
+func (m *SentFile) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SentFile) GetFileId() string {
 	if m != nil {
@@ -2139,6 +2252,7 @@ func (m *SentFile) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2147,9 +2261,12 @@ func (m *SentFile) Unmarshal(b []byte) error {
 }
 
 type AgentMessage struct {
-	Text  string
-	Phase string
+	Text       string
+	Phase      string
+	hasUnknown bool
 }
+
+func (m *AgentMessage) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *AgentMessage) GetText() string {
 	if m != nil {
@@ -2213,6 +2330,7 @@ func (m *AgentMessage) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2221,8 +2339,11 @@ func (m *AgentMessage) Unmarshal(b []byte) error {
 }
 
 type Reasoning struct {
-	Text string
+	Text       string
+	hasUnknown bool
 }
+
+func (m *Reasoning) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *Reasoning) GetText() string {
 	if m != nil {
@@ -2270,6 +2391,7 @@ func (m *Reasoning) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2293,7 +2415,10 @@ type ToolCall struct {
 	Background      ToolBackground
 	BackgroundId    string
 	SharedFiles     []*SharedFile
+	hasUnknown      bool
 }
+
+func (m *ToolCall) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ToolCall) GetCallId() string {
 	if m != nil {
@@ -2561,6 +2686,9 @@ func (m *ToolCall) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Images = append(m.Images, elem)
 				continue
 			}
@@ -2588,10 +2716,14 @@ func (m *ToolCall) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.SharedFiles = append(m.SharedFiles, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2600,12 +2732,15 @@ func (m *ToolCall) Unmarshal(b []byte) error {
 }
 
 type SharedFile struct {
-	FileId    string
-	Name      string
-	SizeBytes int64
-	Sha256    []byte
-	Path      string
+	FileId     string
+	Name       string
+	SizeBytes  int64
+	Sha256     []byte
+	Path       string
+	hasUnknown bool
 }
+
+func (m *SharedFile) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SharedFile) GetFileId() string {
 	if m != nil {
@@ -2718,6 +2853,7 @@ func (m *SharedFile) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2726,7 +2862,10 @@ func (m *SharedFile) Unmarshal(b []byte) error {
 }
 
 type TurnStarted struct {
+	hasUnknown bool
 }
+
+func (m *TurnStarted) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *TurnStarted) Clone() *TurnStarted {
 	if m == nil {
@@ -2755,6 +2894,7 @@ func (m *TurnStarted) Unmarshal(b []byte) error {
 		if err != nil {
 			return err
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2769,7 +2909,10 @@ type TurnEnded struct {
 	ScheduledTaskId   string
 	ScheduledRunId    string
 	ScheduledNotified bool
+	hasUnknown        bool
 }
+
+func (m *TurnEnded) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *TurnEnded) GetOutcome() TurnOutcome {
 	if m != nil {
@@ -2897,6 +3040,7 @@ func (m *TurnEnded) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -2916,7 +3060,10 @@ type TokenUsage struct {
 	SecondaryLimit        *RateLimit
 	PlanType              string
 	MessageId             string
+	hasUnknown            bool
 }
+
+func (m *TokenUsage) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *TokenUsage) GetInputTokens() int64 {
 	if m != nil {
@@ -3101,6 +3248,9 @@ func (m *TokenUsage) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.PrimaryLimit); err != nil {
 					return err
 				}
+				if m.PrimaryLimit.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 9:
@@ -3110,6 +3260,9 @@ func (m *TokenUsage) Unmarshal(b []byte) error {
 				}
 				if err := litewire.ReadMessage(&b, m.SecondaryLimit); err != nil {
 					return err
+				}
+				if m.SecondaryLimit.HasUnknown() {
+					m.hasUnknown = true
 				}
 				continue
 			}
@@ -3132,6 +3285,7 @@ func (m *TokenUsage) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3143,7 +3297,10 @@ type RateLimit struct {
 	UsedPercent   float64
 	WindowMinutes int64
 	ResetsAt      int64
+	hasUnknown    bool
 }
+
+func (m *RateLimit) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *RateLimit) GetUsedPercent() float64 {
 	if m != nil {
@@ -3223,6 +3380,7 @@ func (m *RateLimit) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3231,9 +3389,12 @@ func (m *RateLimit) Unmarshal(b []byte) error {
 }
 
 type PlanProposed struct {
-	Text   string
-	CallId string
+	Text       string
+	CallId     string
+	hasUnknown bool
 }
+
+func (m *PlanProposed) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *PlanProposed) GetText() string {
 	if m != nil {
@@ -3297,6 +3458,7 @@ func (m *PlanProposed) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3305,11 +3467,14 @@ func (m *PlanProposed) Unmarshal(b []byte) error {
 }
 
 type SettingsChanged struct {
-	Model     string
-	Effort    string
-	Mode      ApprovalMode
-	Compacted bool
+	Model      string
+	Effort     string
+	Mode       ApprovalMode
+	Compacted  bool
+	hasUnknown bool
 }
+
+func (m *SettingsChanged) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SettingsChanged) GetModel() string {
 	if m != nil {
@@ -3405,6 +3570,7 @@ func (m *SettingsChanged) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3420,7 +3586,10 @@ type TurnContext struct {
 	Sandbox           string
 	CollaborationMode string
 	PermissionMode    string
+	hasUnknown        bool
 }
+
+func (m *TurnContext) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *TurnContext) GetModel() string {
 	if m != nil {
@@ -3564,6 +3733,7 @@ func (m *TurnContext) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3579,7 +3749,10 @@ type ApprovalRequested struct {
 	ToolInputJson string
 	Deadline      *timestamppb.Timestamp
 	InputDigest   string
+	hasUnknown    bool
 }
+
+func (m *ApprovalRequested) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ApprovalRequested) GetApprovalId() string {
 	if m != nil {
@@ -3715,6 +3888,9 @@ func (m *ApprovalRequested) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, m.Deadline); err != nil {
 					return err
 				}
+				if m.Deadline.HasUnknown() {
+					m.hasUnknown = true
+				}
 				continue
 			}
 		case 7:
@@ -3727,6 +3903,7 @@ func (m *ApprovalRequested) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3738,7 +3915,10 @@ type ApprovalResolved struct {
 	ApprovalId string
 	Decision   ApprovalDecision
 	Message    string
+	hasUnknown bool
 }
+
+func (m *ApprovalResolved) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ApprovalResolved) GetApprovalId() string {
 	if m != nil {
@@ -3818,6 +3998,7 @@ func (m *ApprovalResolved) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3828,7 +4009,10 @@ func (m *ApprovalResolved) Unmarshal(b []byte) error {
 type QuestionOption struct {
 	Label       string
 	Description string
+	hasUnknown  bool
 }
+
+func (m *QuestionOption) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *QuestionOption) GetLabel() string {
 	if m != nil {
@@ -3892,6 +4076,7 @@ func (m *QuestionOption) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -3905,7 +4090,10 @@ type Question struct {
 	Text        string
 	Options     []*QuestionOption
 	MultiSelect bool
+	hasUnknown  bool
 }
+
+func (m *Question) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *Question) GetId() string {
 	if m != nil {
@@ -4014,6 +4202,9 @@ func (m *Question) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Options = append(m.Options, elem)
 				continue
 			}
@@ -4027,6 +4218,7 @@ func (m *Question) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4038,7 +4230,10 @@ type QuestionAsked struct {
 	QuestionId string
 	Questions  []*Question
 	Async      bool
+	hasUnknown bool
 }
+
+func (m *QuestionAsked) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *QuestionAsked) GetQuestionId() string {
 	if m != nil {
@@ -4115,6 +4310,9 @@ func (m *QuestionAsked) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Questions = append(m.Questions, elem)
 				continue
 			}
@@ -4128,6 +4326,7 @@ func (m *QuestionAsked) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4138,7 +4337,10 @@ func (m *QuestionAsked) Unmarshal(b []byte) error {
 type QuestionAnswer struct {
 	QuestionId string
 	Answers    []string
+	hasUnknown bool
 }
+
+func (m *QuestionAnswer) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *QuestionAnswer) GetQuestionId() string {
 	if m != nil {
@@ -4205,6 +4407,7 @@ func (m *QuestionAnswer) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4215,7 +4418,10 @@ func (m *QuestionAnswer) Unmarshal(b []byte) error {
 type QuestionAnswered struct {
 	QuestionId string
 	Answers    []*QuestionAnswer
+	hasUnknown bool
 }
+
+func (m *QuestionAnswered) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *QuestionAnswered) GetQuestionId() string {
 	if m != nil {
@@ -4285,10 +4491,14 @@ func (m *QuestionAnswered) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Answers = append(m.Answers, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4302,7 +4512,10 @@ type SessionState struct {
 	PlanOpen        bool
 	ScheduledClosed bool
 	IdleClosed      bool
+	hasUnknown      bool
 }
+
+func (m *SessionState) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *SessionState) GetStatus() SessionStatus {
 	if m != nil {
@@ -4414,6 +4627,7 @@ func (m *SessionState) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4422,16 +4636,19 @@ func (m *SessionState) Unmarshal(b []byte) error {
 }
 
 type InputState struct {
-	RequestId string
-	Status    InputStatus
-	Reason    string
-	Stage     InputStage
-	Text      string
-	ImageIds  []string
-	Mode      SendMode
-	Paused    bool
-	Files     []*SentFile
+	RequestId  string
+	Status     InputStatus
+	Reason     string
+	Stage      InputStage
+	Text       string
+	ImageIds   []string
+	Mode       SendMode
+	Paused     bool
+	Files      []*SentFile
+	hasUnknown bool
 }
+
+func (m *InputState) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *InputState) GetRequestId() string {
 	if m != nil {
@@ -4616,10 +4833,14 @@ func (m *InputState) Unmarshal(b []byte) error {
 				if err := litewire.ReadMessage(&b, elem); err != nil {
 					return err
 				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
 				m.Files = append(m.Files, elem)
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -4628,11 +4849,14 @@ func (m *InputState) Unmarshal(b []byte) error {
 }
 
 type ScheduledNotification struct {
-	TaskId string
-	RunId  string
-	Title  string
-	Text   string
+	TaskId     string
+	RunId      string
+	Title      string
+	Text       string
+	hasUnknown bool
 }
+
+func (m *ScheduledNotification) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 func (m *ScheduledNotification) GetTaskId() string {
 	if m != nil {
@@ -4728,6 +4952,7 @@ func (m *ScheduledNotification) Unmarshal(b []byte) error {
 				continue
 			}
 		}
+		m.hasUnknown = true
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}

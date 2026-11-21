@@ -116,5 +116,49 @@ public interface StreamFrameEventOrBuilder extends
   com.google.protobuf.ByteString
       getDeviceRemovedIdBytes();
 
+  /**
+   * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+   * @return Whether the wireMachineUpdated field is set.
+   */
+  boolean hasWireMachineUpdated();
+  /**
+   * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+   * @return The wireMachineUpdated.
+   */
+  io.github.lewin671.remoteagent.proto.Machine getWireMachineUpdated();
+
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+   * @return Whether the wireSessionUpdated field is set.
+   */
+  boolean hasWireSessionUpdated();
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+   * @return The wireSessionUpdated.
+   */
+  io.github.lewin671.remoteagent.proto.RemoteSession getWireSessionUpdated();
+
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+   * @return Whether the wireAccountPrefsUpdated field is set.
+   */
+  boolean hasWireAccountPrefsUpdated();
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+   * @return The wireAccountPrefsUpdated.
+   */
+  io.github.lewin671.remoteagent.proto.AccountPrefsObject getWireAccountPrefsUpdated();
+
+  /**
+   * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+   * @return Whether the wireDeviceUpdated field is set.
+   */
+  boolean hasWireDeviceUpdated();
+  /**
+   * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+   * @return The wireDeviceUpdated.
+   */
+  io.github.lewin671.remoteagent.proto.Device getWireDeviceUpdated();
+
   public io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.FrameCase getFrameCase();
 }

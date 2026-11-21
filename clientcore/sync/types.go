@@ -7,11 +7,13 @@ package sync
 import (
 	"strconv"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
@@ -337,10 +339,12 @@ type Engine struct {
 	machineOrderStale bool
 	sessionOrderStale bool
 
-	nowMs            int64
-	monoMs           int64
-	seenExplicitMono bool
-	entropy          entropyPool
+	nowMs                int64
+	monoMs               int64
+	seenExplicitMono     bool
+	entropy              *entropy.Pool
+	entropyNeedRequested bool
+	activeStepCtx        *StepContext
 
 	running          bool
 	foreground       bool
@@ -399,6 +403,7 @@ type Engine struct {
 	pageOpID           uint64
 	pageListingGen     uint64
 	devicesOpID        uint64
+	devicesApplyGen    uint64
 	lastDevicesPushSeq uint64
 	devicesSnapshotR   map[string]uint64
 	devicesSnapshotD   map[string]uint64
@@ -410,16 +415,18 @@ type Engine struct {
 	devicePushes       map[string]uint64
 	directReady        map[string]bool
 
-	buffers          map[string]*EventBuffer
-	watchedSessions  map[string]bool
-	pinnedSessions   map[string]bool
-	livePollInFlight map[string]string // session_id -> active request_id
-	livePollReqToSid map[string]string // request_id -> session_id
+	buffers             map[string]*EventBuffer
+	sessionReplacements map[string][]*v1.MachineReplacementProof
+	watchedSessions     map[string]bool
+	pinnedSessions      map[string]bool
+	livePollInFlight    map[string]string // session_id -> active request_id
+	livePollReqToSid    map[string]string // request_id -> session_id
 
 	prefs         PrefsState
 	prefsLoadOpID uint64
 	prefsQueue    []prefsQueueItem
 
+	secEngine      *security.Engine
 	security       SecurityState
 	homeScopeToken string
 	scopeHMACKey   []byte
@@ -444,9 +451,12 @@ type Engine struct {
 
 // NewEngine constructs a fresh sans-IO sync Engine.
 func NewEngine() *Engine {
+	pool := &entropy.Pool{}
 	e := &Engine{
 		foreground:        true,
 		networkAvailable:  true,
+		entropy:           pool,
+		secEngine:         security.NewEngine(pool),
 		timers:            make(map[timerKey]timerEntry),
 		listBackoffMs:     ListRetryInitialMs,
 		prefsBackoffMs:    PrefsRetryInitialMs,
@@ -463,6 +473,7 @@ func NewEngine() *Engine {
 		directReady:       make(map[string]bool),
 		directPrefs:       make(map[string]bool),
 		buffers:           make(map[string]*EventBuffer),
+		sessionReplacements: make(map[string][]*v1.MachineReplacementProof),
 		watchedSessions:   make(map[string]bool),
 		pinnedSessions:    make(map[string]bool),
 		livePollInFlight:  make(map[string]string),
@@ -475,6 +486,7 @@ func NewEngine() *Engine {
 		lateDirectDeadline: make(map[string]int64),
 		transportCoord: transport.NewCoordinator(transport.CoordConfig{
 			ProtocolVersion: uint64(PeerVersion),
+			Entropy:         pool,
 		}),
 	}
 	e.w.Init()
@@ -555,7 +567,9 @@ func (e *Engine) HandleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 
 func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	ctx := newStepContext()
-	e.entropy.needRequested = false
+	e.activeStepCtx = ctx
+	defer func() { e.activeStepCtx = nil }()
+	e.entropyNeedRequested = false
 	if ev == nil {
 		return false, StepResult{}
 	}
@@ -565,12 +579,14 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	}
 	e.advanceClocks(ev.NowMs, ev.MonoMs, cal)
 	e.expireDisplayGraceOnClock(ctx)
-	e.entropy.push(ev.RandomIds, ev.UnitFloats)
+	e.entropy.PushLegacy(ev.RandomIds, ev.UnitFloats)
 	if ep := ev.GetEntropyProvided(); ep != nil {
-		e.entropy.push(ep.RandomIds, ep.UnitFloats)
+		e.entropy.PushLegacy(ep.RandomIds, ep.UnitFloats)
 		if len(ep.RandomBytes) > 0 {
+			e.entropy.Append(ep.RandomBytes)
 			e.handleDirectRandomBytes(ctx, ep.RandomBytes)
 		}
+		e.maybeRequestEntropy(ctx)
 		return true, finalizeResult(ctx)
 	}
 	if cal != nil {
@@ -685,6 +701,20 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleDirectBulkTransferDone(ctx, k.DirectBulkTransferDone)
 	case *corev1.Event_TerminalStream:
 		e.handleTerminalStream(ctx, k.TerminalStream)
+	case *corev1.Event_SecurityConfig:
+		e.handleSecurityConfig(ctx, k.SecurityConfig)
+	case *corev1.Event_SecurityRecord:
+		e.handleSecurityRecord(ctx, k.SecurityRecord)
+	case *corev1.Event_SecurityKeySigned:
+		e.handleSecurityKeySigned(ctx, k.SecurityKeySigned)
+	case *corev1.Event_SecurityKeyAgreed:
+		e.handleSecurityKeyAgreed(ctx, k.SecurityKeyAgreed)
+	case *corev1.Event_SecurityCryptoBatchDone:
+		e.handleSecurityCryptoBatchDone(ctx, k.SecurityCryptoBatchDone)
+	case *corev1.Event_SecurityOpRequest:
+		e.handleSecurityOpRequest(ctx, k.SecurityOpRequest)
+	case *corev1.Event_SeedDemoWorld:
+		e.handleSeedDemoWorld(ctx, k.SeedDemoWorld)
 	default:
 		consumed = false
 	}
@@ -701,5 +731,5 @@ func finalizeResult(ctx *StepContext) StepResult {
 
 // NextID allocates the next deterministic ID from the engine entropy pool.
 func (e *Engine) NextID(ctx *StepContext) string {
-	return e.entropy.nextID(ctx)
+	return e.nextID(ctx)
 }

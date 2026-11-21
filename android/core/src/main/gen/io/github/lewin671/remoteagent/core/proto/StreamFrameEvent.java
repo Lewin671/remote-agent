@@ -27,6 +27,10 @@ public  final class StreamFrameEvent extends
     ACCOUNT_PREFS_UPDATED(7),
     DEVICE_UPDATED(8),
     DEVICE_REMOVED_ID(9),
+    WIRE_MACHINE_UPDATED(10),
+    WIRE_SESSION_UPDATED(11),
+    WIRE_ACCOUNT_PREFS_UPDATED(12),
+    WIRE_DEVICE_UPDATED(13),
     FRAME_NOT_SET(0);
     private final int value;
     private FrameCase(int value) {
@@ -50,6 +54,10 @@ public  final class StreamFrameEvent extends
         case 7: return ACCOUNT_PREFS_UPDATED;
         case 8: return DEVICE_UPDATED;
         case 9: return DEVICE_REMOVED_ID;
+        case 10: return WIRE_MACHINE_UPDATED;
+        case 11: return WIRE_SESSION_UPDATED;
+        case 12: return WIRE_ACCOUNT_PREFS_UPDATED;
+        case 13: return WIRE_DEVICE_UPDATED;
         case 0: return FRAME_NOT_SET;
         default: return null;
       }
@@ -523,6 +531,214 @@ public  final class StreamFrameEvent extends
     checkByteStringIsUtf8(value);
     frame_ = value.toStringUtf8();
     frameCase_ = 9;
+  }
+
+  public static final int WIRE_MACHINE_UPDATED_FIELD_NUMBER = 10;
+  /**
+   * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWireMachineUpdated() {
+    return frameCase_ == 10;
+  }
+  /**
+   * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Machine getWireMachineUpdated() {
+    if (frameCase_ == 10) {
+       return (io.github.lewin671.remoteagent.proto.Machine) frame_;
+    }
+    return io.github.lewin671.remoteagent.proto.Machine.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireMachineUpdated(io.github.lewin671.remoteagent.proto.Machine value) {
+    value.getClass();  // minimal bytecode null check
+    frame_ = value;
+    frameCase_ = 10;
+  }
+  /**
+   * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWireMachineUpdated(io.github.lewin671.remoteagent.proto.Machine value) {
+    value.getClass();  // minimal bytecode null check
+    if (frameCase_ == 10 &&
+        frame_ != io.github.lewin671.remoteagent.proto.Machine.getDefaultInstance()) {
+      frame_ = io.github.lewin671.remoteagent.proto.Machine.newBuilder((io.github.lewin671.remoteagent.proto.Machine) frame_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      frame_ = value;
+    }
+    frameCase_ = 10;
+  }
+  /**
+   * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+   */
+  private void clearWireMachineUpdated() {
+    if (frameCase_ == 10) {
+      frameCase_ = 0;
+      frame_ = null;
+    }
+  }
+
+  public static final int WIRE_SESSION_UPDATED_FIELD_NUMBER = 11;
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWireSessionUpdated() {
+    return frameCase_ == 11;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.RemoteSession getWireSessionUpdated() {
+    if (frameCase_ == 11) {
+       return (io.github.lewin671.remoteagent.proto.RemoteSession) frame_;
+    }
+    return io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireSessionUpdated(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    frame_ = value;
+    frameCase_ = 11;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWireSessionUpdated(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+    value.getClass();  // minimal bytecode null check
+    if (frameCase_ == 11 &&
+        frame_ != io.github.lewin671.remoteagent.proto.RemoteSession.getDefaultInstance()) {
+      frame_ = io.github.lewin671.remoteagent.proto.RemoteSession.newBuilder((io.github.lewin671.remoteagent.proto.RemoteSession) frame_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      frame_ = value;
+    }
+    frameCase_ = 11;
+  }
+  /**
+   * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+   */
+  private void clearWireSessionUpdated() {
+    if (frameCase_ == 11) {
+      frameCase_ = 0;
+      frame_ = null;
+    }
+  }
+
+  public static final int WIRE_ACCOUNT_PREFS_UPDATED_FIELD_NUMBER = 12;
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWireAccountPrefsUpdated() {
+    return frameCase_ == 12;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWireAccountPrefsUpdated() {
+    if (frameCase_ == 12) {
+       return (io.github.lewin671.remoteagent.proto.AccountPrefsObject) frame_;
+    }
+    return io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireAccountPrefsUpdated(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    value.getClass();  // minimal bytecode null check
+    frame_ = value;
+    frameCase_ = 12;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWireAccountPrefsUpdated(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+    value.getClass();  // minimal bytecode null check
+    if (frameCase_ == 12 &&
+        frame_ != io.github.lewin671.remoteagent.proto.AccountPrefsObject.getDefaultInstance()) {
+      frame_ = io.github.lewin671.remoteagent.proto.AccountPrefsObject.newBuilder((io.github.lewin671.remoteagent.proto.AccountPrefsObject) frame_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      frame_ = value;
+    }
+    frameCase_ = 12;
+  }
+  /**
+   * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+   */
+  private void clearWireAccountPrefsUpdated() {
+    if (frameCase_ == 12) {
+      frameCase_ = 0;
+      frame_ = null;
+    }
+  }
+
+  public static final int WIRE_DEVICE_UPDATED_FIELD_NUMBER = 13;
+  /**
+   * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWireDeviceUpdated() {
+    return frameCase_ == 13;
+  }
+  /**
+   * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Device getWireDeviceUpdated() {
+    if (frameCase_ == 13) {
+       return (io.github.lewin671.remoteagent.proto.Device) frame_;
+    }
+    return io.github.lewin671.remoteagent.proto.Device.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWireDeviceUpdated(io.github.lewin671.remoteagent.proto.Device value) {
+    value.getClass();  // minimal bytecode null check
+    frame_ = value;
+    frameCase_ = 13;
+  }
+  /**
+   * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeWireDeviceUpdated(io.github.lewin671.remoteagent.proto.Device value) {
+    value.getClass();  // minimal bytecode null check
+    if (frameCase_ == 13 &&
+        frame_ != io.github.lewin671.remoteagent.proto.Device.getDefaultInstance()) {
+      frame_ = io.github.lewin671.remoteagent.proto.Device.newBuilder((io.github.lewin671.remoteagent.proto.Device) frame_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      frame_ = value;
+    }
+    frameCase_ = 13;
+  }
+  /**
+   * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+   */
+  private void clearWireDeviceUpdated() {
+    if (frameCase_ == 13) {
+      frameCase_ = 0;
+      frame_ = null;
+    }
   }
 
   public static io.github.lewin671.remoteagent.core.proto.StreamFrameEvent parseFrom(
@@ -1052,6 +1268,198 @@ public  final class StreamFrameEvent extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWireMachineUpdated() {
+      return instance.hasWireMachineUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Machine getWireMachineUpdated() {
+      return instance.getWireMachineUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+     */
+    public Builder setWireMachineUpdated(io.github.lewin671.remoteagent.proto.Machine value) {
+      copyOnWrite();
+      instance.setWireMachineUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+     */
+    public Builder setWireMachineUpdated(
+        io.github.lewin671.remoteagent.proto.Machine.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireMachineUpdated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+     */
+    public Builder mergeWireMachineUpdated(io.github.lewin671.remoteagent.proto.Machine value) {
+      copyOnWrite();
+      instance.mergeWireMachineUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Machine wire_machine_updated = 10 [json_name = "wireMachineUpdated"];</code>
+     */
+    public Builder clearWireMachineUpdated() {
+      copyOnWrite();
+      instance.clearWireMachineUpdated();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWireSessionUpdated() {
+      return instance.hasWireSessionUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.RemoteSession getWireSessionUpdated() {
+      return instance.getWireSessionUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+     */
+    public Builder setWireSessionUpdated(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.setWireSessionUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+     */
+    public Builder setWireSessionUpdated(
+        io.github.lewin671.remoteagent.proto.RemoteSession.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireSessionUpdated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+     */
+    public Builder mergeWireSessionUpdated(io.github.lewin671.remoteagent.proto.RemoteSession value) {
+      copyOnWrite();
+      instance.mergeWireSessionUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.RemoteSession wire_session_updated = 11 [json_name = "wireSessionUpdated"];</code>
+     */
+    public Builder clearWireSessionUpdated() {
+      copyOnWrite();
+      instance.clearWireSessionUpdated();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWireAccountPrefsUpdated() {
+      return instance.hasWireAccountPrefsUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AccountPrefsObject getWireAccountPrefsUpdated() {
+      return instance.getWireAccountPrefsUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+     */
+    public Builder setWireAccountPrefsUpdated(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+      copyOnWrite();
+      instance.setWireAccountPrefsUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+     */
+    public Builder setWireAccountPrefsUpdated(
+        io.github.lewin671.remoteagent.proto.AccountPrefsObject.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireAccountPrefsUpdated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+     */
+    public Builder mergeWireAccountPrefsUpdated(io.github.lewin671.remoteagent.proto.AccountPrefsObject value) {
+      copyOnWrite();
+      instance.mergeWireAccountPrefsUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.AccountPrefsObject wire_account_prefs_updated = 12 [json_name = "wireAccountPrefsUpdated"];</code>
+     */
+    public Builder clearWireAccountPrefsUpdated() {
+      copyOnWrite();
+      instance.clearWireAccountPrefsUpdated();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWireDeviceUpdated() {
+      return instance.hasWireDeviceUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Device getWireDeviceUpdated() {
+      return instance.getWireDeviceUpdated();
+    }
+    /**
+     * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+     */
+    public Builder setWireDeviceUpdated(io.github.lewin671.remoteagent.proto.Device value) {
+      copyOnWrite();
+      instance.setWireDeviceUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+     */
+    public Builder setWireDeviceUpdated(
+        io.github.lewin671.remoteagent.proto.Device.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWireDeviceUpdated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+     */
+    public Builder mergeWireDeviceUpdated(io.github.lewin671.remoteagent.proto.Device value) {
+      copyOnWrite();
+      instance.mergeWireDeviceUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Device wire_device_updated = 13 [json_name = "wireDeviceUpdated"];</code>
+     */
+    public Builder clearWireDeviceUpdated() {
+      copyOnWrite();
+      instance.clearWireDeviceUpdated();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.StreamFrameEvent)
   }
   @java.lang.Override
@@ -1076,11 +1484,15 @@ public  final class StreamFrameEvent extends
             io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.class,
             io.github.lewin671.remoteagent.core.proto.PlainAccountPrefs.class,
             io.github.lewin671.remoteagent.core.proto.PlainDevice.class,
+            io.github.lewin671.remoteagent.proto.Machine.class,
+            io.github.lewin671.remoteagent.proto.RemoteSession.class,
+            io.github.lewin671.remoteagent.proto.AccountPrefsObject.class,
+            io.github.lewin671.remoteagent.proto.Device.class,
           };
           java.lang.String info =
-              "\u0000\t\u0001\u0000\u0001\t\t\u0000\u0000\u0000\u0001\u0003\u0002:\u0000\u0003<" +
+              "\u0000\r\u0001\u0000\u0001\r\r\u0000\u0000\u0000\u0001\u0003\u0002:\u0000\u0003<" +
               "\u0000\u0004\u023b\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t\u023b" +
-              "\u0000";
+              "\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

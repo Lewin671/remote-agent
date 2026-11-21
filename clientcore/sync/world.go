@@ -125,7 +125,10 @@ func (e *Engine) managerNameText() *corev1.Text {
 // Run executes fn inside a StepContext and returns the collected StepResult.
 func (e *Engine) Run(fn func(ctx *StepContext)) StepResult {
 	ctx := newStepContext()
-	e.entropy.needRequested = false
+	prev := e.activeStepCtx
+	e.activeStepCtx = ctx
+	defer func() { e.activeStepCtx = prev }()
+	e.entropyNeedRequested = false
 	if fn != nil {
 		fn(ctx)
 	}
