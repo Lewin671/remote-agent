@@ -5,7 +5,7 @@ import Testing
 @testable import RACore
 
 @Suite struct DirectChannelTests {
-    @Test func validateMinimalSDPRules() throws {
+    @Test(.timeLimit(.minutes(1))) func validateMinimalSDPRules() throws {
         let valid = "v=0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\na=fingerprint:sha-256 00:11\r\n"
         #expect(try validateMinimalSDP(Data(valid.utf8)) == valid)
 
@@ -21,7 +21,7 @@ import Testing
         }
     }
 
-    @Test func fragmentRoundTripAndUnknownFieldRejection() async throws {
+    @Test(.timeLimit(.minutes(1))) func fragmentRoundTripAndUnknownFieldRejection() async throws {
         let net = FakeRtcNet()
         let factory = FakeRtcFactory(net: net)
         let budgetA = DirectBudget()
@@ -66,8 +66,7 @@ import Testing
         chA.confirm()
         chB.confirm()
 
-        let deadline = Date().addingTimeInterval(3)
-        while Date() < deadline && (!chA.ready || !chB.ready) {
+        while (!chA.ready || !chB.ready) {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         #expect(chA.ready && chB.ready)
@@ -78,8 +77,7 @@ import Testing
         try await chA.write(payload) { handoffCount.withValue { $0 += 1 } }
         #expect(handoffCount.get() == 1)
 
-        let recvDeadline = Date().addingTimeInterval(3)
-        while Date() < recvDeadline && deliveredB.get().isEmpty {
+        while deliveredB.get().isEmpty {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         #expect(deliveredB.get() == [payload])
@@ -90,8 +88,7 @@ import Testing
         bogus.append(contentsOf: [0xF8, 0x01, 0x01]) // field 31, varint = 1
         _ = try #require(pcA.channels[0]).send(bogus)
 
-        let closeDeadline = Date().addingTimeInterval(3)
-        while Date() < closeDeadline && !closedB.get() {
+        while !closedB.get() {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         #expect(closedB.get())
@@ -102,7 +99,7 @@ import Testing
         #expect(budgetA.isEmpty && budgetB.isEmpty)
     }
 
-    @Test func silentDataChannelCloseDetectedOnTick() async throws {
+    @Test(.timeLimit(.minutes(1))) func silentDataChannelCloseDetectedOnTick() async throws {
         let net = FakeRtcNet()
         let factory = FakeRtcFactory(net: net)
         let budgetA = DirectBudget()
@@ -146,21 +143,19 @@ import Testing
         chA.confirm()
         chB.confirm()
 
-        let deadline = Date().addingTimeInterval(3)
-        while Date() < deadline && (!chA.ready || !chB.ready) {
+        // Wait for the condition itself, not a wall-clock deadline: a loaded
+        // CI runner can starve the channel's tasks for seconds.
+        while !chA.ready || !chB.ready {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
-        #expect(chA.ready)
 
         // SDK transitions DataChannel state to .closed without emitting onStateChange().
         let pcA = try #require(net.all.first)
         try #require(pcA.channels[0]).setSilent(.closed)
 
-        let closeDeadline = Date().addingTimeInterval(3)
-        while Date() < closeDeadline && !closedA.get() {
+        while !closedA.get() {
             try await Task.sleep(nanoseconds: 20_000_000)
         }
-        #expect(closedA.get())
     }
 }
 

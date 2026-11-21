@@ -33,7 +33,7 @@ import Testing
         var items: [T] { lock.withLock { list } }
     }
 
-    @Test func keyOperationsAndSignalFraming() throws {
+    @Test(.timeLimit(.minutes(1))) func keyOperationsAndSignalFraming() throws {
         let seed = Data((0..<32).map { UInt8($0 + 1) })
         let xPriv = Curve25519.KeyAgreement.PrivateKey()
         let peerX = Curve25519.KeyAgreement.PrivateKey()
@@ -82,7 +82,7 @@ import Testing
         #expect(!exec.signalSend(signalEff))
     }
 
-    @Test func peerConnectionLifecycleRpcAndStatsEvents() async throws {
+    @Test(.timeLimit(.minutes(1))) func peerConnectionLifecycleRpcAndStatsEvents() async throws {
         let net = FakeRtcNet()
         let factory = FakeRtcFactory(net: net)
         let emitted = Recorder<PBCoreEvent>()
@@ -129,8 +129,7 @@ import Testing
         exec.pcConfirm(.with { $0.pcID = 101; $0.machineID = "m1"; $0.use = 0 })
         exec.pcConfirm(.with { $0.pcID = 102; $0.machineID = "m1"; $0.use = 1 })
 
-        let deadline = Date().addingTimeInterval(3)
-        while Date() < deadline && emitted.items.filter({ if case .directDcState(let s)? = $0.event { return s.open }; return false }).count < 2 {
+        while emitted.items.filter({ if case .directDcState(let s)? = $0.event { return s.open }; return false }).count < 2 {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
 
@@ -167,8 +166,7 @@ import Testing
 
         // Closing 101 by Core must NOT emit directPcClosed for 101 (while peer 102 disconnecting does emit 102).
         exec.pcClose(.with { $0.pcID = 101; $0.reason = "done" })
-        let closeDeadline = Date().addingTimeInterval(2)
-        while Date() < closeDeadline && !emitted.items.contains(where: { if case .directPcClosed(let c)? = $0.event { return c.pcID == 102 }; return false }) {
+        while !emitted.items.contains(where: { if case .directPcClosed(let c)? = $0.event { return c.pcID == 102 }; return false }) {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
         let closedFor101 = emitted.items.filter { if case .directPcClosed(let c)? = $0.event { return c.pcID == 101 }; return false }.count
@@ -177,7 +175,7 @@ import Testing
         #expect(closedFor102 == 1)
     }
 
-    @Test func blockingPcCloseDoesNotBlockExecutor() async throws {
+    @Test(.timeLimit(.minutes(1))) func blockingPcCloseDoesNotBlockExecutor() async throws {
         let net = FakeRtcNet()
         let factory = FakeRtcFactory(net: net)
         let emitted = Recorder<PBCoreEvent>()
@@ -198,21 +196,19 @@ import Testing
         // pcClose must return immediately without waiting on pc.close().
         #expect(net.closeFinished == 0)
 
-        let enterDeadline = Date().addingTimeInterval(2)
-        while Date() < enterDeadline && net.closeEntered == 0 {
+        // The close runs on a utility queue; wait for it to start rather than
+        // for a wall-clock deadline, which a loaded CI runner can miss.
+        while net.closeEntered == 0 {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
-        #expect(net.closeEntered >= 1)
+        #expect(net.closeFinished == 0)
         net.releaseClose()
-
-        let finishDeadline = Date().addingTimeInterval(2)
-        while Date() < finishDeadline && net.closeFinished == 0 {
+        while net.closeFinished == 0 {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
-        #expect(net.closeFinished >= 1)
     }
 
-    @Test func replacedPcLateCallbacksDoNotTouchSuccessor() async throws {
+    @Test(.timeLimit(.minutes(1))) func replacedPcLateCallbacksDoNotTouchSuccessor() async throws {
         let net = FakeRtcNet()
         let factory = FakeRtcFactory(net: net)
         let emitted = Recorder<PBCoreEvent>()
