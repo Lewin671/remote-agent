@@ -65,10 +65,12 @@ func (e *wfError) Error() string {
 	return e.msg
 }
 
+//go:noinline
 func newWfError(code, msg string) *wfError {
 	return &wfError{code: code, msg: msg, retryable: true}
 }
 
+//go:noinline
 func fatalWfError(code, msg, action string) *wfError {
 	return &wfError{code: code, msg: msg, retryable: false, action: action}
 }
@@ -164,6 +166,12 @@ const (
 	pollRecoveryStatus
 )
 
+type syncWaiter struct {
+	target  taskTarget
+	hasSink bool
+	sinkTag uint64
+}
+
 type activePoll struct {
 	kind      activePollKind
 	pairingID string
@@ -202,7 +210,7 @@ type workflowState struct {
 	lastLeaseRenewAttemptMs int64
 	recoveryStatusStale     bool
 	syncInFlight            bool
-	syncWaiters             []taskTarget
+	syncWaiters             []syncWaiter
 
 	onStateChanged func()
 	asyncSink      AsyncSink
@@ -216,6 +224,7 @@ type workflowState struct {
 	seqCounter  uint64
 }
 
+//go:noinline
 func (e *Engine) ensureWF() *workflowState {
 	if e.wf == nil {
 		e.wf = &workflowState{
@@ -404,6 +413,7 @@ func (e *Engine) HandleRpcResult(nowMs int64, ev *corev1.SecurityRpcResultEvent)
 	return e.DrainEffects()
 }
 
+//go:noinline
 func (e *Engine) checkFG(capturedGen uint64) error {
 	wf := e.ensureWF()
 	if !wf.foreground || wf.fgGen != capturedGen {
@@ -657,7 +667,7 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_CheckExitAdvice:
 		e.checkExitAdviceOp(aid)
 	case *corev1.SecurityWorkflowActionEvent_ClearSecurity:
-		e.startClearLocalSecurity(actionTarget(aid, targetActionStatusOnOK))
+		e.startClearLocalSecurity(actionTarget(aid, targetAction), true)
 	case *corev1.SecurityWorkflowActionEvent_UpdateDeviceMeta:
 		e.updateDeviceMetaOp(aid, a.UpdateDeviceMeta)
 	case *corev1.SecurityWorkflowActionEvent_CheckRetainedDenied:
@@ -897,13 +907,22 @@ func (e *Engine) forceLoginToken(server string, keyKind corev1.SecurityKeyKind, 
 	})
 }
 
+const (
+	loginStageChallenge uint8 = iota
+	loginStageSign
+	loginStageLogin
+)
+
 func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	var fg uint64
 	if t.fgCheck {
 		fg = t.fgGen
 	}
 	switch t.stage {
-	case 0: // challenge
+	case loginStageChallenge:
 		var chal v1.GetChallengeResponse
 		if chal.Unmarshal(ev.bytes) != nil || len(chal.Challenge) == 0 {
 			return devicesec.ErrInvalid
@@ -913,19 +932,19 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 				return err
 			}
 		}
-		t.challenge, t.stage = chal.Challenge, 1
+		t.challenge, t.stage = chal.Challenge, loginStageSign
 		e.waitSign(t.keyKind, t.slot, append(append([]byte{}, loginContext...), chal.Challenge...), t, 0)
-	case 1: // sign
+	case loginStageSign:
 		if fg != 0 {
 			if err := e.checkFG(fg); err != nil {
 				return err
 			}
 		}
-		t.stage = 2
+		t.stage = loginStageLogin
 		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN, t.server, "", &v1.LoginRequest{
 			DeviceId: t.deviceID, Challenge: t.challenge, Signature: ev.bytes, ProtocolVersion: protocolVersion,
 		}, t)
-	case 2: // login
+	case loginStageLogin:
 		var lr v1.LoginResponse
 		if lr.Unmarshal(ev.bytes) != nil || lr.Token == "" {
 			return devicesec.ErrInvalid
@@ -940,6 +959,13 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+const (
+	authedRPCWaitToken uint8 = iota
+	authedRPCCall
+	authedRPCRefreshToken
+	authedRPCRetryCall
+)
+
 type authedRPCTask struct {
 	taskBase
 	method   corev1.SecurityRpcMethod
@@ -947,8 +973,6 @@ type authedRPCTask struct {
 	fgCheck  bool
 	reqBytes []byte
 }
-
-func (t *authedRPCTask) rawErrMask() uint32 { return ^uint32(0) }
 
 //go:noinline
 func (e *Engine) callAuthedRpc(method corev1.SecurityRpcMethod, server, preferred string, fgCheck bool, capturedGen uint64, reqBytes []byte, target taskTarget) {
@@ -971,22 +995,26 @@ func (t *authedRPCTask) failTokenErr(e *Engine, ev *secEvent) {
 
 func (t *authedRPCTask) step(e *Engine, ev *secEvent) error {
 	switch t.stage {
-	case 0, 2: // token / refreshed token
+	case authedRPCWaitToken, authedRPCRefreshToken:
 		if ev.err != nil {
 			t.failTokenErr(e, ev)
 			return nil
 		}
-		t.stage++
+		if t.stage == authedRPCWaitToken {
+			t.stage = authedRPCCall
+		} else {
+			t.stage = authedRPCRetryCall
+		}
 		e.waitRPC(t.method, t.server, ev.str, t.reqBytes, t, 0)
-	case 1: // call
+	case authedRPCCall:
 		if ev.rpcErr != nil && ev.rpcErr.code == connectCodeUnauthenticated {
 			e.ensureWF().cachedToken = ""
-			t.stage = 2
+			t.stage = authedRPCRefreshToken
 			e.forceLoginToken(t.server, keyDevEd, "", e.selfDeviceID, t.fgCheck, t.fgGen, true, parentTarget(t, 0))
 			return nil
 		}
 		e.completeTarget(t.target, &secEvent{bytes: ev.bytes, rpcErr: ev.rpcErr, err: ev.err})
-	case 3: // retry call
+	case authedRPCRetryCall:
 		e.completeTarget(t.target, &secEvent{bytes: ev.bytes, rpcErr: ev.rpcErr, err: ev.err})
 	}
 	return nil
@@ -1135,14 +1163,22 @@ func (e *Engine) buildAndSignStateWithKEM(
 	}, 0)
 }
 
+const (
+	kemStageEncap uint8 = iota
+	kemStageSign
+)
+
 func (t *kemStateTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	if t.fgCheck {
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
 		}
 	}
 	switch t.stage {
-	case 0: // encap
+	case kemStageEncap:
 		byX := make(map[[32]byte]struct{ enc, dh [32]byte }, len(ev.encap))
 		for _, p := range ev.encap {
 			if p == nil || len(p.Enc) != 32 || len(p.Dh) != 32 {
@@ -1166,9 +1202,9 @@ func (t *kemStateTask) step(e *Engine, ev *secEvent) error {
 		if err != nil {
 			return err
 		}
-		t.unsigned, t.stage = unsigned, 1
+		t.unsigned, t.stage = unsigned, kemStageSign
 		e.waitSign(t.keyKind, t.slot, sb, t, 0)
-	case 1: // sign
+	case kemStageSign:
 		if len(ev.bytes) != devicesec.Ed25519SignatureSize {
 			return devicesec.ErrUntrusted
 		}
@@ -1225,6 +1261,9 @@ func (e *Engine) buildAndSignLease(head devicesec.State, keyKind corev1.Security
 }
 
 func (t *leaseTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	t.lease.Signature = slices.Clone(ev.bytes)
 	if err := t.lease.Verify(t.head); err != nil {
 		return err

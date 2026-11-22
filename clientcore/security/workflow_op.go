@@ -37,17 +37,15 @@ func (p *kemBuildParams) zeroSecrets() {
 	zeroBytes(p.newSecret[:])
 }
 
-type opCASMode uint8
-
 const (
-	opCASClaim opCASMode = iota
-	opCASSave
-	opCASClear
+	opCASClaimRead uint8 = iota
+	opCASClaimWrite
+	opCASSaveWrite
+	opCASClearWrite
 )
 
 type opCASTask struct {
 	taskBase
-	mode             opCASMode
 	op               *PersistedOperation
 	next             *PersistedOperation
 	nextRev          string
@@ -62,7 +60,7 @@ func (e *Engine) claimOperationCAS(op *PersistedOperation, expectedHead *devices
 		return
 	}
 	e.readBootstrapStorage(&opCASTask{
-		taskBase: taskBase{target: target, stage: 0}, mode: opCASClaim, op: op, expectedHead: expectedHead, expectedMemberID: expectedMemberID,
+		taskBase: taskBase{target: target, stage: opCASClaimRead}, op: op, expectedHead: expectedHead, expectedMemberID: expectedMemberID,
 	})
 }
 
@@ -86,7 +84,7 @@ func (e *Engine) saveOperationCAS(prev, next *PersistedOperation, target taskTar
 	}
 	nextRev := u64Str(cp.Revision)
 	e.writeStorageCAS(bktOp, "pending", expectedRev, nextRev, false, data, &opCASTask{
-		taskBase: taskBase{target: target, stage: 1}, mode: opCASSave, next: &cp, nextRev: nextRev,
+		taskBase: taskBase{target: target, stage: opCASSaveWrite}, next: &cp, nextRev: nextRev,
 	})
 }
 
@@ -98,15 +96,13 @@ func (e *Engine) clearOperationCAS(op *PersistedOperation, target taskTarget) {
 		expectedRev = wf.pendingOpRev
 	}
 	e.deleteStorageCAS(bktOp, "pending", expectedRev, &opCASTask{
-		taskBase: taskBase{target: target, stage: 1}, mode: opCASClear,
+		taskBase: taskBase{target: target, stage: opCASClearWrite},
 	})
 }
 
-func (t *opCASTask) rawErrMask() uint32 { return ^uint32(0) }
-
 func (t *opCASTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
-	if t.mode == opCASClaim && t.stage == 0 {
+	if t.stage == opCASClaimRead {
 		if ev.err != nil {
 			return ev.err
 		}
@@ -147,12 +143,12 @@ func (t *opCASTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		rev := u64Str(t.op.Revision)
-		t.next, t.nextRev, t.stage = t.op, rev, 1
+		t.next, t.nextRev, t.stage = t.op, rev, opCASClaimWrite
 		e.writeStorageCAS(bktOp, "pending", "", rev, true, data, t)
 		return nil
 	}
 	if storageConflict(ev) {
-		if t.mode == opCASClaim {
+		if t.stage == opCASClaimWrite {
 			return newWfError("pending", text.KeySecurityASecurityOperationIsUnfinishedContinueItFirst)
 		}
 		return devicesec.ErrStale
@@ -160,14 +156,14 @@ func (t *opCASTask) step(e *Engine, ev *secEvent) error {
 	if ev.err != nil {
 		return ev.err
 	}
-	switch t.mode {
-	case opCASClaim:
+	switch t.stage {
+	case opCASClaimWrite:
 		wf.pendingOp, wf.pendingOpRev, e.securityLocked = t.op, t.nextRev, true
 		e.completeTarget(t.target, &secEvent{op: t.op})
-	case opCASSave:
+	case opCASSaveWrite:
 		wf.pendingOp, wf.pendingOpRev = t.next, t.nextRev
 		e.completeTarget(t.target, &secEvent{op: t.next})
-	case opCASClear:
+	case opCASClearWrite:
 		wf.pendingOp, wf.pendingOpRev = nil, ""
 		e.okTarget(t.target, nil)
 	}
@@ -180,6 +176,10 @@ type confirmOpSavedTask struct {
 }
 
 func (t *confirmOpSavedTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	if ev.kind == evChildDone {
 		if t.kind == "create" && ev.op.Phase == "PUBLISHED" {
 			e.startAdoptCreationOp(ev.op, t.target)
@@ -208,12 +208,17 @@ type resumePendingTask struct {
 
 //go:noinline
 func (e *Engine) startResumePendingOp(fgGen uint64, target taskTarget) {
-	e.stepTask(&resumePendingTask{taskBase: taskBase{fgGen: fgGen, target: target}}, &secEvent{kind: evStart})
+	e.stepTask(&resumePendingTask{}, &secEvent{kind: evStart, fgGen: fgGen, target: target})
 }
 
-func (t *resumePendingTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 }
-
 func (t *resumePendingTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
+	if err := e.checkFG(t.fgGen); err != nil {
+		return err
+	}
 	if ev.kind == evChildDone {
 		e.startResumeLeaseOp(t.op, t.fgGen, t.target)
 		return nil
@@ -250,6 +255,22 @@ func (t *resumePendingTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+const (
+	offerSync uint8 = iota
+	offerClearOp
+	offerListDevices
+	offerOpenMeta
+	offerEntropy
+	offerSeal
+	offerSaveSigned
+	offerPutMeta
+	offerVerifyList
+	offerVerifyOpen
+	offerSaveRejected
+	offerSaveDelivered
+	offerDone
+)
+
 type resumeOfferTask struct {
 	taskBase
 	op       *PersistedOperation
@@ -259,14 +280,12 @@ type resumeOfferTask struct {
 	baseMeta *v1.DeviceMeta
 }
 
-func (t *resumeOfferTask) fgCheckMask() uint32 { return 1<<0 | 1<<5 | 1<<11 }
-
 func (e *Engine) startResumeOfferOp(op *PersistedOperation, fgGen uint64, target taskTarget) {
 	if !op.CodeSaved {
 		e.okTarget(target, nil)
 		return
 	}
-	t := &resumeOfferTask{taskBase: taskBase{fgGen: fgGen, target: target, stage: 0}, op: op}
+	t := &resumeOfferTask{taskBase: taskBase{fgGen: fgGen, target: target, stage: offerSync}, op: op}
 	e.syncStates(false, "", parentTarget(t, 0))
 }
 
@@ -276,9 +295,9 @@ func (t *resumeOfferTask) finishOffer(e *Engine, ok bool) error {
 	}
 	next := *t.op
 	if !ok {
-		next.OfferRejected, t.stage = true, 10
+		next.OfferRejected, t.stage = true, offerSaveRejected
 	} else {
-		next.Phase, t.stage = "DELIVERED", 11
+		next.Phase, t.stage = "DELIVERED", offerSaveDelivered
 	}
 	e.saveOperationCAS(t.op, &next, parentTarget(t, 0))
 	return nil
@@ -288,7 +307,7 @@ func (t *resumeOfferTask) sendPutReq(e *Engine) error {
 	if t.req.DeviceId != e.selfDeviceID {
 		return devicesec.ErrUntrusted
 	}
-	t.stage = 7
+	t.stage = offerPutMeta
 	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_DEVICE_META, t.op.Server, "", true, t.fgGen, t.reqBytes, parentTarget(t, 0))
 	return nil
 }
@@ -298,15 +317,21 @@ func (t *resumeOfferTask) startSealForMeta(e *Engine, base *v1.DeviceMeta) {
 		base = &v1.DeviceMeta{}
 	}
 	base.HandoffRecoveryEd = slices.Clone(t.op.RecoveryEd)
-	t.baseMeta, t.stage = base, 4
+	t.baseMeta, t.stage = base, offerEntropy
 	e.waitEntropy(64, t, 0)
 }
 
 func (t *resumeOfferTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	switch t.stage {
-	case 0:
+	case offerSync:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		if e.isAuthority() && len(t.op.RecoveryEd) == 32 && sameBytes(e.head.Core.RecoveryEd[:], t.op.RecoveryEd) {
-			t.stage = 1
+			t.stage = offerClearOp
 			e.clearOperationCAS(t.op, parentTarget(t, 0))
 			return nil
 		}
@@ -325,35 +350,38 @@ func (t *resumeOfferTask) step(e *Engine, ev *secEvent) error {
 			t.req, t.reqBytes = &req, t.op.Signed
 			return t.sendPutReq(e)
 		}
-		t.stage = 2
+		t.stage = offerListDevices
 		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
-	case 1, 12:
+	case offerClearOp, offerDone:
 		e.okTarget(t.target, nil)
-	case 2:
+	case offerListDevices:
 		var lr v1.ListDevicesResponse
 		if lr.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
 		}
 		if ownDev := findDeviceByID(lr.Devices, e.selfDeviceID); ownDev != nil && ownDev.Meta != nil && ownDev.MetaRevision > 0 {
-			t.metaRev, t.stage = ownDev.MetaRevision, 3
+			t.metaRev, t.stage = ownDev.MetaRevision, offerOpenMeta
 			e.startOpenBatchInternal(e.lastNowMs, []OpenItem{openDeviceMetaItem(e.selfDeviceID, ownDev.Meta)}, parentTarget(t, 0))
 			return nil
 		}
 		t.startSealForMeta(e, nil)
-	case 3:
+	case offerOpenMeta:
 		if ev.opened[0].Err != nil {
 			return ev.opened[0].Err
 		}
 		dm, _ := ev.opened[0].Body.(*v1.DeviceMeta)
 		t.startSealForMeta(e, dm.Clone())
-	case 4:
+	case offerEntropy:
 		plain, err := t.baseMeta.Marshal()
 		if err != nil {
 			return err
 		}
-		t.stage = 5
+		t.stage = offerSeal
 		e.startSealEnvelopeInternal(e.lastNowMs, devicesec.DeviceMeta, "", "", e.selfDeviceID, t.metaRev+1, 0, plain, false, nil, parentTarget(t, 0))
-	case 5:
+	case offerSeal:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		req := &v1.PutDeviceMetaRequest{DeviceId: e.selfDeviceID, ExpectedRevision: t.metaRev, Meta: ev.seal.Envelope}
 		reqBytes, err := req.Marshal()
 		if err != nil {
@@ -361,12 +389,12 @@ func (t *resumeOfferTask) step(e *Engine, ev *secEvent) error {
 		}
 		t.req, t.reqBytes = req, reqBytes
 		next := *t.op
-		next.Signed, t.stage = reqBytes, 6
+		next.Signed, t.stage = reqBytes, offerSaveSigned
 		e.saveOperationCAS(t.op, &next, parentTarget(t, 0))
-	case 6:
+	case offerSaveSigned:
 		t.op = ev.op
 		return t.sendPutReq(e)
-	case 7:
+	case offerPutMeta:
 		var resp v1.PutDeviceMetaResponse
 		if resp.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
@@ -374,9 +402,9 @@ func (t *resumeOfferTask) step(e *Engine, ev *secEvent) error {
 		if resp.Applied {
 			return t.finishOffer(e, true)
 		}
-		t.stage = 8
+		t.stage = offerVerifyList
 		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
-	case 8:
+	case offerVerifyList:
 		var lr v1.ListDevicesResponse
 		if lr.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
@@ -385,29 +413,37 @@ func (t *resumeOfferTask) step(e *Engine, ev *secEvent) error {
 		if ownDev == nil || ownDev.Meta == nil || ownDev.MetaRevision <= t.req.ExpectedRevision {
 			return t.finishOffer(e, false)
 		}
-		t.stage = 9
+		t.stage = offerVerifyOpen
 		e.startOpenBatchInternal(e.lastNowMs, []OpenItem{openDeviceMetaItem(e.selfDeviceID, ownDev.Meta)}, parentTarget(t, 0))
-	case 9:
+	case offerVerifyOpen:
 		if ev.opened[0].Err != nil {
 			return t.finishOffer(e, false)
 		}
 		dm, ok := ev.opened[0].Body.(*v1.DeviceMeta)
 		return t.finishOffer(e, ok && dm != nil && sameBytes(dm.HandoffRecoveryEd, t.op.RecoveryEd))
-	case 10:
+	case offerSaveRejected:
 		return newWfError("conflict", text.KeySecurityDeviceInformationChangedTheOriginalTransferRequestWasNot)
-	case 11:
-		t.stage = 12
+	case offerSaveDelivered:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
+		t.stage = offerDone
 		e.clearOperationCAS(ev.op, parentTarget(t, 0))
 	}
 	return nil
 }
 
+const (
+	delRecSync uint8 = iota
+	delRecSaveSigned
+	delRecRPC
+	delRecClear
+)
+
 type resumeDeleteRecordsTask struct {
 	taskBase
 	op *PersistedOperation
 }
-
-func (t *resumeDeleteRecordsTask) fgCheckMask() uint32 { return 1<<0 | 1<<2 }
 
 func (e *Engine) startResumeDeleteRecordsOp(op *PersistedOperation, fgGen uint64, target taskTarget) {
 	t := &resumeDeleteRecordsTask{taskBase: taskBase{fgGen: fgGen, target: target}, op: op}
@@ -415,13 +451,19 @@ func (e *Engine) startResumeDeleteRecordsOp(op *PersistedOperation, fgGen uint64
 }
 
 func (t *resumeDeleteRecordsTask) sendRPC(e *Engine, curOp *PersistedOperation) {
-	t.op, t.stage = curOp, 2
+	t.op, t.stage = curOp, delRecRPC
 	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_MACHINE_RECORDS, curOp.Server, "", true, t.fgGen, curOp.Signed, parentTarget(t, 0))
 }
 
 func (t *resumeDeleteRecordsTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	switch t.stage {
-	case 0:
+	case delRecSync:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		if !e.isAuthority() {
 			return devicesec.ErrUntrusted
 		}
@@ -437,18 +479,31 @@ func (t *resumeDeleteRecordsTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		next := *t.op
-		next.Signed, t.stage = reqBytes, 1
+		next.Signed, t.stage = reqBytes, delRecSaveSigned
 		e.saveOperationCAS(t.op, &next, parentTarget(t, 0))
-	case 1:
+	case delRecSaveSigned:
 		t.sendRPC(e, ev.op)
-	case 2:
-		t.stage = 3
+	case delRecRPC:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
+		t.stage = delRecClear
 		e.clearOperationCAS(t.op, parentTarget(t, 0))
-	case 3:
+	case delRecClear:
 		e.okTarget(t.target, nil)
 	}
 	return nil
 }
+
+const (
+	leaseSignSigned uint8 = iota
+	leaseSaveSigned
+	leaseSignRetry
+	leaseSaveRetry
+	leaseUpload
+	leaseInstall
+	leaseClear
+)
 
 type resumeLeaseTask struct {
 	taskBase
@@ -456,8 +511,6 @@ type resumeLeaseTask struct {
 	reqBytes []byte
 	leaseRaw []byte
 }
-
-func (t *resumeLeaseTask) fgCheckMask() uint32 { return 1<<0 | 1<<2 | 1<<4 }
 
 func (e *Engine) startResumeLeaseOp(op *PersistedOperation, fgGen uint64, target taskTarget) {
 	if e.headHash != op.Parent {
@@ -474,7 +527,7 @@ func (e *Engine) startResumeLeaseOp(op *PersistedOperation, fgGen uint64, target
 	}
 	t := &resumeLeaseTask{taskBase: taskBase{fgGen: fgGen, target: target}, op: op}
 	if len(op.Signed) == 0 {
-		t.stage = 0
+		t.stage = leaseSignSigned
 		e.buildAndSignLease(e.head, keyDevEd, "", e.currentSigningTime(e.lastNowMs), parentTarget(t, 0))
 		return
 	}
@@ -499,7 +552,7 @@ func (t *resumeLeaseTask) publishReq(e *Engine, curOp *PersistedOperation, req *
 	}
 	effNow := e.effectiveNow(e.lastNowMs)
 	if effNow >= cert.NotAfter || (e.hasLease && e.lease.Head == e.headHash && e.lease.IssuedAt > cert.IssuedAt) {
-		t.stage = 2
+		t.stage = leaseSignRetry
 		e.buildAndSignLease(e.head, keyDevEd, "", e.currentSigningTime(e.lastNowMs), parentTarget(t, 0))
 		return
 	}
@@ -507,34 +560,43 @@ func (t *resumeLeaseTask) publishReq(e *Engine, curOp *PersistedOperation, req *
 }
 
 func (t *resumeLeaseTask) upload(e *Engine, finalOp *PersistedOperation, finalReqBytes, finalLeaseBytes []byte) {
-	t.op, t.reqBytes, t.leaseRaw, t.stage = finalOp, finalReqBytes, finalLeaseBytes, 4
+	t.op, t.reqBytes, t.leaseRaw, t.stage = finalOp, finalReqBytes, finalLeaseBytes, leaseUpload
 	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, finalOp.Server, "", true, t.fgGen, finalReqBytes, parentTarget(t, 0))
 }
 
 func (t *resumeLeaseTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	switch t.stage {
-	case 0, 2:
+	case leaseSignSigned, leaseSignRetry:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		lb, _ := ev.lease.MarshalBinary()
 		reqBytes, _ := (&v1.PutSecurityStateRequest{Lease: lb}).Marshal()
 		next := *t.op
 		t.leaseRaw, t.reqBytes = lb, reqBytes
-		if t.stage == 0 {
-			next.Signed, t.stage = reqBytes, 1
+		if t.stage == leaseSignSigned {
+			next.Signed, t.stage = reqBytes, leaseSaveSigned
 		} else {
-			next.Retry, t.stage = reqBytes, 3
+			next.Retry, t.stage = reqBytes, leaseSaveRetry
 		}
 		e.saveOperationCAS(t.op, &next, parentTarget(t, 0))
-	case 1:
+	case leaseSaveSigned:
 		t.publishReq(e, ev.op, &v1.PutSecurityStateRequest{Lease: t.leaseRaw}, t.reqBytes)
-	case 3:
+	case leaseSaveRetry:
 		t.upload(e, ev.op, t.reqBytes, t.leaseRaw)
-	case 4:
-		t.stage = 5
+	case leaseUpload:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
+		t.stage = leaseInstall
 		e.installRecordCAS(nil, nil, nil, t.leaseRaw, e.lastNowMs, nil, parentTarget(t, 0))
-	case 5:
-		t.stage = 6
+	case leaseInstall:
+		t.stage = leaseClear
 		e.clearOperationCAS(t.op, parentTarget(t, 0))
-	case 6:
+	case leaseClear:
 		e.okTarget(t.target, nil)
 	}
 	return nil
@@ -559,9 +621,22 @@ func (e *Engine) startResumeStateOp(op *PersistedOperation, fgGen uint64, target
 }
 
 func (t *resumeStateTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	e.startContinueStateOpAfterSign(ev.op, t.fgGen, t.target)
 	return nil
 }
+
+const (
+	draftSync uint8 = iota
+	draftGetPairing
+	draftEntropy
+	draftKEM
+	draftLease
+	draftDelivery
+	draftSave
+)
 
 type signStateDraftTask struct {
 	taskBase
@@ -573,8 +648,6 @@ type signStateDraftTask struct {
 	signedBytes    []byte
 }
 
-func (t *signStateDraftTask) fgCheckMask() uint32 { return 1<<0 | 1<<4 }
-
 func (e *Engine) startSignStateDraft(op *PersistedOperation, fgGen uint64, target taskTarget) {
 	t := &signStateDraftTask{taskBase: taskBase{fgGen: fgGen, target: target}, op: op}
 	e.syncStates(false, "", parentTarget(t, 0))
@@ -584,7 +657,7 @@ func (t *signStateDraftTask) beginDraftEntropy(e *Engine) error {
 	if _, ok := e.epochSecrets[e.head.Core.ContentEpoch]; !ok {
 		return ErrNotInitialized
 	}
-	t.stage = 2
+	t.stage = draftEntropy
 	e.waitEntropy(128, t, 0)
 	return nil
 }
@@ -607,20 +680,26 @@ func (t *signStateDraftTask) finishWithLease(e *Engine, leaseCert *devicesec.Lea
 		t.saveWithDelivery(e, nil)
 		return nil
 	}
-	t.stage = 5
+	t.stage = draftDelivery
 	e.startBuildPairDelivery(t.op, nextStateBytes, leaseRaw, t.fgGen, parentTarget(t, 0))
 	return nil
 }
 
 func (t *signStateDraftTask) saveWithDelivery(e *Engine, deliveryBytes []byte) {
 	nextOp := *t.op
-	nextOp.Signed, nextOp.Delivery, t.stage = t.signedBytes, deliveryBytes, 6
+	nextOp.Signed, nextOp.Delivery, t.stage = t.signedBytes, deliveryBytes, draftSave
 	e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
 }
 
 func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	switch t.stage {
-	case 0:
+	case draftSync:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		if !e.isAuthority() || e.headHash != t.op.Parent {
 			return devicesec.ErrStale
 		}
@@ -631,12 +710,12 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 			if uint64(t.op.Pair.ExpiresMs) <= e.effectiveNow(e.lastNowMs) {
 				return newWfError("expired", text.KeySecurityTheUnpublishedPairingDraftExpiredYouCanExplicitlyAbandon)
 			}
-			t.stage = 1
+			t.stage = draftGetPairing
 			e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, t.op.Server, t.fgGen, &v1.GetPairingRequest{PairingId: t.op.Pair.PairingID}, parentTarget(t, 0))
 			return nil
 		}
 		return t.beginDraftEntropy(e)
-	case 1:
+	case draftGetPairing:
 		var st v1.GetPairingResponse
 		if st.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
@@ -647,7 +726,7 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 			return newWfError("canceled", text.KeySecurityTheUnpublishedPairingDraftWasCanceledOrItsCandidate)
 		}
 		return t.beginDraftEntropy(e)
-	case 2:
+	case draftEntropy:
 		oldSecret, ok := e.epochSecrets[e.head.Core.ContentEpoch]
 		if !ok {
 			return ErrNotInitialized
@@ -730,25 +809,33 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 			params.zeroSecrets()
 			return devicesec.ErrInvalid
 		}
-		t.stage = 3
+		t.stage = draftKEM
 		e.buildAndSignStateWithKEM(keyDevEd, "", true, t.fgGen, params, kemMembers, parentTarget(t, 0))
-	case 3:
+	case draftKEM:
 		t.nextState = *ev.state
 		if ev.state.Core.AuthorityID == e.selfDeviceID {
-			t.stage = 4
+			t.stage = draftLease
 			e.buildAndSignLease(*ev.state, keyDevEd, "", t.now, parentTarget(t, 0))
 			return nil
 		}
 		return t.finishWithLease(e, nil)
-	case 4:
+	case draftLease:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		return t.finishWithLease(e, ev.lease)
-	case 5:
+	case draftDelivery:
 		t.saveWithDelivery(e, ev.bytes)
-	case 6:
+	case draftSave:
 		e.completeTarget(t.target, &secEvent{op: ev.op})
 	}
 	return nil
 }
+
+const (
+	deliveryEntropy uint8 = iota
+	deliverySign
+)
 
 type buildPairDeliveryTask struct {
 	taskBase
@@ -760,8 +847,6 @@ type buildPairDeliveryTask struct {
 	envNonce    [12]byte
 	apBytes     []byte
 }
-
-func (t *buildPairDeliveryTask) fgCheckMask() uint32 { return 1<<0 | 1<<1 }
 
 func (e *Engine) startBuildPairDelivery(op *PersistedOperation, nextStateBytes, leaseRaw []byte, fgGen uint64, target taskTarget) {
 	wf := e.ensureWF()
@@ -807,9 +892,15 @@ func (e *Engine) startBuildPairDelivery(op *PersistedOperation, nextStateBytes, 
 }
 
 func (t *buildPairDeliveryTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
+	if err := e.checkFG(t.fgGen); err != nil {
+		return err
+	}
 	p := t.op.Pair
 	switch t.stage {
-	case 0:
+	case deliveryEntropy:
 		var nonce [16]byte
 		if !e.readRandom(nonce[:]) || !e.readRandom(t.envNonce[:]) {
 			return ErrNeedEntropy
@@ -822,9 +913,9 @@ func (t *buildPairDeliveryTask) step(e *Engine, ev *secEvent) error {
 		if err != nil {
 			return err
 		}
-		t.apBytes, t.stage = apBytes, 1
+		t.apBytes, t.stage = apBytes, deliverySign
 		e.waitSign(keyDevEd, "", append(append([]byte{}, PairApprovalContext...), apBytes...), t, 0)
-	case 1:
+	case deliverySign:
 		plain, err := (&v1.PairingPayload{
 			Server: t.op.Server, Approval: t.apBytes, ApprovalSignature: ev.bytes,
 			SecurityStates: t.chainStates, AccountPublicKey: slices.Clone(t.acctPub), Lease: slices.Clone(t.leaseRaw),
@@ -855,6 +946,25 @@ func (t *buildPairDeliveryTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+const (
+	contStateSync uint8 = iota
+	contStateEarlyDelivered
+	contStateClearRotPre
+	contStateSignLease
+	contStateSaveLease
+	contStatePutState
+	contStateInstallState
+	contStatePutLease
+	contStateInstallLease
+	contStateSavePub
+	contStateApprovePair
+	contStateGetPair
+	contStateListDevices
+	contStateSaveDelivered
+	contStateClearRotPost
+	contStateDone
+)
+
 type continueStateOpTask struct {
 	taskBase
 	op          *PersistedOperation
@@ -867,9 +977,6 @@ type continueStateOpTask struct {
 	curReqLease []byte
 	delivery    *v1.ApprovePairingRequest
 }
-
-func (t *continueStateOpTask) rawErrMask() uint32  { return 1<<12 | 1<<13 }
-func (t *continueStateOpTask) fgCheckMask() uint32 { return 1<<0 | 1<<1 | 1<<5 | 1<<15 }
 
 func (e *Engine) startContinueStateOpAfterSign(op *PersistedOperation, fgGen uint64, target taskTarget) {
 	var orig v1.PutSecurityStateRequest
@@ -890,7 +997,7 @@ func (e *Engine) startContinueStateOpAfterSign(op *PersistedOperation, fgGen uin
 	}
 	if !e.isMember && e.byHash[targetHash].Core.Epoch == targetState.Core.Epoch && targetState.Core.AuthorityID != e.selfDeviceID {
 		delivered := *op
-		delivered.Phase, t.stage = "DELIVERED", 1
+		delivered.Phase, t.stage = "DELIVERED", contStateEarlyDelivered
 		e.saveOperationCAS(op, &delivered, parentTarget(t, 0))
 		return
 	}
@@ -899,26 +1006,26 @@ func (e *Engine) startContinueStateOpAfterSign(op *PersistedOperation, fgGen uin
 
 func (t *continueStateOpTask) deliverIfNeeded(e *Engine, curOp *PersistedOperation) {
 	pubOp := *curOp
-	pubOp.Phase, t.op, t.stage = "PUBLISHED", curOp, 11
+	pubOp.Phase, t.op, t.stage = "PUBLISHED", curOp, contStateSavePub
 	e.saveOperationCAS(curOp, &pubOp, parentTarget(t, 0))
 }
 
 func (t *continueStateOpTask) finishDeliveryAndClear(e *Engine, curOp *PersistedOperation) {
 	delivered := *curOp
-	delivered.Phase, t.op, t.stage = "DELIVERED", curOp, 15
+	delivered.Phase, t.op, t.stage = "DELIVERED", curOp, contStateSaveDelivered
 	e.saveOperationCAS(curOp, &delivered, parentTarget(t, 0))
 }
 
 func (t *continueStateOpTask) proceedPublish(e *Engine, curOp *PersistedOperation, reqLease, reqBytes []byte) {
 	t.op, t.curReqLease, t.curReqBytes = curOp, reqLease, reqBytes
 	if !t.installed {
-		t.stage = 7
+		t.stage = contStatePutState
 		e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, curOp.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
 		return
 	}
 	if e.headHash == t.targetHash && len(reqLease) > 0 {
 		if reqLC, err := devicesec.ParseLease(reqLease); err == nil && (!e.hasLease || e.lease.IssuedAt < reqLC.IssuedAt) {
-			t.stage = 9
+			t.stage = contStatePutLease
 			e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, curOp.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
 			return
 		}
@@ -930,22 +1037,31 @@ func (t *continueStateOpTask) checkDeliveryFallback(e *Engine, origErr *rpcError
 	if origErr.code != connectCodeNotFound && origErr.code != connectCodeFailedPrecondition && origErr.code != connectCodeCanceled {
 		return origErr
 	}
-	t.stage = 14
+	t.stage = contStateListDevices
 	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, t.op.Server, t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
 	return nil
 }
 
 func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil && t.stage != contStateApprovePair && t.stage != contStateGetPair {
+		return ev.err
+	}
 	switch t.stage {
-	case 1:
-		t.stage = 2
+	case contStateEarlyDelivered:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
+		t.stage = contStateDone
 		e.clearOperationCAS(ev.op, parentTarget(t, 0))
-	case 2, 4, 17:
+	case contStateDone:
 		e.okTarget(t.target, nil)
-	case 3:
-		t.stage = 4
+	case contStateClearRotPre:
+		t.stage = contStateDone
 		e.clearOperationCAS(t.op, parentTarget(t, 0))
-	case 0:
+	case contStateSync:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		if int(t.targetState.Core.Epoch) <= len(e.states) && t.targetState.Core.Epoch >= 1 {
 			if ch, _ := e.states[t.targetState.Core.Epoch-1].Hash(); ch != t.targetHash {
 				return devicesec.ErrStale
@@ -959,11 +1075,11 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 				return devicesec.ErrStale
 			}
 			if t.op.Action == "recovery" && t.op.CodeSaved {
-				t.stage = 3
+				t.stage = contStateClearRotPre
 				e.installRecordCAS(nil, nil, nil, nil, 0, clearNeedsRotationPatch(), parentTarget(t, 0))
 				return nil
 			}
-			t.stage = 4
+			t.stage = contStateDone
 			e.clearOperationCAS(t.op, parentTarget(t, 0))
 			return nil
 		}
@@ -986,20 +1102,23 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		effNow := e.effectiveNow(e.lastNowMs)
 		if (!t.installed || e.headHash == t.targetHash) && t.targetState.Core.AuthorityID == e.selfDeviceID &&
 			(leaseCert == nil || effNow >= leaseCert.NotAfter || (e.hasLease && e.lease.Head == t.targetHash && e.lease.IssuedAt > leaseCert.IssuedAt)) {
-			t.stage = 5
+			t.stage = contStateSignLease
 			e.buildAndSignLease(t.targetState, keyDevEd, "", max(e.currentSigningTime(e.lastNowMs), t.targetState.Core.IssuedAt), parentTarget(t, 0))
 			return nil
 		}
 		t.proceedPublish(e, t.op, req.Lease, reqRaw)
-	case 5:
+	case contStateSignLease:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		lb, _ := ev.lease.MarshalBinary()
 		newReqBytes, _ := (&v1.PutSecurityStateRequest{States: t.origStates, Lease: lb}).Marshal()
 		nextOp := *t.op
-		nextOp.Retry, t.curReqLease, t.curReqBytes, t.stage = newReqBytes, lb, newReqBytes, 6
+		nextOp.Retry, t.curReqLease, t.curReqBytes, t.stage = newReqBytes, lb, newReqBytes, contStateSaveLease
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
-	case 6:
+	case contStateSaveLease:
 		t.proceedPublish(e, ev.op, t.curReqLease, t.curReqBytes)
-	case 7:
+	case contStatePutState:
 		var resp v1.PutSecurityStateResponse
 		if resp.Unmarshal(ev.bytes) != nil || resp.HeadEpoch != t.targetState.Core.Epoch {
 			return devicesec.ErrStale
@@ -1011,14 +1130,14 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		if rhh, _ := respHead.Hash(); rhh != t.targetHash {
 			return devicesec.ErrStale
 		}
-		t.stage = 8
+		t.stage = contStateInstallState
 		e.installRecordCAS([]devicesec.State{t.targetState}, [][]byte{t.targetBytes}, [][]byte{nil}, t.curReqLease, e.lastNowMs, nil, parentTarget(t, 0))
-	case 9:
-		t.stage = 10
+	case contStatePutLease:
+		t.stage = contStateInstallLease
 		e.installRecordCAS(nil, nil, nil, t.curReqLease, e.lastNowMs, nil, parentTarget(t, 0))
-	case 8, 10:
+	case contStateInstallState, contStateInstallLease:
 		t.deliverIfNeeded(e, t.op)
-	case 11:
+	case contStateSavePub:
 		saved := ev.op
 		t.op = saved
 		if len(saved.Delivery) == 0 {
@@ -1029,17 +1148,23 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		if delivery.Unmarshal(saved.Delivery) != nil {
 			return devicesec.ErrInvalid
 		}
-		t.delivery, t.stage = &delivery, 12
+		t.delivery, t.stage = &delivery, contStateApprovePair
 		e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_APPROVE_PAIRING, saved.Server, "", true, t.fgGen, saved.Delivery, parentTarget(t, 0))
-	case 12:
+	case contStateApprovePair:
 		if ev.rpcErr != nil {
 			return t.checkDeliveryFallback(e, ev.rpcErr)
 		}
-		t.stage = 13
+		if ev.err != nil {
+			return ev.err
+		}
+		t.stage = contStateGetPair
 		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, t.op.Server, t.fgGen, &v1.GetPairingRequest{PairingId: t.delivery.PairingId}, parentTarget(t, 0))
-	case 13:
+	case contStateGetPair:
 		if ev.rpcErr != nil {
 			return t.checkDeliveryFallback(e, ev.rpcErr)
+		}
+		if ev.err != nil {
+			return ev.err
 		}
 		var gr v1.GetPairingResponse
 		if gr.Unmarshal(ev.bytes) != nil {
@@ -1053,7 +1178,7 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		default:
 			e.okTarget(t.target, nil)
 		}
-	case 14:
+	case contStateListDevices:
 		var lr v1.ListDevicesResponse
 		if lr.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
@@ -1067,17 +1192,20 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 			return nil
 		}
 		return fatalWfError("pairing_delivery", text.KeySecurityPairingDeliveryExpiredExplicitlyRemoveTheUnfinishedCandidateBefore, "pairing_delivery")
-	case 15:
+	case contStateSaveDelivered:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		t.op = ev.op
 		if ev.op.Action == "recovery" && ev.op.CodeSaved {
-			t.stage = 16
+			t.stage = contStateClearRotPost
 			e.installRecordCAS(nil, nil, nil, nil, 0, clearNeedsRotationPatch(), parentTarget(t, 0))
 			return nil
 		}
-		t.stage = 17
+		t.stage = contStateDone
 		e.clearOperationCAS(ev.op, parentTarget(t, 0))
-	case 16:
-		t.stage = 17
+	case contStateClearRotPost:
+		t.stage = contStateDone
 		e.clearOperationCAS(t.op, parentTarget(t, 0))
 	}
 	return nil
@@ -1088,7 +1216,11 @@ type discardPendingTask struct {
 	acknowledgePublished bool
 }
 
-func (t *discardPendingTask) step(e *Engine, _ *secEvent) error {
+func (t *discardPendingTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	if err := e.checkFG(t.fgGen); err != nil {
 		return err

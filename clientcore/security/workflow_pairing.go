@@ -99,6 +99,14 @@ func joinerSessionToProto(s *joinerPairingSession) *corev1.SecurityPairingInfo {
 	}
 }
 
+const (
+	startPairSync uint8 = iota
+	startPairListMachines
+	startPairEntropy
+	startPairKeyGen
+	startPairCreateRPC
+)
+
 type startPairingTask struct {
 	taskBase
 	webOrigin, replacesDeviceID, server, ephemSlot string
@@ -114,16 +122,21 @@ func (t *startPairingTask) onError(e *Engine, err error) {
 }
 
 func (t *startPairingTask) beginCreate(e *Engine) {
-	t.stage = 2
+	t.stage = startPairEntropy
 	e.waitEntropy(64, t, 0)
 }
 
-func (t *startPairingTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 | 1<<2 }
-
 func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0: // sync
+	case startPairSync:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		if ev.kind == evStart {
 			if wf.pendingOp != nil {
 				return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
@@ -163,12 +176,12 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 			if !wasMachine {
 				return devicesec.ErrUntrusted
 			}
-			t.stage = 1
+			t.stage = startPairListMachines
 			e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_MACHINES, server, t.fgGen, &v1.ListMachinesRequest{}, parentTarget(t, 0))
 			return nil
 		}
 		t.beginCreate(e)
-	case 1: // list machines
+	case startPairListMachines:
 		var lmr v1.ListMachinesResponse
 		if lmr.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
@@ -184,10 +197,13 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 			return newWfError("not_found", text.KeySecurityTheComputerSArchiveWasDeletedJoinAsA)
 		}
 		t.beginCreate(e)
-	case 2: // entropy
-		t.ephemSlot, t.stage = "pair-init-"+e.nextWorkflowToken(), 3
+	case startPairEntropy:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
+		t.ephemSlot, t.stage = "pair-init-"+e.nextWorkflowToken(), startPairKeyGen
 		e.waitKeyGen(keyEphemX, t.ephemSlot, false, t, 0)
-	case 3: // keygen
+	case startPairKeyGen:
 		t.hasEphem = true
 		if len(ev.bytes) != 32 {
 			return devicesec.ErrInvalid
@@ -196,9 +212,9 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		commit := devicesec.PairDomainCommit(ev.bytes, t.trust)
-		t.ephemPub, t.commit, t.stage = ev.bytes, commit, 4
+		t.ephemPub, t.commit, t.stage = ev.bytes, commit, startPairCreateRPC
 		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_CREATE_PAIRING, t.server, t.fgGen, &v1.CreatePairingRequest{Commit: commit}, parentTarget(t, 0))
-	case 4: // create rpc
+	case startPairCreateRPC:
 		var resp v1.CreatePairingResponse
 		if resp.Unmarshal(ev.bytes) != nil || resp.PairingId == "" || resp.Code == "" {
 			return devicesec.ErrInvalid
@@ -219,6 +235,12 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+const (
+	pollInitGet uint8 = iota
+	pollInitAgree
+	pollInitReveal
+)
+
 type pollPairingInitiatorTask struct {
 	taskBase
 	pairingID, candID string
@@ -227,18 +249,22 @@ type pollPairingInitiatorTask struct {
 	ps                *devicesec.PairSecrets
 }
 
-func (t *pollPairingInitiatorTask) rawErrMask() uint32  { return 1 << 0 }
-func (t *pollPairingInitiatorTask) fgCheckMask() uint32 { return fgOnStart | 1<<1 }
-
 func (e *Engine) startPollPairingInitiator(fgGen uint64, pairingID string, target taskTarget) {
-	e.stepTask(&pollPairingInitiatorTask{taskBase: taskBase{fgGen: fgGen, target: target}, pairingID: pairingID}, &secEvent{kind: evStart})
+	e.stepTask(&pollPairingInitiatorTask{pairingID: pairingID}, &secEvent{kind: evStart, fgGen: fgGen, target: target})
 }
 
 func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil && t.stage != pollInitGet {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0: // get
+	case pollInitGet:
 		if ev.kind == evStart {
+			if err := e.checkFG(t.fgGen); err != nil {
+				return err
+			}
 			sess := wf.initPairings[t.pairingID]
 			if sess == nil {
 				return newWfError("not_found", text.KeySecurityPairingExpiredOrWasCanceled)
@@ -257,6 +283,8 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 				delete(wf.initPairings, t.pairingID)
 				return fatalWfError("canceled", text.KeySecurityPairingExpiredOrWasCanceled, "")
 			}
+			return ev.err
+		} else if ev.err != nil {
 			return ev.err
 		}
 		var st v1.GetPairingResponse
@@ -292,25 +320,28 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 			}
 			var peerX32 [32]byte
 			copy(peerX32[:], st.JoinerPublic)
-			t.st, t.candID, t.stage = st, candID, 1
+			t.st, t.candID, t.stage = st, candID, pollInitAgree
 			e.waitAgree(keyEphemX, sess.ephemSlot, peerX32, false, t, 0)
 			return nil
 		case v1.PairingState_PAIRING_STATE_APPROVED:
 			sess.approved, sess.joined = true, true
 		}
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(sess)})
-	case 1: // agree
+	case pollInitAgree:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		sess := t.sess
 		transcript := devicesec.PairDomainTranscript(sess.pairingID, sess.ephemPub, t.st.JoinerPublic, t.st.DevicePublicKey, t.st.DeviceHpkePublicKey, int32(t.st.JoinerKind), sess.trust)
 		ps, err := devicesec.DerivePairSecrets(ev.bytes, transcript)
 		if err != nil {
 			return err
 		}
-		t.ps, t.stage = ps, 2
+		t.ps, t.stage = ps, pollInitReveal
 		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REVEAL_PAIRING, sess.server, t.fgGen, &v1.RevealPairingRequest{
 			PairingId: sess.pairingID, InitiatorPublic: slices.Clone(sess.ephemPub), Trust: slices.Clone(sess.trust),
 		}, parentTarget(t, 0))
-	case 2: // reveal
+	case pollInitReveal:
 		sess := t.sess
 		e.discardInitSlot(sess)
 		sess.joined = true
@@ -321,6 +352,12 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+const (
+	approvePairSync uint8 = iota
+	approvePairClaim
+	approvePairResume
+)
+
 type approvePairingTask struct {
 	taskBase
 	pairingID    string
@@ -328,13 +365,17 @@ type approvePairingTask struct {
 	sess         *initiatorPairingSession
 }
 
-func (t *approvePairingTask) rawErrMask() uint32  { return 1 << 2 }
-func (t *approvePairingTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 }
-
 func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil && t.stage != approvePairResume {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0: // sync
+	case approvePairSync:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		if ev.kind == evStart {
 			if !t.sasConfirmed {
 				return newWfError("invalid", text.KeySecurityConfirmThePatternsOnTheNewDeviceBeforeApproving)
@@ -359,7 +400,7 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 			exp = e.lastNowMs + maxPairWindowMs
 		}
 		hh := e.headHash
-		t.stage = 1
+		t.stage = approvePairClaim
 		op := e.newPreparedOp(sess.server, e.selfDeviceID, "state", "pair", hh)
 		op.TargetDeviceID = sess.candidateID
 		op.Pair = &PersistedOpPair{
@@ -368,10 +409,10 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 			PairKey: slices.Clone(sess.pairKey), ExpiresMs: exp, ReplacesDeviceID: sess.replacesDeviceID,
 		}
 		e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
-	case 1: // claim
-		t.stage = 2
+	case approvePairClaim:
+		t.stage = approvePairResume
 		e.startResumePendingOp(t.fgGen, parentTarget(t, 0))
-	case 2: // resume
+	case approvePairResume:
 		if ev.err != nil {
 			e.completeTarget(t.target, &secEvent{wfRes: ev.wfRes, err: ev.err})
 			return nil
@@ -391,9 +432,8 @@ type finishPairingDeliveryTask struct {
 	pairingID, pid string
 }
 
-func (t *finishPairingDeliveryTask) rawErrMask() uint32 { return 1 << 0 }
-
 func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
 	wf := e.ensureWF()
 	if ev.kind == evStart {
 		if err := e.checkFG(t.fgGen); err != nil {
@@ -424,26 +464,34 @@ func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+const (
+	cancelInitStart uint8 = iota
+	cancelInitRPC
+	cancelInitClear
+)
+
 type cancelPairingInitiatorTask struct {
 	taskBase
 	pairingID string
 }
 
-func (t *cancelPairingInitiatorTask) ignoreErrMask() uint32 { return 1<<1 | 1<<2 }
-
 func (t *cancelPairingInitiatorTask) cleanupDraft(e *Engine) {
 	if op := e.ensureWF().pendingOp; op != nil && op.Pair != nil && op.Pair.PairingID == t.pairingID && op.Phase == "PREPARED" && len(op.Signed) == 0 {
-		t.stage = 2
+		t.stage = cancelInitClear
 		e.clearOperationCAS(op, parentTarget(t, 0))
 		return
 	}
 	e.okTarget(t.target, nil)
 }
 
-func (t *cancelPairingInitiatorTask) step(e *Engine, _ *secEvent) error {
+func (t *cancelPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil && t.stage == cancelInitStart {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0: // start
+	case cancelInitStart:
 		sess := wf.initPairings[t.pairingID]
 		e.discardInitSlot(sess)
 		delete(wf.initPairings, t.pairingID)
@@ -455,21 +503,31 @@ func (t *cancelPairingInitiatorTask) step(e *Engine, _ *secEvent) error {
 			t.cleanupDraft(e)
 			return nil
 		}
-		t.stage = 1
+		t.stage = cancelInitRPC
 		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_CANCEL_PAIRING, srv, 0, &v1.CancelPairingRequest{PairingId: t.pairingID}, parentTarget(t, 0))
-	case 1: // rpc
+	case cancelInitRPC:
 		t.cleanupDraft(e)
-	case 2: // clear
+	case cancelInitClear:
 		e.okTarget(t.target, nil)
 	}
 	return nil
 }
 
+const (
+	joinStartEntropy uint8 = iota
+	joinStartKeyEd
+	joinStartKeyX
+	joinStartKeyEphem
+	joinStartPeek
+	joinStartSaveCand
+	joinStartRPC
+)
+
 type startJoinPairingTask struct {
 	taskBase
 	server, code, edSlot, xSlot, ephemSlot string
 	commitHint, edPub, xPub, ephemPub      []byte
-	existingRepair, reusesEd               bool
+	existingRepair                         bool
 	peekResp                               v1.PeekPairingResponse
 	cleanLevel                             uint8 // 0:none 1:ed 2:ed+x 3:all 4:deleteCand+all
 }
@@ -482,7 +540,7 @@ func (t *startJoinPairingTask) discardSlots(e *Engine, lvl uint8) {
 		e.fireDeleteStorage(bktCand, PairingCandidateStorageKey(t.server, t.peekResp.PairingId))
 	}
 	ed, x := "", ""
-	if lvl >= 1 && !t.reusesEd {
+	if lvl >= 1 && !t.existingRepair {
 		ed = t.edSlot
 	}
 	if lvl >= 2 {
@@ -497,7 +555,7 @@ func (t *startJoinPairingTask) onError(e *Engine, err error) {
 }
 
 func (t *startJoinPairingTask) genXAndEphem(e *Engine, edPub []byte) {
-	t.edPub, t.cleanLevel, t.stage = edPub, 1, 2
+	t.edPub, t.cleanLevel, t.stage = edPub, 1, joinStartKeyX
 	e.waitKeyGen(keyCandX, t.xSlot, true, t, 0)
 }
 
@@ -554,34 +612,37 @@ func (e *Engine) startJoinPairingAction(actionID uint64, act *corev1.SecuritySta
 	}
 	e.waitEntropy(96, &startJoinPairingTask{
 		taskBase: taskBase{target: actionTarget(actionID, targetAction)}, server: server, code: code,
-		commitHint: commitHint, existingRepair: act.ExistingRepair, reusesEd: act.ExistingRepair,
+		commitHint: commitHint, existingRepair: act.ExistingRepair,
 	}, 0)
 }
 
 func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0: // entropy
+	case joinStartEntropy:
 		tok := e.nextWorkflowToken()
-		if !t.reusesEd {
+		if !t.existingRepair {
 			t.edSlot = "join-ed-" + tok
 		}
 		t.xSlot, t.ephemSlot = "join-x-"+tok, "join-ephem-"+tok
-		if t.reusesEd {
+		if t.existingRepair {
 			t.genXAndEphem(e, slices.Clone(wf.deviceEdPub))
 			return nil
 		}
-		t.stage = 1
+		t.stage = joinStartKeyEd
 		e.waitKeyGen(keyCandEd, t.edSlot, true, t, 0)
-	case 1: // ed
+	case joinStartKeyEd:
 		t.genXAndEphem(e, ev.bytes)
-	case 2: // x
-		t.xPub, t.cleanLevel, t.stage = ev.bytes, 2, 3
+	case joinStartKeyX:
+		t.xPub, t.cleanLevel, t.stage = ev.bytes, 2, joinStartKeyEphem
 		e.waitKeyGen(keyEphemX, t.ephemSlot, false, t, 0)
-	case 3: // ephem
-		t.ephemPub, t.cleanLevel, t.stage = ev.bytes, 3, 4
+	case joinStartKeyEphem:
+		t.ephemPub, t.cleanLevel, t.stage = ev.bytes, 3, joinStartPeek
 		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING, t.server, "", &v1.PeekPairingRequest{Code: t.code, ProtocolVersion: protocolVersion}, t)
-	case 4: // peek
+	case joinStartPeek:
 		var pr v1.PeekPairingResponse
 		if pr.Unmarshal(ev.bytes) != nil || pr.PairingId == "" || len(pr.Commit) != 32 {
 			return devicesec.ErrInvalid
@@ -591,20 +652,20 @@ func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
 		}
 		candBytes, err := (&PersistedPairingCandidate{
 			Server: t.server, PairingID: pr.PairingId, EdSlot: t.edSlot, XSlot: t.xSlot,
-			EdPublic: slices.Clone(t.edPub), XPublic: slices.Clone(t.xPub), ReusesDeviceEd: t.reusesEd,
+			EdPublic: slices.Clone(t.edPub), XPublic: slices.Clone(t.xPub), ReusesDeviceEd: t.existingRepair,
 		}).Encode()
 		if err != nil {
 			return err
 		}
-		t.peekResp, t.stage = pr, 5
+		t.peekResp, t.stage = pr, joinStartSaveCand
 		e.writeStorageCAS(bktCand, PairingCandidateStorageKey(t.server, pr.PairingId), "", e.nextWorkflowToken(), false, candBytes, t)
-	case 5: // save cand
-		t.cleanLevel, t.stage = 4, 6
+	case joinStartSaveCand:
+		t.cleanLevel, t.stage = 4, joinStartRPC
 		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING, t.server, "", &v1.JoinPairingRequest{
 			Code: t.code, JoinerPublic: slices.Clone(t.ephemPub), JoinerKind: v1.DeviceKind_DEVICE_KIND_CLIENT,
 			DevicePublicKey: slices.Clone(t.edPub), DeviceHpkePublicKey: slices.Clone(t.xPub), ProtocolVersion: protocolVersion,
 		}, t)
-	case 6: // join
+	case joinStartRPC:
 		var jr v1.JoinPairingResponse
 		if jr.Unmarshal(ev.bytes) != nil || jr.PairingId == "" || jr.CandidateToken == "" || len(jr.Commit) != 32 {
 			return devicesec.ErrInvalid
@@ -616,7 +677,7 @@ func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
 			pairingID: jr.PairingId, server: t.server, code: t.code, commitHint: t.commitHint,
 			commit: slices.Clone(jr.Commit), existingRepair: t.existingRepair, replace: t.existingRepair,
 			ephemSlot: t.ephemSlot, ephemPub: slices.Clone(t.ephemPub), edSlot: t.edSlot, xSlot: t.xSlot,
-			edPublic: slices.Clone(t.edPub), xPublic: slices.Clone(t.xPub), reusesDeviceEd: t.reusesEd, candidateToken: jr.CandidateToken,
+			edPublic: slices.Clone(t.edPub), xPublic: slices.Clone(t.xPub), reusesDeviceEd: t.existingRepair, candidateToken: jr.CandidateToken,
 		}
 		wf.activePoll = &activePoll{kind: pollJoinRevealed, pairingID: jr.PairingId, actionID: t.target.actionID}
 		e.pollJoinState(jr.PairingId, v1.PairingState_PAIRING_STATE_REVEALED)
@@ -675,6 +736,14 @@ func (e *Engine) cleanupJoinerFailure(sess *joinerPairingSession) {
 	e.fireDeleteStorage(bktCand, PairingCandidateStorageKey(sess.server, sess.pairingID))
 }
 
+const (
+	pollJoinGet uint8 = iota
+	pollJoinRevealAgree
+	pollJoinSignReg
+	pollJoinWriteIntent
+	pollJoinResumeReg
+)
+
 type pollJoinTask struct {
 	taskBase
 	pairingID, approver, selfID, intentRev string
@@ -689,8 +758,6 @@ type pollJoinTask struct {
 	intent                                 *PersistedRegistrationIntent
 	signingPhase                           bool
 }
-
-func (t *pollJoinTask) rawErrMask() uint32 { return 1<<0 | 1<<4 }
 
 func (t *pollJoinTask) onError(e *Engine, err error) {
 	if t.signingPhase {
@@ -727,7 +794,7 @@ func (t *pollJoinTask) handleRevealed(e *Engine, st *v1.GetPairingResponse) erro
 	}
 	var initX32 [32]byte
 	copy(initX32[:], st.InitiatorPublic)
-	t.st, t.pin, t.approver, t.stage = *st, pin, approver, 1
+	t.st, t.pin, t.approver, t.stage = *st, pin, approver, pollJoinRevealAgree
 	e.waitAgree(keyEphemX, sess.ephemSlot, initX32, false, t, 0)
 	return nil
 }
@@ -821,15 +888,18 @@ func (t *pollJoinTask) handleApproved(e *Engine, st *v1.GetPairingResponse) erro
 		signKind, signSlot = keyDevEd, ""
 	}
 	t.payload, t.regBody, t.selfID, t.acctPub32, t.newRec = payload, regBody, selfID, acctPub32, newRec
-	sess.registering, t.signingPhase, t.stage = true, true, 2
+	sess.registering, t.signingPhase, t.stage = true, true, pollJoinSignReg
 	e.waitSign(signKind, signSlot, append(append([]byte{}, registerContext...), regBody...), t, 0)
 	return nil
 }
 
 func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil && t.stage != pollJoinGet && t.stage != pollJoinResumeReg {
+		return ev.err
+	}
 	wf, sess := e.ensureWF(), t.sess
 	switch t.stage {
-	case 0: // get
+	case pollJoinGet:
 		if wf.activePoll == nil || wf.activePoll.pairingID != t.pairingID {
 			return nil
 		}
@@ -839,6 +909,8 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 			}
 			e.scheduleSecurityPollTimer()
 			return nil
+		} else if ev.err != nil {
+			return ev.err
 		}
 		var st v1.GetPairingResponse
 		if st.Unmarshal(ev.bytes) != nil {
@@ -855,7 +927,7 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 			return t.handleRevealed(e, &st)
 		}
 		return t.handleApproved(e, &st)
-	case 1: // reveal agree
+	case pollJoinRevealAgree:
 		transcript := devicesec.PairDomainTranscript(sess.pairingID, t.st.InitiatorPublic, sess.ephemPub, sess.edPublic, sess.xPublic, int32(v1.DeviceKind_DEVICE_KIND_CLIENT), t.st.Trust)
 		ps, err := devicesec.DerivePairSecrets(ev.bytes, transcript)
 		if err != nil {
@@ -867,7 +939,7 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 		}
 		sess.trust, sess.approver, sess.pairKey, sess.sasEmoji = t.pin, t.approver, slices.Clone(ps.Key), ps.Emoji()
 		e.resolveActivePoll(t.pairingID, &corev1.SecurityWorkflowResultEffect{Pairing: joinerSessionToProto(sess)}, nil)
-	case 2: // sign reg
+	case pollJoinSignReg:
 		regReqBytes, err := (&v1.RegisterDeviceRequest{
 			Registration: t.regBody, Signature: ev.bytes, Approval: slices.Clone(t.payload.Approval),
 			ApprovalSignature: slices.Clone(t.payload.ApprovalSignature), ProtocolVersion: protocolVersion,
@@ -885,17 +957,24 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 			return err
 		}
 		intentRev := e.nextWorkflowToken()
-		t.intent, t.intentRev, t.stage = intent, intentRev, 3
+		t.intent, t.intentRev, t.stage = intent, intentRev, pollJoinWriteIntent
 		e.writeStorageCAS(bktIntent, "intent", "", intentRev, true, intentBytes, t)
-	case 3: // write intent
-		wf.regIntent, wf.regIntentRev, e.securityLocked, t.stage = t.intent, t.intentRev, true, 4
+	case pollJoinWriteIntent:
+		wf.regIntent, wf.regIntentRev, e.securityLocked, t.stage = t.intent, t.intentRev, true, pollJoinResumeReg
 		e.startResumeRegistration(0, parentTarget(t, 0))
-	case 4: // resume reg
+	case pollJoinResumeReg:
 		sess.registering = false
 		e.resolveActivePoll(t.pairingID, ev.wfRes, ev.err)
 	}
 	return nil
 }
+
+const (
+	resumeRegRPC uint8 = iota
+	resumeRegFallbackLogin
+	resumeRegCommit
+	resumeRegApply
+)
 
 type resumeRegistrationTask struct {
 	taskBase
@@ -904,8 +983,6 @@ type resumeRegistrationTask struct {
 	prof   *PersistedPublicProfile
 	rev    string
 }
-
-func (t *resumeRegistrationTask) rawErrMask() uint32 { return 1<<0 | 1<<1 }
 
 func (e *Engine) startResumeRegistration(fgGen uint64, target taskTarget) {
 	if fgGen != 0 {
@@ -963,16 +1040,22 @@ func (t *resumeRegistrationTask) commitIntent(e *Engine) error {
 	if intent.XSlot != "" {
 		discard = append(discard, intent.XSlot)
 	}
-	t.prof, t.rev, t.stage = prof, rev, 2
+	t.prof, t.rev, t.stage = prof, rev, resumeRegCommit
 	e.batchCommitStorage(promoteEd, intent.XSlot, discard, true, batch, t)
 	return nil
 }
 
 func (t *resumeRegistrationTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil && t.stage != resumeRegRPC && t.stage != resumeRegFallbackLogin {
+		return ev.err
+	}
 	wf, intent := e.ensureWF(), t.intent
 	switch t.stage {
-	case 0: // rpc
+	case resumeRegRPC:
 		if ev.rpcErr == nil {
+			if ev.err != nil {
+				return ev.err
+			}
 			var resp v1.RegisterDeviceResponse
 			if resp.Unmarshal(ev.bytes) != nil || resp.DeviceId != intent.DeviceID {
 				return devicesec.ErrUntrusted
@@ -984,17 +1067,17 @@ func (t *resumeRegistrationTask) step(e *Engine, ev *secEvent) error {
 			if intent.ReusesDeviceEd {
 				kind, slot = keyDevEd, ""
 			}
-			t.regErr, t.stage = ev.rpcErr, 1
+			t.regErr, t.stage = ev.rpcErr, resumeRegFallbackLogin
 			e.forceLoginToken(intent.Server, kind, slot, intent.DeviceID, false, 0, false, parentTarget(t, 0))
 			return nil
 		}
 		return ev.rpcErr
-	case 1: // fallback login
+	case resumeRegFallbackLogin:
 		if ev.err == nil {
 			return t.commitIntent(e)
 		}
 		return t.regErr
-	case 2: // commit
+	case resumeRegCommit:
 		rec := intent.Record.Clone()
 		if intent.PairingID != "" {
 			delete(wf.joinPairings, intent.PairingID)
@@ -1008,9 +1091,9 @@ func (t *resumeRegistrationTask) step(e *Engine, ev *secEvent) error {
 			}
 		}
 		e.installCommittedAccount(intent.Server, t.rev, rec, t.prof, ev.storage, fallbackEd, fallbackX)
-		t.stage = 3
+		t.stage = resumeRegApply
 		e.applyPersistedRecordToEngine(rec, parentTarget(t, 0))
-	case 3: // apply
+	case resumeRegApply:
 		rec := wf.record
 		if rec != nil && len(rec.States) > 0 {
 			if head, pErr := devicesec.ParseState(rec.States[len(rec.States)-1]); pErr == nil {

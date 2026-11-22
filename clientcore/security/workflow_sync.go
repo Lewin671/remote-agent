@@ -53,23 +53,30 @@ func (e *Engine) installRecordCAS(
 	}).beginAttempt(e)
 }
 
+const (
+	installRecordRead uint8 = iota
+	installRecordWrite
+	installRecordApply
+)
+
 func (t *installRecordTask) beginAttempt(e *Engine) {
 	if t.attempt >= 4 {
 		e.failTarget(t.target, devicesec.ErrStale)
 		return
 	}
-	t.stage = 0
+	t.stage = installRecordRead
 	e.waitStorage(&corev1.SecurityStorageEffect{
 		Op: corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ, Bucket: bktRec, Key: "record",
 	}, t, 0)
 }
 
-func (t *installRecordTask) rawErrMask() uint32 { return 1 << 1 }
-
 func (t *installRecordTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil && t.stage != installRecordWrite {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0: // read
+	case installRecordRead:
 		if !ev.storage.found || len(ev.storage.data) == 0 {
 			return ErrNotInitialized
 		}
@@ -167,9 +174,9 @@ func (t *installRecordTask) step(e *Engine, ev *secEvent) error {
 		} else {
 			writes = append(writes, &corev1.SecurityStorageWrite{Bucket: bktNotify, Key: "notify", Remove: true})
 		}
-		t.next, t.nextRev, t.newHead, t.wroteNotify, t.stage = next, nextRev, newHead, wroteNotify, 1
+		t.next, t.nextRev, t.newHead, t.wroteNotify, t.stage = next, nextRev, newHead, wroteNotify, installRecordWrite
 		e.batchCommitStorage("", "", nil, false, writes, t)
-	case 1: // write
+	case installRecordWrite:
 		if ev.storage != nil && ev.storage.conflict {
 			t.attempt++
 			t.beginAttempt(e)
@@ -178,9 +185,9 @@ func (t *installRecordTask) step(e *Engine, ev *secEvent) error {
 		if ev.err != nil {
 			return ev.err
 		}
-		wf.record, wf.recordRev, t.stage = t.next, t.nextRev, 2
+		wf.record, wf.recordRev, t.stage = t.next, t.nextRev, installRecordApply
 		e.applyPersistedRecordToEngine(t.next, parentTarget(t, 0))
-	case 2: // apply
+	case installRecordApply:
 		if t.next.Member && !t.wroteNotify {
 			e.fireNotifyRecord(t.next, t.newHead, "")
 		}
@@ -189,17 +196,10 @@ func (t *installRecordTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
-// SyncStates runs Core-driven state synchronization and drains emitted effects.
-func (e *Engine) SyncStates(nowMs int64, touch bool, authToken string, onDone func(err error)) []*corev1.Effect {
-	e.touchNow(nowMs)
-	e.syncStates(touch, authToken, taskTarget{kind: targetCbErr, cbErr: onDone})
-	return e.DrainEffects()
-}
-
 // SyncStatesTag runs Core-driven state synchronization routed to AsyncSink.OnSyncStatesDone.
 func (e *Engine) SyncStatesTag(nowMs int64, touch bool, authToken string, tag uint64) []*corev1.Effect {
 	e.touchNow(nowMs)
-	e.syncStates(touch, authToken, taskTarget{kind: targetSinkSync, actionID: tag})
+	e.syncWait(touch, authToken, syncWaiter{hasSink: true, sinkTag: tag})
 	return e.DrainEffects()
 }
 
@@ -212,13 +212,23 @@ type syncStatesTask struct {
 	stage  uint8
 }
 
+const (
+	syncStageTouch uint8 = iota
+	syncStageFetch
+	syncStageInstall
+)
+
 func (t *syncStatesTask) onError(e *Engine, err error) { e.finishSyncWaiters(err) }
 
 //go:noinline
 func (e *Engine) syncStates(touch bool, authToken string, target taskTarget) {
+	e.syncWait(touch, authToken, syncWaiter{target: target})
+}
+
+func (e *Engine) syncWait(touch bool, authToken string, waiter syncWaiter) {
 	wf := e.ensureWF()
-	if target.kind != targetNone {
-		wf.syncWaiters = append(wf.syncWaiters, target)
+	if waiter.hasSink || waiter.target.kind != targetNone {
+		wf.syncWaiters = append(wf.syncWaiters, waiter)
 	}
 	if wf.syncInFlight {
 		return
@@ -245,7 +255,13 @@ func (e *Engine) finishSyncWaiters(err error) {
 	wf.syncWaiters = nil
 	ev := &secEvent{err: err}
 	for _, w := range waiters {
-		e.completeTarget(w, ev)
+		if w.hasSink {
+			if wf.asyncSink != nil {
+				wf.asyncSink.OnSyncStatesDone(w.sinkTag, err)
+			}
+			continue
+		}
+		e.completeTarget(w.target, ev)
 	}
 }
 
@@ -263,7 +279,7 @@ func (t *syncStatesTask) nextPage(e *Engine) {
 	}
 	t.cur = cur
 	if t.touch && e.lastNowMs > cur.FloorMs {
-		t.stage = 0
+		t.stage = syncStageTouch
 		e.installRecordCAS(nil, nil, nil, nil, e.lastNowMs, nil, parentTarget(t, 0))
 		return
 	}
@@ -280,7 +296,7 @@ func (t *syncStatesTask) fetchAfterTouch(e *Engine, rec *PersistedRecord) {
 		e.finishSyncWaiters(err)
 		return
 	}
-	t.cur, t.head, t.stage = rec, head, 1
+	t.cur, t.head, t.stage = rec, head, syncStageFetch
 	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES, t.server, 0, &v1.GetSecurityStatesRequest{
 		AfterEpoch: head.Core.Epoch, Limit: 8,
 	}, parentTarget(t, 0))
@@ -289,12 +305,12 @@ func (t *syncStatesTask) fetchAfterTouch(e *Engine, rec *PersistedRecord) {
 func (t *syncStatesTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0: // touch
+	case syncStageTouch:
 		if ev.err != nil {
 			return ev.err
 		}
 		t.fetchAfterTouch(e, ev.rec)
-	case 1: // fetch
+	case syncStageFetch:
 		if ev.err != nil {
 			wf.recoveryStatusStale = true
 			return ev.err
@@ -313,7 +329,7 @@ func (t *syncStatesTask) step(e *Engine, ev *secEvent) error {
 				return devicesec.ErrStale
 			}
 			if len(resp.Lease) > 0 && !sameLeaseBytes(resp.Lease, t.cur.Lease) {
-				t.stage = 2
+				t.stage = syncStageInstall
 				e.installRecordCAS(nil, nil, nil, resp.Lease, e.lastNowMs, nil, parentTarget(t, 1))
 				return nil
 			}
@@ -337,9 +353,9 @@ func (t *syncStatesTask) step(e *Engine, ev *secEvent) error {
 				pageLease = resp.Lease
 			}
 		}
-		t.stage = 2
+		t.stage = syncStageInstall
 		e.installRecordCAS(parsed, rawStates, rawProofs, pageLease, e.lastNowMs, nil, parentTarget(t, 2))
-	case 2: // install
+	case syncStageInstall:
 		if ev.err != nil {
 			return ev.err
 		}
@@ -422,8 +438,17 @@ func (t *republishObjsTask) onError(e *Engine, err error) {
 	e.failTarget(t.target, err)
 }
 
+const (
+	repubStageGet uint8 = iota
+	repubStageOpen
+	repubStageEntropy
+	repubStageSeal
+	repubStagePut
+	repubStageClear
+)
+
 func (t *republishObjsTask) clearFlag(e *Engine) {
-	t.stage = 5
+	t.stage = repubStageClear
 	e.installRecordCAS(nil, nil, nil, nil, 0, clearRecoveryObjectsPatch(), parentTarget(t, 0))
 }
 
@@ -432,14 +457,17 @@ func (t *republishObjsTask) tryAttempt(e *Engine) {
 		t.onError(e, devicesec.ErrStale)
 		return
 	}
-	t.stage = 0
+	t.stage = repubStageGet
 	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_ACCOUNT_PREFS, t.server, 0, &v1.GetAccountPrefsRequest{ObjectId: "project-prefs"}, parentTarget(t, 0))
 }
 
 func (t *republishObjsTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	const prefsObj = "project-prefs"
 	switch t.stage {
-	case 0: // get
+	case repubStageGet:
 		var resp v1.GetAccountPrefsResponse
 		if resp.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
@@ -449,9 +477,9 @@ func (t *republishObjsTask) step(e *Engine, ev *secEvent) error {
 			t.clearFlag(e)
 			return nil
 		}
-		t.objRev, t.stage = obj.Revision, 1
+		t.objRev, t.stage = obj.Revision, repubStageOpen
 		e.startOpenBatchInternal(e.lastNowMs, []OpenItem{{Env: obj.Envelope, ExpectedPurpose: devicesec.Prefs, RequestID: prefsObj, Seq: obj.Revision, History: true}}, parentTarget(t, 0))
-	case 1: // open
+	case repubStageOpen:
 		r := ev.opened[0]
 		if r.Err != nil {
 			if errors.Is(r.Err, ErrRecoveryHistoryUnavailable) {
@@ -473,17 +501,17 @@ func (t *republishObjsTask) step(e *Engine, ev *secEvent) error {
 		if err != nil {
 			return err
 		}
-		t.rawPlain, t.stage = raw, 2
+		t.rawPlain, t.stage = raw, repubStageEntropy
 		e.waitEntropy(64, t, 0)
-	case 2: // entropy
-		t.stage = 3
+	case repubStageEntropy:
+		t.stage = repubStageSeal
 		e.startSealEnvelopeInternal(e.lastNowMs, devicesec.Prefs, "", "", prefsObj, t.objRev+1, 0, t.rawPlain, false, nil, parentTarget(t, 0))
-	case 3: // seal
-		t.stage = 4
+	case repubStageSeal:
+		t.stage = repubStagePut
 		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_ACCOUNT_PREFS, t.server, 0, &v1.PutAccountPrefsRequest{
 			ObjectId: prefsObj, ExpectedRevision: t.objRev, Envelope: ev.seal.Envelope,
 		}, parentTarget(t, 0))
-	case 4: // put
+	case repubStagePut:
 		var pr v1.PutAccountPrefsResponse
 		if pr.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
@@ -494,7 +522,7 @@ func (t *republishObjsTask) step(e *Engine, ev *secEvent) error {
 		}
 		t.attempt++
 		t.tryAttempt(e)
-	case 5: // clear
+	case repubStageClear:
 		t.onError(e, nil)
 	}
 	return nil

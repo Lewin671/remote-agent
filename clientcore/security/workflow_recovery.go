@@ -54,20 +54,32 @@ func (t *fetchRecoveryCtxTask) onError(e *Engine, err error) {
 	e.failTarget(t.target, err)
 }
 
+const (
+	recCtxChallenge uint8 = iota
+	recCtxSign
+	recCtxFetch
+)
+
 func (t *fetchRecoveryCtxTask) sendContextRPC(e *Engine, sig []byte) {
 	req := &v1.GetRecoveryContextRequest{RecoveryId: t.recoveryID, Challenge: t.challenge, Signature: sig}
 	if len(t.recPub) > 0 {
 		req.RecoveryEd = slices.Clone(t.recPub)
 	}
-	t.stage = 2
+	t.stage = recCtxFetch
 	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT, t.server, "", req, t)
 }
 
-func (t *fetchRecoveryCtxTask) fgCheckMask() uint32 { return 1 << 0 }
-
 func (t *fetchRecoveryCtxTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	switch t.stage {
-	case 0: // challenge
+	case recCtxChallenge:
+		if t.fgGen != 0 {
+			if err := e.checkFG(t.fgGen); err != nil {
+				return err
+			}
+		}
 		var cr v1.GetRecoveryChallengeResponse
 		if cr.Unmarshal(ev.bytes) != nil || len(cr.Challenge) == 0 {
 			return devicesec.ErrInvalid
@@ -83,11 +95,11 @@ func (t *fetchRecoveryCtxTask) step(e *Engine, ev *secEvent) error {
 			t.sendContextRPC(e, sig)
 			return nil
 		}
-		t.stage = 1
+		t.stage = recCtxSign
 		e.waitSign(keyCandEd, t.candEdSlot, signMsg, t, 0)
-	case 1: // sign
+	case recCtxSign:
 		t.sendContextRPC(e, ev.bytes)
-	case 2: // context
+	case recCtxFetch:
 		var resp v1.GetRecoveryContextResponse
 		if resp.Unmarshal(ev.bytes) != nil {
 			return devicesec.ErrInvalid
@@ -173,12 +185,26 @@ func (t *prepareEmergencyRecoveryTask) onError(e *Engine, err error) {
 	e.failTarget(t.target, err)
 }
 
-func (t *prepareEmergencyRecoveryTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 | 1<<1 }
+const (
+	prepRecContext uint8 = iota
+	prepRecEntropy
+	prepRecKeyEd
+	prepRecKeyX
+	prepRecClaim
+	prepRecSigned
+)
 
 func (t *prepareEmergencyRecoveryTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0: // context
+	case prepRecContext:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		if ev.kind == evStart {
 			server, err := CheckServerURL(t.rawServer)
 			if err != nil {
@@ -216,16 +242,19 @@ func (t *prepareEmergencyRecoveryTask) step(e *Engine, ev *secEvent) error {
 			}
 		}
 		t.resp, t.pin, t.acctPub, t.rawStates, t.rawProofs, t.head, t.retiring = rc.resp, rc.pin, rc.acctPub, rc.rawStates, rc.rawProofs, head, retiring
-		t.stage = 1
+		t.stage = prepRecEntropy
 		e.waitEntropy(128, t, 0)
-	case 1: // entropy
+	case prepRecEntropy:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		tok := e.nextWorkflowToken()
-		t.edSlot, t.xSlot, t.stage = "rec-ed-"+tok, "rec-x-"+tok, 2
+		t.edSlot, t.xSlot, t.stage = "rec-ed-"+tok, "rec-x-"+tok, prepRecKeyEd
 		e.waitKeyGen(keyCandEd, t.edSlot, true, t, 0)
-	case 2: // keygen ed
-		t.candEdPub, t.cleanEd, t.stage = ev.bytes, true, 3
+	case prepRecKeyEd:
+		t.candEdPub, t.cleanEd, t.stage = ev.bytes, true, prepRecKeyX
 		e.waitKeyGen(keyCandX, t.xSlot, true, t, 0)
-	case 3: // keygen x
+	case prepRecKeyX:
 		t.cleanX = true
 		var newRecSeed, newSecret [32]byte
 		if !e.readRandom(newRecSeed[:]) || !e.readRandom(newSecret[:]) {
@@ -252,23 +281,29 @@ func (t *prepareEmergencyRecoveryTask) step(e *Engine, ev *secEvent) error {
 			States: t.rawStates, RecoveryProofs: t.rawProofs,
 		}
 		zeroBytes(newSecret[:])
-		t.stage = 4
+		t.stage = prepRecClaim
 		e.claimOperationCAS(op, nil, candID, parentTarget(t, 0))
-	case 4: // claim
+	case prepRecClaim:
 		wf.server = t.server
 		t.cleanEd, t.cleanX = false, false
 		seed := t.oldSeed
 		zeroBytes(t.oldSeed[:])
-		t.stage = 5
+		t.stage = prepRecSigned
 		e.startSignRecoveryDraft(ev.op, seed, t.fgGen, parentTarget(t, 0))
 		zeroBytes(seed[:])
-	case 5: // signed
+	case prepRecSigned:
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
 			RecoveryCode: t.newCode,
 		})
 	}
 	return nil
 }
+
+const (
+	signRecDraftEntropy uint8 = iota
+	signRecDraftKEM
+	signRecDraftSave
+)
 
 type signRecoveryDraftTask struct {
 	taskBase
@@ -285,8 +320,6 @@ func (t *signRecoveryDraftTask) onError(e *Engine, err error) {
 	zeroBytes(t.oldSeed[:])
 	e.failTarget(t.target, err)
 }
-
-func (t *signRecoveryDraftTask) fgCheckMask() uint32 { return 1<<0 | 1<<1 }
 
 func (e *Engine) startSignRecoveryDraft(op *PersistedOperation, oldSeed [32]byte, fgGen uint64, target taskTarget) {
 	defer zeroBytes(oldSeed[:])
@@ -348,16 +381,25 @@ func (e *Engine) startSignRecoveryDraft(op *PersistedOperation, oldSeed [32]byte
 }
 
 func (t *signRecoveryDraftTask) step(e *Engine, ev *secEvent) error {
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	switch t.stage {
-	case 0:
+	case signRecDraftEntropy:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		draft := t.op.Recovery
 		var secretCopy [32]byte
 		copy(secretCopy[:], draft.Secret)
 		params := kemBuildParams{kind: kemBuildRecovery, parent: t.parent, member: t.newMember, members: t.members, newSecret: secretCopy, recoveryEd: t.newRecEd, now: t.now}
 		zeroBytes(secretCopy[:])
-		t.stage = 1
+		t.stage = signRecDraftKEM
 		e.buildAndSignStateWithKEM(keyCandEd, draft.EdSlot, true, t.fgGen, params, t.members, parentTarget(t, 0))
-	case 1:
+	case signRecDraftKEM:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		target := *ev.state
 		stmt, err := devicesec.NewRecoveryStatement(t.parent, target, e.entropy)
 		if err != nil {
@@ -391,13 +433,20 @@ func (t *signRecoveryDraftTask) step(e *Engine, ev *secEvent) error {
 		nextDraft := *t.op.Recovery
 		nextDraft.TargetState, nextDraft.Proof = targetBytes, proofBytes
 		nextOp := *t.op
-		nextOp.Signed, nextOp.Recovery, t.stage = reqBytes, &nextDraft, 2
+		nextOp.Signed, nextOp.Recovery, t.stage = reqBytes, &nextDraft, signRecDraftSave
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
-	case 2:
+	case signRecDraftSave:
 		e.completeTarget(t.target, &secEvent{op: ev.op})
 	}
 	return nil
 }
+
+const (
+	contRecStart uint8 = iota
+	contRecSigned
+	contRecSubmitRPC
+	contRecSave
+)
 
 type continueRecoverySigningTask struct {
 	taskBase
@@ -408,16 +457,21 @@ type continueRecoverySigningTask struct {
 }
 
 func (t *continueRecoverySigningTask) submitSigned(e *Engine, curOp *PersistedOperation) {
-	t.op, t.stage = curOp, 2
+	t.op, t.stage = curOp, contRecSubmitRPC
 	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY, curOp.Server, "", curOp.Signed, t, 0)
 }
 
-func (t *continueRecoverySigningTask) fgCheckMask() uint32 { return fgOnStart | 1<<1 }
-
 func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0:
+	case contRecStart:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		op := wf.pendingOp
 		if op == nil || op.Kind != "recovery" || op.Recovery == nil {
 			return devicesec.ErrStale
@@ -431,12 +485,15 @@ func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
 			zeroBytes(oldSeed[:])
 			return newWfError("invalid", errInvalidRecoveryCode.Error())
 		}
-		t.stage = 1
+		t.stage = contRecSigned
 		e.startSignRecoveryDraft(op, oldSeed, t.fgGen, parentTarget(t, 0))
 		zeroBytes(oldSeed[:])
-	case 1:
+	case contRecSigned:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		t.submitSigned(e, ev.op)
-	case 2:
+	case contRecSubmitRPC:
 		var sr v1.SubmitRecoveryResponse
 		if sr.Unmarshal(ev.bytes) != nil || sr.RecoveryId == "" {
 			return devicesec.ErrInvalid
@@ -444,15 +501,23 @@ func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
 		nextDraft := *t.op.Recovery
 		nextDraft.RecoveryID, nextDraft.ReadyMs = sr.RecoveryId, int64(sr.ReadyMs)
 		nextOp := *t.op
-		nextOp.Phase, nextOp.Recovery, t.recoveryID, t.readyMs, t.stage = "PUBLISHED", &nextDraft, sr.RecoveryId, int64(sr.ReadyMs), 3
+		nextOp.Phase, nextOp.Recovery, t.recoveryID, t.readyMs, t.stage = "PUBLISHED", &nextDraft, sr.RecoveryId, int64(sr.ReadyMs), contRecSave
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
-	case 3:
+	case contRecSave:
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
 			Recovery: &corev1.SecurityRecoveryInfo{RecoveryId: t.recoveryID, Phase: v1.GetRecoveryContextResponse_PHASE_PENDING, ReadyMs: t.readyMs},
 		})
 	}
 	return nil
 }
+
+const (
+	resumeRecStart uint8 = iota
+	resumeRecSubmitRPC
+	resumeRecSavePub
+	resumeRecFetchCtx
+	resumeRecSaveReady
+)
 
 type resumeRecoveryTask struct {
 	taskBase
@@ -461,16 +526,21 @@ type resumeRecoveryTask struct {
 }
 
 func (t *resumeRecoveryTask) fetchContext(e *Engine, op *PersistedOperation) {
-	t.op, t.stage = op, 3
+	t.op, t.stage = op, resumeRecFetchCtx
 	e.startFetchRecoveryCtxWithCandSlot(op.Server, op.Recovery.RecoveryID, op.Recovery.EdSlot, t.fgGen, parentTarget(t, 0))
 }
 
-func (t *resumeRecoveryTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 }
-
 func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	wf := e.ensureWF()
 	switch t.stage {
-	case 0:
+	case resumeRecStart:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		op := wf.pendingOp
 		if op == nil || op.Kind != "recovery" || op.Recovery == nil {
 			e.okTarget(t.target, nil)
@@ -478,7 +548,7 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 		}
 		if op.Recovery.RecoveryID == "" {
 			if len(op.Signed) > 0 {
-				t.op, t.stage = op, 1
+				t.op, t.stage = op, resumeRecSubmitRPC
 				e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY, op.Server, "", op.Signed, t, 0)
 				return nil
 			}
@@ -486,7 +556,7 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 			return nil
 		}
 		t.fetchContext(e, op)
-	case 1:
+	case resumeRecSubmitRPC:
 		var sr v1.SubmitRecoveryResponse
 		if sr.Unmarshal(ev.bytes) != nil || sr.RecoveryId == "" {
 			return devicesec.ErrInvalid
@@ -494,18 +564,18 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 		nextDraft := *t.op.Recovery
 		nextDraft.RecoveryID, nextDraft.ReadyMs = sr.RecoveryId, int64(sr.ReadyMs)
 		nextOp := *t.op
-		nextOp.Phase, nextOp.Recovery, t.stage = "PUBLISHED", &nextDraft, 2
+		nextOp.Phase, nextOp.Recovery, t.stage = "PUBLISHED", &nextDraft, resumeRecSavePub
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
-	case 2:
+	case resumeRecSavePub:
 		t.fetchContext(e, ev.op)
-	case 3:
+	case resumeRecFetchCtx:
 		resp, draft := ev.recCtx.resp, t.op.Recovery
 		t.phase = resp.Phase
 		if int64(resp.ReadyMs) > 0 && int64(resp.ReadyMs) != draft.ReadyMs {
 			nextDraft := *draft
 			nextDraft.ReadyMs = int64(resp.ReadyMs)
 			nextOp := *t.op
-			nextOp.Recovery, t.stage = &nextDraft, 4
+			nextOp.Recovery, t.stage = &nextDraft, resumeRecSaveReady
 			e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
 			return nil
 		}
@@ -513,7 +583,7 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 			ResumedDraft: true, CodeSaved: t.op.CodeSaved,
 			Recovery: &corev1.SecurityRecoveryInfo{RecoveryId: draft.RecoveryID, Phase: resp.Phase, ReadyMs: draft.ReadyMs},
 		})
-	case 4:
+	case resumeRecSaveReady:
 		saved := ev.op
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
 			ResumedDraft: true, CodeSaved: saved.CodeSaved,
@@ -522,6 +592,23 @@ func (t *resumeRecoveryTask) step(e *Engine, ev *secEvent) error {
 	}
 	return nil
 }
+
+const (
+	compRecStart uint8 = iota
+	compRecSign
+	compRecSave
+	compRecRPC
+	compRecLogin
+	compRecLease
+	compRecPutLease
+	compRecRetEntropy
+	compRecRetKEM
+	compRecRetLease
+	compRecRetSave
+	compRecRetPut
+	compRecCommit
+	compRecApply
+)
 
 type completeRecoveryTask struct {
 	taskBase
@@ -553,7 +640,7 @@ func (t *completeRecoveryTask) onError(e *Engine, err error) {
 }
 
 func (t *completeRecoveryTask) callComplete(e *Engine, curOp *PersistedOperation) {
-	t.op, t.stage = curOp, 3
+	t.op, t.stage = curOp, compRecRPC
 	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_COMPLETE_RECOVERY, curOp.Server, "", curOp.Recovery.CompleteRequest, t, 0)
 }
 
@@ -592,22 +679,27 @@ func (t *completeRecoveryTask) commitRecord(e *Engine, curOp *PersistedOperation
 	if wf.recordRev != "" {
 		recordExpected, createRecord = wf.recordRev, false
 	}
-	t.op, t.finalHead, t.rec, t.prof, t.rev, t.stage = curOp, head, rec, prof, rev, 12
+	t.op, t.finalHead, t.rec, t.prof, t.rev, t.stage = curOp, head, rec, prof, rev, compRecCommit
 	e.batchCommitStorage(curOp.Recovery.EdSlot, curOp.Recovery.XSlot, []string{curOp.Recovery.EdSlot, curOp.Recovery.XSlot}, true,
 		buildAccountCommitWrites(curOp.Server, t.pin, profBytes, recBytes, createRecord, recordExpected, rev, opRev, true, "", ""), t)
 	return nil
 }
 
 func (t *completeRecoveryTask) publishRetirement(e *Engine, retState devicesec.State, retStateRaw, retLeaseRaw, putRetBytes []byte) {
-	t.retState, t.retStateRaw, t.retLeaseRaw, t.putRetBytes, t.stage = retState, retStateRaw, retLeaseRaw, putRetBytes, 11
+	t.retState, t.retStateRaw, t.retLeaseRaw, t.putRetBytes, t.stage = retState, retStateRaw, retLeaseRaw, putRetBytes, compRecRetPut
 	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, t.op.Server, t.tok, putRetBytes, t, 0)
 }
 
-func (t *completeRecoveryTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 | 1<<1 }
-
 func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	switch t.stage {
-	case 0:
+	case compRecStart:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		op := e.ensureWF().pendingOp
 		if op == nil || op.Kind != "recovery" || op.Recovery == nil || op.Recovery.RecoveryID == "" ||
 			len(op.Recovery.TargetState) == 0 || len(op.Recovery.Proof) == 0 || len(op.Recovery.Secret) != 32 {
@@ -630,24 +722,27 @@ func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
 			t.callComplete(e, op)
 			return nil
 		}
-		t.stage = 1
+		t.stage = compRecSign
 		e.waitSign(keyCandEd, draft.EdSlot, append(append([]byte{}, recoveryDonePrefix...), draft.RecoveryID...), t, 0)
-	case 1:
+	case compRecSign:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		nextDraft := *t.op.Recovery
 		nextDraft.CompleteRequest = (&v1.CompleteRecoveryRequest{RecoveryId: t.op.Recovery.RecoveryID, Signature: ev.bytes}).AppendMarshal(nil)
 		nextOp := *t.op
-		nextOp.Recovery, t.stage = &nextDraft, 2
+		nextOp.Recovery, t.stage = &nextDraft, compRecSave
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
-	case 2:
+	case compRecSave:
 		t.callComplete(e, ev.op)
-	case 3:
+	case compRecRPC:
 		var resp v1.CompleteRecoveryResponse
 		if resp.Unmarshal(ev.bytes) != nil || resp.DeviceId != t.op.MemberID {
 			return devicesec.ErrUntrusted
 		}
-		t.stage = 4
+		t.stage = compRecLogin
 		e.forceLoginToken(t.op.Server, keyCandEd, t.op.Recovery.EdSlot, t.op.MemberID, true, t.fgGen, false, parentTarget(t, 0))
-	case 4:
+	case compRecLogin:
 		t.tok = ev.str
 		curOp := t.op
 		var secret32 [32]byte
@@ -663,13 +758,13 @@ func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
 			states, proofs = append(states, s), append(proofs, rp)
 		}
 		t.states, t.proofs = append(states, curOp.Recovery.TargetState), append(proofs, curOp.Recovery.Proof)
-		t.signAt, t.stage = max(e.currentSigningTime(e.lastNowMs), t.targetState.Core.IssuedAt), 5
+		t.signAt, t.stage = max(e.currentSigningTime(e.lastNowMs), t.targetState.Core.IssuedAt), compRecLease
 		e.buildAndSignLease(t.targetState, keyCandEd, curOp.Recovery.EdSlot, t.signAt, parentTarget(t, 0))
-	case 5:
+	case compRecLease:
 		leaseRaw, _ := ev.lease.MarshalBinary()
-		t.leaseRaw, t.stage = leaseRaw, 6
+		t.leaseRaw, t.stage = leaseRaw, compRecPutLease
 		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, t.op.Server, t.tok, &v1.PutSecurityStateRequest{Lease: leaseRaw}, t)
-	case 6:
+	case compRecPutLease:
 		curOp := t.op
 		if retiring := curOp.Recovery.RetiringMemberID; retiring != "" && retiring != curOp.MemberID {
 			if _, stillMember := t.targetState.Core.Member(retiring); stillMember {
@@ -682,13 +777,13 @@ func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
 						}
 					}
 				}
-				t.retiring, t.stage = retiring, 7
+				t.retiring, t.stage = retiring, compRecRetEntropy
 				e.waitEntropy(64, t, 0)
 				return nil
 			}
 		}
 		return t.commitRecord(e, curOp, t.targetState, t.leaseRaw)
-	case 7:
+	case compRecRetEntropy:
 		var retSecret, secret32 [32]byte
 		if !e.readRandom(retSecret[:]) {
 			return ErrNeedEntropy
@@ -707,14 +802,14 @@ func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
 		params := kemBuildParams{kind: kemBuildMembership, parent: t.targetState, members: members, removed: removed, oldSecret: secret32, newSecret: retSecret, now: rNow}
 		zeroBytes(secret32[:])
 		zeroBytes(retSecret[:])
-		t.stage = 8
+		t.stage = compRecRetKEM
 		e.buildAndSignStateWithKEM(keyCandEd, t.op.Recovery.EdSlot, true, t.fgGen, params, members, parentTarget(t, 0))
-	case 8:
+	case compRecRetKEM:
 		t.retState = *ev.state
 		t.retStateRaw, _ = ev.state.MarshalBinary()
-		t.stage = 9
+		t.stage = compRecRetLease
 		e.buildAndSignLease(*ev.state, keyCandEd, t.op.Recovery.EdSlot, t.retNow, parentTarget(t, 0))
-	case 9:
+	case compRecRetLease:
 		retLeaseRaw, _ := ev.lease.MarshalBinary()
 		putRetBytes := (&v1.PutSecurityStateRequest{States: []*v1.SecurityState{{State: t.retStateRaw}}, Lease: retLeaseRaw}).AppendMarshal(nil)
 		t.contentKeys = append(t.contentKeys, ContentKeyEntry{Epoch: t.retState.Core.ContentEpoch, Secret: t.retSecret})
@@ -722,20 +817,20 @@ func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
 		nextDraft := *t.op.Recovery
 		nextDraft.RetirementRequest = putRetBytes
 		nextOp := *t.op
-		nextOp.Recovery, t.retLeaseRaw, t.putRetBytes, t.stage = &nextDraft, retLeaseRaw, putRetBytes, 10
+		nextOp.Recovery, t.retLeaseRaw, t.putRetBytes, t.stage = &nextDraft, retLeaseRaw, putRetBytes, compRecRetSave
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
-	case 10:
+	case compRecRetSave:
 		t.op = ev.op
 		t.publishRetirement(e, t.retState, t.retStateRaw, t.retLeaseRaw, t.putRetBytes)
-	case 11:
+	case compRecRetPut:
 		t.states, t.proofs = append(t.states, t.retStateRaw), append(t.proofs, nil)
 		return t.commitRecord(e, t.op, t.retState, t.retLeaseRaw)
-	case 12:
+	case compRecCommit:
 		curOp := t.op
 		e.installCommittedAccount(curOp.Server, t.rev, t.rec, t.prof, ev.storage, curOp.Recovery.CandidateEdPub, curOp.Recovery.CandidateXPub)
-		t.stage = 13
+		t.stage = compRecApply
 		e.applyPersistedRecordToEngine(t.rec, parentTarget(t, 0))
-	case 13:
+	case compRecApply:
 		e.fireNotifyRecord(t.rec, t.finalHead, t.rev)
 		e.republishRecoveryObjects(taskTarget{})
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
@@ -750,13 +845,18 @@ type discardUnsignedRecoveryTask struct {
 	edSlot, xSlot string
 }
 
-func (t *discardUnsignedRecoveryTask) fgCheckMask() uint32 { return fgOnStart }
-
 func (t *discardUnsignedRecoveryTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	if ev.kind == evChildDone {
 		e.discardCandidatePair(t.edSlot, t.xSlot)
 		e.okTarget(t.target, nil)
 		return nil
+	}
+	if err := e.checkFG(t.fgGen); err != nil {
+		return err
 	}
 	op := e.ensureWF().pendingOp
 	if op == nil || op.Kind != "recovery" || op.Phase != "PREPARED" || len(op.Signed) > 0 || op.Recovery == nil {
@@ -767,30 +867,41 @@ func (t *discardUnsignedRecoveryTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+const (
+	discardRejStart uint8 = iota
+	discardRejCtx
+	discardRejClear
+)
+
 type discardRejectedRecoveryTask struct {
 	taskBase
 	op            *PersistedOperation
 	edSlot, xSlot string
 }
 
-func (t *discardRejectedRecoveryTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 }
-
 func (t *discardRejectedRecoveryTask) step(e *Engine, ev *secEvent) error {
+	t.acceptStart(ev)
+	if ev != nil && ev.err != nil {
+		return ev.err
+	}
 	switch t.stage {
-	case 0:
+	case discardRejStart:
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
 		op := e.ensureWF().pendingOp
 		if op == nil || op.Kind != "recovery" || op.Recovery == nil || op.Recovery.RecoveryID == "" {
 			return devicesec.ErrStale
 		}
-		t.op, t.edSlot, t.xSlot, t.stage = op, op.Recovery.EdSlot, op.Recovery.XSlot, 1
+		t.op, t.edSlot, t.xSlot, t.stage = op, op.Recovery.EdSlot, op.Recovery.XSlot, discardRejCtx
 		e.startFetchRecoveryCtxWithCandSlot(op.Server, op.Recovery.RecoveryID, op.Recovery.EdSlot, 0, parentTarget(t, 0))
-	case 1:
+	case discardRejCtx:
 		if ev.recCtx.resp.Phase != v1.GetRecoveryContextResponse_PHASE_REJECTED {
 			return devicesec.ErrStale
 		}
-		t.stage = 2
+		t.stage = discardRejClear
 		e.clearOperationCAS(t.op, parentTarget(t, 0))
-	case 2:
+	case discardRejClear:
 		e.discardCandidatePair(t.edSlot, t.xSlot)
 		e.okTarget(t.target, nil)
 	}

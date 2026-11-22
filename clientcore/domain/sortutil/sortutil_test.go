@@ -27,18 +27,20 @@ func TestSortAndTypedHelpers(t *testing.T) {
 	Int64s([]int64{2, 1})
 }
 
+type testStableItems []struct {
+	key int
+	seq int
+}
+
+func (s testStableItems) Len() int           { return len(s) }
+func (s testStableItems) Less(i, j int) bool { return s[i].key < s[j].key }
+func (s testStableItems) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 func TestStablePreservesEqualOrder(t *testing.T) {
-	type item struct {
-		key int
-		seq int
-	}
-	items := []item{{2, 0}, {1, 1}, {2, 2}, {1, 3}, {2, 4}, {0, 5}}
-	Stable(len(items),
-		func(i, j int) bool { return items[i].key < items[j].key },
-		func(i, j int) { items[i], items[j] = items[j], items[i] },
-	)
-	want := []item{{0, 5}, {1, 1}, {1, 3}, {2, 0}, {2, 2}, {2, 4}}
+	items := testStableItems{{2, 0}, {1, 1}, {2, 2}, {1, 3}, {2, 4}, {0, 5}}
+	StableInterface(items)
+	want := testStableItems{{0, 5}, {1, 1}, {1, 3}, {2, 0}, {2, 2}, {2, 4}}
 	if !slices.Equal(items, want) {
-		t.Fatalf("Stable mismatch: got=%v want=%v", items, want)
+		t.Fatalf("StableInterface mismatch: got=%v want=%v", items, want)
 	}
 }

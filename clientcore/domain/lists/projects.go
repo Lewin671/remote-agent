@@ -200,10 +200,6 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 		return compareUTF16(sortedMachines[i].ID, sortedMachines[j].ID) < 0
 	}, func(i, j int) { sortedMachines[i], sortedMachines[j] = sortedMachines[j], sortedMachines[i] })
 
-	type machineSummary struct {
-		machineID string
-		summary   *v1.ProjectSummary
-	}
 	var summaries []machineSummary
 	for _, m := range sortedMachines {
 		if m.Meta == nil {
@@ -215,12 +211,7 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 			}
 		}
 	}
-	sortutil.Stable(len(summaries), func(i, j int) bool {
-		if summaries[i].summary.LatestCreatedMs != summaries[j].summary.LatestCreatedMs {
-			return summaries[i].summary.LatestCreatedMs > summaries[j].summary.LatestCreatedMs
-		}
-		return compareUTF16(summaries[i].machineID, summaries[j].machineID) < 0
-	}, func(i, j int) { summaries[i], summaries[j] = summaries[j], summaries[i] })
+	sortutil.StableInterface(machineSummariesSorted(summaries))
 
 	sums := make(map[string]*projectSums)
 	for _, item := range summaries {
@@ -745,3 +736,19 @@ func PlanAddProject(w *World, machineID, path string) *FullPrefsOp {
 	}
 	return nil
 }
+
+type machineSummary struct {
+	machineID string
+	summary   *v1.ProjectSummary
+}
+
+type machineSummariesSorted []machineSummary
+
+func (s machineSummariesSorted) Len() int { return len(s) }
+func (s machineSummariesSorted) Less(i, j int) bool {
+	if s[i].summary.LatestCreatedMs != s[j].summary.LatestCreatedMs {
+		return s[i].summary.LatestCreatedMs > s[j].summary.LatestCreatedMs
+	}
+	return compareUTF16(s[i].machineID, s[j].machineID) < 0
+}
+func (s machineSummariesSorted) Swap(i, j int) { s[i], s[j] = s[j], s[i] }

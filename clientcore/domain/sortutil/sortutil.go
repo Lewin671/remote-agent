@@ -29,6 +29,8 @@ func siftInterface(data Interface, lo, hi int) {
 }
 
 // SortInterface sorts data in place using non-recursive heapsort without closures.
+// Equal-key relative order is not guaranteed; include a tie-breaker or use
+// StableInterface when equal elements must keep their input order.
 //
 //go:noinline
 func SortInterface(data Interface) {
@@ -46,6 +48,8 @@ func SortInterface(data Interface) {
 }
 
 // Sort sorts n elements in place using non-recursive heapsort (O(n log n) worst case).
+// Equal-key relative order is not guaranteed; intended for small domain slices
+// where binary size matters more than stable ties.
 //
 //go:noinline
 func Sort(n int, less func(i, j int) bool, swap func(i, j int)) {
@@ -78,18 +82,7 @@ func Sort(n int, less func(i, j int) bool, swap func(i, j int)) {
 	}
 }
 
-// Stable stably sorts n elements in place (O(n^2) swaps, compact for UI/projection slices).
-//
-//go:noinline
-func Stable(n int, less func(i, j int) bool, swap func(i, j int)) {
-	for i := 1; i < n; i++ {
-		for j := i; j > 0 && less(j, j-1); j-- {
-			swap(j, j-1)
-		}
-	}
-}
-
-// StableInterface stably sorts data in place without closures.
+// StableInterface stably sorts small slices in place using insertion sort (O(n^2) swaps) without closures.
 //
 //go:noinline
 func StableInterface(data Interface) {

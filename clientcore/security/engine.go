@@ -275,16 +275,6 @@ func (e *Engine) HandleCryptoBatchDone(nowMs int64, ev *corev1.SecurityCryptoBat
 	return e.finishTaskEv(nowMs, ev.OpId, ev.Error, secEvent{kind: evBatch, batch: ev.Results})
 }
 
-// RequestKeySign issues an async KeySign effect for DEVICE_ED (shared with transport.Coordinator).
-func (e *Engine) RequestKeySign(msg []byte, fn func(sig []byte, err error)) {
-	e.waitSign(keyDevEd, "", msg, &cbKeyTask{fn: fn}, 0)
-}
-
-// RequestKeyAgree issues or resolves from cache an X25519 ECDH agreement for DEVICE_X.
-func (e *Engine) RequestKeyAgree(peerX [32]byte, cachePeer bool, fn func(shared []byte, err error)) {
-	e.waitAgree(keyDevX, "", peerX, cachePeer, &cbKeyTask{fn: fn}, 0)
-}
-
 // RequestKeySignTag issues an async KeySign effect routed to AsyncSink.OnKeySignDone.
 func (e *Engine) RequestKeySignTag(msg []byte, tag uint64) {
 	e.waitSign(keyDevEd, "", msg, &cbKeyTask{tag: tag}, 0)

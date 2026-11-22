@@ -68,92 +68,42 @@ type secEvent struct {
 	str     string
 	wfRes   *corev1.SecurityWorkflowResultEffect
 	recCtx  *recoveryContextResult
+	fgGen   uint64
+	target  taskTarget
 }
 
 type secTask interface {
 	step(e *Engine, ev *secEvent) error
 }
 
-type opTask interface {
-	secTask
-	setOpContext(fgGen uint64, target taskTarget)
-}
-
-type taskTargeter interface {
-	taskTarget() taskTarget
-}
-
 type taskFailer interface {
 	onError(e *Engine, err error)
 }
 
-type stageTask interface {
-	secTask
-	currentStage() uint8
-}
-
-type rawErrTask interface {
-	rawErrMask() uint32
-}
-
-type ignoreErrTask interface {
-	ignoreErrMask() uint32
-}
-
-const fgOnStart uint32 = 1 << 31
-
-type fgCheckTask interface {
-	stageTask
-	fgCheckMask() uint32
-	fgGenVal() uint64
-}
-
 type taskBase struct {
-	_      [0]func()
+	_      [0]func() // keep comparable=false so tasks cannot be compared or stored as map keys
 	fgGen  uint64
 	target taskTarget
 	stage  uint8
 }
 
-func (b *taskBase) setOpContext(fgGen uint64, target taskTarget) { b.fgGen, b.target = fgGen, target }
-func (b *taskBase) taskTarget() taskTarget                       { return b.target }
-func (b *taskBase) currentStage() uint8                          { return b.stage }
-func (b *taskBase) fgGenVal() uint64                             { return b.fgGen }
+//go:noinline
+func (b *taskBase) acceptStart(ev *secEvent) {
+	if ev != nil && ev.kind == evStart && ev.target.kind != targetNone {
+		b.fgGen, b.target = ev.fgGen, ev.target
+	}
+}
+
+//go:noinline
+func (b *taskBase) onError(e *Engine, err error) {
+	e.failTarget(b.target, err)
+}
 
 //go:noinline
 func (e *Engine) stepTask(t secTask, ev *secEvent) {
-	var err error
-	if ev != nil && ev.err != nil {
-		if st, ok := t.(stageTask); ok {
-			bit := uint32(1) << st.currentStage()
-			if ig, ok := t.(ignoreErrTask); ok && ig.ignoreErrMask()&bit != 0 {
-				ev = &secEvent{kind: ev.kind, tag: ev.tag}
-			} else if rt, ok := t.(rawErrTask); !ok || rt.rawErrMask()&bit == 0 {
-				err = ev.err
-			}
-		}
-	}
-	if err == nil {
-		if ft, ok := t.(fgCheckTask); ok {
-			bit := uint32(1) << ft.currentStage()
-			if ev != nil && ev.kind == evStart {
-				bit = fgOnStart
-			}
-			if ft.fgCheckMask()&bit != 0 {
-				err = e.checkFG(ft.fgGenVal())
-			}
-		}
-	}
-	if err == nil {
-		err = t.step(e, ev)
-	}
-	if err != nil {
+	if err := t.step(e, ev); err != nil {
 		if f, ok := t.(taskFailer); ok {
 			f.onError(e, err)
-			return
-		}
-		if tg, ok := t.(taskTargeter); ok {
-			e.failTarget(tg.taskTarget(), err)
 		}
 	}
 }
@@ -173,7 +123,7 @@ func (e *Engine) finishTaskEv(nowMs int64, opID uint64, errStr string, se secEve
 type queuedOp struct {
 	actionID  uint64
 	requireFG bool
-	task      opTask
+	task      secTask
 }
 
 type taskWait struct {
@@ -207,10 +157,7 @@ const (
 	targetTask
 	targetAction
 	targetActionStatus
-	targetActionStatusOnOK
 	targetSerializedOp
-	targetCbErr
-	targetSinkSync
 )
 
 type taskTarget struct {
@@ -218,7 +165,6 @@ type taskTarget struct {
 	task     secTask
 	tag      uint8
 	actionID uint64
-	cbErr    func(error)
 }
 
 func parentTarget(task secTask, tag uint8) taskTarget {
@@ -254,19 +200,6 @@ func (e *Engine) completeTarget(t taskTarget, ev *secEvent) {
 	case targetActionStatus:
 		e.emitActionResult(t.actionID, ev.wfRes, ev.err)
 		e.emitStatusChanged()
-	case targetActionStatusOnOK:
-		e.emitActionResult(t.actionID, ev.wfRes, ev.err)
-		if ev.err == nil {
-			e.emitStatusChanged()
-		}
-	case targetCbErr:
-		if t.cbErr != nil {
-			t.cbErr(ev.err)
-		}
-	case targetSinkSync:
-		if wf := e.wf; wf != nil && wf.asyncSink != nil {
-			wf.asyncSink.OnSyncStatesDone(t.actionID, ev.err)
-		}
 	}
 }
 
@@ -515,7 +448,7 @@ func (e *Engine) waitEntropy(minBytes int, task secTask, tag uint8) {
 	e.emitEntropyNeed(minBytes)
 }
 
-func (e *Engine) runOpTask(actionID uint64, requireFG bool, task opTask) {
+func (e *Engine) runOpTask(actionID uint64, requireFG bool, task secTask) {
 	wf := e.ensureWF()
 	item := queuedOp{actionID: actionID, requireFG: requireFG, task: task}
 	if wf.opBusy {
@@ -532,8 +465,7 @@ func (e *Engine) startQueuedOp(item queuedOp) {
 		e.failTarget(target, fatalWfError("foreground", text.KeySecurityThePageIsPausedReturnToTheForegroundTo, ""))
 		return
 	}
-	item.task.setOpContext(wf.fgGen, target)
-	e.stepTask(item.task, &secEvent{kind: evStart})
+	e.stepTask(item.task, &secEvent{kind: evStart, fgGen: wf.fgGen, target: target})
 }
 
 func (e *Engine) pumpNextOp() {
@@ -551,16 +483,11 @@ func (e *Engine) pumpNextOp() {
 }
 
 type cbKeyTask struct {
-	fn    func([]byte, error)
 	tag   uint64
 	agree bool
 }
 
 func (t *cbKeyTask) step(e *Engine, ev *secEvent) error {
-	if t.fn != nil {
-		t.fn(ev.bytes, ev.err)
-		return nil
-	}
 	if wf := e.wf; wf != nil && wf.asyncSink != nil {
 		if t.agree {
 			wf.asyncSink.OnKeyAgreeDone(t.tag, ev.bytes, ev.err)
