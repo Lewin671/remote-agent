@@ -267,8 +267,8 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 #### 体积与性能预算
 
 - 体积：2026-11-21 起，网页端发布门槛为首屏下载的 JS、CSS 与 wasm 合计 brotli 体积不超过 **`2,400,000 B`**（2026-11-21 用户决定放宽；S4 前 `main` 实测首屏合计 `1,899,024 B`，S4 收口实测 `2,170,267 B`），由 `web/scripts/check-first-paint-budget.mjs` 在 `pnpm build` 时强制校验——逻辑从 TS 搬进核心时，JS 必须相应变小，体积只是换了地方不算达标；`scripts/core/build.sh web` 输出并报告 `core.wasm` 的 brotli 体积。Android 正式包（release APK）仅打包 **`arm64-v8a`**，debug / `.dev` 包继续保留 `x86_64` 给模拟器使用；`.so` 在 APK 内以 **Stored（不压缩）** 存放，每个 ABI 的体积按 APK 内实际占用（即解压后 Stored 大小）记，当前 `arm64-v8a` 超过 6 MB 上限（未决，见 [plan.md](plan.md#待确认)）；iOS 每个 arm64 切片的静态库链接目标仍以 6 MB 为参考门槛
-- 控制体积的手段：生成器只为核心可达的 wire 消息生成代码（`cmd/protoc-gen-go-lite/entries.txt`）并按数据方向生成（只从核心流向壳的视图模型和 Effect 只要序列化，只从壳流向核心的 Event 只要反序列化）；序列化不单独算长度，嵌套消息先占一个字节的长度位、写完再补（`litewire.BeginMessage`/`EndMessage`），输出字节与先算长度相同（`clientcore/corebind/wire_bytes_test.go` 守住）；核心不使用 `protobuf-go`，且 `clientcore/app/deps_test.go` 在 `GOOS=js GOARCH=wasm` 依赖图上不跳过 `crypto/internal/*` 地检查传递依赖：`fmt`、`reflect`、`math/big`、`math/rand*`、`crypto/rand` 仅允许经 `shared/peerwire` → `crypto/ed25519`（用于直连信令 Ed25519 验签，单独引入约占 29 KB brotli）这一条显式网关链路进入（另有 Go 1.26 FIPS 标准库 `crypto/internal/sysrand` → `os`、`time`），其余包直接或经别的路径引入即测试失败
-- 现状（2026-11-21，S4 完成并拆除过渡桥接，Go 1.26.11，`-s -w`）：`core.wasm` 原始 `10,427,368 B`、brotli（q11）`1,840,351 B`，网页首屏合计 brotli（JS `303,127 B` + CSS `26,789 B` + wasm `1,840,351 B`）为 `2,170,267 B`（门槛 `2,400,000 B`）。Android release APK 仅含 `lib/arm64-v8a/libgojni.so`，APK 内 **Stored** 体积为 `7,275,936 B`（超 6 MB，见 [plan.md](plan.md#待确认)）。iOS `Corebind.xcframework` `ios-arm64` 切片文件 `8,769,696 B`（`__TEXT` `5,174,851 B` 约 `4.94 MiB`，非零填充 `__TEXT+__DATA_CONST+__DATA` `6,326,650 B` 约 `6.03 MiB`）
+- 控制体积的手段：生成器只为核心可达的 wire 消息生成代码（`cmd/protoc-gen-go-lite/entries.txt`）并按数据方向生成（只从核心流向壳的视图模型和 Effect 只要序列化，只从壳流向核心的 Event 只要反序列化）；序列化不单独算长度，嵌套消息先占一个字节的长度位、写完再补（`litewire.BeginMessage`/`EndMessage`），输出字节与先算长度相同（`clientcore/corebind/wire_bytes_test.go` 守住）；核心不使用 `protobuf-go`，且 `clientcore/app/deps_test.go` 在 `GOOS=js GOARCH=wasm` 依赖图上不跳过 `crypto/internal/*` 地检查传递依赖：`fmt`、`reflect`、`math/big`、`math/rand*`、`crypto/rand`、`os`、`time` 等仅允许经 `shared/peerwire` / `shared/devicesec` → `crypto/ed25519`（仅验签/seed，禁止密钥生成）、`shared/devicesec` → `compress/flate`（仅解压 inflate，禁止 `NewWriter`）与 Go 1.26 FIPS 标准库 `crypto/internal/sysrand` → `os`、`time` 三条显式网关边界进入，其余包直接或经别的路径引入即测试失败
+- 现状（2026-11-22，S5+S6 在独立任务分支完成并拆除 `SecCall` 过渡桥接，Go 1.26.11，`-s -w`）：`core.wasm` 原始 `14,062,643 B`、brotli（q11）`2,340,004 B`，网页首屏合计 brotli（JS `267,452 B` + CSS `26,789 B` + wasm `2,340,004 B`）为 `2,634,245 B`，超出尚未放宽的 `2,400,000 B` 门限 `234,245 B`（`pnpm build` 体积门禁失败，瘦身/门限待定，见 [plan.md](plan.md#待确认)）。Android release APK 仅含 `lib/arm64-v8a/libgojni.so`，APK 内 **Stored** 体积为 `9,204,672 B`（超 6 MB，见 [plan.md](plan.md#待确认)）。iOS `Corebind.xcframework` `ios-arm64` 切片文件 `11,071,160 B`（`__TEXT` `6,611,160 B` 约 `6.30 MiB`，非零填充 `__TEXT+__DATA_CONST+__DATA` `8,022,675 B` 约 `7.65 MiB`）
 - 性能：一次 `Dispatch` 典型小于 1 ms，`View(home)` 在 1000 个会话时小于 5 ms，聊天按窗口取；一次界面刷新跨边界不超过一两次，禁止在行渲染、比较器里调用核心
 - 构建：核心不用 protobuf-go 反射，用 `cmd/protoc-gen-go-lite` 生成只依赖 `protowire` 的类型；不 import 会带进 sqlite、webrtc、net/http 的主 module 包，确需复用的先拆出纯逻辑子包；gomobile 经中性路径构建，产物里不留检出路径（见 `scripts/core/build.sh`）
 - 独立 module：gomobile 的依赖只进 `clientcore/go.mod`，不影响 daemon 和 server；测试可以引用主 module 做 wire 兼容和向量检查
@@ -288,10 +288,10 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 按依赖从下往上，每一步都让壳直接用核心的视图模型、删掉旧的领域类型和转换层，进度在 [plan.md](plan.md)：
 
 1. 骨架：`app` 的 `Dispatch`/`View` 与 `Text`，home、project、new-session 三个界面的视图模型，删掉三端的列表规则和对应领域类型
-2. `sync`：连接状态机与重连、机器和会话目录、分页、事件缓冲与补缺口、偏好、指令生命周期进核心，壳的 Remote 退成传输、安全门、存储和计时器的执行器。安全门暂留壳里：解密验签后把明文对象作为 Event 交给核心，按核心给的明文指令封包发送，并把成员链的结论（是否成员、可信机器、时期、租约）作为摘要事件给核心。与第 1 步一起交付
+2. `sync`：连接状态机与重连、机器和会话目录、分页、事件缓冲与补缺口、偏好、指令生命周期进核心，壳的 Remote 退成传输、密钥、存储和计时器的执行器（与第 1 步一起交付）
 3. session 界面：聊天行、审批、提问、队列、计划，复用 `projection`
 4. schedules、machine status、quota、settings
-5. `security`：信封、成员链、配对、恢复，密钥操作走 Effect；安全门并入核心
+5. `security`：S5（信封、成员链、租约、HPKE/加密门入 `clientcore/security` 与 `shared/devicesec`）与 S6（持久安全操作状态机、建号/配对/删除/轮换/交接/恢复流程及统一 v4 本地安全记录管理）已在独立分支完成并拆除 `SecCall` 过渡桥接，各端仅保留平台安全存储适配、`Key*`/`CryptoBatch` 密钥执行器与界面；协议仍保持 `17`、daemon 存储格式不变，客户端遇到旧格式本地安全记录时清掉本地安全记录并提示按正常流程重新配对（不写迁移代码）
 6. 附件和共享文件的状态机；直连的选路策略（路径可用性、退回与等待、指令两路同发与终端恢复重连的状态机）已按 S4 迁入 `clientcore/transport` 与 `sync`，网页、Android、iOS 三端均已完成接线并拆除过渡桥接，各端仅保留平台原生 WebRTC / WebSocket / Timer / 密钥 / 加密执行器
 7. Markdown 和终端 SGR 的解析（渲染留在壳）
 
@@ -451,7 +451,7 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 
 ## 9. 账户、设备和密钥
 
-一个账户对应一个随机的 32 字节**根密钥**。第一台管理 Client 在本机生成根密钥和设备身份，并在 server 上建账户。Android、iOS 和网页均可担任唯一管理端，Machine 不能担任；网页与 iOS 的管理流程仍在实现，当前进度见 [plan.md](plan.md)。一台 server 可以承载多个账户，怎么建、怎么隔离见下文「一台中继上的多个账户」。
+一个账户对应一个随机的 32 字节**根密钥**。第一台管理 Client 在本机生成根密钥和设备身份，并在 server 上建账户。Android、iOS 和网页均可担任唯一管理端，Machine 不能担任；三端管理流程与本地 v4 安全记录管理已在 `clientcore/security` 整合（尚未合并发布），验收与未覆盖范围见 [plan.md](plan.md) 和 [acceptance-notes.md](acceptance-notes.md)。一台 server 可以承载多个账户，怎么建、怎么隔离见下文「一台中继上的多个账户」。
 
 ### 管理 Client 与成员状态
 
@@ -513,7 +513,7 @@ Go daemon 在 Ready 后立即读取 stream 和回应 ping，再同步或发布 c
 
 恢复使用一张可重启继续的页面：显示截止时间、新码是否已保存、等待哪些保留电脑发布 checkpoint。恢复声明、设备身份、交换密钥和完成阶段在发布前持久化；不靠推送推进。新 Client 成为管理端，旧管理端被移除，新内容时期不带 PrevSecret。保留电脑上线后发布当前 checkpoint，新管理端能看当前会话，但不能自动读取恢复前历史。
 
-新账户在管理 Client 本机生成根、身份、恢复公钥和创世状态，先持久化安全操作及精确注册请求再注册和固定；启动时重试已存的注册请求，恢复码确认仍由建立账户流程完成。旧账户重建也先保存精确创世状态、X 私钥和内容密钥，再尝试网络固定或导出离线固定；重启从同一草稿继续，不生成竞争创世状态。恢复码不再显示时，用户沿用已有离线备份，未备份则在采纳后立即更换恢复码。中继固定创世状态并完整校验账户与唯一管理端；旧账户高级保留升级须停服离线固定，不能让旧 token 抢首次固定。这里的重建仅针对协议 9→10 的旧协议升级；现有协议 10 账户开放其他 Client 管理能力不改协议、状态版本和存储格式，不要求重建账户。网页和 iOS 不新增旧协议迁移界面，旧协议步骤见[升级指南](self-hosting.md#upgrading-to-the-phone-authority-protocol-10)。
+新账户在管理 Client 本机生成根、身份、恢复公钥和创世状态，先持久化安全操作及精确注册请求再注册和固定；启动时重试已存的注册请求，恢复码确认仍由建立账户流程完成。旧账户重建也先保存精确创世状态、X 私钥和内容密钥，再尝试网络固定或导出离线固定；重启从同一草稿继续，不生成竞争创世状态。恢复码不再显示时，用户沿用已有离线备份，未备份则在采纳后立即更换恢复码。中继固定创世状态并完整校验账户与唯一管理端；旧账户高级保留升级须停服离线固定，不能让旧 token 抢首次固定。这里的重建仅针对协议 9→10 的旧协议升级；独立任务分支 S6 将客户端本地安全记录统一迁至由核心定义的 v4 格式（不改服务端成员状态、协议版本或 daemon 状态格式），不写迁移代码：客户端升级遇到旧格式本地记录时清除并提示按正常流程重新配对，不要求重建中继账户。网页和 iOS 不新增旧协议迁移界面，旧协议步骤见[升级指南](self-hosting.md#upgrading-to-the-phone-authority-protocol-10)。
 
 安全提醒不保证送达，恢复不靠推送推进。iOS 首版允许担任管理端，但没有后台安全提醒，不以 APNs 为前置条件，建议每天打开一次；不能保证在 48 小时内看到恢复申请。网页 Web Push 同样不能保证送达。前台每次同步都读取待恢复提示，即使 head 不变也更新；提示只表示中继的可用性信息，不是授权，否决仍需签署新状态。自动续租条件仍为剩余不足 24 小时且距签发至少 12 小时，不能把“每 72 小时打开一次”当作离线可用保证。
 
@@ -666,7 +666,7 @@ server 首次启动时生成 VAPID 密钥对，存在数据库里。客户端订
 - **谁决定推送**：server 看不懂事件，由 daemon 在事件上传成功之后调用 `Notify`，只说明会话 ID 和类别。只对两分钟内发生的事件通知，重连后补传旧事件不会推送。server 因推送容量已满而拒绝的通知，以及连接中断、没等到 server 答复的通知，daemon 记着，在这两分钟内每轮同步再发一次，重连后也一样；server 明确拒绝的不再发
 - **定时结果**：定时轮次的结束不产生普通轮次结束推送，即使 daemon 重启或补传也一样。Agent 调用 `notify_user`，或启用了任务级「完成后通知」且本次运行尚无通知时由 daemon 补发，已持久提交的通知事件都走原有上传后 `Notify` 链路，使用 `NOTIFY_KIND_SCHEDULED`。每个通知事件以公开序号去重，互不合并；Web Push 的 tag 加入同一个事件键并保持类别在末尾，Android 使用会话与 FCM event 键作为通知 tag，点击用的 PendingIntent 也用这对标识区分，避免只靠数字哈希 ID 时不同会话或事件互相覆盖目标，不同事件各自保留，同一事件重投只更新自己。FCM event 只携带原本已公开的事件去重键，不放任务或运行 ID；不能把任务 ID 暴露到去重键。成功表示已记录以供投递，不保证用户收到。daemon 按[运行来源的标题规则](#主动通知与客户端发现)在记录通知事件时补齐最终标题，不依赖任务当前目标定义。封装 NotifyContent 时原样使用事件内的最终标题，签名和端到端加密后交给 Android 和网页；冷启动无需先拿到会话元数据，重试也不会被后续改名改变标题。正文是 Agent text 或 daemon 自动摘要；Android 解锁时默认显示任务名和摘要，锁屏规则见 [Android 推送](android-client.md#推送和通知里审批)。网页的锁屏边界见 [scope §4](scope.md#4-信任边界)。两分钟补传窗口及容量重试与其他通知相同
 - **网页内容**：仅 `NOTIFY_KIND_SCHEDULED` 附带和 FCM 相同的 NotifyContent 信封密文（base64）；标题、摘要在 server 上始终不可读。完整 JSON（含编码膨胀和路由）最多 3993 字节，为 [RFC 8291 §4](https://www.rfc-editor.org/rfc/rfc8291.html#section-4) 的 4096 字节上限预留 Web Push 加密开销，超限只发通用文案。其他类别仍只有通用文案和跳转会话 ID；普通通知同一会话同一类别 15 秒内只推一次
-- **网页本机解密**：SW 从同源 IndexedDB 读取现有 security-v3 记录，复用完整成员链验证、租约、固定安全域、发送者签名、内容密钥及 AES-GCM 校验，再核对 Notify 类型、机器/会话、公开事件序号和推送路由。缺密钥、未来状态、过期租约（网页 72 小时未在前台打开即过期，打开一次即续）、移除成员、数据或验证错误都用「定时任务有新结果」，不在后台同步状态。它不使用成员签名私钥（记录整体读入内存）、不签管理或控制操作、不写入本机状态、不向中继索取密钥；读取过程中成员状态变化也退回通用文案。此路径可以访问本机内容密钥与不可导出的 X25519 接收密钥，SW 与页面及发布渠道同属信任边界，不构成同源脚本之间的密钥隔离。`web/service-worker.ts` 用现有 Vite 将缓存逻辑与解密模块打成单个经典 `sw.js`，开发和产品构建使用相同入口，不依赖运行时跨文件导入
+- **网页本机解密**：SW 从同源 IndexedDB 读取现有 `remote-agent-security-v4` 记录（`readV4RecordForNotify`），将通知信封与记录快照交给 `core.wasm` 的共享安全核心复用完整成员链验证、租约、固定安全域、发送者签名、内容密钥，再由网页端 `CryptoBatch` 执行器完成对称加密与 AES-GCM 校验并核对 Notify 类型、机器/会话、公开事件序号和推送路由。缺密钥、未来状态、过期租约（网页 72 小时未在前台打开即过期，打开一次即续）、移除成员、数据或验证错误都用「定时任务有新结果」，不在后台同步状态。它不使用成员签名私钥、不签管理或控制操作、不写入本机状态、不向中继索取密钥；读取过程中成员状态变化也退回通用文案。此路径可以访问本机内容密钥与不可导出的 X25519 接收密钥，SW 与页面及发布渠道同属信任边界，不构成同源脚本之间的密钥隔离。`web/service-worker.ts` 用现有 Vite 将缓存逻辑与解密模块打成单个经典 `sw.js`，开发和产品构建使用相同入口，不依赖运行时跨文件导入
 - **客户端**：网页和 Android 的 `NOTIFY_KIND_SCHEDULED` 不受应用前台抑制，照常弹系统通知；唯一例外是用户此刻正看着目标会话：Android 当前可见页面就是该会话，网页存在可见、聚焦且路由恰为该会话的窗口。首页、其他会话或子页面不算正在看目标会话，后台保存着该会话路由也不算。任务会话不在默认列表；三端在对话中显示独立通知行，在任务列表和运行记录显示最近结果，仍保留上述系统提醒规则。其他通知类型保持前台抑制；点通知打开对应会话。iPhone 上要先把网页添加到主屏幕才能订阅推送。推送服务返回 404 或 410 时，server 删掉这个订阅
   - 网页每次连接成功后按本机保存的推送偏好重新登记订阅，包括设备被移除后重新配对的情况；只在浏览器已有通知许可时恢复，不再次请求许可。
 - **推送后端**：`SetPushTarget` 按类型登记推送目标，Web Push 和 FCM 并存，旧的 `SetPushSubscription` 留给网页。server 用 FCM HTTP v1 发送，服务账号文件由 `-fcm-service-account`（`RA_FCM_SERVICE_ACCOUNT`）指定，`deploy/deploy.sh` 发现本机有 `~/.config/remote-agent/fcm-service-account.json` 时把它复制到 server 的数据目录并设好；没配置就不发 FCM，`SetPushTarget` 返回未启用；FCM 说 token 失效时删除。没有可用的 GMS 时静默降级为 App 内查看，不做 UnifiedPush

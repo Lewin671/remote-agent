@@ -2655,3 +2655,41 @@ p95 增量为 **−0.003 ms**，满足 <5 ms 门槛。计时覆盖已认证的�
 - **相对基线 `f38f590cb` 的代码行数变化**：
   - **新口径**（`scripts/dev/code_size.py`，含 `.js` 与 `.java`）：`web` `43,752 → 42,212`（`-1,540`），`android` `61,707 → 58,806`（`-2,901`），`ios` `61,712 → 60,788`（`-924`），`clientcore` `40,358 → 44,500`（`+4,142`），客户端合计 `207,529 → 206,306`（`-1,223`）；测试合计 `101,906 → 101,008`（`-898`）；`root-go` 参考 `70,623 → 70,787`（`+164`）。
   - **旧口径**（按 `f38f590cb` 版脚本统计，不含 `.js` 与 `.java`）：`web` `43,194 → 41,993`（`-1,201`），`android` `52,412 → 50,740`（`-1,672`），`ios` `61,712 → 60,788`（`-924`），`clientcore` `40,358 → 44,500`（`+4,142`），客户端合计 `197,676 → 198,021`（`+345`，因未计入本次在网页 `.js` 与 Android `.java` 删去的 `-339` / `-1,229` 行）；测试合计 `101,807 → 100,909`（`-898`）。
+
+## S5+S6 安全原语、安全门与安全流程进核心验收（2026-11-22）
+
+在独立工作分支 `wt/s5-security`（基于 v0.97.0 / `aa509660e`，尚未合并 `main` 与发布，协议保持 `17`）连续完成 S5（`4771b58ca..c73b7cf2f`：安全门、信封/成员链/租约/HPKE 进 `clientcore/security` 与 `shared/devicesec`，`CryptoBatch`/`Key*` 走 Effect）与 S6（`9573115e6..56803fffb`：持久化安全操作、建号/配对/移除/X 轮换/恢复码轮换/交接/紧急恢复与统一 v4 安全记录进核心并移除 `SecCall` 过渡桥），并在隔离端到端复现并追加提交 `0e01b2916`（修复移除后点击「重新加入账户」跳到 `#/pair?` 仍把空查询串当成 `rawLink` 传给核心导致报错的回归）。本地安全记录不写迁移代码，遇到升级前旧格式时清掉本地安全记录、提示并按正常流程重新配对（daemon 不变）。
+
+### 自动检查与体积对照（相对基线 `aa509660e`）
+
+- **全量检查**：
+  - `56803fffb` 上通过：`SecCall`/`SyncSecurityEffect`/`SecurityRecordEvent`/`secCall` 跨端检索 `0` 命中、`i18n.py generate --check && lint`、`RA_CORE_FORCE=1 ./scripts/core/build.sh all`、`check.py go full`（root 与 `clientcore` 均 `-count=1`）、`check.py android full`（`:core:test` `172` 项：`171` 通过 / `1` 跳过，`7/7` terminal，`610/610` App 单元测试）及 `:app:assembleRelease :app:compileDebugAndroidTestKotlin`、`ios/scripts/check.sh`（`RemoteAgentCore` `67` 套件 `361` 项，`RemoteAgentTests` `331` 通过 / `1` 跳过 / `0` 失败），以及在同代码 `S6d` 提交前通过的 `ios/scripts/check.sh ui`（`RemoteAgentUITests` `11/11`）。
+  - `0e01b2916`（仅改 `web/src/views/Pairing.tsx` 与 `pairing-wait.test.tsx`，Go / Android / iOS / i18n 源码未变）上通过：`python3 scripts/dev/check.py web full`（`tsc -b` 洁净，`101` 文件通过 / `2` 跳过，`1,467` 用例通过 / `2` 跳过）与 `python3 scripts/i18n.py lint`。
+  - `pnpm --dir web run build`（`0e01b2916`）：Vite 成功生成 `web/dist`，但 `web/scripts/check-first-paint-budget.mjs` 退出码 `1`——网页首屏 brotli 为 `fpJs=267,452 B, fpCss=26,789 B, fpWasm=2,340,004 B, fpTotal=2,634,245 B`（相对未放宽的 `2,400,000 B` 门限超出 `234,245 B`；在 `56803fffb` 为 `fpTotal=2,634,146 B`）。
+- **产物与核心包体积（Go `1.26.11`，`aa509660e → HEAD`/`56803fffb`）**：
+  - **网页**：`core.wasm` 原始 `10,453,692 B → 14,062,643 B`（`+3,608,951 B`）、brotli（q11）`1,844,331 B → 2,340,004 B`（`+495,673 B`）；首屏合计 brotli `2,174,507 B → 2,634,245 B`。`GOOS=js GOARCH=wasm go list -export -deps ./cmd/corewasm` 统计 `127` 个列出包（`126` 导出，`_pkg_.a` 合计 `62,800,956 B`）升至 `134` 个列出包（`133` 导出，`_pkg_.a` 合计 `73,717,650 B`，`+10,916,694 B`），新增包为 `bufio`、`compress/flate`、`crypto/hkdf`、`crypto/internal/fips140/hkdf`、`clientcore/domain/entropy`、`clientcore/security` 与 `shared/devicesec`；`56803fffb` 上最大的 `.a` 包括 `clientcore/gen/remoteagent/core/v1`（`13,613,072`）、`runtime`（`9,393,100`）、`clientcore/gen/remoteagent/v1`（`5,488,734`）、`clientcore/security`（`4,912,426`）、`clientcore/sync`（`3,090,150`）、`clientcore/screens`（`3,056,580`）、`clientcore/app`（`2,733,992`）、`reflect`（`2,594,652`）、`clientcore/transport`（`1,973,284`）。
+  - **Android**：`corebind.aar` `5,274,708 B → 6,543,011 B`；`app-release.apk` `27,808,021 B → 28,373,986 B`；`app-debug.apk` `91,627,587 B → 91,836,831 B`；release APK 中唯一 ABI `lib/arm64-v8a/libgojni.so`（Stored 0%）`7,289,920 B → 9,204,672 B`（`+1,914,752 B`），而随迁出原生逻辑的 DEX 体积从 `classes.dex` `7,360,184 B` + `classes2.dex` `2,779,772 B` 变为 `6,525,200 B` + `3,673,012 B`。
+  - **iOS `Corebind.xcframework`**：`ios-arm64-simulator` `8,802,464 B → 11,084,928 B`；`ios-arm64` `8,788,696 B → 11,071,160 B`（`+2,282,464 B`）；`macos-arm64` `8,762,584 B → 11,045,032 B`；`otool -l` 非零填充段 `ios-arm64` 为 `__TEXT` `5,185,561 → 6,611,160 B`、`__DATA_CONST` `987,768 → 1,240,460 B`、`__DATA` `165,455 → 171,055 B`（三者合计 `6,338,784 → 8,022,675 B`）。
+- **代码行数变化（`python3 scripts/dev/code_size.py --ref HEAD --base aa509660e`）**：
+  - `web` 产品 `42,224 → 39,010`（`-3,214`）、测试 `27,489 → 24,098`（`-3,391`）；`android` 产品 `58,888 → 54,665`（`-4,223`）、测试 `32,994 → 30,321`（`-2,673`）；`ios` 产品 `60,811 → 58,074`（`-2,737`）、测试 `23,497 → 20,526`（`-2,971`）；`clientcore` 产品 `44,572 → 57,257`（`+12,685`）、测试 `17,149 → 22,715`（`+5,566`）；客户端四端合计产品 `206,495 → 209,006`（`+2,511`，三端壳合计 `-10,174`）、测试 `101,129 → 97,660`（`-3,469`）；`root-go` 参考 `70,812 → 71,300`（`+488`）。
+
+### iMac 网页 1,000 条历史打开性能对照
+
+在 Intel Core i7-10700（2.90 GHz，macOS 12.6）iMac 上独占测量锁、60 秒静默核查无干扰后，使用无头 Google Chrome `150.0.7871.125`（CDP）对同一本地隔离 relay 注入 1,000 条真实 AES-256-GCM + Ed25519 封装历史事件（序号 `1..1000`，无 `CurrentCheckpoint`，每次清空事件缓存，按 2 组预热 + 7 组 `AB/BA` 交替采样对比 `aa509660e` 与 `56803fffb`；之后仅在懒加载 chunk 改动的 `0e01b2916` 未改动 `core.wasm` 与历史解密路径）：
+
+- **`cold_render`**（ms，n=7）：基线中位 `38.7`（最小 `37.8`，最大/p95 `43.3`）→ S5+S6 中位 `40.3`（最小 `38.7`，最大/p95 `40.9`）。
+- **`cold_all1000`**（ms，n=7，完整 1,000 条解密与验签完成）：基线中位 `717.8`（最小 `612.9`，最大/p95 `726.5`）→ S5+S6 中位 `441.7`（最小 `424.2`，最大/p95 `476.3`，明显快于基线）。
+- **`warm_render`**（ms，n=7）：基线中位 `179.2`（最小 `171.9`，最大/p95 `180.6`）→ S5+S6 中位 `174.5`（最小 `172.3`，最大/p95 `177.5`）；两组样本均为 `verified_earliest=[true]`。
+
+### 隔离真实 CLI 端到端与三端有向交接
+
+使用独立临时状态目录、隔离 relay、本地搭建 daemon 与真实 Claude Code `2.1.322` 会话，按 Playwright 无头 Chromium（`HeadlessChrome/157.0.0.0`）直接页面操作、Android `arm64` 模拟器直接触摸界面、以及 iOS 27.0 模拟器（启动参数 + Darwin 调试信号导航，`HandoffScreen` 按钮/开关与弹窗通过临时外部 XCUITest 直接点击原生控件）验证：
+
+- **三端 `v0.97.0 → S6` 原地升级（daemon 不变）**：网页（同一 Chromium profile 切换静态包、`remote-agent-security-v3` 清除并建 `remote-agent-security-v4`）、Android（`adb install -r`）与 iOS（`simctl install` 覆盖）均检测到旧格式记录并清除，弹出「需要重新配对」说明且跨刷新/冷重启保留；确认已知后三端重新走协议 10 配对，重开同一真实 Claude Code 会话可见既有加密历史 `E2E_HISTORY_OK`。
+- **三端功能主链路**：三端均完成协议 10 配对（承诺-揭示与四图 SAS 确认）、真实历史打开验签、`APPROVAL_MODE_ASK` 下发消息与审批（含工具运行写盘）、上传同一 `32,790 B` 附件（daemon 端 SHA-256 核对一致）、WebRTC 直连建立 + 关闭「允许直连」退回中继再恢复直连，以及强杀并重启中继后三端免重登自动恢复与后续消息送达。
+- **管理流程与三条有向交接**：
+  - 在权威网页端完成恢复码轮换；在 `X 轮换`（`#/settings/rejoin`，`existingRepair=true`）中核实 Ed25519 公钥前缀保持不变而 X25519 公钥前缀轮换且会话历史继续可读。
+  - 在网页端移除设备并在被移除浏览器点击「重新加入账户」复现并修复 `0e01b2916` 缺陷，重构打包后确认经 `#/pair?` 完成手动输入配对码重连与身份轮替、历史恢复。
+  - 连续完成三条有向交接：网页 → Android（Android UI 生成恢复码并通知，网页批准后退成已移除状态，Android 显示「当前管理端：本机」）→ Android → iOS（XCUITest 点击 iOS `生成新的恢复码`、切换离线保存开关并通知，Android 点击交接并退成已移除状态，iOS 显示「当前管理端：本机」）→ iOS → 网页（网页生成恢复码并通知，XCUITest 在 iOS 点选刷新与「交接给 Chrome · macOS」→「确认交接」并显示「已交接管理权」，网页成为唯一管理端并向真实 Claude Code 发送消息收到回复）。
+- **未覆盖范围**：另三条反向/交叉交接（Android → 网页、网页 → iOS、iOS → Android）、48 小时恢复等待期与 72 小时租约过期真机实等（长时规则已在 Go 以注入时钟覆盖，含 `48 h` 恢复等待/否决与 `72 h` 租约边界）、真机（Android 手机 / iPhone / iPad）及真实移动网络（Wi-Fi↔蜂窝切换、APNs/FCM 系统推送到达），以及 iOS 全程无调试信号的纯界面手势配对与对话操作。
+
