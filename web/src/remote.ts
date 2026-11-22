@@ -452,7 +452,7 @@ export class Remote implements CoreExecutor {
 
   readonly security: DeviceSecurityClient;
   readonly authority: AuthorityClient;
-  readonly directExec: DirectExecutor;
+  directExec: DirectExecutor;
   readonly deviceLink: DeviceLink;
   readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
 
@@ -592,14 +592,7 @@ export class Remote implements CoreExecutor {
         (signal) => this.login(signal),
       ),
     );
-    this.directExec = new DirectExecutor({
-      devicePrivate: () => this.account.devicePrivate,
-      xPrivate: () => this.latestXPrivate,
-      emit: (ev) => this.hostBridge?.dispatchEvent(ev),
-      onPushedEvent: (machineId, pcId, env, header, size) => {
-        this.handleDirectEvent(machineId, pcId, env, header, size);
-      },
-    });
+    this.directExec = this.newDirectExecutor();
     this.security.onSync = (record, started) => {
       this.lastSecuritySyncAt = started;
       void this.syncDirectSecurityRecord(record, started);
@@ -679,9 +672,23 @@ export class Remote implements CoreExecutor {
   private pairingBusy = false;
   private started = false;
 
+  private newDirectExecutor() {
+    return new DirectExecutor({
+      devicePrivate: () => this.account.devicePrivate,
+      xPrivate: () => this.latestXPrivate,
+      emit: (ev) => this.hostBridge?.dispatchEvent(ev),
+      onPushedEvent: (machineId, pcId, env, header, size) => {
+        this.handleDirectEvent(machineId, pcId, env, header, size);
+      },
+    });
+  }
+
   start() {
     this.started = true;
     this.closed = false;
+    // stop() closes the executor for good, so a page that was hidden and came
+    // back needs a fresh one; otherwise every handshake is silently dropped.
+    if (this.directExec.isClosed) this.directExec = this.newDirectExecutor();
     this.unwatchDirectInstall?.();
     this.unwatchDirectInstall = watchSecurityInstall((record) => {
       this.handleDirectSecurityInstall(record);

@@ -98,6 +98,8 @@ export class DirectExecutor {
     },
   ) {}
 
+  get isClosed() { return this.closed; }
+
   private emit(ev: CoreEvent["event"]) {
     if (!this.closed) this.options.emit(create(CoreEventSchema, { event: ev }));
   }

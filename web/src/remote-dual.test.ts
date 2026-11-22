@@ -9,7 +9,8 @@ import { EnvelopeSchema, PayloadKind, type Envelope } from "./gen/remoteagent/v1
 import { NotForwardedSchema } from "./gen/remoteagent/v1/relay_pb";
 import { CommandResultSchema, CommandSchema } from "./gen/remoteagent/v1/remote_pb";
 import { DispatchCommandEffectSchema, OutcomeSource } from "./gen/remoteagent/core/v1/app_pb";
-import { CommandRouteLeg } from "./gen/remoteagent/core/v1/transport_pb";
+import { CommandRouteLeg, DirectSignalSendEffectSchema } from "./gen/remoteagent/core/v1/transport_pb";
+import type { FrameStream } from "./transport/path";
 
 function makeCmdBytes(): Uint8Array<ArrayBuffer> {
   return toBinary(
@@ -218,6 +219,29 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
       expect(forwarded).toBe(1);
       expect(err).toBeInstanceOf(CommandError);
       expect(err.outcome).toBe("not_sent");
+    } finally {
+      await r.dispose();
+    }
+  });
+
+  // A page hidden past the grace period is stopped and later restarted; direct
+  // handshakes must leave the browser again instead of being dropped forever.
+  it("sends direct signals again after the page is stopped and restarted", async () => {
+    const r = await SyntheticRemote.create();
+    try {
+      r.start();
+      r.stop();
+      r.start();
+      const sent: Uint8Array[] = [];
+      r.directExec.attachLeg({ ready: true, send: (raw: Uint8Array) => sent.push(raw) } as unknown as FrameStream);
+      const ok = r.directExec.signalSend(create(DirectSignalSendEffectSchema, {
+        toDevice: new Uint8Array(32),
+        frameClass: 1,
+        frameId: new Uint8Array(16),
+        sealed: new Uint8Array([1]),
+      }));
+      expect(ok).toBe(true);
+      expect(sent).toHaveLength(1);
     } finally {
       await r.dispose();
     }
