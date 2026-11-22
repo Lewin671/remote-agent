@@ -57,6 +57,7 @@ import {
   type CacheWriteEffect,
   type CommandOutcomeEvent,
   type DispatchCommandEffect,
+  type Effect,
   type Event as CoreEvent,
   type RpcEffect,
   type TokenResultEvent,
@@ -66,17 +67,9 @@ import {
   SecurityKeyKind,
   SecurityOpenEnvelopeOpSchema,
   SecuritySealEnvelopeOpSchema,
-  type SecurityCryptoBatchEffect,
   type SecurityHandoffCandidate,
-  type SecurityKeyAgreeEffect,
-  type SecurityKeyDiscardEffect,
-  type SecurityKeyEncapsulateEffect,
-  type SecurityKeyGenerateEffect,
-  type SecurityKeySignEffect,
   type SecurityPairingInfo,
-  type SecurityRpcEffect,
   type SecurityStatusChangedEffect,
-  type SecurityStorageEffect,
   type SecurityTokenUpdatedEffect,
   type SecurityWorkflowStatus,
 } from "./gen/remoteagent/core/v1/security_pb";
@@ -107,7 +100,7 @@ import {
 import { machineName } from "./model";
 import { DEFAULT_AGENT } from "./agents";
 import type { SharedFileChunkResult } from "./shared-files";
-import { WebSecurityExecutor } from "./core/security-executor";
+import { dispatchSecurityEffect, WebSecurityExecutor } from "./core/security-executor";
 
 export const MAX_CLOCK_SKEW = 5 * 60 * 1000;
 
@@ -1055,36 +1048,8 @@ export class Remote implements CoreExecutor {
     };
   }
 
-  securityKeyGenerate(eff: SecurityKeyGenerateEffect) {
-    void this.secExec.keyGenerate(eff);
-  }
-
-  securityKeySign(eff: SecurityKeySignEffect) {
-    void this.secExec.keySign(eff);
-  }
-
-  securityKeyAgree(eff: SecurityKeyAgreeEffect) {
-    void this.secExec.keyAgree(eff);
-  }
-
-  securityKeyEncapsulate(eff: SecurityKeyEncapsulateEffect) {
-    void this.secExec.keyEncapsulate(eff);
-  }
-
-  securityKeyDiscard(eff: SecurityKeyDiscardEffect) {
-    void this.secExec.keyDiscard(eff);
-  }
-
-  securityStorage(eff: SecurityStorageEffect) {
-    void this.secExec.storage(eff);
-  }
-
-  securityRpc(eff: SecurityRpcEffect) {
-    void this.secExec.rpc(eff);
-  }
-
-  securityCryptoBatch(eff: SecurityCryptoBatchEffect) {
-    void this.secExec.cryptoBatch(eff);
+  securityEffect(eff: Effect["effect"]) {
+    dispatchSecurityEffect(this.secExec, eff);
   }
 
   securityTokenUpdated(eff: SecurityTokenUpdatedEffect) {

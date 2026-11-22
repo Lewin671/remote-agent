@@ -471,13 +471,7 @@ class Remote(
     private fun wireCoreHost() {
         coreHost.resolveUiMessage = { uiMessageResolver(it) }
         coreHost.onDismissUpgradeNotice = { securityStore.dismissUpgradeNotice() }
-        coreHost.onSecurityKeyGenerate = securityExecutor::keyGenerate
-        coreHost.onSecurityKeySign = securityExecutor::keySign
-        coreHost.onSecurityKeyAgree = securityExecutor::keyAgree
-        coreHost.onSecurityKeyEncapsulate = securityExecutor::keyEncapsulate
-        coreHost.onSecurityKeyDiscard = securityExecutor::keyDiscard
-        coreHost.onSecurityStorage = securityExecutor::storage
-        coreHost.onSecurityRpc = securityExecutor::rpc
+        coreHost.onSecurityEffect = securityExecutor::handleEffect
         coreHost.onSecurityTokenUpdated = ::handleSecurityTokenUpdated
         coreHost.onSecurityStatusChanged = { eff ->
             if (eff.hasStatus()) {
@@ -1707,10 +1701,13 @@ class Remote(
 
     // --- S6 Security Management & Recovery (delegated to Core SecurityClient) ---
 
-    suspend fun syncSecurity(@Suppress("UNUSED_PARAMETER") budgetMs: Long = Long.MAX_VALUE) {
+    private suspend inline fun <T> withSecurity(block: suspend SecurityClient.() -> T): T {
         ensureSecurityBootstrapped()
-        val status = coreHost.securityClient.syncNow(touch = false, authToken = cachedToken?.token.orEmpty())
-        applySecurityStatusSnapshotAndPrune(status)
+        return coreHost.securityClient.block()
+    }
+
+    suspend fun syncSecurity(@Suppress("UNUSED_PARAMETER") budgetMs: Long = Long.MAX_VALUE) {
+        applySecurityStatusSnapshotAndPrune(withSecurity { syncNow(touch = false, authToken = cachedToken?.token.orEmpty()) })
     }
 
     suspend fun refreshDevices() {
@@ -1721,16 +1718,11 @@ class Remote(
         updateProjectedStateNow()
     }
 
-    suspend fun getSecurityStatus(): SecurityWorkflowStatus {
-        ensureSecurityBootstrapped()
-        val st = coreHost.securityClient.getStatus()
-        applySecurityStatusSnapshotAndPrune(st)
-        return st
-    }
+    suspend fun getSecurityStatus(): SecurityWorkflowStatus =
+        withSecurity { getStatus() }.also { applySecurityStatusSnapshotAndPrune(it) }
 
     suspend fun resumeSecurityOperation(@Suppress("UNUSED_PARAMETER") dispatchSnapshot: Boolean = true) {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.resumePendingOp()
+        withSecurity { resumePendingOp() }
         if (!closed) refreshDevices()
     }
 
@@ -1741,9 +1733,7 @@ class Remote(
         scope.launch {
             try {
                 withContext(authorityJob) {
-                    ensureSecurityBootstrapped()
-                    val st = coreHost.securityClient.renewLease(force)
-                    applySecurityStatusSnapshot(st)
+                    applySecurityStatusSnapshot(withSecurity { renewLease(force) })
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -1751,31 +1741,18 @@ class Remote(
             }
         }
 
-    suspend fun renewLeaseBlocking(force: Boolean = true): SecurityWorkflowStatus {
-        ensureSecurityBootstrapped()
-        val st = coreHost.securityClient.renewLease(force)
-        applySecurityStatusSnapshotAndPrune(st)
-        return st
-    }
+    suspend fun renewLeaseBlocking(force: Boolean = true): SecurityWorkflowStatus =
+        withSecurity { renewLease(force) }.also { applySecurityStatusSnapshotAndPrune(it) }
 
-    suspend fun prepareRecoveryRotation(): String {
-        ensureSecurityBootstrapped()
-        return coreHost.securityClient.prepareRecoveryRotation()
-    }
+    suspend fun prepareRecoveryRotation(): String = withSecurity { prepareRecoveryRotation() }
 
-    suspend fun confirmRecoveryRotation() {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.confirmRecoveryRotation()
-    }
+    suspend fun confirmRecoveryRotation() { withSecurity { confirmRecoveryRotation() } }
 
-    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String {
-        ensureSecurityBootstrapped()
-        return coreHost.securityClient.prepareHandoffCode(storagePersisted)
-    }
+    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String =
+        withSecurity { prepareHandoffCode(storagePersisted) }
 
     suspend fun publishHandoffOffer() {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.publishHandoffOffer()
+        withSecurity { publishHandoffOffer() }
         if (!closed) refreshDevices()
     }
 
@@ -1785,66 +1762,39 @@ class Remote(
         return coreHost.securityClient.listHandoffCandidates()
     }
 
-    suspend fun handoffAuthority(incoming: String) {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.handoffAuthority(incoming)
-    }
+    suspend fun handoffAuthority(incoming: String) { withSecurity { handoffAuthority(incoming) } }
 
-    suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo {
-        ensureSecurityBootstrapped()
-        val res = coreHost.securityClient.finishPairingDelivery(pairingId)
-        if (res.delivered && !closed) refreshDevices()
-        return res
-    }
+    suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo =
+        withSecurity { finishPairingDelivery(pairingId) }.also { if (it.delivered && !closed) refreshDevices() }
 
-    suspend fun discardPendingOp(abandonHandoff: Boolean = false) {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.discardPendingOp(abandonHandoff)
-    }
+    suspend fun discardPendingOp(abandonHandoff: Boolean = false) { withSecurity { discardPendingOp(abandonHandoff) } }
 
-    suspend fun checkExitAdvice(): SecurityExitAdvice {
-        ensureSecurityBootstrapped()
-        return coreHost.securityClient.checkExitAdvice()
-    }
+    suspend fun checkExitAdvice(): SecurityExitAdvice = withSecurity { checkExitAdvice() }
 
-    suspend fun clearSecurity() {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.clearSecurity()
-    }
+    suspend fun clearSecurity() { withSecurity { clearSecurity() } }
 
-    suspend fun republishRecoveryObjects(flag: Boolean = false) {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.republishRecoveryObjects(flag)
-    }
+    suspend fun republishRecoveryObjects(flag: Boolean = false) { withSecurity { republishRecoveryObjects(flag) } }
 
     suspend fun renameDevice(id: String, name: String) {
         if (id != account.deviceId) {
             throw MessageArgumentException(UiMessages.errorsNamesCanOnlyBeChangedOnThatDevice().messageText())
         }
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.updateDeviceMeta(deviceId = id, name = name.trim())
+        withSecurity { updateDeviceMeta(deviceId = id, name = name.trim()) }
         if (!closed) refreshDevices()
     }
 
     suspend fun describeSelf(platform: String, description: String) {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.updateDeviceMeta(
-            platform = platform,
-            description = description,
-            describeSelfOnly = true,
-        )
+        withSecurity { updateDeviceMeta(platform = platform, description = description, describeSelfOnly = true) }
         if (!closed) refreshDevices()
     }
 
     suspend fun removeDevice(deviceId: String) {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.removeDevice(deviceId)
+        withSecurity { removeDevice(deviceId) }
         if (!closed) refreshDevices()
     }
 
     suspend fun deleteMachineRecords(machineId: String) {
-        ensureSecurityBootstrapped()
-        coreHost.securityClient.deleteMachineRecords(machineId)
+        withSecurity { deleteMachineRecords(machineId) }
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RECONNECT_NOW)
     }
 

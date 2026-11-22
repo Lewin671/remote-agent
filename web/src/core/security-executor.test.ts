@@ -237,15 +237,17 @@ describe("CoreHost cold-boot security ordering", () => {
       securityConfig() {
         return { account: vectors.account, deviceId: "dev-client" };
       },
-      securityStorage(eff) {
-        host.dispatch(
-          create(CoreEventSchema, {
-            event: {
-              case: "securityStorageResult",
-              value: create(SecurityStorageResultEventSchema, { opId: eff.opId }),
-            },
-          }),
-        );
+      securityEffect(eff) {
+        if (eff.case === "securityStorage") {
+          host.dispatch(
+            create(CoreEventSchema, {
+              event: {
+                case: "securityStorageResult",
+                value: create(SecurityStorageResultEventSchema, { opId: eff.value.opId }),
+              },
+            }),
+          );
+        }
       },
       async readBootstrapCache(opId) {
         return create(CacheBootstrapLoadedEventSchema, {

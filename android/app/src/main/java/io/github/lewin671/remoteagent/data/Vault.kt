@@ -14,9 +14,9 @@ import io.github.lewin671.remoteagent.core.SecurityStoreBucketId
 import io.github.lewin671.remoteagent.core.SecurityStoreKeyId
 import io.github.lewin671.remoteagent.core.SecurityStoreStoredBucket
 import io.github.lewin671.remoteagent.core.SecurityStoreStoredKey
-import io.github.lewin671.remoteagent.core.SecurityStoreV4
 import io.github.lewin671.remoteagent.core.SecurityStoreV4Backend
 import io.github.lewin671.remoteagent.core.SecurityStoreV4Core
+import io.github.lewin671.remoteagent.core.SecurityStoreV4Proxy
 import io.github.lewin671.remoteagent.core.proto.SecurityEncapsulateRecipient
 import io.github.lewin671.remoteagent.core.proto.SecurityEncapsulatedPair
 import io.github.lewin671.remoteagent.core.proto.SecurityKeyKind
@@ -49,7 +49,7 @@ class Vault internal constructor(
     private val onParse: ((String) -> Unit)? = null,
     private val onLegacyWipe: (() -> Unit)? = null,
     private val onClearAll: (() -> Unit)? = null,
-) : SecurityStoreV4 {
+) : SecurityStoreV4Proxy {
     constructor(
         context: Context,
         onLegacyWipe: (() -> Unit)? = null,
@@ -72,7 +72,7 @@ class Vault internal constructor(
     private var notifyCiphertext: ByteArray? = null
     private var notifyPlain: ByteArray? = null
 
-    private val core = SecurityStoreV4Core(
+    override val securityCore = SecurityStoreV4Core(
         backend = object : SecurityStoreV4Backend {
             override fun <T> transaction(block: () -> T): T = securityTransaction(block)
             override fun readBuckets() = readBucketsUnlocked()
@@ -111,8 +111,6 @@ class Vault internal constructor(
         notifyPlain = null
     }
 
-    override fun dismissUpgradeNotice() = core.dismissUpgradeNotice()
-
     private fun <T> securityTransaction(block: () -> T): T =
         synchronized(SECURITY_LOCK) {
             dir.mkdirs()
@@ -120,17 +118,6 @@ class Vault internal constructor(
                 channel.lock().use { block() }
             }
         }
-
-    override fun generateKey(kind: SecurityKeyKind, slot: String, persist: Boolean): ByteArray = core.generateKey(kind, slot, persist)
-    override fun signKey(kind: SecurityKeyKind, slot: String, message: ByteArray): ByteArray = core.signKey(kind, slot, message)
-    override fun agreeKey(kind: SecurityKeyKind, slot: String, peerPublic: ByteArray): ByteArray = core.agreeKey(kind, slot, peerPublic)
-    override fun encapsulate(recipients: List<SecurityEncapsulateRecipient>): List<SecurityEncapsulatedPair> = core.encapsulate(recipients)
-    override fun discardKey(kind: SecurityKeyKind, slot: String) = core.discardKey(kind, slot)
-    override fun executeStorage(effect: SecurityStorageEffect): SecurityStorageResultEvent = core.executeStorage(effect)
-    override fun loadLoginToken(server: String, deviceId: String): LoginToken? = core.loadLoginToken(server, deviceId)
-    override fun saveLoginToken(server: String, deviceId: String, token: LoginToken) = core.saveLoginToken(server, deviceId, token)
-    override fun clearLoginToken(server: String, deviceId: String) = core.clearLoginToken(server, deviceId)
-    override fun readNotifyBlob(): ByteArray? = core.readNotifyBlob()
 
     private fun loadLoginTokenImpl(server: String, deviceId: String): LoginToken? =
         securityTransaction {
@@ -219,13 +206,13 @@ class Vault internal constructor(
         }
 
     fun clear() = securityTransaction {
-        core.clearEphemeralKeys()
+        securityCore.clearEphemeralKeys()
         clearAllUnlocked()
         onClearAll?.invoke()
     }
 
     private fun clearAllUnlocked() {
-        core.clearEphemeralKeys()
+        securityCore.clearEphemeralKeys()
         clearMemoryCache()
         deleteLoginTokenUnlocked()
         deleteNotifyBlobUnlocked()
@@ -254,7 +241,7 @@ class Vault internal constructor(
             return upgradeNoticeFile.exists()
         }
         clearMemoryCache()
-        core.clearEphemeralKeys()
+        securityCore.clearEphemeralKeys()
         deleteLegacyFilesUnlocked()
         deleteLoginTokenUnlocked()
         deleteNotifyBlobUnlocked()

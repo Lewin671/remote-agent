@@ -122,20 +122,12 @@ import {
   SecurityConfigEventSchema,
   SecurityForegroundEventSchema,
   SecurityOpRequestEventSchema,
-  type SecurityCryptoBatchEffect,
-  type SecurityKeyAgreeEffect,
-  type SecurityKeyDiscardEffect,
-  type SecurityKeyEncapsulateEffect,
-  type SecurityKeyGenerateEffect,
-  type SecurityKeySignEffect,
   type SecurityOpRequestEvent,
   type SecurityOpResultEffect,
-  type SecurityRpcEffect,
   type SecurityStatusChangedEffect,
-  type SecurityStorageEffect,
   type SecurityTokenUpdatedEffect,
 } from "../gen/remoteagent/core/v1/security_pb";
-import { SecurityClient } from "./security-client";
+import { buildEntropyProvided, SecurityClient } from "./security-client";
 import {
   CommandRouteLeg,
   DirectBulkTransferBeginEventSchema,
@@ -367,14 +359,7 @@ export interface CoreExecutor {
   saveScheduleSeen?(machineId: string, tokens: ScheduleSeenToken[]): Promise<void>;
   dismissScheduleNotifications?(runs: ScheduleNotificationRef[]): void;
   setWatchedSessions?(sessionIds: string[]): void;
-  securityKeyGenerate?(eff: SecurityKeyGenerateEffect): void;
-  securityKeySign?(eff: SecurityKeySignEffect): void;
-  securityKeyAgree?(eff: SecurityKeyAgreeEffect): void;
-  securityKeyEncapsulate?(eff: SecurityKeyEncapsulateEffect): void;
-  securityKeyDiscard?(eff: SecurityKeyDiscardEffect): void;
-  securityStorage?(eff: SecurityStorageEffect): void;
-  securityRpc?(eff: SecurityRpcEffect): void;
-  securityCryptoBatch?(eff: SecurityCryptoBatchEffect): void;
+  securityEffect?(eff: Effect["effect"]): void;
   securityTokenUpdated?(eff: SecurityTokenUpdatedEffect): void;
   securityStatusChanged?(eff: SecurityStatusChangedEffect): void;
   directSignalSend?(eff: DirectSignalSendEffect): void;
@@ -946,7 +931,7 @@ export class CoreHost {
 
   private async ensureSecurityBootstrapped(): Promise<void> {
     if (this.closed) return;
-    if (!this.executor?.securityStorage) {
+    if (!this.executor?.securityEffect) {
       return;
     }
     if (this.securityBootstrapped || !this.executor?.securityConfig?.()) return;
@@ -1077,7 +1062,7 @@ export class CoreHost {
         }
       } catch {}
     };
-    if (this.executor?.securityStorage && this.executor?.securityConfig?.() && !this.securityBootstrapped) {
+    if (this.executor?.securityEffect && this.executor?.securityConfig?.() && !this.securityBootstrapped) {
       void this.ensureSecurityBootstrapped().then(emitLifecycleStart);
     } else {
       void this.ensureSecurityBootstrapped();
@@ -2441,23 +2426,11 @@ export class CoreHost {
       }
 
       case "requestEntropy": {
-        const minIds = Math.max(val.value.minIds, 16);
-        const minFloats = Math.max(val.value.minFloats, 16);
-        const randomBytes = val.value.minRandomBytes > 0
-          ? crypto.getRandomValues(new Uint8Array(Math.max(val.value.minRandomBytes, 4096)))
-          : new Uint8Array();
         this.pendingEvents.push({
           ev: create(EventSchema, {
             nowMs: BigInt(Date.now()),
             monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
-            event: {
-              case: "entropyProvided",
-              value: create(EntropyProvidedSchema, {
-                randomIds: randomIds(minIds),
-                unitFloats: randomFloats(minFloats),
-                randomBytes,
-              }),
-            },
+            event: { case: "entropyProvided", value: buildEntropyProvided(val.value.minIds, val.value.minFloats, val.value.minRandomBytes) },
           }),
         });
         break;
@@ -2780,38 +2753,6 @@ export class CoreHost {
         break;
       }
 
-      case "securityKeyGenerate":
-        this.executor?.securityKeyGenerate?.(val.value);
-        break;
-
-      case "securityKeySign":
-        this.executor?.securityKeySign?.(val.value);
-        break;
-
-      case "securityKeyAgree":
-        this.executor?.securityKeyAgree?.(val.value);
-        break;
-
-      case "securityKeyEncapsulate":
-        this.executor?.securityKeyEncapsulate?.(val.value);
-        break;
-
-      case "securityKeyDiscard":
-        this.executor?.securityKeyDiscard?.(val.value);
-        break;
-
-      case "securityStorage":
-        this.executor?.securityStorage?.(val.value);
-        break;
-
-      case "securityRpc":
-        this.executor?.securityRpc?.(val.value);
-        break;
-
-      case "securityCryptoBatch":
-        this.executor?.securityCryptoBatch?.(val.value);
-        break;
-
       case "securityTokenUpdated":
         this.executor?.securityTokenUpdated?.(val.value);
         break;
@@ -2853,10 +2794,9 @@ export class CoreHost {
       case undefined:
         break;
 
-      default: {
-        const _exhaustive: never = val;
-        void _exhaustive;
-      }
+      default:
+        this.executor?.securityEffect?.(val);
+        break;
     }
     this.onEffect?.(eff);
   }

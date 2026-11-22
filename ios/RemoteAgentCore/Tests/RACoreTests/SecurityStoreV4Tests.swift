@@ -146,46 +146,44 @@ import Testing
     @Test func batchCommitFailureInWriteBucketsPreservesCandidateSlotsForRetry() throws {
         enum InjectError: Error { case diskFull }
 
-        final class FaultyBacking: @unchecked Sendable {
+        final class FaultyBacking: SecurityStoreV4Backend, @unchecked Sendable {
             var buckets: [SecurityStoreBucketKey: SecurityStoreStoredBucket] = [:]
             var keys: [SecurityStoreKeyId: SecurityStoreStoredKey] = [:]
             var notify: Data?
             var loginToken: Data?
             var upgradeNotice = false
             var failNextWriteBuckets = true
+
+            func readBuckets() -> [SecurityStoreBucketKey: SecurityStoreStoredBucket] { buckets }
+            func writeBuckets(_ next: [SecurityStoreBucketKey: SecurityStoreStoredBucket]) throws {
+                if failNextWriteBuckets {
+                    failNextWriteBuckets = false
+                    throw InjectError.diskFull
+                }
+                buckets = next
+            }
+            func readKeys() -> [SecurityStoreKeyId: SecurityStoreStoredKey] { keys }
+            func writeKeys(_ next: [SecurityStoreKeyId: SecurityStoreStoredKey]) { keys = next }
+            func readNotify() -> Data? { notify }
+            func writeNotify(_ data: Data) { notify = data }
+            func deleteNotify() { notify = nil }
+            func readLoginTokenRaw() -> Data? { loginToken }
+            func writeLoginTokenRaw(_ data: Data) { loginToken = data }
+            func deleteLoginToken() { loginToken = nil }
+            func hasUpgradeNotice() -> Bool { upgradeNotice }
+            func setUpgradeNotice(_ on: Bool) { upgradeNotice = on }
+            func detectAndClearLegacy() -> Bool { false }
+            func clearAllBacking() {
+                buckets.removeAll()
+                keys.removeAll()
+                notify = nil
+                loginToken = nil
+                upgradeNotice = false
+            }
         }
 
         let backing = FaultyBacking()
-        let store = SecurityStoreV4Core(
-            backend: SecurityStoreV4Core.Backend(
-                readBuckets: { backing.buckets },
-                writeBuckets: { next in
-                    if backing.failNextWriteBuckets {
-                        backing.failNextWriteBuckets = false
-                        throw InjectError.diskFull
-                    }
-                    backing.buckets = next
-                },
-                readKeys: { backing.keys },
-                writeKeys: { backing.keys = $0 },
-                readNotify: { backing.notify },
-                writeNotify: { backing.notify = $0 },
-                deleteNotify: { backing.notify = nil },
-                readLoginTokenRaw: { backing.loginToken },
-                writeLoginTokenRaw: { backing.loginToken = $0 },
-                deleteLoginToken: { backing.loginToken = nil },
-                hasUpgradeNotice: { backing.upgradeNotice },
-                setUpgradeNotice: { backing.upgradeNotice = $0 },
-                detectAndClearLegacy: { false },
-                clearAllBacking: {
-                    backing.buckets.removeAll()
-                    backing.keys.removeAll()
-                    backing.notify = nil
-                    backing.loginToken = nil
-                    backing.upgradeNotice = false
-                }
-            )
-        )
+        let store = SecurityStoreV4Core(backend: backing)
 
         let edPub = try store.generateKey(kind: .candidateEd, slot: "slot-retry", persist: true)
         let xPub = try store.generateKey(kind: .candidateX, slot: "slot-retry", persist: true)

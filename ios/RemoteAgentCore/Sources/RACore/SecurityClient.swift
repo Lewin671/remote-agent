@@ -139,6 +139,32 @@ final class ContinuationWaiter<T: Sendable>: @unchecked Sendable {
     }
 }
 
+private func awaitWaiter<R: Sendable>(
+    isClosed: @escaping @Sendable () -> Bool,
+    closedError: @escaping @Sendable () -> Error,
+    register: (ContinuationWaiter<R>) throws -> UInt64,
+    unregister: @escaping @Sendable (UInt64) -> ContinuationWaiter<R>?,
+    dispatch: (UInt64) -> Void
+) async throws -> R {
+    let waiter = ContinuationWaiter<R>()
+    let id = try register(waiter)
+    return try await withTaskCancellationHandler {
+        try await withCheckedThrowingContinuation { continuation in
+            guard waiter.install(continuation) else { return }
+            if isClosed() {
+                unregister(id)?.resolve(.failure(closedError()))
+                return
+            }
+            dispatch(id)
+            if isClosed() {
+                unregister(id)?.resolve(.failure(closedError()))
+            }
+        }
+    } onCancel: {
+        unregister(id)?.resolve(.failure(CancellationError()))
+    }
+}
+
 /// Async promise/continuation wrapper over `SecurityWorkflowActionEvent` / `SecurityWorkflowResultEffect`.
 public final class SecurityClient: @unchecked Sendable {
     private let lock = NSLock()
@@ -233,184 +259,145 @@ public final class SecurityClient: @unchecked Sendable {
         setForegroundFn(active)
     }
 
+    private static let closedErr = SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)
+
     private func run(_ build: (inout PBSecurityWorkflowActionEvent) -> Void) async throws -> PBSecurityWorkflowResultEffect {
-        let waiter = ContinuationWaiter<PBSecurityWorkflowResultEffect>()
-        let actionID = try lock.withLock { () -> UInt64 in
-            guard !isClosedFn() else {
-                throw SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)
-            }
-            try Task.checkCancellation()
-            let id = nextActionID
-            nextActionID &+= 1
-            waiters[id] = waiter
-            return id
-        }
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                guard waiter.install(continuation) else { return }
-                if isClosedFn() {
-                    let removed = lock.withLock { waiters.removeValue(forKey: actionID) }
-                    removed?.resolve(.failure(SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)))
-                    return
+        try await awaitWaiter(
+            isClosed: isClosedFn,
+            closedError: { Self.closedErr },
+            register: { waiter in
+                try lock.withLock {
+                    guard !isClosedFn() else { throw Self.closedErr }
+                    try Task.checkCancellation()
+                    let id = nextActionID
+                    nextActionID &+= 1
+                    waiters[id] = waiter
+                    return id
                 }
+            },
+            unregister: { [self] id in lock.withLock { waiters.removeValue(forKey: id) } },
+            dispatch: { id in
                 var action = PBSecurityWorkflowActionEvent()
-                action.actionID = actionID
+                action.actionID = id
                 build(&action)
                 dispatchEvent(PBCoreEvent.with { $0.securityAction = action })
-                if isClosedFn() {
-                    let removed = lock.withLock { waiters.removeValue(forKey: actionID) }
-                    removed?.resolve(.failure(SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)))
-                }
             }
-        } onCancel: {
-            let removed = lock.withLock { waiters.removeValue(forKey: actionID) }
-            removed?.resolve(.failure(CancellationError()))
-        }
+        )
+    }
+
+    private func empty(_ set: (inout PBSecurityWorkflowActionEvent, PBSecurityActionEmpty) -> Void) async throws -> PBSecurityWorkflowResultEffect {
+        try await run { set(&$0, PBSecurityActionEmpty()) }
+    }
+
+    private func bool(_ flag: Bool, _ set: (inout PBSecurityWorkflowActionEvent, PBSecurityBoolAction) -> Void) async throws -> PBSecurityWorkflowResultEffect {
+        try await run { set(&$0, .with { $0.flag = flag }) }
+    }
+
+    private func str(_ value: String, _ set: (inout PBSecurityWorkflowActionEvent, PBSecurityStringAction) -> Void) async throws -> PBSecurityWorkflowResultEffect {
+        try await run { set(&$0, .with { $0.value = value }) }
     }
 
     @discardableResult
     public func bootstrap() async throws -> PBSecurityWorkflowStatus {
-        try await run { $0.bootstrap = PBSecurityActionEmpty() }.status
+        try await empty { $0.bootstrap = $1 }.status
     }
 
     public func getStatus() async throws -> PBSecurityWorkflowStatus {
-        try await run { $0.getStatus = PBSecurityActionEmpty() }.status
+        try await empty { $0.getStatus = $1 }.status
     }
 
     @discardableResult
     public func dismissUpgradeNotice() async throws -> PBSecurityWorkflowStatus {
-        let res = try await run { $0.dismissUpgradeNotice = PBSecurityActionEmpty() }
+        let res = try await empty { $0.dismissUpgradeNotice = $1 }
         onDismissUpgradeNotice?()
         return res.status
     }
 
     @discardableResult
     public func syncNow(touch: Bool = false, authToken: String = "") async throws -> PBSecurityWorkflowStatus {
-        try await run {
-            $0.syncNow = .with {
-                $0.touch = touch
-                $0.authToken = authToken
-            }
-        }.status
+        try await run { $0.syncNow = .with { $0.touch = touch; $0.authToken = authToken } }.status
     }
 
     @discardableResult
     public func renewLease(force: Bool = true) async throws -> PBSecurityWorkflowStatus {
-        try await run { $0.renewLease = .with { $0.flag = force } }.status
+        try await bool(force) { $0.renewLease = $1 }.status
     }
 
     @discardableResult
     public func resumePendingOp() async throws -> PBSecurityWorkflowResultEffect {
-        try await run { $0.resumePendingOp = PBSecurityActionEmpty() }
+        try await empty { $0.resumePendingOp = $1 }
     }
 
     public func discardPendingOp(abandonHandoff: Bool = false) async throws {
-        _ = try await run { $0.discardPendingOp = .with { $0.flag = abandonHandoff } }
+        _ = try await bool(abandonHandoff) { $0.discardPendingOp = $1 }
     }
 
     public func prepareCreation(server: String, storagePersisted: Bool = true) async throws -> PreparedCreationResult {
-        let res = try await run {
-            $0.prepareCreation = .with {
-                $0.server = server
-                $0.storagePersisted = storagePersisted
-            }
-        }
+        let res = try await run { $0.prepareCreation = .with { $0.server = server; $0.storagePersisted = storagePersisted } }
         return PreparedCreationResult(recoveryCode: res.recoveryCode, resumedDraft: res.resumedDraft, codeSaved: res.codeSaved)
     }
 
-    public func confirmCreationCodeSaved() async throws {
-        _ = try await run { $0.confirmCreationCodeSaved = PBSecurityActionEmpty() }
-    }
+    public func confirmCreationCodeSaved() async throws { _ = try await empty { $0.confirmCreationCodeSaved = $1 } }
 
     @discardableResult
     public func continueCreation(setupToken: String = "") async throws -> PBSecurityWorkflowResultEffect {
-        try await run { $0.continueCreation = .with { $0.value = setupToken } }
+        try await str(setupToken) { $0.continueCreation = $1 }
     }
 
     @discardableResult
     public func adoptCreationWithoutCode() async throws -> PBSecurityWorkflowResultEffect {
-        try await run { $0.adoptCreationWithoutCode = PBSecurityActionEmpty() }
+        try await empty { $0.adoptCreationWithoutCode = $1 }
     }
 
     public func removeDevice(_ deviceId: String, abandonPairDelivery: Bool = false) async throws {
-        _ = try await run {
-            $0.removeDevice = .with {
-                $0.deviceID = deviceId
-                $0.abandonPairDelivery = abandonPairDelivery
-            }
-        }
+        _ = try await run { $0.removeDevice = .with { $0.deviceID = deviceId; $0.abandonPairDelivery = abandonPairDelivery } }
     }
 
-    public func deleteMachineRecords(_ machineId: String) async throws {
-        _ = try await run { $0.deleteMachineRecords = .with { $0.value = machineId } }
-    }
+    public func deleteMachineRecords(_ machineId: String) async throws { _ = try await str(machineId) { $0.deleteMachineRecords = $1 } }
 
-    public func deleteAccount() async throws {
-        _ = try await run { $0.deleteAccount = PBSecurityActionEmpty() }
-    }
+    public func deleteAccount() async throws { _ = try await empty { $0.deleteAccount = $1 } }
 
     public func prepareRecoveryRotation() async throws -> String {
-        try await run { $0.prepareRecoveryRotation = PBSecurityActionEmpty() }.recoveryCode
+        try await empty { $0.prepareRecoveryRotation = $1 }.recoveryCode
     }
 
-    public func confirmRecoveryRotation() async throws {
-        _ = try await run { $0.confirmRecoveryRotation = PBSecurityActionEmpty() }
-    }
+    public func confirmRecoveryRotation() async throws { _ = try await empty { $0.confirmRecoveryRotation = $1 } }
 
     public func prepareHandoffCode(storagePersisted: Bool = true) async throws -> String {
-        try await run { $0.prepareHandoffCode = .with { $0.flag = storagePersisted } }.recoveryCode
+        try await bool(storagePersisted) { $0.prepareHandoffCode = $1 }.recoveryCode
     }
 
-    public func publishHandoffOffer() async throws {
-        _ = try await run { $0.publishHandoffOffer = PBSecurityActionEmpty() }
-    }
+    public func publishHandoffOffer() async throws { _ = try await empty { $0.publishHandoffOffer = $1 } }
 
     public func listHandoffCandidates() async throws -> [PBSecurityHandoffCandidate] {
-        try await run { $0.listHandoffCandidates = PBSecurityActionEmpty() }.handoffCandidates
+        try await empty { $0.listHandoffCandidates = $1 }.handoffCandidates
     }
 
     public func handoffAuthority(targetDeviceId: String) async throws {
-        _ = try await run { $0.handoffAuthority = .with { $0.value = targetDeviceId } }
+        _ = try await str(targetDeviceId) { $0.handoffAuthority = $1 }
     }
 
     public func completeAccountPublicProfile(server: String, code: String) async throws {
-        _ = try await run {
-            $0.completeAccountPublicProfile = .with {
-                $0.server = server
-                $0.code = code
-            }
-        }
+        _ = try await run { $0.completeAccountPublicProfile = .with { $0.server = server; $0.code = code } }
     }
 
     public func startPairing(webOrigin: String, replacesDeviceId: String = "") async throws -> PBSecurityPairingInfo {
-        try await run {
-            $0.startPairing = .with {
-                $0.webOrigin = webOrigin
-                $0.replacesDeviceID = replacesDeviceId
-            }
-        }.pairing
+        try await run { $0.startPairing = .with { $0.webOrigin = webOrigin; $0.replacesDeviceID = replacesDeviceId } }.pairing
     }
 
     public func pollPairing(pairingId: String) async throws -> PBSecurityPairingInfo {
-        try await run { $0.pollPairing = .with { $0.value = pairingId } }.pairing
+        try await str(pairingId) { $0.pollPairing = $1 }.pairing
     }
 
     public func approvePairing(pairingId: String, sasConfirmed: Bool) async throws -> PBSecurityPairingInfo {
-        try await run {
-            $0.approvePairing = .with {
-                $0.pairingID = pairingId
-                $0.sasConfirmed = sasConfirmed
-            }
-        }.pairing
+        try await run { $0.approvePairing = .with { $0.pairingID = pairingId; $0.sasConfirmed = sasConfirmed } }.pairing
     }
 
     public func finishPairingDelivery(pairingId: String) async throws -> PBSecurityPairingInfo {
-        try await run { $0.finishPairingDelivery = .with { $0.value = pairingId } }.pairing
+        try await str(pairingId) { $0.finishPairingDelivery = $1 }.pairing
     }
 
-    public func cancelPairing(pairingId: String) async throws {
-        _ = try await run { $0.cancelPairing = .with { $0.value = pairingId } }
-    }
+    public func cancelPairing(pairingId: String) async throws { _ = try await str(pairingId) { $0.cancelPairing = $1 } }
 
     public func startJoinPairing(
         server: String = "",
@@ -422,72 +409,54 @@ public final class SecurityClient: @unchecked Sendable {
     ) async throws -> PBSecurityPairingInfo {
         try await run {
             $0.startJoinPairing = .with {
-                $0.server = server
-                $0.code = code
+                $0.server = server; $0.code = code
                 if let commitHint, !commitHint.isEmpty { $0.commitHint = commitHint }
-                $0.existingRepair = existingRepair
-                $0.existingServer = existingServer
-                $0.rawLink = rawLink
+                $0.existingRepair = existingRepair; $0.existingServer = existingServer; $0.rawLink = rawLink
             }
         }.pairing
     }
 
     @discardableResult
     public func confirmJoinSas(pairingId: String) async throws -> PBSecurityWorkflowResultEffect {
-        try await run { $0.confirmJoinSas = .with { $0.value = pairingId } }
+        try await str(pairingId) { $0.confirmJoinSas = $1 }
     }
 
-    public func cancelJoinPairing(pairingId: String) async throws {
-        _ = try await run { $0.cancelJoinPairing = .with { $0.value = pairingId } }
-    }
+    public func cancelJoinPairing(pairingId: String) async throws { _ = try await str(pairingId) { $0.cancelJoinPairing = $1 } }
 
     public func prepareEmergencyRecovery(server: String, code: String) async throws -> PreparedEmergencyRecoveryResult {
-        let res = try await run {
-            $0.prepareEmergencyRecovery = .with {
-                $0.server = server
-                $0.code = code
-            }
-        }
+        let res = try await run { $0.prepareEmergencyRecovery = .with { $0.server = server; $0.code = code } }
         return PreparedEmergencyRecoveryResult(recoveryCode: res.recoveryCode, recovery: res.hasRecovery ? res.recovery : nil)
     }
 
-    public func confirmRecoveryCodeSaved() async throws {
-        _ = try await run { $0.confirmRecoveryCodeSaved = PBSecurityActionEmpty() }
-    }
+    public func confirmRecoveryCodeSaved() async throws { _ = try await empty { $0.confirmRecoveryCodeSaved = $1 } }
 
     public func continueRecoverySigning(oldCode: String) async throws -> PBSecurityRecoveryInfo? {
-        let res = try await run { $0.continueRecoverySigning = .with { $0.value = oldCode } }
+        let res = try await str(oldCode) { $0.continueRecoverySigning = $1 }
         return res.hasRecovery ? res.recovery : nil
     }
 
     public func resumeRecovery() async throws -> PBSecurityRecoveryInfo? {
-        let res = try await run { $0.resumeRecovery = PBSecurityActionEmpty() }
+        let res = try await empty { $0.resumeRecovery = $1 }
         return res.hasRecovery ? res.recovery : nil
     }
 
     @discardableResult
     public func completeRecovery() async throws -> PBSecurityWorkflowResultEffect {
-        try await run { $0.completeRecovery = PBSecurityActionEmpty() }
+        try await empty { $0.completeRecovery = $1 }
     }
 
-    public func discardUnsignedRecovery() async throws {
-        _ = try await run { $0.discardUnsignedRecovery = PBSecurityActionEmpty() }
-    }
+    public func discardUnsignedRecovery() async throws { _ = try await empty { $0.discardUnsignedRecovery = $1 } }
 
-    public func discardRejectedRecovery() async throws {
-        _ = try await run { $0.discardRejectedRecovery = PBSecurityActionEmpty() }
-    }
+    public func discardRejectedRecovery() async throws { _ = try await empty { $0.discardRejectedRecovery = $1 } }
 
     public func checkExitAdvice() async throws -> PBSecurityExitAdvice {
-        try await run { $0.checkExitAdvice = PBSecurityActionEmpty() }.exitAdvice
+        try await empty { $0.checkExitAdvice = $1 }.exitAdvice
     }
 
-    public func clearSecurity() async throws {
-        _ = try await run { $0.clearSecurity_p = PBSecurityActionEmpty() }
-    }
+    public func clearSecurity() async throws { _ = try await empty { $0.clearSecurity_p = $1 } }
 
     public func checkRetainedDenied() async throws -> Bool {
-        try await run { $0.checkRetainedDenied = PBSecurityActionEmpty() }.flag
+        try await empty { $0.checkRetainedDenied = $1 }.flag
     }
 
     public func updateDeviceMeta(
@@ -508,9 +477,7 @@ public final class SecurityClient: @unchecked Sendable {
         }
     }
 
-    public func republishRecoveryObjects(flag: Bool = false) async throws {
-        _ = try await run { $0.republishRecoveryObjects = .with { $0.flag = flag } }
-    }
+    public func republishRecoveryObjects(flag: Bool = false) async throws { _ = try await bool(flag) { $0.republishRecoveryObjects = $1 } }
 }
 
 /// Shared Go `CoreClient` + `SecurityExecutor` event-loop driver used by both
@@ -568,32 +535,27 @@ final class CoreSecurityDriver: @unchecked Sendable {
     }
 
     func runSecurityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
-        let waiter = ContinuationWaiter<PBSecurityOpResultEffect>()
-        let opID = try lock.withLock { () -> UInt64 in
-            guard !closed else { throw SecurityFailure.storage }
-            try Task.checkCancellation()
-            let id = nextOpID
-            nextOpID &+= 1
-            securityOpWaiters[id] = waiter
-            return id
-        }
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                guard waiter.install(continuation) else { return }
-                if isClosed() {
-                    let removed = lock.withLock { securityOpWaiters.removeValue(forKey: opID) }
-                    removed?.resolve(.failure(SecurityFailure.storage))
-                    return
+        try await awaitWaiter(
+            isClosed: { self.isClosed() },
+            closedError: { SecurityFailure.storage },
+            register: { waiter in
+                try lock.withLock {
+                    guard !closed else { throw SecurityFailure.storage }
+                    try Task.checkCancellation()
+                    let id = nextOpID
+                    nextOpID &+= 1
+                    securityOpWaiters[id] = waiter
+                    return id
                 }
+            },
+            unregister: { [self] id in lock.withLock { securityOpWaiters.removeValue(forKey: id) } },
+            dispatch: { id in
                 var req = PBSecurityOpRequestEvent()
-                req.opID = opID
+                req.opID = id
                 configure(&req)
                 enqueueEvent(PBCoreEvent.with { $0.securityOpRequest = req })
             }
-        } onCancel: {
-            let removed = lock.withLock { securityOpWaiters.removeValue(forKey: opID) }
-            removed?.resolve(.failure(CancellationError()))
-        }
+        )
     }
 
     func syncStateView() -> PBCoreSyncStateView? {
@@ -661,13 +623,9 @@ final class CoreSecurityDriver: @unchecked Sendable {
                 return timers.removeValue(forKey: tk)?.task
             }
             task?.cancel()
-        case .securityKeyGenerate(let k): executor.keyGenerate(k)
-        case .securityKeySign(let s): executor.keySign(s)
-        case .securityKeyAgree(let a): executor.keyAgree(a)
-        case .securityKeyEncapsulate(let e): executor.keyEncapsulate(e)
-        case .securityKeyDiscard(let d): executor.keyDiscard(d)
-        case .securityStorage(let s): executor.storage(s)
-        case .securityRpc(let r): executor.rpc(r)
+        case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
+             .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage, .securityRpc:
+            _ = executor.handleEffect(eff)
         case .securityWorkflowResult(let r):
             client.handleWorkflowResult(r)
             if r.hasStatus { onStatusSnapshot?(r.status) }

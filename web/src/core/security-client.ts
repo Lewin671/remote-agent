@@ -35,7 +35,7 @@ import {
 } from "../gen/remoteagent/core/v1/security_pb";
 import type { WasmAppCore } from "./projection";
 import { getCore } from "./runtime";
-import { WebSecurityExecutor } from "./security-executor";
+import { dispatchSecurityEffect, WebSecurityExecutor } from "./security-executor";
 import { SecurityStoreV4, securityStoreV4 } from "./security-store-v4";
 
 export const BROWSER_AUTHORITY_NOTICE = () =>
@@ -107,6 +107,11 @@ export interface SecurityWorkflowDispatcher {
   isClosed(): boolean;
 }
 
+type Action = SecurityWorkflowActionEvent["action"];
+type EmptyCase = Extract<Action, { value: { $typeName: "remoteagent.core.v1.SecurityActionEmpty" } }>["case"];
+type BoolCase = Extract<Action, { value: { $typeName: "remoteagent.core.v1.SecurityBoolAction" } }>["case"];
+type StringCase = Extract<Action, { value: { $typeName: "remoteagent.core.v1.SecurityStringAction" } }>["case"];
+
 export class SecurityClient {
   private nextActionId = 1n;
   private readonly waiters = new Map<
@@ -124,17 +129,12 @@ export class SecurityClient {
 
   subscribeStatus(fn: (status: SecurityWorkflowStatus) => void): () => void {
     this.statusListeners.add(fn);
-    return () => {
-      this.statusListeners.delete(fn);
-    };
+    return () => this.statusListeners.delete(fn);
   }
 
   /** Called by CoreHost / StandaloneSecurityHost when Go emits SecurityWorkflowResultEffect. */
   handleWorkflowResult(res: SecurityWorkflowResultEffect): void {
-    if (res.status) {
-      this._status = res.status;
-      for (const fn of [...this.statusListeners]) fn(res.status);
-    }
+    if (res.status) this.handleStatusChanged(res.status);
     const w = this.waiters.get(res.actionId);
     if (!w) return;
     this.waiters.delete(res.actionId);
@@ -164,10 +164,8 @@ export class SecurityClient {
     this.waiters.clear();
   }
 
-  private run(action: SecurityWorkflowActionEvent["action"]): Promise<SecurityWorkflowResultEffect> {
-    if (this.host.isClosed()) {
-      return Promise.reject(new Error("security client closed"));
-    }
+  private run(action: Action): Promise<SecurityWorkflowResultEffect> {
+    if (this.host.isClosed()) return Promise.reject(new Error("security client closed"));
     const actionId = this.nextActionId++;
     return new Promise<SecurityWorkflowResultEffect>((resolve, reject) => {
       this.waiters.set(actionId, { resolve, reject });
@@ -176,10 +174,7 @@ export class SecurityClient {
           create(EventSchema, {
             nowMs: BigInt(Date.now()),
             monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
-            event: {
-              case: "securityAction",
-              value: create(SecurityWorkflowActionEventSchema, { actionId, action }),
-            },
+            event: { case: "securityAction", value: create(SecurityWorkflowActionEventSchema, { actionId, action }) },
           }),
         );
       } catch (e) {
@@ -189,145 +184,61 @@ export class SecurityClient {
     });
   }
 
-  async bootstrap(): Promise<SecurityWorkflowStatus> {
-    const r = await this.run({ case: "bootstrap", value: create(SecurityActionEmptySchema, {}) });
-    return r.status!;
+  private empty(c: EmptyCase) {
+    return this.run({ case: c, value: create(SecurityActionEmptySchema, {}) } as Action);
+  }
+  private bool(c: BoolCase, flag: boolean) {
+    return this.run({ case: c, value: create(SecurityBoolActionSchema, { flag }) } as Action);
+  }
+  private str(c: StringCase, value: string) {
+    return this.run({ case: c, value: create(SecurityStringActionSchema, { value }) } as Action);
   }
 
-  async getStatus(): Promise<SecurityWorkflowStatus> {
-    const r = await this.run({ case: "getStatus", value: create(SecurityActionEmptySchema, {}) });
-    return r.status!;
-  }
-
+  bootstrap = async (): Promise<SecurityWorkflowStatus> => (await this.empty("bootstrap")).status!;
+  getStatus = async (): Promise<SecurityWorkflowStatus> => (await this.empty("getStatus")).status!;
   async dismissUpgradeNotice(): Promise<SecurityWorkflowStatus> {
-    const r = await this.run({ case: "dismissUpgradeNotice", value: create(SecurityActionEmptySchema, {}) });
+    const r = await this.empty("dismissUpgradeNotice");
     securityStoreV4.dismissUpgradeNotice();
     return r.status!;
   }
-
   async syncNow(touch = false, authToken = ""): Promise<SecurityWorkflowStatus> {
-    const r = await this.run({ case: "syncNow", value: create(SecuritySyncNowActionSchema, { touch, authToken }) });
-    return r.status!;
+    return (await this.run({ case: "syncNow", value: create(SecuritySyncNowActionSchema, { touch, authToken }) })).status!;
   }
-
-  async renewLease(force = true): Promise<SecurityWorkflowStatus> {
-    const r = await this.run({ case: "renewLease", value: create(SecurityBoolActionSchema, { flag: force }) });
-    return r.status!;
-  }
-
-  async resumePendingOp(): Promise<SecurityWorkflowResultEffect> {
-    return this.run({ case: "resumePendingOp", value: create(SecurityActionEmptySchema, {}) });
-  }
-
+  renewLease = async (force = true): Promise<SecurityWorkflowStatus> => (await this.bool("renewLease", force)).status!;
+  resumePendingOp = (): Promise<SecurityWorkflowResultEffect> => this.empty("resumePendingOp");
   async discardPendingOp(abandonHandoff = false): Promise<void> {
-    await this.run({ case: "discardPendingOp", value: create(SecurityBoolActionSchema, { flag: abandonHandoff }) });
+    await this.bool("discardPendingOp", abandonHandoff);
   }
-
   async prepareCreation(server: string, storagePersisted: boolean): Promise<{ recoveryCode: string; resumedDraft: boolean; codeSaved: boolean }> {
-    const r = await this.run({
-      case: "prepareCreation",
-      value: create(SecurityPrepareCreationActionSchema, { server, storagePersisted }),
-    });
+    const r = await this.run({ case: "prepareCreation", value: create(SecurityPrepareCreationActionSchema, { server, storagePersisted }) });
     return { recoveryCode: r.recoveryCode, resumedDraft: r.resumedDraft, codeSaved: r.codeSaved };
   }
-
-  async confirmCreationCodeSaved(): Promise<void> {
-    await this.run({ case: "confirmCreationCodeSaved", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async continueCreation(setupToken = ""): Promise<SecurityWorkflowResultEffect> {
-    return this.run({ case: "continueCreation", value: create(SecurityStringActionSchema, { value: setupToken }) });
-  }
-
-  async adoptCreationWithoutCode(): Promise<SecurityWorkflowResultEffect> {
-    return this.run({ case: "adoptCreationWithoutCode", value: create(SecurityActionEmptySchema, {}) });
-  }
-
+  async confirmCreationCodeSaved(): Promise<void> { await this.empty("confirmCreationCodeSaved"); }
+  continueCreation = (setupToken = ""): Promise<SecurityWorkflowResultEffect> => this.str("continueCreation", setupToken);
+  adoptCreationWithoutCode = (): Promise<SecurityWorkflowResultEffect> => this.empty("adoptCreationWithoutCode");
   async removeDevice(deviceId: string, abandonPairDelivery = false): Promise<void> {
-    await this.run({
-      case: "removeDevice",
-      value: create(SecurityRemoveDeviceActionSchema, { deviceId, abandonPairDelivery }),
-    });
+    await this.run({ case: "removeDevice", value: create(SecurityRemoveDeviceActionSchema, { deviceId, abandonPairDelivery }) });
   }
-
-  async deleteMachineRecords(machineId: string): Promise<void> {
-    await this.run({ case: "deleteMachineRecords", value: create(SecurityStringActionSchema, { value: machineId }) });
-  }
-
-  async deleteAccount(): Promise<void> {
-    await this.run({ case: "deleteAccount", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async prepareRecoveryRotation(): Promise<{ recoveryCode: string }> {
-    const r = await this.run({ case: "prepareRecoveryRotation", value: create(SecurityActionEmptySchema, {}) });
-    return { recoveryCode: r.recoveryCode };
-  }
-
-  async confirmRecoveryRotation(): Promise<void> {
-    await this.run({ case: "confirmRecoveryRotation", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async prepareHandoffCode(storagePersisted: boolean): Promise<{ recoveryCode: string }> {
-    const r = await this.run({
-      case: "prepareHandoffCode",
-      value: create(SecurityBoolActionSchema, { flag: storagePersisted }),
-    });
-    return { recoveryCode: r.recoveryCode };
-  }
-
-  async publishHandoffOffer(): Promise<void> {
-    await this.run({ case: "publishHandoffOffer", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async listHandoffCandidates(): Promise<SecurityHandoffCandidate[]> {
-    const r = await this.run({ case: "listHandoffCandidates", value: create(SecurityActionEmptySchema, {}) });
-    return r.handoffCandidates;
-  }
-
-  async handoffAuthority(targetDeviceId: string): Promise<void> {
-    await this.run({ case: "handoffAuthority", value: create(SecurityStringActionSchema, { value: targetDeviceId }) });
-  }
-
+  async deleteMachineRecords(machineId: string): Promise<void> { await this.str("deleteMachineRecords", machineId); }
+  async deleteAccount(): Promise<void> { await this.empty("deleteAccount"); }
+  prepareRecoveryRotation = async (): Promise<{ recoveryCode: string }> => ({ recoveryCode: (await this.empty("prepareRecoveryRotation")).recoveryCode });
+  async confirmRecoveryRotation(): Promise<void> { await this.empty("confirmRecoveryRotation"); }
+  prepareHandoffCode = async (storagePersisted: boolean): Promise<{ recoveryCode: string }> => ({ recoveryCode: (await this.bool("prepareHandoffCode", storagePersisted)).recoveryCode });
+  async publishHandoffOffer(): Promise<void> { await this.empty("publishHandoffOffer"); }
+  listHandoffCandidates = async (): Promise<SecurityHandoffCandidate[]> => (await this.empty("listHandoffCandidates")).handoffCandidates;
+  async handoffAuthority(targetDeviceId: string): Promise<void> { await this.str("handoffAuthority", targetDeviceId); }
   async completeAccountPublicProfile(server: string, code: string): Promise<void> {
-    await this.run({
-      case: "completeAccountPublicProfile",
-      value: create(SecurityServerCodeActionSchema, { server, code }),
-    });
+    await this.run({ case: "completeAccountPublicProfile", value: create(SecurityServerCodeActionSchema, { server, code }) });
   }
-
   async startPairing(webOrigin: string, replacesDeviceId = ""): Promise<SecurityPairingInfo> {
-    const r = await this.run({
-      case: "startPairing",
-      value: create(SecurityStartPairingActionSchema, { webOrigin, replacesDeviceId }),
-    });
-    return r.pairing!;
+    return (await this.run({ case: "startPairing", value: create(SecurityStartPairingActionSchema, { webOrigin, replacesDeviceId }) })).pairing!;
   }
-
-  async pollPairing(pairingId: string): Promise<SecurityPairingInfo> {
-    const r = await this.run({ case: "pollPairing", value: create(SecurityStringActionSchema, { value: pairingId }) });
-    return r.pairing!;
-  }
-
+  pollPairing = async (pairingId: string): Promise<SecurityPairingInfo> => (await this.str("pollPairing", pairingId)).pairing!;
   async approvePairing(pairingId: string, sasConfirmed: boolean): Promise<SecurityPairingInfo> {
-    const r = await this.run({
-      case: "approvePairing",
-      value: create(SecurityApprovePairingActionSchema, { pairingId, sasConfirmed }),
-    });
-    return r.pairing!;
+    return (await this.run({ case: "approvePairing", value: create(SecurityApprovePairingActionSchema, { pairingId, sasConfirmed }) })).pairing!;
   }
-
-  async finishPairingDelivery(pairingId: string): Promise<SecurityPairingInfo> {
-    const r = await this.run({
-      case: "finishPairingDelivery",
-      value: create(SecurityStringActionSchema, { value: pairingId }),
-    });
-    return r.pairing!;
-  }
-
-  async cancelPairing(pairingId: string): Promise<void> {
-    await this.run({ case: "cancelPairing", value: create(SecurityStringActionSchema, { value: pairingId }) });
-  }
-
+  finishPairingDelivery = async (pairingId: string): Promise<SecurityPairingInfo> => (await this.str("finishPairingDelivery", pairingId)).pairing!;
+  async cancelPairing(pairingId: string): Promise<void> { await this.str("cancelPairing", pairingId); }
   async startJoinPairing(params: {
     server?: string;
     code?: string;
@@ -349,63 +260,21 @@ export class SecurityClient {
     });
     return r.pairing!;
   }
-
-  async confirmJoinSas(pairingId: string): Promise<SecurityWorkflowResultEffect> {
-    return this.run({ case: "confirmJoinSas", value: create(SecurityStringActionSchema, { value: pairingId }) });
-  }
-
-  async cancelJoinPairing(pairingId: string): Promise<void> {
-    await this.run({ case: "cancelJoinPairing", value: create(SecurityStringActionSchema, { value: pairingId }) });
-  }
-
+  confirmJoinSas = (pairingId: string): Promise<SecurityWorkflowResultEffect> => this.str("confirmJoinSas", pairingId);
+  async cancelJoinPairing(pairingId: string): Promise<void> { await this.str("cancelJoinPairing", pairingId); }
   async prepareEmergencyRecovery(server: string, code: string): Promise<{ recoveryCode: string; recovery?: SecurityRecoveryInfo }> {
-    const r = await this.run({
-      case: "prepareEmergencyRecovery",
-      value: create(SecurityServerCodeActionSchema, { server, code }),
-    });
+    const r = await this.run({ case: "prepareEmergencyRecovery", value: create(SecurityServerCodeActionSchema, { server, code }) });
     return { recoveryCode: r.recoveryCode, recovery: r.recovery };
   }
-
-  async confirmRecoveryCodeSaved(): Promise<void> {
-    await this.run({ case: "confirmRecoveryCodeSaved", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async continueRecoverySigning(oldCode: string): Promise<SecurityRecoveryInfo | undefined> {
-    const r = await this.run({ case: "continueRecoverySigning", value: create(SecurityStringActionSchema, { value: oldCode }) });
-    return r.recovery;
-  }
-
-  async resumeRecovery(): Promise<SecurityRecoveryInfo | undefined> {
-    const r = await this.run({ case: "resumeRecovery", value: create(SecurityActionEmptySchema, {}) });
-    return r.recovery;
-  }
-
-  async completeRecovery(): Promise<SecurityWorkflowResultEffect> {
-    return this.run({ case: "completeRecovery", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async discardUnsignedRecovery(): Promise<void> {
-    await this.run({ case: "discardUnsignedRecovery", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async discardRejectedRecovery(): Promise<void> {
-    await this.run({ case: "discardRejectedRecovery", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async checkExitAdvice(): Promise<SecurityExitAdvice> {
-    const r = await this.run({ case: "checkExitAdvice", value: create(SecurityActionEmptySchema, {}) });
-    return r.exitAdvice!;
-  }
-
-  async clearSecurity(): Promise<void> {
-    await this.run({ case: "clearSecurity", value: create(SecurityActionEmptySchema, {}) });
-  }
-
-  async checkRetainedDenied(): Promise<boolean> {
-    const r = await this.run({ case: "checkRetainedDenied", value: create(SecurityActionEmptySchema, {}) });
-    return r.flag;
-  }
-
+  async confirmRecoveryCodeSaved(): Promise<void> { await this.empty("confirmRecoveryCodeSaved"); }
+  continueRecoverySigning = async (oldCode: string): Promise<SecurityRecoveryInfo | undefined> => (await this.str("continueRecoverySigning", oldCode)).recovery;
+  resumeRecovery = async (): Promise<SecurityRecoveryInfo | undefined> => (await this.empty("resumeRecovery")).recovery;
+  completeRecovery = (): Promise<SecurityWorkflowResultEffect> => this.empty("completeRecovery");
+  async discardUnsignedRecovery(): Promise<void> { await this.empty("discardUnsignedRecovery"); }
+  async discardRejectedRecovery(): Promise<void> { await this.empty("discardRejectedRecovery"); }
+  checkExitAdvice = async (): Promise<SecurityExitAdvice> => (await this.empty("checkExitAdvice")).exitAdvice!;
+  async clearSecurity(): Promise<void> { await this.empty("clearSecurity"); }
+  checkRetainedDenied = async (): Promise<boolean> => (await this.empty("checkRetainedDenied")).flag;
   async updateDeviceMeta(params: {
     deviceId?: string;
     name?: string;
@@ -424,19 +293,26 @@ export class SecurityClient {
       }),
     });
   }
-
-  async republishRecoveryObjects(flag = false): Promise<void> {
-    await this.run({ case: "republishRecoveryObjects", value: create(SecurityBoolActionSchema, { flag }) });
-  }
-
-  setForeground(active: boolean): void {
-    this.host.setForeground(active);
-  }
+  async republishRecoveryObjects(flag = false): Promise<void> { await this.bool("republishRecoveryObjects", flag); }
+  setForeground(active: boolean): void { this.host.setForeground(active); }
 }
 
 export interface StandaloneSecurityHandle {
   client: SecurityClient;
   dispose: () => void;
+}
+
+export function buildEntropyProvided(minIds: number, minFloats: number, minRandomBytes: number) {
+  const nIds = Math.max(minIds, 16);
+  const randomIds: string[] = [];
+  for (let i = 0; i < nIds; i++) randomIds.push(crypto.randomUUID());
+  const raw = new Uint32Array(Math.max(minFloats, 16));
+  crypto.getRandomValues(raw);
+  const unitFloats = Array.from(raw, (x) => x / 0x100000000);
+  const randomBytes = minRandomBytes > 0
+    ? crypto.getRandomValues(new Uint8Array(Math.max(minRandomBytes, 4096)))
+    : new Uint8Array();
+  return create(EntropyProvidedSchema, { randomIds, unitFloats, randomBytes });
 }
 
 /**
@@ -454,11 +330,7 @@ export function createStandaloneSecurityClient(opts: {
   const pending: Event[] = [];
   let draining = false;
 
-  const exec = new WebSecurityExecutor({
-    store: opts.store ?? securityStoreV4,
-    fetch: opts.fetch,
-    emit: (ev) => dispatch(ev),
-  });
+  const exec = new WebSecurityExecutor({ store: opts.store ?? securityStoreV4, fetch: opts.fetch, emit: (ev) => dispatch(ev) });
 
   const dispatch = (ev: Event) => {
     if (closed) return;
@@ -469,8 +341,7 @@ export function createStandaloneSecurityClient(opts: {
     draining = true;
     try {
       while (pending.length > 0 && !closed) {
-        const next = pending.shift()!;
-        const batch = fromBinary(EffectBatchSchema, core.dispatch(toBinary(EventSchema, next)));
+        const batch = fromBinary(EffectBatchSchema, core.dispatch(toBinary(EventSchema, pending.shift()!)));
         for (const eff of batch.effects) {
           if (closed) break;
           handleEffect(eff);
@@ -481,49 +352,26 @@ export function createStandaloneSecurityClient(opts: {
     }
   };
 
-  const client: SecurityClient = new SecurityClient({
+  const client = new SecurityClient({
     dispatchSecurityEvent: dispatch,
-    setForeground: (active) => {
-      if (closed) return;
-      dispatch(
-        create(EventSchema, {
-          event: {
-            case: "securityForeground",
-            value: create(SecurityForegroundEventSchema, { foreground: active }),
-          },
-        }),
-      );
-    },
+    setForeground: (foreground) =>
+      !closed && dispatch(create(EventSchema, { event: { case: "securityForeground", value: create(SecurityForegroundEventSchema, { foreground }) } })),
     isClosed: () => closed,
   });
 
   const handleEffect = (eff: Effect) => {
     const val = eff.effect;
+    if (dispatchSecurityEffect(exec, val)) return;
     switch (val.case) {
-      case "requestEntropy": {
-        const randomIds: string[] = [];
-        for (let i = 0; i < Math.max(val.value.minIds, 16); i++) {
-          randomIds.push(crypto.randomUUID());
-        }
-        const unitFloats: number[] = [];
-        const raw = new Uint32Array(Math.max(val.value.minFloats, 16));
-        crypto.getRandomValues(raw);
-        for (let i = 0; i < raw.length; i++) unitFloats.push(raw[i] / 0x100000000);
-        const randomBytes = val.value.minRandomBytes > 0
-          ? crypto.getRandomValues(new Uint8Array(Math.max(val.value.minRandomBytes, 4096)))
-          : new Uint8Array();
+      case "requestEntropy":
         pending.push(
           create(EventSchema, {
             nowMs: BigInt(Date.now()),
             monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
-            event: {
-              case: "entropyProvided",
-              value: create(EntropyProvidedSchema, { randomIds, unitFloats, randomBytes }),
-            },
+            event: { case: "entropyProvided", value: buildEntropyProvided(val.value.minIds, val.value.minFloats, val.value.minRandomBytes) },
           }),
         );
         break;
-      }
       case "scheduleTimer": {
         const { timerId, kind, key, delayMs } = val.value;
         const tk = `${kind}:${key}`;
@@ -533,88 +381,34 @@ export function createStandaloneSecurityClient(opts: {
           const cur = timers.get(tk);
           if (!cur || cur.id !== timerId) return;
           timers.delete(tk);
-          if (!closed) {
-            dispatch(
-              create(EventSchema, {
-                event: { case: "timerFired", value: create(TimerFiredEventSchema, { timerId, kind, key }) },
-              }),
-            );
-          }
+          if (!closed) dispatch(create(EventSchema, { event: { case: "timerFired", value: create(TimerFiredEventSchema, { timerId, kind, key }) } }));
         }, Math.max(0, Number(delayMs)));
         timers.set(tk, { id: timerId, handle });
         break;
       }
       case "cancelTimer": {
-        const { timerId, kind, key } = val.value;
-        const tk = `${kind}:${key}`;
+        const tk = `${val.value.kind}:${val.value.key}`;
         const cur = timers.get(tk);
-        if (cur && (timerId === 0n || cur.id === timerId)) {
+        if (cur && (val.value.timerId === 0n || cur.id === val.value.timerId)) {
           clearTimeout(cur.handle);
           timers.delete(tk);
         }
         break;
       }
-      case "securityKeyGenerate":
-        void exec.keyGenerate(val.value);
-        break;
-      case "securityKeySign":
-        void exec.keySign(val.value);
-        break;
-      case "securityKeyAgree":
-        void exec.keyAgree(val.value);
-        break;
-      case "securityKeyEncapsulate":
-        void exec.keyEncapsulate(val.value);
-        break;
-      case "securityKeyDiscard":
-        void exec.keyDiscard(val.value);
-        break;
-      case "securityStorage":
-        void exec.storage(val.value);
-        break;
-      case "securityRpc":
-        void exec.rpc(val.value);
-        break;
-      case "securityCryptoBatch":
-        void exec.cryptoBatch(val.value);
-        break;
-      case "securityTokenUpdated":
-        opts.onToken?.(val.value);
-        break;
-      case "securityWorkflowResult":
-        client.handleWorkflowResult(val.value);
-        break;
-      case "securityStatusChanged":
-        client.handleStatusChanged(val.value.status!);
-        break;
-      default:
-        break;
+      case "securityTokenUpdated": opts.onToken?.(val.value); break;
+      case "securityWorkflowResult": client.handleWorkflowResult(val.value); break;
+      case "securityStatusChanged": client.handleStatusChanged(val.value.status!); break;
     }
   };
 
-  // Seed initial config & foreground visibility.
   const visibleNow = typeof document === "undefined" || document.visibilityState === "visible";
-  dispatch(
-    create(EventSchema, {
-      event: {
-        case: "securityConfig",
-        value: create(SecurityConfigEventSchema, {
-          inlineCrypto: false,
-          foreground: visibleNow,
-        }),
-      },
-    }),
-  );
+  dispatch(create(EventSchema, { event: { case: "securityConfig", value: create(SecurityConfigEventSchema, { inlineCrypto: false, foreground: visibleNow }) } }));
 
-  const onVisibility = () => {
-    const visible = typeof document === "undefined" || !document.hidden;
-    client.setForeground(visible);
-  };
+  const onVisibility = () => client.setForeground(typeof document === "undefined" || !document.hidden);
   const onHide = () => client.setForeground(false);
-  const onShow = () => client.setForeground(typeof document === "undefined" || !document.hidden);
   globalThis.addEventListener?.("visibilitychange", onVisibility);
   globalThis.addEventListener?.("pagehide", onHide);
-  globalThis.addEventListener?.("pageshow", onShow);
+  globalThis.addEventListener?.("pageshow", onVisibility);
 
   return {
     client,
@@ -623,7 +417,7 @@ export function createStandaloneSecurityClient(opts: {
       closed = true;
       globalThis.removeEventListener?.("visibilitychange", onVisibility);
       globalThis.removeEventListener?.("pagehide", onHide);
-      globalThis.removeEventListener?.("pageshow", onShow);
+      globalThis.removeEventListener?.("pageshow", onVisibility);
       for (const t of timers.values()) clearTimeout(t.handle);
       timers.clear();
       exec.close();

@@ -113,172 +113,101 @@ extension Remote {
         }
     }
 
+    private func withRpcError(_ onError: (String, Error) -> Void, _ work: () async throws -> Void) async {
+        do {
+            try await work()
+        } catch {
+            onError(errorText(error), error)
+            report(error)
+        }
+    }
+
     public func executeRpc(_ rpc: PBCoreRpcEffect) async -> PBCoreEvent {
         var event = PBCoreEvent()
+        let apiClient = api.client
         switch rpc.kind {
         case .fetchLists(let req):
-            var res = PBCoreListsFetchedEvent()
-            res.opID = rpc.opID
-            do {
-                let apiClient = api.client
-                let limit = req.limit == 0 ? 50 : req.limit
-                let (machinesResp, sessionsResp, devicesResp) = try await withAuthRetry { headers in
+            var res = PBCoreListsFetchedEvent(); res.opID = rpc.opID
+            await withRpcError({ msg, err in res.error = msg; res.unresolvedHost = unresolvedHost(err) }) {
+                var ask = PBListRemoteSessionsRequest(); ask.limit = req.limit == 0 ? 50 : req.limit
+                let sAsk = ask
+                let (mResp, sResp, dResp) = try await withAuthRetry { headers in
                     async let m = apiClient.listMachines(request: .init(), headers: headers).value()
-                    var ask = PBListRemoteSessionsRequest()
-                    ask.limit = limit
-                    async let s = apiClient.listRemoteSessions(request: ask, headers: headers).value()
+                    async let s = apiClient.listRemoteSessions(request: sAsk, headers: headers).value()
                     async let d = apiClient.listDevices(request: .init(), headers: headers).value()
                     return try await (m, s, d)
                 }
-                res.wireMachines = machinesResp.machines
-                res.wireSessions = sessionsResp.sessions
-                if sessionsResp.hasNext {
-                    res.next = sessionsResp.next
-                }
-                res.wireDevices = devicesResp.devices
-            } catch {
-                res.error = errorText(error)
-                res.unresolvedHost = unresolvedHost(error)
-                report(error)
+                res.wireMachines = mResp.machines; res.wireSessions = sResp.sessions; res.wireDevices = dResp.devices
+                if sResp.hasNext { res.next = sResp.next }
             }
             event.listsFetched = res
 
         case .fetchSessionsPage(let req):
-            var res = PBCoreSessionsPageFetchedEvent()
-            res.opID = rpc.opID
-            do {
-                let apiClient = api.client
-                var askReq = PBListRemoteSessionsRequest()
-                askReq.limit = req.limit == 0 ? 50 : req.limit
-                if req.hasAfter { askReq.after = req.after }
-                let ask = askReq
-                let page = try await withAuthRetry { headers in
-                    try await apiClient.listRemoteSessions(request: ask, headers: headers).value()
-                }
+            var res = PBCoreSessionsPageFetchedEvent(); res.opID = rpc.opID
+            await withRpcError({ msg, _ in res.error = msg }) {
+                var ask = PBListRemoteSessionsRequest(); ask.limit = req.limit == 0 ? 50 : req.limit
+                if req.hasAfter { ask.after = req.after }
+                let sAsk = ask
+                let page = try await withAuthRetry { try await apiClient.listRemoteSessions(request: sAsk, headers: $0).value() }
                 res.wireSessions = page.sessions
-                if page.hasNext {
-                    res.next = page.next
-                }
-            } catch {
-                res.error = errorText(error)
-                report(error)
+                if page.hasNext { res.next = page.next }
             }
             event.sessionsPageFetched = res
 
         case .fetchSessionByID(let req):
-            var res = PBCoreSessionByIdFetchedEvent()
-            res.opID = rpc.opID
-            do {
-                let apiClient = api.client
-                var askReq = PBListRemoteSessionsRequest()
-                askReq.sessionIds = [req.sessionID]
-                let ask = askReq
-                let reply = try await withAuthRetry { headers in
-                    try await apiClient.listRemoteSessions(request: ask, headers: headers).value()
-                }
-                if let rs = reply.sessions.first(where: { $0.sessionID == req.sessionID }) {
-                    res.wireSession = rs
-                }
-            } catch {
-                res.error = errorText(error)
-                report(error)
+            var res = PBCoreSessionByIdFetchedEvent(); res.opID = rpc.opID
+            await withRpcError({ msg, _ in res.error = msg }) {
+                let ask = PBListRemoteSessionsRequest.with { $0.sessionIds = [req.sessionID] }
+                let reply = try await withAuthRetry { try await apiClient.listRemoteSessions(request: ask, headers: $0).value() }
+                if let rs = reply.sessions.first(where: { $0.sessionID == req.sessionID }) { res.wireSession = rs }
             }
             event.sessionByIDFetched = res
 
         case .getEvents(let req):
-            var res = PBCoreEventsPageFetchedEvent()
-            res.opID = rpc.opID
-            res.sessionID = req.sessionID
-            do {
-                let apiClient = api.client
-                var askReq = PBGetEventsRequest()
-                askReq.sessionID = req.sessionID
-                askReq.afterSeq = req.afterSeq
-                askReq.limit = req.limit == 0 ? 500 : req.limit
-                let ask = askReq
-                let reply = try await withAuthRetry { headers in
-                    try await apiClient.getEvents(request: ask, headers: headers).value()
+            var res = PBCoreEventsPageFetchedEvent(); res.opID = rpc.opID; res.sessionID = req.sessionID
+            await withRpcError({ msg, _ in res.error = msg }) {
+                let ask = PBGetEventsRequest.with {
+                    $0.sessionID = req.sessionID; $0.afterSeq = req.afterSeq; $0.limit = req.limit == 0 ? 500 : req.limit
                 }
-                res.wireEvents = reply.events
-                res.more = reply.more
-            } catch {
-                res.error = errorText(error)
-                report(error)
+                let reply = try await withAuthRetry { try await apiClient.getEvents(request: ask, headers: $0).value() }
+                res.wireEvents = reply.events; res.more = reply.more
             }
             event.eventsPageFetched = res
 
         case .getAccountPrefs(let req):
-            var res = PBCoreAccountPrefsFetchedEvent()
-            res.opID = rpc.opID
-            do {
-                let apiClient = api.client
-                var askReq = PBGetAccountPrefsRequest()
-                askReq.objectID = req.objectID.isEmpty ? projectPrefsID : req.objectID
-                let ask = askReq
-                let reply = try await withAuthRetry { headers in
-                    try await apiClient.getAccountPrefs(request: ask, headers: headers).value()
-                }
-                res.wirePrefs = reply.object
-            } catch {
-                res.error = errorText(error)
-                report(error)
+            var res = PBCoreAccountPrefsFetchedEvent(); res.opID = rpc.opID
+            await withRpcError({ msg, _ in res.error = msg }) {
+                let ask = PBGetAccountPrefsRequest.with { $0.objectID = req.objectID.isEmpty ? projectPrefsID : req.objectID }
+                res.wirePrefs = try await withAuthRetry { try await apiClient.getAccountPrefs(request: ask, headers: $0).value() }.object
             }
             event.accountPrefsFetched = res
 
         case .putAccountPrefs(let req):
-            var res = PBCoreAccountPrefsPutResultEvent()
-            res.opID = rpc.opID
+            var res = PBCoreAccountPrefsPutResultEvent(); res.opID = rpc.opID
             do {
                 let objectId = req.objectID.isEmpty ? projectPrefsID : req.objectID
-                let env: PBEnvelope
-                if req.hasSealedEnvelope {
-                    env = req.sealedEnvelope
+                let env: PBEnvelope = if req.hasSealedEnvelope {
+                    req.sealedEnvelope
                 } else {
-                    do {
-                        env = try await sealEnvelopeOp(
-                            purpose: .prefs,
-                            requestId: objectId,
-                            seq: req.expectedRevision + 1,
-                            plaintext: try req.nextPrefs.serializedData()
-                        ).envelope
-                    } catch SecurityFailure.conflict {
-                        res.sealConflict = true
-                        res.error = errorText(SecurityFailure.conflict)
-                        event.accountPrefsPutResult = res
-                        return event
-                    }
+                    try await sealEnvelopeOp(
+                        purpose: .prefs, requestId: objectId, seq: req.expectedRevision + 1, plaintext: try req.nextPrefs.serializedData()
+                    ).envelope
                 }
-                let apiClient = api.client
-                var putReq = PBPutAccountPrefsRequest()
-                putReq.objectID = objectId
-                putReq.expectedRevision = req.expectedRevision
-                putReq.envelope = env
-                let put = putReq
-                let reply = try await withAuthRetry { headers in
-                    try await apiClient.putAccountPrefs(request: put, headers: headers).value()
-                }
+                let put = PBPutAccountPrefsRequest.with { $0.objectID = objectId; $0.expectedRevision = req.expectedRevision; $0.envelope = env }
+                let reply = try await withAuthRetry { try await apiClient.putAccountPrefs(request: put, headers: $0).value() }
                 res.applied = reply.applied
-                if reply.hasObject {
-                    res.wireCurrent = reply.object
-                }
+                if reply.hasObject { res.wireCurrent = reply.object }
+            } catch SecurityFailure.conflict where !req.hasSealedEnvelope {
+                res.sealConflict = true; res.error = errorText(SecurityFailure.conflict)
             } catch {
-                res.error = errorText(error)
-                report(error)
+                res.error = errorText(error); report(error)
             }
             event.accountPrefsPutResult = res
 
         case .fetchDevices:
-            var res = PBCoreDevicesFetchedEvent()
-            res.opID = rpc.opID
-            do {
-                let apiClient = api.client
-                let reply = try await withAuthRetry { headers in
-                    try await apiClient.listDevices(request: .init(), headers: headers).value()
-                }
-                res.wireDevices = reply.devices
-            } catch {
-                res.error = errorText(error)
-                report(error)
+            var res = PBCoreDevicesFetchedEvent(); res.opID = rpc.opID
+            await withRpcError({ msg, _ in res.error = msg }) {
+                res.wireDevices = try await withAuthRetry { try await apiClient.listDevices(request: .init(), headers: $0).value() }.devices
             }
             event.devicesFetched = res
 

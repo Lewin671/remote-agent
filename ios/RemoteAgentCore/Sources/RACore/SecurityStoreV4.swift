@@ -64,6 +64,31 @@ public protocol SecurityStoreV4: Sendable {
     func loadLoginToken(server: String, deviceId: String) -> SavedLogin?
     func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String)
     func clearLoginToken(server: String, deviceId: String)
+    func readNotifyBlob() -> Data?
+}
+
+public extension SecurityStoreV4 {
+    func readNotifyBlob() -> Data? { nil }
+}
+
+public protocol SecurityStoreV4Proxy: SecurityStoreV4 {
+    var securityCore: SecurityStoreV4Core { get }
+}
+
+public extension SecurityStoreV4Proxy {
+    func hasPersistedState() -> Bool { securityCore.hasPersistedState() }
+    func generateKey(kind: PBSecurityKeyKind, slot: String, persist: Bool) throws -> Data { try securityCore.generateKey(kind: kind, slot: slot, persist: persist) }
+    func signKey(kind: PBSecurityKeyKind, slot: String, message: Data) throws -> Data { try securityCore.signKey(kind: kind, slot: slot, message: message) }
+    func agreeKey(kind: PBSecurityKeyKind, slot: String, peerPublic: Data) throws -> Data { try securityCore.agreeKey(kind: kind, slot: slot, peerPublic: peerPublic) }
+    func encapsulate(recipients: [PBSecurityEncapsulateRecipient]) throws -> [PBSecurityEncapsulatedPair] { try securityCore.encapsulate(recipients: recipients) }
+    func discardKey(kind: PBSecurityKeyKind, slot: String) { securityCore.discardKey(kind: kind, slot: slot) }
+    func executeStorage(_ effect: PBSecurityStorageEffect) -> PBSecurityStorageResultEvent { securityCore.executeStorage(effect) }
+    func dismissLegacyRepairNotice() { securityCore.dismissLegacyRepairNotice() }
+    func clearMemoryCache() { securityCore.clearMemoryCache() }
+    func loadLoginToken(server: String, deviceId: String) -> SavedLogin? { securityCore.loadLoginToken(server: server, deviceId: deviceId) }
+    func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String) { securityCore.saveLoginToken(token, server: server, deviceId: deviceId) }
+    func clearLoginToken(server: String, deviceId: String) { securityCore.clearLoginToken(server: server, deviceId: deviceId) }
+    func readNotifyBlob() -> Data? { securityCore.readNotifyBlob() }
 }
 
 public enum SecurityStoreError: Error, LocalizedError, Sendable {
@@ -87,49 +112,35 @@ public enum SecurityStoreError: Error, LocalizedError, Sendable {
 }
 
 public enum SecurityStoreCodec {
+    private static func encode<T: Encodable>(_ value: T) throws -> Data {
+        try PropertyListEncoder.binary.encode(value)
+    }
+
     public static func encodeBuckets(_ buckets: [SecurityStoreBucketKey: SecurityStoreStoredBucket]) throws -> Data {
-        let rows = buckets.values.sorted {
-            if $0.bucket != $1.bucket { return $0.bucket < $1.bucket }
-            return $0.key < $1.key
-        }
-        return try PropertyListEncoder.binary.encode(rows)
+        try encode(buckets.values.sorted { ($0.bucket, $0.key) < ($1.bucket, $1.key) })
     }
 
     public static func decodeBuckets(_ data: Data) throws -> [SecurityStoreBucketKey: SecurityStoreStoredBucket] {
         guard !data.isEmpty else { return [:] }
         let rows = try PropertyListDecoder().decode([SecurityStoreStoredBucket].self, from: data)
-        var out: [SecurityStoreBucketKey: SecurityStoreStoredBucket] = [:]
-        out.reserveCapacity(rows.count)
-        for row in rows {
-            out[SecurityStoreBucketKey(bucket: row.bucket, key: row.key)] = row
-        }
-        return out
+        return Dictionary(uniqueKeysWithValues: rows.map { (SecurityStoreBucketKey(bucket: $0.bucket, key: $0.key), $0) })
     }
 
     public static func encodeKeys(_ keys: [SecurityStoreKeyId: SecurityStoreStoredKey]) throws -> Data {
-        let rows = keys.map { keyId, entry in
-            SecurityStoreStoredKey(kind: keyId.kind, slot: keyId.slot, privateKey: entry.privateKey, publicKey: entry.publicKey)
-        }.sorted {
-            if $0.kind != $1.kind { return $0.kind < $1.kind }
-            return $0.slot < $1.slot
-        }
-        return try PropertyListEncoder.binary.encode(rows)
+        let rows = keys.map { keyId, e in
+            SecurityStoreStoredKey(kind: keyId.kind, slot: keyId.slot, privateKey: e.privateKey, publicKey: e.publicKey)
+        }.sorted { ($0.kind, $0.slot) < ($1.kind, $1.slot) }
+        return try encode(rows)
     }
 
     public static func decodeKeys(_ data: Data) throws -> [SecurityStoreKeyId: SecurityStoreStoredKey] {
         guard !data.isEmpty else { return [:] }
         let rows = try PropertyListDecoder().decode([SecurityStoreStoredKey].self, from: data)
-        var out: [SecurityStoreKeyId: SecurityStoreStoredKey] = [:]
-        out.reserveCapacity(rows.count)
-        for row in rows {
-            out[SecurityStoreKeyId(kind: row.kind, slot: row.slot)] = row
-        }
-        return out
+        return Dictionary(uniqueKeysWithValues: rows.map { (SecurityStoreKeyId(kind: $0.kind, slot: $0.slot), $0) })
     }
 
     public static func encodeLoginToken(_ token: SavedLogin, server: String, deviceId: String) throws -> Data {
-        let record = StoredLoginRecord(server: server, deviceId: deviceId, token: token.token, expiresMs: token.expiresMs)
-        return try PropertyListEncoder.binary.encode(record)
+        try encode(StoredLoginRecord(server: server, deviceId: deviceId, token: token.token, expiresMs: token.expiresMs))
     }
 
     public static func decodeLoginToken(_ data: Data, server: String, deviceId: String) -> SavedLogin? {
@@ -158,66 +169,36 @@ private extension PropertyListEncoder {
     }()
 }
 
+public protocol SecurityStoreV4Backend: AnyObject, Sendable {
+    func readBuckets() throws -> [SecurityStoreBucketKey: SecurityStoreStoredBucket]
+    func writeBuckets(_ buckets: [SecurityStoreBucketKey: SecurityStoreStoredBucket]) throws
+    func readKeys() throws -> [SecurityStoreKeyId: SecurityStoreStoredKey]
+    func writeKeys(_ keys: [SecurityStoreKeyId: SecurityStoreStoredKey]) throws
+    func readNotify() throws -> Data?
+    func writeNotify(_ data: Data) throws
+    func deleteNotify() throws
+    func readLoginTokenRaw() throws -> Data?
+    func writeLoginTokenRaw(_ data: Data) throws
+    func deleteLoginToken() throws
+    func hasUpgradeNotice() throws -> Bool
+    func setUpgradeNotice(_ on: Bool) throws
+    func detectAndClearLegacy() throws -> Bool
+    func clearAllBacking() throws
+    func onAfterClearAll()
+}
+
+public extension SecurityStoreV4Backend {
+    func onAfterClearAll() {}
+}
+
 /// Shared key/storage execution core parameterized over any locked backend adapter so Keychain
 /// (`Vault`) and `MemorySecurityStoreV4` never duplicate CAS, key-promotion, or bootstrap logic.
 public final class SecurityStoreV4Core: @unchecked Sendable {
-    public struct Backend {
-        public var readBuckets: () throws -> [SecurityStoreBucketKey: SecurityStoreStoredBucket]
-        public var writeBuckets: ([SecurityStoreBucketKey: SecurityStoreStoredBucket]) throws -> Void
-        public var readKeys: () throws -> [SecurityStoreKeyId: SecurityStoreStoredKey]
-        public var writeKeys: ([SecurityStoreKeyId: SecurityStoreStoredKey]) throws -> Void
-        public var readNotify: () throws -> Data?
-        public var writeNotify: (Data) throws -> Void
-        public var deleteNotify: () throws -> Void
-        public var readLoginTokenRaw: () throws -> Data?
-        public var writeLoginTokenRaw: (Data) throws -> Void
-        public var deleteLoginToken: () throws -> Void
-        public var hasUpgradeNotice: () throws -> Bool
-        public var setUpgradeNotice: (Bool) throws -> Void
-        public var detectAndClearLegacy: () throws -> Bool
-        public var clearAllBacking: () throws -> Void
-        public var onAfterClearAll: () -> Void
-
-        public init(
-            readBuckets: @escaping () throws -> [SecurityStoreBucketKey: SecurityStoreStoredBucket],
-            writeBuckets: @escaping ([SecurityStoreBucketKey: SecurityStoreStoredBucket]) throws -> Void,
-            readKeys: @escaping () throws -> [SecurityStoreKeyId: SecurityStoreStoredKey],
-            writeKeys: @escaping ([SecurityStoreKeyId: SecurityStoreStoredKey]) throws -> Void,
-            readNotify: @escaping () throws -> Data?,
-            writeNotify: @escaping (Data) throws -> Void,
-            deleteNotify: @escaping () throws -> Void,
-            readLoginTokenRaw: @escaping () throws -> Data?,
-            writeLoginTokenRaw: @escaping (Data) throws -> Void,
-            deleteLoginToken: @escaping () throws -> Void,
-            hasUpgradeNotice: @escaping () throws -> Bool,
-            setUpgradeNotice: @escaping (Bool) throws -> Void,
-            detectAndClearLegacy: @escaping () throws -> Bool,
-            clearAllBacking: @escaping () throws -> Void,
-            onAfterClearAll: @escaping () -> Void = {}
-        ) {
-            self.readBuckets = readBuckets
-            self.writeBuckets = writeBuckets
-            self.readKeys = readKeys
-            self.writeKeys = writeKeys
-            self.readNotify = readNotify
-            self.writeNotify = writeNotify
-            self.deleteNotify = deleteNotify
-            self.readLoginTokenRaw = readLoginTokenRaw
-            self.writeLoginTokenRaw = writeLoginTokenRaw
-            self.deleteLoginToken = deleteLoginToken
-            self.hasUpgradeNotice = hasUpgradeNotice
-            self.setUpgradeNotice = setUpgradeNotice
-            self.detectAndClearLegacy = detectAndClearLegacy
-            self.clearAllBacking = clearAllBacking
-            self.onAfterClearAll = onAfterClearAll
-        }
-    }
-
     private let lock: NSRecursiveLock
-    private let backend: Backend
+    private let backend: any SecurityStoreV4Backend
     private var ephemeralKeys: [SecurityStoreKeyId: SecurityStoreStoredKey] = [:]
 
-    public init(lock: NSRecursiveLock = NSRecursiveLock(), backend: Backend) {
+    public init(lock: NSRecursiveLock = NSRecursiveLock(), backend: any SecurityStoreV4Backend) {
         self.lock = lock
         self.backend = backend
     }
@@ -342,6 +323,27 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
         }
     }
 
+    private static func isCasConflict(
+        cur: SecurityStoreStoredBucket?,
+        createOnly: Bool,
+        expectedRevision: String,
+        remove: Bool = false
+    ) -> Bool {
+        if remove {
+            return !expectedRevision.isEmpty && cur != nil && cur?.revision != expectedRevision
+        }
+        return (createOnly && cur != nil) || (!expectedRevision.isEmpty && (cur == nil || cur?.revision != expectedRevision))
+    }
+
+    private func resolvePromoteKey(
+        kind: PBSecurityKeyKind,
+        slot: String,
+        keys: [SecurityStoreKeyId: SecurityStoreStoredKey]
+    ) -> (candId: SecurityStoreKeyId, key: SecurityStoreStoredKey)? {
+        let candId = SecurityStoreKeyId(kind: Int32(kind.rawValue), slot: slot)
+        return (ephemeralKeys[candId] ?? keys[candId]).map { (candId, $0) }
+    }
+
     public func executeStorage(_ effect: PBSecurityStorageEffect) -> PBSecurityStorageResultEvent {
         lock.withLock {
             var out = PBSecurityStorageResultEvent()
@@ -358,9 +360,7 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                     let buckets = try backend.readBuckets()
                     let keys = try backend.readKeys()
                     if let row = buckets[SecurityStoreBucketKey(bucket: Int32(effect.bucket.rawValue), key: effect.key)] {
-                        out.found = true
-                        out.revision = row.revision
-                        out.data = row.data
+                        out.found = true; out.revision = row.revision; out.data = row.data
                     }
                     Self.populateIdentityPubs(&out, keys: keys)
                     return out
@@ -368,43 +368,28 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                 case .readBootstrap:
                     var buckets = try backend.readBuckets()
                     var keys = try backend.readKeys()
-                    let hasV4State = buckets.values.contains { row in
-                        !row.data.isEmpty && (
-                            row.bucket == Int32(PBSecurityStoreBucket.record.rawValue)
-                            || row.bucket == Int32(PBSecurityStoreBucket.operation.rawValue)
-                            || row.bucket == Int32(PBSecurityStoreBucket.registrationIntent.rawValue)
-                        )
-                    }
+                    let v4StateBuckets: Set<Int32> = [
+                        Int32(PBSecurityStoreBucket.record.rawValue),
+                        Int32(PBSecurityStoreBucket.operation.rawValue),
+                        Int32(PBSecurityStoreBucket.registrationIntent.rawValue),
+                    ]
+                    let hasV4State = buckets.values.contains { !$0.data.isEmpty && v4StateBuckets.contains($0.bucket) }
                     let legacyCleared: Bool
                     if !hasV4State {
                         legacyCleared = try backend.detectAndClearLegacy()
-                        if legacyCleared {
-                            buckets = try backend.readBuckets()
-                            keys = try backend.readKeys()
-                        }
+                        if legacyCleared { buckets = try backend.readBuckets(); keys = try backend.readKeys() }
                     } else {
-                        if try backend.hasUpgradeNotice() {
-                            try backend.setUpgradeNotice(false)
-                        }
+                        if try backend.hasUpgradeNotice() { try backend.setUpgradeNotice(false) }
                         legacyCleared = false
                     }
-                    var entries: [PBSecurityStorageEntry] = []
-                    for row in buckets.values {
+                    var entries = buckets.values.compactMap { row -> PBSecurityStorageEntry? in
                         let bEnum = PBSecurityStoreBucket(rawValue: Int(row.bucket)) ?? .unspecified
-                        if effect.bucket != .unspecified && bEnum != effect.bucket {
-                            continue
+                        guard effect.bucket == .unspecified || bEnum == effect.bucket else { return nil }
+                        return PBSecurityStorageEntry.with {
+                            $0.bucket = bEnum; $0.key = row.key; $0.revision = row.revision; $0.data = row.data
                         }
-                        entries.append(PBSecurityStorageEntry.with {
-                            $0.bucket = bEnum
-                            $0.key = row.key
-                            $0.revision = row.revision
-                            $0.data = row.data
-                        })
                     }
-                    entries.sort {
-                        if $0.bucket.rawValue != $1.bucket.rawValue { return $0.bucket.rawValue < $1.bucket.rawValue }
-                        return $0.key < $1.key
-                    }
+                    entries.sort { ($0.bucket.rawValue, $0.key) < ($1.bucket.rawValue, $1.key) }
                     out.entries = entries
                     out.legacyCleared = legacyCleared
                     Self.populateIdentityPubs(&out, keys: keys)
@@ -414,33 +399,20 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                     var buckets = try backend.readBuckets()
                     let keys = try backend.readKeys()
                     let id = SecurityStoreBucketKey(bucket: Int32(effect.bucket.rawValue), key: effect.key)
-                    let cur = buckets[id]
-                    let conflict = (effect.createOnly && cur != nil)
-                        || (!effect.expectedRevision.isEmpty && (cur == nil || cur?.revision != effect.expectedRevision))
-                    if conflict {
+                    if Self.isCasConflict(cur: buckets[id], createOnly: effect.createOnly, expectedRevision: effect.expectedRevision) {
                         out.conflict = true
                         Self.populateIdentityPubs(&out, keys: keys)
                         return out
                     }
                     buckets[id] = SecurityStoreStoredBucket(
-                        bucket: Int32(effect.bucket.rawValue),
-                        key: effect.key,
-                        revision: effect.nextRevision,
-                        data: effect.data
+                        bucket: Int32(effect.bucket.rawValue), key: effect.key, revision: effect.nextRevision, data: effect.data
                     )
                     try backend.writeBuckets(buckets)
                     if effect.bucket == .notifyRecord {
-                        if effect.data.isEmpty {
-                            try backend.deleteNotify()
-                        } else {
-                            try backend.writeNotify(effect.data)
-                        }
+                        if effect.data.isEmpty { try backend.deleteNotify() } else { try backend.writeNotify(effect.data) }
                     }
-                    if effect.bucket == .record, (try backend.hasUpgradeNotice()) {
-                        try backend.setUpgradeNotice(false)
-                    }
-                    out.conflict = false
-                    out.revision = effect.nextRevision
+                    if effect.bucket == .record, (try backend.hasUpgradeNotice()) { try backend.setUpgradeNotice(false) }
+                    out.conflict = false; out.revision = effect.nextRevision
                     Self.populateIdentityPubs(&out, keys: keys)
                     return out
 
@@ -448,13 +420,10 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                     var buckets = try backend.readBuckets()
                     let keys = try backend.readKeys()
                     let id = SecurityStoreBucketKey(bucket: Int32(effect.bucket.rawValue), key: effect.key)
-                    let cur = buckets[id]
-                    let conflict = !effect.expectedRevision.isEmpty && cur != nil && cur?.revision != effect.expectedRevision
+                    let conflict = Self.isCasConflict(cur: buckets[id], createOnly: false, expectedRevision: effect.expectedRevision, remove: true)
                     if !conflict, buckets.removeValue(forKey: id) != nil {
                         try backend.writeBuckets(buckets)
-                        if effect.bucket == .notifyRecord {
-                            try backend.deleteNotify()
-                        }
+                        if effect.bucket == .notifyRecord { try backend.deleteNotify() }
                     }
                     out.conflict = conflict
                     Self.populateIdentityPubs(&out, keys: keys)
@@ -463,61 +432,41 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                 case .batchCommit:
                     var buckets = try backend.readBuckets()
                     var keys = try backend.readKeys()
-                    for w in effect.batch {
-                        let cur = buckets[SecurityStoreBucketKey(bucket: Int32(w.bucket.rawValue), key: w.key)]
-                        let mismatch: Bool
-                        if w.remove {
-                            mismatch = !w.expectedRevision.isEmpty && cur != nil && cur?.revision != w.expectedRevision
-                        } else {
-                            mismatch = (w.createOnly && cur != nil)
-                                || (!w.expectedRevision.isEmpty && (cur == nil || cur?.revision != w.expectedRevision))
-                        }
-                        if mismatch {
-                            out.conflict = true
-                            Self.populateIdentityPubs(&out, keys: keys)
-                            return out
-                        }
+                    if effect.batch.contains(where: {
+                        Self.isCasConflict(
+                            cur: buckets[SecurityStoreBucketKey(bucket: Int32($0.bucket.rawValue), key: $0.key)],
+                            createOnly: $0.createOnly, expectedRevision: $0.expectedRevision, remove: $0.remove
+                        )
+                    }) {
+                        out.conflict = true
+                        Self.populateIdentityPubs(&out, keys: keys)
+                        return out
                     }
                     var promotedEd: (candId: SecurityStoreKeyId, key: SecurityStoreStoredKey)?
-                    var promotedX: (candId: SecurityStoreKeyId, key: SecurityStoreStoredKey)?
                     if !effect.promoteEdSlot.isEmpty {
-                        let candId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.candidateEd.rawValue), slot: effect.promoteEdSlot)
-                        guard let ed = ephemeralKeys[candId] ?? keys[candId] else {
-                            out.error = "missing promote ed slot"
-                            Self.populateIdentityPubs(&out, keys: keys)
-                            return out
+                        guard let ed = resolvePromoteKey(kind: .candidateEd, slot: effect.promoteEdSlot, keys: keys) else {
+                            out.error = "missing promote ed slot"; Self.populateIdentityPubs(&out, keys: keys); return out
                         }
-                        promotedEd = (candId, ed)
+                        promotedEd = ed
                     }
+                    var promotedX: (candId: SecurityStoreKeyId, key: SecurityStoreStoredKey)?
                     if !effect.promoteXSlot.isEmpty {
-                        let candId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.candidateX.rawValue), slot: effect.promoteXSlot)
-                        guard let x = ephemeralKeys[candId] ?? keys[candId] else {
-                            out.error = "missing promote x slot"
-                            Self.populateIdentityPubs(&out, keys: keys)
-                            return out
+                        guard let x = resolvePromoteKey(kind: .candidateX, slot: effect.promoteXSlot, keys: keys) else {
+                            out.error = "missing promote x slot"; Self.populateIdentityPubs(&out, keys: keys); return out
                         }
-                        promotedX = (candId, x)
+                        promotedX = x
                     }
 
                     // Phase 1: persist promoted DEVICE_* keys BEFORE removing candidate slots or committing buckets.
                     var promoteDirty = false
-                    if let ed = promotedEd {
-                        keys[SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceEd.rawValue), slot: "")] = SecurityStoreStoredKey(
-                            kind: Int32(PBSecurityKeyKind.deviceEd.rawValue),
-                            slot: "",
-                            privateKey: ed.key.privateKey,
-                            publicKey: ed.key.publicKey
-                        )
-                        promoteDirty = true
-                    }
-                    if let x = promotedX {
-                        keys[SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceX.rawValue), slot: "")] = SecurityStoreStoredKey(
-                            kind: Int32(PBSecurityKeyKind.deviceX.rawValue),
-                            slot: "",
-                            privateKey: x.key.privateKey,
-                            publicKey: x.key.publicKey
-                        )
-                        promoteDirty = true
+                    for (devKind, promoted) in [(PBSecurityKeyKind.deviceEd, promotedEd), (.deviceX, promotedX)] {
+                        if let p = promoted {
+                            let k = Int32(devKind.rawValue)
+                            keys[SecurityStoreKeyId(kind: k, slot: "")] = SecurityStoreStoredKey(
+                                kind: k, slot: "", privateKey: p.key.privateKey, publicKey: p.key.publicKey
+                            )
+                            promoteDirty = true
+                        }
                     }
                     if promoteDirty { try backend.writeKeys(keys) }
 
@@ -530,23 +479,14 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                         let id = SecurityStoreBucketKey(bucket: Int32(w.bucket.rawValue), key: w.key)
                         if w.remove {
                             if buckets.removeValue(forKey: id) != nil { bucketsDirty = true }
-                            if w.bucket == .notifyRecord {
-                                notifyDeleted = true
-                                notifyUpdate = nil
-                            }
+                            if w.bucket == .notifyRecord { notifyDeleted = true; notifyUpdate = nil }
                         } else {
                             buckets[id] = SecurityStoreStoredBucket(
-                                bucket: Int32(w.bucket.rawValue),
-                                key: w.key,
-                                revision: w.nextRevision,
-                                data: w.data
+                                bucket: Int32(w.bucket.rawValue), key: w.key, revision: w.nextRevision, data: w.data
                             )
                             bucketsDirty = true
                             if w.bucket == .record { recordWritten = true }
-                            if w.bucket == .notifyRecord {
-                                notifyUpdate = w.data
-                                notifyDeleted = false
-                            }
+                            if w.bucket == .notifyRecord { notifyUpdate = w.data; notifyDeleted = false }
                         }
                     }
                     if bucketsDirty { try backend.writeBuckets(buckets) }
@@ -555,30 +495,20 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                     } else if notifyDeleted {
                         try backend.deleteNotify()
                     }
-                    if effect.clearLoginToken_p {
-                        try backend.deleteLoginToken()
-                    }
-                    if recordWritten, (try backend.hasUpgradeNotice()) {
-                        try backend.setUpgradeNotice(false)
-                    }
+                    if effect.clearLoginToken_p { try backend.deleteLoginToken() }
+                    if recordWritten, (try backend.hasUpgradeNotice()) { try backend.setUpgradeNotice(false) }
 
                     // Phase 3: best-effort post-commit cleanup of promoted candidates and discarded slots.
                     var cleanupDirty = false
-                    if let ed = promotedEd {
-                        ephemeralKeys.removeValue(forKey: ed.candId)
-                        if keys.removeValue(forKey: ed.candId) != nil { cleanupDirty = true }
-                    }
-                    if let x = promotedX {
-                        ephemeralKeys.removeValue(forKey: x.candId)
-                        if keys.removeValue(forKey: x.candId) != nil { cleanupDirty = true }
+                    for p in [promotedEd, promotedX].compactMap({ $0 }) {
+                        ephemeralKeys.removeValue(forKey: p.candId)
+                        if keys.removeValue(forKey: p.candId) != nil { cleanupDirty = true }
                     }
                     for slot in effect.discardSlots {
                         for kind in [PBSecurityKeyKind.candidateEd, .candidateX, .ephemeralX] {
                             let id = SecurityStoreKeyId(kind: Int32(kind.rawValue), slot: slot)
                             ephemeralKeys.removeValue(forKey: id)
-                            if kind != .ephemeralX, keys.removeValue(forKey: id) != nil {
-                                cleanupDirty = true
-                            }
+                            if kind != .ephemeralX, keys.removeValue(forKey: id) != nil { cleanupDirty = true }
                         }
                     }
                     if cleanupDirty { try? backend.writeKeys(keys) }
@@ -647,7 +577,7 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
 }
 
 /// Pure-memory `SecurityStoreV4` for SwiftPM unit tests and headless `Remote` instances.
-public final class MemorySecurityStoreV4: SecurityStoreV4, @unchecked Sendable {
+public final class MemorySecurityStoreV4: SecurityStoreV4Proxy, SecurityStoreV4Backend, @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var buckets: [SecurityStoreBucketKey: SecurityStoreStoredBucket] = [:]
     private var keys: [SecurityStoreKeyId: SecurityStoreStoredKey] = [:]
@@ -655,44 +585,31 @@ public final class MemorySecurityStoreV4: SecurityStoreV4, @unchecked Sendable {
     private var loginTokenData: Data?
     private var upgradeNotice = false
     private var legacyMarker = false
-    private lazy var core: SecurityStoreV4Core = SecurityStoreV4Core(
-        lock: lock,
-        backend: SecurityStoreV4Core.Backend(
-            readBuckets: { self.buckets },
-            writeBuckets: { self.buckets = $0 },
-            readKeys: { self.keys },
-            writeKeys: { self.keys = $0 },
-            readNotify: { self.notifyData },
-            writeNotify: { self.notifyData = $0 },
-            deleteNotify: { self.notifyData = nil },
-            readLoginTokenRaw: { self.loginTokenData },
-            writeLoginTokenRaw: { self.loginTokenData = $0 },
-            deleteLoginToken: { self.loginTokenData = nil },
-            hasUpgradeNotice: { self.upgradeNotice },
-            setUpgradeNotice: { self.upgradeNotice = $0 },
-            detectAndClearLegacy: {
-                guard self.legacyMarker else { return self.upgradeNotice }
-                self.legacyMarker = false
-                self.buckets.removeAll()
-                self.keys.removeAll()
-                self.notifyData = nil
-                self.loginTokenData = nil
-                self.upgradeNotice = true
-                return true
-            },
-            clearAllBacking: {
-                self.legacyMarker = false
-                self.buckets.removeAll()
-                self.keys.removeAll()
-                self.notifyData = nil
-                self.loginTokenData = nil
-                self.upgradeNotice = false
-            }
-        )
-    )
+    public lazy var securityCore = SecurityStoreV4Core(lock: lock, backend: self)
 
-    public init(seedLegacyMarker: Bool = false) {
-        self.legacyMarker = seedLegacyMarker
+    public init(seedLegacyMarker: Bool = false) { self.legacyMarker = seedLegacyMarker }
+
+    public func readBuckets() -> [SecurityStoreBucketKey: SecurityStoreStoredBucket] { buckets }
+    public func writeBuckets(_ next: [SecurityStoreBucketKey: SecurityStoreStoredBucket]) { buckets = next }
+    public func readKeys() -> [SecurityStoreKeyId: SecurityStoreStoredKey] { keys }
+    public func writeKeys(_ next: [SecurityStoreKeyId: SecurityStoreStoredKey]) { keys = next }
+    public func readNotify() -> Data? { notifyData }
+    public func writeNotify(_ data: Data) { notifyData = data }
+    public func deleteNotify() { notifyData = nil }
+    public func readLoginTokenRaw() -> Data? { loginTokenData }
+    public func writeLoginTokenRaw(_ data: Data) { loginTokenData = data }
+    public func deleteLoginToken() { loginTokenData = nil }
+    public func hasUpgradeNotice() -> Bool { lock.withLock { upgradeNotice } }
+    public func setUpgradeNotice(_ on: Bool) { upgradeNotice = on }
+    public func detectAndClearLegacy() -> Bool {
+        guard legacyMarker else { return upgradeNotice }
+        legacyMarker = false; buckets.removeAll(); keys.removeAll()
+        notifyData = nil; loginTokenData = nil; upgradeNotice = true
+        return true
+    }
+    public func clearAllBacking() {
+        legacyMarker = false; buckets.removeAll(); keys.removeAll()
+        notifyData = nil; loginTokenData = nil; upgradeNotice = false
     }
 
     public func seedLegacyStateForTesting() {
@@ -721,20 +638,4 @@ public final class MemorySecurityStoreV4: SecurityStoreV4, @unchecked Sendable {
             }
         }
     }
-
-    public func readNotifyBlob() -> Data? { core.readNotifyBlob() }
-    public func hasUpgradeNotice() -> Bool { lock.withLock { upgradeNotice } }
-
-    public func hasPersistedState() -> Bool { core.hasPersistedState() }
-    public func generateKey(kind: PBSecurityKeyKind, slot: String, persist: Bool) throws -> Data { try core.generateKey(kind: kind, slot: slot, persist: persist) }
-    public func signKey(kind: PBSecurityKeyKind, slot: String, message: Data) throws -> Data { try core.signKey(kind: kind, slot: slot, message: message) }
-    public func agreeKey(kind: PBSecurityKeyKind, slot: String, peerPublic: Data) throws -> Data { try core.agreeKey(kind: kind, slot: slot, peerPublic: peerPublic) }
-    public func encapsulate(recipients: [PBSecurityEncapsulateRecipient]) throws -> [PBSecurityEncapsulatedPair] { try core.encapsulate(recipients: recipients) }
-    public func discardKey(kind: PBSecurityKeyKind, slot: String) { core.discardKey(kind: kind, slot: slot) }
-    public func executeStorage(_ effect: PBSecurityStorageEffect) -> PBSecurityStorageResultEvent { core.executeStorage(effect) }
-    public func dismissLegacyRepairNotice() { core.dismissLegacyRepairNotice() }
-    public func clearMemoryCache() { core.clearMemoryCache() }
-    public func loadLoginToken(server: String, deviceId: String) -> SavedLogin? { core.loadLoginToken(server: server, deviceId: deviceId) }
-    public func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String) { core.saveLoginToken(token, server: server, deviceId: deviceId) }
-    public func clearLoginToken(server: String, deviceId: String) { core.clearLoginToken(server: server, deviceId: deviceId) }
 }

@@ -57,7 +57,7 @@ struct KeychainOps: Sendable {
 }
 
 /// The Keychain-backed S6 v4 security store of one installation.
-struct Vault: SecurityStoreV4, @unchecked Sendable {
+struct Vault: SecurityStoreV4Proxy, @unchecked Sendable {
     /// Non-security Keychain items exposed directly to app subsystems (`PendingStore`).
     enum Item: String, Sendable, CaseIterable {
         case pendingKey = "pending-key"
@@ -90,7 +90,52 @@ struct Vault: SecurityStoreV4, @unchecked Sendable {
     let service: String
     private let lock = NSRecursiveLock()
     private let kc: KeychainOps
-    private let core: SecurityStoreV4Core
+    let securityCore: SecurityStoreV4Core
+
+    private final class KeychainBackend: SecurityStoreV4Backend, @unchecked Sendable {
+        let storage: KeychainStorage
+        let onLegacyWipe: (@Sendable () -> Void)?
+
+        init(storage: KeychainStorage, onLegacyWipe: (@Sendable () -> Void)?) {
+            self.storage = storage
+            self.onLegacyWipe = onLegacyWipe
+        }
+
+        func readBuckets() throws -> [SecurityStoreBucketKey: SecurityStoreStoredBucket] {
+            try storage.read(account: KeychainAccount.buckets).map(SecurityStoreCodec.decodeBuckets) ?? [:]
+        }
+        func writeBuckets(_ buckets: [SecurityStoreBucketKey: SecurityStoreStoredBucket]) throws {
+            try storage.write(account: KeychainAccount.buckets, data: try SecurityStoreCodec.encodeBuckets(buckets), afterFirstUnlock: false)
+        }
+        func readKeys() throws -> [SecurityStoreKeyId: SecurityStoreStoredKey] {
+            try storage.read(account: KeychainAccount.keys).map(SecurityStoreCodec.decodeKeys) ?? [:]
+        }
+        func writeKeys(_ keys: [SecurityStoreKeyId: SecurityStoreStoredKey]) throws {
+            try storage.write(account: KeychainAccount.keys, data: try SecurityStoreCodec.encodeKeys(keys), afterFirstUnlock: false)
+        }
+        func readNotify() throws -> Data? { try storage.read(account: KeychainAccount.notify) }
+        func writeNotify(_ data: Data) throws { try storage.write(account: KeychainAccount.notify, data: data, afterFirstUnlock: true) }
+        func deleteNotify() throws { try storage.delete(account: KeychainAccount.notify) }
+        func readLoginTokenRaw() throws -> Data? { try storage.read(account: KeychainAccount.token) }
+        func writeLoginTokenRaw(_ data: Data) throws { try storage.write(account: KeychainAccount.token, data: data, afterFirstUnlock: false) }
+        func deleteLoginToken() throws { try storage.delete(account: KeychainAccount.token) }
+        func hasUpgradeNotice() throws -> Bool { try storage.read(account: KeychainAccount.upgradeNotice) != nil }
+        func setUpgradeNotice(_ on: Bool) throws {
+            if on { try storage.write(account: KeychainAccount.upgradeNotice, data: Data([1]), afterFirstUnlock: false) }
+            else { try storage.delete(account: KeychainAccount.upgradeNotice) }
+        }
+        func detectAndClearLegacy() throws -> Bool {
+            try Vault.detectAndClearLegacyLocked(storage: storage, onLegacyWipe: onLegacyWipe)
+        }
+        func clearAllBacking() throws {
+            for name in KeychainAccount.v4SecurityAccounts + [KeychainAccount.upgradeNotice] {
+                try storage.delete(account: name)
+            }
+            for name in try storage.listAccounts() where KeychainAccount.isLegacy(name) {
+                try storage.delete(account: name)
+            }
+        }
+    }
 
     init(
         service: String = (Bundle.main.bundleIdentifier ?? "io.github.lewin671.remoteagent") + ".vault",
@@ -99,68 +144,9 @@ struct Vault: SecurityStoreV4, @unchecked Sendable {
     ) {
         self.service = service
         self.kc = keychain
-        let lock = self.lock
-        let storage = KeychainStorage(service: service, kc: keychain)
-        self.core = SecurityStoreV4Core(
+        self.securityCore = SecurityStoreV4Core(
             lock: lock,
-            backend: SecurityStoreV4Core.Backend(
-                readBuckets: {
-                    guard let raw = try storage.read(account: KeychainAccount.buckets) else { return [:] }
-                    return try SecurityStoreCodec.decodeBuckets(raw)
-                },
-                writeBuckets: { buckets in
-                    let data = try SecurityStoreCodec.encodeBuckets(buckets)
-                    try storage.write(account: KeychainAccount.buckets, data: data, afterFirstUnlock: false)
-                },
-                readKeys: {
-                    guard let raw = try storage.read(account: KeychainAccount.keys) else { return [:] }
-                    return try SecurityStoreCodec.decodeKeys(raw)
-                },
-                writeKeys: { keys in
-                    let data = try SecurityStoreCodec.encodeKeys(keys)
-                    try storage.write(account: KeychainAccount.keys, data: data, afterFirstUnlock: false)
-                },
-                readNotify: {
-                    try storage.read(account: KeychainAccount.notify)
-                },
-                writeNotify: { data in
-                    try storage.write(account: KeychainAccount.notify, data: data, afterFirstUnlock: true)
-                },
-                deleteNotify: {
-                    try storage.delete(account: KeychainAccount.notify)
-                },
-                readLoginTokenRaw: {
-                    try storage.read(account: KeychainAccount.token)
-                },
-                writeLoginTokenRaw: { data in
-                    try storage.write(account: KeychainAccount.token, data: data, afterFirstUnlock: false)
-                },
-                deleteLoginToken: {
-                    try storage.delete(account: KeychainAccount.token)
-                },
-                hasUpgradeNotice: {
-                    try storage.read(account: KeychainAccount.upgradeNotice) != nil
-                },
-                setUpgradeNotice: { on in
-                    if on {
-                        try storage.write(account: KeychainAccount.upgradeNotice, data: Data([1]), afterFirstUnlock: false)
-                    } else {
-                        try storage.delete(account: KeychainAccount.upgradeNotice)
-                    }
-                },
-                detectAndClearLegacy: {
-                    try Self.detectAndClearLegacyLocked(storage: storage, onLegacyWipe: onLegacyWipe)
-                },
-                clearAllBacking: {
-                    for name in KeychainAccount.v4SecurityAccounts + [KeychainAccount.upgradeNotice] {
-                        try storage.delete(account: name)
-                    }
-                    let accounts = try storage.listAccounts()
-                    for name in accounts where KeychainAccount.isLegacy(name) {
-                        try storage.delete(account: name)
-                    }
-                }
-            )
+            backend: KeychainBackend(storage: KeychainStorage(service: service, kc: keychain), onLegacyWipe: onLegacyWipe)
         )
     }
 
@@ -218,58 +204,6 @@ struct Vault: SecurityStoreV4, @unchecked Sendable {
         }
     }
 
-    func readNotifyBlob() -> Data? {
-        core.readNotifyBlob()
-    }
-
-    // MARK: - SecurityStoreV4 Conformance
-
-    func hasPersistedState() -> Bool { core.hasPersistedState() }
-
-    func generateKey(kind: PBSecurityKeyKind, slot: String, persist: Bool) throws -> Data {
-        try core.generateKey(kind: kind, slot: slot, persist: persist)
-    }
-
-    func signKey(kind: PBSecurityKeyKind, slot: String, message: Data) throws -> Data {
-        try core.signKey(kind: kind, slot: slot, message: message)
-    }
-
-    func agreeKey(kind: PBSecurityKeyKind, slot: String, peerPublic: Data) throws -> Data {
-        try core.agreeKey(kind: kind, slot: slot, peerPublic: peerPublic)
-    }
-
-    func encapsulate(recipients: [PBSecurityEncapsulateRecipient]) throws -> [PBSecurityEncapsulatedPair] {
-        try core.encapsulate(recipients: recipients)
-    }
-
-    func discardKey(kind: PBSecurityKeyKind, slot: String) {
-        core.discardKey(kind: kind, slot: slot)
-    }
-
-    func executeStorage(_ effect: PBSecurityStorageEffect) -> PBSecurityStorageResultEvent {
-        core.executeStorage(effect)
-    }
-
-    func dismissLegacyRepairNotice() {
-        core.dismissLegacyRepairNotice()
-    }
-
-    func clearMemoryCache() {
-        core.clearMemoryCache()
-    }
-
-    func loadLoginToken(server: String, deviceId: String) -> SavedLogin? {
-        core.loadLoginToken(server: server, deviceId: deviceId)
-    }
-
-    func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String) {
-        core.saveLoginToken(token, server: server, deviceId: deviceId)
-    }
-
-    func clearLoginToken(server: String, deviceId: String) {
-        core.clearLoginToken(server: server, deviceId: deviceId)
-    }
-
     // MARK: - Pending Image Key & Full Service Clear
 
     func read(_ item: Item) throws -> Data? {
@@ -302,7 +236,7 @@ struct Vault: SecurityStoreV4, @unchecked Sendable {
                 throw VaultError(operation: .delete, status: status)
             }
         }
-        core.clearMemoryCache()
+        securityCore.clearMemoryCache()
     }
 
     // MARK: - Test Helpers

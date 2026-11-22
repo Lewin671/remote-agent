@@ -225,144 +225,90 @@ class SecurityClient(
         }
     }
 
-    suspend fun bootstrap(): SecurityWorkflowStatus =
-        run { setBootstrap(SecurityActionEmpty.getDefaultInstance()) }.status
+    private suspend fun empty(set: SecurityWorkflowActionEvent.Builder.(SecurityActionEmpty) -> Unit) =
+        run { set(SecurityActionEmpty.getDefaultInstance()) }
 
-    suspend fun getStatus(): SecurityWorkflowStatus =
-        run { setGetStatus(SecurityActionEmpty.getDefaultInstance()) }.status
+    private suspend fun bool(v: Boolean, set: SecurityWorkflowActionEvent.Builder.(SecurityBoolAction) -> Unit) =
+        run { set(SecurityBoolAction.newBuilder().setFlag(v).build()) }
 
-    suspend fun dismissUpgradeNotice(): SecurityWorkflowStatus {
-        val r = run { setDismissUpgradeNotice(SecurityActionEmpty.getDefaultInstance()) }
-        onDismissUpgradeNotice?.invoke()
-        return r.status
-    }
+    private suspend fun str(v: String, set: SecurityWorkflowActionEvent.Builder.(SecurityStringAction) -> Unit) =
+        run { set(SecurityStringAction.newBuilder().setValue(v).build()) }
+
+    suspend fun bootstrap(): SecurityWorkflowStatus = empty { setBootstrap(it) }.status
+
+    suspend fun getStatus(): SecurityWorkflowStatus = empty { setGetStatus(it) }.status
+
+    suspend fun dismissUpgradeNotice(): SecurityWorkflowStatus =
+        empty { setDismissUpgradeNotice(it) }.status.also { onDismissUpgradeNotice?.invoke() }
 
     suspend fun syncNow(touch: Boolean = false, authToken: String = ""): SecurityWorkflowStatus =
-        run {
-            setSyncNow(
-                SecuritySyncNowAction.newBuilder()
-                    .setTouch(touch)
-                    .setAuthToken(authToken)
-                    .build(),
-            )
-        }.status
+        run { setSyncNow(SecuritySyncNowAction.newBuilder().setTouch(touch).setAuthToken(authToken).build()) }.status
 
-    suspend fun renewLease(force: Boolean = true): SecurityWorkflowStatus =
-        run { setRenewLease(SecurityBoolAction.newBuilder().setFlag(force).build()) }.status
+    suspend fun renewLease(force: Boolean = true): SecurityWorkflowStatus = bool(force) { setRenewLease(it) }.status
 
-    suspend fun resumePendingOp(): SecurityWorkflowResultEffect =
-        run { setResumePendingOp(SecurityActionEmpty.getDefaultInstance()) }
+    suspend fun resumePendingOp(): SecurityWorkflowResultEffect = empty { setResumePendingOp(it) }
 
     suspend fun discardPendingOp(abandonHandoff: Boolean = false) {
-        run { setDiscardPendingOp(SecurityBoolAction.newBuilder().setFlag(abandonHandoff).build()) }
+        bool(abandonHandoff) { setDiscardPendingOp(it) }
     }
 
-    suspend fun prepareCreation(server: String, storagePersisted: Boolean = true): PreparedCreationResult {
-        val r = run {
+    suspend fun prepareCreation(server: String, storagePersisted: Boolean = true): PreparedCreationResult =
+        run {
             setPrepareCreation(
-                SecurityPrepareCreationAction.newBuilder()
-                    .setServer(server)
-                    .setStoragePersisted(storagePersisted)
-                    .build(),
+                SecurityPrepareCreationAction.newBuilder().setServer(server).setStoragePersisted(storagePersisted).build(),
             )
-        }
-        return PreparedCreationResult(
-            recoveryCode = r.recoveryCode,
-            resumedDraft = r.resumedDraft,
-            codeSaved = r.codeSaved,
-        )
-    }
+        }.let { PreparedCreationResult(recoveryCode = it.recoveryCode, resumedDraft = it.resumedDraft, codeSaved = it.codeSaved) }
 
-    suspend fun confirmCreationCodeSaved() {
-        run { setConfirmCreationCodeSaved(SecurityActionEmpty.getDefaultInstance()) }
-    }
+    suspend fun confirmCreationCodeSaved() { empty { setConfirmCreationCodeSaved(it) } }
 
     suspend fun continueCreation(setupToken: String = ""): SecurityWorkflowResultEffect =
-        run { setContinueCreation(SecurityStringAction.newBuilder().setValue(setupToken).build()) }
+        str(setupToken) { setContinueCreation(it) }
 
     suspend fun adoptCreationWithoutCode(): SecurityWorkflowResultEffect =
-        run { setAdoptCreationWithoutCode(SecurityActionEmpty.getDefaultInstance()) }
+        empty { setAdoptCreationWithoutCode(it) }
 
     suspend fun removeDevice(deviceId: String, abandonPairDelivery: Boolean = false) {
         run {
             setRemoveDevice(
-                SecurityRemoveDeviceAction.newBuilder()
-                    .setDeviceId(deviceId)
-                    .setAbandonPairDelivery(abandonPairDelivery)
-                    .build(),
+                SecurityRemoveDeviceAction.newBuilder().setDeviceId(deviceId).setAbandonPairDelivery(abandonPairDelivery).build(),
             )
         }
     }
 
-    suspend fun deleteMachineRecords(machineId: String) {
-        run { setDeleteMachineRecords(SecurityStringAction.newBuilder().setValue(machineId).build()) }
-    }
+    suspend fun deleteMachineRecords(machineId: String) { str(machineId) { setDeleteMachineRecords(it) } }
 
-    suspend fun deleteAccount() {
-        run { setDeleteAccount(SecurityActionEmpty.getDefaultInstance()) }
-    }
+    suspend fun deleteAccount() { empty { setDeleteAccount(it) } }
 
-    suspend fun prepareRecoveryRotation(): String =
-        run { setPrepareRecoveryRotation(SecurityActionEmpty.getDefaultInstance()) }.recoveryCode
+    suspend fun prepareRecoveryRotation(): String = empty { setPrepareRecoveryRotation(it) }.recoveryCode
 
-    suspend fun confirmRecoveryRotation() {
-        run { setConfirmRecoveryRotation(SecurityActionEmpty.getDefaultInstance()) }
-    }
+    suspend fun confirmRecoveryRotation() { empty { setConfirmRecoveryRotation(it) } }
 
     suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String =
-        run { setPrepareHandoffCode(SecurityBoolAction.newBuilder().setFlag(storagePersisted).build()) }.recoveryCode
+        bool(storagePersisted) { setPrepareHandoffCode(it) }.recoveryCode
 
-    suspend fun publishHandoffOffer() {
-        run { setPublishHandoffOffer(SecurityActionEmpty.getDefaultInstance()) }
-    }
+    suspend fun publishHandoffOffer() { empty { setPublishHandoffOffer(it) } }
 
     suspend fun listHandoffCandidates(): List<SecurityHandoffCandidate> =
-        run { setListHandoffCandidates(SecurityActionEmpty.getDefaultInstance()) }.handoffCandidatesList
+        empty { setListHandoffCandidates(it) }.handoffCandidatesList
 
-    suspend fun handoffAuthority(targetDeviceId: String) {
-        run { setHandoffAuthority(SecurityStringAction.newBuilder().setValue(targetDeviceId).build()) }
-    }
+    suspend fun handoffAuthority(targetDeviceId: String) { str(targetDeviceId) { setHandoffAuthority(it) } }
 
     suspend fun completeAccountPublicProfile(server: String, code: String) {
-        run {
-            setCompleteAccountPublicProfile(
-                SecurityServerCodeAction.newBuilder()
-                    .setServer(server)
-                    .setCode(code)
-                    .build(),
-            )
-        }
+        run { setCompleteAccountPublicProfile(SecurityServerCodeAction.newBuilder().setServer(server).setCode(code).build()) }
     }
 
     suspend fun startPairing(webOrigin: String, replacesDeviceId: String = ""): SecurityPairingInfo =
-        run {
-            setStartPairing(
-                SecurityStartPairingAction.newBuilder()
-                    .setWebOrigin(webOrigin)
-                    .setReplacesDeviceId(replacesDeviceId)
-                    .build(),
-            )
-        }.pairing
+        run { setStartPairing(SecurityStartPairingAction.newBuilder().setWebOrigin(webOrigin).setReplacesDeviceId(replacesDeviceId).build()) }.pairing
 
-    suspend fun pollPairing(pairingId: String): SecurityPairingInfo =
-        run { setPollPairing(SecurityStringAction.newBuilder().setValue(pairingId).build()) }.pairing
+    suspend fun pollPairing(pairingId: String): SecurityPairingInfo = str(pairingId) { setPollPairing(it) }.pairing
 
     suspend fun approvePairing(pairingId: String, sasConfirmed: Boolean): SecurityPairingInfo =
-        run {
-            setApprovePairing(
-                SecurityApprovePairingAction.newBuilder()
-                    .setPairingId(pairingId)
-                    .setSasConfirmed(sasConfirmed)
-                    .build(),
-            )
-        }.pairing
+        run { setApprovePairing(SecurityApprovePairingAction.newBuilder().setPairingId(pairingId).setSasConfirmed(sasConfirmed).build()) }.pairing
 
     suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo =
-        run { setFinishPairingDelivery(SecurityStringAction.newBuilder().setValue(pairingId).build()) }.pairing
+        str(pairingId) { setFinishPairingDelivery(it) }.pairing
 
-    suspend fun cancelPairing(pairingId: String) {
-        run { setCancelPairing(SecurityStringAction.newBuilder().setValue(pairingId).build()) }
-    }
+    suspend fun cancelPairing(pairingId: String) { str(pairingId) { setCancelPairing(it) } }
 
     suspend fun startJoinPairing(
         server: String = "",
@@ -375,76 +321,39 @@ class SecurityClient(
         run {
             setStartJoinPairing(
                 SecurityStartJoinPairingAction.newBuilder()
-                    .setServer(server)
-                    .setCode(code)
-                    .apply {
-                        if (commitHint != null && commitHint.isNotEmpty()) {
-                            setCommitHint(ByteString.copyFrom(commitHint))
-                        }
-                    }
-                    .setExistingRepair(existingRepair)
-                    .setExistingServer(existingServer)
-                    .setRawLink(rawLink)
-                    .build(),
+                    .setServer(server).setCode(code)
+                    .apply { if (commitHint != null && commitHint.isNotEmpty()) setCommitHint(ByteString.copyFrom(commitHint)) }
+                    .setExistingRepair(existingRepair).setExistingServer(existingServer).setRawLink(rawLink).build(),
             )
         }.pairing
 
-    suspend fun confirmJoinSas(pairingId: String): SecurityWorkflowResultEffect =
-        run { setConfirmJoinSas(SecurityStringAction.newBuilder().setValue(pairingId).build()) }
+    suspend fun confirmJoinSas(pairingId: String): SecurityWorkflowResultEffect = str(pairingId) { setConfirmJoinSas(it) }
 
-    suspend fun cancelJoinPairing(pairingId: String) {
-        run { setCancelJoinPairing(SecurityStringAction.newBuilder().setValue(pairingId).build()) }
-    }
+    suspend fun cancelJoinPairing(pairingId: String) { str(pairingId) { setCancelJoinPairing(it) } }
 
-    suspend fun prepareEmergencyRecovery(server: String, code: String): PreparedEmergencyRecoveryResult {
-        val r = run {
-            setPrepareEmergencyRecovery(
-                SecurityServerCodeAction.newBuilder()
-                    .setServer(server)
-                    .setCode(code)
-                    .build(),
-            )
-        }
-        return PreparedEmergencyRecoveryResult(
-            recoveryCode = r.recoveryCode,
-            recovery = if (r.hasRecovery()) r.recovery else null,
-        )
-    }
+    suspend fun prepareEmergencyRecovery(server: String, code: String): PreparedEmergencyRecoveryResult =
+        run { setPrepareEmergencyRecovery(SecurityServerCodeAction.newBuilder().setServer(server).setCode(code).build()) }
+            .let { PreparedEmergencyRecoveryResult(recoveryCode = it.recoveryCode, recovery = if (it.hasRecovery()) it.recovery else null) }
 
-    suspend fun confirmRecoveryCodeSaved() {
-        run { setConfirmRecoveryCodeSaved(SecurityActionEmpty.getDefaultInstance()) }
-    }
+    suspend fun confirmRecoveryCodeSaved() { empty { setConfirmRecoveryCodeSaved(it) } }
 
-    suspend fun continueRecoverySigning(oldCode: String): SecurityRecoveryInfo? {
-        val r = run { setContinueRecoverySigning(SecurityStringAction.newBuilder().setValue(oldCode).build()) }
-        return if (r.hasRecovery()) r.recovery else null
-    }
+    suspend fun continueRecoverySigning(oldCode: String): SecurityRecoveryInfo? =
+        str(oldCode) { setContinueRecoverySigning(it) }.let { if (it.hasRecovery()) it.recovery else null }
 
-    suspend fun resumeRecovery(): SecurityRecoveryInfo? {
-        val r = run { setResumeRecovery(SecurityActionEmpty.getDefaultInstance()) }
-        return if (r.hasRecovery()) r.recovery else null
-    }
+    suspend fun resumeRecovery(): SecurityRecoveryInfo? =
+        empty { setResumeRecovery(it) }.let { if (it.hasRecovery()) it.recovery else null }
 
-    suspend fun completeRecovery(): SecurityWorkflowResultEffect =
-        run { setCompleteRecovery(SecurityActionEmpty.getDefaultInstance()) }
+    suspend fun completeRecovery(): SecurityWorkflowResultEffect = empty { setCompleteRecovery(it) }
 
-    suspend fun discardUnsignedRecovery() {
-        run { setDiscardUnsignedRecovery(SecurityActionEmpty.getDefaultInstance()) }
-    }
+    suspend fun discardUnsignedRecovery() { empty { setDiscardUnsignedRecovery(it) } }
 
-    suspend fun discardRejectedRecovery() {
-        run { setDiscardRejectedRecovery(SecurityActionEmpty.getDefaultInstance()) }
-    }
+    suspend fun discardRejectedRecovery() { empty { setDiscardRejectedRecovery(it) } }
 
-    suspend fun checkExitAdvice(): SecurityExitAdvice =
-        run { setCheckExitAdvice(SecurityActionEmpty.getDefaultInstance()) }.exitAdvice
+    suspend fun checkExitAdvice(): SecurityExitAdvice = empty { setCheckExitAdvice(it) }.exitAdvice
 
-    suspend fun clearSecurity() {
-        run { setClearSecurity(SecurityActionEmpty.getDefaultInstance()) }
-    }
+    suspend fun clearSecurity() { empty { setClearSecurity(it) } }
 
-    suspend fun checkRetainedDenied(): Boolean =
-        run { setCheckRetainedDenied(SecurityActionEmpty.getDefaultInstance()) }.flag
+    suspend fun checkRetainedDenied(): Boolean = empty { setCheckRetainedDenied(it) }.flag
 
     suspend fun updateDeviceMeta(
         deviceId: String = "",
@@ -456,19 +365,13 @@ class SecurityClient(
         run {
             setUpdateDeviceMeta(
                 SecurityUpdateDeviceMetaAction.newBuilder()
-                    .setDeviceId(deviceId)
-                    .setName(name)
-                    .setPlatform(platform)
-                    .setDescription(description)
-                    .setDescribeSelfOnly(describeSelfOnly)
-                    .build(),
+                    .setDeviceId(deviceId).setName(name).setPlatform(platform)
+                    .setDescription(description).setDescribeSelfOnly(describeSelfOnly).build(),
             )
         }
     }
 
-    suspend fun republishRecoveryObjects(flag: Boolean = false) {
-        run { setRepublishRecoveryObjects(SecurityBoolAction.newBuilder().setFlag(flag).build()) }
-    }
+    suspend fun republishRecoveryObjects(flag: Boolean = false) { bool(flag) { setRepublishRecoveryObjects(it) } }
 
     fun setForeground(active: Boolean) {
         setForegroundFn(active)
@@ -561,6 +464,7 @@ class StandaloneSecurityHost(
     }
 
     private fun handleEffect(eff: Effect, inlineQueue: ArrayDeque<CoreEvent>) {
+        if (executor.handleEffect(eff)) return
         when (eff.effectCase) {
             Effect.EffectCase.REQUEST_ENTROPY -> {
                 val req = eff.requestEntropy
@@ -570,8 +474,7 @@ class StandaloneSecurityHost(
                 val eb = EntropyProvided.newBuilder()
                 repeat(idCount) { eb.addRandomIds(UUID.randomUUID().toString()) }
                 repeat(floatCount) {
-                    val v = (rng.nextInt().toLong() and 0xFFFFFFFFL).toDouble() / 4294967296.0
-                    eb.addUnitFloats(v)
+                    eb.addUnitFloats((rng.nextInt().toLong() and 0xFFFFFFFFL).toDouble() / 4294967296.0)
                 }
                 if (byteCount > 0) {
                     val buf = ByteArray(byteCount)
@@ -579,11 +482,7 @@ class StandaloneSecurityHost(
                     eb.setRandomBytes(ByteString.copyFrom(buf))
                 }
                 inlineQueue.addLast(
-                    CoreEvent.newBuilder()
-                        .setNowMs(clock())
-                        .setMonoMs(monotonic())
-                        .setEntropyProvided(eb)
-                        .build(),
+                    CoreEvent.newBuilder().setNowMs(clock()).setMonoMs(monotonic()).setEntropyProvided(eb).build(),
                 )
             }
             Effect.EffectCase.SCHEDULE_TIMER -> {
@@ -599,14 +498,8 @@ class StandaloneSecurityHost(
                     if (!closed.get()) {
                         dispatchOnWorker(
                             CoreEvent.newBuilder()
-                                .setNowMs(clock())
-                                .setMonoMs(monotonic())
-                                .setTimerFired(
-                                    TimerFiredEvent.newBuilder()
-                                        .setTimerId(st.timerId)
-                                        .setKind(st.kind)
-                                        .setKey(st.key),
-                                )
+                                .setNowMs(clock()).setMonoMs(monotonic())
+                                .setTimerFired(TimerFiredEvent.newBuilder().setTimerId(st.timerId).setKind(st.kind).setKey(st.key))
                                 .build(),
                         )
                     }
@@ -622,19 +515,10 @@ class StandaloneSecurityHost(
                     cur.second.cancel()
                 }
             }
-            Effect.EffectCase.SECURITY_KEY_GENERATE -> executor.keyGenerate(eff.securityKeyGenerate)
-            Effect.EffectCase.SECURITY_KEY_SIGN -> executor.keySign(eff.securityKeySign)
-            Effect.EffectCase.SECURITY_KEY_AGREE -> executor.keyAgree(eff.securityKeyAgree)
-            Effect.EffectCase.SECURITY_KEY_ENCAPSULATE -> executor.keyEncapsulate(eff.securityKeyEncapsulate)
-            Effect.EffectCase.SECURITY_KEY_DISCARD -> executor.keyDiscard(eff.securityKeyDiscard)
-            Effect.EffectCase.SECURITY_STORAGE -> executor.storage(eff.securityStorage)
-            Effect.EffectCase.SECURITY_RPC -> executor.rpc(eff.securityRpc)
             Effect.EffectCase.SECURITY_TOKEN_UPDATED -> onToken?.invoke(eff.securityTokenUpdated)
             Effect.EffectCase.SECURITY_WORKFLOW_RESULT -> client.handleWorkflowResult(eff.securityWorkflowResult)
             Effect.EffectCase.SECURITY_STATUS_CHANGED ->
-                if (eff.securityStatusChanged.hasStatus()) {
-                    client.handleStatusChanged(eff.securityStatusChanged.status)
-                }
+                if (eff.securityStatusChanged.hasStatus()) client.handleStatusChanged(eff.securityStatusChanged.status)
             else -> {}
         }
     }

@@ -154,13 +154,7 @@ class CoreHost(
     var onNavigate: (NavigateEffect) -> Unit = {}
     var onAttachmentsSettled: (AttachmentsSettledEffect) -> Unit = {}
     var onDirectPreference: (DirectPreferenceEffect) -> Unit = {}
-    var onSecurityKeyGenerate: (SecurityKeyGenerateEffect) -> Unit = {}
-    var onSecurityKeySign: (SecurityKeySignEffect) -> Unit = {}
-    var onSecurityKeyAgree: (SecurityKeyAgreeEffect) -> Unit = {}
-    var onSecurityKeyEncapsulate: (SecurityKeyEncapsulateEffect) -> Unit = {}
-    var onSecurityKeyDiscard: (SecurityKeyDiscardEffect) -> Unit = {}
-    var onSecurityStorage: (SecurityStorageEffect) -> Unit = {}
-    var onSecurityRpc: (SecurityRpcEffect) -> Unit = {}
+    var onSecurityEffect: (Effect) -> Boolean = { false }
     var onSecurityTokenUpdated: (SecurityTokenUpdatedEffect) -> Unit = {}
     var onSecurityStatusChanged: (SecurityStatusChangedEffect) -> Unit = {}
     var onDismissUpgradeNotice: () -> Unit = {}
@@ -587,13 +581,15 @@ class CoreHost(
             Effect.EffectCase.USAGE_CACHE_WRITE -> {
                 onUsageCacheWrite(effect.usageCacheWrite)
             }
-            Effect.EffectCase.SECURITY_KEY_GENERATE -> onSecurityKeyGenerate(effect.securityKeyGenerate)
-            Effect.EffectCase.SECURITY_KEY_SIGN -> onSecurityKeySign(effect.securityKeySign)
-            Effect.EffectCase.SECURITY_KEY_AGREE -> onSecurityKeyAgree(effect.securityKeyAgree)
-            Effect.EffectCase.SECURITY_KEY_ENCAPSULATE -> onSecurityKeyEncapsulate(effect.securityKeyEncapsulate)
-            Effect.EffectCase.SECURITY_KEY_DISCARD -> onSecurityKeyDiscard(effect.securityKeyDiscard)
-            Effect.EffectCase.SECURITY_STORAGE -> onSecurityStorage(effect.securityStorage)
-            Effect.EffectCase.SECURITY_RPC -> onSecurityRpc(effect.securityRpc)
+            Effect.EffectCase.SECURITY_KEY_GENERATE,
+            Effect.EffectCase.SECURITY_KEY_SIGN,
+            Effect.EffectCase.SECURITY_KEY_AGREE,
+            Effect.EffectCase.SECURITY_KEY_ENCAPSULATE,
+            Effect.EffectCase.SECURITY_KEY_DISCARD,
+            Effect.EffectCase.SECURITY_STORAGE,
+            Effect.EffectCase.SECURITY_RPC -> {
+                onSecurityEffect(effect)
+            }
             Effect.EffectCase.SECURITY_TOKEN_UPDATED -> onSecurityTokenUpdated(effect.securityTokenUpdated)
             Effect.EffectCase.SECURITY_WORKFLOW_RESULT ->
                 securityClient.handleWorkflowResult(effect.securityWorkflowResult)

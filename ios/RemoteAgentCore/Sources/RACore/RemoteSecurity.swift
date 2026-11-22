@@ -27,7 +27,7 @@ extension Remote {
         }
         let task = Task<Void, Error> {
             let st = try await securityClient.bootstrap()
-            await applySecurityStatusSnapshotAndPrune(st)
+            await applySecurityStatusSnapshot(st)
             securityBootstrapped = true
         }
         securityBootstrapTask = task
@@ -114,14 +114,6 @@ extension Remote {
         await pruneUntrustedCaches(status: status)
     }
 
-    func applySecurityStatusSnapshotAndPrune(_ status: PBSecurityWorkflowStatus) async {
-        clockSkewed = status.clockSkewed
-        if status.removed {
-            dropToken()
-        }
-        await pruneUntrustedCaches(status: status)
-    }
-
     func pruneUntrustedCaches(status: PBSecurityWorkflowStatus? = nil) async {
         guard let cache else { return }
         let st = status ?? securityClient.currentStatus
@@ -147,67 +139,63 @@ extension Remote {
         }
     }
 
-    @discardableResult
-    public func syncSecurity(touch: Bool = false) async throws -> PBSecurityWorkflowStatus {
+    private func withSecurity<T>(_ op: (SecurityClient) async throws -> T) async throws -> T {
         try await ensureSecurityBootstrapped()
-        let st = try await securityClient.syncNow(touch: touch, authToken: token)
-        await applySecurityStatusSnapshotAndPrune(st)
+        return try await op(securityClient)
+    }
+
+    private func withSecurityStatus(_ op: (SecurityClient) async throws -> PBSecurityWorkflowStatus) async throws -> PBSecurityWorkflowStatus {
+        let st = try await withSecurity(op)
+        await applySecurityStatusSnapshot(st)
         return st
     }
 
+    private func withSecurityAndRefresh(_ op: (SecurityClient) async throws -> Void) async throws {
+        try await withSecurity(op)
+        if !closed { await refreshDevices() }
+    }
+
+    @discardableResult
+    public func syncSecurity(touch: Bool = false) async throws -> PBSecurityWorkflowStatus {
+        try await withSecurityStatus { try await $0.syncNow(touch: touch, authToken: token) }
+    }
+
     public func getSecurityStatus() async throws -> PBSecurityWorkflowStatus {
-        try await ensureSecurityBootstrapped()
-        let st = try await securityClient.getStatus()
-        await applySecurityStatusSnapshotAndPrune(st)
-        return st
+        try await withSecurityStatus { try await $0.getStatus() }
     }
 
     @discardableResult
     public func renewLeaseBlocking(force: Bool = true) async throws -> PBSecurityWorkflowStatus {
-        try await ensureSecurityBootstrapped()
-        let st = try await securityClient.renewLease(force: force)
-        await applySecurityStatusSnapshotAndPrune(st)
-        return st
+        try await withSecurityStatus { try await $0.renewLease(force: force) }
     }
 
     public func renewLeaseNow() async {
-        do {
-            _ = try await renewLeaseBlocking(force: true)
-        } catch {
-            if !(error is CancellationError) { report(error) }
-        }
+        do { _ = try await renewLeaseBlocking(force: true) }
+        catch { if !(error is CancellationError) { report(error) } }
     }
 
     public func resumeSecurityOperation() async throws {
-        try await ensureSecurityBootstrapped()
-        _ = try await securityClient.resumePendingOp()
-        if !closed { await refreshDevices() }
+        try await withSecurityAndRefresh { _ = try await $0.resumePendingOp() }
     }
 
     public func discardPendingOp(abandonHandoff: Bool = false) async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.discardPendingOp(abandonHandoff: abandonHandoff)
+        try await withSecurity { try await $0.discardPendingOp(abandonHandoff: abandonHandoff) }
     }
 
     public func prepareRecoveryRotation() async throws -> String {
-        try await ensureSecurityBootstrapped()
-        return try await securityClient.prepareRecoveryRotation()
+        try await withSecurity { try await $0.prepareRecoveryRotation() }
     }
 
     public func confirmRecoveryRotation() async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.confirmRecoveryRotation()
+        try await withSecurity { try await $0.confirmRecoveryRotation() }
     }
 
     public func prepareHandoffCode(storagePersisted: Bool = true) async throws -> String {
-        try await ensureSecurityBootstrapped()
-        return try await securityClient.prepareHandoffCode(storagePersisted: storagePersisted)
+        try await withSecurity { try await $0.prepareHandoffCode(storagePersisted: storagePersisted) }
     }
 
     public func publishHandoffOffer() async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.publishHandoffOffer()
-        if !closed { await refreshDevices() }
+        try await withSecurityAndRefresh { try await $0.publishHandoffOffer() }
     }
 
     public func listHandoffCandidates() async throws -> [PBSecurityHandoffCandidate] {
@@ -217,71 +205,52 @@ extension Remote {
     }
 
     public func handoffAuthority(targetDeviceId: String) async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.handoffAuthority(targetDeviceId: targetDeviceId)
+        try await withSecurity { try await $0.handoffAuthority(targetDeviceId: targetDeviceId) }
     }
 
     public func completeAccountPublicProfile(server: String, code: String) async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.completeAccountPublicProfile(server: server, code: code)
+        try await withSecurity { try await $0.completeAccountPublicProfile(server: server, code: code) }
     }
 
     public func finishPairingDelivery(pairingId: String) async throws -> PBSecurityPairingInfo {
-        try await ensureSecurityBootstrapped()
-        let res = try await securityClient.finishPairingDelivery(pairingId: pairingId)
+        let res = try await withSecurity { try await $0.finishPairingDelivery(pairingId: pairingId) }
         if res.delivered, !closed { await refreshDevices() }
         return res
     }
 
     public func checkExitAdvice() async throws -> PBSecurityExitAdvice {
-        try await ensureSecurityBootstrapped()
-        return try await securityClient.checkExitAdvice()
+        try await withSecurity { try await $0.checkExitAdvice() }
     }
 
     public func clearSecurity() async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.clearSecurity()
+        try await withSecurity { try await $0.clearSecurity() }
     }
 
     public func republishRecoveryObjects(flag: Bool = false) async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.republishRecoveryObjects(flag: flag)
+        try await withSecurity { try await $0.republishRecoveryObjects(flag: flag) }
     }
 
     public func renameDevice(_ id: String, name: String) async throws {
         guard id == account.deviceId else {
             throw CommandError("failed_precondition", L10nMessage.errorsIosOnlyTheDeviceItselfCanChangeItsName())
         }
-        try await ensureSecurityBootstrapped()
-        try await securityClient.updateDeviceMeta(deviceId: id, name: name.trimmingCharacters(in: .whitespacesAndNewlines))
-        if !closed { await refreshDevices() }
+        try await withSecurityAndRefresh { try await $0.updateDeviceMeta(deviceId: id, name: name.trimmingCharacters(in: .whitespacesAndNewlines)) }
     }
 
     public func describeSelf(platform: String, description: String) async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.updateDeviceMeta(
-            platform: platform,
-            description: description,
-            describeSelfOnly: true
-        )
-        if !closed { await refreshDevices() }
+        try await withSecurityAndRefresh { try await $0.updateDeviceMeta(platform: platform, description: description, describeSelfOnly: true) }
     }
 
     public func removeDevice(_ id: String, abandonPairDelivery: Bool = false) async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.removeDevice(id, abandonPairDelivery: abandonPairDelivery)
-        if !closed { await refreshDevices() }
+        try await withSecurityAndRefresh { try await $0.removeDevice(id, abandonPairDelivery: abandonPairDelivery) }
     }
 
     public func deleteMachineRecords(_ id: String) async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.deleteMachineRecords(id)
-        if !closed { await refreshDevices() }
+        try await withSecurityAndRefresh { try await $0.deleteMachineRecords(id) }
     }
 
     public func deleteAccount() async throws {
-        try await ensureSecurityBootstrapped()
-        try await securityClient.deleteAccount()
+        try await withSecurity { try await $0.deleteAccount() }
     }
 
     // MARK: - Crypto Envelope Operations
@@ -462,29 +431,19 @@ extension Remote {
         )
     }
 
+    private static let purposeByKind: [PBPayloadKind: SecurityPurpose] = [
+        .event: .event, .sessionMeta: .sessionMeta, .sessionKey: .sessionKey, .machineMeta: .machineMeta,
+        .command: .command, .commandResult: .result, .terminalOutput: .terminalOutput, .terminalInput: .terminalInput,
+        .notify: .notify, .image: .image, .accountPrefs: .prefs, .deviceMeta: .deviceMeta,
+    ]
+
     func openSecureMessage<M: SwiftProtobuf.Message>(
         envelope: PBEnvelope?,
         want: Place,
         as type: M.Type,
         history: Bool = false
     ) async throws -> (PBHeader, M) {
-        guard let envelope else { throw SecurityFailure.invalid }
-        let expectedPurpose: SecurityPurpose
-        switch want.kind {
-        case .event: expectedPurpose = .event
-        case .sessionMeta: expectedPurpose = .sessionMeta
-        case .sessionKey: expectedPurpose = .sessionKey
-        case .machineMeta: expectedPurpose = .machineMeta
-        case .command: expectedPurpose = .command
-        case .commandResult: expectedPurpose = .result
-        case .terminalOutput: expectedPurpose = .terminalOutput
-        case .terminalInput: expectedPurpose = .terminalInput
-        case .notify: expectedPurpose = .notify
-        case .image: expectedPurpose = .image
-        case .accountPrefs: expectedPurpose = .prefs
-        case .deviceMeta: expectedPurpose = .deviceMeta
-        default: throw SecurityFailure.invalid
-        }
+        guard let envelope, let expectedPurpose = Self.purposeByKind[want.kind] else { throw SecurityFailure.invalid }
         let history = history || [PBPayloadKind.accountPrefs, .deviceMeta, .machineMeta, .sessionMeta, .image].contains(want.kind)
         let opened = try await openEnvelopeOp(
             envelope: envelope,
@@ -495,8 +454,7 @@ extension Remote {
             seq: want.seq,
             history: history
         )
-        let msg = try M(serializedBytes: opened.plaintext)
-        return (Self.projection(opened), msg)
+        return (Self.projection(opened), try M(serializedBytes: opened.plaintext))
     }
 
     private static func projection(_ r: PBSecurityOpenEnvelopeResult) -> PBHeader {

@@ -1827,33 +1827,10 @@ actor CoreHost: SyncEngine {
                     await host.executor.handleDirectDcReadStats(eff)
                 }
 
-            case .securityKeyGenerate(let eff):
+            case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
+                 .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage, .securityRpc:
                 guard !demoMode else { continue }
-                executor.optionalSecurityExecutor?.keyGenerate(eff)
-
-            case .securityKeySign(let eff):
-                guard !demoMode else { continue }
-                executor.optionalSecurityExecutor?.keySign(eff)
-
-            case .securityKeyAgree(let eff):
-                guard !demoMode else { continue }
-                executor.optionalSecurityExecutor?.keyAgree(eff)
-
-            case .securityKeyEncapsulate(let eff):
-                guard !demoMode else { continue }
-                executor.optionalSecurityExecutor?.keyEncapsulate(eff)
-
-            case .securityKeyDiscard(let eff):
-                guard !demoMode else { continue }
-                executor.optionalSecurityExecutor?.keyDiscard(eff)
-
-            case .securityStorage(let eff):
-                guard !demoMode else { continue }
-                executor.optionalSecurityExecutor?.storage(eff)
-
-            case .securityRpc(let eff):
-                guard !demoMode else { continue }
-                executor.optionalSecurityExecutor?.rpc(eff)
+                _ = executor.optionalSecurityExecutor?.handleEffect(eff)
 
             case .securityTokenUpdated(let eff):
                 guard !demoMode else { continue }

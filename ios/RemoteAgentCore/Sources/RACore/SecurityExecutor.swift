@@ -83,85 +83,74 @@ public final class SecurityExecutor: @unchecked Sendable {
         for t in tasks { t.cancel() }
     }
 
+    public func handleEffect(_ eff: PBCoreEffect) -> Bool {
+        switch eff.effect {
+        case .securityKeyGenerate(let k): keyGenerate(k)
+        case .securityKeySign(let s): keySign(s)
+        case .securityKeyAgree(let a): keyAgree(a)
+        case .securityKeyEncapsulate(let e): keyEncapsulate(e)
+        case .securityKeyDiscard(let d): keyDiscard(d)
+        case .securityStorage(let s): storage(s)
+        case .securityRpc(let r): rpc(r)
+        default: return false
+        }
+        return true
+    }
+
+    private func enqueueOp(_ work: @escaping @Sendable () async -> PBCoreEvent) {
+        enqueueIO { [self] in await sendEvent(await work()) }
+    }
+
     public func keyGenerate(_ eff: PBSecurityKeyGenerateEffect) {
-        enqueueIO { [self] in
-            var ev = PBSecurityKeyGeneratedEvent()
-            ev.opID = eff.opID
-            do {
-                ev.publicKey = try store.generateKey(kind: eff.keyKind, slot: eff.slot, persist: eff.persist)
-            } catch {
-                ev.error = error.localizedDescription
-            }
-            await sendEvent(PBCoreEvent.with { $0.securityKeyGenerated = ev })
+        enqueueOp { [self] in
+            var ev = PBSecurityKeyGeneratedEvent(); ev.opID = eff.opID
+            do { ev.publicKey = try store.generateKey(kind: eff.keyKind, slot: eff.slot, persist: eff.persist) }
+            catch { ev.error = error.localizedDescription }
+            return PBCoreEvent.with { $0.securityKeyGenerated = ev }
         }
     }
 
     public func keySign(_ eff: PBSecurityKeySignEffect) {
-        enqueueIO { [self] in
-            var ev = PBSecurityKeySignedEvent()
-            ev.opID = eff.opID
-            if eff.message.isEmpty {
-                ev.error = "empty message to sign"
-            } else {
-                do {
-                    let kind = eff.keyKind == .unspecified ? .deviceEd : eff.keyKind
-                    ev.signature = try store.signKey(kind: kind, slot: eff.slot, message: eff.message)
-                } catch {
-                    ev.error = error.localizedDescription
-                }
+        enqueueOp { [self] in
+            var ev = PBSecurityKeySignedEvent(); ev.opID = eff.opID
+            if eff.message.isEmpty { ev.error = "empty message to sign" }
+            else {
+                do { ev.signature = try store.signKey(kind: eff.keyKind == .unspecified ? .deviceEd : eff.keyKind, slot: eff.slot, message: eff.message) }
+                catch { ev.error = error.localizedDescription }
             }
-            await sendEvent(PBCoreEvent.with { $0.securityKeySigned = ev })
+            return PBCoreEvent.with { $0.securityKeySigned = ev }
         }
     }
 
     public func keyAgree(_ eff: PBSecurityKeyAgreeEffect) {
-        enqueueIO { [self] in
-            var ev = PBSecurityKeyAgreedEvent()
-            ev.opID = eff.opID
-            do {
-                let kind = eff.keyKind == .unspecified ? .deviceX : eff.keyKind
-                ev.shared = try store.agreeKey(kind: kind, slot: eff.slot, peerPublic: eff.peerPublic)
-            } catch {
-                ev.error = error.localizedDescription
-            }
-            await sendEvent(PBCoreEvent.with { $0.securityKeyAgreed = ev })
+        enqueueOp { [self] in
+            var ev = PBSecurityKeyAgreedEvent(); ev.opID = eff.opID
+            do { ev.shared = try store.agreeKey(kind: eff.keyKind == .unspecified ? .deviceX : eff.keyKind, slot: eff.slot, peerPublic: eff.peerPublic) }
+            catch { ev.error = error.localizedDescription }
+            return PBCoreEvent.with { $0.securityKeyAgreed = ev }
         }
     }
 
     public func keyEncapsulate(_ eff: PBSecurityKeyEncapsulateEffect) {
-        enqueueIO { [self] in
-            var ev = PBSecurityKeyEncapsulatedEvent()
-            ev.opID = eff.opID
-            do {
-                ev.pairs = try store.encapsulate(recipients: eff.recipients)
-            } catch {
-                ev.error = error.localizedDescription
-            }
-            await sendEvent(PBCoreEvent.with { $0.securityKeyEncapsulated = ev })
+        enqueueOp { [self] in
+            var ev = PBSecurityKeyEncapsulatedEvent(); ev.opID = eff.opID
+            do { ev.pairs = try store.encapsulate(recipients: eff.recipients) }
+            catch { ev.error = error.localizedDescription }
+            return PBCoreEvent.with { $0.securityKeyEncapsulated = ev }
         }
     }
 
     public func keyDiscard(_ eff: PBSecurityKeyDiscardEffect) {
-        enqueueIO { [self] in
-            store.discardKey(kind: eff.keyKind, slot: eff.slot)
-        }
+        enqueueIO { [self] in store.discardKey(kind: eff.keyKind, slot: eff.slot) }
     }
 
     public func storage(_ eff: PBSecurityStorageEffect) {
-        enqueueIO { [self] in
-            let res = store.executeStorage(eff)
-            await sendEvent(PBCoreEvent.with { $0.securityStorageResult = res })
-        }
+        enqueueOp { [self] in PBCoreEvent.with { $0.securityStorageResult = store.executeStorage(eff) } }
     }
 
     public func rpc(_ eff: PBSecurityRpcEffect) {
         spawnAsync { [self] in
-            let res: PBSecurityRpcResultEvent
-            if let rpcOverride {
-                res = await rpcOverride(eff)
-            } else {
-                res = await executeUnaryRpc(eff)
-            }
+            let res = if let rpcOverride { await rpcOverride(eff) } else { await executeUnaryRpc(eff) }
             await sendEvent(PBCoreEvent.with { $0.securityRpcResult = res })
         }
     }
@@ -169,7 +158,7 @@ public final class SecurityExecutor: @unchecked Sendable {
     private func executeUnaryRpc(_ eff: PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent {
         var out = PBSecurityRpcResultEvent()
         out.opID = eff.opID
-        guard let path = Self.rpcPath(for: eff.method) else {
+        guard let path = Self.rpcPaths[eff.method] else {
             out.connectCode = Int32(Code.unimplemented.rawValue)
             out.error = "unknown rpc method: \(eff.method.rawValue)"
             return out
@@ -294,36 +283,42 @@ public final class SecurityExecutor: @unchecked Sendable {
         }
     }
 
-    private static func rpcPath(for method: PBSecurityRpcMethod) -> String? {
-        switch method {
-        case .getSecurityStates: return "/remoteagent.v1.ClientService/GetSecurityStates"
-        case .putSecurityState: return "/remoteagent.v1.ClientService/PutSecurityState"
-        case .pinSecurityDomain: return "/remoteagent.v1.ClientService/PinSecurityDomain"
-        case .createPairing: return "/remoteagent.v1.PairingService/CreatePairing"
-        case .peekPairing: return "/remoteagent.v1.PairingService/PeekPairing"
-        case .joinPairing: return "/remoteagent.v1.PairingService/JoinPairing"
-        case .revealPairing: return "/remoteagent.v1.PairingService/RevealPairing"
-        case .approvePairing: return "/remoteagent.v1.PairingService/ApprovePairing"
-        case .getPairing: return "/remoteagent.v1.PairingService/GetPairing"
-        case .cancelPairing: return "/remoteagent.v1.PairingService/CancelPairing"
-        case .getRecoveryChallenge: return "/remoteagent.v1.RecoveryService/GetRecoveryChallenge"
-        case .getRecoveryContext: return "/remoteagent.v1.RecoveryService/GetRecoveryContext"
-        case .submitRecovery: return "/remoteagent.v1.RecoveryService/SubmitRecovery"
-        case .completeRecovery: return "/remoteagent.v1.RecoveryService/CompleteRecovery"
-        case .deleteMachineRecords: return "/remoteagent.v1.ClientService/DeleteMachineRecords"
-        case .deleteAccount: return "/remoteagent.v1.ClientService/DeleteAccount"
-        case .getChallenge: return "/remoteagent.v1.AuthService/GetChallenge"
-        case .login: return "/remoteagent.v1.AuthService/Login"
-        case .getSignupChallenge: return "/remoteagent.v1.AuthService/GetSignupChallenge"
-        case .registerDevice: return "/remoteagent.v1.AuthService/RegisterDevice"
-        case .putDeviceMeta: return "/remoteagent.v1.ClientService/PutDeviceMeta"
-        case .listDevices: return "/remoteagent.v1.ClientService/ListDevices"
-        case .listMachines: return "/remoteagent.v1.ClientService/ListMachines"
-        case .getAccountPrefs: return "/remoteagent.v1.ClientService/GetAccountPrefs"
-        case .putAccountPrefs: return "/remoteagent.v1.ClientService/PutAccountPrefs"
-        default: return nil
-        }
-    }
+    private static let rpcPaths: [PBSecurityRpcMethod: String] = [
+        .getSecurityStates: "/remoteagent.v1.ClientService/GetSecurityStates",
+        .putSecurityState: "/remoteagent.v1.ClientService/PutSecurityState",
+        .pinSecurityDomain: "/remoteagent.v1.ClientService/PinSecurityDomain",
+        .createPairing: "/remoteagent.v1.PairingService/CreatePairing",
+        .peekPairing: "/remoteagent.v1.PairingService/PeekPairing",
+        .joinPairing: "/remoteagent.v1.PairingService/JoinPairing",
+        .revealPairing: "/remoteagent.v1.PairingService/RevealPairing",
+        .approvePairing: "/remoteagent.v1.PairingService/ApprovePairing",
+        .getPairing: "/remoteagent.v1.PairingService/GetPairing",
+        .cancelPairing: "/remoteagent.v1.PairingService/CancelPairing",
+        .getRecoveryChallenge: "/remoteagent.v1.RecoveryService/GetRecoveryChallenge",
+        .getRecoveryContext: "/remoteagent.v1.RecoveryService/GetRecoveryContext",
+        .submitRecovery: "/remoteagent.v1.RecoveryService/SubmitRecovery",
+        .completeRecovery: "/remoteagent.v1.RecoveryService/CompleteRecovery",
+        .deleteMachineRecords: "/remoteagent.v1.ClientService/DeleteMachineRecords",
+        .deleteAccount: "/remoteagent.v1.ClientService/DeleteAccount",
+        .getChallenge: "/remoteagent.v1.AuthService/GetChallenge",
+        .login: "/remoteagent.v1.AuthService/Login",
+        .getSignupChallenge: "/remoteagent.v1.AuthService/GetSignupChallenge",
+        .registerDevice: "/remoteagent.v1.AuthService/RegisterDevice",
+        .putDeviceMeta: "/remoteagent.v1.ClientService/PutDeviceMeta",
+        .listDevices: "/remoteagent.v1.ClientService/ListDevices",
+        .listMachines: "/remoteagent.v1.ClientService/ListMachines",
+        .getAccountPrefs: "/remoteagent.v1.ClientService/GetAccountPrefs",
+        .putAccountPrefs: "/remoteagent.v1.ClientService/PutAccountPrefs",
+    ]
+
+    private static let connectCodes: [String: Code] = [
+        "canceled": .canceled, "unknown": .unknown, "invalid_argument": .invalidArgument,
+        "deadline_exceeded": .deadlineExceeded, "not_found": .notFound, "already_exists": .alreadyExists,
+        "permission_denied": .permissionDenied, "resource_exhausted": .resourceExhausted,
+        "failed_precondition": .failedPrecondition, "aborted": .aborted, "out_of_range": .outOfRange,
+        "unimplemented": .unimplemented, "internal": .internalError, "unavailable": .unavailable,
+        "data_loss": .dataLoss, "unauthenticated": .unauthenticated,
+    ]
 
     private static func parseConnectErrorBody(_ data: Data?, fallbackCode: Code) -> (code: Code, message: String) {
         let fallback = "HTTP error (\(fallbackCode.name))"
@@ -333,31 +328,9 @@ public final class SecurityExecutor: @unchecked Sendable {
             return (fallbackCode, fallback)
         }
         let codeStr = (json["code"] as? String)?.lowercased()
-        let mapped = codeStr.flatMap(connectCode(named:)) ?? fallbackCode
+        let mapped = codeStr.flatMap { connectCodes[$0] } ?? fallbackCode
         let msg = (json["message"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? fallback
         return (mapped, msg)
-    }
-
-    private static func connectCode(named name: String) -> Code? {
-        switch name {
-        case "canceled": return .canceled
-        case "unknown": return .unknown
-        case "invalid_argument": return .invalidArgument
-        case "deadline_exceeded": return .deadlineExceeded
-        case "not_found": return .notFound
-        case "already_exists": return .alreadyExists
-        case "permission_denied": return .permissionDenied
-        case "resource_exhausted": return .resourceExhausted
-        case "failed_precondition": return .failedPrecondition
-        case "aborted": return .aborted
-        case "out_of_range": return .outOfRange
-        case "unimplemented": return .unimplemented
-        case "internal": return .internalError
-        case "unavailable": return .unavailable
-        case "data_loss": return .dataLoss
-        case "unauthenticated": return .unauthenticated
-        default: return nil
-        }
     }
 }
 

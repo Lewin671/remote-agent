@@ -283,6 +283,19 @@ internal fun JoinContent(
         }
     }
 
+    fun finishRegistrationError(e: Exception) {
+        error = if (registering) {
+            copy(UiMessages.securityAndroidCannotConfirmWhetherThisPhoneJoinedValue1CheckTheClient(displayError(e)))
+        } else if (!stopped) {
+            displayError(e)
+        } else {
+            error
+        }
+        registering = false
+        activePairingId = null
+        step = JoinStep.Form
+    }
+
     fun resumeRegistration() {
         error = ""
         stopped = false
@@ -301,18 +314,7 @@ internal fun JoinContent(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (registering) {
-                    error = copy(
-                        UiMessages.securityAndroidCannotConfirmWhetherThisPhoneJoinedValue1CheckTheClient(
-                            displayError(e),
-                        ),
-                    )
-                } else if (!stopped) {
-                    error = displayError(e)
-                }
-                registering = false
-                activePairingId = null
-                step = JoinStep.Form
+                finishRegistrationError(e)
             }
         }
     }
@@ -328,18 +330,7 @@ internal fun JoinContent(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (registering) {
-                    error = copy(
-                        UiMessages.securityAndroidCannotConfirmWhetherThisPhoneJoinedValue1CheckTheClient(
-                            displayError(e),
-                        ),
-                    )
-                } else if (!stopped) {
-                    error = displayError(e)
-                }
-                registering = false
-                activePairingId = null
-                step = JoinStep.Form
+                finishRegistrationError(e)
             }
         }
     }

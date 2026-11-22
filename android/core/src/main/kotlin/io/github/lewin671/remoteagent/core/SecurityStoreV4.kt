@@ -44,6 +44,21 @@ interface SecurityStoreV4 {
     fun clearMemoryCache() {}
 }
 
+interface SecurityStoreV4Proxy : SecurityStoreV4 {
+    val securityCore: SecurityStoreV4Core
+    override fun generateKey(kind: SecurityKeyKind, slot: String, persist: Boolean): ByteArray = securityCore.generateKey(kind, slot, persist)
+    override fun signKey(kind: SecurityKeyKind, slot: String, message: ByteArray): ByteArray = securityCore.signKey(kind, slot, message)
+    override fun agreeKey(kind: SecurityKeyKind, slot: String, peerPublic: ByteArray): ByteArray = securityCore.agreeKey(kind, slot, peerPublic)
+    override fun encapsulate(recipients: List<SecurityEncapsulateRecipient>): List<SecurityEncapsulatedPair> = securityCore.encapsulate(recipients)
+    override fun discardKey(kind: SecurityKeyKind, slot: String) = securityCore.discardKey(kind, slot)
+    override fun executeStorage(effect: SecurityStorageEffect): SecurityStorageResultEvent = securityCore.executeStorage(effect)
+    override fun loadLoginToken(server: String, deviceId: String): LoginToken? = securityCore.loadLoginToken(server, deviceId)
+    override fun saveLoginToken(server: String, deviceId: String, token: LoginToken) = securityCore.saveLoginToken(server, deviceId, token)
+    override fun clearLoginToken(server: String, deviceId: String) = securityCore.clearLoginToken(server, deviceId)
+    override fun readNotifyBlob(): ByteArray? = securityCore.readNotifyBlob()
+    override fun dismissUpgradeNotice() = securityCore.dismissUpgradeNotice()
+}
+
 data class SecurityStoreKeyId(val kindNum: Int, val slot: String)
 
 data class SecurityStoreBucketId(val bucketNum: Int, val key: String)
@@ -98,28 +113,20 @@ class SecurityStoreV4Core(
             else -> persist
         }
 
-    private fun generateRawEd25519(): SecurityStoreStoredKey {
-        while (true) {
-            val seed = randomBytes(KEY_SIZE)
-            val pub = runCatching { Corebind.ed25519PublicKey(seed) }.getOrNull() ?: continue
-            return SecurityStoreStoredKey(seed, pub)
-        }
-    }
-
-    private fun generateRawX25519(): SecurityStoreStoredKey {
+    private inline fun generateRawKey(derivePub: (ByteArray) -> ByteArray): SecurityStoreStoredKey {
         while (true) {
             val priv = randomBytes(KEY_SIZE)
-            val pub = runCatching { Corebind.x25519PublicKey(priv) }.getOrNull() ?: continue
+            val pub = runCatching { derivePub(priv) }.getOrNull() ?: continue
             return SecurityStoreStoredKey(priv, pub)
         }
     }
 
     private fun generatePairForKind(kind: SecurityKeyKind): SecurityStoreStoredKey = when (kind) {
         SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED,
-        SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED -> generateRawEd25519()
+        SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED -> generateRawKey(Corebind::ed25519PublicKey)
         SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X,
         SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X,
-        SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X -> generateRawX25519()
+        SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X -> generateRawKey(Corebind::x25519PublicKey)
         else -> throw IllegalArgumentException("unsupported key kind: $kind")
     }
 
@@ -164,7 +171,7 @@ class SecurityStoreV4Core(
         recipients.map { r ->
             val peerPub = r.xPublic.toByteArray()
             require(peerPub.size == KEY_SIZE) { "invalid recipient x25519 public key" }
-            val eph = generateRawX25519()
+            val eph = generateRawKey(Corebind::x25519PublicKey)
             val dh = Corebind.x25519Shared(eph.privateKey, peerPub)
             SecurityEncapsulatedPair.newBuilder()
                 .setMemberId(r.memberId)
@@ -197,225 +204,193 @@ class SecurityStoreV4Core(
         return this
     }
 
+    private fun isCasConflict(
+        cur: SecurityStoreStoredBucket?,
+        createOnly: Boolean,
+        expectedRevision: String,
+        remove: Boolean = false,
+    ): Boolean = if (remove) {
+        expectedRevision.isNotEmpty() && cur != null && cur.revision != expectedRevision
+    } else {
+        (createOnly && cur != null) ||
+            (expectedRevision.isNotEmpty() && (cur == null || cur.revision != expectedRevision))
+    }
+
+    private fun resolvePromoteKey(
+        kind: SecurityKeyKind,
+        slot: String,
+        keys: Map<SecurityStoreKeyId, SecurityStoreStoredKey>,
+    ): Pair<SecurityStoreKeyId, SecurityStoreStoredKey>? {
+        val id = SecurityStoreKeyId(kind.number, slot)
+        return (ephemeralKeys[id] ?: keys[id])?.let { id to it }
+    }
+
     override fun executeStorage(effect: SecurityStorageEffect): SecurityStorageResultEvent =
         try {
             backend.transaction {
                 val out = SecurityStorageResultEvent.newBuilder().setOpId(effect.opId)
                 when (effect.op) {
-                SecurityStorageOp.SECURITY_STORAGE_OP_CLEAR_ALL -> {
-                    ephemeralKeys.clear()
-                    backend.clearAll()
-                    out.build()
-                }
-                SecurityStorageOp.SECURITY_STORAGE_OP_READ -> {
-                    val buckets = backend.readBuckets()
-                    val keys = backend.readKeys()
-                    val row = buckets[SecurityStoreBucketId(effect.bucket.number, effect.key)]
-                    if (row != null) {
-                        out.setFound(true)
-                            .setRevision(row.revision)
-                            .setData(ByteString.copyFrom(row.data))
+                    SecurityStorageOp.SECURITY_STORAGE_OP_CLEAR_ALL -> {
+                        ephemeralKeys.clear()
+                        backend.clearAll()
+                        out.build()
                     }
-                    out.populateIdentityPubs(keys).build()
-                }
-                SecurityStorageOp.SECURITY_STORAGE_OP_READ_BOOTSTRAP -> {
-                    val buckets = backend.readBuckets()
-                    val keys = backend.readKeys()
-                    val hasV4State = buckets.values.any { row ->
-                        row.data.isNotEmpty() && row.bucketNum in setOf(
-                            SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD.number,
-                            SecurityStoreBucket.SECURITY_STORE_BUCKET_OPERATION.number,
-                            SecurityStoreBucket.SECURITY_STORE_BUCKET_REGISTRATION_INTENT.number,
-                        )
-                    }
-                    val legacyCleared = if (!hasV4State) {
-                        backend.detectAndClearLegacy()
-                    } else {
-                        backend.clearUpgradeNotice()
-                        false
-                    }
-                    for (row in buckets.values) {
-                        val bEnum = SecurityStoreBucket.forNumber(row.bucketNum)
-                            ?: SecurityStoreBucket.SECURITY_STORE_BUCKET_UNSPECIFIED
-                        if (effect.bucket != SecurityStoreBucket.SECURITY_STORE_BUCKET_UNSPECIFIED &&
-                            bEnum != effect.bucket
-                        ) {
-                            continue
+                    SecurityStorageOp.SECURITY_STORAGE_OP_READ -> {
+                        val buckets = backend.readBuckets()
+                        val keys = backend.readKeys()
+                        buckets[SecurityStoreBucketId(effect.bucket.number, effect.key)]?.let { row ->
+                            out.setFound(true).setRevision(row.revision).setData(ByteString.copyFrom(row.data))
                         }
-                        out.addEntries(
-                            SecurityStorageEntry.newBuilder()
-                                .setBucket(bEnum)
-                                .setKey(row.key)
-                                .setRevision(row.revision)
-                                .setData(ByteString.copyFrom(row.data))
-                                .build(),
-                        )
+                        out.populateIdentityPubs(keys).build()
                     }
-                    out.setLegacyCleared(legacyCleared)
-                    out.populateIdentityPubs(keys).build()
-                }
-                SecurityStorageOp.SECURITY_STORAGE_OP_WRITE_CAS -> {
-                    val buckets = LinkedHashMap(backend.readBuckets())
-                    val keys = backend.readKeys()
-                    val id = SecurityStoreBucketId(effect.bucket.number, effect.key)
-                    val cur = buckets[id]
-                    val conflict =
-                        (effect.createOnly && cur != null) ||
-                            (effect.expectedRevision.isNotEmpty() && (cur == null || cur.revision != effect.expectedRevision))
-                    if (conflict) {
-                        out.setConflict(true).populateIdentityPubs(keys).build()
-                    } else {
-                        val dataBytes = effect.data.toByteArray()
-                        buckets[id] = SecurityStoreStoredBucket(effect.bucket.number, effect.key, effect.nextRevision, dataBytes)
-                        backend.writeBuckets(buckets)
-                        if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
-                            backend.writeNotifyBlob(dataBytes)
+                    SecurityStorageOp.SECURITY_STORAGE_OP_READ_BOOTSTRAP -> {
+                        val buckets = backend.readBuckets()
+                        val keys = backend.readKeys()
+                        val hasV4State = buckets.values.any { row ->
+                            row.data.isNotEmpty() && row.bucketNum in V4_STATE_BUCKET_NUMS
                         }
-                        if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD) {
+                        val legacyCleared = if (!hasV4State) backend.detectAndClearLegacy() else {
                             backend.clearUpgradeNotice()
+                            false
                         }
-                        out.setConflict(false)
-                            .setRevision(effect.nextRevision)
-                            .populateIdentityPubs(keys)
-                            .build()
-                    }
-                }
-                SecurityStorageOp.SECURITY_STORAGE_OP_DELETE_CAS -> {
-                    val buckets = LinkedHashMap(backend.readBuckets())
-                    val keys = backend.readKeys()
-                    val id = SecurityStoreBucketId(effect.bucket.number, effect.key)
-                    val cur = buckets[id]
-                    val conflict =
-                        effect.expectedRevision.isNotEmpty() && cur != null && cur.revision != effect.expectedRevision
-                    if (!conflict && buckets.remove(id) != null) {
-                        backend.writeBuckets(buckets)
-                        if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
-                            backend.deleteNotifyBlob()
+                        for (row in buckets.values) {
+                            val bEnum = SecurityStoreBucket.forNumber(row.bucketNum)
+                                ?: SecurityStoreBucket.SECURITY_STORE_BUCKET_UNSPECIFIED
+                            if (effect.bucket != SecurityStoreBucket.SECURITY_STORE_BUCKET_UNSPECIFIED && bEnum != effect.bucket) continue
+                            out.addEntries(
+                                SecurityStorageEntry.newBuilder()
+                                    .setBucket(bEnum).setKey(row.key).setRevision(row.revision)
+                                    .setData(ByteString.copyFrom(row.data)).build(),
+                            )
                         }
+                        out.setLegacyCleared(legacyCleared).populateIdentityPubs(keys).build()
                     }
-                    out.setConflict(conflict).populateIdentityPubs(keys).build()
-                }
-                SecurityStorageOp.SECURITY_STORAGE_OP_BATCH_COMMIT -> {
-                    val buckets = LinkedHashMap(backend.readBuckets())
-                    val keys = LinkedHashMap(backend.readKeys())
-                    for (w in effect.batchList) {
-                        val cur = buckets[SecurityStoreBucketId(w.bucket.number, w.key)]
-                        val mismatch = if (w.remove) {
-                            w.expectedRevision.isNotEmpty() && cur != null && cur.revision != w.expectedRevision
+                    SecurityStorageOp.SECURITY_STORAGE_OP_WRITE_CAS -> {
+                        val buckets = LinkedHashMap(backend.readBuckets())
+                        val keys = backend.readKeys()
+                        val id = SecurityStoreBucketId(effect.bucket.number, effect.key)
+                        if (isCasConflict(buckets[id], effect.createOnly, effect.expectedRevision)) {
+                            out.setConflict(true).populateIdentityPubs(keys).build()
                         } else {
-                            (w.createOnly && cur != null) ||
-                                (w.expectedRevision.isNotEmpty() && (cur == null || cur.revision != w.expectedRevision))
+                            val dataBytes = effect.data.toByteArray()
+                            buckets[id] = SecurityStoreStoredBucket(effect.bucket.number, effect.key, effect.nextRevision, dataBytes)
+                            backend.writeBuckets(buckets)
+                            if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) backend.writeNotifyBlob(dataBytes)
+                            if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD) backend.clearUpgradeNotice()
+                            out.setConflict(false).setRevision(effect.nextRevision).populateIdentityPubs(keys).build()
                         }
-                        if (mismatch) {
+                    }
+                    SecurityStorageOp.SECURITY_STORAGE_OP_DELETE_CAS -> {
+                        val buckets = LinkedHashMap(backend.readBuckets())
+                        val keys = backend.readKeys()
+                        val id = SecurityStoreBucketId(effect.bucket.number, effect.key)
+                        val conflict = isCasConflict(buckets[id], false, effect.expectedRevision, remove = true)
+                        if (!conflict && buckets.remove(id) != null) {
+                            backend.writeBuckets(buckets)
+                            if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) backend.deleteNotifyBlob()
+                        }
+                        out.setConflict(conflict).populateIdentityPubs(keys).build()
+                    }
+                    SecurityStorageOp.SECURITY_STORAGE_OP_BATCH_COMMIT -> {
+                        val buckets = LinkedHashMap(backend.readBuckets())
+                        val keys = LinkedHashMap(backend.readKeys())
+                        if (effect.batchList.any { w ->
+                                isCasConflict(buckets[SecurityStoreBucketId(w.bucket.number, w.key)], w.createOnly, w.expectedRevision, w.remove)
+                            }
+                        ) {
                             return@transaction out.setConflict(true).populateIdentityPubs(keys).build()
                         }
-                    }
-                    var promotedEdId: SecurityStoreKeyId? = null
-                    var promotedEd: SecurityStoreStoredKey? = null
-                    var promotedXId: SecurityStoreKeyId? = null
-                    var promotedX: SecurityStoreStoredKey? = null
-                    if (effect.promoteEdSlot.isNotEmpty()) {
-                        val candId = SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED.number, effect.promoteEdSlot)
-                        val ed = ephemeralKeys[candId] ?: keys[candId]
-                        if (ed == null) {
-                            return@transaction out.setError("missing promote ed slot")
-                                .populateIdentityPubs(keys)
-                                .build()
-                        }
-                        promotedEdId = candId
-                        promotedEd = ed
-                    }
-                    if (effect.promoteXSlot.isNotEmpty()) {
-                        val candId = SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X.number, effect.promoteXSlot)
-                        val x = ephemeralKeys[candId] ?: keys[candId]
-                        if (x == null) {
-                            return@transaction out.setError("missing promote x slot")
-                                .populateIdentityPubs(keys)
-                                .build()
-                        }
-                        promotedXId = candId
-                        promotedX = x
-                    }
+                        val promotedEd = if (effect.promoteEdSlot.isNotEmpty()) {
+                            resolvePromoteKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED, effect.promoteEdSlot, keys)
+                                ?: return@transaction out.setError("missing promote ed slot").populateIdentityPubs(keys).build()
+                        } else null
+                        val promotedX = if (effect.promoteXSlot.isNotEmpty()) {
+                            resolvePromoteKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X, effect.promoteXSlot, keys)
+                                ?: return@transaction out.setError("missing promote x slot").populateIdentityPubs(keys).build()
+                        } else null
 
-                    // Phase 1: persist promoted DEVICE_* keys BEFORE deleting candidate slots or committing buckets.
-                    var promoteDirty = false
-                    if (promotedEd != null) {
-                        keys[SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED.number, "")] = promotedEd
-                        promoteDirty = true
-                    }
-                    if (promotedX != null) {
-                        keys[SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X.number, "")] = promotedX
-                        promoteDirty = true
-                    }
-                    if (promoteDirty) backend.writeKeys(keys)
+                        // Phase 1: persist promoted DEVICE_* keys BEFORE deleting candidate slots or committing buckets.
+                        var promoteDirty = false
+                        if (promotedEd != null) {
+                            keys[SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED.number, "")] = promotedEd.second
+                            promoteDirty = true
+                        }
+                        if (promotedX != null) {
+                            keys[SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X.number, "")] = promotedX.second
+                            promoteDirty = true
+                        }
+                        if (promoteDirty) backend.writeKeys(keys)
 
-                    // Phase 2: commit buckets (record, clearing pendingOp / regIntent) while candidate slots remain intact.
-                    var bucketsDirty = false
-                    var notifyUpdate: ByteArray? = null
-                    var notifyDeleted = false
-                    var recordWritten = false
-                    for (w in effect.batchList) {
-                        val id = SecurityStoreBucketId(w.bucket.number, w.key)
-                        if (w.remove) {
-                            if (buckets.remove(id) != null) bucketsDirty = true
-                            if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
-                                notifyDeleted = true
-                                notifyUpdate = null
-                            }
-                        } else {
-                            val dataBytes = w.data.toByteArray()
-                            buckets[id] = SecurityStoreStoredBucket(w.bucket.number, w.key, w.nextRevision, dataBytes)
-                            bucketsDirty = true
-                            if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD) {
-                                recordWritten = true
-                            }
-                            if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
-                                notifyUpdate = dataBytes
-                                notifyDeleted = false
+                        // Phase 2: commit buckets (record, clearing pendingOp / regIntent) while candidate slots remain intact.
+                        var bucketsDirty = false
+                        var notifyUpdate: ByteArray? = null
+                        var notifyDeleted = false
+                        var recordWritten = false
+                        for (w in effect.batchList) {
+                            val id = SecurityStoreBucketId(w.bucket.number, w.key)
+                            if (w.remove) {
+                                if (buckets.remove(id) != null) bucketsDirty = true
+                                if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
+                                    notifyDeleted = true
+                                    notifyUpdate = null
+                                }
+                            } else {
+                                val dataBytes = w.data.toByteArray()
+                                buckets[id] = SecurityStoreStoredBucket(w.bucket.number, w.key, w.nextRevision, dataBytes)
+                                bucketsDirty = true
+                                if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD) recordWritten = true
+                                if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
+                                    notifyUpdate = dataBytes
+                                    notifyDeleted = false
+                                }
                             }
                         }
-                    }
-                    if (bucketsDirty) backend.writeBuckets(buckets)
-                    if (notifyUpdate != null) backend.writeNotifyBlob(notifyUpdate)
-                    else if (notifyDeleted) backend.deleteNotifyBlob()
-                    if (effect.clearLoginToken) backend.deleteLoginToken()
-                    if (recordWritten) backend.clearUpgradeNotice()
+                        if (bucketsDirty) backend.writeBuckets(buckets)
+                        if (notifyUpdate != null) backend.writeNotifyBlob(notifyUpdate)
+                        else if (notifyDeleted) backend.deleteNotifyBlob()
+                        if (effect.clearLoginToken) backend.deleteLoginToken()
+                        if (recordWritten) backend.clearUpgradeNotice()
 
-                    // Phase 3: best-effort post-commit cleanup of promoted candidates and discarded slots.
-                    var cleanupDirty = false
-                    if (promotedEdId != null) {
-                        ephemeralKeys.remove(promotedEdId)
-                        if (keys.remove(promotedEdId) != null) cleanupDirty = true
-                    }
-                    if (promotedXId != null) {
-                        ephemeralKeys.remove(promotedXId)
-                        if (keys.remove(promotedXId) != null) cleanupDirty = true
-                    }
-                    for (slot in effect.discardSlotsList) {
-                        for (kind in listOf(
-                            SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED,
-                            SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X,
-                            SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X,
-                        )) {
-                            val id = SecurityStoreKeyId(kind.number, slot)
-                            ephemeralKeys.remove(id)
-                            if (kind != SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X && keys.remove(id) != null) {
-                                cleanupDirty = true
+                        // Phase 3: best-effort post-commit cleanup of promoted candidates and discarded slots.
+                        var cleanupDirty = false
+                        listOfNotNull(promotedEd?.first, promotedX?.first).forEach { candId ->
+                            ephemeralKeys.remove(candId)
+                            if (keys.remove(candId) != null) cleanupDirty = true
+                        }
+                        for (slot in effect.discardSlotsList) {
+                            for (kind in CLEANUP_CANDIDATE_KINDS) {
+                                val id = SecurityStoreKeyId(kind.number, slot)
+                                ephemeralKeys.remove(id)
+                                if (kind != SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X && keys.remove(id) != null) {
+                                    cleanupDirty = true
+                                }
                             }
                         }
+                        if (cleanupDirty) runCatching { backend.writeKeys(keys) }
+                        out.setConflict(false).populateIdentityPubs(keys).build()
                     }
-                    if (cleanupDirty) runCatching { backend.writeKeys(keys) }
-                    out.setConflict(false).populateIdentityPubs(keys).build()
+                    else -> out.setError("unsupported storage op").build()
                 }
-                else -> out.setError("unsupported storage op").build()
             }
-        }
         } catch (e: Exception) {
             SecurityStorageResultEvent.newBuilder()
                 .setOpId(effect.opId)
                 .setError(e.message ?: e.javaClass.simpleName)
                 .build()
         }
+
+    companion object {
+        private val V4_STATE_BUCKET_NUMS = setOf(
+            SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD.number,
+            SecurityStoreBucket.SECURITY_STORE_BUCKET_OPERATION.number,
+            SecurityStoreBucket.SECURITY_STORE_BUCKET_REGISTRATION_INTENT.number,
+        )
+        private val CLEANUP_CANDIDATE_KINDS = listOf(
+            SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED,
+            SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X,
+            SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X,
+        )
+    }
 
     override fun loadLoginToken(server: String, deviceId: String): LoginToken? = onLoadLoginToken(server, deviceId)
 
@@ -433,7 +408,7 @@ class SecurityStoreV4Core(
 /** Pure-JVM in-memory v4 security store for tests and headless Remote instances. */
 class MemorySecurityStoreV4(
     private val onClearAll: (() -> Unit)? = null,
-) : SecurityStoreV4 {
+) : SecurityStoreV4Proxy {
     private val lock = Any()
     private val persistentKeys = LinkedHashMap<SecurityStoreKeyId, SecurityStoreStoredKey>()
     private val buckets = LinkedHashMap<SecurityStoreBucketId, SecurityStoreStoredBucket>()
@@ -441,21 +416,21 @@ class MemorySecurityStoreV4(
     private var upgradeNoticePending = false
     private var legacyPendingForTest = false
 
-    private val core = SecurityStoreV4Core(
+    override val securityCore = SecurityStoreV4Core(
         backend = object : SecurityStoreV4Backend {
             override fun <T> transaction(block: () -> T): T = synchronized(lock) { block() }
             override fun readBuckets() = buckets
-            override fun writeBuckets(next: Map<SecurityStoreBucketId, SecurityStoreStoredBucket>) {
-                if (next !== buckets) {
-                    buckets.clear()
-                    buckets.putAll(next)
+            override fun writeBuckets(buckets: Map<SecurityStoreBucketId, SecurityStoreStoredBucket>) {
+                if (buckets !== this@MemorySecurityStoreV4.buckets) {
+                    this@MemorySecurityStoreV4.buckets.clear()
+                    this@MemorySecurityStoreV4.buckets.putAll(buckets)
                 }
             }
             override fun readKeys() = persistentKeys
-            override fun writeKeys(next: Map<SecurityStoreKeyId, SecurityStoreStoredKey>) {
-                if (next !== persistentKeys) {
+            override fun writeKeys(keys: Map<SecurityStoreKeyId, SecurityStoreStoredKey>) {
+                if (keys !== persistentKeys) {
                     persistentKeys.clear()
-                    persistentKeys.putAll(next)
+                    persistentKeys.putAll(keys)
                 }
             }
             override fun readNotifyBlob(): ByteArray? =
@@ -526,16 +501,4 @@ class MemorySecurityStoreV4(
                 SecurityStoreStoredBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD.number, "notify", "rev-1", notifyBytes.copyOf())
         }
     }
-
-    override fun generateKey(kind: SecurityKeyKind, slot: String, persist: Boolean): ByteArray = core.generateKey(kind, slot, persist)
-    override fun signKey(kind: SecurityKeyKind, slot: String, message: ByteArray): ByteArray = core.signKey(kind, slot, message)
-    override fun agreeKey(kind: SecurityKeyKind, slot: String, peerPublic: ByteArray): ByteArray = core.agreeKey(kind, slot, peerPublic)
-    override fun encapsulate(recipients: List<SecurityEncapsulateRecipient>): List<SecurityEncapsulatedPair> = core.encapsulate(recipients)
-    override fun discardKey(kind: SecurityKeyKind, slot: String) = core.discardKey(kind, slot)
-    override fun executeStorage(effect: SecurityStorageEffect): SecurityStorageResultEvent = core.executeStorage(effect)
-    override fun loadLoginToken(server: String, deviceId: String): LoginToken? = core.loadLoginToken(server, deviceId)
-    override fun saveLoginToken(server: String, deviceId: String, token: LoginToken) = core.saveLoginToken(server, deviceId, token)
-    override fun clearLoginToken(server: String, deviceId: String) = core.clearLoginToken(server, deviceId)
-    override fun readNotifyBlob(): ByteArray? = core.readNotifyBlob()
-    override fun dismissUpgradeNotice() = core.dismissUpgradeNotice()
 }

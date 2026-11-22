@@ -10,6 +10,7 @@ import com.connectrpc.http.UnaryHTTPRequest
 import com.google.protobuf.ByteString
 import io.ktor.http.Url
 import okio.Buffer
+import io.github.lewin671.remoteagent.core.proto.Effect
 import io.github.lewin671.remoteagent.core.proto.EffectBatch
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect
@@ -150,148 +151,116 @@ internal class SecurityExecutor(
     }
 
     private fun emitIfOpen(block: CoreEvent.Builder.() -> Unit) {
-        if (closed.get()) return
-        emit(CoreEvent.newBuilder().apply(block).build())
+        if (!closed.get()) emit(CoreEvent.newBuilder().apply(block).build())
     }
 
-    fun keyGenerate(eff: SecurityKeyGenerateEffect) {
+    private inline fun <T> launchOp(
+        crossinline onErr: (String) -> T,
+        crossinline emitBlock: CoreEvent.Builder.(T) -> Unit,
+        crossinline block: suspend () -> T,
+    ) {
         if (closed.get()) return
         scope.launch {
             val ev = try {
-                val pub = store.generateKey(eff.keyKind, eff.slot, eff.persist)
-                SecurityKeyGeneratedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setPublicKey(ByteString.copyFrom(pub))
-                    .build()
+                block()
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                SecurityKeyGeneratedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setError(errorMessage(t))
-                    .build()
+                onErr(errorMessage(t))
             }
-            emitIfOpen { setSecurityKeyGenerated(ev) }
+            emitIfOpen { emitBlock(ev) }
         }
     }
 
-    fun keySign(eff: SecurityKeySignEffect) {
-        if (closed.get()) return
-        scope.launch {
-            val ev = try {
-                val msg = eff.message.toByteArray()
-                if (msg.isEmpty()) throw IllegalArgumentException("empty message to sign")
-                val sig = store.signKey(eff.keyKind, eff.slot, msg)
-                SecurityKeySignedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setSignature(ByteString.copyFrom(sig))
-                    .build()
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
-                SecurityKeySignedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setError(errorMessage(t))
-                    .build()
+    fun handleEffect(eff: Effect): Boolean {
+        when (eff.effectCase) {
+            Effect.EffectCase.SECURITY_KEY_GENERATE -> launchOp(
+                { SecurityKeyGeneratedEvent.newBuilder().setOpId(eff.securityKeyGenerate.opId).setError(it).build() },
+                { setSecurityKeyGenerated(it) },
+            ) {
+                val e = eff.securityKeyGenerate
+                val pub = store.generateKey(e.keyKind, e.slot, e.persist)
+                SecurityKeyGeneratedEvent.newBuilder().setOpId(e.opId).setPublicKey(ByteString.copyFrom(pub)).build()
             }
-            emitIfOpen { setSecurityKeySigned(ev) }
+            Effect.EffectCase.SECURITY_KEY_SIGN -> launchOp(
+                { SecurityKeySignedEvent.newBuilder().setOpId(eff.securityKeySign.opId).setError(it).build() },
+                { setSecurityKeySigned(it) },
+            ) {
+                val e = eff.securityKeySign
+                val msg = e.message.toByteArray()
+                require(msg.isNotEmpty()) { "empty message to sign" }
+                val sig = store.signKey(e.keyKind, e.slot, msg)
+                SecurityKeySignedEvent.newBuilder().setOpId(e.opId).setSignature(ByteString.copyFrom(sig)).build()
+            }
+            Effect.EffectCase.SECURITY_KEY_AGREE -> launchOp(
+                { SecurityKeyAgreedEvent.newBuilder().setOpId(eff.securityKeyAgree.opId).setError(it).build() },
+                { setSecurityKeyAgreed(it) },
+            ) {
+                val e = eff.securityKeyAgree
+                val shared = store.agreeKey(e.keyKind, e.slot, e.peerPublic.toByteArray())
+                SecurityKeyAgreedEvent.newBuilder().setOpId(e.opId).setShared(ByteString.copyFrom(shared)).build()
+            }
+            Effect.EffectCase.SECURITY_KEY_ENCAPSULATE -> launchOp(
+                { SecurityKeyEncapsulatedEvent.newBuilder().setOpId(eff.securityKeyEncapsulate.opId).setError(it).build() },
+                { setSecurityKeyEncapsulated(it) },
+            ) {
+                val e = eff.securityKeyEncapsulate
+                SecurityKeyEncapsulatedEvent.newBuilder().setOpId(e.opId).addAllPairs(store.encapsulate(e.recipientsList)).build()
+            }
+            Effect.EffectCase.SECURITY_KEY_DISCARD -> if (!closed.get()) {
+                val e = eff.securityKeyDiscard
+                scope.launch { runCatching { store.discardKey(e.keyKind, e.slot) } }
+            }
+            Effect.EffectCase.SECURITY_STORAGE -> launchOp(
+                { SecurityStorageResultEvent.newBuilder().setOpId(eff.securityStorage.opId).setError(it).build() },
+                { setSecurityStorageResult(it) },
+            ) { store.executeStorage(eff.securityStorage) }
+            Effect.EffectCase.SECURITY_RPC -> launchOp(
+                { rpcErr(eff.securityRpc.opId, 2, it) },
+                { setSecurityRpcResult(it) },
+            ) { executeRpcUnary(eff.securityRpc) }
+            else -> return false
         }
+        return true
     }
 
-    fun keyAgree(eff: SecurityKeyAgreeEffect) {
-        if (closed.get()) return
-        scope.launch {
-            val ev = try {
-                val shared = store.agreeKey(eff.keyKind, eff.slot, eff.peerPublic.toByteArray())
-                SecurityKeyAgreedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setShared(ByteString.copyFrom(shared))
-                    .build()
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
-                SecurityKeyAgreedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setError(errorMessage(t))
-                    .build()
-            }
-            emitIfOpen { setSecurityKeyAgreed(ev) }
-        }
-    }
+    private fun rpcOk(opId: Long, bodyBytes: ByteArray): SecurityRpcResultEvent =
+        SecurityRpcResultEvent.newBuilder().setOpId(opId).setResponseBytes(ByteString.copyFrom(bodyBytes)).build()
 
-    fun keyEncapsulate(eff: SecurityKeyEncapsulateEffect) {
-        if (closed.get()) return
-        scope.launch {
-            val ev = try {
-                val pairs = store.encapsulate(eff.recipientsList)
-                SecurityKeyEncapsulatedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .addAllPairs(pairs)
-                    .build()
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
-                SecurityKeyEncapsulatedEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setError(errorMessage(t))
-                    .build()
-            }
-            emitIfOpen { setSecurityKeyEncapsulated(ev) }
-        }
-    }
+    private fun rpcErr(opId: Long, code: Int, msg: String, networkError: Boolean = false): SecurityRpcResultEvent =
+        SecurityRpcResultEvent.newBuilder()
+            .setOpId(opId)
+            .setConnectCode(code)
+            .setError(msg)
+            .apply { if (networkError) setNetworkError(true) }
+            .build()
 
-    fun keyDiscard(eff: SecurityKeyDiscardEffect) {
-        if (closed.get()) return
-        scope.launch {
-            runCatching { store.discardKey(eff.keyKind, eff.slot) }
+    private fun parseRpcError(
+        opId: Long,
+        httpCode: Int,
+        bodyBytes: ByteArray,
+        causeCode: Int? = null,
+        causeMsg: String? = null,
+    ): SecurityRpcResultEvent {
+        var code = causeCode ?: connectCodeFromHttpStatus(httpCode)
+        var msg = causeMsg?.takeIf { it.isNotEmpty() } ?: "HTTP $httpCode"
+        val text = runCatching { bodyBytes.decodeToString() }.getOrNull()
+        val parsed = if (!text.isNullOrBlank()) runCatching { Json.parseToJsonElement(text) as? JsonObject }.getOrNull() else null
+        if (parsed != null) {
+            parsed["code"]?.jsonPrimitive?.contentOrNull?.let { CONNECT_CODE_MAP[it]?.let { c -> code = c } }
+            parsed["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotEmpty() }?.let { msg = it }
         }
-    }
-
-    fun storage(eff: SecurityStorageEffect) {
-        if (closed.get()) return
-        scope.launch {
-            val res = try {
-                store.executeStorage(eff)
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
-                SecurityStorageResultEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setError(errorMessage(t))
-                    .build()
-            }
-            emitIfOpen { setSecurityStorageResult(res) }
-        }
-    }
-
-    fun rpc(eff: SecurityRpcEffect) {
-        if (closed.get()) return
-        scope.launch {
-            val res = try {
-                executeRpcUnary(eff)
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
-                SecurityRpcResultEvent.newBuilder()
-                    .setOpId(eff.opId)
-                    .setConnectCode(2)
-                    .setError(errorMessage(t))
-                    .build()
-            }
-            emitIfOpen { setSecurityRpcResult(res) }
-        }
+        return rpcErr(opId, code, msg)
     }
 
     private suspend fun executeRpcUnary(eff: SecurityRpcEffect): SecurityRpcResultEvent {
         val path = SECURITY_RPC_PATHS[eff.method]
-            ?: return SecurityRpcResultEvent.newBuilder()
-                .setOpId(eff.opId)
-                .setConnectCode(12)
-                .setError("unknown rpc method: ${eff.method.number}")
-                .build()
-        val server = Secret.checkServer(eff.server, allowPlainHttp = allowPlainHttp)
-        val url = server.trimEnd('/') + path
+            ?: return rpcErr(eff.opId, 12, "unknown rpc method: ${eff.method.number}")
+        val url = Secret.checkServer(eff.server, allowPlainHttp = allowPlainHttp).trimEnd('/') + path
         if (rpcTransport != null) {
             val headers = buildMap<String, List<String>> {
                 put("Content-Type", listOf("application/proto"))
                 put("Connect-Protocol-Version", listOf("1"))
-                if (eff.authToken.isNotEmpty()) {
-                    put("Authorization", listOf("Bearer ${eff.authToken}"))
-                }
+                if (eff.authToken.isNotEmpty()) put("Authorization", listOf("Bearer ${eff.authToken}"))
             }
             val unaryReq = UnaryHTTPRequest(
                 url = Url(url),
@@ -314,100 +283,36 @@ internal class SecurityExecutor(
                     val cause = res.cause
                     val status = res.status
                     val result = when {
-                        status != null && status in 200..299 && cause == null ->
-                            SecurityRpcResultEvent.newBuilder()
-                                .setOpId(eff.opId)
-                                .setResponseBytes(ByteString.copyFrom(bodyBytes))
-                                .build()
+                        status != null && status in 200..299 && cause == null -> rpcOk(eff.opId, bodyBytes)
                         cause != null && status == null ->
-                            SecurityRpcResultEvent.newBuilder()
-                                .setOpId(eff.opId)
-                                .setConnectCode(cause.code.value)
-                                .setError(cause.message ?: cause.code.codeName)
-                                .setNetworkError(cause.code == Code.UNAVAILABLE)
-                                .build()
-                        else -> {
-                            val httpCode = status ?: 502
-                            var code = cause?.code?.value ?: connectCodeFromHttpStatus(httpCode)
-                            var msg = cause?.message?.takeIf { it.isNotEmpty() } ?: "HTTP $httpCode"
-                            val text = runCatching { bodyBytes.decodeToString() }.getOrNull()
-                            if (!text.isNullOrBlank()) {
-                                val parsed = runCatching { Json.parseToJsonElement(text) as? JsonObject }.getOrNull()
-                                if (parsed != null) {
-                                    parsed["code"]?.jsonPrimitive?.contentOrNull?.let { codeStr ->
-                                        CONNECT_CODE_MAP[codeStr]?.let { code = it }
-                                    }
-                                    parsed["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
-                                        msg = it
-                                    }
-                                }
-                            }
-                            SecurityRpcResultEvent.newBuilder()
-                                .setOpId(eff.opId)
-                                .setConnectCode(code)
-                                .setError(msg)
-                                .build()
-                        }
+                            rpcErr(eff.opId, cause.code.value, cause.message ?: cause.code.codeName, cause.code == Code.UNAVAILABLE)
+                        else -> parseRpcError(eff.opId, status ?: 502, bodyBytes, cause?.code?.value, cause?.message)
                     }
                     if (cont.isActive) cont.resume(result)
                 }
                 cont.invokeOnCancellation { cancel() }
             }
         }
-        val reqBuilder = Request.Builder()
+        val req = Request.Builder()
             .url(url)
             .header("Content-Type", "application/proto")
             .header("Connect-Protocol-Version", "1")
+            .apply { if (eff.authToken.isNotEmpty()) header("Authorization", "Bearer ${eff.authToken}") }
             .post(eff.requestBytes.toByteArray().toRequestBody(PROTO_MEDIA_TYPE))
-        if (eff.authToken.isNotEmpty()) {
-            reqBuilder.header("Authorization", "Bearer ${eff.authToken}")
-        }
-        val req = reqBuilder.build()
+            .build()
         return suspendCancellableCoroutine { cont ->
             val call = rpcHttp.newCall(req)
             cont.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    if (!cont.isActive) return
-                    cont.resume(
-                        SecurityRpcResultEvent.newBuilder()
-                            .setOpId(eff.opId)
-                            .setConnectCode(14)
-                            .setError(errorMessage(e))
-                            .setNetworkError(true)
-                            .build(),
-                    )
+                    if (cont.isActive) cont.resume(rpcErr(eff.opId, 14, errorMessage(e), networkError = true))
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     val result = response.use { res ->
                         val bodyBytes = res.body?.bytes() ?: ByteArray(0)
-                        if (res.isSuccessful) {
-                            SecurityRpcResultEvent.newBuilder()
-                                .setOpId(eff.opId)
-                                .setResponseBytes(ByteString.copyFrom(bodyBytes))
-                                .build()
-                        } else {
-                            var code = connectCodeFromHttpStatus(res.code)
-                            var msg = res.message.ifEmpty { "HTTP ${res.code}" }
-                            val text = runCatching { bodyBytes.decodeToString() }.getOrNull()
-                            if (!text.isNullOrBlank()) {
-                                val parsed = runCatching { Json.parseToJsonElement(text) as? JsonObject }.getOrNull()
-                                if (parsed != null) {
-                                    parsed["code"]?.jsonPrimitive?.contentOrNull?.let { codeStr ->
-                                        CONNECT_CODE_MAP[codeStr]?.let { code = it }
-                                    }
-                                    parsed["message"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotEmpty() }?.let {
-                                        msg = it
-                                    }
-                                }
-                            }
-                            SecurityRpcResultEvent.newBuilder()
-                                .setOpId(eff.opId)
-                                .setConnectCode(code)
-                                .setError(msg)
-                                .build()
-                        }
+                        if (res.isSuccessful) rpcOk(eff.opId, bodyBytes)
+                        else parseRpcError(eff.opId, res.code, bodyBytes, causeMsg = res.message)
                     }
                     if (cont.isActive) cont.resume(result)
                 }
