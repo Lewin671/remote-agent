@@ -734,14 +734,14 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 	needReconcile := hasSchedContext || len(settledRefreshMachines) > 0 || configUpdated ||
 		ss.Detail != nil || ss.ActiveFormKey != ""
 	if needReconcile {
-		syncRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-			for _, mid := range settledRefreshMachines {
-				if snap := ss.Machines[mid]; snap != nil {
-					snap.PendingRefresh = true
-				}
+		syncPrev, syncCtx := c.m.sync.BeginStep()
+		for _, mid := range settledRefreshMachines {
+			if snap := ss.Machines[mid]; snap != nil {
+				snap.PendingRefresh = true
 			}
-			c.reconcileSchedules(ctx, effects)
-		})
+		}
+		c.reconcileSchedules(syncCtx, effects)
+		syncRes := c.m.sync.EndStep(syncPrev, syncCtx)
 		*effects = append(*effects, syncRes.Effects...)
 	}
 }

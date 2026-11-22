@@ -151,11 +151,12 @@ func TestReachableClosureAndPruning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cyclic := computeCyclicSubEdges(plugin.Files, reach)
 	for _, f := range plugin.Files {
 		if !f.Generate || !fileHasReachable(f, reach) {
 			continue
 		}
-		generateFile(plugin, f, reach)
+		generateFile(plugin, f, reach, cyclic)
 	}
 	resp := plugin.Response()
 	if resp.Error != nil {
@@ -182,7 +183,6 @@ func TestReachableClosureAndPruning(t *testing.T) {
 		"type CoreReferenced struct",
 		"func (m *CoreReferenced) Unmarshal(",
 		"type CoreShared struct",
-		"func (m *CoreShared) Size() int",
 		"func (m *CoreShared) Marshal()",
 		"func (m *CoreShared) Unmarshal(",
 		"type EntryRoot struct",
@@ -199,11 +199,9 @@ func TestReachableClosureAndPruning(t *testing.T) {
 		"DeadMessage",
 		"OnlyServerRpc",
 		"Reset()",
-		"func (m *CoreReferenced) Size()",
 		"func (m *CoreReferenced) Marshal()",
 		"func (m *CoreReferenced) Clone()",
 		"func (m *CoreShared) Clone()",
-		"func (m *EntryRoot) Size()",
 		"func (m *EntryRoot) Marshal()",
 		"func (m *EntryRoot) Unmarshal(",
 	} {
@@ -213,7 +211,6 @@ func TestReachableClosureAndPruning(t *testing.T) {
 	}
 	for _, want := range []string{
 		"func (m *CoreEvent) Unmarshal(",
-		"func (m *CoreView) Size() int",
 		"func (m *CoreView) Marshal()",
 	} {
 		if !strings.Contains(appGo, want) {
@@ -222,7 +219,6 @@ func TestReachableClosureAndPruning(t *testing.T) {
 	}
 	for _, unwanted := range []string{
 		"Reset()",
-		"func (m *CoreEvent) Size()",
 		"func (m *CoreEvent) Marshal()",
 		"func (m *CoreEvent) Clone()",
 		"func (m *CoreView) Unmarshal(",
@@ -231,6 +227,9 @@ func TestReachableClosureAndPruning(t *testing.T) {
 		if strings.Contains(appGo, unwanted) {
 			t.Fatalf("app.pb.go should not contain %q", unwanted)
 		}
+	}
+	if strings.Contains(wireGo, ".Size()") || strings.Contains(appGo, ".Size()") {
+		t.Fatal("Size() should not be generated")
 	}
 }
 
@@ -291,9 +290,10 @@ func TestStrictUnknownFieldDetection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cyclic := computeCyclicSubEdges(plugin.Files, reach)
 	for _, f := range plugin.Files {
 		if f.Generate && fileHasReachable(f, reach) {
-			generateFile(plugin, f, reach)
+			generateFile(plugin, f, reach, cyclic)
 		}
 	}
 	resp := plugin.Response()
@@ -305,9 +305,10 @@ func TestStrictUnknownFieldDetection(t *testing.T) {
 		"hasUnknown bool",
 		"func (m *StrictChild) HasUnknown() bool",
 		"func (m *StrictParent) HasUnknown() bool",
-		"m.hasUnknown = true",
-		"if m.Child.HasUnknown() {",
-		"if elem.HasUnknown() {",
+		"Strict:        true,",
+		"HasUnknownOff: unsafe.Offsetof(StrictParent{}.hasUnknown)",
+		"HasUnknownOff: unsafe.Offsetof(StrictChild{}.hasUnknown)",
+		"ReadStrictMessage(&b, elem, &m.hasUnknown)",
 	} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("generated strict code missing %q\n%s", want, content)

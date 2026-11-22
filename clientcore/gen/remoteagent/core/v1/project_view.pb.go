@@ -5,6 +5,7 @@ package corev1
 
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
+	unsafe "unsafe"
 )
 
 type ProjectViewKind int32
@@ -16,6 +17,7 @@ const (
 )
 
 type HiddenProjectNoticeView struct {
+	_             [0]func()
 	Active        bool
 	Text          *Text
 	ActionEnabled bool
@@ -54,29 +56,26 @@ func (m *HiddenProjectNoticeView) GetError() *Text {
 	return nil
 }
 
-func (m *HiddenProjectNoticeView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_HiddenProjectNoticeView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HiddenProjectNoticeView{}.Active), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(HiddenProjectNoticeView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(HiddenProjectNoticeView{}.ActionEnabled), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(HiddenProjectNoticeView{}.Busy), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(HiddenProjectNoticeView{}.Error), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *HiddenProjectNoticeView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *HiddenProjectNoticeView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Active)
-	if m.Text != nil {
-		b = litewire.AppendMessage(b, 2, m.Text)
-	}
-	b = litewire.AppendBool(b, 3, m.ActionEnabled)
-	b = litewire.AppendBool(b, 4, m.Busy)
-	if m.Error != nil {
-		b = litewire.AppendMessage(b, 5, m.Error)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HiddenProjectNoticeView)
 }
 
 type ProjectDetailView struct {
+	_              [0]func()
 	Key            string
 	Name           *Text
 	ShortPath      string
@@ -248,70 +247,45 @@ func (m *ProjectDetailView) GetHasMoreEnded() bool {
 	return false
 }
 
-func (m *ProjectDetailView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ProjectDetailView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ProjectDetailView{}.Key), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ProjectDetailView{}.Name), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ProjectDetailView{}.ShortPath), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ProjectDetailView{}.Subtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(ProjectDetailView{}.MachineIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 6, Offset: unsafe.Offsetof(ProjectDetailView{}.MachineNames), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 7, Offset: unsafe.Offsetof(ProjectDetailView{}.AnyOnline), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ProjectDetailView{}.ActiveCount), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(ProjectDetailView{}.EndedTotal), Kind: litewire.KindInt32},
+		{Num: 10, Offset: unsafe.Offsetof(ProjectDetailView{}.Active), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionRowView},
+		{Num: 11, Offset: unsafe.Offsetof(ProjectDetailView{}.Ended), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_EndedRowView},
+		{Num: 12, Offset: unsafe.Offsetof(ProjectDetailView{}.CanLoadEarlier), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(ProjectDetailView{}.Tail), Kind: litewire.KindMessage, Sub: &LitewireDesc_TailRowView},
+		{Num: 14, Offset: unsafe.Offsetof(ProjectDetailView{}.EmptyNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(ProjectDetailView{}.IsHidden), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(ProjectDetailView{}.IsPinned), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(ProjectDetailView{}.HiddenNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_HiddenProjectNoticeView},
+		{Num: 18, Offset: unsafe.Offsetof(ProjectDetailView{}.SavingSettings), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(ProjectDetailView{}.SettingsError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 20, Offset: unsafe.Offsetof(ProjectDetailView{}.CanStart), Kind: litewire.KindBool},
+		{Num: 21, Offset: unsafe.Offsetof(ProjectDetailView{}.CanPin), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(ProjectDetailView{}.CanRemove), Kind: litewire.KindBool},
+		{Num: 23, Offset: unsafe.Offsetof(ProjectDetailView{}.SaveStatus), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 24, Offset: unsafe.Offsetof(ProjectDetailView{}.HasMoreEnded), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ProjectDetailView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectDetailView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Key)
-	if m.Name != nil {
-		b = litewire.AppendMessage(b, 2, m.Name)
-	}
-	b = litewire.AppendString(b, 3, m.ShortPath)
-	if m.Subtitle != nil {
-		b = litewire.AppendMessage(b, 4, m.Subtitle)
-	}
-	for _, v := range m.MachineIds {
-		b = litewire.AppendStringAlways(b, 5, v)
-	}
-	for _, v := range m.MachineNames {
-		b = litewire.AppendStringAlways(b, 6, v)
-	}
-	b = litewire.AppendBool(b, 7, m.AnyOnline)
-	b = litewire.AppendInt32(b, 8, int32(m.ActiveCount))
-	b = litewire.AppendInt32(b, 9, int32(m.EndedTotal))
-	for _, v := range m.Active {
-		if v != nil {
-			b = litewire.AppendMessage(b, 10, v)
-		}
-	}
-	for _, v := range m.Ended {
-		if v != nil {
-			b = litewire.AppendMessage(b, 11, v)
-		}
-	}
-	b = litewire.AppendBool(b, 12, m.CanLoadEarlier)
-	if m.Tail != nil {
-		b = litewire.AppendMessage(b, 13, m.Tail)
-	}
-	if m.EmptyNote != nil {
-		b = litewire.AppendMessage(b, 14, m.EmptyNote)
-	}
-	b = litewire.AppendBool(b, 15, m.IsHidden)
-	b = litewire.AppendBool(b, 16, m.IsPinned)
-	if m.HiddenNotice != nil {
-		b = litewire.AppendMessage(b, 17, m.HiddenNotice)
-	}
-	b = litewire.AppendBool(b, 18, m.SavingSettings)
-	if m.SettingsError != nil {
-		b = litewire.AppendMessage(b, 19, m.SettingsError)
-	}
-	b = litewire.AppendBool(b, 20, m.CanStart)
-	b = litewire.AppendBool(b, 21, m.CanPin)
-	b = litewire.AppendBool(b, 22, m.CanRemove)
-	if m.SaveStatus != nil {
-		b = litewire.AppendMessage(b, 23, m.SaveStatus)
-	}
-	b = litewire.AppendBool(b, 24, m.HasMoreEnded)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ProjectDetailView)
 }
 
 type DirPickerMachineView struct {
+	_          [0]func()
 	MachineId  string
 	Name       string
 	Online     bool
@@ -350,27 +324,26 @@ func (m *DirPickerMachineView) GetHome() string {
 	return ""
 }
 
-func (m *DirPickerMachineView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirPickerMachineView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirPickerMachineView{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DirPickerMachineView{}.Name), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DirPickerMachineView{}.Online), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(DirPickerMachineView{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(DirPickerMachineView{}.Home), Kind: litewire.KindString},
+	},
+}
 
 func (m *DirPickerMachineView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirPickerMachineView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.Name)
-	b = litewire.AppendBool(b, 3, m.Online)
-	if m.StatusText != nil {
-		b = litewire.AppendMessage(b, 4, m.StatusText)
-	}
-	b = litewire.AppendString(b, 5, m.Home)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirPickerMachineView)
 }
 
 type DirCrumbView struct {
+	_     [0]func()
 	Label *Text
 	Path  string
 }
@@ -388,24 +361,23 @@ func (m *DirCrumbView) GetPath() string {
 	return ""
 }
 
-func (m *DirCrumbView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirCrumbView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirCrumbView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 2, Offset: unsafe.Offsetof(DirCrumbView{}.Path), Kind: litewire.KindString},
+	},
+}
 
 func (m *DirCrumbView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirCrumbView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 1, m.Label)
-	}
-	b = litewire.AppendString(b, 2, m.Path)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirCrumbView)
 }
 
 type DirEntryView struct {
+	_    [0]func()
 	Name string
 	Path string
 }
@@ -423,22 +395,23 @@ func (m *DirEntryView) GetPath() string {
 	return ""
 }
 
-func (m *DirEntryView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirEntryView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirEntryView{}.Name), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DirEntryView{}.Path), Kind: litewire.KindString},
+	},
+}
 
 func (m *DirEntryView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirEntryView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Name)
-	b = litewire.AppendString(b, 2, m.Path)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirEntryView)
 }
 
 type DirPickerView struct {
+	_            [0]func()
 	Open         bool
 	ForNewTask   bool
 	Machines     []*DirPickerMachineView
@@ -526,48 +499,33 @@ func (m *DirPickerView) GetCanConfirm() bool {
 	return false
 }
 
-func (m *DirPickerView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirPickerView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirPickerView{}.Open), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(DirPickerView{}.ForNewTask), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DirPickerView{}.Machines), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_DirPickerMachineView},
+		{Num: 4, Offset: unsafe.Offsetof(DirPickerView{}.MachineId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(DirPickerView{}.CurrentPath), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(DirPickerView{}.Crumbs), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_DirCrumbView},
+		{Num: 7, Offset: unsafe.Offsetof(DirPickerView{}.ParentPath), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(DirPickerView{}.Dirs), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_DirEntryView},
+		{Num: 9, Offset: unsafe.Offsetof(DirPickerView{}.Loading), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(DirPickerView{}.Error), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 11, Offset: unsafe.Offsetof(DirPickerView{}.ConfirmLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 12, Offset: unsafe.Offsetof(DirPickerView{}.CanConfirm), Kind: litewire.KindBool},
+	},
+}
 
 func (m *DirPickerView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirPickerView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Open)
-	b = litewire.AppendBool(b, 2, m.ForNewTask)
-	for _, v := range m.Machines {
-		if v != nil {
-			b = litewire.AppendMessage(b, 3, v)
-		}
-	}
-	b = litewire.AppendString(b, 4, m.MachineId)
-	b = litewire.AppendString(b, 5, m.CurrentPath)
-	for _, v := range m.Crumbs {
-		if v != nil {
-			b = litewire.AppendMessage(b, 6, v)
-		}
-	}
-	b = litewire.AppendString(b, 7, m.ParentPath)
-	for _, v := range m.Dirs {
-		if v != nil {
-			b = litewire.AppendMessage(b, 8, v)
-		}
-	}
-	b = litewire.AppendBool(b, 9, m.Loading)
-	if m.Error != nil {
-		b = litewire.AppendMessage(b, 10, m.Error)
-	}
-	if m.ConfirmLabel != nil {
-		b = litewire.AppendMessage(b, 11, m.ConfirmLabel)
-	}
-	b = litewire.AppendBool(b, 12, m.CanConfirm)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirPickerView)
 }
 
 type ManageProjectsView struct {
+	_                 [0]func()
 	Listing           *ProjectListingView
 	CanEdit           bool
 	BlockedReason     *Text
@@ -641,38 +599,31 @@ func (m *ManageProjectsView) GetFilterMachineName() string {
 	return ""
 }
 
-func (m *ManageProjectsView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ManageProjectsView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ManageProjectsView{}.Listing), Kind: litewire.KindMessage, Sub: &LitewireDesc_ProjectListingView},
+		{Num: 2, Offset: unsafe.Offsetof(ManageProjectsView{}.CanEdit), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(ManageProjectsView{}.BlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(ManageProjectsView{}.ChangedElsewhere), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ManageProjectsView{}.Syncing), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(ManageProjectsView{}.SaveError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(ManageProjectsView{}.DirPicker), Kind: litewire.KindMessage, Sub: &LitewireDesc_DirPickerView},
+		{Num: 8, Offset: unsafe.Offsetof(ManageProjectsView{}.ProjectCount), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(ManageProjectsView{}.FilterMachineId), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(ManageProjectsView{}.FilterMachineName), Kind: litewire.KindString},
+	},
+}
 
 func (m *ManageProjectsView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ManageProjectsView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Listing != nil {
-		b = litewire.AppendMessage(b, 1, m.Listing)
-	}
-	b = litewire.AppendBool(b, 2, m.CanEdit)
-	if m.BlockedReason != nil {
-		b = litewire.AppendMessage(b, 3, m.BlockedReason)
-	}
-	b = litewire.AppendBool(b, 4, m.ChangedElsewhere)
-	b = litewire.AppendBool(b, 5, m.Syncing)
-	if m.SaveError != nil {
-		b = litewire.AppendMessage(b, 6, m.SaveError)
-	}
-	if m.DirPicker != nil {
-		b = litewire.AppendMessage(b, 7, m.DirPicker)
-	}
-	b = litewire.AppendInt32(b, 8, int32(m.ProjectCount))
-	b = litewire.AppendString(b, 9, m.FilterMachineId)
-	b = litewire.AppendString(b, 10, m.FilterMachineName)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ManageProjectsView)
 }
 
 type ProjectViewModel struct {
+	_      [0]func()
 	Kind   ProjectViewKind
 	Detail *ProjectDetailView
 	Manage *ManageProjectsView
@@ -697,22 +648,18 @@ func (m *ProjectViewModel) GetManage() *ManageProjectsView {
 	return nil
 }
 
-func (m *ProjectViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ProjectViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ProjectViewModel{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ProjectViewModel{}.Detail), Kind: litewire.KindMessage, Sub: &LitewireDesc_ProjectDetailView},
+		{Num: 3, Offset: unsafe.Offsetof(ProjectViewModel{}.Manage), Kind: litewire.KindMessage, Sub: &LitewireDesc_ManageProjectsView},
+	},
+}
 
 func (m *ProjectViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	if m.Detail != nil {
-		b = litewire.AppendMessage(b, 2, m.Detail)
-	}
-	if m.Manage != nil {
-		b = litewire.AppendMessage(b, 3, m.Manage)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ProjectViewModel)
 }

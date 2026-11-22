@@ -6,6 +6,7 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	unsafe "unsafe"
 )
 
 type AutoIssueKind int32
@@ -65,6 +66,7 @@ const (
 )
 
 type DefaultModeInfo struct {
+	_      [0]func()
 	Mode   v1.ApprovalMode
 	Known  bool
 	Varies bool
@@ -96,26 +98,25 @@ func (m *DefaultModeInfo) GetLabel() *Text {
 	return nil
 }
 
-func (m *DefaultModeInfo) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DefaultModeInfo = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DefaultModeInfo{}.Mode), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(DefaultModeInfo{}.Known), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DefaultModeInfo{}.Varies), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(DefaultModeInfo{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *DefaultModeInfo) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DefaultModeInfo) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Mode))
-	b = litewire.AppendBool(b, 2, m.Known)
-	b = litewire.AppendBool(b, 3, m.Varies)
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 4, m.Label)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DefaultModeInfo)
 }
 
 type NewSessionConfig struct {
+	_               [0]func()
 	MachineId       string
 	Agent           v1.Agent
 	Model           string
@@ -161,26 +162,27 @@ func (m *NewSessionConfig) GetMode() v1.ApprovalMode {
 	return 0
 }
 
-func (m *NewSessionConfig) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_NewSessionConfig = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(NewSessionConfig{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(NewSessionConfig{}.Agent), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(NewSessionConfig{}.Model), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(NewSessionConfig{}.Effort), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(NewSessionConfig{}.StandardContext), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(NewSessionConfig{}.Mode), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *NewSessionConfig) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *NewSessionConfig) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendInt32(b, 2, int32(m.Agent))
-	b = litewire.AppendString(b, 3, m.Model)
-	b = litewire.AppendString(b, 4, m.Effort)
-	b = litewire.AppendBool(b, 5, m.StandardContext)
-	b = litewire.AppendInt32(b, 6, int32(m.Mode))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_NewSessionConfig)
 }
 
 type OfflineMachineChoiceView struct {
+	_         [0]func()
 	MachineId string
 	Title     *Text
 	Note      *Text
@@ -212,30 +214,25 @@ func (m *OfflineMachineChoiceView) GetConfig() *NewSessionConfig {
 	return nil
 }
 
-func (m *OfflineMachineChoiceView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_OfflineMachineChoiceView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(OfflineMachineChoiceView{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(OfflineMachineChoiceView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(OfflineMachineChoiceView{}.Note), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(OfflineMachineChoiceView{}.Config), Kind: litewire.KindMessage, Sub: &LitewireDesc_NewSessionConfig},
+	},
+}
 
 func (m *OfflineMachineChoiceView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *OfflineMachineChoiceView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 2, m.Title)
-	}
-	if m.Note != nil {
-		b = litewire.AppendMessage(b, 3, m.Note)
-	}
-	if m.Config != nil {
-		b = litewire.AppendMessage(b, 4, m.Config)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_OfflineMachineChoiceView)
 }
 
 type NewSessionNoticeView struct {
+	_               [0]func()
 	Kind            NoticeKind
 	Severity        NoticeSeverity
 	Text            *Text
@@ -316,43 +313,32 @@ func (m *NewSessionNoticeView) GetTargetAgent() v1.Agent {
 	return 0
 }
 
-func (m *NewSessionNoticeView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_NewSessionNoticeView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(NewSessionNoticeView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(NewSessionNoticeView{}.Severity), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(NewSessionNoticeView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(NewSessionNoticeView{}.Action), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(NewSessionNoticeView{}.TargetMachineId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(NewSessionNoticeView{}.HasDraftChoices), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(NewSessionNoticeView{}.DraftTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(NewSessionNoticeView{}.DraftSubtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(NewSessionNoticeView{}.DraftChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_OfflineMachineChoiceView},
+		{Num: 10, Offset: unsafe.Offsetof(NewSessionNoticeView{}.DraftNoneText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 11, Offset: unsafe.Offsetof(NewSessionNoticeView{}.TargetAgent), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *NewSessionNoticeView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *NewSessionNoticeView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	b = litewire.AppendInt32(b, 2, int32(m.Severity))
-	if m.Text != nil {
-		b = litewire.AppendMessage(b, 3, m.Text)
-	}
-	b = litewire.AppendInt32(b, 4, int32(m.Action))
-	b = litewire.AppendString(b, 5, m.TargetMachineId)
-	b = litewire.AppendBool(b, 6, m.HasDraftChoices)
-	if m.DraftTitle != nil {
-		b = litewire.AppendMessage(b, 7, m.DraftTitle)
-	}
-	if m.DraftSubtitle != nil {
-		b = litewire.AppendMessage(b, 8, m.DraftSubtitle)
-	}
-	for _, v := range m.DraftChoices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 9, v)
-		}
-	}
-	if m.DraftNoneText != nil {
-		b = litewire.AppendMessage(b, 10, m.DraftNoneText)
-	}
-	b = litewire.AppendInt32(b, 11, int32(m.TargetAgent))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_NewSessionNoticeView)
 }
 
 type AgentOptionView struct {
+	_           [0]func()
 	Agent       v1.Agent
 	DisplayName string
 	Installed   bool
@@ -384,24 +370,25 @@ func (m *AgentOptionView) GetSelected() bool {
 	return false
 }
 
-func (m *AgentOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AgentOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AgentOptionView{}.Agent), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(AgentOptionView{}.DisplayName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(AgentOptionView{}.Installed), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(AgentOptionView{}.Selected), Kind: litewire.KindBool},
+	},
+}
 
 func (m *AgentOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AgentOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Agent))
-	b = litewire.AppendString(b, 2, m.DisplayName)
-	b = litewire.AppendBool(b, 3, m.Installed)
-	b = litewire.AppendBool(b, 4, m.Selected)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AgentOptionView)
 }
 
 type ModelOptionView struct {
+	_               [0]func()
 	Slug            string
 	DisplayName     string
 	FixedEffortNote *Text
@@ -447,28 +434,27 @@ func (m *ModelOptionView) GetSupports_1M() bool {
 	return false
 }
 
-func (m *ModelOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ModelOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ModelOptionView{}.Slug), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ModelOptionView{}.DisplayName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ModelOptionView{}.FixedEffortNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(ModelOptionView{}.Checked), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ModelOptionView{}.SupportsAuto), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(ModelOptionView{}.Supports_1M), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ModelOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ModelOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Slug)
-	b = litewire.AppendString(b, 2, m.DisplayName)
-	if m.FixedEffortNote != nil {
-		b = litewire.AppendMessage(b, 3, m.FixedEffortNote)
-	}
-	b = litewire.AppendBool(b, 4, m.Checked)
-	b = litewire.AppendBool(b, 5, m.SupportsAuto)
-	b = litewire.AppendBool(b, 6, m.Supports_1M)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ModelOptionView)
 }
 
 type MachineChoiceView struct {
+	_         [0]func()
 	MachineId string
 	Name      string
 	Online    bool
@@ -507,27 +493,26 @@ func (m *MachineChoiceView) GetNote() *Text {
 	return nil
 }
 
-func (m *MachineChoiceView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_MachineChoiceView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineChoiceView{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(MachineChoiceView{}.Name), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(MachineChoiceView{}.Online), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(MachineChoiceView{}.Selected), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(MachineChoiceView{}.Note), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *MachineChoiceView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *MachineChoiceView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.Name)
-	b = litewire.AppendBool(b, 3, m.Online)
-	b = litewire.AppendBool(b, 4, m.Selected)
-	if m.Note != nil {
-		b = litewire.AppendMessage(b, 5, m.Note)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineChoiceView)
 }
 
 type NewSessionModelPanelView struct {
+	_                     [0]func()
 	ModelsLoading         bool
 	ModelsError           *Text
 	DefaultModelLabel     *Text
@@ -636,53 +621,36 @@ func (m *NewSessionModelPanelView) GetCanSelectAutoMode() bool {
 	return false
 }
 
-func (m *NewSessionModelPanelView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_NewSessionModelPanelView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.ModelsLoading), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.ModelsError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.DefaultModelLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.DefaultModelChecked), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.Models), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ModelOptionView},
+		{Num: 6, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.EffortChoices), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 7, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.SelectedEffort), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.EffortTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.SupportsContextWindow), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.ContextFixed), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.StandardContext), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.ContextNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.PanelEnabled), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.MachineChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineChoiceView},
+		{Num: 15, Offset: unsafe.Offsetof(NewSessionModelPanelView{}.CanSelectAutoMode), Kind: litewire.KindBool},
+	},
+}
 
 func (m *NewSessionModelPanelView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *NewSessionModelPanelView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.ModelsLoading)
-	if m.ModelsError != nil {
-		b = litewire.AppendMessage(b, 2, m.ModelsError)
-	}
-	if m.DefaultModelLabel != nil {
-		b = litewire.AppendMessage(b, 3, m.DefaultModelLabel)
-	}
-	b = litewire.AppendBool(b, 4, m.DefaultModelChecked)
-	for _, v := range m.Models {
-		if v != nil {
-			b = litewire.AppendMessage(b, 5, v)
-		}
-	}
-	for _, v := range m.EffortChoices {
-		b = litewire.AppendStringAlways(b, 6, v)
-	}
-	b = litewire.AppendString(b, 7, m.SelectedEffort)
-	if m.EffortTitle != nil {
-		b = litewire.AppendMessage(b, 8, m.EffortTitle)
-	}
-	b = litewire.AppendBool(b, 9, m.SupportsContextWindow)
-	b = litewire.AppendBool(b, 10, m.ContextFixed)
-	b = litewire.AppendBool(b, 11, m.StandardContext)
-	if m.ContextNote != nil {
-		b = litewire.AppendMessage(b, 12, m.ContextNote)
-	}
-	b = litewire.AppendBool(b, 13, m.PanelEnabled)
-	for _, v := range m.MachineChoices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 14, v)
-		}
-	}
-	b = litewire.AppendBool(b, 15, m.CanSelectAutoMode)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_NewSessionModelPanelView)
 }
 
 type NewSessionViewModel struct {
+	_                 [0]func()
 	ProjectSelectable bool
 	ProjectKey        string
 	ProjectName       *Text
@@ -861,62 +829,40 @@ func (m *NewSessionViewModel) GetAutoIssue() AutoIssueKind {
 	return 0
 }
 
-func (m *NewSessionViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_NewSessionViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(NewSessionViewModel{}.ProjectSelectable), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(NewSessionViewModel{}.ProjectKey), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(NewSessionViewModel{}.ProjectName), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(NewSessionViewModel{}.ShortPath), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(NewSessionViewModel{}.HasProjects), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(NewSessionViewModel{}.Prompt), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(NewSessionViewModel{}.Drafting), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(NewSessionViewModel{}.Busy), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(NewSessionViewModel{}.Settled), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(NewSessionViewModel{}.Frozen), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(NewSessionViewModel{}.Config), Kind: litewire.KindMessage, Sub: &LitewireDesc_NewSessionConfig},
+		{Num: 12, Offset: unsafe.Offsetof(NewSessionViewModel{}.MachineName), Kind: litewire.KindString},
+		{Num: 13, Offset: unsafe.Offsetof(NewSessionViewModel{}.MachineSelectable), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(NewSessionViewModel{}.AgentName), Kind: litewire.KindString},
+		{Num: 15, Offset: unsafe.Offsetof(NewSessionViewModel{}.AvailableAgents), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_AgentOptionView},
+		{Num: 16, Offset: unsafe.Offsetof(NewSessionViewModel{}.ModelLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 17, Offset: unsafe.Offsetof(NewSessionViewModel{}.EffortLabel), Kind: litewire.KindString},
+		{Num: 18, Offset: unsafe.Offsetof(NewSessionViewModel{}.DefaultMode), Kind: litewire.KindMessage, Sub: &LitewireDesc_DefaultModeInfo},
+		{Num: 19, Offset: unsafe.Offsetof(NewSessionViewModel{}.LocationText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 20, Offset: unsafe.Offsetof(NewSessionViewModel{}.Notices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_NewSessionNoticeView},
+		{Num: 21, Offset: unsafe.Offsetof(NewSessionViewModel{}.CanStart), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(NewSessionViewModel{}.DisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 23, Offset: unsafe.Offsetof(NewSessionViewModel{}.ModelPanel), Kind: litewire.KindMessage, Sub: &LitewireDesc_NewSessionModelPanelView},
+		{Num: 24, Offset: unsafe.Offsetof(NewSessionViewModel{}.ProjectRemoved), Kind: litewire.KindBool},
+		{Num: 25, Offset: unsafe.Offsetof(NewSessionViewModel{}.AutoIssue), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *NewSessionViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *NewSessionViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.ProjectSelectable)
-	b = litewire.AppendString(b, 2, m.ProjectKey)
-	if m.ProjectName != nil {
-		b = litewire.AppendMessage(b, 3, m.ProjectName)
-	}
-	b = litewire.AppendString(b, 4, m.ShortPath)
-	b = litewire.AppendBool(b, 5, m.HasProjects)
-	b = litewire.AppendString(b, 6, m.Prompt)
-	b = litewire.AppendBool(b, 7, m.Drafting)
-	b = litewire.AppendBool(b, 8, m.Busy)
-	b = litewire.AppendBool(b, 9, m.Settled)
-	b = litewire.AppendBool(b, 10, m.Frozen)
-	if m.Config != nil {
-		b = litewire.AppendMessage(b, 11, m.Config)
-	}
-	b = litewire.AppendString(b, 12, m.MachineName)
-	b = litewire.AppendBool(b, 13, m.MachineSelectable)
-	b = litewire.AppendString(b, 14, m.AgentName)
-	for _, v := range m.AvailableAgents {
-		if v != nil {
-			b = litewire.AppendMessage(b, 15, v)
-		}
-	}
-	if m.ModelLabel != nil {
-		b = litewire.AppendMessage(b, 16, m.ModelLabel)
-	}
-	b = litewire.AppendString(b, 17, m.EffortLabel)
-	if m.DefaultMode != nil {
-		b = litewire.AppendMessage(b, 18, m.DefaultMode)
-	}
-	if m.LocationText != nil {
-		b = litewire.AppendMessage(b, 19, m.LocationText)
-	}
-	for _, v := range m.Notices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 20, v)
-		}
-	}
-	b = litewire.AppendBool(b, 21, m.CanStart)
-	if m.DisabledReason != nil {
-		b = litewire.AppendMessage(b, 22, m.DisabledReason)
-	}
-	if m.ModelPanel != nil {
-		b = litewire.AppendMessage(b, 23, m.ModelPanel)
-	}
-	b = litewire.AppendBool(b, 24, m.ProjectRemoved)
-	b = litewire.AppendInt32(b, 25, int32(m.AutoIssue))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_NewSessionViewModel)
 }

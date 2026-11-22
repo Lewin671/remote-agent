@@ -102,11 +102,11 @@ type Machine struct {
 	Reachable           *bool
 	ReachabilityUnknown bool
 	Unlinked            *bool
-	LastSeenMs      int64
-	ProtocolVersion uint32
-	DaemonOutOfDate bool
-	ClientOutOfDate bool
-	Meta            *v1.MachineMeta
+	LastSeenMs          int64
+	ProtocolVersion     uint32
+	DaemonOutOfDate     bool
+	ClientOutOfDate     bool
+	Meta                *v1.MachineMeta
 }
 
 // PendingQuestionOption captures one option from a live unanswered question.
@@ -132,6 +132,7 @@ type PendingQuestionData struct {
 
 // PendingAction captures unresolved interactive state on a live session.
 type PendingAction struct {
+	_                  [0]func()
 	HasApproval        bool
 	ApprovalID         string
 	ApprovalToolName   string
@@ -148,6 +149,7 @@ type PendingAction struct {
 
 // Session represents one session known to the client core.
 type Session struct {
+	_              [0]func()
 	ID             string
 	MachineID      string
 	Info           *v1.Session
@@ -246,6 +248,7 @@ type DefaultMode struct {
 
 // StartConfig holds concrete new-session configuration selections.
 type StartConfig struct {
+	_               [0]func()
 	MachineID       string
 	Cwd             string
 	Agent           v1.Agent

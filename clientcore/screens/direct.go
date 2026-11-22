@@ -330,6 +330,13 @@ func BuildDirectDiagnosticsView(
 	}
 }
 
+func diagAppendGroup(lines *[]*corev1.Text, g *corev1.DiagGroupView, indent string) {
+	*lines = append(*lines, text.JoinLiteral("", text.Plain(indent), g.TitleText))
+	for _, row := range g.Rows {
+		*lines = append(*lines, text.JoinLiteral("", text.Plain(indent+"  "), row.LabelText, text.Plain(": "), row.ValueText))
+	}
+}
+
 func buildDiagReportLines(verdictText *corev1.Text, rounds []*transport.RoundData, nowMs int64, platformAgent string) []*corev1.Text {
 	lines := []*corev1.Text{
 		text.Msg(text.KeyTransportDiagReportTitle),
@@ -337,12 +344,6 @@ func buildDiagReportLines(verdictText *corev1.Text, rounds []*transport.RoundDat
 	}
 	if platformAgent != "" {
 		lines = append(lines, text.Msg(text.KeyTransportDiagReportBrowser, text.Str("value", platformAgent)))
-	}
-	appendGroup := func(g *corev1.DiagGroupView, indent string) {
-		lines = append(lines, text.JoinLiteral("", text.Plain(indent), g.TitleText))
-		for _, row := range g.Rows {
-			lines = append(lines, text.JoinLiteral("", text.Plain(indent+"  "), row.LabelText, text.Plain(": "), row.ValueText))
-		}
 	}
 	for _, r := range rounds {
 		if r == nil {
@@ -376,7 +377,7 @@ func buildDiagReportLines(verdictText *corev1.Text, rounds []*transport.RoundDat
 				diagStageText(stage),
 			))
 			for _, g := range diagAddressGroups(pc, best) {
-				appendGroup(g, "    ")
+				diagAppendGroup(&lines, g, "    ")
 			}
 		}
 	}
@@ -393,7 +394,7 @@ func diagAddressGroups(pc *transport.PcData, a *transport.AttemptData) []*corev1
 		}
 	}
 
-	hidden := a.Local.Count(func(k transport.CandKind) bool { return k.Class == transport.AddrMDNS })
+	hidden := a.Local.CountClass(transport.AddrMDNS)
 	localRows := []*corev1.DiagRowView{
 		{LabelText: text.Msg(text.KeyTransportDiagIpv4), ValueText: diagFamilyText(a.Local, transport.Family4)},
 		{LabelText: text.Msg(text.KeyTransportDiagIpv6), ValueText: diagFamilyText(a.Local, transport.Family6)},
@@ -477,26 +478,28 @@ func diagAddressGroups(pc *transport.PcData, a *transport.AttemptData) []*corev1
 	}
 }
 
-func diagPairRows(a *transport.AttemptData) []*corev1.DiagRowView {
-	type sum struct {
-		lf, rf          transport.Family
-		ok, fail, wait  int
-		sent, got       int
-		hasRTT          bool
-		rttMs           int64
-	}
-	var order []sum
-	find := func(lf, rf transport.Family) int {
-		for i := range order {
-			if order[i].lf == lf && order[i].rf == rf {
-				return i
-			}
+type diagPairSum struct {
+	lf, rf         transport.Family
+	ok, fail, wait int
+	sent, got      int
+	hasRTT         bool
+	rttMs          int64
+}
+
+func diagFindPairSum(order *[]diagPairSum, lf, rf transport.Family) int {
+	for i := range *order {
+		if (*order)[i].lf == lf && (*order)[i].rf == rf {
+			return i
 		}
-		order = append(order, sum{lf: lf, rf: rf})
-		return len(order) - 1
 	}
+	*order = append(*order, diagPairSum{lf: lf, rf: rf})
+	return len(*order) - 1
+}
+
+func diagPairRows(a *transport.AttemptData) []*corev1.DiagRowView {
+	var order []diagPairSum
 	for _, p := range a.Pairs {
-		idx := find(p.LocalFamily, p.RemoteFamily)
+		idx := diagFindPairSum(&order, p.LocalFamily, p.RemoteFamily)
 		g := &order[idx]
 		g.ok += p.OK
 		g.fail += p.Failed
@@ -589,41 +592,49 @@ func diagSignalRows(r *transport.RoundData) []*corev1.DiagRowView {
 	}}
 }
 
-func diagFamilyText(t transport.Tally, fam transport.Family) *corev1.Text {
-	type entry struct {
-		k transport.CandKind
-		n int
+type diagCandRow struct {
+	k transport.CandKind
+	n int
+}
+
+type diagCandRows []diagCandRow
+
+func diagCandTypeRank(ct transport.CandType) int {
+	switch ct {
+	case transport.CandHost:
+		return 0
+	case transport.CandSrflx:
+		return 1
+	case transport.CandPrflx:
+		return 2
+	case transport.CandRelay:
+		return 3
+	default:
+		return 4
 	}
-	var rows []entry
+}
+
+func (r diagCandRows) Len() int      { return len(r) }
+func (r diagCandRows) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
+func (r diagCandRows) Less(i, j int) bool {
+	ri, rj := diagCandTypeRank(r[i].k.Type), diagCandTypeRank(r[j].k.Type)
+	if ri != rj {
+		return ri < rj
+	}
+	return r[i].k.Class < r[j].k.Class
+}
+
+func diagFamilyText(t transport.Tally, fam transport.Family) *corev1.Text {
+	var rows []diagCandRow
 	for k, n := range t {
 		if n > 0 && k.Family == fam && k.Class != transport.AddrMDNS {
-			rows = append(rows, entry{k: k, n: n})
+			rows = append(rows, diagCandRow{k: k, n: n})
 		}
 	}
 	if len(rows) == 0 {
 		return text.Msg(text.KeyTransportDiagNone)
 	}
-	typeRank := func(ct transport.CandType) int {
-		switch ct {
-		case transport.CandHost:
-			return 0
-		case transport.CandSrflx:
-			return 1
-		case transport.CandPrflx:
-			return 2
-		case transport.CandRelay:
-			return 3
-		default:
-			return 4
-		}
-	}
-	sortutil.Sort(len(rows), func(i, j int) bool {
-		ri, rj := typeRank(rows[i].k.Type), typeRank(rows[j].k.Type)
-		if ri != rj {
-			return ri < rj
-		}
-		return rows[i].k.Class < rows[j].k.Class
-	}, func(i, j int) { rows[i], rows[j] = rows[j], rows[i] })
+	sortutil.SortInterface(diagCandRows(rows))
 	parts := make([]*corev1.Text, 0, len(rows))
 	for _, r := range rows {
 		parts = append(parts, text.Msg(text.KeyTransportDiagCand,

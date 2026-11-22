@@ -5,6 +5,7 @@ package remoteagentv1
 
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
+	unsafe "unsafe"
 )
 
 type PayloadKind int32
@@ -34,6 +35,7 @@ const (
 )
 
 type Envelope struct {
+	_              [0]func()
 	Header         []byte
 	Nonce          []byte
 	Ciphertext     []byte
@@ -75,86 +77,33 @@ func (m *Envelope) GetSecurityHeader() []byte {
 	return nil
 }
 
-func (m *Envelope) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_Envelope = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(Envelope{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&Envelope{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Envelope{}.Header), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(Envelope{}.Nonce), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(Envelope{}.Ciphertext), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(Envelope{}.Signature), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(Envelope{}.SecurityHeader), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *Envelope) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *Envelope) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.Header)
-	b = litewire.AppendBytes(b, 2, m.Nonce)
-	b = litewire.AppendBytes(b, 3, m.Ciphertext)
-	b = litewire.AppendBytes(b, 4, m.Signature)
-	b = litewire.AppendBytes(b, 5, m.SecurityHeader)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Envelope)
 }
 
 func (m *Envelope) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Header = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Nonce = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Ciphertext = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Signature = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.SecurityHeader = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Envelope)
 }
 
 type Header struct {
+	_           [0]func()
 	Version     uint32
 	Kind        PayloadKind
 	MachineId   string
@@ -224,121 +173,31 @@ func (m *Header) GetCompression() Compression {
 	return 0
 }
 
-func (m *Header) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_Header = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(Header{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&Header{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Header{}.Version), Kind: litewire.KindUint32},
+		{Num: 2, Offset: unsafe.Offsetof(Header{}.Kind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(Header{}.MachineId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(Header{}.SessionId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(Header{}.Seq), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(Header{}.RequestId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(Header{}.DeadlineMs), Kind: litewire.KindInt64},
+		{Num: 8, Offset: unsafe.Offsetof(Header{}.Sender), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(Header{}.Compression), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *Header) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *Header) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.Version))
-	b = litewire.AppendInt32(b, 2, int32(m.Kind))
-	b = litewire.AppendString(b, 3, m.MachineId)
-	b = litewire.AppendString(b, 4, m.SessionId)
-	b = litewire.AppendVarint(b, 5, uint64(m.Seq))
-	b = litewire.AppendString(b, 6, m.RequestId)
-	b = litewire.AppendVarint(b, 7, uint64(m.DeadlineMs))
-	b = litewire.AppendString(b, 8, m.Sender)
-	b = litewire.AppendInt32(b, 9, int32(m.Compression))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Header)
 }
 
 func (m *Header) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Version = uint32(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = PayloadKind(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Seq = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DeadlineMs = int64(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Sender = v
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Compression = Compression(int32(v))
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Header)
 }

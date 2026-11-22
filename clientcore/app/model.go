@@ -26,6 +26,7 @@ const (
 )
 
 type cmdMeta struct {
+	_             [0]func()
 	kind          cmdKind
 	machineID     string
 	agent         v1.Agent

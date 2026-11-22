@@ -77,6 +77,7 @@ type DirPickerState struct {
 
 // NewSessionDraft tracks per-project composer selection and launch attempt state.
 type NewSessionDraft struct {
+	_                    [0]func()
 	ProjectKey           string
 	Config               lists.StartConfig
 	ConfigInitialized    bool

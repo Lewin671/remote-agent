@@ -139,26 +139,28 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 	}
 }
 
+func projectHasMachine(p *lists.ProjectSummary, machineID string) bool {
+	return p != nil && slices.Contains(p.MachineIDs, machineID)
+}
+
+func filterProjectSummariesByMachine(in []*lists.ProjectSummary, machineID string) []*lists.ProjectSummary {
+	out := make([]*lists.ProjectSummary, 0, len(in))
+	for _, p := range in {
+		if projectHasMachine(p, machineID) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func filterProjectsByMachine(res *lists.ProjectsViewResult, machineID string) *lists.ProjectsViewResult {
 	if res == nil || machineID == "" {
 		return res
 	}
-	hasMachine := func(p *lists.ProjectSummary) bool {
-		return p != nil && slices.Contains(p.MachineIDs, machineID)
-	}
-	filterSlice := func(in []*lists.ProjectSummary) []*lists.ProjectSummary {
-		out := make([]*lists.ProjectSummary, 0, len(in))
-		for _, p := range in {
-			if hasMachine(p) {
-				out = append(out, p)
-			}
-		}
-		return out
-	}
 	copyRes := *res
-	copyRes.Listed = filterSlice(res.Listed)
-	copyRes.FilteredPin = filterSlice(res.FilteredPin)
-	copyRes.FilteredOther = filterSlice(res.FilteredOther)
+	copyRes.Listed = filterProjectSummariesByMachine(res.Listed, machineID)
+	copyRes.FilteredPin = filterProjectSummariesByMachine(res.FilteredPin, machineID)
+	copyRes.FilteredOther = filterProjectSummariesByMachine(res.FilteredOther, machineID)
 	var waiting int32
 	for _, p := range copyRes.Listed {
 		waiting += p.WaitingCount
@@ -197,6 +199,19 @@ func buildManageProjectsView(st *State, filterMachineID string) *corev1.ManagePr
 	}
 }
 
+type dirPickerMachinesSorted []*lists.Machine
+
+func (s dirPickerMachinesSorted) Len() int      { return len(s) }
+func (s dirPickerMachinesSorted) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s dirPickerMachinesSorted) Less(i, j int) bool {
+	oa := lists.MachineReachable(s[i])
+	ob := lists.MachineReachable(s[j])
+	if oa != ob {
+		return oa
+	}
+	return s[i].ID < s[j].ID
+}
+
 func buildDirPickerView(st *State) *corev1.DirPickerView {
 	dp := st.DirPicker
 	var sorted []*lists.Machine
@@ -205,14 +220,7 @@ func buildDirPickerView(st *State) *corev1.DirPickerView {
 			sorted = append(sorted, m)
 		}
 	}
-	sortutil.Sort(len(sorted), func(i, j int) bool {
-		oa := lists.MachineReachable(sorted[i])
-		ob := lists.MachineReachable(sorted[j])
-		if oa != ob {
-			return oa
-		}
-		return sorted[i].ID < sorted[j].ID
-	}, func(i, j int) { sorted[i], sorted[j] = sorted[j], sorted[i] })
+	sortutil.SortInterface(dirPickerMachinesSorted(sorted))
 
 	machines := make([]*corev1.DirPickerMachineView, 0, len(sorted))
 	for _, m := range sorted {

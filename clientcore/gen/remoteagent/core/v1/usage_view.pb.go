@@ -6,6 +6,7 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	unsafe "unsafe"
 )
 
 type UsageSortColumn int32
@@ -19,6 +20,7 @@ const (
 )
 
 type UsageScreenRequest struct {
+	_             [0]func()
 	MachineId     string
 	FocusAgent    v1.Agent
 	FocusModel    string
@@ -64,76 +66,24 @@ func (m *UsageScreenRequest) GetCustomEndMs() int64 {
 	return 0
 }
 
+var LitewireDesc_UsageScreenRequest = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageScreenRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageScreenRequest{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UsageScreenRequest{}.FocusAgent), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(UsageScreenRequest{}.FocusModel), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(UsageScreenRequest{}.Preset), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(UsageScreenRequest{}.CustomStartMs), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(UsageScreenRequest{}.CustomEndMs), Kind: litewire.KindInt64},
+	},
+}
+
 func (m *UsageScreenRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.FocusAgent = v1.Agent(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FocusModel = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Preset = v1.UsageRangePreset(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CustomStartMs = int64(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CustomEndMs = int64(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageScreenRequest)
 }
 
 type UsageCompositionView struct {
+	_                     [0]func()
 	UncachedInputTokens   uint64
 	CacheReadTokens       uint64
 	CacheWriteTokens      uint64
@@ -172,25 +122,26 @@ func (m *UsageCompositionView) GetReasoningOutputTokens() uint64 {
 	return 0
 }
 
-func (m *UsageCompositionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageCompositionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageCompositionView{}.UncachedInputTokens), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(UsageCompositionView{}.CacheReadTokens), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(UsageCompositionView{}.CacheWriteTokens), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(UsageCompositionView{}.OutputTokens), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(UsageCompositionView{}.ReasoningOutputTokens), Kind: litewire.KindUint64},
+	},
+}
 
 func (m *UsageCompositionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageCompositionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.UncachedInputTokens))
-	b = litewire.AppendVarint(b, 2, uint64(m.CacheReadTokens))
-	b = litewire.AppendVarint(b, 3, uint64(m.CacheWriteTokens))
-	b = litewire.AppendVarint(b, 4, uint64(m.OutputTokens))
-	b = litewire.AppendVarint(b, 5, uint64(m.ReasoningOutputTokens))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageCompositionView)
 }
 
 type UsageHeroView struct {
+	_                     [0]func()
 	Scrubbing             bool
 	ScrubBucketIndex      int32
 	ScrubStartMs          int64
@@ -327,41 +278,40 @@ func (m *UsageHeroView) GetPeriodCompositionRows() int32 {
 	return 0
 }
 
-func (m *UsageHeroView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageHeroView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageHeroView{}.Scrubbing), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(UsageHeroView{}.ScrubBucketIndex), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(UsageHeroView{}.ScrubStartMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(UsageHeroView{}.ScrubEndMs), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(UsageHeroView{}.HasSelectedModel), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(UsageHeroView{}.SelectedAgent), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(UsageHeroView{}.SelectedAgentName), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(UsageHeroView{}.SelectedModel), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(UsageHeroView{}.SelectedSeriesKey), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(UsageHeroView{}.TotalModelCount), Kind: litewire.KindInt32},
+		{Num: 11, Offset: unsafe.Offsetof(UsageHeroView{}.TotalTokens), Kind: litewire.KindUint64},
+		{Num: 12, Offset: unsafe.Offsetof(UsageHeroView{}.RequestCount), Kind: litewire.KindUint64},
+		{Num: 13, Offset: unsafe.Offsetof(UsageHeroView{}.HasSharePercent), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(UsageHeroView{}.ShareRatio), Kind: litewire.KindDouble},
+		{Num: 15, Offset: unsafe.Offsetof(UsageHeroView{}.HasTokensDelta), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(UsageHeroView{}.TokensDeltaPercent), Kind: litewire.KindDouble},
+		{Num: 17, Offset: unsafe.Offsetof(UsageHeroView{}.PreviousBackfilling), Kind: litewire.KindBool},
+		{Num: 18, Offset: unsafe.Offsetof(UsageHeroView{}.Composition), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageCompositionView},
+		{Num: 19, Offset: unsafe.Offsetof(UsageHeroView{}.PeriodCompositionRows), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *UsageHeroView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageHeroView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Scrubbing)
-	b = litewire.AppendInt32(b, 2, int32(m.ScrubBucketIndex))
-	b = litewire.AppendVarint(b, 3, uint64(m.ScrubStartMs))
-	b = litewire.AppendVarint(b, 4, uint64(m.ScrubEndMs))
-	b = litewire.AppendBool(b, 5, m.HasSelectedModel)
-	b = litewire.AppendInt32(b, 6, int32(m.SelectedAgent))
-	b = litewire.AppendString(b, 7, m.SelectedAgentName)
-	b = litewire.AppendString(b, 8, m.SelectedModel)
-	b = litewire.AppendString(b, 9, m.SelectedSeriesKey)
-	b = litewire.AppendInt32(b, 10, int32(m.TotalModelCount))
-	b = litewire.AppendVarint(b, 11, uint64(m.TotalTokens))
-	b = litewire.AppendVarint(b, 12, uint64(m.RequestCount))
-	b = litewire.AppendBool(b, 13, m.HasSharePercent)
-	b = litewire.AppendDouble(b, 14, m.ShareRatio)
-	b = litewire.AppendBool(b, 15, m.HasTokensDelta)
-	b = litewire.AppendDouble(b, 16, m.TokensDeltaPercent)
-	b = litewire.AppendBool(b, 17, m.PreviousBackfilling)
-	if m.Composition != nil {
-		b = litewire.AppendMessage(b, 18, m.Composition)
-	}
-	b = litewire.AppendInt32(b, 19, int32(m.PeriodCompositionRows))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageHeroView)
 }
 
 type UsageBarBucketView struct {
+	_              [0]func()
 	StartMs        int64
 	EndMs          int64
 	AllTokens      uint64
@@ -400,25 +350,26 @@ func (m *UsageBarBucketView) GetHasData() bool {
 	return false
 }
 
-func (m *UsageBarBucketView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageBarBucketView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageBarBucketView{}.StartMs), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(UsageBarBucketView{}.EndMs), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(UsageBarBucketView{}.AllTokens), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(UsageBarBucketView{}.SelectedTokens), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(UsageBarBucketView{}.HasData), Kind: litewire.KindBool},
+	},
+}
 
 func (m *UsageBarBucketView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageBarBucketView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.StartMs))
-	b = litewire.AppendVarint(b, 2, uint64(m.EndMs))
-	b = litewire.AppendVarint(b, 3, uint64(m.AllTokens))
-	b = litewire.AppendVarint(b, 4, uint64(m.SelectedTokens))
-	b = litewire.AppendBool(b, 5, m.HasData)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageBarBucketView)
 }
 
 type UsageBarChartView struct {
+	_       [0]func()
 	YMax    uint64
 	YMid    uint64
 	Buckets []*UsageBarBucketView
@@ -443,27 +394,24 @@ func (m *UsageBarChartView) GetBuckets() []*UsageBarBucketView {
 	return nil
 }
 
-func (m *UsageBarChartView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageBarChartView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageBarChartView{}.YMax), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(UsageBarChartView{}.YMid), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(UsageBarChartView{}.Buckets), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageBarBucketView},
+	},
+}
 
 func (m *UsageBarChartView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageBarChartView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.YMax))
-	b = litewire.AppendVarint(b, 2, uint64(m.YMid))
-	for _, v := range m.Buckets {
-		if v != nil {
-			b = litewire.AppendMessage(b, 3, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageBarChartView)
 }
 
 type UsageStripPointView struct {
+	_        [0]func()
 	HasValue bool
 	Value    float64
 }
@@ -481,22 +429,23 @@ func (m *UsageStripPointView) GetValue() float64 {
 	return 0
 }
 
-func (m *UsageStripPointView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageStripPointView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageStripPointView{}.HasValue), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(UsageStripPointView{}.Value), Kind: litewire.KindDouble},
+	},
+}
 
 func (m *UsageStripPointView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageStripPointView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.HasValue)
-	b = litewire.AppendDouble(b, 2, m.Value)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageStripPointView)
 }
 
 type UsageMetricStripView struct {
+	_              [0]func()
 	HasValue       bool
 	CurrentValue   float64
 	HasRange       bool
@@ -570,38 +519,31 @@ func (m *UsageMetricStripView) GetSelectedPoints() []*UsageStripPointView {
 	return nil
 }
 
-func (m *UsageMetricStripView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageMetricStripView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageMetricStripView{}.HasValue), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(UsageMetricStripView{}.CurrentValue), Kind: litewire.KindDouble},
+		{Num: 3, Offset: unsafe.Offsetof(UsageMetricStripView{}.HasRange), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(UsageMetricStripView{}.MinValue), Kind: litewire.KindDouble},
+		{Num: 5, Offset: unsafe.Offsetof(UsageMetricStripView{}.MaxValue), Kind: litewire.KindDouble},
+		{Num: 6, Offset: unsafe.Offsetof(UsageMetricStripView{}.ScaleMin), Kind: litewire.KindDouble},
+		{Num: 7, Offset: unsafe.Offsetof(UsageMetricStripView{}.ScaleMax), Kind: litewire.KindDouble},
+		{Num: 8, Offset: unsafe.Offsetof(UsageMetricStripView{}.LastValidIndex), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(UsageMetricStripView{}.AllPoints), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageStripPointView},
+		{Num: 10, Offset: unsafe.Offsetof(UsageMetricStripView{}.SelectedPoints), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageStripPointView},
+	},
+}
 
 func (m *UsageMetricStripView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageMetricStripView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.HasValue)
-	b = litewire.AppendDouble(b, 2, m.CurrentValue)
-	b = litewire.AppendBool(b, 3, m.HasRange)
-	b = litewire.AppendDouble(b, 4, m.MinValue)
-	b = litewire.AppendDouble(b, 5, m.MaxValue)
-	b = litewire.AppendDouble(b, 6, m.ScaleMin)
-	b = litewire.AppendDouble(b, 7, m.ScaleMax)
-	b = litewire.AppendInt32(b, 8, int32(m.LastValidIndex))
-	for _, v := range m.AllPoints {
-		if v != nil {
-			b = litewire.AppendMessage(b, 9, v)
-		}
-	}
-	for _, v := range m.SelectedPoints {
-		if v != nil {
-			b = litewire.AppendMessage(b, 10, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageMetricStripView)
 }
 
 type UsageModelRowView struct {
+	_                   [0]func()
 	Agent               v1.Agent
 	AgentName           string
 	Model               string
@@ -731,38 +673,39 @@ func (m *UsageModelRowView) GetSpeedRequestCount() uint64 {
 	return 0
 }
 
-func (m *UsageModelRowView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageModelRowView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageModelRowView{}.Agent), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(UsageModelRowView{}.AgentName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(UsageModelRowView{}.Model), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(UsageModelRowView{}.SeriesKey), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(UsageModelRowView{}.Selected), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(UsageModelRowView{}.ShareRatio), Kind: litewire.KindDouble},
+		{Num: 7, Offset: unsafe.Offsetof(UsageModelRowView{}.TotalTokens), Kind: litewire.KindUint64},
+		{Num: 8, Offset: unsafe.Offsetof(UsageModelRowView{}.HasCacheHit), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(UsageModelRowView{}.CacheHitRate), Kind: litewire.KindDouble},
+		{Num: 10, Offset: unsafe.Offsetof(UsageModelRowView{}.HasSpeed), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(UsageModelRowView{}.SpeedP50), Kind: litewire.KindDouble},
+		{Num: 12, Offset: unsafe.Offsetof(UsageModelRowView{}.HasTtft), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(UsageModelRowView{}.TtftP50Ms), Kind: litewire.KindDouble},
+		{Num: 14, Offset: unsafe.Offsetof(UsageModelRowView{}.HasTokensDelta), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(UsageModelRowView{}.TokensDeltaPercent), Kind: litewire.KindDouble},
+		{Num: 16, Offset: unsafe.Offsetof(UsageModelRowView{}.PreviousBackfilling), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(UsageModelRowView{}.UsageRequestCount), Kind: litewire.KindUint64},
+		{Num: 18, Offset: unsafe.Offsetof(UsageModelRowView{}.SpeedRequestCount), Kind: litewire.KindUint64},
+	},
+}
 
 func (m *UsageModelRowView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageModelRowView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Agent))
-	b = litewire.AppendString(b, 2, m.AgentName)
-	b = litewire.AppendString(b, 3, m.Model)
-	b = litewire.AppendString(b, 4, m.SeriesKey)
-	b = litewire.AppendBool(b, 5, m.Selected)
-	b = litewire.AppendDouble(b, 6, m.ShareRatio)
-	b = litewire.AppendVarint(b, 7, uint64(m.TotalTokens))
-	b = litewire.AppendBool(b, 8, m.HasCacheHit)
-	b = litewire.AppendDouble(b, 9, m.CacheHitRate)
-	b = litewire.AppendBool(b, 10, m.HasSpeed)
-	b = litewire.AppendDouble(b, 11, m.SpeedP50)
-	b = litewire.AppendBool(b, 12, m.HasTtft)
-	b = litewire.AppendDouble(b, 13, m.TtftP50Ms)
-	b = litewire.AppendBool(b, 14, m.HasTokensDelta)
-	b = litewire.AppendDouble(b, 15, m.TokensDeltaPercent)
-	b = litewire.AppendBool(b, 16, m.PreviousBackfilling)
-	b = litewire.AppendVarint(b, 17, uint64(m.UsageRequestCount))
-	b = litewire.AppendVarint(b, 18, uint64(m.SpeedRequestCount))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageModelRowView)
 }
 
 type UsageViewModel struct {
+	_                         [0]func()
 	MachineId                 string
 	MachineName               string
 	Found                     bool
@@ -962,70 +905,49 @@ func (m *UsageViewModel) GetUnsupportedFootnote() *Text {
 	return nil
 }
 
-func (m *UsageViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageViewModel{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UsageViewModel{}.MachineName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(UsageViewModel{}.Found), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(UsageViewModel{}.Supported), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(UsageViewModel{}.Online), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(UsageViewModel{}.Loading), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(UsageViewModel{}.ErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(UsageViewModel{}.CachedOffline), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(UsageViewModel{}.CachedAtMs), Kind: litewire.KindInt64},
+		{Num: 10, Offset: unsafe.Offsetof(UsageViewModel{}.Backfilling), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(UsageViewModel{}.BackfillScannedDays), Kind: litewire.KindInt32},
+		{Num: 12, Offset: unsafe.Offsetof(UsageViewModel{}.BackfillTotalDays), Kind: litewire.KindInt32},
+		{Num: 13, Offset: unsafe.Offsetof(UsageViewModel{}.PreviousPeriodBackfilling), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(UsageViewModel{}.Preset), Kind: litewire.KindInt32},
+		{Num: 15, Offset: unsafe.Offsetof(UsageViewModel{}.Granularity), Kind: litewire.KindInt32},
+		{Num: 16, Offset: unsafe.Offsetof(UsageViewModel{}.StartMs), Kind: litewire.KindInt64},
+		{Num: 17, Offset: unsafe.Offsetof(UsageViewModel{}.EndMs), Kind: litewire.KindInt64},
+		{Num: 18, Offset: unsafe.Offsetof(UsageViewModel{}.RangeDays), Kind: litewire.KindInt32},
+		{Num: 19, Offset: unsafe.Offsetof(UsageViewModel{}.SortBy), Kind: litewire.KindInt32},
+		{Num: 20, Offset: unsafe.Offsetof(UsageViewModel{}.Sources), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_UsageAgentSource},
+		{Num: 21, Offset: unsafe.Offsetof(UsageViewModel{}.HasAnyUsage), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(UsageViewModel{}.Hero), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageHeroView},
+		{Num: 23, Offset: unsafe.Offsetof(UsageViewModel{}.BarChart), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageBarChartView},
+		{Num: 24, Offset: unsafe.Offsetof(UsageViewModel{}.CacheHitStrip), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageMetricStripView},
+		{Num: 25, Offset: unsafe.Offsetof(UsageViewModel{}.OutputSpeedStrip), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageMetricStripView},
+		{Num: 26, Offset: unsafe.Offsetof(UsageViewModel{}.TtftStrip), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageMetricStripView},
+		{Num: 27, Offset: unsafe.Offsetof(UsageViewModel{}.Rows), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageModelRowView},
+		{Num: 28, Offset: unsafe.Offsetof(UsageViewModel{}.UnsupportedFootnote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *UsageViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.MachineName)
-	b = litewire.AppendBool(b, 3, m.Found)
-	b = litewire.AppendBool(b, 4, m.Supported)
-	b = litewire.AppendBool(b, 5, m.Online)
-	b = litewire.AppendBool(b, 6, m.Loading)
-	if m.ErrorText != nil {
-		b = litewire.AppendMessage(b, 7, m.ErrorText)
-	}
-	b = litewire.AppendBool(b, 8, m.CachedOffline)
-	b = litewire.AppendVarint(b, 9, uint64(m.CachedAtMs))
-	b = litewire.AppendBool(b, 10, m.Backfilling)
-	b = litewire.AppendInt32(b, 11, int32(m.BackfillScannedDays))
-	b = litewire.AppendInt32(b, 12, int32(m.BackfillTotalDays))
-	b = litewire.AppendBool(b, 13, m.PreviousPeriodBackfilling)
-	b = litewire.AppendInt32(b, 14, int32(m.Preset))
-	b = litewire.AppendInt32(b, 15, int32(m.Granularity))
-	b = litewire.AppendVarint(b, 16, uint64(m.StartMs))
-	b = litewire.AppendVarint(b, 17, uint64(m.EndMs))
-	b = litewire.AppendInt32(b, 18, int32(m.RangeDays))
-	b = litewire.AppendInt32(b, 19, int32(m.SortBy))
-	for _, v := range m.Sources {
-		if v != nil {
-			b = litewire.AppendMessage(b, 20, v)
-		}
-	}
-	b = litewire.AppendBool(b, 21, m.HasAnyUsage)
-	if m.Hero != nil {
-		b = litewire.AppendMessage(b, 22, m.Hero)
-	}
-	if m.BarChart != nil {
-		b = litewire.AppendMessage(b, 23, m.BarChart)
-	}
-	if m.CacheHitStrip != nil {
-		b = litewire.AppendMessage(b, 24, m.CacheHitStrip)
-	}
-	if m.OutputSpeedStrip != nil {
-		b = litewire.AppendMessage(b, 25, m.OutputSpeedStrip)
-	}
-	if m.TtftStrip != nil {
-		b = litewire.AppendMessage(b, 26, m.TtftStrip)
-	}
-	for _, v := range m.Rows {
-		if v != nil {
-			b = litewire.AppendMessage(b, 27, v)
-		}
-	}
-	if m.UnsupportedFootnote != nil {
-		b = litewire.AppendMessage(b, 28, m.UnsupportedFootnote)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageViewModel)
 }
 
 type UsageScreenOpenEvent struct {
+	_               [0]func()
 	MachineId       string
 	Preset          v1.UsageRangePreset
 	CustomStartMs   int64
@@ -1106,135 +1028,29 @@ func (m *UsageScreenOpenEvent) GetFocusModel() string {
 	return ""
 }
 
+var LitewireDesc_UsageScreenOpenEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageScreenOpenEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.Preset), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.CustomStartMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.CustomEndMs), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.Timezone), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.TzOffsetMinutes), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.BucketBoundsMs), Kind: litewire.KindInt64, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 8, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.PrevStartMs), Kind: litewire.KindInt64},
+		{Num: 9, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.ApplyFocus), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.FocusAgent), Kind: litewire.KindInt32},
+		{Num: 11, Offset: unsafe.Offsetof(UsageScreenOpenEvent{}.FocusModel), Kind: litewire.KindString},
+	},
+}
+
 func (m *UsageScreenOpenEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Preset = v1.UsageRangePreset(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CustomStartMs = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CustomEndMs = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Timezone = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TzOffsetMinutes = int32(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				for len(raw) > 0 {
-					v, err := litewire.ReadVarint(&raw)
-					if err != nil {
-						return err
-					}
-					m.BucketBoundsMs = append(m.BucketBoundsMs, int64(v))
-				}
-				continue
-			}
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.BucketBoundsMs = append(m.BucketBoundsMs, int64(v))
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PrevStartMs = int64(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ApplyFocus = litewire.DecodeBool(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.FocusAgent = v1.Agent(int32(v))
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FocusModel = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageScreenOpenEvent)
 }
 
 type UsageScreenRetryEvent struct {
+	_         [0]func()
 	MachineId string
 }
 
@@ -1245,31 +1061,19 @@ func (m *UsageScreenRetryEvent) GetMachineId() string {
 	return ""
 }
 
+var LitewireDesc_UsageScreenRetryEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageScreenRetryEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageScreenRetryEvent{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
 func (m *UsageScreenRetryEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageScreenRetryEvent)
 }
 
 type UsageScreenSelectSortEvent struct {
+	_         [0]func()
 	MachineId string
 	SortBy    UsageSortColumn
 }
@@ -1287,40 +1091,20 @@ func (m *UsageScreenSelectSortEvent) GetSortBy() UsageSortColumn {
 	return 0
 }
 
+var LitewireDesc_UsageScreenSelectSortEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageScreenSelectSortEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageScreenSelectSortEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UsageScreenSelectSortEvent{}.SortBy), Kind: litewire.KindInt32},
+	},
+}
+
 func (m *UsageScreenSelectSortEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SortBy = UsageSortColumn(int32(v))
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageScreenSelectSortEvent)
 }
 
 type UsageScreenSelectSeriesEvent struct {
+	_         [0]func()
 	MachineId string
 	SeriesKey string
 	Toggle    bool
@@ -1345,49 +1129,21 @@ func (m *UsageScreenSelectSeriesEvent) GetToggle() bool {
 	return false
 }
 
+var LitewireDesc_UsageScreenSelectSeriesEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageScreenSelectSeriesEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageScreenSelectSeriesEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UsageScreenSelectSeriesEvent{}.SeriesKey), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(UsageScreenSelectSeriesEvent{}.Toggle), Kind: litewire.KindBool},
+	},
+}
+
 func (m *UsageScreenSelectSeriesEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SeriesKey = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Toggle = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageScreenSelectSeriesEvent)
 }
 
 type UsageScreenScrubEvent struct {
+	_           [0]func()
 	MachineId   string
 	BucketIndex int32
 	Clear       bool
@@ -1412,49 +1168,21 @@ func (m *UsageScreenScrubEvent) GetClear() bool {
 	return false
 }
 
+var LitewireDesc_UsageScreenScrubEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageScreenScrubEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageScreenScrubEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UsageScreenScrubEvent{}.BucketIndex), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(UsageScreenScrubEvent{}.Clear), Kind: litewire.KindBool},
+	},
+}
+
 func (m *UsageScreenScrubEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.BucketIndex = int32(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Clear = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageScreenScrubEvent)
 }
 
 type UsageCacheLoadedEvent struct {
+	_         [0]func()
 	MachineId string
 	Snapshot  *v1.UsageStatsResponse
 }
@@ -1472,41 +1200,20 @@ func (m *UsageCacheLoadedEvent) GetSnapshot() *v1.UsageStatsResponse {
 	return nil
 }
 
+var LitewireDesc_UsageCacheLoadedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&UsageCacheLoadedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageCacheLoadedEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UsageCacheLoadedEvent{}.Snapshot), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_UsageStatsResponse},
+	},
+}
+
 func (m *UsageCacheLoadedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				if m.Snapshot == nil {
-					m.Snapshot = &v1.UsageStatsResponse{}
-				}
-				if err := litewire.ReadMessage(&b, m.Snapshot); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageCacheLoadedEvent)
 }
 
 type UsageCacheWriteEffect struct {
+	_         [0]func()
 	MachineId string
 	Snapshot  *v1.UsageStatsResponse
 }
@@ -1524,19 +1231,17 @@ func (m *UsageCacheWriteEffect) GetSnapshot() *v1.UsageStatsResponse {
 	return nil
 }
 
-func (m *UsageCacheWriteEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageCacheWriteEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UsageCacheWriteEffect{}.Snapshot), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_UsageStatsResponse},
+	},
+}
 
 func (m *UsageCacheWriteEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageCacheWriteEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	if m.Snapshot != nil {
-		b = litewire.AppendMessage(b, 2, m.Snapshot)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageCacheWriteEffect)
 }

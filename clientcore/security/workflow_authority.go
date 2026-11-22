@@ -10,577 +10,384 @@ import (
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
-func (e *Engine) renewLeaseOp(fgGen uint64, force bool, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	finish := func(res *corev1.SecurityWorkflowResultEffect, err error) {
-		if done != nil {
-			done(res, err)
-		}
-	}
-	if err := e.checkFG(fgGen); err != nil {
-		finish(nil, err)
+type renewLeaseTask struct {
+	taskBase
+	force              bool
+	pending            *PersistedOperation
+	leaseRaw, reqBytes []byte
+}
+
+func (t *renewLeaseTask) uploadPendingLease(e *Engine, curPending *PersistedOperation, leaseBytes, reqBytes []byte) {
+	t.pending, t.leaseRaw, t.reqBytes, t.stage = curPending, leaseBytes, reqBytes, 4
+	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, curPending.Server, "", true, t.fgGen, reqBytes, parentTarget(t, 0))
+}
+
+func (t *renewLeaseTask) runAfterPre(e *Engine) {
+	if p := e.ensureWF().pendingOp; p != nil && p.Kind != "offer" && p.Kind != "delete-records" {
+		e.okTarget(t.target, nil)
 		return
 	}
-	runAfterPre := func() {
+	t.stage = 1
+	e.syncStates(false, "", parentTarget(t, 0))
+}
+
+func (t *renewLeaseTask) fgCheckMask() uint32 { return fgOnStart | 1<<1 | 1<<2 }
+
+func (t *renewLeaseTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	switch t.stage {
+	case 0: // pre
+		if ev.kind == evStart {
+			if wf.pendingOp != nil && wf.pendingOp.Kind != "delete-records" {
+				e.startResumePendingOp(t.fgGen, parentTarget(t, 0))
+				return nil
+			}
+		}
+		t.runAfterPre(e)
+	case 1: // sync
+		if !e.isAuthority() {
+			e.okTarget(t.target, nil)
+			return nil
+		}
 		pending := wf.pendingOp
-		if pending != nil && pending.Kind != "offer" && pending.Kind != "delete-records" {
-			finish(nil, nil)
-			return
+		var currentLease *devicesec.LeaseCertificate
+		if e.hasLease && e.lease.Head == e.headHash {
+			l := e.lease
+			currentLease = &l
 		}
-		e.syncStates(false, "", func(sErr error) {
-			if sErr != nil {
-				finish(nil, sErr)
-				return
+		if !t.force && (pending == nil || len(pending.Retry) == 0) && !needsLeaseRenewal(currentLease, e.effectiveNow(e.lastNowMs)) {
+			e.okTarget(t.target, nil)
+			return nil
+		}
+		if pending != nil {
+			if pending.Server != e.effectiveServer() || pending.MemberID != e.selfDeviceID {
+				return devicesec.ErrStale
 			}
-			if err := e.checkFG(fgGen); err != nil {
-				finish(nil, err)
-				return
-			}
-			if !e.isAuthority() {
-				finish(nil, nil)
-				return
-			}
-			var currentLease *devicesec.LeaseCertificate
-			if e.hasLease && e.lease.Head == e.headHash {
-				l := e.lease
-				currentLease = &l
-			}
-			if !force && (pending == nil || len(pending.Retry) == 0) && !needsLeaseRenewal(currentLease, e.effectiveNow(e.lastNowMs)) {
-				finish(nil, nil)
-				return
-			}
-			// If an independent offer/delete-records op is pending, attach retry lease cleanly onto pending.Retry.
-			if pending != nil {
-				if pending.Server != e.effectiveServer() || pending.MemberID != e.selfDeviceID {
-					finish(nil, devicesec.ErrStale)
-					return
-				}
-				var existingCert *devicesec.LeaseCertificate
-				if len(pending.Retry) > 0 {
-					var retryReq v1.PutSecurityStateRequest
-					if retryReq.Unmarshal(pending.Retry) == nil && len(retryReq.Lease) > 0 {
-						if lc, err := devicesec.ParseLease(retryReq.Lease); err == nil && lc.Head == e.headHash && lc.Verify(e.head) == nil {
-							existingCert = &lc
-						}
+			var existingCert *devicesec.LeaseCertificate
+			if len(pending.Retry) > 0 {
+				var retryReq v1.PutSecurityStateRequest
+				if retryReq.Unmarshal(pending.Retry) == nil && len(retryReq.Lease) > 0 {
+					if lc, err := devicesec.ParseLease(retryReq.Lease); err == nil && lc.Head == e.headHash && lc.Verify(e.head) == nil {
+						existingCert = &lc
 					}
 				}
-				effNow := e.effectiveNow(e.lastNowMs)
-				needSign := existingCert == nil || effNow >= existingCert.NotAfter || (currentLease != nil && currentLease.IssuedAt > existingCert.IssuedAt)
-				uploadPendingLease := func(curPending *PersistedOperation, leaseBytes []byte, reqBytes []byte) {
-					e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, curPending.Server, "", true, fgGen, reqBytes, func(_ []byte, rErr *rpcError) {
-						if rErr != nil {
-							finish(nil, rErr)
-							return
-						}
-						e.installRecordCAS(nil, nil, nil, leaseBytes, e.lastNowMs, nil, func(_ *PersistedRecord, iErr error) {
-							if iErr != nil {
-								finish(nil, iErr)
-								return
-							}
-							clearedRetry := *curPending
-							clearedRetry.Retry = nil
-							e.saveOperationCAS(curPending, &clearedRetry, func(_ *PersistedOperation, scErr error) {
-								finish(nil, scErr)
-							})
-						})
-					})
-				}
-				if needSign {
-					e.buildAndSignLease(e.head, corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_ED, "", e.currentSigningTime(e.lastNowMs), func(fresh devicesec.LeaseCertificate, lErr error) {
-						if lErr != nil {
-							finish(nil, lErr)
-							return
-						}
-						if err := e.checkFG(fgGen); err != nil {
-							finish(nil, err)
-							return
-						}
-						lb, _ := fresh.MarshalBinary()
-						reqBytes, _ := (&v1.PutSecurityStateRequest{Lease: lb}).Marshal()
-						nextP := *pending
-						nextP.Retry = reqBytes
-						e.saveOperationCAS(pending, &nextP, func(saved *PersistedOperation, sErr error) {
-							if sErr != nil {
-								finish(nil, sErr)
-								return
-							}
-							uploadPendingLease(saved, lb, reqBytes)
-						})
-					})
-					return
-				}
-				lb, _ := existingCert.MarshalBinary()
-				uploadPendingLease(pending, lb, pending.Retry)
-				return
 			}
-
-			op := &PersistedOperation{
-				ID:       e.nextWorkflowToken(),
-				Revision: 1,
-				Server:   e.effectiveServer(),
-				MemberID: e.selfDeviceID,
-				Kind:     "lease",
-				Parent:   e.headHash,
-				Phase:    "PREPARED",
+			effNow := e.effectiveNow(e.lastNowMs)
+			if existingCert == nil || effNow >= existingCert.NotAfter || (currentLease != nil && currentLease.IssuedAt > existingCert.IssuedAt) {
+				t.pending, t.stage = pending, 2
+				e.buildAndSignLease(e.head, keyDevEd, "", e.currentSigningTime(e.lastNowMs), parentTarget(t, 0))
+				return nil
 			}
-			hh := e.headHash
-			e.claimOperationCAS(op, &hh, e.selfDeviceID, func(saved *PersistedOperation, cErr error) {
-				if cErr != nil {
-					finish(nil, cErr)
-					return
-				}
-				e.resumeLeaseOp(saved, fgGen, finish)
-			})
-		})
+			lb, _ := existingCert.MarshalBinary()
+			t.uploadPendingLease(e, pending, lb, pending.Retry)
+			return nil
+		}
+		hh := e.headHash
+		t.stage = 7
+		e.claimOperationCAS(e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, "lease", "", hh), &hh, e.selfDeviceID, parentTarget(t, 0))
+	case 2: // pending sign
+		lb, _ := ev.lease.MarshalBinary()
+		reqBytes := (&v1.PutSecurityStateRequest{Lease: lb}).AppendMarshal(nil)
+		nextP := *t.pending
+		nextP.Retry, t.leaseRaw, t.reqBytes, t.stage = reqBytes, lb, reqBytes, 3
+		e.saveOperationCAS(t.pending, &nextP, parentTarget(t, 0))
+	case 3: // pending save
+		t.uploadPendingLease(e, ev.op, t.leaseRaw, t.reqBytes)
+	case 4: // pending put
+		t.stage = 5
+		e.installRecordCAS(nil, nil, nil, t.leaseRaw, e.lastNowMs, nil, parentTarget(t, 0))
+	case 5: // pending install
+		clearedRetry := *t.pending
+		clearedRetry.Retry, t.stage = nil, 6
+		e.saveOperationCAS(t.pending, &clearedRetry, parentTarget(t, 0))
+	case 6: // pending clear retry
+		e.completeTarget(t.target, &secEvent{err: ev.err})
+	case 7: // claim
+		t.stage = 8
+		e.startResumeLeaseOp(ev.op, t.fgGen, t.target)
 	}
-
-	if wf.pendingOp != nil && wf.pendingOp.Kind != "delete-records" {
-		e.resumePendingOp(fgGen, func(_ *corev1.SecurityWorkflowResultEffect, rErr error) {
-			if rErr != nil {
-				finish(nil, rErr)
-				return
-			}
-			runAfterPre()
-		})
-		return
-	}
-	runAfterPre()
+	return nil
 }
 
-func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersisted bool, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
+type prepareCreationTask struct {
+	taskBase
+	rawServer, server, edSlot, xSlot, memberID, recoveryCode string
+	storagePersisted, cleanEd, cleanX                        bool
+	edPub, acctPub, regReqBytes                              []byte
+	recSeed                                                  [32]byte
+}
+
+func (t *prepareCreationTask) cleanAbort(e *Engine, hasEd, hasX bool, err error, bufs ...[]byte) {
+	for _, b := range bufs {
+		zeroBytes(b)
 	}
-	server, err := CheckServerURL(rawServer)
+	t.cleanEd, t.cleanX = hasEd, hasX
+	t.onError(e, err)
+}
+
+func (t *prepareCreationTask) onError(e *Engine, err error) {
+	zeroBytes(t.recSeed[:])
+	ed, x := "", ""
+	if t.cleanEd {
+		ed = t.edSlot
+	}
+	if t.cleanX {
+		x = t.xSlot
+	}
+	e.discardCandidatePair(ed, x)
+	e.failTarget(t.target, err)
+}
+
+func (t *prepareCreationTask) buildDraft(e *Engine, xBytes []byte) error {
+	if err := e.checkFG(t.fgGen); err != nil {
+		return err
+	}
+	var rootRaw, domain, recoverySeed, secret, recEd [32]byte
+	defer zeroBytes(rootRaw[:])
+	defer zeroBytes(recoverySeed[:])
+	defer zeroBytes(secret[:])
+	if !e.readRandom(rootRaw[:]) || !e.readRandom(domain[:]) || !e.readRandom(recoverySeed[:]) || !e.readRandom(secret[:]) {
+		return ErrNeedEntropy
+	}
+	acctSeed, err := deriveAccountSignSeed(rootRaw[:])
+	zeroBytes(rootRaw[:])
 	if err != nil {
-		done(nil, err)
-		return
+		return err
 	}
-	if op := wf.pendingOp; op != nil {
-		if op.Kind != "create" || op.Server != server {
-			done(nil, newWfError("conflict", text.KeySecurityFinishTheOriginalSecurityOperationFirst))
-			return
-		}
-		persisted := storagePersisted
-		if op.Create != nil {
-			persisted = op.Create.StoragePersisted
-		}
-		done(&corev1.SecurityWorkflowResultEffect{
-			ResumedDraft: true,
-			CodeSaved:    op.CodeSaved,
-			Flag:         persisted,
-		}, nil)
-		return
+	defer zeroBytes(acctSeed)
+	acctPub, err := devicesec.Ed25519PublicFromSeed(acctSeed)
+	if err != nil {
+		return err
 	}
-	if wf.record != nil || wf.regIntent != nil || wf.bootstrapInvalid {
-		done(nil, devicesec.ErrStale)
-		return
+	recPubBytes, err := devicesec.Ed25519PublicFromSeed(recoverySeed[:])
+	if err != nil {
+		return err
 	}
-	var edSlot, xSlot string
-	discardCreateSlots := func(hasEd, hasX bool) {
-		if hasEd && edSlot != "" {
-			e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED, edSlot)
-		}
-		if hasX && xSlot != "" {
-			e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_X, xSlot)
-		}
+	copy(recEd[:], recPubBytes)
+	member, err := devicesec.NewMember(t.edPub, xBytes, devicesec.Client)
+	if err != nil {
+		return err
 	}
-	e.withEntropy(160, func() {
-		slotTok := e.nextWorkflowToken()
-		edSlot = "create-ed-" + slotTok
-		xSlot = "create-x-" + slotTok
-		if err := e.checkFG(fgGen); err != nil {
-			done(nil, err)
-			return
-		}
-		e.reqKeyGen(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED, edSlot, true, func(edPub []byte, edErr error) {
-			if edErr != nil {
-				done(nil, edErr)
-				return
-			}
-			if err := e.checkFG(fgGen); err != nil {
-				discardCreateSlots(true, false)
-				done(nil, err)
-				return
-			}
-			e.reqKeyGen(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_X, xSlot, true, func(xPub []byte, xErr error) {
-				if xErr != nil {
-					discardCreateSlots(true, false)
-					done(nil, xErr)
-					return
-				}
-				if err := e.checkFG(fgGen); err != nil {
-					discardCreateSlots(true, true)
-					done(nil, err)
-					return
-				}
-				var rootRaw, domain, recoverySeed, secret [32]byte
-				if !e.readRandom(rootRaw[:]) || !e.readRandom(domain[:]) ||
-					!e.readRandom(recoverySeed[:]) || !e.readRandom(secret[:]) {
-					zeroBytes(rootRaw[:])
-					zeroBytes(recoverySeed[:])
-					discardCreateSlots(true, true)
-					done(nil, ErrNeedEntropy)
-					return
-				}
-				defer func() {
-					zeroBytes(rootRaw[:])
-					zeroBytes(recoverySeed[:])
-					zeroBytes(secret[:])
-				}()
-
-				acctSeed, err := deriveAccountSignSeed(rootRaw[:])
-				if err != nil {
-					discardCreateSlots(true, true)
-					done(nil, err)
-					return
-				}
-				defer zeroBytes(acctSeed)
-				acctPub, err := devicesec.Ed25519PublicFromSeed(acctSeed)
-				if err != nil {
-					discardCreateSlots(true, true)
-					done(nil, err)
-					return
-				}
-				recPubBytes, err := devicesec.Ed25519PublicFromSeed(recoverySeed[:])
-				if err != nil {
-					discardCreateSlots(true, true)
-					done(nil, err)
-					return
-				}
-				var recEd [32]byte
-				copy(recEd[:], recPubBytes)
-				member, err := devicesec.NewMember(edPub, xPub, devicesec.Client)
-				if err != nil {
-					discardCreateSlots(true, true)
-					done(nil, err)
-					return
-				}
-				now := max(1, uint64(max(1, e.lastNowMs)))
-				acctID := devicesec.ID(acctPub)
-
-				// Pre-sign DeviceRegistration before clearing ephemeral accountSeed in defer.
-				regBody, err := (&v1.DeviceRegistration{
-					AccountPublicKey: slices.Clone(acctPub),
-					DevicePublicKey:  slices.Clone(member.EdPublic[:]),
-					Kind:             v1.DeviceKind_DEVICE_KIND_CLIENT,
-					CreatedMs:        int64(now),
-				}).Marshal()
-				if err != nil {
-					discardCreateSlots(true, true)
-					done(nil, err)
-					return
-				}
-				regSignInput := make([]byte, 0, len(registerContext)+len(regBody))
-				regSignInput = append(regSignInput, registerContext...)
-				regSignInput = append(regSignInput, regBody...)
-				regSig, err := devicesec.Ed25519SignSeed(acctSeed, regSignInput)
-				if err != nil {
-					discardCreateSlots(true, true)
-					done(nil, err)
-					return
-				}
-				regReqBytes, err := (&v1.RegisterDeviceRequest{
-					Registration:    regBody,
-					Signature:       regSig,
-					ProtocolVersion: protocolVersion,
-				}).Marshal()
-				if err != nil {
-					discardCreateSlots(true, true)
-					done(nil, err)
-					return
-				}
-
-				secretCopy := slices.Clone(secret[:])
-				recSeedCopy := recoverySeed
-				e.buildAndSignStateWithKEM(
-					corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED,
-					edSlot,
-					true,
-					fgGen,
-					func(hpke devicesec.HPKESender) (devicesec.State, error) {
-						return devicesec.NewGenesis(acctID, domain, member, recEd, secretCopy, now, hpke)
-					},
-					[]devicesec.Member{member},
-					func(genesis devicesec.State, gErr error) {
-						defer zeroBytes(recSeedCopy[:])
-						zeroBytes(secretCopy)
-						if gErr != nil {
-							discardCreateSlots(true, true)
-							done(nil, gErr)
-							return
-						}
-						genHash, err := genesis.Hash()
-						if err != nil {
-							discardCreateSlots(true, true)
-							done(nil, err)
-							return
-						}
-						genBytes, err := genesis.MarshalBinary()
-						if err != nil {
-							discardCreateSlots(true, true)
-							done(nil, err)
-							return
-						}
-						code := EncodeRecoveryCode(recSeedCopy, genHash)
-						op := &PersistedOperation{
-							ID:               e.nextWorkflowToken(),
-							Revision:         1,
-							Server:           server,
-							MemberID:         member.ID,
-							Kind:             "create",
-							Phase:            "PREPARED",
-							Signed:           regReqBytes,
-							StoragePersisted: storagePersisted,
-							Create: &PersistedCreateDraft{
-								AccountPublicKey: acctPub,
-								EdSlot:           edSlot,
-								XSlot:            xSlot,
-								StoragePersisted: storagePersisted,
-								States:           [][]byte{genBytes},
-							},
-						}
-						e.claimOperationCAS(op, nil, member.ID, func(_ *PersistedOperation, cErr error) {
-							if cErr != nil {
-								discardCreateSlots(true, true)
-								done(nil, cErr)
-								return
-							}
-							wf.server = server
-							done(&corev1.SecurityWorkflowResultEffect{
-								RecoveryCode: code,
-								Flag:         storagePersisted,
-							}, nil)
-						})
-					},
-				)
-			})
-		})
-	})
+	now := max(1, uint64(max(1, e.lastNowMs)))
+	regBody, err := (&v1.DeviceRegistration{
+		AccountPublicKey: slices.Clone(acctPub), DevicePublicKey: slices.Clone(member.EdPublic[:]),
+		Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, CreatedMs: int64(now),
+	}).Marshal()
+	if err != nil {
+		return err
+	}
+	regSig, err := devicesec.Ed25519SignSeed(acctSeed, append(append([]byte{}, registerContext...), regBody...))
+	if err != nil {
+		return err
+	}
+	regReqBytes, err := (&v1.RegisterDeviceRequest{Registration: regBody, Signature: regSig, ProtocolVersion: protocolVersion}).Marshal()
+	if err != nil {
+		return err
+	}
+	t.acctPub, t.memberID, t.regReqBytes, t.recSeed, t.stage = acctPub, member.ID, regReqBytes, recoverySeed, 4
+	params := kemBuildParams{kind: kemBuildGenesis, accountID: devicesec.ID(acctPub), domain: domain, member: member, newSecret: secret, recoveryEd: recEd, now: now}
+	e.buildAndSignStateWithKEM(keyCandEd, t.edSlot, true, t.fgGen, params, []devicesec.Member{member}, parentTarget(t, 0))
+	return nil
 }
 
-func (e *Engine) confirmCreationCodeSavedOp(fgGen uint64, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
-	}
-	op := wf.pendingOp
-	if op == nil || op.Kind != "create" {
-		done(nil, devicesec.ErrStale)
-		return
-	}
-	next := *op
-	next.CodeSaved = true
-	e.saveOperationCAS(op, &next, func(saved *PersistedOperation, sErr error) {
-		if sErr != nil {
-			done(nil, sErr)
-			return
-		}
-		if saved.Phase == "PUBLISHED" {
-			e.adoptCreationOp(saved, fgGen, done)
-			return
-		}
-		done(&corev1.SecurityWorkflowResultEffect{CodeSaved: true}, nil)
-	})
-}
+func (t *prepareCreationTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 | 1<<1 }
 
-func (e *Engine) continueCreationOp(fgGen uint64, setupToken string, done func(*corev1.SecurityWorkflowResultEffect, error)) {
+func (t *prepareCreationTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
-	}
-	op := wf.pendingOp
-	if op == nil || op.Kind != "create" || op.Create == nil || len(op.Create.States) == 0 || len(op.Signed) == 0 {
-		done(nil, devicesec.ErrStale)
-		return
-	}
-	if op.Phase == "PUBLISHED" {
-		if op.CodeSaved {
-			e.adoptCreationOp(op, fgGen, done)
-			return
-		}
-		done(&corev1.SecurityWorkflowResultEffect{
-			CodeSaved:             false,
-			NeedsRecoveryRotation: true,
-		}, nil)
-		return
-	}
-	draft := op.Create
-	edSlot := draft.EdSlot
-
-	finishWithToken := func(tok string) {
-		genesisBytes := draft.States[0]
-		genesis, err := devicesec.ParseState(genesisBytes)
+	switch t.stage {
+	case 0: // start
+		server, err := CheckServerURL(t.rawServer)
 		if err != nil {
-			done(nil, err)
-			return
+			return err
 		}
-		pinBytes, _ := (&v1.PinSecurityDomainRequest{GenesisState: genesisBytes}).Marshal()
-		e.reqRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN, op.Server, tok, pinBytes, func(_ []byte, pErr *rpcError) {
-			if pErr != nil {
-				done(nil, pErr)
-				return
+		if op := wf.pendingOp; op != nil {
+			if op.Kind != "create" || op.Server != server {
+				return newWfError("conflict", text.KeySecurityFinishTheOriginalSecurityOperationFirst)
 			}
-			if err := e.checkFG(fgGen); err != nil {
-				done(nil, err)
-				return
+			persisted := t.storagePersisted
+			if op.Create != nil {
+				persisted = op.Create.StoragePersisted
 			}
-			signAt := max(uint64(max(1, e.lastNowMs)), genesis.Core.IssuedAt)
-			e.buildAndSignLease(genesis, corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED, edSlot, signAt, func(lease devicesec.LeaseCertificate, lErr error) {
-				if lErr != nil {
-					done(nil, lErr)
-					return
-				}
-				if err := e.checkFG(fgGen); err != nil {
-					done(nil, err)
-					return
-				}
-				lb, _ := lease.MarshalBinary()
-				nextDraft := *draft
-				nextDraft.Lease = lb
-				nextOp := *wf.pendingOp
-				nextOp.Create = &nextDraft
-				e.saveOperationCAS(wf.pendingOp, &nextOp, func(saved *PersistedOperation, sErr error) {
-					if sErr != nil {
-						done(nil, sErr)
-						return
-					}
-					putLeaseReq, _ := (&v1.PutSecurityStateRequest{Lease: lb}).Marshal()
-					e.reqRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, saved.Server, tok, putLeaseReq, func(_ []byte, uErr *rpcError) {
-						if uErr != nil {
-							done(nil, uErr)
-							return
-						}
-						if err := e.checkFG(fgGen); err != nil {
-							done(nil, err)
-							return
-						}
-						pubOp := *saved
-						pubOp.Phase = "PUBLISHED"
-						e.saveOperationCAS(saved, &pubOp, func(pubSaved *PersistedOperation, p2Err error) {
-							if p2Err != nil {
-								done(nil, p2Err)
-								return
-							}
-							wf.cachedToken = tok
-							e.out = append(e.out, &corev1.Effect{
-								Effect: &corev1.Effect_SecurityTokenUpdated{
-									SecurityTokenUpdated: &corev1.SecurityTokenUpdatedEffect{
-										Token: tok,
-									},
-								},
-							})
-							if pubSaved.CodeSaved {
-								e.adoptCreationOp(pubSaved, fgGen, done)
-								return
-							}
-							done(&corev1.SecurityWorkflowResultEffect{
-								CodeSaved:             false,
-								NeedsRecoveryRotation: true,
-							}, nil)
-						})
-					})
-				})
-			})
-		})
-	}
-
-	var baseReq v1.RegisterDeviceRequest
-	if err := baseReq.Unmarshal(op.Signed); err != nil {
-		done(nil, devicesec.ErrInvalid)
-		return
-	}
-	if setupToken == "" && len(op.Retry) > 0 {
-		var prevRetry v1.RegisterDeviceRequest
-		if prevRetry.Unmarshal(op.Retry) == nil {
-			setupToken = prevRetry.SetupToken
+			e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{ResumedDraft: true, CodeSaved: op.CodeSaved, Flag: persisted})
+			return nil
 		}
-	}
-
-	e.forceLoginToken(op.Server, corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED, edSlot, op.MemberID, true, fgGen, false, func(tok string, lErr error) {
-		if lErr == nil {
-			finishWithToken(tok)
-			return
+		if wf.record != nil || wf.regIntent != nil || wf.bootstrapInvalid {
+			return devicesec.ErrStale
 		}
-		re := asRpcError(lErr)
+		t.server, t.stage = server, 1
+		e.waitEntropy(160, t, 0)
+	case 1: // entropy
+		slotTok := e.nextWorkflowToken()
+		t.edSlot, t.xSlot, t.stage = "create-ed-"+slotTok, "create-x-"+slotTok, 2
+		e.waitKeyGen(keyCandEd, t.edSlot, true, t, 0)
+	case 2: // key ed
+		if err := e.checkFG(t.fgGen); err != nil {
+			t.cleanEd = true
+			return err
+		}
+		t.edPub, t.cleanEd, t.stage = ev.bytes, true, 3
+		e.waitKeyGen(keyCandX, t.xSlot, true, t, 0)
+	case 3: // key x
+		t.cleanX = true
+		return t.buildDraft(e, ev.bytes)
+	case 4: // kem
+		genHash, err := ev.state.Hash()
+		if err != nil {
+			return err
+		}
+		t.recoveryCode = EncodeRecoveryCode(t.recSeed, genHash)
+		zeroBytes(t.recSeed[:])
+		genBytes, err := ev.state.MarshalBinary()
+		if err != nil {
+			return err
+		}
+		t.stage = 5
+		op := e.newPreparedOp(t.server, t.memberID, "create", "", devicesec.Hash{})
+		op.Signed, op.StoragePersisted = t.regReqBytes, t.storagePersisted
+		op.Create = &PersistedCreateDraft{
+			AccountPublicKey: t.acctPub, EdSlot: t.edSlot, XSlot: t.xSlot, StoragePersisted: t.storagePersisted, States: [][]byte{genBytes},
+		}
+		e.claimOperationCAS(op, nil, t.memberID, parentTarget(t, 0))
+	case 5: // claim
+		wf.server = t.server
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{RecoveryCode: t.recoveryCode, Flag: t.storagePersisted})
+	}
+	return nil
+}
+
+type continueCreationTask struct {
+	taskBase
+	setupToken, edSlot, tok string
+	op                      *PersistedOperation
+	baseReq                 v1.RegisterDeviceRequest
+	isPowRetry              bool
+	regReq, leaseBytes      []byte
+	genesis                 devicesec.State
+}
+
+func (t *continueCreationTask) fgCheckMask() uint32 { return fgOnStart | 1<<5 | 1<<6 | 1<<8 }
+func (t *continueCreationTask) rawErrMask() uint32  { return 1<<0 | 1<<2 }
+
+func (t *continueCreationTask) startRegisterAttempt(e *Engine, curOp *PersistedOperation, proof *v1.SignupProof, isPow bool) {
+	req := t.baseReq
+	req.SetupToken, req.SignupProof = t.setupToken, proof
+	reqBytes, _ := (&req).Marshal()
+	next := *curOp
+	next.Retry, t.isPowRetry, t.regReq, t.stage = reqBytes, isPow, reqBytes, 1
+	e.saveOperationCAS(curOp, &next, parentTarget(t, 0))
+}
+
+func (t *continueCreationTask) finishWithToken(e *Engine, tok string) error {
+	genesisBytes := t.op.Create.States[0]
+	genesis, err := devicesec.ParseState(genesisBytes)
+	if err != nil {
+		return err
+	}
+	t.tok, t.genesis, t.stage = tok, genesis, 5
+	e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN, t.op.Server, tok, &v1.PinSecurityDomainRequest{GenesisState: genesisBytes}, t)
+	return nil
+}
+
+func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	if ev.kind == evStart {
+		op := wf.pendingOp
+		if op == nil || op.Kind != "create" || op.Create == nil || len(op.Create.States) == 0 || len(op.Signed) == 0 {
+			return devicesec.ErrStale
+		}
+		if op.Phase == "PUBLISHED" {
+			if op.CodeSaved {
+				e.startAdoptCreationOp(op, t.target)
+				return nil
+			}
+			e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{NeedsRecoveryRotation: true})
+			return nil
+		}
+		if t.baseReq.Unmarshal(op.Signed) != nil {
+			return devicesec.ErrInvalid
+		}
+		if t.setupToken == "" && len(op.Retry) > 0 {
+			var prevRetry v1.RegisterDeviceRequest
+			if prevRetry.Unmarshal(op.Retry) == nil {
+				t.setupToken = prevRetry.SetupToken
+			}
+		}
+		t.op, t.edSlot, t.stage = op, op.Create.EdSlot, 0
+		e.forceLoginToken(op.Server, keyCandEd, t.edSlot, op.MemberID, true, t.fgGen, false, parentTarget(t, 0))
+		return nil
+	}
+	switch t.stage {
+	case 0: // init login
+		if ev.err == nil {
+			return t.finishWithToken(e, ev.str)
+		}
+		re := asRpcError(ev.err)
 		if re == nil || (re.code != connectCodePermissionDenied && re.code != connectCodeNotFound && re.code != connectCodeUnauthenticated) {
-			done(nil, lErr)
-			return
+			return ev.err
 		}
-
-		registerAttempt := func(curOp *PersistedOperation, proof *v1.SignupProof, onRegErr func(*rpcError)) {
-			req := baseReq
-			req.SetupToken = setupToken
-			req.SignupProof = proof
-			reqBytes, _ := (&req).Marshal()
-			next := *curOp
-			next.Retry = reqBytes
-			e.saveOperationCAS(curOp, &next, func(saved *PersistedOperation, sErr error) {
-				if sErr != nil {
-					done(nil, sErr)
-					return
-				}
-				e.reqRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE, saved.Server, "", reqBytes, func(respBytes []byte, rErr *rpcError) {
-					if rErr != nil {
-						onRegErr(rErr)
-						return
-					}
-					var resp v1.RegisterDeviceResponse
-					if err := resp.Unmarshal(respBytes); err != nil || resp.DeviceId != saved.MemberID {
-						done(nil, devicesec.ErrUntrusted)
-						return
-					}
-					e.forceLoginToken(saved.Server, corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED, edSlot, saved.MemberID, true, fgGen, false, func(freshTok string, flErr error) {
-						if flErr != nil {
-							done(nil, flErr)
-							return
-						}
-						finishWithToken(freshTok)
-					})
-				})
-			})
-		}
-
-		registerAttempt(op, nil, func(regErr *rpcError) {
-			if regErr.code != connectCodeFailedPrecondition {
-				done(nil, regErr)
-				return
+		t.startRegisterAttempt(e, t.op, nil, false)
+	case 1: // save retry
+		t.op, t.stage = ev.op, 2
+		e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE, ev.op.Server, "", t.regReq, t, 0)
+	case 2: // reg rpc
+		if ev.rpcErr == nil {
+			var resp v1.RegisterDeviceResponse
+			if resp.Unmarshal(ev.bytes) != nil || resp.DeviceId != t.op.MemberID {
+				return devicesec.ErrUntrusted
 			}
-			// Solve PoW signup challenge.
-			chalReq, _ := (&v1.GetSignupChallengeRequest{}).Marshal()
-			e.reqRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE, op.Server, "", chalReq, func(scBytes []byte, scErr *rpcError) {
-				if scErr != nil {
-					done(nil, scErr)
-					return
-				}
-				var sc v1.GetSignupChallengeResponse
-				if err := sc.Unmarshal(scBytes); err != nil || len(sc.Challenge) == 0 || sc.DifficultyBits > 24 ||
-					(e.lastNowMs > 0 && sc.ExpiresMs <= e.lastNowMs) {
-					done(nil, newWfError("failed_precondition", text.KeySecurityRegistrationProofOfWorkIsInvalidOrExpired))
-					return
-				}
-				if err := e.checkFG(fgGen); err != nil {
-					done(nil, err)
-					return
-				}
-				nonce, ok := solveSignupPoW(sc.Challenge, sc.DifficultyBits)
-				if !ok {
-					done(nil, newWfError("failed_precondition", text.KeySecurityRegistrationProofOfWorkExpiredRetryTheOriginalDraft))
-					return
-				}
-				registerAttempt(wf.pendingOp, &v1.SignupProof{
-					Challenge: sc.Challenge,
-					Nonce:     nonce,
-				}, func(powErr *rpcError) {
-					done(nil, powErr)
-				})
-			})
-		})
-	})
+			t.stage = 4
+			e.forceLoginToken(t.op.Server, keyCandEd, t.edSlot, t.op.MemberID, true, t.fgGen, false, parentTarget(t, 0))
+			return nil
+		}
+		if t.isPowRetry || ev.rpcErr.code != connectCodeFailedPrecondition {
+			return ev.rpcErr
+		}
+		t.stage = 3
+		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE, t.op.Server, "", &v1.GetSignupChallengeRequest{}, t)
+	case 3: // pow chal
+		var sc v1.GetSignupChallengeResponse
+		if sc.Unmarshal(ev.bytes) != nil || len(sc.Challenge) == 0 || sc.DifficultyBits > 24 || (e.lastNowMs > 0 && sc.ExpiresMs <= e.lastNowMs) {
+			return newWfError("failed_precondition", text.KeySecurityRegistrationProofOfWorkIsInvalidOrExpired)
+		}
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
+		nonce, ok := solveSignupPoW(sc.Challenge, sc.DifficultyBits)
+		if !ok {
+			return newWfError("failed_precondition", text.KeySecurityRegistrationProofOfWorkExpiredRetryTheOriginalDraft)
+		}
+		t.startRegisterAttempt(e, wf.pendingOp, &v1.SignupProof{Challenge: sc.Challenge, Nonce: nonce}, true)
+	case 4: // post reg login
+		return t.finishWithToken(e, ev.str)
+	case 5: // pin
+		t.stage = 6
+		e.buildAndSignLease(t.genesis, keyCandEd, t.edSlot, max(uint64(max(1, e.lastNowMs)), t.genesis.Core.IssuedAt), parentTarget(t, 0))
+	case 6: // lease
+		lb, _ := ev.lease.MarshalBinary()
+		curPending := wf.pendingOp
+		nextDraft := *curPending.Create
+		nextDraft.Lease = lb
+		nextOp := *curPending
+		nextOp.Create, t.leaseBytes, t.stage = &nextDraft, lb, 7
+		e.saveOperationCAS(curPending, &nextOp, parentTarget(t, 0))
+	case 7: // save lease
+		t.op, t.stage = ev.op, 8
+		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE, ev.op.Server, t.tok, &v1.PutSecurityStateRequest{Lease: t.leaseBytes}, t)
+	case 8: // put lease
+		pubOp := *t.op
+		pubOp.Phase, t.stage = "PUBLISHED", 9
+		e.saveOperationCAS(t.op, &pubOp, parentTarget(t, 0))
+	case 9: // save pub
+		pubSaved := ev.op
+		wf.cachedToken = t.tok
+		e.emitTokenUpdated(t.tok, 0, false)
+		if pubSaved.CodeSaved {
+			e.startAdoptCreationOp(pubSaved, t.target)
+			return nil
+		}
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{NeedsRecoveryRotation: true})
+	}
+	return nil
 }
 
 func solveSignupPoW(challenge []byte, difficultyBits uint32) ([]byte, bool) {
@@ -591,14 +398,9 @@ func solveSignupPoW(challenge []byte, difficultyBits uint32) ([]byte, bool) {
 	buf := make([]byte, len(challenge)+8)
 	copy(buf, challenge)
 	for n := uint64(0); n < 1<<28; n++ {
-		nonce[0] = byte(n >> 56)
-		nonce[1] = byte(n >> 48)
-		nonce[2] = byte(n >> 40)
-		nonce[3] = byte(n >> 32)
-		nonce[4] = byte(n >> 24)
-		nonce[5] = byte(n >> 16)
-		nonce[6] = byte(n >> 8)
-		nonce[7] = byte(n)
+		for i := range 8 {
+			nonce[i] = byte(n >> (56 - 8*i))
+		}
 		copy(buf[len(challenge):], nonce[:])
 		sum := sha256.Sum256(buf)
 		ok := true
@@ -615,575 +417,388 @@ func solveSignupPoW(challenge []byte, difficultyBits uint32) ([]byte, bool) {
 	return nil, false
 }
 
-func (e *Engine) adoptCreationWithoutCodeOp(fgGen uint64, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
-	}
-	op := wf.pendingOp
+type adoptCreationWithoutCodeTask struct{ taskBase }
+
+func (t *adoptCreationWithoutCodeTask) fgCheckMask() uint32 { return fgOnStart }
+
+func (t *adoptCreationWithoutCodeTask) step(e *Engine, _ *secEvent) error {
+	op := e.ensureWF().pendingOp
 	if op == nil || op.Kind != "create" || op.Phase != "PUBLISHED" {
-		done(nil, devicesec.ErrStale)
-		return
+		return devicesec.ErrStale
 	}
-	e.adoptCreationOp(op, fgGen, done)
+	e.startAdoptCreationOp(op, t.target)
+	return nil
 }
 
-func (e *Engine) adoptCreationOp(op *PersistedOperation, fgGen uint64, done func(*corev1.SecurityWorkflowResultEffect, error)) {
+type adoptCreationTask struct {
+	taskBase
+	op      *PersistedOperation
+	genesis devicesec.State
+	pin     devicesec.Pin
+	prof    *PersistedPublicProfile
+	rec     *PersistedRecord
+	rev     string
+}
+
+func (e *Engine) startAdoptCreationOp(op *PersistedOperation, target taskTarget) {
 	wf := e.ensureWF()
 	draft := op.Create
 	if draft == nil || len(draft.States) == 0 || len(draft.AccountPublicKey) != 32 {
-		done(nil, devicesec.ErrInvalid)
+		e.failTarget(target, devicesec.ErrInvalid)
 		return
 	}
 	genesis, err := devicesec.ParseState(draft.States[0])
 	if err != nil {
-		done(nil, err)
+		e.failTarget(target, err)
 		return
 	}
 	pin, err := genesis.Pin()
 	if err != nil {
-		done(nil, err)
+		e.failTarget(target, err)
 		return
 	}
 	var acctPub [32]byte
 	copy(acctPub[:], draft.AccountPublicKey)
-	prof := &PersistedPublicProfile{
-		Server:           op.Server,
-		Pin:              pin,
-		AccountPublicKey: acctPub,
-	}
+	prof := &PersistedPublicProfile{Server: op.Server, Pin: pin, AccountPublicKey: acctPub}
 	profBytes, err := prof.Encode()
 	if err != nil {
-		done(nil, err)
+		e.failTarget(target, err)
 		return
 	}
 	rec := &PersistedRecord{
-		Pin:                   pin,
-		MemberID:              op.MemberID,
-		Member:                true,
-		Server:                op.Server,
-		AccountPublicKey:      slices.Clone(acctPub[:]),
-		States:                draft.States,
-		RecoveryProofs:        make([][]byte, len(draft.States)),
-		Lease:                 draft.Lease,
-		FloorMs:               e.lastNowMs,
-		NeedsRecoveryRotation: !op.CodeSaved,
+		Pin: pin, MemberID: op.MemberID, Member: true, Server: op.Server, AccountPublicKey: slices.Clone(acctPub[:]),
+		States: draft.States, RecoveryProofs: make([][]byte, len(draft.States)), Lease: draft.Lease, FloorMs: e.lastNowMs, NeedsRecoveryRotation: !op.CodeSaved,
 	}
 	recBytes, err := rec.Encode()
 	if err != nil {
-		done(nil, err)
+		e.failTarget(target, err)
 		return
 	}
-	rev := e.nextWorkflowToken()
-	opRev := u64Str(op.Revision)
+	rev, opRev := e.nextWorkflowToken(), u64Str(op.Revision)
 	if wf.pendingOpRev != "" {
 		opRev = wf.pendingOpRev
 	}
-	e.reqStorage(&corev1.SecurityStorageEffect{
-		Op:            corev1.SecurityStorageOp_SECURITY_STORAGE_OP_BATCH_COMMIT,
-		PromoteEdSlot: draft.EdSlot,
-		PromoteXSlot:  draft.XSlot,
-		DiscardSlots:  []string{draft.EdSlot, draft.XSlot},
-		Batch: []*corev1.SecurityStorageWrite{
-			{
-				Bucket:       corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_PUBLIC_PROFILE,
-				Key:          PublicProfileStorageKey(op.Server, pin),
-				NextRevision: rev,
-				Data:         profBytes,
-			},
-			{
-				Bucket:       corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD,
-				Key:          "record",
-				CreateOnly:   true,
-				NextRevision: rev,
-				Data:         recBytes,
-			},
-			{
-				Bucket:           corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_OPERATION,
-				Key:              "pending",
-				ExpectedRevision: opRev,
-				Remove:           true,
-			},
-		},
-	}, func(rep storageReply, werr error) {
-		if rep.conflict {
-			done(nil, devicesec.ErrStale)
-			return
-		}
-		if werr != nil {
-			done(nil, werr)
-			return
-		}
-		wf.server = op.Server
-		wf.record = rec
-		wf.recordRev = rev
-		wf.pendingOp = nil
-		wf.pendingOpRev = ""
-		wf.publicProfiles[PublicProfileStorageKey(op.Server, pin)] = prof
-		wf.legacyRepairNotice = false
-		wf.deviceEdPresent = true
-		wf.deviceXPresent = true
-		if len(rep.deviceEdPub) == 32 {
-			wf.deviceEdPub = slices.Clone(rep.deviceEdPub)
-		} else if m, ok := genesis.Core.Member(op.MemberID); ok {
-			wf.deviceEdPub = slices.Clone(m.EdPublic[:])
-		}
-		if len(rep.deviceXPub) == 32 {
-			wf.deviceXPub = slices.Clone(rep.deviceXPub)
-		} else if m, ok := genesis.Core.Member(op.MemberID); ok {
-			wf.deviceXPub = slices.Clone(m.XPublic[:])
-		}
-		e.applyPersistedRecordToEngine(rec, func(unlockErr error) {
-			if unlockErr != nil {
-				done(nil, unlockErr)
-				return
-			}
-			// Now persist notify_blob with newly unlocked head secret.
-			if ntf := e.buildNotifyRecordBytes(rec, genesis); len(ntf) > 0 {
-				e.reqStorage(&corev1.SecurityStorageEffect{
-					Op:           corev1.SecurityStorageOp_SECURITY_STORAGE_OP_WRITE_CAS,
-					Bucket:       corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_NOTIFY_RECORD,
-					Key:          "notify",
-					NextRevision: rev,
-					Data:         ntf,
-				}, func(storageReply, error) {})
-			}
-			done(&corev1.SecurityWorkflowResultEffect{
-				CodeSaved:             op.CodeSaved,
-				NeedsRecoveryRotation: !op.CodeSaved,
-				AccountAdopted: &corev1.SecurityAccountAdopted{
-					Server:                op.Server,
-					DeviceId:              op.MemberID,
-					AccountId:             pin.Account,
-					NeedsRecoveryRotation: !op.CodeSaved,
-				},
-			}, nil)
-		})
+	writes := buildAccountCommitWrites(op.Server, pin, profBytes, recBytes, true, "", rev, opRev, true, "", "")
+	e.batchCommitStorage(draft.EdSlot, draft.XSlot, []string{draft.EdSlot, draft.XSlot}, false, writes, &adoptCreationTask{
+		taskBase: taskBase{target: target}, op: op, genesis: genesis, pin: pin, prof: prof, rec: rec, rev: rev,
 	})
 }
 
-func (e *Engine) removeDeviceOp(fgGen uint64, id string, abandonPairDelivery bool, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
-	}
-	proceedAfterPre := func() {
-		if wf.pendingOp != nil {
-			done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
-			return
+func (t *adoptCreationTask) step(e *Engine, ev *secEvent) error {
+	switch t.stage {
+	case 0:
+		var fallbackEd, fallbackX []byte
+		if m, ok := t.genesis.Core.Member(t.op.MemberID); ok {
+			fallbackEd, fallbackX = m.EdPublic[:], m.XPublic[:]
 		}
-		e.syncStates(false, "", func(sErr error) {
-			if sErr != nil {
-				done(nil, sErr)
-				return
-			}
-			if err := e.checkFG(fgGen); err != nil {
-				done(nil, err)
-				return
-			}
-			if !e.isAuthority() {
-				done(nil, devicesec.ErrUntrusted)
-				return
-			}
-			if id == e.selfDeviceID {
-				done(nil, newWfError("invalid", text.KeySecurityTheManagingClientCannotBeRemovedDirectlyTransferManagement))
-				return
-			}
-			if _, ok := e.head.Core.Member(id); !ok {
-				done(nil, nil)
-				return
-			}
-			hh := e.headHash
-			op := &PersistedOperation{
-				ID:             e.nextWorkflowToken(),
-				Revision:       1,
-				Server:         e.effectiveServer(),
-				MemberID:       e.selfDeviceID,
-				Kind:           "state",
-				Parent:         hh,
-				Phase:          "PREPARED",
-				Action:         "remove",
-				TargetDeviceID: id,
-			}
-			e.claimOperationCAS(op, &hh, e.selfDeviceID, func(saved *PersistedOperation, cErr error) {
-				if cErr != nil {
-					done(nil, cErr)
-					return
-				}
-				e.resumePendingOp(fgGen, done)
-			})
+		e.installCommittedAccount(t.op.Server, t.rev, t.rec, t.prof, ev.storage, fallbackEd, fallbackX)
+		t.stage = 1
+		e.applyPersistedRecordToEngine(t.rec, parentTarget(t, 0))
+	case 1:
+		e.fireNotifyRecord(t.rec, t.genesis, t.rev)
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
+			CodeSaved: t.op.CodeSaved, NeedsRecoveryRotation: !t.op.CodeSaved,
+			AccountAdopted: &corev1.SecurityAccountAdopted{Server: t.op.Server, DeviceId: t.op.MemberID, AccountId: t.pin.Account, NeedsRecoveryRotation: !t.op.CodeSaved},
 		})
 	}
-
-	if pending := wf.pendingOp; pending != nil && abandonPairDelivery && pending.Pair != nil && pending.Pair.CandidateID == id {
-		e.syncStates(false, "", func(sErr error) {
-			if sErr != nil {
-				done(nil, sErr)
-				return
-			}
-			var orig v1.PutSecurityStateRequest
-			if orig.Unmarshal(pending.Signed) != nil || len(orig.States) == 0 {
-				done(nil, devicesec.ErrStale)
-				return
-			}
-			ts, err := devicesec.ParseState(orig.States[len(orig.States)-1].State)
-			if err != nil {
-				done(nil, err)
-				return
-			}
-			th, _ := ts.Hash()
-			if _, ok := e.byHash[th]; !ok {
-				done(nil, devicesec.ErrStale)
-				return
-			}
-			e.clearOperationCAS(pending, func(cErr error) {
-				if cErr != nil {
-					done(nil, cErr)
-					return
-				}
-				proceedAfterPre()
-			})
-		})
-		return
-	}
-	e.resumePendingOp(fgGen, func(_ *corev1.SecurityWorkflowResultEffect, rErr error) {
-		if rErr != nil {
-			done(nil, rErr)
-			return
-		}
-		proceedAfterPre()
-	})
+	return nil
 }
 
-func (e *Engine) deleteMachineRecordsOp(fgGen uint64, machineID string, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	e.resumePendingOp(fgGen, func(_ *corev1.SecurityWorkflowResultEffect, rErr error) {
-		if rErr != nil {
-			done(nil, rErr)
-			return
-		}
-		e.syncStates(false, "", func(sErr error) {
-			if sErr != nil {
-				done(nil, sErr)
-				return
-			}
-			if err := e.checkFG(fgGen); err != nil {
-				done(nil, err)
-				return
-			}
-			if !e.isAuthority() {
-				done(nil, devicesec.ErrUntrusted)
-				return
-			}
-			if _, live := e.head.Core.Member(machineID); live {
-				done(nil, devicesec.ErrUntrusted)
-				return
-			}
-			var wasMachine bool
-			for _, s := range e.states {
-				if m, ok := s.Core.Member(machineID); ok && m.Kind == devicesec.Machine {
-					wasMachine = true
-					break
-				}
-			}
-			if !wasMachine {
-				done(nil, devicesec.ErrUntrusted)
-				return
-			}
-			if wf.pendingOp != nil {
-				done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
-				return
-			}
-			reqBytes, _ := (&v1.DeleteMachineRecordsRequest{MachineId: machineID}).Marshal()
-			hh := e.headHash
-			op := &PersistedOperation{
-				ID:             e.nextWorkflowToken(),
-				Revision:       1,
-				Server:         e.effectiveServer(),
-				MemberID:       e.selfDeviceID,
-				Kind:           "delete-records",
-				Parent:         hh,
-				Phase:          "PREPARED",
-				TargetDeviceID: machineID,
-				Signed:         reqBytes,
-			}
-			e.claimOperationCAS(op, &hh, e.selfDeviceID, func(_ *PersistedOperation, cErr error) {
-				if cErr != nil {
-					done(nil, cErr)
-					return
-				}
-				e.resumePendingOp(fgGen, done)
-			})
-		})
-	})
+type removeDeviceTask struct {
+	taskBase
+	id                  string
+	abandonPairDelivery bool
 }
 
-func (e *Engine) deleteAccountOp(fgGen uint64, done func(*corev1.SecurityWorkflowResultEffect, error)) {
+func (t *removeDeviceTask) proceedAfterPre(e *Engine) error {
+	if e.ensureWF().pendingOp != nil {
+		return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+	}
+	t.stage = 3
+	e.syncStates(false, "", parentTarget(t, 0))
+	return nil
+}
+
+func (t *removeDeviceTask) fgCheckMask() uint32 { return fgOnStart | 1<<3 }
+
+func (t *removeDeviceTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
-	}
-	if wf.pendingOp != nil {
-		done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
-		return
-	}
-	e.syncStates(false, "", func(sErr error) {
-		if sErr != nil {
-			done(nil, sErr)
-			return
+	switch t.stage {
+	case 0:
+		if ev.kind == evStart {
+			if pending := wf.pendingOp; pending != nil && t.abandonPairDelivery && pending.Pair != nil && pending.Pair.CandidateID == t.id {
+				t.stage = 1
+				e.syncStates(false, "", parentTarget(t, 0))
+				return nil
+			}
+			e.startResumePendingOp(t.fgGen, parentTarget(t, 0))
+			return nil
 		}
-		if err := e.checkFG(fgGen); err != nil {
-			done(nil, err)
-			return
+		return t.proceedAfterPre(e)
+	case 1:
+		pending := wf.pendingOp
+		if pending == nil {
+			return t.proceedAfterPre(e)
 		}
+		var orig v1.PutSecurityStateRequest
+		if orig.Unmarshal(pending.Signed) != nil || len(orig.States) == 0 {
+			return devicesec.ErrStale
+		}
+		ts, err := devicesec.ParseState(orig.States[len(orig.States)-1].State)
+		if err != nil {
+			return err
+		}
+		th, _ := ts.Hash()
+		if _, ok := e.byHash[th]; !ok {
+			return devicesec.ErrStale
+		}
+		t.stage = 2
+		e.clearOperationCAS(pending, parentTarget(t, 0))
+	case 2:
+		return t.proceedAfterPre(e)
+	case 3:
 		if !e.isAuthority() {
-			done(nil, devicesec.ErrUntrusted)
-			return
+			return devicesec.ErrUntrusted
 		}
-		head := e.headHash
-		chalReq, _ := (&v1.GetChallengeRequest{DeviceId: e.selfDeviceID}).Marshal()
-		server := e.effectiveServer()
-		e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE, server, "", true, fgGen, chalReq, func(respBytes []byte, rErr *rpcError) {
-			if rErr != nil {
-				done(nil, rErr)
-				return
-			}
-			var chal v1.GetChallengeResponse
-			if err := chal.Unmarshal(respBytes); err != nil || len(chal.Challenge) != 32 {
-				done(nil, devicesec.ErrInvalid)
-				return
-			}
-			if err := e.checkFG(fgGen); err != nil {
-				done(nil, err)
-				return
-			}
-			if !e.isAuthority() || e.headHash != head || wf.pendingOp != nil {
-				done(nil, devicesec.ErrStale)
-				return
-			}
-			msg := make([]byte, 0, len(deleteAccountPrefix)+len(e.pin.Account)+1+32+len(chal.Challenge))
-			msg = append(msg, deleteAccountPrefix...)
-			msg = append(msg, e.pin.Account...)
-			msg = append(msg, 0)
-			msg = append(msg, head[:]...)
-			msg = append(msg, chal.Challenge...)
-			e.requestKeySignKind(corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_ED, "", msg, func(sig []byte, signErr error) {
-				if signErr != nil {
-					done(nil, signErr)
-					return
-				}
-				if err := e.checkFG(fgGen); err != nil {
-					done(nil, err)
-					return
-				}
-				delReq, _ := (&v1.DeleteAccountRequest{
-					StateHash: head[:],
-					Challenge: chal.Challenge,
-					Signature: sig,
-				}).Marshal()
-				// Explicit foreground-only RPC with zero automatic retry.
-				e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_ACCOUNT, server, "", true, fgGen, delReq, func(_ []byte, dErr *rpcError) {
-					if dErr != nil {
-						done(nil, dErr)
-						return
-					}
-					e.clearLocalSecurityState(func(cErr error) {
-						done(nil, cErr)
-					})
-				})
-			})
-		})
-	})
-}
-
-func (e *Engine) prepareRecoveryRotationOp(fgGen uint64, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	e.resumePendingOp(fgGen, func(_ *corev1.SecurityWorkflowResultEffect, rErr error) {
-		if rErr != nil {
-			done(nil, rErr)
-			return
+		if t.id == e.selfDeviceID {
+			return newWfError("invalid", text.KeySecurityTheManagingClientCannotBeRemovedDirectlyTransferManagement)
 		}
-		e.syncStates(false, "", func(sErr error) {
-			if sErr != nil {
-				done(nil, sErr)
-				return
-			}
-			if err := e.checkFG(fgGen); err != nil {
-				done(nil, err)
-				return
-			}
-			if !e.isAuthority() {
-				done(nil, devicesec.ErrUntrusted)
-				return
-			}
-			if wf.pendingOp != nil {
-				done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
-				return
-			}
-			e.withEntropy(64, func() {
-				if err := e.checkFG(fgGen); err != nil {
-					done(nil, err)
-					return
-				}
-				var seed [32]byte
-				if !e.readRandom(seed[:]) {
-					done(nil, ErrNeedEntropy)
-					return
-				}
-				defer zeroBytes(seed[:])
-				pub, err := devicesec.Ed25519PublicFromSeed(seed[:])
-				if err != nil {
-					done(nil, err)
-					return
-				}
-				wf.codeDraft = &codeDraft{
-					kind:       "state",
-					parent:     e.headHash,
-					recoveryEd: pub,
-				}
-				done(&corev1.SecurityWorkflowResultEffect{
-					RecoveryCode: EncodeRecoveryCode(seed, e.pin.Genesis),
-				}, nil)
-			})
-		})
-	})
-}
-
-func (e *Engine) prepareHandoffCodeOp(fgGen uint64, storagePersisted bool, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
-	}
-	if wf.pendingOp != nil {
-		done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
-		return
-	}
-	e.syncStates(false, "", func(sErr error) {
-		if sErr != nil {
-			done(nil, sErr)
-			return
-		}
-		if err := e.checkFG(fgGen); err != nil {
-			done(nil, err)
-			return
-		}
-		if !e.isMember || e.isAuthority() {
-			done(nil, devicesec.ErrUntrusted)
-			return
-		}
-		e.withEntropy(64, func() {
-			if err := e.checkFG(fgGen); err != nil {
-				done(nil, err)
-				return
-			}
-			var seed [32]byte
-			if !e.readRandom(seed[:]) {
-				done(nil, ErrNeedEntropy)
-				return
-			}
-			defer zeroBytes(seed[:])
-			pub, err := devicesec.Ed25519PublicFromSeed(seed[:])
-			if err != nil {
-				done(nil, err)
-				return
-			}
-			wf.codeDraft = &codeDraft{
-				kind:             "offer",
-				parent:           e.headHash,
-				recoveryEd:       pub,
-				storagePersisted: storagePersisted,
-			}
-			done(&corev1.SecurityWorkflowResultEffect{
-				RecoveryCode: EncodeRecoveryCode(seed, e.pin.Genesis),
-				Flag:         storagePersisted,
-			}, nil)
-		})
-	})
-}
-
-func (e *Engine) confirmCodeOp(fgGen uint64, kind string, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
-	}
-	if op := wf.pendingOp; op != nil {
-		if op.Kind != kind || (kind == "state" && op.Action != "recovery") {
-			done(nil, devicesec.ErrStale)
-			return
-		}
-		if op.Server != e.effectiveServer() || op.MemberID != e.selfDeviceID {
-			done(nil, devicesec.ErrStale)
-			return
-		}
-		if !op.CodeSaved {
-			next := *op
-			next.CodeSaved = true
-			e.saveOperationCAS(op, &next, func(_ *PersistedOperation, sErr error) {
-				if sErr != nil {
-					done(nil, sErr)
-					return
-				}
-				e.resumePendingOp(fgGen, done)
-			})
-			return
-		}
-		e.resumePendingOp(fgGen, done)
-		return
-	}
-
-	draft := wf.codeDraft
-	if draft == nil || draft.kind != kind {
-		done(nil, devicesec.ErrStale)
-		return
-	}
-	e.syncStates(false, "", func(sErr error) {
-		if sErr != nil {
-			done(nil, sErr)
-			return
-		}
-		if err := e.checkFG(fgGen); err != nil {
-			done(nil, err)
-			return
-		}
-		if kind == "state" {
-			if !e.isAuthority() || e.headHash != draft.parent {
-				done(nil, devicesec.ErrStale)
-				return
-			}
-		} else if !e.isMember || e.isAuthority() {
-			done(nil, devicesec.ErrUntrusted)
-			return
+		if _, ok := e.head.Core.Member(t.id); !ok {
+			e.okTarget(t.target, nil)
+			return nil
 		}
 		hh := e.headHash
-		op := &PersistedOperation{
-			ID:               e.nextWorkflowToken(),
-			Revision:         1,
-			Server:           e.effectiveServer(),
-			MemberID:         e.selfDeviceID,
-			Kind:             kind,
-			Parent:           hh,
-			Phase:            "PREPARED",
-			CodeSaved:        true,
-			RecoveryEd:       slices.Clone(draft.recoveryEd),
-			StoragePersisted: draft.storagePersisted,
+		t.stage = 4
+		op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, "state", "remove", hh)
+		op.TargetDeviceID = t.id
+		e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
+	case 4:
+		e.startResumePendingOp(t.fgGen, t.target)
+	}
+	return nil
+}
+
+type deleteMachineRecordsTask struct {
+	taskBase
+	machineID string
+}
+
+func (t *deleteMachineRecordsTask) fgCheckMask() uint32 { return 1 << 1 }
+
+func (t *deleteMachineRecordsTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	switch t.stage {
+	case 0:
+		if ev.kind == evStart {
+			e.startResumePendingOp(t.fgGen, parentTarget(t, 0))
+			return nil
 		}
-		if kind == "state" {
+		t.stage = 1
+		e.syncStates(false, "", parentTarget(t, 0))
+	case 1:
+		if !e.isAuthority() {
+			return devicesec.ErrUntrusted
+		}
+		if _, live := e.head.Core.Member(t.machineID); live {
+			return devicesec.ErrUntrusted
+		}
+		var wasMachine bool
+		for _, s := range e.states {
+			if m, ok := s.Core.Member(t.machineID); ok && m.Kind == devicesec.Machine {
+				wasMachine = true
+				break
+			}
+		}
+		if !wasMachine {
+			return devicesec.ErrUntrusted
+		}
+		if wf.pendingOp != nil {
+			return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+		}
+		hh := e.headHash
+		t.stage = 2
+		op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, "delete-records", "", hh)
+		op.TargetDeviceID = t.machineID
+		op.Signed = (&v1.DeleteMachineRecordsRequest{MachineId: t.machineID}).AppendMarshal(nil)
+		e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
+	case 2:
+		e.startResumePendingOp(t.fgGen, t.target)
+	}
+	return nil
+}
+
+type deleteAccountTask struct {
+	taskBase
+	server    string
+	head      devicesec.Hash
+	challenge []byte
+}
+
+func (t *deleteAccountTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 | 1<<2 }
+
+func (t *deleteAccountTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	switch t.stage {
+	case 0:
+		if ev.kind == evStart {
+			if wf.pendingOp != nil {
+				return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+			}
+			e.syncStates(false, "", parentTarget(t, 0))
+			return nil
+		}
+		if !e.isAuthority() {
+			return devicesec.ErrUntrusted
+		}
+		t.head, t.server, t.stage = e.headHash, e.effectiveServer(), 1
+		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE, t.server, t.fgGen, &v1.GetChallengeRequest{DeviceId: e.selfDeviceID}, parentTarget(t, 0))
+	case 1:
+		var chal v1.GetChallengeResponse
+		if chal.Unmarshal(ev.bytes) != nil || len(chal.Challenge) != 32 {
+			return devicesec.ErrInvalid
+		}
+		if err := e.checkFG(t.fgGen); err != nil {
+			return err
+		}
+		if !e.isAuthority() || e.headHash != t.head || wf.pendingOp != nil {
+			return devicesec.ErrStale
+		}
+		t.challenge, t.stage = chal.Challenge, 2
+		msg := make([]byte, 0, len(deleteAccountPrefix)+len(e.pin.Account)+1+32+len(chal.Challenge))
+		msg = append(append(append(append(msg, deleteAccountPrefix...), e.pin.Account...), 0), t.head[:]...)
+		msg = append(msg, chal.Challenge...)
+		e.waitSign(keyDevEd, "", msg, t, 0)
+	case 2:
+		t.stage = 3
+		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_ACCOUNT, t.server, t.fgGen, &v1.DeleteAccountRequest{
+			StateHash: t.head[:], Challenge: t.challenge, Signature: ev.bytes,
+		}, parentTarget(t, 0))
+	case 3:
+		e.startClearLocalSecurity(t.target)
+	}
+	return nil
+}
+
+type prepareCodeTask struct {
+	taskBase
+	kind             string // "state" or "offer"
+	storagePersisted bool
+}
+
+func (t *prepareCodeTask) fgCheckMask() uint32 { return 1<<1 | 1<<2 }
+
+func (t *prepareCodeTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	switch t.stage {
+	case 0:
+		if ev.kind == evStart {
+			if t.kind == "offer" {
+				if err := e.checkFG(t.fgGen); err != nil {
+					return err
+				}
+				if wf.pendingOp != nil {
+					return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+				}
+				t.stage = 1
+				e.syncStates(false, "", parentTarget(t, 0))
+				return nil
+			}
+			e.startResumePendingOp(t.fgGen, parentTarget(t, 0))
+			return nil
+		}
+		t.stage = 1
+		e.syncStates(false, "", parentTarget(t, 0))
+	case 1:
+		if t.kind == "state" {
+			if !e.isAuthority() {
+				return devicesec.ErrUntrusted
+			}
+			if wf.pendingOp != nil {
+				return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+			}
+		} else if !e.isMember || e.isAuthority() {
+			return devicesec.ErrUntrusted
+		}
+		t.stage = 2
+		e.waitEntropy(64, t, 0)
+	case 2:
+		var seed [32]byte
+		if !e.readRandom(seed[:]) {
+			return ErrNeedEntropy
+		}
+		pub, err := devicesec.Ed25519PublicFromSeed(seed[:])
+		if err != nil {
+			zeroBytes(seed[:])
+			return err
+		}
+		code := EncodeRecoveryCode(seed, e.pin.Genesis)
+		zeroBytes(seed[:])
+		wf.codeDraft = &codeDraft{kind: t.kind, parent: e.headHash, recoveryEd: pub, storagePersisted: t.storagePersisted}
+		res := &corev1.SecurityWorkflowResultEffect{RecoveryCode: code}
+		if t.kind == "offer" {
+			res.Flag = t.storagePersisted
+		}
+		e.okTarget(t.target, res)
+	}
+	return nil
+}
+
+type confirmCodeTask struct {
+	taskBase
+	kind  string
+	draft *codeDraft
+}
+
+func (t *confirmCodeTask) fgCheckMask() uint32 { return fgOnStart | 1<<1 }
+
+func (t *confirmCodeTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	if ev.kind == evStart {
+		if op := wf.pendingOp; op != nil {
+			if op.Kind != t.kind || (t.kind == "state" && op.Action != "recovery") || op.Server != e.effectiveServer() || op.MemberID != e.selfDeviceID {
+				return devicesec.ErrStale
+			}
+			if !op.CodeSaved {
+				next := *op
+				next.CodeSaved, t.stage = true, 0
+				e.saveOperationCAS(op, &next, parentTarget(t, 0))
+				return nil
+			}
+			e.startResumePendingOp(t.fgGen, t.target)
+			return nil
+		}
+		draft := wf.codeDraft
+		if draft == nil || draft.kind != t.kind {
+			return devicesec.ErrStale
+		}
+		t.draft, t.stage = draft, 1
+		e.syncStates(false, "", parentTarget(t, 0))
+		return nil
+	}
+	switch t.stage {
+	case 0:
+		e.startResumePendingOp(t.fgGen, t.target)
+	case 1:
+		if t.kind == "state" {
+			if !e.isAuthority() || e.headHash != t.draft.parent {
+				return devicesec.ErrStale
+			}
+		} else if !e.isMember || e.isAuthority() {
+			return devicesec.ErrUntrusted
+		}
+		hh := e.headHash
+		op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, t.kind, "", hh)
+		op.CodeSaved, op.RecoveryEd, op.StoragePersisted = true, slices.Clone(t.draft.recoveryEd), t.draft.storagePersisted
+		if t.kind == "state" {
 			op.Action = "recovery"
 		}
-		e.claimOperationCAS(op, &hh, e.selfDeviceID, func(_ *PersistedOperation, cErr error) {
-			if cErr != nil {
-				done(nil, cErr)
-				return
-			}
-			wf.codeDraft = nil
-			e.resumePendingOp(fgGen, done)
-		})
-	})
+		t.stage = 2
+		e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
+	case 2:
+		wf.codeDraft = nil
+		e.startResumePendingOp(t.fgGen, t.target)
+	}
+	return nil
 }
 
 func (e *Engine) verifiedHandoffCandidates(devices []DeviceOfferInfo) []*corev1.SecurityHandoffCandidate {
@@ -1200,187 +815,154 @@ func (e *Engine) verifiedHandoffCandidates(devices []DeviceOfferInfo) []*corev1.
 			continue
 		}
 		if m, ok := e.head.Core.Member(d.ID); ok && m.Kind == devicesec.Client {
-			out = append(out, &corev1.SecurityHandoffCandidate{
-				DeviceId:   d.ID,
-				RecoveryEd: slices.Clone(ed),
-			})
+			out = append(out, &corev1.SecurityHandoffCandidate{DeviceId: d.ID, RecoveryEd: slices.Clone(ed)})
 		}
 	}
 	return out
 }
 
+type listHandoffCandidatesTask struct {
+	actionID uint64
+	devIDs   []string
+	stage    uint8
+}
+
+func (t *listHandoffCandidatesTask) taskTarget() taskTarget {
+	return actionTarget(t.actionID, targetAction)
+}
+
 func (e *Engine) listHandoffCandidatesOp(actionID uint64) {
-	wf := e.ensureWF()
 	if !e.isAuthority() {
 		e.emitActionResult(actionID, nil, devicesec.ErrUntrusted)
 		return
 	}
-	// Try live directory refresh when devices are needed so successor offers are up to date.
-	reqBytes, _ := (&v1.ListDevicesRequest{}).Marshal()
-	e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, e.effectiveServer(), "", false, 0, reqBytes, func(respBytes []byte, rErr *rpcError) {
-		if rErr != nil {
-			// Fallback to local verified device snapshot if available.
-			cands := e.verifiedHandoffCandidates(wf.devicesSnap)
-			e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
-				HandoffCandidates: cands,
-			}, nil)
-			return
+	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, e.effectiveServer(), 0, &v1.ListDevicesRequest{}, parentTarget(&listHandoffCandidatesTask{actionID: actionID}, 0))
+}
+
+func (t *listHandoffCandidatesTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	switch t.stage {
+	case 0:
+		if ev.err != nil {
+			e.okTarget(t.taskTarget(), &corev1.SecurityWorkflowResultEffect{HandoffCandidates: e.verifiedHandoffCandidates(wf.devicesSnap)})
+			return nil
 		}
 		var lr v1.ListDevicesResponse
-		if err := lr.Unmarshal(respBytes); err != nil {
-			e.emitActionResult(actionID, nil, devicesec.ErrInvalid)
-			return
+		if lr.Unmarshal(ev.bytes) != nil {
+			return devicesec.ErrInvalid
 		}
-		items := make([]OpenItem, 0, len(lr.Devices))
-		devIDs := make([]string, 0, len(lr.Devices))
+		items, devIDs := make([]OpenItem, 0, len(lr.Devices)), make([]string, 0, len(lr.Devices))
 		for _, d := range lr.Devices {
 			if d != nil && d.Id != "" && d.Meta != nil && len(d.Meta.SecurityHeader) > 0 {
-				items = append(items, OpenItem{
-					Env:             d.Meta,
-					ExpectedPurpose: devicesec.DeviceMeta,
-					RequestID:       d.Id,
-					History:         true,
-				})
-				devIDs = append(devIDs, d.Id)
+				items, devIDs = append(items, openDeviceMetaItem(d.Id, d.Meta)), append(devIDs, d.Id)
 			}
 		}
 		if len(items) == 0 {
-			e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
-				HandoffCandidates: nil,
-			}, nil)
-			return
+			e.okTarget(t.taskTarget(), &corev1.SecurityWorkflowResultEffect{})
+			return nil
 		}
-		e.openBatchInternal(e.lastNowMs, items, func(res []OpenResult) {
-			var infos []DeviceOfferInfo
-			for i, r := range res {
-				if r.Err != nil {
-					continue
-				}
-				if dm, ok := r.Body.(*v1.DeviceMeta); ok && dm != nil {
-					infos = append(infos, DeviceOfferInfo{
-						ID:         devIDs[i],
-						RecoveryEd: slices.Clone(dm.HandoffRecoveryEd),
-						Meta:       dm,
-					})
-				}
+		t.devIDs, t.stage = devIDs, 1
+		e.startOpenBatchInternal(e.lastNowMs, items, parentTarget(t, 0))
+	case 1:
+		var infos []DeviceOfferInfo
+		for i, r := range ev.opened {
+			if r.Err != nil {
+				continue
 			}
-			wf.devicesSnap = infos
-			cands := e.verifiedHandoffCandidates(infos)
-			e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
-				HandoffCandidates: cands,
-			}, nil)
-		})
-	})
+			if dm, ok := r.Body.(*v1.DeviceMeta); ok && dm != nil {
+				infos = append(infos, DeviceOfferInfo{ID: t.devIDs[i], RecoveryEd: slices.Clone(dm.HandoffRecoveryEd), Meta: dm})
+			}
+		}
+		wf.devicesSnap = infos
+		e.okTarget(t.taskTarget(), &corev1.SecurityWorkflowResultEffect{HandoffCandidates: e.verifiedHandoffCandidates(infos)})
+	}
+	return nil
 }
 
-func (e *Engine) handoffAuthorityOp(fgGen uint64, incomingID string, done func(*corev1.SecurityWorkflowResultEffect, error)) {
+type handoffAuthorityTask struct {
+	taskBase
+	incomingID string
+}
+
+func (t *handoffAuthorityTask) fgCheckMask() uint32 { return 1 << 1 }
+func (t *handoffAuthorityTask) rawErrMask() uint32  { return 1 << 2 }
+
+func (t *handoffAuthorityTask) proceed(e *Engine, list []*corev1.SecurityHandoffCandidate) error {
+	var offer *corev1.SecurityHandoffCandidate
+	for _, c := range list {
+		if c.DeviceId == t.incomingID {
+			offer = c
+			break
+		}
+	}
+	if offer == nil || len(offer.RecoveryEd) != 32 {
+		return newWfError("invalid", text.KeySecurityGenerateAndSaveARecoveryCodeOnTheSuccessor)
+	}
+	if e.ensureWF().pendingOp != nil {
+		return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+	}
+	hh := e.headHash
+	t.stage = 4
+	op := e.newPreparedOp(e.effectiveServer(), e.selfDeviceID, "state", "handoff", hh)
+	op.TargetDeviceID, op.RecoveryEd = t.incomingID, slices.Clone(offer.RecoveryEd)
+	e.claimOperationCAS(op, &hh, e.selfDeviceID, parentTarget(t, 0))
+	return nil
+}
+
+func (t *handoffAuthorityTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
-	e.resumePendingOp(fgGen, func(_ *corev1.SecurityWorkflowResultEffect, rErr error) {
-		if rErr != nil {
-			done(nil, rErr)
-			return
+	switch t.stage {
+	case 0:
+		if ev.kind == evStart {
+			e.startResumePendingOp(t.fgGen, parentTarget(t, 0))
+			return nil
 		}
-		e.syncStates(false, "", func(sErr error) {
-			if sErr != nil {
-				done(nil, sErr)
-				return
+		t.stage = 1
+		e.syncStates(false, "", parentTarget(t, 0))
+	case 1:
+		if !e.isAuthority() {
+			return devicesec.ErrUntrusted
+		}
+		t.stage = 2
+		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, e.effectiveServer(), t.fgGen, &v1.ListDevicesRequest{}, parentTarget(t, 0))
+	case 2:
+		if ev.err != nil {
+			return t.proceed(e, e.verifiedHandoffCandidates(wf.devicesSnap))
+		}
+		var lr v1.ListDevicesResponse
+		if lr.Unmarshal(ev.bytes) != nil {
+			return devicesec.ErrInvalid
+		}
+		d := findDeviceByID(lr.Devices, t.incomingID)
+		if d == nil || d.Meta == nil || len(d.Meta.SecurityHeader) == 0 {
+			return t.proceed(e, e.verifiedHandoffCandidates(wf.devicesSnap))
+		}
+		t.stage = 3
+		e.startOpenBatchInternal(e.lastNowMs, []OpenItem{openDeviceMetaItem(d.Id, d.Meta)}, parentTarget(t, 0))
+	case 3:
+		if len(ev.opened) > 0 && ev.opened[0].Err == nil {
+			if dm, ok := ev.opened[0].Body.(*v1.DeviceMeta); ok && dm != nil {
+				return t.proceed(e, e.verifiedHandoffCandidates([]DeviceOfferInfo{{ID: t.incomingID, RecoveryEd: dm.HandoffRecoveryEd, Meta: dm}}))
 			}
-			if err := e.checkFG(fgGen); err != nil {
-				done(nil, err)
-				return
-			}
-			if !e.isAuthority() {
-				done(nil, devicesec.ErrUntrusted)
-				return
-			}
-			// Always verify successor offer against live server devices before signing handoff.
-			reqBytes, _ := (&v1.ListDevicesRequest{}).Marshal()
-			e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, e.effectiveServer(), "", true, fgGen, reqBytes, func(respBytes []byte, lErr *rpcError) {
-				var cands []*corev1.SecurityHandoffCandidate
-				findOffer := func(list []*corev1.SecurityHandoffCandidate) *corev1.SecurityHandoffCandidate {
-					for _, c := range list {
-						if c.DeviceId == incomingID {
-							return c
-						}
-					}
-					return nil
-				}
-				proceed := func(list []*corev1.SecurityHandoffCandidate) {
-					offer := findOffer(list)
-					if offer == nil || len(offer.RecoveryEd) != 32 {
-						done(nil, newWfError("invalid", text.KeySecurityGenerateAndSaveARecoveryCodeOnTheSuccessor))
-						return
-					}
-					if wf.pendingOp != nil {
-						done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
-						return
-					}
-					hh := e.headHash
-					op := &PersistedOperation{
-						ID:             e.nextWorkflowToken(),
-						Revision:       1,
-						Server:         e.effectiveServer(),
-						MemberID:       e.selfDeviceID,
-						Kind:           "state",
-						Parent:         hh,
-						Phase:          "PREPARED",
-						Action:         "handoff",
-						TargetDeviceID: incomingID,
-						RecoveryEd:     slices.Clone(offer.RecoveryEd),
-					}
-					e.claimOperationCAS(op, &hh, e.selfDeviceID, func(_ *PersistedOperation, cErr error) {
-						if cErr != nil {
-							done(nil, cErr)
-							return
-						}
-						e.resumePendingOp(fgGen, done)
-					})
-				}
-
-				if lErr != nil {
-					proceed(e.verifiedHandoffCandidates(wf.devicesSnap))
-					return
-				}
-				var lr v1.ListDevicesResponse
-				if err := lr.Unmarshal(respBytes); err != nil {
-					done(nil, devicesec.ErrInvalid)
-					return
-				}
-				var items []OpenItem
-				var ids []string
-				for _, d := range lr.Devices {
-					if d != nil && d.Id == incomingID && d.Meta != nil && len(d.Meta.SecurityHeader) > 0 {
-						items = append(items, OpenItem{
-							Env:             d.Meta,
-							ExpectedPurpose: devicesec.DeviceMeta,
-							RequestID:       d.Id,
-							History:         true,
-						})
-						ids = append(ids, d.Id)
-					}
-				}
-				if len(items) == 0 {
-					proceed(e.verifiedHandoffCandidates(wf.devicesSnap))
-					return
-				}
-				e.openBatchInternal(e.lastNowMs, items, func(res []OpenResult) {
-					if len(res) > 0 && res[0].Err == nil {
-						if dm, ok := res[0].Body.(*v1.DeviceMeta); ok && dm != nil {
-							cands = e.verifiedHandoffCandidates([]DeviceOfferInfo{{
-								ID:         ids[0],
-								RecoveryEd: dm.HandoffRecoveryEd,
-								Meta:       dm,
-							}})
-							proceed(cands)
-							return
-						}
-					}
-					proceed(nil)
-				})
-			})
-		})
-	})
+		}
+		return t.proceed(e, nil)
+	case 4:
+		e.startResumePendingOp(t.fgGen, t.target)
+	}
+	return nil
 }
+
+type updateDeviceMetaTask struct {
+	actionID uint64
+	act      *corev1.SecurityUpdateDeviceMetaAction
+	server   string
+	attempt  int
+	rev      uint64
+	plain    []byte
+	stage    uint8
+}
+
+func (t *updateDeviceMetaTask) taskTarget() taskTarget { return actionTarget(t.actionID, targetAction) }
 
 func (e *Engine) updateDeviceMetaOp(actionID uint64, act *corev1.SecurityUpdateDeviceMetaAction) {
 	if act == nil {
@@ -1400,247 +982,200 @@ func (e *Engine) updateDeviceMetaOp(actionID uint64, act *corev1.SecurityUpdateD
 		e.emitActionResult(actionID, nil, ErrNotMember)
 		return
 	}
-	var tryCAS func(n int)
-	tryCAS = func(n int) {
-		if n >= 5 {
-			e.emitActionResult(actionID, nil, devicesec.ErrStale)
-			return
-		}
-		listReq, _ := (&v1.ListDevicesRequest{}).Marshal()
-		e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, server, "", false, 0, listReq, func(respBytes []byte, lErr *rpcError) {
-			if lErr != nil {
-				e.emitActionResult(actionID, nil, lErr)
-				return
-			}
-			var lr v1.ListDevicesResponse
-			if err := lr.Unmarshal(respBytes); err != nil {
-				e.emitActionResult(actionID, nil, devicesec.ErrInvalid)
-				return
-			}
-			var own *v1.Device
-			for _, d := range lr.Devices {
-				if d != nil && d.Id == e.selfDeviceID {
-					own = d
-					break
-				}
-			}
-			var rev uint64
-			applyUpdate := func(cur *v1.DeviceMeta) {
-				nextMeta := &v1.DeviceMeta{}
-				if cur != nil {
-					nextMeta = cur.Clone()
-				}
-				if act.DescribeSelfOnly {
-					if act.Platform != "" {
-						nextMeta.Platform = act.Platform
-					}
-					if nextMeta.Description == "" && act.Description != "" {
-						nextMeta.Description = act.Description
-					}
-				} else {
-					nextMeta.Name = act.Name
-					if nextMeta.Platform == "" && act.Platform != "" {
-						nextMeta.Platform = act.Platform
-					}
-					if nextMeta.Description == "" && act.Description != "" {
-						nextMeta.Description = act.Description
-					}
-				}
-				plain, err := nextMeta.Marshal()
-				if err != nil {
-					e.emitActionResult(actionID, nil, err)
-					return
-				}
-				e.withEntropy(64, func() {
-					e.sealEnvelopeInternal(e.lastNowMs, devicesec.DeviceMeta, "", "", e.selfDeviceID, rev+1, 0, plain, false, nil, func(sr SealResult) {
-						if sr.Err != nil {
-							e.emitActionResult(actionID, nil, sr.Err)
-							return
-						}
-						putBytes, _ := (&v1.PutDeviceMetaRequest{
-							DeviceId:         e.selfDeviceID,
-							ExpectedRevision: rev,
-							Meta:             sr.Envelope,
-						}).Marshal()
-						e.callAuthedRpc(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_DEVICE_META, server, "", false, 0, putBytes, func(pBytes []byte, pErr *rpcError) {
-							if pErr != nil {
-								e.emitActionResult(actionID, nil, pErr)
-								return
-							}
-							var pr v1.PutDeviceMetaResponse
-							if err := pr.Unmarshal(pBytes); err != nil {
-								e.emitActionResult(actionID, nil, devicesec.ErrInvalid)
-								return
-							}
-							if pr.Applied {
-								e.emitActionResult(actionID, nil, nil)
-								return
-							}
-							tryCAS(n + 1)
-						})
-					})
-				})
-			}
-
-			if own != nil {
-				rev = own.MetaRevision
-				if own.Meta != nil && rev > 0 {
-					e.openBatchInternal(e.lastNowMs, []OpenItem{{
-						Env:             own.Meta,
-						ExpectedPurpose: devicesec.DeviceMeta,
-						RequestID:       e.selfDeviceID,
-						History:         true,
-					}}, func(res []OpenResult) {
-						if res[0].Err != nil {
-							e.emitActionResult(actionID, nil, res[0].Err)
-							return
-						}
-						dm, _ := res[0].Body.(*v1.DeviceMeta)
-						applyUpdate(dm)
-					})
-					return
-				}
-			}
-			applyUpdate(nil)
-		})
+	if err := (&updateDeviceMetaTask{actionID: actionID, act: act, server: server}).tryCAS(e); err != nil {
+		e.emitActionResult(actionID, nil, err)
 	}
-	tryCAS(0)
 }
 
-func (e *Engine) completeAccountPublicProfileOp(fgGen uint64, rawServer, code string, done func(*corev1.SecurityWorkflowResultEffect, error)) {
-	wf := e.ensureWF()
-	if err := e.checkFG(fgGen); err != nil {
-		done(nil, err)
-		return
+func (t *updateDeviceMetaTask) tryCAS(e *Engine) error {
+	if t.attempt >= 5 {
+		return devicesec.ErrStale
 	}
-	server := e.effectiveServer()
-	if rawServer != "" {
-		srv, err := CheckServerURL(rawServer)
-		if err != nil {
-			done(nil, err)
-			return
-		}
-		server = srv
+	t.stage = 0
+	e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES, t.server, 0, &v1.ListDevicesRequest{}, parentTarget(t, 0))
+	return nil
+}
+
+func (t *updateDeviceMetaTask) applyUpdate(e *Engine, cur *v1.DeviceMeta) error {
+	nextMeta := &v1.DeviceMeta{}
+	if cur != nil {
+		nextMeta = cur.Clone()
 	}
-	if !e.loaded || !e.hasHead || wf.record == nil {
-		done(nil, ErrNotInitialized)
-		return
+	if !t.act.DescribeSelfOnly {
+		nextMeta.Name = t.act.Name
 	}
-	seed, genPrefix, ok := DecodeRecoveryCode(code)
-	if !ok {
-		done(nil, newWfError("invalid", errInvalidRecoveryCode.Error()))
-		return
+	if t.act.Platform != "" && (t.act.DescribeSelfOnly || nextMeta.Platform == "") {
+		nextMeta.Platform = t.act.Platform
 	}
-	recPub, err := devicesec.Ed25519PublicFromSeed(seed[:])
+	if nextMeta.Description == "" && t.act.Description != "" {
+		nextMeta.Description = t.act.Description
+	}
+	plain, err := nextMeta.Marshal()
 	if err != nil {
-		zeroBytes(seed[:])
-		done(nil, err)
-		return
+		return err
 	}
-	signWithSeed := func(msg []byte) ([]byte, error) {
-		return devicesec.Ed25519SignSeed(seed[:], msg)
+	t.plain, t.stage = plain, 2
+	e.waitEntropy(64, t, 0)
+	return nil
+}
+
+func (t *updateDeviceMetaTask) step(e *Engine, ev *secEvent) error {
+	switch t.stage {
+	case 0:
+		if ev.err != nil {
+			return ev.err
+		}
+		var lr v1.ListDevicesResponse
+		if lr.Unmarshal(ev.bytes) != nil {
+			return devicesec.ErrInvalid
+		}
+		own := findDeviceByID(lr.Devices, e.selfDeviceID)
+		t.rev = 0
+		if own != nil {
+			t.rev = own.MetaRevision
+			if own.Meta != nil && t.rev > 0 {
+				t.stage = 1
+				e.startOpenBatchInternal(e.lastNowMs, []OpenItem{openDeviceMetaItem(e.selfDeviceID, own.Meta)}, parentTarget(t, 0))
+				return nil
+			}
+		}
+		return t.applyUpdate(e, nil)
+	case 1:
+		if ev.opened[0].Err != nil {
+			return ev.opened[0].Err
+		}
+		dm, _ := ev.opened[0].Body.(*v1.DeviceMeta)
+		return t.applyUpdate(e, dm)
+	case 2:
+		t.stage = 3
+		e.startSealEnvelopeInternal(e.lastNowMs, devicesec.DeviceMeta, "", "", e.selfDeviceID, t.rev+1, 0, t.plain, false, nil, parentTarget(t, 0))
+	case 3:
+		if ev.err != nil {
+			return ev.err
+		}
+		t.stage = 4
+		e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_DEVICE_META, t.server, 0, &v1.PutDeviceMetaRequest{
+			DeviceId: e.selfDeviceID, ExpectedRevision: t.rev, Meta: ev.seal.Envelope,
+		}, parentTarget(t, 0))
+	case 4:
+		if ev.err != nil {
+			return ev.err
+		}
+		var pr v1.PutDeviceMetaResponse
+		if pr.Unmarshal(ev.bytes) != nil {
+			return devicesec.ErrInvalid
+		}
+		if pr.Applied {
+			e.okTarget(t.taskTarget(), nil)
+			return nil
+		}
+		t.attempt++
+		return t.tryCAS(e)
 	}
-	e.fetchAndAcceptRecoveryContext(server, recPub, "", genPrefix, wf.record, fgGen, signWithSeed, func(_ *v1.GetRecoveryContextResponse, pin devicesec.Pin, acctPub [32]byte, states [][]byte, proofs [][]byte, cErr error) {
-		zeroBytes(seed[:])
-		if cErr != nil {
-			done(nil, cErr)
-			return
+	return nil
+}
+
+type completeAccountPublicProfileTask struct {
+	taskBase
+	rawServer, code, server string
+	pin                     devicesec.Pin
+	prof                    *PersistedPublicProfile
+	nextRec                 *PersistedRecord
+	nextRev                 string
+}
+
+func (t *completeAccountPublicProfileTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 }
+
+func (t *completeAccountPublicProfileTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	switch t.stage {
+	case 0:
+		if ev.kind == evStart {
+			server := e.effectiveServer()
+			if t.rawServer != "" {
+				srv, err := CheckServerURL(t.rawServer)
+				if err != nil {
+					return err
+				}
+				server = srv
+			}
+			if !e.loaded || !e.hasHead || wf.record == nil {
+				return ErrNotInitialized
+			}
+			seed, genPrefix, ok := DecodeRecoveryCode(t.code)
+			if !ok {
+				return newWfError("invalid", errInvalidRecoveryCode.Error())
+			}
+			recPub, err := devicesec.Ed25519PublicFromSeed(seed[:])
+			if err != nil {
+				zeroBytes(seed[:])
+				return err
+			}
+			t.server = server
+			e.startFetchRecoveryCtxWithSeed(server, recPub, genPrefix, wf.record, t.fgGen, seed, parentTarget(t, 0))
+			zeroBytes(seed[:])
+			return nil
 		}
-		if err := e.checkFG(fgGen); err != nil {
-			done(nil, err)
-			return
+		rc, cur := ev.recCtx, wf.record
+		if cur == nil || cur.Pin != rc.pin {
+			return devicesec.ErrStale
 		}
-		cur := wf.record
-		if cur == nil || cur.Pin != pin {
-			done(nil, devicesec.ErrStale)
-			return
-		}
-		prof := &PersistedPublicProfile{
-			Server:           server,
-			Pin:              pin,
-			AccountPublicKey: acctPub,
-		}
+		prof := &PersistedPublicProfile{Server: t.server, Pin: rc.pin, AccountPublicKey: rc.acctPub}
 		profBytes, err := prof.Encode()
 		if err != nil {
-			done(nil, err)
-			return
+			return err
 		}
 		nextRec := cur.Clone()
-		nextRec.AccountPublicKey = slices.Clone(acctPub[:])
+		nextRec.AccountPublicKey = slices.Clone(rc.acctPub[:])
 		recBytes, err := nextRec.Encode()
 		if err != nil {
-			done(nil, err)
-			return
+			return err
 		}
 		nextRev := e.nextWorkflowToken()
-		_, _, _ = states, proofs, acctPub
-		e.reqStorage(&corev1.SecurityStorageEffect{
-			Op: corev1.SecurityStorageOp_SECURITY_STORAGE_OP_BATCH_COMMIT,
-			Batch: []*corev1.SecurityStorageWrite{
-				{
-					Bucket:       corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_PUBLIC_PROFILE,
-					Key:          PublicProfileStorageKey(server, pin),
-					NextRevision: nextRev,
-					Data:         profBytes,
-				},
-				{
-					Bucket:           corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD,
-					Key:              "record",
-					ExpectedRevision: wf.recordRev,
-					NextRevision:     nextRev,
-					Data:             recBytes,
-				},
-			},
-		}, func(rep storageReply, werr error) {
-			if rep.conflict {
-				done(nil, devicesec.ErrStale)
-				return
-			}
-			if werr != nil {
-				done(nil, werr)
-				return
-			}
-			wf.record = nextRec
-			wf.recordRev = nextRev
-			wf.publicProfiles[PublicProfileStorageKey(server, pin)] = prof
-			done(nil, nil)
-		})
-	})
+		t.pin, t.prof, t.nextRec, t.nextRev, t.stage = rc.pin, prof, nextRec, nextRev, 1
+		e.batchCommitStorage("", "", nil, false, buildAccountCommitWrites(t.server, rc.pin, profBytes, recBytes, false, wf.recordRev, nextRev, "", false, "", ""), t)
+	case 1:
+		wf.record, wf.recordRev = t.nextRec, t.nextRev
+		wf.publicProfiles[PublicProfileStorageKey(t.server, t.pin)] = t.prof
+		e.okTarget(t.target, nil)
+	}
+	return nil
+}
+
+type checkRetainedDeniedTask struct {
+	actionID uint64
+	server   string
+	retries  int
 }
 
 func (e *Engine) checkRetainedDeniedOp(actionID uint64) {
-	wf := e.ensureWF()
 	server := e.effectiveServer()
 	if server == "" || e.selfDeviceID == "" {
 		e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{Flag: false}, nil)
 		return
 	}
-	var attemptLogin func(retries int)
-	attemptLogin = func(retries int) {
-		e.forceLoginToken(server, corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_ED, "", e.selfDeviceID, false, 0, false, func(_ string, err error) {
-			if err == nil {
-				e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{Flag: false}, nil)
-				return
+	e.forceLoginToken(server, keyDevEd, "", e.selfDeviceID, false, 0, false, parentTarget(&checkRetainedDeniedTask{actionID: actionID, server: server}, 0))
+}
+
+func (t *checkRetainedDeniedTask) step(e *Engine, ev *secEvent) error {
+	var denied bool
+	if ev.err != nil {
+		if re := asRpcError(ev.err); re != nil && re.code == connectCodePermissionDenied {
+			if t.retries == 0 {
+				t.retries = 1
+				e.forceLoginToken(t.server, keyDevEd, "", e.selfDeviceID, false, 0, false, parentTarget(t, 0))
+				return nil
 			}
-			if re := asRpcError(err); re != nil && re.code == connectCodePermissionDenied {
-				if retries == 0 {
-					attemptLogin(1)
-					return
-				}
-				wf.legacyRepairNotice = wf.legacyRepairNotice
-				e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{Flag: true}, nil)
-				return
-			}
-			e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{Flag: false}, nil)
-		})
+			denied = true
+		}
 	}
-	attemptLogin(0)
+	e.okTarget(actionTarget(t.actionID, targetAction), &corev1.SecurityWorkflowResultEffect{Flag: denied})
+	return nil
 }
 
 func (e *Engine) checkExitAdviceOp(actionID uint64) {
 	wf := e.ensureWF()
-	unresolved := wf.pendingOp != nil || wf.regIntent != nil
-	auth := e.isAuthority()
+	unresolved, auth := wf.pendingOp != nil || wf.regIntent != nil, e.isAuthority()
 	msg := text.KeySecurityExitingDeletesLocalKeysYouWillNeedToPair
 	if unresolved {
 		msg = text.KeySecurityTheSecurityOperationSOutcomeIsUnverifiedContinueThe
@@ -1648,64 +1183,29 @@ func (e *Engine) checkExitAdviceOp(actionID uint64) {
 		msg = text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement
 	}
 	e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
-		ExitAdvice: &corev1.SecurityExitAdvice{
-			Authority:  auth,
-			Unresolved: unresolved,
-			Message:    msg,
-		},
+		ExitAdvice: &corev1.SecurityExitAdvice{Authority: auth, Unresolved: unresolved, Message: msg},
 	}, nil)
 }
 
-func (e *Engine) clearLocalSecurityState(onDone func(error)) {
-	wf := e.ensureWF()
+type clearLocalSecurityTask struct{ taskBase }
+
+func (e *Engine) startClearLocalSecurity(target taskTarget) {
 	e.resetWorkflowPairingSessions()
-	e.reqStorage(&corev1.SecurityStorageEffect{
-		Op:              corev1.SecurityStorageOp_SECURITY_STORAGE_OP_CLEAR_ALL,
-		ClearLoginToken: true,
-	}, func(_ storageReply, err error) {
-		if err != nil {
-			onDone(err)
-			return
-		}
-		e.resetChainState()
-		e.loaded = false
-		e.isMember = false
-		e.removed = false
-		e.cleared = true
-		e.securityLocked = false
-		wf.record = nil
-		wf.recordRev = ""
-		wf.pendingOp = nil
-		wf.pendingOpRev = ""
-		wf.regIntent = nil
-		wf.regIntentRev = ""
-		wf.codeDraft = nil
-		wf.cachedToken = ""
-		wf.tokenExpiresMs = 0
-		wf.deviceEdPresent = false
-		wf.deviceEdPub = nil
-		wf.deviceXPresent = false
-		wf.deviceXPub = nil
-		clear(wf.publicProfiles)
-		e.out = append(e.out, &corev1.Effect{
-			Effect: &corev1.Effect_SecurityTokenUpdated{
-				SecurityTokenUpdated: &corev1.SecurityTokenUpdatedEffect{Cleared: true},
-			},
-		})
-		if wf.onStateChanged != nil {
-			wf.onStateChanged()
-		}
-		onDone(nil)
-	})
+	e.waitStorage(&corev1.SecurityStorageEffect{
+		Op: corev1.SecurityStorageOp_SECURITY_STORAGE_OP_CLEAR_ALL, ClearLoginToken: true,
+	}, &clearLocalSecurityTask{taskBase: taskBase{target: target}}, 0)
 }
 
-func (e *Engine) clearSecurityOp(actionID uint64) {
-	e.clearLocalSecurityState(func(err error) {
-		if err != nil {
-			e.emitActionResult(actionID, nil, err)
-			return
-		}
-		e.emitActionResult(actionID, nil, nil)
-		e.emitStatusChanged()
-	})
+func (t *clearLocalSecurityTask) step(e *Engine, _ *secEvent) error {
+	wf := e.ensureWF()
+	e.resetChainState()
+	e.loaded, e.isMember, e.removed, e.cleared, e.securityLocked = false, false, false, true, false
+	wf.record, wf.recordRev, wf.pendingOp, wf.pendingOpRev, wf.regIntent, wf.regIntentRev, wf.codeDraft = nil, "", nil, "", nil, "", nil
+	wf.cachedToken, wf.tokenExpiresMs = "", 0
+	wf.deviceEdPresent, wf.deviceEdPub, wf.deviceXPresent, wf.deviceXPub = false, nil, false, nil
+	clear(wf.publicProfiles)
+	e.emitTokenUpdated("", 0, true)
+	e.notifyStateChanged()
+	e.okTarget(t.target, nil)
+	return nil
 }

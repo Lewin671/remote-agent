@@ -6,6 +6,7 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	unsafe "unsafe"
 )
 
 type ConnState int32
@@ -102,6 +103,7 @@ const (
 )
 
 type ConnectionStatusView struct {
+	_                 [0]func()
 	State             ConnState
 	BadgeText         *Text
 	DetailText        *Text
@@ -147,30 +149,27 @@ func (m *ConnectionStatusView) GetDisconnectedAtMs() int64 {
 	return 0
 }
 
-func (m *ConnectionStatusView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ConnectionStatusView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ConnectionStatusView{}.State), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ConnectionStatusView{}.BadgeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ConnectionStatusView{}.DetailText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(ConnectionStatusView{}.LivePushConnected), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ConnectionStatusView{}.Reason), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ConnectionStatusView{}.DisconnectedAtMs), Kind: litewire.KindInt64},
+	},
+}
 
 func (m *ConnectionStatusView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ConnectionStatusView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.State))
-	if m.BadgeText != nil {
-		b = litewire.AppendMessage(b, 2, m.BadgeText)
-	}
-	if m.DetailText != nil {
-		b = litewire.AppendMessage(b, 3, m.DetailText)
-	}
-	b = litewire.AppendBool(b, 4, m.LivePushConnected)
-	b = litewire.AppendString(b, 5, m.Reason)
-	b = litewire.AppendVarint(b, 6, uint64(m.DisconnectedAtMs))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ConnectionStatusView)
 }
 
 type HomeHeadlineView struct {
+	_              [0]func()
 	Kind           HeadlineKind
 	Title          *Text
 	HighlightCount int32
@@ -237,33 +236,30 @@ func (m *HomeHeadlineView) GetHighlightArg() string {
 	return ""
 }
 
-func (m *HomeHeadlineView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_HomeHeadlineView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeHeadlineView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(HomeHeadlineView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(HomeHeadlineView{}.HighlightCount), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(HomeHeadlineView{}.Sub), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(HomeHeadlineView{}.SubError), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(HomeHeadlineView{}.SubPath), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(HomeHeadlineView{}.DetailsAction), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(HomeHeadlineView{}.Unlinked), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(HomeHeadlineView{}.HighlightArg), Kind: litewire.KindString},
+	},
+}
 
 func (m *HomeHeadlineView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeHeadlineView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 2, m.Title)
-	}
-	b = litewire.AppendInt32(b, 3, int32(m.HighlightCount))
-	if m.Sub != nil {
-		b = litewire.AppendMessage(b, 4, m.Sub)
-	}
-	b = litewire.AppendBool(b, 5, m.SubError)
-	b = litewire.AppendBool(b, 6, m.SubPath)
-	b = litewire.AppendBool(b, 7, m.DetailsAction)
-	b = litewire.AppendBool(b, 8, m.Unlinked)
-	b = litewire.AppendString(b, 9, m.HighlightArg)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HomeHeadlineView)
 }
 
 type HomeEmptyView struct {
+	_                [0]func()
 	Kind             HomeEmptyKind
 	Message          *Text
 	Command          string
@@ -323,30 +319,29 @@ func (m *HomeEmptyView) GetCanRetry() bool {
 	return false
 }
 
-func (m *HomeEmptyView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_HomeEmptyView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeEmptyView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(HomeEmptyView{}.Message), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(HomeEmptyView{}.Command), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(HomeEmptyView{}.ReadyMachineId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(HomeEmptyView{}.ReadyMachineName), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(HomeEmptyView{}.CanAddDevice), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(HomeEmptyView{}.CanStartFirst), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(HomeEmptyView{}.CanRetry), Kind: litewire.KindBool},
+	},
+}
 
 func (m *HomeEmptyView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeEmptyView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	if m.Message != nil {
-		b = litewire.AppendMessage(b, 2, m.Message)
-	}
-	b = litewire.AppendString(b, 3, m.Command)
-	b = litewire.AppendString(b, 4, m.ReadyMachineId)
-	b = litewire.AppendString(b, 5, m.ReadyMachineName)
-	b = litewire.AppendBool(b, 6, m.CanAddDevice)
-	b = litewire.AppendBool(b, 7, m.CanStartFirst)
-	b = litewire.AppendBool(b, 8, m.CanRetry)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HomeEmptyView)
 }
 
 type AttentionCardView struct {
+	_           [0]func()
 	SessionId   string
 	MachineId   string
 	ApprovalId  string
@@ -455,45 +450,36 @@ func (m *AttentionCardView) GetAlwaysLabel() *Text {
 	return nil
 }
 
-func (m *AttentionCardView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AttentionCardView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AttentionCardView{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(AttentionCardView{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(AttentionCardView{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(AttentionCardView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(AttentionCardView{}.KindText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(AttentionCardView{}.Where), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(AttentionCardView{}.Time), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(AttentionCardView{}.Hot), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(AttentionCardView{}.Body), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(AttentionCardView{}.ToolName), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(AttentionCardView{}.IsCommand), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(AttentionCardView{}.Truncated), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(AttentionCardView{}.AlwaysKind), Kind: litewire.KindInt32},
+		{Num: 14, Offset: unsafe.Offsetof(AttentionCardView{}.AlwaysArg), Kind: litewire.KindString},
+		{Num: 15, Offset: unsafe.Offsetof(AttentionCardView{}.AlwaysLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *AttentionCardView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AttentionCardView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.MachineId)
-	b = litewire.AppendString(b, 3, m.ApprovalId)
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 4, m.Title)
-	}
-	if m.KindText != nil {
-		b = litewire.AppendMessage(b, 5, m.KindText)
-	}
-	if m.Where != nil {
-		b = litewire.AppendMessage(b, 6, m.Where)
-	}
-	if m.Time != nil {
-		b = litewire.AppendMessage(b, 7, m.Time)
-	}
-	b = litewire.AppendBool(b, 8, m.Hot)
-	b = litewire.AppendString(b, 9, m.Body)
-	b = litewire.AppendString(b, 10, m.ToolName)
-	b = litewire.AppendBool(b, 11, m.IsCommand)
-	b = litewire.AppendBool(b, 12, m.Truncated)
-	b = litewire.AppendInt32(b, 13, int32(m.AlwaysKind))
-	b = litewire.AppendString(b, 14, m.AlwaysArg)
-	if m.AlwaysLabel != nil {
-		b = litewire.AppendMessage(b, 15, m.AlwaysLabel)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AttentionCardView)
 }
 
 type AttentionRowView struct {
+	_            [0]func()
 	SessionId    string
 	MachineId    string
 	Title        *Text
@@ -546,35 +532,28 @@ func (m *AttentionRowView) GetDetail() *Text {
 	return nil
 }
 
-func (m *AttentionRowView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AttentionRowView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AttentionRowView{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(AttentionRowView{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(AttentionRowView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(AttentionRowView{}.KindText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(AttentionRowView{}.Summary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(AttentionRowView{}.OutsideScope), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(AttentionRowView{}.Detail), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *AttentionRowView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AttentionRowView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.MachineId)
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 3, m.Title)
-	}
-	if m.KindText != nil {
-		b = litewire.AppendMessage(b, 4, m.KindText)
-	}
-	if m.Summary != nil {
-		b = litewire.AppendMessage(b, 5, m.Summary)
-	}
-	b = litewire.AppendBool(b, 6, m.OutsideScope)
-	if m.Detail != nil {
-		b = litewire.AppendMessage(b, 7, m.Detail)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AttentionRowView)
 }
 
 type SessionRowView struct {
+	_              [0]func()
 	SessionId      string
 	MachineId      string
 	Title          *Text
@@ -676,46 +655,35 @@ func (m *SessionRowView) GetPendingAction() bool {
 	return false
 }
 
-func (m *SessionRowView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionRowView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionRowView{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionRowView{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionRowView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionRowView{}.Time), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(SessionRowView{}.Status), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(SessionRowView{}.Tone), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(SessionRowView{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(SessionRowView{}.Preview), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(SessionRowView{}.SecondLine), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(SessionRowView{}.Agent), Kind: litewire.KindInt32},
+		{Num: 11, Offset: unsafe.Offsetof(SessionRowView{}.MultipleAgents), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SessionRowView{}.MetaLine), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(SessionRowView{}.Selected), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SessionRowView{}.PendingAction), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionRowView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionRowView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.MachineId)
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 3, m.Title)
-	}
-	if m.Time != nil {
-		b = litewire.AppendMessage(b, 4, m.Time)
-	}
-	b = litewire.AppendInt32(b, 5, int32(m.Status))
-	b = litewire.AppendInt32(b, 6, int32(m.Tone))
-	if m.StatusText != nil {
-		b = litewire.AppendMessage(b, 7, m.StatusText)
-	}
-	if m.Preview != nil {
-		b = litewire.AppendMessage(b, 8, m.Preview)
-	}
-	if m.SecondLine != nil {
-		b = litewire.AppendMessage(b, 9, m.SecondLine)
-	}
-	b = litewire.AppendInt32(b, 10, int32(m.Agent))
-	b = litewire.AppendBool(b, 11, m.MultipleAgents)
-	if m.MetaLine != nil {
-		b = litewire.AppendMessage(b, 12, m.MetaLine)
-	}
-	b = litewire.AppendBool(b, 13, m.Selected)
-	b = litewire.AppendBool(b, 14, m.PendingAction)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRowView)
 }
 
 type EndedRowView struct {
+	_         [0]func()
 	SessionId string
 	MachineId string
 	Title     *Text
@@ -754,29 +722,26 @@ func (m *EndedRowView) GetSelected() bool {
 	return false
 }
 
-func (m *EndedRowView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_EndedRowView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(EndedRowView{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(EndedRowView{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(EndedRowView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(EndedRowView{}.Right), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(EndedRowView{}.Selected), Kind: litewire.KindBool},
+	},
+}
 
 func (m *EndedRowView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *EndedRowView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.MachineId)
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 3, m.Title)
-	}
-	if m.Right != nil {
-		b = litewire.AppendMessage(b, 4, m.Right)
-	}
-	b = litewire.AppendBool(b, 5, m.Selected)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_EndedRowView)
 }
 
 type EndedGroupView struct {
+	_         [0]func()
 	GroupKey  string
 	GroupKind EndedGroupKind
 	Label     *Text
@@ -808,30 +773,25 @@ func (m *EndedGroupView) GetItems() []*EndedRowView {
 	return nil
 }
 
-func (m *EndedGroupView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_EndedGroupView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(EndedGroupView{}.GroupKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(EndedGroupView{}.GroupKind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(EndedGroupView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(EndedGroupView{}.Items), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_EndedRowView},
+	},
+}
 
 func (m *EndedGroupView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *EndedGroupView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.GroupKey)
-	b = litewire.AppendInt32(b, 2, int32(m.GroupKind))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 3, m.Label)
-	}
-	for _, v := range m.Items {
-		if v != nil {
-			b = litewire.AppendMessage(b, 4, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_EndedGroupView)
 }
 
 type TailRowView struct {
+	_     [0]func()
 	Kind  TailKind
 	Text  *Text
 	Retry bool
@@ -856,25 +816,24 @@ func (m *TailRowView) GetRetry() bool {
 	return false
 }
 
-func (m *TailRowView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TailRowView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TailRowView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(TailRowView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(TailRowView{}.Retry), Kind: litewire.KindBool},
+	},
+}
 
 func (m *TailRowView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TailRowView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	if m.Text != nil {
-		b = litewire.AppendMessage(b, 2, m.Text)
-	}
-	b = litewire.AppendBool(b, 3, m.Retry)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TailRowView)
 }
 
 type ScopeRowView struct {
+	_            [0]func()
 	Key          string
 	Name         *Text
 	ShortPath    string
@@ -941,33 +900,30 @@ func (m *ScopeRowView) GetAllProjects() bool {
 	return false
 }
 
-func (m *ScopeRowView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScopeRowView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScopeRowView{}.Key), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScopeRowView{}.Name), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ScopeRowView{}.ShortPath), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScopeRowView{}.Subtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(ScopeRowView{}.WaitingCount), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(ScopeRowView{}.LiveCount), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(ScopeRowView{}.AllOffline), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ScopeRowView{}.Checked), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(ScopeRowView{}.AllProjects), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScopeRowView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScopeRowView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Key)
-	if m.Name != nil {
-		b = litewire.AppendMessage(b, 2, m.Name)
-	}
-	b = litewire.AppendString(b, 3, m.ShortPath)
-	if m.Subtitle != nil {
-		b = litewire.AppendMessage(b, 4, m.Subtitle)
-	}
-	b = litewire.AppendInt32(b, 5, int32(m.WaitingCount))
-	b = litewire.AppendInt32(b, 6, int32(m.LiveCount))
-	b = litewire.AppendBool(b, 7, m.AllOffline)
-	b = litewire.AppendBool(b, 8, m.Checked)
-	b = litewire.AppendBool(b, 9, m.AllProjects)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScopeRowView)
 }
 
 type ProjectRowView struct {
+	_            [0]func()
 	Key          string
 	Name         *Text
 	ShortPath    string
@@ -1048,37 +1004,32 @@ func (m *ProjectRowView) GetSaveError() *Text {
 	return nil
 }
 
-func (m *ProjectRowView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ProjectRowView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ProjectRowView{}.Key), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ProjectRowView{}.Name), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ProjectRowView{}.ShortPath), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ProjectRowView{}.Subtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(ProjectRowView{}.WaitingCount), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(ProjectRowView{}.LiveCount), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(ProjectRowView{}.AllOffline), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ProjectRowView{}.Pinned), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(ProjectRowView{}.Hidden), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(ProjectRowView{}.Syncing), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(ProjectRowView{}.SaveError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ProjectRowView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectRowView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Key)
-	if m.Name != nil {
-		b = litewire.AppendMessage(b, 2, m.Name)
-	}
-	b = litewire.AppendString(b, 3, m.ShortPath)
-	if m.Subtitle != nil {
-		b = litewire.AppendMessage(b, 4, m.Subtitle)
-	}
-	b = litewire.AppendInt32(b, 5, int32(m.WaitingCount))
-	b = litewire.AppendInt32(b, 6, int32(m.LiveCount))
-	b = litewire.AppendBool(b, 7, m.AllOffline)
-	b = litewire.AppendBool(b, 8, m.Pinned)
-	b = litewire.AppendBool(b, 9, m.Hidden)
-	b = litewire.AppendBool(b, 10, m.Syncing)
-	if m.SaveError != nil {
-		b = litewire.AppendMessage(b, 11, m.SaveError)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ProjectRowView)
 }
 
 type ProjectListingView struct {
+	_            [0]func()
 	Pinned       []*ProjectRowView
 	Others       []*ProjectRowView
 	Titled       bool
@@ -1159,41 +1110,32 @@ func (m *ProjectListingView) GetLoadFailed() bool {
 	return false
 }
 
-func (m *ProjectListingView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ProjectListingView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ProjectListingView{}.Pinned), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ProjectRowView},
+		{Num: 2, Offset: unsafe.Offsetof(ProjectListingView{}.Others), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ProjectRowView},
+		{Num: 3, Offset: unsafe.Offsetof(ProjectListingView{}.Titled), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ProjectListingView{}.CanSearch), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ProjectListingView{}.Searching), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(ProjectListingView{}.SearchQuery), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(ProjectListingView{}.EmptyMatch), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(ProjectListingView{}.WaitingTotal), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(ProjectListingView{}.Loading), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(ProjectListingView{}.Syncing), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(ProjectListingView{}.LoadFailed), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ProjectListingView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectListingView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Pinned {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
-		}
-	}
-	for _, v := range m.Others {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	b = litewire.AppendBool(b, 3, m.Titled)
-	b = litewire.AppendBool(b, 4, m.CanSearch)
-	b = litewire.AppendBool(b, 5, m.Searching)
-	b = litewire.AppendString(b, 6, m.SearchQuery)
-	if m.EmptyMatch != nil {
-		b = litewire.AppendMessage(b, 7, m.EmptyMatch)
-	}
-	b = litewire.AppendInt32(b, 8, int32(m.WaitingTotal))
-	b = litewire.AppendBool(b, 9, m.Loading)
-	b = litewire.AppendBool(b, 10, m.Syncing)
-	b = litewire.AppendBool(b, 11, m.LoadFailed)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ProjectListingView)
 }
 
 type HomeViewModel struct {
+	_                      [0]func()
 	ScopeSelectable        bool
 	ScopeKey               string
 	ScopeTitle             *Text
@@ -1393,82 +1335,49 @@ func (m *HomeViewModel) GetTopAttentionQuestion() *HomeQuestionCardView {
 	return nil
 }
 
-func (m *HomeViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_HomeViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 2, Offset: unsafe.Offsetof(HomeViewModel{}.ScopeSelectable), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(HomeViewModel{}.ScopeKey), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(HomeViewModel{}.ScopeTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(HomeViewModel{}.ScopeShortPath), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(HomeViewModel{}.Connection), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnectionStatusView},
+		{Num: 7, Offset: unsafe.Offsetof(HomeViewModel{}.Headline), Kind: litewire.KindMessage, Sub: &LitewireDesc_HomeHeadlineView},
+		{Num: 8, Offset: unsafe.Offsetof(HomeViewModel{}.Empty), Kind: litewire.KindMessage, Sub: &LitewireDesc_HomeEmptyView},
+		{Num: 9, Offset: unsafe.Offsetof(HomeViewModel{}.CanFilter), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(HomeViewModel{}.FilterQuery), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(HomeViewModel{}.FilterSummary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 12, Offset: unsafe.Offsetof(HomeViewModel{}.NoMatches), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(HomeViewModel{}.WaitingTotal), Kind: litewire.KindInt32},
+		{Num: 14, Offset: unsafe.Offsetof(HomeViewModel{}.LiveTotal), Kind: litewire.KindInt32},
+		{Num: 15, Offset: unsafe.Offsetof(HomeViewModel{}.EndedTotal), Kind: litewire.KindInt32},
+		{Num: 16, Offset: unsafe.Offsetof(HomeViewModel{}.TimelineTotal), Kind: litewire.KindInt32},
+		{Num: 17, Offset: unsafe.Offsetof(HomeViewModel{}.TopAttentionSessionId), Kind: litewire.KindString},
+		{Num: 18, Offset: unsafe.Offsetof(HomeViewModel{}.TopAttentionActionable), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(HomeViewModel{}.TopAttentionCard), Kind: litewire.KindMessage, Sub: &LitewireDesc_AttentionCardView},
+		{Num: 20, Offset: unsafe.Offsetof(HomeViewModel{}.Attention), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_AttentionRowView},
+		{Num: 21, Offset: unsafe.Offsetof(HomeViewModel{}.Running), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionRowView},
+		{Num: 22, Offset: unsafe.Offsetof(HomeViewModel{}.EndedGroups), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_EndedGroupView},
+		{Num: 23, Offset: unsafe.Offsetof(HomeViewModel{}.EndedTail), Kind: litewire.KindMessage, Sub: &LitewireDesc_TailRowView},
+		{Num: 24, Offset: unsafe.Offsetof(HomeViewModel{}.ScopeMenu), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScopeRowView},
+		{Num: 25, Offset: unsafe.Offsetof(HomeViewModel{}.SidebarProjects), Kind: litewire.KindMessage, Sub: &LitewireDesc_ProjectListingView},
+		{Num: 26, Offset: unsafe.Offsetof(HomeViewModel{}.CanStart), Kind: litewire.KindBool},
+		{Num: 27, Offset: unsafe.Offsetof(HomeViewModel{}.SelectedSessionId), Kind: litewire.KindString},
+		{Num: 28, Offset: unsafe.Offsetof(HomeViewModel{}.HasMoreEnded), Kind: litewire.KindBool},
+		{Num: 29, Offset: unsafe.Offsetof(HomeViewModel{}.TopAttentionQuestion), Kind: litewire.KindMessage, Sub: &LitewireDesc_HomeQuestionCardView},
+	},
+}
 
 func (m *HomeViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 2, m.ScopeSelectable)
-	b = litewire.AppendString(b, 3, m.ScopeKey)
-	if m.ScopeTitle != nil {
-		b = litewire.AppendMessage(b, 4, m.ScopeTitle)
-	}
-	b = litewire.AppendString(b, 5, m.ScopeShortPath)
-	if m.Connection != nil {
-		b = litewire.AppendMessage(b, 6, m.Connection)
-	}
-	if m.Headline != nil {
-		b = litewire.AppendMessage(b, 7, m.Headline)
-	}
-	if m.Empty != nil {
-		b = litewire.AppendMessage(b, 8, m.Empty)
-	}
-	b = litewire.AppendBool(b, 9, m.CanFilter)
-	b = litewire.AppendString(b, 10, m.FilterQuery)
-	if m.FilterSummary != nil {
-		b = litewire.AppendMessage(b, 11, m.FilterSummary)
-	}
-	b = litewire.AppendBool(b, 12, m.NoMatches)
-	b = litewire.AppendInt32(b, 13, int32(m.WaitingTotal))
-	b = litewire.AppendInt32(b, 14, int32(m.LiveTotal))
-	b = litewire.AppendInt32(b, 15, int32(m.EndedTotal))
-	b = litewire.AppendInt32(b, 16, int32(m.TimelineTotal))
-	b = litewire.AppendString(b, 17, m.TopAttentionSessionId)
-	b = litewire.AppendBool(b, 18, m.TopAttentionActionable)
-	if m.TopAttentionCard != nil {
-		b = litewire.AppendMessage(b, 19, m.TopAttentionCard)
-	}
-	for _, v := range m.Attention {
-		if v != nil {
-			b = litewire.AppendMessage(b, 20, v)
-		}
-	}
-	for _, v := range m.Running {
-		if v != nil {
-			b = litewire.AppendMessage(b, 21, v)
-		}
-	}
-	for _, v := range m.EndedGroups {
-		if v != nil {
-			b = litewire.AppendMessage(b, 22, v)
-		}
-	}
-	if m.EndedTail != nil {
-		b = litewire.AppendMessage(b, 23, m.EndedTail)
-	}
-	for _, v := range m.ScopeMenu {
-		if v != nil {
-			b = litewire.AppendMessage(b, 24, v)
-		}
-	}
-	if m.SidebarProjects != nil {
-		b = litewire.AppendMessage(b, 25, m.SidebarProjects)
-	}
-	b = litewire.AppendBool(b, 26, m.CanStart)
-	b = litewire.AppendString(b, 27, m.SelectedSessionId)
-	b = litewire.AppendBool(b, 28, m.HasMoreEnded)
-	if m.TopAttentionQuestion != nil {
-		b = litewire.AppendMessage(b, 29, m.TopAttentionQuestion)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HomeViewModel)
 }
 
 type HomeQuestionOptionView struct {
+	_           [0]func()
 	OptionNum   int32
 	Label       string
 	Description string
@@ -1500,24 +1409,25 @@ func (m *HomeQuestionOptionView) GetRecommended() bool {
 	return false
 }
 
-func (m *HomeQuestionOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_HomeQuestionOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeQuestionOptionView{}.OptionNum), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(HomeQuestionOptionView{}.Label), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(HomeQuestionOptionView{}.Description), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(HomeQuestionOptionView{}.Recommended), Kind: litewire.KindBool},
+	},
+}
 
 func (m *HomeQuestionOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeQuestionOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.OptionNum))
-	b = litewire.AppendString(b, 2, m.Label)
-	b = litewire.AppendString(b, 3, m.Description)
-	b = litewire.AppendBool(b, 4, m.Recommended)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HomeQuestionOptionView)
 }
 
 type HomeQuestionCardView struct {
+	_                [0]func()
 	SessionId        string
 	MachineId        string
 	QuestionId       string
@@ -1612,42 +1522,28 @@ func (m *HomeQuestionCardView) GetOfflineNote() *Text {
 	return nil
 }
 
-func (m *HomeQuestionCardView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_HomeQuestionCardView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HomeQuestionCardView{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(HomeQuestionCardView{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(HomeQuestionCardView{}.QuestionId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(HomeQuestionCardView{}.ObservedEventSeq), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(HomeQuestionCardView{}.BadgeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(HomeQuestionCardView{}.TimeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(HomeQuestionCardView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(HomeQuestionCardView{}.Where), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(HomeQuestionCardView{}.Header), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(HomeQuestionCardView{}.QuestionText), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(HomeQuestionCardView{}.Options), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_HomeQuestionOptionView},
+		{Num: 12, Offset: unsafe.Offsetof(HomeQuestionCardView{}.CanAnswer), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(HomeQuestionCardView{}.OfflineNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *HomeQuestionCardView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *HomeQuestionCardView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.MachineId)
-	b = litewire.AppendString(b, 3, m.QuestionId)
-	b = litewire.AppendVarint(b, 4, uint64(m.ObservedEventSeq))
-	if m.BadgeText != nil {
-		b = litewire.AppendMessage(b, 5, m.BadgeText)
-	}
-	if m.TimeText != nil {
-		b = litewire.AppendMessage(b, 6, m.TimeText)
-	}
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 7, m.Title)
-	}
-	if m.Where != nil {
-		b = litewire.AppendMessage(b, 8, m.Where)
-	}
-	b = litewire.AppendString(b, 9, m.Header)
-	b = litewire.AppendString(b, 10, m.QuestionText)
-	for _, v := range m.Options {
-		if v != nil {
-			b = litewire.AppendMessage(b, 11, v)
-		}
-	}
-	b = litewire.AppendBool(b, 12, m.CanAnswer)
-	if m.OfflineNote != nil {
-		b = litewire.AppendMessage(b, 13, m.OfflineNote)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HomeQuestionCardView)
 }

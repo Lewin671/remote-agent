@@ -139,6 +139,12 @@ func (e *Engine) buildSyncDeviceView(d *DeviceEntry) *corev1.SyncDeviceView {
 	}
 }
 
+type syncDevicesByID []*corev1.SyncDeviceView
+
+func (s syncDevicesByID) Len() int           { return len(s) }
+func (s syncDevicesByID) Less(i, j int) bool { return s[i].DeviceId < s[j].DeviceId }
+func (s syncDevicesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 // BuildSyncStateView constructs the transitional SyncStateView snapshot for unmigrated Step 3-4 screens
 // from the engine's world.
 func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
@@ -162,7 +168,7 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 			devices = append(devices, dv)
 		}
 	}
-	sortutil.Sort(len(devices), func(i, j int) bool { return devices[i].DeviceId < devices[j].DeviceId }, func(i, j int) { devices[i], devices[j] = devices[j], devices[i] })
+	sortutil.SortInterface(syncDevicesByID(devices))
 
 	var nextCursor *v1.SessionCursor
 	if w.World.SessionsNext != nil {

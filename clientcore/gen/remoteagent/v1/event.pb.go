@@ -6,8 +6,8 @@ package remoteagentv1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	timestamppb "github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
-	math "math"
 	slices "slices"
+	unsafe "unsafe"
 )
 
 type OriginKind int32
@@ -150,6 +150,7 @@ const (
 )
 
 type Event struct {
+	_          [0]func()
 	Seq        uint64
 	SessionId  string
 	Time       *timestamppb.Timestamp
@@ -162,87 +163,150 @@ type Event struct {
 func (m *Event) HasUnknown() bool { return m != nil && m.hasUnknown }
 
 type isEvent_Kind interface{ isEvent_Kind() }
-type Event_UserMessage struct{ UserMessage *UserMessage }
+type Event_UserMessage struct {
+	_           [0]func()
+	UserMessage *UserMessage
+}
 
 func (*Event_UserMessage) isEvent_Kind() {}
 
-type Event_AgentMessage struct{ AgentMessage *AgentMessage }
+type Event_AgentMessage struct {
+	_            [0]func()
+	AgentMessage *AgentMessage
+}
 
 func (*Event_AgentMessage) isEvent_Kind() {}
 
-type Event_Reasoning struct{ Reasoning *Reasoning }
+type Event_Reasoning struct {
+	_         [0]func()
+	Reasoning *Reasoning
+}
 
 func (*Event_Reasoning) isEvent_Kind() {}
 
-type Event_ToolCall struct{ ToolCall *ToolCall }
+type Event_ToolCall struct {
+	_        [0]func()
+	ToolCall *ToolCall
+}
 
 func (*Event_ToolCall) isEvent_Kind() {}
 
-type Event_TurnStarted struct{ TurnStarted *TurnStarted }
+type Event_TurnStarted struct {
+	_           [0]func()
+	TurnStarted *TurnStarted
+}
 
 func (*Event_TurnStarted) isEvent_Kind() {}
 
-type Event_TurnEnded struct{ TurnEnded *TurnEnded }
+type Event_TurnEnded struct {
+	_         [0]func()
+	TurnEnded *TurnEnded
+}
 
 func (*Event_TurnEnded) isEvent_Kind() {}
 
-type Event_TokenUsage struct{ TokenUsage *TokenUsage }
+type Event_TokenUsage struct {
+	_          [0]func()
+	TokenUsage *TokenUsage
+}
 
 func (*Event_TokenUsage) isEvent_Kind() {}
 
-type Event_TurnContext struct{ TurnContext *TurnContext }
+type Event_TurnContext struct {
+	_           [0]func()
+	TurnContext *TurnContext
+}
 
 func (*Event_TurnContext) isEvent_Kind() {}
 
-type Event_ApprovalRequested struct{ ApprovalRequested *ApprovalRequested }
+type Event_ApprovalRequested struct {
+	_                 [0]func()
+	ApprovalRequested *ApprovalRequested
+}
 
 func (*Event_ApprovalRequested) isEvent_Kind() {}
 
-type Event_ApprovalResolved struct{ ApprovalResolved *ApprovalResolved }
+type Event_ApprovalResolved struct {
+	_                [0]func()
+	ApprovalResolved *ApprovalResolved
+}
 
 func (*Event_ApprovalResolved) isEvent_Kind() {}
 
-type Event_QuestionAsked struct{ QuestionAsked *QuestionAsked }
+type Event_QuestionAsked struct {
+	_             [0]func()
+	QuestionAsked *QuestionAsked
+}
 
 func (*Event_QuestionAsked) isEvent_Kind() {}
 
-type Event_QuestionAnswered struct{ QuestionAnswered *QuestionAnswered }
+type Event_QuestionAnswered struct {
+	_                [0]func()
+	QuestionAnswered *QuestionAnswered
+}
 
 func (*Event_QuestionAnswered) isEvent_Kind() {}
 
-type Event_SessionState struct{ SessionState *SessionState }
+type Event_SessionState struct {
+	_            [0]func()
+	SessionState *SessionState
+}
 
 func (*Event_SessionState) isEvent_Kind() {}
 
-type Event_InputState struct{ InputState *InputState }
+type Event_InputState struct {
+	_          [0]func()
+	InputState *InputState
+}
 
 func (*Event_InputState) isEvent_Kind() {}
 
-type Event_PlanProposed struct{ PlanProposed *PlanProposed }
+type Event_PlanProposed struct {
+	_            [0]func()
+	PlanProposed *PlanProposed
+}
 
 func (*Event_PlanProposed) isEvent_Kind() {}
 
-type Event_SettingsChanged struct{ SettingsChanged *SettingsChanged }
+type Event_SettingsChanged struct {
+	_               [0]func()
+	SettingsChanged *SettingsChanged
+}
 
 func (*Event_SettingsChanged) isEvent_Kind() {}
 
-type Event_ToolStarted struct{ ToolStarted *ToolStarted }
+type Event_ToolStarted struct {
+	_           [0]func()
+	ToolStarted *ToolStarted
+}
 
 func (*Event_ToolStarted) isEvent_Kind() {}
 
-type Event_ImageGenerated struct{ ImageGenerated *ImageGenerated }
+type Event_ImageGenerated struct {
+	_              [0]func()
+	ImageGenerated *ImageGenerated
+}
 
 func (*Event_ImageGenerated) isEvent_Kind() {}
 
-type Event_PlanAnswered struct{ PlanAnswered *PlanAnswered }
+type Event_PlanAnswered struct {
+	_            [0]func()
+	PlanAnswered *PlanAnswered
+}
 
 func (*Event_PlanAnswered) isEvent_Kind() {}
 
-type Event_SessionForked struct{ SessionForked *SessionForked }
+type Event_SessionForked struct {
+	_             [0]func()
+	SessionForked *SessionForked
+}
 
 func (*Event_SessionForked) isEvent_Kind() {}
 
-type Event_ScheduledNotification struct{ ScheduledNotification *ScheduledNotification }
+type Event_ScheduledNotification struct {
+	_                     [0]func()
+	ScheduledNotification *ScheduledNotification
+}
 
 func (*Event_ScheduledNotification) isEvent_Kind() {}
 
@@ -416,693 +480,477 @@ func (m *Event) Clone() *Event {
 	cp := *m
 	cp.Time = m.Time.Clone()
 	cp.Origin = m.Origin.Clone()
+	if m.Kind != nil {
+		_ = m.cloneKindPart0(&cp) || m.cloneKindPart1(&cp)
+	}
+	return &cp
+}
+
+//go:noinline
+func (m *Event) cloneKindPart0(cp *Event) bool {
 	switch v := m.Kind.(type) {
 	case *Event_UserMessage:
 		if v != nil {
 			cp.Kind = &Event_UserMessage{UserMessage: v.UserMessage.Clone()}
 		}
+		return true
 	case *Event_AgentMessage:
 		if v != nil {
 			cp.Kind = &Event_AgentMessage{AgentMessage: v.AgentMessage.Clone()}
 		}
+		return true
 	case *Event_Reasoning:
 		if v != nil {
 			cp.Kind = &Event_Reasoning{Reasoning: v.Reasoning.Clone()}
 		}
+		return true
 	case *Event_ToolCall:
 		if v != nil {
 			cp.Kind = &Event_ToolCall{ToolCall: v.ToolCall.Clone()}
 		}
+		return true
 	case *Event_TurnStarted:
 		if v != nil {
 			cp.Kind = &Event_TurnStarted{TurnStarted: v.TurnStarted.Clone()}
 		}
+		return true
 	case *Event_TurnEnded:
 		if v != nil {
 			cp.Kind = &Event_TurnEnded{TurnEnded: v.TurnEnded.Clone()}
 		}
+		return true
 	case *Event_TokenUsage:
 		if v != nil {
 			cp.Kind = &Event_TokenUsage{TokenUsage: v.TokenUsage.Clone()}
 		}
+		return true
 	case *Event_TurnContext:
 		if v != nil {
 			cp.Kind = &Event_TurnContext{TurnContext: v.TurnContext.Clone()}
 		}
+		return true
 	case *Event_ApprovalRequested:
 		if v != nil {
 			cp.Kind = &Event_ApprovalRequested{ApprovalRequested: v.ApprovalRequested.Clone()}
 		}
+		return true
 	case *Event_ApprovalResolved:
 		if v != nil {
 			cp.Kind = &Event_ApprovalResolved{ApprovalResolved: v.ApprovalResolved.Clone()}
 		}
+		return true
 	case *Event_QuestionAsked:
 		if v != nil {
 			cp.Kind = &Event_QuestionAsked{QuestionAsked: v.QuestionAsked.Clone()}
 		}
+		return true
 	case *Event_QuestionAnswered:
 		if v != nil {
 			cp.Kind = &Event_QuestionAnswered{QuestionAnswered: v.QuestionAnswered.Clone()}
 		}
+		return true
+	}
+	return false
+}
+
+//go:noinline
+func (m *Event) cloneKindPart1(cp *Event) bool {
+	switch v := m.Kind.(type) {
 	case *Event_SessionState:
 		if v != nil {
 			cp.Kind = &Event_SessionState{SessionState: v.SessionState.Clone()}
 		}
+		return true
 	case *Event_InputState:
 		if v != nil {
 			cp.Kind = &Event_InputState{InputState: v.InputState.Clone()}
 		}
+		return true
 	case *Event_PlanProposed:
 		if v != nil {
 			cp.Kind = &Event_PlanProposed{PlanProposed: v.PlanProposed.Clone()}
 		}
+		return true
 	case *Event_SettingsChanged:
 		if v != nil {
 			cp.Kind = &Event_SettingsChanged{SettingsChanged: v.SettingsChanged.Clone()}
 		}
+		return true
 	case *Event_ToolStarted:
 		if v != nil {
 			cp.Kind = &Event_ToolStarted{ToolStarted: v.ToolStarted.Clone()}
 		}
+		return true
 	case *Event_ImageGenerated:
 		if v != nil {
 			cp.Kind = &Event_ImageGenerated{ImageGenerated: v.ImageGenerated.Clone()}
 		}
+		return true
 	case *Event_PlanAnswered:
 		if v != nil {
 			cp.Kind = &Event_PlanAnswered{PlanAnswered: v.PlanAnswered.Clone()}
 		}
+		return true
 	case *Event_SessionForked:
 		if v != nil {
 			cp.Kind = &Event_SessionForked{SessionForked: v.SessionForked.Clone()}
 		}
+		return true
 	case *Event_ScheduledNotification:
 		if v != nil {
 			cp.Kind = &Event_ScheduledNotification{ScheduledNotification: v.ScheduledNotification.Clone()}
 		}
+		return true
 	}
-	return &cp
+	return false
 }
 
-func (m *Event) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_Event = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(Event{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&Event{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Event{}.Seq), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(Event{}.SessionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(Event{}.Time), Kind: litewire.KindMessage, Sub: &timestamppb.LitewireDesc_Timestamp},
+		{Num: 4, Offset: unsafe.Offsetof(Event{}.TurnId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(Event{}.Origin), Kind: litewire.KindMessage, Sub: &LitewireDesc_Origin},
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
 
 func (m *Event) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *Event) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.Seq))
-	b = litewire.AppendString(b, 2, m.SessionId)
-	if m.Time != nil {
-		b = litewire.AppendMessage(b, 3, m.Time)
-	}
-	b = litewire.AppendString(b, 4, m.TurnId)
-	if m.Origin != nil {
-		b = litewire.AppendMessage(b, 5, m.Origin)
-	}
-	switch x := m.Kind.(type) {
-	case *Event_UserMessage:
-		if x != nil {
-			if x.UserMessage != nil {
-				b = litewire.AppendMessage(b, 10, x.UserMessage)
-			}
-		}
-	case *Event_AgentMessage:
-		if x != nil {
-			if x.AgentMessage != nil {
-				b = litewire.AppendMessage(b, 11, x.AgentMessage)
-			}
-		}
-	case *Event_Reasoning:
-		if x != nil {
-			if x.Reasoning != nil {
-				b = litewire.AppendMessage(b, 12, x.Reasoning)
-			}
-		}
-	case *Event_ToolCall:
-		if x != nil {
-			if x.ToolCall != nil {
-				b = litewire.AppendMessage(b, 13, x.ToolCall)
-			}
-		}
-	case *Event_TurnStarted:
-		if x != nil {
-			if x.TurnStarted != nil {
-				b = litewire.AppendMessage(b, 14, x.TurnStarted)
-			}
-		}
-	case *Event_TurnEnded:
-		if x != nil {
-			if x.TurnEnded != nil {
-				b = litewire.AppendMessage(b, 15, x.TurnEnded)
-			}
-		}
-	case *Event_TokenUsage:
-		if x != nil {
-			if x.TokenUsage != nil {
-				b = litewire.AppendMessage(b, 16, x.TokenUsage)
-			}
-		}
-	case *Event_TurnContext:
-		if x != nil {
-			if x.TurnContext != nil {
-				b = litewire.AppendMessage(b, 17, x.TurnContext)
-			}
-		}
-	case *Event_ApprovalRequested:
-		if x != nil {
-			if x.ApprovalRequested != nil {
-				b = litewire.AppendMessage(b, 18, x.ApprovalRequested)
-			}
-		}
-	case *Event_ApprovalResolved:
-		if x != nil {
-			if x.ApprovalResolved != nil {
-				b = litewire.AppendMessage(b, 19, x.ApprovalResolved)
-			}
-		}
-	case *Event_QuestionAsked:
-		if x != nil {
-			if x.QuestionAsked != nil {
-				b = litewire.AppendMessage(b, 20, x.QuestionAsked)
-			}
-		}
-	case *Event_QuestionAnswered:
-		if x != nil {
-			if x.QuestionAnswered != nil {
-				b = litewire.AppendMessage(b, 21, x.QuestionAnswered)
-			}
-		}
-	case *Event_SessionState:
-		if x != nil {
-			if x.SessionState != nil {
-				b = litewire.AppendMessage(b, 22, x.SessionState)
-			}
-		}
-	case *Event_InputState:
-		if x != nil {
-			if x.InputState != nil {
-				b = litewire.AppendMessage(b, 23, x.InputState)
-			}
-		}
-	case *Event_PlanProposed:
-		if x != nil {
-			if x.PlanProposed != nil {
-				b = litewire.AppendMessage(b, 24, x.PlanProposed)
-			}
-		}
-	case *Event_SettingsChanged:
-		if x != nil {
-			if x.SettingsChanged != nil {
-				b = litewire.AppendMessage(b, 25, x.SettingsChanged)
-			}
-		}
-	case *Event_ToolStarted:
-		if x != nil {
-			if x.ToolStarted != nil {
-				b = litewire.AppendMessage(b, 26, x.ToolStarted)
-			}
-		}
-	case *Event_ImageGenerated:
-		if x != nil {
-			if x.ImageGenerated != nil {
-				b = litewire.AppendMessage(b, 27, x.ImageGenerated)
-			}
-		}
-	case *Event_PlanAnswered:
-		if x != nil {
-			if x.PlanAnswered != nil {
-				b = litewire.AppendMessage(b, 28, x.PlanAnswered)
-			}
-		}
-	case *Event_SessionForked:
-		if x != nil {
-			if x.SessionForked != nil {
-				b = litewire.AppendMessage(b, 29, x.SessionForked)
-			}
-		}
-	case *Event_ScheduledNotification:
-		if x != nil {
-			if x.ScheduledNotification != nil {
-				b = litewire.AppendMessage(b, 30, x.ScheduledNotification)
-			}
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Event)
+}
+
+func extraMarshal_Event(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*Event)(base)
+	if m.Kind != nil {
+		var ok bool
+		b, ok = m.appendMarshalKindPart0(b)
+		if !ok {
+			b, ok = m.appendMarshalKindPart1(b)
 		}
 	}
 	return b
 }
 
+//go:noinline
+func (m *Event) appendMarshalKindPart0(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *Event_UserMessage:
+		if x != nil && x.UserMessage != nil {
+			onum, omsg = 10, x.UserMessage
+		}
+	case *Event_AgentMessage:
+		if x != nil && x.AgentMessage != nil {
+			onum, omsg = 11, x.AgentMessage
+		}
+	case *Event_Reasoning:
+		if x != nil && x.Reasoning != nil {
+			onum, omsg = 12, x.Reasoning
+		}
+	case *Event_ToolCall:
+		if x != nil && x.ToolCall != nil {
+			onum, omsg = 13, x.ToolCall
+		}
+	case *Event_TurnStarted:
+		if x != nil && x.TurnStarted != nil {
+			onum, omsg = 14, x.TurnStarted
+		}
+	case *Event_TurnEnded:
+		if x != nil && x.TurnEnded != nil {
+			onum, omsg = 15, x.TurnEnded
+		}
+	case *Event_TokenUsage:
+		if x != nil && x.TokenUsage != nil {
+			onum, omsg = 16, x.TokenUsage
+		}
+	case *Event_TurnContext:
+		if x != nil && x.TurnContext != nil {
+			onum, omsg = 17, x.TurnContext
+		}
+	case *Event_ApprovalRequested:
+		if x != nil && x.ApprovalRequested != nil {
+			onum, omsg = 18, x.ApprovalRequested
+		}
+	case *Event_ApprovalResolved:
+		if x != nil && x.ApprovalResolved != nil {
+			onum, omsg = 19, x.ApprovalResolved
+		}
+	case *Event_QuestionAsked:
+		if x != nil && x.QuestionAsked != nil {
+			onum, omsg = 20, x.QuestionAsked
+		}
+	case *Event_QuestionAnswered:
+		if x != nil && x.QuestionAnswered != nil {
+			onum, omsg = 21, x.QuestionAnswered
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Event) appendMarshalKindPart1(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *Event_SessionState:
+		if x != nil && x.SessionState != nil {
+			onum, omsg = 22, x.SessionState
+		}
+	case *Event_InputState:
+		if x != nil && x.InputState != nil {
+			onum, omsg = 23, x.InputState
+		}
+	case *Event_PlanProposed:
+		if x != nil && x.PlanProposed != nil {
+			onum, omsg = 24, x.PlanProposed
+		}
+	case *Event_SettingsChanged:
+		if x != nil && x.SettingsChanged != nil {
+			onum, omsg = 25, x.SettingsChanged
+		}
+	case *Event_ToolStarted:
+		if x != nil && x.ToolStarted != nil {
+			onum, omsg = 26, x.ToolStarted
+		}
+	case *Event_ImageGenerated:
+		if x != nil && x.ImageGenerated != nil {
+			onum, omsg = 27, x.ImageGenerated
+		}
+	case *Event_PlanAnswered:
+		if x != nil && x.PlanAnswered != nil {
+			onum, omsg = 28, x.PlanAnswered
+		}
+	case *Event_SessionForked:
+		if x != nil && x.SessionForked != nil {
+			onum, omsg = 29, x.SessionForked
+		}
+	case *Event_ScheduledNotification:
+		if x != nil && x.ScheduledNotification != nil {
+			onum, omsg = 30, x.ScheduledNotification
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
 func (m *Event) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Event)
+}
+
+func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*Event)(base)
+	switch {
+	case num <= 21:
+		return m.extraUnmarshalPart0(num, wtyp, bp)
+	case num <= 30:
+		return m.extraUnmarshalPart1(num, wtyp, bp)
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart0(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.StrictUnmarshaler
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Seq = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				if m.Time == nil {
-					m.Time = &timestamppb.Timestamp{}
-				}
-				if err := litewire.ReadMessage(&b, m.Time); err != nil {
-					return err
-				}
-				if m.Time.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TurnId = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				if m.Origin == nil {
-					m.Origin = &Origin{}
-				}
-				if err := litewire.ReadMessage(&b, m.Origin); err != nil {
-					return err
-				}
-				if m.Origin.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
 		case 10:
-			if wtyp == litewire.BytesType {
-				var sub *UserMessage
-				if cur, ok := m.Kind.(*Event_UserMessage); ok && cur != nil {
-					sub = cur.UserMessage
-				}
-				if sub == nil {
-					sub = &UserMessage{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_UserMessage{UserMessage: sub}
-				continue
+			w, _ := m.Kind.(*Event_UserMessage)
+			if w == nil || w.UserMessage == nil {
+				w = &Event_UserMessage{UserMessage: &UserMessage{}}
+				m.Kind = w
 			}
+			sub = w.UserMessage
 		case 11:
-			if wtyp == litewire.BytesType {
-				var sub *AgentMessage
-				if cur, ok := m.Kind.(*Event_AgentMessage); ok && cur != nil {
-					sub = cur.AgentMessage
-				}
-				if sub == nil {
-					sub = &AgentMessage{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_AgentMessage{AgentMessage: sub}
-				continue
+			w, _ := m.Kind.(*Event_AgentMessage)
+			if w == nil || w.AgentMessage == nil {
+				w = &Event_AgentMessage{AgentMessage: &AgentMessage{}}
+				m.Kind = w
 			}
+			sub = w.AgentMessage
 		case 12:
-			if wtyp == litewire.BytesType {
-				var sub *Reasoning
-				if cur, ok := m.Kind.(*Event_Reasoning); ok && cur != nil {
-					sub = cur.Reasoning
-				}
-				if sub == nil {
-					sub = &Reasoning{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_Reasoning{Reasoning: sub}
-				continue
+			w, _ := m.Kind.(*Event_Reasoning)
+			if w == nil || w.Reasoning == nil {
+				w = &Event_Reasoning{Reasoning: &Reasoning{}}
+				m.Kind = w
 			}
+			sub = w.Reasoning
 		case 13:
-			if wtyp == litewire.BytesType {
-				var sub *ToolCall
-				if cur, ok := m.Kind.(*Event_ToolCall); ok && cur != nil {
-					sub = cur.ToolCall
-				}
-				if sub == nil {
-					sub = &ToolCall{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_ToolCall{ToolCall: sub}
-				continue
+			w, _ := m.Kind.(*Event_ToolCall)
+			if w == nil || w.ToolCall == nil {
+				w = &Event_ToolCall{ToolCall: &ToolCall{}}
+				m.Kind = w
 			}
+			sub = w.ToolCall
 		case 14:
-			if wtyp == litewire.BytesType {
-				var sub *TurnStarted
-				if cur, ok := m.Kind.(*Event_TurnStarted); ok && cur != nil {
-					sub = cur.TurnStarted
-				}
-				if sub == nil {
-					sub = &TurnStarted{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_TurnStarted{TurnStarted: sub}
-				continue
+			w, _ := m.Kind.(*Event_TurnStarted)
+			if w == nil || w.TurnStarted == nil {
+				w = &Event_TurnStarted{TurnStarted: &TurnStarted{}}
+				m.Kind = w
 			}
+			sub = w.TurnStarted
 		case 15:
-			if wtyp == litewire.BytesType {
-				var sub *TurnEnded
-				if cur, ok := m.Kind.(*Event_TurnEnded); ok && cur != nil {
-					sub = cur.TurnEnded
-				}
-				if sub == nil {
-					sub = &TurnEnded{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_TurnEnded{TurnEnded: sub}
-				continue
+			w, _ := m.Kind.(*Event_TurnEnded)
+			if w == nil || w.TurnEnded == nil {
+				w = &Event_TurnEnded{TurnEnded: &TurnEnded{}}
+				m.Kind = w
 			}
+			sub = w.TurnEnded
 		case 16:
-			if wtyp == litewire.BytesType {
-				var sub *TokenUsage
-				if cur, ok := m.Kind.(*Event_TokenUsage); ok && cur != nil {
-					sub = cur.TokenUsage
-				}
-				if sub == nil {
-					sub = &TokenUsage{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_TokenUsage{TokenUsage: sub}
-				continue
+			w, _ := m.Kind.(*Event_TokenUsage)
+			if w == nil || w.TokenUsage == nil {
+				w = &Event_TokenUsage{TokenUsage: &TokenUsage{}}
+				m.Kind = w
 			}
+			sub = w.TokenUsage
 		case 17:
-			if wtyp == litewire.BytesType {
-				var sub *TurnContext
-				if cur, ok := m.Kind.(*Event_TurnContext); ok && cur != nil {
-					sub = cur.TurnContext
-				}
-				if sub == nil {
-					sub = &TurnContext{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_TurnContext{TurnContext: sub}
-				continue
+			w, _ := m.Kind.(*Event_TurnContext)
+			if w == nil || w.TurnContext == nil {
+				w = &Event_TurnContext{TurnContext: &TurnContext{}}
+				m.Kind = w
 			}
+			sub = w.TurnContext
 		case 18:
-			if wtyp == litewire.BytesType {
-				var sub *ApprovalRequested
-				if cur, ok := m.Kind.(*Event_ApprovalRequested); ok && cur != nil {
-					sub = cur.ApprovalRequested
-				}
-				if sub == nil {
-					sub = &ApprovalRequested{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_ApprovalRequested{ApprovalRequested: sub}
-				continue
+			w, _ := m.Kind.(*Event_ApprovalRequested)
+			if w == nil || w.ApprovalRequested == nil {
+				w = &Event_ApprovalRequested{ApprovalRequested: &ApprovalRequested{}}
+				m.Kind = w
 			}
+			sub = w.ApprovalRequested
 		case 19:
-			if wtyp == litewire.BytesType {
-				var sub *ApprovalResolved
-				if cur, ok := m.Kind.(*Event_ApprovalResolved); ok && cur != nil {
-					sub = cur.ApprovalResolved
-				}
-				if sub == nil {
-					sub = &ApprovalResolved{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_ApprovalResolved{ApprovalResolved: sub}
-				continue
+			w, _ := m.Kind.(*Event_ApprovalResolved)
+			if w == nil || w.ApprovalResolved == nil {
+				w = &Event_ApprovalResolved{ApprovalResolved: &ApprovalResolved{}}
+				m.Kind = w
 			}
+			sub = w.ApprovalResolved
 		case 20:
-			if wtyp == litewire.BytesType {
-				var sub *QuestionAsked
-				if cur, ok := m.Kind.(*Event_QuestionAsked); ok && cur != nil {
-					sub = cur.QuestionAsked
-				}
-				if sub == nil {
-					sub = &QuestionAsked{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_QuestionAsked{QuestionAsked: sub}
-				continue
+			w, _ := m.Kind.(*Event_QuestionAsked)
+			if w == nil || w.QuestionAsked == nil {
+				w = &Event_QuestionAsked{QuestionAsked: &QuestionAsked{}}
+				m.Kind = w
 			}
+			sub = w.QuestionAsked
 		case 21:
-			if wtyp == litewire.BytesType {
-				var sub *QuestionAnswered
-				if cur, ok := m.Kind.(*Event_QuestionAnswered); ok && cur != nil {
-					sub = cur.QuestionAnswered
-				}
-				if sub == nil {
-					sub = &QuestionAnswered{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_QuestionAnswered{QuestionAnswered: sub}
-				continue
+			w, _ := m.Kind.(*Event_QuestionAnswered)
+			if w == nil || w.QuestionAnswered == nil {
+				w = &Event_QuestionAnswered{QuestionAnswered: &QuestionAnswered{}}
+				m.Kind = w
 			}
-		case 22:
-			if wtyp == litewire.BytesType {
-				var sub *SessionState
-				if cur, ok := m.Kind.(*Event_SessionState); ok && cur != nil {
-					sub = cur.SessionState
-				}
-				if sub == nil {
-					sub = &SessionState{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_SessionState{SessionState: sub}
-				continue
-			}
-		case 23:
-			if wtyp == litewire.BytesType {
-				var sub *InputState
-				if cur, ok := m.Kind.(*Event_InputState); ok && cur != nil {
-					sub = cur.InputState
-				}
-				if sub == nil {
-					sub = &InputState{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_InputState{InputState: sub}
-				continue
-			}
-		case 24:
-			if wtyp == litewire.BytesType {
-				var sub *PlanProposed
-				if cur, ok := m.Kind.(*Event_PlanProposed); ok && cur != nil {
-					sub = cur.PlanProposed
-				}
-				if sub == nil {
-					sub = &PlanProposed{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_PlanProposed{PlanProposed: sub}
-				continue
-			}
-		case 25:
-			if wtyp == litewire.BytesType {
-				var sub *SettingsChanged
-				if cur, ok := m.Kind.(*Event_SettingsChanged); ok && cur != nil {
-					sub = cur.SettingsChanged
-				}
-				if sub == nil {
-					sub = &SettingsChanged{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_SettingsChanged{SettingsChanged: sub}
-				continue
-			}
-		case 26:
-			if wtyp == litewire.BytesType {
-				var sub *ToolStarted
-				if cur, ok := m.Kind.(*Event_ToolStarted); ok && cur != nil {
-					sub = cur.ToolStarted
-				}
-				if sub == nil {
-					sub = &ToolStarted{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_ToolStarted{ToolStarted: sub}
-				continue
-			}
-		case 27:
-			if wtyp == litewire.BytesType {
-				var sub *ImageGenerated
-				if cur, ok := m.Kind.(*Event_ImageGenerated); ok && cur != nil {
-					sub = cur.ImageGenerated
-				}
-				if sub == nil {
-					sub = &ImageGenerated{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_ImageGenerated{ImageGenerated: sub}
-				continue
-			}
-		case 28:
-			if wtyp == litewire.BytesType {
-				var sub *PlanAnswered
-				if cur, ok := m.Kind.(*Event_PlanAnswered); ok && cur != nil {
-					sub = cur.PlanAnswered
-				}
-				if sub == nil {
-					sub = &PlanAnswered{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_PlanAnswered{PlanAnswered: sub}
-				continue
-			}
-		case 29:
-			if wtyp == litewire.BytesType {
-				var sub *SessionForked
-				if cur, ok := m.Kind.(*Event_SessionForked); ok && cur != nil {
-					sub = cur.SessionForked
-				}
-				if sub == nil {
-					sub = &SessionForked{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_SessionForked{SessionForked: sub}
-				continue
-			}
-		case 30:
-			if wtyp == litewire.BytesType {
-				var sub *ScheduledNotification
-				if cur, ok := m.Kind.(*Event_ScheduledNotification); ok && cur != nil {
-					sub = cur.ScheduledNotification
-				}
-				if sub == nil {
-					sub = &ScheduledNotification{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				if sub.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Kind = &Event_ScheduledNotification{ScheduledNotification: sub}
-				continue
-			}
+			sub = w.QuestionAnswered
 		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if sub != nil {
+			if err := litewire.ReadStrictMessage(&b, sub, &m.hasUnknown); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.StrictUnmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 22:
+			w, _ := m.Kind.(*Event_SessionState)
+			if w == nil || w.SessionState == nil {
+				w = &Event_SessionState{SessionState: &SessionState{}}
+				m.Kind = w
+			}
+			sub = w.SessionState
+		case 23:
+			w, _ := m.Kind.(*Event_InputState)
+			if w == nil || w.InputState == nil {
+				w = &Event_InputState{InputState: &InputState{}}
+				m.Kind = w
+			}
+			sub = w.InputState
+		case 24:
+			w, _ := m.Kind.(*Event_PlanProposed)
+			if w == nil || w.PlanProposed == nil {
+				w = &Event_PlanProposed{PlanProposed: &PlanProposed{}}
+				m.Kind = w
+			}
+			sub = w.PlanProposed
+		case 25:
+			w, _ := m.Kind.(*Event_SettingsChanged)
+			if w == nil || w.SettingsChanged == nil {
+				w = &Event_SettingsChanged{SettingsChanged: &SettingsChanged{}}
+				m.Kind = w
+			}
+			sub = w.SettingsChanged
+		case 26:
+			w, _ := m.Kind.(*Event_ToolStarted)
+			if w == nil || w.ToolStarted == nil {
+				w = &Event_ToolStarted{ToolStarted: &ToolStarted{}}
+				m.Kind = w
+			}
+			sub = w.ToolStarted
+		case 27:
+			w, _ := m.Kind.(*Event_ImageGenerated)
+			if w == nil || w.ImageGenerated == nil {
+				w = &Event_ImageGenerated{ImageGenerated: &ImageGenerated{}}
+				m.Kind = w
+			}
+			sub = w.ImageGenerated
+		case 28:
+			w, _ := m.Kind.(*Event_PlanAnswered)
+			if w == nil || w.PlanAnswered == nil {
+				w = &Event_PlanAnswered{PlanAnswered: &PlanAnswered{}}
+				m.Kind = w
+			}
+			sub = w.PlanAnswered
+		case 29:
+			w, _ := m.Kind.(*Event_SessionForked)
+			if w == nil || w.SessionForked == nil {
+				w = &Event_SessionForked{SessionForked: &SessionForked{}}
+				m.Kind = w
+			}
+			sub = w.SessionForked
+		case 30:
+			w, _ := m.Kind.(*Event_ScheduledNotification)
+			if w == nil || w.ScheduledNotification == nil {
+				w = &Event_ScheduledNotification{ScheduledNotification: &ScheduledNotification{}}
+				m.Kind = w
+			}
+			sub = w.ScheduledNotification
+		}
+		if sub != nil {
+			if err := litewire.ReadStrictMessage(&b, sub, &m.hasUnknown); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 type Origin struct {
+	_                  [0]func()
 	Kind               OriginKind
 	DeviceId           string
 	RequestId          string
@@ -1167,106 +1015,35 @@ func (m *Origin) Clone() *Origin {
 	return &cp
 }
 
-func (m *Origin) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_Origin = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(Origin{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&Origin{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Origin{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(Origin{}.DeviceId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(Origin{}.RequestId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(Origin{}.ObservedEventSeq), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(Origin{}.ObservedScreenHash), Kind: litewire.KindBytes},
+		{Num: 6, Offset: unsafe.Offsetof(Origin{}.ScheduledTaskId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(Origin{}.ScheduledRunId), Kind: litewire.KindString},
+	},
+}
 
 func (m *Origin) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *Origin) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	b = litewire.AppendString(b, 2, m.DeviceId)
-	b = litewire.AppendString(b, 3, m.RequestId)
-	b = litewire.AppendVarint(b, 4, uint64(m.ObservedEventSeq))
-	b = litewire.AppendBytes(b, 5, m.ObservedScreenHash)
-	b = litewire.AppendString(b, 6, m.ScheduledTaskId)
-	b = litewire.AppendString(b, 7, m.ScheduledRunId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Origin)
 }
 
 func (m *Origin) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = OriginKind(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DeviceId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedEventSeq = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedScreenHash = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ScheduledTaskId = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ScheduledRunId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Origin)
 }
 
 type ImageRef struct {
+	_              [0]func()
 	ImageId        string
 	Source         ImageSource
 	Sync           ImageSync
@@ -1408,216 +1185,46 @@ func (m *ImageRef) Clone() *ImageRef {
 	return &cp
 }
 
-func (m *ImageRef) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ImageRef = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ImageRef{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ImageRef{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ImageRef{}.ImageId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ImageRef{}.Source), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(ImageRef{}.Sync), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(ImageRef{}.CliIndex), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(ImageRef{}.Path), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ImageRef{}.Format), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(ImageRef{}.Width), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(ImageRef{}.Height), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(ImageRef{}.Bytes), Kind: litewire.KindInt64},
+		{Num: 10, Offset: unsafe.Offsetof(ImageRef{}.OriginalWidth), Kind: litewire.KindInt32},
+		{Num: 11, Offset: unsafe.Offsetof(ImageRef{}.OriginalHeight), Kind: litewire.KindInt32},
+		{Num: 12, Offset: unsafe.Offsetof(ImageRef{}.DisplayWidth), Kind: litewire.KindInt32},
+		{Num: 13, Offset: unsafe.Offsetof(ImageRef{}.DisplayHeight), Kind: litewire.KindInt32},
+		{Num: 14, Offset: unsafe.Offsetof(ImageRef{}.Preview), Kind: litewire.KindBytes},
+		{Num: 15, Offset: unsafe.Offsetof(ImageRef{}.PreviewFormat), Kind: litewire.KindInt32},
+		{Num: 16, Offset: unsafe.Offsetof(ImageRef{}.PreviewWidth), Kind: litewire.KindInt32},
+		{Num: 17, Offset: unsafe.Offsetof(ImageRef{}.PreviewHeight), Kind: litewire.KindInt32},
+		{Num: 18, Offset: unsafe.Offsetof(ImageRef{}.UploadId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ImageRef) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ImageRef) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.ImageId)
-	b = litewire.AppendInt32(b, 2, int32(m.Source))
-	b = litewire.AppendInt32(b, 3, int32(m.Sync))
-	b = litewire.AppendInt32(b, 4, int32(m.CliIndex))
-	b = litewire.AppendString(b, 5, m.Path)
-	b = litewire.AppendInt32(b, 6, int32(m.Format))
-	b = litewire.AppendInt32(b, 7, int32(m.Width))
-	b = litewire.AppendInt32(b, 8, int32(m.Height))
-	b = litewire.AppendVarint(b, 9, uint64(m.Bytes))
-	b = litewire.AppendInt32(b, 10, int32(m.OriginalWidth))
-	b = litewire.AppendInt32(b, 11, int32(m.OriginalHeight))
-	b = litewire.AppendInt32(b, 12, int32(m.DisplayWidth))
-	b = litewire.AppendInt32(b, 13, int32(m.DisplayHeight))
-	b = litewire.AppendBytes(b, 14, m.Preview)
-	b = litewire.AppendInt32(b, 15, int32(m.PreviewFormat))
-	b = litewire.AppendInt32(b, 16, int32(m.PreviewWidth))
-	b = litewire.AppendInt32(b, 17, int32(m.PreviewHeight))
-	b = litewire.AppendString(b, 18, m.UploadId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ImageRef)
 }
 
 func (m *ImageRef) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ImageId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Source = ImageSource(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Sync = ImageSync(int32(v))
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CliIndex = int32(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Path = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Format = ImageFormat(int32(v))
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Width = int32(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Height = int32(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Bytes = int64(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OriginalWidth = int32(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OriginalHeight = int32(v)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DisplayWidth = int32(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DisplayHeight = int32(v)
-				continue
-			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Preview = v
-				continue
-			}
-		case 15:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PreviewFormat = ImageFormat(int32(v))
-				continue
-			}
-		case 16:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PreviewWidth = int32(v)
-				continue
-			}
-		case 17:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PreviewHeight = int32(v)
-				continue
-			}
-		case 18:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.UploadId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ImageRef)
 }
 
 type ImageGenerated struct {
+	_             [0]func()
 	CallId        string
 	RevisedPrompt string
 	Images        []*ImageRef
@@ -1659,73 +1266,49 @@ func (m *ImageGenerated) Clone() *ImageGenerated {
 	return &cp
 }
 
-func (m *ImageGenerated) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ImageGenerated = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ImageGenerated{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ImageGenerated{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ImageGenerated{}.CallId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ImageGenerated{}.RevisedPrompt), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ImageGenerated{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ImageRef},
+	},
+}
 
 func (m *ImageGenerated) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ImageGenerated) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.CallId)
-	b = litewire.AppendString(b, 2, m.RevisedPrompt)
-	for _, v := range m.Images {
-		if v != nil {
-			b = litewire.AppendMessage(b, 3, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ImageGenerated)
 }
 
 func (m *ImageGenerated) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ImageGenerated)
+}
+
+func extraUnmarshal_ImageGenerated(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ImageGenerated)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CallId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RevisedPrompt = v
-				continue
-			}
 		case 3:
-			if wtyp == litewire.BytesType {
-				elem := &ImageRef{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Images = append(m.Images, elem)
-				continue
+			elem := &ImageRef{}
+			m.Images = append(m.Images, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SessionForked struct {
+	_               [0]func()
 	SourceSessionId string
 	SourceTitle     string
 	hasUnknown      bool
@@ -1754,56 +1337,30 @@ func (m *SessionForked) Clone() *SessionForked {
 	return &cp
 }
 
-func (m *SessionForked) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionForked = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SessionForked{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SessionForked{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionForked{}.SourceSessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionForked{}.SourceTitle), Kind: litewire.KindString},
+	},
+}
 
 func (m *SessionForked) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionForked) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SourceSessionId)
-	b = litewire.AppendString(b, 2, m.SourceTitle)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionForked)
 }
 
 func (m *SessionForked) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SourceSessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SourceTitle = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionForked)
 }
 
 type PlanAnswered struct {
+	_          [0]func()
 	Choice     int32
 	hasUnknown bool
 }
@@ -1825,46 +1382,29 @@ func (m *PlanAnswered) Clone() *PlanAnswered {
 	return &cp
 }
 
-func (m *PlanAnswered) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_PlanAnswered = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(PlanAnswered{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&PlanAnswered{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(PlanAnswered{}.Choice), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *PlanAnswered) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *PlanAnswered) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Choice))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PlanAnswered)
 }
 
 func (m *PlanAnswered) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Choice = int32(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PlanAnswered)
 }
 
 type ToolStarted struct {
+	_           [0]func()
 	Title       string
 	CallId      string
 	Kind        ToolKind
@@ -1921,96 +1461,34 @@ func (m *ToolStarted) Clone() *ToolStarted {
 	return &cp
 }
 
-func (m *ToolStarted) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ToolStarted = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ToolStarted{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ToolStarted{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ToolStarted{}.Title), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ToolStarted{}.CallId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ToolStarted{}.Kind), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(ToolStarted{}.Input), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ToolStarted{}.ItemType), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ToolStarted{}.InputDigest), Kind: litewire.KindString},
+	},
+}
 
 func (m *ToolStarted) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ToolStarted) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Title)
-	b = litewire.AppendString(b, 2, m.CallId)
-	b = litewire.AppendInt32(b, 3, int32(m.Kind))
-	b = litewire.AppendString(b, 4, m.Input)
-	b = litewire.AppendString(b, 5, m.ItemType)
-	b = litewire.AppendString(b, 6, m.InputDigest)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ToolStarted)
 }
 
 func (m *ToolStarted) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Title = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CallId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = ToolKind(int32(v))
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Input = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ItemType = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.InputDigest = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ToolStarted)
 }
 
 type UserMessage struct {
+	_          [0]func()
 	Text       string
 	Images     []*ImageRef
 	RequestId  string
@@ -2065,90 +1543,58 @@ func (m *UserMessage) Clone() *UserMessage {
 	return &cp
 }
 
-func (m *UserMessage) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UserMessage = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(UserMessage{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&UserMessage{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UserMessage{}.Text), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(UserMessage{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ImageRef},
+		{Num: 4, Offset: unsafe.Offsetof(UserMessage{}.RequestId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(UserMessage{}.Files), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SentFile},
+	},
+}
 
 func (m *UserMessage) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UserMessage) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Text)
-	for _, v := range m.Images {
-		if v != nil {
-			b = litewire.AppendMessage(b, 3, v)
-		}
-	}
-	b = litewire.AppendString(b, 4, m.RequestId)
-	for _, v := range m.Files {
-		if v != nil {
-			b = litewire.AppendMessage(b, 5, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UserMessage)
 }
 
 func (m *UserMessage) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UserMessage)
+}
+
+func extraUnmarshal_UserMessage(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*UserMessage)(base)
+	b := *bp
+	var sub litewire.StrictUnmarshaler
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Text = v
-				continue
-			}
 		case 3:
-			if wtyp == litewire.BytesType {
-				elem := &ImageRef{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Images = append(m.Images, elem)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
+			elem := &ImageRef{}
+			m.Images = append(m.Images, elem)
+			sub = elem
 		case 5:
-			if wtyp == litewire.BytesType {
-				elem := &SentFile{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Files = append(m.Files, elem)
-				continue
-			}
+			elem := &SentFile{}
+			m.Files = append(m.Files, elem)
+			sub = elem
 		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if sub != nil {
+			if err := litewire.ReadStrictMessage(&b, sub, &m.hasUnknown); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SentFile struct {
+	_          [0]func()
 	FileId     string
 	Name       string
 	SizeBytes  int64
@@ -2191,76 +1637,32 @@ func (m *SentFile) Clone() *SentFile {
 	return &cp
 }
 
-func (m *SentFile) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SentFile = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SentFile{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SentFile{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SentFile{}.FileId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SentFile{}.Name), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SentFile{}.SizeBytes), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(SentFile{}.Path), Kind: litewire.KindString},
+	},
+}
 
 func (m *SentFile) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SentFile) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.FileId)
-	b = litewire.AppendString(b, 2, m.Name)
-	b = litewire.AppendVarint(b, 3, uint64(m.SizeBytes))
-	b = litewire.AppendString(b, 4, m.Path)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SentFile)
 }
 
 func (m *SentFile) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FileId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Name = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SizeBytes = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Path = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SentFile)
 }
 
 type AgentMessage struct {
+	_          [0]func()
 	Text       string
 	Phase      string
 	hasUnknown bool
@@ -2289,56 +1691,30 @@ func (m *AgentMessage) Clone() *AgentMessage {
 	return &cp
 }
 
-func (m *AgentMessage) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AgentMessage = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(AgentMessage{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&AgentMessage{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AgentMessage{}.Text), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(AgentMessage{}.Phase), Kind: litewire.KindString},
+	},
+}
 
 func (m *AgentMessage) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AgentMessage) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Text)
-	b = litewire.AppendString(b, 2, m.Phase)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AgentMessage)
 }
 
 func (m *AgentMessage) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Text = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Phase = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AgentMessage)
 }
 
 type Reasoning struct {
+	_          [0]func()
 	Text       string
 	hasUnknown bool
 }
@@ -2360,46 +1736,29 @@ func (m *Reasoning) Clone() *Reasoning {
 	return &cp
 }
 
-func (m *Reasoning) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_Reasoning = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(Reasoning{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&Reasoning{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Reasoning{}.Text), Kind: litewire.KindString},
+	},
+}
 
 func (m *Reasoning) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *Reasoning) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Text)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Reasoning)
 }
 
 func (m *Reasoning) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Text = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Reasoning)
 }
 
 type ToolCall struct {
+	_               [0]func()
 	CallId          string
 	Kind            ToolKind
 	Title           string
@@ -2535,203 +1894,69 @@ func (m *ToolCall) Clone() *ToolCall {
 	return &cp
 }
 
-func (m *ToolCall) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ToolCall = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ToolCall{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ToolCall{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ToolCall{}.CallId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ToolCall{}.Kind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(ToolCall{}.Title), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ToolCall{}.Input), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ToolCall{}.Output), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ToolCall{}.OutputTruncated), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(ToolCall{}.Status), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(ToolCall{}.ExitCode), Kind: litewire.KindInt32, Flags: litewire.FlagOptional},
+		{Num: 9, Offset: unsafe.Offsetof(ToolCall{}.DurationMs), Kind: litewire.KindInt64},
+		{Num: 10, Offset: unsafe.Offsetof(ToolCall{}.ItemType), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(ToolCall{}.InputDigest), Kind: litewire.KindString},
+		{Num: 12, Offset: unsafe.Offsetof(ToolCall{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ImageRef},
+		{Num: 13, Offset: unsafe.Offsetof(ToolCall{}.Background), Kind: litewire.KindInt32},
+		{Num: 14, Offset: unsafe.Offsetof(ToolCall{}.BackgroundId), Kind: litewire.KindString},
+		{Num: 15, Offset: unsafe.Offsetof(ToolCall{}.SharedFiles), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SharedFile},
+	},
+}
 
 func (m *ToolCall) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ToolCall) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.CallId)
-	b = litewire.AppendInt32(b, 2, int32(m.Kind))
-	b = litewire.AppendString(b, 3, m.Title)
-	b = litewire.AppendString(b, 4, m.Input)
-	b = litewire.AppendString(b, 5, m.Output)
-	b = litewire.AppendBool(b, 6, m.OutputTruncated)
-	b = litewire.AppendString(b, 7, m.Status)
-	if m.ExitCode != nil {
-		b = litewire.AppendInt32Always(b, 8, int32(*m.ExitCode))
-	}
-	b = litewire.AppendVarint(b, 9, uint64(m.DurationMs))
-	b = litewire.AppendString(b, 10, m.ItemType)
-	b = litewire.AppendString(b, 11, m.InputDigest)
-	for _, v := range m.Images {
-		if v != nil {
-			b = litewire.AppendMessage(b, 12, v)
-		}
-	}
-	b = litewire.AppendInt32(b, 13, int32(m.Background))
-	b = litewire.AppendString(b, 14, m.BackgroundId)
-	for _, v := range m.SharedFiles {
-		if v != nil {
-			b = litewire.AppendMessage(b, 15, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ToolCall)
 }
 
 func (m *ToolCall) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ToolCall)
+}
+
+func extraUnmarshal_ToolCall(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ToolCall)(base)
+	b := *bp
+	var sub litewire.StrictUnmarshaler
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CallId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = ToolKind(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Title = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Input = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Output = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OutputTruncated = litewire.DecodeBool(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Status = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := int32(v)
-				m.ExitCode = &pv
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DurationMs = int64(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ItemType = v
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.InputDigest = v
-				continue
-			}
 		case 12:
-			if wtyp == litewire.BytesType {
-				elem := &ImageRef{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Images = append(m.Images, elem)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Background = ToolBackground(int32(v))
-				continue
-			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.BackgroundId = v
-				continue
-			}
+			elem := &ImageRef{}
+			m.Images = append(m.Images, elem)
+			sub = elem
 		case 15:
-			if wtyp == litewire.BytesType {
-				elem := &SharedFile{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.SharedFiles = append(m.SharedFiles, elem)
-				continue
-			}
+			elem := &SharedFile{}
+			m.SharedFiles = append(m.SharedFiles, elem)
+			sub = elem
 		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if sub != nil {
+			if err := litewire.ReadStrictMessage(&b, sub, &m.hasUnknown); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SharedFile struct {
+	_          [0]func()
 	FileId     string
 	Name       string
 	SizeBytes  int64
@@ -2782,83 +2007,29 @@ func (m *SharedFile) Clone() *SharedFile {
 	return &cp
 }
 
-func (m *SharedFile) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SharedFile = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SharedFile{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SharedFile{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SharedFile{}.FileId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SharedFile{}.Name), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SharedFile{}.SizeBytes), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(SharedFile{}.Sha256), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(SharedFile{}.Path), Kind: litewire.KindString},
+	},
+}
 
 func (m *SharedFile) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SharedFile) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.FileId)
-	b = litewire.AppendString(b, 2, m.Name)
-	b = litewire.AppendVarint(b, 3, uint64(m.SizeBytes))
-	b = litewire.AppendBytes(b, 4, m.Sha256)
-	b = litewire.AppendString(b, 5, m.Path)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SharedFile)
 }
 
 func (m *SharedFile) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FileId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Name = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SizeBytes = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Sha256 = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Path = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SharedFile)
 }
 
 type TurnStarted struct {
@@ -2875,34 +2046,26 @@ func (m *TurnStarted) Clone() *TurnStarted {
 	return &cp
 }
 
-func (m *TurnStarted) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TurnStarted = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(TurnStarted{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&TurnStarted{}) },
+}
 
 func (m *TurnStarted) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TurnStarted) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TurnStarted)
 }
 
 func (m *TurnStarted) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TurnStarted)
 }
 
 type TurnEnded struct {
+	_                 [0]func()
 	Outcome           TurnOutcome
 	Reason            string
 	DurationMs        int64
@@ -2959,96 +2122,34 @@ func (m *TurnEnded) Clone() *TurnEnded {
 	return &cp
 }
 
-func (m *TurnEnded) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TurnEnded = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(TurnEnded{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&TurnEnded{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TurnEnded{}.Outcome), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(TurnEnded{}.Reason), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TurnEnded{}.DurationMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(TurnEnded{}.ScheduledTaskId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(TurnEnded{}.ScheduledRunId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(TurnEnded{}.ScheduledNotified), Kind: litewire.KindBool},
+	},
+}
 
 func (m *TurnEnded) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TurnEnded) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Outcome))
-	b = litewire.AppendString(b, 2, m.Reason)
-	b = litewire.AppendVarint(b, 3, uint64(m.DurationMs))
-	b = litewire.AppendString(b, 4, m.ScheduledTaskId)
-	b = litewire.AppendString(b, 5, m.ScheduledRunId)
-	b = litewire.AppendBool(b, 6, m.ScheduledNotified)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TurnEnded)
 }
 
 func (m *TurnEnded) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Outcome = TurnOutcome(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Reason = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DurationMs = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ScheduledTaskId = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ScheduledRunId = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ScheduledNotified = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TurnEnded)
 }
 
 type TokenUsage struct {
+	_                     [0]func()
 	InputTokens           int64
 	CachedInputTokens     int64
 	OutputTokens          int64
@@ -3142,158 +2243,39 @@ func (m *TokenUsage) Clone() *TokenUsage {
 	return &cp
 }
 
-func (m *TokenUsage) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TokenUsage = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(TokenUsage{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&TokenUsage{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TokenUsage{}.InputTokens), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(TokenUsage{}.CachedInputTokens), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(TokenUsage{}.OutputTokens), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(TokenUsage{}.ReasoningOutputTokens), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(TokenUsage{}.TotalTokens), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(TokenUsage{}.LastTotalTokens), Kind: litewire.KindInt64},
+		{Num: 7, Offset: unsafe.Offsetof(TokenUsage{}.ContextWindow), Kind: litewire.KindInt64},
+		{Num: 8, Offset: unsafe.Offsetof(TokenUsage{}.PrimaryLimit), Kind: litewire.KindMessage, Sub: &LitewireDesc_RateLimit},
+		{Num: 9, Offset: unsafe.Offsetof(TokenUsage{}.SecondaryLimit), Kind: litewire.KindMessage, Sub: &LitewireDesc_RateLimit},
+		{Num: 10, Offset: unsafe.Offsetof(TokenUsage{}.PlanType), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(TokenUsage{}.MessageId), Kind: litewire.KindString},
+	},
+}
 
 func (m *TokenUsage) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TokenUsage) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.InputTokens))
-	b = litewire.AppendVarint(b, 2, uint64(m.CachedInputTokens))
-	b = litewire.AppendVarint(b, 3, uint64(m.OutputTokens))
-	b = litewire.AppendVarint(b, 4, uint64(m.ReasoningOutputTokens))
-	b = litewire.AppendVarint(b, 5, uint64(m.TotalTokens))
-	b = litewire.AppendVarint(b, 6, uint64(m.LastTotalTokens))
-	b = litewire.AppendVarint(b, 7, uint64(m.ContextWindow))
-	if m.PrimaryLimit != nil {
-		b = litewire.AppendMessage(b, 8, m.PrimaryLimit)
-	}
-	if m.SecondaryLimit != nil {
-		b = litewire.AppendMessage(b, 9, m.SecondaryLimit)
-	}
-	b = litewire.AppendString(b, 10, m.PlanType)
-	b = litewire.AppendString(b, 11, m.MessageId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TokenUsage)
 }
 
 func (m *TokenUsage) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.InputTokens = int64(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CachedInputTokens = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OutputTokens = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ReasoningOutputTokens = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TotalTokens = int64(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LastTotalTokens = int64(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ContextWindow = int64(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				if m.PrimaryLimit == nil {
-					m.PrimaryLimit = &RateLimit{}
-				}
-				if err := litewire.ReadMessage(&b, m.PrimaryLimit); err != nil {
-					return err
-				}
-				if m.PrimaryLimit.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				if m.SecondaryLimit == nil {
-					m.SecondaryLimit = &RateLimit{}
-				}
-				if err := litewire.ReadMessage(&b, m.SecondaryLimit); err != nil {
-					return err
-				}
-				if m.SecondaryLimit.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.PlanType = v
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MessageId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TokenUsage)
 }
 
 type RateLimit struct {
+	_             [0]func()
 	UsedPercent   float64
 	WindowMinutes int64
 	ResetsAt      int64
@@ -3329,66 +2311,31 @@ func (m *RateLimit) Clone() *RateLimit {
 	return &cp
 }
 
-func (m *RateLimit) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_RateLimit = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(RateLimit{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&RateLimit{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(RateLimit{}.UsedPercent), Kind: litewire.KindDouble},
+		{Num: 2, Offset: unsafe.Offsetof(RateLimit{}.WindowMinutes), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(RateLimit{}.ResetsAt), Kind: litewire.KindInt64},
+	},
+}
 
 func (m *RateLimit) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *RateLimit) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendDouble(b, 1, m.UsedPercent)
-	b = litewire.AppendVarint(b, 2, uint64(m.WindowMinutes))
-	b = litewire.AppendVarint(b, 3, uint64(m.ResetsAt))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_RateLimit)
 }
 
 func (m *RateLimit) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.UsedPercent = math.Float64frombits(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.WindowMinutes = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ResetsAt = int64(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_RateLimit)
 }
 
 type PlanProposed struct {
+	_          [0]func()
 	Text       string
 	CallId     string
 	hasUnknown bool
@@ -3417,56 +2364,30 @@ func (m *PlanProposed) Clone() *PlanProposed {
 	return &cp
 }
 
-func (m *PlanProposed) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_PlanProposed = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(PlanProposed{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&PlanProposed{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(PlanProposed{}.Text), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(PlanProposed{}.CallId), Kind: litewire.KindString},
+	},
+}
 
 func (m *PlanProposed) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *PlanProposed) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Text)
-	b = litewire.AppendString(b, 2, m.CallId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PlanProposed)
 }
 
 func (m *PlanProposed) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Text = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CallId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PlanProposed)
 }
 
 type SettingsChanged struct {
+	_          [0]func()
 	Model      string
 	Effort     string
 	Mode       ApprovalMode
@@ -3509,76 +2430,32 @@ func (m *SettingsChanged) Clone() *SettingsChanged {
 	return &cp
 }
 
-func (m *SettingsChanged) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SettingsChanged = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SettingsChanged{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SettingsChanged{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SettingsChanged{}.Model), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SettingsChanged{}.Effort), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SettingsChanged{}.Mode), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SettingsChanged{}.Compacted), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SettingsChanged) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SettingsChanged) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Model)
-	b = litewire.AppendString(b, 2, m.Effort)
-	b = litewire.AppendInt32(b, 3, int32(m.Mode))
-	b = litewire.AppendBool(b, 4, m.Compacted)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SettingsChanged)
 }
 
 func (m *SettingsChanged) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Model = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Effort = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Mode = ApprovalMode(int32(v))
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Compacted = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SettingsChanged)
 }
 
 type TurnContext struct {
+	_                 [0]func()
 	Model             string
 	Effort            string
 	ApprovalPolicy    string
@@ -3642,106 +2519,35 @@ func (m *TurnContext) Clone() *TurnContext {
 	return &cp
 }
 
-func (m *TurnContext) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TurnContext = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(TurnContext{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&TurnContext{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TurnContext{}.Model), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TurnContext{}.Effort), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TurnContext{}.ApprovalPolicy), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(TurnContext{}.ApprovalsReviewer), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(TurnContext{}.Sandbox), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(TurnContext{}.CollaborationMode), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(TurnContext{}.PermissionMode), Kind: litewire.KindString},
+	},
+}
 
 func (m *TurnContext) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TurnContext) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Model)
-	b = litewire.AppendString(b, 2, m.Effort)
-	b = litewire.AppendString(b, 3, m.ApprovalPolicy)
-	b = litewire.AppendString(b, 4, m.ApprovalsReviewer)
-	b = litewire.AppendString(b, 5, m.Sandbox)
-	b = litewire.AppendString(b, 6, m.CollaborationMode)
-	b = litewire.AppendString(b, 7, m.PermissionMode)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TurnContext)
 }
 
 func (m *TurnContext) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Model = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Effort = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ApprovalPolicy = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ApprovalsReviewer = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Sandbox = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CollaborationMode = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.PermissionMode = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TurnContext)
 }
 
 type ApprovalRequested struct {
+	_             [0]func()
 	ApprovalId    string
 	ToolName      string
 	Description   string
@@ -3806,112 +2612,35 @@ func (m *ApprovalRequested) Clone() *ApprovalRequested {
 	return &cp
 }
 
-func (m *ApprovalRequested) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ApprovalRequested = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ApprovalRequested{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ApprovalRequested{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ApprovalRequested{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ApprovalRequested{}.ToolName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ApprovalRequested{}.Description), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ApprovalRequested{}.Command), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ApprovalRequested{}.ToolInputJson), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ApprovalRequested{}.Deadline), Kind: litewire.KindMessage, Sub: &timestamppb.LitewireDesc_Timestamp},
+		{Num: 7, Offset: unsafe.Offsetof(ApprovalRequested{}.InputDigest), Kind: litewire.KindString},
+	},
+}
 
 func (m *ApprovalRequested) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ApprovalRequested) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.ApprovalId)
-	b = litewire.AppendString(b, 2, m.ToolName)
-	b = litewire.AppendString(b, 3, m.Description)
-	b = litewire.AppendString(b, 4, m.Command)
-	b = litewire.AppendString(b, 5, m.ToolInputJson)
-	if m.Deadline != nil {
-		b = litewire.AppendMessage(b, 6, m.Deadline)
-	}
-	b = litewire.AppendString(b, 7, m.InputDigest)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ApprovalRequested)
 }
 
 func (m *ApprovalRequested) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ApprovalId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ToolName = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Description = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Command = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ToolInputJson = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				if m.Deadline == nil {
-					m.Deadline = &timestamppb.Timestamp{}
-				}
-				if err := litewire.ReadMessage(&b, m.Deadline); err != nil {
-					return err
-				}
-				if m.Deadline.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.InputDigest = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ApprovalRequested)
 }
 
 type ApprovalResolved struct {
+	_          [0]func()
 	ApprovalId string
 	Decision   ApprovalDecision
 	Message    string
@@ -3947,66 +2676,31 @@ func (m *ApprovalResolved) Clone() *ApprovalResolved {
 	return &cp
 }
 
-func (m *ApprovalResolved) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ApprovalResolved = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ApprovalResolved{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ApprovalResolved{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ApprovalResolved{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ApprovalResolved{}.Decision), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(ApprovalResolved{}.Message), Kind: litewire.KindString},
+	},
+}
 
 func (m *ApprovalResolved) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ApprovalResolved) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.ApprovalId)
-	b = litewire.AppendInt32(b, 2, int32(m.Decision))
-	b = litewire.AppendString(b, 3, m.Message)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ApprovalResolved)
 }
 
 func (m *ApprovalResolved) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ApprovalId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Decision = ApprovalDecision(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Message = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ApprovalResolved)
 }
 
 type QuestionOption struct {
+	_           [0]func()
 	Label       string
 	Description string
 	hasUnknown  bool
@@ -4035,56 +2729,30 @@ func (m *QuestionOption) Clone() *QuestionOption {
 	return &cp
 }
 
-func (m *QuestionOption) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_QuestionOption = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(QuestionOption{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&QuestionOption{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(QuestionOption{}.Label), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(QuestionOption{}.Description), Kind: litewire.KindString},
+	},
+}
 
 func (m *QuestionOption) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *QuestionOption) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Label)
-	b = litewire.AppendString(b, 2, m.Description)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_QuestionOption)
 }
 
 func (m *QuestionOption) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Label = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Description = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_QuestionOption)
 }
 
 type Question struct {
+	_           [0]func()
 	Id          string
 	Header      string
 	Text        string
@@ -4140,93 +2808,51 @@ func (m *Question) Clone() *Question {
 	return &cp
 }
 
-func (m *Question) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_Question = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(Question{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&Question{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Question{}.Id), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(Question{}.Header), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(Question{}.Text), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(Question{}.Options), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_QuestionOption},
+		{Num: 5, Offset: unsafe.Offsetof(Question{}.MultiSelect), Kind: litewire.KindBool},
+	},
+}
 
 func (m *Question) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *Question) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Id)
-	b = litewire.AppendString(b, 2, m.Header)
-	b = litewire.AppendString(b, 3, m.Text)
-	for _, v := range m.Options {
-		if v != nil {
-			b = litewire.AppendMessage(b, 4, v)
-		}
-	}
-	b = litewire.AppendBool(b, 5, m.MultiSelect)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Question)
 }
 
 func (m *Question) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Question)
+}
+
+func extraUnmarshal_Question(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*Question)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Id = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Header = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Text = v
-				continue
-			}
 		case 4:
-			if wtyp == litewire.BytesType {
-				elem := &QuestionOption{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Options = append(m.Options, elem)
-				continue
+			elem := &QuestionOption{}
+			m.Options = append(m.Options, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MultiSelect = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type QuestionAsked struct {
+	_          [0]func()
 	QuestionId string
 	Questions  []*Question
 	Async      bool
@@ -4268,73 +2894,49 @@ func (m *QuestionAsked) Clone() *QuestionAsked {
 	return &cp
 }
 
-func (m *QuestionAsked) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_QuestionAsked = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(QuestionAsked{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&QuestionAsked{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(QuestionAsked{}.QuestionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(QuestionAsked{}.Questions), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_Question},
+		{Num: 3, Offset: unsafe.Offsetof(QuestionAsked{}.Async), Kind: litewire.KindBool},
+	},
+}
 
 func (m *QuestionAsked) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *QuestionAsked) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.QuestionId)
-	for _, v := range m.Questions {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	b = litewire.AppendBool(b, 3, m.Async)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_QuestionAsked)
 }
 
 func (m *QuestionAsked) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_QuestionAsked)
+}
+
+func extraUnmarshal_QuestionAsked(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*QuestionAsked)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.QuestionId = v
-				continue
-			}
 		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &Question{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Questions = append(m.Questions, elem)
-				continue
+			elem := &Question{}
+			m.Questions = append(m.Questions, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Async = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type QuestionAnswer struct {
+	_          [0]func()
 	QuestionId string
 	Answers    []string
 	hasUnknown bool
@@ -4364,58 +2966,30 @@ func (m *QuestionAnswer) Clone() *QuestionAnswer {
 	return &cp
 }
 
-func (m *QuestionAnswer) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_QuestionAnswer = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(QuestionAnswer{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&QuestionAnswer{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(QuestionAnswer{}.QuestionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(QuestionAnswer{}.Answers), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
 
 func (m *QuestionAnswer) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *QuestionAnswer) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.QuestionId)
-	for _, v := range m.Answers {
-		b = litewire.AppendStringAlways(b, 2, v)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_QuestionAnswer)
 }
 
 func (m *QuestionAnswer) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.QuestionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Answers = append(m.Answers, v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_QuestionAnswer)
 }
 
 type QuestionAnswered struct {
+	_          [0]func()
 	QuestionId string
 	Answers    []*QuestionAnswer
 	hasUnknown bool
@@ -4450,63 +3024,48 @@ func (m *QuestionAnswered) Clone() *QuestionAnswered {
 	return &cp
 }
 
-func (m *QuestionAnswered) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_QuestionAnswered = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(QuestionAnswered{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&QuestionAnswered{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(QuestionAnswered{}.QuestionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(QuestionAnswered{}.Answers), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_QuestionAnswer},
+	},
+}
 
 func (m *QuestionAnswered) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *QuestionAnswered) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.QuestionId)
-	for _, v := range m.Answers {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_QuestionAnswered)
 }
 
 func (m *QuestionAnswered) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_QuestionAnswered)
+}
+
+func extraUnmarshal_QuestionAnswered(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*QuestionAnswered)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.QuestionId = v
-				continue
-			}
 		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &QuestionAnswer{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Answers = append(m.Answers, elem)
-				continue
+			elem := &QuestionAnswer{}
+			m.Answers = append(m.Answers, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SessionState struct {
+	_               [0]func()
 	Status          SessionStatus
 	Detail          string
 	PlanOpen        bool
@@ -4556,86 +3115,33 @@ func (m *SessionState) Clone() *SessionState {
 	return &cp
 }
 
-func (m *SessionState) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionState = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SessionState{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SessionState{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionState{}.Status), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionState{}.Detail), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionState{}.PlanOpen), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionState{}.ScheduledClosed), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionState{}.IdleClosed), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionState) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionState) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Status))
-	b = litewire.AppendString(b, 2, m.Detail)
-	b = litewire.AppendBool(b, 3, m.PlanOpen)
-	b = litewire.AppendBool(b, 4, m.ScheduledClosed)
-	b = litewire.AppendBool(b, 5, m.IdleClosed)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionState)
 }
 
 func (m *SessionState) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Status = SessionStatus(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Detail = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PlanOpen = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ScheduledClosed = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IdleClosed = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionState)
 }
 
 type InputState struct {
+	_          [0]func()
 	RequestId  string
 	Status     InputStatus
 	Reason     string
@@ -4720,135 +3226,55 @@ func (m *InputState) Clone() *InputState {
 	return &cp
 }
 
-func (m *InputState) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_InputState = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(InputState{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&InputState{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(InputState{}.RequestId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(InputState{}.Status), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(InputState{}.Reason), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(InputState{}.Stage), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(InputState{}.Text), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(InputState{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 7, Offset: unsafe.Offsetof(InputState{}.Mode), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(InputState{}.Paused), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(InputState{}.Files), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SentFile},
+	},
+}
 
 func (m *InputState) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *InputState) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RequestId)
-	b = litewire.AppendInt32(b, 2, int32(m.Status))
-	b = litewire.AppendString(b, 3, m.Reason)
-	b = litewire.AppendInt32(b, 4, int32(m.Stage))
-	b = litewire.AppendString(b, 5, m.Text)
-	for _, v := range m.ImageIds {
-		b = litewire.AppendStringAlways(b, 6, v)
-	}
-	b = litewire.AppendInt32(b, 7, int32(m.Mode))
-	b = litewire.AppendBool(b, 8, m.Paused)
-	for _, v := range m.Files {
-		if v != nil {
-			b = litewire.AppendMessage(b, 9, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_InputState)
 }
 
 func (m *InputState) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_InputState)
+}
+
+func extraUnmarshal_InputState(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*InputState)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Status = InputStatus(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Reason = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Stage = InputStage(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Text = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ImageIds = append(m.ImageIds, v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Mode = SendMode(int32(v))
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Paused = litewire.DecodeBool(v)
-				continue
-			}
 		case 9:
-			if wtyp == litewire.BytesType {
-				elem := &SentFile{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Files = append(m.Files, elem)
-				continue
+			elem := &SentFile{}
+			m.Files = append(m.Files, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type ScheduledNotification struct {
+	_          [0]func()
 	TaskId     string
 	RunId      string
 	Title      string
@@ -4891,71 +3317,38 @@ func (m *ScheduledNotification) Clone() *ScheduledNotification {
 	return &cp
 }
 
-func (m *ScheduledNotification) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduledNotification = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ScheduledNotification{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ScheduledNotification{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduledNotification{}.TaskId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduledNotification{}.RunId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduledNotification{}.Title), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduledNotification{}.Text), Kind: litewire.KindString},
+	},
+}
 
 func (m *ScheduledNotification) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduledNotification) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.TaskId)
-	b = litewire.AppendString(b, 2, m.RunId)
-	b = litewire.AppendString(b, 3, m.Title)
-	b = litewire.AppendString(b, 4, m.Text)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduledNotification)
 }
 
 func (m *ScheduledNotification) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RunId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Title = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Text = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduledNotification)
+}
+
+func init() {
+	LitewireDesc_Event.ExtraMarshal = extraMarshal_Event
+	LitewireDesc_Event.ExtraUnmarshal = extraUnmarshal_Event
+	LitewireDesc_ImageGenerated.ExtraUnmarshal = extraUnmarshal_ImageGenerated
+	LitewireDesc_UserMessage.ExtraUnmarshal = extraUnmarshal_UserMessage
+	LitewireDesc_ToolCall.ExtraUnmarshal = extraUnmarshal_ToolCall
+	LitewireDesc_Question.ExtraUnmarshal = extraUnmarshal_Question
+	LitewireDesc_QuestionAsked.ExtraUnmarshal = extraUnmarshal_QuestionAsked
+	LitewireDesc_QuestionAnswered.ExtraUnmarshal = extraUnmarshal_QuestionAnswered
+	LitewireDesc_InputState.ExtraUnmarshal = extraUnmarshal_InputState
 }

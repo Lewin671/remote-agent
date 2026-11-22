@@ -141,6 +141,98 @@ func NotificationTimeMs(r *Run) int64 {
 	return RunTimeMs(r)
 }
 
+type runsByTimeDesc []*Run
+
+func (s runsByTimeDesc) Len() int { return len(s) }
+func (s runsByTimeDesc) Less(i, j int) bool {
+	ta, tb := RunTimeMs(s[i]), RunTimeMs(s[j])
+	if ta != tb {
+		return ta > tb
+	}
+	return s[i].ID > s[j].ID
+}
+func (s runsByTimeDesc) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+type inboxEntriesSorted struct {
+	items []TaskEntry
+	group InboxGroup
+}
+
+func (s inboxEntriesSorted) Len() int { return len(s.items) }
+func (s inboxEntriesSorted) Less(i, j int) bool {
+	a, b := s.items[i], s.items[j]
+	switch s.group {
+	case InboxAttention:
+		sa, sb := StoppedTimeMs(a.Task), StoppedTimeMs(b.Task)
+		if sa != sb {
+			return sa > sb
+		}
+	case InboxEnded:
+		na, nb := NotificationTimeMs(LatestNotification(a.Task)), NotificationTimeMs(LatestNotification(b.Task))
+		if na != nb {
+			return na > nb
+		}
+		ua, ub := ParseRFC3339Ms(a.Task.UpdatedAt), ParseRFC3339Ms(b.Task.UpdatedAt)
+		if ua == 0 {
+			ua = ParseRFC3339Ms(a.Task.CreatedAt)
+		}
+		if ub == 0 {
+			ub = ParseRFC3339Ms(b.Task.CreatedAt)
+		}
+		if ua != ub {
+			return ua > ub
+		}
+	case InboxRecent:
+		na, nb := NotificationTimeMs(LatestNotification(a.Task)), NotificationTimeMs(LatestNotification(b.Task))
+		if na != nb {
+			return na > nb
+		}
+		xa, xb := ParseRFC3339Ms(a.Task.NextRunAt), ParseRFC3339Ms(b.Task.NextRunAt)
+		if xa == 0 {
+			xa = math.MaxInt64
+		}
+		if xb == 0 {
+			xb = math.MaxInt64
+		}
+		if xa != xb {
+			return xa < xb
+		}
+	}
+	if a.MachineID != b.MachineID {
+		return a.MachineID < b.MachineID
+	}
+	return a.Task.ID < b.Task.ID
+}
+func (s inboxEntriesSorted) Swap(i, j int) { s.items[i], s.items[j] = s.items[j], s.items[i] }
+
+type runsByNotifyDesc []*Run
+
+func (s runsByNotifyDesc) Len() int { return len(s) }
+func (s runsByNotifyDesc) Less(i, j int) bool {
+	ta, tb := NotificationTimeMs(s[i]), NotificationTimeMs(s[j])
+	if ta != tb {
+		return ta > tb
+	}
+	return s[i].ID > s[j].ID
+}
+func (s runsByNotifyDesc) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+type eventsBySeq []*v1.Event
+
+func (s eventsBySeq) Len() int           { return len(s) }
+func (s eventsBySeq) Less(i, j int) bool { return s[i].GetSeq() < s[j].GetSeq() }
+func (s eventsBySeq) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+func isScheduleTrimRune(r rune) bool {
+	return r == ',' || r == '，' || r == ':' || r == '：' || r == ';' || r == '；' || isScheduleSpace(r)
+}
+
+func runIdentity(task, run string) string { return task + "/" + run }
+
+func scheduleToolOK(tc *v1.ToolCall) bool {
+	return tc != nil && tc.Status != "failed" && (tc.ExitCode == nil || *tc.ExitCode == 0)
+}
+
 // AllRuns returns active + historical runs deduplicated by ID (active wins) and sorted newest first.
 func AllRuns(t *Task) []*Run {
 	if t == nil {
@@ -162,13 +254,7 @@ func AllRuns(t *Task) []*Run {
 	for _, r := range byID {
 		out = append(out, r)
 	}
-	sortutil.Sort(len(out), func(i, j int) bool {
-		ta, tb := RunTimeMs(out[i]), RunTimeMs(out[j])
-		if ta != tb {
-			return ta > tb
-		}
-		return out[i].ID > out[j].ID
-	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
+	sortutil.SortInterface(runsByTimeDesc(out))
 	return out
 }
 
@@ -207,63 +293,17 @@ func StoppedTimeMs(t *Task) int64 {
 }
 
 // SortInbox filters and sorts visible tasks belonging to group.
-func SortInbox(entries []TaskEntry, group InboxGroup, hasNew func(TaskEntry) bool) []TaskEntry {
-	if hasNew == nil {
-		hasNew = func(TaskEntry) bool { return false }
-	}
+func SortInbox(entries []TaskEntry, group InboxGroup, seen *SeenTracker) []TaskEntry {
 	out := make([]TaskEntry, 0, len(entries))
 	for _, e := range entries {
 		if e.Task == nil || !Visible(e.Task) {
 			continue
 		}
-		if InboxGroupOf(e.Task, hasNew(e)) == group {
+		if InboxGroupOf(e.Task, seen != nil && seen.HasNewResult(e.MachineID, e.Task)) == group {
 			out = append(out, e)
 		}
 	}
-	sortutil.Sort(len(out), func(i, j int) bool {
-		a, b := out[i], out[j]
-		switch group {
-		case InboxAttention:
-			sa, sb := StoppedTimeMs(a.Task), StoppedTimeMs(b.Task)
-			if sa != sb {
-				return sa > sb
-			}
-		case InboxEnded:
-			na, nb := NotificationTimeMs(LatestNotification(a.Task)), NotificationTimeMs(LatestNotification(b.Task))
-			if na != nb {
-				return na > nb
-			}
-			ua, ub := ParseRFC3339Ms(a.Task.UpdatedAt), ParseRFC3339Ms(b.Task.UpdatedAt)
-			if ua == 0 {
-				ua = ParseRFC3339Ms(a.Task.CreatedAt)
-			}
-			if ub == 0 {
-				ub = ParseRFC3339Ms(b.Task.CreatedAt)
-			}
-			if ua != ub {
-				return ua > ub
-			}
-		case InboxRecent:
-			na, nb := NotificationTimeMs(LatestNotification(a.Task)), NotificationTimeMs(LatestNotification(b.Task))
-			if na != nb {
-				return na > nb
-			}
-			xa, xb := ParseRFC3339Ms(a.Task.NextRunAt), ParseRFC3339Ms(b.Task.NextRunAt)
-			if xa == 0 {
-				xa = math.MaxInt64
-			}
-			if xb == 0 {
-				xb = math.MaxInt64
-			}
-			if xa != xb {
-				return xa < xb
-			}
-		}
-		if a.MachineID != b.MachineID {
-			return a.MachineID < b.MachineID
-		}
-		return a.Task.ID < b.Task.ID
-	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
+	sortutil.SortInterface(inboxEntriesSorted{items: out, group: group})
 	return out
 }
 
@@ -368,9 +408,7 @@ func ResolveName(name, message string) string {
 		first = line
 	}
 	cleaned := collapseSpaces(first)
-	cleaned = strings.TrimRightFunc(cleaned, func(r rune) bool {
-		return r == ',' || r == '，' || r == ':' || r == '：' || r == ';' || r == '；' || isScheduleSpace(r)
-	})
+	cleaned = strings.TrimRightFunc(cleaned, isScheduleTrimRune)
 	return ClipName(cleaned)
 }
 
@@ -463,13 +501,7 @@ func EditAccess(t *Task, writable, busy, frozen bool) Access {
 // RunGroups groups runs ordered by notificationTime desc, folding same-local-day quiet runs.
 func RunGroups(runs []*Run, bounds CalendarBounds) []RunGroup {
 	ordered := slices.Clone(runs)
-	sortutil.Sort(len(ordered), func(i, j int) bool {
-		ta, tb := NotificationTimeMs(ordered[i]), NotificationTimeMs(ordered[j])
-		if ta != tb {
-			return ta > tb
-		}
-		return ordered[i].ID > ordered[j].ID
-	}, func(i, j int) { ordered[i], ordered[j] = ordered[j], ordered[i] })
+	sortutil.SortInterface(runsByNotifyDesc(ordered))
 
 	groups := make([]RunGroup, 0, len(ordered))
 	quietByDay := make(map[string]*RunGroup)
@@ -518,7 +550,7 @@ func FinalAnswer(runID string, events []*v1.Event) string {
 		return ""
 	}
 	ordered := slices.Clone(events)
-	sortutil.Sort(len(ordered), func(i, j int) bool { return ordered[i].GetSeq() < ordered[j].GetSeq() }, func(i, j int) { ordered[i], ordered[j] = ordered[j], ordered[i] })
+	sortutil.SortInterface(eventsBySeq(ordered))
 	start := -1
 	for i, e := range ordered {
 		if e != nil && e.GetUserMessage() != nil && e.GetOrigin().GetScheduledRunId() == runID {
@@ -567,7 +599,6 @@ func QuietSpans(events []*v1.Event, bounds CalendarBounds) []QuietSpan {
 	}
 	hasScheduled := false
 	notifiedRuns := make(map[string]bool)
-	identity := func(task, run string) string { return task + "/" + run }
 	for _, e := range events {
 		if e == nil {
 			continue
@@ -576,10 +607,10 @@ func QuietSpans(events []*v1.Event, bounds CalendarBounds) []QuietSpan {
 			hasScheduled = true
 		}
 		if sn := e.GetScheduledNotification(); sn != nil {
-			notifiedRuns[identity(sn.TaskId, sn.RunId)] = true
+			notifiedRuns[runIdentity(sn.TaskId, sn.RunId)] = true
 		}
 		if te := e.GetTurnEnded(); te != nil && te.ScheduledNotified {
-			notifiedRuns[identity(te.ScheduledTaskId, te.ScheduledRunId)] = true
+			notifiedRuns[runIdentity(te.ScheduledTaskId, te.ScheduledRunId)] = true
 		}
 	}
 	if !hasScheduled {
@@ -603,10 +634,6 @@ func QuietSpans(events []*v1.Event, bounds CalendarBounds) []QuietSpan {
 				delete(openTools, tc.CallId)
 			}
 		}
-	}
-
-	toolOK := func(tc *v1.ToolCall) bool {
-		return tc != nil && tc.Status != "failed" && (tc.ExitCode == nil || *tc.ExitCode == 0)
 	}
 
 	var spans []QuietSpan
@@ -649,7 +676,7 @@ func QuietSpans(events []*v1.Event, bounds CalendarBounds) []QuietSpan {
 			} else if oversized || e.Kind == nil {
 				safe = false
 			} else if tc := e.GetToolCall(); tc != nil {
-				if !toolOK(tc) || projection.WentToBackground(tc) {
+				if !scheduleToolOK(tc) || projection.WentToBackground(tc) {
 					safe = false
 				}
 			} else if e.GetToolStarted() != nil {
@@ -724,7 +751,7 @@ func QuietSpans(events []*v1.Event, bounds CalendarBounds) []QuietSpan {
 			safe &&
 			toolsThrough <= e.Seq &&
 			!notified &&
-			!notifiedRuns[identity(taskID, runID)] &&
+			!notifiedRuns[runIdentity(taskID, runID)] &&
 			!te.ScheduledNotified &&
 			te.ScheduledTaskId == taskID &&
 			te.ScheduledRunId == runID &&

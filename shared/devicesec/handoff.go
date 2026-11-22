@@ -2,7 +2,6 @@ package devicesec
 
 import (
 	"io"
-	"slices"
 )
 
 // handoffDelta retains every other member exactly, and retires the old phone.
@@ -46,6 +45,6 @@ func NewHandoff(parent State, incoming string, recoveryEd [32]byte, oldSecret, n
 	c.Removed = removed
 	c.AuthorityID = incoming
 	c.RecoveryEd = recoveryEd
-	slices.Sort(c.Removed)
+	sortStrings(c.Removed)
 	return NewStateForCore(c, newSecret, prev, hpke)
 }

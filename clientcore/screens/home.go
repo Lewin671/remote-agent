@@ -183,6 +183,19 @@ func displayWorld(st *State) lists.World {
 	return w
 }
 
+func homeRunningSub(run, idle int32) *corev1.Text {
+	switch {
+	case run > 0 && idle > 0:
+		return text.Msg(text.KeyHomeRunningAndIdle, text.Int("count", int64(run)), text.Int("idle", int64(idle)))
+	case run > 0:
+		return text.Msg(text.KeyHomeRunningCount, text.Int("count", int64(run)))
+	case idle > 0:
+		return text.Msg(text.KeyHomeOtherIdle, text.Int("count", int64(idle)))
+	default:
+		return nil
+	}
+}
+
 func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool, errText *corev1.Text) *corev1.HomeHeadlineView {
 	if h == nil {
 		return &corev1.HomeHeadlineView{
@@ -194,18 +207,6 @@ func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool, errText *
 		SubPath:       h.SubPath,
 		DetailsAction: h.Details,
 		Unlinked:      h.Unlinked,
-	}
-	runningSub := func(run, idle int32) *corev1.Text {
-		switch {
-		case run > 0 && idle > 0:
-			return text.Msg(text.KeyHomeRunningAndIdle, text.Int("count", int64(run)), text.Int("idle", int64(idle)))
-		case run > 0:
-			return text.Msg(text.KeyHomeRunningCount, text.Int("count", int64(run)))
-		case idle > 0:
-			return text.Msg(text.KeyHomeOtherIdle, text.Int("count", int64(idle)))
-		default:
-			return nil
-		}
 	}
 	switch h.Kind {
 	case lists.HeadlineNoNetwork:
@@ -241,7 +242,7 @@ func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool, errText *
 		v.HighlightCount = h.WaitingCount
 		v.HighlightArg = "count"
 		v.Title = text.Msg(text.KeyHomeWaitingCount, text.Int("count", int64(h.WaitingCount)))
-		v.Sub = runningSub(h.RunningCount, h.IdleCount)
+		v.Sub = homeRunningSub(h.RunningCount, h.IdleCount)
 	case lists.HeadlineRunning:
 		v.Kind = corev1.HeadlineKind_HEADLINE_KIND_RUNNING
 		v.Title = text.Msg(text.KeyHomeRunningCount, text.Int("count", int64(h.RunningCount)))

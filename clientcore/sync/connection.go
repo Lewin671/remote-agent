@@ -354,22 +354,8 @@ func (e *Engine) requestSyncSecurity(ctx *StepContext, touch bool) {
 		return
 	}
 	e.activeSecOpID = e.allocOpID()
-	opID := e.activeSecOpID
-	effs := e.secEngine.SyncStates(e.nowMs, touch, e.cachedToken, func(err error) {
-		if e.activeSecOpID == opID {
-			e.activeSecOpID = 0
-		}
-		stepCtx := e.activeStepCtx
-		if stepCtx == nil {
-			return
-		}
-		if err != nil {
-			e.emitCoordEffects(stepCtx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
-		} else {
-			e.syncSecurityStateFromEngine(stepCtx, true)
-		}
-		e.maybeRequestEntropy(stepCtx)
-	})
+	tag := e.allocSecOp(&pendingSecOp{kind: secOpSyncStates, opID: e.activeSecOpID})
+	effs := e.secEngine.SyncStatesTag(e.nowMs, touch, e.cachedToken, tag)
 	e.emitSecurityEffects(ctx, effs)
 	e.maybeRequestEntropy(ctx)
 }

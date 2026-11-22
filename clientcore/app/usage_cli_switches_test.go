@@ -312,10 +312,10 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 						MachineId: "m-1",
 						Online:    true,
 						Meta: &v1.MachineMeta{
-							Hostname:        "MacStudio",
-							ProtocolVersion: 17,
+							Hostname:         "MacStudio",
+							ProtocolVersion:  17,
 							SettingsRevision: 5,
-							DisabledAgents:  []v1.Agent{v1.Agent_AGENT_CLAUDE, v1.Agent_AGENT_ANTIGRAVITY},
+							DisabledAgents:   []v1.Agent{v1.Agent_AGENT_CLAUDE, v1.Agent_AGENT_ANTIGRAVITY},
 							Capabilities: &v1.MachineCapabilities{
 								MachineStatus:  true,
 								ScheduledTasks: true,

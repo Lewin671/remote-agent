@@ -147,12 +147,10 @@ type Engine struct {
 	lastNowMs    int64
 	verifiedAtMs int64
 	unlocking    bool
-	unlockGen  uint64
-	onUnlock   []func(nowMs int64, err error)
-	nextOpID   uint64
-	signWaiter map[uint64]func(sig []byte, err error)
-	agreeWait  map[uint64]func(shared []byte, err error)
-	batchWait  map[uint64]func(res []*corev1.SecurityCryptoBatchResult, err error)
+	unlockGen    uint64
+	onUnlock     []taskWait
+	nextOpID     uint64
+	tasks        map[uint64]taskWait
 
 	wf *workflowState
 
@@ -170,9 +168,7 @@ func NewEngine(pool *entropy.Pool) *Engine {
 		epochSecrets: make(map[uint64][32]byte),
 		sessionSeeds: make(map[string][32]byte),
 		peerShared:   make(map[[32]byte][32]byte),
-		signWaiter:   make(map[uint64]func([]byte, error)),
-		agreeWait:    make(map[uint64]func([]byte, error)),
-		batchWait:    make(map[uint64]func([]*corev1.SecurityCryptoBatchResult, error)),
+		tasks:        make(map[uint64]taskWait),
 	}
 }
 
@@ -245,20 +241,10 @@ func (e *Engine) Configure(ev *corev1.SecurityConfigEvent) {
 
 // HandleKeySigned dispatches a KeySign completion.
 func (e *Engine) HandleKeySigned(nowMs int64, ev *corev1.SecurityKeySignedEvent) []*corev1.Effect {
-	e.touchNow(nowMs)
 	if ev == nil {
-		return nil
+		return e.finishTaskEv(nowMs, 0, "", secEvent{})
 	}
-	fn := e.signWaiter[ev.OpId]
-	delete(e.signWaiter, ev.OpId)
-	if fn != nil {
-		if ev.Error != "" {
-			fn(nil, errors.New(ev.Error))
-		} else {
-			fn(ev.Signature, nil)
-		}
-	}
-	return e.DrainEffects()
+	return e.finishTaskEv(nowMs, ev.OpId, ev.Error, secEvent{kind: evSign, bytes: ev.Signature})
 }
 
 // HandleKeyAgreed dispatches a KeyAgree completion.
@@ -267,87 +253,52 @@ func (e *Engine) HandleKeyAgreed(nowMs int64, ev *corev1.SecurityKeyAgreedEvent)
 	if ev == nil {
 		return nil
 	}
-	fn := e.agreeWait[ev.OpId]
-	delete(e.agreeWait, ev.OpId)
-	if fn != nil {
+	if w, ok := e.takeTask(ev.OpId); ok && w.task != nil {
+		se := &secEvent{kind: evAgree, tag: w.tag, bytes: ev.Shared}
 		if ev.Error != "" {
-			fn(nil, errors.New(ev.Error))
-		} else {
-			fn(ev.Shared, nil)
+			se.err = errors.New(ev.Error)
+		} else if w.cachePeer && len(ev.Shared) == 32 {
+			var k [32]byte
+			copy(k[:], ev.Shared)
+			e.peerShared[w.cachePeerX] = k
 		}
+		e.stepTask(w.task, se)
 	}
 	return e.DrainEffects()
 }
 
 // HandleCryptoBatchDone dispatches a CryptoBatch completion.
 func (e *Engine) HandleCryptoBatchDone(nowMs int64, ev *corev1.SecurityCryptoBatchDoneEvent) []*corev1.Effect {
-	e.touchNow(nowMs)
 	if ev == nil {
-		return nil
+		return e.finishTaskEv(nowMs, 0, "", secEvent{})
 	}
-	fn := e.batchWait[ev.OpId]
-	delete(e.batchWait, ev.OpId)
-	if fn != nil {
-		if ev.Error != "" {
-			fn(nil, errors.New(ev.Error))
-		} else {
-			fn(ev.Results, nil)
-		}
-	}
-	return e.DrainEffects()
+	return e.finishTaskEv(nowMs, ev.OpId, ev.Error, secEvent{kind: evBatch, batch: ev.Results})
 }
 
 // RequestKeySign issues an async KeySign effect for DEVICE_ED (shared with transport.Coordinator).
 func (e *Engine) RequestKeySign(msg []byte, fn func(sig []byte, err error)) {
-	e.requestKeySignKind(corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_ED, "", msg, fn)
-}
-
-func (e *Engine) requestKeySignKind(kind corev1.SecurityKeyKind, slot string, msg []byte, fn func(sig []byte, err error)) {
-	opID := e.allocOp()
-	e.signWaiter[opID] = fn
-	e.out = append(e.out, &corev1.Effect{
-		Effect: &corev1.Effect_SecurityKeySign{
-			SecurityKeySign: &corev1.SecurityKeySignEffect{
-				OpId:    opID,
-				KeyKind: kind,
-				Slot:    slot,
-				Message: slices.Clone(msg),
-			},
-		},
-	})
+	e.waitSign(keyDevEd, "", msg, &cbKeyTask{fn: fn}, 0)
 }
 
 // RequestKeyAgree issues or resolves from cache an X25519 ECDH agreement for DEVICE_X.
 func (e *Engine) RequestKeyAgree(peerX [32]byte, cachePeer bool, fn func(shared []byte, err error)) {
-	e.requestKeyAgreeKind(corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X, "", peerX, cachePeer, fn)
+	e.waitAgree(keyDevX, "", peerX, cachePeer, &cbKeyTask{fn: fn}, 0)
 }
 
-func (e *Engine) requestKeyAgreeKind(kind corev1.SecurityKeyKind, slot string, peerX [32]byte, cachePeer bool, fn func(shared []byte, err error)) {
-	if cachePeer && kind == corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X && slot == "" {
-		if sec, ok := e.peerShared[peerX]; ok {
-			fn(slices.Clone(sec[:]), nil)
-			return
-		}
-	}
-	opID := e.allocOp()
-	e.agreeWait[opID] = func(shared []byte, err error) {
-		if err == nil && cachePeer && kind == corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X && slot == "" && len(shared) == 32 {
-			var k [32]byte
-			copy(k[:], shared)
-			e.peerShared[peerX] = k
-		}
-		fn(shared, err)
-	}
-	e.out = append(e.out, &corev1.Effect{
-		Effect: &corev1.Effect_SecurityKeyAgree{
-			SecurityKeyAgree: &corev1.SecurityKeyAgreeEffect{
-				OpId:       opID,
-				KeyKind:    kind,
-				Slot:       slot,
-				PeerPublic: slices.Clone(peerX[:]),
-			},
-		},
-	})
+// RequestKeySignTag issues an async KeySign effect routed to AsyncSink.OnKeySignDone.
+func (e *Engine) RequestKeySignTag(msg []byte, tag uint64) {
+	e.waitSign(keyDevEd, "", msg, &cbKeyTask{tag: tag}, 0)
+}
+
+// RequestKeyAgreeTag issues an async KeyAgree effect routed to AsyncSink.OnKeyAgreeDone.
+func (e *Engine) RequestKeyAgreeTag(peerX [32]byte, cachePeer bool, tag uint64) {
+	e.waitAgree(keyDevX, "", peerX, cachePeer, &cbKeyTask{tag: tag, agree: true}, 0)
+}
+
+func (e *Engine) failRecord(err error) []*corev1.Effect {
+	e.recordErr = err.Error()
+	e.flushUnlockWaiters(e.lastNowMs, err)
+	return e.DrainEffects()
 }
 
 // ContentKey provides a pre-decrypted historical content epoch secret.
@@ -432,9 +383,7 @@ func (e *Engine) ApplyRecord(nowMs int64, ev RecordUpdate) []*corev1.Effect {
 	e.recoveryObjectsPending = ev.RecoveryObjectsPending
 
 	if len(ev.Domain) != 32 || len(ev.Genesis) != 32 || len(ev.States) == 0 {
-		e.recordErr = "invalid security record"
-		e.flushUnlockWaiters(e.lastNowMs, devicesec.ErrInvalid)
-		return e.DrainEffects()
+		return e.failRecord(devicesec.ErrInvalid)
 	}
 
 	acct := ev.Account
@@ -448,9 +397,7 @@ func (e *Engine) ApplyRecord(nowMs int64, ev RecordUpdate) []*corev1.Effect {
 
 	parsedStates, byHash, proofPresent, err := parseAndVerifyChain(pin, ev.States, ev.RecoveryProofs)
 	if err != nil {
-		e.recordErr = err.Error()
-		e.flushUnlockWaiters(e.lastNowMs, err)
-		return e.DrainEffects()
+		return e.failRecord(err)
 	}
 
 	head := parsedStates[len(parsedStates)-1]
@@ -461,14 +408,10 @@ func (e *Engine) ApplyRecord(nowMs int64, ev RecordUpdate) []*corev1.Effect {
 	if len(ev.Lease) > 0 {
 		lease, err = devicesec.ParseLease(ev.Lease)
 		if err != nil {
-			e.recordErr = err.Error()
-			e.flushUnlockWaiters(e.lastNowMs, err)
-			return e.DrainEffects()
+			return e.failRecord(err)
 		}
 		if err := lease.Verify(head); err != nil {
-			e.recordErr = err.Error()
-			e.flushUnlockWaiters(e.lastNowMs, err)
-			return e.DrainEffects()
+			return e.failRecord(err)
 		}
 		hasLease = true
 	}
@@ -641,6 +584,44 @@ func (e *Engine) latestSelfStateIndex() int {
 	return -1
 }
 
+type unlockTask struct {
+	gen    uint64
+	idx    int
+	target devicesec.State
+	epoch  uint64
+}
+
+func (t *unlockTask) step(e *Engine, ev *secEvent) error {
+	if t.gen != e.unlockGen {
+		return nil
+	}
+	e.unlocking = false
+	if ev.err != nil {
+		e.flushUnlockWaiters(e.lastNowMs, ev.err)
+		return nil
+	}
+	sec, err := e.pin.OpenGrantWithDH(t.target, e.selfDeviceID, ev.bytes)
+	if err != nil || len(sec) != 32 {
+		if err == nil {
+			err = devicesec.ErrUntrusted
+		}
+		e.flushUnlockWaiters(e.lastNowMs, err)
+		return nil
+	}
+	var arr [32]byte
+	copy(arr[:], sec)
+	e.epochSecrets[t.epoch] = arr
+	if err := e.fillPrevSecretsFrom(t.idx); err != nil {
+		delete(e.epochSecrets, t.epoch)
+		e.isMember = false
+		e.recordErr = err.Error()
+		e.flushUnlockWaiters(e.lastNowMs, err)
+		return nil
+	}
+	e.flushUnlockWaiters(e.lastNowMs, nil)
+	return nil
+}
+
 func (e *Engine) startUnlockForState(idx int) {
 	if idx < 0 || idx >= len(e.states) {
 		e.flushUnlockWaiters(e.lastNowMs, ErrNotMember)
@@ -653,37 +634,12 @@ func (e *Engine) startUnlockForState(idx int) {
 		return
 	}
 	e.unlocking = true
-	gen := e.unlockGen
-	epoch := target.Core.ContentEpoch
-	e.RequestKeyAgree(enc, false, func(shared []byte, err error) {
-		if gen != e.unlockGen {
-			return
-		}
-		e.unlocking = false
-		if err != nil {
-			e.flushUnlockWaiters(e.lastNowMs, err)
-			return
-		}
-		sec, err := e.pin.OpenGrantWithDH(target, e.selfDeviceID, shared)
-		if err != nil || len(sec) != 32 {
-			if err == nil {
-				err = devicesec.ErrUntrusted
-			}
-			e.flushUnlockWaiters(e.lastNowMs, err)
-			return
-		}
-		var arr [32]byte
-		copy(arr[:], sec)
-		e.epochSecrets[epoch] = arr
-		if err := e.fillPrevSecretsFrom(idx); err != nil {
-			delete(e.epochSecrets, epoch)
-			e.isMember = false
-			e.recordErr = err.Error()
-			e.flushUnlockWaiters(e.lastNowMs, err)
-			return
-		}
-		e.flushUnlockWaiters(e.lastNowMs, nil)
-	})
+	e.waitAgree(corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X, "", enc, false, &unlockTask{
+		gen:    e.unlockGen,
+		idx:    idx,
+		target: target,
+		epoch:  target.Core.ContentEpoch,
+	}, 0)
 }
 
 func (e *Engine) fillPrevSecretsFrom(idx int) error {
@@ -729,42 +685,49 @@ func (e *Engine) flushUnlockWaiters(nowMs int64, err error) {
 	}
 	waiters := e.onUnlock
 	e.onUnlock = nil
-	for _, fn := range waiters {
-		fn(nowMs, err)
+	for _, w := range waiters {
+		e.deliverUnlockWaiter(w, nowMs, err)
 	}
 }
 
-func (e *Engine) withUnlocked(nowMs int64, fn func(nowMs int64, err error)) {
-	e.withUnlockedFor(nowMs, true, fn)
+func (e *Engine) deliverUnlockWaiter(w taskWait, nowMs int64, err error) {
+	ev := &secEvent{kind: evUnlocked, tag: w.tag, nowMs: nowMs, err: err}
+	if w.task != nil {
+		e.stepTask(w.task, ev)
+		return
+	}
+	if w.target.kind != targetNone {
+		e.completeTarget(w.target, ev)
+	}
 }
 
-func (e *Engine) withUnlockedFor(nowMs int64, requireMember bool, fn func(nowMs int64, err error)) {
+func (e *Engine) waitUnlocked(nowMs int64, requireMember bool, w taskWait) {
 	if !e.loaded || !e.hasHead {
 		if e.unlocking {
-			e.onUnlock = append(e.onUnlock, fn)
+			e.onUnlock = append(e.onUnlock, w)
 			return
 		}
-		fn(nowMs, ErrNotInitialized)
+		e.deliverUnlockWaiter(w, nowMs, ErrNotInitialized)
 		return
 	}
 	if requireMember && !e.isMember {
-		fn(nowMs, ErrNotMember)
+		e.deliverUnlockWaiter(w, nowMs, ErrNotMember)
 		return
 	}
 	idx := e.latestSelfStateIndex()
 	if idx < 0 {
-		fn(nowMs, ErrNotMember)
+		e.deliverUnlockWaiter(w, nowMs, ErrNotMember)
 		return
 	}
 	if _, ok := e.epochSecrets[e.states[idx].Core.ContentEpoch]; ok {
-		fn(nowMs, nil)
+		e.deliverUnlockWaiter(w, nowMs, nil)
 		return
 	}
 	if e.unlocking {
-		e.onUnlock = append(e.onUnlock, fn)
+		e.onUnlock = append(e.onUnlock, w)
 		return
 	}
-	e.onUnlock = append(e.onUnlock, fn)
+	e.onUnlock = append(e.onUnlock, w)
 	e.startUnlockForState(idx)
 }
 
@@ -988,297 +951,537 @@ func (e *Engine) CanSeal(nowMs int64) error {
 
 // OpenBatch verifies signatures, decrypts, and validates all envelopes in items,
 // using CryptoBatch on Web when verify > 8 or any ciphertext > 16 KiB.
-func (e *Engine) OpenBatch(nowMs int64, items []OpenItem, onDone func(results []OpenResult)) []*corev1.Effect {
-	e.touchNow(nowMs)
-	e.withUnlockedFor(nowMs, false, func(curNow int64, unlockErr error) {
-		results := make([]OpenResult, len(items))
-		if unlockErr != nil {
-			for i := range results {
-				results[i].Err = unlockErr
-			}
-			onDone(results)
-			return
-		}
+type preparedOpen struct {
+	idx       int
+	item      OpenItem
+	ct        devicesec.Ciphertext
+	header    devicesec.Header
+	edPub     [32]byte
+	originMsg []byte
+}
 
-		// Precompute replacement origin maps per (machineID, sessionID) lazily when SessionID is present.
-		type replCacheKey struct {
-			machineID string
-			sessionID string
-		}
-		type preparedOpen struct {
-			idx       int
-			item      OpenItem
-			ct        devicesec.Ciphertext
-			header    devicesec.Header
-			edPub     [32]byte
-			originMsg []byte
-		}
-		replCache := make(map[replCacheKey]map[string]bool)
-		var toVerify []preparedOpen
+const (
+	openTagVerify uint8 = 1
+	openTagAEAD   uint8 = 2
+)
 
-		for i, item := range items {
-			if verErr := e.checkEnvelopeVersion(item.Env); verErr != nil {
-				results[i].Err = verErr
-				continue
-			}
-			ct, err := FromProtoEnvelope(item.Env)
-			if err != nil {
-				results[i].Err = err
-				continue
-			}
-			h, err := devicesec.ParseHeader(ct.Header)
-			if err != nil {
-				results[i].Err = err
-				continue
-			}
-			if item.ExpectedPurpose != 0 && h.Purpose != item.ExpectedPurpose {
-				results[i].Err = devicesec.ErrInvalid
-				continue
-			}
-			if item.History && h.Purpose.Control() {
-				results[i].Err = devicesec.ErrUntrusted
-				continue
-			}
-			if item.SessionID != "" && h.Session != item.SessionID {
-				results[i].Err = devicesec.ErrUntrusted
-				continue
-			}
-			if item.RequestID != "" && h.Request != item.RequestID {
-				results[i].Err = devicesec.ErrUntrusted
-				continue
-			}
-			if item.Seq != 0 && h.Seq != item.Seq {
-				results[i].Err = devicesec.ErrUntrusted
-				continue
-			}
-			if item.MachineID != "" && h.Machine != item.MachineID {
-				if !item.History || len(item.Replacements) == 0 {
-					results[i].Err = devicesec.ErrUntrusted
-					continue
-				}
-				var origins map[string]bool
-				var cached bool
-				ck := replCacheKey{machineID: item.MachineID, sessionID: item.SessionID}
-				if item.SessionID != "" {
-					origins, cached = replCache[ck]
-				}
-				if !cached {
-					origins, err = MachineReplacementOrigins(e.pin.Account, item.MachineID, e.states, item.Replacements)
-					if err != nil {
-						results[i].Err = err
-						continue
-					}
-					if item.SessionID != "" {
-						replCache[ck] = origins
-					}
-				}
-				if !origins[h.Machine] {
-					results[i].Err = devicesec.ErrUntrusted
-					continue
-				}
-			}
-			if !item.History {
-				if !e.isMember {
-					results[i].Err = ErrNotMember
-					continue
-				}
-				if err := e.checkLiveLease(curNow); err != nil {
-					results[i].Err = err
-					continue
-				}
-			}
-			s, ok := e.byHash[h.State]
-			if !ok {
-				results[i].Err = devicesec.ErrStale
-				continue
-			}
-			vh, edPub, originMsg, err := ct.OriginVerifyInput(s, e.head, !item.History, e.effectiveNow(curNow))
-			if err != nil {
-				results[i].Err = err
-				continue
-			}
-			toVerify = append(toVerify, preparedOpen{
-				idx:       i,
-				item:      item,
-				ct:        ct,
-				header:    vh,
-				edPub:     edPub,
-				originMsg: originMsg,
-			})
-		}
+type openBatchTask struct {
+	items        []OpenItem
+	results      []OpenResult
+	toVerify     []preparedOpen
+	verified     []preparedOpen
+	batchAEADIdx []int
+	onDone       func([]OpenResult)
+	useSink      bool
+	sinkTag      uint64
+	target       taskTarget
+	secOpID      uint64
+	secOpHeader  []byte
+}
 
-		if len(toVerify) == 0 {
-			onDone(results)
-			return
-		}
+func (e *Engine) startOpenBatch(nowMs int64, t *openBatchTask) {
+	t.results = make([]OpenResult, len(t.items))
+	e.waitUnlocked(nowMs, false, taskWait{task: t})
+}
 
-		decryptVerified := func(verified []preparedOpen) {
-			var batchAEADIdx []int
-			var batchAEADItems []*corev1.SecurityCryptoBatchItem
-			for vi, p := range verified {
-				sec, hasSec := e.epochSecrets[p.header.ContentEpoch]
-				if !hasSec {
-					if e.isRecoveryUnavailable(p.item, p.header) {
-						results[p.idx].Err = ErrRecoveryHistoryUnavailable
-					} else {
-						results[p.idx].Err = devicesec.ErrStale
-					}
-					continue
-				}
-				var seed []byte
-				if p.header.Purpose == devicesec.Event || p.header.Purpose == devicesec.Image ||
-					p.header.Purpose == devicesec.TerminalOutput || p.header.Purpose == devicesec.TerminalInput ||
-					p.header.Purpose == devicesec.TerminalResize || p.header.Purpose == devicesec.TerminalHistory {
-					if len(p.item.OverrideSeed) == 32 {
-						seed = p.item.OverrideSeed
-					} else if cachedSeed, ok := e.sessionSeeds[p.header.Session]; ok {
-						sCopy := cachedSeed
-						seed = sCopy[:]
-					} else {
-						results[p.idx].Err = devicesec.ErrInvalid
-						continue
-					}
-				}
-				if !e.inlineCrypto && len(p.ct.Cipher) > BatchAeadThreshold {
-					_, key, err := devicesec.DeriveCipherKey(sec[:], seed, p.ct)
-					if err != nil {
-						results[p.idx].Err = err
-						continue
-					}
-					batchAEADIdx = append(batchAEADIdx, vi)
-					batchAEADItems = append(batchAEADItems, &corev1.SecurityCryptoBatchItem{
-						Kind: &corev1.SecurityCryptoBatchItem_AeadOpen{
-							AeadOpen: &corev1.CryptoBatchAeadOpenItem{
-								Key:        key,
-								Nonce:      slices.Clone(p.ct.Nonce),
-								Aad:        slices.Clone(p.ct.Header),
-								Ciphertext: slices.Clone(p.ct.Cipher),
-							},
-						},
-					})
-				} else {
-					_, plain, err := devicesec.OpenCipher(sec[:], seed, p.ct)
-					if err != nil {
-						results[p.idx].Err = err
-						continue
-					}
-					body, unpacked, err := ValidateAndDecodeBody(p.header, plain)
-					if err != nil {
-						results[p.idx].Err = err
-						continue
-					}
-					if p.header.Purpose == devicesec.SessionKey {
-						if b, ok := body.([]byte); ok {
-							e.SeedSessionKey(p.header.Session, b)
-						}
-					}
-					results[p.idx].Plain = unpacked
-					results[p.idx].Body = body
-				}
-			}
-
-			if len(batchAEADItems) == 0 {
-				onDone(results)
-				return
-			}
-			opID := e.allocOp()
-			e.batchWait[opID] = func(batchRes []*corev1.SecurityCryptoBatchResult, batchErr error) {
-				for bi, vi := range batchAEADIdx {
-					p := verified[vi]
-					if batchErr != nil {
-						results[p.idx].Err = batchErr
-						continue
-					}
-					if bi >= len(batchRes) || batchRes[bi] == nil || !batchRes[bi].Ok {
-						results[p.idx].Err = devicesec.ErrUntrusted
-						continue
-					}
-					body, unpacked, err := ValidateAndDecodeBody(p.header, batchRes[bi].Data)
-					if err != nil {
-						results[p.idx].Err = err
-						continue
-					}
-					if p.header.Purpose == devicesec.SessionKey {
-						if b, ok := body.([]byte); ok {
-							e.SeedSessionKey(p.header.Session, b)
-						}
-					}
-					results[p.idx].Plain = unpacked
-					results[p.idx].Body = body
-				}
-				onDone(results)
-			}
-			e.out = append(e.out, &corev1.Effect{
-				Effect: &corev1.Effect_SecurityCryptoBatch{
-					SecurityCryptoBatch: &corev1.SecurityCryptoBatchEffect{
-						OpId:  opID,
-						Items: batchAEADItems,
-					},
-				},
-			})
-		}
-
-		if !e.inlineCrypto && len(toVerify) > BatchVerifyThreshold {
-			batchItems := make([]*corev1.SecurityCryptoBatchItem, len(toVerify))
-			for vi, p := range toVerify {
-				batchItems[vi] = &corev1.SecurityCryptoBatchItem{
-					Kind: &corev1.SecurityCryptoBatchItem_Verify{
-						Verify: &corev1.CryptoBatchVerifyItem{
-							PublicKey: slices.Clone(p.edPub[:]),
-							Message:   p.originMsg,
-							Signature: slices.Clone(p.ct.Origin),
-						},
-					},
-				}
-			}
-			opID := e.allocOp()
-			e.batchWait[opID] = func(batchRes []*corev1.SecurityCryptoBatchResult, batchErr error) {
-				var okItems []preparedOpen
-				for vi, p := range toVerify {
-					if batchErr != nil {
-						results[p.idx].Err = batchErr
-						continue
-					}
-					if vi >= len(batchRes) || batchRes[vi] == nil || !batchRes[vi].Ok {
-						results[p.idx].Err = devicesec.ErrUntrusted
-						continue
-					}
-					results[p.idx].Header = p.header
-					okItems = append(okItems, p)
-				}
-				if len(okItems) == 0 {
-					onDone(results)
-					return
-				}
-				decryptVerified(okItems)
-			}
-			e.out = append(e.out, &corev1.Effect{
-				Effect: &corev1.Effect_SecurityCryptoBatch{
-					SecurityCryptoBatch: &corev1.SecurityCryptoBatchEffect{
-						OpId:  opID,
-						Items: batchItems,
-					},
-				},
-			})
-			return
-		}
-
-		var okItems []preparedOpen
-		for _, p := range toVerify {
-			if !devicesec.VerifyEd25519(p.edPub[:], p.originMsg, p.ct.Origin) {
-				results[p.idx].Err = devicesec.ErrUntrusted
-				continue
-			}
-			results[p.idx].Header = p.header
-			okItems = append(okItems, p)
-		}
-		if len(okItems) == 0 {
-			onDone(results)
-			return
-		}
-		decryptVerified(okItems)
+//go:noinline
+func (e *Engine) emitSecurityOpResult(res *corev1.SecurityOpResultEffect) {
+	e.out = append(e.out, &corev1.Effect{
+		Effect: &corev1.Effect_SecurityOpResult{SecurityOpResult: res},
 	})
+}
+
+func (t *openBatchTask) finish(e *Engine) {
+	if t.secOpID != 0 {
+		r := t.results[0]
+		if r.Err != nil {
+			e.emitSecurityOpErr(t.secOpID, r.Err)
+			return
+		}
+		e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
+			OpId: t.secOpID,
+			Result: &corev1.SecurityOpResultEffect_Opened{
+				Opened: &corev1.SecurityOpenEnvelopeResult{
+					Header: slices.Clone(t.secOpHeader), Plaintext: r.Plain,
+					Epoch: r.Header.Epoch, ContentEpoch: r.Header.ContentEpoch, Seq: r.Header.Seq,
+					Sender: r.Header.Sender, Purpose: uint32(r.Header.Purpose),
+					MachineId: r.Header.Machine, SessionId: r.Header.Session, RequestId: r.Header.Request,
+					DeadlineMs: int64(r.Header.Deadline),
+				},
+			},
+		})
+		return
+	}
+	if t.useSink {
+		if wf := e.wf; wf != nil && wf.asyncSink != nil {
+			wf.asyncSink.OnOpenBatchDone(t.sinkTag, t.results)
+		}
+		return
+	}
+	if t.onDone != nil {
+		t.onDone(t.results)
+		return
+	}
+	e.completeTarget(t.target, &secEvent{opened: t.results})
+}
+
+func (t *openBatchTask) step(e *Engine, ev *secEvent) error {
+	switch ev.kind {
+	case evUnlocked:
+		if ev.err != nil {
+			for i := range t.results {
+				t.results[i].Err = ev.err
+			}
+			t.finish(e)
+			return nil
+		}
+		t.prepareAndVerify(e, ev.nowMs)
+	case evBatch:
+		if ev.tag == openTagVerify {
+			var okItems []preparedOpen
+			for vi, p := range t.toVerify {
+				if ev.err != nil {
+					t.results[p.idx].Err = ev.err
+					continue
+				}
+				if vi >= len(ev.batch) || ev.batch[vi] == nil || !ev.batch[vi].Ok {
+					t.results[p.idx].Err = devicesec.ErrUntrusted
+					continue
+				}
+				t.results[p.idx].Header = p.header
+				okItems = append(okItems, p)
+			}
+			t.toVerify = nil
+			if len(okItems) == 0 {
+				t.finish(e)
+				return nil
+			}
+			t.decryptVerified(e, okItems)
+			return nil
+		}
+		if ev.tag == openTagAEAD {
+			for bi, vi := range t.batchAEADIdx {
+				p := t.verified[vi]
+				if ev.err != nil {
+					t.results[p.idx].Err = ev.err
+					continue
+				}
+				if bi >= len(ev.batch) || ev.batch[bi] == nil || !ev.batch[bi].Ok {
+					t.results[p.idx].Err = devicesec.ErrUntrusted
+					continue
+				}
+				body, unpacked, err := ValidateAndDecodeBody(p.header, ev.batch[bi].Data)
+				if err != nil {
+					t.results[p.idx].Err = err
+					continue
+				}
+				if p.header.Purpose == devicesec.SessionKey {
+					if b, ok := body.([]byte); ok {
+						e.SeedSessionKey(p.header.Session, b)
+					}
+				}
+				t.results[p.idx].Plain = unpacked
+				t.results[p.idx].Body = body
+			}
+			t.verified = nil
+			t.batchAEADIdx = nil
+			t.finish(e)
+		}
+	}
+	return nil
+}
+
+func (t *openBatchTask) prepareAndVerify(e *Engine, curNow int64) {
+	type replCacheKey struct {
+		machineID string
+		sessionID string
+	}
+	replCache := make(map[replCacheKey]map[string]bool)
+	var toVerify []preparedOpen
+
+	for i, item := range t.items {
+		if verErr := e.checkEnvelopeVersion(item.Env); verErr != nil {
+			t.results[i].Err = verErr
+			continue
+		}
+		ct, err := FromProtoEnvelope(item.Env)
+		if err != nil {
+			t.results[i].Err = err
+			continue
+		}
+		h, err := devicesec.ParseHeader(ct.Header)
+		if err != nil {
+			t.results[i].Err = err
+			continue
+		}
+		if item.ExpectedPurpose != 0 && h.Purpose != item.ExpectedPurpose {
+			t.results[i].Err = devicesec.ErrInvalid
+			continue
+		}
+		if item.History && h.Purpose.Control() {
+			t.results[i].Err = devicesec.ErrUntrusted
+			continue
+		}
+		if item.SessionID != "" && h.Session != item.SessionID {
+			t.results[i].Err = devicesec.ErrUntrusted
+			continue
+		}
+		if item.RequestID != "" && h.Request != item.RequestID {
+			t.results[i].Err = devicesec.ErrUntrusted
+			continue
+		}
+		if item.Seq != 0 && h.Seq != item.Seq {
+			t.results[i].Err = devicesec.ErrUntrusted
+			continue
+		}
+		if item.MachineID != "" && h.Machine != item.MachineID {
+			if !item.History || len(item.Replacements) == 0 {
+				t.results[i].Err = devicesec.ErrUntrusted
+				continue
+			}
+			var origins map[string]bool
+			var cached bool
+			ck := replCacheKey{machineID: item.MachineID, sessionID: item.SessionID}
+			if item.SessionID != "" {
+				origins, cached = replCache[ck]
+			}
+			if !cached {
+				origins, err = MachineReplacementOrigins(e.pin.Account, item.MachineID, e.states, item.Replacements)
+				if err != nil {
+					t.results[i].Err = err
+					continue
+				}
+				if item.SessionID != "" {
+					replCache[ck] = origins
+				}
+			}
+			if !origins[h.Machine] {
+				t.results[i].Err = devicesec.ErrUntrusted
+				continue
+			}
+		}
+		if !item.History {
+			if !e.isMember {
+				t.results[i].Err = ErrNotMember
+				continue
+			}
+			if err := e.checkLiveLease(curNow); err != nil {
+				t.results[i].Err = err
+				continue
+			}
+		}
+		s, ok := e.byHash[h.State]
+		if !ok {
+			t.results[i].Err = devicesec.ErrStale
+			continue
+		}
+		vh, edPub, originMsg, err := ct.OriginVerifyInput(s, e.head, !item.History, e.effectiveNow(curNow))
+		if err != nil {
+			t.results[i].Err = err
+			continue
+		}
+		toVerify = append(toVerify, preparedOpen{
+			idx:       i,
+			item:      item,
+			ct:        ct,
+			header:    vh,
+			edPub:     edPub,
+			originMsg: originMsg,
+		})
+	}
+
+	if len(toVerify) == 0 {
+		t.finish(e)
+		return
+	}
+
+	if !e.inlineCrypto && len(toVerify) > BatchVerifyThreshold {
+		batchItems := make([]*corev1.SecurityCryptoBatchItem, len(toVerify))
+		for vi, p := range toVerify {
+			batchItems[vi] = &corev1.SecurityCryptoBatchItem{
+				Kind: &corev1.SecurityCryptoBatchItem_Verify{
+					Verify: &corev1.CryptoBatchVerifyItem{
+						PublicKey: slices.Clone(p.edPub[:]),
+						Message:   p.originMsg,
+						Signature: slices.Clone(p.ct.Origin),
+					},
+				},
+			}
+		}
+		t.toVerify = toVerify
+		e.waitBatch(batchItems, t, openTagVerify)
+		return
+	}
+
+	var okItems []preparedOpen
+	for _, p := range toVerify {
+		if !devicesec.VerifyEd25519(p.edPub[:], p.originMsg, p.ct.Origin) {
+			t.results[p.idx].Err = devicesec.ErrUntrusted
+			continue
+		}
+		t.results[p.idx].Header = p.header
+		okItems = append(okItems, p)
+	}
+	if len(okItems) == 0 {
+		t.finish(e)
+		return
+	}
+	t.decryptVerified(e, okItems)
+}
+
+func (t *openBatchTask) decryptVerified(e *Engine, verified []preparedOpen) {
+	var batchAEADIdx []int
+	var batchAEADItems []*corev1.SecurityCryptoBatchItem
+	for vi, p := range verified {
+		sec, hasSec := e.epochSecrets[p.header.ContentEpoch]
+		if !hasSec {
+			if e.isRecoveryUnavailable(p.item, p.header) {
+				t.results[p.idx].Err = ErrRecoveryHistoryUnavailable
+			} else {
+				t.results[p.idx].Err = devicesec.ErrStale
+			}
+			continue
+		}
+		var seed []byte
+		if p.header.Purpose == devicesec.Event || p.header.Purpose == devicesec.Image ||
+			p.header.Purpose == devicesec.TerminalOutput || p.header.Purpose == devicesec.TerminalInput ||
+			p.header.Purpose == devicesec.TerminalResize || p.header.Purpose == devicesec.TerminalHistory {
+			if len(p.item.OverrideSeed) == 32 {
+				seed = p.item.OverrideSeed
+			} else if cachedSeed, ok := e.sessionSeeds[p.header.Session]; ok {
+				sCopy := cachedSeed
+				seed = sCopy[:]
+			} else {
+				t.results[p.idx].Err = devicesec.ErrInvalid
+				continue
+			}
+		}
+		if !e.inlineCrypto && len(p.ct.Cipher) > BatchAeadThreshold {
+			_, key, err := devicesec.DeriveCipherKey(sec[:], seed, p.ct)
+			if err != nil {
+				t.results[p.idx].Err = err
+				continue
+			}
+			batchAEADIdx = append(batchAEADIdx, vi)
+			batchAEADItems = append(batchAEADItems, &corev1.SecurityCryptoBatchItem{
+				Kind: &corev1.SecurityCryptoBatchItem_AeadOpen{
+					AeadOpen: &corev1.CryptoBatchAeadOpenItem{
+						Key:        key,
+						Nonce:      slices.Clone(p.ct.Nonce),
+						Aad:        slices.Clone(p.ct.Header),
+						Ciphertext: slices.Clone(p.ct.Cipher),
+					},
+				},
+			})
+		} else {
+			_, plain, err := devicesec.OpenCipher(sec[:], seed, p.ct)
+			if err != nil {
+				t.results[p.idx].Err = err
+				continue
+			}
+			body, unpacked, err := ValidateAndDecodeBody(p.header, plain)
+			if err != nil {
+				t.results[p.idx].Err = err
+				continue
+			}
+			if p.header.Purpose == devicesec.SessionKey {
+				if b, ok := body.([]byte); ok {
+					e.SeedSessionKey(p.header.Session, b)
+				}
+			}
+			t.results[p.idx].Plain = unpacked
+			t.results[p.idx].Body = body
+		}
+	}
+	if len(batchAEADItems) == 0 {
+		t.finish(e)
+		return
+	}
+	t.verified = verified
+	t.batchAEADIdx = batchAEADIdx
+	e.waitBatch(batchAEADItems, t, openTagAEAD)
+}
+
+func (e *Engine) OpenBatch(nowMs int64, items []OpenItem, onDone func(results []OpenResult)) []*corev1.Effect {
+	return e.openBatch(nowMs, items, onDone, false, 0)
+}
+
+// OpenBatchTag is the closure-free AsyncSink variant of OpenBatch.
+func (e *Engine) OpenBatchTag(nowMs int64, items []OpenItem, tag uint64) []*corev1.Effect {
+	return e.openBatch(nowMs, items, nil, true, tag)
+}
+
+func (e *Engine) openBatch(nowMs int64, items []OpenItem, onDone func([]OpenResult), useSink bool, sinkTag uint64) []*corev1.Effect {
+	e.touchNow(nowMs)
+	e.startOpenBatch(nowMs, &openBatchTask{items: items, onDone: onDone, useSink: useSink, sinkTag: sinkTag})
 	return e.DrainEffects()
+}
+
+const (
+	sealTagAEAD uint8 = 1
+	sealTagSign uint8 = 2
+)
+
+type sealEnvelopeTask struct {
+	purpose        devicesec.Purpose
+	machineID      string
+	sessionID      string
+	requestID      string
+	seq            uint64
+	deadlineMs     uint64
+	plain          []byte
+	useSessionSeed bool
+	overrideSeed   []byte
+	header         devicesec.Header
+	headerBytes    []byte
+	nonce          []byte
+	pendingCT      devicesec.Ciphertext
+	reqID          devicesec.Hash
+	payloadHash    devicesec.Hash
+	onDone         func(SealResult)
+	useSink        bool
+	sinkTag        uint64
+	target         taskTarget
+	secOpID        uint64
+}
+
+func (e *Engine) startSealEnvelope(nowMs int64, t *sealEnvelopeTask) {
+	e.waitUnlocked(nowMs, true, taskWait{task: t})
+}
+
+func (t *sealEnvelopeTask) fail(e *Engine, err error) error {
+	t.finish(e, SealResult{Err: err})
+	return nil
+}
+
+func (t *sealEnvelopeTask) finish(e *Engine, sr SealResult) {
+	if t.secOpID != 0 {
+		if sr.Err != nil {
+			e.emitSecurityOpErr(t.secOpID, sr.Err)
+			return
+		}
+		e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
+			OpId: t.secOpID,
+			Result: &corev1.SecurityOpResultEffect_Sealed{
+				Sealed: &corev1.SecuritySealEnvelopeResult{
+					Envelope: sr.Envelope, RequestKeyHash: sr.RequestKeyHash, PayloadHash: sr.PayloadHash,
+				},
+			},
+		})
+		return
+	}
+	if t.useSink {
+		if wf := e.wf; wf != nil && wf.asyncSink != nil {
+			wf.asyncSink.OnSealEnvelopeDone(t.sinkTag, sr, sr.Err)
+		}
+		return
+	}
+	if t.onDone != nil {
+		t.onDone(sr)
+		return
+	}
+	e.completeTarget(t.target, &secEvent{seal: &sr, err: sr.Err})
+}
+
+func (t *sealEnvelopeTask) signAndFinish(e *Engine, cipherBytes []byte) {
+	ct, originMsg, err := devicesec.AssembleCiphertext(t.headerBytes, t.nonce, cipherBytes)
+	if err != nil {
+		t.finish(e, SealResult{Err: err})
+		return
+	}
+	t.pendingCT = ct
+	e.waitSign(keyDevEd, "", originMsg, t, sealTagSign)
+}
+
+func (t *sealEnvelopeTask) step(e *Engine, ev *secEvent) error {
+	switch ev.kind {
+	case evUnlocked:
+		if ev.err != nil {
+			return t.fail(e, ev.err)
+		}
+		if err := e.CanSeal(ev.nowMs); err != nil {
+			return t.fail(e, err)
+		}
+		sec := e.epochSecrets[e.head.Core.ContentEpoch]
+		var seed []byte
+		if len(t.overrideSeed) == 32 {
+			seed = slices.Clone(t.overrideSeed)
+		} else if len(t.overrideSeed) != 0 {
+			return t.fail(e, devicesec.ErrInvalid)
+		} else if t.useSessionSeed || t.purpose == devicesec.Event || t.purpose == devicesec.Image ||
+			t.purpose == devicesec.TerminalInput || t.purpose == devicesec.TerminalResize ||
+			t.purpose == devicesec.TerminalHistory || t.purpose == devicesec.TerminalOutput {
+			cachedSeed, ok := e.sessionSeeds[t.sessionID]
+			if !ok {
+				return t.fail(e, devicesec.ErrInvalid)
+			}
+			sCopy := cachedSeed
+			seed = sCopy[:]
+		}
+		h := devicesec.Header{
+			Account: e.pin.Account, Domain: e.pin.Domain, Epoch: e.head.Core.Epoch, State: e.headHash,
+			ContentEpoch: e.head.Core.ContentEpoch, Sender: e.selfDeviceID, Kind: t.purpose.Kind(), Purpose: t.purpose,
+			Machine: t.machineID, Session: t.sessionID, Request: t.requestID, Seq: t.seq, Deadline: t.deadlineMs,
+		}
+		if err := h.Scope(e.head); err != nil {
+			return t.fail(e, err)
+		}
+		headerBytes, key, nonce, err := devicesec.PrepareCiphertext(sec[:], seed, h, len(t.plain), e.entropy)
+		if err != nil {
+			if errors.Is(err, entropy.ErrNeedEntropy) {
+				err = ErrNeedEntropy
+			}
+			return t.fail(e, err)
+		}
+		reqID := devicesec.RequestIdentity(h)
+		payloadHash, err := devicesec.AuthorizedPayloadHash(h, t.plain)
+		if err != nil {
+			return t.fail(e, err)
+		}
+		t.header, t.headerBytes, t.nonce, t.reqID, t.payloadHash = h, headerBytes, nonce, reqID, payloadHash
+
+		if !e.inlineCrypto && len(t.plain) > BatchAeadThreshold {
+			e.waitBatch([]*corev1.SecurityCryptoBatchItem{{
+				Kind: &corev1.SecurityCryptoBatchItem_AeadSeal{AeadSeal: &corev1.CryptoBatchAeadSealItem{
+					Key: key, Nonce: nonce, Aad: headerBytes, Plaintext: t.plain,
+				}},
+			}}, t, sealTagAEAD)
+			return nil
+		}
+		blk, err := aes.NewCipher(key)
+		if err != nil {
+			return t.fail(e, err)
+		}
+		aead, err := cipher.NewGCM(blk)
+		if err != nil {
+			return t.fail(e, err)
+		}
+		t.signAndFinish(e, aead.Seal(nil, nonce, t.plain, headerBytes))
+	case evBatch:
+		if ev.err != nil || len(ev.batch) == 0 || ev.batch[0] == nil || !ev.batch[0].Ok {
+			err := ev.err
+			if err == nil {
+				err = devicesec.ErrInvalid
+			}
+			return t.fail(e, err)
+		}
+		t.signAndFinish(e, ev.batch[0].Data)
+	case evSign:
+		if ev.err != nil {
+			return t.fail(e, ev.err)
+		}
+		ct := t.pendingCT
+		ct.Origin = ev.bytes
+		env, err := ToProtoEnvelope(ct)
+		if err != nil {
+			return t.fail(e, err)
+		}
+		t.finish(e, SealResult{
+			Envelope: env, RequestKeyHash: slices.Clone(t.reqID[:]), PayloadHash: slices.Clone(t.payloadHash[:]),
+			ContentEpoch: t.header.ContentEpoch, HeadHash: t.header.State,
+		})
+	}
+	return nil
 }
 
 // SealEnvelope encrypts and signs plain for purpose into a v1.Envelope using
@@ -1294,144 +1497,40 @@ func (e *Engine) SealEnvelope(
 	overrideSeed []byte,
 	onDone func(SealResult),
 ) []*corev1.Effect {
+	return e.sealEnvelope(nowMs, purpose, machineID, sessionID, requestID, seq, deadlineMs, plain, useSessionSeed, overrideSeed, onDone, false, 0)
+}
+
+// SealEnvelopeTag is the closure-free AsyncSink variant of SealEnvelope.
+func (e *Engine) SealEnvelopeTag(
+	nowMs int64,
+	purpose devicesec.Purpose,
+	machineID, sessionID, requestID string,
+	seq uint64,
+	deadlineMs uint64,
+	plain []byte,
+	useSessionSeed bool,
+	overrideSeed []byte,
+	tag uint64,
+) []*corev1.Effect {
+	return e.sealEnvelope(nowMs, purpose, machineID, sessionID, requestID, seq, deadlineMs, plain, useSessionSeed, overrideSeed, nil, true, tag)
+}
+
+func (e *Engine) sealEnvelope(
+	nowMs int64, purpose devicesec.Purpose, machineID, sessionID, requestID string,
+	seq, deadlineMs uint64, plain []byte, useSessionSeed bool, overrideSeed []byte,
+	onDone func(SealResult), useSink bool, sinkTag uint64,
+) []*corev1.Effect {
 	e.touchNow(nowMs)
-	e.withUnlocked(nowMs, func(curNow int64, unlockErr error) {
-		if unlockErr != nil {
-			onDone(SealResult{Err: unlockErr})
-			return
-		}
-		if err := e.CanSeal(curNow); err != nil {
-			onDone(SealResult{Err: err})
-			return
-		}
-		sec := e.epochSecrets[e.head.Core.ContentEpoch]
-		var seed []byte
-		if len(overrideSeed) == 32 {
-			seed = slices.Clone(overrideSeed)
-		} else if len(overrideSeed) != 0 {
-			onDone(SealResult{Err: devicesec.ErrInvalid})
-			return
-		} else if useSessionSeed || purpose == devicesec.Event || purpose == devicesec.Image ||
-			purpose == devicesec.TerminalInput || purpose == devicesec.TerminalResize ||
-			purpose == devicesec.TerminalHistory || purpose == devicesec.TerminalOutput {
-			cachedSeed, ok := e.sessionSeeds[sessionID]
-			if !ok {
-				onDone(SealResult{Err: devicesec.ErrInvalid})
-				return
-			}
-			sCopy := cachedSeed
-			seed = sCopy[:]
-		}
-		h := devicesec.Header{
-			Account:      e.pin.Account,
-			Domain:       e.pin.Domain,
-			Epoch:        e.head.Core.Epoch,
-			State:        e.headHash,
-			ContentEpoch: e.head.Core.ContentEpoch,
-			Sender:       e.selfDeviceID,
-			Kind:         purpose.Kind(),
-			Purpose:      purpose,
-			Machine:      machineID,
-			Session:      sessionID,
-			Request:      requestID,
-			Seq:          seq,
-			Deadline:     deadlineMs,
-			Compression:  0,
-		}
-		if err := h.Scope(e.head); err != nil {
-			onDone(SealResult{Err: err})
-			return
-		}
-		headerBytes, key, nonce, err := devicesec.PrepareCiphertext(sec[:], seed, h, len(plain), e.entropy)
-		if err != nil {
-			if errors.Is(err, entropy.ErrNeedEntropy) {
-				err = ErrNeedEntropy
-			}
-			onDone(SealResult{Err: err})
-			return
-		}
-
-		reqID := devicesec.RequestIdentity(h)
-		payloadHash, err := devicesec.AuthorizedPayloadHash(h, plain)
-		if err != nil {
-			onDone(SealResult{Err: err})
-			return
-		}
-
-		signAndFinish := func(cipherBytes []byte) {
-			ct, originMsg, err := devicesec.AssembleCiphertext(headerBytes, nonce, cipherBytes)
-			if err != nil {
-				onDone(SealResult{Err: err})
-				return
-			}
-			e.RequestKeySign(originMsg, func(sig []byte, signErr error) {
-				if signErr != nil {
-					onDone(SealResult{Err: signErr})
-					return
-				}
-				ct.Origin = sig
-				env, err := ToProtoEnvelope(ct)
-				if err != nil {
-					onDone(SealResult{Err: err})
-					return
-				}
-				onDone(SealResult{
-					Envelope:       env,
-					RequestKeyHash: slices.Clone(reqID[:]),
-					PayloadHash:    slices.Clone(payloadHash[:]),
-					ContentEpoch:   h.ContentEpoch,
-					HeadHash:       h.State,
-				})
-			})
-		}
-
-		if !e.inlineCrypto && len(plain) > BatchAeadThreshold {
-			opID := e.allocOp()
-			e.batchWait[opID] = func(batchRes []*corev1.SecurityCryptoBatchResult, batchErr error) {
-				if batchErr != nil || len(batchRes) == 0 || batchRes[0] == nil || !batchRes[0].Ok {
-					if batchErr == nil {
-						batchErr = devicesec.ErrInvalid
-					}
-					onDone(SealResult{Err: batchErr})
-					return
-				}
-				signAndFinish(batchRes[0].Data)
-			}
-			e.out = append(e.out, &corev1.Effect{
-				Effect: &corev1.Effect_SecurityCryptoBatch{
-					SecurityCryptoBatch: &corev1.SecurityCryptoBatchEffect{
-						OpId: opID,
-						Items: []*corev1.SecurityCryptoBatchItem{
-							{
-								Kind: &corev1.SecurityCryptoBatchItem_AeadSeal{
-									AeadSeal: &corev1.CryptoBatchAeadSealItem{
-										Key:       key,
-										Nonce:     nonce,
-										Aad:       headerBytes,
-										Plaintext: plain,
-									},
-								},
-							},
-						},
-					},
-				},
-			})
-			return
-		}
-
-		blk, err := aes.NewCipher(key)
-		if err != nil {
-			onDone(SealResult{Err: err})
-			return
-		}
-		aead, err := cipher.NewGCM(blk)
-		if err != nil {
-			onDone(SealResult{Err: err})
-			return
-		}
-		signAndFinish(aead.Seal(nil, nonce, plain, headerBytes))
+	e.startSealEnvelope(nowMs, &sealEnvelopeTask{
+		purpose: purpose, machineID: machineID, sessionID: sessionID, requestID: requestID,
+		seq: seq, deadlineMs: deadlineMs, plain: plain, useSessionSeed: useSessionSeed,
+		overrideSeed: overrideSeed, onDone: onDone, useSink: useSink, sinkTag: sinkTag,
 	})
 	return e.DrainEffects()
+}
+
+func (e *Engine) emitSecurityOpErr(opID uint64, err error) {
+	e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{OpId: opID, Error: err.Error(), ErrorCode: ErrorCode(err)})
 }
 
 // HandleSecurityOp executes stateful shell bridge operations (for remaining S6/file/terminal callers).
@@ -1440,127 +1539,49 @@ func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEven
 	if req == nil {
 		return nil
 	}
-	emitErr := func(err error) {
-		e.out = append(e.out, &corev1.Effect{
-			Effect: &corev1.Effect_SecurityOpResult{
-				SecurityOpResult: &corev1.SecurityOpResultEffect{
-					OpId:      req.OpId,
-					Error:     err.Error(),
-					ErrorCode: ErrorCode(err),
-				},
-			},
-		})
-	}
-
 	switch op := req.Op.(type) {
 	case *corev1.SecurityOpRequestEvent_OpenEnvelope:
 		if op.OpenEnvelope == nil {
-			emitErr(devicesec.ErrInvalid)
+			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
 			return e.DrainEffects()
 		}
-		item := OpenItem{
-			Env:             op.OpenEnvelope.Envelope,
-			ExpectedPurpose: devicesec.Purpose(op.OpenEnvelope.ExpectedPurpose),
-			MachineID:       op.OpenEnvelope.MachineId,
-			SessionID:       op.OpenEnvelope.SessionId,
-			RequestID:       op.OpenEnvelope.RequestId,
-			Seq:             op.OpenEnvelope.Seq,
-			History:         op.OpenEnvelope.History,
-			Replacements:    replacements,
-			OverrideSeed:    op.OpenEnvelope.OverrideSessionSeed,
-		}
-		return e.OpenBatch(nowMs, []OpenItem{item}, func(res []OpenResult) {
-			r := res[0]
-			if r.Err != nil {
-				emitErr(r.Err)
-				return
-			}
-			e.out = append(e.out, &corev1.Effect{
-				Effect: &corev1.Effect_SecurityOpResult{
-					SecurityOpResult: &corev1.SecurityOpResultEffect{
-						OpId: req.OpId,
-						Result: &corev1.SecurityOpResultEffect_Opened{
-							Opened: &corev1.SecurityOpenEnvelopeResult{
-								Header:       slices.Clone(op.OpenEnvelope.Envelope.GetSecurityHeader()),
-								Plaintext:    r.Plain,
-								Epoch:        r.Header.Epoch,
-								ContentEpoch: r.Header.ContentEpoch,
-								Seq:          r.Header.Seq,
-								Sender:       r.Header.Sender,
-								Purpose:      uint32(r.Header.Purpose),
-								MachineId:    r.Header.Machine,
-								SessionId:    r.Header.Session,
-								RequestId:    r.Header.Request,
-								DeadlineMs:   int64(r.Header.Deadline),
-							},
-						},
-					},
-				},
-			})
+		o := op.OpenEnvelope
+		e.startOpenBatch(nowMs, &openBatchTask{
+			items: []OpenItem{{
+				Env: o.Envelope, ExpectedPurpose: devicesec.Purpose(o.ExpectedPurpose),
+				MachineID: o.MachineId, SessionID: o.SessionId, RequestID: o.RequestId,
+				Seq: o.Seq, History: o.History, Replacements: replacements, OverrideSeed: o.OverrideSessionSeed,
+			}},
+			secOpID: req.OpId, secOpHeader: o.Envelope.GetSecurityHeader(),
 		})
-
 	case *corev1.SecurityOpRequestEvent_SealEnvelope:
 		if op.SealEnvelope == nil {
-			emitErr(devicesec.ErrInvalid)
+			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
 			return e.DrainEffects()
 		}
-		return e.SealEnvelope(
-			nowMs,
-			devicesec.Purpose(op.SealEnvelope.Purpose),
-			op.SealEnvelope.MachineId,
-			op.SealEnvelope.SessionId,
-			op.SealEnvelope.RequestId,
-			op.SealEnvelope.Seq,
-			uint64(max(0, op.SealEnvelope.DeadlineMs)),
-			op.SealEnvelope.Plaintext,
-			op.SealEnvelope.UseSessionSeed,
-			op.SealEnvelope.OverrideSessionSeed,
-			func(sr SealResult) {
-				if sr.Err != nil {
-					emitErr(sr.Err)
-					return
-				}
-				e.out = append(e.out, &corev1.Effect{
-					Effect: &corev1.Effect_SecurityOpResult{
-						SecurityOpResult: &corev1.SecurityOpResultEffect{
-							OpId: req.OpId,
-							Result: &corev1.SecurityOpResultEffect_Sealed{
-								Sealed: &corev1.SecuritySealEnvelopeResult{
-									Envelope:       sr.Envelope,
-									RequestKeyHash: sr.RequestKeyHash,
-									PayloadHash:    sr.PayloadHash,
-								},
-							},
-						},
-					},
-				})
-			},
-		)
-
-	case *corev1.SecurityOpRequestEvent_GetSessionSeed:
-		if op.GetSessionSeed == nil {
-			emitErr(devicesec.ErrInvalid)
-			return e.DrainEffects()
-		}
-		seed, ok := e.SessionSeed(op.GetSessionSeed.SessionId)
-		if !ok {
-			emitErr(devicesec.ErrInvalid)
-			return e.DrainEffects()
-		}
-		e.out = append(e.out, &corev1.Effect{
-			Effect: &corev1.Effect_SecurityOpResult{
-				SecurityOpResult: &corev1.SecurityOpResultEffect{
-					OpId:   req.OpId,
-					Result: &corev1.SecurityOpResultEffect_SessionSeed{SessionSeed: seed},
-				},
-			},
+		s := op.SealEnvelope
+		e.startSealEnvelope(nowMs, &sealEnvelopeTask{
+			purpose: devicesec.Purpose(s.Purpose), machineID: s.MachineId, sessionID: s.SessionId,
+			requestID: s.RequestId, seq: s.Seq, deadlineMs: uint64(max(0, s.DeadlineMs)),
+			plain: s.Plaintext, useSessionSeed: s.UseSessionSeed, overrideSeed: s.OverrideSessionSeed, secOpID: req.OpId,
 		})
-		return e.DrainEffects()
-
+	case *corev1.SecurityOpRequestEvent_GetSessionSeed:
+		var seed []byte
+		var ok bool
+		if op.GetSessionSeed != nil {
+			seed, ok = e.SessionSeed(op.GetSessionSeed.SessionId)
+		}
+		if !ok {
+			e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
+		} else {
+			e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
+				OpId: req.OpId, Result: &corev1.SecurityOpResultEffect_SessionSeed{SessionSeed: seed},
+			})
+		}
 	default:
-		emitErr(devicesec.ErrInvalid)
-		return e.DrainEffects()
+		e.emitSecurityOpErr(req.OpId, devicesec.ErrInvalid)
 	}
+	return e.DrainEffects()
 }
 
 // ComputeSHA256 is a tiny shared digest helper for tests/callers.

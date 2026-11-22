@@ -3,6 +3,48 @@
 // and generic slice sorters monomorphize per element type.
 package sortutil
 
+// Interface allows sorting any indexable collection without allocating closures.
+type Interface interface {
+	Len() int
+	Less(i, j int) bool
+	Swap(i, j int)
+}
+
+func siftInterface(data Interface, lo, hi int) {
+	root := lo
+	for {
+		child := 2*root + 1
+		if child >= hi {
+			return
+		}
+		if child+1 < hi && data.Less(child, child+1) {
+			child++
+		}
+		if !data.Less(root, child) {
+			return
+		}
+		data.Swap(root, child)
+		root = child
+	}
+}
+
+// SortInterface sorts data in place using non-recursive heapsort without closures.
+//
+//go:noinline
+func SortInterface(data Interface) {
+	n := data.Len()
+	if n < 2 {
+		return
+	}
+	for i := (n - 2) / 2; i >= 0; i-- {
+		siftInterface(data, i, n)
+	}
+	for hi := n - 1; hi > 0; hi-- {
+		data.Swap(0, hi)
+		siftInterface(data, 0, hi)
+	}
+}
+
 // Sort sorts n elements in place using non-recursive heapsort (O(n log n) worst case).
 //
 //go:noinline
@@ -43,6 +85,18 @@ func Stable(n int, less func(i, j int) bool, swap func(i, j int)) {
 	for i := 1; i < n; i++ {
 		for j := i; j > 0 && less(j, j-1); j-- {
 			swap(j, j-1)
+		}
+	}
+}
+
+// StableInterface stably sorts data in place without closures.
+//
+//go:noinline
+func StableInterface(data Interface) {
+	n := data.Len()
+	for i := 1; i < n; i++ {
+		for j := i; j > 0 && data.Less(j, j-1); j-- {
+			data.Swap(j, j-1)
 		}
 	}
 }

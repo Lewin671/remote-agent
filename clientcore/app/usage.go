@@ -334,9 +334,9 @@ func (c *Core) onUsageStatsSettled(sc sync.SettledCommand, meta cmdMeta, dirty *
 		}
 
 		if meta.usageKey.Preset == v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS && len(usage.ActiveSeries(resp)) == 0 {
-			res := c.m.sync.Run(func(ctx *sync.StepContext) {
-				c.maybeFetchUsage(ctx, meta.machineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, nil)
-			})
+			prevStep, ctx := c.m.sync.BeginStep()
+			c.maybeFetchUsage(ctx, meta.machineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, nil)
+			res := c.m.sync.EndStep(prevStep, ctx)
 			out = append(out, res.Effects...)
 		}
 	} else {

@@ -133,7 +133,7 @@ func NewRecovery(parent State, newMember Member, members []Member, secret []byte
 		return State{}, ErrInvalid
 	}
 	removed := append(slices.Clone(parent.Core.Removed), parent.Core.AuthorityID)
-	slices.Sort(removed)
+	sortStrings(removed)
 	ph, _ := parent.Hash()
 	c := parent.Core
 	c.Parent = ph
@@ -144,15 +144,7 @@ func NewRecovery(parent State, newMember Member, members []Member, secret []byte
 	c.IssuedAt = max(now, c.IssuedAt)
 
 	c.Members = slices.Clone(members)
-	slices.SortFunc(c.Members, func(a, b Member) int {
-		if a.ID < b.ID {
-			return -1
-		}
-		if a.ID > b.ID {
-			return 1
-		}
-		return 0
-	})
+	sortMembers(c.Members)
 	c.Removed = removed
 	// The statement names newMember; the state must carry exactly that
 	// member (same Ed and X keys), or the grant goes to another X key.

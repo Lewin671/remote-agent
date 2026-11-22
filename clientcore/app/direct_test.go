@@ -34,7 +34,7 @@ func TestAppDirectDiagnosticsViewAndPreferences(t *testing.T) {
 	_, _ = c.m.sync.HandleEvent(&corev1.Event{
 		NowMs:  now,
 		MonoMs: now,
-		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+		Event:  &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
 	})
 	// Seed world machine and session directly via ListsFetched isn't needed for DirectDiagnostics screen;
 	// verify DirectDiagnosticsScreen builds localized checks and report lines via View().

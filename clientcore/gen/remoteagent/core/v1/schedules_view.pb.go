@@ -6,6 +6,7 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	unsafe "unsafe"
 )
 
 type ScheduleDisplayGroup int32
@@ -189,6 +190,7 @@ const (
 )
 
 type SchedulesScreenRequest struct {
+	_          [0]func()
 	EndedLimit int32
 }
 
@@ -199,31 +201,19 @@ func (m *SchedulesScreenRequest) GetEndedLimit() int32 {
 	return 0
 }
 
+var LitewireDesc_SchedulesScreenRequest = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SchedulesScreenRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SchedulesScreenRequest{}.EndedLimit), Kind: litewire.KindInt32},
+	},
+}
+
 func (m *SchedulesScreenRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.EndedLimit = int32(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SchedulesScreenRequest)
 }
 
 type ScheduleDetailScreenRequest struct {
+	_                [0]func()
 	MachineId        string
 	TaskId           string
 	EarlierRunsLimit int32
@@ -248,49 +238,21 @@ func (m *ScheduleDetailScreenRequest) GetEarlierRunsLimit() int32 {
 	return 0
 }
 
+var LitewireDesc_ScheduleDetailScreenRequest = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleDetailScreenRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleDetailScreenRequest{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleDetailScreenRequest{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleDetailScreenRequest{}.EarlierRunsLimit), Kind: litewire.KindInt32},
+	},
+}
+
 func (m *ScheduleDetailScreenRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.EarlierRunsLimit = int32(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleDetailScreenRequest)
 }
 
 type ScheduleFormScreenRequest struct {
+	_       [0]func()
 	FormKey string
 }
 
@@ -301,31 +263,19 @@ func (m *ScheduleFormScreenRequest) GetFormKey() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleFormScreenRequest = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleFormScreenRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormScreenRequest{}.FormKey), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleFormScreenRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FormKey = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormScreenRequest)
 }
 
 type ScheduleSessionStripScreenRequest struct {
+	_         [0]func()
 	SessionId string
 }
 
@@ -336,31 +286,19 @@ func (m *ScheduleSessionStripScreenRequest) GetSessionId() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleSessionStripScreenRequest = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleSessionStripScreenRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleSessionStripScreenRequest{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleSessionStripScreenRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleSessionStripScreenRequest)
 }
 
 type ScheduleTakeoverView struct {
+	_           [0]func()
 	HasTakeover bool
 	SessionId   string
 	Via         ScheduleTakeoverVia
@@ -392,26 +330,25 @@ func (m *ScheduleTakeoverView) GetLabel() *Text {
 	return nil
 }
 
-func (m *ScheduleTakeoverView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleTakeoverView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleTakeoverView{}.HasTakeover), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleTakeoverView{}.SessionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleTakeoverView{}.Via), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleTakeoverView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleTakeoverView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTakeoverView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.HasTakeover)
-	b = litewire.AppendString(b, 2, m.SessionId)
-	b = litewire.AppendInt32(b, 3, int32(m.Via))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 4, m.Label)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleTakeoverView)
 }
 
 type ScheduleTaskActionsView struct {
+	_                            [0]func()
 	CanRunNow                    bool
 	RunNowDisabledReason         *Text
 	ShowToggleAction             bool
@@ -534,51 +471,38 @@ func (m *ScheduleTaskActionsView) GetNotifyDisabledReason() *Text {
 	return nil
 }
 
-func (m *ScheduleTaskActionsView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleTaskActionsView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.CanRunNow), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.RunNowDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.ShowToggleAction), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.IsResumeAction), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.ToggleLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.CanToggle), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.ToggleDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.CanDelete), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.DeleteDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.CanMarkRead), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.CanMarkUnread), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.CanRename), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.RenameDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.CanEditDefinition), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.EditDefinitionDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.CanToggleNotify), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(ScheduleTaskActionsView{}.NotifyDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleTaskActionsView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTaskActionsView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.CanRunNow)
-	if m.RunNowDisabledReason != nil {
-		b = litewire.AppendMessage(b, 2, m.RunNowDisabledReason)
-	}
-	b = litewire.AppendBool(b, 3, m.ShowToggleAction)
-	b = litewire.AppendBool(b, 4, m.IsResumeAction)
-	if m.ToggleLabel != nil {
-		b = litewire.AppendMessage(b, 5, m.ToggleLabel)
-	}
-	b = litewire.AppendBool(b, 6, m.CanToggle)
-	if m.ToggleDisabledReason != nil {
-		b = litewire.AppendMessage(b, 7, m.ToggleDisabledReason)
-	}
-	b = litewire.AppendBool(b, 8, m.CanDelete)
-	if m.DeleteDisabledReason != nil {
-		b = litewire.AppendMessage(b, 9, m.DeleteDisabledReason)
-	}
-	b = litewire.AppendBool(b, 10, m.CanMarkRead)
-	b = litewire.AppendBool(b, 11, m.CanMarkUnread)
-	b = litewire.AppendBool(b, 12, m.CanRename)
-	if m.RenameDisabledReason != nil {
-		b = litewire.AppendMessage(b, 13, m.RenameDisabledReason)
-	}
-	b = litewire.AppendBool(b, 14, m.CanEditDefinition)
-	if m.EditDefinitionDisabledReason != nil {
-		b = litewire.AppendMessage(b, 15, m.EditDefinitionDisabledReason)
-	}
-	b = litewire.AppendBool(b, 16, m.CanToggleNotify)
-	if m.NotifyDisabledReason != nil {
-		b = litewire.AppendMessage(b, 17, m.NotifyDisabledReason)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleTaskActionsView)
 }
 
 type ScheduleMutationView struct {
+	_          [0]func()
 	Busy       bool
 	Frozen     bool
 	Expired    bool
@@ -638,34 +562,29 @@ func (m *ScheduleMutationView) GetFrozenHint() *Text {
 	return nil
 }
 
-func (m *ScheduleMutationView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleMutationView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleMutationView{}.Busy), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleMutationView{}.Frozen), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleMutationView{}.Expired), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleMutationView{}.Error), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleMutationView{}.Notice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleMutationView{}.CanRetry), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleMutationView{}.CanAbandon), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleMutationView{}.FrozenHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleMutationView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleMutationView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Busy)
-	b = litewire.AppendBool(b, 2, m.Frozen)
-	b = litewire.AppendBool(b, 3, m.Expired)
-	if m.Error != nil {
-		b = litewire.AppendMessage(b, 4, m.Error)
-	}
-	if m.Notice != nil {
-		b = litewire.AppendMessage(b, 5, m.Notice)
-	}
-	b = litewire.AppendBool(b, 6, m.CanRetry)
-	b = litewire.AppendBool(b, 7, m.CanAbandon)
-	if m.FrozenHint != nil {
-		b = litewire.AppendMessage(b, 8, m.FrozenHint)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleMutationView)
 }
 
 type ScheduleHeadlineView struct {
+	_              [0]func()
 	Kind           ScheduleHeadlineKind
 	HighlightCount int32
 	Title          *Text
@@ -697,28 +616,25 @@ func (m *ScheduleHeadlineView) GetSub() *Text {
 	return nil
 }
 
-func (m *ScheduleHeadlineView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleHeadlineView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleHeadlineView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleHeadlineView{}.HighlightCount), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleHeadlineView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleHeadlineView{}.Sub), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleHeadlineView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleHeadlineView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	b = litewire.AppendInt32(b, 2, int32(m.HighlightCount))
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 3, m.Title)
-	}
-	if m.Sub != nil {
-		b = litewire.AppendMessage(b, 4, m.Sub)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleHeadlineView)
 }
 
 type ScheduleMachineErrorView struct {
+	_           [0]func()
 	MachineId   string
 	MachineName string
 	Error       *Text
@@ -750,26 +666,25 @@ func (m *ScheduleMachineErrorView) GetCanRetry() bool {
 	return false
 }
 
-func (m *ScheduleMachineErrorView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleMachineErrorView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleMachineErrorView{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleMachineErrorView{}.MachineName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleMachineErrorView{}.Error), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleMachineErrorView{}.CanRetry), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScheduleMachineErrorView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleMachineErrorView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.MachineName)
-	if m.Error != nil {
-		b = litewire.AppendMessage(b, 3, m.Error)
-	}
-	b = litewire.AppendBool(b, 4, m.CanRetry)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleMachineErrorView)
 }
 
 type ScheduleTaskItemView struct {
+	_                    [0]func()
 	MachineId            string
 	TaskId               string
 	Title                string
@@ -962,69 +877,48 @@ func (m *ScheduleTaskItemView) GetMenuSubtitle() *Text {
 	return nil
 }
 
-func (m *ScheduleTaskItemView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleTaskItemView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Title), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Group), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Status), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Tone), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.HasUnread), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.InProgress), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Paused), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.MachineOffline), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Selected), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.TimeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.AttentionLead), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.AttentionReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Preview), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.PreviewIsPlaceholder), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Metadata), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 18, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.TimingText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 19, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.NextRunText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 20, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.NextRunMs), Kind: litewire.KindInt64},
+		{Num: 21, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.HasNotification), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.IsAgentCreated), Kind: litewire.KindBool},
+		{Num: 23, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Takeover), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleTakeoverView},
+		{Num: 24, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.ReadOnly), Kind: litewire.KindBool},
+		{Num: 25, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.ReadOnlyReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 26, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.Actions), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleTaskActionsView},
+		{Num: 27, Offset: unsafe.Offsetof(ScheduleTaskItemView{}.MenuSubtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleTaskItemView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTaskItemView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.TaskId)
-	b = litewire.AppendString(b, 3, m.Title)
-	b = litewire.AppendInt32(b, 4, int32(m.Group))
-	b = litewire.AppendInt32(b, 5, int32(m.Status))
-	b = litewire.AppendInt32(b, 6, int32(m.Tone))
-	b = litewire.AppendBool(b, 7, m.HasUnread)
-	b = litewire.AppendBool(b, 8, m.InProgress)
-	b = litewire.AppendBool(b, 9, m.Paused)
-	b = litewire.AppendBool(b, 10, m.MachineOffline)
-	b = litewire.AppendBool(b, 11, m.Selected)
-	if m.TimeText != nil {
-		b = litewire.AppendMessage(b, 12, m.TimeText)
-	}
-	if m.AttentionLead != nil {
-		b = litewire.AppendMessage(b, 13, m.AttentionLead)
-	}
-	if m.AttentionReason != nil {
-		b = litewire.AppendMessage(b, 14, m.AttentionReason)
-	}
-	if m.Preview != nil {
-		b = litewire.AppendMessage(b, 15, m.Preview)
-	}
-	b = litewire.AppendBool(b, 16, m.PreviewIsPlaceholder)
-	if m.Metadata != nil {
-		b = litewire.AppendMessage(b, 17, m.Metadata)
-	}
-	if m.TimingText != nil {
-		b = litewire.AppendMessage(b, 18, m.TimingText)
-	}
-	if m.NextRunText != nil {
-		b = litewire.AppendMessage(b, 19, m.NextRunText)
-	}
-	b = litewire.AppendVarint(b, 20, uint64(m.NextRunMs))
-	b = litewire.AppendBool(b, 21, m.HasNotification)
-	b = litewire.AppendBool(b, 22, m.IsAgentCreated)
-	if m.Takeover != nil {
-		b = litewire.AppendMessage(b, 23, m.Takeover)
-	}
-	b = litewire.AppendBool(b, 24, m.ReadOnly)
-	if m.ReadOnlyReason != nil {
-		b = litewire.AppendMessage(b, 25, m.ReadOnlyReason)
-	}
-	if m.Actions != nil {
-		b = litewire.AppendMessage(b, 26, m.Actions)
-	}
-	if m.MenuSubtitle != nil {
-		b = litewire.AppendMessage(b, 27, m.MenuSubtitle)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleTaskItemView)
 }
 
 type SchedulesViewModel struct {
+	_                   [0]func()
 	AttentionCount      int32
 	HasNewResults       bool
 	AttentionBadgeText  string
@@ -1203,79 +1097,46 @@ func (m *SchedulesViewModel) GetSelectedTaskId() string {
 	return ""
 }
 
-func (m *SchedulesViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SchedulesViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SchedulesViewModel{}.AttentionCount), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SchedulesViewModel{}.HasNewResults), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SchedulesViewModel{}.AttentionBadgeText), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SchedulesViewModel{}.CanCreate), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SchedulesViewModel{}.Connection), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnectionStatusView},
+		{Num: 6, Offset: unsafe.Offsetof(SchedulesViewModel{}.Headline), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleHeadlineView},
+		{Num: 7, Offset: unsafe.Offsetof(SchedulesViewModel{}.AnyMachineSupported), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SchedulesViewModel{}.UnsupportedNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(SchedulesViewModel{}.OfflineNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(SchedulesViewModel{}.MachineErrors), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleMachineErrorView},
+		{Num: 11, Offset: unsafe.Offsetof(SchedulesViewModel{}.Loading), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SchedulesViewModel{}.ShowEmptyHint), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SchedulesViewModel{}.EmptyHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(SchedulesViewModel{}.Attention), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleTaskItemView},
+		{Num: 15, Offset: unsafe.Offsetof(SchedulesViewModel{}.Fresh), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleTaskItemView},
+		{Num: 16, Offset: unsafe.Offsetof(SchedulesViewModel{}.Others), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleTaskItemView},
+		{Num: 17, Offset: unsafe.Offsetof(SchedulesViewModel{}.Ended), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleTaskItemView},
+		{Num: 18, Offset: unsafe.Offsetof(SchedulesViewModel{}.TotalEnded), Kind: litewire.KindInt32},
+		{Num: 19, Offset: unsafe.Offsetof(SchedulesViewModel{}.HasMoreEnded), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(SchedulesViewModel{}.EndedExpanded), Kind: litewire.KindBool},
+		{Num: 21, Offset: unsafe.Offsetof(SchedulesViewModel{}.EndedLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 22, Offset: unsafe.Offsetof(SchedulesViewModel{}.OthersSectionTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 23, Offset: unsafe.Offsetof(SchedulesViewModel{}.CanMarkAllRead), Kind: litewire.KindBool},
+		{Num: 24, Offset: unsafe.Offsetof(SchedulesViewModel{}.SelectedMachineId), Kind: litewire.KindString},
+		{Num: 25, Offset: unsafe.Offsetof(SchedulesViewModel{}.SelectedTaskId), Kind: litewire.KindString},
+	},
+}
 
 func (m *SchedulesViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SchedulesViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.AttentionCount))
-	b = litewire.AppendBool(b, 2, m.HasNewResults)
-	b = litewire.AppendString(b, 3, m.AttentionBadgeText)
-	b = litewire.AppendBool(b, 4, m.CanCreate)
-	if m.Connection != nil {
-		b = litewire.AppendMessage(b, 5, m.Connection)
-	}
-	if m.Headline != nil {
-		b = litewire.AppendMessage(b, 6, m.Headline)
-	}
-	b = litewire.AppendBool(b, 7, m.AnyMachineSupported)
-	if m.UnsupportedNotice != nil {
-		b = litewire.AppendMessage(b, 8, m.UnsupportedNotice)
-	}
-	if m.OfflineNotice != nil {
-		b = litewire.AppendMessage(b, 9, m.OfflineNotice)
-	}
-	for _, v := range m.MachineErrors {
-		if v != nil {
-			b = litewire.AppendMessage(b, 10, v)
-		}
-	}
-	b = litewire.AppendBool(b, 11, m.Loading)
-	b = litewire.AppendBool(b, 12, m.ShowEmptyHint)
-	if m.EmptyHint != nil {
-		b = litewire.AppendMessage(b, 13, m.EmptyHint)
-	}
-	for _, v := range m.Attention {
-		if v != nil {
-			b = litewire.AppendMessage(b, 14, v)
-		}
-	}
-	for _, v := range m.Fresh {
-		if v != nil {
-			b = litewire.AppendMessage(b, 15, v)
-		}
-	}
-	for _, v := range m.Others {
-		if v != nil {
-			b = litewire.AppendMessage(b, 16, v)
-		}
-	}
-	for _, v := range m.Ended {
-		if v != nil {
-			b = litewire.AppendMessage(b, 17, v)
-		}
-	}
-	b = litewire.AppendInt32(b, 18, int32(m.TotalEnded))
-	b = litewire.AppendBool(b, 19, m.HasMoreEnded)
-	b = litewire.AppendBool(b, 20, m.EndedExpanded)
-	if m.EndedLabel != nil {
-		b = litewire.AppendMessage(b, 21, m.EndedLabel)
-	}
-	if m.OthersSectionTitle != nil {
-		b = litewire.AppendMessage(b, 22, m.OthersSectionTitle)
-	}
-	b = litewire.AppendBool(b, 23, m.CanMarkAllRead)
-	b = litewire.AppendString(b, 24, m.SelectedMachineId)
-	b = litewire.AppendString(b, 25, m.SelectedTaskId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SchedulesViewModel)
 }
 
 type ScheduleAttentionView struct {
+	_                           [0]func()
 	Show                        bool
 	Message                     *Text
 	ShowPrimaryAction           bool
@@ -1328,33 +1189,28 @@ func (m *ScheduleAttentionView) GetPrimaryActionDisabledReason() *Text {
 	return nil
 }
 
-func (m *ScheduleAttentionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleAttentionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleAttentionView{}.Show), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleAttentionView{}.Message), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleAttentionView{}.ShowPrimaryAction), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleAttentionView{}.PrimaryActionLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleAttentionView{}.PrimaryActionKind), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleAttentionView{}.PrimaryActionEnabled), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleAttentionView{}.PrimaryActionDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleAttentionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleAttentionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Show)
-	if m.Message != nil {
-		b = litewire.AppendMessage(b, 2, m.Message)
-	}
-	b = litewire.AppendBool(b, 3, m.ShowPrimaryAction)
-	if m.PrimaryActionLabel != nil {
-		b = litewire.AppendMessage(b, 4, m.PrimaryActionLabel)
-	}
-	b = litewire.AppendInt32(b, 5, int32(m.PrimaryActionKind))
-	b = litewire.AppendBool(b, 6, m.PrimaryActionEnabled)
-	if m.PrimaryActionDisabledReason != nil {
-		b = litewire.AppendMessage(b, 7, m.PrimaryActionDisabledReason)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleAttentionView)
 }
 
 type ScheduleActiveRunView struct {
+	_              [0]func()
 	HasActive      bool
 	RunId          string
 	SessionId      string
@@ -1407,29 +1263,28 @@ func (m *ScheduleActiveRunView) GetCanOpenSession() bool {
 	return false
 }
 
-func (m *ScheduleActiveRunView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleActiveRunView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleActiveRunView{}.HasActive), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleActiveRunView{}.RunId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleActiveRunView{}.SessionId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleActiveRunView{}.FirstSeq), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleActiveRunView{}.Status), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleActiveRunView{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleActiveRunView{}.CanOpenSession), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScheduleActiveRunView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleActiveRunView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.HasActive)
-	b = litewire.AppendString(b, 2, m.RunId)
-	b = litewire.AppendString(b, 3, m.SessionId)
-	b = litewire.AppendVarint(b, 4, uint64(m.FirstSeq))
-	b = litewire.AppendInt32(b, 5, int32(m.Status))
-	if m.StatusText != nil {
-		b = litewire.AppendMessage(b, 6, m.StatusText)
-	}
-	b = litewire.AppendBool(b, 7, m.CanOpenSession)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleActiveRunView)
 }
 
 type ScheduleResultCardView struct {
+	_                      [0]func()
 	HasResult              bool
 	RunId                  string
 	SessionId              string
@@ -1517,36 +1372,33 @@ func (m *ScheduleResultCardView) GetShowConversationAction() bool {
 	return false
 }
 
-func (m *ScheduleResultCardView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleResultCardView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleResultCardView{}.HasResult), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleResultCardView{}.RunId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleResultCardView{}.SessionId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleResultCardView{}.FirstSeq), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleResultCardView{}.UnreadOnEntry), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleResultCardView{}.HasNewerResult), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleResultCardView{}.TimeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleResultCardView{}.ResultTitle), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleResultCardView{}.MarkdownBody), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(ScheduleResultCardView{}.FallbackReasonText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 11, Offset: unsafe.Offsetof(ScheduleResultCardView{}.ResultLoading), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(ScheduleResultCardView{}.ShowConversationAction), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScheduleResultCardView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleResultCardView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.HasResult)
-	b = litewire.AppendString(b, 2, m.RunId)
-	b = litewire.AppendString(b, 3, m.SessionId)
-	b = litewire.AppendVarint(b, 4, uint64(m.FirstSeq))
-	b = litewire.AppendBool(b, 5, m.UnreadOnEntry)
-	b = litewire.AppendBool(b, 6, m.HasNewerResult)
-	if m.TimeText != nil {
-		b = litewire.AppendMessage(b, 7, m.TimeText)
-	}
-	b = litewire.AppendString(b, 8, m.ResultTitle)
-	b = litewire.AppendString(b, 9, m.MarkdownBody)
-	if m.FallbackReasonText != nil {
-		b = litewire.AppendMessage(b, 10, m.FallbackReasonText)
-	}
-	b = litewire.AppendBool(b, 11, m.ResultLoading)
-	b = litewire.AppendBool(b, 12, m.ShowConversationAction)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleResultCardView)
 }
 
 type ScheduleRunRowView struct {
+	_                      [0]func()
 	RunId                  string
 	SessionId              string
 	FirstSeq               uint64
@@ -1627,37 +1479,32 @@ func (m *ScheduleRunRowView) GetCanOpenSession() bool {
 	return false
 }
 
-func (m *ScheduleRunRowView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleRunRowView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleRunRowView{}.RunId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleRunRowView{}.SessionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleRunRowView{}.FirstSeq), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleRunRowView{}.Status), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleRunRowView{}.UnreadOnEntry), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleRunRowView{}.Manual), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleRunRowView{}.Notified), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleRunRowView{}.NotificationSourceText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleRunRowView{}.TimeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(ScheduleRunRowView{}.SummaryText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 11, Offset: unsafe.Offsetof(ScheduleRunRowView{}.CanOpenSession), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScheduleRunRowView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleRunRowView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RunId)
-	b = litewire.AppendString(b, 2, m.SessionId)
-	b = litewire.AppendVarint(b, 3, uint64(m.FirstSeq))
-	b = litewire.AppendInt32(b, 4, int32(m.Status))
-	b = litewire.AppendBool(b, 5, m.UnreadOnEntry)
-	b = litewire.AppendBool(b, 6, m.Manual)
-	b = litewire.AppendBool(b, 7, m.Notified)
-	if m.NotificationSourceText != nil {
-		b = litewire.AppendMessage(b, 8, m.NotificationSourceText)
-	}
-	if m.TimeText != nil {
-		b = litewire.AppendMessage(b, 9, m.TimeText)
-	}
-	if m.SummaryText != nil {
-		b = litewire.AppendMessage(b, 10, m.SummaryText)
-	}
-	b = litewire.AppendBool(b, 11, m.CanOpenSession)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleRunRowView)
 }
 
 type ScheduleHistoryGroupView struct {
+	_             [0]func()
 	GroupKey      string
 	FoldedQuiet   bool
 	Expanded      bool
@@ -1703,34 +1550,27 @@ func (m *ScheduleHistoryGroupView) GetRuns() []*ScheduleRunRowView {
 	return nil
 }
 
-func (m *ScheduleHistoryGroupView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleHistoryGroupView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleHistoryGroupView{}.GroupKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleHistoryGroupView{}.FoldedQuiet), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleHistoryGroupView{}.Expanded), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleHistoryGroupView{}.FoldedTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleHistoryGroupView{}.FoldedSummary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleHistoryGroupView{}.Runs), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleRunRowView},
+	},
+}
 
 func (m *ScheduleHistoryGroupView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleHistoryGroupView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.GroupKey)
-	b = litewire.AppendBool(b, 2, m.FoldedQuiet)
-	b = litewire.AppendBool(b, 3, m.Expanded)
-	if m.FoldedTitle != nil {
-		b = litewire.AppendMessage(b, 4, m.FoldedTitle)
-	}
-	if m.FoldedSummary != nil {
-		b = litewire.AppendMessage(b, 5, m.FoldedSummary)
-	}
-	for _, v := range m.Runs {
-		if v != nil {
-			b = litewire.AppendMessage(b, 6, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleHistoryGroupView)
 }
 
 type ScheduleDetailViewModel struct {
+	_                    [0]func()
 	Found                bool
 	Loading              bool
 	NotFoundText         *Text
@@ -2077,117 +1917,70 @@ func (m *ScheduleDetailViewModel) GetMenuSubtitle() *Text {
 	return nil
 }
 
-func (m *ScheduleDetailViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleDetailViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Found), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Loading), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.NotFoundText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.MachineId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.TaskId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Revision), Kind: litewire.KindUint64},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Title), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Subtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Connection), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnectionStatusView},
+		{Num: 10, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.MachineOnline), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.MachineSupported), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ReadOnly), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ReadOnlyNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.MachineError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.CanRetryMachineList), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Mutation), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleMutationView},
+		{Num: 17, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Attention), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleAttentionView},
+		{Num: 18, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ActiveRun), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleActiveRunView},
+		{Num: 19, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ResultCard), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleResultCardView},
+		{Num: 20, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.EarlierGroups), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleHistoryGroupView},
+		{Num: 21, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.TotalEarlierRuns), Kind: litewire.KindInt32},
+		{Num: 22, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.HasMoreEarlierRuns), Kind: litewire.KindBool},
+		{Num: 23, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ShowAllRuns), Kind: litewire.KindBool},
+		{Num: 24, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.EarlierCountText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 25, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ViewAllText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 26, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.EmptyHistory), Kind: litewire.KindBool},
+		{Num: 27, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.EmptyHistoryText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 28, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Message), Kind: litewire.KindString},
+		{Num: 29, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.TimingText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 30, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.NotifyOnFinish), Kind: litewire.KindBool},
+		{Num: 31, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.HasLimits), Kind: litewire.KindBool},
+		{Num: 32, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.LimitsText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 33, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.TargetType), Kind: litewire.KindInt32},
+		{Num: 34, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.TargetSessionId), Kind: litewire.KindString},
+		{Num: 35, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.TargetLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 36, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.TargetValue), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 37, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.CanOpenTargetSession), Kind: litewire.KindBool},
+		{Num: 38, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.PermissionsText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 39, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.PermissionsIsDanger), Kind: litewire.KindBool},
+		{Num: 40, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.CanEditPermissions), Kind: litewire.KindBool},
+		{Num: 41, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.TaskName), Kind: litewire.KindString},
+		{Num: 42, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.CreationFooter), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 43, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.RunOnceFooter), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 44, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Source), Kind: litewire.KindInt32},
+		{Num: 45, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Takeover), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleTakeoverView},
+		{Num: 46, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ScopedSessionId), Kind: litewire.KindString},
+		{Num: 47, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.ScopedMode), Kind: litewire.KindString},
+		{Num: 48, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.Actions), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleTaskActionsView},
+		{Num: 49, Offset: unsafe.Offsetof(ScheduleDetailViewModel{}.MenuSubtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleDetailViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleDetailViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Found)
-	b = litewire.AppendBool(b, 2, m.Loading)
-	if m.NotFoundText != nil {
-		b = litewire.AppendMessage(b, 3, m.NotFoundText)
-	}
-	b = litewire.AppendString(b, 4, m.MachineId)
-	b = litewire.AppendString(b, 5, m.TaskId)
-	b = litewire.AppendVarint(b, 6, uint64(m.Revision))
-	b = litewire.AppendString(b, 7, m.Title)
-	if m.Subtitle != nil {
-		b = litewire.AppendMessage(b, 8, m.Subtitle)
-	}
-	if m.Connection != nil {
-		b = litewire.AppendMessage(b, 9, m.Connection)
-	}
-	b = litewire.AppendBool(b, 10, m.MachineOnline)
-	b = litewire.AppendBool(b, 11, m.MachineSupported)
-	b = litewire.AppendBool(b, 12, m.ReadOnly)
-	if m.ReadOnlyNotice != nil {
-		b = litewire.AppendMessage(b, 13, m.ReadOnlyNotice)
-	}
-	if m.MachineError != nil {
-		b = litewire.AppendMessage(b, 14, m.MachineError)
-	}
-	b = litewire.AppendBool(b, 15, m.CanRetryMachineList)
-	if m.Mutation != nil {
-		b = litewire.AppendMessage(b, 16, m.Mutation)
-	}
-	if m.Attention != nil {
-		b = litewire.AppendMessage(b, 17, m.Attention)
-	}
-	if m.ActiveRun != nil {
-		b = litewire.AppendMessage(b, 18, m.ActiveRun)
-	}
-	if m.ResultCard != nil {
-		b = litewire.AppendMessage(b, 19, m.ResultCard)
-	}
-	for _, v := range m.EarlierGroups {
-		if v != nil {
-			b = litewire.AppendMessage(b, 20, v)
-		}
-	}
-	b = litewire.AppendInt32(b, 21, int32(m.TotalEarlierRuns))
-	b = litewire.AppendBool(b, 22, m.HasMoreEarlierRuns)
-	b = litewire.AppendBool(b, 23, m.ShowAllRuns)
-	if m.EarlierCountText != nil {
-		b = litewire.AppendMessage(b, 24, m.EarlierCountText)
-	}
-	if m.ViewAllText != nil {
-		b = litewire.AppendMessage(b, 25, m.ViewAllText)
-	}
-	b = litewire.AppendBool(b, 26, m.EmptyHistory)
-	if m.EmptyHistoryText != nil {
-		b = litewire.AppendMessage(b, 27, m.EmptyHistoryText)
-	}
-	b = litewire.AppendString(b, 28, m.Message)
-	if m.TimingText != nil {
-		b = litewire.AppendMessage(b, 29, m.TimingText)
-	}
-	b = litewire.AppendBool(b, 30, m.NotifyOnFinish)
-	b = litewire.AppendBool(b, 31, m.HasLimits)
-	if m.LimitsText != nil {
-		b = litewire.AppendMessage(b, 32, m.LimitsText)
-	}
-	b = litewire.AppendInt32(b, 33, int32(m.TargetType))
-	b = litewire.AppendString(b, 34, m.TargetSessionId)
-	if m.TargetLabel != nil {
-		b = litewire.AppendMessage(b, 35, m.TargetLabel)
-	}
-	if m.TargetValue != nil {
-		b = litewire.AppendMessage(b, 36, m.TargetValue)
-	}
-	b = litewire.AppendBool(b, 37, m.CanOpenTargetSession)
-	if m.PermissionsText != nil {
-		b = litewire.AppendMessage(b, 38, m.PermissionsText)
-	}
-	b = litewire.AppendBool(b, 39, m.PermissionsIsDanger)
-	b = litewire.AppendBool(b, 40, m.CanEditPermissions)
-	b = litewire.AppendString(b, 41, m.TaskName)
-	if m.CreationFooter != nil {
-		b = litewire.AppendMessage(b, 42, m.CreationFooter)
-	}
-	if m.RunOnceFooter != nil {
-		b = litewire.AppendMessage(b, 43, m.RunOnceFooter)
-	}
-	b = litewire.AppendInt32(b, 44, int32(m.Source))
-	if m.Takeover != nil {
-		b = litewire.AppendMessage(b, 45, m.Takeover)
-	}
-	b = litewire.AppendString(b, 46, m.ScopedSessionId)
-	b = litewire.AppendString(b, 47, m.ScopedMode)
-	if m.Actions != nil {
-		b = litewire.AppendMessage(b, 48, m.Actions)
-	}
-	if m.MenuSubtitle != nil {
-		b = litewire.AppendMessage(b, 49, m.MenuSubtitle)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleDetailViewModel)
 }
 
 type ScheduleJitterOptionView struct {
+	_        [0]func()
 	Minutes  int64
 	Label    *Text
 	Selected bool
@@ -2212,25 +2005,24 @@ func (m *ScheduleJitterOptionView) GetSelected() bool {
 	return false
 }
 
-func (m *ScheduleJitterOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleJitterOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleJitterOptionView{}.Minutes), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleJitterOptionView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleJitterOptionView{}.Selected), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScheduleJitterOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleJitterOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.Minutes))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 2, m.Label)
-	}
-	b = litewire.AppendBool(b, 3, m.Selected)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleJitterOptionView)
 }
 
 type ScheduleTimingDraftView struct {
+	_                   [0]func()
 	Kind                ScheduleTimingKind
 	AfterTurnUnselected bool
 	AfterTurnHint       *Text
@@ -2395,64 +2187,44 @@ func (m *ScheduleTimingDraftView) GetJitterHint() *Text {
 	return nil
 }
 
-func (m *ScheduleTimingDraftView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleTimingDraftView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.AfterTurnUnselected), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.AfterTurnHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Date), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Time), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Zone), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Workdays), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Weekdays), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Interval), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Unit), Kind: litewire.KindInt32},
+		{Num: 11, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.End), Kind: litewire.KindInt32},
+		{Num: 12, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.Count), Kind: litewire.KindString},
+		{Num: 13, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.UntilDate), Kind: litewire.KindString},
+		{Num: 14, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.UntilMs), Kind: litewire.KindInt64},
+		{Num: 15, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.ShowIntervalHint), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.IntervalHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 17, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.TimingError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 18, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.TimingDoneEnabled), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.TimingApplied), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.ShowJitter), Kind: litewire.KindBool},
+		{Num: 21, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.JitterOptions), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleJitterOptionView},
+		{Num: 22, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.JitterLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 23, Offset: unsafe.Offsetof(ScheduleTimingDraftView{}.JitterHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleTimingDraftView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleTimingDraftView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	b = litewire.AppendBool(b, 2, m.AfterTurnUnselected)
-	if m.AfterTurnHint != nil {
-		b = litewire.AppendMessage(b, 3, m.AfterTurnHint)
-	}
-	b = litewire.AppendString(b, 4, m.Date)
-	b = litewire.AppendString(b, 5, m.Time)
-	b = litewire.AppendString(b, 6, m.Zone)
-	b = litewire.AppendBool(b, 7, m.Workdays)
-	if len(m.Weekdays) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 8)
-		for _, v := range m.Weekdays {
-			b = litewire.AppendRawVarint(b, uint64(int64(v)))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	b = litewire.AppendString(b, 9, m.Interval)
-	b = litewire.AppendInt32(b, 10, int32(m.Unit))
-	b = litewire.AppendInt32(b, 11, int32(m.End))
-	b = litewire.AppendString(b, 12, m.Count)
-	b = litewire.AppendString(b, 13, m.UntilDate)
-	b = litewire.AppendVarint(b, 14, uint64(m.UntilMs))
-	b = litewire.AppendBool(b, 15, m.ShowIntervalHint)
-	if m.IntervalHint != nil {
-		b = litewire.AppendMessage(b, 16, m.IntervalHint)
-	}
-	if m.TimingError != nil {
-		b = litewire.AppendMessage(b, 17, m.TimingError)
-	}
-	b = litewire.AppendBool(b, 18, m.TimingDoneEnabled)
-	b = litewire.AppendBool(b, 19, m.TimingApplied)
-	b = litewire.AppendBool(b, 20, m.ShowJitter)
-	for _, v := range m.JitterOptions {
-		if v != nil {
-			b = litewire.AppendMessage(b, 21, v)
-		}
-	}
-	if m.JitterLabel != nil {
-		b = litewire.AppendMessage(b, 22, m.JitterLabel)
-	}
-	if m.JitterHint != nil {
-		b = litewire.AppendMessage(b, 23, m.JitterHint)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleTimingDraftView)
 }
 
 type ScheduleProjectOptionView struct {
+	_          [0]func()
 	ProjectKey string
 	Name       *Text
 	ShortPath  string
@@ -2484,26 +2256,25 @@ func (m *ScheduleProjectOptionView) GetSelected() bool {
 	return false
 }
 
-func (m *ScheduleProjectOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleProjectOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleProjectOptionView{}.ProjectKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleProjectOptionView{}.Name), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleProjectOptionView{}.ShortPath), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleProjectOptionView{}.Selected), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScheduleProjectOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleProjectOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.ProjectKey)
-	if m.Name != nil {
-		b = litewire.AppendMessage(b, 2, m.Name)
-	}
-	b = litewire.AppendString(b, 3, m.ShortPath)
-	b = litewire.AppendBool(b, 4, m.Selected)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleProjectOptionView)
 }
 
 type ScheduleMachineOptionView struct {
+	_         [0]func()
 	MachineId string
 	Name      string
 	Online    bool
@@ -2549,28 +2320,27 @@ func (m *ScheduleMachineOptionView) GetNote() *Text {
 	return nil
 }
 
-func (m *ScheduleMachineOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleMachineOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleMachineOptionView{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleMachineOptionView{}.Name), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleMachineOptionView{}.Online), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleMachineOptionView{}.Supported), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleMachineOptionView{}.Selected), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleMachineOptionView{}.Note), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleMachineOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleMachineOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.Name)
-	b = litewire.AppendBool(b, 3, m.Online)
-	b = litewire.AppendBool(b, 4, m.Supported)
-	b = litewire.AppendBool(b, 5, m.Selected)
-	if m.Note != nil {
-		b = litewire.AppendMessage(b, 6, m.Note)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleMachineOptionView)
 }
 
 type ScheduleModeOptionView struct {
+	_              [0]func()
 	Mode           v1.ApprovalMode
 	Label          *Text
 	IsDanger       bool
@@ -2616,30 +2386,27 @@ func (m *ScheduleModeOptionView) GetDisabledReason() *Text {
 	return nil
 }
 
-func (m *ScheduleModeOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleModeOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleModeOptionView{}.Mode), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleModeOptionView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleModeOptionView{}.IsDanger), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleModeOptionView{}.Selected), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleModeOptionView{}.Enabled), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleModeOptionView{}.DisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleModeOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleModeOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Mode))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 2, m.Label)
-	}
-	b = litewire.AppendBool(b, 3, m.IsDanger)
-	b = litewire.AppendBool(b, 4, m.Selected)
-	b = litewire.AppendBool(b, 5, m.Enabled)
-	if m.DisabledReason != nil {
-		b = litewire.AppendMessage(b, 6, m.DisabledReason)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleModeOptionView)
 }
 
 type ScheduleModelPanelView struct {
+	_                   [0]func()
 	ModelsLoading       bool
 	ModelsError         *Text
 	DefaultModelLabel   *Text
@@ -2699,38 +2466,29 @@ func (m *ScheduleModelPanelView) GetPanelEnabled() bool {
 	return false
 }
 
-func (m *ScheduleModelPanelView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleModelPanelView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleModelPanelView{}.ModelsLoading), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleModelPanelView{}.ModelsError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleModelPanelView{}.DefaultModelLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleModelPanelView{}.DefaultModelChecked), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleModelPanelView{}.Models), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ModelOptionView},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleModelPanelView{}.EffortChoices), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleModelPanelView{}.SelectedEffort), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleModelPanelView{}.PanelEnabled), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScheduleModelPanelView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleModelPanelView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.ModelsLoading)
-	if m.ModelsError != nil {
-		b = litewire.AppendMessage(b, 2, m.ModelsError)
-	}
-	if m.DefaultModelLabel != nil {
-		b = litewire.AppendMessage(b, 3, m.DefaultModelLabel)
-	}
-	b = litewire.AppendBool(b, 4, m.DefaultModelChecked)
-	for _, v := range m.Models {
-		if v != nil {
-			b = litewire.AppendMessage(b, 5, v)
-		}
-	}
-	for _, v := range m.EffortChoices {
-		b = litewire.AppendStringAlways(b, 6, v)
-	}
-	b = litewire.AppendString(b, 7, m.SelectedEffort)
-	b = litewire.AppendBool(b, 8, m.PanelEnabled)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleModelPanelView)
 }
 
 type ScheduleFormNoticeView struct {
+	_        [0]func()
 	Kind     ScheduleFormNoticeKind
 	Severity ScheduleFormNoticeSeverity
 	Text     *Text
@@ -2755,25 +2513,24 @@ func (m *ScheduleFormNoticeView) GetText() *Text {
 	return nil
 }
 
-func (m *ScheduleFormNoticeView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleFormNoticeView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormNoticeView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleFormNoticeView{}.Severity), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleFormNoticeView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *ScheduleFormNoticeView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleFormNoticeView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	b = litewire.AppendInt32(b, 2, int32(m.Severity))
-	if m.Text != nil {
-		b = litewire.AppendMessage(b, 3, m.Text)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormNoticeView)
 }
 
 type ScheduleFormViewModel struct {
+	_                         [0]func()
 	FormKey                   string
 	Mode                      ScheduleFormMode
 	Open                      bool
@@ -3099,110 +2856,67 @@ func (m *ScheduleFormViewModel) GetMutation() *ScheduleMutationView {
 	return nil
 }
 
-func (m *ScheduleFormViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleFormViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.FormKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Mode), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Open), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.MachineId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.TaskId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.SessionId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ProjectKey), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.LockMachine), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Message), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.MessageValid), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.MessageTooLong), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.MessageError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Title), Kind: litewire.KindString},
+		{Num: 14, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.TitlePlaceholder), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.AutoTitle), Kind: litewire.KindString},
+		{Num: 16, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.NotifyOnFinish), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.TimingSummary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 18, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Timing), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleTimingDraftView},
+		{Num: 19, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ProjectName), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 20, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ProjectShortPath), Kind: litewire.KindString},
+		{Num: 21, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.HasProject), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ProjectChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleProjectOptionView},
+		{Num: 23, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.MachineName), Kind: litewire.KindString},
+		{Num: 24, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.MachineSelectable), Kind: litewire.KindBool},
+		{Num: 25, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.MachineChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleMachineOptionView},
+		{Num: 26, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Agent), Kind: litewire.KindInt32},
+		{Num: 27, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.AgentName), Kind: litewire.KindString},
+		{Num: 28, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.AvailableAgents), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_AgentOptionView},
+		{Num: 29, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Model), Kind: litewire.KindString},
+		{Num: 30, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Effort), Kind: litewire.KindString},
+		{Num: 31, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ModelLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 32, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.EffortLabel), Kind: litewire.KindString},
+		{Num: 33, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ModelPanel), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleModelPanelView},
+		{Num: 34, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ApprovalMode), Kind: litewire.KindInt32},
+		{Num: 35, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ApprovalModeLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 36, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ApprovalModeIsDanger), Kind: litewire.KindBool},
+		{Num: 37, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.ModeChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleModeOptionView},
+		{Num: 38, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.RequiresFullAccessConfirm), Kind: litewire.KindBool},
+		{Num: 39, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.LocationText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 40, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Editable), Kind: litewire.KindBool},
+		{Num: 41, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.CanSubmit), Kind: litewire.KindBool},
+		{Num: 42, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.SubmitLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 43, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.SubmitDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 44, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.HasUnsavedChanges), Kind: litewire.KindBool},
+		{Num: 45, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Notices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleFormNoticeView},
+		{Num: 46, Offset: unsafe.Offsetof(ScheduleFormViewModel{}.Mutation), Kind: litewire.KindMessage, Sub: &LitewireDesc_ScheduleMutationView},
+	},
+}
 
 func (m *ScheduleFormViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleFormViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.FormKey)
-	b = litewire.AppendInt32(b, 2, int32(m.Mode))
-	b = litewire.AppendBool(b, 3, m.Open)
-	b = litewire.AppendString(b, 4, m.MachineId)
-	b = litewire.AppendString(b, 5, m.TaskId)
-	b = litewire.AppendString(b, 6, m.SessionId)
-	b = litewire.AppendString(b, 7, m.ProjectKey)
-	b = litewire.AppendBool(b, 8, m.LockMachine)
-	b = litewire.AppendString(b, 9, m.Message)
-	b = litewire.AppendBool(b, 10, m.MessageValid)
-	b = litewire.AppendBool(b, 11, m.MessageTooLong)
-	if m.MessageError != nil {
-		b = litewire.AppendMessage(b, 12, m.MessageError)
-	}
-	b = litewire.AppendString(b, 13, m.Title)
-	if m.TitlePlaceholder != nil {
-		b = litewire.AppendMessage(b, 14, m.TitlePlaceholder)
-	}
-	b = litewire.AppendString(b, 15, m.AutoTitle)
-	b = litewire.AppendBool(b, 16, m.NotifyOnFinish)
-	if m.TimingSummary != nil {
-		b = litewire.AppendMessage(b, 17, m.TimingSummary)
-	}
-	if m.Timing != nil {
-		b = litewire.AppendMessage(b, 18, m.Timing)
-	}
-	if m.ProjectName != nil {
-		b = litewire.AppendMessage(b, 19, m.ProjectName)
-	}
-	b = litewire.AppendString(b, 20, m.ProjectShortPath)
-	b = litewire.AppendBool(b, 21, m.HasProject)
-	for _, v := range m.ProjectChoices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 22, v)
-		}
-	}
-	b = litewire.AppendString(b, 23, m.MachineName)
-	b = litewire.AppendBool(b, 24, m.MachineSelectable)
-	for _, v := range m.MachineChoices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 25, v)
-		}
-	}
-	b = litewire.AppendInt32(b, 26, int32(m.Agent))
-	b = litewire.AppendString(b, 27, m.AgentName)
-	for _, v := range m.AvailableAgents {
-		if v != nil {
-			b = litewire.AppendMessage(b, 28, v)
-		}
-	}
-	b = litewire.AppendString(b, 29, m.Model)
-	b = litewire.AppendString(b, 30, m.Effort)
-	if m.ModelLabel != nil {
-		b = litewire.AppendMessage(b, 31, m.ModelLabel)
-	}
-	b = litewire.AppendString(b, 32, m.EffortLabel)
-	if m.ModelPanel != nil {
-		b = litewire.AppendMessage(b, 33, m.ModelPanel)
-	}
-	b = litewire.AppendInt32(b, 34, int32(m.ApprovalMode))
-	if m.ApprovalModeLabel != nil {
-		b = litewire.AppendMessage(b, 35, m.ApprovalModeLabel)
-	}
-	b = litewire.AppendBool(b, 36, m.ApprovalModeIsDanger)
-	for _, v := range m.ModeChoices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 37, v)
-		}
-	}
-	b = litewire.AppendBool(b, 38, m.RequiresFullAccessConfirm)
-	if m.LocationText != nil {
-		b = litewire.AppendMessage(b, 39, m.LocationText)
-	}
-	b = litewire.AppendBool(b, 40, m.Editable)
-	b = litewire.AppendBool(b, 41, m.CanSubmit)
-	if m.SubmitLabel != nil {
-		b = litewire.AppendMessage(b, 42, m.SubmitLabel)
-	}
-	if m.SubmitDisabledReason != nil {
-		b = litewire.AppendMessage(b, 43, m.SubmitDisabledReason)
-	}
-	b = litewire.AppendBool(b, 44, m.HasUnsavedChanges)
-	for _, v := range m.Notices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 45, v)
-		}
-	}
-	if m.Mutation != nil {
-		b = litewire.AppendMessage(b, 46, m.Mutation)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormViewModel)
 }
 
 type ScheduleSessionStripTaskView struct {
+	_           [0]func()
 	MachineId   string
 	TaskId      string
 	Title       string
@@ -3255,31 +2969,28 @@ func (m *ScheduleSessionStripTaskView) GetStatus() ScheduleTaskStatus {
 	return 0
 }
 
-func (m *ScheduleSessionStripTaskView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleSessionStripTaskView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleSessionStripTaskView{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleSessionStripTaskView{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleSessionStripTaskView{}.Title), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleSessionStripTaskView{}.TimingText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleSessionStripTaskView{}.NextRunText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleSessionStripTaskView{}.HasUnread), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleSessionStripTaskView{}.Status), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *ScheduleSessionStripTaskView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleSessionStripTaskView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.TaskId)
-	b = litewire.AppendString(b, 3, m.Title)
-	if m.TimingText != nil {
-		b = litewire.AppendMessage(b, 4, m.TimingText)
-	}
-	if m.NextRunText != nil {
-		b = litewire.AppendMessage(b, 5, m.NextRunText)
-	}
-	b = litewire.AppendBool(b, 6, m.HasUnread)
-	b = litewire.AppendInt32(b, 7, int32(m.Status))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleSessionStripTaskView)
 }
 
 type ScheduleSessionStripViewModel struct {
+	_              [0]func()
 	SessionId      string
 	Visible        bool
 	Count          int32
@@ -3325,32 +3036,27 @@ func (m *ScheduleSessionStripViewModel) GetMachineOffline() bool {
 	return false
 }
 
-func (m *ScheduleSessionStripViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleSessionStripViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleSessionStripViewModel{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleSessionStripViewModel{}.Visible), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleSessionStripViewModel{}.Count), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleSessionStripViewModel{}.SummaryText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleSessionStripViewModel{}.Tasks), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleSessionStripTaskView},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleSessionStripViewModel{}.MachineOffline), Kind: litewire.KindBool},
+	},
+}
 
 func (m *ScheduleSessionStripViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleSessionStripViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendBool(b, 2, m.Visible)
-	b = litewire.AppendInt32(b, 3, int32(m.Count))
-	if m.SummaryText != nil {
-		b = litewire.AppendMessage(b, 4, m.SummaryText)
-	}
-	for _, v := range m.Tasks {
-		if v != nil {
-			b = litewire.AppendMessage(b, 5, v)
-		}
-	}
-	b = litewire.AppendBool(b, 6, m.MachineOffline)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleSessionStripViewModel)
 }
 
 type ScheduleReadCacheEffect struct {
+	_         [0]func()
 	OpId      uint64
 	MachineId string
 }
@@ -3368,22 +3074,23 @@ func (m *ScheduleReadCacheEffect) GetMachineId() string {
 	return ""
 }
 
-func (m *ScheduleReadCacheEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleReadCacheEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleReadCacheEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleReadCacheEffect{}.MachineId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ScheduleReadCacheEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleReadCacheEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	b = litewire.AppendString(b, 2, m.MachineId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleReadCacheEffect)
 }
 
 type ScheduleDeleteCacheEffect struct {
+	_         [0]func()
 	MachineId string
 }
 
@@ -3394,21 +3101,22 @@ func (m *ScheduleDeleteCacheEffect) GetMachineId() string {
 	return ""
 }
 
-func (m *ScheduleDeleteCacheEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleDeleteCacheEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleDeleteCacheEffect{}.MachineId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ScheduleDeleteCacheEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleDeleteCacheEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleDeleteCacheEffect)
 }
 
 type ScheduleSeenToken struct {
+	_      [0]func()
 	TaskId string
 	RunId  string
 }
@@ -3426,55 +3134,28 @@ func (m *ScheduleSeenToken) GetRunId() string {
 	return ""
 }
 
-func (m *ScheduleSeenToken) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleSeenToken = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleSeenToken{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleSeenToken{}.TaskId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleSeenToken{}.RunId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ScheduleSeenToken) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleSeenToken) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.TaskId)
-	b = litewire.AppendString(b, 2, m.RunId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleSeenToken)
 }
 
 func (m *ScheduleSeenToken) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RunId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleSeenToken)
 }
 
 type ScheduleLoadSeenEffect struct {
+	_         [0]func()
 	MachineId string
 }
 
@@ -3485,21 +3166,22 @@ func (m *ScheduleLoadSeenEffect) GetMachineId() string {
 	return ""
 }
 
-func (m *ScheduleLoadSeenEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleLoadSeenEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleLoadSeenEffect{}.MachineId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ScheduleLoadSeenEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleLoadSeenEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleLoadSeenEffect)
 }
 
 type ScheduleSaveSeenEffect struct {
+	_         [0]func()
 	MachineId string
 	Tokens    []*ScheduleSeenToken
 }
@@ -3517,26 +3199,23 @@ func (m *ScheduleSaveSeenEffect) GetTokens() []*ScheduleSeenToken {
 	return nil
 }
 
-func (m *ScheduleSaveSeenEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleSaveSeenEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleSaveSeenEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleSaveSeenEffect{}.Tokens), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleSeenToken},
+	},
+}
 
 func (m *ScheduleSaveSeenEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleSaveSeenEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	for _, v := range m.Tokens {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleSaveSeenEffect)
 }
 
 type ScheduleNotificationRef struct {
+	_               [0]func()
 	MachineId       string
 	TaskId          string
 	RunId           string
@@ -3575,25 +3254,26 @@ func (m *ScheduleNotificationRef) GetNotificationSeq() uint64 {
 	return 0
 }
 
-func (m *ScheduleNotificationRef) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleNotificationRef = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleNotificationRef{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleNotificationRef{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleNotificationRef{}.RunId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleNotificationRef{}.SessionId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleNotificationRef{}.NotificationSeq), Kind: litewire.KindUint64},
+	},
+}
 
 func (m *ScheduleNotificationRef) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleNotificationRef) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendString(b, 2, m.TaskId)
-	b = litewire.AppendString(b, 3, m.RunId)
-	b = litewire.AppendString(b, 4, m.SessionId)
-	b = litewire.AppendVarint(b, 5, uint64(m.NotificationSeq))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleNotificationRef)
 }
 
 type ScheduleDismissNotificationsEffect struct {
+	_    [0]func()
 	Runs []*ScheduleNotificationRef
 }
 
@@ -3604,25 +3284,22 @@ func (m *ScheduleDismissNotificationsEffect) GetRuns() []*ScheduleNotificationRe
 	return nil
 }
 
-func (m *ScheduleDismissNotificationsEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleDismissNotificationsEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleDismissNotificationsEffect{}.Runs), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ScheduleNotificationRef},
+	},
+}
 
 func (m *ScheduleDismissNotificationsEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleDismissNotificationsEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Runs {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleDismissNotificationsEffect)
 }
 
 type ScheduleNavigateEffect struct {
+	_         [0]func()
 	Route     ScheduleNavigateRoute
 	MachineId string
 	TaskId    string
@@ -3675,27 +3352,28 @@ func (m *ScheduleNavigateEffect) GetFormKey() string {
 	return ""
 }
 
-func (m *ScheduleNavigateEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleNavigateEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleNavigateEffect{}.Route), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleNavigateEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleNavigateEffect{}.TaskId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleNavigateEffect{}.SessionId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleNavigateEffect{}.RunId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleNavigateEffect{}.FirstSeq), Kind: litewire.KindUint64},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleNavigateEffect{}.FormKey), Kind: litewire.KindString},
+	},
+}
 
 func (m *ScheduleNavigateEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleNavigateEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Route))
-	b = litewire.AppendString(b, 2, m.MachineId)
-	b = litewire.AppendString(b, 3, m.TaskId)
-	b = litewire.AppendString(b, 4, m.SessionId)
-	b = litewire.AppendString(b, 5, m.RunId)
-	b = litewire.AppendVarint(b, 6, uint64(m.FirstSeq))
-	b = litewire.AppendString(b, 7, m.FormKey)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleNavigateEffect)
 }
 
 type ScheduleCacheLoadedEvent struct {
+	_          [0]func()
 	OpId       uint64
 	MachineId  string
 	ResultJson []byte
@@ -3727,58 +3405,22 @@ func (m *ScheduleCacheLoadedEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleCacheLoadedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleCacheLoadedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleCacheLoadedEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleCacheLoadedEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleCacheLoadedEvent{}.ResultJson), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleCacheLoadedEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleCacheLoadedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ResultJson = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleCacheLoadedEvent)
 }
 
 type ScheduleSeenLoadedEvent struct {
+	_         [0]func()
 	MachineId string
 	Tokens    []*ScheduleSeenToken
 	Found     bool
@@ -3810,58 +3452,39 @@ func (m *ScheduleSeenLoadedEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleSeenLoadedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleSeenLoadedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleSeenLoadedEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleSeenLoadedEvent{}.Found), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleSeenLoadedEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleSeenLoadedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleSeenLoadedEvent)
+}
+
+func extraUnmarshal_ScheduleSeenLoadedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ScheduleSeenLoadedEvent)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
 		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &ScheduleSeenToken{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Tokens = append(m.Tokens, elem)
-				continue
+			elem := &ScheduleSeenToken{}
+			m.Tokens = append(m.Tokens, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Found = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type ScheduleLocalContextEvent struct {
+	_                       [0]func()
 	LocalTimezone           string
 	TomorrowStartMs         int64
 	DayAfterTomorrowStartMs int64
@@ -3886,49 +3509,21 @@ func (m *ScheduleLocalContextEvent) GetDayAfterTomorrowStartMs() int64 {
 	return 0
 }
 
+var LitewireDesc_ScheduleLocalContextEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleLocalContextEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleLocalContextEvent{}.LocalTimezone), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleLocalContextEvent{}.TomorrowStartMs), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleLocalContextEvent{}.DayAfterTomorrowStartMs), Kind: litewire.KindInt64},
+	},
+}
+
 func (m *ScheduleLocalContextEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.LocalTimezone = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TomorrowStartMs = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DayAfterTomorrowStartMs = int64(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleLocalContextEvent)
 }
 
 type ScheduleStringAction struct {
+	_     [0]func()
 	Value string
 }
 
@@ -3939,31 +3534,19 @@ func (m *ScheduleStringAction) GetValue() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleStringAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleStringAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleStringAction{}.Value), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleStringAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Value = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleStringAction)
 }
 
 type ScheduleBoolAction struct {
+	_     [0]func()
 	Value *bool
 }
 
@@ -3974,32 +3557,19 @@ func (m *ScheduleBoolAction) GetValue() bool {
 	return false
 }
 
+var LitewireDesc_ScheduleBoolAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleBoolAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleBoolAction{}.Value), Kind: litewire.KindBool, Flags: litewire.FlagOptional},
+	},
+}
+
 func (m *ScheduleBoolAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := litewire.DecodeBool(v)
-				m.Value = &pv
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleBoolAction)
 }
 
 type ScheduleTaskRef struct {
+	_         [0]func()
 	MachineId string
 	TaskId    string
 }
@@ -4017,40 +3587,20 @@ func (m *ScheduleTaskRef) GetTaskId() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleTaskRef = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleTaskRef{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleTaskRef{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleTaskRef{}.TaskId), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleTaskRef) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleTaskRef)
 }
 
 type ScheduleTaskStringAction struct {
+	_         [0]func()
 	MachineId string
 	TaskId    string
 	Value     string
@@ -4075,49 +3625,21 @@ func (m *ScheduleTaskStringAction) GetValue() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleTaskStringAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleTaskStringAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleTaskStringAction{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleTaskStringAction{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleTaskStringAction{}.Value), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleTaskStringAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Value = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleTaskStringAction)
 }
 
 type ScheduleTaskBoolAction struct {
+	_         [0]func()
 	MachineId string
 	TaskId    string
 	Value     bool
@@ -4142,49 +3664,21 @@ func (m *ScheduleTaskBoolAction) GetValue() bool {
 	return false
 }
 
+var LitewireDesc_ScheduleTaskBoolAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleTaskBoolAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleTaskBoolAction{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleTaskBoolAction{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleTaskBoolAction{}.Value), Kind: litewire.KindBool},
+	},
+}
+
 func (m *ScheduleTaskBoolAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Value = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleTaskBoolAction)
 }
 
 type ScheduleMutationRef struct {
+	_         [0]func()
 	MachineId string
 	TaskId    string
 	FormKey   string
@@ -4209,49 +3703,21 @@ func (m *ScheduleMutationRef) GetFormKey() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleMutationRef = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleMutationRef{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleMutationRef{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleMutationRef{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleMutationRef{}.FormKey), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleMutationRef) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FormKey = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleMutationRef)
 }
 
 type ScheduleMarkReadAction struct {
+	_        [0]func()
 	Tasks    []*ScheduleTaskRef
 	AllFresh bool
 }
@@ -4269,40 +3735,37 @@ func (m *ScheduleMarkReadAction) GetAllFresh() bool {
 	return false
 }
 
+var LitewireDesc_ScheduleMarkReadAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleMarkReadAction{}) },
+	Fields: []litewire.Field{
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleMarkReadAction{}.AllFresh), Kind: litewire.KindBool},
+	},
+}
+
 func (m *ScheduleMarkReadAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleMarkReadAction)
+}
+
+func extraUnmarshal_ScheduleMarkReadAction(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ScheduleMarkReadAction)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
 		case 1:
-			if wtyp == litewire.BytesType {
-				elem := &ScheduleTaskRef{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Tasks = append(m.Tasks, elem)
-				continue
+			elem := &ScheduleTaskRef{}
+			m.Tasks = append(m.Tasks, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.AllFresh = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type ScheduleOperateAction struct {
+	_         [0]func()
 	MachineId string
 	TaskId    string
 	Operation ScheduleOperationKind
@@ -4327,49 +3790,21 @@ func (m *ScheduleOperateAction) GetOperation() ScheduleOperationKind {
 	return 0
 }
 
+var LitewireDesc_ScheduleOperateAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleOperateAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleOperateAction{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleOperateAction{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleOperateAction{}.Operation), Kind: litewire.KindInt32},
+	},
+}
+
 func (m *ScheduleOperateAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Operation = ScheduleOperationKind(int32(v))
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleOperateAction)
 }
 
 type ScheduleFormOpenAction struct {
+	_             [0]func()
 	Mode          ScheduleFormMode
 	MachineId     string
 	TaskId        string
@@ -4415,76 +3850,24 @@ func (m *ScheduleFormOpenAction) GetLocalTimezone() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleFormOpenAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleFormOpenAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormOpenAction{}.Mode), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleFormOpenAction{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleFormOpenAction{}.TaskId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleFormOpenAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleFormOpenAction{}.ProjectKey), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleFormOpenAction{}.LocalTimezone), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleFormOpenAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Mode = ScheduleFormMode(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ProjectKey = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.LocalTimezone = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormOpenAction)
 }
 
 type ScheduleFormStringAction struct {
+	_       [0]func()
 	FormKey string
 	Value   string
 }
@@ -4502,40 +3885,20 @@ func (m *ScheduleFormStringAction) GetValue() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleFormStringAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleFormStringAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormStringAction{}.FormKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleFormStringAction{}.Value), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleFormStringAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FormKey = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Value = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormStringAction)
 }
 
 type ScheduleFormBoolAction struct {
+	_       [0]func()
 	FormKey string
 	Value   bool
 }
@@ -4553,40 +3916,20 @@ func (m *ScheduleFormBoolAction) GetValue() bool {
 	return false
 }
 
+var LitewireDesc_ScheduleFormBoolAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleFormBoolAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormBoolAction{}.FormKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleFormBoolAction{}.Value), Kind: litewire.KindBool},
+	},
+}
+
 func (m *ScheduleFormBoolAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FormKey = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Value = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormBoolAction)
 }
 
 type ScheduleFormSelectProjectAction struct {
+	_          [0]func()
 	FormKey    string
 	ProjectKey string
 	MachineId  string
@@ -4611,49 +3954,21 @@ func (m *ScheduleFormSelectProjectAction) GetMachineId() string {
 	return ""
 }
 
+var LitewireDesc_ScheduleFormSelectProjectAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleFormSelectProjectAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormSelectProjectAction{}.FormKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleFormSelectProjectAction{}.ProjectKey), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleFormSelectProjectAction{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleFormSelectProjectAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FormKey = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ProjectKey = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormSelectProjectAction)
 }
 
 type ScheduleFormSelectAgentAction struct {
+	_       [0]func()
 	FormKey string
 	Agent   v1.Agent
 }
@@ -4671,40 +3986,20 @@ func (m *ScheduleFormSelectAgentAction) GetAgent() v1.Agent {
 	return 0
 }
 
+var LitewireDesc_ScheduleFormSelectAgentAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleFormSelectAgentAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormSelectAgentAction{}.FormKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleFormSelectAgentAction{}.Agent), Kind: litewire.KindInt32},
+	},
+}
+
 func (m *ScheduleFormSelectAgentAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FormKey = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = v1.Agent(int32(v))
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormSelectAgentAction)
 }
 
 type ScheduleFormSelectModelAction struct {
+	_       [0]func()
 	FormKey string
 	Model   string
 	Effort  string
@@ -4736,59 +4031,40 @@ func (m *ScheduleFormSelectModelAction) GetMode() v1.ApprovalMode {
 	return 0
 }
 
+var LitewireDesc_ScheduleFormSelectModelAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleFormSelectModelAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormSelectModelAction{}.FormKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleFormSelectModelAction{}.Model), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleFormSelectModelAction{}.Effort), Kind: litewire.KindString},
+	},
+}
+
 func (m *ScheduleFormSelectModelAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FormKey = v
-				continue
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormSelectModelAction)
+}
+
+func extraUnmarshal_ScheduleFormSelectModelAction(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ScheduleFormSelectModelAction)(base)
+	b := *bp
+	switch num {
+	case 4:
+		if wtyp == litewire.VarintType {
+			v, err := litewire.ReadVarint(&b)
+			if err != nil {
+				return false, err
 			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Model = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Effort = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := v1.ApprovalMode(int32(v))
-				m.Mode = &pv
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			pv := v1.ApprovalMode(int32(v))
+			m.Mode = &pv
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type ScheduleFormUpdateTimingAction struct {
+	_               [0]func()
 	FormKey         string
 	Kind            *ScheduleTimingKind
 	Date            *string
@@ -4939,236 +4215,78 @@ func (m *ScheduleFormUpdateTimingAction) GetJitterMinutes() int64 {
 	return 0
 }
 
+var LitewireDesc_ScheduleFormUpdateTimingAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&ScheduleFormUpdateTimingAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.FormKey), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.Date), Kind: litewire.KindString, Flags: litewire.FlagOptional},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.Time), Kind: litewire.KindString, Flags: litewire.FlagOptional},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.Zone), Kind: litewire.KindString, Flags: litewire.FlagOptional},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.Workdays), Kind: litewire.KindBool, Flags: litewire.FlagOptional},
+		{Num: 7, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.ReplaceWeekdays), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.Weekdays), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.Interval), Kind: litewire.KindString, Flags: litewire.FlagOptional},
+		{Num: 12, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.Count), Kind: litewire.KindString, Flags: litewire.FlagOptional},
+		{Num: 13, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.UntilDate), Kind: litewire.KindString, Flags: litewire.FlagOptional},
+		{Num: 14, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.UntilMs), Kind: litewire.KindInt64, Flags: litewire.FlagOptional},
+		{Num: 15, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.AtMs), Kind: litewire.KindInt64, Flags: litewire.FlagOptional},
+		{Num: 16, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.ZoneValid), Kind: litewire.KindBool, Flags: litewire.FlagOptional},
+		{Num: 17, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.AtDstGap), Kind: litewire.KindBool, Flags: litewire.FlagOptional},
+		{Num: 18, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.UntilDstGap), Kind: litewire.KindBool, Flags: litewire.FlagOptional},
+		{Num: 19, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.Apply), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.ResetDraft), Kind: litewire.KindBool},
+		{Num: 21, Offset: unsafe.Offsetof(ScheduleFormUpdateTimingAction{}.JitterMinutes), Kind: litewire.KindInt64, Flags: litewire.FlagOptional},
+	},
+}
+
 func (m *ScheduleFormUpdateTimingAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleFormUpdateTimingAction)
+}
+
+func extraUnmarshal_ScheduleFormUpdateTimingAction(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ScheduleFormUpdateTimingAction)(base)
+	b := *bp
+	switch num {
+	case 2:
+		if wtyp == litewire.VarintType {
+			v, err := litewire.ReadVarint(&b)
+			if err != nil {
+				return false, err
+			}
+			pv := ScheduleTimingKind(int32(v))
+			m.Kind = &pv
+			*bp = b
+			return true, nil
 		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FormKey = v
-				continue
+	case 10:
+		if wtyp == litewire.VarintType {
+			v, err := litewire.ReadVarint(&b)
+			if err != nil {
+				return false, err
 			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := ScheduleTimingKind(int32(v))
-				m.Kind = &pv
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.Date = &pv
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.Time = &pv
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.Zone = &pv
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := litewire.DecodeBool(v)
-				m.Workdays = &pv
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ReplaceWeekdays = litewire.DecodeBool(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				for len(raw) > 0 {
-					v, err := litewire.ReadVarint(&raw)
-					if err != nil {
-						return err
-					}
-					m.Weekdays = append(m.Weekdays, int32(v))
-				}
-				continue
-			}
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Weekdays = append(m.Weekdays, int32(v))
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.Interval = &pv
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := ScheduleIntervalUnit(int32(v))
-				m.Unit = &pv
-				continue
-			}
-		case 11:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := ScheduleTimingEnd(int32(v))
-				m.End = &pv
-				continue
-			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.Count = &pv
-				continue
-			}
-		case 13:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.UntilDate = &pv
-				continue
-			}
-		case 14:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := int64(v)
-				m.UntilMs = &pv
-				continue
-			}
-		case 15:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := int64(v)
-				m.AtMs = &pv
-				continue
-			}
-		case 16:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := litewire.DecodeBool(v)
-				m.ZoneValid = &pv
-				continue
-			}
-		case 17:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := litewire.DecodeBool(v)
-				m.AtDstGap = &pv
-				continue
-			}
-		case 18:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := litewire.DecodeBool(v)
-				m.UntilDstGap = &pv
-				continue
-			}
-		case 19:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Apply = litewire.DecodeBool(v)
-				continue
-			}
-		case 20:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ResetDraft = litewire.DecodeBool(v)
-				continue
-			}
-		case 21:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := int64(v)
-				m.JitterMinutes = &pv
-				continue
-			}
+			pv := ScheduleIntervalUnit(int32(v))
+			m.Unit = &pv
+			*bp = b
+			return true, nil
 		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+	case 11:
+		if wtyp == litewire.VarintType {
+			v, err := litewire.ReadVarint(&b)
+			if err != nil {
+				return false, err
+			}
+			pv := ScheduleTimingEnd(int32(v))
+			m.End = &pv
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
+}
+
+func init() {
+	LitewireDesc_ScheduleSeenLoadedEvent.ExtraUnmarshal = extraUnmarshal_ScheduleSeenLoadedEvent
+	LitewireDesc_ScheduleMarkReadAction.ExtraUnmarshal = extraUnmarshal_ScheduleMarkReadAction
+	LitewireDesc_ScheduleFormSelectModelAction.ExtraUnmarshal = extraUnmarshal_ScheduleFormSelectModelAction
+	LitewireDesc_ScheduleFormUpdateTimingAction.ExtraUnmarshal = extraUnmarshal_ScheduleFormUpdateTimingAction
 }

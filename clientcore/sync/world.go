@@ -3,8 +3,6 @@ package sync
 import (
 	"slices"
 
-	"strings"
-
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
@@ -123,13 +121,26 @@ func (e *Engine) managerNameText() *corev1.Text {
 	return nil
 }
 
+// BeginStep enters a StepContext without closure allocation; pair with EndStep.
+func (e *Engine) BeginStep() (prev, ctx *StepContext) {
+	ctx = newStepContext()
+	prev = e.activeStepCtx
+	e.activeStepCtx = ctx
+	e.entropyNeedRequested = false
+	return prev, ctx
+}
+
+// EndStep exits ctx, refreshes derived world state, and returns the collected StepResult.
+func (e *Engine) EndStep(prev, ctx *StepContext) StepResult {
+	e.restoreStepCtx(prev)
+	e.refreshWorld()
+	return finalizeResult(ctx)
+}
+
 // Run executes fn inside a StepContext and returns the collected StepResult.
 func (e *Engine) Run(fn func(ctx *StepContext)) StepResult {
-	ctx := newStepContext()
-	prev := e.activeStepCtx
-	e.activeStepCtx = ctx
-	defer func() { e.activeStepCtx = prev }()
-	e.entropyNeedRequested = false
+	prev, ctx := e.BeginStep()
+	defer e.restoreStepCtx(prev)
 	if fn != nil {
 		fn(ctx)
 	}
@@ -152,11 +163,11 @@ func (e *Engine) World() *world.State {
 func (e *Engine) refreshWorld() {
 	w := &e.w
 	if e.machineOrderStale {
-		w.World.Machines = sortedByID(e.machines, func(m *MachineEntry) *lists.Machine { return &m.Machine })
+		w.World.Machines = sortedMachines(e.machines)
 		e.machineOrderStale = false
 	}
 	if e.sessionOrderStale {
-		w.World.Sessions = sortedByID(e.sessions, func(s *SessionEntry) *lists.Session { return &s.Session })
+		w.World.Sessions = sortedSessions(e.sessions)
 		e.sessionOrderStale = false
 	}
 
@@ -199,32 +210,57 @@ func (e *Engine) refreshWorld() {
 func (e *Engine) storeMachine(m *MachineEntry) {
 	prev := e.machines[m.ID]
 	e.machines[m.ID] = m
-	e.machineOrderStale = e.machineOrderStale || !replaceByID(e.w.World.Machines, prev != nil, &m.Machine, func(x *lists.Machine) string { return x.ID })
+	e.machineOrderStale = e.machineOrderStale || !replaceMachineByID(e.w.World.Machines, prev != nil, &m.Machine)
 }
 
 // storeSession records s as the entry for its ID, replacing any previous one.
 func (e *Engine) storeSession(s *SessionEntry) {
 	prev := e.sessions[s.ID]
 	e.sessions[s.ID] = s
-	e.sessionOrderStale = e.sessionOrderStale || !replaceByID(e.w.World.Sessions, prev != nil, &s.Session, func(x *lists.Session) string { return x.ID })
+	e.sessionOrderStale = e.sessionOrderStale || !replaceSessionByID(e.w.World.Sessions, prev != nil, &s.Session)
 }
 
-// replaceByID swaps v into the ID-sorted list in place when an entry with the
-// same ID is already there; it reports false when the list must be re-sorted.
-func replaceByID[T any](list []*T, existed bool, v *T, id func(*T) string) bool {
+func replaceMachineByID(list []*lists.Machine, existed bool, v *lists.Machine) bool {
 	if !existed {
 		return false
 	}
-	key := id(v)
-	i, ok := slices.BinarySearchFunc(list, key, func(x *T, k string) int { return strings.Compare(id(x), k) })
-	if !ok {
+	lo, hi := 0, len(list)
+	for lo < hi {
+		mid := int(uint(lo+hi) >> 1)
+		if list[mid].ID < v.ID {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo >= len(list) || list[lo].ID != v.ID {
 		return false
 	}
-	list[i] = v
+	list[lo] = v
 	return true
 }
 
-func sortedByID[E any, T any](entries map[string]*E, view func(*E) *T) []*T {
+func replaceSessionByID(list []*lists.Session, existed bool, v *lists.Session) bool {
+	if !existed {
+		return false
+	}
+	lo, hi := 0, len(list)
+	for lo < hi {
+		mid := int(uint(lo+hi) >> 1)
+		if list[mid].ID < v.ID {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo >= len(list) || list[lo].ID != v.ID {
+		return false
+	}
+	list[lo] = v
+	return true
+}
+
+func sortedMachines(entries map[string]*MachineEntry) []*lists.Machine {
 	ids := make([]string, 0, len(entries))
 	for id, x := range entries {
 		if x != nil {
@@ -232,9 +268,24 @@ func sortedByID[E any, T any](entries map[string]*E, view func(*E) *T) []*T {
 		}
 	}
 	sortutil.Strings(ids)
-	out := make([]*T, len(ids))
+	out := make([]*lists.Machine, len(ids))
 	for i, id := range ids {
-		out[i] = view(entries[id])
+		out[i] = &entries[id].Machine
+	}
+	return out
+}
+
+func sortedSessions(entries map[string]*SessionEntry) []*lists.Session {
+	ids := make([]string, 0, len(entries))
+	for id, x := range entries {
+		if x != nil {
+			ids = append(ids, id)
+		}
+	}
+	sortutil.Strings(ids)
+	out := make([]*lists.Session, len(ids))
+	for i, id := range ids {
+		out[i] = &entries[id].Session
 	}
 	return out
 }

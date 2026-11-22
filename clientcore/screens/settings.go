@@ -131,6 +131,19 @@ func machineDirectInputs(st *State, _ *SettingsExtra, machineID string) (bool, *
 	return true, nil
 }
 
+type settingsMachinesSorted []*lists.Machine
+
+func (s settingsMachinesSorted) Len() int      { return len(s) }
+func (s settingsMachinesSorted) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s settingsMachinesSorted) Less(i, j int) bool {
+	ni := strings.ToLower(lists.MachineName(s[i], s[i].ID))
+	nj := strings.ToLower(lists.MachineName(s[j], s[j].ID))
+	if ni != nj {
+		return ni < nj
+	}
+	return s[i].ID < s[j].ID
+}
+
 func buildMachineListCards(st *State, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) []*corev1.MachineListCardView {
 	sorted := make([]*lists.Machine, 0, len(machines))
 	for _, m := range machines {
@@ -139,14 +152,7 @@ func buildMachineListCards(st *State, machines []*lists.Machine, extra *Settings
 		}
 	}
 	clientVer := st.World.ClientVersion
-	sortutil.Sort(len(sorted), func(i, j int) bool {
-		ni := strings.ToLower(lists.MachineName(sorted[i], sorted[i].ID))
-		nj := strings.ToLower(lists.MachineName(sorted[j], sorted[j].ID))
-		if ni != nj {
-			return ni < nj
-		}
-		return sorted[i].ID < sorted[j].ID
-	}, func(i, j int) { sorted[i], sorted[j] = sorted[j], sorted[i] })
+	sortutil.SortInterface(settingsMachinesSorted(sorted))
 
 	out := make([]*corev1.MachineListCardView, 0, len(sorted))
 	for _, m := range sorted {
@@ -1053,38 +1059,40 @@ func sumEnabledUsageTokens(meta *v1.MachineMeta, snap *v1.UsageStatsResponse) ui
 	return total
 }
 
+func storageRatioPct(b, limitBytes int64) int32 {
+	if b <= 0 {
+		return 0
+	}
+	p := int32(math.Round(float64(b) * 100.0 / float64(limitBytes)))
+	if p < 2 {
+		return 2
+	}
+	if p > 100 {
+		return 100
+	}
+	return p
+}
+
+func storageScaledPct(v int32, scale float64) int32 {
+	if v == 0 {
+		return 0
+	}
+	sv := int32(math.Floor(float64(v) * scale))
+	if sv < 1 {
+		return 1
+	}
+	return sv
+}
+
 func storagePercents(upBytes, preBytes, resBytes, limitBytes int64) (int32, int32, int32) {
 	if limitBytes <= 0 {
 		return 0, 0, 0
 	}
-	calc := func(b int64) int32 {
-		if b <= 0 {
-			return 0
-		}
-		p := int32(math.Round(float64(b) * 100.0 / float64(limitBytes)))
-		if p < 2 {
-			return 2
-		}
-		if p > 100 {
-			return 100
-		}
-		return p
-	}
-	up, pre, res := calc(upBytes), calc(preBytes), calc(resBytes)
+	up, pre, res := storageRatioPct(upBytes, limitBytes), storageRatioPct(preBytes, limitBytes), storageRatioPct(resBytes, limitBytes)
 	sum := up + pre + res
 	if sum > 100 {
 		scale := 100.0 / float64(sum)
-		scaleVal := func(v int32) int32 {
-			if v == 0 {
-				return 0
-			}
-			sv := int32(math.Floor(float64(v) * scale))
-			if sv < 1 {
-				return 1
-			}
-			return sv
-		}
-		up, pre, res = scaleVal(up), scaleVal(pre), scaleVal(res)
+		up, pre, res = storageScaledPct(up, scale), storageScaledPct(pre, scale), storageScaledPct(res, scale)
 	}
 	return up, pre, res
 }

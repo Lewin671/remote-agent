@@ -70,15 +70,7 @@ func NewPairState(parent State, candidate Member, candidateX []byte, oldSecret, 
 		return State{}, ErrInvalid
 	}
 	members := append(slices.Clone(parent.Core.Members), candidate)
-	slices.SortFunc(members, func(a, b Member) int {
-		if a.ID < b.ID {
-			return -1
-		}
-		if a.ID > b.ID {
-			return 1
-		}
-		return 0
-	})
+	sortMembers(members)
 	prev, err := SealPrevSecret(secret, oldSecret, random)
 	if err != nil {
 		return State{}, err

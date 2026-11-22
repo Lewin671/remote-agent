@@ -24,6 +24,7 @@ const (
 
 // SessionItem captures all domain facts needed to render one session or attention row.
 type SessionItem struct {
+	_              [0]func()
 	Session        *Session
 	ID             string
 	MachineID      string

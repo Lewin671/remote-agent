@@ -544,7 +544,6 @@ func TestLiteWireCompatibility(t *testing.T) {
 		name string
 		std  proto.Message
 		lite interface {
-			Size() int
 			Marshal() ([]byte, error)
 			Unmarshal([]byte) error
 		}
@@ -665,13 +664,9 @@ func TestLiteWireCompatibility(t *testing.T) {
 			if err := tc.lite.Unmarshal(wire); err != nil {
 				t.Fatal(err)
 			}
-			wantSize := tc.lite.Size()
 			roundWire, err := tc.lite.Marshal()
 			if err != nil {
 				t.Fatal(err)
-			}
-			if len(roundWire) != wantSize {
-				t.Fatalf("Size() = %d, len(Marshal()) = %d", wantSize, len(roundWire))
 			}
 			gotStd := tc.freshStd()
 			if err := proto.Unmarshal(roundWire, gotStd); err != nil {
@@ -744,7 +739,6 @@ func TestLiteWireCompatibility(t *testing.T) {
 	marshalCases := []struct {
 		name string
 		lite interface {
-			Size() int
 			Marshal() ([]byte, error)
 		}
 		want     proto.Message
@@ -838,13 +832,9 @@ func TestLiteWireCompatibility(t *testing.T) {
 
 	for _, tc := range marshalCases {
 		t.Run(tc.name, func(t *testing.T) {
-			wantSize := tc.lite.Size()
 			wire, err := tc.lite.Marshal()
 			if err != nil {
 				t.Fatal(err)
-			}
-			if len(wire) != wantSize {
-				t.Fatalf("Size() = %d, len(Marshal()) = %d", wantSize, len(wire))
 			}
 			gotStd := tc.freshStd()
 			if err := proto.Unmarshal(wire, gotStd); err != nil {

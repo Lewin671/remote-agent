@@ -8,6 +8,8 @@ import (
 // ValidateAndDecodeBody unpacks p per h.Compression, rejects unknown fields and
 // wrong types recursively, checks purpose-specific header bindings, and returns
 // the decoded v1 protobuf message (or raw 32-byte seed for SessionKey).
+//
+//go:noinline
 func ValidateAndDecodeBody(h devicesec.Header, p []byte) (any, []byte, error) {
 	plain, err := devicesec.Unpack(h, p)
 	if err != nil {

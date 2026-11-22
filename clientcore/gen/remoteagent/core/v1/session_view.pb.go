@@ -6,6 +6,7 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	unsafe "unsafe"
 )
 
 type SessionCommandStatus int32
@@ -115,6 +116,7 @@ const (
 )
 
 type SessionScreenRequest struct {
+	_         [0]func()
 	SessionId string
 	Window    *SessionWindowRequest
 }
@@ -132,41 +134,20 @@ func (m *SessionScreenRequest) GetWindow() *SessionWindowRequest {
 	return nil
 }
 
+var LitewireDesc_SessionScreenRequest = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionScreenRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionScreenRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionScreenRequest{}.Window), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionWindowRequest},
+	},
+}
+
 func (m *SessionScreenRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				if m.Window == nil {
-					m.Window = &SessionWindowRequest{}
-				}
-				if err := litewire.ReadMessage(&b, m.Window); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionScreenRequest)
 }
 
 type SessionWindowRequest struct {
+	_                [0]func()
 	Limit            int32
 	BeforeSeq        uint64
 	AroundSeq        uint64
@@ -212,76 +193,24 @@ func (m *SessionWindowRequest) GetExpandedGroupIds() []string {
 	return nil
 }
 
+var LitewireDesc_SessionWindowRequest = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionWindowRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionWindowRequest{}.Limit), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionWindowRequest{}.BeforeSeq), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(SessionWindowRequest{}.AroundSeq), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(SessionWindowRequest{}.RevealSeq), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(SessionWindowRequest{}.RevealRunId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SessionWindowRequest{}.ExpandedGroupIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
+
 func (m *SessionWindowRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Limit = int32(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.BeforeSeq = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.AroundSeq = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RevealSeq = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RevealRunId = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ExpandedGroupIds = append(m.ExpandedGroupIds, v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionWindowRequest)
 }
 
 type SessionViewModel struct {
+	_         [0]func()
 	SessionId string
 	Header    *SessionHeaderView
 	Actions   *SessionActionsView
@@ -327,36 +256,27 @@ func (m *SessionViewModel) GetTimeline() *SessionTimelineView {
 	return nil
 }
 
-func (m *SessionViewModel) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionViewModel = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionViewModel{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionViewModel{}.Header), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionHeaderView},
+		{Num: 3, Offset: unsafe.Offsetof(SessionViewModel{}.Actions), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionActionsView},
+		{Num: 4, Offset: unsafe.Offsetof(SessionViewModel{}.Dock), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionDockView},
+		{Num: 5, Offset: unsafe.Offsetof(SessionViewModel{}.Composer), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionComposerView},
+		{Num: 6, Offset: unsafe.Offsetof(SessionViewModel{}.Timeline), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionTimelineView},
+	},
+}
 
 func (m *SessionViewModel) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionViewModel) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	if m.Header != nil {
-		b = litewire.AppendMessage(b, 2, m.Header)
-	}
-	if m.Actions != nil {
-		b = litewire.AppendMessage(b, 3, m.Actions)
-	}
-	if m.Dock != nil {
-		b = litewire.AppendMessage(b, 4, m.Dock)
-	}
-	if m.Composer != nil {
-		b = litewire.AppendMessage(b, 5, m.Composer)
-	}
-	if m.Timeline != nil {
-		b = litewire.AppendMessage(b, 6, m.Timeline)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionViewModel)
 }
 
 type SessionCommandState struct {
+	_          [0]func()
 	SlotKey    string
 	RequestId  string
 	Status     SessionCommandStatus
@@ -437,35 +357,32 @@ func (m *SessionCommandState) GetStatusText() *Text {
 	return nil
 }
 
-func (m *SessionCommandState) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionCommandState = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionCommandState{}.SlotKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionCommandState{}.RequestId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionCommandState{}.Status), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionCommandState{}.Busy), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionCommandState{}.Frozen), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionCommandState{}.Expired), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionCommandState{}.CanRetry), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionCommandState{}.CanAbandon), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionCommandState{}.ErrorCode), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(SessionCommandState{}.ErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 11, Offset: unsafe.Offsetof(SessionCommandState{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *SessionCommandState) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionCommandState) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SlotKey)
-	b = litewire.AppendString(b, 2, m.RequestId)
-	b = litewire.AppendInt32(b, 3, int32(m.Status))
-	b = litewire.AppendBool(b, 4, m.Busy)
-	b = litewire.AppendBool(b, 5, m.Frozen)
-	b = litewire.AppendBool(b, 6, m.Expired)
-	b = litewire.AppendBool(b, 7, m.CanRetry)
-	b = litewire.AppendBool(b, 8, m.CanAbandon)
-	b = litewire.AppendString(b, 9, m.ErrorCode)
-	if m.ErrorText != nil {
-		b = litewire.AppendMessage(b, 10, m.ErrorText)
-	}
-	if m.StatusText != nil {
-		b = litewire.AppendMessage(b, 11, m.StatusText)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionCommandState)
 }
 
 type SessionCapabilitiesView struct {
+	_                   [0]func()
 	CanSend             bool
 	SupportsImages      bool
 	SupportsFiles       bool
@@ -574,37 +491,36 @@ func (m *SessionCapabilitiesView) GetMaxImages() int32 {
 	return 0
 }
 
-func (m *SessionCapabilitiesView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionCapabilitiesView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.CanSend), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsImages), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsFiles), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsSendModes), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsSharedFiles), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsAlwaysAllow), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsSteer), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsCompact), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsFork), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsModelSwitch), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsModeSwitch), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.SupportsSchedule), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.TerminalAvailable), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.TerminalHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.MaxImages), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *SessionCapabilitiesView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionCapabilitiesView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.CanSend)
-	b = litewire.AppendBool(b, 2, m.SupportsImages)
-	b = litewire.AppendBool(b, 3, m.SupportsFiles)
-	b = litewire.AppendBool(b, 4, m.SupportsSendModes)
-	b = litewire.AppendBool(b, 5, m.SupportsSharedFiles)
-	b = litewire.AppendBool(b, 6, m.SupportsAlwaysAllow)
-	b = litewire.AppendBool(b, 7, m.SupportsSteer)
-	b = litewire.AppendBool(b, 8, m.SupportsCompact)
-	b = litewire.AppendBool(b, 9, m.SupportsFork)
-	b = litewire.AppendBool(b, 10, m.SupportsModelSwitch)
-	b = litewire.AppendBool(b, 11, m.SupportsModeSwitch)
-	b = litewire.AppendBool(b, 12, m.SupportsSchedule)
-	b = litewire.AppendBool(b, 13, m.TerminalAvailable)
-	if m.TerminalHint != nil {
-		b = litewire.AppendMessage(b, 14, m.TerminalHint)
-	}
-	b = litewire.AppendInt32(b, 15, int32(m.MaxImages))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionCapabilitiesView)
 }
 
 type SessionHeaderView struct {
+	_                     [0]func()
 	Found                 bool
 	SessionsListed        bool
 	LiveLoaded            bool
@@ -993,105 +909,76 @@ func (m *SessionHeaderView) GetDirectChip() *SessionDirectChipView {
 	return nil
 }
 
-func (m *SessionHeaderView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionHeaderView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionHeaderView{}.Found), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionHeaderView{}.SessionsListed), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SessionHeaderView{}.LiveLoaded), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionHeaderView{}.Missing), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionHeaderView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(SessionHeaderView{}.ProjectName), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(SessionHeaderView{}.ProjectKey), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SessionHeaderView{}.Cwd), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SessionHeaderView{}.Agent), Kind: litewire.KindInt32},
+		{Num: 10, Offset: unsafe.Offsetof(SessionHeaderView{}.AgentName), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(SessionHeaderView{}.Status), Kind: litewire.KindInt32},
+		{Num: 12, Offset: unsafe.Offsetof(SessionHeaderView{}.Tone), Kind: litewire.KindInt32},
+		{Num: 13, Offset: unsafe.Offsetof(SessionHeaderView{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(SessionHeaderView{}.LiveSummary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(SessionHeaderView{}.ApprovalMode), Kind: litewire.KindInt32},
+		{Num: 16, Offset: unsafe.Offsetof(SessionHeaderView{}.ApprovalModeRaw), Kind: litewire.KindString},
+		{Num: 17, Offset: unsafe.Offsetof(SessionHeaderView{}.ApprovalModeLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 18, Offset: unsafe.Offsetof(SessionHeaderView{}.TerminalModeOverride), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SessionHeaderView{}.Model), Kind: litewire.KindString},
+		{Num: 20, Offset: unsafe.Offsetof(SessionHeaderView{}.ModelLabel), Kind: litewire.KindString},
+		{Num: 21, Offset: unsafe.Offsetof(SessionHeaderView{}.Effort), Kind: litewire.KindString},
+		{Num: 22, Offset: unsafe.Offsetof(SessionHeaderView{}.EffortLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 23, Offset: unsafe.Offsetof(SessionHeaderView{}.StandardContext), Kind: litewire.KindBool},
+		{Num: 24, Offset: unsafe.Offsetof(SessionHeaderView{}.ModelUnknown), Kind: litewire.KindBool},
+		{Num: 25, Offset: unsafe.Offsetof(SessionHeaderView{}.HasContext), Kind: litewire.KindBool},
+		{Num: 26, Offset: unsafe.Offsetof(SessionHeaderView{}.ContextPercent), Kind: litewire.KindInt32},
+		{Num: 27, Offset: unsafe.Offsetof(SessionHeaderView{}.ContextTokens), Kind: litewire.KindInt64},
+		{Num: 28, Offset: unsafe.Offsetof(SessionHeaderView{}.ContextWindow), Kind: litewire.KindInt64},
+		{Num: 29, Offset: unsafe.Offsetof(SessionHeaderView{}.ContextText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 30, Offset: unsafe.Offsetof(SessionHeaderView{}.HighContextWarning), Kind: litewire.KindBool},
+		{Num: 31, Offset: unsafe.Offsetof(SessionHeaderView{}.MachineId), Kind: litewire.KindString},
+		{Num: 32, Offset: unsafe.Offsetof(SessionHeaderView{}.ComputerName), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 33, Offset: unsafe.Offsetof(SessionHeaderView{}.ComputerOnline), Kind: litewire.KindBool},
+		{Num: 34, Offset: unsafe.Offsetof(SessionHeaderView{}.ComputerUnlinked), Kind: litewire.KindBool},
+		{Num: 35, Offset: unsafe.Offsetof(SessionHeaderView{}.OfflineSinceMs), Kind: litewire.KindInt64},
+		{Num: 36, Offset: unsafe.Offsetof(SessionHeaderView{}.OfflineText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 37, Offset: unsafe.Offsetof(SessionHeaderView{}.ConnState), Kind: litewire.KindInt32},
+		{Num: 38, Offset: unsafe.Offsetof(SessionHeaderView{}.ProtocolMismatch), Kind: litewire.KindBool},
+		{Num: 39, Offset: unsafe.Offsetof(SessionHeaderView{}.DaemonProtocolVersion), Kind: litewire.KindUint32},
+		{Num: 40, Offset: unsafe.Offsetof(SessionHeaderView{}.ClientProtocolVersion), Kind: litewire.KindUint32},
+		{Num: 41, Offset: unsafe.Offsetof(SessionHeaderView{}.ProtocolMismatchText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 42, Offset: unsafe.Offsetof(SessionHeaderView{}.Exited), Kind: litewire.KindBool},
+		{Num: 43, Offset: unsafe.Offsetof(SessionHeaderView{}.EndedAtMs), Kind: litewire.KindInt64},
+		{Num: 44, Offset: unsafe.Offsetof(SessionHeaderView{}.EndedText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 45, Offset: unsafe.Offsetof(SessionHeaderView{}.IdleClosed), Kind: litewire.KindBool},
+		{Num: 46, Offset: unsafe.Offsetof(SessionHeaderView{}.ForkedFromId), Kind: litewire.KindString},
+		{Num: 47, Offset: unsafe.Offsetof(SessionHeaderView{}.ForkedFromTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 48, Offset: unsafe.Offsetof(SessionHeaderView{}.IsScheduled), Kind: litewire.KindBool},
+		{Num: 49, Offset: unsafe.Offsetof(SessionHeaderView{}.ScheduledTaskId), Kind: litewire.KindString},
+		{Num: 50, Offset: unsafe.Offsetof(SessionHeaderView{}.ScheduledTitle), Kind: litewire.KindString},
+		{Num: 51, Offset: unsafe.Offsetof(SessionHeaderView{}.ScheduledClosed), Kind: litewire.KindBool},
+		{Num: 52, Offset: unsafe.Offsetof(SessionHeaderView{}.Capabilities), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCapabilitiesView},
+		{Num: 53, Offset: unsafe.Offsetof(SessionHeaderView{}.MissingText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 54, Offset: unsafe.Offsetof(SessionHeaderView{}.ComputerReachability), Kind: litewire.KindInt32},
+		{Num: 55, Offset: unsafe.Offsetof(SessionHeaderView{}.DirectChip), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionDirectChipView},
+	},
+}
 
 func (m *SessionHeaderView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionHeaderView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Found)
-	b = litewire.AppendBool(b, 2, m.SessionsListed)
-	b = litewire.AppendBool(b, 3, m.LiveLoaded)
-	b = litewire.AppendBool(b, 4, m.Missing)
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 5, m.Title)
-	}
-	if m.ProjectName != nil {
-		b = litewire.AppendMessage(b, 6, m.ProjectName)
-	}
-	b = litewire.AppendString(b, 7, m.ProjectKey)
-	b = litewire.AppendString(b, 8, m.Cwd)
-	b = litewire.AppendInt32(b, 9, int32(m.Agent))
-	b = litewire.AppendString(b, 10, m.AgentName)
-	b = litewire.AppendInt32(b, 11, int32(m.Status))
-	b = litewire.AppendInt32(b, 12, int32(m.Tone))
-	if m.StatusText != nil {
-		b = litewire.AppendMessage(b, 13, m.StatusText)
-	}
-	if m.LiveSummary != nil {
-		b = litewire.AppendMessage(b, 14, m.LiveSummary)
-	}
-	b = litewire.AppendInt32(b, 15, int32(m.ApprovalMode))
-	b = litewire.AppendString(b, 16, m.ApprovalModeRaw)
-	if m.ApprovalModeLabel != nil {
-		b = litewire.AppendMessage(b, 17, m.ApprovalModeLabel)
-	}
-	b = litewire.AppendBool(b, 18, m.TerminalModeOverride)
-	b = litewire.AppendString(b, 19, m.Model)
-	b = litewire.AppendString(b, 20, m.ModelLabel)
-	b = litewire.AppendString(b, 21, m.Effort)
-	if m.EffortLabel != nil {
-		b = litewire.AppendMessage(b, 22, m.EffortLabel)
-	}
-	b = litewire.AppendBool(b, 23, m.StandardContext)
-	b = litewire.AppendBool(b, 24, m.ModelUnknown)
-	b = litewire.AppendBool(b, 25, m.HasContext)
-	b = litewire.AppendInt32(b, 26, int32(m.ContextPercent))
-	b = litewire.AppendVarint(b, 27, uint64(m.ContextTokens))
-	b = litewire.AppendVarint(b, 28, uint64(m.ContextWindow))
-	if m.ContextText != nil {
-		b = litewire.AppendMessage(b, 29, m.ContextText)
-	}
-	b = litewire.AppendBool(b, 30, m.HighContextWarning)
-	b = litewire.AppendString(b, 31, m.MachineId)
-	if m.ComputerName != nil {
-		b = litewire.AppendMessage(b, 32, m.ComputerName)
-	}
-	b = litewire.AppendBool(b, 33, m.ComputerOnline)
-	b = litewire.AppendBool(b, 34, m.ComputerUnlinked)
-	b = litewire.AppendVarint(b, 35, uint64(m.OfflineSinceMs))
-	if m.OfflineText != nil {
-		b = litewire.AppendMessage(b, 36, m.OfflineText)
-	}
-	b = litewire.AppendInt32(b, 37, int32(m.ConnState))
-	b = litewire.AppendBool(b, 38, m.ProtocolMismatch)
-	b = litewire.AppendVarint(b, 39, uint64(m.DaemonProtocolVersion))
-	b = litewire.AppendVarint(b, 40, uint64(m.ClientProtocolVersion))
-	if m.ProtocolMismatchText != nil {
-		b = litewire.AppendMessage(b, 41, m.ProtocolMismatchText)
-	}
-	b = litewire.AppendBool(b, 42, m.Exited)
-	b = litewire.AppendVarint(b, 43, uint64(m.EndedAtMs))
-	if m.EndedText != nil {
-		b = litewire.AppendMessage(b, 44, m.EndedText)
-	}
-	b = litewire.AppendBool(b, 45, m.IdleClosed)
-	b = litewire.AppendString(b, 46, m.ForkedFromId)
-	if m.ForkedFromTitle != nil {
-		b = litewire.AppendMessage(b, 47, m.ForkedFromTitle)
-	}
-	b = litewire.AppendBool(b, 48, m.IsScheduled)
-	b = litewire.AppendString(b, 49, m.ScheduledTaskId)
-	b = litewire.AppendString(b, 50, m.ScheduledTitle)
-	b = litewire.AppendBool(b, 51, m.ScheduledClosed)
-	if m.Capabilities != nil {
-		b = litewire.AppendMessage(b, 52, m.Capabilities)
-	}
-	if m.MissingText != nil {
-		b = litewire.AppendMessage(b, 53, m.MissingText)
-	}
-	b = litewire.AppendInt32(b, 54, int32(m.ComputerReachability))
-	if m.DirectChip != nil {
-		b = litewire.AppendMessage(b, 55, m.DirectChip)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionHeaderView)
 }
 
 type SessionDirectChipView struct {
+	_            [0]func()
 	Visible      bool
 	Active       bool
 	ReadDirect   bool
@@ -1151,36 +1038,29 @@ func (m *SessionDirectChipView) GetPopoverFoot() *Text {
 	return nil
 }
 
-func (m *SessionDirectChipView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionDirectChipView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionDirectChipView{}.Visible), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionDirectChipView{}.Active), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SessionDirectChipView{}.ReadDirect), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionDirectChipView{}.FileDirect), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionDirectChipView{}.LabelText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(SessionDirectChipView{}.PopoverTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(SessionDirectChipView{}.PopoverBody), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(SessionDirectChipView{}.PopoverFoot), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *SessionDirectChipView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionDirectChipView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Visible)
-	b = litewire.AppendBool(b, 2, m.Active)
-	b = litewire.AppendBool(b, 3, m.ReadDirect)
-	b = litewire.AppendBool(b, 4, m.FileDirect)
-	if m.LabelText != nil {
-		b = litewire.AppendMessage(b, 5, m.LabelText)
-	}
-	if m.PopoverTitle != nil {
-		b = litewire.AppendMessage(b, 6, m.PopoverTitle)
-	}
-	if m.PopoverBody != nil {
-		b = litewire.AppendMessage(b, 7, m.PopoverBody)
-	}
-	if m.PopoverFoot != nil {
-		b = litewire.AppendMessage(b, 8, m.PopoverFoot)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionDirectChipView)
 }
 
 type SessionModelChoiceView struct {
+	_                       [0]func()
 	Slug                    string
 	DisplayName             string
 	FixedEffortNote         *Text
@@ -1240,32 +1120,29 @@ func (m *SessionModelChoiceView) GetSupportsStandardContext() bool {
 	return false
 }
 
-func (m *SessionModelChoiceView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionModelChoiceView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionModelChoiceView{}.Slug), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionModelChoiceView{}.DisplayName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionModelChoiceView{}.FixedEffortNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionModelChoiceView{}.Efforts), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 5, Offset: unsafe.Offsetof(SessionModelChoiceView{}.DefaultEffort), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SessionModelChoiceView{}.IsAuto), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionModelChoiceView{}.Selected), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionModelChoiceView{}.SupportsStandardContext), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionModelChoiceView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionModelChoiceView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Slug)
-	b = litewire.AppendString(b, 2, m.DisplayName)
-	if m.FixedEffortNote != nil {
-		b = litewire.AppendMessage(b, 3, m.FixedEffortNote)
-	}
-	for _, v := range m.Efforts {
-		b = litewire.AppendStringAlways(b, 4, v)
-	}
-	b = litewire.AppendString(b, 5, m.DefaultEffort)
-	b = litewire.AppendBool(b, 6, m.IsAuto)
-	b = litewire.AppendBool(b, 7, m.Selected)
-	b = litewire.AppendBool(b, 8, m.SupportsStandardContext)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionModelChoiceView)
 }
 
 type SessionEffortChoiceView struct {
+	_        [0]func()
 	Id       string
 	Label    *Text
 	Selected bool
@@ -1290,25 +1167,24 @@ func (m *SessionEffortChoiceView) GetSelected() bool {
 	return false
 }
 
-func (m *SessionEffortChoiceView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionEffortChoiceView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionEffortChoiceView{}.Id), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionEffortChoiceView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SessionEffortChoiceView{}.Selected), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionEffortChoiceView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionEffortChoiceView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Id)
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 2, m.Label)
-	}
-	b = litewire.AppendBool(b, 3, m.Selected)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionEffortChoiceView)
 }
 
 type SessionModeChoiceView struct {
+	_                 [0]func()
 	Mode              v1.ApprovalMode
 	Label             *Text
 	Note              *Text
@@ -1361,33 +1237,28 @@ func (m *SessionModeChoiceView) GetSwitchAfterTurn() bool {
 	return false
 }
 
-func (m *SessionModeChoiceView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionModeChoiceView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionModeChoiceView{}.Mode), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionModeChoiceView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SessionModeChoiceView{}.Note), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionModeChoiceView{}.Available), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionModeChoiceView{}.UnavailableReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(SessionModeChoiceView{}.Selected), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionModeChoiceView{}.SwitchAfterTurn), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionModeChoiceView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionModeChoiceView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Mode))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 2, m.Label)
-	}
-	if m.Note != nil {
-		b = litewire.AppendMessage(b, 3, m.Note)
-	}
-	b = litewire.AppendBool(b, 4, m.Available)
-	if m.UnavailableReason != nil {
-		b = litewire.AppendMessage(b, 5, m.UnavailableReason)
-	}
-	b = litewire.AppendBool(b, 6, m.Selected)
-	b = litewire.AppendBool(b, 7, m.SwitchAfterTurn)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionModeChoiceView)
 }
 
 type SessionUsageEntryView struct {
+	_                  [0]func()
 	Visible            bool
 	Supported          bool
 	Loading            bool
@@ -1510,43 +1381,38 @@ func (m *SessionUsageEntryView) GetFootnote() *Text {
 	return nil
 }
 
-func (m *SessionUsageEntryView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionUsageEntryView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Visible), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Supported), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Loading), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionUsageEntryView{}.SourceUnavailable), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionUsageEntryView{}.HasData), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionUsageEntryView{}.FallbackThirtyDays), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionUsageEntryView{}.FewSpeedSamples), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Backfilling), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionUsageEntryView{}.TotalTokens), Kind: litewire.KindUint64},
+		{Num: 10, Offset: unsafe.Offsetof(SessionUsageEntryView{}.HasCacheHit), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SessionUsageEntryView{}.CacheHitRate), Kind: litewire.KindDouble},
+		{Num: 12, Offset: unsafe.Offsetof(SessionUsageEntryView{}.HasSpeed), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Recent10SpeedP50), Kind: litewire.KindDouble},
+		{Num: 14, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Recent10SpeedCount), Kind: litewire.KindUint64},
+		{Num: 15, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Subtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(SessionUsageEntryView{}.ValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 17, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Footnote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *SessionUsageEntryView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionUsageEntryView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Visible)
-	b = litewire.AppendBool(b, 2, m.Supported)
-	b = litewire.AppendBool(b, 3, m.Loading)
-	b = litewire.AppendBool(b, 4, m.SourceUnavailable)
-	b = litewire.AppendBool(b, 5, m.HasData)
-	b = litewire.AppendBool(b, 6, m.FallbackThirtyDays)
-	b = litewire.AppendBool(b, 7, m.FewSpeedSamples)
-	b = litewire.AppendBool(b, 8, m.Backfilling)
-	b = litewire.AppendVarint(b, 9, uint64(m.TotalTokens))
-	b = litewire.AppendBool(b, 10, m.HasCacheHit)
-	b = litewire.AppendDouble(b, 11, m.CacheHitRate)
-	b = litewire.AppendBool(b, 12, m.HasSpeed)
-	b = litewire.AppendDouble(b, 13, m.Recent10SpeedP50)
-	b = litewire.AppendVarint(b, 14, uint64(m.Recent10SpeedCount))
-	if m.Subtitle != nil {
-		b = litewire.AppendMessage(b, 15, m.Subtitle)
-	}
-	if m.ValueText != nil {
-		b = litewire.AppendMessage(b, 16, m.ValueText)
-	}
-	if m.Footnote != nil {
-		b = litewire.AppendMessage(b, 17, m.Footnote)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionUsageEntryView)
 }
 
 type SessionActionsView struct {
+	_                        [0]func()
 	CanInterrupt             bool
 	Interrupt                *SessionCommandState
 	CanEnd                   bool
@@ -1753,93 +1619,50 @@ func (m *SessionActionsView) GetUsageEntry() *SessionUsageEntryView {
 	return nil
 }
 
-func (m *SessionActionsView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionActionsView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionActionsView{}.CanInterrupt), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionActionsView{}.Interrupt), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 3, Offset: unsafe.Offsetof(SessionActionsView{}.CanEnd), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionActionsView{}.End), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 5, Offset: unsafe.Offsetof(SessionActionsView{}.EndConfirmNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(SessionActionsView{}.CanResume), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionActionsView{}.Resume), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 8, Offset: unsafe.Offsetof(SessionActionsView{}.ResumeNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(SessionActionsView{}.CanRename), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SessionActionsView{}.Rename), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 11, Offset: unsafe.Offsetof(SessionActionsView{}.CanFork), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SessionActionsView{}.ForkBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(SessionActionsView{}.Fork), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 14, Offset: unsafe.Offsetof(SessionActionsView{}.CanCompact), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(SessionActionsView{}.CompactBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(SessionActionsView{}.Compact), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 17, Offset: unsafe.Offsetof(SessionActionsView{}.CanSwitchModel), Kind: litewire.KindBool},
+		{Num: 18, Offset: unsafe.Offsetof(SessionActionsView{}.ModelSwitchBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 19, Offset: unsafe.Offsetof(SessionActionsView{}.SetModel), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 20, Offset: unsafe.Offsetof(SessionActionsView{}.ModelsLoading), Kind: litewire.KindBool},
+		{Num: 21, Offset: unsafe.Offsetof(SessionActionsView{}.ModelsLoaded), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(SessionActionsView{}.ModelsError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 23, Offset: unsafe.Offsetof(SessionActionsView{}.ModelChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionModelChoiceView},
+		{Num: 24, Offset: unsafe.Offsetof(SessionActionsView{}.EffortChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionEffortChoiceView},
+		{Num: 25, Offset: unsafe.Offsetof(SessionActionsView{}.CanSwitchMode), Kind: litewire.KindBool},
+		{Num: 26, Offset: unsafe.Offsetof(SessionActionsView{}.ModeSwitchBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 27, Offset: unsafe.Offsetof(SessionActionsView{}.SetMode), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 28, Offset: unsafe.Offsetof(SessionActionsView{}.ModeChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionModeChoiceView},
+		{Num: 29, Offset: unsafe.Offsetof(SessionActionsView{}.UsageEntry), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionUsageEntryView},
+	},
+}
 
 func (m *SessionActionsView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionActionsView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.CanInterrupt)
-	if m.Interrupt != nil {
-		b = litewire.AppendMessage(b, 2, m.Interrupt)
-	}
-	b = litewire.AppendBool(b, 3, m.CanEnd)
-	if m.End != nil {
-		b = litewire.AppendMessage(b, 4, m.End)
-	}
-	if m.EndConfirmNote != nil {
-		b = litewire.AppendMessage(b, 5, m.EndConfirmNote)
-	}
-	b = litewire.AppendBool(b, 6, m.CanResume)
-	if m.Resume != nil {
-		b = litewire.AppendMessage(b, 7, m.Resume)
-	}
-	if m.ResumeNote != nil {
-		b = litewire.AppendMessage(b, 8, m.ResumeNote)
-	}
-	b = litewire.AppendBool(b, 9, m.CanRename)
-	if m.Rename != nil {
-		b = litewire.AppendMessage(b, 10, m.Rename)
-	}
-	b = litewire.AppendBool(b, 11, m.CanFork)
-	if m.ForkBlockedReason != nil {
-		b = litewire.AppendMessage(b, 12, m.ForkBlockedReason)
-	}
-	if m.Fork != nil {
-		b = litewire.AppendMessage(b, 13, m.Fork)
-	}
-	b = litewire.AppendBool(b, 14, m.CanCompact)
-	if m.CompactBlockedReason != nil {
-		b = litewire.AppendMessage(b, 15, m.CompactBlockedReason)
-	}
-	if m.Compact != nil {
-		b = litewire.AppendMessage(b, 16, m.Compact)
-	}
-	b = litewire.AppendBool(b, 17, m.CanSwitchModel)
-	if m.ModelSwitchBlockedReason != nil {
-		b = litewire.AppendMessage(b, 18, m.ModelSwitchBlockedReason)
-	}
-	if m.SetModel != nil {
-		b = litewire.AppendMessage(b, 19, m.SetModel)
-	}
-	b = litewire.AppendBool(b, 20, m.ModelsLoading)
-	b = litewire.AppendBool(b, 21, m.ModelsLoaded)
-	if m.ModelsError != nil {
-		b = litewire.AppendMessage(b, 22, m.ModelsError)
-	}
-	for _, v := range m.ModelChoices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 23, v)
-		}
-	}
-	for _, v := range m.EffortChoices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 24, v)
-		}
-	}
-	b = litewire.AppendBool(b, 25, m.CanSwitchMode)
-	if m.ModeSwitchBlockedReason != nil {
-		b = litewire.AppendMessage(b, 26, m.ModeSwitchBlockedReason)
-	}
-	if m.SetMode != nil {
-		b = litewire.AppendMessage(b, 27, m.SetMode)
-	}
-	for _, v := range m.ModeChoices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 28, v)
-		}
-	}
-	if m.UsageEntry != nil {
-		b = litewire.AppendMessage(b, 29, m.UsageEntry)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionActionsView)
 }
 
 type SessionDockView struct {
+	_                   [0]func()
 	HasItem             bool
 	Kind                SessionDockKind
 	ItemId              string
@@ -1856,19 +1679,31 @@ type SessionDockView struct {
 }
 
 type isSessionDockView_Detail interface{ isSessionDockView_Detail() }
-type SessionDockView_Approval struct{ Approval *SessionApprovalDockView }
+type SessionDockView_Approval struct {
+	_        [0]func()
+	Approval *SessionApprovalDockView
+}
 
 func (*SessionDockView_Approval) isSessionDockView_Detail() {}
 
-type SessionDockView_Question struct{ Question *SessionQuestionDockView }
+type SessionDockView_Question struct {
+	_        [0]func()
+	Question *SessionQuestionDockView
+}
 
 func (*SessionDockView_Question) isSessionDockView_Detail() {}
 
-type SessionDockView_Plan struct{ Plan *SessionPlanDockView }
+type SessionDockView_Plan struct {
+	_    [0]func()
+	Plan *SessionPlanDockView
+}
 
 func (*SessionDockView_Plan) isSessionDockView_Detail() {}
 
-type SessionDockView_TerminalPopup struct{ TerminalPopup *SessionTerminalPopupDockView }
+type SessionDockView_TerminalPopup struct {
+	_             [0]func()
+	TerminalPopup *SessionTerminalPopupDockView
+}
 
 func (*SessionDockView_TerminalPopup) isSessionDockView_Detail() {}
 
@@ -1975,68 +1810,62 @@ func (m *SessionDockView) GetTerminalPopup() *SessionTerminalPopupDockView {
 	return nil
 }
 
-func (m *SessionDockView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionDockView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionDockView{}.HasItem), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionDockView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionDockView{}.ItemId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionDockView{}.ObservedSeq), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(SessionDockView{}.MoreCount), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(SessionDockView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(SessionDockView{}.Summary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(SessionDockView{}.Meta), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(SessionDockView{}.TimeLeft), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(SessionDockView{}.DeadlineMs), Kind: litewire.KindInt64},
+		{Num: 11, Offset: unsafe.Offsetof(SessionDockView{}.WaitingConfirmation), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SessionDockView{}.Command), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
 
 func (m *SessionDockView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionDockView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.HasItem)
-	b = litewire.AppendInt32(b, 2, int32(m.Kind))
-	b = litewire.AppendString(b, 3, m.ItemId)
-	b = litewire.AppendVarint(b, 4, uint64(m.ObservedSeq))
-	b = litewire.AppendInt32(b, 5, int32(m.MoreCount))
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 6, m.Title)
-	}
-	if m.Summary != nil {
-		b = litewire.AppendMessage(b, 7, m.Summary)
-	}
-	if m.Meta != nil {
-		b = litewire.AppendMessage(b, 8, m.Meta)
-	}
-	if m.TimeLeft != nil {
-		b = litewire.AppendMessage(b, 9, m.TimeLeft)
-	}
-	b = litewire.AppendVarint(b, 10, uint64(m.DeadlineMs))
-	b = litewire.AppendBool(b, 11, m.WaitingConfirmation)
-	if m.Command != nil {
-		b = litewire.AppendMessage(b, 12, m.Command)
-	}
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionDockView)
+}
+
+func extraMarshal_SessionDockView(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*SessionDockView)(base)
+	var onum litewire.Number
+	var omsg litewire.Marshaler
 	switch x := m.Detail.(type) {
 	case *SessionDockView_Approval:
-		if x != nil {
-			if x.Approval != nil {
-				b = litewire.AppendMessage(b, 20, x.Approval)
-			}
+		if x != nil && x.Approval != nil {
+			onum, omsg = 20, x.Approval
 		}
 	case *SessionDockView_Question:
-		if x != nil {
-			if x.Question != nil {
-				b = litewire.AppendMessage(b, 21, x.Question)
-			}
+		if x != nil && x.Question != nil {
+			onum, omsg = 21, x.Question
 		}
 	case *SessionDockView_Plan:
-		if x != nil {
-			if x.Plan != nil {
-				b = litewire.AppendMessage(b, 22, x.Plan)
-			}
+		if x != nil && x.Plan != nil {
+			onum, omsg = 22, x.Plan
 		}
 	case *SessionDockView_TerminalPopup:
-		if x != nil {
-			if x.TerminalPopup != nil {
-				b = litewire.AppendMessage(b, 23, x.TerminalPopup)
-			}
+		if x != nil && x.TerminalPopup != nil {
+			onum, omsg = 23, x.TerminalPopup
 		}
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
 	}
 	return b
 }
 
 type SessionApprovalDockView struct {
+	_                     [0]func()
 	ApprovalId            string
 	ToolName              string
 	CommandPreview        string
@@ -2131,39 +1960,34 @@ func (m *SessionApprovalDockView) GetDeliveryFailedNote() *Text {
 	return nil
 }
 
-func (m *SessionApprovalDockView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionApprovalDockView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionApprovalDockView{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionApprovalDockView{}.ToolName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionApprovalDockView{}.CommandPreview), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionApprovalDockView{}.Body), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SessionApprovalDockView{}.BodyTruncated), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionApprovalDockView{}.IsSkeleton), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionApprovalDockView{}.Description), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SessionApprovalDockView{}.CanAlwaysAllow), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionApprovalDockView{}.AlwaysKind), Kind: litewire.KindInt32},
+		{Num: 10, Offset: unsafe.Offsetof(SessionApprovalDockView{}.AlwaysTarget), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(SessionApprovalDockView{}.AlwaysLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 12, Offset: unsafe.Offsetof(SessionApprovalDockView{}.DenyReasonPlaceholder), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(SessionApprovalDockView{}.DeliveryFailedNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *SessionApprovalDockView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionApprovalDockView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.ApprovalId)
-	b = litewire.AppendString(b, 2, m.ToolName)
-	b = litewire.AppendString(b, 3, m.CommandPreview)
-	b = litewire.AppendString(b, 4, m.Body)
-	b = litewire.AppendBool(b, 5, m.BodyTruncated)
-	b = litewire.AppendBool(b, 6, m.IsSkeleton)
-	b = litewire.AppendString(b, 7, m.Description)
-	b = litewire.AppendBool(b, 8, m.CanAlwaysAllow)
-	b = litewire.AppendInt32(b, 9, int32(m.AlwaysKind))
-	b = litewire.AppendString(b, 10, m.AlwaysTarget)
-	if m.AlwaysLabel != nil {
-		b = litewire.AppendMessage(b, 11, m.AlwaysLabel)
-	}
-	if m.DenyReasonPlaceholder != nil {
-		b = litewire.AppendMessage(b, 12, m.DenyReasonPlaceholder)
-	}
-	if m.DeliveryFailedNote != nil {
-		b = litewire.AppendMessage(b, 13, m.DeliveryFailedNote)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionApprovalDockView)
 }
 
 type SessionQuestionOptionView struct {
+	_           [0]func()
 	OptionNum   int32
 	Label       string
 	Description string
@@ -2195,24 +2019,25 @@ func (m *SessionQuestionOptionView) GetRecommended() bool {
 	return false
 }
 
-func (m *SessionQuestionOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionQuestionOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionQuestionOptionView{}.OptionNum), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionQuestionOptionView{}.Label), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionQuestionOptionView{}.Description), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionQuestionOptionView{}.Recommended), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionQuestionOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionQuestionOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.OptionNum))
-	b = litewire.AppendString(b, 2, m.Label)
-	b = litewire.AppendString(b, 3, m.Description)
-	b = litewire.AppendBool(b, 4, m.Recommended)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionQuestionOptionView)
 }
 
 type SessionQuestionStepView struct {
+	_            [0]func()
 	Header       string
 	QuestionText string
 	MultiSelect  bool
@@ -2251,29 +2076,26 @@ func (m *SessionQuestionStepView) GetCanFreeText() bool {
 	return false
 }
 
-func (m *SessionQuestionStepView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionQuestionStepView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionQuestionStepView{}.Header), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionQuestionStepView{}.QuestionText), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionQuestionStepView{}.MultiSelect), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionQuestionStepView{}.Options), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionQuestionOptionView},
+		{Num: 5, Offset: unsafe.Offsetof(SessionQuestionStepView{}.CanFreeText), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionQuestionStepView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionQuestionStepView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Header)
-	b = litewire.AppendString(b, 2, m.QuestionText)
-	b = litewire.AppendBool(b, 3, m.MultiSelect)
-	for _, v := range m.Options {
-		if v != nil {
-			b = litewire.AppendMessage(b, 4, v)
-		}
-	}
-	b = litewire.AppendBool(b, 5, m.CanFreeText)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionQuestionStepView)
 }
 
 type SessionQuestionDockView struct {
+	_               [0]func()
 	QuestionId      string
 	ActiveIndex     int32
 	TotalQuestions  int32
@@ -2319,37 +2141,27 @@ func (m *SessionQuestionDockView) GetAnsweredIndices() []int32 {
 	return nil
 }
 
-func (m *SessionQuestionDockView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionQuestionDockView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionQuestionDockView{}.QuestionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionQuestionDockView{}.ActiveIndex), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionQuestionDockView{}.TotalQuestions), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionQuestionDockView{}.ProgressText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(SessionQuestionDockView{}.Question), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionQuestionStepView},
+		{Num: 6, Offset: unsafe.Offsetof(SessionQuestionDockView{}.AnsweredIndices), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+	},
+}
 
 func (m *SessionQuestionDockView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionQuestionDockView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.QuestionId)
-	b = litewire.AppendInt32(b, 2, int32(m.ActiveIndex))
-	b = litewire.AppendInt32(b, 3, int32(m.TotalQuestions))
-	if m.ProgressText != nil {
-		b = litewire.AppendMessage(b, 4, m.ProgressText)
-	}
-	if m.Question != nil {
-		b = litewire.AppendMessage(b, 5, m.Question)
-	}
-	if len(m.AnsweredIndices) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 6)
-		for _, v := range m.AnsweredIndices {
-			b = litewire.AppendRawVarint(b, uint64(int64(v)))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionQuestionDockView)
 }
 
 type SessionPlanChoiceOptionView struct {
+	_           [0]func()
 	Choice      v1.PlanChoice
 	Label       *Text
 	Recommended bool
@@ -2374,25 +2186,24 @@ func (m *SessionPlanChoiceOptionView) GetRecommended() bool {
 	return false
 }
 
-func (m *SessionPlanChoiceOptionView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionPlanChoiceOptionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionPlanChoiceOptionView{}.Choice), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionPlanChoiceOptionView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SessionPlanChoiceOptionView{}.Recommended), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionPlanChoiceOptionView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionPlanChoiceOptionView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Choice))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 2, m.Label)
-	}
-	b = litewire.AppendBool(b, 3, m.Recommended)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionPlanChoiceOptionView)
 }
 
 type SessionPlanDockView struct {
+	_                     [0]func()
 	Markdown              string
 	ScreenHash            []byte
 	Note                  *Text
@@ -2431,31 +2242,26 @@ func (m *SessionPlanDockView) GetChoices() []*SessionPlanChoiceOptionView {
 	return nil
 }
 
-func (m *SessionPlanDockView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionPlanDockView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionPlanDockView{}.Markdown), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionPlanDockView{}.ScreenHash), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SessionPlanDockView{}.Note), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionPlanDockView{}.ClearContextAvailable), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionPlanDockView{}.Choices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionPlanChoiceOptionView},
+	},
+}
 
 func (m *SessionPlanDockView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionPlanDockView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Markdown)
-	b = litewire.AppendBytes(b, 2, m.ScreenHash)
-	if m.Note != nil {
-		b = litewire.AppendMessage(b, 3, m.Note)
-	}
-	b = litewire.AppendBool(b, 4, m.ClearContextAvailable)
-	for _, v := range m.Choices {
-		if v != nil {
-			b = litewire.AppendMessage(b, 5, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionPlanDockView)
 }
 
 type SessionTerminalPopupDockView struct {
+	_             [0]func()
 	PopupTitle    *Text
 	Hint          *Text
 	CanGoTerminal bool
@@ -2480,27 +2286,24 @@ func (m *SessionTerminalPopupDockView) GetCanGoTerminal() bool {
 	return false
 }
 
-func (m *SessionTerminalPopupDockView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionTerminalPopupDockView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTerminalPopupDockView{}.PopupTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 2, Offset: unsafe.Offsetof(SessionTerminalPopupDockView{}.Hint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SessionTerminalPopupDockView{}.CanGoTerminal), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionTerminalPopupDockView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionTerminalPopupDockView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.PopupTitle != nil {
-		b = litewire.AppendMessage(b, 1, m.PopupTitle)
-	}
-	if m.Hint != nil {
-		b = litewire.AppendMessage(b, 2, m.Hint)
-	}
-	b = litewire.AppendBool(b, 3, m.CanGoTerminal)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTerminalPopupDockView)
 }
 
 type SessionTrayItemView struct {
+	_                      [0]func()
 	RequestId              string
 	SlotKey                string
 	Group                  SessionTrayGroupKind
@@ -2686,54 +2489,47 @@ func (m *SessionTrayItemView) GetServerBacked() bool {
 	return false
 }
 
-func (m *SessionTrayItemView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionTrayItemView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTrayItemView{}.RequestId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionTrayItemView{}.SlotKey), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionTrayItemView{}.Group), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionTrayItemView{}.Tone), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(SessionTrayItemView{}.Activity), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(SessionTrayItemView{}.QueueNumber), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(SessionTrayItemView{}.ShowSpinner), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionTrayItemView{}.Text), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SessionTrayItemView{}.SourceLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(SessionTrayItemView{}.ForeignDimmed), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SessionTrayItemView{}.AttachmentCount), Kind: litewire.KindInt32},
+		{Num: 12, Offset: unsafe.Offsetof(SessionTrayItemView{}.ImageCount), Kind: litewire.KindInt32},
+		{Num: 13, Offset: unsafe.Offsetof(SessionTrayItemView{}.FileCount), Kind: litewire.KindInt32},
+		{Num: 14, Offset: unsafe.Offsetof(SessionTrayItemView{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 15, Offset: unsafe.Offsetof(SessionTrayItemView{}.FileIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 16, Offset: unsafe.Offsetof(SessionTrayItemView{}.Mode), Kind: litewire.KindInt32},
+		{Num: 17, Offset: unsafe.Offsetof(SessionTrayItemView{}.ReasonText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 18, Offset: unsafe.Offsetof(SessionTrayItemView{}.CanCancel), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SessionTrayItemView{}.CanResume), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(SessionTrayItemView{}.CanRetry), Kind: litewire.KindBool},
+		{Num: 21, Offset: unsafe.Offsetof(SessionTrayItemView{}.CanOpenTerminal), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(SessionTrayItemView{}.CanIgnore), Kind: litewire.KindBool},
+		{Num: 23, Offset: unsafe.Offsetof(SessionTrayItemView{}.CanPromote), Kind: litewire.KindBool},
+		{Num: 24, Offset: unsafe.Offsetof(SessionTrayItemView{}.CanRestore), Kind: litewire.KindBool},
+		{Num: 25, Offset: unsafe.Offsetof(SessionTrayItemView{}.NetworkActionsDisabled), Kind: litewire.KindBool},
+		{Num: 26, Offset: unsafe.Offsetof(SessionTrayItemView{}.ServerBacked), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionTrayItemView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionTrayItemView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RequestId)
-	b = litewire.AppendString(b, 2, m.SlotKey)
-	b = litewire.AppendInt32(b, 3, int32(m.Group))
-	b = litewire.AppendInt32(b, 4, int32(m.Tone))
-	b = litewire.AppendInt32(b, 5, int32(m.Activity))
-	b = litewire.AppendInt32(b, 6, int32(m.QueueNumber))
-	b = litewire.AppendBool(b, 7, m.ShowSpinner)
-	b = litewire.AppendString(b, 8, m.Text)
-	if m.SourceLabel != nil {
-		b = litewire.AppendMessage(b, 9, m.SourceLabel)
-	}
-	b = litewire.AppendBool(b, 10, m.ForeignDimmed)
-	b = litewire.AppendInt32(b, 11, int32(m.AttachmentCount))
-	b = litewire.AppendInt32(b, 12, int32(m.ImageCount))
-	b = litewire.AppendInt32(b, 13, int32(m.FileCount))
-	for _, v := range m.ImageIds {
-		b = litewire.AppendStringAlways(b, 14, v)
-	}
-	for _, v := range m.FileIds {
-		b = litewire.AppendStringAlways(b, 15, v)
-	}
-	b = litewire.AppendInt32(b, 16, int32(m.Mode))
-	if m.ReasonText != nil {
-		b = litewire.AppendMessage(b, 17, m.ReasonText)
-	}
-	b = litewire.AppendBool(b, 18, m.CanCancel)
-	b = litewire.AppendBool(b, 19, m.CanResume)
-	b = litewire.AppendBool(b, 20, m.CanRetry)
-	b = litewire.AppendBool(b, 21, m.CanOpenTerminal)
-	b = litewire.AppendBool(b, 22, m.CanIgnore)
-	b = litewire.AppendBool(b, 23, m.CanPromote)
-	b = litewire.AppendBool(b, 24, m.CanRestore)
-	b = litewire.AppendBool(b, 25, m.NetworkActionsDisabled)
-	b = litewire.AppendBool(b, 26, m.ServerBacked)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTrayItemView)
 }
 
 type SessionTrayGroupView struct {
+	_            [0]func()
 	Kind         SessionTrayGroupKind
 	Tone         SessionTrayTone
 	Title        *Text
@@ -2786,35 +2582,28 @@ func (m *SessionTrayGroupView) GetItems() []*SessionTrayItemView {
 	return nil
 }
 
-func (m *SessionTrayGroupView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionTrayGroupView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTrayGroupView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionTrayGroupView{}.Tone), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionTrayGroupView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionTrayGroupView{}.HeaderText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(SessionTrayGroupView{}.TotalCount), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(SessionTrayGroupView{}.CanCancelAll), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionTrayGroupView{}.Items), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionTrayItemView},
+	},
+}
 
 func (m *SessionTrayGroupView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionTrayGroupView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	b = litewire.AppendInt32(b, 2, int32(m.Tone))
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 3, m.Title)
-	}
-	if m.HeaderText != nil {
-		b = litewire.AppendMessage(b, 4, m.HeaderText)
-	}
-	b = litewire.AppendInt32(b, 5, int32(m.TotalCount))
-	b = litewire.AppendBool(b, 6, m.CanCancelAll)
-	for _, v := range m.Items {
-		if v != nil {
-			b = litewire.AppendMessage(b, 7, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTrayGroupView)
 }
 
 type SessionTrayUndoView struct {
+	_       [0]func()
 	Visible bool
 	Count   int32
 	Label   *Text
@@ -2846,26 +2635,25 @@ func (m *SessionTrayUndoView) GetCanUndo() bool {
 	return false
 }
 
-func (m *SessionTrayUndoView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionTrayUndoView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTrayUndoView{}.Visible), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionTrayUndoView{}.Count), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionTrayUndoView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionTrayUndoView{}.CanUndo), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionTrayUndoView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionTrayUndoView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Visible)
-	b = litewire.AppendInt32(b, 2, int32(m.Count))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 3, m.Label)
-	}
-	b = litewire.AppendBool(b, 4, m.CanUndo)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTrayUndoView)
 }
 
 type SessionPendingTrayView struct {
+	_            [0]func()
 	Groups       []*SessionTrayGroupView
 	OrderedItems []*SessionTrayItemView
 	TotalCount   int32
@@ -2911,36 +2699,27 @@ func (m *SessionPendingTrayView) GetUndo() *SessionTrayUndoView {
 	return nil
 }
 
-func (m *SessionPendingTrayView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionPendingTrayView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionPendingTrayView{}.Groups), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionTrayGroupView},
+		{Num: 2, Offset: unsafe.Offsetof(SessionPendingTrayView{}.OrderedItems), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionTrayItemView},
+		{Num: 3, Offset: unsafe.Offsetof(SessionPendingTrayView{}.TotalCount), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionPendingTrayView{}.FailedCount), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(SessionPendingTrayView{}.Offline), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionPendingTrayView{}.Undo), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionTrayUndoView},
+	},
+}
 
 func (m *SessionPendingTrayView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionPendingTrayView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Groups {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
-		}
-	}
-	for _, v := range m.OrderedItems {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	b = litewire.AppendInt32(b, 3, int32(m.TotalCount))
-	b = litewire.AppendInt32(b, 4, int32(m.FailedCount))
-	b = litewire.AppendBool(b, 5, m.Offline)
-	if m.Undo != nil {
-		b = litewire.AppendMessage(b, 6, m.Undo)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionPendingTrayView)
 }
 
 type SessionComposerView struct {
+	_                            [0]func()
 	Enabled                      bool
 	DisabledReason               *Text
 	Placeholder                  *Text
@@ -3014,38 +2793,31 @@ func (m *SessionComposerView) GetRetainedAttachmentRequestIds() []string {
 	return nil
 }
 
-func (m *SessionComposerView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionComposerView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionComposerView{}.Enabled), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionComposerView{}.DisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SessionComposerView{}.Placeholder), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionComposerView{}.HasActiveTurn), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionComposerView{}.SupportsQueueMode), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionComposerView{}.CanAttachImages), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionComposerView{}.CanAttachFiles), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionComposerView{}.InterruptVisible), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionComposerView{}.PendingTray), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionPendingTrayView},
+		{Num: 10, Offset: unsafe.Offsetof(SessionComposerView{}.RetainedAttachmentRequestIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
 
 func (m *SessionComposerView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionComposerView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Enabled)
-	if m.DisabledReason != nil {
-		b = litewire.AppendMessage(b, 2, m.DisabledReason)
-	}
-	if m.Placeholder != nil {
-		b = litewire.AppendMessage(b, 3, m.Placeholder)
-	}
-	b = litewire.AppendBool(b, 4, m.HasActiveTurn)
-	b = litewire.AppendBool(b, 5, m.SupportsQueueMode)
-	b = litewire.AppendBool(b, 6, m.CanAttachImages)
-	b = litewire.AppendBool(b, 7, m.CanAttachFiles)
-	b = litewire.AppendBool(b, 8, m.InterruptVisible)
-	if m.PendingTray != nil {
-		b = litewire.AppendMessage(b, 9, m.PendingTray)
-	}
-	for _, v := range m.RetainedAttachmentRequestIds {
-		b = litewire.AppendStringAlways(b, 10, v)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionComposerView)
 }
 
 type SessionTimelineView struct {
+	_                    [0]func()
 	Items                []*SessionTimelineItem
 	HasEarlier           bool
 	NextBeforeSeq        uint64
@@ -3217,54 +2989,45 @@ func (m *SessionTimelineView) GetOffline() bool {
 	return false
 }
 
-func (m *SessionTimelineView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionTimelineView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTimelineView{}.Items), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionTimelineItem},
+		{Num: 2, Offset: unsafe.Offsetof(SessionTimelineView{}.HasEarlier), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SessionTimelineView{}.NextBeforeSeq), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(SessionTimelineView{}.WindowFirstSeq), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(SessionTimelineView{}.WindowLastSeq), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(SessionTimelineView{}.TotalItems), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(SessionTimelineView{}.AnchorSeq), Kind: litewire.KindUint64},
+		{Num: 8, Offset: unsafe.Offsetof(SessionTimelineView{}.AnchorItemId), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SessionTimelineView{}.Loading), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SessionTimelineView{}.Loaded), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SessionTimelineView{}.AwaitingCache), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SessionTimelineView{}.Backfilling), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SessionTimelineView{}.Fetching), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SessionTimelineView{}.HasGap), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(SessionTimelineView{}.Retired), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(SessionTimelineView{}.RetryingCorruptCache), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(SessionTimelineView{}.HistoryPartial), Kind: litewire.KindBool},
+		{Num: 18, Offset: unsafe.Offsetof(SessionTimelineView{}.UnavailableCount), Kind: litewire.KindUint32},
+		{Num: 19, Offset: unsafe.Offsetof(SessionTimelineView{}.HistoryNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 20, Offset: unsafe.Offsetof(SessionTimelineView{}.Error), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 21, Offset: unsafe.Offsetof(SessionTimelineView{}.FetchError), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 22, Offset: unsafe.Offsetof(SessionTimelineView{}.CanLoadEarlier), Kind: litewire.KindBool},
+		{Num: 23, Offset: unsafe.Offsetof(SessionTimelineView{}.TailRequested), Kind: litewire.KindBool},
+		{Num: 24, Offset: unsafe.Offsetof(SessionTimelineView{}.Offline), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionTimelineView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionTimelineView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Items {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
-		}
-	}
-	b = litewire.AppendBool(b, 2, m.HasEarlier)
-	b = litewire.AppendVarint(b, 3, uint64(m.NextBeforeSeq))
-	b = litewire.AppendVarint(b, 4, uint64(m.WindowFirstSeq))
-	b = litewire.AppendVarint(b, 5, uint64(m.WindowLastSeq))
-	b = litewire.AppendInt32(b, 6, int32(m.TotalItems))
-	b = litewire.AppendVarint(b, 7, uint64(m.AnchorSeq))
-	b = litewire.AppendString(b, 8, m.AnchorItemId)
-	b = litewire.AppendBool(b, 9, m.Loading)
-	b = litewire.AppendBool(b, 10, m.Loaded)
-	b = litewire.AppendBool(b, 11, m.AwaitingCache)
-	b = litewire.AppendBool(b, 12, m.Backfilling)
-	b = litewire.AppendBool(b, 13, m.Fetching)
-	b = litewire.AppendBool(b, 14, m.HasGap)
-	b = litewire.AppendBool(b, 15, m.Retired)
-	b = litewire.AppendBool(b, 16, m.RetryingCorruptCache)
-	b = litewire.AppendBool(b, 17, m.HistoryPartial)
-	b = litewire.AppendVarint(b, 18, uint64(m.UnavailableCount))
-	if m.HistoryNotice != nil {
-		b = litewire.AppendMessage(b, 19, m.HistoryNotice)
-	}
-	if m.Error != nil {
-		b = litewire.AppendMessage(b, 20, m.Error)
-	}
-	if m.FetchError != nil {
-		b = litewire.AppendMessage(b, 21, m.FetchError)
-	}
-	b = litewire.AppendBool(b, 22, m.CanLoadEarlier)
-	b = litewire.AppendBool(b, 23, m.TailRequested)
-	b = litewire.AppendBool(b, 24, m.Offline)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTimelineView)
 }
 
 type SessionTimelineItem struct {
+	_           [0]func()
 	Id          string
 	Seq         uint64
 	EndSeq      uint64
@@ -3274,73 +3037,122 @@ type SessionTimelineItem struct {
 }
 
 type isSessionTimelineItem_Kind interface{ isSessionTimelineItem_Kind() }
-type SessionTimelineItem_UserMessage struct{ UserMessage *SessionUserMessageItem }
+type SessionTimelineItem_UserMessage struct {
+	_           [0]func()
+	UserMessage *SessionUserMessageItem
+}
 
 func (*SessionTimelineItem_UserMessage) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_AgentMessage struct{ AgentMessage *SessionAgentMessageItem }
+type SessionTimelineItem_AgentMessage struct {
+	_            [0]func()
+	AgentMessage *SessionAgentMessageItem
+}
 
 func (*SessionTimelineItem_AgentMessage) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_Reasoning struct{ Reasoning *SessionReasoningItem }
+type SessionTimelineItem_Reasoning struct {
+	_         [0]func()
+	Reasoning *SessionReasoningItem
+}
 
 func (*SessionTimelineItem_Reasoning) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_ToolCall struct{ ToolCall *SessionToolCallItem }
+type SessionTimelineItem_ToolCall struct {
+	_        [0]func()
+	ToolCall *SessionToolCallItem
+}
 
 func (*SessionTimelineItem_ToolCall) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_ToolGroup struct{ ToolGroup *SessionToolGroupItem }
+type SessionTimelineItem_ToolGroup struct {
+	_         [0]func()
+	ToolGroup *SessionToolGroupItem
+}
 
 func (*SessionTimelineItem_ToolGroup) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_SharedFiles struct{ SharedFiles *SessionSharedFilesItem }
+type SessionTimelineItem_SharedFiles struct {
+	_           [0]func()
+	SharedFiles *SessionSharedFilesItem
+}
 
 func (*SessionTimelineItem_SharedFiles) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_GeneratedImages struct{ GeneratedImages *SessionGeneratedImagesItem }
+type SessionTimelineItem_GeneratedImages struct {
+	_               [0]func()
+	GeneratedImages *SessionGeneratedImagesItem
+}
 
 func (*SessionTimelineItem_GeneratedImages) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_AsyncQuestion struct{ AsyncQuestion *SessionAsyncQuestionItem }
+type SessionTimelineItem_AsyncQuestion struct {
+	_             [0]func()
+	AsyncQuestion *SessionAsyncQuestionItem
+}
 
 func (*SessionTimelineItem_AsyncQuestion) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_Plan struct{ Plan *SessionPlanItem }
+type SessionTimelineItem_Plan struct {
+	_    [0]func()
+	Plan *SessionPlanItem
+}
 
 func (*SessionTimelineItem_Plan) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_Note struct{ Note *SessionNoteItem }
+type SessionTimelineItem_Note struct {
+	_    [0]func()
+	Note *SessionNoteItem
+}
 
 func (*SessionTimelineItem_Note) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_TurnEnd struct{ TurnEnd *SessionTurnEndItem }
+type SessionTimelineItem_TurnEnd struct {
+	_       [0]func()
+	TurnEnd *SessionTurnEndItem
+}
 
 func (*SessionTimelineItem_TurnEnd) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_ErrorLine struct{ ErrorLine *SessionErrorLineItem }
+type SessionTimelineItem_ErrorLine struct {
+	_         [0]func()
+	ErrorLine *SessionErrorLineItem
+}
 
 func (*SessionTimelineItem_ErrorLine) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_ForkMarker struct{ ForkMarker *SessionForkItem }
+type SessionTimelineItem_ForkMarker struct {
+	_          [0]func()
+	ForkMarker *SessionForkItem
+}
 
 func (*SessionTimelineItem_ForkMarker) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_InputState struct{ InputState *SessionInputStateItem }
+type SessionTimelineItem_InputState struct {
+	_          [0]func()
+	InputState *SessionInputStateItem
+}
 
 func (*SessionTimelineItem_InputState) isSessionTimelineItem_Kind() {}
 
 type SessionTimelineItem_QuietScheduledGroup struct {
+	_                   [0]func()
 	QuietScheduledGroup *SessionQuietScheduledGroupItem
 }
 
 func (*SessionTimelineItem_QuietScheduledGroup) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_Skeleton struct{ Skeleton *SessionSkeletonItem }
+type SessionTimelineItem_Skeleton struct {
+	_        [0]func()
+	Skeleton *SessionSkeletonItem
+}
 
 func (*SessionTimelineItem_Skeleton) isSessionTimelineItem_Kind() {}
 
-type SessionTimelineItem_NotifyReceipt struct{ NotifyReceipt *SessionNotifyReceiptItem }
+type SessionTimelineItem_NotifyReceipt struct {
+	_             [0]func()
+	NotifyReceipt *SessionNotifyReceiptItem
+}
 
 func (*SessionTimelineItem_NotifyReceipt) isSessionTimelineItem_Kind() {}
 
@@ -3483,129 +3295,135 @@ func (m *SessionTimelineItem) GetNotifyReceipt() *SessionNotifyReceiptItem {
 	return nil
 }
 
-func (m *SessionTimelineItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionTimelineItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTimelineItem{}.Id), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionTimelineItem{}.Seq), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(SessionTimelineItem{}.EndSeq), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(SessionTimelineItem{}.TimestampMs), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(SessionTimelineItem{}.TurnId), Kind: litewire.KindString},
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
 
 func (m *SessionTimelineItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionTimelineItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Id)
-	b = litewire.AppendVarint(b, 2, uint64(m.Seq))
-	b = litewire.AppendVarint(b, 3, uint64(m.EndSeq))
-	b = litewire.AppendVarint(b, 4, uint64(m.TimestampMs))
-	b = litewire.AppendString(b, 5, m.TurnId)
-	switch x := m.Kind.(type) {
-	case *SessionTimelineItem_UserMessage:
-		if x != nil {
-			if x.UserMessage != nil {
-				b = litewire.AppendMessage(b, 10, x.UserMessage)
-			}
-		}
-	case *SessionTimelineItem_AgentMessage:
-		if x != nil {
-			if x.AgentMessage != nil {
-				b = litewire.AppendMessage(b, 11, x.AgentMessage)
-			}
-		}
-	case *SessionTimelineItem_Reasoning:
-		if x != nil {
-			if x.Reasoning != nil {
-				b = litewire.AppendMessage(b, 12, x.Reasoning)
-			}
-		}
-	case *SessionTimelineItem_ToolCall:
-		if x != nil {
-			if x.ToolCall != nil {
-				b = litewire.AppendMessage(b, 13, x.ToolCall)
-			}
-		}
-	case *SessionTimelineItem_ToolGroup:
-		if x != nil {
-			if x.ToolGroup != nil {
-				b = litewire.AppendMessage(b, 14, x.ToolGroup)
-			}
-		}
-	case *SessionTimelineItem_SharedFiles:
-		if x != nil {
-			if x.SharedFiles != nil {
-				b = litewire.AppendMessage(b, 15, x.SharedFiles)
-			}
-		}
-	case *SessionTimelineItem_GeneratedImages:
-		if x != nil {
-			if x.GeneratedImages != nil {
-				b = litewire.AppendMessage(b, 16, x.GeneratedImages)
-			}
-		}
-	case *SessionTimelineItem_AsyncQuestion:
-		if x != nil {
-			if x.AsyncQuestion != nil {
-				b = litewire.AppendMessage(b, 17, x.AsyncQuestion)
-			}
-		}
-	case *SessionTimelineItem_Plan:
-		if x != nil {
-			if x.Plan != nil {
-				b = litewire.AppendMessage(b, 18, x.Plan)
-			}
-		}
-	case *SessionTimelineItem_Note:
-		if x != nil {
-			if x.Note != nil {
-				b = litewire.AppendMessage(b, 19, x.Note)
-			}
-		}
-	case *SessionTimelineItem_TurnEnd:
-		if x != nil {
-			if x.TurnEnd != nil {
-				b = litewire.AppendMessage(b, 20, x.TurnEnd)
-			}
-		}
-	case *SessionTimelineItem_ErrorLine:
-		if x != nil {
-			if x.ErrorLine != nil {
-				b = litewire.AppendMessage(b, 21, x.ErrorLine)
-			}
-		}
-	case *SessionTimelineItem_ForkMarker:
-		if x != nil {
-			if x.ForkMarker != nil {
-				b = litewire.AppendMessage(b, 22, x.ForkMarker)
-			}
-		}
-	case *SessionTimelineItem_InputState:
-		if x != nil {
-			if x.InputState != nil {
-				b = litewire.AppendMessage(b, 23, x.InputState)
-			}
-		}
-	case *SessionTimelineItem_QuietScheduledGroup:
-		if x != nil {
-			if x.QuietScheduledGroup != nil {
-				b = litewire.AppendMessage(b, 24, x.QuietScheduledGroup)
-			}
-		}
-	case *SessionTimelineItem_Skeleton:
-		if x != nil {
-			if x.Skeleton != nil {
-				b = litewire.AppendMessage(b, 25, x.Skeleton)
-			}
-		}
-	case *SessionTimelineItem_NotifyReceipt:
-		if x != nil {
-			if x.NotifyReceipt != nil {
-				b = litewire.AppendMessage(b, 26, x.NotifyReceipt)
-			}
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTimelineItem)
+}
+
+func extraMarshal_SessionTimelineItem(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*SessionTimelineItem)(base)
+	if m.Kind != nil {
+		var ok bool
+		b, ok = m.appendMarshalKindPart0(b)
+		if !ok {
+			b, ok = m.appendMarshalKindPart1(b)
 		}
 	}
 	return b
 }
 
+//go:noinline
+func (m *SessionTimelineItem) appendMarshalKindPart0(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *SessionTimelineItem_UserMessage:
+		if x != nil && x.UserMessage != nil {
+			onum, omsg = 10, x.UserMessage
+		}
+	case *SessionTimelineItem_AgentMessage:
+		if x != nil && x.AgentMessage != nil {
+			onum, omsg = 11, x.AgentMessage
+		}
+	case *SessionTimelineItem_Reasoning:
+		if x != nil && x.Reasoning != nil {
+			onum, omsg = 12, x.Reasoning
+		}
+	case *SessionTimelineItem_ToolCall:
+		if x != nil && x.ToolCall != nil {
+			onum, omsg = 13, x.ToolCall
+		}
+	case *SessionTimelineItem_ToolGroup:
+		if x != nil && x.ToolGroup != nil {
+			onum, omsg = 14, x.ToolGroup
+		}
+	case *SessionTimelineItem_SharedFiles:
+		if x != nil && x.SharedFiles != nil {
+			onum, omsg = 15, x.SharedFiles
+		}
+	case *SessionTimelineItem_GeneratedImages:
+		if x != nil && x.GeneratedImages != nil {
+			onum, omsg = 16, x.GeneratedImages
+		}
+	case *SessionTimelineItem_AsyncQuestion:
+		if x != nil && x.AsyncQuestion != nil {
+			onum, omsg = 17, x.AsyncQuestion
+		}
+	case *SessionTimelineItem_Plan:
+		if x != nil && x.Plan != nil {
+			onum, omsg = 18, x.Plan
+		}
+	case *SessionTimelineItem_Note:
+		if x != nil && x.Note != nil {
+			onum, omsg = 19, x.Note
+		}
+	case *SessionTimelineItem_TurnEnd:
+		if x != nil && x.TurnEnd != nil {
+			onum, omsg = 20, x.TurnEnd
+		}
+	case *SessionTimelineItem_ErrorLine:
+		if x != nil && x.ErrorLine != nil {
+			onum, omsg = 21, x.ErrorLine
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *SessionTimelineItem) appendMarshalKindPart1(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *SessionTimelineItem_ForkMarker:
+		if x != nil && x.ForkMarker != nil {
+			onum, omsg = 22, x.ForkMarker
+		}
+	case *SessionTimelineItem_InputState:
+		if x != nil && x.InputState != nil {
+			onum, omsg = 23, x.InputState
+		}
+	case *SessionTimelineItem_QuietScheduledGroup:
+		if x != nil && x.QuietScheduledGroup != nil {
+			onum, omsg = 24, x.QuietScheduledGroup
+		}
+	case *SessionTimelineItem_Skeleton:
+		if x != nil && x.Skeleton != nil {
+			onum, omsg = 25, x.Skeleton
+		}
+	case *SessionTimelineItem_NotifyReceipt:
+		if x != nil && x.NotifyReceipt != nil {
+			onum, omsg = 26, x.NotifyReceipt
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
 type SessionFileRefView struct {
+	_         [0]func()
 	Name      string
 	Path      string
 	SizeBytes int64
@@ -3637,24 +3455,25 @@ func (m *SessionFileRefView) GetMimeType() string {
 	return ""
 }
 
-func (m *SessionFileRefView) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionFileRefView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionFileRefView{}.Name), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionFileRefView{}.Path), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionFileRefView{}.SizeBytes), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(SessionFileRefView{}.MimeType), Kind: litewire.KindString},
+	},
+}
 
 func (m *SessionFileRefView) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionFileRefView) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Name)
-	b = litewire.AppendString(b, 2, m.Path)
-	b = litewire.AppendVarint(b, 3, uint64(m.SizeBytes))
-	b = litewire.AppendString(b, 4, m.MimeType)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionFileRefView)
 }
 
 type SessionUserMessageItem struct {
+	_               [0]func()
 	Text            string
 	Images          []*v1.ImageRef
 	Files           []*SessionFileRefView
@@ -3721,41 +3540,30 @@ func (m *SessionUserMessageItem) GetTypedLocally() bool {
 	return false
 }
 
-func (m *SessionUserMessageItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionUserMessageItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Text), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
+		{Num: 3, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Files), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionFileRefView},
+		{Num: 4, Offset: unsafe.Offsetof(SessionUserMessageItem{}.Origin), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Origin},
+		{Num: 5, Offset: unsafe.Offsetof(SessionUserMessageItem{}.OriginCaption), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(SessionUserMessageItem{}.ScheduledTaskId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SessionUserMessageItem{}.ScheduledRunId), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SessionUserMessageItem{}.IsScheduled), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionUserMessageItem{}.TypedLocally), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionUserMessageItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionUserMessageItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Text)
-	for _, v := range m.Images {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	for _, v := range m.Files {
-		if v != nil {
-			b = litewire.AppendMessage(b, 3, v)
-		}
-	}
-	if m.Origin != nil {
-		b = litewire.AppendMessage(b, 4, m.Origin)
-	}
-	if m.OriginCaption != nil {
-		b = litewire.AppendMessage(b, 5, m.OriginCaption)
-	}
-	b = litewire.AppendString(b, 6, m.ScheduledTaskId)
-	b = litewire.AppendString(b, 7, m.ScheduledRunId)
-	b = litewire.AppendBool(b, 8, m.IsScheduled)
-	b = litewire.AppendBool(b, 9, m.TypedLocally)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionUserMessageItem)
 }
 
 type SessionAgentMessageItem struct {
+	_            [0]func()
 	Markdown     string
 	Intermediate bool
 }
@@ -3773,22 +3581,23 @@ func (m *SessionAgentMessageItem) GetIntermediate() bool {
 	return false
 }
 
-func (m *SessionAgentMessageItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionAgentMessageItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionAgentMessageItem{}.Markdown), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionAgentMessageItem{}.Intermediate), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionAgentMessageItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionAgentMessageItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Markdown)
-	b = litewire.AppendBool(b, 2, m.Intermediate)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionAgentMessageItem)
 }
 
 type SessionReasoningItem struct {
+	_         [0]func()
 	Markdown  string
 	Streaming bool
 }
@@ -3806,22 +3615,23 @@ func (m *SessionReasoningItem) GetStreaming() bool {
 	return false
 }
 
-func (m *SessionReasoningItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionReasoningItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionReasoningItem{}.Markdown), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionReasoningItem{}.Streaming), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionReasoningItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionReasoningItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Markdown)
-	b = litewire.AppendBool(b, 2, m.Streaming)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionReasoningItem)
 }
 
 type SessionToolCallItem struct {
+	_               [0]func()
 	CallId          string
 	ToolKind        v1.ToolKind
 	ItemType        string
@@ -3972,49 +3782,42 @@ func (m *SessionToolCallItem) GetImages() []*v1.ImageRef {
 	return nil
 }
 
-func (m *SessionToolCallItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionToolCallItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionToolCallItem{}.CallId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionToolCallItem{}.ToolKind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionToolCallItem{}.ItemType), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionToolCallItem{}.Title), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SessionToolCallItem{}.RawInput), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SessionToolCallItem{}.Detail), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SessionToolCallItem{}.Status), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(SessionToolCallItem{}.ExitCode), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(SessionToolCallItem{}.HasExitCode), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SessionToolCallItem{}.ElapsedMs), Kind: litewire.KindInt64},
+		{Num: 11, Offset: unsafe.Offsetof(SessionToolCallItem{}.SinceMs), Kind: litewire.KindInt64},
+		{Num: 12, Offset: unsafe.Offsetof(SessionToolCallItem{}.FrozenAtMs), Kind: litewire.KindInt64},
+		{Num: 13, Offset: unsafe.Offsetof(SessionToolCallItem{}.IsBackground), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(SessionToolCallItem{}.BackgroundKind), Kind: litewire.KindInt32},
+		{Num: 21, Offset: unsafe.Offsetof(SessionToolCallItem{}.BackgroundId), Kind: litewire.KindString},
+		{Num: 14, Offset: unsafe.Offsetof(SessionToolCallItem{}.BackgroundLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(SessionToolCallItem{}.Unconfirmed), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(SessionToolCallItem{}.NoResult), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(SessionToolCallItem{}.DecisionLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 18, Offset: unsafe.Offsetof(SessionToolCallItem{}.DecisionAllowed), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SessionToolCallItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
+	},
+}
 
 func (m *SessionToolCallItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionToolCallItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.CallId)
-	b = litewire.AppendInt32(b, 2, int32(m.ToolKind))
-	b = litewire.AppendString(b, 3, m.ItemType)
-	b = litewire.AppendString(b, 4, m.Title)
-	b = litewire.AppendString(b, 5, m.RawInput)
-	b = litewire.AppendString(b, 6, m.Detail)
-	b = litewire.AppendInt32(b, 7, int32(m.Status))
-	b = litewire.AppendInt32(b, 8, int32(m.ExitCode))
-	b = litewire.AppendBool(b, 9, m.HasExitCode)
-	b = litewire.AppendVarint(b, 10, uint64(m.ElapsedMs))
-	b = litewire.AppendVarint(b, 11, uint64(m.SinceMs))
-	b = litewire.AppendVarint(b, 12, uint64(m.FrozenAtMs))
-	b = litewire.AppendBool(b, 13, m.IsBackground)
-	b = litewire.AppendInt32(b, 20, int32(m.BackgroundKind))
-	b = litewire.AppendString(b, 21, m.BackgroundId)
-	if m.BackgroundLabel != nil {
-		b = litewire.AppendMessage(b, 14, m.BackgroundLabel)
-	}
-	b = litewire.AppendBool(b, 15, m.Unconfirmed)
-	b = litewire.AppendBool(b, 16, m.NoResult)
-	if m.DecisionLabel != nil {
-		b = litewire.AppendMessage(b, 17, m.DecisionLabel)
-	}
-	b = litewire.AppendBool(b, 18, m.DecisionAllowed)
-	for _, v := range m.Images {
-		if v != nil {
-			b = litewire.AppendMessage(b, 19, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionToolCallItem)
 }
 
 type SessionToolGroupItem struct {
+	_            [0]func()
 	Calls        []*SessionToolCallItem
 	Summary      *Text
 	CommandCount int32
@@ -4060,32 +3863,27 @@ func (m *SessionToolGroupItem) GetImageCount() int32 {
 	return 0
 }
 
-func (m *SessionToolGroupItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionToolGroupItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionToolGroupItem{}.Calls), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionToolCallItem},
+		{Num: 2, Offset: unsafe.Offsetof(SessionToolGroupItem{}.Summary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SessionToolGroupItem{}.CommandCount), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionToolGroupItem{}.EditCount), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(SessionToolGroupItem{}.OtherCount), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(SessionToolGroupItem{}.ImageCount), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *SessionToolGroupItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionToolGroupItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Calls {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
-		}
-	}
-	if m.Summary != nil {
-		b = litewire.AppendMessage(b, 2, m.Summary)
-	}
-	b = litewire.AppendInt32(b, 3, int32(m.CommandCount))
-	b = litewire.AppendInt32(b, 4, int32(m.EditCount))
-	b = litewire.AppendInt32(b, 5, int32(m.OtherCount))
-	b = litewire.AppendInt32(b, 6, int32(m.ImageCount))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionToolGroupItem)
 }
 
 type SessionSharedFileItem struct {
+	_         [0]func()
 	Path      string
 	Name      string
 	SizeBytes int64
@@ -4131,26 +3929,27 @@ func (m *SessionSharedFileItem) GetAvailable() bool {
 	return false
 }
 
-func (m *SessionSharedFileItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionSharedFileItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Path), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Name), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionSharedFileItem{}.SizeBytes), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(SessionSharedFileItem{}.MimeType), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SessionSharedFileItem{}.FileId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Available), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionSharedFileItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionSharedFileItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Path)
-	b = litewire.AppendString(b, 2, m.Name)
-	b = litewire.AppendVarint(b, 3, uint64(m.SizeBytes))
-	b = litewire.AppendString(b, 4, m.MimeType)
-	b = litewire.AppendString(b, 5, m.FileId)
-	b = litewire.AppendBool(b, 6, m.Available)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSharedFileItem)
 }
 
 type SessionSharedFilesItem struct {
+	_     [0]func()
 	Files []*SessionSharedFileItem
 }
 
@@ -4161,25 +3960,22 @@ func (m *SessionSharedFilesItem) GetFiles() []*SessionSharedFileItem {
 	return nil
 }
 
-func (m *SessionSharedFilesItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionSharedFilesItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionSharedFilesItem{}.Files), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionSharedFileItem},
+	},
+}
 
 func (m *SessionSharedFilesItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionSharedFilesItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Files {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSharedFilesItem)
 }
 
 type SessionGeneratedImagesItem struct {
+	_             [0]func()
 	RevisedPrompt string
 	Images        []*v1.ImageRef
 }
@@ -4197,26 +3993,23 @@ func (m *SessionGeneratedImagesItem) GetImages() []*v1.ImageRef {
 	return nil
 }
 
-func (m *SessionGeneratedImagesItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionGeneratedImagesItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionGeneratedImagesItem{}.RevisedPrompt), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionGeneratedImagesItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
+	},
+}
 
 func (m *SessionGeneratedImagesItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionGeneratedImagesItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RevisedPrompt)
-	for _, v := range m.Images {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionGeneratedImagesItem)
 }
 
 type SessionAsyncQuestionItem struct {
+	_          [0]func()
 	QuestionId string
 	Questions  []*SessionQuestionStepView
 }
@@ -4234,26 +4027,23 @@ func (m *SessionAsyncQuestionItem) GetQuestions() []*SessionQuestionStepView {
 	return nil
 }
 
-func (m *SessionAsyncQuestionItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionAsyncQuestionItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionAsyncQuestionItem{}.QuestionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionAsyncQuestionItem{}.Questions), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionQuestionStepView},
+	},
+}
 
 func (m *SessionAsyncQuestionItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionAsyncQuestionItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.QuestionId)
-	for _, v := range m.Questions {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionAsyncQuestionItem)
 }
 
 type SessionPlanItem struct {
+	_        [0]func()
 	Markdown string
 }
 
@@ -4264,21 +4054,22 @@ func (m *SessionPlanItem) GetMarkdown() string {
 	return ""
 }
 
-func (m *SessionPlanItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionPlanItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionPlanItem{}.Markdown), Kind: litewire.KindString},
+	},
+}
 
 func (m *SessionPlanItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionPlanItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Markdown)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionPlanItem)
 }
 
 type SessionNoteItem struct {
+	_              [0]func()
 	Kind           SessionNoteKind
 	Tone           SessionNoteTone
 	Text           *Text
@@ -4324,32 +4115,27 @@ func (m *SessionNoteItem) GetScheduledRunId() string {
 	return ""
 }
 
-func (m *SessionNoteItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionNoteItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionNoteItem{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionNoteItem{}.Tone), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionNoteItem{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 4, Offset: unsafe.Offsetof(SessionNoteItem{}.Meta), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(SessionNoteItem{}.Emphasis), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(SessionNoteItem{}.ScheduledRunId), Kind: litewire.KindString},
+	},
+}
 
 func (m *SessionNoteItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionNoteItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	b = litewire.AppendInt32(b, 2, int32(m.Tone))
-	if m.Text != nil {
-		b = litewire.AppendMessage(b, 3, m.Text)
-	}
-	if m.Meta != nil {
-		b = litewire.AppendMessage(b, 4, m.Meta)
-	}
-	if m.Emphasis != nil {
-		b = litewire.AppendMessage(b, 5, m.Emphasis)
-	}
-	b = litewire.AppendString(b, 6, m.ScheduledRunId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionNoteItem)
 }
 
 type SessionNotifyReceiptItem struct {
+	_              [0]func()
 	Label          *Text
 	Time           *Text
 	Preview        string
@@ -4395,30 +4181,27 @@ func (m *SessionNotifyReceiptItem) GetScheduledRunId() string {
 	return ""
 }
 
-func (m *SessionNotifyReceiptItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionNotifyReceiptItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionNotifyReceiptItem{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 2, Offset: unsafe.Offsetof(SessionNotifyReceiptItem{}.Time), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SessionNotifyReceiptItem{}.Preview), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionNotifyReceiptItem{}.Body), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SessionNotifyReceiptItem{}.Expandable), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionNotifyReceiptItem{}.ScheduledRunId), Kind: litewire.KindString},
+	},
+}
 
 func (m *SessionNotifyReceiptItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionNotifyReceiptItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 1, m.Label)
-	}
-	if m.Time != nil {
-		b = litewire.AppendMessage(b, 2, m.Time)
-	}
-	b = litewire.AppendString(b, 3, m.Preview)
-	b = litewire.AppendString(b, 4, m.Body)
-	b = litewire.AppendBool(b, 5, m.Expandable)
-	b = litewire.AppendString(b, 6, m.ScheduledRunId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionNotifyReceiptItem)
 }
 
 type SessionTurnEndItem struct {
+	_              [0]func()
 	Outcome        v1.TurnOutcome
 	DurationMs     int64
 	TurnTokens     int64
@@ -4464,28 +4247,27 @@ func (m *SessionTurnEndItem) GetIsSessionEnded() bool {
 	return false
 }
 
-func (m *SessionTurnEndItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionTurnEndItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTurnEndItem{}.Outcome), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionTurnEndItem{}.DurationMs), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(SessionTurnEndItem{}.TurnTokens), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(SessionTurnEndItem{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(SessionTurnEndItem{}.Interrupted), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionTurnEndItem{}.IsSessionEnded), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SessionTurnEndItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionTurnEndItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Outcome))
-	b = litewire.AppendVarint(b, 2, uint64(m.DurationMs))
-	b = litewire.AppendVarint(b, 3, uint64(m.TurnTokens))
-	if m.Label != nil {
-		b = litewire.AppendMessage(b, 4, m.Label)
-	}
-	b = litewire.AppendBool(b, 5, m.Interrupted)
-	b = litewire.AppendBool(b, 6, m.IsSessionEnded)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTurnEndItem)
 }
 
 type SessionErrorLineItem struct {
+	_         [0]func()
 	RawReason string
 	Text      *Text
 }
@@ -4503,24 +4285,23 @@ func (m *SessionErrorLineItem) GetText() *Text {
 	return nil
 }
 
-func (m *SessionErrorLineItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionErrorLineItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionErrorLineItem{}.RawReason), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionErrorLineItem{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *SessionErrorLineItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionErrorLineItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RawReason)
-	if m.Text != nil {
-		b = litewire.AppendMessage(b, 2, m.Text)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionErrorLineItem)
 }
 
 type SessionForkItem struct {
+	_               [0]func()
 	SourceSessionId string
 	SourceTitle     *Text
 	Text            *Text
@@ -4545,27 +4326,24 @@ func (m *SessionForkItem) GetText() *Text {
 	return nil
 }
 
-func (m *SessionForkItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionForkItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionForkItem{}.SourceSessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionForkItem{}.SourceTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SessionForkItem{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *SessionForkItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionForkItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SourceSessionId)
-	if m.SourceTitle != nil {
-		b = litewire.AppendMessage(b, 2, m.SourceTitle)
-	}
-	if m.Text != nil {
-		b = litewire.AppendMessage(b, 3, m.Text)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionForkItem)
 }
 
 type SessionInputStateItem struct {
+	_          [0]func()
 	Kind       SessionInputNoticeKind
 	RequestId  string
 	Preview    string
@@ -4604,29 +4382,26 @@ func (m *SessionInputStateItem) GetReasonText() *Text {
 	return nil
 }
 
-func (m *SessionInputStateItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionInputStateItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionInputStateItem{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionInputStateItem{}.RequestId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionInputStateItem{}.Preview), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionInputStateItem{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(SessionInputStateItem{}.ReasonText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *SessionInputStateItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionInputStateItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Kind))
-	b = litewire.AppendString(b, 2, m.RequestId)
-	b = litewire.AppendString(b, 3, m.Preview)
-	if m.StatusText != nil {
-		b = litewire.AppendMessage(b, 4, m.StatusText)
-	}
-	if m.ReasonText != nil {
-		b = litewire.AppendMessage(b, 5, m.ReasonText)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionInputStateItem)
 }
 
 type SessionQuietScheduledGroupItem struct {
+	_               [0]func()
 	GroupId         string
 	ScheduledTaskId string
 	RunCount        int32
@@ -4686,43 +4461,29 @@ func (m *SessionQuietScheduledGroupItem) GetItems() []*SessionTimelineItem {
 	return nil
 }
 
-func (m *SessionQuietScheduledGroupItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionQuietScheduledGroupItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionQuietScheduledGroupItem{}.GroupId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionQuietScheduledGroupItem{}.ScheduledTaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionQuietScheduledGroupItem{}.RunCount), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionQuietScheduledGroupItem{}.RunTimesMs), Kind: litewire.KindInt64, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 5, Offset: unsafe.Offsetof(SessionQuietScheduledGroupItem{}.RunIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 6, Offset: unsafe.Offsetof(SessionQuietScheduledGroupItem{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(SessionQuietScheduledGroupItem{}.Expanded), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SessionQuietScheduledGroupItem{}.Items), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionTimelineItem},
+	},
+}
 
 func (m *SessionQuietScheduledGroupItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionQuietScheduledGroupItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.GroupId)
-	b = litewire.AppendString(b, 2, m.ScheduledTaskId)
-	b = litewire.AppendInt32(b, 3, int32(m.RunCount))
-	if len(m.RunTimesMs) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 4)
-		for _, v := range m.RunTimesMs {
-			b = litewire.AppendRawVarint(b, uint64(v))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	for _, v := range m.RunIds {
-		b = litewire.AppendStringAlways(b, 5, v)
-	}
-	if m.Title != nil {
-		b = litewire.AppendMessage(b, 6, m.Title)
-	}
-	b = litewire.AppendBool(b, 7, m.Expanded)
-	for _, v := range m.Items {
-		if v != nil {
-			b = litewire.AppendMessage(b, 8, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionQuietScheduledGroupItem)
 }
 
 type SessionSkeletonItem struct {
+	_    [0]func()
 	Text *Text
 }
 
@@ -4733,23 +4494,22 @@ func (m *SessionSkeletonItem) GetText() *Text {
 	return nil
 }
 
-func (m *SessionSkeletonItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionSkeletonItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionSkeletonItem{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
 
 func (m *SessionSkeletonItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionSkeletonItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Text != nil {
-		b = litewire.AppendMessage(b, 1, m.Text)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSkeletonItem)
 }
 
 type SessionSubmitCommandAction struct {
+	_         [0]func()
 	SlotKey   string
 	MachineId string
 	SessionId string
@@ -4781,59 +4541,22 @@ func (m *SessionSubmitCommandAction) GetCommand() *v1.Command {
 	return nil
 }
 
+var LitewireDesc_SessionSubmitCommandAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionSubmitCommandAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionSubmitCommandAction{}.SlotKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionSubmitCommandAction{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionSubmitCommandAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionSubmitCommandAction{}.Command), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Command},
+	},
+}
+
 func (m *SessionSubmitCommandAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SlotKey = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				if m.Command == nil {
-					m.Command = &v1.Command{}
-				}
-				if err := litewire.ReadMessage(&b, m.Command); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSubmitCommandAction)
 }
 
 type SessionSlotAction struct {
+	_         [0]func()
 	SlotKey   string
 	SessionId string
 }
@@ -4851,40 +4574,20 @@ func (m *SessionSlotAction) GetSessionId() string {
 	return ""
 }
 
+var LitewireDesc_SessionSlotAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionSlotAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionSlotAction{}.SlotKey), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionSlotAction{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
 func (m *SessionSlotAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SlotKey = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionSlotAction)
 }
 
 type SessionOpenAction struct {
+	_               [0]func()
 	SessionId       string
 	RefreshModels   bool
 	RefreshSettings bool
@@ -4909,49 +4612,21 @@ func (m *SessionOpenAction) GetRefreshSettings() bool {
 	return false
 }
 
+var LitewireDesc_SessionOpenAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionOpenAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionOpenAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionOpenAction{}.RefreshModels), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SessionOpenAction{}.RefreshSettings), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SessionOpenAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RefreshModels = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RefreshSettings = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionOpenAction)
 }
 
 type SessionTrayItemAction struct {
+	_         [0]func()
 	SessionId string
 	RequestId string
 }
@@ -4969,40 +4644,20 @@ func (m *SessionTrayItemAction) GetRequestId() string {
 	return ""
 }
 
+var LitewireDesc_SessionTrayItemAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionTrayItemAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTrayItemAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionTrayItemAction{}.RequestId), Kind: litewire.KindString},
+	},
+}
+
 func (m *SessionTrayItemAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTrayItemAction)
 }
 
 type SessionTraySessionAction struct {
+	_         [0]func()
 	SessionId string
 }
 
@@ -5013,31 +4668,19 @@ func (m *SessionTraySessionAction) GetSessionId() string {
 	return ""
 }
 
+var LitewireDesc_SessionTraySessionAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionTraySessionAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionTraySessionAction{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
 func (m *SessionTraySessionAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionTraySessionAction)
 }
 
 type SessionQuestionStepAction struct {
+	_             [0]func()
 	SessionId     string
 	QuestionId    string
 	QuestionIndex int32
@@ -5062,49 +4705,21 @@ func (m *SessionQuestionStepAction) GetQuestionIndex() int32 {
 	return 0
 }
 
+var LitewireDesc_SessionQuestionStepAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionQuestionStepAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionQuestionStepAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionQuestionStepAction{}.QuestionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionQuestionStepAction{}.QuestionIndex), Kind: litewire.KindInt32},
+	},
+}
+
 func (m *SessionQuestionStepAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.QuestionId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.QuestionIndex = int32(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionQuestionStepAction)
 }
 
 type SessionRefreshHistoryAction struct {
+	_         [0]func()
 	SessionId string
 }
 
@@ -5115,31 +4730,19 @@ func (m *SessionRefreshHistoryAction) GetSessionId() string {
 	return ""
 }
 
+var LitewireDesc_SessionRefreshHistoryAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionRefreshHistoryAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionRefreshHistoryAction{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
 func (m *SessionRefreshHistoryAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRefreshHistoryAction)
 }
 
 type SessionRestoreComposerEffect struct {
+	_         [0]func()
 	SessionId string
 	RequestId string
 	Text      string
@@ -5178,29 +4781,26 @@ func (m *SessionRestoreComposerEffect) GetFileIds() []string {
 	return nil
 }
 
-func (m *SessionRestoreComposerEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionRestoreComposerEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.RequestId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.Text), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 5, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.FileIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
 
 func (m *SessionRestoreComposerEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionRestoreComposerEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.RequestId)
-	b = litewire.AppendString(b, 3, m.Text)
-	for _, v := range m.ImageIds {
-		b = litewire.AppendStringAlways(b, 4, v)
-	}
-	for _, v := range m.FileIds {
-		b = litewire.AppendStringAlways(b, 5, v)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRestoreComposerEffect)
 }
 
 type SessionResendAttachmentsEffect struct {
+	_               [0]func()
 	SessionId       string
 	MachineId       string
 	SourceRequestId string
@@ -5260,27 +4860,28 @@ func (m *SessionResendAttachmentsEffect) GetFileIds() []string {
 	return nil
 }
 
-func (m *SessionResendAttachmentsEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SessionResendAttachmentsEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.SourceRequestId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.NewRequestId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.Text), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.Mode), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 8, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.FileIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
 
 func (m *SessionResendAttachmentsEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SessionResendAttachmentsEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.MachineId)
-	b = litewire.AppendString(b, 3, m.SourceRequestId)
-	b = litewire.AppendString(b, 4, m.NewRequestId)
-	b = litewire.AppendString(b, 5, m.Text)
-	b = litewire.AppendInt32(b, 6, int32(m.Mode))
-	for _, v := range m.ImageIds {
-		b = litewire.AppendStringAlways(b, 7, v)
-	}
-	for _, v := range m.FileIds {
-		b = litewire.AppendStringAlways(b, 8, v)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionResendAttachmentsEffect)
+}
+
+func init() {
+	LitewireDesc_SessionDockView.ExtraMarshal = extraMarshal_SessionDockView
+	LitewireDesc_SessionTimelineItem.ExtraMarshal = extraMarshal_SessionTimelineItem
 }

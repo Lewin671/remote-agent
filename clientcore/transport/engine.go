@@ -30,6 +30,7 @@ type pathState struct {
 
 // round is one attempt to reach a computer, outbound or accepted.
 type round struct {
+	_                 [0]func()
 	id                RoundID
 	machine           string
 	head              string

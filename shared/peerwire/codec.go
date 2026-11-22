@@ -15,7 +15,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"errors"
-	"slices"
 	"strconv"
 )
 
@@ -47,16 +46,17 @@ type Field struct {
 func B(n uint64, b []byte) Field { return Field{N: n, B: b, Bytes: true} }
 func U(n, u uint64) Field        { return Field{N: n, U: u} }
 func varint(v uint64) []byte     { return appendUvarint(nil, v) }
+//go:noinline
 func PB(fields ...Field) []byte {
-	slices.SortStableFunc(fields, func(a, b Field) int {
-		if a.N < b.N {
-			return -1
+	for i := 1; i < len(fields); i++ {
+		f := fields[i]
+		j := i - 1
+		for j >= 0 && fields[j].N > f.N {
+			fields[j+1] = fields[j]
+			j--
 		}
-		if a.N > b.N {
-			return 1
-		}
-		return 0
-	})
+		fields[j+1] = f
+	}
 	var out []byte
 	for _, f := range fields {
 		wire := uint64(0)

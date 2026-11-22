@@ -6,9 +6,11 @@ package remoteagentv1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	slices "slices"
+	unsafe "unsafe"
 )
 
 type MachineCapabilities struct {
+	_                    [0]func()
 	ImageUpload          bool
 	MaxImagesPerMessage  int32
 	MaxUploadBytes       int64
@@ -136,212 +138,75 @@ func (m *MachineCapabilities) Clone() *MachineCapabilities {
 	return &cp
 }
 
-func (m *MachineCapabilities) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_MachineCapabilities = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(MachineCapabilities{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&MachineCapabilities{}) },
+	Fields: []litewire.Field{
+		{Num: 2, Offset: unsafe.Offsetof(MachineCapabilities{}.ImageUpload), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(MachineCapabilities{}.MaxImagesPerMessage), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(MachineCapabilities{}.MaxUploadBytes), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(MachineCapabilities{}.MaxChunkBytes), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(MachineCapabilities{}.UploadFormats), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked | litewire.FlagMarshalOnly},
+		{Num: 10, Offset: unsafe.Offsetof(MachineCapabilities{}.ApprovalAlways), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(MachineCapabilities{}.ScheduledTasks), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(MachineCapabilities{}.FileUpload), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(MachineCapabilities{}.MaxFileUploadBytes), Kind: litewire.KindInt64},
+		{Num: 15, Offset: unsafe.Offsetof(MachineCapabilities{}.MaxFilesPerMessage), Kind: litewire.KindInt32},
+		{Num: 16, Offset: unsafe.Offsetof(MachineCapabilities{}.SharedFiles), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(MachineCapabilities{}.MaxSharedFileBytes), Kind: litewire.KindInt64},
+		{Num: 18, Offset: unsafe.Offsetof(MachineCapabilities{}.SharedFileChunkBytes), Kind: litewire.KindInt32},
+		{Num: 19, Offset: unsafe.Offsetof(MachineCapabilities{}.MachineStatus), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(MachineCapabilities{}.UsageStats), Kind: litewire.KindBool},
+		{Num: 21, Offset: unsafe.Offsetof(MachineCapabilities{}.CliSwitches), Kind: litewire.KindBool},
+	},
+}
 
 func (m *MachineCapabilities) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *MachineCapabilities) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 2, m.ImageUpload)
-	b = litewire.AppendInt32(b, 3, int32(m.MaxImagesPerMessage))
-	b = litewire.AppendVarint(b, 4, uint64(m.MaxUploadBytes))
-	b = litewire.AppendInt32(b, 5, int32(m.MaxChunkBytes))
-	if len(m.UploadFormats) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 6)
-		for _, v := range m.UploadFormats {
-			b = litewire.AppendRawVarint(b, uint64(int64(v)))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	b = litewire.AppendBool(b, 10, m.ApprovalAlways)
-	b = litewire.AppendBool(b, 12, m.ScheduledTasks)
-	b = litewire.AppendBool(b, 13, m.FileUpload)
-	b = litewire.AppendVarint(b, 14, uint64(m.MaxFileUploadBytes))
-	b = litewire.AppendInt32(b, 15, int32(m.MaxFilesPerMessage))
-	b = litewire.AppendBool(b, 16, m.SharedFiles)
-	b = litewire.AppendVarint(b, 17, uint64(m.MaxSharedFileBytes))
-	b = litewire.AppendInt32(b, 18, int32(m.SharedFileChunkBytes))
-	b = litewire.AppendBool(b, 19, m.MachineStatus)
-	b = litewire.AppendBool(b, 20, m.UsageStats)
-	b = litewire.AppendBool(b, 21, m.CliSwitches)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineCapabilities)
 }
 
 func (m *MachineCapabilities) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ImageUpload = litewire.DecodeBool(v)
-				continue
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_MachineCapabilities)
+}
+
+func extraUnmarshal_MachineCapabilities(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*MachineCapabilities)(base)
+	b := *bp
+	switch num {
+	case 6:
+		if wtyp == litewire.BytesType {
+			raw, err := litewire.ReadBytesRaw(&b)
+			if err != nil {
+				return false, err
 			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
+			for len(raw) > 0 {
+				v, err := litewire.ReadVarint(&raw)
 				if err != nil {
-					return err
-				}
-				m.MaxImagesPerMessage = int32(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MaxUploadBytes = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MaxChunkBytes = int32(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				for len(raw) > 0 {
-					v, err := litewire.ReadVarint(&raw)
-					if err != nil {
-						return err
-					}
-					m.UploadFormats = append(m.UploadFormats, ImageFormat(int32(v)))
-				}
-				continue
-			}
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
+					return false, err
 				}
 				m.UploadFormats = append(m.UploadFormats, ImageFormat(int32(v)))
-				continue
 			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ApprovalAlways = litewire.DecodeBool(v)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ScheduledTasks = litewire.DecodeBool(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.FileUpload = litewire.DecodeBool(v)
-				continue
-			}
-		case 14:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MaxFileUploadBytes = int64(v)
-				continue
-			}
-		case 15:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MaxFilesPerMessage = int32(v)
-				continue
-			}
-		case 16:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SharedFiles = litewire.DecodeBool(v)
-				continue
-			}
-		case 17:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MaxSharedFileBytes = int64(v)
-				continue
-			}
-		case 18:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SharedFileChunkBytes = int32(v)
-				continue
-			}
-		case 19:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineStatus = litewire.DecodeBool(v)
-				continue
-			}
-		case 20:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UsageStats = litewire.DecodeBool(v)
-				continue
-			}
-		case 21:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CliSwitches = litewire.DecodeBool(v)
-				continue
-			}
+			*bp = b
+			return true, nil
 		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if wtyp == litewire.VarintType {
+			v, err := litewire.ReadVarint(&b)
+			if err != nil {
+				return false, err
+			}
+			m.UploadFormats = append(m.UploadFormats, ImageFormat(int32(v)))
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
+}
+
+func init() {
+	LitewireDesc_MachineCapabilities.ExtraUnmarshal = extraUnmarshal_MachineCapabilities
 }

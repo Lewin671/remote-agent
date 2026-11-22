@@ -6,9 +6,11 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	unsafe "unsafe"
 )
 
 type EventBatch struct {
+	_      [0]func()
 	Events []*v1.Event
 }
 
@@ -19,31 +21,34 @@ func (m *EventBatch) GetEvents() []*v1.Event {
 	return nil
 }
 
+var LitewireDesc_EventBatch = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&EventBatch{}) },
+}
+
 func (m *EventBatch) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_EventBatch)
+}
+
+func extraUnmarshal_EventBatch(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*EventBatch)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
 		case 1:
-			if wtyp == litewire.BytesType {
-				elem := &v1.Event{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Events = append(m.Events, elem)
-				continue
+			elem := &v1.Event{}
+			m.Events = append(m.Events, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type PendingApproval struct {
+	_          [0]func()
 	ApprovalId string
 	Request    *v1.ApprovalRequested
 }
@@ -61,24 +66,23 @@ func (m *PendingApproval) GetRequest() *v1.ApprovalRequested {
 	return nil
 }
 
-func (m *PendingApproval) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_PendingApproval = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(PendingApproval{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(PendingApproval{}.Request), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_ApprovalRequested},
+	},
+}
 
 func (m *PendingApproval) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *PendingApproval) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.ApprovalId)
-	if m.Request != nil {
-		b = litewire.AppendMessage(b, 2, m.Request)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PendingApproval)
 }
 
 type ResolvedApproval struct {
+	_        [0]func()
 	Decision v1.ApprovalDecision
 	Message  string
 	Origin   *v1.Origin
@@ -103,25 +107,24 @@ func (m *ResolvedApproval) GetOrigin() *v1.Origin {
 	return nil
 }
 
-func (m *ResolvedApproval) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ResolvedApproval = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ResolvedApproval{}.Decision), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ResolvedApproval{}.Message), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ResolvedApproval{}.Origin), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Origin},
+	},
+}
 
 func (m *ResolvedApproval) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ResolvedApproval) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Decision))
-	b = litewire.AppendString(b, 2, m.Message)
-	if m.Origin != nil {
-		b = litewire.AppendMessage(b, 3, m.Origin)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ResolvedApproval)
 }
 
 type PendingQuestion struct {
+	_          [0]func()
 	QuestionId string
 	Request    *v1.QuestionAsked
 	Seq        uint64
@@ -153,26 +156,25 @@ func (m *PendingQuestion) GetAskedAtMs() int64 {
 	return 0
 }
 
-func (m *PendingQuestion) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_PendingQuestion = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(PendingQuestion{}.QuestionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(PendingQuestion{}.Request), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_QuestionAsked},
+		{Num: 3, Offset: unsafe.Offsetof(PendingQuestion{}.Seq), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(PendingQuestion{}.AskedAtMs), Kind: litewire.KindInt64},
+	},
+}
 
 func (m *PendingQuestion) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *PendingQuestion) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.QuestionId)
-	if m.Request != nil {
-		b = litewire.AppendMessage(b, 2, m.Request)
-	}
-	b = litewire.AppendVarint(b, 3, uint64(m.Seq))
-	b = litewire.AppendVarint(b, 4, uint64(m.AskedAtMs))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PendingQuestion)
 }
 
 type AnsweredQuestion struct {
+	_       [0]func()
 	Answers []string
 	Origin  *v1.Origin
 }
@@ -190,26 +192,23 @@ func (m *AnsweredQuestion) GetOrigin() *v1.Origin {
 	return nil
 }
 
-func (m *AnsweredQuestion) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AnsweredQuestion = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AnsweredQuestion{}.Answers), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 2, Offset: unsafe.Offsetof(AnsweredQuestion{}.Origin), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Origin},
+	},
+}
 
 func (m *AnsweredQuestion) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AnsweredQuestion) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Answers {
-		b = litewire.AppendStringAlways(b, 1, v)
-	}
-	if m.Origin != nil {
-		b = litewire.AppendMessage(b, 2, m.Origin)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AnsweredQuestion)
 }
 
 type AcceptedInput struct {
+	_        [0]func()
 	Text     string
 	ImageIds []string
 	Origin   *v1.Origin
@@ -255,34 +254,27 @@ func (m *AcceptedInput) GetTimeMs() int64 {
 	return 0
 }
 
-func (m *AcceptedInput) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AcceptedInput = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AcceptedInput{}.Text), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(AcceptedInput{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 3, Offset: unsafe.Offsetof(AcceptedInput{}.Origin), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Origin},
+		{Num: 4, Offset: unsafe.Offsetof(AcceptedInput{}.Stage), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(AcceptedInput{}.Files), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_SentFile},
+		{Num: 6, Offset: unsafe.Offsetof(AcceptedInput{}.TimeMs), Kind: litewire.KindInt64},
+	},
+}
 
 func (m *AcceptedInput) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AcceptedInput) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Text)
-	for _, v := range m.ImageIds {
-		b = litewire.AppendStringAlways(b, 2, v)
-	}
-	if m.Origin != nil {
-		b = litewire.AppendMessage(b, 3, m.Origin)
-	}
-	b = litewire.AppendInt32(b, 4, int32(m.Stage))
-	for _, v := range m.Files {
-		if v != nil {
-			b = litewire.AppendMessage(b, 5, v)
-		}
-	}
-	b = litewire.AppendVarint(b, 6, uint64(m.TimeMs))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AcceptedInput)
 }
 
 type InputProjection struct {
+	_             [0]func()
 	RequestId     string
 	Status        v1.InputStatus
 	LastSeq       uint64
@@ -328,32 +320,27 @@ func (m *InputProjection) GetFailureReason() string {
 	return ""
 }
 
-func (m *InputProjection) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_InputProjection = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(InputProjection{}.RequestId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(InputProjection{}.Status), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(InputProjection{}.LastSeq), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(InputProjection{}.Detail), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_InputState},
+		{Num: 5, Offset: unsafe.Offsetof(InputProjection{}.Accepted), Kind: litewire.KindMessage, Sub: &LitewireDesc_AcceptedInput},
+		{Num: 6, Offset: unsafe.Offsetof(InputProjection{}.FailureReason), Kind: litewire.KindString, Flags: litewire.FlagOptional},
+	},
+}
 
 func (m *InputProjection) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *InputProjection) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RequestId)
-	b = litewire.AppendInt32(b, 2, int32(m.Status))
-	b = litewire.AppendVarint(b, 3, uint64(m.LastSeq))
-	if m.Detail != nil {
-		b = litewire.AppendMessage(b, 4, m.Detail)
-	}
-	if m.Accepted != nil {
-		b = litewire.AppendMessage(b, 5, m.Accepted)
-	}
-	if m.FailureReason != nil {
-		b = litewire.AppendStringAlways(b, 6, *m.FailureReason)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_InputProjection)
 }
 
 type PendingInput struct {
+	_         [0]func()
 	RequestId string
 	Text      string
 	Mode      v1.SendMode
@@ -406,33 +393,28 @@ func (m *PendingInput) GetFiles() []*v1.SentFile {
 	return nil
 }
 
-func (m *PendingInput) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_PendingInput = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(PendingInput{}.RequestId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(PendingInput{}.Text), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(PendingInput{}.Mode), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(PendingInput{}.Paused), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(PendingInput{}.Held), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(PendingInput{}.Origin), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Origin},
+		{Num: 7, Offset: unsafe.Offsetof(PendingInput{}.Files), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_SentFile},
+	},
+}
 
 func (m *PendingInput) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *PendingInput) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RequestId)
-	b = litewire.AppendString(b, 2, m.Text)
-	b = litewire.AppendInt32(b, 3, int32(m.Mode))
-	b = litewire.AppendBool(b, 4, m.Paused)
-	b = litewire.AppendBool(b, 5, m.Held)
-	if m.Origin != nil {
-		b = litewire.AppendMessage(b, 6, m.Origin)
-	}
-	for _, v := range m.Files {
-		if v != nil {
-			b = litewire.AppendMessage(b, 7, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PendingInput)
 }
 
 type UnsentInput struct {
+	_         [0]func()
 	RequestId string
 	Seq       uint64
 }
@@ -450,22 +432,23 @@ func (m *UnsentInput) GetSeq() uint64 {
 	return 0
 }
 
-func (m *UnsentInput) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UnsentInput = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UnsentInput{}.RequestId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(UnsentInput{}.Seq), Kind: litewire.KindUint64},
+	},
+}
 
 func (m *UnsentInput) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UnsentInput) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RequestId)
-	b = litewire.AppendVarint(b, 2, uint64(m.Seq))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UnsentInput)
 }
 
 type RunningTool struct {
+	_                [0]func()
 	Title            string
 	CallId           string
 	SinceMs          int64
@@ -532,29 +515,30 @@ func (m *RunningTool) GetAwaitingApproval() bool {
 	return false
 }
 
-func (m *RunningTool) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_RunningTool = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(RunningTool{}.Title), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(RunningTool{}.CallId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(RunningTool{}.SinceMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(RunningTool{}.Kind), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(RunningTool{}.ItemType), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(RunningTool{}.Seq), Kind: litewire.KindUint64},
+		{Num: 7, Offset: unsafe.Offsetof(RunningTool{}.Input), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(RunningTool{}.InputDigest), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(RunningTool{}.AwaitingApproval), Kind: litewire.KindBool},
+	},
+}
 
 func (m *RunningTool) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *RunningTool) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Title)
-	b = litewire.AppendString(b, 2, m.CallId)
-	b = litewire.AppendVarint(b, 3, uint64(m.SinceMs))
-	b = litewire.AppendInt32(b, 4, int32(m.Kind))
-	b = litewire.AppendString(b, 5, m.ItemType)
-	b = litewire.AppendVarint(b, 6, uint64(m.Seq))
-	b = litewire.AppendString(b, 7, m.Input)
-	b = litewire.AppendString(b, 8, m.InputDigest)
-	b = litewire.AppendBool(b, 9, m.AwaitingApproval)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_RunningTool)
 }
 
 type BackgroundTool struct {
+	_            [0]func()
 	Tool         *RunningTool
 	Returned     bool
 	Background   v1.ToolBackground
@@ -586,26 +570,25 @@ func (m *BackgroundTool) GetBackgroundId() string {
 	return ""
 }
 
-func (m *BackgroundTool) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_BackgroundTool = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(BackgroundTool{}.Tool), Kind: litewire.KindMessage, Sub: &LitewireDesc_RunningTool},
+		{Num: 2, Offset: unsafe.Offsetof(BackgroundTool{}.Returned), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(BackgroundTool{}.Background), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(BackgroundTool{}.BackgroundId), Kind: litewire.KindString},
+	},
+}
 
 func (m *BackgroundTool) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *BackgroundTool) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Tool != nil {
-		b = litewire.AppendMessage(b, 1, m.Tool)
-	}
-	b = litewire.AppendBool(b, 2, m.Returned)
-	b = litewire.AppendInt32(b, 3, int32(m.Background))
-	b = litewire.AppendString(b, 4, m.BackgroundId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_BackgroundTool)
 }
 
 type ContextCompaction struct {
+	_             [0]func()
 	BeforePercent *int32
 	AfterPercent  *int32
 }
@@ -623,35 +606,38 @@ func (m *ContextCompaction) GetAfterPercent() int32 {
 	return 0
 }
 
-func (m *ContextCompaction) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ContextCompaction = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ContextCompaction{}.BeforePercent), Kind: litewire.KindInt32, Flags: litewire.FlagOptional},
+		{Num: 2, Offset: unsafe.Offsetof(ContextCompaction{}.AfterPercent), Kind: litewire.KindInt32, Flags: litewire.FlagOptional},
+	},
+}
 
 func (m *ContextCompaction) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ContextCompaction) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.BeforePercent != nil {
-		b = litewire.AppendInt32Always(b, 1, int32(*m.BeforePercent))
-	}
-	if m.AfterPercent != nil {
-		b = litewire.AppendInt32Always(b, 2, int32(*m.AfterPercent))
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ContextCompaction)
 }
 
 type TerminalChange struct {
+	_    [0]func()
 	Kind isTerminalChange_Kind
 }
 
 type isTerminalChange_Kind interface{ isTerminalChange_Kind() }
-type TerminalChange_Mode struct{ Mode *TerminalModeChange }
+type TerminalChange_Mode struct {
+	_    [0]func()
+	Mode *TerminalModeChange
+}
 
 func (*TerminalChange_Mode) isTerminalChange_Kind() {}
 
-type TerminalChange_Model struct{ Model *TerminalModelChange }
+type TerminalChange_Model struct {
+	_     [0]func()
+	Model *TerminalModelChange
+}
 
 func (*TerminalChange_Model) isTerminalChange_Kind() {}
 
@@ -674,34 +660,42 @@ func (m *TerminalChange) GetModel() *TerminalModelChange {
 	return nil
 }
 
-func (m *TerminalChange) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TerminalChange = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
 
 func (m *TerminalChange) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalChange) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalChange)
+}
+
+func extraMarshal_TerminalChange(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*TerminalChange)(base)
+	var onum litewire.Number
+	var omsg litewire.Marshaler
 	switch x := m.Kind.(type) {
 	case *TerminalChange_Mode:
-		if x != nil {
-			if x.Mode != nil {
-				b = litewire.AppendMessage(b, 1, x.Mode)
-			}
+		if x != nil && x.Mode != nil {
+			onum, omsg = 1, x.Mode
 		}
 	case *TerminalChange_Model:
-		if x != nil {
-			if x.Model != nil {
-				b = litewire.AppendMessage(b, 2, x.Model)
-			}
+		if x != nil && x.Model != nil {
+			onum, omsg = 2, x.Model
 		}
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
 	}
 	return b
 }
 
 type TerminalModeChange struct {
+	_       [0]func()
 	Mode    v1.ApprovalMode
 	RawMode string
 }
@@ -719,22 +713,23 @@ func (m *TerminalModeChange) GetRawMode() string {
 	return ""
 }
 
-func (m *TerminalModeChange) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TerminalModeChange = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalModeChange{}.Mode), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalModeChange{}.RawMode), Kind: litewire.KindString},
+	},
+}
 
 func (m *TerminalModeChange) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalModeChange) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Mode))
-	b = litewire.AppendString(b, 2, m.RawMode)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalModeChange)
 }
 
 type TerminalModelChange struct {
+	_      [0]func()
 	Model  string
 	Effort string
 }
@@ -752,22 +747,23 @@ func (m *TerminalModelChange) GetEffort() string {
 	return ""
 }
 
-func (m *TerminalModelChange) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TerminalModelChange = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalModelChange{}.Model), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalModelChange{}.Effort), Kind: litewire.KindString},
+	},
+}
 
 func (m *TerminalModelChange) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalModelChange) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Model)
-	b = litewire.AppendString(b, 2, m.Effort)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalModelChange)
 }
 
 type TerminalChangeList struct {
+	_       [0]func()
 	Changes []*TerminalChange
 }
 
@@ -778,25 +774,22 @@ func (m *TerminalChangeList) GetChanges() []*TerminalChange {
 	return nil
 }
 
-func (m *TerminalChangeList) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TerminalChangeList = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalChangeList{}.Changes), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_TerminalChange},
+	},
+}
 
 func (m *TerminalChangeList) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalChangeList) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Changes {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalChangeList)
 }
 
 type ProjectionState struct {
+	_                [0]func()
 	Approvals        []*PendingApproval
 	Resolved         map[string]*ResolvedApproval
 	Questions        []*PendingQuestion
@@ -954,126 +947,98 @@ func (m *ProjectionState) GetApprovalCallIds() map[uint64]string {
 	return nil
 }
 
-func (m *ProjectionState) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ProjectionState = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ProjectionState{}.Approvals), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_PendingApproval},
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+		{Num: 3, Offset: unsafe.Offsetof(ProjectionState{}.Questions), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_PendingQuestion},
+		{Num: litewire.Number(2), Kind: litewire.KindCustom},
+		{Num: 5, Offset: unsafe.Offsetof(ProjectionState{}.Inputs), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_InputProjection},
+		{Num: 6, Offset: unsafe.Offsetof(ProjectionState{}.PendingInputs), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_PendingInput},
+		{Num: 7, Offset: unsafe.Offsetof(ProjectionState{}.Unsent), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UnsentInput},
+		{Num: 8, Offset: unsafe.Offsetof(ProjectionState{}.Running), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(ProjectionState{}.RunningSeq), Kind: litewire.KindUint64},
+		{Num: 10, Offset: unsafe.Offsetof(ProjectionState{}.ScheduledClosed), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(ProjectionState{}.IdleClosed), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(ProjectionState{}.Usage), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_TokenUsage},
+		{Num: litewire.Number(3), Kind: litewire.KindCustom},
+		{Num: 14, Offset: unsafe.Offsetof(ProjectionState{}.Plan), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_PlanProposed},
+		{Num: 15, Offset: unsafe.Offsetof(ProjectionState{}.Tools), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_RunningTool},
+		{Num: 16, Offset: unsafe.Offsetof(ProjectionState{}.Background), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_BackgroundTool},
+		{Num: litewire.Number(4), Kind: litewire.KindCustom},
+		{Num: 18, Offset: unsafe.Offsetof(ProjectionState{}.UnfinishedSeqs), Kind: litewire.KindUint64, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 19, Offset: unsafe.Offsetof(ProjectionState{}.NoResultSeqs), Kind: litewire.KindUint64, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 20, Offset: unsafe.Offsetof(ProjectionState{}.TypedLocallySeqs), Kind: litewire.KindUint64, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: litewire.Number(5), Kind: litewire.KindCustom},
+		{Num: litewire.Number(6), Kind: litewire.KindCustom},
+	},
+}
 
 func (m *ProjectionState) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ProjectionState) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	for _, v := range m.Approvals {
-		if v != nil {
-			b = litewire.AppendMessage(b, 1, v)
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ProjectionState)
+}
+
+func extraMarshal_ProjectionState(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*ProjectionState)(base)
+	switch idx {
+	case 1:
+		for k, v := range m.Resolved {
+			var start int
+			b, start = litewire.BeginMessage(b, 2)
+			b = litewire.AppendStringAlways(b, 1, k)
+			b = litewire.AppendMessage(b, 2, v)
+			b = litewire.EndMessage(b, start)
 		}
-	}
-	for k, v := range m.Resolved {
-		var start int
-		b, start = litewire.BeginMessage(b, 2)
-		b = litewire.AppendStringAlways(b, 1, k)
-		b = litewire.AppendMessage(b, 2, v)
-		b = litewire.EndMessage(b, start)
-	}
-	for _, v := range m.Questions {
-		if v != nil {
-			b = litewire.AppendMessage(b, 3, v)
+	case 2:
+		for k, v := range m.Answered {
+			var start int
+			b, start = litewire.BeginMessage(b, 4)
+			b = litewire.AppendStringAlways(b, 1, k)
+			b = litewire.AppendMessage(b, 2, v)
+			b = litewire.EndMessage(b, start)
 		}
-	}
-	for k, v := range m.Answered {
-		var start int
-		b, start = litewire.BeginMessage(b, 4)
-		b = litewire.AppendStringAlways(b, 1, k)
-		b = litewire.AppendMessage(b, 2, v)
-		b = litewire.EndMessage(b, start)
-	}
-	for _, v := range m.Inputs {
-		if v != nil {
-			b = litewire.AppendMessage(b, 5, v)
+	case 3:
+		for k, v := range m.Compactions {
+			var start int
+			b, start = litewire.BeginMessage(b, 13)
+			b = litewire.AppendVarintAlways(b, 1, uint64(k))
+			b = litewire.AppendMessage(b, 2, v)
+			b = litewire.EndMessage(b, start)
 		}
-	}
-	for _, v := range m.PendingInputs {
-		if v != nil {
-			b = litewire.AppendMessage(b, 6, v)
+	case 4:
+		for k, v := range m.CompletedAt {
+			var start int
+			b, start = litewire.BeginMessage(b, 17)
+			b = litewire.AppendVarintAlways(b, 1, uint64(k))
+			b = litewire.AppendVarintAlways(b, 2, uint64(v))
+			b = litewire.EndMessage(b, start)
 		}
-	}
-	for _, v := range m.Unsent {
-		if v != nil {
-			b = litewire.AppendMessage(b, 7, v)
+	case 5:
+		for k, v := range m.TerminalChanges {
+			var start int
+			b, start = litewire.BeginMessage(b, 21)
+			b = litewire.AppendVarintAlways(b, 1, uint64(k))
+			b = litewire.AppendMessage(b, 2, v)
+			b = litewire.EndMessage(b, start)
 		}
-	}
-	b = litewire.AppendBool(b, 8, m.Running)
-	b = litewire.AppendVarint(b, 9, uint64(m.RunningSeq))
-	b = litewire.AppendBool(b, 10, m.ScheduledClosed)
-	b = litewire.AppendBool(b, 11, m.IdleClosed)
-	if m.Usage != nil {
-		b = litewire.AppendMessage(b, 12, m.Usage)
-	}
-	for k, v := range m.Compactions {
-		var start int
-		b, start = litewire.BeginMessage(b, 13)
-		b = litewire.AppendVarintAlways(b, 1, uint64(k))
-		b = litewire.AppendMessage(b, 2, v)
-		b = litewire.EndMessage(b, start)
-	}
-	if m.Plan != nil {
-		b = litewire.AppendMessage(b, 14, m.Plan)
-	}
-	for _, v := range m.Tools {
-		if v != nil {
-			b = litewire.AppendMessage(b, 15, v)
+	case 6:
+		for k, v := range m.ApprovalCallIds {
+			var start int
+			b, start = litewire.BeginMessage(b, 22)
+			b = litewire.AppendVarintAlways(b, 1, uint64(k))
+			b = litewire.AppendStringAlways(b, 2, v)
+			b = litewire.EndMessage(b, start)
 		}
-	}
-	for _, v := range m.Background {
-		if v != nil {
-			b = litewire.AppendMessage(b, 16, v)
-		}
-	}
-	for k, v := range m.CompletedAt {
-		var start int
-		b, start = litewire.BeginMessage(b, 17)
-		b = litewire.AppendVarintAlways(b, 1, uint64(k))
-		b = litewire.AppendVarintAlways(b, 2, uint64(v))
-		b = litewire.EndMessage(b, start)
-	}
-	if len(m.UnfinishedSeqs) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 18)
-		for _, v := range m.UnfinishedSeqs {
-			b = litewire.AppendRawVarint(b, uint64(v))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	if len(m.NoResultSeqs) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 19)
-		for _, v := range m.NoResultSeqs {
-			b = litewire.AppendRawVarint(b, uint64(v))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	if len(m.TypedLocallySeqs) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 20)
-		for _, v := range m.TypedLocallySeqs {
-			b = litewire.AppendRawVarint(b, uint64(v))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	for k, v := range m.TerminalChanges {
-		var start int
-		b, start = litewire.BeginMessage(b, 21)
-		b = litewire.AppendVarintAlways(b, 1, uint64(k))
-		b = litewire.AppendMessage(b, 2, v)
-		b = litewire.EndMessage(b, start)
-	}
-	for k, v := range m.ApprovalCallIds {
-		var start int
-		b, start = litewire.BeginMessage(b, 22)
-		b = litewire.AppendVarintAlways(b, 1, uint64(k))
-		b = litewire.AppendStringAlways(b, 2, v)
-		b = litewire.EndMessage(b, start)
 	}
 	return b
+}
+
+func init() {
+	LitewireDesc_EventBatch.ExtraUnmarshal = extraUnmarshal_EventBatch
+	LitewireDesc_TerminalChange.ExtraMarshal = extraMarshal_TerminalChange
+	LitewireDesc_ProjectionState.ExtraMarshal = extraMarshal_ProjectionState
 }

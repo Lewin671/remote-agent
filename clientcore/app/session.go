@@ -29,6 +29,7 @@ const (
 )
 
 type sessionSlotMeta struct {
+	_             [0]func()
 	sessionID     string
 	machineID     string
 	kind          sessionSlotKind
@@ -329,9 +330,9 @@ func (c *Core) processSessionSettled(
 			}
 			if meta.kind == slotKindFork && sc.Result != nil && sc.Result.GetForkSession() != nil {
 				if ns := sc.Result.GetForkSession().GetSession(); ns != nil && ns.Id != "" {
-					seedRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-						c.m.sync.SeedSession(ctx, meta.machineID, ns)
-					})
+					seedPrev, seedCtx := c.m.sync.BeginStep()
+					c.m.sync.SeedSession(seedCtx, meta.machineID, ns)
+					seedRes := c.m.sync.EndStep(seedPrev, seedCtx)
 					*effects = append(*effects, seedRes.Effects...)
 					*effects = append(*effects, &corev1.Effect{
 						Effect: &corev1.Effect_Navigate{
@@ -528,30 +529,28 @@ func (c *Core) settlePlanPreflight(
 	}
 	delete(store.pendingPlanPreflights, sc.RequestID)
 
-	stepRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-		ui := store.ensureUI(pf.sessionID)
-		rec := ui.Commands[pf.slotKey]
-		if rec == nil {
-			rec = &screens.SessionCommandRecord{SlotKey: pf.slotKey}
-			ui.Commands[pf.slotKey] = rec
-		}
+	stepPrev, ctx := c.m.sync.BeginStep()
+	ui := store.ensureUI(pf.sessionID)
+	rec := ui.Commands[pf.slotKey]
+	if rec == nil {
+		rec = &screens.SessionCommandRecord{SlotKey: pf.slotKey}
+		ui.Commands[pf.slotKey] = rec
+	}
 
-		var fresh *v1.LiveSnapshot
-		if sc.Category == outcome.Executed && sc.ErrorCode == "" && sc.Result != nil {
-			fresh = sc.Result.GetLiveSnapshot()
+	var fresh *v1.LiveSnapshot
+	if sc.Category == outcome.Executed && sc.ErrorCode == "" && sc.Result != nil {
+		fresh = sc.Result.GetLiveSnapshot()
+	}
+	if fresh == nil {
+		code := sc.ErrorCode
+		if code == "" && sc.ErrorText == nil {
+			code = "failed_precondition"
 		}
-		if fresh == nil {
-			code := sc.ErrorCode
-			if code == "" && sc.ErrorText == nil {
-				code = "failed_precondition"
-			}
-			setPlanPreflightFailed(rec, code, sc.ErrorText)
-			store.pendingDirty = true
-			ctx.Dirty.Add(true, true, false)
-			ctx.Dirty.MarkSessionData()
-			return
-		}
-
+		setPlanPreflightFailed(rec, code, sc.ErrorText)
+		store.pendingDirty = true
+		ctx.Dirty.Add(true, true, false)
+		ctx.Dirty.MarkSessionData()
+	} else {
 		c.m.sync.ApplyLiveSnapshot(ctx, pf.sessionID, fresh)
 		snap := c.m.sync.SessionSnapshot(pf.sessionID)
 		reconcileSessionSnapshot(snap, ui)
@@ -565,16 +564,16 @@ func (c *Core) settlePlanPreflight(
 		if !matches {
 			setPlanPreflightFailed(rec, "failed_precondition", text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain))
 			store.pendingDirty = true
-			return
+		} else {
+			cmd := pf.command.Clone()
+			if ap := cmd.GetAnswerPlan(); ap != nil {
+				ap.ObservedEventSeq = fresh.PlanEventSeq
+				ap.ObservedScreenHash = slices.Clone(fresh.PlanScreenHash)
+			}
+			c.submitSessionCommandDirect(ctx, store, ui, pf.sessionID, pf.machineID, pf.slotKey, slotKindAnswerPlan, "", 0, "", cmd)
 		}
-
-		cmd := pf.command.Clone()
-		if ap := cmd.GetAnswerPlan(); ap != nil {
-			ap.ObservedEventSeq = fresh.PlanEventSeq
-			ap.ObservedScreenHash = slices.Clone(fresh.PlanScreenHash)
-		}
-		c.submitSessionCommandDirect(ctx, store, ui, pf.sessionID, pf.machineID, pf.slotKey, slotKindAnswerPlan, "", 0, "", cmd)
-	})
+	}
+	stepRes := c.m.sync.EndStep(stepPrev, ctx)
 
 	*effects = append(*effects, stepRes.Effects...)
 	dirty.Add(stepRes.Dirty.Home, stepRes.Dirty.Project, stepRes.Dirty.NewSession)
@@ -1398,37 +1397,37 @@ func (c *Core) settleCancelInput(
 	if machineID == "" {
 		machineID = c.sessionMachineID(meta.sessionID, snap)
 	}
-	stepRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-		switch intent.Kind {
-		case screens.CancelIntentPromote:
-			if eff := c.resendTrayContent(ctx, store, ui, meta.sessionID, machineID, intent.SourceReqID, intent.Text, v1.SendMode_SEND_MODE_STEER, intent.ImageIDs, intent.FileIDs); eff != nil {
-				*effects = append(*effects, eff)
-			}
-		case screens.CancelIntentRestore:
-			*effects = append(*effects, &corev1.Effect{
-				Effect: &corev1.Effect_SessionRestoreComposer{
-					SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
-						SessionId: meta.sessionID,
-						RequestId: intent.SourceReqID,
-						Text:      intent.Text,
-						ImageIds:  append([]string(nil), intent.ImageIDs...),
-						FileIds:   append([]string(nil), intent.FileIDs...),
-					},
-				},
-			})
-		case screens.CancelIntentCancel, screens.CancelIntentCancelAll:
-			if intent.HasLocalContent {
-				c.scheduleUndoBatch(ctx, ui, meta.sessionID, intent.BatchID, &screens.SessionUndoItem{
-					SourceReqID: intent.SourceReqID,
-					Text:        intent.Text,
-					ImageIDs:    append([]string(nil), intent.ImageIDs...),
-					FileIDs:     append([]string(nil), intent.FileIDs...),
-					Mode:        intent.Mode,
-				})
-			}
+	stepPrev, ctx := c.m.sync.BeginStep()
+	switch intent.Kind {
+	case screens.CancelIntentPromote:
+		if eff := c.resendTrayContent(ctx, store, ui, meta.sessionID, machineID, intent.SourceReqID, intent.Text, v1.SendMode_SEND_MODE_STEER, intent.ImageIDs, intent.FileIDs); eff != nil {
+			*effects = append(*effects, eff)
 		}
-		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
-	})
+	case screens.CancelIntentRestore:
+		*effects = append(*effects, &corev1.Effect{
+			Effect: &corev1.Effect_SessionRestoreComposer{
+				SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
+					SessionId: meta.sessionID,
+					RequestId: intent.SourceReqID,
+					Text:      intent.Text,
+					ImageIds:  append([]string(nil), intent.ImageIDs...),
+					FileIds:   append([]string(nil), intent.FileIDs...),
+				},
+			},
+		})
+	case screens.CancelIntentCancel, screens.CancelIntentCancelAll:
+		if intent.HasLocalContent {
+			c.scheduleUndoBatch(ctx, ui, meta.sessionID, intent.BatchID, &screens.SessionUndoItem{
+				SourceReqID: intent.SourceReqID,
+				Text:        intent.Text,
+				ImageIDs:    append([]string(nil), intent.ImageIDs...),
+				FileIDs:     append([]string(nil), intent.FileIDs...),
+				Mode:        intent.Mode,
+			})
+		}
+	}
+	pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
+	stepRes := c.m.sync.EndStep(stepPrev, ctx)
 	*effects = append(*effects, stepRes.Effects...)
 	dirty.Add(stepRes.Dirty.Home, stepRes.Dirty.Project, stepRes.Dirty.NewSession)
 	if stepRes.Dirty.SessionData {

@@ -54,6 +54,7 @@ type Trigger struct {
 
 // Target mirrors internal/schedule.Target.
 type Target struct {
+	_       [0]func()
 	Type    string `json:"type"`
 	Session string `json:"session,omitempty"`
 	Cwd     string `json:"cwd,omitempty"`
@@ -99,6 +100,7 @@ type Task struct {
 
 // Run mirrors internal/schedule.Run.
 type Run struct {
+	_                     [0]func()
 	NotifyOnFinish        bool   `json:"notify_on_finish,omitempty"`
 	NotificationSessionID string `json:"notification_session_id,omitempty"`
 	NotificationSeq       uint64 `json:"notification_seq,omitempty"`

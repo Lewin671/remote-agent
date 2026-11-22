@@ -5,7 +5,7 @@ package corev1
 
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
-	math "math"
+	unsafe "unsafe"
 )
 
 type CommandRouteLeg int32
@@ -58,6 +58,7 @@ const (
 )
 
 type DirectIceCandidate struct {
+	_          [0]func()
 	Line       []byte
 	Ufrag      []byte
 	Mid        []byte
@@ -89,24 +90,25 @@ func (m *DirectIceCandidate) GetMlineIndex() uint32 {
 	return 0
 }
 
-func (m *DirectIceCandidate) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectIceCandidate = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectIceCandidate{}.Line), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(DirectIceCandidate{}.Ufrag), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(DirectIceCandidate{}.Mid), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(DirectIceCandidate{}.MlineIndex), Kind: litewire.KindUint32},
+	},
+}
 
 func (m *DirectIceCandidate) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectIceCandidate) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.Line)
-	b = litewire.AppendBytes(b, 2, m.Ufrag)
-	b = litewire.AppendBytes(b, 3, m.Mid)
-	b = litewire.AppendVarint(b, 4, uint64(m.MlineIndex))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectIceCandidate)
 }
 
 type DirectPreferenceEntry struct {
+	_         [0]func()
 	MachineId string
 	Enabled   bool
 }
@@ -124,40 +126,20 @@ func (m *DirectPreferenceEntry) GetEnabled() bool {
 	return false
 }
 
+var LitewireDesc_DirectPreferenceEntry = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPreferenceEntry{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPreferenceEntry{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPreferenceEntry{}.Enabled), Kind: litewire.KindBool},
+	},
+}
+
 func (m *DirectPreferenceEntry) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Enabled = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPreferenceEntry)
 }
 
 type DirectStatsPair struct {
+	_                 [0]func()
 	LocalType         DirectCandType
 	LocalFamily       DirectCandFamily
 	RemoteType        DirectCandType
@@ -231,112 +213,28 @@ func (m *DirectStatsPair) GetHasCurrentRtt() bool {
 	return false
 }
 
+var LitewireDesc_DirectStatsPair = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectStatsPair{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectStatsPair{}.LocalType), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(DirectStatsPair{}.LocalFamily), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(DirectStatsPair{}.RemoteType), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(DirectStatsPair{}.RemoteFamily), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(DirectStatsPair{}.Nominated), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(DirectStatsPair{}.State), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(DirectStatsPair{}.RequestsSent), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(DirectStatsPair{}.ResponsesReceived), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(DirectStatsPair{}.CurrentRttSeconds), Kind: litewire.KindDouble},
+		{Num: 10, Offset: unsafe.Offsetof(DirectStatsPair{}.HasCurrentRtt), Kind: litewire.KindBool},
+	},
+}
+
 func (m *DirectStatsPair) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LocalType = DirectCandType(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LocalFamily = DirectCandFamily(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RemoteType = DirectCandType(int32(v))
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RemoteFamily = DirectCandFamily(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Nominated = litewire.DecodeBool(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.State = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestsSent = int32(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ResponsesReceived = int32(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.CurrentRttSeconds = math.Float64frombits(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasCurrentRtt = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectStatsPair)
 }
 
 type DirectStatsReport struct {
+	_         [0]func()
 	IceState  string
 	DtlsState string
 	DcState   string
@@ -368,58 +266,39 @@ func (m *DirectStatsReport) GetPairs() []*DirectStatsPair {
 	return nil
 }
 
+var LitewireDesc_DirectStatsReport = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectStatsReport{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectStatsReport{}.IceState), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DirectStatsReport{}.DtlsState), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DirectStatsReport{}.DcState), Kind: litewire.KindString},
+	},
+}
+
 func (m *DirectStatsReport) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectStatsReport)
+}
+
+func extraUnmarshal_DirectStatsReport(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*DirectStatsReport)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.IceState = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DtlsState = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DcState = v
-				continue
-			}
 		case 4:
-			if wtyp == litewire.BytesType {
-				elem := &DirectStatsPair{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Pairs = append(m.Pairs, elem)
-				continue
+			elem := &DirectStatsPair{}
+			m.Pairs = append(m.Pairs, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type TransportConfigEvent struct {
+	_               [0]func()
 	Supported       bool
 	Account         string
 	ProtocolVersion uint32
@@ -465,76 +344,24 @@ func (m *TransportConfigEvent) GetPlatformAgent() string {
 	return ""
 }
 
+var LitewireDesc_TransportConfigEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TransportConfigEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TransportConfigEvent{}.Supported), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(TransportConfigEvent{}.Account), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(TransportConfigEvent{}.ProtocolVersion), Kind: litewire.KindUint32},
+		{Num: 4, Offset: unsafe.Offsetof(TransportConfigEvent{}.ServerHost), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(TransportConfigEvent{}.ConfiguredStun), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(TransportConfigEvent{}.PlatformAgent), Kind: litewire.KindString},
+	},
+}
+
 func (m *TransportConfigEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Supported = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Account = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ProtocolVersion = uint32(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ServerHost = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ConfiguredStun = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.PlatformAgent = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TransportConfigEvent)
 }
 
 type DirectSignalReceivedEvent struct {
+	_   [0]func()
 	Raw []byte
 }
 
@@ -545,31 +372,19 @@ func (m *DirectSignalReceivedEvent) GetRaw() []byte {
 	return nil
 }
 
+var LitewireDesc_DirectSignalReceivedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectSignalReceivedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectSignalReceivedEvent{}.Raw), Kind: litewire.KindBytes},
+	},
+}
+
 func (m *DirectSignalReceivedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Raw = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectSignalReceivedEvent)
 }
 
 type DirectSignalDeliveryEvent struct {
+	_            [0]func()
 	FrameId      []byte
 	Status       uint32
 	RetryAfterMs uint64
@@ -594,49 +409,21 @@ func (m *DirectSignalDeliveryEvent) GetRetryAfterMs() uint64 {
 	return 0
 }
 
+var LitewireDesc_DirectSignalDeliveryEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectSignalDeliveryEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectSignalDeliveryEvent{}.FrameId), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(DirectSignalDeliveryEvent{}.Status), Kind: litewire.KindUint32},
+		{Num: 3, Offset: unsafe.Offsetof(DirectSignalDeliveryEvent{}.RetryAfterMs), Kind: litewire.KindUint64},
+	},
+}
+
 func (m *DirectSignalDeliveryEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.FrameId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Status = uint32(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RetryAfterMs = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectSignalDeliveryEvent)
 }
 
 type DirectPcCreatedEvent struct {
+	_    [0]func()
 	PcId uint64
 	Ok   bool
 }
@@ -654,40 +441,20 @@ func (m *DirectPcCreatedEvent) GetOk() bool {
 	return false
 }
 
+var LitewireDesc_DirectPcCreatedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcCreatedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcCreatedEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcCreatedEvent{}.Ok), Kind: litewire.KindBool},
+	},
+}
+
 func (m *DirectPcCreatedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Ok = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcCreatedEvent)
 }
 
 type DirectPcDescriptionEvent struct {
+	_    [0]func()
 	PcId uint64
 	Sdp  []byte
 	Ok   bool
@@ -712,49 +479,21 @@ func (m *DirectPcDescriptionEvent) GetOk() bool {
 	return false
 }
 
+var LitewireDesc_DirectPcDescriptionEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcDescriptionEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcDescriptionEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcDescriptionEvent{}.Sdp), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcDescriptionEvent{}.Ok), Kind: litewire.KindBool},
+	},
+}
+
 func (m *DirectPcDescriptionEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Sdp = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Ok = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcDescriptionEvent)
 }
 
 type DirectPcRemoteSetEvent struct {
+	_     [0]func()
 	PcId  uint64
 	Ok    bool
 	Error string
@@ -779,49 +518,21 @@ func (m *DirectPcRemoteSetEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_DirectPcRemoteSetEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcRemoteSetEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcRemoteSetEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcRemoteSetEvent{}.Ok), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcRemoteSetEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *DirectPcRemoteSetEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Ok = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcRemoteSetEvent)
 }
 
 type DirectPcCandidatesAddedEvent struct {
+	_     [0]func()
 	PcId  uint64
 	Ok    bool
 	Error string
@@ -846,49 +557,21 @@ func (m *DirectPcCandidatesAddedEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_DirectPcCandidatesAddedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcCandidatesAddedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcCandidatesAddedEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcCandidatesAddedEvent{}.Ok), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcCandidatesAddedEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *DirectPcCandidatesAddedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Ok = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcCandidatesAddedEvent)
 }
 
 type DirectPcLocalCandidateEvent struct {
+	_               [0]func()
 	PcId            uint64
 	Candidate       string
 	EndOfCandidates bool
@@ -913,49 +596,21 @@ func (m *DirectPcLocalCandidateEvent) GetEndOfCandidates() bool {
 	return false
 }
 
+var LitewireDesc_DirectPcLocalCandidateEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcLocalCandidateEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcLocalCandidateEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcLocalCandidateEvent{}.Candidate), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcLocalCandidateEvent{}.EndOfCandidates), Kind: litewire.KindBool},
+	},
+}
+
 func (m *DirectPcLocalCandidateEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Candidate = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.EndOfCandidates = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcLocalCandidateEvent)
 }
 
 type DirectPcStateEvent struct {
+	_     [0]func()
 	PcId  uint64
 	Kind  DirectStateKind
 	Value string
@@ -980,49 +635,21 @@ func (m *DirectPcStateEvent) GetValue() string {
 	return ""
 }
 
+var LitewireDesc_DirectPcStateEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcStateEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcStateEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcStateEvent{}.Kind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcStateEvent{}.Value), Kind: litewire.KindString},
+	},
+}
+
 func (m *DirectPcStateEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = DirectStateKind(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Value = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcStateEvent)
 }
 
 type DirectPcStunErrorEvent struct {
+	_       [0]func()
 	PcId    uint64
 	Code    int32
 	Address string
@@ -1047,49 +674,21 @@ func (m *DirectPcStunErrorEvent) GetAddress() string {
 	return ""
 }
 
+var LitewireDesc_DirectPcStunErrorEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcStunErrorEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcStunErrorEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcStunErrorEvent{}.Code), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcStunErrorEvent{}.Address), Kind: litewire.KindString},
+	},
+}
+
 func (m *DirectPcStunErrorEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Code = int32(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Address = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcStunErrorEvent)
 }
 
 type DirectPcClosedEvent struct {
+	_    [0]func()
 	PcId uint64
 }
 
@@ -1100,31 +699,19 @@ func (m *DirectPcClosedEvent) GetPcId() uint64 {
 	return 0
 }
 
+var LitewireDesc_DirectPcClosedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPcClosedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcClosedEvent{}.PcId), Kind: litewire.KindUint64},
+	},
+}
+
 func (m *DirectPcClosedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcClosedEvent)
 }
 
 type DirectDcStateEvent struct {
+	_    [0]func()
 	PcId uint64
 	Open bool
 }
@@ -1142,40 +729,20 @@ func (m *DirectDcStateEvent) GetOpen() bool {
 	return false
 }
 
+var LitewireDesc_DirectDcStateEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectDcStateEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectDcStateEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectDcStateEvent{}.Open), Kind: litewire.KindBool},
+	},
+}
+
 func (m *DirectDcStateEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Open = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectDcStateEvent)
 }
 
 type DirectDcStatsEvent struct {
+	_      [0]func()
 	PcId   uint64
 	Report *DirectStatsReport
 }
@@ -1193,41 +760,20 @@ func (m *DirectDcStatsEvent) GetReport() *DirectStatsReport {
 	return nil
 }
 
+var LitewireDesc_DirectDcStatsEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectDcStatsEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectDcStatsEvent{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectDcStatsEvent{}.Report), Kind: litewire.KindMessage, Sub: &LitewireDesc_DirectStatsReport},
+	},
+}
+
 func (m *DirectDcStatsEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PcId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				if m.Report == nil {
-					m.Report = &DirectStatsReport{}
-				}
-				if err := litewire.ReadMessage(&b, m.Report); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectDcStatsEvent)
 }
 
 type DirectRetryNowAction struct {
+	_         [0]func()
 	MachineId string
 }
 
@@ -1238,31 +784,19 @@ func (m *DirectRetryNowAction) GetMachineId() string {
 	return ""
 }
 
+var LitewireDesc_DirectRetryNowAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectRetryNowAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectRetryNowAction{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
 func (m *DirectRetryNowAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectRetryNowAction)
 }
 
 type DirectRefreshDiagnosticsAction struct {
+	_         [0]func()
 	MachineId string
 }
 
@@ -1273,31 +807,19 @@ func (m *DirectRefreshDiagnosticsAction) GetMachineId() string {
 	return ""
 }
 
+var LitewireDesc_DirectRefreshDiagnosticsAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectRefreshDiagnosticsAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectRefreshDiagnosticsAction{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
 func (m *DirectRefreshDiagnosticsAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectRefreshDiagnosticsAction)
 }
 
 type DirectBulkTransferBeginEvent struct {
+	_                 [0]func()
 	CallId            uint64
 	MachineId         string
 	RouteHint         uint32
@@ -1378,121 +900,29 @@ func (m *DirectBulkTransferBeginEvent) GetInteractiveDual() bool {
 	return false
 }
 
+var LitewireDesc_DirectBulkTransferBeginEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectBulkTransferBeginEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.CallId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.RouteHint), Kind: litewire.KindUint32},
+		{Num: 4, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.BulkFileKey), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.BulkBytes), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.BulkUpload), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.DeadlineMs), Kind: litewire.KindInt64},
+		{Num: 8, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.ForceRelay), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.UploadTransferId), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.UploadHasFilename), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(DirectBulkTransferBeginEvent{}.InteractiveDual), Kind: litewire.KindBool},
+	},
+}
+
 func (m *DirectBulkTransferBeginEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CallId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RouteHint = uint32(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.BulkFileKey = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.BulkBytes = int64(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.BulkUpload = litewire.DecodeBool(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DeadlineMs = int64(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ForceRelay = litewire.DecodeBool(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.UploadTransferId = v
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UploadHasFilename = litewire.DecodeBool(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.InteractiveDual = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectBulkTransferBeginEvent)
 }
 
 type DirectBulkTransferDoneEvent struct {
+	_                      [0]func()
 	TicketId               uint64
 	RouteWasDirect         bool
 	Ok                     bool
@@ -1545,85 +975,25 @@ func (m *DirectBulkTransferDoneEvent) GetMachineId() string {
 	return ""
 }
 
+var LitewireDesc_DirectBulkTransferDoneEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectBulkTransferDoneEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectBulkTransferDoneEvent{}.TicketId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectBulkTransferDoneEvent{}.RouteWasDirect), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DirectBulkTransferDoneEvent{}.Ok), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(DirectBulkTransferDoneEvent{}.ElapsedMs), Kind: litewire.KindDouble},
+		{Num: 5, Offset: unsafe.Offsetof(DirectBulkTransferDoneEvent{}.ObservedBytes), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(DirectBulkTransferDoneEvent{}.FinishUploadTransferId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(DirectBulkTransferDoneEvent{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
 func (m *DirectBulkTransferDoneEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TicketId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RouteWasDirect = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Ok = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.ElapsedMs = math.Float64frombits(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedBytes = int64(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FinishUploadTransferId = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectBulkTransferDoneEvent)
 }
 
 type TerminalStreamEvent struct {
+	_          [0]func()
 	TerminalId string
 	Kind       TerminalStreamEventKind
 	Opened     bool
@@ -1648,49 +1018,21 @@ func (m *TerminalStreamEvent) GetOpened() bool {
 	return false
 }
 
+var LitewireDesc_TerminalStreamEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&TerminalStreamEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalStreamEvent{}.TerminalId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(TerminalStreamEvent{}.Kind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(TerminalStreamEvent{}.Opened), Kind: litewire.KindBool},
+	},
+}
+
 func (m *TerminalStreamEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TerminalId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = TerminalStreamEventKind(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Opened = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalStreamEvent)
 }
 
 type DirectPreferencesLoadedEvent struct {
+	_       [0]func()
 	Entries []*DirectPreferenceEntry
 }
 
@@ -1701,31 +1043,34 @@ func (m *DirectPreferencesLoadedEvent) GetEntries() []*DirectPreferenceEntry {
 	return nil
 }
 
+var LitewireDesc_DirectPreferencesLoadedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectPreferencesLoadedEvent{}) },
+}
+
 func (m *DirectPreferencesLoadedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPreferencesLoadedEvent)
+}
+
+func extraUnmarshal_DirectPreferencesLoadedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*DirectPreferencesLoadedEvent)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
 		case 1:
-			if wtyp == litewire.BytesType {
-				elem := &DirectPreferenceEntry{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Entries = append(m.Entries, elem)
-				continue
+			elem := &DirectPreferenceEntry{}
+			m.Entries = append(m.Entries, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type DirectSignalSendEffect struct {
+	_          [0]func()
 	ToDevice   []byte
 	FrameClass uint32
 	FrameId    []byte
@@ -1771,26 +1116,27 @@ func (m *DirectSignalSendEffect) GetCritical() bool {
 	return false
 }
 
-func (m *DirectSignalSendEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectSignalSendEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectSignalSendEffect{}.ToDevice), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(DirectSignalSendEffect{}.FrameClass), Kind: litewire.KindUint32},
+		{Num: 3, Offset: unsafe.Offsetof(DirectSignalSendEffect{}.FrameId), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(DirectSignalSendEffect{}.Sealed), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(DirectSignalSendEffect{}.DeadlineMs), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(DirectSignalSendEffect{}.Critical), Kind: litewire.KindBool},
+	},
+}
 
 func (m *DirectSignalSendEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectSignalSendEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.ToDevice)
-	b = litewire.AppendVarint(b, 2, uint64(m.FrameClass))
-	b = litewire.AppendBytes(b, 3, m.FrameId)
-	b = litewire.AppendBytes(b, 4, m.Sealed)
-	b = litewire.AppendVarint(b, 5, uint64(m.DeadlineMs))
-	b = litewire.AppendBool(b, 6, m.Critical)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectSignalSendEffect)
 }
 
 type DirectPcCreateEffect struct {
+	_           [0]func()
 	RoundId     uint64
 	MachineId   string
 	PcId        uint64
@@ -1836,28 +1182,27 @@ func (m *DirectPcCreateEffect) GetStunServers() []string {
 	return nil
 }
 
-func (m *DirectPcCreateEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectPcCreateEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcCreateEffect{}.RoundId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcCreateEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcCreateEffect{}.PcId), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(DirectPcCreateEffect{}.Use), Kind: litewire.KindUint32},
+		{Num: 5, Offset: unsafe.Offsetof(DirectPcCreateEffect{}.Generation), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(DirectPcCreateEffect{}.StunServers), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
 
 func (m *DirectPcCreateEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectPcCreateEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.RoundId))
-	b = litewire.AppendString(b, 2, m.MachineId)
-	b = litewire.AppendVarint(b, 3, uint64(m.PcId))
-	b = litewire.AppendVarint(b, 4, uint64(m.Use))
-	b = litewire.AppendVarint(b, 5, uint64(m.Generation))
-	for _, v := range m.StunServers {
-		b = litewire.AppendStringAlways(b, 6, v)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcCreateEffect)
 }
 
 type DirectPcDescribeEffect struct {
+	_          [0]func()
 	PcId       uint64
 	Offer      bool
 	IceRestart bool
@@ -1882,23 +1227,24 @@ func (m *DirectPcDescribeEffect) GetIceRestart() bool {
 	return false
 }
 
-func (m *DirectPcDescribeEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectPcDescribeEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcDescribeEffect{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcDescribeEffect{}.Offer), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcDescribeEffect{}.IceRestart), Kind: litewire.KindBool},
+	},
+}
 
 func (m *DirectPcDescribeEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectPcDescribeEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.PcId))
-	b = litewire.AppendBool(b, 2, m.Offer)
-	b = litewire.AppendBool(b, 3, m.IceRestart)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcDescribeEffect)
 }
 
 type DirectPcSetRemoteEffect struct {
+	_     [0]func()
 	PcId  uint64
 	Sdp   []byte
 	Offer bool
@@ -1923,23 +1269,24 @@ func (m *DirectPcSetRemoteEffect) GetOffer() bool {
 	return false
 }
 
-func (m *DirectPcSetRemoteEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectPcSetRemoteEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcSetRemoteEffect{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcSetRemoteEffect{}.Sdp), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcSetRemoteEffect{}.Offer), Kind: litewire.KindBool},
+	},
+}
 
 func (m *DirectPcSetRemoteEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectPcSetRemoteEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.PcId))
-	b = litewire.AppendBytes(b, 2, m.Sdp)
-	b = litewire.AppendBool(b, 3, m.Offer)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcSetRemoteEffect)
 }
 
 type DirectPcAddCandidatesEffect struct {
+	_               [0]func()
 	PcId            uint64
 	Candidates      []*DirectIceCandidate
 	EndOfCandidates bool
@@ -1964,27 +1311,24 @@ func (m *DirectPcAddCandidatesEffect) GetEndOfCandidates() bool {
 	return false
 }
 
-func (m *DirectPcAddCandidatesEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectPcAddCandidatesEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcAddCandidatesEffect{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcAddCandidatesEffect{}.Candidates), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_DirectIceCandidate},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcAddCandidatesEffect{}.EndOfCandidates), Kind: litewire.KindBool},
+	},
+}
 
 func (m *DirectPcAddCandidatesEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectPcAddCandidatesEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.PcId))
-	for _, v := range m.Candidates {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	b = litewire.AppendBool(b, 3, m.EndOfCandidates)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcAddCandidatesEffect)
 }
 
 type DirectPcConfirmEffect struct {
+	_         [0]func()
 	PcId      uint64
 	MachineId string
 	Use       uint32
@@ -2009,23 +1353,24 @@ func (m *DirectPcConfirmEffect) GetUse() uint32 {
 	return 0
 }
 
-func (m *DirectPcConfirmEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectPcConfirmEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcConfirmEffect{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcConfirmEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DirectPcConfirmEffect{}.Use), Kind: litewire.KindUint32},
+	},
+}
 
 func (m *DirectPcConfirmEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectPcConfirmEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.PcId))
-	b = litewire.AppendString(b, 2, m.MachineId)
-	b = litewire.AppendVarint(b, 3, uint64(m.Use))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcConfirmEffect)
 }
 
 type DirectPcCloseEffect struct {
+	_      [0]func()
 	PcId   uint64
 	Reason string
 }
@@ -2043,22 +1388,23 @@ func (m *DirectPcCloseEffect) GetReason() string {
 	return ""
 }
 
-func (m *DirectPcCloseEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectPcCloseEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectPcCloseEffect{}.PcId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectPcCloseEffect{}.Reason), Kind: litewire.KindString},
+	},
+}
 
 func (m *DirectPcCloseEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectPcCloseEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.PcId))
-	b = litewire.AppendString(b, 2, m.Reason)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectPcCloseEffect)
 }
 
 type DirectDcReadStatsEffect struct {
+	_    [0]func()
 	PcId uint64
 }
 
@@ -2069,21 +1415,22 @@ func (m *DirectDcReadStatsEffect) GetPcId() uint64 {
 	return 0
 }
 
-func (m *DirectDcReadStatsEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectDcReadStatsEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectDcReadStatsEffect{}.PcId), Kind: litewire.KindUint64},
+	},
+}
 
 func (m *DirectDcReadStatsEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectDcReadStatsEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.PcId))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectDcReadStatsEffect)
 }
 
 type DirectBulkRouteEffect struct {
+	_         [0]func()
 	CallId    uint64
 	UseDirect bool
 	PcId      uint64
@@ -2122,25 +1469,26 @@ func (m *DirectBulkRouteEffect) GetTimeoutMs() int64 {
 	return 0
 }
 
-func (m *DirectBulkRouteEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectBulkRouteEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectBulkRouteEffect{}.CallId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(DirectBulkRouteEffect{}.UseDirect), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DirectBulkRouteEffect{}.PcId), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(DirectBulkRouteEffect{}.TicketId), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(DirectBulkRouteEffect{}.TimeoutMs), Kind: litewire.KindInt64},
+	},
+}
 
 func (m *DirectBulkRouteEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectBulkRouteEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.CallId))
-	b = litewire.AppendBool(b, 2, m.UseDirect)
-	b = litewire.AppendVarint(b, 3, uint64(m.PcId))
-	b = litewire.AppendVarint(b, 4, uint64(m.TicketId))
-	b = litewire.AppendVarint(b, 5, uint64(m.TimeoutMs))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectBulkRouteEffect)
 }
 
 type TerminalReopenEffect struct {
+	_          [0]func()
 	TerminalId string
 }
 
@@ -2151,21 +1499,22 @@ func (m *TerminalReopenEffect) GetTerminalId() string {
 	return ""
 }
 
-func (m *TerminalReopenEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TerminalReopenEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TerminalReopenEffect{}.TerminalId), Kind: litewire.KindString},
+	},
+}
 
 func (m *TerminalReopenEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TerminalReopenEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.TerminalId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TerminalReopenEffect)
 }
 
 type DirectRetryNowResultEffect struct {
+	_         [0]func()
 	MachineId string
 	Started   bool
 }
@@ -2183,17 +1532,22 @@ func (m *DirectRetryNowResultEffect) GetStarted() bool {
 	return false
 }
 
-func (m *DirectRetryNowResultEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DirectRetryNowResultEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirectRetryNowResultEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DirectRetryNowResultEffect{}.Started), Kind: litewire.KindBool},
+	},
+}
 
 func (m *DirectRetryNowResultEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DirectRetryNowResultEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MachineId)
-	b = litewire.AppendBool(b, 2, m.Started)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectRetryNowResultEffect)
+}
+
+func init() {
+	LitewireDesc_DirectStatsReport.ExtraUnmarshal = extraUnmarshal_DirectStatsReport
+	LitewireDesc_DirectPreferencesLoadedEvent.ExtraUnmarshal = extraUnmarshal_DirectPreferencesLoadedEvent
 }

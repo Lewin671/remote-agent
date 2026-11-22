@@ -92,6 +92,17 @@ func visibleNotifiedTokens(tasks []*Task) map[SeenToken]bool {
 	return out
 }
 
+type seenTokensSorted []SeenToken
+
+func (s seenTokensSorted) Len() int { return len(s) }
+func (s seenTokensSorted) Less(i, j int) bool {
+	if s[i].TaskID != s[j].TaskID {
+		return s[i].TaskID < s[j].TaskID
+	}
+	return s[i].RunID < s[j].RunID
+}
+func (s seenTokensSorted) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
 // TokensFor returns sorted seen tokens for machineID.
 func (s *SeenTracker) TokensFor(machineID string) []SeenToken {
 	m := s.seen[machineID]
@@ -99,12 +110,7 @@ func (s *SeenTracker) TokensFor(machineID string) []SeenToken {
 	for tok := range m {
 		out = append(out, tok)
 	}
-	sortutil.Sort(len(out), func(i, j int) bool {
-		if out[i].TaskID != out[j].TaskID {
-			return out[i].TaskID < out[j].TaskID
-		}
-		return out[i].RunID < out[j].RunID
-	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
+	sortutil.SortInterface(seenTokensSorted(out))
 	return out
 }
 

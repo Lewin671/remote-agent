@@ -98,6 +98,22 @@ func ComputeDeltas(s *v1.UsageSeries, prevBackfilling bool) Deltas {
 	return out
 }
 
+type activeSeriesSorted []*v1.UsageSeries
+
+func (s activeSeriesSorted) Len() int      { return len(s) }
+func (s activeSeriesSorted) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s activeSeriesSorted) Less(i, j int) bool {
+	ti := TotalTokens(s[i].Current)
+	tj := TotalTokens(s[j].Current)
+	if ti != tj {
+		return ti > tj
+	}
+	if s[i].Agent != s[j].Agent {
+		return s[i].Agent < s[j].Agent
+	}
+	return s[i].Model < s[j].Model
+}
+
 // ActiveSeries returns all series with at least 1 request in the current period,
 // sorted by current total tokens descending (tie-broken by agent, model).
 func ActiveSeries(resp *v1.UsageStatsResponse) []*v1.UsageSeries {
@@ -111,18 +127,49 @@ func ActiveSeries(resp *v1.UsageStatsResponse) []*v1.UsageSeries {
 		}
 		out = append(out, s)
 	}
-	sortutil.Sort(len(out), func(i, j int) bool {
-		ti := TotalTokens(out[i].Current)
-		tj := TotalTokens(out[j].Current)
-		if ti != tj {
-			return ti > tj
-		}
-		if out[i].Agent != out[j].Agent {
-			return out[i].Agent < out[j].Agent
-		}
-		return out[i].Model < out[j].Model
-	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
+	sortutil.SortInterface(activeSeriesSorted(out))
 	return out
+}
+
+type usageRowsSorted struct {
+	rows   []*corev1.UsageModelRowView
+	sortBy corev1.UsageSortColumn
+}
+
+func (s usageRowsSorted) Len() int      { return len(s.rows) }
+func (s usageRowsSorted) Swap(i, j int) { s.rows[i], s.rows[j] = s.rows[j], s.rows[i] }
+func (s usageRowsSorted) Less(i, j int) bool {
+	a, b := s.rows[i], s.rows[j]
+	switch s.sortBy {
+	case corev1.UsageSortColumn_USAGE_SORT_COLUMN_CACHE_HIT:
+		if a.HasCacheHit != b.HasCacheHit {
+			return a.HasCacheHit
+		}
+		if a.HasCacheHit && a.CacheHitRate != b.CacheHitRate {
+			return a.CacheHitRate > b.CacheHitRate
+		}
+	case corev1.UsageSortColumn_USAGE_SORT_COLUMN_SPEED:
+		if a.HasSpeed != b.HasSpeed {
+			return a.HasSpeed
+		}
+		if a.HasSpeed && a.SpeedP50 != b.SpeedP50 {
+			return a.SpeedP50 > b.SpeedP50
+		}
+	case corev1.UsageSortColumn_USAGE_SORT_COLUMN_TTFT:
+		if a.HasTtft != b.HasTtft {
+			return a.HasTtft
+		}
+		if a.HasTtft && a.TtftP50Ms != b.TtftP50Ms {
+			return a.TtftP50Ms < b.TtftP50Ms
+		}
+	}
+	if a.TotalTokens != b.TotalTokens {
+		return a.TotalTokens > b.TotalTokens
+	}
+	if a.Agent != b.Agent {
+		return a.Agent < b.Agent
+	}
+	return a.Model < b.Model
 }
 
 // NiceCeiling picks the smallest clean chart ceiling from {1, 1.5, 2, 3, 4, 5, 8, 10} * 10^p >= peak.
@@ -401,39 +448,7 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 	if sortBy == corev1.UsageSortColumn_USAGE_SORT_COLUMN_UNSPECIFIED {
 		sortBy = corev1.UsageSortColumn_USAGE_SORT_COLUMN_TOKENS
 	}
-	sortutil.Stable(len(rows), func(i, j int) bool {
-		a, b := rows[i], rows[j]
-		switch sortBy {
-		case corev1.UsageSortColumn_USAGE_SORT_COLUMN_CACHE_HIT:
-			if a.HasCacheHit != b.HasCacheHit {
-				return a.HasCacheHit
-			}
-			if a.HasCacheHit && a.CacheHitRate != b.CacheHitRate {
-				return a.CacheHitRate > b.CacheHitRate
-			}
-		case corev1.UsageSortColumn_USAGE_SORT_COLUMN_SPEED:
-			if a.HasSpeed != b.HasSpeed {
-				return a.HasSpeed
-			}
-			if a.HasSpeed && a.SpeedP50 != b.SpeedP50 {
-				return a.SpeedP50 > b.SpeedP50
-			}
-		case corev1.UsageSortColumn_USAGE_SORT_COLUMN_TTFT:
-			if a.HasTtft != b.HasTtft {
-				return a.HasTtft
-			}
-			if a.HasTtft && a.TtftP50Ms != b.TtftP50Ms {
-				return a.TtftP50Ms < b.TtftP50Ms
-			}
-		}
-		if a.TotalTokens != b.TotalTokens {
-			return a.TotalTokens > b.TotalTokens
-		}
-		if a.Agent != b.Agent {
-			return a.Agent < b.Agent
-		}
-		return a.Model < b.Model
-	}, func(i, j int) { rows[i], rows[j] = rows[j], rows[i] })
+	sortutil.StableInterface(usageRowsSorted{rows: rows, sortBy: sortBy})
 
 	bucketCount := 0
 	for _, s := range active {

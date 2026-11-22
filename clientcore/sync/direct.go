@@ -459,24 +459,17 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 
 		case transport.CoordKeySign:
 			if e.secEngine != nil {
-				tid := eff.OpID
-				e.secEngine.RequestKeySign(eff.Message, func(sig []byte, err error) {
-					if err != nil {
-						return
-					}
-					e.emitCoordEffects(e.activeStepCtx, e.ensureTransportCoord().OnKeySigned(e.nowMs, tid, sig))
-				})
+				tag := e.allocSecOp(&pendingSecOp{kind: secOpCoordSign, opID: eff.OpID})
+				e.secEngine.RequestKeySignTag(eff.Message, tag)
 				e.emitRawEffects(ctx, e.secEngine.DrainEffects())
 			}
 
 		case transport.CoordKeyAgree:
 			if e.secEngine != nil {
-				tid := eff.OpID
 				var peerX [32]byte
 				copy(peerX[:], eff.PeerXPub[:])
-				e.secEngine.RequestKeyAgree(peerX, true, func(shared []byte, err error) {
-					e.emitCoordEffects(e.activeStepCtx, e.ensureTransportCoord().OnKeyAgreed(e.nowMs, tid, shared, err == nil))
-				})
+				tag := e.allocSecOp(&pendingSecOp{kind: secOpCoordAgree, opID: eff.OpID})
+				e.secEngine.RequestKeyAgreeTag(peerX, true, tag)
 				e.emitRawEffects(ctx, e.secEngine.DrainEffects())
 			}
 
@@ -623,35 +616,36 @@ func (e *Engine) pruneLateDirectTickets() {
 	}
 }
 
+func (e *Engine) syncOneDirectTimer(ctx *StepContext, kind corev1.TimerKind, dueOK bool, dueAt int64, scheduled *bool, curAt *int64) {
+	if !dueOK {
+		if *scheduled {
+			*scheduled = false
+			*curAt = 0
+			e.cancelTimer(ctx, kind, "")
+		}
+		return
+	}
+	if *scheduled && *curAt == dueAt {
+		return
+	}
+	*scheduled = true
+	*curAt = dueAt
+	delay := dueAt - e.nowMs
+	if delay < 1 {
+		delay = 1
+	}
+	e.scheduleTimer(ctx, kind, "", delay)
+}
+
 func (e *Engine) syncDirectTimers(ctx *StepContext) {
 	e.pruneLateDirectTickets()
 	if e.transportCoord == nil {
 		return
 	}
 	engAt, engOK, sessAt, sessOK, termAt, termOK := e.transportCoord.NextTimers(e.nowMs)
-	syncOne := func(kind corev1.TimerKind, dueOK bool, dueAt int64, scheduled *bool, curAt *int64) {
-		if !dueOK {
-			if *scheduled {
-				*scheduled = false
-				*curAt = 0
-				e.cancelTimer(ctx, kind, "")
-			}
-			return
-		}
-		if *scheduled && *curAt == dueAt {
-			return
-		}
-		*scheduled = true
-		*curAt = dueAt
-		delay := dueAt - e.nowMs
-		if delay < 1 {
-			delay = 1
-		}
-		e.scheduleTimer(ctx, kind, "", delay)
-	}
-	syncOne(corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE, engOK, engAt, &e.directEngineScheduled, &e.directEngineAt)
-	syncOne(corev1.TimerKind_TIMER_KIND_DIRECT_SESSION, sessOK, sessAt, &e.directSessionScheduled, &e.directSessionAt)
-	syncOne(corev1.TimerKind_TIMER_KIND_TERMINAL_REOPEN, termOK, termAt, &e.directTermScheduled, &e.directTermAt)
+	e.syncOneDirectTimer(ctx, corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE, engOK, engAt, &e.directEngineScheduled, &e.directEngineAt)
+	e.syncOneDirectTimer(ctx, corev1.TimerKind_TIMER_KIND_DIRECT_SESSION, sessOK, sessAt, &e.directSessionScheduled, &e.directSessionAt)
+	e.syncOneDirectTimer(ctx, corev1.TimerKind_TIMER_KIND_TERMINAL_REOPEN, termOK, termAt, &e.directTermScheduled, &e.directTermAt)
 }
 
 func (e *Engine) clearDirectTimerTracking() {

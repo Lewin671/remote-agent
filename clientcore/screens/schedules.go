@@ -700,17 +700,14 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 	}
 
 	entries := visibleScheduleEntries(st)
-	hasNew := func(e schedule.TaskEntry) bool {
-		return ss.Seen.HasNewResult(e.MachineID, e.Task)
-	}
 
-	stopped := schedule.SortInbox(entries, schedule.InboxAttention, hasNew)
-	recent := schedule.SortInbox(entries, schedule.InboxRecent, hasNew)
-	endedAll := schedule.SortInbox(entries, schedule.InboxEnded, hasNew)
+	stopped := schedule.SortInbox(entries, schedule.InboxAttention, ss.Seen)
+	recent := schedule.SortInbox(entries, schedule.InboxRecent, ss.Seen)
+	endedAll := schedule.SortInbox(entries, schedule.InboxEnded, ss.Seen)
 
 	var fresh, others []schedule.TaskEntry
 	for _, e := range recent {
-		if hasNew(e) {
+		if ss.Seen.HasNewResult(e.MachineID, e.Task) {
 			fresh = append(fresh, e)
 		} else {
 			others = append(others, e)
@@ -719,7 +716,7 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 
 	hasAnyNew := false
 	for _, e := range entries {
-		if hasNew(e) {
+		if ss.Seen.HasNewResult(e.MachineID, e.Task) {
 			hasAnyNew = true
 			break
 		}
@@ -821,7 +818,7 @@ func BuildSchedules(st *State, endedLimit int) *corev1.SchedulesViewModel {
 	sv := computeScopeVariety(st, entries)
 	attentionViews := make([]*corev1.ScheduleTaskItemView, 0, len(stopped))
 	for _, e := range stopped {
-		attentionViews = append(attentionViews, buildTaskItemView(st, e, corev1.ScheduleDisplayGroup_SCHEDULE_DISPLAY_GROUP_ATTENTION, hasNew(e), sv, bounds))
+		attentionViews = append(attentionViews, buildTaskItemView(st, e, corev1.ScheduleDisplayGroup_SCHEDULE_DISPLAY_GROUP_ATTENTION, ss.Seen.HasNewResult(e.MachineID, e.Task), sv, bounds))
 	}
 	freshViews := make([]*corev1.ScheduleTaskItemView, 0, len(fresh))
 	for _, e := range fresh {
@@ -1833,6 +1830,27 @@ func BuildScheduleForm(st *State, formKey string) *corev1.ScheduleFormViewModel 
 	}
 }
 
+type schedSessionStripTasks []schedule.TaskEntry
+
+func (s schedSessionStripTasks) Len() int      { return len(s) }
+func (s schedSessionStripTasks) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s schedSessionStripTasks) Less(i, j int) bool {
+	na, nb := s[i].Task.NextRunAt, s[j].Task.NextRunAt
+	if na == "" {
+		na = "~"
+	}
+	if nb == "" {
+		nb = "~"
+	}
+	if na != nb {
+		return na < nb
+	}
+	if s[i].MachineID != s[j].MachineID {
+		return s[i].MachineID < s[j].MachineID
+	}
+	return s[i].Task.ID < s[j].Task.ID
+}
+
 // BuildScheduleSessionStrip constructs the ScheduleSessionStripViewModel for one conversation.
 func BuildScheduleSessionStrip(st *State, sessionID string) *corev1.ScheduleSessionStripViewModel {
 	if st == nil || sessionID == "" {
@@ -1863,22 +1881,7 @@ func BuildScheduleSessionStrip(st *State, sessionID string) *corev1.ScheduleSess
 		return &corev1.ScheduleSessionStripViewModel{SessionId: sessionID, Visible: false}
 	}
 
-	sortutil.Sort(len(matching), func(i, j int) bool {
-		na, nb := matching[i].Task.NextRunAt, matching[j].Task.NextRunAt
-		if na == "" {
-			na = "~"
-		}
-		if nb == "" {
-			nb = "~"
-		}
-		if na != nb {
-			return na < nb
-		}
-		if matching[i].MachineID != matching[j].MachineID {
-			return matching[i].MachineID < matching[j].MachineID
-		}
-		return matching[i].Task.ID < matching[j].Task.ID
-	}, func(i, j int) { matching[i], matching[j] = matching[j], matching[i] })
+	sortutil.SortInterface(schedSessionStripTasks(matching))
 
 	first := matching[0]
 	writable := schedule.Writable(&st.World, first.MachineID)

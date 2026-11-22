@@ -364,8 +364,14 @@ func sameBytes(a, b []byte) bool {
 	return bytes.Equal(a, b)
 }
 
+type membersByID []devicesec.Member
+
+func (s membersByID) Len() int           { return len(s) }
+func (s membersByID) Less(i, j int) bool { return s[i].ID < s[j].ID }
+func (s membersByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 func sortedMembersCopy(members []devicesec.Member) []devicesec.Member {
 	out := slices.Clone(members)
-	sortutil.Sort(len(out), func(i, j int) bool { return out[i].ID < out[j].ID }, func(i, j int) { out[i], out[j] = out[j], out[i] })
+	sortutil.SortInterface(membersByID(out))
 	return out
 }

@@ -202,3 +202,29 @@ func addLease(now uint64) uint64 {
 	}
 	return now + Lease
 }
+
+//go:noinline
+func sortStrings(s []string) {
+	for i := 1; i < len(s); i++ {
+		v := s[i]
+		j := i - 1
+		for j >= 0 && s[j] > v {
+			s[j+1] = s[j]
+			j--
+		}
+		s[j+1] = v
+	}
+}
+
+//go:noinline
+func sortMembers(s []Member) {
+	for i := 1; i < len(s); i++ {
+		v := s[i]
+		j := i - 1
+		for j >= 0 && s[j].ID > v.ID {
+			s[j+1] = s[j]
+			j--
+		}
+		s[j+1] = v
+	}
+}

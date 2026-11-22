@@ -2,13 +2,27 @@
 
 package timestamppb
 
-import "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
+import (
+	"unsafe"
+
+	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
+)
 
 // Timestamp mirrors google.protobuf.Timestamp without reflection or JSON runtime dependencies.
 type Timestamp struct {
 	Seconds    int64
 	Nanos      int32
 	hasUnknown bool
+}
+
+var LitewireDesc_Timestamp = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(Timestamp{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&Timestamp{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Timestamp{}.Seconds), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(Timestamp{}.Nanos), Kind: litewire.KindInt32},
+	},
 }
 
 func (m *Timestamp) HasUnknown() bool {
@@ -42,16 +56,7 @@ func (m *Timestamp) Size() int {
 }
 
 func (m *Timestamp) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Seconds != 0 {
-		b = litewire.AppendVarint(b, 1, uint64(m.Seconds))
-	}
-	if m.Nanos != 0 {
-		b = litewire.AppendInt32(b, 2, m.Nanos)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Timestamp)
 }
 
 func (m *Timestamp) Marshal() ([]byte, error) {
@@ -59,35 +64,5 @@ func (m *Timestamp) Marshal() ([]byte, error) {
 }
 
 func (m *Timestamp) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Seconds = int64(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Nanos = int32(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Timestamp)
 }

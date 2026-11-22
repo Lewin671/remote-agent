@@ -196,6 +196,114 @@ func runningToolFromStarted(e *v1.Event) *corev1.RunningTool {
 	}
 }
 
+type timelineToolCtx struct {
+	in                  world.SessionSnapshot
+	st                  *State
+	p                   *corev1.ProjectionState
+	bgBySeq             map[uint64]*corev1.BackgroundTool
+	noResultSet         map[uint64]bool
+	supportsSharedFiles bool
+	cwd                 string
+	home                string
+	machineName         string
+}
+
+type timelineToolRun struct {
+	items  []*corev1.SessionToolCallItem
+	seq    uint64
+	endSeq uint64
+	ts     int64
+	turnID string
+	key    string
+}
+
+func (r *timelineToolRun) flush(rawItems *[]*corev1.SessionTimelineItem) {
+	if len(r.items) == 0 {
+		return
+	}
+	if len(r.items) == 1 {
+		*rawItems = append(*rawItems, &corev1.SessionTimelineItem{
+			Id:          r.key,
+			Seq:         r.seq,
+			EndSeq:      r.seq,
+			TimestampMs: r.ts,
+			TurnId:      r.turnID,
+			Kind:        &corev1.SessionTimelineItem_ToolCall{ToolCall: r.items[0]},
+		})
+	} else {
+		grp := buildToolGroupItem(r.items)
+		*rawItems = append(*rawItems, &corev1.SessionTimelineItem{
+			Id:          r.key,
+			Seq:         r.seq,
+			EndSeq:      r.endSeq,
+			TimestampMs: r.ts,
+			TurnId:      r.turnID,
+			Kind:        &corev1.SessionTimelineItem_ToolGroup{ToolGroup: grp},
+		})
+	}
+	*r = timelineToolRun{}
+}
+
+func (r *timelineToolRun) add(tcCtx *timelineToolCtx, rawItems *[]*corev1.SessionTimelineItem, e *v1.Event, tc *v1.ToolCall) {
+	if tc == nil {
+		return
+	}
+	bg := tcCtx.bgBySeq[e.Seq]
+	wentBg := bg != nil || (tc.Background != v1.ToolBackground_TOOL_BACKGROUND_UNSPECIFIED)
+	if tcCtx.supportsSharedFiles && len(tc.SharedFiles) > 0 {
+		r.flush(rawItems)
+		*rawItems = append(*rawItems, &corev1.SessionTimelineItem{
+			Id:          eventItemID(e.Seq),
+			Seq:         e.Seq,
+			EndSeq:      e.Seq,
+			TimestampMs: projection.EventTimeMs(e),
+			TurnId:      e.TurnId,
+			Kind: &corev1.SessionTimelineItem_SharedFiles{
+				SharedFiles: buildSharedFilesItem(tc.SharedFiles),
+			},
+		})
+		return
+	}
+
+	item := buildToolCallView(e, tc, tcCtx.cwd, tcCtx.home, tcCtx.noResultSet[e.Seq], wentBg, bg)
+	if aid, ok := tcCtx.p.ApprovalCallIds[e.Seq]; ok {
+		if ra := tcCtx.p.Resolved[aid]; ra != nil {
+			r.flush(rawItems)
+			item.DecisionLabel = approvalDecisionText(ra.Decision, ra.Message, ra.Origin, tcCtx.st, tcCtx.in.DeviceNames, tcCtx.in.ThisDeviceID, tcCtx.machineName)
+			item.DecisionAllowed = ra.Decision == v1.ApprovalDecision_APPROVAL_DECISION_ALLOW || ra.Decision == v1.ApprovalDecision_APPROVAL_DECISION_ALLOW_ALWAYS
+			*rawItems = append(*rawItems, &corev1.SessionTimelineItem{
+				Id:          eventItemID(e.Seq),
+				Seq:         e.Seq,
+				EndSeq:      e.Seq,
+				TimestampMs: projection.EventTimeMs(e),
+				TurnId:      e.TurnId,
+				Kind:        &corev1.SessionTimelineItem_ToolCall{ToolCall: item},
+			})
+			return
+		}
+	}
+	if wentBg || item.Status != corev1.SessionToolStatus_SESSION_TOOL_STATUS_OK {
+		r.flush(rawItems)
+		*rawItems = append(*rawItems, &corev1.SessionTimelineItem{
+			Id:          eventItemID(e.Seq),
+			Seq:         e.Seq,
+			EndSeq:      e.Seq,
+			TimestampMs: projection.EventTimeMs(e),
+			TurnId:      e.TurnId,
+			Kind:        &corev1.SessionTimelineItem_ToolCall{ToolCall: item},
+		})
+		return
+	}
+	if len(r.items) == 0 {
+		r.key = eventItemID(e.Seq)
+		r.seq = e.Seq
+		r.ts = projection.EventTimeMs(e)
+		r.turnID = e.TurnId
+	}
+	r.items = append(r.items, item)
+	r.endSeq = e.Seq
+}
+
 func buildSessionTimeline(
 	in world.SessionSnapshot,
 	st *State,
@@ -344,103 +452,17 @@ func buildSessionTimeline(
 	}
 
 	var rawItems []*corev1.SessionTimelineItem
-	var toolRun []*corev1.SessionToolCallItem
-	var toolRunSeq uint64
-	var toolRunEndSeq uint64
-	var toolRunTs int64
-	var toolRunTurnID string
-	var toolRunKey string
-
-	flushTools := func() {
-		if len(toolRun) == 0 {
-			return
-		}
-		if len(toolRun) == 1 {
-			rawItems = append(rawItems, &corev1.SessionTimelineItem{
-				Id:          toolRunKey,
-				Seq:         toolRunSeq,
-				EndSeq:      toolRunSeq,
-				TimestampMs: toolRunTs,
-				TurnId:      toolRunTurnID,
-				Kind:        &corev1.SessionTimelineItem_ToolCall{ToolCall: toolRun[0]},
-			})
-		} else {
-			grp := buildToolGroupItem(toolRun)
-			rawItems = append(rawItems, &corev1.SessionTimelineItem{
-				Id:          toolRunKey,
-				Seq:         toolRunSeq,
-				EndSeq:      toolRunEndSeq,
-				TimestampMs: toolRunTs,
-				TurnId:      toolRunTurnID,
-				Kind:        &corev1.SessionTimelineItem_ToolGroup{ToolGroup: grp},
-			})
-		}
-		toolRun = nil
-		toolRunSeq = 0
-		toolRunEndSeq = 0
-		toolRunTs = 0
-		toolRunTurnID = ""
-		toolRunKey = ""
-	}
-
-	addToolCall := func(e *v1.Event, tc *v1.ToolCall) {
-		if tc == nil {
-			return
-		}
-		bg := bgBySeq[e.Seq]
-		wentBg := bg != nil || (tc.Background != v1.ToolBackground_TOOL_BACKGROUND_UNSPECIFIED)
-		if supportsSharedFiles && len(tc.SharedFiles) > 0 {
-			flushTools()
-			rawItems = append(rawItems, &corev1.SessionTimelineItem{
-				Id:          eventItemID(e.Seq),
-				Seq:         e.Seq,
-				EndSeq:      e.Seq,
-				TimestampMs: projection.EventTimeMs(e),
-				TurnId:      e.TurnId,
-				Kind: &corev1.SessionTimelineItem_SharedFiles{
-					SharedFiles: buildSharedFilesItem(tc.SharedFiles),
-				},
-			})
-			return
-		}
-
-		item := buildToolCallView(e, tc, cwd, home, noResultSet[e.Seq], wentBg, bg)
-		if aid, ok := p.ApprovalCallIds[e.Seq]; ok {
-			if ra := p.Resolved[aid]; ra != nil {
-				flushTools()
-				item.DecisionLabel = approvalDecisionText(ra.Decision, ra.Message, ra.Origin, st, in.DeviceNames, in.ThisDeviceID, machineName)
-				item.DecisionAllowed = ra.Decision == v1.ApprovalDecision_APPROVAL_DECISION_ALLOW || ra.Decision == v1.ApprovalDecision_APPROVAL_DECISION_ALLOW_ALWAYS
-				rawItems = append(rawItems, &corev1.SessionTimelineItem{
-					Id:          eventItemID(e.Seq),
-					Seq:         e.Seq,
-					EndSeq:      e.Seq,
-					TimestampMs: projection.EventTimeMs(e),
-					TurnId:      e.TurnId,
-					Kind:        &corev1.SessionTimelineItem_ToolCall{ToolCall: item},
-				})
-				return
-			}
-		}
-		if wentBg || item.Status != corev1.SessionToolStatus_SESSION_TOOL_STATUS_OK {
-			flushTools()
-			rawItems = append(rawItems, &corev1.SessionTimelineItem{
-				Id:          eventItemID(e.Seq),
-				Seq:         e.Seq,
-				EndSeq:      e.Seq,
-				TimestampMs: projection.EventTimeMs(e),
-				TurnId:      e.TurnId,
-				Kind:        &corev1.SessionTimelineItem_ToolCall{ToolCall: item},
-			})
-			return
-		}
-		if len(toolRun) == 0 {
-			toolRunKey = eventItemID(e.Seq)
-			toolRunSeq = e.Seq
-			toolRunTs = projection.EventTimeMs(e)
-			toolRunTurnID = e.TurnId
-		}
-		toolRun = append(toolRun, item)
-		toolRunEndSeq = e.Seq
+	var tools timelineToolRun
+	tcCtx := timelineToolCtx{
+		in:                  in,
+		st:                  st,
+		p:                   p,
+		bgBySeq:             bgBySeq,
+		noResultSet:         noResultSet,
+		supportsSharedFiles: supportsSharedFiles,
+		cwd:                 cwd,
+		home:                home,
+		machineName:         machineName,
 	}
 
 	replies := replyTexts(events)
@@ -458,7 +480,7 @@ func buildSessionTimeline(
 		key := eventItemID(e.Seq)
 
 		if projection.IsSkeleton(e) {
-			flushTools()
+			tools.flush(&rawItems)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          key,
 				Seq:         e.Seq,
@@ -471,7 +493,7 @@ func buildSessionTimeline(
 		}
 
 		for _, reqID := range unsentAt[e.Seq] {
-			flushTools()
+			tools.flush(&rawItems)
 			preview := findPromptText(reqID, p, ui)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          "u:" + reqID,
@@ -504,9 +526,9 @@ func buildSessionTimeline(
 
 		case *v1.Event_ToolStarted:
 			if ce := callAt[e.Seq]; ce != nil {
-				addToolCall(ce, ce.GetToolCall())
+				tools.add(&tcCtx, &rawItems, ce, ce.GetToolCall())
 			} else if r := runningBySeq[e.Seq]; r != nil || unfinishedSet[e.Seq] {
-				flushTools()
+				tools.flush(&rawItems)
 				rt := r
 				unfin := false
 				if rt == nil {
@@ -527,14 +549,14 @@ func buildSessionTimeline(
 
 		case *v1.Event_ToolCall:
 			if !placed[e.Seq] {
-				addToolCall(e, k.ToolCall)
+				tools.add(&tcCtx, &rawItems, e, k.ToolCall)
 			}
 
 		case *v1.Event_UserMessage:
 			if k.UserMessage == nil {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			um := k.UserMessage
 			clean := withoutFileLines(um.Text, um.Files)
 			clean = cleanImagePlaceholders(clean, um.Images)
@@ -586,7 +608,7 @@ func buildSessionTimeline(
 			if k.ScheduledNotification == nil {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          key,
 				Seq:         e.Seq,
@@ -602,7 +624,7 @@ func buildSessionTimeline(
 			if k.AgentMessage == nil || strings.TrimSpace(k.AgentMessage.Text) == "" {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          key,
 				Seq:         e.Seq,
@@ -620,7 +642,7 @@ func buildSessionTimeline(
 			if k.QuestionAsked == nil || !k.QuestionAsked.Async {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			var steps []*corev1.SessionQuestionStepView
 			for _, q := range k.QuestionAsked.Questions {
 				steps = append(steps, buildQuestionStep(q, caps.Agent))
@@ -643,7 +665,7 @@ func buildSessionTimeline(
 			if k.Reasoning == nil || strings.TrimSpace(k.Reasoning.Text) == "" {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          key,
 				Seq:         e.Seq,
@@ -669,7 +691,7 @@ func buildSessionTimeline(
 			if ra == nil || !approvalDecisionRecorded(ra.Decision) {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			ok := ra.Decision == v1.ApprovalDecision_APPROVAL_DECISION_ALLOW || ra.Decision == v1.ApprovalDecision_APPROVAL_DECISION_ALLOW_ALWAYS
 			what := a.Command
 			if what == "" {
@@ -703,7 +725,7 @@ func buildSessionTimeline(
 			if k.QuestionAnswered == nil {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			var flat []string
 			for _, ans := range k.QuestionAnswered.Answers {
 				if ans != nil {
@@ -738,7 +760,7 @@ func buildSessionTimeline(
 			if k.ImageGenerated == nil || len(k.ImageGenerated.Images) == 0 {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          key,
 				Seq:         e.Seq,
@@ -757,7 +779,7 @@ func buildSessionTimeline(
 			if k.PlanProposed == nil {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
 				Id:          key,
 				Seq:         e.Seq,
@@ -775,7 +797,7 @@ func buildSessionTimeline(
 			if k.TurnEnded == nil {
 				continue
 			}
-			flushTools()
+			tools.flush(&rawItems)
 			t := k.TurnEnded
 			if errReason := cliErrorTurnReason(t.Reason); errReason != "" {
 				rawItems = append(rawItems, &corev1.SessionTimelineItem{
@@ -844,7 +866,7 @@ func buildSessionTimeline(
 			}
 			note := buildSettingsChangedNote(e, k.SettingsChanged, p.Compactions[e.Seq], st, in.DeviceNames, in.ThisDeviceID, machineName)
 			if note != nil {
-				flushTools()
+				tools.flush(&rawItems)
 				rawItems = append(rawItems, &corev1.SessionTimelineItem{
 					Id:          key,
 					Seq:         e.Seq,
@@ -857,7 +879,7 @@ func buildSessionTimeline(
 
 		case *v1.Event_TurnContext:
 			if ch := p.TerminalChanges[e.Seq]; ch != nil && len(ch.Changes) > 0 {
-				flushTools()
+				tools.flush(&rawItems)
 				changesTxt := terminalChangesText(ch.Changes, caps.Name)
 				rawItems = append(rawItems, &corev1.SessionTimelineItem{
 					Id:          key,
@@ -877,7 +899,7 @@ func buildSessionTimeline(
 
 		case *v1.Event_SessionState:
 			if k.SessionState != nil && k.SessionState.Status == v1.SessionStatus_SESSION_STATUS_EXITED {
-				flushTools()
+				tools.flush(&rawItems)
 				rawItems = append(rawItems, &corev1.SessionTimelineItem{
 					Id:          key,
 					Seq:         e.Seq,
@@ -896,7 +918,7 @@ func buildSessionTimeline(
 		case *v1.Event_SessionForked:
 			if k.SessionForked != nil {
 				hasFork = true
-				flushTools()
+				tools.flush(&rawItems)
 				sf := k.SessionForked
 				srcTitle := forkSourceTitle(sf.SourceSessionId, sf.SourceTitle, st, caps)
 				rawItems = append(rawItems, &corev1.SessionTimelineItem{
@@ -918,13 +940,13 @@ func buildSessionTimeline(
 
 		// Attach any terminal input state notices pointing at this event sequence.
 		if notices := inputNoticeAt[e.Seq]; len(notices) > 0 {
-			flushTools()
+			tools.flush(&rawItems)
 			for _, ip := range notices {
 				rawItems = append(rawItems, buildInputStateTimelineItem(ip, e.Seq, ts, caps.Agent))
 			}
 		}
 	}
-	flushTools()
+	tools.flush(&rawItems)
 	placeReceiptsInTurns(rawItems)
 
 	// Fold contiguous same-day quiet scheduled runs.

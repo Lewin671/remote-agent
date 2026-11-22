@@ -6,6 +6,7 @@ package corev1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	unsafe "unsafe"
 )
 
 type SecurityKeyKind int32
@@ -89,6 +90,7 @@ const (
 )
 
 type SecurityConfigEvent struct {
+	_             [0]func()
 	Account       string
 	DeviceId      string
 	InlineCrypto  bool
@@ -134,76 +136,24 @@ func (m *SecurityConfigEvent) GetForeground() bool {
 	return false
 }
 
+var LitewireDesc_SecurityConfigEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityConfigEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityConfigEvent{}.Account), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityConfigEvent{}.DeviceId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityConfigEvent{}.InlineCrypto), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityConfigEvent{}.Server), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityConfigEvent{}.LegacyCleared), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityConfigEvent{}.Foreground), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityConfigEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Account = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DeviceId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.InlineCrypto = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Server = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LegacyCleared = litewire.DecodeBool(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Foreground = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityConfigEvent)
 }
 
 type SecurityForegroundEvent struct {
+	_          [0]func()
 	Foreground bool
 }
 
@@ -214,31 +164,19 @@ func (m *SecurityForegroundEvent) GetForeground() bool {
 	return false
 }
 
+var LitewireDesc_SecurityForegroundEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityForegroundEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityForegroundEvent{}.Foreground), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityForegroundEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Foreground = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityForegroundEvent)
 }
 
 type SecurityKeySignEffect struct {
+	_       [0]func()
 	OpId    uint64
 	KeyKind SecurityKeyKind
 	Slot    string
@@ -270,24 +208,25 @@ func (m *SecurityKeySignEffect) GetMessage() []byte {
 	return nil
 }
 
-func (m *SecurityKeySignEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityKeySignEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeySignEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityKeySignEffect{}.KeyKind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityKeySignEffect{}.Slot), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityKeySignEffect{}.Message), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *SecurityKeySignEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityKeySignEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	b = litewire.AppendInt32(b, 2, int32(m.KeyKind))
-	b = litewire.AppendString(b, 3, m.Slot)
-	b = litewire.AppendBytes(b, 4, m.Message)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeySignEffect)
 }
 
 type SecurityKeySignedEvent struct {
+	_         [0]func()
 	OpId      uint64
 	Signature []byte
 	Error     string
@@ -312,49 +251,21 @@ func (m *SecurityKeySignedEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_SecurityKeySignedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityKeySignedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeySignedEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityKeySignedEvent{}.Signature), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityKeySignedEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityKeySignedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Signature = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeySignedEvent)
 }
 
 type SecurityKeyAgreeEffect struct {
+	_          [0]func()
 	OpId       uint64
 	KeyKind    SecurityKeyKind
 	Slot       string
@@ -386,24 +297,25 @@ func (m *SecurityKeyAgreeEffect) GetPeerPublic() []byte {
 	return nil
 }
 
-func (m *SecurityKeyAgreeEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityKeyAgreeEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeyAgreeEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityKeyAgreeEffect{}.KeyKind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityKeyAgreeEffect{}.Slot), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityKeyAgreeEffect{}.PeerPublic), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *SecurityKeyAgreeEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityKeyAgreeEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	b = litewire.AppendInt32(b, 2, int32(m.KeyKind))
-	b = litewire.AppendString(b, 3, m.Slot)
-	b = litewire.AppendBytes(b, 4, m.PeerPublic)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeyAgreeEffect)
 }
 
 type SecurityKeyAgreedEvent struct {
+	_      [0]func()
 	OpId   uint64
 	Shared []byte
 	Error  string
@@ -428,49 +340,21 @@ func (m *SecurityKeyAgreedEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_SecurityKeyAgreedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityKeyAgreedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeyAgreedEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityKeyAgreedEvent{}.Shared), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityKeyAgreedEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityKeyAgreedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Shared = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeyAgreedEvent)
 }
 
 type CryptoBatchVerifyItem struct {
+	_         [0]func()
 	PublicKey []byte
 	Message   []byte
 	Signature []byte
@@ -495,23 +379,24 @@ func (m *CryptoBatchVerifyItem) GetSignature() []byte {
 	return nil
 }
 
-func (m *CryptoBatchVerifyItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CryptoBatchVerifyItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CryptoBatchVerifyItem{}.PublicKey), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(CryptoBatchVerifyItem{}.Message), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(CryptoBatchVerifyItem{}.Signature), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *CryptoBatchVerifyItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CryptoBatchVerifyItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.PublicKey)
-	b = litewire.AppendBytes(b, 2, m.Message)
-	b = litewire.AppendBytes(b, 3, m.Signature)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CryptoBatchVerifyItem)
 }
 
 type CryptoBatchAeadOpenItem struct {
+	_          [0]func()
 	Key        []byte
 	Nonce      []byte
 	Aad        []byte
@@ -543,24 +428,25 @@ func (m *CryptoBatchAeadOpenItem) GetCiphertext() []byte {
 	return nil
 }
 
-func (m *CryptoBatchAeadOpenItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CryptoBatchAeadOpenItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CryptoBatchAeadOpenItem{}.Key), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(CryptoBatchAeadOpenItem{}.Nonce), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(CryptoBatchAeadOpenItem{}.Aad), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(CryptoBatchAeadOpenItem{}.Ciphertext), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *CryptoBatchAeadOpenItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CryptoBatchAeadOpenItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.Key)
-	b = litewire.AppendBytes(b, 2, m.Nonce)
-	b = litewire.AppendBytes(b, 3, m.Aad)
-	b = litewire.AppendBytes(b, 4, m.Ciphertext)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CryptoBatchAeadOpenItem)
 }
 
 type CryptoBatchAeadSealItem struct {
+	_         [0]func()
 	Key       []byte
 	Nonce     []byte
 	Aad       []byte
@@ -592,24 +478,25 @@ func (m *CryptoBatchAeadSealItem) GetPlaintext() []byte {
 	return nil
 }
 
-func (m *CryptoBatchAeadSealItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CryptoBatchAeadSealItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CryptoBatchAeadSealItem{}.Key), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(CryptoBatchAeadSealItem{}.Nonce), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(CryptoBatchAeadSealItem{}.Aad), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(CryptoBatchAeadSealItem{}.Plaintext), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *CryptoBatchAeadSealItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CryptoBatchAeadSealItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.Key)
-	b = litewire.AppendBytes(b, 2, m.Nonce)
-	b = litewire.AppendBytes(b, 3, m.Aad)
-	b = litewire.AppendBytes(b, 4, m.Plaintext)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CryptoBatchAeadSealItem)
 }
 
 type CryptoBatchSha256Item struct {
+	_    [0]func()
 	Data []byte
 }
 
@@ -620,38 +507,51 @@ func (m *CryptoBatchSha256Item) GetData() []byte {
 	return nil
 }
 
-func (m *CryptoBatchSha256Item) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CryptoBatchSha256Item = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CryptoBatchSha256Item{}.Data), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *CryptoBatchSha256Item) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CryptoBatchSha256Item) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.Data)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CryptoBatchSha256Item)
 }
 
 type SecurityCryptoBatchItem struct {
+	_    [0]func()
 	Kind isSecurityCryptoBatchItem_Kind
 }
 
 type isSecurityCryptoBatchItem_Kind interface{ isSecurityCryptoBatchItem_Kind() }
-type SecurityCryptoBatchItem_Verify struct{ Verify *CryptoBatchVerifyItem }
+type SecurityCryptoBatchItem_Verify struct {
+	_      [0]func()
+	Verify *CryptoBatchVerifyItem
+}
 
 func (*SecurityCryptoBatchItem_Verify) isSecurityCryptoBatchItem_Kind() {}
 
-type SecurityCryptoBatchItem_AeadOpen struct{ AeadOpen *CryptoBatchAeadOpenItem }
+type SecurityCryptoBatchItem_AeadOpen struct {
+	_        [0]func()
+	AeadOpen *CryptoBatchAeadOpenItem
+}
 
 func (*SecurityCryptoBatchItem_AeadOpen) isSecurityCryptoBatchItem_Kind() {}
 
-type SecurityCryptoBatchItem_AeadSeal struct{ AeadSeal *CryptoBatchAeadSealItem }
+type SecurityCryptoBatchItem_AeadSeal struct {
+	_        [0]func()
+	AeadSeal *CryptoBatchAeadSealItem
+}
 
 func (*SecurityCryptoBatchItem_AeadSeal) isSecurityCryptoBatchItem_Kind() {}
 
-type SecurityCryptoBatchItem_Sha256 struct{ Sha256 *CryptoBatchSha256Item }
+type SecurityCryptoBatchItem_Sha256 struct {
+	_      [0]func()
+	Sha256 *CryptoBatchSha256Item
+}
 
 func (*SecurityCryptoBatchItem_Sha256) isSecurityCryptoBatchItem_Kind() {}
 
@@ -686,46 +586,50 @@ func (m *SecurityCryptoBatchItem) GetSha256() *CryptoBatchSha256Item {
 	return nil
 }
 
-func (m *SecurityCryptoBatchItem) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityCryptoBatchItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
 
 func (m *SecurityCryptoBatchItem) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityCryptoBatchItem) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityCryptoBatchItem)
+}
+
+func extraMarshal_SecurityCryptoBatchItem(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*SecurityCryptoBatchItem)(base)
+	var onum litewire.Number
+	var omsg litewire.Marshaler
 	switch x := m.Kind.(type) {
 	case *SecurityCryptoBatchItem_Verify:
-		if x != nil {
-			if x.Verify != nil {
-				b = litewire.AppendMessage(b, 1, x.Verify)
-			}
+		if x != nil && x.Verify != nil {
+			onum, omsg = 1, x.Verify
 		}
 	case *SecurityCryptoBatchItem_AeadOpen:
-		if x != nil {
-			if x.AeadOpen != nil {
-				b = litewire.AppendMessage(b, 2, x.AeadOpen)
-			}
+		if x != nil && x.AeadOpen != nil {
+			onum, omsg = 2, x.AeadOpen
 		}
 	case *SecurityCryptoBatchItem_AeadSeal:
-		if x != nil {
-			if x.AeadSeal != nil {
-				b = litewire.AppendMessage(b, 3, x.AeadSeal)
-			}
+		if x != nil && x.AeadSeal != nil {
+			onum, omsg = 3, x.AeadSeal
 		}
 	case *SecurityCryptoBatchItem_Sha256:
-		if x != nil {
-			if x.Sha256 != nil {
-				b = litewire.AppendMessage(b, 4, x.Sha256)
-			}
+		if x != nil && x.Sha256 != nil {
+			onum, omsg = 4, x.Sha256
 		}
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
 	}
 	return b
 }
 
 type SecurityCryptoBatchEffect struct {
+	_     [0]func()
 	OpId  uint64
 	Items []*SecurityCryptoBatchItem
 }
@@ -743,26 +647,23 @@ func (m *SecurityCryptoBatchEffect) GetItems() []*SecurityCryptoBatchItem {
 	return nil
 }
 
-func (m *SecurityCryptoBatchEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityCryptoBatchEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityCryptoBatchEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityCryptoBatchEffect{}.Items), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SecurityCryptoBatchItem},
+	},
+}
 
 func (m *SecurityCryptoBatchEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityCryptoBatchEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	for _, v := range m.Items {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityCryptoBatchEffect)
 }
 
 type SecurityCryptoBatchResult struct {
+	_     [0]func()
 	Ok    bool
 	Data  []byte
 	Error string
@@ -787,49 +688,21 @@ func (m *SecurityCryptoBatchResult) GetError() string {
 	return ""
 }
 
+var LitewireDesc_SecurityCryptoBatchResult = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityCryptoBatchResult{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityCryptoBatchResult{}.Ok), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityCryptoBatchResult{}.Data), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityCryptoBatchResult{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityCryptoBatchResult) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Ok = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Data = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityCryptoBatchResult)
 }
 
 type SecurityCryptoBatchDoneEvent struct {
+	_       [0]func()
 	OpId    uint64
 	Results []*SecurityCryptoBatchResult
 	Error   string
@@ -854,49 +727,38 @@ func (m *SecurityCryptoBatchDoneEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_SecurityCryptoBatchDoneEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityCryptoBatchDoneEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityCryptoBatchDoneEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityCryptoBatchDoneEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityCryptoBatchDoneEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityCryptoBatchDoneEvent)
+}
+
+func extraUnmarshal_SecurityCryptoBatchDoneEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*SecurityCryptoBatchDoneEvent)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
 		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &SecurityCryptoBatchResult{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Results = append(m.Results, elem)
-				continue
+			elem := &SecurityCryptoBatchResult{}
+			m.Results = append(m.Results, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SecurityOpenEnvelopeOp struct {
+	_                   [0]func()
 	Envelope            *v1.Envelope
 	ExpectedPurpose     uint32
 	MachineId           string
@@ -956,95 +818,26 @@ func (m *SecurityOpenEnvelopeOp) GetOverrideSessionSeed() []byte {
 	return nil
 }
 
+var LitewireDesc_SecurityOpenEnvelopeOp = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityOpenEnvelopeOp{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.Envelope), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.ExpectedPurpose), Kind: litewire.KindUint32},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.MachineId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.SessionId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.RequestId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.Seq), Kind: litewire.KindUint64},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.History), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityOpenEnvelopeOp{}.OverrideSessionSeed), Kind: litewire.KindBytes},
+	},
+}
+
 func (m *SecurityOpenEnvelopeOp) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Envelope == nil {
-					m.Envelope = &v1.Envelope{}
-				}
-				if err := litewire.ReadMessage(&b, m.Envelope); err != nil {
-					return err
-				}
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ExpectedPurpose = uint32(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Seq = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.History = litewire.DecodeBool(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.OverrideSessionSeed = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityOpenEnvelopeOp)
 }
 
 type SecuritySealEnvelopeOp struct {
+	_                   [0]func()
 	Purpose             uint32
 	MachineId           string
 	SessionId           string
@@ -1111,103 +904,27 @@ func (m *SecuritySealEnvelopeOp) GetOverrideSessionSeed() []byte {
 	return nil
 }
 
+var LitewireDesc_SecuritySealEnvelopeOp = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecuritySealEnvelopeOp{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.Purpose), Kind: litewire.KindUint32},
+		{Num: 2, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.SessionId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.RequestId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.Seq), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.DeadlineMs), Kind: litewire.KindInt64},
+		{Num: 7, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.Plaintext), Kind: litewire.KindBytes},
+		{Num: 8, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.UseSessionSeed), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SecuritySealEnvelopeOp{}.OverrideSessionSeed), Kind: litewire.KindBytes},
+	},
+}
+
 func (m *SecuritySealEnvelopeOp) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Purpose = uint32(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Seq = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DeadlineMs = int64(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Plaintext = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UseSessionSeed = litewire.DecodeBool(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.OverrideSessionSeed = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecuritySealEnvelopeOp)
 }
 
 type SecurityGetSessionSeedOp struct {
+	_         [0]func()
 	SessionId string
 }
 
@@ -1218,45 +935,42 @@ func (m *SecurityGetSessionSeedOp) GetSessionId() string {
 	return ""
 }
 
+var LitewireDesc_SecurityGetSessionSeedOp = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityGetSessionSeedOp{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityGetSessionSeedOp{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityGetSessionSeedOp) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityGetSessionSeedOp)
 }
 
 type SecurityOpRequestEvent struct {
+	_    [0]func()
 	OpId uint64
 	Op   isSecurityOpRequestEvent_Op
 }
 
 type isSecurityOpRequestEvent_Op interface{ isSecurityOpRequestEvent_Op() }
-type SecurityOpRequestEvent_OpenEnvelope struct{ OpenEnvelope *SecurityOpenEnvelopeOp }
+type SecurityOpRequestEvent_OpenEnvelope struct {
+	_            [0]func()
+	OpenEnvelope *SecurityOpenEnvelopeOp
+}
 
 func (*SecurityOpRequestEvent_OpenEnvelope) isSecurityOpRequestEvent_Op() {}
 
-type SecurityOpRequestEvent_SealEnvelope struct{ SealEnvelope *SecuritySealEnvelopeOp }
+type SecurityOpRequestEvent_SealEnvelope struct {
+	_            [0]func()
+	SealEnvelope *SecuritySealEnvelopeOp
+}
 
 func (*SecurityOpRequestEvent_SealEnvelope) isSecurityOpRequestEvent_Op() {}
 
-type SecurityOpRequestEvent_GetSessionSeed struct{ GetSessionSeed *SecurityGetSessionSeedOp }
+type SecurityOpRequestEvent_GetSessionSeed struct {
+	_              [0]func()
+	GetSessionSeed *SecurityGetSessionSeedOp
+}
 
 func (*SecurityOpRequestEvent_GetSessionSeed) isSecurityOpRequestEvent_Op() {}
 
@@ -1291,76 +1005,58 @@ func (m *SecurityOpRequestEvent) GetGetSessionSeed() *SecurityGetSessionSeedOp {
 	return nil
 }
 
+var LitewireDesc_SecurityOpRequestEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityOpRequestEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityOpRequestEvent{}.OpId), Kind: litewire.KindUint64},
+	},
+}
+
 func (m *SecurityOpRequestEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityOpRequestEvent)
+}
+
+func extraUnmarshal_SecurityOpRequestEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*SecurityOpRequestEvent)(base)
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
 		case 2:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityOpenEnvelopeOp
-				if cur, ok := m.Op.(*SecurityOpRequestEvent_OpenEnvelope); ok && cur != nil {
-					sub = cur.OpenEnvelope
-				}
-				if sub == nil {
-					sub = &SecurityOpenEnvelopeOp{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Op = &SecurityOpRequestEvent_OpenEnvelope{OpenEnvelope: sub}
-				continue
+			w, _ := m.Op.(*SecurityOpRequestEvent_OpenEnvelope)
+			if w == nil || w.OpenEnvelope == nil {
+				w = &SecurityOpRequestEvent_OpenEnvelope{OpenEnvelope: &SecurityOpenEnvelopeOp{}}
+				m.Op = w
 			}
+			sub = w.OpenEnvelope
 		case 3:
-			if wtyp == litewire.BytesType {
-				var sub *SecuritySealEnvelopeOp
-				if cur, ok := m.Op.(*SecurityOpRequestEvent_SealEnvelope); ok && cur != nil {
-					sub = cur.SealEnvelope
-				}
-				if sub == nil {
-					sub = &SecuritySealEnvelopeOp{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Op = &SecurityOpRequestEvent_SealEnvelope{SealEnvelope: sub}
-				continue
+			w, _ := m.Op.(*SecurityOpRequestEvent_SealEnvelope)
+			if w == nil || w.SealEnvelope == nil {
+				w = &SecurityOpRequestEvent_SealEnvelope{SealEnvelope: &SecuritySealEnvelopeOp{}}
+				m.Op = w
 			}
+			sub = w.SealEnvelope
 		case 4:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityGetSessionSeedOp
-				if cur, ok := m.Op.(*SecurityOpRequestEvent_GetSessionSeed); ok && cur != nil {
-					sub = cur.GetSessionSeed
-				}
-				if sub == nil {
-					sub = &SecurityGetSessionSeedOp{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Op = &SecurityOpRequestEvent_GetSessionSeed{GetSessionSeed: sub}
-				continue
+			w, _ := m.Op.(*SecurityOpRequestEvent_GetSessionSeed)
+			if w == nil || w.GetSessionSeed == nil {
+				w = &SecurityOpRequestEvent_GetSessionSeed{GetSessionSeed: &SecurityGetSessionSeedOp{}}
+				m.Op = w
 			}
+			sub = w.GetSessionSeed
 		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SecurityOpenEnvelopeResult struct {
+	_            [0]func()
 	Header       []byte
 	Plaintext    []byte
 	Epoch        uint64
@@ -1441,31 +1137,32 @@ func (m *SecurityOpenEnvelopeResult) GetDeadlineMs() int64 {
 	return 0
 }
 
-func (m *SecurityOpenEnvelopeResult) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityOpenEnvelopeResult = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.Header), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.Plaintext), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.Epoch), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.ContentEpoch), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.Seq), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.Sender), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.Purpose), Kind: litewire.KindUint32},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.MachineId), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.SessionId), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.RequestId), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityOpenEnvelopeResult{}.DeadlineMs), Kind: litewire.KindInt64},
+	},
+}
 
 func (m *SecurityOpenEnvelopeResult) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityOpenEnvelopeResult) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.Header)
-	b = litewire.AppendBytes(b, 2, m.Plaintext)
-	b = litewire.AppendVarint(b, 3, uint64(m.Epoch))
-	b = litewire.AppendVarint(b, 4, uint64(m.ContentEpoch))
-	b = litewire.AppendVarint(b, 5, uint64(m.Seq))
-	b = litewire.AppendString(b, 6, m.Sender)
-	b = litewire.AppendVarint(b, 7, uint64(m.Purpose))
-	b = litewire.AppendString(b, 8, m.MachineId)
-	b = litewire.AppendString(b, 9, m.SessionId)
-	b = litewire.AppendString(b, 10, m.RequestId)
-	b = litewire.AppendVarint(b, 11, uint64(m.DeadlineMs))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityOpenEnvelopeResult)
 }
 
 type SecuritySealEnvelopeResult struct {
+	_              [0]func()
 	Envelope       *v1.Envelope
 	RequestKeyHash []byte
 	PayloadHash    []byte
@@ -1490,25 +1187,24 @@ func (m *SecuritySealEnvelopeResult) GetPayloadHash() []byte {
 	return nil
 }
 
-func (m *SecuritySealEnvelopeResult) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecuritySealEnvelopeResult = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecuritySealEnvelopeResult{}.Envelope), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
+		{Num: 2, Offset: unsafe.Offsetof(SecuritySealEnvelopeResult{}.RequestKeyHash), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecuritySealEnvelopeResult{}.PayloadHash), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *SecuritySealEnvelopeResult) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecuritySealEnvelopeResult) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Envelope != nil {
-		b = litewire.AppendMessage(b, 1, m.Envelope)
-	}
-	b = litewire.AppendBytes(b, 2, m.RequestKeyHash)
-	b = litewire.AppendBytes(b, 3, m.PayloadHash)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecuritySealEnvelopeResult)
 }
 
 type SecurityOpResultEffect struct {
+	_         [0]func()
 	OpId      uint64
 	Error     string
 	ErrorCode string
@@ -1516,15 +1212,24 @@ type SecurityOpResultEffect struct {
 }
 
 type isSecurityOpResultEffect_Result interface{ isSecurityOpResultEffect_Result() }
-type SecurityOpResultEffect_Opened struct{ Opened *SecurityOpenEnvelopeResult }
+type SecurityOpResultEffect_Opened struct {
+	_      [0]func()
+	Opened *SecurityOpenEnvelopeResult
+}
 
 func (*SecurityOpResultEffect_Opened) isSecurityOpResultEffect_Result() {}
 
-type SecurityOpResultEffect_Sealed struct{ Sealed *SecuritySealEnvelopeResult }
+type SecurityOpResultEffect_Sealed struct {
+	_      [0]func()
+	Sealed *SecuritySealEnvelopeResult
+}
 
 func (*SecurityOpResultEffect_Sealed) isSecurityOpResultEffect_Result() {}
 
-type SecurityOpResultEffect_SessionSeed struct{ SessionSeed []byte }
+type SecurityOpResultEffect_SessionSeed struct {
+	_           [0]func()
+	SessionSeed []byte
+}
 
 func (*SecurityOpResultEffect_SessionSeed) isSecurityOpResultEffect_Result() {}
 
@@ -1571,41 +1276,49 @@ func (m *SecurityOpResultEffect) GetSessionSeed() []byte {
 	return nil
 }
 
-func (m *SecurityOpResultEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityOpResultEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.Error), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.ErrorCode), Kind: litewire.KindString},
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
 
 func (m *SecurityOpResultEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityOpResultEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	b = litewire.AppendString(b, 2, m.Error)
-	b = litewire.AppendString(b, 3, m.ErrorCode)
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityOpResultEffect)
+}
+
+func extraMarshal_SecurityOpResultEffect(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*SecurityOpResultEffect)(base)
+	var onum litewire.Number
+	var omsg litewire.Marshaler
 	switch x := m.Result.(type) {
 	case *SecurityOpResultEffect_Opened:
-		if x != nil {
-			if x.Opened != nil {
-				b = litewire.AppendMessage(b, 4, x.Opened)
-			}
+		if x != nil && x.Opened != nil {
+			onum, omsg = 4, x.Opened
 		}
 	case *SecurityOpResultEffect_Sealed:
-		if x != nil {
-			if x.Sealed != nil {
-				b = litewire.AppendMessage(b, 5, x.Sealed)
-			}
+		if x != nil && x.Sealed != nil {
+			onum, omsg = 5, x.Sealed
 		}
 	case *SecurityOpResultEffect_SessionSeed:
 		if x != nil {
 			b = litewire.AppendBytesAlways(b, 6, x.SessionSeed)
 		}
 	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
 	return b
 }
 
 type DemoMachine struct {
+	_          [0]func()
 	MachineId  string
 	Online     bool
 	LastSeenMs int64
@@ -1637,59 +1350,22 @@ func (m *DemoMachine) GetMeta() *v1.MachineMeta {
 	return nil
 }
 
+var LitewireDesc_DemoMachine = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DemoMachine{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DemoMachine{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DemoMachine{}.Online), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DemoMachine{}.LastSeenMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(DemoMachine{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_MachineMeta},
+	},
+}
+
 func (m *DemoMachine) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Online = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LastSeenMs = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				if m.Meta == nil {
-					m.Meta = &v1.MachineMeta{}
-				}
-				if err := litewire.ReadMessage(&b, m.Meta); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DemoMachine)
 }
 
 type DemoSession struct {
+	_             [0]func()
 	SessionId     string
 	MachineId     string
 	LastSeq       uint64
@@ -1742,87 +1418,25 @@ func (m *DemoSession) GetCheckpoint() *v1.LiveSnapshot {
 	return nil
 }
 
+var LitewireDesc_DemoSession = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DemoSession{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DemoSession{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DemoSession{}.MachineId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DemoSession{}.LastSeq), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(DemoSession{}.UpdatedMs), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(DemoSession{}.ListedEndedMs), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(DemoSession{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Session},
+		{Num: 7, Offset: unsafe.Offsetof(DemoSession{}.Checkpoint), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_LiveSnapshot},
+	},
+}
+
 func (m *DemoSession) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LastSeq = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UpdatedMs = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ListedEndedMs = int64(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				if m.Meta == nil {
-					m.Meta = &v1.Session{}
-				}
-				if err := litewire.ReadMessage(&b, m.Meta); err != nil {
-					return err
-				}
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				if m.Checkpoint == nil {
-					m.Checkpoint = &v1.LiveSnapshot{}
-				}
-				if err := litewire.ReadMessage(&b, m.Checkpoint); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DemoSession)
 }
 
 type DemoDevice struct {
+	_          [0]func()
 	DeviceId   string
 	Kind       v1.DeviceKind
 	CreatedMs  int64
@@ -1861,68 +1475,23 @@ func (m *DemoDevice) GetMeta() *v1.DeviceMeta {
 	return nil
 }
 
+var LitewireDesc_DemoDevice = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DemoDevice{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DemoDevice{}.DeviceId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DemoDevice{}.Kind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(DemoDevice{}.CreatedMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(DemoDevice{}.LastSeenMs), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(DemoDevice{}.Meta), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_DeviceMeta},
+	},
+}
+
 func (m *DemoDevice) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DeviceId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Kind = v1.DeviceKind(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CreatedMs = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LastSeenMs = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				if m.Meta == nil {
-					m.Meta = &v1.DeviceMeta{}
-				}
-				if err := litewire.ReadMessage(&b, m.Meta); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DemoDevice)
 }
 
 type DemoSessionEvents struct {
+	_         [0]func()
 	SessionId string
 	Events    []*v1.Event
 }
@@ -1940,40 +1509,37 @@ func (m *DemoSessionEvents) GetEvents() []*v1.Event {
 	return nil
 }
 
+var LitewireDesc_DemoSessionEvents = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DemoSessionEvents{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DemoSessionEvents{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
 func (m *DemoSessionEvents) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DemoSessionEvents)
+}
+
+func extraUnmarshal_DemoSessionEvents(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*DemoSessionEvents)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
 		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &v1.Event{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Events = append(m.Events, elem)
-				continue
+			elem := &v1.Event{}
+			m.Events = append(m.Events, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type DemoSecurity struct {
+	_                      [0]func()
 	IsMember               bool
 	Removed                bool
 	SelfDeviceId           string
@@ -2075,148 +1641,32 @@ func (m *DemoSecurity) GetNetworkGeneration() uint64 {
 	return 0
 }
 
+var LitewireDesc_DemoSecurity = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DemoSecurity{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DemoSecurity{}.IsMember), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(DemoSecurity{}.Removed), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DemoSecurity{}.SelfDeviceId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(DemoSecurity{}.AuthorityDeviceId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(DemoSecurity{}.TrustedMachineIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 6, Offset: unsafe.Offsetof(DemoSecurity{}.TrustedClientIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 7, Offset: unsafe.Offsetof(DemoSecurity{}.ArchiveMachineIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 8, Offset: unsafe.Offsetof(DemoSecurity{}.HeadEpoch), Kind: litewire.KindUint64},
+		{Num: 9, Offset: unsafe.Offsetof(DemoSecurity{}.LeaseEndMs), Kind: litewire.KindInt64},
+		{Num: 10, Offset: unsafe.Offsetof(DemoSecurity{}.ClockSkewed), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(DemoSecurity{}.RecoveryPending), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(DemoSecurity{}.RecoveryReadyMs), Kind: litewire.KindInt64},
+		{Num: 13, Offset: unsafe.Offsetof(DemoSecurity{}.RecoveryObjectsPending), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(DemoSecurity{}.NetworkGeneration), Kind: litewire.KindUint64},
+	},
+}
+
 func (m *DemoSecurity) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IsMember = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Removed = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SelfDeviceId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.AuthorityDeviceId = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TrustedMachineIds = append(m.TrustedMachineIds, v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TrustedClientIds = append(m.TrustedClientIds, v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ArchiveMachineIds = append(m.ArchiveMachineIds, v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HeadEpoch = v
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LeaseEndMs = int64(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ClockSkewed = litewire.DecodeBool(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryPending = litewire.DecodeBool(v)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryReadyMs = int64(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryObjectsPending = litewire.DecodeBool(v)
-				continue
-			}
-		case 14:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NetworkGeneration = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DemoSecurity)
 }
 
 type SeedDemoWorldEvent struct {
+	_             [0]func()
 	Machines      []*DemoMachine
 	Sessions      []*DemoSession
 	Devices       []*DemoDevice
@@ -2262,78 +1712,54 @@ func (m *SeedDemoWorldEvent) GetSecurity() *DemoSecurity {
 	return nil
 }
 
+var LitewireDesc_SeedDemoWorldEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SeedDemoWorldEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 4, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.Prefs), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_ProjectPrefs},
+		{Num: 6, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.Security), Kind: litewire.KindMessage, Sub: &LitewireDesc_DemoSecurity},
+	},
+}
+
 func (m *SeedDemoWorldEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SeedDemoWorldEvent)
+}
+
+func extraUnmarshal_SeedDemoWorldEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*SeedDemoWorldEvent)(base)
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
 		switch num {
 		case 1:
-			if wtyp == litewire.BytesType {
-				elem := &DemoMachine{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Machines = append(m.Machines, elem)
-				continue
-			}
+			elem := &DemoMachine{}
+			m.Machines = append(m.Machines, elem)
+			sub = elem
 		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &DemoSession{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Sessions = append(m.Sessions, elem)
-				continue
-			}
+			elem := &DemoSession{}
+			m.Sessions = append(m.Sessions, elem)
+			sub = elem
 		case 3:
-			if wtyp == litewire.BytesType {
-				elem := &DemoDevice{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Devices = append(m.Devices, elem)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				if m.Prefs == nil {
-					m.Prefs = &v1.ProjectPrefs{}
-				}
-				if err := litewire.ReadMessage(&b, m.Prefs); err != nil {
-					return err
-				}
-				continue
-			}
+			elem := &DemoDevice{}
+			m.Devices = append(m.Devices, elem)
+			sub = elem
 		case 5:
-			if wtyp == litewire.BytesType {
-				elem := &DemoSessionEvents{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.SessionEvents = append(m.SessionEvents, elem)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				if m.Security == nil {
-					m.Security = &DemoSecurity{}
-				}
-				if err := litewire.ReadMessage(&b, m.Security); err != nil {
-					return err
-				}
-				continue
-			}
+			elem := &DemoSessionEvents{}
+			m.SessionEvents = append(m.SessionEvents, elem)
+			sub = elem
 		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type CacheWriteStoredEvents struct {
+	_         [0]func()
 	SessionId string
 	Events    []*v1.StoredEvent
 }
@@ -2351,26 +1777,23 @@ func (m *CacheWriteStoredEvents) GetEvents() []*v1.StoredEvent {
 	return nil
 }
 
-func (m *CacheWriteStoredEvents) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CacheWriteStoredEvents = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CacheWriteStoredEvents{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(CacheWriteStoredEvents{}.Events), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_StoredEvent},
+	},
+}
 
 func (m *CacheWriteStoredEvents) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CacheWriteStoredEvents) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	for _, v := range m.Events {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CacheWriteStoredEvents)
 }
 
 type SecurityKeyGenerateEffect struct {
+	_       [0]func()
 	OpId    uint64
 	KeyKind SecurityKeyKind
 	Slot    string
@@ -2402,24 +1825,25 @@ func (m *SecurityKeyGenerateEffect) GetPersist() bool {
 	return false
 }
 
-func (m *SecurityKeyGenerateEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityKeyGenerateEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeyGenerateEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityKeyGenerateEffect{}.KeyKind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityKeyGenerateEffect{}.Slot), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityKeyGenerateEffect{}.Persist), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SecurityKeyGenerateEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityKeyGenerateEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	b = litewire.AppendInt32(b, 2, int32(m.KeyKind))
-	b = litewire.AppendString(b, 3, m.Slot)
-	b = litewire.AppendBool(b, 4, m.Persist)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeyGenerateEffect)
 }
 
 type SecurityKeyGeneratedEvent struct {
+	_         [0]func()
 	OpId      uint64
 	PublicKey []byte
 	Error     string
@@ -2444,49 +1868,21 @@ func (m *SecurityKeyGeneratedEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_SecurityKeyGeneratedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityKeyGeneratedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeyGeneratedEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityKeyGeneratedEvent{}.PublicKey), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityKeyGeneratedEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityKeyGeneratedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.PublicKey = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeyGeneratedEvent)
 }
 
 type SecurityEncapsulateRecipient struct {
+	_        [0]func()
 	MemberId string
 	XPublic  []byte
 }
@@ -2504,22 +1900,23 @@ func (m *SecurityEncapsulateRecipient) GetXPublic() []byte {
 	return nil
 }
 
-func (m *SecurityEncapsulateRecipient) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityEncapsulateRecipient = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityEncapsulateRecipient{}.MemberId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityEncapsulateRecipient{}.XPublic), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *SecurityEncapsulateRecipient) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityEncapsulateRecipient) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.MemberId)
-	b = litewire.AppendBytes(b, 2, m.XPublic)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityEncapsulateRecipient)
 }
 
 type SecurityKeyEncapsulateEffect struct {
+	_          [0]func()
 	OpId       uint64
 	Recipients []*SecurityEncapsulateRecipient
 }
@@ -2537,26 +1934,23 @@ func (m *SecurityKeyEncapsulateEffect) GetRecipients() []*SecurityEncapsulateRec
 	return nil
 }
 
-func (m *SecurityKeyEncapsulateEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityKeyEncapsulateEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeyEncapsulateEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityKeyEncapsulateEffect{}.Recipients), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SecurityEncapsulateRecipient},
+	},
+}
 
 func (m *SecurityKeyEncapsulateEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityKeyEncapsulateEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	for _, v := range m.Recipients {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeyEncapsulateEffect)
 }
 
 type SecurityEncapsulatedPair struct {
+	_        [0]func()
 	MemberId string
 	Enc      []byte
 	Dh       []byte
@@ -2581,49 +1975,21 @@ func (m *SecurityEncapsulatedPair) GetDh() []byte {
 	return nil
 }
 
+var LitewireDesc_SecurityEncapsulatedPair = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityEncapsulatedPair{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityEncapsulatedPair{}.MemberId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityEncapsulatedPair{}.Enc), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityEncapsulatedPair{}.Dh), Kind: litewire.KindBytes},
+	},
+}
+
 func (m *SecurityEncapsulatedPair) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MemberId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Enc = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Dh = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityEncapsulatedPair)
 }
 
 type SecurityKeyEncapsulatedEvent struct {
+	_     [0]func()
 	OpId  uint64
 	Pairs []*SecurityEncapsulatedPair
 	Error string
@@ -2648,49 +2014,38 @@ func (m *SecurityKeyEncapsulatedEvent) GetError() string {
 	return ""
 }
 
+var LitewireDesc_SecurityKeyEncapsulatedEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityKeyEncapsulatedEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeyEncapsulatedEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityKeyEncapsulatedEvent{}.Error), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityKeyEncapsulatedEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeyEncapsulatedEvent)
+}
+
+func extraUnmarshal_SecurityKeyEncapsulatedEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*SecurityKeyEncapsulatedEvent)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
 		case 2:
-			if wtyp == litewire.BytesType {
-				elem := &SecurityEncapsulatedPair{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Pairs = append(m.Pairs, elem)
-				continue
+			elem := &SecurityEncapsulatedPair{}
+			m.Pairs = append(m.Pairs, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SecurityKeyDiscardEffect struct {
+	_       [0]func()
 	KeyKind SecurityKeyKind
 	Slot    string
 }
@@ -2708,22 +2063,23 @@ func (m *SecurityKeyDiscardEffect) GetSlot() string {
 	return ""
 }
 
-func (m *SecurityKeyDiscardEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityKeyDiscardEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityKeyDiscardEffect{}.KeyKind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityKeyDiscardEffect{}.Slot), Kind: litewire.KindString},
+	},
+}
 
 func (m *SecurityKeyDiscardEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityKeyDiscardEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.KeyKind))
-	b = litewire.AppendString(b, 2, m.Slot)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityKeyDiscardEffect)
 }
 
 type SecurityStorageEntry struct {
+	_        [0]func()
 	Bucket   SecurityStoreBucket
 	Key      string
 	Revision string
@@ -2755,58 +2111,22 @@ func (m *SecurityStorageEntry) GetData() []byte {
 	return nil
 }
 
+var LitewireDesc_SecurityStorageEntry = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityStorageEntry{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityStorageEntry{}.Bucket), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityStorageEntry{}.Key), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityStorageEntry{}.Revision), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityStorageEntry{}.Data), Kind: litewire.KindBytes},
+	},
+}
+
 func (m *SecurityStorageEntry) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Bucket = SecurityStoreBucket(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Key = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Revision = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Data = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityStorageEntry)
 }
 
 type SecurityStorageWrite struct {
+	_                [0]func()
 	Bucket           SecurityStoreBucket
 	Key              string
 	ExpectedRevision string
@@ -2859,27 +2179,28 @@ func (m *SecurityStorageWrite) GetData() []byte {
 	return nil
 }
 
-func (m *SecurityStorageWrite) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityStorageWrite = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityStorageWrite{}.Bucket), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityStorageWrite{}.Key), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityStorageWrite{}.ExpectedRevision), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityStorageWrite{}.NextRevision), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityStorageWrite{}.CreateOnly), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityStorageWrite{}.Remove), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityStorageWrite{}.Data), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *SecurityStorageWrite) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityStorageWrite) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Bucket))
-	b = litewire.AppendString(b, 2, m.Key)
-	b = litewire.AppendString(b, 3, m.ExpectedRevision)
-	b = litewire.AppendString(b, 4, m.NextRevision)
-	b = litewire.AppendBool(b, 5, m.CreateOnly)
-	b = litewire.AppendBool(b, 6, m.Remove)
-	b = litewire.AppendBytes(b, 7, m.Data)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityStorageWrite)
 }
 
 type SecurityStorageEffect struct {
+	_                [0]func()
 	OpId             uint64
 	Op               SecurityStorageOp
 	Bucket           SecurityStoreBucket
@@ -2974,39 +2295,34 @@ func (m *SecurityStorageEffect) GetDiscardSlots() []string {
 	return nil
 }
 
-func (m *SecurityStorageEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityStorageEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityStorageEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityStorageEffect{}.Op), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityStorageEffect{}.Bucket), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityStorageEffect{}.Key), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityStorageEffect{}.ExpectedRevision), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityStorageEffect{}.NextRevision), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityStorageEffect{}.CreateOnly), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityStorageEffect{}.Data), Kind: litewire.KindBytes},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityStorageEffect{}.Batch), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SecurityStorageWrite},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityStorageEffect{}.PromoteEdSlot), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityStorageEffect{}.PromoteXSlot), Kind: litewire.KindString},
+		{Num: 12, Offset: unsafe.Offsetof(SecurityStorageEffect{}.ClearLoginToken), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SecurityStorageEffect{}.DiscardSlots), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
 
 func (m *SecurityStorageEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityStorageEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	b = litewire.AppendInt32(b, 2, int32(m.Op))
-	b = litewire.AppendInt32(b, 3, int32(m.Bucket))
-	b = litewire.AppendString(b, 4, m.Key)
-	b = litewire.AppendString(b, 5, m.ExpectedRevision)
-	b = litewire.AppendString(b, 6, m.NextRevision)
-	b = litewire.AppendBool(b, 7, m.CreateOnly)
-	b = litewire.AppendBytes(b, 8, m.Data)
-	for _, v := range m.Batch {
-		if v != nil {
-			b = litewire.AppendMessage(b, 9, v)
-		}
-	}
-	b = litewire.AppendString(b, 10, m.PromoteEdSlot)
-	b = litewire.AppendString(b, 11, m.PromoteXSlot)
-	b = litewire.AppendBool(b, 12, m.ClearLoginToken)
-	for _, v := range m.DiscardSlots {
-		b = litewire.AppendStringAlways(b, 13, v)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityStorageEffect)
 }
 
 type SecurityStorageResultEvent struct {
+	_             [0]func()
 	OpId          uint64
 	Found         bool
 	Revision      string
@@ -3094,130 +2410,47 @@ func (m *SecurityStorageResultEvent) GetLegacyCleared() bool {
 	return false
 }
 
+var LitewireDesc_SecurityStorageResultEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityStorageResultEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.Found), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.Revision), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.Data), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.Conflict), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.Error), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.HasDeviceEd), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.DeviceEdPub), Kind: litewire.KindBytes},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.HasDeviceX), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.DeviceXPub), Kind: litewire.KindBytes},
+		{Num: 12, Offset: unsafe.Offsetof(SecurityStorageResultEvent{}.LegacyCleared), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityStorageResultEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityStorageResultEvent)
+}
+
+func extraUnmarshal_SecurityStorageResultEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*SecurityStorageResultEvent)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Found = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Revision = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Data = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Conflict = litewire.DecodeBool(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
 		case 7:
-			if wtyp == litewire.BytesType {
-				elem := &SecurityStorageEntry{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				m.Entries = append(m.Entries, elem)
-				continue
+			elem := &SecurityStorageEntry{}
+			m.Entries = append(m.Entries, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
 			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasDeviceEd = litewire.DecodeBool(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.DeviceEdPub = v
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasDeviceX = litewire.DecodeBool(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.DeviceXPub = v
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LegacyCleared = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SecurityRpcEffect struct {
+	_            [0]func()
 	OpId         uint64
 	Method       SecurityRpcMethod
 	Server       string
@@ -3256,25 +2489,26 @@ func (m *SecurityRpcEffect) GetRequestBytes() []byte {
 	return nil
 }
 
-func (m *SecurityRpcEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityRpcEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityRpcEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityRpcEffect{}.Method), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityRpcEffect{}.Server), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityRpcEffect{}.AuthToken), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityRpcEffect{}.RequestBytes), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *SecurityRpcEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityRpcEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	b = litewire.AppendInt32(b, 2, int32(m.Method))
-	b = litewire.AppendString(b, 3, m.Server)
-	b = litewire.AppendString(b, 4, m.AuthToken)
-	b = litewire.AppendBytes(b, 5, m.RequestBytes)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityRpcEffect)
 }
 
 type SecurityRpcResultEvent struct {
+	_             [0]func()
 	OpId          uint64
 	ResponseBytes []byte
 	ConnectCode   int32
@@ -3313,67 +2547,23 @@ func (m *SecurityRpcResultEvent) GetNetworkError() bool {
 	return false
 }
 
+var LitewireDesc_SecurityRpcResultEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityRpcResultEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.ResponseBytes), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.ConnectCode), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.Error), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityRpcResultEvent{}.NetworkError), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityRpcResultEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ResponseBytes = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ConnectCode = int32(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Error = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NetworkError = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityRpcResultEvent)
 }
 
 type SecurityTokenUpdatedEffect struct {
+	_         [0]func()
 	Token     string
 	ExpiresMs int64
 	Cleared   bool
@@ -3398,23 +2588,24 @@ func (m *SecurityTokenUpdatedEffect) GetCleared() bool {
 	return false
 }
 
-func (m *SecurityTokenUpdatedEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityTokenUpdatedEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityTokenUpdatedEffect{}.Token), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityTokenUpdatedEffect{}.ExpiresMs), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityTokenUpdatedEffect{}.Cleared), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SecurityTokenUpdatedEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityTokenUpdatedEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Token)
-	b = litewire.AppendVarint(b, 2, uint64(m.ExpiresMs))
-	b = litewire.AppendBool(b, 3, m.Cleared)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityTokenUpdatedEffect)
 }
 
 type SecurityPendingOpSummary struct {
+	_                   [0]func()
 	Kind                string
 	Phase               string
 	Action              string
@@ -3509,33 +2700,34 @@ func (m *SecurityPendingOpSummary) GetServer() string {
 	return ""
 }
 
-func (m *SecurityPendingOpSummary) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityPendingOpSummary = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.Kind), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.Phase), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.Action), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.CodeSaved), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.Signed), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.HasDelivery), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.DeliveryPairingId), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.DeliveryCandidateId), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.RecoveryId), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.RecoveryReadyMs), Kind: litewire.KindInt64},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.Rejected), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.TargetDeviceId), Kind: litewire.KindString},
+		{Num: 13, Offset: unsafe.Offsetof(SecurityPendingOpSummary{}.Server), Kind: litewire.KindString},
+	},
+}
 
 func (m *SecurityPendingOpSummary) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityPendingOpSummary) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Kind)
-	b = litewire.AppendString(b, 2, m.Phase)
-	b = litewire.AppendString(b, 3, m.Action)
-	b = litewire.AppendBool(b, 4, m.CodeSaved)
-	b = litewire.AppendBool(b, 5, m.Signed)
-	b = litewire.AppendBool(b, 6, m.HasDelivery)
-	b = litewire.AppendString(b, 7, m.DeliveryPairingId)
-	b = litewire.AppendString(b, 8, m.DeliveryCandidateId)
-	b = litewire.AppendString(b, 9, m.RecoveryId)
-	b = litewire.AppendVarint(b, 10, uint64(m.RecoveryReadyMs))
-	b = litewire.AppendBool(b, 11, m.Rejected)
-	b = litewire.AppendString(b, 12, m.TargetDeviceId)
-	b = litewire.AppendString(b, 13, m.Server)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityPendingOpSummary)
 }
 
 type SecurityWorkflowStatus struct {
+	_                         [0]func()
 	Bootstrap                 SecurityBootstrapKind
 	LegacyRepairNotice        bool
 	IsMember                  bool
@@ -3693,44 +2885,43 @@ func (m *SecurityWorkflowStatus) GetError() string {
 	return ""
 }
 
-func (m *SecurityWorkflowStatus) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityWorkflowStatus = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.Bootstrap), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.LegacyRepairNotice), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.IsMember), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.IsAuthority), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.Removed), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.Server), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.DeviceId), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.AccountId), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.HeadEpoch), Kind: litewire.KindUint64},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.LeaseEndMs), Kind: litewire.KindInt64},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.LeaseValid), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.ClockSkewed), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.RecoveryPending), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.RecoveryReadyMs), Kind: litewire.KindInt64},
+		{Num: 15, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.RecoveryStatusStale), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.RecoveryObjectsPending), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.NeedsRecoveryCodeRotation), Kind: litewire.KindBool},
+		{Num: 18, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.HasAccountPublicProfile), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.HasHandoffOffer), Kind: litewire.KindBool},
+		{Num: 20, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.TakingOver), Kind: litewire.KindBool},
+		{Num: 21, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.PendingOp), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityPendingOpSummary},
+		{Num: 22, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.Error), Kind: litewire.KindString},
+	},
+}
 
 func (m *SecurityWorkflowStatus) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityWorkflowStatus) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Bootstrap))
-	b = litewire.AppendBool(b, 2, m.LegacyRepairNotice)
-	b = litewire.AppendBool(b, 3, m.IsMember)
-	b = litewire.AppendBool(b, 4, m.IsAuthority)
-	b = litewire.AppendBool(b, 5, m.Removed)
-	b = litewire.AppendString(b, 6, m.Server)
-	b = litewire.AppendString(b, 7, m.DeviceId)
-	b = litewire.AppendString(b, 8, m.AccountId)
-	b = litewire.AppendVarint(b, 9, uint64(m.HeadEpoch))
-	b = litewire.AppendVarint(b, 10, uint64(m.LeaseEndMs))
-	b = litewire.AppendBool(b, 11, m.LeaseValid)
-	b = litewire.AppendBool(b, 12, m.ClockSkewed)
-	b = litewire.AppendBool(b, 13, m.RecoveryPending)
-	b = litewire.AppendVarint(b, 14, uint64(m.RecoveryReadyMs))
-	b = litewire.AppendBool(b, 15, m.RecoveryStatusStale)
-	b = litewire.AppendBool(b, 16, m.RecoveryObjectsPending)
-	b = litewire.AppendBool(b, 17, m.NeedsRecoveryCodeRotation)
-	b = litewire.AppendBool(b, 18, m.HasAccountPublicProfile)
-	b = litewire.AppendBool(b, 19, m.HasHandoffOffer)
-	b = litewire.AppendBool(b, 20, m.TakingOver)
-	if m.PendingOp != nil {
-		b = litewire.AppendMessage(b, 21, m.PendingOp)
-	}
-	b = litewire.AppendString(b, 22, m.Error)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityWorkflowStatus)
 }
 
 type SecurityPairingInfo struct {
+	_           [0]func()
 	PairingId   string
 	Code        string
 	Url         string
@@ -3804,32 +2995,31 @@ func (m *SecurityPairingInfo) GetRegistering() bool {
 	return false
 }
 
-func (m *SecurityPairingInfo) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityPairingInfo = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityPairingInfo{}.PairingId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Code), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Url), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ExpiresMs), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityPairingInfo{}.SasEmoji), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityPairingInfo{}.JoinerKind), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Joined), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Approved), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Delivered), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Registering), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SecurityPairingInfo) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityPairingInfo) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.PairingId)
-	b = litewire.AppendString(b, 2, m.Code)
-	b = litewire.AppendString(b, 3, m.Url)
-	b = litewire.AppendVarint(b, 4, uint64(m.ExpiresMs))
-	for _, v := range m.SasEmoji {
-		b = litewire.AppendStringAlways(b, 5, v)
-	}
-	b = litewire.AppendInt32(b, 6, int32(m.JoinerKind))
-	b = litewire.AppendBool(b, 7, m.Joined)
-	b = litewire.AppendBool(b, 8, m.Approved)
-	b = litewire.AppendBool(b, 9, m.Delivered)
-	b = litewire.AppendBool(b, 10, m.Registering)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityPairingInfo)
 }
 
 type SecurityRecoveryInfo struct {
+	_          [0]func()
 	RecoveryId string
 	Phase      v1.GetRecoveryContextResponse_Phase
 	ReadyMs    int64
@@ -3854,23 +3044,24 @@ func (m *SecurityRecoveryInfo) GetReadyMs() int64 {
 	return 0
 }
 
-func (m *SecurityRecoveryInfo) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityRecoveryInfo = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityRecoveryInfo{}.RecoveryId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityRecoveryInfo{}.Phase), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityRecoveryInfo{}.ReadyMs), Kind: litewire.KindInt64},
+	},
+}
 
 func (m *SecurityRecoveryInfo) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityRecoveryInfo) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.RecoveryId)
-	b = litewire.AppendInt32(b, 2, int32(m.Phase))
-	b = litewire.AppendVarint(b, 3, uint64(m.ReadyMs))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityRecoveryInfo)
 }
 
 type SecurityHandoffCandidate struct {
+	_          [0]func()
 	DeviceId   string
 	RecoveryEd []byte
 }
@@ -3888,22 +3079,23 @@ func (m *SecurityHandoffCandidate) GetRecoveryEd() []byte {
 	return nil
 }
 
-func (m *SecurityHandoffCandidate) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityHandoffCandidate = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityHandoffCandidate{}.DeviceId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityHandoffCandidate{}.RecoveryEd), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *SecurityHandoffCandidate) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityHandoffCandidate) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.DeviceId)
-	b = litewire.AppendBytes(b, 2, m.RecoveryEd)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityHandoffCandidate)
 }
 
 type SecurityExitAdvice struct {
+	_          [0]func()
 	Authority  bool
 	Unresolved bool
 	Message    string
@@ -3928,23 +3120,24 @@ func (m *SecurityExitAdvice) GetMessage() string {
 	return ""
 }
 
-func (m *SecurityExitAdvice) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityExitAdvice = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Authority), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Unresolved), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Message), Kind: litewire.KindString},
+	},
+}
 
 func (m *SecurityExitAdvice) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityExitAdvice) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBool(b, 1, m.Authority)
-	b = litewire.AppendBool(b, 2, m.Unresolved)
-	b = litewire.AppendString(b, 3, m.Message)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityExitAdvice)
 }
 
 type SecurityAccountAdopted struct {
+	_                     [0]func()
 	Server                string
 	DeviceId              string
 	AccountId             string
@@ -3976,40 +3169,36 @@ func (m *SecurityAccountAdopted) GetNeedsRecoveryRotation() bool {
 	return false
 }
 
-func (m *SecurityAccountAdopted) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityAccountAdopted = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityAccountAdopted{}.Server), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityAccountAdopted{}.DeviceId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityAccountAdopted{}.AccountId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityAccountAdopted{}.NeedsRecoveryRotation), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SecurityAccountAdopted) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityAccountAdopted) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Server)
-	b = litewire.AppendString(b, 2, m.DeviceId)
-	b = litewire.AppendString(b, 3, m.AccountId)
-	b = litewire.AppendBool(b, 4, m.NeedsRecoveryRotation)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityAccountAdopted)
 }
 
 type SecurityActionEmpty struct {
 }
 
+var LitewireDesc_SecurityActionEmpty = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityActionEmpty{}) },
+}
+
 func (m *SecurityActionEmpty) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityActionEmpty)
 }
 
 type SecurityBoolAction struct {
+	_    [0]func()
 	Flag bool
 }
 
@@ -4020,31 +3209,19 @@ func (m *SecurityBoolAction) GetFlag() bool {
 	return false
 }
 
+var LitewireDesc_SecurityBoolAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityBoolAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityBoolAction{}.Flag), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityBoolAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Flag = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityBoolAction)
 }
 
 type SecurityStringAction struct {
+	_     [0]func()
 	Value string
 }
 
@@ -4055,31 +3232,19 @@ func (m *SecurityStringAction) GetValue() string {
 	return ""
 }
 
+var LitewireDesc_SecurityStringAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityStringAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityStringAction{}.Value), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityStringAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Value = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityStringAction)
 }
 
 type SecuritySyncNowAction struct {
+	_         [0]func()
 	Touch     bool
 	AuthToken string
 }
@@ -4097,40 +3262,20 @@ func (m *SecuritySyncNowAction) GetAuthToken() string {
 	return ""
 }
 
+var LitewireDesc_SecuritySyncNowAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecuritySyncNowAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecuritySyncNowAction{}.Touch), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SecuritySyncNowAction{}.AuthToken), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecuritySyncNowAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Touch = litewire.DecodeBool(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.AuthToken = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecuritySyncNowAction)
 }
 
 type SecurityPrepareCreationAction struct {
+	_                [0]func()
 	Server           string
 	StoragePersisted bool
 }
@@ -4148,40 +3293,20 @@ func (m *SecurityPrepareCreationAction) GetStoragePersisted() bool {
 	return false
 }
 
+var LitewireDesc_SecurityPrepareCreationAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityPrepareCreationAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityPrepareCreationAction{}.Server), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityPrepareCreationAction{}.StoragePersisted), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityPrepareCreationAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Server = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.StoragePersisted = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityPrepareCreationAction)
 }
 
 type SecurityRemoveDeviceAction struct {
+	_                   [0]func()
 	DeviceId            string
 	AbandonPairDelivery bool
 }
@@ -4199,40 +3324,20 @@ func (m *SecurityRemoveDeviceAction) GetAbandonPairDelivery() bool {
 	return false
 }
 
+var LitewireDesc_SecurityRemoveDeviceAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityRemoveDeviceAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityRemoveDeviceAction{}.DeviceId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityRemoveDeviceAction{}.AbandonPairDelivery), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityRemoveDeviceAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DeviceId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.AbandonPairDelivery = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityRemoveDeviceAction)
 }
 
 type SecurityServerCodeAction struct {
+	_      [0]func()
 	Server string
 	Code   string
 }
@@ -4250,40 +3355,20 @@ func (m *SecurityServerCodeAction) GetCode() string {
 	return ""
 }
 
+var LitewireDesc_SecurityServerCodeAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityServerCodeAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityServerCodeAction{}.Server), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityServerCodeAction{}.Code), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityServerCodeAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Server = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Code = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityServerCodeAction)
 }
 
 type SecurityStartPairingAction struct {
+	_                [0]func()
 	WebOrigin        string
 	ReplacesDeviceId string
 }
@@ -4301,40 +3386,20 @@ func (m *SecurityStartPairingAction) GetReplacesDeviceId() string {
 	return ""
 }
 
+var LitewireDesc_SecurityStartPairingAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityStartPairingAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityStartPairingAction{}.WebOrigin), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityStartPairingAction{}.ReplacesDeviceId), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityStartPairingAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.WebOrigin = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ReplacesDeviceId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityStartPairingAction)
 }
 
 type SecurityApprovePairingAction struct {
+	_            [0]func()
 	PairingId    string
 	SasConfirmed bool
 }
@@ -4352,40 +3417,20 @@ func (m *SecurityApprovePairingAction) GetSasConfirmed() bool {
 	return false
 }
 
+var LitewireDesc_SecurityApprovePairingAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityApprovePairingAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityApprovePairingAction{}.PairingId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityApprovePairingAction{}.SasConfirmed), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityApprovePairingAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.PairingId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SasConfirmed = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityApprovePairingAction)
 }
 
 type SecurityStartJoinPairingAction struct {
+	_              [0]func()
 	Server         string
 	Code           string
 	CommitHint     []byte
@@ -4431,76 +3476,24 @@ func (m *SecurityStartJoinPairingAction) GetRawLink() string {
 	return ""
 }
 
+var LitewireDesc_SecurityStartJoinPairingAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityStartJoinPairingAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.Server), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.Code), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.CommitHint), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.ExistingRepair), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.ExistingServer), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.RawLink), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityStartJoinPairingAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Server = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Code = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.CommitHint = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ExistingRepair = litewire.DecodeBool(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ExistingServer = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RawLink = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityStartJoinPairingAction)
 }
 
 type SecurityUpdateDeviceMetaAction struct {
+	_                [0]func()
 	DeviceId         string
 	Name             string
 	Platform         string
@@ -4539,240 +3532,313 @@ func (m *SecurityUpdateDeviceMetaAction) GetDescribeSelfOnly() bool {
 	return false
 }
 
+var LitewireDesc_SecurityUpdateDeviceMetaAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityUpdateDeviceMetaAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityUpdateDeviceMetaAction{}.DeviceId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityUpdateDeviceMetaAction{}.Name), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityUpdateDeviceMetaAction{}.Platform), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityUpdateDeviceMetaAction{}.Description), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityUpdateDeviceMetaAction{}.DescribeSelfOnly), Kind: litewire.KindBool},
+	},
+}
+
 func (m *SecurityUpdateDeviceMetaAction) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DeviceId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Name = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Platform = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Description = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DescribeSelfOnly = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityUpdateDeviceMetaAction)
 }
 
 type SecurityWorkflowActionEvent struct {
+	_        [0]func()
 	ActionId uint64
 	Action   isSecurityWorkflowActionEvent_Action
 }
 
 type isSecurityWorkflowActionEvent_Action interface{ isSecurityWorkflowActionEvent_Action() }
-type SecurityWorkflowActionEvent_Bootstrap struct{ Bootstrap *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_Bootstrap struct {
+	_         [0]func()
+	Bootstrap *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_Bootstrap) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_DismissUpgradeNotice struct{ DismissUpgradeNotice *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_DismissUpgradeNotice struct {
+	_                    [0]func()
+	DismissUpgradeNotice *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_DismissUpgradeNotice) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_SyncNow struct{ SyncNow *SecuritySyncNowAction }
+type SecurityWorkflowActionEvent_SyncNow struct {
+	_       [0]func()
+	SyncNow *SecuritySyncNowAction
+}
 
 func (*SecurityWorkflowActionEvent_SyncNow) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_RenewLease struct{ RenewLease *SecurityBoolAction }
+type SecurityWorkflowActionEvent_RenewLease struct {
+	_          [0]func()
+	RenewLease *SecurityBoolAction
+}
 
 func (*SecurityWorkflowActionEvent_RenewLease) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ResumePendingOp struct{ ResumePendingOp *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_ResumePendingOp struct {
+	_               [0]func()
+	ResumePendingOp *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_ResumePendingOp) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_DiscardPendingOp struct{ DiscardPendingOp *SecurityBoolAction }
+type SecurityWorkflowActionEvent_DiscardPendingOp struct {
+	_                [0]func()
+	DiscardPendingOp *SecurityBoolAction
+}
 
 func (*SecurityWorkflowActionEvent_DiscardPendingOp) isSecurityWorkflowActionEvent_Action() {}
 
 type SecurityWorkflowActionEvent_PrepareCreation struct {
+	_               [0]func()
 	PrepareCreation *SecurityPrepareCreationAction
 }
 
 func (*SecurityWorkflowActionEvent_PrepareCreation) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ConfirmCreationCodeSaved struct{ ConfirmCreationCodeSaved *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_ConfirmCreationCodeSaved struct {
+	_                        [0]func()
+	ConfirmCreationCodeSaved *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_ConfirmCreationCodeSaved) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ContinueCreation struct{ ContinueCreation *SecurityStringAction }
+type SecurityWorkflowActionEvent_ContinueCreation struct {
+	_                [0]func()
+	ContinueCreation *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_ContinueCreation) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_AdoptCreationWithoutCode struct{ AdoptCreationWithoutCode *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_AdoptCreationWithoutCode struct {
+	_                        [0]func()
+	AdoptCreationWithoutCode *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_AdoptCreationWithoutCode) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_RemoveDevice struct{ RemoveDevice *SecurityRemoveDeviceAction }
+type SecurityWorkflowActionEvent_RemoveDevice struct {
+	_            [0]func()
+	RemoveDevice *SecurityRemoveDeviceAction
+}
 
 func (*SecurityWorkflowActionEvent_RemoveDevice) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_DeleteMachineRecords struct{ DeleteMachineRecords *SecurityStringAction }
+type SecurityWorkflowActionEvent_DeleteMachineRecords struct {
+	_                    [0]func()
+	DeleteMachineRecords *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_DeleteMachineRecords) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_DeleteAccount struct{ DeleteAccount *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_DeleteAccount struct {
+	_             [0]func()
+	DeleteAccount *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_DeleteAccount) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_PrepareRecoveryRotation struct{ PrepareRecoveryRotation *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_PrepareRecoveryRotation struct {
+	_                       [0]func()
+	PrepareRecoveryRotation *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_PrepareRecoveryRotation) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ConfirmRecoveryRotation struct{ ConfirmRecoveryRotation *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_ConfirmRecoveryRotation struct {
+	_                       [0]func()
+	ConfirmRecoveryRotation *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_ConfirmRecoveryRotation) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_PrepareHandoffCode struct{ PrepareHandoffCode *SecurityBoolAction }
+type SecurityWorkflowActionEvent_PrepareHandoffCode struct {
+	_                  [0]func()
+	PrepareHandoffCode *SecurityBoolAction
+}
 
 func (*SecurityWorkflowActionEvent_PrepareHandoffCode) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_PublishHandoffOffer struct{ PublishHandoffOffer *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_PublishHandoffOffer struct {
+	_                   [0]func()
+	PublishHandoffOffer *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_PublishHandoffOffer) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_HandoffAuthority struct{ HandoffAuthority *SecurityStringAction }
+type SecurityWorkflowActionEvent_HandoffAuthority struct {
+	_                [0]func()
+	HandoffAuthority *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_HandoffAuthority) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_CompleteAccountPublicProfile struct{ CompleteAccountPublicProfile *SecurityServerCodeAction }
+type SecurityWorkflowActionEvent_CompleteAccountPublicProfile struct {
+	_                            [0]func()
+	CompleteAccountPublicProfile *SecurityServerCodeAction
+}
 
 func (*SecurityWorkflowActionEvent_CompleteAccountPublicProfile) isSecurityWorkflowActionEvent_Action() {
 }
 
-type SecurityWorkflowActionEvent_StartPairing struct{ StartPairing *SecurityStartPairingAction }
+type SecurityWorkflowActionEvent_StartPairing struct {
+	_            [0]func()
+	StartPairing *SecurityStartPairingAction
+}
 
 func (*SecurityWorkflowActionEvent_StartPairing) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_PollPairing struct{ PollPairing *SecurityStringAction }
+type SecurityWorkflowActionEvent_PollPairing struct {
+	_           [0]func()
+	PollPairing *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_PollPairing) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ApprovePairing struct{ ApprovePairing *SecurityApprovePairingAction }
+type SecurityWorkflowActionEvent_ApprovePairing struct {
+	_              [0]func()
+	ApprovePairing *SecurityApprovePairingAction
+}
 
 func (*SecurityWorkflowActionEvent_ApprovePairing) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_FinishPairingDelivery struct{ FinishPairingDelivery *SecurityStringAction }
+type SecurityWorkflowActionEvent_FinishPairingDelivery struct {
+	_                     [0]func()
+	FinishPairingDelivery *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_FinishPairingDelivery) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_CancelPairing struct{ CancelPairing *SecurityStringAction }
+type SecurityWorkflowActionEvent_CancelPairing struct {
+	_             [0]func()
+	CancelPairing *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_CancelPairing) isSecurityWorkflowActionEvent_Action() {}
 
 type SecurityWorkflowActionEvent_StartJoinPairing struct {
+	_                [0]func()
 	StartJoinPairing *SecurityStartJoinPairingAction
 }
 
 func (*SecurityWorkflowActionEvent_StartJoinPairing) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ConfirmJoinSas struct{ ConfirmJoinSas *SecurityStringAction }
+type SecurityWorkflowActionEvent_ConfirmJoinSas struct {
+	_              [0]func()
+	ConfirmJoinSas *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_ConfirmJoinSas) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_CancelJoinPairing struct{ CancelJoinPairing *SecurityStringAction }
+type SecurityWorkflowActionEvent_CancelJoinPairing struct {
+	_                 [0]func()
+	CancelJoinPairing *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_CancelJoinPairing) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_PrepareEmergencyRecovery struct{ PrepareEmergencyRecovery *SecurityServerCodeAction }
+type SecurityWorkflowActionEvent_PrepareEmergencyRecovery struct {
+	_                        [0]func()
+	PrepareEmergencyRecovery *SecurityServerCodeAction
+}
 
 func (*SecurityWorkflowActionEvent_PrepareEmergencyRecovery) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ContinueRecoverySigning struct{ ContinueRecoverySigning *SecurityStringAction }
+type SecurityWorkflowActionEvent_ContinueRecoverySigning struct {
+	_                       [0]func()
+	ContinueRecoverySigning *SecurityStringAction
+}
 
 func (*SecurityWorkflowActionEvent_ContinueRecoverySigning) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved struct{ ConfirmRecoveryCodeSaved *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved struct {
+	_                        [0]func()
+	ConfirmRecoveryCodeSaved *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ResumeRecovery struct{ ResumeRecovery *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_ResumeRecovery struct {
+	_              [0]func()
+	ResumeRecovery *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_ResumeRecovery) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_CompleteRecovery struct{ CompleteRecovery *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_CompleteRecovery struct {
+	_                [0]func()
+	CompleteRecovery *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_CompleteRecovery) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_DiscardUnsignedRecovery struct{ DiscardUnsignedRecovery *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_DiscardUnsignedRecovery struct {
+	_                       [0]func()
+	DiscardUnsignedRecovery *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_DiscardUnsignedRecovery) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_DiscardRejectedRecovery struct{ DiscardRejectedRecovery *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_DiscardRejectedRecovery struct {
+	_                       [0]func()
+	DiscardRejectedRecovery *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_DiscardRejectedRecovery) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_CheckExitAdvice struct{ CheckExitAdvice *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_CheckExitAdvice struct {
+	_               [0]func()
+	CheckExitAdvice *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_CheckExitAdvice) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ClearSecurity struct{ ClearSecurity *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_ClearSecurity struct {
+	_             [0]func()
+	ClearSecurity *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_ClearSecurity) isSecurityWorkflowActionEvent_Action() {}
 
 type SecurityWorkflowActionEvent_UpdateDeviceMeta struct {
+	_                [0]func()
 	UpdateDeviceMeta *SecurityUpdateDeviceMetaAction
 }
 
 func (*SecurityWorkflowActionEvent_UpdateDeviceMeta) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_ListHandoffCandidates struct{ ListHandoffCandidates *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_ListHandoffCandidates struct {
+	_                     [0]func()
+	ListHandoffCandidates *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_ListHandoffCandidates) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_GetStatus struct{ GetStatus *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_GetStatus struct {
+	_         [0]func()
+	GetStatus *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_GetStatus) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_CheckRetainedDenied struct{ CheckRetainedDenied *SecurityActionEmpty }
+type SecurityWorkflowActionEvent_CheckRetainedDenied struct {
+	_                   [0]func()
+	CheckRetainedDenied *SecurityActionEmpty
+}
 
 func (*SecurityWorkflowActionEvent_CheckRetainedDenied) isSecurityWorkflowActionEvent_Action() {}
 
-type SecurityWorkflowActionEvent_RepublishRecoveryObjects struct{ RepublishRecoveryObjects *SecurityBoolAction }
+type SecurityWorkflowActionEvent_RepublishRecoveryObjects struct {
+	_                        [0]func()
+	RepublishRecoveryObjects *SecurityBoolAction
+}
 
 func (*SecurityWorkflowActionEvent_RepublishRecoveryObjects) isSecurityWorkflowActionEvent_Action() {}
 
@@ -5035,646 +4101,393 @@ func (m *SecurityWorkflowActionEvent) GetRepublishRecoveryObjects() *SecurityBoo
 	return nil
 }
 
+var LitewireDesc_SecurityWorkflowActionEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityWorkflowActionEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityWorkflowActionEvent{}.ActionId), Kind: litewire.KindUint64},
+	},
+}
+
 func (m *SecurityWorkflowActionEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityWorkflowActionEvent)
+}
+
+func extraUnmarshal_SecurityWorkflowActionEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*SecurityWorkflowActionEvent)(base)
+	switch {
+	case num <= 13:
+		return m.extraUnmarshalPart0(num, wtyp, bp)
+	case num <= 25:
+		return m.extraUnmarshalPart1(num, wtyp, bp)
+	case num <= 37:
+		return m.extraUnmarshalPart2(num, wtyp, bp)
+	case num <= 42:
+		return m.extraUnmarshalPart3(num, wtyp, bp)
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *SecurityWorkflowActionEvent) extraUnmarshalPart0(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ActionId = v
-				continue
-			}
 		case 2:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_Bootstrap); ok && cur != nil {
-					sub = cur.Bootstrap
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_Bootstrap{Bootstrap: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_Bootstrap)
+			if w == nil || w.Bootstrap == nil {
+				w = &SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &SecurityActionEmpty{}}
+				m.Action = w
 			}
+			sub = w.Bootstrap
 		case 3:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DismissUpgradeNotice); ok && cur != nil {
-					sub = cur.DismissUpgradeNotice
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_DismissUpgradeNotice{DismissUpgradeNotice: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_DismissUpgradeNotice)
+			if w == nil || w.DismissUpgradeNotice == nil {
+				w = &SecurityWorkflowActionEvent_DismissUpgradeNotice{DismissUpgradeNotice: &SecurityActionEmpty{}}
+				m.Action = w
 			}
+			sub = w.DismissUpgradeNotice
 		case 4:
-			if wtyp == litewire.BytesType {
-				var sub *SecuritySyncNowAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_SyncNow); ok && cur != nil {
-					sub = cur.SyncNow
-				}
-				if sub == nil {
-					sub = &SecuritySyncNowAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_SyncNow{SyncNow: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_SyncNow)
+			if w == nil || w.SyncNow == nil {
+				w = &SecurityWorkflowActionEvent_SyncNow{SyncNow: &SecuritySyncNowAction{}}
+				m.Action = w
 			}
+			sub = w.SyncNow
 		case 5:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityBoolAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_RenewLease); ok && cur != nil {
-					sub = cur.RenewLease
-				}
-				if sub == nil {
-					sub = &SecurityBoolAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_RenewLease{RenewLease: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_RenewLease)
+			if w == nil || w.RenewLease == nil {
+				w = &SecurityWorkflowActionEvent_RenewLease{RenewLease: &SecurityBoolAction{}}
+				m.Action = w
 			}
+			sub = w.RenewLease
 		case 6:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ResumePendingOp); ok && cur != nil {
-					sub = cur.ResumePendingOp
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ResumePendingOp{ResumePendingOp: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ResumePendingOp)
+			if w == nil || w.ResumePendingOp == nil {
+				w = &SecurityWorkflowActionEvent_ResumePendingOp{ResumePendingOp: &SecurityActionEmpty{}}
+				m.Action = w
 			}
+			sub = w.ResumePendingOp
 		case 7:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityBoolAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DiscardPendingOp); ok && cur != nil {
-					sub = cur.DiscardPendingOp
-				}
-				if sub == nil {
-					sub = &SecurityBoolAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_DiscardPendingOp{DiscardPendingOp: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_DiscardPendingOp)
+			if w == nil || w.DiscardPendingOp == nil {
+				w = &SecurityWorkflowActionEvent_DiscardPendingOp{DiscardPendingOp: &SecurityBoolAction{}}
+				m.Action = w
 			}
+			sub = w.DiscardPendingOp
 		case 8:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityPrepareCreationAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PrepareCreation); ok && cur != nil {
-					sub = cur.PrepareCreation
-				}
-				if sub == nil {
-					sub = &SecurityPrepareCreationAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_PrepareCreation{PrepareCreation: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_PrepareCreation)
+			if w == nil || w.PrepareCreation == nil {
+				w = &SecurityWorkflowActionEvent_PrepareCreation{PrepareCreation: &SecurityPrepareCreationAction{}}
+				m.Action = w
 			}
+			sub = w.PrepareCreation
 		case 9:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ConfirmCreationCodeSaved); ok && cur != nil {
-					sub = cur.ConfirmCreationCodeSaved
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ConfirmCreationCodeSaved)
+			if w == nil || w.ConfirmCreationCodeSaved == nil {
+				w = &SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &SecurityActionEmpty{}}
+				m.Action = w
 			}
+			sub = w.ConfirmCreationCodeSaved
 		case 10:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ContinueCreation); ok && cur != nil {
-					sub = cur.ContinueCreation
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ContinueCreation)
+			if w == nil || w.ContinueCreation == nil {
+				w = &SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &SecurityStringAction{}}
+				m.Action = w
 			}
+			sub = w.ContinueCreation
 		case 11:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_AdoptCreationWithoutCode); ok && cur != nil {
-					sub = cur.AdoptCreationWithoutCode
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_AdoptCreationWithoutCode{AdoptCreationWithoutCode: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_AdoptCreationWithoutCode)
+			if w == nil || w.AdoptCreationWithoutCode == nil {
+				w = &SecurityWorkflowActionEvent_AdoptCreationWithoutCode{AdoptCreationWithoutCode: &SecurityActionEmpty{}}
+				m.Action = w
 			}
+			sub = w.AdoptCreationWithoutCode
 		case 12:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityRemoveDeviceAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_RemoveDevice); ok && cur != nil {
-					sub = cur.RemoveDevice
-				}
-				if sub == nil {
-					sub = &SecurityRemoveDeviceAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_RemoveDevice{RemoveDevice: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_RemoveDevice)
+			if w == nil || w.RemoveDevice == nil {
+				w = &SecurityWorkflowActionEvent_RemoveDevice{RemoveDevice: &SecurityRemoveDeviceAction{}}
+				m.Action = w
 			}
+			sub = w.RemoveDevice
 		case 13:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DeleteMachineRecords); ok && cur != nil {
-					sub = cur.DeleteMachineRecords
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_DeleteMachineRecords{DeleteMachineRecords: sub}
-				continue
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_DeleteMachineRecords)
+			if w == nil || w.DeleteMachineRecords == nil {
+				w = &SecurityWorkflowActionEvent_DeleteMachineRecords{DeleteMachineRecords: &SecurityStringAction{}}
+				m.Action = w
 			}
-		case 14:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DeleteAccount); ok && cur != nil {
-					sub = cur.DeleteAccount
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_DeleteAccount{DeleteAccount: sub}
-				continue
-			}
-		case 15:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PrepareRecoveryRotation); ok && cur != nil {
-					sub = cur.PrepareRecoveryRotation
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_PrepareRecoveryRotation{PrepareRecoveryRotation: sub}
-				continue
-			}
-		case 16:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ConfirmRecoveryRotation); ok && cur != nil {
-					sub = cur.ConfirmRecoveryRotation
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ConfirmRecoveryRotation{ConfirmRecoveryRotation: sub}
-				continue
-			}
-		case 17:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityBoolAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PrepareHandoffCode); ok && cur != nil {
-					sub = cur.PrepareHandoffCode
-				}
-				if sub == nil {
-					sub = &SecurityBoolAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_PrepareHandoffCode{PrepareHandoffCode: sub}
-				continue
-			}
-		case 18:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PublishHandoffOffer); ok && cur != nil {
-					sub = cur.PublishHandoffOffer
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_PublishHandoffOffer{PublishHandoffOffer: sub}
-				continue
-			}
-		case 19:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_HandoffAuthority); ok && cur != nil {
-					sub = cur.HandoffAuthority
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_HandoffAuthority{HandoffAuthority: sub}
-				continue
-			}
-		case 20:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityServerCodeAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CompleteAccountPublicProfile); ok && cur != nil {
-					sub = cur.CompleteAccountPublicProfile
-				}
-				if sub == nil {
-					sub = &SecurityServerCodeAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_CompleteAccountPublicProfile{CompleteAccountPublicProfile: sub}
-				continue
-			}
-		case 21:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStartPairingAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_StartPairing); ok && cur != nil {
-					sub = cur.StartPairing
-				}
-				if sub == nil {
-					sub = &SecurityStartPairingAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_StartPairing{StartPairing: sub}
-				continue
-			}
-		case 22:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PollPairing); ok && cur != nil {
-					sub = cur.PollPairing
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_PollPairing{PollPairing: sub}
-				continue
-			}
-		case 23:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityApprovePairingAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ApprovePairing); ok && cur != nil {
-					sub = cur.ApprovePairing
-				}
-				if sub == nil {
-					sub = &SecurityApprovePairingAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ApprovePairing{ApprovePairing: sub}
-				continue
-			}
-		case 24:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_FinishPairingDelivery); ok && cur != nil {
-					sub = cur.FinishPairingDelivery
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: sub}
-				continue
-			}
-		case 25:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CancelPairing); ok && cur != nil {
-					sub = cur.CancelPairing
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_CancelPairing{CancelPairing: sub}
-				continue
-			}
-		case 26:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStartJoinPairingAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_StartJoinPairing); ok && cur != nil {
-					sub = cur.StartJoinPairing
-				}
-				if sub == nil {
-					sub = &SecurityStartJoinPairingAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_StartJoinPairing{StartJoinPairing: sub}
-				continue
-			}
-		case 27:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ConfirmJoinSas); ok && cur != nil {
-					sub = cur.ConfirmJoinSas
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: sub}
-				continue
-			}
-		case 28:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CancelJoinPairing); ok && cur != nil {
-					sub = cur.CancelJoinPairing
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_CancelJoinPairing{CancelJoinPairing: sub}
-				continue
-			}
-		case 29:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityServerCodeAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PrepareEmergencyRecovery); ok && cur != nil {
-					sub = cur.PrepareEmergencyRecovery
-				}
-				if sub == nil {
-					sub = &SecurityServerCodeAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_PrepareEmergencyRecovery{PrepareEmergencyRecovery: sub}
-				continue
-			}
-		case 30:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityStringAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ContinueRecoverySigning); ok && cur != nil {
-					sub = cur.ContinueRecoverySigning
-				}
-				if sub == nil {
-					sub = &SecurityStringAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ContinueRecoverySigning{ContinueRecoverySigning: sub}
-				continue
-			}
-		case 31:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved); ok && cur != nil {
-					sub = cur.ConfirmRecoveryCodeSaved
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved{ConfirmRecoveryCodeSaved: sub}
-				continue
-			}
-		case 32:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ResumeRecovery); ok && cur != nil {
-					sub = cur.ResumeRecovery
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: sub}
-				continue
-			}
-		case 33:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CompleteRecovery); ok && cur != nil {
-					sub = cur.CompleteRecovery
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_CompleteRecovery{CompleteRecovery: sub}
-				continue
-			}
-		case 34:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DiscardUnsignedRecovery); ok && cur != nil {
-					sub = cur.DiscardUnsignedRecovery
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_DiscardUnsignedRecovery{DiscardUnsignedRecovery: sub}
-				continue
-			}
-		case 35:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DiscardRejectedRecovery); ok && cur != nil {
-					sub = cur.DiscardRejectedRecovery
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_DiscardRejectedRecovery{DiscardRejectedRecovery: sub}
-				continue
-			}
-		case 36:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CheckExitAdvice); ok && cur != nil {
-					sub = cur.CheckExitAdvice
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_CheckExitAdvice{CheckExitAdvice: sub}
-				continue
-			}
-		case 37:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ClearSecurity); ok && cur != nil {
-					sub = cur.ClearSecurity
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ClearSecurity{ClearSecurity: sub}
-				continue
-			}
-		case 38:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityUpdateDeviceMetaAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_UpdateDeviceMeta); ok && cur != nil {
-					sub = cur.UpdateDeviceMeta
-				}
-				if sub == nil {
-					sub = &SecurityUpdateDeviceMetaAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_UpdateDeviceMeta{UpdateDeviceMeta: sub}
-				continue
-			}
-		case 39:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ListHandoffCandidates); ok && cur != nil {
-					sub = cur.ListHandoffCandidates
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_ListHandoffCandidates{ListHandoffCandidates: sub}
-				continue
-			}
-		case 40:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_GetStatus); ok && cur != nil {
-					sub = cur.GetStatus
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_GetStatus{GetStatus: sub}
-				continue
-			}
-		case 41:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityActionEmpty
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CheckRetainedDenied); ok && cur != nil {
-					sub = cur.CheckRetainedDenied
-				}
-				if sub == nil {
-					sub = &SecurityActionEmpty{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_CheckRetainedDenied{CheckRetainedDenied: sub}
-				continue
-			}
-		case 42:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityBoolAction
-				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_RepublishRecoveryObjects); ok && cur != nil {
-					sub = cur.RepublishRecoveryObjects
-				}
-				if sub == nil {
-					sub = &SecurityBoolAction{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Action = &SecurityWorkflowActionEvent_RepublishRecoveryObjects{RepublishRecoveryObjects: sub}
-				continue
-			}
+			sub = w.DeleteMachineRecords
 		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
+}
+
+//go:noinline
+func (m *SecurityWorkflowActionEvent) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 14:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_DeleteAccount)
+			if w == nil || w.DeleteAccount == nil {
+				w = &SecurityWorkflowActionEvent_DeleteAccount{DeleteAccount: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.DeleteAccount
+		case 15:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_PrepareRecoveryRotation)
+			if w == nil || w.PrepareRecoveryRotation == nil {
+				w = &SecurityWorkflowActionEvent_PrepareRecoveryRotation{PrepareRecoveryRotation: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.PrepareRecoveryRotation
+		case 16:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ConfirmRecoveryRotation)
+			if w == nil || w.ConfirmRecoveryRotation == nil {
+				w = &SecurityWorkflowActionEvent_ConfirmRecoveryRotation{ConfirmRecoveryRotation: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.ConfirmRecoveryRotation
+		case 17:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_PrepareHandoffCode)
+			if w == nil || w.PrepareHandoffCode == nil {
+				w = &SecurityWorkflowActionEvent_PrepareHandoffCode{PrepareHandoffCode: &SecurityBoolAction{}}
+				m.Action = w
+			}
+			sub = w.PrepareHandoffCode
+		case 18:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_PublishHandoffOffer)
+			if w == nil || w.PublishHandoffOffer == nil {
+				w = &SecurityWorkflowActionEvent_PublishHandoffOffer{PublishHandoffOffer: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.PublishHandoffOffer
+		case 19:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_HandoffAuthority)
+			if w == nil || w.HandoffAuthority == nil {
+				w = &SecurityWorkflowActionEvent_HandoffAuthority{HandoffAuthority: &SecurityStringAction{}}
+				m.Action = w
+			}
+			sub = w.HandoffAuthority
+		case 20:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_CompleteAccountPublicProfile)
+			if w == nil || w.CompleteAccountPublicProfile == nil {
+				w = &SecurityWorkflowActionEvent_CompleteAccountPublicProfile{CompleteAccountPublicProfile: &SecurityServerCodeAction{}}
+				m.Action = w
+			}
+			sub = w.CompleteAccountPublicProfile
+		case 21:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_StartPairing)
+			if w == nil || w.StartPairing == nil {
+				w = &SecurityWorkflowActionEvent_StartPairing{StartPairing: &SecurityStartPairingAction{}}
+				m.Action = w
+			}
+			sub = w.StartPairing
+		case 22:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_PollPairing)
+			if w == nil || w.PollPairing == nil {
+				w = &SecurityWorkflowActionEvent_PollPairing{PollPairing: &SecurityStringAction{}}
+				m.Action = w
+			}
+			sub = w.PollPairing
+		case 23:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ApprovePairing)
+			if w == nil || w.ApprovePairing == nil {
+				w = &SecurityWorkflowActionEvent_ApprovePairing{ApprovePairing: &SecurityApprovePairingAction{}}
+				m.Action = w
+			}
+			sub = w.ApprovePairing
+		case 24:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_FinishPairingDelivery)
+			if w == nil || w.FinishPairingDelivery == nil {
+				w = &SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &SecurityStringAction{}}
+				m.Action = w
+			}
+			sub = w.FinishPairingDelivery
+		case 25:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_CancelPairing)
+			if w == nil || w.CancelPairing == nil {
+				w = &SecurityWorkflowActionEvent_CancelPairing{CancelPairing: &SecurityStringAction{}}
+				m.Action = w
+			}
+			sub = w.CancelPairing
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *SecurityWorkflowActionEvent) extraUnmarshalPart2(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 26:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_StartJoinPairing)
+			if w == nil || w.StartJoinPairing == nil {
+				w = &SecurityWorkflowActionEvent_StartJoinPairing{StartJoinPairing: &SecurityStartJoinPairingAction{}}
+				m.Action = w
+			}
+			sub = w.StartJoinPairing
+		case 27:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ConfirmJoinSas)
+			if w == nil || w.ConfirmJoinSas == nil {
+				w = &SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &SecurityStringAction{}}
+				m.Action = w
+			}
+			sub = w.ConfirmJoinSas
+		case 28:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_CancelJoinPairing)
+			if w == nil || w.CancelJoinPairing == nil {
+				w = &SecurityWorkflowActionEvent_CancelJoinPairing{CancelJoinPairing: &SecurityStringAction{}}
+				m.Action = w
+			}
+			sub = w.CancelJoinPairing
+		case 29:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_PrepareEmergencyRecovery)
+			if w == nil || w.PrepareEmergencyRecovery == nil {
+				w = &SecurityWorkflowActionEvent_PrepareEmergencyRecovery{PrepareEmergencyRecovery: &SecurityServerCodeAction{}}
+				m.Action = w
+			}
+			sub = w.PrepareEmergencyRecovery
+		case 30:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ContinueRecoverySigning)
+			if w == nil || w.ContinueRecoverySigning == nil {
+				w = &SecurityWorkflowActionEvent_ContinueRecoverySigning{ContinueRecoverySigning: &SecurityStringAction{}}
+				m.Action = w
+			}
+			sub = w.ContinueRecoverySigning
+		case 31:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved)
+			if w == nil || w.ConfirmRecoveryCodeSaved == nil {
+				w = &SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved{ConfirmRecoveryCodeSaved: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.ConfirmRecoveryCodeSaved
+		case 32:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ResumeRecovery)
+			if w == nil || w.ResumeRecovery == nil {
+				w = &SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.ResumeRecovery
+		case 33:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_CompleteRecovery)
+			if w == nil || w.CompleteRecovery == nil {
+				w = &SecurityWorkflowActionEvent_CompleteRecovery{CompleteRecovery: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.CompleteRecovery
+		case 34:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_DiscardUnsignedRecovery)
+			if w == nil || w.DiscardUnsignedRecovery == nil {
+				w = &SecurityWorkflowActionEvent_DiscardUnsignedRecovery{DiscardUnsignedRecovery: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.DiscardUnsignedRecovery
+		case 35:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_DiscardRejectedRecovery)
+			if w == nil || w.DiscardRejectedRecovery == nil {
+				w = &SecurityWorkflowActionEvent_DiscardRejectedRecovery{DiscardRejectedRecovery: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.DiscardRejectedRecovery
+		case 36:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_CheckExitAdvice)
+			if w == nil || w.CheckExitAdvice == nil {
+				w = &SecurityWorkflowActionEvent_CheckExitAdvice{CheckExitAdvice: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.CheckExitAdvice
+		case 37:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ClearSecurity)
+			if w == nil || w.ClearSecurity == nil {
+				w = &SecurityWorkflowActionEvent_ClearSecurity{ClearSecurity: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.ClearSecurity
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *SecurityWorkflowActionEvent) extraUnmarshalPart3(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 38:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_UpdateDeviceMeta)
+			if w == nil || w.UpdateDeviceMeta == nil {
+				w = &SecurityWorkflowActionEvent_UpdateDeviceMeta{UpdateDeviceMeta: &SecurityUpdateDeviceMetaAction{}}
+				m.Action = w
+			}
+			sub = w.UpdateDeviceMeta
+		case 39:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_ListHandoffCandidates)
+			if w == nil || w.ListHandoffCandidates == nil {
+				w = &SecurityWorkflowActionEvent_ListHandoffCandidates{ListHandoffCandidates: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.ListHandoffCandidates
+		case 40:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_GetStatus)
+			if w == nil || w.GetStatus == nil {
+				w = &SecurityWorkflowActionEvent_GetStatus{GetStatus: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.GetStatus
+		case 41:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_CheckRetainedDenied)
+			if w == nil || w.CheckRetainedDenied == nil {
+				w = &SecurityWorkflowActionEvent_CheckRetainedDenied{CheckRetainedDenied: &SecurityActionEmpty{}}
+				m.Action = w
+			}
+			sub = w.CheckRetainedDenied
+		case 42:
+			w, _ := m.Action.(*SecurityWorkflowActionEvent_RepublishRecoveryObjects)
+			if w == nil || w.RepublishRecoveryObjects == nil {
+				w = &SecurityWorkflowActionEvent_RepublishRecoveryObjects{RepublishRecoveryObjects: &SecurityBoolAction{}}
+				m.Action = w
+			}
+			sub = w.RepublishRecoveryObjects
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 type SecurityWorkflowResultEffect struct {
+	_                     [0]func()
 	ActionId              uint64
 	Ok                    bool
 	Error                 string
@@ -5804,52 +4617,39 @@ func (m *SecurityWorkflowResultEffect) GetFlag() bool {
 	return false
 }
 
-func (m *SecurityWorkflowResultEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityWorkflowResultEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ActionId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Ok), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Error), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ErrorCode), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Retryable), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Uncertain), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ErrorAction), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Status), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityWorkflowStatus},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.RecoveryCode), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ResumedDraft), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.CodeSaved), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.NeedsRecoveryRotation), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Pairing), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityPairingInfo},
+		{Num: 14, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Recovery), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityRecoveryInfo},
+		{Num: 15, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.HandoffCandidates), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SecurityHandoffCandidate},
+		{Num: 16, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ExitAdvice), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityExitAdvice},
+		{Num: 17, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.AccountAdopted), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityAccountAdopted},
+		{Num: 18, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Flag), Kind: litewire.KindBool},
+	},
+}
 
 func (m *SecurityWorkflowResultEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityWorkflowResultEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.ActionId))
-	b = litewire.AppendBool(b, 2, m.Ok)
-	b = litewire.AppendString(b, 3, m.Error)
-	b = litewire.AppendString(b, 4, m.ErrorCode)
-	b = litewire.AppendBool(b, 5, m.Retryable)
-	b = litewire.AppendBool(b, 6, m.Uncertain)
-	b = litewire.AppendString(b, 7, m.ErrorAction)
-	if m.Status != nil {
-		b = litewire.AppendMessage(b, 8, m.Status)
-	}
-	b = litewire.AppendString(b, 9, m.RecoveryCode)
-	b = litewire.AppendBool(b, 10, m.ResumedDraft)
-	b = litewire.AppendBool(b, 11, m.CodeSaved)
-	b = litewire.AppendBool(b, 12, m.NeedsRecoveryRotation)
-	if m.Pairing != nil {
-		b = litewire.AppendMessage(b, 13, m.Pairing)
-	}
-	if m.Recovery != nil {
-		b = litewire.AppendMessage(b, 14, m.Recovery)
-	}
-	for _, v := range m.HandoffCandidates {
-		if v != nil {
-			b = litewire.AppendMessage(b, 15, v)
-		}
-	}
-	if m.ExitAdvice != nil {
-		b = litewire.AppendMessage(b, 16, m.ExitAdvice)
-	}
-	if m.AccountAdopted != nil {
-		b = litewire.AppendMessage(b, 17, m.AccountAdopted)
-	}
-	b = litewire.AppendBool(b, 18, m.Flag)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityWorkflowResultEffect)
 }
 
 type SecurityStatusChangedEffect struct {
+	_      [0]func()
 	Status *SecurityWorkflowStatus
 }
 
@@ -5860,23 +4660,22 @@ func (m *SecurityStatusChangedEffect) GetStatus() *SecurityWorkflowStatus {
 	return nil
 }
 
-func (m *SecurityStatusChangedEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityStatusChangedEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityStatusChangedEffect{}.Status), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityWorkflowStatus},
+	},
+}
 
 func (m *SecurityStatusChangedEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityStatusChangedEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Status != nil {
-		b = litewire.AppendMessage(b, 1, m.Status)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityStatusChangedEffect)
 }
 
 type SecurityOpenNotifyEvent struct {
+	_          [0]func()
 	OpId       uint64
 	NotifyBlob []byte
 	RecordBlob []byte
@@ -5936,95 +4735,26 @@ func (m *SecurityOpenNotifyEvent) GetMachineId() string {
 	return ""
 }
 
+var LitewireDesc_SecurityOpenNotifyEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityOpenNotifyEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.NotifyBlob), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.RecordBlob), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.Envelope), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Envelope},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.NowMs), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.SessionId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.Tag), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
 func (m *SecurityOpenNotifyEvent) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OpId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.NotifyBlob = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.RecordBlob = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				if m.Envelope == nil {
-					m.Envelope = &v1.Envelope{}
-				}
-				if err := litewire.ReadMessage(&b, m.Envelope); err != nil {
-					return err
-				}
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.NowMs = int64(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Tag = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityOpenNotifyEvent)
 }
 
 type SecurityNotifyOpenedEffect struct {
+	_                     [0]func()
 	OpId                  uint64
 	Content               *v1.NotifyContent
 	HeaderBytes           []byte
@@ -6084,25 +4814,35 @@ func (m *SecurityNotifyOpenedEffect) GetError() string {
 	return ""
 }
 
-func (m *SecurityNotifyOpenedEffect) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SecurityNotifyOpenedEffect = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.OpId), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.Content), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_NotifyContent},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.HeaderBytes), Kind: litewire.KindBytes},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.SessionId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.MachineId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.RequestId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.VerifyRecordUnchanged), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.Error), Kind: litewire.KindString},
+	},
+}
 
 func (m *SecurityNotifyOpenedEffect) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SecurityNotifyOpenedEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	if m.Content != nil {
-		b = litewire.AppendMessage(b, 2, m.Content)
-	}
-	b = litewire.AppendBytes(b, 3, m.HeaderBytes)
-	b = litewire.AppendString(b, 4, m.SessionId)
-	b = litewire.AppendString(b, 5, m.MachineId)
-	b = litewire.AppendString(b, 6, m.RequestId)
-	b = litewire.AppendBool(b, 7, m.VerifyRecordUnchanged)
-	b = litewire.AppendString(b, 8, m.Error)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityNotifyOpenedEffect)
+}
+
+func init() {
+	LitewireDesc_SecurityCryptoBatchItem.ExtraMarshal = extraMarshal_SecurityCryptoBatchItem
+	LitewireDesc_SecurityCryptoBatchDoneEvent.ExtraUnmarshal = extraUnmarshal_SecurityCryptoBatchDoneEvent
+	LitewireDesc_SecurityOpRequestEvent.ExtraUnmarshal = extraUnmarshal_SecurityOpRequestEvent
+	LitewireDesc_SecurityOpResultEffect.ExtraMarshal = extraMarshal_SecurityOpResultEffect
+	LitewireDesc_DemoSessionEvents.ExtraUnmarshal = extraUnmarshal_DemoSessionEvents
+	LitewireDesc_SeedDemoWorldEvent.ExtraUnmarshal = extraUnmarshal_SeedDemoWorldEvent
+	LitewireDesc_SecurityKeyEncapsulatedEvent.ExtraUnmarshal = extraUnmarshal_SecurityKeyEncapsulatedEvent
+	LitewireDesc_SecurityStorageResultEvent.ExtraUnmarshal = extraUnmarshal_SecurityStorageResultEvent
+	LitewireDesc_SecurityWorkflowActionEvent.ExtraUnmarshal = extraUnmarshal_SecurityWorkflowActionEvent
 }

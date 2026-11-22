@@ -22,7 +22,7 @@ const (
 	// MemberKindMachine matches DeviceKind.DEVICE_KIND_MACHINE (1) in security heads.
 	MemberKindMachine uint32 = 1
 	// MemberKindClient matches DeviceKind.DEVICE_KIND_CLIENT (2) in security heads.
-	MemberKindClient uint32 = 2
+	MemberKindClient   uint32 = 2
 	defaultTicketTTLMs int64  = 120_000
 	ticketPruneGraceMs int64  = 60_000
 )
@@ -209,11 +209,11 @@ type pendingInboundSignal struct {
 }
 
 type pcBinding struct {
-	roundID         RoundID
-	localID         uint64
-	use             Use
-	confirmed       bool
-	closedNotified  bool
+	roundID        RoundID
+	localID        uint64
+	use            Use
+	confirmed      bool
+	closedNotified bool
 }
 
 type coordRound struct {
@@ -1938,4 +1938,3 @@ func nonEmpty(a, b string) string {
 	}
 	return b
 }
-

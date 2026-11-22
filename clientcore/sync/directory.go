@@ -42,36 +42,7 @@ func (e *Engine) handleCacheBootstrapLoaded(ctx *StepContext, ev *corev1.CacheBo
 		if ev.WirePrefs != nil {
 			prefsSlice = []*v1.AccountPrefsObject{ev.WirePrefs}
 		}
-		e.openWireDirectoryBatch(ctx, ev.WireMachines, ev.WireSessions, nil, prefsSlice, func(outM []decodedMachine, outS []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
-			stepCtx := e.activeStepCtx
-			if !e.w.World.MachinesListed {
-				for _, m := range outM {
-					if m.MachineID == "" {
-						continue
-					}
-					if _, exists := e.machines[m.MachineID]; !exists {
-						m.Online = false
-						e.storeMachine(decodedToMachineEntry(m))
-					}
-				}
-			}
-			if !e.w.World.SessionsListed {
-				for _, s := range outS {
-					if s.SessionID == "" {
-						continue
-					}
-					if _, exists := e.sessions[s.SessionID]; !exists {
-						e.storeSession(decodedToSessionEntry(s, nil))
-						e.listed[s.SessionID] = true
-					}
-				}
-			}
-			if !e.prefs.Loaded && len(outP) > 0 && outP[0] != nil {
-				e.applyAccountPrefsDecoded(outP[0], false)
-			}
-			e.updateLivePollers(stepCtx)
-			stepCtx.Dirty.MarkAll()
-		})
+		e.openWireDirectoryBatchTag(ctx, ev.WireMachines, ev.WireSessions, nil, prefsSlice, dirBatchMeta{kind: dirKindBootstrap})
 		return
 	}
 
@@ -244,16 +215,9 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 
 	if len(ev.WireMachines) > 0 || len(ev.WireSessions) > 0 || len(ev.WireDevices) > 0 ||
 		(e.secEngine != nil && e.secEngine.Locked() && len(ev.Machines) == 0 && len(ev.Sessions) == 0 && len(ev.Devices) == 0) {
-		run := e.refreshRun
 		mp, sp, rp, dp := e.cloneRefreshSnapshots()
-		evNext := ev.Next
-		e.openWireDirectoryBatch(ctx, ev.WireMachines, ev.WireSessions, ev.WireDevices, nil, func(outM []decodedMachine, outS []decodedSession, outD []decodedDevice, _ []*decodedPrefs) {
-			stepCtx := e.activeStepCtx
-			if !e.running || e.refreshRun != run {
-				return
-			}
-			e.devicesApplyGen++
-			e.applyListsDecoded(stepCtx, outM, outS, e.buildAuthoritativeDevices(outD), evNext, mp, sp, rp, dp)
+		e.openWireDirectoryBatchTag(ctx, ev.WireMachines, ev.WireSessions, ev.WireDevices, nil, dirBatchMeta{
+			kind: dirKindListsFetched, refreshRun: e.refreshRun, evNext: ev.Next, mp: mp, sp: sp, rp: rp, dp: dp,
 		})
 		return
 	}
@@ -406,36 +370,8 @@ func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.Sessions
 		return
 	}
 	if len(ev.WireSessions) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Sessions) == 0) {
-		gen := e.listingGen
-		evNext := ev.Next
-		e.openWireDirectoryBatch(ctx, nil, ev.WireSessions, nil, nil, func(_ []decodedMachine, outS []decodedSession, _ []decodedDevice, _ []*decodedPrefs) {
-			stepCtx := e.activeStepCtx
-			if !e.running || e.listingGen != gen || e.pageListingGen != e.listingGen {
-				return
-			}
-			e.w.SessionListErrorText = nil
-			e.w.World.SessionListError = ""
-			for _, s := range outS {
-				if s.SessionID != "" {
-					e.putSessionDecoded(stepCtx, s, false)
-				}
-			}
-			if evNext != nil && (evNext.EndedMs != 0 || evNext.SessionId != "") {
-				e.w.World.SessionsNext = &lists.SessionPlace{
-					EndedMs:   evNext.EndedMs,
-					SessionID: evNext.SessionId,
-				}
-				e.w.World.HasMoreSessions = true
-			} else {
-				e.w.World.SessionsNext = nil
-				e.w.World.HasMoreSessions = false
-			}
-			e.updateLivePollers(stepCtx)
-			e.syncDirectWatched(stepCtx)
-			if e.wantAllSessions && e.w.World.SessionsNext != nil {
-				e.RequestMoreSessions(stepCtx)
-			}
-			stepCtx.Dirty.Add(true, true, false)
+		e.openWireDirectoryBatchTag(ctx, nil, ev.WireSessions, nil, nil, dirBatchMeta{
+			kind: dirKindSessionsPage, listingGen: e.listingGen, evNext: ev.Next,
 		})
 		return
 	}
@@ -481,15 +417,8 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 			ctx.Dirty.Add(false, true, false)
 			return
 		}
-		e.openWireDirectoryBatch(ctx, nil, []*v1.RemoteSession{ev.WireSession}, nil, nil, func(_ []decodedMachine, outS []decodedSession, _ []decodedDevice, _ []*decodedPrefs) {
-			stepCtx := e.activeStepCtx
-			if !e.running || len(outS) == 0 {
-				return
-			}
-			delete(e.sessionByIDFailed, sid)
-			e.putSessionDecoded(stepCtx, outS[0], false)
-			e.updateLivePollers(stepCtx)
-			stepCtx.Dirty.MarkAll()
+		e.openWireDirectoryBatchTag(ctx, nil, []*v1.RemoteSession{ev.WireSession}, nil, nil, dirBatchMeta{
+			kind: dirKindSessionByID, sid: sid,
 		})
 		return
 	}
@@ -534,14 +463,8 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 	}
 	if len(ev.WireDevices) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Devices) == 0) {
 		e.devicesApplyGen++
-		devGen := e.devicesApplyGen
-		e.openWireDirectoryBatch(ctx, nil, nil, ev.WireDevices, nil, func(_ []decodedMachine, _ []decodedSession, outD []decodedDevice, _ []*decodedPrefs) {
-			stepCtx := e.activeStepCtx
-			if e.devicesApplyGen != devGen {
-				return
-			}
-			e.reconcileDecodedDevices(e.buildAuthoritativeDevices(outD), removedSnapshot, deviceSnapshot, true)
-			stepCtx.Dirty.MarkAll()
+		e.openWireDirectoryBatchTag(ctx, nil, nil, ev.WireDevices, nil, dirBatchMeta{
+			kind: dirKindDevices, devGen: e.devicesApplyGen, mp: removedSnapshot, sp: deviceSnapshot,
 		})
 		return
 	}
@@ -643,19 +566,9 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 		if f.WireMachineUpdated != nil && f.WireMachineUpdated.Id != "" {
 			e.nextPushSeq++
 			e.machinePushes[f.WireMachineUpdated.Id] = e.nextPushSeq
-			legID := ev.LegId
 			wm := f.WireMachineUpdated
-			e.openWireDirectoryBatch(ctx, []*v1.Machine{wm}, nil, nil, nil, func(outM []decodedMachine, _ []decodedSession, _ []decodedDevice, _ []*decodedPrefs) {
-				stepCtx := e.activeStepCtx
-				if !e.running || e.legID != legID || len(outM) == 0 {
-					return
-				}
-				e.putMachineDecoded(stepCtx, outM[0], false, true)
-				if wm.Online && e.security.Loaded && !e.isTrustedMachine(wm.Id) {
-					e.requestSyncSecurity(stepCtx, true)
-				}
-				e.updateLivePollers(stepCtx)
-				stepCtx.Dirty.MarkAll()
+			e.openWireDirectoryBatchTag(ctx, []*v1.Machine{wm}, nil, nil, nil, dirBatchMeta{
+				kind: dirKindStreamMachine, legID: ev.LegId, wm: wm,
 			})
 		}
 	case *corev1.StreamFrameEvent_WireSessionUpdated:
@@ -663,69 +576,24 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			sid := f.WireSessionUpdated.SessionId
 			e.nextPushSeq++
 			e.sessionPushes[sid] = e.nextPushSeq
-			legID := ev.LegId
 			ws := f.WireSessionUpdated
-			e.openWireDirectoryBatch(ctx, nil, []*v1.RemoteSession{ws}, nil, nil, func(_ []decodedMachine, outS []decodedSession, _ []decodedDevice, _ []*decodedPrefs) {
-				stepCtx := e.activeStepCtx
-				if !e.running || e.legID != legID || len(outS) == 0 {
-					return
-				}
-				prev := e.sessions[sid]
-				var prevServerSeq uint64
-				if prev != nil {
-					prevServerSeq = prev.ServerLastSeq
-				}
-				e.putSessionDecoded(stepCtx, outS[0], true)
-				updated := e.sessions[sid]
-				b := e.buffers[sid]
-				needGapFill := b != nil && len(b.pending) > 0 && updated != nil && updated.ServerLastSeq > uint64(len(b.prefix))
-				if ws.LastSeq > prevServerSeq || needGapFill {
-					if e.watchedSessions[sid] || b != nil {
-						e.startFetchEvents(stepCtx, sid)
-					}
-				}
-				e.updateLivePollers(stepCtx)
-				stepCtx.Dirty.MarkAll()
+			e.openWireDirectoryBatchTag(ctx, nil, []*v1.RemoteSession{ws}, nil, nil, dirBatchMeta{
+				kind: dirKindStreamSession, legID: ev.LegId, sid: sid, ws: ws,
 			})
 		}
 	case *corev1.StreamFrameEvent_WireAccountPrefsUpdated:
 		if f.WireAccountPrefsUpdated != nil {
-			legID := ev.LegId
-			wp := f.WireAccountPrefsUpdated
-			e.openWireDirectoryBatch(ctx, nil, nil, nil, []*v1.AccountPrefsObject{wp}, func(_ []decodedMachine, _ []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
-				stepCtx := e.activeStepCtx
-				if !e.running || e.legID != legID || len(outP) == 0 || outP[0] == nil {
-					return
-				}
-				e.applyAccountPrefsDecoded(outP[0], true)
-				if outP[0].Wire != nil && outP[0].Wire.Revision > 0 {
-					stepCtx.emit(&corev1.Effect{
-						Effect: &corev1.Effect_CacheWrite{
-							CacheWrite: &corev1.CacheWriteEffect{
-								Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: outP[0].Wire},
-							},
-						},
-					})
-				}
-				stepCtx.Dirty.MarkAll()
+			e.openWireDirectoryBatchTag(ctx, nil, nil, nil, []*v1.AccountPrefsObject{f.WireAccountPrefsUpdated}, dirBatchMeta{
+				kind: dirKindStreamPrefs, legID: ev.LegId,
 			})
 		}
 	case *corev1.StreamFrameEvent_WireDeviceUpdated:
 		if f.WireDeviceUpdated != nil && f.WireDeviceUpdated.Id != "" {
 			e.nextPushSeq++
 			e.devicePushes[f.WireDeviceUpdated.Id] = e.nextPushSeq
-			legID := ev.LegId
 			wd := f.WireDeviceUpdated
-			e.openWireDirectoryBatch(ctx, nil, nil, []*v1.Device{wd}, nil, func(_ []decodedMachine, _ []decodedSession, outD []decodedDevice, _ []*decodedPrefs) {
-				stepCtx := e.activeStepCtx
-				if !e.running || e.legID != legID || len(outD) == 0 {
-					return
-				}
-				e.devices[wd.Id] = decodedToDeviceEntry(outD[0])
-				if e.deviceKindNeedsSecuritySync(wd.Id, wd.Kind) {
-					e.requestSyncSecurity(stepCtx, true)
-				}
-				stepCtx.Dirty.Add(true, false, false)
+			e.openWireDirectoryBatchTag(ctx, nil, nil, []*v1.Device{wd}, nil, dirBatchMeta{
+				kind: dirKindStreamDevice, legID: ev.LegId, wd: wd,
 			})
 		}
 	}

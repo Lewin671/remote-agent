@@ -424,7 +424,7 @@ func sameMembers(a, b []Member) bool {
 func recoveryDelta(parent, next State) error {
 	removed := slices.Clone(parent.Core.Removed)
 	removed = append(removed, parent.Core.AuthorityID)
-	slices.Sort(removed)
+	sortStrings(removed)
 	if !slices.Equal(removed, next.Core.Removed) {
 		return ErrInvalid
 	}
@@ -473,7 +473,7 @@ func membershipDelta(parent, next State) error {
 	// Removed is the accumulated, sorted tombstone set, not just this
 	// transition's removals.
 	wantRemoved := append(slices.Clone(parent.Core.Removed), newlyRemoved...)
-	slices.Sort(wantRemoved)
+	sortStrings(wantRemoved)
 	if !slices.Equal(wantRemoved, next.Core.Removed) {
 		return ErrInvalid
 	}
@@ -531,15 +531,7 @@ func NewState(parent State, members []Member, removed []string, secret, prevSecr
 	c.IssuedAt = max(now, c.IssuedAt)
 
 	c.Members = slices.Clone(members)
-	slices.SortFunc(c.Members, func(a, b Member) int {
-		if a.ID < b.ID {
-			return -1
-		}
-		if a.ID > b.ID {
-			return 1
-		}
-		return 0
-	})
+	sortMembers(c.Members)
 	c.Removed = removed
 	if len(prevSecret) > 0 && len(prevSecret) != 60 {
 		return State{}, ErrInvalid

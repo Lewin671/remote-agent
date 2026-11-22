@@ -305,9 +305,9 @@ func (c *Core) onOtherSettingsCmdSettled(sc sync.SettledCommand, meta cmdMeta) [
 		case outcome.Unknown:
 			me.SaveUnknown = true
 			me.SaveError = nil
-			res := c.m.sync.Run(func(ctx *sync.StepContext) {
-				c.submitGetSettings(ctx, meta.machineID)
-			})
+			prevStep, ctx := c.m.sync.BeginStep()
+			c.submitGetSettings(ctx, meta.machineID)
+			res := c.m.sync.EndStep(prevStep, ctx)
 			out = append(out, res.Effects...)
 		default:
 			me.SaveUnknown = false
@@ -513,11 +513,11 @@ func (c *Core) reconcileWatchedMachinePolls(effects *[]*corev1.Effect) {
 		return
 	}
 	sortutil.Strings(ids)
-	res := c.m.sync.Run(func(ctx *sync.StepContext) {
-		for _, id := range ids {
-			*effects = append(*effects, c.reconcilePollFeed(ctx, id, c.m.settings.PollFeeds[id], false)...)
-		}
-	})
+	prevStep, ctx := c.m.sync.BeginStep()
+	for _, id := range ids {
+		*effects = append(*effects, c.reconcilePollFeed(ctx, id, c.m.settings.PollFeeds[id], false)...)
+	}
+	res := c.m.sync.EndStep(prevStep, ctx)
 	*effects = append(*effects, res.Effects...)
 }
 
@@ -1014,9 +1014,9 @@ func (c *Core) onToggleMachineAgentSettled(sc sync.SettledCommand, meta cmdMeta,
 				enabled := lists.MachineAgents(mac.Meta)
 				if len(enabled) > 0 && enabled[0] != meta.agent {
 					me.SelectedAgent = enabled[0]
-					fetchRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-						c.m.maybeFetchMachineConfig(ctx, meta.machineID, enabled[0])
-					})
+					fetchPrev, fetchCtx := c.m.sync.BeginStep()
+					c.m.maybeFetchMachineConfig(fetchCtx, meta.machineID, enabled[0])
+					fetchRes := c.m.sync.EndStep(fetchPrev, fetchCtx)
 					out = append(out, fetchRes.Effects...)
 				}
 			}
@@ -1037,9 +1037,9 @@ func (c *Core) onToggleMachineAgentSettled(sc sync.SettledCommand, meta cmdMeta,
 		(sc.ErrorText != nil && strings.Contains(sc.ErrorText.GetLiteral(), "cannot_disable_last_agent"))
 	if isConflict {
 		me.ToggleBanner = text.Msg(text.KeySettingsCliSwitchesConflict)
-		res := c.m.sync.Run(func(ctx *sync.StepContext) {
-			c.submitGetSettings(ctx, meta.machineID)
-		})
+		prevStep, ctx := c.m.sync.BeginStep()
+		c.submitGetSettings(ctx, meta.machineID)
+		res := c.m.sync.EndStep(prevStep, ctx)
 		out = append(out, res.Effects...)
 	} else {
 		me.ToggleBanner = text.Msg(text.KeySettingsCliSwitchesUpdateError)

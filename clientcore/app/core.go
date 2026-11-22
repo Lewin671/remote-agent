@@ -141,10 +141,9 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		return &corev1.EffectBatch{Effects: effects}
 	}
 
-	var uiEffects []*corev1.Effect
-	stepRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-		uiEffects = c.dispatchUI(ctx, ev)
-	})
+	stepPrev, stepCtx := c.m.sync.BeginStep()
+	uiEffects := c.dispatchUI(stepCtx, ev)
+	stepRes := c.m.sync.EndStep(stepPrev, stepCtx)
 	extra, extraDirty := c.processSyncStep(stepRes)
 	stepRes.Dirty.Add(extraDirty.Home, extraDirty.Project, extraDirty.NewSession)
 	if extraDirty.SessionData {
@@ -320,19 +319,19 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 						},
 					},
 				})
-				saveRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-					if sess != nil && sess.Id != "" {
-						c.m.sync.SeedSession(ctx, sc.MachineID, sess)
-					}
-					cfg := d.Config
-					if cfg.Cwd == "" {
-						cfg.Cwd = meta.projectKey
-					}
-					saved := lists.SavedSettings(c.m.state.World.Prefs, cfg.Cwd)
-					if op := lists.PlanStartSettings(cfg, &cfg, saved); op != nil {
-						c.m.sync.EnqueuePrefsOp(ctx, op, true, meta.projectKey)
-					}
-				})
+				savePrev, saveCtx := c.m.sync.BeginStep()
+				if sess != nil && sess.Id != "" {
+					c.m.sync.SeedSession(saveCtx, sc.MachineID, sess)
+				}
+				cfg := d.Config
+				if cfg.Cwd == "" {
+					cfg.Cwd = meta.projectKey
+				}
+				saved := lists.SavedSettings(c.m.state.World.Prefs, cfg.Cwd)
+				if op := lists.PlanStartSettings(cfg, &cfg, saved); op != nil {
+					c.m.sync.EnqueuePrefsOp(saveCtx, op, true, meta.projectKey)
+				}
+				saveRes := c.m.sync.EndStep(savePrev, saveCtx)
 				effects = append(effects, saveRes.Effects...)
 				if sessionID != "" {
 					effects = append(effects, &corev1.Effect{
@@ -390,18 +389,18 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 	}
 
 	if res.Dirty.NewSession || dirty.NewSession {
-		extraRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-			for key, d := range c.m.state.NewSessions {
-				if d == nil {
-					continue
-				}
-				psr := c.m.resolveDraftConfig(key, d)
-				c.m.syncDraftAutoSupport(key, psr)
-				if d.Config.MachineID != "" {
-					c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
-				}
+		extraPrev, extraCtx := c.m.sync.BeginStep()
+		for key, d := range c.m.state.NewSessions {
+			if d == nil {
+				continue
 			}
-		})
+			psr := c.m.resolveDraftConfig(key, d)
+			c.m.syncDraftAutoSupport(key, psr)
+			if d.Config.MachineID != "" {
+				c.m.maybeFetchMachineConfig(extraCtx, d.Config.MachineID, d.Config.Agent)
+			}
+		}
+		extraRes := c.m.sync.EndStep(extraPrev, extraCtx)
 		effects = append(effects, extraRes.Effects...)
 	}
 
@@ -411,19 +410,19 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			c.m.usageDirty = true
 		}
 		if !(res.Dirty.NewSession || dirty.NewSession) {
-			extraRes := c.m.sync.Run(func(ctx *sync.StepContext) {
-				for key, d := range c.m.state.NewSessions {
-					if d == nil || !d.ConfigInitialized || d.Busy || d.Frozen || d.Config.MachineID == "" {
-						continue
-					}
-					if mac := c.m.findMachine(d.Config.MachineID); mac != nil && lists.IsAgentDisabled(mac.Meta, d.Config.Agent) {
-						psr := c.m.resolveDraftConfig(key, d)
-						c.m.syncDraftAutoSupport(key, psr)
-						c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
-						dirty.Add(false, false, true)
-					}
+			extraPrev, extraCtx := c.m.sync.BeginStep()
+			for key, d := range c.m.state.NewSessions {
+				if d == nil || !d.ConfigInitialized || d.Busy || d.Frozen || d.Config.MachineID == "" {
+					continue
 				}
-			})
+				if mac := c.m.findMachine(d.Config.MachineID); mac != nil && lists.IsAgentDisabled(mac.Meta, d.Config.Agent) {
+					psr := c.m.resolveDraftConfig(key, d)
+					c.m.syncDraftAutoSupport(key, psr)
+					c.m.maybeFetchMachineConfig(extraCtx, d.Config.MachineID, d.Config.Agent)
+					dirty.Add(false, false, true)
+				}
+			}
+			extraRes := c.m.sync.EndStep(extraPrev, extraCtx)
 			effects = append(effects, extraRes.Effects...)
 		}
 	}

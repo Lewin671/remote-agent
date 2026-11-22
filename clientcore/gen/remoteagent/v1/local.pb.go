@@ -6,8 +6,8 @@ package remoteagentv1
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	timestamppb "github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
-	math "math"
 	slices "slices"
+	unsafe "unsafe"
 )
 
 type PlanChoice int32
@@ -66,6 +66,7 @@ const (
 )
 
 type Session struct {
+	_                     [0]func()
 	Id                    string
 	Cwd                   string
 	TmuxSession           string
@@ -349,431 +350,83 @@ func (m *Session) Clone() *Session {
 	return &cp
 }
 
-func (m *Session) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_Session = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(Session{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&Session{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Session{}.Id), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(Session{}.Cwd), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(Session{}.TmuxSession), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(Session{}.Status), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(Session{}.StatusDetail), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(Session{}.CodexSessionId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(Session{}.RolloutPath), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(Session{}.CreatedAt), Kind: litewire.KindMessage, Sub: &timestamppb.LitewireDesc_Timestamp},
+		{Num: 9, Offset: unsafe.Offsetof(Session{}.LastSeq), Kind: litewire.KindUint64},
+		{Num: 10, Offset: unsafe.Offsetof(Session{}.Model), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(Session{}.Effort), Kind: litewire.KindString},
+		{Num: 12, Offset: unsafe.Offsetof(Session{}.PendingApprovals), Kind: litewire.KindInt32},
+		{Num: 13, Offset: unsafe.Offsetof(Session{}.PendingQuestions), Kind: litewire.KindInt32},
+		{Num: 14, Offset: unsafe.Offsetof(Session{}.QueuedInputs), Kind: litewire.KindInt32},
+		{Num: 15, Offset: unsafe.Offsetof(Session{}.Title), Kind: litewire.KindString},
+		{Num: 16, Offset: unsafe.Offsetof(Session{}.Preview), Kind: litewire.KindString},
+		{Num: 17, Offset: unsafe.Offsetof(Session{}.ApprovalsReviewer), Kind: litewire.KindString},
+		{Num: 18, Offset: unsafe.Offsetof(Session{}.ApprovalPolicy), Kind: litewire.KindString},
+		{Num: 19, Offset: unsafe.Offsetof(Session{}.Sandbox), Kind: litewire.KindString},
+		{Num: 20, Offset: unsafe.Offsetof(Session{}.CollaborationMode), Kind: litewire.KindString},
+		{Num: 21, Offset: unsafe.Offsetof(Session{}.ContextTokens), Kind: litewire.KindInt64},
+		{Num: 22, Offset: unsafe.Offsetof(Session{}.ContextWindow), Kind: litewire.KindInt64},
+		{Num: 23, Offset: unsafe.Offsetof(Session{}.PlanOpen), Kind: litewire.KindBool},
+		{Num: 24, Offset: unsafe.Offsetof(Session{}.InputWait), Kind: litewire.KindString},
+		{Num: 25, Offset: unsafe.Offsetof(Session{}.Agent), Kind: litewire.KindInt32},
+		{Num: 26, Offset: unsafe.Offsetof(Session{}.Mode), Kind: litewire.KindInt32},
+		{Num: 27, Offset: unsafe.Offsetof(Session{}.PermissionMode), Kind: litewire.KindString},
+		{Num: 28, Offset: unsafe.Offsetof(Session{}.FullAccessUnavailable), Kind: litewire.KindBool},
+		{Num: 29, Offset: unsafe.Offsetof(Session{}.AttentionSince), Kind: litewire.KindMessage, Sub: &timestamppb.LitewireDesc_Timestamp},
+		{Num: 30, Offset: unsafe.Offsetof(Session{}.EndedAt), Kind: litewire.KindMessage, Sub: &timestamppb.LitewireDesc_Timestamp},
+		{Num: 31, Offset: unsafe.Offsetof(Session{}.ForkedFrom), Kind: litewire.KindString},
+		{Num: 32, Offset: unsafe.Offsetof(Session{}.ForkedSeq), Kind: litewire.KindUint64},
+		{Num: 33, Offset: unsafe.Offsetof(Session{}.CurrentCheckpoint), Kind: litewire.KindBytes},
+		{Num: 34, Offset: unsafe.Offsetof(Session{}.MachineReplacements), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineReplacementProof},
+		{Num: 35, Offset: unsafe.Offsetof(Session{}.ScheduledTaskId), Kind: litewire.KindString},
+		{Num: 36, Offset: unsafe.Offsetof(Session{}.TaskOwned), Kind: litewire.KindBool},
+		{Num: 37, Offset: unsafe.Offsetof(Session{}.ModeLocked), Kind: litewire.KindBool},
+	},
+}
 
 func (m *Session) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *Session) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Id)
-	b = litewire.AppendString(b, 2, m.Cwd)
-	b = litewire.AppendString(b, 3, m.TmuxSession)
-	b = litewire.AppendInt32(b, 4, int32(m.Status))
-	b = litewire.AppendString(b, 5, m.StatusDetail)
-	b = litewire.AppendString(b, 6, m.CodexSessionId)
-	b = litewire.AppendString(b, 7, m.RolloutPath)
-	if m.CreatedAt != nil {
-		b = litewire.AppendMessage(b, 8, m.CreatedAt)
-	}
-	b = litewire.AppendVarint(b, 9, uint64(m.LastSeq))
-	b = litewire.AppendString(b, 10, m.Model)
-	b = litewire.AppendString(b, 11, m.Effort)
-	b = litewire.AppendInt32(b, 12, int32(m.PendingApprovals))
-	b = litewire.AppendInt32(b, 13, int32(m.PendingQuestions))
-	b = litewire.AppendInt32(b, 14, int32(m.QueuedInputs))
-	b = litewire.AppendString(b, 15, m.Title)
-	b = litewire.AppendString(b, 16, m.Preview)
-	b = litewire.AppendString(b, 17, m.ApprovalsReviewer)
-	b = litewire.AppendString(b, 18, m.ApprovalPolicy)
-	b = litewire.AppendString(b, 19, m.Sandbox)
-	b = litewire.AppendString(b, 20, m.CollaborationMode)
-	b = litewire.AppendVarint(b, 21, uint64(m.ContextTokens))
-	b = litewire.AppendVarint(b, 22, uint64(m.ContextWindow))
-	b = litewire.AppendBool(b, 23, m.PlanOpen)
-	b = litewire.AppendString(b, 24, m.InputWait)
-	b = litewire.AppendInt32(b, 25, int32(m.Agent))
-	b = litewire.AppendInt32(b, 26, int32(m.Mode))
-	b = litewire.AppendString(b, 27, m.PermissionMode)
-	b = litewire.AppendBool(b, 28, m.FullAccessUnavailable)
-	if m.AttentionSince != nil {
-		b = litewire.AppendMessage(b, 29, m.AttentionSince)
-	}
-	if m.EndedAt != nil {
-		b = litewire.AppendMessage(b, 30, m.EndedAt)
-	}
-	b = litewire.AppendString(b, 31, m.ForkedFrom)
-	b = litewire.AppendVarint(b, 32, uint64(m.ForkedSeq))
-	b = litewire.AppendBytes(b, 33, m.CurrentCheckpoint)
-	for _, v := range m.MachineReplacements {
-		if v != nil {
-			b = litewire.AppendMessage(b, 34, v)
-		}
-	}
-	b = litewire.AppendString(b, 35, m.ScheduledTaskId)
-	b = litewire.AppendBool(b, 36, m.TaskOwned)
-	b = litewire.AppendBool(b, 37, m.ModeLocked)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Session)
 }
 
 func (m *Session) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_Session)
+}
+
+func extraUnmarshal_Session(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*Session)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Id = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Cwd = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TmuxSession = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Status = SessionStatus(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.StatusDetail = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CodexSessionId = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RolloutPath = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.BytesType {
-				if m.CreatedAt == nil {
-					m.CreatedAt = &timestamppb.Timestamp{}
-				}
-				if err := litewire.ReadMessage(&b, m.CreatedAt); err != nil {
-					return err
-				}
-				if m.CreatedAt.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.LastSeq = v
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Model = v
-				continue
-			}
-		case 11:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Effort = v
-				continue
-			}
-		case 12:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PendingApprovals = int32(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PendingQuestions = int32(v)
-				continue
-			}
-		case 14:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.QueuedInputs = int32(v)
-				continue
-			}
-		case 15:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Title = v
-				continue
-			}
-		case 16:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Preview = v
-				continue
-			}
-		case 17:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ApprovalsReviewer = v
-				continue
-			}
-		case 18:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ApprovalPolicy = v
-				continue
-			}
-		case 19:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Sandbox = v
-				continue
-			}
-		case 20:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.CollaborationMode = v
-				continue
-			}
-		case 21:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ContextTokens = int64(v)
-				continue
-			}
-		case 22:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ContextWindow = int64(v)
-				continue
-			}
-		case 23:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PlanOpen = litewire.DecodeBool(v)
-				continue
-			}
-		case 24:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.InputWait = v
-				continue
-			}
-		case 25:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = Agent(int32(v))
-				continue
-			}
-		case 26:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Mode = ApprovalMode(int32(v))
-				continue
-			}
-		case 27:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.PermissionMode = v
-				continue
-			}
-		case 28:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.FullAccessUnavailable = litewire.DecodeBool(v)
-				continue
-			}
-		case 29:
-			if wtyp == litewire.BytesType {
-				if m.AttentionSince == nil {
-					m.AttentionSince = &timestamppb.Timestamp{}
-				}
-				if err := litewire.ReadMessage(&b, m.AttentionSince); err != nil {
-					return err
-				}
-				if m.AttentionSince.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 30:
-			if wtyp == litewire.BytesType {
-				if m.EndedAt == nil {
-					m.EndedAt = &timestamppb.Timestamp{}
-				}
-				if err := litewire.ReadMessage(&b, m.EndedAt); err != nil {
-					return err
-				}
-				if m.EndedAt.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 31:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ForkedFrom = v
-				continue
-			}
-		case 32:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ForkedSeq = v
-				continue
-			}
-		case 33:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.CurrentCheckpoint = v
-				continue
-			}
 		case 34:
-			if wtyp == litewire.BytesType {
-				elem := &MachineReplacementProof{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.MachineReplacements = append(m.MachineReplacements, elem)
-				continue
+			elem := &MachineReplacementProof{}
+			m.MachineReplacements = append(m.MachineReplacements, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		case 35:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ScheduledTaskId = v
-				continue
-			}
-		case 36:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskOwned = litewire.DecodeBool(v)
-				continue
-			}
-		case 37:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ModeLocked = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type MachineReplacementProof struct {
+	_          [0]func()
 	Approval   []byte
 	Signature  []byte
 	hasUnknown bool
@@ -804,56 +457,30 @@ func (m *MachineReplacementProof) Clone() *MachineReplacementProof {
 	return &cp
 }
 
-func (m *MachineReplacementProof) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_MachineReplacementProof = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(MachineReplacementProof{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&MachineReplacementProof{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineReplacementProof{}.Approval), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(MachineReplacementProof{}.Signature), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *MachineReplacementProof) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *MachineReplacementProof) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendBytes(b, 1, m.Approval)
-	b = litewire.AppendBytes(b, 2, m.Signature)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineReplacementProof)
 }
 
 func (m *MachineReplacementProof) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Approval = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Signature = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_MachineReplacementProof)
 }
 
 type CreateSessionRequest struct {
+	_               [0]func()
 	Cwd             string
 	Args            []string
 	Env             map[string]string
@@ -954,20 +581,35 @@ func (m *CreateSessionRequest) Clone() *CreateSessionRequest {
 	return &cp
 }
 
-func (m *CreateSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CreateSessionRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(CreateSessionRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&CreateSessionRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CreateSessionRequest{}.Cwd), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(CreateSessionRequest{}.Args), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+		{Num: 4, Offset: unsafe.Offsetof(CreateSessionRequest{}.Prompt), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(CreateSessionRequest{}.Model), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(CreateSessionRequest{}.Effort), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(CreateSessionRequest{}.Mode), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(CreateSessionRequest{}.Agent), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(CreateSessionRequest{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 11, Offset: unsafe.Offsetof(CreateSessionRequest{}.StandardContext), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(CreateSessionRequest{}.FileIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
 
 func (m *CreateSessionRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CreateSessionRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Cwd)
-	for _, v := range m.Args {
-		b = litewire.AppendStringAlways(b, 2, v)
-	}
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CreateSessionRequest)
+}
+
+func extraMarshal_CreateSessionRequest(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*CreateSessionRequest)(base)
 	for k, v := range m.Env {
 		var start int
 		b, start = litewire.BeginMessage(b, 3)
@@ -975,172 +617,68 @@ func (m *CreateSessionRequest) AppendMarshal(b []byte) []byte {
 		b = litewire.AppendStringAlways(b, 2, v)
 		b = litewire.EndMessage(b, start)
 	}
-	b = litewire.AppendString(b, 4, m.Prompt)
-	b = litewire.AppendString(b, 5, m.Model)
-	b = litewire.AppendString(b, 6, m.Effort)
-	b = litewire.AppendInt32(b, 7, int32(m.Mode))
-	b = litewire.AppendInt32(b, 8, int32(m.Agent))
-	for _, v := range m.ImageIds {
-		b = litewire.AppendStringAlways(b, 9, v)
-	}
-	b = litewire.AppendBool(b, 11, m.StandardContext)
-	for _, v := range m.FileIds {
-		b = litewire.AppendStringAlways(b, 12, v)
-	}
 	return b
 }
 
 func (m *CreateSessionRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CreateSessionRequest)
+}
+
+func extraUnmarshal_CreateSessionRequest(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*CreateSessionRequest)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Cwd = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Args = append(m.Args, v)
-				continue
-			}
 		case 3:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
+			raw, err := litewire.ReadBytesRaw(&b)
+			if err != nil {
+				return false, err
+			}
+			var mk string
+			var mv string
+			for len(raw) > 0 {
+				mnum, mwtyp, err := litewire.ReadTag(&raw)
 				if err != nil {
-					return err
+					return false, err
 				}
-				var mk string
-				var mv string
-				for len(raw) > 0 {
-					mnum, mwtyp, err := litewire.ReadTag(&raw)
-					if err != nil {
-						return err
-					}
-					switch mnum {
-					case 1:
-						if mwtyp == litewire.BytesType {
-							v, err := litewire.ReadString(&raw)
-							if err != nil {
-								return err
-							}
-							mk = v
-							continue
+				switch mnum {
+				case 1:
+					if mwtyp == litewire.BytesType {
+						v, err := litewire.ReadString(&raw)
+						if err != nil {
+							return false, err
 						}
-					case 2:
-						if mwtyp == litewire.BytesType {
-							v, err := litewire.ReadString(&raw)
-							if err != nil {
-								return err
-							}
-							mv = v
-							continue
+						mk = v
+						continue
+					}
+				case 2:
+					if mwtyp == litewire.BytesType {
+						v, err := litewire.ReadString(&raw)
+						if err != nil {
+							return false, err
 						}
-					}
-					m.hasUnknown = true
-					if err := litewire.Skip(&raw, mnum, mwtyp); err != nil {
-						return err
+						mv = v
+						continue
 					}
 				}
-				if m.Env == nil {
-					m.Env = make(map[string]string)
+				m.hasUnknown = true
+				if err := litewire.Skip(&raw, mnum, mwtyp); err != nil {
+					return false, err
 				}
-				m.Env[mk] = mv
-				continue
 			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Prompt = v
-				continue
+			if m.Env == nil {
+				m.Env = make(map[string]string)
 			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Model = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Effort = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Mode = ApprovalMode(int32(v))
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = Agent(int32(v))
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ImageIds = append(m.ImageIds, v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.StandardContext = litewire.DecodeBool(v)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FileIds = append(m.FileIds, v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			m.Env[mk] = mv
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type CreateSessionResponse struct {
+	_          [0]func()
 	Session    *Session
 	hasUnknown bool
 }
@@ -1154,36 +692,21 @@ func (m *CreateSessionResponse) GetSession() *Session {
 	return nil
 }
 
+var LitewireDesc_CreateSessionResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(CreateSessionResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&CreateSessionResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CreateSessionResponse{}.Session), Kind: litewire.KindMessage, Sub: &LitewireDesc_Session},
+	},
+}
+
 func (m *CreateSessionResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Session == nil {
-					m.Session = &Session{}
-				}
-				if err := litewire.ReadMessage(&b, m.Session); err != nil {
-					return err
-				}
-				if m.Session.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CreateSessionResponse)
 }
 
 type SendRequest struct {
+	_          [0]func()
 	SessionId  string
 	Text       string
 	RequestId  string
@@ -1242,100 +765,34 @@ func (m *SendRequest) Clone() *SendRequest {
 	return &cp
 }
 
-func (m *SendRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SendRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SendRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SendRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SendRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SendRequest{}.Text), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SendRequest{}.RequestId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SendRequest{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 5, Offset: unsafe.Offsetof(SendRequest{}.Mode), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(SendRequest{}.FileIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
 
 func (m *SendRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SendRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.Text)
-	b = litewire.AppendString(b, 3, m.RequestId)
-	for _, v := range m.ImageIds {
-		b = litewire.AppendStringAlways(b, 4, v)
-	}
-	b = litewire.AppendInt32(b, 5, int32(m.Mode))
-	for _, v := range m.FileIds {
-		b = litewire.AppendStringAlways(b, 6, v)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SendRequest)
 }
 
 func (m *SendRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Text = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ImageIds = append(m.ImageIds, v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Mode = SendMode(int32(v))
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FileIds = append(m.FileIds, v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SendRequest)
 }
 
 type SendResponse struct {
+	_             [0]func()
 	QueuePosition int32
 	hasUnknown    bool
 }
@@ -1349,32 +806,21 @@ func (m *SendResponse) GetQueuePosition() int32 {
 	return 0
 }
 
+var LitewireDesc_SendResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SendResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SendResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SendResponse{}.QueuePosition), Kind: litewire.KindInt32},
+	},
+}
+
 func (m *SendResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.QueuePosition = int32(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SendResponse)
 }
 
 type InterruptRequest struct {
+	_          [0]func()
 	SessionId  string
 	hasUnknown bool
 }
@@ -1396,46 +842,29 @@ func (m *InterruptRequest) Clone() *InterruptRequest {
 	return &cp
 }
 
-func (m *InterruptRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_InterruptRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(InterruptRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&InterruptRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(InterruptRequest{}.SessionId), Kind: litewire.KindString},
+	},
+}
 
 func (m *InterruptRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *InterruptRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_InterruptRequest)
 }
 
 func (m *InterruptRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_InterruptRequest)
 }
 
 type InterruptResponse struct {
+	_           [0]func()
 	Interrupted bool
 	hasUnknown  bool
 }
@@ -1449,32 +878,21 @@ func (m *InterruptResponse) GetInterrupted() bool {
 	return false
 }
 
+var LitewireDesc_InterruptResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(InterruptResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&InterruptResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(InterruptResponse{}.Interrupted), Kind: litewire.KindBool},
+	},
+}
+
 func (m *InterruptResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Interrupted = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_InterruptResponse)
 }
 
 type StopSessionRequest struct {
+	_          [0]func()
 	SessionId  string
 	hasUnknown bool
 }
@@ -1496,43 +914,25 @@ func (m *StopSessionRequest) Clone() *StopSessionRequest {
 	return &cp
 }
 
-func (m *StopSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_StopSessionRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(StopSessionRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&StopSessionRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(StopSessionRequest{}.SessionId), Kind: litewire.KindString},
+	},
+}
 
 func (m *StopSessionRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *StopSessionRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_StopSessionRequest)
 }
 
 func (m *StopSessionRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_StopSessionRequest)
 }
 
 type StopSessionResponse struct {
@@ -1541,21 +941,18 @@ type StopSessionResponse struct {
 
 func (m *StopSessionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_StopSessionResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(StopSessionResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&StopSessionResponse{}) },
+}
+
 func (m *StopSessionResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_StopSessionResponse)
 }
 
 type CancelInputRequest struct {
+	_          [0]func()
 	SessionId  string
 	RequestId  string
 	hasUnknown bool
@@ -1584,53 +981,26 @@ func (m *CancelInputRequest) Clone() *CancelInputRequest {
 	return &cp
 }
 
-func (m *CancelInputRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CancelInputRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(CancelInputRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&CancelInputRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CancelInputRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(CancelInputRequest{}.RequestId), Kind: litewire.KindString},
+	},
+}
 
 func (m *CancelInputRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CancelInputRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.RequestId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CancelInputRequest)
 }
 
 func (m *CancelInputRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CancelInputRequest)
 }
 
 type CancelInputResponse struct {
@@ -1639,21 +1009,18 @@ type CancelInputResponse struct {
 
 func (m *CancelInputResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_CancelInputResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(CancelInputResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&CancelInputResponse{}) },
+}
+
 func (m *CancelInputResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CancelInputResponse)
 }
 
 type ResumeInputRequest struct {
+	_          [0]func()
 	SessionId  string
 	RequestId  string
 	hasUnknown bool
@@ -1682,53 +1049,26 @@ func (m *ResumeInputRequest) Clone() *ResumeInputRequest {
 	return &cp
 }
 
-func (m *ResumeInputRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ResumeInputRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ResumeInputRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResumeInputRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ResumeInputRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ResumeInputRequest{}.RequestId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ResumeInputRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ResumeInputRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.RequestId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeInputRequest)
 }
 
 func (m *ResumeInputRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeInputRequest)
 }
 
 type ResumeInputResponse struct {
@@ -1737,21 +1077,18 @@ type ResumeInputResponse struct {
 
 func (m *ResumeInputResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_ResumeInputResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ResumeInputResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResumeInputResponse{}) },
+}
+
 func (m *ResumeInputResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeInputResponse)
 }
 
 type ResolveApprovalRequest struct {
+	_                [0]func()
 	SessionId        string
 	ApprovalId       string
 	Allow            bool
@@ -1808,93 +1145,30 @@ func (m *ResolveApprovalRequest) Clone() *ResolveApprovalRequest {
 	return &cp
 }
 
-func (m *ResolveApprovalRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ResolveApprovalRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ResolveApprovalRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResolveApprovalRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ResolveApprovalRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ResolveApprovalRequest{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ResolveApprovalRequest{}.Allow), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ResolveApprovalRequest{}.Message), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ResolveApprovalRequest{}.Always), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(ResolveApprovalRequest{}.ObservedEventSeq), Kind: litewire.KindUint64},
+	},
+}
 
 func (m *ResolveApprovalRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ResolveApprovalRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.ApprovalId)
-	b = litewire.AppendBool(b, 3, m.Allow)
-	b = litewire.AppendString(b, 4, m.Message)
-	b = litewire.AppendBool(b, 5, m.Always)
-	b = litewire.AppendVarint(b, 6, uint64(m.ObservedEventSeq))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ResolveApprovalRequest)
 }
 
 func (m *ResolveApprovalRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ApprovalId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Allow = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Message = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Always = litewire.DecodeBool(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedEventSeq = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResolveApprovalRequest)
 }
 
 type ResolveApprovalResponse struct {
@@ -1903,21 +1177,18 @@ type ResolveApprovalResponse struct {
 
 func (m *ResolveApprovalResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_ResolveApprovalResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ResolveApprovalResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResolveApprovalResponse{}) },
+}
+
 func (m *ResolveApprovalResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResolveApprovalResponse)
 }
 
 type AnswerQuestionRequest struct {
+	_                [0]func()
 	SessionId        string
 	QuestionId       string
 	Option           int32
@@ -1979,117 +1250,30 @@ func (m *AnswerQuestionRequest) Clone() *AnswerQuestionRequest {
 	return &cp
 }
 
-func (m *AnswerQuestionRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AnswerQuestionRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(AnswerQuestionRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&AnswerQuestionRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AnswerQuestionRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(AnswerQuestionRequest{}.QuestionId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(AnswerQuestionRequest{}.Option), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(AnswerQuestionRequest{}.QuestionIndex), Kind: litewire.KindInt32, Flags: litewire.FlagOptional},
+		{Num: 5, Offset: unsafe.Offsetof(AnswerQuestionRequest{}.Options), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 6, Offset: unsafe.Offsetof(AnswerQuestionRequest{}.ObservedEventSeq), Kind: litewire.KindUint64},
+	},
+}
 
 func (m *AnswerQuestionRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AnswerQuestionRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.QuestionId)
-	b = litewire.AppendInt32(b, 3, int32(m.Option))
-	if m.QuestionIndex != nil {
-		b = litewire.AppendInt32Always(b, 4, int32(*m.QuestionIndex))
-	}
-	if len(m.Options) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 5)
-		for _, v := range m.Options {
-			b = litewire.AppendRawVarint(b, uint64(int64(v)))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	b = litewire.AppendVarint(b, 6, uint64(m.ObservedEventSeq))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerQuestionRequest)
 }
 
 func (m *AnswerQuestionRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.QuestionId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Option = int32(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := int32(v)
-				m.QuestionIndex = &pv
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				for len(raw) > 0 {
-					v, err := litewire.ReadVarint(&raw)
-					if err != nil {
-						return err
-					}
-					m.Options = append(m.Options, int32(v))
-				}
-				continue
-			}
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Options = append(m.Options, int32(v))
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedEventSeq = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerQuestionRequest)
 }
 
 type AnswerQuestionResponse struct {
@@ -2098,21 +1282,18 @@ type AnswerQuestionResponse struct {
 
 func (m *AnswerQuestionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_AnswerQuestionResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(AnswerQuestionResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&AnswerQuestionResponse{}) },
+}
+
 func (m *AnswerQuestionResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerQuestionResponse)
 }
 
 type SetModelRequest struct {
+	_          [0]func()
 	SessionId  string
 	Model      string
 	Effort     string
@@ -2148,63 +1329,27 @@ func (m *SetModelRequest) Clone() *SetModelRequest {
 	return &cp
 }
 
-func (m *SetModelRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SetModelRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SetModelRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SetModelRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SetModelRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SetModelRequest{}.Model), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SetModelRequest{}.Effort), Kind: litewire.KindString},
+	},
+}
 
 func (m *SetModelRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SetModelRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.Model)
-	b = litewire.AppendString(b, 3, m.Effort)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SetModelRequest)
 }
 
 func (m *SetModelRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Model = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Effort = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SetModelRequest)
 }
 
 type SetModelResponse struct {
@@ -2213,21 +1358,18 @@ type SetModelResponse struct {
 
 func (m *SetModelResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_SetModelResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SetModelResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SetModelResponse{}) },
+}
+
 func (m *SetModelResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SetModelResponse)
 }
 
 type ListModelsRequest struct {
+	_          [0]func()
 	Agent      Agent
 	hasUnknown bool
 }
@@ -2249,46 +1391,29 @@ func (m *ListModelsRequest) Clone() *ListModelsRequest {
 	return &cp
 }
 
-func (m *ListModelsRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ListModelsRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ListModelsRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ListModelsRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ListModelsRequest{}.Agent), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *ListModelsRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ListModelsRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Agent))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ListModelsRequest)
 }
 
 func (m *ListModelsRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = Agent(int32(v))
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ListModelsRequest)
 }
 
 type ModelInfo struct {
+	_               [0]func()
 	Slug            string
 	DisplayName     string
 	Description     string
@@ -2353,86 +1478,27 @@ func (m *ModelInfo) Clone() *ModelInfo {
 	return &cp
 }
 
+var LitewireDesc_ModelInfo = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ModelInfo{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ModelInfo{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ModelInfo{}.Slug), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ModelInfo{}.DisplayName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ModelInfo{}.Description), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ModelInfo{}.Efforts), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 5, Offset: unsafe.Offsetof(ModelInfo{}.DefaultEffort), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ModelInfo{}.ContextWindow), Kind: litewire.KindInt64},
+		{Num: 7, Offset: unsafe.Offsetof(ModelInfo{}.AutoUnavailable), Kind: litewire.KindBool},
+	},
+}
+
 func (m *ModelInfo) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Slug = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DisplayName = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Description = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Efforts = append(m.Efforts, v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DefaultEffort = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ContextWindow = int64(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.AutoUnavailable = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ModelInfo)
 }
 
 type ListModelsResponse struct {
+	_            [0]func()
 	Models       []*ModelInfo
 	DefaultModel string
 	hasUnknown   bool
@@ -2467,44 +1533,39 @@ func (m *ListModelsResponse) Clone() *ListModelsResponse {
 	return &cp
 }
 
+var LitewireDesc_ListModelsResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ListModelsResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ListModelsResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 2, Offset: unsafe.Offsetof(ListModelsResponse{}.DefaultModel), Kind: litewire.KindString},
+	},
+}
+
 func (m *ListModelsResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ListModelsResponse)
+}
+
+func extraUnmarshal_ListModelsResponse(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ListModelsResponse)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
 		case 1:
-			if wtyp == litewire.BytesType {
-				elem := &ModelInfo{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Models = append(m.Models, elem)
-				continue
+			elem := &ModelInfo{}
+			m.Models = append(m.Models, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DefaultModel = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type SetApprovalModeRequest struct {
+	_          [0]func()
 	SessionId  string
 	Mode       ApprovalMode
 	hasUnknown bool
@@ -2533,53 +1594,26 @@ func (m *SetApprovalModeRequest) Clone() *SetApprovalModeRequest {
 	return &cp
 }
 
-func (m *SetApprovalModeRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_SetApprovalModeRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SetApprovalModeRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SetApprovalModeRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SetApprovalModeRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SetApprovalModeRequest{}.Mode), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *SetApprovalModeRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *SetApprovalModeRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendInt32(b, 2, int32(m.Mode))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SetApprovalModeRequest)
 }
 
 func (m *SetApprovalModeRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Mode = ApprovalMode(int32(v))
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SetApprovalModeRequest)
 }
 
 type SetApprovalModeResponse struct {
@@ -2588,21 +1622,18 @@ type SetApprovalModeResponse struct {
 
 func (m *SetApprovalModeResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_SetApprovalModeResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(SetApprovalModeResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&SetApprovalModeResponse{}) },
+}
+
 func (m *SetApprovalModeResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SetApprovalModeResponse)
 }
 
 type RenameSessionRequest struct {
+	_          [0]func()
 	SessionId  string
 	Title      string
 	hasUnknown bool
@@ -2631,53 +1662,26 @@ func (m *RenameSessionRequest) Clone() *RenameSessionRequest {
 	return &cp
 }
 
-func (m *RenameSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_RenameSessionRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(RenameSessionRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&RenameSessionRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(RenameSessionRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(RenameSessionRequest{}.Title), Kind: litewire.KindString},
+	},
+}
 
 func (m *RenameSessionRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *RenameSessionRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.Title)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_RenameSessionRequest)
 }
 
 func (m *RenameSessionRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Title = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_RenameSessionRequest)
 }
 
 type RenameSessionResponse struct {
@@ -2686,21 +1690,18 @@ type RenameSessionResponse struct {
 
 func (m *RenameSessionResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_RenameSessionResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(RenameSessionResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&RenameSessionResponse{}) },
+}
+
 func (m *RenameSessionResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_RenameSessionResponse)
 }
 
 type CompactRequest struct {
+	_          [0]func()
 	SessionId  string
 	hasUnknown bool
 }
@@ -2722,43 +1723,25 @@ func (m *CompactRequest) Clone() *CompactRequest {
 	return &cp
 }
 
-func (m *CompactRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CompactRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(CompactRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&CompactRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CompactRequest{}.SessionId), Kind: litewire.KindString},
+	},
+}
 
 func (m *CompactRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CompactRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CompactRequest)
 }
 
 func (m *CompactRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CompactRequest)
 }
 
 type CompactResponse struct {
@@ -2767,21 +1750,18 @@ type CompactResponse struct {
 
 func (m *CompactResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_CompactResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(CompactResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&CompactResponse{}) },
+}
+
 func (m *CompactResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CompactResponse)
 }
 
 type AnswerPlanRequest struct {
+	_                  [0]func()
 	SessionId          string
 	Choice             PlanChoice
 	ObservedEventSeq   uint64
@@ -2825,73 +1805,28 @@ func (m *AnswerPlanRequest) Clone() *AnswerPlanRequest {
 	return &cp
 }
 
-func (m *AnswerPlanRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AnswerPlanRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(AnswerPlanRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&AnswerPlanRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AnswerPlanRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(AnswerPlanRequest{}.Choice), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(AnswerPlanRequest{}.ObservedEventSeq), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(AnswerPlanRequest{}.ObservedScreenHash), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *AnswerPlanRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AnswerPlanRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendInt32(b, 2, int32(m.Choice))
-	b = litewire.AppendVarint(b, 3, uint64(m.ObservedEventSeq))
-	b = litewire.AppendBytes(b, 4, m.ObservedScreenHash)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerPlanRequest)
 }
 
 func (m *AnswerPlanRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Choice = PlanChoice(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedEventSeq = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedScreenHash = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerPlanRequest)
 }
 
 type AnswerPlanResponse struct {
@@ -2900,21 +1835,18 @@ type AnswerPlanResponse struct {
 
 func (m *AnswerPlanResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_AnswerPlanResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(AnswerPlanResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&AnswerPlanResponse{}) },
+}
+
 func (m *AnswerPlanResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerPlanResponse)
 }
 
 type ListDirectoriesRequest struct {
+	_          [0]func()
 	Path       string
 	hasUnknown bool
 }
@@ -2936,46 +1868,29 @@ func (m *ListDirectoriesRequest) Clone() *ListDirectoriesRequest {
 	return &cp
 }
 
-func (m *ListDirectoriesRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ListDirectoriesRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ListDirectoriesRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ListDirectoriesRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ListDirectoriesRequest{}.Path), Kind: litewire.KindString},
+	},
+}
 
 func (m *ListDirectoriesRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ListDirectoriesRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Path)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ListDirectoriesRequest)
 }
 
 func (m *ListDirectoriesRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Path = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ListDirectoriesRequest)
 }
 
 type ListDirectoriesResponse struct {
+	_          [0]func()
 	Path       string
 	Parent     string
 	Home       string
@@ -3010,59 +1925,24 @@ func (m *ListDirectoriesResponse) GetDirs() []string {
 	return nil
 }
 
+var LitewireDesc_ListDirectoriesResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ListDirectoriesResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ListDirectoriesResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ListDirectoriesResponse{}.Path), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ListDirectoriesResponse{}.Parent), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ListDirectoriesResponse{}.Home), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ListDirectoriesResponse{}.Dirs), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+	},
+}
+
 func (m *ListDirectoriesResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Path = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Parent = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Home = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Dirs = append(m.Dirs, v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ListDirectoriesResponse)
 }
 
 type DaemonSettings struct {
+	_                      [0]func()
 	ApprovalTimeoutSeconds int32
 	DefaultModel           string
 	DefaultEffort          string
@@ -3150,169 +2030,71 @@ func (m *DaemonSettings) Clone() *DaemonSettings {
 	return &cp
 }
 
-func (m *DaemonSettings) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DaemonSettings = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(DaemonSettings{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&DaemonSettings{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DaemonSettings{}.ApprovalTimeoutSeconds), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(DaemonSettings{}.DefaultModel), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DaemonSettings{}.DefaultEffort), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(DaemonSettings{}.DefaultMode), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(DaemonSettings{}.Claude), Kind: litewire.KindMessage, Sub: &LitewireDesc_AgentDefaults},
+		{Num: 6, Offset: unsafe.Offsetof(DaemonSettings{}.ImageUploadQuotaBytes), Kind: litewire.KindInt64},
+		{Num: 7, Offset: unsafe.Offsetof(DaemonSettings{}.Antigravity), Kind: litewire.KindMessage, Sub: &LitewireDesc_AgentDefaults},
+		{Num: 8, Offset: unsafe.Offsetof(DaemonSettings{}.IdleCloseMinutes), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(DaemonSettings{}.DisabledAgents), Kind: litewire.KindInt32, Flags: litewire.FlagRepeated | litewire.FlagPacked | litewire.FlagMarshalOnly},
+		{Num: 10, Offset: unsafe.Offsetof(DaemonSettings{}.Revision), Kind: litewire.KindUint64},
+	},
+}
 
 func (m *DaemonSettings) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DaemonSettings) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.ApprovalTimeoutSeconds))
-	b = litewire.AppendString(b, 2, m.DefaultModel)
-	b = litewire.AppendString(b, 3, m.DefaultEffort)
-	b = litewire.AppendInt32(b, 4, int32(m.DefaultMode))
-	if m.Claude != nil {
-		b = litewire.AppendMessage(b, 5, m.Claude)
-	}
-	b = litewire.AppendVarint(b, 6, uint64(m.ImageUploadQuotaBytes))
-	if m.Antigravity != nil {
-		b = litewire.AppendMessage(b, 7, m.Antigravity)
-	}
-	b = litewire.AppendInt32(b, 8, int32(m.IdleCloseMinutes))
-	if len(m.DisabledAgents) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 9)
-		for _, v := range m.DisabledAgents {
-			b = litewire.AppendRawVarint(b, uint64(int64(v)))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	b = litewire.AppendVarint(b, 10, uint64(m.Revision))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DaemonSettings)
 }
 
 func (m *DaemonSettings) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DaemonSettings)
+}
+
+func extraUnmarshal_DaemonSettings(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*DaemonSettings)(base)
+	b := *bp
+	switch num {
+	case 9:
+		if wtyp == litewire.BytesType {
+			raw, err := litewire.ReadBytesRaw(&b)
+			if err != nil {
+				return false, err
+			}
+			for len(raw) > 0 {
+				v, err := litewire.ReadVarint(&raw)
 				if err != nil {
-					return err
-				}
-				m.ApprovalTimeoutSeconds = int32(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DefaultModel = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.DefaultEffort = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DefaultMode = ApprovalMode(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				if m.Claude == nil {
-					m.Claude = &AgentDefaults{}
-				}
-				if err := litewire.ReadMessage(&b, m.Claude); err != nil {
-					return err
-				}
-				if m.Claude.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ImageUploadQuotaBytes = int64(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.BytesType {
-				if m.Antigravity == nil {
-					m.Antigravity = &AgentDefaults{}
-				}
-				if err := litewire.ReadMessage(&b, m.Antigravity); err != nil {
-					return err
-				}
-				if m.Antigravity.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IdleCloseMinutes = int32(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				for len(raw) > 0 {
-					v, err := litewire.ReadVarint(&raw)
-					if err != nil {
-						return err
-					}
-					m.DisabledAgents = append(m.DisabledAgents, Agent(int32(v)))
-				}
-				continue
-			}
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
+					return false, err
 				}
 				m.DisabledAgents = append(m.DisabledAgents, Agent(int32(v)))
-				continue
 			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Revision = v
-				continue
-			}
+			*bp = b
+			return true, nil
 		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if wtyp == litewire.VarintType {
+			v, err := litewire.ReadVarint(&b)
+			if err != nil {
+				return false, err
+			}
+			m.DisabledAgents = append(m.DisabledAgents, Agent(int32(v)))
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type AgentDefaults struct {
+	_          [0]func()
 	Model      string
 	Effort     string
 	Mode       ApprovalMode
@@ -3348,63 +2130,27 @@ func (m *AgentDefaults) Clone() *AgentDefaults {
 	return &cp
 }
 
-func (m *AgentDefaults) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AgentDefaults = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(AgentDefaults{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&AgentDefaults{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AgentDefaults{}.Model), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(AgentDefaults{}.Effort), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(AgentDefaults{}.Mode), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *AgentDefaults) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AgentDefaults) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Model)
-	b = litewire.AppendString(b, 2, m.Effort)
-	b = litewire.AppendInt32(b, 3, int32(m.Mode))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AgentDefaults)
 }
 
 func (m *AgentDefaults) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Model = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Effort = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Mode = ApprovalMode(int32(v))
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AgentDefaults)
 }
 
 type GetSettingsRequest struct {
@@ -3421,34 +2167,26 @@ func (m *GetSettingsRequest) Clone() *GetSettingsRequest {
 	return &cp
 }
 
-func (m *GetSettingsRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_GetSettingsRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(GetSettingsRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&GetSettingsRequest{}) },
+}
 
 func (m *GetSettingsRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetSettingsRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetSettingsRequest)
 }
 
 func (m *GetSettingsRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetSettingsRequest)
 }
 
 type GetSettingsResponse struct {
+	_            [0]func()
 	Settings     *DaemonSettings
 	ImageStorage *ImageStorageUsage
 	hasUnknown   bool
@@ -3469,49 +2207,22 @@ func (m *GetSettingsResponse) GetImageStorage() *ImageStorageUsage {
 	return nil
 }
 
+var LitewireDesc_GetSettingsResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(GetSettingsResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&GetSettingsResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetSettingsResponse{}.Settings), Kind: litewire.KindMessage, Sub: &LitewireDesc_DaemonSettings},
+		{Num: 2, Offset: unsafe.Offsetof(GetSettingsResponse{}.ImageStorage), Kind: litewire.KindMessage, Sub: &LitewireDesc_ImageStorageUsage},
+	},
+}
+
 func (m *GetSettingsResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Settings == nil {
-					m.Settings = &DaemonSettings{}
-				}
-				if err := litewire.ReadMessage(&b, m.Settings); err != nil {
-					return err
-				}
-				if m.Settings.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				if m.ImageStorage == nil {
-					m.ImageStorage = &ImageStorageUsage{}
-				}
-				if err := litewire.ReadMessage(&b, m.ImageStorage); err != nil {
-					return err
-				}
-				if m.ImageStorage.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetSettingsResponse)
 }
 
 type UpdateSettingsRequest struct {
+	_             [0]func()
 	Settings      *DaemonSettings
 	CleanImages   bool
 	ToggleAgent   *Agent
@@ -3563,88 +2274,51 @@ func (m *UpdateSettingsRequest) Clone() *UpdateSettingsRequest {
 	return &cp
 }
 
-func (m *UpdateSettingsRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UpdateSettingsRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(UpdateSettingsRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&UpdateSettingsRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UpdateSettingsRequest{}.Settings), Kind: litewire.KindMessage, Sub: &LitewireDesc_DaemonSettings},
+		{Num: 2, Offset: unsafe.Offsetof(UpdateSettingsRequest{}.CleanImages), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(UpdateSettingsRequest{}.ToggleAgent), Kind: litewire.KindInt32, Flags: litewire.FlagOptional | litewire.FlagMarshalOnly},
+		{Num: 4, Offset: unsafe.Offsetof(UpdateSettingsRequest{}.ToggleEnabled), Kind: litewire.KindBool, Flags: litewire.FlagOptional},
+	},
+}
 
 func (m *UpdateSettingsRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UpdateSettingsRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	if m.Settings != nil {
-		b = litewire.AppendMessage(b, 1, m.Settings)
-	}
-	b = litewire.AppendBool(b, 2, m.CleanImages)
-	if m.ToggleAgent != nil {
-		b = litewire.AppendInt32Always(b, 3, int32(*m.ToggleAgent))
-	}
-	if m.ToggleEnabled != nil {
-		b = litewire.AppendBoolAlways(b, 4, *m.ToggleEnabled)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UpdateSettingsRequest)
 }
 
 func (m *UpdateSettingsRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Settings == nil {
-					m.Settings = &DaemonSettings{}
-				}
-				if err := litewire.ReadMessage(&b, m.Settings); err != nil {
-					return err
-				}
-				if m.Settings.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UpdateSettingsRequest)
+}
+
+func extraUnmarshal_UpdateSettingsRequest(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*UpdateSettingsRequest)(base)
+	b := *bp
+	switch num {
+	case 3:
+		if wtyp == litewire.VarintType {
+			v, err := litewire.ReadVarint(&b)
+			if err != nil {
+				return false, err
 			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CleanImages = litewire.DecodeBool(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := Agent(int32(v))
-				m.ToggleAgent = &pv
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := litewire.DecodeBool(v)
-				m.ToggleEnabled = &pv
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			pv := Agent(int32(v))
+			m.ToggleAgent = &pv
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type UpdateSettingsResponse struct {
+	_            [0]func()
 	Settings     *DaemonSettings
 	ImageStorage *ImageStorageUsage
 	hasUnknown   bool
@@ -3665,49 +2339,22 @@ func (m *UpdateSettingsResponse) GetImageStorage() *ImageStorageUsage {
 	return nil
 }
 
+var LitewireDesc_UpdateSettingsResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(UpdateSettingsResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&UpdateSettingsResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UpdateSettingsResponse{}.Settings), Kind: litewire.KindMessage, Sub: &LitewireDesc_DaemonSettings},
+		{Num: 2, Offset: unsafe.Offsetof(UpdateSettingsResponse{}.ImageStorage), Kind: litewire.KindMessage, Sub: &LitewireDesc_ImageStorageUsage},
+	},
+}
+
 func (m *UpdateSettingsResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Settings == nil {
-					m.Settings = &DaemonSettings{}
-				}
-				if err := litewire.ReadMessage(&b, m.Settings); err != nil {
-					return err
-				}
-				if m.Settings.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				if m.ImageStorage == nil {
-					m.ImageStorage = &ImageStorageUsage{}
-				}
-				if err := litewire.ReadMessage(&b, m.ImageStorage); err != nil {
-					return err
-				}
-				if m.ImageStorage.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UpdateSettingsResponse)
 }
 
 type ResumeSessionRequest struct {
+	_          [0]func()
 	SessionId  string
 	hasUnknown bool
 }
@@ -3729,46 +2376,29 @@ func (m *ResumeSessionRequest) Clone() *ResumeSessionRequest {
 	return &cp
 }
 
-func (m *ResumeSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ResumeSessionRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ResumeSessionRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResumeSessionRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ResumeSessionRequest{}.SessionId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ResumeSessionRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ResumeSessionRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeSessionRequest)
 }
 
 func (m *ResumeSessionRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeSessionRequest)
 }
 
 type ResumeSessionResponse struct {
+	_          [0]func()
 	Session    *Session
 	hasUnknown bool
 }
@@ -3782,36 +2412,21 @@ func (m *ResumeSessionResponse) GetSession() *Session {
 	return nil
 }
 
+var LitewireDesc_ResumeSessionResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ResumeSessionResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResumeSessionResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ResumeSessionResponse{}.Session), Kind: litewire.KindMessage, Sub: &LitewireDesc_Session},
+	},
+}
+
 func (m *ResumeSessionResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Session == nil {
-					m.Session = &Session{}
-				}
-				if err := litewire.ReadMessage(&b, m.Session); err != nil {
-					return err
-				}
-				if m.Session.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeSessionResponse)
 }
 
 type ForkSessionRequest struct {
+	_          [0]func()
 	SessionId  string
 	hasUnknown bool
 }
@@ -3833,46 +2448,29 @@ func (m *ForkSessionRequest) Clone() *ForkSessionRequest {
 	return &cp
 }
 
-func (m *ForkSessionRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ForkSessionRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ForkSessionRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ForkSessionRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ForkSessionRequest{}.SessionId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ForkSessionRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ForkSessionRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ForkSessionRequest)
 }
 
 func (m *ForkSessionRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ForkSessionRequest)
 }
 
 type ForkSessionResponse struct {
+	_          [0]func()
 	Session    *Session
 	hasUnknown bool
 }
@@ -3886,36 +2484,21 @@ func (m *ForkSessionResponse) GetSession() *Session {
 	return nil
 }
 
+var LitewireDesc_ForkSessionResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ForkSessionResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ForkSessionResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ForkSessionResponse{}.Session), Kind: litewire.KindMessage, Sub: &LitewireDesc_Session},
+	},
+}
+
 func (m *ForkSessionResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Session == nil {
-					m.Session = &Session{}
-				}
-				if err := litewire.ReadMessage(&b, m.Session); err != nil {
-					return err
-				}
-				if m.Session.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ForkSessionResponse)
 }
 
 type ImageUploadStatus struct {
+	_              [0]func()
 	TransferId     string
 	State          ImageUploadState
 	PersistedBytes int64
@@ -3992,113 +2575,30 @@ func (m *ImageUploadStatus) GetFileId() string {
 	return ""
 }
 
+var LitewireDesc_ImageUploadStatus = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ImageUploadStatus{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ImageUploadStatus{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ImageUploadStatus{}.TransferId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ImageUploadStatus{}.State), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(ImageUploadStatus{}.PersistedBytes), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(ImageUploadStatus{}.TotalBytes), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(ImageUploadStatus{}.ImageId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(ImageUploadStatus{}.Width), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(ImageUploadStatus{}.Height), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(ImageUploadStatus{}.ExpiresMs), Kind: litewire.KindInt64},
+		{Num: 9, Offset: unsafe.Offsetof(ImageUploadStatus{}.MaxChunkBytes), Kind: litewire.KindInt32},
+		{Num: 10, Offset: unsafe.Offsetof(ImageUploadStatus{}.FileId), Kind: litewire.KindString},
+	},
+}
+
 func (m *ImageUploadStatus) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TransferId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.State = ImageUploadState(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PersistedBytes = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TotalBytes = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.ImageId = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Width = int32(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Height = int32(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ExpiresMs = int64(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MaxChunkBytes = int32(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FileId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ImageUploadStatus)
 }
 
 type BeginImageUploadRequest struct {
+	_          [0]func()
 	TransferId string
 	Format     ImageFormat
 	TotalBytes int64
@@ -4149,86 +2649,33 @@ func (m *BeginImageUploadRequest) Clone() *BeginImageUploadRequest {
 	return &cp
 }
 
-func (m *BeginImageUploadRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_BeginImageUploadRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(BeginImageUploadRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&BeginImageUploadRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(BeginImageUploadRequest{}.TransferId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(BeginImageUploadRequest{}.Format), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(BeginImageUploadRequest{}.TotalBytes), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(BeginImageUploadRequest{}.Sha256), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(BeginImageUploadRequest{}.FileName), Kind: litewire.KindString},
+	},
+}
 
 func (m *BeginImageUploadRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *BeginImageUploadRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.TransferId)
-	b = litewire.AppendInt32(b, 2, int32(m.Format))
-	b = litewire.AppendVarint(b, 3, uint64(m.TotalBytes))
-	b = litewire.AppendBytes(b, 4, m.Sha256)
-	b = litewire.AppendString(b, 5, m.FileName)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_BeginImageUploadRequest)
 }
 
 func (m *BeginImageUploadRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TransferId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Format = ImageFormat(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TotalBytes = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Sha256 = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FileName = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_BeginImageUploadRequest)
 }
 
 type BeginImageUploadResponse struct {
+	_          [0]func()
 	Status     *ImageUploadStatus
 	hasUnknown bool
 }
@@ -4242,36 +2689,21 @@ func (m *BeginImageUploadResponse) GetStatus() *ImageUploadStatus {
 	return nil
 }
 
+var LitewireDesc_BeginImageUploadResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(BeginImageUploadResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&BeginImageUploadResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(BeginImageUploadResponse{}.Status), Kind: litewire.KindMessage, Sub: &LitewireDesc_ImageUploadStatus},
+	},
+}
+
 func (m *BeginImageUploadResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Status == nil {
-					m.Status = &ImageUploadStatus{}
-				}
-				if err := litewire.ReadMessage(&b, m.Status); err != nil {
-					return err
-				}
-				if m.Status.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_BeginImageUploadResponse)
 }
 
 type PutImageChunkRequest struct {
+	_          [0]func()
 	TransferId string
 	Offset     int64
 	Data       []byte
@@ -4308,66 +2740,31 @@ func (m *PutImageChunkRequest) Clone() *PutImageChunkRequest {
 	return &cp
 }
 
-func (m *PutImageChunkRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_PutImageChunkRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(PutImageChunkRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&PutImageChunkRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(PutImageChunkRequest{}.TransferId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(PutImageChunkRequest{}.Offset), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(PutImageChunkRequest{}.Data), Kind: litewire.KindBytes},
+	},
+}
 
 func (m *PutImageChunkRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *PutImageChunkRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.TransferId)
-	b = litewire.AppendVarint(b, 2, uint64(m.Offset))
-	b = litewire.AppendBytes(b, 3, m.Data)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PutImageChunkRequest)
 }
 
 func (m *PutImageChunkRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TransferId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Offset = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Data = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PutImageChunkRequest)
 }
 
 type PutImageChunkResponse struct {
+	_          [0]func()
 	Status     *ImageUploadStatus
 	hasUnknown bool
 }
@@ -4381,36 +2778,21 @@ func (m *PutImageChunkResponse) GetStatus() *ImageUploadStatus {
 	return nil
 }
 
+var LitewireDesc_PutImageChunkResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(PutImageChunkResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&PutImageChunkResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(PutImageChunkResponse{}.Status), Kind: litewire.KindMessage, Sub: &LitewireDesc_ImageUploadStatus},
+	},
+}
+
 func (m *PutImageChunkResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Status == nil {
-					m.Status = &ImageUploadStatus{}
-				}
-				if err := litewire.ReadMessage(&b, m.Status); err != nil {
-					return err
-				}
-				if m.Status.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_PutImageChunkResponse)
 }
 
 type GetImageUploadStatusRequest struct {
+	_          [0]func()
 	TransferId string
 	hasUnknown bool
 }
@@ -4432,46 +2814,29 @@ func (m *GetImageUploadStatusRequest) Clone() *GetImageUploadStatusRequest {
 	return &cp
 }
 
-func (m *GetImageUploadStatusRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_GetImageUploadStatusRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(GetImageUploadStatusRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&GetImageUploadStatusRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetImageUploadStatusRequest{}.TransferId), Kind: litewire.KindString},
+	},
+}
 
 func (m *GetImageUploadStatusRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetImageUploadStatusRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.TransferId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetImageUploadStatusRequest)
 }
 
 func (m *GetImageUploadStatusRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TransferId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetImageUploadStatusRequest)
 }
 
 type GetSharedFileChunkRequest struct {
+	_          [0]func()
 	SessionId  string
 	FileId     string
 	Offset     int64
@@ -4507,66 +2872,31 @@ func (m *GetSharedFileChunkRequest) Clone() *GetSharedFileChunkRequest {
 	return &cp
 }
 
-func (m *GetSharedFileChunkRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_GetSharedFileChunkRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(GetSharedFileChunkRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&GetSharedFileChunkRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetSharedFileChunkRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(GetSharedFileChunkRequest{}.FileId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(GetSharedFileChunkRequest{}.Offset), Kind: litewire.KindInt64},
+	},
+}
 
 func (m *GetSharedFileChunkRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetSharedFileChunkRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.SessionId)
-	b = litewire.AppendString(b, 2, m.FileId)
-	b = litewire.AppendVarint(b, 3, uint64(m.Offset))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetSharedFileChunkRequest)
 }
 
 func (m *GetSharedFileChunkRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.FileId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Offset = int64(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetSharedFileChunkRequest)
 }
 
 type GetSharedFileChunkResponse struct {
+	_          [0]func()
 	Data       []byte
 	TotalBytes *uint64
 	hasUnknown bool
@@ -4587,42 +2917,22 @@ func (m *GetSharedFileChunkResponse) GetTotalBytes() uint64 {
 	return 0
 }
 
+var LitewireDesc_GetSharedFileChunkResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(GetSharedFileChunkResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&GetSharedFileChunkResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetSharedFileChunkResponse{}.Data), Kind: litewire.KindBytes},
+		{Num: 2, Offset: unsafe.Offsetof(GetSharedFileChunkResponse{}.TotalBytes), Kind: litewire.KindFixed64, Flags: litewire.FlagOptional},
+	},
+}
+
 func (m *GetSharedFileChunkResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Data = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.TotalBytes = &pv
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetSharedFileChunkResponse)
 }
 
 type GetImageUploadStatusResponse struct {
+	_          [0]func()
 	Status     *ImageUploadStatus
 	hasUnknown bool
 }
@@ -4636,36 +2946,21 @@ func (m *GetImageUploadStatusResponse) GetStatus() *ImageUploadStatus {
 	return nil
 }
 
+var LitewireDesc_GetImageUploadStatusResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(GetImageUploadStatusResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&GetImageUploadStatusResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetImageUploadStatusResponse{}.Status), Kind: litewire.KindMessage, Sub: &LitewireDesc_ImageUploadStatus},
+	},
+}
+
 func (m *GetImageUploadStatusResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Status == nil {
-					m.Status = &ImageUploadStatus{}
-				}
-				if err := litewire.ReadMessage(&b, m.Status); err != nil {
-					return err
-				}
-				if m.Status.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetImageUploadStatusResponse)
 }
 
 type CompleteImageUploadRequest struct {
+	_          [0]func()
 	TransferId string
 	hasUnknown bool
 }
@@ -4687,46 +2982,29 @@ func (m *CompleteImageUploadRequest) Clone() *CompleteImageUploadRequest {
 	return &cp
 }
 
-func (m *CompleteImageUploadRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_CompleteImageUploadRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(CompleteImageUploadRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&CompleteImageUploadRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CompleteImageUploadRequest{}.TransferId), Kind: litewire.KindString},
+	},
+}
 
 func (m *CompleteImageUploadRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *CompleteImageUploadRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.TransferId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CompleteImageUploadRequest)
 }
 
 func (m *CompleteImageUploadRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TransferId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CompleteImageUploadRequest)
 }
 
 type CompleteImageUploadResponse struct {
+	_          [0]func()
 	Status     *ImageUploadStatus
 	hasUnknown bool
 }
@@ -4740,36 +3018,21 @@ func (m *CompleteImageUploadResponse) GetStatus() *ImageUploadStatus {
 	return nil
 }
 
+var LitewireDesc_CompleteImageUploadResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(CompleteImageUploadResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&CompleteImageUploadResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(CompleteImageUploadResponse{}.Status), Kind: litewire.KindMessage, Sub: &LitewireDesc_ImageUploadStatus},
+	},
+}
+
 func (m *CompleteImageUploadResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				if m.Status == nil {
-					m.Status = &ImageUploadStatus{}
-				}
-				if err := litewire.ReadMessage(&b, m.Status); err != nil {
-					return err
-				}
-				if m.Status.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CompleteImageUploadResponse)
 }
 
 type AbortImageUploadRequest struct {
+	_          [0]func()
 	TransferId string
 	hasUnknown bool
 }
@@ -4791,43 +3054,25 @@ func (m *AbortImageUploadRequest) Clone() *AbortImageUploadRequest {
 	return &cp
 }
 
-func (m *AbortImageUploadRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_AbortImageUploadRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(AbortImageUploadRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&AbortImageUploadRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(AbortImageUploadRequest{}.TransferId), Kind: litewire.KindString},
+	},
+}
 
 func (m *AbortImageUploadRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *AbortImageUploadRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.TransferId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AbortImageUploadRequest)
 }
 
 func (m *AbortImageUploadRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TransferId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AbortImageUploadRequest)
 }
 
 type AbortImageUploadResponse struct {
@@ -4836,21 +3081,18 @@ type AbortImageUploadResponse struct {
 
 func (m *AbortImageUploadResponse) HasUnknown() bool { return m != nil && m.hasUnknown }
 
+var LitewireDesc_AbortImageUploadResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(AbortImageUploadResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&AbortImageUploadResponse{}) },
+}
+
 func (m *AbortImageUploadResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AbortImageUploadResponse)
 }
 
 type ImageStorageUsage struct {
+	_                     [0]func()
 	EmergencyReserveBytes int64
 	UploadBytes           int64
 	ReservedBytes         int64
@@ -4920,89 +3162,44 @@ func (m *ImageStorageUsage) Clone() *ImageStorageUsage {
 	return &cp
 }
 
+var LitewireDesc_ImageStorageUsage = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ImageStorageUsage{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ImageStorageUsage{}) },
+	Fields: []litewire.Field{
+		{Num: 7, Offset: unsafe.Offsetof(ImageStorageUsage{}.EmergencyReserveBytes), Kind: litewire.KindInt64},
+		{Num: 1, Offset: unsafe.Offsetof(ImageStorageUsage{}.UploadBytes), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(ImageStorageUsage{}.ReservedBytes), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(ImageStorageUsage{}.ProtectedBytes), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(ImageStorageUsage{}.ReclaimableBytes), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(ImageStorageUsage{}.CacheBytes), Kind: litewire.KindInt64},
+	},
+}
+
 func (m *ImageStorageUsage) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ImageStorageUsage)
+}
+
+func extraUnmarshal_ImageStorageUsage(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*ImageStorageUsage)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.EmergencyReserveBytes = int64(v)
-				continue
-			}
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UploadBytes = int64(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ReservedBytes = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ProtectedBytes = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ReclaimableBytes = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheBytes = int64(v)
-				continue
-			}
 		case 6:
-			if wtyp == litewire.BytesType {
-				elem := &ImageSessionStorage{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Sessions = append(m.Sessions, elem)
-				continue
+			elem := &ImageSessionStorage{}
+			m.Sessions = append(m.Sessions, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type ImageSessionStorage struct {
+	_              [0]func()
 	SessionId      string
 	Bytes          int64
 	ProtectedBytes int64
@@ -5038,50 +3235,23 @@ func (m *ImageSessionStorage) Clone() *ImageSessionStorage {
 	return &cp
 }
 
+var LitewireDesc_ImageSessionStorage = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ImageSessionStorage{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ImageSessionStorage{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ImageSessionStorage{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ImageSessionStorage{}.Bytes), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(ImageSessionStorage{}.ProtectedBytes), Kind: litewire.KindInt64},
+	},
+}
+
 func (m *ImageSessionStorage) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Bytes = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ProtectedBytes = int64(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ImageSessionStorage)
 }
 
 type ScheduleRequest struct {
+	_                [0]func()
 	Operation        string
 	TaskId           string
 	SessionId        string
@@ -5139,96 +3309,34 @@ func (m *ScheduleRequest) Clone() *ScheduleRequest {
 	return &cp
 }
 
-func (m *ScheduleRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_ScheduleRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ScheduleRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ScheduleRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleRequest{}.Operation), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ScheduleRequest{}.TaskId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ScheduleRequest{}.SessionId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ScheduleRequest{}.SpecJson), Kind: litewire.KindBytes},
+		{Num: 5, Offset: unsafe.Offsetof(ScheduleRequest{}.ExpectedRevision), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(ScheduleRequest{}.RequestId), Kind: litewire.KindString},
+	},
+}
 
 func (m *ScheduleRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *ScheduleRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Operation)
-	b = litewire.AppendString(b, 2, m.TaskId)
-	b = litewire.AppendString(b, 3, m.SessionId)
-	b = litewire.AppendBytes(b, 4, m.SpecJson)
-	b = litewire.AppendVarint(b, 5, uint64(m.ExpectedRevision))
-	b = litewire.AppendString(b, 6, m.RequestId)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleRequest)
 }
 
 func (m *ScheduleRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Operation = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.TaskId = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.SpecJson = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ExpectedRevision = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RequestId = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleRequest)
 }
 
 type ScheduleResponse struct {
+	_          [0]func()
 	ResultJson []byte
 	hasUnknown bool
 }
@@ -5242,29 +3350,17 @@ func (m *ScheduleResponse) GetResultJson() []byte {
 	return nil
 }
 
+var LitewireDesc_ScheduleResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ScheduleResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ScheduleResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ScheduleResponse{}.ResultJson), Kind: litewire.KindBytes},
+	},
+}
+
 func (m *ScheduleResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.ResultJson = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleResponse)
 }
 
 type GetMachineStatusRequest struct {
@@ -5281,34 +3377,26 @@ func (m *GetMachineStatusRequest) Clone() *GetMachineStatusRequest {
 	return &cp
 }
 
-func (m *GetMachineStatusRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_GetMachineStatusRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(GetMachineStatusRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&GetMachineStatusRequest{}) },
+}
 
 func (m *GetMachineStatusRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetMachineStatusRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetMachineStatusRequest)
 }
 
 func (m *GetMachineStatusRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetMachineStatusRequest)
 }
 
 type DiskStatus struct {
+	_                     [0]func()
 	ObservedMs            int64
 	TotalBytes            uint64
 	AvailableBytes        uint64
@@ -5365,96 +3453,34 @@ func (m *DiskStatus) Clone() *DiskStatus {
 	return &cp
 }
 
-func (m *DiskStatus) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_DiskStatus = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(DiskStatus{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&DiskStatus{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DiskStatus{}.ObservedMs), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(DiskStatus{}.TotalBytes), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(DiskStatus{}.AvailableBytes), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(DiskStatus{}.Pressure), Kind: litewire.KindInt32},
+		{Num: 5, Offset: unsafe.Offsetof(DiskStatus{}.EmergencyReserveBytes), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(DiskStatus{}.DeferredWritesPaused), Kind: litewire.KindBool},
+	},
+}
 
 func (m *DiskStatus) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *DiskStatus) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.ObservedMs))
-	b = litewire.AppendVarint(b, 2, uint64(m.TotalBytes))
-	b = litewire.AppendVarint(b, 3, uint64(m.AvailableBytes))
-	b = litewire.AppendInt32(b, 4, int32(m.Pressure))
-	b = litewire.AppendVarint(b, 5, uint64(m.EmergencyReserveBytes))
-	b = litewire.AppendBool(b, 6, m.DeferredWritesPaused)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DiskStatus)
 }
 
 func (m *DiskStatus) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedMs = int64(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TotalBytes = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.AvailableBytes = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Pressure = ResourcePressure(int32(v))
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.EmergencyReserveBytes = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.DeferredWritesPaused = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DiskStatus)
 }
 
 type MachineSample struct {
+	_               [0]func()
 	TimeMs          int64
 	CpuPercent      float64
 	MemoryUsedBytes uint64
@@ -5490,50 +3516,23 @@ func (m *MachineSample) Clone() *MachineSample {
 	return &cp
 }
 
+var LitewireDesc_MachineSample = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(MachineSample{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&MachineSample{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineSample{}.TimeMs), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(MachineSample{}.CpuPercent), Kind: litewire.KindDouble},
+		{Num: 3, Offset: unsafe.Offsetof(MachineSample{}.MemoryUsedBytes), Kind: litewire.KindUint64},
+	},
+}
+
 func (m *MachineSample) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TimeMs = int64(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.CpuPercent = math.Float64frombits(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MemoryUsedBytes = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_MachineSample)
 }
 
 type ResourceUsage struct {
+	_           [0]func()
 	Id          string
 	Executable  string
 	SessionId   string
@@ -5583,68 +3582,25 @@ func (m *ResourceUsage) Clone() *ResourceUsage {
 	return &cp
 }
 
+var LitewireDesc_ResourceUsage = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(ResourceUsage{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResourceUsage{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ResourceUsage{}.Id), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ResourceUsage{}.Executable), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(ResourceUsage{}.SessionId), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(ResourceUsage{}.CpuPercent), Kind: litewire.KindDouble},
+		{Num: 5, Offset: unsafe.Offsetof(ResourceUsage{}.MemoryBytes), Kind: litewire.KindUint64},
+	},
+}
+
 func (m *ResourceUsage) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Id = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Executable = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.SessionId = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.CpuPercent = math.Float64frombits(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MemoryBytes = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResourceUsage)
 }
 
 type MachineBattery struct {
+	_          [0]func()
 	Percent    float64
 	Charging   bool
 	hasUnknown bool
@@ -5673,41 +3629,22 @@ func (m *MachineBattery) Clone() *MachineBattery {
 	return &cp
 }
 
+var LitewireDesc_MachineBattery = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(MachineBattery{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&MachineBattery{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineBattery{}.Percent), Kind: litewire.KindDouble},
+		{Num: 2, Offset: unsafe.Offsetof(MachineBattery{}.Charging), Kind: litewire.KindBool},
+	},
+}
+
 func (m *MachineBattery) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.Percent = math.Float64frombits(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Charging = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_MachineBattery)
 }
 
 type MachineStatus struct {
+	_                      [0]func()
 	ObservedMs             int64
 	CpuPercent             float64
 	Cores                  uint32
@@ -5870,188 +3807,63 @@ func (m *MachineStatus) Clone() *MachineStatus {
 	return &cp
 }
 
+var LitewireDesc_MachineStatus = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(MachineStatus{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&MachineStatus{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineStatus{}.ObservedMs), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(MachineStatus{}.CpuPercent), Kind: litewire.KindDouble},
+		{Num: 3, Offset: unsafe.Offsetof(MachineStatus{}.Cores), Kind: litewire.KindUint32},
+		{Num: 4, Offset: unsafe.Offsetof(MachineStatus{}.LoadOne), Kind: litewire.KindDouble, Flags: litewire.FlagOptional},
+		{Num: 5, Offset: unsafe.Offsetof(MachineStatus{}.MemoryUsedBytes), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(MachineStatus{}.MemoryTotalBytes), Kind: litewire.KindUint64},
+		{Num: 7, Offset: unsafe.Offsetof(MachineStatus{}.MemoryPressure), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(MachineStatus{}.MemoryPressurePosition), Kind: litewire.KindDouble, Flags: litewire.FlagOptional},
+		{Num: 9, Offset: unsafe.Offsetof(MachineStatus{}.SwapUsedBytes), Kind: litewire.KindUint64, Flags: litewire.FlagOptional},
+		{Num: 10, Offset: unsafe.Offsetof(MachineStatus{}.Disk), Kind: litewire.KindMessage, Sub: &LitewireDesc_DiskStatus},
+		{Num: 11, Offset: unsafe.Offsetof(MachineStatus{}.AgentBytes), Kind: litewire.KindUint64, Flags: litewire.FlagOptional},
+		{Num: 14, Offset: unsafe.Offsetof(MachineStatus{}.UptimeSeconds), Kind: litewire.KindUint64},
+		{Num: 15, Offset: unsafe.Offsetof(MachineStatus{}.Battery), Kind: litewire.KindMessage, Sub: &LitewireDesc_MachineBattery},
+	},
+}
+
 func (m *MachineStatus) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_MachineStatus)
+}
+
+func extraUnmarshal_MachineStatus(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*MachineStatus)(base)
+	b := *bp
+	var sub litewire.StrictUnmarshaler
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ObservedMs = int64(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.CpuPercent = math.Float64frombits(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Cores = uint32(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				pv := math.Float64frombits(v)
-				m.LoadOne = &pv
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MemoryUsedBytes = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MemoryTotalBytes = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.MemoryPressure = ResourcePressure(int32(v))
-				continue
-			}
-		case 8:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				pv := math.Float64frombits(v)
-				m.MemoryPressurePosition = &pv
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.SwapUsedBytes = &pv
-				continue
-			}
-		case 10:
-			if wtyp == litewire.BytesType {
-				if m.Disk == nil {
-					m.Disk = &DiskStatus{}
-				}
-				if err := litewire.ReadMessage(&b, m.Disk); err != nil {
-					return err
-				}
-				if m.Disk.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 11:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				pv := v
-				m.AgentBytes = &pv
-				continue
-			}
 		case 12:
-			if wtyp == litewire.BytesType {
-				elem := &ResourceUsage{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Sessions = append(m.Sessions, elem)
-				continue
-			}
+			elem := &ResourceUsage{}
+			m.Sessions = append(m.Sessions, elem)
+			sub = elem
 		case 13:
-			if wtyp == litewire.BytesType {
-				elem := &ResourceUsage{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Processes = append(m.Processes, elem)
-				continue
-			}
-		case 14:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UptimeSeconds = v
-				continue
-			}
-		case 15:
-			if wtyp == litewire.BytesType {
-				if m.Battery == nil {
-					m.Battery = &MachineBattery{}
-				}
-				if err := litewire.ReadMessage(&b, m.Battery); err != nil {
-					return err
-				}
-				if m.Battery.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
+			elem := &ResourceUsage{}
+			m.Processes = append(m.Processes, elem)
+			sub = elem
 		case 16:
-			if wtyp == litewire.BytesType {
-				elem := &MachineSample{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Samples = append(m.Samples, elem)
-				continue
-			}
+			elem := &MachineSample{}
+			m.Samples = append(m.Samples, elem)
+			sub = elem
 		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if sub != nil {
+			if err := litewire.ReadStrictMessage(&b, sub, &m.hasUnknown); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type GetUsageStatsRequest struct {
+	_               [0]func()
 	Preset          UsageRangePreset
 	CustomStartMs   int64
 	CustomEndMs     int64
@@ -6123,137 +3935,36 @@ func (m *GetUsageStatsRequest) Clone() *GetUsageStatsRequest {
 	return &cp
 }
 
-func (m *GetUsageStatsRequest) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_GetUsageStatsRequest = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(GetUsageStatsRequest{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&GetUsageStatsRequest{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(GetUsageStatsRequest{}.Preset), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(GetUsageStatsRequest{}.CustomStartMs), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(GetUsageStatsRequest{}.CustomEndMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(GetUsageStatsRequest{}.Timezone), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(GetUsageStatsRequest{}.TzOffsetMinutes), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(GetUsageStatsRequest{}.BucketBoundsMs), Kind: litewire.KindInt64, Flags: litewire.FlagRepeated | litewire.FlagPacked},
+		{Num: 7, Offset: unsafe.Offsetof(GetUsageStatsRequest{}.PrevStartMs), Kind: litewire.KindInt64},
+		{Num: 8, Offset: unsafe.Offsetof(GetUsageStatsRequest{}.IncludeDisabled), Kind: litewire.KindBool},
+	},
+}
 
 func (m *GetUsageStatsRequest) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *GetUsageStatsRequest) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Preset))
-	b = litewire.AppendVarint(b, 2, uint64(m.CustomStartMs))
-	b = litewire.AppendVarint(b, 3, uint64(m.CustomEndMs))
-	b = litewire.AppendString(b, 4, m.Timezone)
-	b = litewire.AppendInt32(b, 5, int32(m.TzOffsetMinutes))
-	if len(m.BucketBoundsMs) > 0 {
-		var start int
-		b, start = litewire.BeginMessage(b, 6)
-		for _, v := range m.BucketBoundsMs {
-			b = litewire.AppendRawVarint(b, uint64(v))
-		}
-		b = litewire.EndMessage(b, start)
-	}
-	b = litewire.AppendVarint(b, 7, uint64(m.PrevStartMs))
-	b = litewire.AppendBool(b, 8, m.IncludeDisabled)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetUsageStatsRequest)
 }
 
 func (m *GetUsageStatsRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Preset = UsageRangePreset(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CustomStartMs = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CustomEndMs = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Timezone = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.TzOffsetMinutes = int32(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.BytesType {
-				raw, err := litewire.ReadBytesRaw(&b)
-				if err != nil {
-					return err
-				}
-				for len(raw) > 0 {
-					v, err := litewire.ReadVarint(&raw)
-					if err != nil {
-						return err
-					}
-					m.BucketBoundsMs = append(m.BucketBoundsMs, int64(v))
-				}
-				continue
-			}
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.BucketBoundsMs = append(m.BucketBoundsMs, int64(v))
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PrevStartMs = int64(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.IncludeDisabled = litewire.DecodeBool(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetUsageStatsRequest)
 }
 
 type UsageAgentSource struct {
+	_          [0]func()
 	Agent      Agent
 	State      UsageSourceState
 	Detail     string
@@ -6289,66 +4000,31 @@ func (m *UsageAgentSource) Clone() *UsageAgentSource {
 	return &cp
 }
 
-func (m *UsageAgentSource) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageAgentSource = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(UsageAgentSource{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&UsageAgentSource{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageAgentSource{}.Agent), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(UsageAgentSource{}.State), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(UsageAgentSource{}.Detail), Kind: litewire.KindString},
+	},
+}
 
 func (m *UsageAgentSource) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageAgentSource) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Agent))
-	b = litewire.AppendInt32(b, 2, int32(m.State))
-	b = litewire.AppendString(b, 3, m.Detail)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageAgentSource)
 }
 
 func (m *UsageAgentSource) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = Agent(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.State = UsageSourceState(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Detail = v
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageAgentSource)
 }
 
 type UsageBucketPoint struct {
+	_                     [0]func()
 	StartMs               int64
 	EndMs                 int64
 	UncachedInputTokens   uint64
@@ -6468,186 +4144,43 @@ func (m *UsageBucketPoint) Clone() *UsageBucketPoint {
 	return &cp
 }
 
-func (m *UsageBucketPoint) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageBucketPoint = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(UsageBucketPoint{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&UsageBucketPoint{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageBucketPoint{}.StartMs), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(UsageBucketPoint{}.EndMs), Kind: litewire.KindInt64},
+		{Num: 3, Offset: unsafe.Offsetof(UsageBucketPoint{}.UncachedInputTokens), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(UsageBucketPoint{}.CacheReadTokens), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(UsageBucketPoint{}.CacheWriteTokens), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(UsageBucketPoint{}.OutputTokens), Kind: litewire.KindUint64},
+		{Num: 7, Offset: unsafe.Offsetof(UsageBucketPoint{}.ReasoningOutputTokens), Kind: litewire.KindUint64},
+		{Num: 8, Offset: unsafe.Offsetof(UsageBucketPoint{}.UsageRequestCount), Kind: litewire.KindUint64},
+		{Num: 9, Offset: unsafe.Offsetof(UsageBucketPoint{}.SpeedRequestCount), Kind: litewire.KindUint64},
+		{Num: 10, Offset: unsafe.Offsetof(UsageBucketPoint{}.SpeedP10), Kind: litewire.KindDouble},
+		{Num: 11, Offset: unsafe.Offsetof(UsageBucketPoint{}.SpeedP50), Kind: litewire.KindDouble},
+		{Num: 12, Offset: unsafe.Offsetof(UsageBucketPoint{}.SpeedP90), Kind: litewire.KindDouble},
+		{Num: 13, Offset: unsafe.Offsetof(UsageBucketPoint{}.TtftP10Ms), Kind: litewire.KindDouble},
+		{Num: 14, Offset: unsafe.Offsetof(UsageBucketPoint{}.TtftP50Ms), Kind: litewire.KindDouble},
+		{Num: 15, Offset: unsafe.Offsetof(UsageBucketPoint{}.TtftP90Ms), Kind: litewire.KindDouble},
+	},
+}
 
 func (m *UsageBucketPoint) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageBucketPoint) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.StartMs))
-	b = litewire.AppendVarint(b, 2, uint64(m.EndMs))
-	b = litewire.AppendVarint(b, 3, uint64(m.UncachedInputTokens))
-	b = litewire.AppendVarint(b, 4, uint64(m.CacheReadTokens))
-	b = litewire.AppendVarint(b, 5, uint64(m.CacheWriteTokens))
-	b = litewire.AppendVarint(b, 6, uint64(m.OutputTokens))
-	b = litewire.AppendVarint(b, 7, uint64(m.ReasoningOutputTokens))
-	b = litewire.AppendVarint(b, 8, uint64(m.UsageRequestCount))
-	b = litewire.AppendVarint(b, 9, uint64(m.SpeedRequestCount))
-	b = litewire.AppendDouble(b, 10, m.SpeedP10)
-	b = litewire.AppendDouble(b, 11, m.SpeedP50)
-	b = litewire.AppendDouble(b, 12, m.SpeedP90)
-	b = litewire.AppendDouble(b, 13, m.TtftP10Ms)
-	b = litewire.AppendDouble(b, 14, m.TtftP50Ms)
-	b = litewire.AppendDouble(b, 15, m.TtftP90Ms)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageBucketPoint)
 }
 
 func (m *UsageBucketPoint) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.StartMs = int64(v)
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.EndMs = int64(v)
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UncachedInputTokens = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheReadTokens = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheWriteTokens = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OutputTokens = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ReasoningOutputTokens = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UsageRequestCount = v
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SpeedRequestCount = v
-				continue
-			}
-		case 10:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.SpeedP10 = math.Float64frombits(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.SpeedP50 = math.Float64frombits(v)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.SpeedP90 = math.Float64frombits(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.TtftP10Ms = math.Float64frombits(v)
-				continue
-			}
-		case 14:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.TtftP50Ms = math.Float64frombits(v)
-				continue
-			}
-		case 15:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.TtftP90Ms = math.Float64frombits(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageBucketPoint)
 }
 
 type UsagePeriodSummary struct {
+	_                     [0]func()
 	UncachedInputTokens   uint64
 	CacheReadTokens       uint64
 	CacheWriteTokens      uint64
@@ -6795,226 +4328,47 @@ func (m *UsagePeriodSummary) Clone() *UsagePeriodSummary {
 	return &cp
 }
 
-func (m *UsagePeriodSummary) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsagePeriodSummary = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(UsagePeriodSummary{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&UsagePeriodSummary{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsagePeriodSummary{}.UncachedInputTokens), Kind: litewire.KindUint64},
+		{Num: 2, Offset: unsafe.Offsetof(UsagePeriodSummary{}.CacheReadTokens), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(UsagePeriodSummary{}.CacheWriteTokens), Kind: litewire.KindUint64},
+		{Num: 4, Offset: unsafe.Offsetof(UsagePeriodSummary{}.OutputTokens), Kind: litewire.KindUint64},
+		{Num: 5, Offset: unsafe.Offsetof(UsagePeriodSummary{}.ReasoningOutputTokens), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(UsagePeriodSummary{}.UsageRequestCount), Kind: litewire.KindUint64},
+		{Num: 7, Offset: unsafe.Offsetof(UsagePeriodSummary{}.SpeedRequestCount), Kind: litewire.KindUint64},
+		{Num: 8, Offset: unsafe.Offsetof(UsagePeriodSummary{}.HasCacheHitRate), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(UsagePeriodSummary{}.CacheHitRate), Kind: litewire.KindDouble},
+		{Num: 10, Offset: unsafe.Offsetof(UsagePeriodSummary{}.HasSpeed), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(UsagePeriodSummary{}.SpeedP10), Kind: litewire.KindDouble},
+		{Num: 12, Offset: unsafe.Offsetof(UsagePeriodSummary{}.SpeedP50), Kind: litewire.KindDouble},
+		{Num: 13, Offset: unsafe.Offsetof(UsagePeriodSummary{}.SpeedP90), Kind: litewire.KindDouble},
+		{Num: 14, Offset: unsafe.Offsetof(UsagePeriodSummary{}.HasTtft), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(UsagePeriodSummary{}.TtftP10Ms), Kind: litewire.KindDouble},
+		{Num: 16, Offset: unsafe.Offsetof(UsagePeriodSummary{}.TtftP50Ms), Kind: litewire.KindDouble},
+		{Num: 17, Offset: unsafe.Offsetof(UsagePeriodSummary{}.TtftP90Ms), Kind: litewire.KindDouble},
+		{Num: 18, Offset: unsafe.Offsetof(UsagePeriodSummary{}.Recent10SpeedCount), Kind: litewire.KindUint64},
+		{Num: 19, Offset: unsafe.Offsetof(UsagePeriodSummary{}.Recent10SpeedP50), Kind: litewire.KindDouble},
+	},
+}
 
 func (m *UsagePeriodSummary) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsagePeriodSummary) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.UncachedInputTokens))
-	b = litewire.AppendVarint(b, 2, uint64(m.CacheReadTokens))
-	b = litewire.AppendVarint(b, 3, uint64(m.CacheWriteTokens))
-	b = litewire.AppendVarint(b, 4, uint64(m.OutputTokens))
-	b = litewire.AppendVarint(b, 5, uint64(m.ReasoningOutputTokens))
-	b = litewire.AppendVarint(b, 6, uint64(m.UsageRequestCount))
-	b = litewire.AppendVarint(b, 7, uint64(m.SpeedRequestCount))
-	b = litewire.AppendBool(b, 8, m.HasCacheHitRate)
-	b = litewire.AppendDouble(b, 9, m.CacheHitRate)
-	b = litewire.AppendBool(b, 10, m.HasSpeed)
-	b = litewire.AppendDouble(b, 11, m.SpeedP10)
-	b = litewire.AppendDouble(b, 12, m.SpeedP50)
-	b = litewire.AppendDouble(b, 13, m.SpeedP90)
-	b = litewire.AppendBool(b, 14, m.HasTtft)
-	b = litewire.AppendDouble(b, 15, m.TtftP10Ms)
-	b = litewire.AppendDouble(b, 16, m.TtftP50Ms)
-	b = litewire.AppendDouble(b, 17, m.TtftP90Ms)
-	b = litewire.AppendVarint(b, 18, uint64(m.Recent10SpeedCount))
-	b = litewire.AppendDouble(b, 19, m.Recent10SpeedP50)
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsagePeriodSummary)
 }
 
 func (m *UsagePeriodSummary) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UncachedInputTokens = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheReadTokens = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheWriteTokens = v
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.OutputTokens = v
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.ReasoningOutputTokens = v
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.UsageRequestCount = v
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.SpeedRequestCount = v
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasCacheHitRate = litewire.DecodeBool(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheHitRate = math.Float64frombits(v)
-				continue
-			}
-		case 10:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasSpeed = litewire.DecodeBool(v)
-				continue
-			}
-		case 11:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.SpeedP10 = math.Float64frombits(v)
-				continue
-			}
-		case 12:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.SpeedP50 = math.Float64frombits(v)
-				continue
-			}
-		case 13:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.SpeedP90 = math.Float64frombits(v)
-				continue
-			}
-		case 14:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.HasTtft = litewire.DecodeBool(v)
-				continue
-			}
-		case 15:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.TtftP10Ms = math.Float64frombits(v)
-				continue
-			}
-		case 16:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.TtftP50Ms = math.Float64frombits(v)
-				continue
-			}
-		case 17:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.TtftP90Ms = math.Float64frombits(v)
-				continue
-			}
-		case 18:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Recent10SpeedCount = v
-				continue
-			}
-		case 19:
-			if wtyp == litewire.Fixed64Type {
-				v, err := litewire.ReadFixed64(&b)
-				if err != nil {
-					return err
-				}
-				m.Recent10SpeedP50 = math.Float64frombits(v)
-				continue
-			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsagePeriodSummary)
 }
 
 type UsageSeries struct {
+	_                   [0]func()
 	Agent               Agent
 	Model               string
 	CacheWriteSupported bool
@@ -7079,115 +4433,52 @@ func (m *UsageSeries) Clone() *UsageSeries {
 	return &cp
 }
 
-func (m *UsageSeries) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageSeries = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(UsageSeries{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&UsageSeries{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageSeries{}.Agent), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(UsageSeries{}.Model), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(UsageSeries{}.CacheWriteSupported), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(UsageSeries{}.Current), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsagePeriodSummary},
+		{Num: 5, Offset: unsafe.Offsetof(UsageSeries{}.Previous), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsagePeriodSummary},
+		{Num: 6, Offset: unsafe.Offsetof(UsageSeries{}.Buckets), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageBucketPoint},
+	},
+}
 
 func (m *UsageSeries) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageSeries) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Agent))
-	b = litewire.AppendString(b, 2, m.Model)
-	b = litewire.AppendBool(b, 3, m.CacheWriteSupported)
-	if m.Current != nil {
-		b = litewire.AppendMessage(b, 4, m.Current)
-	}
-	if m.Previous != nil {
-		b = litewire.AppendMessage(b, 5, m.Previous)
-	}
-	for _, v := range m.Buckets {
-		if v != nil {
-			b = litewire.AppendMessage(b, 6, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageSeries)
 }
 
 func (m *UsageSeries) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageSeries)
+}
+
+func extraUnmarshal_UsageSeries(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*UsageSeries)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Agent = Agent(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.Model = v
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.CacheWriteSupported = litewire.DecodeBool(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.BytesType {
-				if m.Current == nil {
-					m.Current = &UsagePeriodSummary{}
-				}
-				if err := litewire.ReadMessage(&b, m.Current); err != nil {
-					return err
-				}
-				if m.Current.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
-		case 5:
-			if wtyp == litewire.BytesType {
-				if m.Previous == nil {
-					m.Previous = &UsagePeriodSummary{}
-				}
-				if err := litewire.ReadMessage(&b, m.Previous); err != nil {
-					return err
-				}
-				if m.Previous.HasUnknown() {
-					m.hasUnknown = true
-				}
-				continue
-			}
 		case 6:
-			if wtyp == litewire.BytesType {
-				elem := &UsageBucketPoint{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Buckets = append(m.Buckets, elem)
-				continue
+			elem := &UsageBucketPoint{}
+			m.Buckets = append(m.Buckets, elem)
+			if err := litewire.ReadStrictMessage(&b, elem, &m.hasUnknown); err != nil {
+				return false, err
 			}
-		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type UsageStatsResponse struct {
+	_                         [0]func()
 	Preset                    UsageRangePreset
 	Granularity               UsageBucketGranularity
 	StartMs                   int64
@@ -7291,155 +4582,72 @@ func (m *UsageStatsResponse) Clone() *UsageStatsResponse {
 	return &cp
 }
 
-func (m *UsageStatsResponse) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_UsageStatsResponse = litewire.MessageDesc{
+	Strict:        true,
+	HasUnknownOff: unsafe.Offsetof(UsageStatsResponse{}.hasUnknown),
+	New:           func() unsafe.Pointer { return unsafe.Pointer(&UsageStatsResponse{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageStatsResponse{}.Preset), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(UsageStatsResponse{}.Granularity), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(UsageStatsResponse{}.StartMs), Kind: litewire.KindInt64},
+		{Num: 4, Offset: unsafe.Offsetof(UsageStatsResponse{}.EndMs), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(UsageStatsResponse{}.GeneratedAtMs), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(UsageStatsResponse{}.Backfilling), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(UsageStatsResponse{}.BackfillScannedDays), Kind: litewire.KindInt32},
+		{Num: 8, Offset: unsafe.Offsetof(UsageStatsResponse{}.BackfillTotalDays), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(UsageStatsResponse{}.PreviousPeriodBackfilling), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(UsageStatsResponse{}.Sources), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageAgentSource},
+		{Num: 11, Offset: unsafe.Offsetof(UsageStatsResponse{}.Series), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageSeries},
+	},
+}
 
 func (m *UsageStatsResponse) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *UsageStatsResponse) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendInt32(b, 1, int32(m.Preset))
-	b = litewire.AppendInt32(b, 2, int32(m.Granularity))
-	b = litewire.AppendVarint(b, 3, uint64(m.StartMs))
-	b = litewire.AppendVarint(b, 4, uint64(m.EndMs))
-	b = litewire.AppendVarint(b, 5, uint64(m.GeneratedAtMs))
-	b = litewire.AppendBool(b, 6, m.Backfilling)
-	b = litewire.AppendInt32(b, 7, int32(m.BackfillScannedDays))
-	b = litewire.AppendInt32(b, 8, int32(m.BackfillTotalDays))
-	b = litewire.AppendBool(b, 9, m.PreviousPeriodBackfilling)
-	for _, v := range m.Sources {
-		if v != nil {
-			b = litewire.AppendMessage(b, 10, v)
-		}
-	}
-	for _, v := range m.Series {
-		if v != nil {
-			b = litewire.AppendMessage(b, 11, v)
-		}
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageStatsResponse)
 }
 
 func (m *UsageStatsResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UsageStatsResponse)
+}
+
+func extraUnmarshal_UsageStatsResponse(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*UsageStatsResponse)(base)
+	b := *bp
+	var sub litewire.StrictUnmarshaler
+	if wtyp == litewire.BytesType {
 		switch num {
-		case 1:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Preset = UsageRangePreset(int32(v))
-				continue
-			}
-		case 2:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Granularity = UsageBucketGranularity(int32(v))
-				continue
-			}
-		case 3:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.StartMs = int64(v)
-				continue
-			}
-		case 4:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.EndMs = int64(v)
-				continue
-			}
-		case 5:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.GeneratedAtMs = int64(v)
-				continue
-			}
-		case 6:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.Backfilling = litewire.DecodeBool(v)
-				continue
-			}
-		case 7:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.BackfillScannedDays = int32(v)
-				continue
-			}
-		case 8:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.BackfillTotalDays = int32(v)
-				continue
-			}
-		case 9:
-			if wtyp == litewire.VarintType {
-				v, err := litewire.ReadVarint(&b)
-				if err != nil {
-					return err
-				}
-				m.PreviousPeriodBackfilling = litewire.DecodeBool(v)
-				continue
-			}
 		case 10:
-			if wtyp == litewire.BytesType {
-				elem := &UsageAgentSource{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Sources = append(m.Sources, elem)
-				continue
-			}
+			elem := &UsageAgentSource{}
+			m.Sources = append(m.Sources, elem)
+			sub = elem
 		case 11:
-			if wtyp == litewire.BytesType {
-				elem := &UsageSeries{}
-				if err := litewire.ReadMessage(&b, elem); err != nil {
-					return err
-				}
-				if elem.HasUnknown() {
-					m.hasUnknown = true
-				}
-				m.Series = append(m.Series, elem)
-				continue
-			}
+			elem := &UsageSeries{}
+			m.Series = append(m.Series, elem)
+			sub = elem
 		}
-		m.hasUnknown = true
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
+		if sub != nil {
+			if err := litewire.ReadStrictMessage(&b, sub, &m.hasUnknown); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
+}
+
+func init() {
+	LitewireDesc_Session.ExtraUnmarshal = extraUnmarshal_Session
+	LitewireDesc_CreateSessionRequest.ExtraMarshal = extraMarshal_CreateSessionRequest
+	LitewireDesc_CreateSessionRequest.ExtraUnmarshal = extraUnmarshal_CreateSessionRequest
+	LitewireDesc_ListModelsResponse.ExtraUnmarshal = extraUnmarshal_ListModelsResponse
+	LitewireDesc_DaemonSettings.ExtraUnmarshal = extraUnmarshal_DaemonSettings
+	LitewireDesc_UpdateSettingsRequest.ExtraUnmarshal = extraUnmarshal_UpdateSettingsRequest
+	LitewireDesc_ImageStorageUsage.ExtraUnmarshal = extraUnmarshal_ImageStorageUsage
+	LitewireDesc_MachineStatus.ExtraUnmarshal = extraUnmarshal_MachineStatus
+	LitewireDesc_UsageSeries.ExtraUnmarshal = extraUnmarshal_UsageSeries
+	LitewireDesc_UsageStatsResponse.ExtraUnmarshal = extraUnmarshal_UsageStatsResponse
 }

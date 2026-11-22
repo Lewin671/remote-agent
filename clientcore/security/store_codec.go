@@ -24,12 +24,67 @@ const (
 
 var errStoreCorrupt = errors.New("security: corrupt persisted record")
 
-type binReader struct {
+type scWriter struct {
+	devicesec.Encoder
+}
+
+func newSCWriter(magic string) scWriter {
+	var w scWriter
+	w.Raw([]byte(magic))
+	w.U32(storeCodecVersion)
+	return w
+}
+
+//go:noinline
+func (w *scWriter) bool(v bool) {
+	if v {
+		w.B = append(w.B, 1)
+	} else {
+		w.B = append(w.B, 0)
+	}
+}
+
+//go:noinline
+func (w *scWriter) pin(p devicesec.Pin) {
+	w.Str(p.Account)
+	w.Raw(p.Domain[:])
+	w.Raw(p.Genesis[:])
+}
+
+//go:noinline
+func (w *scWriter) stateProofs(states, proofs [][]byte) {
+	w.U32(uint32(len(states)))
+	for i, s := range states {
+		w.LP(s)
+		var rp []byte
+		if i < len(proofs) {
+			rp = proofs[i]
+		}
+		w.LP(rp)
+	}
+}
+
+type scReader struct {
 	b   []byte
 	err error
 }
 
-func (r *binReader) u8() byte {
+func newSCReader(raw []byte, maxLen int, magic string) (scReader, bool) {
+	if len(raw) == 0 || len(raw) > maxLen {
+		return scReader{err: errStoreCorrupt}, false
+	}
+	r := scReader{b: raw}
+	if len(r.b) < len(magic) || string(r.b[:len(magic)]) != magic {
+		return scReader{err: errStoreCorrupt}, false
+	}
+	r.b = r.b[len(magic):]
+	if r.u32() != storeCodecVersion || r.err != nil {
+		return scReader{err: errStoreCorrupt}, false
+	}
+	return r, true
+}
+
+func (r *scReader) u8() byte {
 	if r.err != nil || len(r.b) < 1 {
 		r.err = errStoreCorrupt
 		return 0
@@ -39,7 +94,7 @@ func (r *binReader) u8() byte {
 	return v
 }
 
-func (r *binReader) bool() bool {
+func (r *scReader) bool() bool {
 	v := r.u8()
 	if r.err != nil || (v != 0 && v != 1) {
 		r.err = errStoreCorrupt
@@ -49,7 +104,7 @@ func (r *binReader) bool() bool {
 }
 
 //go:noinline
-func (r *binReader) u32() uint32 {
+func (r *scReader) u32() uint32 {
 	if r.err != nil || len(r.b) < 4 {
 		r.err = errStoreCorrupt
 		return 0
@@ -60,7 +115,7 @@ func (r *binReader) u32() uint32 {
 }
 
 //go:noinline
-func (r *binReader) u64() uint64 {
+func (r *scReader) u64() uint64 {
 	if r.err != nil || len(r.b) < 8 {
 		r.err = errStoreCorrupt
 		return 0
@@ -73,13 +128,10 @@ func (r *binReader) u64() uint64 {
 	return n
 }
 
-//go:noinline
-func (r *binReader) i64() int64 {
-	return int64(r.u64())
-}
+func (r *scReader) i64() int64 { return int64(r.u64()) }
 
 //go:noinline
-func (r *binReader) raw(n int) []byte {
+func (r *scReader) raw(n int) []byte {
 	if r.err != nil || n < 0 || len(r.b) < n {
 		r.err = errStoreCorrupt
 		return nil
@@ -89,8 +141,23 @@ func (r *binReader) raw(n int) []byte {
 	return out
 }
 
+func (r *scReader) hash(dst []byte) {
+	b := r.raw(32)
+	if r.err != nil || len(dst) != 32 {
+		r.err = errStoreCorrupt
+		return
+	}
+	copy(dst, b)
+}
+
+func (r *scReader) pin(p *devicesec.Pin) {
+	p.Account = r.str()
+	r.hash(p.Domain[:])
+	r.hash(p.Genesis[:])
+}
+
 //go:noinline
-func (r *binReader) lp(max int) []byte {
+func (r *scReader) lp(max int) []byte {
 	n := r.u32()
 	if r.err != nil || uint64(n) > uint64(max) || int(n) > len(r.b) {
 		r.err = errStoreCorrupt
@@ -103,7 +170,7 @@ func (r *binReader) lp(max int) []byte {
 }
 
 //go:noinline
-func (r *binReader) str() string {
+func (r *scReader) str() string {
 	b := r.lp(maxStoreStringLen)
 	if r.err != nil || len(b) == 0 {
 		return ""
@@ -112,37 +179,31 @@ func (r *binReader) str() string {
 }
 
 //go:noinline
-func (r *binReader) checkMagic(magic string, ver uint32) bool {
-	if r.err != nil || len(r.b) < len(magic) || string(r.b[:len(magic)]) != magic {
+func (r *scReader) stateProofs(requireNonEmpty bool) (states, proofs [][]byte) {
+	sc := r.u32()
+	if r.err != nil || (requireNonEmpty && sc == 0) || sc > devicesec.MaxStates {
 		r.err = errStoreCorrupt
-		return false
+		return nil, nil
 	}
-	r.b = r.b[len(magic):]
-	if r.u32() != ver {
-		r.err = errStoreCorrupt
-		return false
+	states = make([][]byte, sc)
+	proofs = make([][]byte, sc)
+	for i := range sc {
+		states[i] = r.lp(devicesec.MaxStateBytes)
+		proofs[i] = r.lp(devicesec.MaxStateBytes)
 	}
-	return r.err == nil
+	return states, proofs
 }
 
 //go:noinline
-func (r *binReader) done() error {
-	if r.err != nil {
-		return r.err
-	}
-	if len(r.b) != 0 {
+func (r *scReader) done() error {
+	if r.err != nil || len(r.b) != 0 {
 		return errStoreCorrupt
 	}
 	return nil
 }
 
-//go:noinline
-func encodeBool(e *devicesec.Encoder, v bool) {
-	if v {
-		e.B = append(e.B, 1)
-	} else {
-		e.B = append(e.B, 0)
-	}
+func pinValid(p devicesec.Pin) bool {
+	return devicesec.IsDeviceID(p.Account) && p.Domain != (devicesec.Hash{}) && p.Genesis != (devicesec.Hash{})
 }
 
 func hexStr(b []byte) string {
@@ -193,7 +254,7 @@ func (r *PersistedRecord) Clone() *PersistedRecord {
 		return nil
 	}
 	cp := *r
-	cp.AccountPublicKey = slices.Clone(r.AccountPublicKey)
+	cp.AccountPublicKey, cp.Lease, cp.ContentKeys = slices.Clone(r.AccountPublicKey), slices.Clone(r.Lease), slices.Clone(r.ContentKeys)
 	cp.States = make([][]byte, len(r.States))
 	for i, s := range r.States {
 		cp.States[i] = slices.Clone(s)
@@ -202,79 +263,50 @@ func (r *PersistedRecord) Clone() *PersistedRecord {
 	for i, p := range r.RecoveryProofs {
 		cp.RecoveryProofs[i] = slices.Clone(p)
 	}
-	cp.Lease = slices.Clone(r.Lease)
-	cp.ContentKeys = slices.Clone(r.ContentKeys)
 	return &cp
 }
 
 // Encode serializes r in canonical v4 format.
+//
+//go:noinline
 func (r *PersistedRecord) Encode() ([]byte, error) {
-	if r == nil || !devicesec.IsDeviceID(r.Pin.Account) || r.Pin.Domain == (devicesec.Hash{}) ||
-		r.Pin.Genesis == (devicesec.Hash{}) || !devicesec.IsDeviceID(r.MemberID) ||
+	if r == nil || !pinValid(r.Pin) || !devicesec.IsDeviceID(r.MemberID) ||
 		len(r.States) == 0 || len(r.States) > devicesec.MaxStates ||
 		(len(r.RecoveryProofs) != 0 && len(r.RecoveryProofs) != len(r.States)) {
 		return nil, devicesec.ErrInvalid
 	}
-	var e devicesec.Encoder
-	e.Raw([]byte(storeMagicRecord))
-	e.U32(storeCodecVersion)
-	e.Str(r.Pin.Account)
-	e.Raw(r.Pin.Domain[:])
-	e.Raw(r.Pin.Genesis[:])
-	e.Str(r.MemberID)
-	encodeBool(&e, r.Member)
-	e.Str(r.Server)
-	e.LP(r.AccountPublicKey)
-	e.U32(uint32(len(r.States)))
-	for i, s := range r.States {
-		e.LP(s)
-		var rp []byte
-		if i < len(r.RecoveryProofs) {
-			rp = r.RecoveryProofs[i]
-		}
-		e.LP(rp)
-	}
-	e.LP(r.Lease)
-	e.U64(uint64(r.FloorMs))
-	e.U32(uint32(len(r.ContentKeys)))
+	w := newSCWriter(storeMagicRecord)
+	w.pin(r.Pin)
+	w.Str(r.MemberID)
+	w.bool(r.Member)
+	w.Str(r.Server)
+	w.LP(r.AccountPublicKey)
+	w.stateProofs(r.States, r.RecoveryProofs)
+	w.LP(r.Lease)
+	w.U64(uint64(r.FloorMs))
+	w.U32(uint32(len(r.ContentKeys)))
 	for _, ck := range r.ContentKeys {
-		e.U64(ck.Epoch)
-		e.Raw(ck.Secret[:])
+		w.U64(ck.Epoch)
+		w.Raw(ck.Secret[:])
 	}
-	encodeBool(&e, r.NeedsRecoveryRotation)
-	encodeBool(&e, r.RecoveryObjectsPending)
-	return e.B, nil
+	w.bool(r.NeedsRecoveryRotation)
+	w.bool(r.RecoveryObjectsPending)
+	return w.B, nil
 }
 
 // DecodePersistedRecord decodes and cryptographically verifies a persisted v4 record.
+//
+//go:noinline
 func DecodePersistedRecord(raw []byte) (*PersistedRecord, error) {
-	if len(raw) == 0 || len(raw) > maxStoreBlobBytes {
-		return nil, errStoreCorrupt
-	}
-	br := binReader{b: raw}
-	if !br.checkMagic(storeMagicRecord, storeCodecVersion) {
+	br, ok := newSCReader(raw, maxStoreBlobBytes, storeMagicRecord)
+	if !ok {
 		return nil, errStoreCorrupt
 	}
 	var r PersistedRecord
-	r.Pin.Account = br.str()
-	copy(r.Pin.Domain[:], br.raw(32))
-	copy(r.Pin.Genesis[:], br.raw(32))
-	r.MemberID = br.str()
-	r.Member = br.bool()
-	r.Server = br.str()
-	r.AccountPublicKey = br.lp(64)
-	sc := br.u32()
-	if br.err != nil || sc == 0 || sc > devicesec.MaxStates {
-		return nil, errStoreCorrupt
-	}
-	r.States = make([][]byte, sc)
-	r.RecoveryProofs = make([][]byte, sc)
-	for i := range sc {
-		r.States[i] = br.lp(devicesec.MaxStateBytes)
-		r.RecoveryProofs[i] = br.lp(devicesec.MaxStateBytes)
-	}
-	r.Lease = br.lp(512)
-	r.FloorMs = br.i64()
+	br.pin(&r.Pin)
+	r.MemberID, r.Member, r.Server, r.AccountPublicKey = br.str(), br.bool(), br.str(), br.lp(64)
+	r.States, r.RecoveryProofs = br.stateProofs(true)
+	r.Lease, r.FloorMs = br.lp(512), br.i64()
 	kc := br.u32()
 	if br.err != nil || kc > maxStoreListCount {
 		return nil, errStoreCorrupt
@@ -283,30 +315,25 @@ func DecodePersistedRecord(raw []byte) (*PersistedRecord, error) {
 		r.ContentKeys = make([]ContentKeyEntry, kc)
 		for i := range kc {
 			r.ContentKeys[i].Epoch = br.u64()
-			copy(r.ContentKeys[i].Secret[:], br.raw(32))
+			br.hash(r.ContentKeys[i].Secret[:])
 		}
 	}
-	r.NeedsRecoveryRotation = br.bool()
-	r.RecoveryObjectsPending = br.bool()
+	r.NeedsRecoveryRotation, r.RecoveryObjectsPending = br.bool(), br.bool()
 	if err := br.done(); err != nil {
 		return nil, err
 	}
-	if !devicesec.IsDeviceID(r.Pin.Account) || !devicesec.IsDeviceID(r.MemberID) ||
-		r.Pin.Domain == (devicesec.Hash{}) || r.Pin.Genesis == (devicesec.Hash{}) {
+	if !pinValid(r.Pin) || !devicesec.IsDeviceID(r.MemberID) {
 		return nil, devicesec.ErrInvalid
 	}
 	states, _, _, err := parseAndVerifyChain(r.Pin, r.States, r.RecoveryProofs)
 	if err != nil {
 		return nil, err
 	}
-	head := states[len(states)-1]
-	_, inHead := head.Core.Member(r.MemberID)
-	if inHead != r.Member {
+	if _, inHead := states[len(states)-1].Core.Member(r.MemberID); inHead != r.Member {
 		return nil, errStoreCorrupt
 	}
 	if len(r.Lease) > 0 {
-		l, err := devicesec.ParseLease(r.Lease)
-		if err != nil || l.Verify(head) != nil {
+		if l, err := devicesec.ParseLease(r.Lease); err != nil || l.Verify(states[len(states)-1]) != nil {
 			return nil, devicesec.ErrInvalid
 		}
 	}
@@ -318,71 +345,41 @@ func DecodePersistedRecord(raw []byte) (*PersistedRecord, error) {
 
 // PersistedOpPair captures pairing metadata attached to a state approval op.
 type PersistedOpPair struct {
-	PairingID        string
-	CandidateID      string
-	CandidateEd      []byte
-	CandidateX       []byte
-	CandidateKind    uint32
-	PairKey          []byte
-	ExpiresMs        int64
-	ReplacesDeviceID string
+	PairingID, CandidateID, ReplacesDeviceID string
+	CandidateEd, CandidateX, PairKey         []byte
+	CandidateKind                            uint32
+	ExpiresMs                                int64
 }
 
 // PersistedCreateDraft captures durable local account creation draft material.
 type PersistedCreateDraft struct {
-	AccountPublicKey []byte
-	EdSlot           string
-	XSlot            string
-	StoragePersisted bool
-	States           [][]byte
-	Lease            []byte
+	AccountPublicKey, Lease []byte
+	EdSlot, XSlot           string
+	StoragePersisted        bool
+	States                  [][]byte
 }
 
 // PersistedRecoveryDraft captures durable local recovery draft material.
 type PersistedRecoveryDraft struct {
-	AccountID         string
-	AccountPublicKey  []byte
-	Domain            [32]byte
-	Genesis           [32]byte
-	EdSlot            string
-	XSlot             string
-	CandidateEdPub    []byte
-	CandidateXPub     []byte
-	RecoveryEd        []byte
-	Secret            []byte
-	NowMs             int64
-	RetiringMemberID  string
-	RecoveryID        string
-	ReadyMs           int64
-	TargetState       []byte
-	Proof             []byte
-	States            [][]byte
-	RecoveryProofs    [][]byte
-	CompleteRequest   []byte
-	RetirementRequest []byte
+	AccountID, EdSlot, XSlot, RetiringMemberID, RecoveryID string
+	AccountPublicKey, CandidateEdPub, CandidateXPub        []byte
+	RecoveryEd, Secret, TargetState, Proof                 []byte
+	CompleteRequest, RetirementRequest                     []byte
+	Domain, Genesis                                        [32]byte
+	NowMs, ReadyMs                                         int64
+	States, RecoveryProofs                                 [][]byte
 }
 
 // PersistedOperation is Core's canonical v4 durable pending security operation.
 type PersistedOperation struct {
-	ID               string
-	Revision         uint64
-	Server           string
-	MemberID         string
-	Kind             string // "create", "state", "lease", "recovery", "offer", "delete-records"
-	Parent           [32]byte
-	Phase            string // "PREPARED", "PUBLISHED", "DELIVERED"
-	CodeSaved        bool
-	Signed           []byte
-	Delivery         []byte
-	Retry            []byte
-	Action           string // "", "remove", "recovery", "handoff", "pair"
-	TargetDeviceID   string
-	RecoveryEd       []byte
-	OfferRejected    bool
-	StoragePersisted bool
-	Pair             *PersistedOpPair
-	Create           *PersistedCreateDraft
-	Recovery         *PersistedRecoveryDraft
+	ID, Server, MemberID, Kind, Phase, Action, TargetDeviceID string
+	Revision                                                  uint64
+	Parent                                                    [32]byte
+	CodeSaved, OfferRejected, StoragePersisted                bool
+	Signed, Delivery, Retry, RecoveryEd                       []byte
+	Pair                                                      *PersistedOpPair
+	Create                                                    *PersistedCreateDraft
+	Recovery                                                  *PersistedRecoveryDraft
 }
 
 func phaseOrder(p string) int {
@@ -399,138 +396,100 @@ func phaseOrder(p string) int {
 }
 
 // Encode serializes op in canonical v4 format.
+//
+//go:noinline
 func (op *PersistedOperation) Encode() ([]byte, error) {
 	if op == nil || op.ID == "" || op.Server == "" || op.MemberID == "" || phaseOrder(op.Phase) == 0 {
 		return nil, devicesec.ErrInvalid
 	}
-	var e devicesec.Encoder
-	e.Raw([]byte(storeMagicOp))
-	e.U32(storeCodecVersion)
-	e.Str(op.ID)
-	e.U64(op.Revision)
-	e.Str(op.Server)
-	e.Str(op.MemberID)
-	e.Str(op.Kind)
-	e.Raw(op.Parent[:])
-	e.Str(op.Phase)
-	encodeBool(&e, op.CodeSaved)
-	e.LP(op.Signed)
-	e.LP(op.Delivery)
-	e.LP(op.Retry)
-	e.Str(op.Action)
-	e.Str(op.TargetDeviceID)
-	e.LP(op.RecoveryEd)
-	encodeBool(&e, op.OfferRejected)
-	encodeBool(&e, op.StoragePersisted)
-
-	encodeBool(&e, op.Pair != nil)
-	if op.Pair != nil {
-		p := op.Pair
-		e.Str(p.PairingID)
-		e.Str(p.CandidateID)
-		e.LP(p.CandidateEd)
-		e.LP(p.CandidateX)
-		e.U32(p.CandidateKind)
-		e.LP(p.PairKey)
-		e.U64(uint64(p.ExpiresMs))
-		e.Str(p.ReplacesDeviceID)
+	w := newSCWriter(storeMagicOp)
+	w.Str(op.ID)
+	w.U64(op.Revision)
+	w.Str(op.Server)
+	w.Str(op.MemberID)
+	w.Str(op.Kind)
+	w.Raw(op.Parent[:])
+	w.Str(op.Phase)
+	w.bool(op.CodeSaved)
+	w.LP(op.Signed)
+	w.LP(op.Delivery)
+	w.LP(op.Retry)
+	w.Str(op.Action)
+	w.Str(op.TargetDeviceID)
+	w.LP(op.RecoveryEd)
+	w.bool(op.OfferRejected)
+	w.bool(op.StoragePersisted)
+	w.bool(op.Pair != nil)
+	if p := op.Pair; p != nil {
+		w.Str(p.PairingID)
+		w.Str(p.CandidateID)
+		w.LP(p.CandidateEd)
+		w.LP(p.CandidateX)
+		w.U32(p.CandidateKind)
+		w.LP(p.PairKey)
+		w.U64(uint64(p.ExpiresMs))
+		w.Str(p.ReplacesDeviceID)
 	}
-
-	encodeBool(&e, op.Create != nil)
-	if op.Create != nil {
-		c := op.Create
-		e.LP(c.AccountPublicKey)
-		e.Str(c.EdSlot)
-		e.Str(c.XSlot)
-		encodeBool(&e, c.StoragePersisted)
-		e.U32(uint32(len(c.States)))
+	w.bool(op.Create != nil)
+	if c := op.Create; c != nil {
+		w.LP(c.AccountPublicKey)
+		w.Str(c.EdSlot)
+		w.Str(c.XSlot)
+		w.bool(c.StoragePersisted)
+		w.U32(uint32(len(c.States)))
 		for _, s := range c.States {
-			e.LP(s)
+			w.LP(s)
 		}
-		e.LP(c.Lease)
+		w.LP(c.Lease)
 	}
-
-	encodeBool(&e, op.Recovery != nil)
-	if op.Recovery != nil {
-		r := op.Recovery
-		e.Str(r.AccountID)
-		e.LP(r.AccountPublicKey)
-		e.Raw(r.Domain[:])
-		e.Raw(r.Genesis[:])
-		e.Str(r.EdSlot)
-		e.Str(r.XSlot)
-		e.LP(r.CandidateEdPub)
-		e.LP(r.CandidateXPub)
-		e.LP(r.RecoveryEd)
-		e.LP(r.Secret)
-		e.U64(uint64(r.NowMs))
-		e.Str(r.RetiringMemberID)
-		e.Str(r.RecoveryID)
-		e.U64(uint64(r.ReadyMs))
-		e.LP(r.TargetState)
-		e.LP(r.Proof)
-		e.U32(uint32(len(r.States)))
-		for i, s := range r.States {
-			e.LP(s)
-			var rp []byte
-			if i < len(r.RecoveryProofs) {
-				rp = r.RecoveryProofs[i]
-			}
-			e.LP(rp)
-		}
-		e.LP(r.CompleteRequest)
-		e.LP(r.RetirementRequest)
+	w.bool(op.Recovery != nil)
+	if r := op.Recovery; r != nil {
+		w.Str(r.AccountID)
+		w.LP(r.AccountPublicKey)
+		w.Raw(r.Domain[:])
+		w.Raw(r.Genesis[:])
+		w.Str(r.EdSlot)
+		w.Str(r.XSlot)
+		w.LP(r.CandidateEdPub)
+		w.LP(r.CandidateXPub)
+		w.LP(r.RecoveryEd)
+		w.LP(r.Secret)
+		w.U64(uint64(r.NowMs))
+		w.Str(r.RetiringMemberID)
+		w.Str(r.RecoveryID)
+		w.U64(uint64(r.ReadyMs))
+		w.LP(r.TargetState)
+		w.LP(r.Proof)
+		w.stateProofs(r.States, r.RecoveryProofs)
+		w.LP(r.CompleteRequest)
+		w.LP(r.RetirementRequest)
 	}
-	return e.B, nil
+	return w.B, nil
 }
 
 // DecodePersistedOperation decodes a v4 persisted operation.
+//
+//go:noinline
 func DecodePersistedOperation(raw []byte) (*PersistedOperation, error) {
-	if len(raw) == 0 || len(raw) > maxStoreBlobBytes {
-		return nil, errStoreCorrupt
-	}
-	br := binReader{b: raw}
-	if !br.checkMagic(storeMagicOp, storeCodecVersion) {
+	br, ok := newSCReader(raw, maxStoreBlobBytes, storeMagicOp)
+	if !ok {
 		return nil, errStoreCorrupt
 	}
 	var op PersistedOperation
-	op.ID = br.str()
-	op.Revision = br.u64()
-	op.Server = br.str()
-	op.MemberID = br.str()
-	op.Kind = br.str()
-	copy(op.Parent[:], br.raw(32))
-	op.Phase = br.str()
-	op.CodeSaved = br.bool()
-	op.Signed = br.lp(maxStoreBlobBytes)
-	op.Delivery = br.lp(maxStoreBlobBytes)
-	op.Retry = br.lp(maxStoreBlobBytes)
-	op.Action = br.str()
-	op.TargetDeviceID = br.str()
-	op.RecoveryEd = br.lp(64)
-	op.OfferRejected = br.bool()
-	op.StoragePersisted = br.bool()
-
+	op.ID, op.Revision, op.Server, op.MemberID, op.Kind = br.str(), br.u64(), br.str(), br.str(), br.str()
+	br.hash(op.Parent[:])
+	op.Phase, op.CodeSaved = br.str(), br.bool()
+	op.Signed, op.Delivery, op.Retry = br.lp(maxStoreBlobBytes), br.lp(maxStoreBlobBytes), br.lp(maxStoreBlobBytes)
+	op.Action, op.TargetDeviceID, op.RecoveryEd = br.str(), br.str(), br.lp(64)
+	op.OfferRejected, op.StoragePersisted = br.bool(), br.bool()
 	if br.bool() {
-		p := &PersistedOpPair{
-			PairingID:        br.str(),
-			CandidateID:      br.str(),
-			CandidateEd:      br.lp(64),
-			CandidateX:       br.lp(64),
-			CandidateKind:    br.u32(),
-			PairKey:          br.lp(64),
-			ExpiresMs:        br.i64(),
-			ReplacesDeviceID: br.str(),
+		op.Pair = &PersistedOpPair{
+			PairingID: br.str(), CandidateID: br.str(), CandidateEd: br.lp(64), CandidateX: br.lp(64),
+			CandidateKind: br.u32(), PairKey: br.lp(64), ExpiresMs: br.i64(), ReplacesDeviceID: br.str(),
 		}
-		op.Pair = p
 	}
 	if br.bool() {
-		c := &PersistedCreateDraft{
-			AccountPublicKey: br.lp(64),
-			EdSlot:           br.str(),
-			XSlot:            br.str(),
-			StoragePersisted: br.bool(),
-		}
+		c := &PersistedCreateDraft{AccountPublicKey: br.lp(64), EdSlot: br.str(), XSlot: br.str(), StoragePersisted: br.bool()}
 		sc := br.u32()
 		if br.err != nil || sc > devicesec.MaxStates {
 			return nil, errStoreCorrupt
@@ -539,40 +498,18 @@ func DecodePersistedOperation(raw []byte) (*PersistedOperation, error) {
 		for i := range sc {
 			c.States[i] = br.lp(devicesec.MaxStateBytes)
 		}
-		c.Lease = br.lp(512)
-		op.Create = c
+		c.Lease, op.Create = br.lp(512), c
 	}
 	if br.bool() {
-		r := &PersistedRecoveryDraft{
-			AccountID:        br.str(),
-			AccountPublicKey: br.lp(64),
-		}
-		copy(r.Domain[:], br.raw(32))
-		copy(r.Genesis[:], br.raw(32))
-		r.EdSlot = br.str()
-		r.XSlot = br.str()
-		r.CandidateEdPub = br.lp(64)
-		r.CandidateXPub = br.lp(64)
-		r.RecoveryEd = br.lp(64)
-		r.Secret = br.lp(64)
-		r.NowMs = br.i64()
-		r.RetiringMemberID = br.str()
-		r.RecoveryID = br.str()
-		r.ReadyMs = br.i64()
-		r.TargetState = br.lp(devicesec.MaxStateBytes)
-		r.Proof = br.lp(devicesec.MaxStateBytes)
-		sc := br.u32()
-		if br.err != nil || sc > devicesec.MaxStates {
-			return nil, errStoreCorrupt
-		}
-		r.States = make([][]byte, sc)
-		r.RecoveryProofs = make([][]byte, sc)
-		for i := range sc {
-			r.States[i] = br.lp(devicesec.MaxStateBytes)
-			r.RecoveryProofs[i] = br.lp(devicesec.MaxStateBytes)
-		}
-		r.CompleteRequest = br.lp(maxStoreBlobBytes)
-		r.RetirementRequest = br.lp(maxStoreBlobBytes)
+		r := &PersistedRecoveryDraft{AccountID: br.str(), AccountPublicKey: br.lp(64)}
+		br.hash(r.Domain[:])
+		br.hash(r.Genesis[:])
+		r.EdSlot, r.XSlot = br.str(), br.str()
+		r.CandidateEdPub, r.CandidateXPub, r.RecoveryEd, r.Secret = br.lp(64), br.lp(64), br.lp(64), br.lp(64)
+		r.NowMs, r.RetiringMemberID, r.RecoveryID, r.ReadyMs = br.i64(), br.str(), br.str(), br.i64()
+		r.TargetState, r.Proof = br.lp(devicesec.MaxStateBytes), br.lp(devicesec.MaxStateBytes)
+		r.States, r.RecoveryProofs = br.stateProofs(false)
+		r.CompleteRequest, r.RetirementRequest = br.lp(maxStoreBlobBytes), br.lp(maxStoreBlobBytes)
 		op.Recovery = r
 	}
 	if err := br.done(); err != nil {
@@ -583,32 +520,20 @@ func DecodePersistedOperation(raw []byte) (*PersistedOperation, error) {
 	}
 	switch op.Kind {
 	case "create", "state", "lease", "recovery", "offer", "delete-records":
+		return &op, nil
 	default:
 		return nil, errStoreCorrupt
 	}
-	return &op, nil
 }
 
 // ValidateProgress verifies monotonic invariants before saving next over prev.
 func (op *PersistedOperation) ValidateProgress(next *PersistedOperation) error {
-	if op == nil || next == nil {
-		return devicesec.ErrInvalid
-	}
-	if next.ID != op.ID || next.Kind != op.Kind || next.Server != op.Server ||
-		next.MemberID != op.MemberID || next.Parent != op.Parent ||
-		next.Revision != op.Revision+1 {
-		return devicesec.ErrInvalid
-	}
-	if phaseOrder(next.Phase) < phaseOrder(op.Phase) {
-		return devicesec.ErrInvalid
-	}
-	if op.CodeSaved && !next.CodeSaved {
-		return devicesec.ErrInvalid
-	}
-	if len(op.Signed) > 0 && !bytes.Equal(op.Signed, next.Signed) {
-		return devicesec.ErrInvalid
-	}
-	if len(op.Delivery) > 0 && !bytes.Equal(op.Delivery, next.Delivery) {
+	if op == nil || next == nil || next.ID != op.ID || next.Kind != op.Kind ||
+		next.Server != op.Server || next.MemberID != op.MemberID || next.Parent != op.Parent ||
+		next.Revision != op.Revision+1 || phaseOrder(next.Phase) < phaseOrder(op.Phase) ||
+		(op.CodeSaved && !next.CodeSaved) ||
+		(len(op.Signed) > 0 && !bytes.Equal(op.Signed, next.Signed)) ||
+		(len(op.Delivery) > 0 && !bytes.Equal(op.Delivery, next.Delivery)) {
 		return devicesec.ErrInvalid
 	}
 	return nil
@@ -616,20 +541,15 @@ func (op *PersistedOperation) ValidateProgress(next *PersistedOperation) error {
 
 // PersistedRegistrationIntent stores approved registration state across crashes before completion.
 type PersistedRegistrationIntent struct {
-	Server           string
-	DeviceID         string
-	RegisterRequest  []byte
-	Replace          bool
-	AccountPublicKey []byte
-	PairingID        string
-	CandidateToken   string
-	EdSlot           string
-	XSlot            string
-	ReusesDeviceEd   bool
-	Record           *PersistedRecord
+	Server, DeviceID, PairingID, CandidateToken, EdSlot, XSlot string
+	RegisterRequest, AccountPublicKey                          []byte
+	Replace, ReusesDeviceEd                                    bool
+	Record                                                     *PersistedRecord
 }
 
 // Encode serializes intent in canonical v4 format.
+//
+//go:noinline
 func (in *PersistedRegistrationIntent) Encode() ([]byte, error) {
 	if in == nil || in.Server == "" || !devicesec.IsDeviceID(in.DeviceID) || len(in.RegisterRequest) == 0 || in.Record == nil {
 		return nil, devicesec.ErrInvalid
@@ -638,43 +558,34 @@ func (in *PersistedRegistrationIntent) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var e devicesec.Encoder
-	e.Raw([]byte(storeMagicIntent))
-	e.U32(storeCodecVersion)
-	e.Str(in.Server)
-	e.Str(in.DeviceID)
-	e.LP(in.RegisterRequest)
-	encodeBool(&e, in.Replace)
-	e.LP(in.AccountPublicKey)
-	e.Str(in.PairingID)
-	e.Str(in.CandidateToken)
-	e.Str(in.EdSlot)
-	e.Str(in.XSlot)
-	encodeBool(&e, in.ReusesDeviceEd)
-	e.LP(recBytes)
-	return e.B, nil
+	w := newSCWriter(storeMagicIntent)
+	w.Str(in.Server)
+	w.Str(in.DeviceID)
+	w.LP(in.RegisterRequest)
+	w.bool(in.Replace)
+	w.LP(in.AccountPublicKey)
+	w.Str(in.PairingID)
+	w.Str(in.CandidateToken)
+	w.Str(in.EdSlot)
+	w.Str(in.XSlot)
+	w.bool(in.ReusesDeviceEd)
+	w.LP(recBytes)
+	return w.B, nil
 }
 
 // DecodePersistedRegistrationIntent decodes and validates a v4 registration intent.
+//
+//go:noinline
 func DecodePersistedRegistrationIntent(raw []byte) (*PersistedRegistrationIntent, error) {
-	if len(raw) == 0 || len(raw) > maxStoreBlobBytes {
+	br, ok := newSCReader(raw, maxStoreBlobBytes, storeMagicIntent)
+	if !ok {
 		return nil, errStoreCorrupt
 	}
-	br := binReader{b: raw}
-	if !br.checkMagic(storeMagicIntent, storeCodecVersion) {
-		return nil, errStoreCorrupt
+	in := PersistedRegistrationIntent{
+		Server: br.str(), DeviceID: br.str(), RegisterRequest: br.lp(maxStoreBlobBytes), Replace: br.bool(),
+		AccountPublicKey: br.lp(64), PairingID: br.str(), CandidateToken: br.str(),
+		EdSlot: br.str(), XSlot: br.str(), ReusesDeviceEd: br.bool(),
 	}
-	var in PersistedRegistrationIntent
-	in.Server = br.str()
-	in.DeviceID = br.str()
-	in.RegisterRequest = br.lp(maxStoreBlobBytes)
-	in.Replace = br.bool()
-	in.AccountPublicKey = br.lp(64)
-	in.PairingID = br.str()
-	in.CandidateToken = br.str()
-	in.EdSlot = br.str()
-	in.XSlot = br.str()
-	in.ReusesDeviceEd = br.bool()
 	recRaw := br.lp(maxStoreBlobBytes)
 	if err := br.done(); err != nil {
 		return nil, err
@@ -693,13 +604,9 @@ func DecodePersistedRegistrationIntent(raw []byte) (*PersistedRegistrationIntent
 
 // PersistedPairingCandidate stores pre-join candidate key slots before approval arrives.
 type PersistedPairingCandidate struct {
-	Server         string
-	PairingID      string
-	EdSlot         string
-	XSlot          string
-	EdPublic       []byte
-	XPublic        []byte
-	ReusesDeviceEd bool
+	Server, PairingID, EdSlot, XSlot string
+	EdPublic, XPublic                []byte
+	ReusesDeviceEd                   bool
 }
 
 // Encode serializes c in canonical v4 format.
@@ -707,36 +614,27 @@ func (c *PersistedPairingCandidate) Encode() ([]byte, error) {
 	if c == nil || c.Server == "" || c.PairingID == "" || len(c.EdPublic) != 32 || len(c.XPublic) != 32 {
 		return nil, devicesec.ErrInvalid
 	}
-	var e devicesec.Encoder
-	e.Raw([]byte(storeMagicCand))
-	e.U32(storeCodecVersion)
-	e.Str(c.Server)
-	e.Str(c.PairingID)
-	e.Str(c.EdSlot)
-	e.Str(c.XSlot)
-	e.LP(c.EdPublic)
-	e.LP(c.XPublic)
-	encodeBool(&e, c.ReusesDeviceEd)
-	return e.B, nil
+	w := newSCWriter(storeMagicCand)
+	w.Str(c.Server)
+	w.Str(c.PairingID)
+	w.Str(c.EdSlot)
+	w.Str(c.XSlot)
+	w.LP(c.EdPublic)
+	w.LP(c.XPublic)
+	w.bool(c.ReusesDeviceEd)
+	return w.B, nil
 }
 
 // DecodePersistedPairingCandidate decodes a v4 pairing candidate.
 func DecodePersistedPairingCandidate(raw []byte) (*PersistedPairingCandidate, error) {
-	if len(raw) == 0 || len(raw) > 4096 {
+	br, ok := newSCReader(raw, 4096, storeMagicCand)
+	if !ok {
 		return nil, errStoreCorrupt
 	}
-	br := binReader{b: raw}
-	if !br.checkMagic(storeMagicCand, storeCodecVersion) {
-		return nil, errStoreCorrupt
+	c := PersistedPairingCandidate{
+		Server: br.str(), PairingID: br.str(), EdSlot: br.str(), XSlot: br.str(),
+		EdPublic: br.lp(64), XPublic: br.lp(64), ReusesDeviceEd: br.bool(),
 	}
-	var c PersistedPairingCandidate
-	c.Server = br.str()
-	c.PairingID = br.str()
-	c.EdSlot = br.str()
-	c.XSlot = br.str()
-	c.EdPublic = br.lp(64)
-	c.XPublic = br.lp(64)
-	c.ReusesDeviceEd = br.bool()
 	if err := br.done(); err != nil {
 		return nil, err
 	}
@@ -755,42 +653,30 @@ type PersistedPublicProfile struct {
 
 // Encode serializes p in canonical v4 format.
 func (p *PersistedPublicProfile) Encode() ([]byte, error) {
-	if p == nil || p.Server == "" || !devicesec.IsDeviceID(p.Pin.Account) ||
-		p.Pin.Domain == (devicesec.Hash{}) || p.Pin.Genesis == (devicesec.Hash{}) ||
-		devicesec.ID(p.AccountPublicKey[:]) != p.Pin.Account {
+	if p == nil || p.Server == "" || !pinValid(p.Pin) || devicesec.ID(p.AccountPublicKey[:]) != p.Pin.Account {
 		return nil, devicesec.ErrUntrusted
 	}
-	var e devicesec.Encoder
-	e.Raw([]byte(storeMagicProfile))
-	e.U32(storeCodecVersion)
-	e.Str(p.Server)
-	e.Str(p.Pin.Account)
-	e.Raw(p.Pin.Domain[:])
-	e.Raw(p.Pin.Genesis[:])
-	e.Raw(p.AccountPublicKey[:])
-	return e.B, nil
+	w := newSCWriter(storeMagicProfile)
+	w.Str(p.Server)
+	w.pin(p.Pin)
+	w.Raw(p.AccountPublicKey[:])
+	return w.B, nil
 }
 
 // DecodePersistedPublicProfile decodes and checks p against its pin.
 func DecodePersistedPublicProfile(raw []byte) (*PersistedPublicProfile, error) {
-	if len(raw) == 0 || len(raw) > 2048 {
-		return nil, errStoreCorrupt
-	}
-	br := binReader{b: raw}
-	if !br.checkMagic(storeMagicProfile, storeCodecVersion) {
+	br, ok := newSCReader(raw, 2048, storeMagicProfile)
+	if !ok {
 		return nil, errStoreCorrupt
 	}
 	var p PersistedPublicProfile
 	p.Server = br.str()
-	p.Pin.Account = br.str()
-	copy(p.Pin.Domain[:], br.raw(32))
-	copy(p.Pin.Genesis[:], br.raw(32))
-	copy(p.AccountPublicKey[:], br.raw(32))
+	br.pin(&p.Pin)
+	br.hash(p.AccountPublicKey[:])
 	if err := br.done(); err != nil {
 		return nil, err
 	}
-	if p.Server == "" || !devicesec.IsDeviceID(p.Pin.Account) ||
-		devicesec.ID(p.AccountPublicKey[:]) != p.Pin.Account {
+	if p.Server == "" || !devicesec.IsDeviceID(p.Pin.Account) || devicesec.ID(p.AccountPublicKey[:]) != p.Pin.Account {
 		return nil, devicesec.ErrUntrusted
 	}
 	return &p, nil
@@ -804,46 +690,38 @@ type PersistedNotifyRecord struct {
 }
 
 // Encode serializes n in canonical v4 format.
+//
+//go:noinline
 func (n *PersistedNotifyRecord) Encode() ([]byte, error) {
-	if n == nil || !devicesec.IsDeviceID(n.Pin.Account) ||
-		n.Pin.Domain == (devicesec.Hash{}) || n.Pin.Genesis == (devicesec.Hash{}) {
+	if n == nil || !pinValid(n.Pin) {
 		return nil, devicesec.ErrInvalid
 	}
-	s, err := devicesec.ParseState(n.HeadState)
-	if err != nil || n.Pin.Verify(s) != nil {
+	if s, err := devicesec.ParseState(n.HeadState); err != nil || n.Pin.Verify(s) != nil {
 		return nil, devicesec.ErrUntrusted
 	}
-	var e devicesec.Encoder
-	e.Raw([]byte(storeMagicNotify))
-	e.U32(storeCodecVersion)
-	e.Str(n.Pin.Account)
-	e.Raw(n.Pin.Domain[:])
-	e.Raw(n.Pin.Genesis[:])
-	e.LP(n.HeadState)
-	e.Raw(n.PurposeKey[:])
-	return e.B, nil
+	w := newSCWriter(storeMagicNotify)
+	w.pin(n.Pin)
+	w.LP(n.HeadState)
+	w.Raw(n.PurposeKey[:])
+	return w.B, nil
 }
 
 // DecodePersistedNotifyRecord decodes and verifies n.
+//
+//go:noinline
 func DecodePersistedNotifyRecord(raw []byte) (*PersistedNotifyRecord, error) {
-	if len(raw) == 0 || len(raw) > devicesec.MaxStateBytes+512 {
-		return nil, errStoreCorrupt
-	}
-	br := binReader{b: raw}
-	if !br.checkMagic(storeMagicNotify, storeCodecVersion) {
+	br, ok := newSCReader(raw, devicesec.MaxStateBytes+512, storeMagicNotify)
+	if !ok {
 		return nil, errStoreCorrupt
 	}
 	var n PersistedNotifyRecord
-	n.Pin.Account = br.str()
-	copy(n.Pin.Domain[:], br.raw(32))
-	copy(n.Pin.Genesis[:], br.raw(32))
+	br.pin(&n.Pin)
 	n.HeadState = br.lp(devicesec.MaxStateBytes)
-	copy(n.PurposeKey[:], br.raw(32))
+	br.hash(n.PurposeKey[:])
 	if err := br.done(); err != nil {
 		return nil, err
 	}
-	s, err := devicesec.ParseState(n.HeadState)
-	if err != nil || n.Pin.Verify(s) != nil {
+	if s, err := devicesec.ParseState(n.HeadState); err != nil || n.Pin.Verify(s) != nil {
 		return nil, devicesec.ErrUntrusted
 	}
 	return &n, nil

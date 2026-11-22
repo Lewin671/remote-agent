@@ -478,6 +478,12 @@ func ReadBytesRaw(b *[]byte) ([]byte, error) {
 	return v, nil
 }
 
+// StrictUnmarshaler is implemented by strict inbound generated protobuf messages.
+type StrictUnmarshaler interface {
+	Unmarshaler
+	HasUnknown() bool
+}
+
 //go:noinline
 func ReadMessage(b *[]byte, dst Unmarshaler) error {
 	raw, err := ReadBytesRaw(b)
@@ -485,6 +491,212 @@ func ReadMessage(b *[]byte, dst Unmarshaler) error {
 		return err
 	}
 	return dst.Unmarshal(raw)
+}
+
+//go:noinline
+func ReadStrictMessage(b *[]byte, dst StrictUnmarshaler, hasUnknown *bool) error {
+	if err := ReadMessage(b, dst); err != nil {
+		return err
+	}
+	if dst.HasUnknown() {
+		*hasUnknown = true
+	}
+	return nil
+}
+
+//go:noinline
+func ReadStringInto(b *[]byte, wtyp Type, dst *string) (bool, error) {
+	if wtyp != BytesType {
+		return false, nil
+	}
+	v, err := ReadString(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = v
+	return true, nil
+}
+
+//go:noinline
+func ReadBytesInto(b *[]byte, wtyp Type, dst *[]byte) (bool, error) {
+	if wtyp != BytesType {
+		return false, nil
+	}
+	v, err := ReadBytes(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = v
+	return true, nil
+}
+
+//go:noinline
+func ReadBoolInto(b *[]byte, wtyp Type, dst *bool) (bool, error) {
+	if wtyp != VarintType {
+		return false, nil
+	}
+	v, err := ReadVarint(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = DecodeBool(v)
+	return true, nil
+}
+
+//go:noinline
+func ReadInt32Into(b *[]byte, wtyp Type, dst *int32) (bool, error) {
+	if wtyp != VarintType {
+		return false, nil
+	}
+	v, err := ReadVarint(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = int32(v)
+	return true, nil
+}
+
+//go:noinline
+func ReadUint32Into(b *[]byte, wtyp Type, dst *uint32) (bool, error) {
+	if wtyp != VarintType {
+		return false, nil
+	}
+	v, err := ReadVarint(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = uint32(v)
+	return true, nil
+}
+
+//go:noinline
+func ReadInt64Into(b *[]byte, wtyp Type, dst *int64) (bool, error) {
+	if wtyp != VarintType {
+		return false, nil
+	}
+	v, err := ReadVarint(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = int64(v)
+	return true, nil
+}
+
+//go:noinline
+func ReadUint64Into(b *[]byte, wtyp Type, dst *uint64) (bool, error) {
+	if wtyp != VarintType {
+		return false, nil
+	}
+	v, err := ReadVarint(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = v
+	return true, nil
+}
+
+//go:noinline
+func ReadSint32Into(b *[]byte, wtyp Type, dst *int32) (bool, error) {
+	if wtyp != VarintType {
+		return false, nil
+	}
+	v, err := ReadVarint(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = int32(DecodeZigZag(v))
+	return true, nil
+}
+
+//go:noinline
+func ReadSint64Into(b *[]byte, wtyp Type, dst *int64) (bool, error) {
+	if wtyp != VarintType {
+		return false, nil
+	}
+	v, err := ReadVarint(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = DecodeZigZag(v)
+	return true, nil
+}
+
+//go:noinline
+func ReadFixed32Into(b *[]byte, wtyp Type, dst *uint32) (bool, error) {
+	if wtyp != Fixed32Type {
+		return false, nil
+	}
+	v, err := ReadFixed32(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = v
+	return true, nil
+}
+
+//go:noinline
+func ReadSfixed32Into(b *[]byte, wtyp Type, dst *int32) (bool, error) {
+	if wtyp != Fixed32Type {
+		return false, nil
+	}
+	v, err := ReadFixed32(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = int32(v)
+	return true, nil
+}
+
+//go:noinline
+func ReadFloatInto(b *[]byte, wtyp Type, dst *float32) (bool, error) {
+	if wtyp != Fixed32Type {
+		return false, nil
+	}
+	v, err := ReadFixed32(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = math.Float32frombits(v)
+	return true, nil
+}
+
+//go:noinline
+func ReadFixed64Into(b *[]byte, wtyp Type, dst *uint64) (bool, error) {
+	if wtyp != Fixed64Type {
+		return false, nil
+	}
+	v, err := ReadFixed64(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = v
+	return true, nil
+}
+
+//go:noinline
+func ReadSfixed64Into(b *[]byte, wtyp Type, dst *int64) (bool, error) {
+	if wtyp != Fixed64Type {
+		return false, nil
+	}
+	v, err := ReadFixed64(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = int64(v)
+	return true, nil
+}
+
+//go:noinline
+func ReadDoubleInto(b *[]byte, wtyp Type, dst *float64) (bool, error) {
+	if wtyp != Fixed64Type {
+		return false, nil
+	}
+	v, err := ReadFixed64(b)
+	if err != nil {
+		return true, err
+	}
+	*dst = math.Float64frombits(v)
+	return true, nil
 }
 
 //go:noinline

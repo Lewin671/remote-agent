@@ -972,13 +972,13 @@ func TestCoreClearsTimelineCacheOnTrimHistoryEviction(t *testing.T) {
 
 func TestSessionTerminalPopupDockLocalizationAndTrustHint(t *testing.T) {
 	cases := []struct {
-		name           string
-		agent          v1.Agent
-		wantAgentName  string
-		statusDetail   string
-		wantItemID     string
-		wantHasTitle   bool
-		wantHintKey    string
+		name          string
+		agent         v1.Agent
+		wantAgentName string
+		statusDetail  string
+		wantItemID    string
+		wantHasTitle  bool
+		wantHintKey   string
 	}{
 		{
 			name:          "antigravity_generic_popup",

@@ -94,13 +94,13 @@ func TestBuildHomeDisplayGraceHoldsConnectedHeadlineAndHidesUnlinked(t *testing.
 	unlinkedFalse := false
 	unlinkedTrue := true
 	cases := []struct {
-		name           string
-		conn           lists.ConnectionKind
-		worldUnlinked  bool
-		displayGrace   bool
-		wantConnState  corev1.ConnState
-		wantHeadline   corev1.HeadlineKind
-		wantRowStatus  corev1.SessionDisplayStatus
+		name          string
+		conn          lists.ConnectionKind
+		worldUnlinked bool
+		displayGrace  bool
+		wantConnState corev1.ConnState
+		wantHeadline  corev1.HeadlineKind
+		wantRowStatus corev1.SessionDisplayStatus
 	}{
 		{
 			name:          "offline_during_display_grace_keeps_connected_headline_and_row_status",

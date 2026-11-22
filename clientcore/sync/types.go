@@ -202,6 +202,7 @@ type SecurityState struct {
 
 // SettledCommand notifies upper layers (e.g. app) when a dispatched command finishes.
 type SettledCommand struct {
+	_         [0]func()
 	RequestID string
 	SlotKey   string
 	MachineID string
@@ -424,6 +425,8 @@ type Engine struct {
 	prefsQueue    []prefsQueueItem
 
 	secEngine      *security.Engine
+	nextSecOpTag   uint64
+	secOps         map[uint64]*pendingSecOp
 	security       SecurityState
 	homeScopeToken string
 	scopeHMACKey   []byte
@@ -450,37 +453,38 @@ type Engine struct {
 func NewEngine() *Engine {
 	pool := &entropy.Pool{}
 	e := &Engine{
-		foreground:        true,
-		networkAvailable:  true,
-		entropy:           pool,
-		secEngine:         security.NewEngine(pool),
-		timers:            make(map[timerKey]timerEntry),
-		listBackoffMs:     ListRetryInitialMs,
-		prefsBackoffMs:    PrefsRetryInitialMs,
-		machines:          make(map[string]*MachineEntry),
-		sessions:          make(map[string]*SessionEntry),
-		devices:           make(map[string]*DeviceEntry),
-		listed:            make(map[string]bool),
-		sessionByIDOps:    make(map[uint64]string),
-		sessionByIDFailed: make(map[string]bool),
-		machinePushes:     make(map[string]uint64),
-		sessionPushes:     make(map[string]uint64),
-		removedPushes:     make(map[string]uint64),
-		devicePushes:      make(map[string]uint64),
-		directReady:       make(map[string]bool),
-		directPrefs:       make(map[string]bool),
-		buffers:           make(map[string]*EventBuffer),
+		foreground:          true,
+		networkAvailable:    true,
+		entropy:             pool,
+		secEngine:           security.NewEngine(pool),
+		timers:              make(map[timerKey]timerEntry),
+		listBackoffMs:       ListRetryInitialMs,
+		prefsBackoffMs:      PrefsRetryInitialMs,
+		machines:            make(map[string]*MachineEntry),
+		sessions:            make(map[string]*SessionEntry),
+		devices:             make(map[string]*DeviceEntry),
+		listed:              make(map[string]bool),
+		sessionByIDOps:      make(map[uint64]string),
+		sessionByIDFailed:   make(map[string]bool),
+		machinePushes:       make(map[string]uint64),
+		sessionPushes:       make(map[string]uint64),
+		removedPushes:       make(map[string]uint64),
+		devicePushes:        make(map[string]uint64),
+		directReady:         make(map[string]bool),
+		directPrefs:         make(map[string]bool),
+		secOps:              make(map[uint64]*pendingSecOp),
+		buffers:             make(map[string]*EventBuffer),
 		sessionReplacements: make(map[string][]*v1.MachineReplacementProof),
-		watchedSessions:   make(map[string]bool),
-		pinnedSessions:    make(map[string]bool),
-		livePollInFlight:  make(map[string]string),
-		livePollReqToSid:  make(map[string]string),
-		inFlightCmds:       make(map[string]*PreparedCommand),
-		reqIDByAttempt:     make(map[string]string),
-		attemptTrackers:    make(map[string]*AttemptTracker),
-		retryReqByTimer:    make(map[string]string),
-		lateDirectTickets:  make(map[string]uint64),
-		lateDirectDeadline: make(map[string]int64),
+		watchedSessions:     make(map[string]bool),
+		pinnedSessions:      make(map[string]bool),
+		livePollInFlight:    make(map[string]string),
+		livePollReqToSid:    make(map[string]string),
+		inFlightCmds:        make(map[string]*PreparedCommand),
+		reqIDByAttempt:      make(map[string]string),
+		attemptTrackers:     make(map[string]*AttemptTracker),
+		retryReqByTimer:     make(map[string]string),
+		lateDirectTickets:   make(map[string]uint64),
+		lateDirectDeadline:  make(map[string]int64),
 		transportCoord: transport.NewCoordinator(transport.CoordConfig{
 			ProtocolVersion: uint64(PeerVersion),
 			Entropy:         pool,
@@ -489,11 +493,7 @@ func NewEngine() *Engine {
 	e.w.Init()
 	e.w.World.ClientVersion = PeerVersion
 	e.w.World.Unlinked = &e.unlinkedFlag
-	e.secEngine.SetStateChangedCallback(func() {
-		if stepCtx := e.activeStepCtx; stepCtx != nil {
-			e.syncSecurityStateFromEngine(stepCtx, true)
-		}
-	})
+	e.secEngine.SetAsyncSink(e)
 	e.refreshWorld()
 	return e
 }
@@ -567,10 +567,12 @@ func (e *Engine) HandleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	return consumed, res
 }
 
+func (e *Engine) restoreStepCtx(prev *StepContext) { e.activeStepCtx = prev }
+
 func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 	ctx := newStepContext()
 	e.activeStepCtx = ctx
-	defer func() { e.activeStepCtx = nil }()
+	defer e.restoreStepCtx(nil)
 	e.entropyNeedRequested = false
 	if ev == nil {
 		return false, StepResult{}

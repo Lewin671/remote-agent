@@ -18,6 +18,7 @@ const (
 )
 
 type prefsQueueItem struct {
+	_           [0]func()
 	OpID        string
 	Path        string
 	ForSettings bool
@@ -177,24 +178,7 @@ func (e *Engine) handleAccountPrefsFetched(ctx *StepContext, ev *corev1.AccountP
 		if ev.WirePrefs != nil {
 			slice = []*v1.AccountPrefsObject{ev.WirePrefs}
 		}
-		e.openWireDirectoryBatch(ctx, nil, nil, nil, slice, func(_ []decodedMachine, _ []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
-			stepCtx := e.activeStepCtx
-			var dp *decodedPrefs
-			if len(outP) > 0 {
-				dp = outP[0]
-			}
-			e.applyAccountPrefsDecoded(dp, true)
-			if dp != nil && dp.Wire != nil && dp.Wire.Revision > 0 {
-				stepCtx.emit(&corev1.Effect{
-					Effect: &corev1.Effect_CacheWrite{
-						CacheWrite: &corev1.CacheWriteEffect{
-							Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: dp.Wire},
-						},
-					},
-				})
-			}
-			stepCtx.Dirty.MarkAll()
-		})
+		e.openWireDirectoryBatchTag(ctx, nil, nil, nil, slice, dirBatchMeta{kind: dirKindPrefsLoad})
 		return
 	}
 	e.applyAccountPrefs(ev.Prefs, true)
@@ -209,53 +193,12 @@ func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPre
 		return
 	}
 	if ev.WirePrefs != nil || (e.secEngine != nil && e.secEngine.Locked() && ev.Prefs == nil) {
-		headOpID := head.OpID
 		var slice []*v1.AccountPrefsObject
 		if ev.WirePrefs != nil {
 			slice = []*v1.AccountPrefsObject{ev.WirePrefs}
 		}
-		e.openWireDirectoryBatch(ctx, nil, nil, nil, slice, func(_ []decodedMachine, _ []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
-			stepCtx := e.activeStepCtx
-			if len(e.prefsQueue) == 0 || e.prefsQueue[0].OpID != headOpID {
-				return
-			}
-			curHead := &e.prefsQueue[0]
-			var dp *decodedPrefs
-			if len(outP) > 0 {
-				dp = outP[0]
-			}
-			if dp != nil && dp.Broken {
-				e.applyAccountPrefsDecoded(dp, true)
-				e.finishPrefsOp(stepCtx, text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed))
-				return
-			}
-			var baseRev uint64
-			var basePrefs *v1.ProjectPrefs
-			if dp != nil {
-				baseRev = dp.Revision
-				basePrefs = dp.Prefs
-			}
-			if curHead.Attempt == 0 {
-				curHead.InitialBase = baseRev
-			} else if baseRev > curHead.InitialBase {
-				e.w.ProjectChangedElsewhere = true
-			}
-			if basePrefs != nil && slices.Contains(basePrefs.RecentOps, curHead.OpID) {
-				e.applyAccountPrefsDecoded(dp, true)
-				if dp != nil && dp.Wire != nil && dp.Wire.Revision > 0 {
-					stepCtx.emit(&corev1.Effect{
-						Effect: &corev1.Effect_CacheWrite{
-							CacheWrite: &corev1.CacheWriteEffect{
-								Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: dp.Wire},
-							},
-						},
-					})
-				}
-				e.finishPrefsOp(stepCtx, nil)
-				return
-			}
-			nextPrefs := lists.ApplyPrefsOp(basePrefs, curHead.Op, curHead.OpID, e.nowMs)
-			e.sealAndEmitPrefsPut(stepCtx, curHead, baseRev, nextPrefs)
+		e.openWireDirectoryBatchTag(ctx, nil, nil, nil, slice, dirBatchMeta{
+			kind: dirKindPrefsCASGet, headOpID: head.OpID,
 		})
 		return
 	}
@@ -324,21 +267,8 @@ func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.Accoun
 		return
 	}
 	if ev.WireCurrent != nil {
-		e.openWireDirectoryBatch(ctx, nil, nil, nil, []*v1.AccountPrefsObject{ev.WireCurrent}, func(_ []decodedMachine, _ []decodedSession, _ []decodedDevice, outP []*decodedPrefs) {
-			stepCtx := e.activeStepCtx
-			if len(outP) > 0 && outP[0] != nil {
-				e.applyAccountPrefsDecoded(outP[0], true)
-				if outP[0].Wire != nil && outP[0].Wire.Revision > 0 {
-					stepCtx.emit(&corev1.Effect{
-						Effect: &corev1.Effect_CacheWrite{
-							CacheWrite: &corev1.CacheWriteEffect{
-								Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: outP[0].Wire},
-							},
-						},
-					})
-				}
-			}
-			e.finishPrefsOp(stepCtx, nil)
+		e.openWireDirectoryBatchTag(ctx, nil, nil, nil, []*v1.AccountPrefsObject{ev.WireCurrent}, dirBatchMeta{
+			kind: dirKindPrefsCASPut,
 		})
 		return
 	}

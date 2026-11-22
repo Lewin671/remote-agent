@@ -23,6 +23,7 @@ const (
 
 // SessionCommandRecord tracks one command slot's submission and settle lifecycle.
 type SessionCommandRecord struct {
+	_             [0]func()
 	SlotKey       string
 	RequestID     string
 	Status        corev1.SessionCommandStatus
@@ -121,23 +122,23 @@ type PendingStartPrompt struct {
 
 // SessionUIState holds per-session client UI state owned by Core (slots, outgoing sends, tray actions, dock steps).
 type SessionUIState struct {
-	Commands             map[string]*SessionCommandRecord
-	Outgoing             []*SessionOutgoingRecord
-	LocalContents        map[string]*LocalSentContent
-	CancelIntents        map[string]*SessionCancelIntent
+	Commands               map[string]*SessionCommandRecord
+	Outgoing               []*SessionOutgoingRecord
+	LocalContents          map[string]*LocalSentContent
+	CancelIntents          map[string]*SessionCancelIntent
 	PendingResendSources   map[string]string
 	DismissedInputIDs      map[string]bool
 	SteerVisibleAfterMs    map[string]int64
 	SteerGraceNextTargetMs int64
 	Undo                   *SessionUndoBatch
-	QuestionIndexByID    map[string]int32
-	PendingStartPrompt   *PendingStartPrompt
-	LastApprovalSeq      map[string]uint64
-	LastQuestionSeq      map[string]uint64
-	LastPlanSeq          uint64
-	LastPlanHash         []byte
-	LookupError          string
-	timeline             *timelineCache
+	QuestionIndexByID      map[string]int32
+	PendingStartPrompt     *PendingStartPrompt
+	LastApprovalSeq        map[string]uint64
+	LastQuestionSeq        map[string]uint64
+	LastPlanSeq            uint64
+	LastPlanHash           []byte
+	LookupError            string
+	timeline               *timelineCache
 }
 
 // ClearTimelineCache releases cached timeline items when the underlying event buffer is evicted.
@@ -766,6 +767,25 @@ func isAgentSourceUnavailable(snap *v1.UsageStatsResponse, agent v1.Agent) bool 
 	return false
 }
 
+func matchSessionUsageSeries(s *v1.UsageStatsResponse, agent v1.Agent, model string) *v1.UsageSeries {
+	if s == nil {
+		return nil
+	}
+	eff := lists.EffectiveAgent(agent)
+	for _, item := range s.Series {
+		if item == nil || item.Current == nil || item.Current.UsageRequestCount == 0 {
+			continue
+		}
+		if lists.EffectiveAgent(item.Agent) != eff {
+			continue
+		}
+		if model == "" || item.Model == model {
+			return item
+		}
+	}
+	return nil
+}
+
 func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabilities, model string) *corev1.SessionUsageEntryView {
 	if lm == nil || lm.Meta == nil || lm.Meta.Capabilities == nil || !lm.Meta.Capabilities.UsageStats {
 		return &corev1.SessionUsageEntryView{Visible: false, Supported: false}
@@ -793,25 +813,7 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 		entry.Subtitle = text.Msg(text.KeySessionUsageEntryUnavailable, text.Str("agent", caps.Name))
 		return entry
 	}
-	matchSeries := func(s *v1.UsageStatsResponse) *v1.UsageSeries {
-		if s == nil {
-			return nil
-		}
-		eff := lists.EffectiveAgent(caps.Agent)
-		for _, item := range s.Series {
-			if item == nil || item.Current == nil || item.Current.UsageRequestCount == 0 {
-				continue
-			}
-			if lists.EffectiveAgent(item.Agent) != eff {
-				continue
-			}
-			if model == "" || item.Model == model {
-				return item
-			}
-		}
-		return nil
-	}
-	matched := matchSeries(snap)
+	matched := matchSessionUsageSeries(snap, caps.Agent, model)
 	if matched == nil && !loading {
 		snap30, cachedOff30, cachedAt30, loading30 := lookupUsageSnapshot(st, lm.ID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, 0, 0, online)
 		if isAgentSourceUnavailable(snap30, caps.Agent) {
@@ -819,7 +821,7 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 			entry.Subtitle = text.Msg(text.KeySessionUsageEntryUnavailable, text.Str("agent", caps.Name))
 			return entry
 		}
-		if m30 := matchSeries(snap30); m30 != nil {
+		if m30 := matchSessionUsageSeries(snap30, caps.Agent, model); m30 != nil {
 			matched = m30
 			snap = snap30
 			entry.FallbackThirtyDays = true

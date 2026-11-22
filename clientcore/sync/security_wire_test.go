@@ -13,9 +13,9 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
@@ -377,9 +377,9 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 			ListsFetched: &corev1.ListsFetchedEvent{
 				OpId: e.refreshOpID,
 				WireMachines: []*v1.Machine{{
-					Id:   machine.id,
+					Id:     machine.id,
 					Online: true,
-					Meta: sealWireObj(t, machine, dom, s1, sec, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
+					Meta:   sealWireObj(t, machine, dom, s1, sec, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
 				}},
 				WireSessions: []*v1.RemoteSession{{
 					MachineId: machine.id,

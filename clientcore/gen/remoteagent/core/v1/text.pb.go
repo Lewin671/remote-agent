@@ -5,6 +5,7 @@ package corev1
 
 import (
 	litewire "github.com/Lewin671/remote-agent/clientcore/gen/litewire"
+	unsafe "unsafe"
 )
 
 type TimestampStyle int32
@@ -20,6 +21,7 @@ const (
 )
 
 type TimestampArg struct {
+	_      [0]func()
 	UnixMs int64
 	Style  TimestampStyle
 }
@@ -37,22 +39,23 @@ func (m *TimestampArg) GetStyle() TimestampStyle {
 	return 0
 }
 
-func (m *TimestampArg) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TimestampArg = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TimestampArg{}.UnixMs), Kind: litewire.KindInt64},
+		{Num: 2, Offset: unsafe.Offsetof(TimestampArg{}.Style), Kind: litewire.KindInt32},
+	},
+}
 
 func (m *TimestampArg) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TimestampArg) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.UnixMs))
-	b = litewire.AppendInt32(b, 2, int32(m.Style))
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TimestampArg)
 }
 
 type Text struct {
+	_                [0]func()
 	Key              string
 	Args             []*TextArg
 	Literal          string
@@ -105,59 +108,65 @@ func (m *Text) GetTimestamp() *TimestampArg {
 	return nil
 }
 
-func (m *Text) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_Text = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(Text{}.Key), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(Text{}.Args), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_TextArg},
+		{Num: 3, Offset: unsafe.Offsetof(Text{}.Literal), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(Text{}.Join), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly},
+		{Num: 5, Offset: unsafe.Offsetof(Text{}.SeparatorKey), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(Text{}.SeparatorLiteral), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(Text{}.Timestamp), Kind: litewire.KindMessage, Sub: &LitewireDesc_TimestampArg},
+	},
+}
 
 func (m *Text) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *Text) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Key)
-	for _, v := range m.Args {
-		if v != nil {
-			b = litewire.AppendMessage(b, 2, v)
-		}
-	}
-	b = litewire.AppendString(b, 3, m.Literal)
-	for _, v := range m.Join {
-		if v != nil {
-			b = litewire.AppendMessage(b, 4, v)
-		}
-	}
-	b = litewire.AppendString(b, 5, m.SeparatorKey)
-	b = litewire.AppendString(b, 6, m.SeparatorLiteral)
-	if m.Timestamp != nil {
-		b = litewire.AppendMessage(b, 7, m.Timestamp)
-	}
-	return b
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_Text)
 }
 
 type TextArg struct {
+	_     [0]func()
 	Name  string
 	Value isTextArg_Value
 }
 
 type isTextArg_Value interface{ isTextArg_Value() }
-type TextArg_StrValue struct{ StrValue string }
+type TextArg_StrValue struct {
+	_        [0]func()
+	StrValue string
+}
 
 func (*TextArg_StrValue) isTextArg_Value() {}
 
-type TextArg_IntValue struct{ IntValue int64 }
+type TextArg_IntValue struct {
+	_        [0]func()
+	IntValue int64
+}
 
 func (*TextArg_IntValue) isTextArg_Value() {}
 
-type TextArg_FloatValue struct{ FloatValue float64 }
+type TextArg_FloatValue struct {
+	_          [0]func()
+	FloatValue float64
+}
 
 func (*TextArg_FloatValue) isTextArg_Value() {}
 
-type TextArg_TextValue struct{ TextValue *Text }
+type TextArg_TextValue struct {
+	_         [0]func()
+	TextValue *Text
+}
 
 func (*TextArg_TextValue) isTextArg_Value() {}
 
-type TextArg_TimestampValue struct{ TimestampValue *TimestampArg }
+type TextArg_TimestampValue struct {
+	_              [0]func()
+	TimestampValue *TimestampArg
+}
 
 func (*TextArg_TimestampValue) isTextArg_Value() {}
 
@@ -204,17 +213,25 @@ func (m *TextArg) GetTimestampValue() *TimestampArg {
 	return nil
 }
 
-func (m *TextArg) Size() int { return len(m.AppendMarshal(nil)) }
+var LitewireDesc_TextArg = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(TextArg{}.Name), Kind: litewire.KindString},
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+	},
+}
 
 func (m *TextArg) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
 func (m *TextArg) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendString(b, 1, m.Name)
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_TextArg)
+}
+
+func extraMarshal_TextArg(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*TextArg)(base)
+	var onum litewire.Number
+	var omsg litewire.Marshaler
 	switch x := m.Value.(type) {
 	case *TextArg_StrValue:
 		if x != nil {
@@ -229,17 +246,21 @@ func (m *TextArg) AppendMarshal(b []byte) []byte {
 			b = litewire.AppendDoubleAlways(b, 4, x.FloatValue)
 		}
 	case *TextArg_TextValue:
-		if x != nil {
-			if x.TextValue != nil {
-				b = litewire.AppendMessage(b, 5, x.TextValue)
-			}
+		if x != nil && x.TextValue != nil {
+			onum, omsg = 5, x.TextValue
 		}
 	case *TextArg_TimestampValue:
-		if x != nil {
-			if x.TimestampValue != nil {
-				b = litewire.AppendMessage(b, 6, x.TimestampValue)
-			}
+		if x != nil && x.TimestampValue != nil {
+			onum, omsg = 6, x.TimestampValue
 		}
 	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
 	return b
+}
+
+func init() {
+	LitewireDesc_Text.Fields[3].Sub = &LitewireDesc_Text
+	LitewireDesc_TextArg.ExtraMarshal = extraMarshal_TextArg
 }

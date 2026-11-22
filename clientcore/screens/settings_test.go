@@ -312,10 +312,10 @@ func TestSettingsRedesignProjections(t *testing.T) {
 
 	// Notification summary table-driven check
 	notifCases := []struct {
-		name      string
-		prefs     NotificationPrefs
-		wantKey   string
-		wantWarn  bool
+		name     string
+		prefs    NotificationPrefs
+		wantKey  string
+		wantWarn bool
 	}{
 		{"ios_unsupported_calm", NotificationPrefs{Supported: false, NotifyAttention: true}, text.KeySettingsNotificationsSummaryOff, false},
 		{"all_off", NotificationPrefs{Supported: true}, text.KeySettingsNotificationsSummaryOff, false},

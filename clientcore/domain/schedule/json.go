@@ -87,37 +87,38 @@ func DecodeTask(raw []byte) (*Task, error) {
 	return t, nil
 }
 
+func appendJSONKey(b []byte, first *bool, k string) []byte {
+	if !*first {
+		b = append(b, ',')
+	}
+	*first = false
+	b = appendJSONString(b, k)
+	return append(b, ':')
+}
+
+func appendJSONStrField(b []byte, first *bool, k, v string, omitEmpty bool) []byte {
+	if omitEmpty && v == "" {
+		return b
+	}
+	return appendJSONString(appendJSONKey(b, first, k), v)
+}
+
 // EncodeSpec serializes a Spec to compact UTF-8 JSON without reflection.
 func EncodeSpec(s Spec) ([]byte, error) {
 	b := make([]byte, 0, 256)
 	b = append(b, '{')
 	first := true
-	addKey := func(k string) {
-		if !first {
-			b = append(b, ',')
-		}
-		first = false
-		b = appendJSONString(b, k)
-		b = append(b, ':')
-	}
 	if s.Notify != "" {
-		addKey("notify")
-		b = appendJSONString(b, s.Notify)
+		b = appendJSONString(appendJSONKey(b, &first, "notify"), s.Notify)
 	}
-	addKey("title")
-	b = appendJSONString(b, s.Title)
-	addKey("message")
-	b = appendJSONString(b, s.Message)
-	addKey("trigger")
-	b = appendTriggerJSON(b, s.Trigger)
-	addKey("target")
-	b = appendTargetJSON(b, s.Target)
+	b = appendJSONString(appendJSONKey(b, &first, "title"), s.Title)
+	b = appendJSONString(appendJSONKey(b, &first, "message"), s.Message)
+	b = appendTriggerJSON(appendJSONKey(b, &first, "trigger"), s.Trigger)
+	b = appendTargetJSON(appendJSONKey(b, &first, "target"), s.Target)
 	if s.LateSeconds != 0 {
-		addKey("late_seconds")
-		b = strconv.AppendInt(b, s.LateSeconds, 10)
+		b = strconv.AppendInt(appendJSONKey(b, &first, "late_seconds"), s.LateSeconds, 10)
 	}
-	b = append(b, '}')
-	return b, nil
+	return append(b, '}'), nil
 }
 
 func appendJSONString(b []byte, s string) []byte {
@@ -151,28 +152,17 @@ func appendJSONString(b []byte, s string) []byte {
 		}
 		i += width
 	}
-	b = append(b, '"')
-	return b
+	return append(b, '"')
 }
 
 func appendTriggerJSON(b []byte, tr Trigger) []byte {
 	b = append(b, '{')
 	first := true
-	addKey := func(k string) {
-		if !first {
-			b = append(b, ',')
-		}
-		first = false
-		b = appendJSONString(b, k)
-		b = append(b, ':')
-	}
 	if tr.Time != "" {
-		addKey("time")
-		b = appendJSONString(b, tr.Time)
+		b = appendJSONString(appendJSONKey(b, &first, "time"), tr.Time)
 	}
 	if len(tr.Weekdays) > 0 {
-		addKey("weekdays")
-		b = append(b, '[')
+		b = append(appendJSONKey(b, &first, "weekdays"), '[')
 		for i, wd := range tr.Weekdays {
 			if i > 0 {
 				b = append(b, ',')
@@ -182,63 +172,41 @@ func appendTriggerJSON(b []byte, tr Trigger) []byte {
 		b = append(b, ']')
 	}
 	if tr.Timezone != "" {
-		addKey("timezone")
-		b = appendJSONString(b, tr.Timezone)
+		b = appendJSONString(appendJSONKey(b, &first, "timezone"), tr.Timezone)
 	}
 	if tr.Until != "" {
-		addKey("until")
-		b = appendJSONString(b, tr.Until)
+		b = appendJSONString(appendJSONKey(b, &first, "until"), tr.Until)
 	}
-	addKey("type")
-	b = appendJSONString(b, tr.Type)
+	b = appendJSONString(appendJSONKey(b, &first, "type"), tr.Type)
 	if tr.At != "" {
-		addKey("at")
-		b = appendJSONString(b, tr.At)
+		b = appendJSONString(appendJSONKey(b, &first, "at"), tr.At)
 	}
 	if tr.DelaySeconds != 0 {
-		addKey("delay_seconds")
-		b = strconv.AppendInt(b, tr.DelaySeconds, 10)
+		b = strconv.AppendInt(appendJSONKey(b, &first, "delay_seconds"), tr.DelaySeconds, 10)
 	}
 	if tr.IntervalSeconds != 0 {
-		addKey("interval_seconds")
-		b = strconv.AppendInt(b, tr.IntervalSeconds, 10)
+		b = strconv.AppendInt(appendJSONKey(b, &first, "interval_seconds"), tr.IntervalSeconds, 10)
 	}
 	if tr.Repeat {
-		addKey("repeat")
-		b = append(b, "true"...)
+		b = append(appendJSONKey(b, &first, "repeat"), "true"...)
 	}
 	if tr.MaxRuns != 0 {
-		addKey("max_runs")
-		b = strconv.AppendInt(b, tr.MaxRuns, 10)
+		b = strconv.AppendInt(appendJSONKey(b, &first, "max_runs"), tr.MaxRuns, 10)
 	}
-	b = append(b, '}')
-	return b
+	return append(b, '}')
 }
 
 func appendTargetJSON(b []byte, tg Target) []byte {
 	b = append(b, '{')
 	first := true
-	addStr := func(k, v string, omitEmpty bool) {
-		if omitEmpty && v == "" {
-			return
-		}
-		if !first {
-			b = append(b, ',')
-		}
-		first = false
-		b = appendJSONString(b, k)
-		b = append(b, ':')
-		b = appendJSONString(b, v)
-	}
-	addStr("type", tg.Type, false)
-	addStr("session", tg.Session, true)
-	addStr("cwd", tg.Cwd, true)
-	addStr("agent", tg.Agent, true)
-	addStr("model", tg.Model, true)
-	addStr("effort", tg.Effort, true)
-	addStr("mode", tg.Mode, true)
-	b = append(b, '}')
-	return b
+	b = appendJSONStrField(b, &first, "type", tg.Type, false)
+	b = appendJSONStrField(b, &first, "session", tg.Session, true)
+	b = appendJSONStrField(b, &first, "cwd", tg.Cwd, true)
+	b = appendJSONStrField(b, &first, "agent", tg.Agent, true)
+	b = appendJSONStrField(b, &first, "model", tg.Model, true)
+	b = appendJSONStrField(b, &first, "effort", tg.Effort, true)
+	b = appendJSONStrField(b, &first, "mode", tg.Mode, true)
+	return append(b, '}')
 }
 
 type jsonParser struct {
@@ -520,36 +488,37 @@ func (p *jsonParser) skipValue() error {
 	}
 }
 
-func (p *jsonParser) readObject(visit func(key string) error) error {
+func (p *jsonParser) beginObject() (bool, error) {
 	if !p.consume('{') {
-		return errMalformedJSON
+		return false, errMalformedJSON
 	}
 	p.skipWS()
-	if p.consume('}') {
-		return nil
-	}
-	for {
-		key, err := p.readString()
-		if err != nil {
-			return err
-		}
-		p.skipWS()
-		if !p.consume(':') {
-			return errMalformedJSON
-		}
-		p.skipWS()
-		if err := visit(key); err != nil {
-			return err
-		}
+	return !p.consume('}'), nil
+}
+
+func (p *jsonParser) nextObjectKey(first *bool) (string, bool, error) {
+	if *first {
+		*first = false
+	} else {
 		p.skipWS()
 		if p.consume('}') {
-			return nil
+			return "", false, nil
 		}
 		if !p.consume(',') {
-			return errMalformedJSON
+			return "", false, errMalformedJSON
 		}
 		p.skipWS()
 	}
+	key, err := p.readString()
+	if err != nil {
+		return "", false, err
+	}
+	p.skipWS()
+	if !p.consume(':') {
+		return "", false, errMalformedJSON
+	}
+	p.skipWS()
+	return key, true, nil
 }
 
 func (p *jsonParser) readTaskArray() ([]*Task, error) {
@@ -585,9 +554,23 @@ func (p *jsonParser) readTaskNullable() (*Task, error) {
 	if p.consumeNull() {
 		return nil, nil
 	}
+	open, err := p.beginObject()
+	if err != nil {
+		return nil, err
+	}
 	var t Task
-	if err := p.readObject(func(key string) error {
-		var err error
+	if !open {
+		return &t, nil
+	}
+	first := true
+	for {
+		key, more, err := p.nextObjectKey(&first)
+		if err != nil {
+			return nil, err
+		}
+		if !more {
+			return &t, nil
+		}
 		switch key {
 		case "takeover":
 			t.Takeover, err = p.readTakeoverNullable()
@@ -628,20 +611,33 @@ func (p *jsonParser) readTaskNullable() (*Task, error) {
 		default:
 			err = p.skipValue()
 		}
-		return err
-	}); err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
-	return &t, nil
 }
 
 func (p *jsonParser) readTakeoverNullable() (*Takeover, error) {
 	if p.consumeNull() {
 		return nil, nil
 	}
+	open, err := p.beginObject()
+	if err != nil {
+		return nil, err
+	}
 	var tk Takeover
-	if err := p.readObject(func(key string) error {
-		var err error
+	if !open {
+		return &tk, nil
+	}
+	first := true
+	for {
+		key, more, err := p.nextObjectKey(&first)
+		if err != nil {
+			return nil, err
+		}
+		if !more {
+			return &tk, nil
+		}
 		switch key {
 		case "session":
 			tk.Session, err = p.readNullableString()
@@ -650,20 +646,33 @@ func (p *jsonParser) readTakeoverNullable() (*Takeover, error) {
 		default:
 			err = p.skipValue()
 		}
-		return err
-	}); err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
-	return &tk, nil
 }
 
 func (p *jsonParser) readManualRequestNullable() (*ManualRequest, error) {
 	if p.consumeNull() {
 		return nil, nil
 	}
+	open, err := p.beginObject()
+	if err != nil {
+		return nil, err
+	}
 	var mr ManualRequest
-	if err := p.readObject(func(key string) error {
-		var err error
+	if !open {
+		return &mr, nil
+	}
+	first := true
+	for {
+		key, more, err := p.nextObjectKey(&first)
+		if err != nil {
+			return nil, err
+		}
+		if !more {
+			return &mr, nil
+		}
 		switch key {
 		case "request_id":
 			mr.RequestID, err = p.readNullableString()
@@ -672,17 +681,24 @@ func (p *jsonParser) readManualRequestNullable() (*ManualRequest, error) {
 		default:
 			err = p.skipValue()
 		}
-		return err
-	}); err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
-	return &mr, nil
 }
 
 func (p *jsonParser) readSpec() (Spec, error) {
 	var s Spec
-	err := p.readObject(func(key string) error {
-		var err error
+	open, err := p.beginObject()
+	if err != nil || !open {
+		return s, err
+	}
+	first := true
+	for {
+		key, more, err := p.nextObjectKey(&first)
+		if err != nil || !more {
+			return s, err
+		}
 		switch key {
 		case "notify":
 			s.Notify, err = p.readNullableString()
@@ -699,15 +715,24 @@ func (p *jsonParser) readSpec() (Spec, error) {
 		default:
 			err = p.skipValue()
 		}
-		return err
-	})
-	return s, err
+		if err != nil {
+			return s, err
+		}
+	}
 }
 
 func (p *jsonParser) readTrigger() (Trigger, error) {
 	var tr Trigger
-	err := p.readObject(func(key string) error {
-		var err error
+	open, err := p.beginObject()
+	if err != nil || !open {
+		return tr, err
+	}
+	first := true
+	for {
+		key, more, err := p.nextObjectKey(&first)
+		if err != nil || !more {
+			return tr, err
+		}
 		switch key {
 		case "time":
 			tr.Time, err = p.readNullableString()
@@ -732,15 +757,24 @@ func (p *jsonParser) readTrigger() (Trigger, error) {
 		default:
 			err = p.skipValue()
 		}
-		return err
-	})
-	return tr, err
+		if err != nil {
+			return tr, err
+		}
+	}
 }
 
 func (p *jsonParser) readTarget() (Target, error) {
 	var tg Target
-	err := p.readObject(func(key string) error {
-		var err error
+	open, err := p.beginObject()
+	if err != nil || !open {
+		return tg, err
+	}
+	first := true
+	for {
+		key, more, err := p.nextObjectKey(&first)
+		if err != nil || !more {
+			return tg, err
+		}
 		switch key {
 		case "type":
 			tg.Type, err = p.readNullableString()
@@ -759,9 +793,10 @@ func (p *jsonParser) readTarget() (Target, error) {
 		default:
 			err = p.skipValue()
 		}
-		return err
-	})
-	return tg, err
+		if err != nil {
+			return tg, err
+		}
+	}
 }
 
 func (p *jsonParser) readIntArray() ([]int, error) {
@@ -828,9 +863,23 @@ func (p *jsonParser) readRunNullable() (*Run, error) {
 	if p.consumeNull() {
 		return nil, nil
 	}
+	open, err := p.beginObject()
+	if err != nil {
+		return nil, err
+	}
 	var r Run
-	if err := p.readObject(func(key string) error {
-		var err error
+	if !open {
+		return &r, nil
+	}
+	first := true
+	for {
+		key, more, err := p.nextObjectKey(&first)
+		if err != nil {
+			return nil, err
+		}
+		if !more {
+			return &r, nil
+		}
 		switch key {
 		case "notify_on_finish":
 			r.NotifyOnFinish, err = p.readBool()
@@ -877,9 +926,8 @@ func (p *jsonParser) readRunNullable() (*Run, error) {
 		default:
 			err = p.skipValue()
 		}
-		return err
-	}); err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
-	return &r, nil
 }

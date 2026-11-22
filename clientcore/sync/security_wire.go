@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"maps"
+	"slices"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -333,11 +334,7 @@ func (e *Engine) handleSecurityForeground(ctx *StepContext, ev *corev1.SecurityF
 }
 
 func (e *Engine) handleSecurityWorkflowAction(ctx *StepContext, ev *corev1.SecurityWorkflowActionEvent) {
-	effs := e.secEngine.HandleWorkflowAction(e.nowMs, ev, e.securityDeviceOffers(), func() {
-		if stepCtx := e.activeStepCtx; stepCtx != nil {
-			e.syncSecurityStateFromEngine(stepCtx, true)
-		}
-	})
+	effs := e.secEngine.HandleWorkflowAction(e.nowMs, ev, e.securityDeviceOffers(), nil)
 	e.emitSecurityEffects(ctx, effs)
 	e.maybeRequestEntropy(ctx)
 }
@@ -492,70 +489,229 @@ func validateSessionCheckpoint(sid string, meta *v1.Session) (*v1.LiveSnapshot, 
 	return &cp, false
 }
 
-func (e *Engine) openWireDirectoryBatch(
+type secOpKind uint8
+
+const (
+	secOpSyncStates secOpKind = iota + 1
+	secOpCoordSign
+	secOpCoordAgree
+	secOpDirBatch
+	secOpStoredEvents
+	secOpDirectEvents
+	secOpSealCmd
+	secOpOpenCmdOutcome
+	secOpSealPrefs
+)
+
+type dirBatchKind uint8
+
+const (
+	dirKindBootstrap dirBatchKind = iota + 1
+	dirKindListsFetched
+	dirKindSessionsPage
+	dirKindSessionByID
+	dirKindDevices
+	dirKindStreamMachine
+	dirKindStreamSession
+	dirKindStreamPrefs
+	dirKindStreamDevice
+	dirKindPrefsLoad
+	dirKindPrefsCASGet
+	dirKindPrefsCASPut
+)
+
+type storedEventsKind uint8
+
+const (
+	storedEventsCache storedEventsKind = iota + 1
+	storedEventsPage
+	storedEventsStream
+)
+
+type dirSessIdx struct {
+	keyIdx  int
+	metaIdx int
+}
+
+type dirBatchMeta struct {
+	kind           dirBatchKind
+	refreshRun     uint64
+	listingGen     uint64
+	devGen         uint64
+	legID          uint64
+	sid            string
+	headOpID       string
+	evNext         *v1.SessionCursor
+	mp, sp, rp, dp map[string]uint64
+	wm             *v1.Machine
+	ws             *v1.RemoteSession
+	wd             *v1.Device
+}
+
+type pendingSecOp struct {
+	kind           secOpKind
+	opID           uint64
+	dir            dirBatchMeta
+	machines       []*v1.Machine
+	sessions       []*v1.RemoteSession
+	devices        []*v1.Device
+	prefs          []*v1.AccountPrefsObject
+	mIdx           []int
+	sIdx           []dirSessIdx
+	dIdx           []int
+	pIdx           []int
+	eventsKind     storedEventsKind
+	stored         []*v1.StoredEvent
+	lifeGen        uint64
+	b              *EventBuffer
+	agent          v1.Agent
+	wasBackfilling bool
+	rawCount       int
+	firstSeq       uint64
+	lastSeq        uint64
+	more           bool
+	sid            string
+	machineID      string
+	pcID           uint64
+	prep           *PreparedCommand
+	cmdEv          *corev1.CommandOutcomeEvent
+	headOpID       string
+	baseRev        uint64
+	nextPrefs      *v1.ProjectPrefs
+}
+
+func (e *Engine) allocSecOp(op *pendingSecOp) uint64 {
+	e.nextSecOpTag++
+	tag := e.nextSecOpTag
+	e.secOps[tag] = op
+	return tag
+}
+
+func (e *Engine) takeSecOp(tag uint64) *pendingSecOp {
+	op := e.secOps[tag]
+	if op != nil {
+		delete(e.secOps, tag)
+	}
+	return op
+}
+
+// OnSecurityStateChanged implements security.AsyncSink.
+func (e *Engine) OnSecurityStateChanged() {
+	if stepCtx := e.activeStepCtx; stepCtx != nil {
+		e.syncSecurityStateFromEngine(stepCtx, true)
+	}
+}
+
+// OnSyncStatesDone implements security.AsyncSink.
+func (e *Engine) OnSyncStatesDone(tag uint64, err error) {
+	op := e.takeSecOp(tag)
+	if op == nil {
+		return
+	}
+	if e.activeSecOpID == op.opID {
+		e.activeSecOpID = 0
+	}
+	stepCtx := e.activeStepCtx
+	if stepCtx == nil {
+		return
+	}
+	if err != nil {
+		e.emitCoordEffects(stepCtx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
+	} else {
+		e.syncSecurityStateFromEngine(stepCtx, true)
+	}
+	e.maybeRequestEntropy(stepCtx)
+}
+
+// OnKeySignDone implements security.AsyncSink.
+func (e *Engine) OnKeySignDone(tag uint64, sig []byte, err error) {
+	op := e.takeSecOp(tag)
+	if op == nil || err != nil {
+		return
+	}
+	e.emitCoordEffects(e.activeStepCtx, e.ensureTransportCoord().OnKeySigned(e.nowMs, op.opID, sig))
+}
+
+// OnKeyAgreeDone implements security.AsyncSink.
+func (e *Engine) OnKeyAgreeDone(tag uint64, shared []byte, err error) {
+	op := e.takeSecOp(tag)
+	if op == nil {
+		return
+	}
+	e.emitCoordEffects(e.activeStepCtx, e.ensureTransportCoord().OnKeyAgreed(e.nowMs, op.opID, shared, err == nil))
+}
+
+// OnOpenBatchDone implements security.AsyncSink.
+func (e *Engine) OnOpenBatchDone(tag uint64, results []security.OpenResult) {
+	op := e.takeSecOp(tag)
+	if op == nil {
+		return
+	}
+	switch op.kind {
+	case secOpDirBatch:
+		e.finishDirectoryBatch(e.activeStepCtx, op, results)
+	case secOpStoredEvents:
+		e.finishStoredEvents(e.activeStepCtx, op, results)
+	case secOpDirectEvents:
+		e.finishDirectEventsOpen(e.activeStepCtx, op, results)
+	case secOpOpenCmdOutcome:
+		e.finishOpenCmdOutcome(e.activeStepCtx, op, results)
+	}
+}
+
+// OnSealEnvelopeDone implements security.AsyncSink.
+func (e *Engine) OnSealEnvelopeDone(tag uint64, sr security.SealResult, _ error) {
+	op := e.takeSecOp(tag)
+	if op == nil {
+		return
+	}
+	switch op.kind {
+	case secOpSealCmd:
+		e.finishSealCmd(e.activeStepCtx, op, sr)
+	case secOpSealPrefs:
+		e.finishSealPrefs(e.activeStepCtx, op, sr)
+	}
+}
+
+func (e *Engine) openWireDirectoryBatchTag(
 	ctx *StepContext,
 	machines []*v1.Machine,
 	sessions []*v1.RemoteSession,
 	devices []*v1.Device,
 	prefs []*v1.AccountPrefsObject,
-	onDone func(
-		outM []decodedMachine,
-		outS []decodedSession,
-		outD []decodedDevice,
-		outP []*decodedPrefs,
-	),
+	meta dirBatchMeta,
 ) {
 	var items []security.OpenItem
-	type mIndices struct {
-		metaIdx int
-	}
-	mIdx := make([]mIndices, len(machines))
+	mIdx := make([]int, len(machines))
 	for i, m := range machines {
-		mIdx[i].metaIdx = -1
+		mIdx[i] = -1
 		if m == nil || m.Id == "" || m.Meta == nil {
 			continue
 		}
-		mIdx[i].metaIdx = len(items)
+		mIdx[i] = len(items)
 		items = append(items, security.OpenItem{
-			Env:             m.Meta,
-			ExpectedPurpose: devicesec.MachineMeta,
-			MachineID:       m.Id,
-			History:         true,
+			Env: m.Meta, ExpectedPurpose: devicesec.MachineMeta, MachineID: m.Id, History: true,
 		})
 	}
-
-	type sIndices struct {
-		keyIdx  int
-		metaIdx int
-	}
-	sIdx := make([]sIndices, len(sessions))
+	sIdx := make([]dirSessIdx, len(sessions))
 	for i, rs := range sessions {
-		sIdx[i] = sIndices{keyIdx: -1, metaIdx: -1}
+		sIdx[i] = dirSessIdx{keyIdx: -1, metaIdx: -1}
 		if rs == nil || rs.SessionId == "" {
 			continue
 		}
 		if rs.Key != nil {
 			sIdx[i].keyIdx = len(items)
 			items = append(items, security.OpenItem{
-				Env:             rs.Key,
-				ExpectedPurpose: devicesec.SessionKey,
-				MachineID:       rs.MachineId,
-				SessionID:       rs.SessionId,
-				History:         true,
+				Env: rs.Key, ExpectedPurpose: devicesec.SessionKey, MachineID: rs.MachineId, SessionID: rs.SessionId, History: true,
 			})
 		}
 		if rs.Meta != nil {
 			sIdx[i].metaIdx = len(items)
 			items = append(items, security.OpenItem{
-				Env:             rs.Meta,
-				ExpectedPurpose: devicesec.SessionMeta,
-				MachineID:       rs.MachineId,
-				SessionID:       rs.SessionId,
-				History:         true,
+				Env: rs.Meta, ExpectedPurpose: devicesec.SessionMeta, MachineID: rs.MachineId, SessionID: rs.SessionId, History: true,
 			})
 		}
 	}
-
 	dIdx := make([]int, len(devices))
 	for i, d := range devices {
 		dIdx[i] = -1
@@ -564,13 +720,9 @@ func (e *Engine) openWireDirectoryBatch(
 		}
 		dIdx[i] = len(items)
 		items = append(items, security.OpenItem{
-			Env:             d.Meta,
-			ExpectedPurpose: devicesec.DeviceMeta,
-			RequestID:       d.Id,
-			History:         true,
+			Env: d.Meta, ExpectedPurpose: devicesec.DeviceMeta, RequestID: d.Id, History: true,
 		})
 	}
-
 	pIdx := make([]int, len(prefs))
 	for i, p := range prefs {
 		pIdx[i] = -1
@@ -583,145 +735,299 @@ func (e *Engine) openWireDirectoryBatch(
 			reqID = ProjectPrefsObjectID
 		}
 		items = append(items, security.OpenItem{
-			Env:             p.Envelope,
-			ExpectedPurpose: devicesec.Prefs,
-			RequestID:       reqID,
-			Seq:             p.Revision,
-			History:         true,
+			Env: p.Envelope, ExpectedPurpose: devicesec.Prefs, RequestID: reqID, Seq: p.Revision, History: true,
 		})
 	}
+	op := &pendingSecOp{
+		kind: secOpDirBatch, dir: meta, machines: machines, sessions: sessions, devices: devices, prefs: prefs,
+		mIdx: mIdx, sIdx: sIdx, dIdx: dIdx, pIdx: pIdx,
+	}
+	if len(items) == 0 {
+		e.finishDirectoryBatch(ctx, op, nil)
+		return
+	}
+	tag := e.allocSecOp(op)
+	effs := e.secEngine.OpenBatchTag(e.nowMs, items, tag)
+	e.emitRawEffects(ctx, effs)
+}
 
-	finish := func(results []security.OpenResult) {
-		outM := make([]decodedMachine, 0, len(machines))
-		for i, m := range machines {
-			if m == nil || m.Id == "" {
-				continue
-			}
-			dm := decodedMachine{
-				MachineID:  m.Id,
-				Online:     m.Online,
-				LastSeenMs: m.LastSeenMs,
-				Wire:       m,
-			}
-			if idx := mIdx[i].metaIdx; idx >= 0 {
-				r := results[idx]
-				if r.Err != nil {
-					dm.MetaBroken = true
-				} else if mm, ok := r.Body.(*v1.MachineMeta); ok {
-					dm.Meta = mm
-					dm.MetaRev = r.Header.Seq
-				}
-			}
-			outM = append(outM, dm)
+func (e *Engine) writePrefsCache(stepCtx *StepContext, wire *v1.AccountPrefsObject) {
+	if wire != nil && wire.Revision > 0 {
+		stepCtx.emit(&corev1.Effect{
+			Effect: &corev1.Effect_CacheWrite{
+				CacheWrite: &corev1.CacheWriteEffect{Kind: &corev1.CacheWriteEffect_WritePrefs{WritePrefs: wire}},
+			},
+		})
+	}
+}
+
+func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, results []security.OpenResult) {
+	if stepCtx == nil {
+		stepCtx = e.activeStepCtx
+	}
+	outM := make([]decodedMachine, 0, len(op.machines))
+	for i, m := range op.machines {
+		if m == nil || m.Id == "" {
+			continue
 		}
-
-		outS := make([]decodedSession, 0, len(sessions))
-		for i, rs := range sessions {
-			if rs == nil || rs.SessionId == "" {
-				continue
+		dm := decodedMachine{MachineID: m.Id, Online: m.Online, LastSeenMs: m.LastSeenMs, Wire: m}
+		if idx := op.mIdx[i]; idx >= 0 {
+			r := results[idx]
+			if r.Err != nil {
+				dm.MetaBroken = true
+			} else if mm, ok := r.Body.(*v1.MachineMeta); ok {
+				dm.Meta, dm.MetaRev = mm, r.Header.Seq
 			}
-			ds := decodedSession{
-				SessionID:     rs.SessionId,
-				MachineID:     rs.MachineId,
-				LastSeq:       rs.LastSeq,
-				UpdatedMs:     rs.UpdatedMs,
-				ListedEndedMs: rs.EndedMs,
-				Wire:          rs,
+		}
+		outM = append(outM, dm)
+	}
+	outS := make([]decodedSession, 0, len(op.sessions))
+	for i, rs := range op.sessions {
+		if rs == nil || rs.SessionId == "" {
+			continue
+		}
+		ds := decodedSession{
+			SessionID: rs.SessionId, MachineID: rs.MachineId, LastSeq: rs.LastSeq,
+			UpdatedMs: rs.UpdatedMs, ListedEndedMs: rs.EndedMs, Wire: rs,
+		}
+		var keyErr error
+		if idx := op.sIdx[i].keyIdx; idx >= 0 {
+			keyErr = results[idx].Err
+		}
+		if keyErr != nil {
+			if errors.Is(keyErr, security.ErrUnsupportedHistory) {
+				ds.RetiredHistory = true
+			} else {
+				ds.OpenFailed = true
 			}
-			var keyErr error
-			if idx := sIdx[i].keyIdx; idx >= 0 {
-				keyErr = results[idx].Err
-			}
-			if keyErr != nil {
-				if errors.Is(keyErr, security.ErrUnsupportedHistory) {
+		} else if idx := op.sIdx[i].metaIdx; idx >= 0 {
+			r := results[idx]
+			if r.Err != nil {
+				if errors.Is(r.Err, security.ErrUnsupportedHistory) {
 					ds.RetiredHistory = true
 				} else {
 					ds.OpenFailed = true
 				}
-			} else if idx := sIdx[i].metaIdx; idx >= 0 {
-				r := results[idx]
-				if r.Err != nil {
-					if errors.Is(r.Err, security.ErrUnsupportedHistory) {
-						ds.RetiredHistory = true
-					} else {
-						ds.OpenFailed = true
+			} else if meta, ok := r.Body.(*v1.Session); ok {
+				ds.Meta, ds.MetaRev = meta, r.Header.Seq
+				if len(meta.MachineReplacements) > 0 {
+					if e.sessionReplacements == nil {
+						e.sessionReplacements = make(map[string][]*v1.MachineReplacementProof)
 					}
-				} else if meta, ok := r.Body.(*v1.Session); ok {
-					ds.Meta = meta
-					ds.MetaRev = r.Header.Seq
-					if len(meta.MachineReplacements) > 0 {
-						if e.sessionReplacements == nil {
-							e.sessionReplacements = make(map[string][]*v1.MachineReplacementProof)
-						}
-						e.sessionReplacements[rs.SessionId] = append([]*v1.MachineReplacementProof(nil), meta.MachineReplacements...)
-					}
-					ds.Checkpoint, ds.CheckpointInvalid = validateSessionCheckpoint(rs.SessionId, meta)
+					e.sessionReplacements[rs.SessionId] = append([]*v1.MachineReplacementProof(nil), meta.MachineReplacements...)
 				}
+				ds.Checkpoint, ds.CheckpointInvalid = validateSessionCheckpoint(rs.SessionId, meta)
 			}
-			outS = append(outS, ds)
 		}
-
-		outD := make([]decodedDevice, 0, len(devices))
-		for i, d := range devices {
-			if d == nil || d.Id == "" {
-				continue
-			}
-			dd := decodedDevice{
-				DeviceID:   d.Id,
-				Kind:       d.Kind,
-				CreatedMs:  d.CreatedMs,
-				LastSeenMs: d.LastSeenMs,
-			}
-			if idx := dIdx[i]; idx >= 0 {
-				r := results[idx]
-				if r.Err != nil {
-					if !errors.Is(r.Err, security.ErrRecoveryHistoryUnavailable) {
-						dd.MetaBroken = true
-					}
-				} else if dm, ok := r.Body.(*v1.DeviceMeta); ok {
-					dd.Meta = dm
-					dd.MetaRev = r.Header.Seq
-				}
-			}
-			outD = append(outD, dd)
-		}
-
-		outP := make([]*decodedPrefs, len(prefs))
-		for i, p := range prefs {
-			if p == nil || p.Envelope == nil || p.Revision == 0 {
-				outP[i] = &decodedPrefs{
-					Revision: 0,
-					Prefs:    &v1.ProjectPrefs{Schema: 1},
-					Wire:     p,
-				}
-				continue
-			}
-			dp := &decodedPrefs{
-				Revision: p.Revision,
-				Wire:     p,
-			}
-			if idx := pIdx[i]; idx >= 0 {
-				r := results[idx]
-				if r.Err != nil {
-					dp.Broken = true
-				} else if pp, ok := r.Body.(*v1.ProjectPrefs); ok && r.Header.Seq == p.Revision {
-					dp.Prefs = pp
-				} else {
-					dp.Broken = true
-				}
-			}
-			outP[i] = dp
-		}
-
-		onDone(outM, outS, outD, outP)
+		outS = append(outS, ds)
 	}
-
-	if len(items) == 0 {
-		finish(nil)
-		return
+	outD := make([]decodedDevice, 0, len(op.devices))
+	for i, d := range op.devices {
+		if d == nil || d.Id == "" {
+			continue
+		}
+		dd := decodedDevice{DeviceID: d.Id, Kind: d.Kind, CreatedMs: d.CreatedMs, LastSeenMs: d.LastSeenMs}
+		if idx := op.dIdx[i]; idx >= 0 {
+			r := results[idx]
+			if r.Err != nil {
+				if !errors.Is(r.Err, security.ErrRecoveryHistoryUnavailable) {
+					dd.MetaBroken = true
+				}
+			} else if dm, ok := r.Body.(*v1.DeviceMeta); ok {
+				dd.Meta, dd.MetaRev = dm, r.Header.Seq
+			}
+		}
+		outD = append(outD, dd)
 	}
-	effs := e.secEngine.OpenBatch(e.nowMs, items, finish)
-	e.emitRawEffects(ctx, effs)
+	outP := make([]*decodedPrefs, len(op.prefs))
+	for i, p := range op.prefs {
+		if p == nil || p.Envelope == nil || p.Revision == 0 {
+			outP[i] = &decodedPrefs{Revision: 0, Prefs: &v1.ProjectPrefs{Schema: 1}, Wire: p}
+			continue
+		}
+		dp := &decodedPrefs{Revision: p.Revision, Wire: p}
+		if idx := op.pIdx[i]; idx >= 0 {
+			r := results[idx]
+			if r.Err != nil {
+				dp.Broken = true
+			} else if pp, ok := r.Body.(*v1.ProjectPrefs); ok && r.Header.Seq == p.Revision {
+				dp.Prefs = pp
+			} else {
+				dp.Broken = true
+			}
+		}
+		outP[i] = dp
+	}
+	m := op.dir
+	switch m.kind {
+	case dirKindBootstrap:
+		if !e.w.World.MachinesListed {
+			for _, dm := range outM {
+				if dm.MachineID != "" {
+					if _, exists := e.machines[dm.MachineID]; !exists {
+						dm.Online = false
+						e.storeMachine(decodedToMachineEntry(dm))
+					}
+				}
+			}
+		}
+		if !e.w.World.SessionsListed {
+			for _, ds := range outS {
+				if ds.SessionID != "" {
+					if _, exists := e.sessions[ds.SessionID]; !exists {
+						e.storeSession(decodedToSessionEntry(ds, nil))
+						e.listed[ds.SessionID] = true
+					}
+				}
+			}
+		}
+		if !e.prefs.Loaded && len(outP) > 0 && outP[0] != nil {
+			e.applyAccountPrefsDecoded(outP[0], false)
+		}
+		e.updateLivePollers(stepCtx)
+		stepCtx.Dirty.MarkAll()
+	case dirKindListsFetched:
+		if !e.running || e.refreshRun != m.refreshRun {
+			return
+		}
+		e.devicesApplyGen++
+		e.applyListsDecoded(stepCtx, outM, outS, e.buildAuthoritativeDevices(outD), m.evNext, m.mp, m.sp, m.rp, m.dp)
+	case dirKindSessionsPage:
+		if !e.running || e.listingGen != m.listingGen || e.pageListingGen != e.listingGen {
+			return
+		}
+		e.w.SessionListErrorText = nil
+		e.w.World.SessionListError = ""
+		for _, s := range outS {
+			if s.SessionID != "" {
+				e.putSessionDecoded(stepCtx, s, false)
+			}
+		}
+		if m.evNext != nil && (m.evNext.EndedMs != 0 || m.evNext.SessionId != "") {
+			e.w.World.SessionsNext = &lists.SessionPlace{EndedMs: m.evNext.EndedMs, SessionID: m.evNext.SessionId}
+			e.w.World.HasMoreSessions = true
+		} else {
+			e.w.World.SessionsNext = nil
+			e.w.World.HasMoreSessions = false
+		}
+		e.updateLivePollers(stepCtx)
+		e.syncDirectWatched(stepCtx)
+		if e.wantAllSessions && e.w.World.SessionsNext != nil {
+			e.RequestMoreSessions(stepCtx)
+		}
+		stepCtx.Dirty.Add(true, true, false)
+	case dirKindSessionByID:
+		if !e.running || len(outS) == 0 {
+			return
+		}
+		delete(e.sessionByIDFailed, m.sid)
+		e.putSessionDecoded(stepCtx, outS[0], false)
+		e.updateLivePollers(stepCtx)
+		stepCtx.Dirty.MarkAll()
+	case dirKindDevices:
+		if e.devicesApplyGen != m.devGen {
+			return
+		}
+		e.reconcileDecodedDevices(e.buildAuthoritativeDevices(outD), m.mp, m.sp, true)
+		stepCtx.Dirty.MarkAll()
+	case dirKindStreamMachine:
+		if !e.running || e.legID != m.legID || len(outM) == 0 {
+			return
+		}
+		e.putMachineDecoded(stepCtx, outM[0], false, true)
+		if m.wm.Online && e.security.Loaded && !e.isTrustedMachine(m.wm.Id) {
+			e.requestSyncSecurity(stepCtx, true)
+		}
+		e.updateLivePollers(stepCtx)
+		stepCtx.Dirty.MarkAll()
+	case dirKindStreamSession:
+		if !e.running || e.legID != m.legID || len(outS) == 0 {
+			return
+		}
+		prev := e.sessions[m.sid]
+		var prevServerSeq uint64
+		if prev != nil {
+			prevServerSeq = prev.ServerLastSeq
+		}
+		e.putSessionDecoded(stepCtx, outS[0], true)
+		updated := e.sessions[m.sid]
+		b := e.buffers[m.sid]
+		needGapFill := b != nil && len(b.pending) > 0 && updated != nil && updated.ServerLastSeq > uint64(len(b.prefix))
+		if m.ws.LastSeq > prevServerSeq || needGapFill {
+			if e.watchedSessions[m.sid] || b != nil {
+				e.startFetchEvents(stepCtx, m.sid)
+			}
+		}
+		e.updateLivePollers(stepCtx)
+		stepCtx.Dirty.MarkAll()
+	case dirKindStreamPrefs:
+		if !e.running || e.legID != m.legID || len(outP) == 0 || outP[0] == nil {
+			return
+		}
+		e.applyAccountPrefsDecoded(outP[0], true)
+		e.writePrefsCache(stepCtx, outP[0].Wire)
+		stepCtx.Dirty.MarkAll()
+	case dirKindStreamDevice:
+		if !e.running || e.legID != m.legID || len(outD) == 0 {
+			return
+		}
+		e.devices[m.wd.Id] = decodedToDeviceEntry(outD[0])
+		if e.deviceKindNeedsSecuritySync(m.wd.Id, m.wd.Kind) {
+			e.requestSyncSecurity(stepCtx, true)
+		}
+		stepCtx.Dirty.Add(true, false, false)
+	case dirKindPrefsLoad:
+		var dp *decodedPrefs
+		if len(outP) > 0 {
+			dp = outP[0]
+		}
+		e.applyAccountPrefsDecoded(dp, true)
+		if dp != nil {
+			e.writePrefsCache(stepCtx, dp.Wire)
+		}
+		stepCtx.Dirty.MarkAll()
+	case dirKindPrefsCASGet:
+		if len(e.prefsQueue) == 0 || e.prefsQueue[0].OpID != m.headOpID {
+			return
+		}
+		curHead := &e.prefsQueue[0]
+		var dp *decodedPrefs
+		if len(outP) > 0 {
+			dp = outP[0]
+		}
+		if dp != nil && dp.Broken {
+			e.applyAccountPrefsDecoded(dp, true)
+			e.finishPrefsOp(stepCtx, text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed))
+			return
+		}
+		var baseRev uint64
+		var basePrefs *v1.ProjectPrefs
+		if dp != nil {
+			baseRev = dp.Revision
+			basePrefs = dp.Prefs
+		}
+		if curHead.Attempt == 0 {
+			curHead.InitialBase = baseRev
+		} else if baseRev > curHead.InitialBase {
+			e.w.ProjectChangedElsewhere = true
+		}
+		if basePrefs != nil && slices.Contains(basePrefs.RecentOps, curHead.OpID) {
+			e.applyAccountPrefsDecoded(dp, true)
+			if dp != nil {
+				e.writePrefsCache(stepCtx, dp.Wire)
+			}
+			e.finishPrefsOp(stepCtx, nil)
+			return
+		}
+		nextPrefs := lists.ApplyPrefsOp(basePrefs, curHead.Op, curHead.OpID, e.nowMs)
+		e.sealAndEmitPrefsPut(stepCtx, curHead, baseRev, nextPrefs)
+	case dirKindPrefsCASPut:
+		if len(outP) > 0 && outP[0] != nil {
+			e.applyAccountPrefsDecoded(outP[0], true)
+			e.writePrefsCache(stepCtx, outP[0].Wire)
+		}
+		e.finishPrefsOp(stepCtx, nil)
+	}
 }
 
 func (e *Engine) buildAuthoritativeDevices(opened []decodedDevice) []decodedDevice {
@@ -883,15 +1189,15 @@ func (e *Engine) applyListsDecoded(
 	ctx.Dirty.MarkAll()
 }
 
-func (e *Engine) openWireStoredEvents(
+func (e *Engine) openWireStoredEventsTag(
 	ctx *StepContext,
 	sid, machineID string,
 	stored []*v1.StoredEvent,
 	history bool,
-	onDone func([]decodedEventItem),
+	op *pendingSecOp,
 ) {
 	if len(stored) == 0 {
-		onDone(nil)
+		e.finishStoredEvents(ctx, op, nil)
 		return
 	}
 	var repls []*v1.MachineReplacementProof
@@ -908,62 +1214,100 @@ func (e *Engine) openWireStoredEvents(
 		var env *v1.Envelope
 		var seq uint64
 		if se != nil {
-			env = se.Envelope
-			seq = se.Seq
+			env, seq = se.Envelope, se.Seq
 		}
 		items[i] = security.OpenItem{
-			Env:             env,
-			ExpectedPurpose: devicesec.Event,
-			MachineID:       machineID,
-			SessionID:       sid,
-			Seq:             seq,
-			History:         history,
-			Replacements:    repls,
+			Env: env, ExpectedPurpose: devicesec.Event, MachineID: machineID, SessionID: sid,
+			Seq: seq, History: history, Replacements: repls,
 		}
 	}
-	effs := e.secEngine.OpenBatch(e.nowMs, items, func(results []security.OpenResult) {
-		out := make([]decodedEventItem, 0, len(stored))
-		for i, se := range stored {
+	tag := e.allocSecOp(op)
+	effs := e.secEngine.OpenBatchTag(e.nowMs, items, tag)
+	e.emitRawEffects(ctx, effs)
+}
+
+func (e *Engine) finishStoredEvents(stepCtx *StepContext, op *pendingSecOp, results []security.OpenResult) {
+	if stepCtx == nil {
+		stepCtx = e.activeStepCtx
+	}
+	var items []decodedEventItem
+	if len(op.stored) > 0 {
+		items = make([]decodedEventItem, 0, len(op.stored))
+		for i, se := range op.stored {
 			if se == nil || se.Seq == 0 {
 				continue
 			}
 			r := results[i]
 			if r.Err != nil {
 				if errors.Is(r.Err, security.ErrRecoveryHistoryUnavailable) {
-					out = append(out, decodedEventItem{
-						Seq:         se.Seq,
-						Unavailable: true,
-						ApproxBytes: 64,
-						RawStored:   se,
-					})
+					items = append(items, decodedEventItem{Seq: se.Seq, Unavailable: true, ApproxBytes: 64, RawStored: se})
 					continue
 				}
-				out = append(out, decodedEventItem{
-					Seq:     se.Seq,
-					Broken:  true,
-					Retired: errors.Is(r.Err, security.ErrUnsupportedHistory),
-				})
+				items = append(items, decodedEventItem{Seq: se.Seq, Broken: true, Retired: errors.Is(r.Err, security.ErrUnsupportedHistory)})
 				break
 			}
 			evMsg, ok := r.Body.(*v1.Event)
-			if !ok || evMsg == nil || evMsg.Seq != se.Seq || evMsg.SessionId != sid {
-				out = append(out, decodedEventItem{
-					Seq:    se.Seq,
-					Broken: true,
-				})
+			if !ok || evMsg == nil || evMsg.Seq != se.Seq || evMsg.SessionId != op.sid {
+				items = append(items, decodedEventItem{Seq: se.Seq, Broken: true})
 				break
 			}
-			out = append(out, decodedEventItem{
-				Seq:         se.Seq,
-				Event:       evMsg,
-				Verified:    true,
-				ApproxBytes: max(int64(len(r.Plain)), 64),
-				RawStored:   se,
-			})
+			items = append(items, decodedEventItem{Seq: se.Seq, Event: evMsg, Verified: true, ApproxBytes: max(int64(len(r.Plain)), 64), RawStored: se})
 		}
-		onDone(out)
-	})
-	e.emitRawEffects(ctx, effs)
+	}
+	switch op.eventsKind {
+	case storedEventsCache:
+		if e.lifecycleGen != op.lifeGen || e.buffers[op.sid] != op.b {
+			return
+		}
+		e.finishCacheEventsLoaded(stepCtx, op.sid, op.b, e.sessions[op.sid], op.agent, op.wasBackfilling, op.rawCount, op.firstSeq, op.lastSeq, items)
+	case storedEventsPage:
+		if !e.running || op.b.fetchGen != op.lifeGen || e.buffers[op.sid] != op.b {
+			return
+		}
+		curS := e.sessions[op.sid]
+		if curS == nil {
+			op.b.fetching = false
+			return
+		}
+		e.finishEventsPageFetched(stepCtx, op.sid, op.b, curS, op.more, op.lastSeq, items)
+	case storedEventsStream:
+		if !e.running || e.lifecycleGen != op.lifeGen || e.buffers[op.sid] != op.b {
+			return
+		}
+		e.ingestDecodedEvents(stepCtx, op.sid, op.b, items, true, true, true, true)
+		stepCtx.Dirty.MarkSessionData()
+	}
+}
+
+func (e *Engine) finishDirectEventsOpen(stepCtx *StepContext, op *pendingSecOp, results []security.OpenResult) {
+	if !e.running || !e.foreground || e.buffers[op.sid] != op.b || op.b.tailRequested || e.transportCoord == nil {
+		return
+	}
+	curRoundID, curMachineID, curUse, curOK := e.transportCoord.InboundDCContext(e.nowMs, op.pcID)
+	if !curOK || curMachineID != op.machineID {
+		return
+	}
+	expected := uint64(len(op.b.prefix)) + 1
+	var clean []decodedEventItem
+	for _, r := range results {
+		if r.Err != nil {
+			continue
+		}
+		if !e.transportCoord.PushedEventAllowed(e.nowMs, curRoundID, curUse, op.machineID, r.Header.Sender) {
+			continue
+		}
+		evMsg, ok := r.Body.(*v1.Event)
+		if !ok || evMsg == nil || evMsg.Seq == 0 || evMsg.Seq != expected || evMsg.SessionId != op.sid {
+			continue
+		}
+		clean = append(clean, decodedEventItem{Seq: evMsg.Seq, Event: evMsg, Verified: true, ApproxBytes: max(int64(len(r.Plain)), 64)})
+		expected++
+	}
+	if len(clean) == 0 {
+		return
+	}
+	e.ingestDecodedEvents(stepCtx, op.sid, op.b, clean, false, false, false, true)
+	stepCtx.Dirty.MarkSessionData()
 }
 
 func (e *Engine) sealAndEmitCommandAttempt(ctx *StepContext, prep *PreparedCommand, retryOfUnknown bool) {
@@ -972,121 +1316,106 @@ func (e *Engine) sealAndEmitCommandAttempt(ctx *StepContext, prep *PreparedComma
 	}
 	prep.Sealing = true
 	prep.SealingRetry = retryOfUnknown
-	effs := e.secEngine.SealEnvelope(
-		e.nowMs,
-		devicesec.Command,
-		prep.MachineID,
-		prep.SessionID,
-		prep.RequestID,
-		0,
-		uint64(max(0, prep.DeadlineMs)),
-		prep.CommandBytes,
-		false,
-		nil,
-		func(sr security.SealResult) {
-			stepCtx := e.activeStepCtx
-			prep.Sealing = false
-			if e.inFlightCmds[prep.RequestID] != prep || !e.running {
-				return
-			}
-			if sr.Err != nil {
-				prior := prep.Dispatch.Unresolved() || prep.SealingRetry
-				cat := outcome.NotSent
-				if prior {
-					cat = outcome.Unknown
-				}
-				if errors.Is(sr.Err, security.ErrNeedEntropy) {
-					e.maybeRequestEntropy(stepCtx)
-				}
-				errCode := errCodeFailedPrecond
-				if prior {
-					errCode = errCodeUnknown
-				}
-				var errText *corev1.Text
-				switch {
-				case errors.Is(sr.Err, security.ErrClockSkewed), errors.Is(sr.Err, devicesec.ErrClock):
-					errText = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
-				case errors.Is(sr.Err, security.ErrLeaseExpired), errors.Is(sr.Err, devicesec.ErrStale), errors.Is(sr.Err, security.ErrNotMember):
-					if prior {
-						errText = text.Msg(text.KeyErrorsTheComputerSReplyCouldNotBeVerifiedCommand)
-					} else {
-						errText = text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
-					}
-				default:
-					errText = text.Plain(sr.Err.Error())
-				}
-				e.settleCommand(stepCtx, prep, cat, nil, errCode, errText, false)
-				return
-			}
-			prep.SealedEnvelope = sr.Envelope
-			prep.SealedContentEpoch = sr.ContentEpoch
-			prep.SealedHeadHash = sr.HeadHash
-			prep.RequestKeyHash = sr.RequestKeyHash
-			prep.PayloadHash = sr.PayloadHash
-			e.emitCommandAttempt(stepCtx, prep, prep.SealingRetry)
-		},
+	tag := e.allocSecOp(&pendingSecOp{kind: secOpSealCmd, prep: prep})
+	effs := e.secEngine.SealEnvelopeTag(
+		e.nowMs, devicesec.Command, prep.MachineID, prep.SessionID, prep.RequestID,
+		0, uint64(max(0, prep.DeadlineMs)), prep.CommandBytes, false, nil, tag,
 	)
 	e.emitRawEffects(ctx, effs)
+}
+
+func (e *Engine) finishSealCmd(stepCtx *StepContext, op *pendingSecOp, sr security.SealResult) {
+	prep := op.prep
+	prep.Sealing = false
+	if e.inFlightCmds[prep.RequestID] != prep || !e.running {
+		return
+	}
+	if sr.Err != nil {
+		prior := prep.Dispatch.Unresolved() || prep.SealingRetry
+		cat := outcome.NotSent
+		if prior {
+			cat = outcome.Unknown
+		}
+		if errors.Is(sr.Err, security.ErrNeedEntropy) {
+			e.maybeRequestEntropy(stepCtx)
+		}
+		errCode := errCodeFailedPrecond
+		if prior {
+			errCode = errCodeUnknown
+		}
+		var errText *corev1.Text
+		switch {
+		case errors.Is(sr.Err, security.ErrClockSkewed), errors.Is(sr.Err, devicesec.ErrClock):
+			errText = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
+		case errors.Is(sr.Err, security.ErrLeaseExpired), errors.Is(sr.Err, devicesec.ErrStale), errors.Is(sr.Err, security.ErrNotMember):
+			if prior {
+				errText = text.Msg(text.KeyErrorsTheComputerSReplyCouldNotBeVerifiedCommand)
+			} else {
+				errText = text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
+			}
+		default:
+			errText = text.Plain(sr.Err.Error())
+		}
+		e.settleCommand(stepCtx, prep, cat, nil, errCode, errText, false)
+		return
+	}
+	prep.SealedEnvelope = sr.Envelope
+	prep.SealedContentEpoch = sr.ContentEpoch
+	prep.SealedHeadHash = sr.HeadHash
+	prep.RequestKeyHash = sr.RequestKeyHash
+	prep.PayloadHash = sr.PayloadHash
+	e.emitCommandAttempt(stepCtx, prep, prep.SealingRetry)
 }
 
 func (e *Engine) openSealedCommandOutcome(ctx *StepContext, prep *PreparedCommand, ev *corev1.CommandOutcomeEvent) {
 	evCopy := *ev
 	item := security.OpenItem{
-		Env:             ev.SealedResult,
-		ExpectedPurpose: devicesec.Result,
-		MachineID:       prep.MachineID,
-		SessionID:       prep.SessionID,
-		RequestID:       prep.RequestID,
-		History:         false,
+		Env: ev.SealedResult, ExpectedPurpose: devicesec.Result,
+		MachineID: prep.MachineID, SessionID: prep.SessionID, RequestID: prep.RequestID, History: false,
 	}
-	effs := e.secEngine.OpenBatch(e.nowMs, []security.OpenItem{item}, func(results []security.OpenResult) {
-		stepCtx := e.activeStepCtx
-		if e.inFlightCmds[prep.RequestID] != prep {
-			return
-		}
-		if evCopy.AttemptId != "" && !prep.PendingAttempts[evCopy.AttemptId] {
-			return
-		}
-		evCopy.SealedResult = nil
-		r := results[0]
-		if r.Err != nil {
-			evCopy.Signed = false
-			evCopy.HashesMatch = false
-			evCopy.Result = nil
-			e.finishCommandOutcome(stepCtx, &evCopy)
-			return
-		}
-		res, ok := r.Body.(*v1.CommandResult)
-		if !ok || res == nil {
-			evCopy.Signed = false
-			evCopy.HashesMatch = false
-			evCopy.Result = nil
-			e.finishCommandOutcome(stepCtx, &evCopy)
-			return
-		}
-		hashesMatch := len(prep.RequestKeyHash) == 32 && len(prep.PayloadHash) == 32 &&
-			bytes.Equal(res.RequestKeyHash, prep.RequestKeyHash) &&
-			bytes.Equal(res.PayloadHash, prep.PayloadHash) &&
-			(res.Outcome == "conflict" || res.ConflictKind == "")
-		outerMatchesInner := evCopy.RouteWasDirect || (evCopy.OuterOutcome == res.Outcome && evCopy.OuterReason == res.Reason)
-		evCopy.Signed = true
-		evCopy.HashesMatch = hashesMatch
-		evCopy.OuterMatchesInner = outerMatchesInner
-		evCopy.Result = res
-		if evCopy.ObservedBytes == 0 {
-			if pic := prep.Command.GetPutImageChunk(); pic != nil {
-				evCopy.ObservedBytes = int64(len(pic.Data))
-			} else if fc := res.GetGetSharedFileChunk(); fc != nil {
-				evCopy.ObservedBytes = int64(len(fc.Data))
-			}
-		}
-		if evCopy.RouteWasDirect {
-			evCopy.OuterOutcome = res.Outcome
-			evCopy.OuterReason = res.Reason
-		}
-		e.finishCommandOutcome(stepCtx, &evCopy)
-	})
+	tag := e.allocSecOp(&pendingSecOp{kind: secOpOpenCmdOutcome, prep: prep, cmdEv: &evCopy})
+	effs := e.secEngine.OpenBatchTag(e.nowMs, []security.OpenItem{item}, tag)
 	e.emitRawEffects(ctx, effs)
+}
+
+func (e *Engine) finishOpenCmdOutcome(stepCtx *StepContext, op *pendingSecOp, results []security.OpenResult) {
+	prep, evCopy := op.prep, op.cmdEv
+	if e.inFlightCmds[prep.RequestID] != prep {
+		return
+	}
+	if evCopy.AttemptId != "" && !prep.PendingAttempts[evCopy.AttemptId] {
+		return
+	}
+	evCopy.SealedResult = nil
+	r := results[0]
+	if r.Err != nil {
+		evCopy.Signed, evCopy.HashesMatch, evCopy.Result = false, false, nil
+		e.finishCommandOutcome(stepCtx, evCopy)
+		return
+	}
+	res, ok := r.Body.(*v1.CommandResult)
+	if !ok || res == nil {
+		evCopy.Signed, evCopy.HashesMatch, evCopy.Result = false, false, nil
+		e.finishCommandOutcome(stepCtx, evCopy)
+		return
+	}
+	hashesMatch := len(prep.RequestKeyHash) == 32 && len(prep.PayloadHash) == 32 &&
+		bytes.Equal(res.RequestKeyHash, prep.RequestKeyHash) &&
+		bytes.Equal(res.PayloadHash, prep.PayloadHash) &&
+		(res.Outcome == "conflict" || res.ConflictKind == "")
+	outerMatchesInner := evCopy.RouteWasDirect || (evCopy.OuterOutcome == res.Outcome && evCopy.OuterReason == res.Reason)
+	evCopy.Signed, evCopy.HashesMatch, evCopy.OuterMatchesInner, evCopy.Result = true, hashesMatch, outerMatchesInner, res
+	if evCopy.ObservedBytes == 0 {
+		if pic := prep.Command.GetPutImageChunk(); pic != nil {
+			evCopy.ObservedBytes = int64(len(pic.Data))
+		} else if fc := res.GetGetSharedFileChunk(); fc != nil {
+			evCopy.ObservedBytes = int64(len(fc.Data))
+		}
+	}
+	if evCopy.RouteWasDirect {
+		evCopy.OuterOutcome, evCopy.OuterReason = res.Outcome, res.Reason
+	}
+	e.finishCommandOutcome(stepCtx, evCopy)
 }
 
 func (e *Engine) sealAndEmitPrefsPut(ctx *StepContext, head *prefsQueueItem, baseRev uint64, nextPrefs *v1.ProjectPrefs) {
@@ -1100,50 +1429,42 @@ func (e *Engine) sealAndEmitPrefsPut(ctx *StepContext, head *prefsQueueItem, bas
 		e.finishPrefsOp(ctx, text.Plain(err.Error()))
 		return
 	}
-	effs := e.secEngine.SealEnvelope(
-		e.nowMs,
-		devicesec.Prefs,
-		"",
-		"",
-		ProjectPrefsObjectID,
-		baseRev+1,
-		0,
-		raw,
-		false,
-		nil,
-		func(sr security.SealResult) {
-			stepCtx := e.activeStepCtx
-			if len(e.prefsQueue) == 0 || e.prefsQueue[0].OpID != head.OpID {
-				return
-			}
-			if sr.Err != nil {
-				if errors.Is(sr.Err, security.ErrNeedEntropy) {
-					e.maybeRequestEntropy(stepCtx)
-				}
-				e.finishPrefsOp(stepCtx, text.Plain(sr.Err.Error()))
-				return
-			}
-			curHead := &e.prefsQueue[0]
-			curHead.Phase = prefsPhasePut
-			curHead.ActiveOpID = e.allocOpID()
-			stepCtx.emit(&corev1.Effect{
-				Effect: &corev1.Effect_Rpc{
-					Rpc: &corev1.RpcEffect{
-						OpId: curHead.ActiveOpID,
-						Kind: &corev1.RpcEffect_PutAccountPrefs{
-							PutAccountPrefs: &corev1.PutAccountPrefsRpc{
-								ObjectId:         ProjectPrefsObjectID,
-								ExpectedRevision: baseRev,
-								NextPrefs:        nextPrefs,
-								SealedEnvelope:   sr.Envelope,
-							},
-						},
-					},
-				},
-			})
-		},
+	tag := e.allocSecOp(&pendingSecOp{
+		kind: secOpSealPrefs, headOpID: head.OpID, baseRev: baseRev, nextPrefs: nextPrefs,
+	})
+	effs := e.secEngine.SealEnvelopeTag(
+		e.nowMs, devicesec.Prefs, "", "", ProjectPrefsObjectID, baseRev+1, 0, raw, false, nil, tag,
 	)
 	e.emitRawEffects(ctx, effs)
+}
+
+func (e *Engine) finishSealPrefs(stepCtx *StepContext, op *pendingSecOp, sr security.SealResult) {
+	if len(e.prefsQueue) == 0 || e.prefsQueue[0].OpID != op.headOpID {
+		return
+	}
+	if sr.Err != nil {
+		if errors.Is(sr.Err, security.ErrNeedEntropy) {
+			e.maybeRequestEntropy(stepCtx)
+		}
+		e.finishPrefsOp(stepCtx, text.Plain(sr.Err.Error()))
+		return
+	}
+	curHead := &e.prefsQueue[0]
+	curHead.Phase = prefsPhasePut
+	curHead.ActiveOpID = e.allocOpID()
+	stepCtx.emit(&corev1.Effect{
+		Effect: &corev1.Effect_Rpc{
+			Rpc: &corev1.RpcEffect{
+				OpId: curHead.ActiveOpID,
+				Kind: &corev1.RpcEffect_PutAccountPrefs{
+					PutAccountPrefs: &corev1.PutAccountPrefsRpc{
+						ObjectId: ProjectPrefsObjectID, ExpectedRevision: op.baseRev,
+						NextPrefs: op.nextPrefs, SealedEnvelope: sr.Envelope,
+					},
+				},
+			},
+		},
+	})
 }
 
 func (e *Engine) cloneRefreshSnapshots() (mp, sp, rp, dp map[string]uint64) {

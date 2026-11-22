@@ -374,6 +374,17 @@ func (t Tally) Count(f func(CandKind) bool) int {
 	return n
 }
 
+// CountClass returns the number of candidates whose address class matches cls.
+func (t Tally) CountClass(cls AddrClass) int {
+	n := 0
+	for k, c := range t {
+		if k.Class == cls {
+			n += c
+		}
+	}
+	return n
+}
+
 func diagWord(v string) string {
 	if len(v) < 1 || len(v) > 32 {
 		return "other"

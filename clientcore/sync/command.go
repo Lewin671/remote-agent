@@ -276,6 +276,49 @@ func (e *Engine) preflightAndEmit(ctx *StepContext, prep *PreparedCommand, retry
 	return true
 }
 
+func (e *Engine) emitCommandLeg(
+	ctx *StepContext,
+	prep *PreparedCommand,
+	retryOfUnknown bool,
+	attemptID string,
+	leg corev1.CommandRouteLeg,
+	dec directRouteArg,
+) {
+	prep.Dispatch.Active++
+	prep.Dispatch.Possible++
+	prep.PendingAttempts[attemptID] = true
+	e.reqIDByAttempt[attemptID] = prep.RequestID
+	isDirect := leg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT
+	prep.ActiveLegs[attemptID] = &CommandLeg{
+		AttemptID: attemptID,
+		Direct:    isDirect,
+		TicketID:  dec.ticketID,
+	}
+	ctx.emit(&corev1.Effect{
+		Effect: &corev1.Effect_DispatchCommand{
+			DispatchCommand: &corev1.DispatchCommandEffect{
+				RequestId:       prep.RequestID,
+				AttemptId:       attemptID,
+				MachineId:       prep.MachineID,
+				SessionId:       prep.SessionID,
+				DeadlineMs:      prep.DeadlineMs,
+				CommandBytes:    prep.CommandBytes,
+				RouteHint:       prep.RouteHint,
+				RetryOfUnknown:  retryOfUnknown,
+				ForceRelay:      prep.ForceRelay,
+				BulkFileKey:     prep.BulkFileKey,
+				BulkBytes:       prep.BulkBytes,
+				BulkUpload:      prep.BulkUpload,
+				RouteLeg:        leg,
+				DirectPcId:      dec.pcID,
+				DirectTimeoutMs: dec.timeoutMs,
+				DirectTicketId:  dec.ticketID,
+				SealedEnvelope:  prep.SealedEnvelope,
+			},
+		},
+	})
+}
+
 func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, retryOfUnknown bool) {
 	if e.secEngine != nil && e.secEngine.Locked() {
 		if prep.SealedEnvelope != nil {
@@ -311,42 +354,6 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 	prep.RelayLegID = ""
 	e.inFlightCmds[prep.RequestID] = prep
 
-	emitLeg := func(attemptID string, leg corev1.CommandRouteLeg, dec directRouteArg) {
-		prep.Dispatch.Active++
-		prep.Dispatch.Possible++
-		prep.PendingAttempts[attemptID] = true
-		e.reqIDByAttempt[attemptID] = prep.RequestID
-		isDirect := leg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT
-		prep.ActiveLegs[attemptID] = &CommandLeg{
-			AttemptID: attemptID,
-			Direct:    isDirect,
-			TicketID:  dec.ticketID,
-		}
-		ctx.emit(&corev1.Effect{
-			Effect: &corev1.Effect_DispatchCommand{
-				DispatchCommand: &corev1.DispatchCommandEffect{
-					RequestId:       prep.RequestID,
-					AttemptId:       attemptID,
-					MachineId:       prep.MachineID,
-					SessionId:       prep.SessionID,
-					DeadlineMs:      prep.DeadlineMs,
-					CommandBytes:    prep.CommandBytes,
-					RouteHint:       prep.RouteHint,
-					RetryOfUnknown:  retryOfUnknown,
-					ForceRelay:      prep.ForceRelay,
-					BulkFileKey:     prep.BulkFileKey,
-					BulkBytes:       prep.BulkBytes,
-					BulkUpload:      prep.BulkUpload,
-					RouteLeg:        leg,
-					DirectPcId:      dec.pcID,
-					DirectTimeoutMs: dec.timeoutMs,
-					DirectTicketId:  dec.ticketID,
-					SealedEnvelope:  prep.SealedEnvelope,
-				},
-			},
-		})
-	}
-
 	if !prep.ForceRelay && isInteractiveCommand(prep.Command) {
 		if dec, ok := e.transportCoord.PrepareInteractive(e.nowMs, prep.MachineID, prep.DeadlineMs); ok {
 			attemptD := e.nextID(ctx)
@@ -354,12 +361,12 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 			prep.DualMode = true
 			prep.DirectLegID = attemptD
 			prep.RelayLegID = attemptR
-			emitLeg(attemptD, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT, directRouteArg{
+			e.emitCommandLeg(ctx, prep, retryOfUnknown, attemptD, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT, directRouteArg{
 				pcID:      dec.PCID,
 				timeoutMs: dec.TimeoutMs,
 				ticketID:  dec.TicketID,
 			})
-			emitLeg(attemptR, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY, directRouteArg{})
+			e.emitCommandLeg(ctx, prep, retryOfUnknown, attemptR, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY, directRouteArg{})
 			e.syncDirectTimers(ctx)
 			return
 		}
@@ -376,13 +383,13 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 				leg = corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT
 			}
 			arg = directRouteArg{pcID: dec.PCID, timeoutMs: dec.TimeoutMs, ticketID: dec.TicketID}
-			emitLeg(attemptID, leg, arg)
+			e.emitCommandLeg(ctx, prep, retryOfUnknown, attemptID, leg, arg)
 			return
 		}
 	}
 
 	attemptID := e.nextID(ctx)
-	emitLeg(attemptID, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY, directRouteArg{})
+	e.emitCommandLeg(ctx, prep, retryOfUnknown, attemptID, corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY, directRouteArg{})
 }
 
 type directRouteArg struct {
