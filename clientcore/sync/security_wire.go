@@ -1360,7 +1360,6 @@ func (e *Engine) finishSealCmd(stepCtx *StepContext, op *pendingSecOp, sr securi
 		return
 	}
 	prep.SealedEnvelope = sr.Envelope
-	prep.SealedContentEpoch = sr.ContentEpoch
 	prep.SealedHeadHash = sr.HeadHash
 	prep.RequestKeyHash = sr.RequestKeyHash
 	prep.PayloadHash = sr.PayloadHash

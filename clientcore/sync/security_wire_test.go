@@ -21,6 +21,8 @@ import (
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 type syncTestActor struct {
@@ -1096,46 +1098,59 @@ func TestInitializedSyncFailureClosesAuthorizingGate(t *testing.T) {
 	_, fgRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND}}})
 	_, tokRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: e.activeTokenOpID, Token: "tok-auth-gate"}}})
 	var legID uint64
-	for _, ef := range tokRes.Effects {
-		if os := ef.GetOpenStream(); os != nil {
-			legID = os.LegId
-		}
-	}
-	_, streamRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 20, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
-	var rpcOp1 uint64
-	for _, effs := range [][]*corev1.Effect{startRes.Effects, fgRes.Effects, tokRes.Effects, streamRes.Effects} {
+	var initSyncOp uint64
+	for _, effs := range [][]*corev1.Effect{startRes.Effects, fgRes.Effects, tokRes.Effects} {
 		for _, ef := range effs {
+			if os := ef.GetOpenStream(); os != nil {
+				legID = os.LegId
+			}
 			if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
-				rpcOp1 = sr.OpId
+				initSyncOp = sr.OpId
 			}
 		}
 	}
-	if rpcOp1 == 0 {
-		// Advance past AuthorizeEveryMs so direct engine timer triggers authorize() -> CoordAuthorize.
-		_, tick1 := e.HandleEvent(&corev1.Event{
-			NowMs:  nowMs + 15_000,
-			MonoMs: 15_000,
-			Event: &corev1.Event_TimerFired{
-				TimerFired: &corev1.TimerFiredEvent{
-					TimerId: e.timers[timerKey{kind: corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE}].id,
-					Kind:    corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE,
+	if initSyncOp != 0 {
+		respBytes, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: 2})
+		_, initSyncRes := e.HandleEvent(&corev1.Event{
+			NowMs:  nowMs + 15,
+			MonoMs: 15,
+			Event: &corev1.Event_SecurityRpcResult{
+				SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+					OpId:          initSyncOp,
+					ResponseBytes: respBytes,
 				},
 			},
 		})
-		for _, ef := range tick1.Effects {
-			if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
-				rpcOp1 = sr.OpId
-			}
+		pumpSecurityEffects(t, e, phone, nowMs+15, initSyncRes)
+	}
+	_, streamRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 20, MonoMs: 20, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
+	pumpSecurityEffects(t, e, phone, nowMs+20, streamRes)
+
+	// Drain until transport proof expires past FreshMs so DIRECT_ENGINE emits CoordAuthorize -> GET_SECURITY_STATES.
+	_, tick1 := e.HandleEvent(&corev1.Event{
+		NowMs:  nowMs + 25_000,
+		MonoMs: 25_000,
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{
+				TimerId: e.timers[timerKey{kind: corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE}].id,
+				Kind:    corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE,
+			},
+		},
+	})
+	var rpcOp1 uint64
+	for _, ef := range tick1.Effects {
+		if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			rpcOp1 = sr.OpId
 		}
 	}
 	if rpcOp1 == 0 {
-		t.Fatal("expected first authorize cycle to emit GET_SECURITY_STATES SecurityRpc")
+		t.Fatal("expected DIRECT_ENGINE tick via CoordAuthorize to emit GET_SECURITY_STATES SecurityRpc")
 	}
 
 	// Simulate transient SyncStates failure on already-initialized client.
 	_, errRes := e.HandleEvent(&corev1.Event{
-		NowMs:  nowMs + 15_100,
-		MonoMs: 15_100,
+		NowMs:  nowMs + 25_100,
+		MonoMs: 25_100,
 		Event: &corev1.Event_SecurityRpcResult{
 			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
 				OpId:         rpcOp1,
@@ -1145,12 +1160,12 @@ func TestInitializedSyncFailureClosesAuthorizingGate(t *testing.T) {
 			},
 		},
 	})
-	pumpSecurityEffects(t, e, phone, nowMs+15_100, errRes)
+	pumpSecurityEffects(t, e, phone, nowMs+25_100, errRes)
 
 	// Without Fix 4, OnAuthorizeDone(now, false) was skipped when CoordInfo()==true, locking authorizing=true forever.
 	_, tick2 := e.HandleEvent(&corev1.Event{
-		NowMs:  nowMs + 31_000,
-		MonoMs: 31_000,
+		NowMs:  nowMs + 40_000,
+		MonoMs: 40_000,
 		Event: &corev1.Event_TimerFired{
 			TimerFired: &corev1.TimerFiredEvent{
 				TimerId: e.timers[timerKey{kind: corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE}].id,
@@ -1164,7 +1179,7 @@ func TestInitializedSyncFailureClosesAuthorizingGate(t *testing.T) {
 			rpcOp2 = sr.OpId
 		}
 	}
-	if rpcOp2 == 0 {
+	if rpcOp2 == 0 || rpcOp2 == rpcOp1 {
 		t.Fatal("expected failed SyncStates on initialized client to release authorizing gate so next tick retries")
 	}
 }

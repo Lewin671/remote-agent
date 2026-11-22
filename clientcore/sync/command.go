@@ -71,13 +71,12 @@ type PreparedCommand struct {
 	BulkFileKey        string
 	BulkBytes          int64
 	BulkUpload         bool
-	Sealing            bool
-	SealingRetry       bool
-	SealedEnvelope     *v1.Envelope
-	SealedContentEpoch uint64
-	SealedHeadHash     [32]byte
-	RequestKeyHash     []byte
-	PayloadHash        []byte
+	Sealing         bool
+	SealingRetry    bool
+	SealedEnvelope  *v1.Envelope
+	SealedHeadHash  [32]byte
+	RequestKeyHash  []byte
+	PayloadHash     []byte
 }
 
 // AttemptTracker preserves one unknown command per UI action slot until settled or explicitly abandoned.
@@ -322,9 +321,8 @@ func (e *Engine) emitCommandLeg(
 func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, retryOfUnknown bool) {
 	if e.secEngine != nil && e.secEngine.Locked() {
 		if prep.SealedEnvelope != nil {
-			if curCE, curHead, ok := e.secEngine.CurrentSealScope(); ok && (prep.SealedContentEpoch != curCE || prep.SealedHeadHash != curHead) {
+			if curHead, ok := e.secEngine.CurrentHeadHash(); ok && prep.SealedHeadHash != curHead {
 				prep.SealedEnvelope = nil
-				prep.SealedContentEpoch = 0
 				prep.SealedHeadHash = [32]byte{}
 				prep.RequestKeyHash = nil
 				prep.PayloadHash = nil

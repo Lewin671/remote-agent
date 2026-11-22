@@ -172,12 +172,12 @@ func NewEngine(pool *entropy.Pool) *Engine {
 	}
 }
 
-// CurrentSealScope returns the verified content epoch and head hash used to seal outbound envelopes.
-func (e *Engine) CurrentSealScope() (uint64, [32]byte, bool) {
+// CurrentHeadHash returns the verified head hash used to seal outbound envelopes.
+func (e *Engine) CurrentHeadHash() ([32]byte, bool) {
 	if e == nil || !e.hasHead {
-		return 0, [32]byte{}, false
+		return [32]byte{}, false
 	}
-	return e.head.Core.ContentEpoch, e.headHash, true
+	return e.headHash, true
 }
 
 // Locked reports whether real security initialization has locked out demo seeding.
