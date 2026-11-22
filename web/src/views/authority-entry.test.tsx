@@ -1,3 +1,4 @@
+import { futureTime } from "../model";
 import { create } from "@bufbuild/protobuf";
 import { t as message } from "../i18n";
 // @vitest-environment happy-dom
@@ -213,4 +214,46 @@ it("finishes a retried published creation when backup confirmation already adopt
   expect(client.confirmCreationCodeSaved).toHaveBeenCalledOnce();
   expect(client.continueCreation).not.toHaveBeenCalled();
   expect(done).toHaveBeenCalledOnce();
+});
+it("prepares signed emergency recovery without spurious status banner and submits on click", async () => {
+  vi.mocked(requestAuthorityPersistence).mockResolvedValue(true);
+  let st = makeStatus();
+  const readyMs = 1_800_000_000_000n;
+  const client = makeClient({
+    bootstrap: vi.fn(async () => st),
+    getStatus: vi.fn(async () => st),
+    prepareEmergencyRecovery: vi.fn(async () => {
+      st = makeStatus({
+        bootstrap: SecurityBootstrapKind.PENDING_RECOVERY,
+        pendingOp: { kind: "recovery", phase: "PREPARED", signed: true, codeSaved: false } as SecurityWorkflowStatus["pendingOp"],
+      });
+      return { recoveryCode: "new-recovery-code" };
+    }),
+    confirmRecoveryCodeSaved: vi.fn(async () => {
+      st = makeStatus({
+        bootstrap: SecurityBootstrapKind.PENDING_RECOVERY,
+        pendingOp: { kind: "recovery", phase: "PREPARED", signed: true, codeSaved: true } as SecurityWorkflowStatus["pendingOp"],
+      });
+    }),
+    resumeRecovery: vi.fn(async () => ({ recoveryId: "rec-1", phase: 1, readyMs } as never)),
+  });
+  await mount(client);
+  await click(message("security.recover_management_with_a_recovery_code"));
+  await input(message("security.server"), "https://ra.example.com");
+  await act(async () => {
+    const ta = host.querySelector<HTMLTextAreaElement>("textarea")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(ta, "OLD-CODE");
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(message("security.prepare_recovery"));
+  expect(host.textContent).toContain("new-recovery-code");
+  expect(host.querySelector(".banner.warn")).toBeNull();
+  expect(button(message("security.continue_original_draft"))).toBeUndefined();
+  await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+  await click(message("security.submit_or_check_original_recovery"));
+  expect(client.confirmRecoveryCodeSaved).toHaveBeenCalledOnce();
+  expect(client.resumeRecovery).toHaveBeenCalledOnce();
+  expect(host.querySelector(".banner.warn")?.textContent).toContain(
+    message("security.recovery_request_pending_eligible_at", { value: String(futureTime(readyMs)) }),
+  );
 });

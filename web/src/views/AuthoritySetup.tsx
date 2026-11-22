@@ -268,7 +268,7 @@ export function AccountEntry({
                     setPersisted(sp);
                     const p = await client.prepareEmergencyRecovery(server, oldCode);
                     setCode(p.recoveryCode);
-                    if (p.recovery) setStatus(p.recovery);
+                    if (p.recovery && p.recovery.phase !== Phase.UNSPECIFIED) setStatus(p.recovery);
                     setOldCode("");
                   })
                 }
@@ -284,7 +284,7 @@ export function AccountEntry({
                 <p className="txt">
                   {l10n.t("security.the_original_recovery_draft_is_preserved_the_new_recovery")}</p>
               )}
-              {status && (
+              {status && status.phase !== Phase.UNSPECIFIED && (
                 <Banner kind={status.phase === Phase.REJECTED ? "err" : "warn"}>
                   {status.phase === Phase.REJECTED
                     ? l10n.t("security.recovery_was_rejected_you_can_apply_again")

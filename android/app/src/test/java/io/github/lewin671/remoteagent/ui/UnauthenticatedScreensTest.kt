@@ -12,7 +12,15 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
+import io.github.lewin671.remoteagent.core.Account
+import io.github.lewin671.remoteagent.core.Api
+import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.RemoteState
+import io.github.lewin671.remoteagent.core.proto.SecurityPendingOpSummary
+import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
 import io.github.lewin671.remoteagent.data.ThemeMode
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -240,5 +248,35 @@ class UnauthenticatedScreensTest {
         ui.onNodeWithText("重试").assertIsEnabled().performClick()
         ui.waitUntil { resumed.get() == 1 }
         org.junit.Assert.assertEquals(1, resumed.get())
+    }
+
+    @Test
+    fun accountSecurityIgnoresDefaultUnsetProtobufPendingOp() {
+        val unset = SecurityWorkflowStatus.getDefaultInstance()
+        assertNotNull(unset.pendingOp)
+        assertNull(activePendingOp(unset))
+        val withPending = SecurityWorkflowStatus.newBuilder()
+            .setPendingOp(SecurityPendingOpSummary.newBuilder().setKind("handoff"))
+            .build()
+        assertNotNull(activePendingOp(withPending))
+
+        val remote = Remote(Account("http://127.0.0.1:1", "self-1"), Api.defaultHttp())
+        try {
+            show {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    LocalRemote provides remote,
+                    LocalNav provides Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {}),
+                ) {
+                    AccountSecurityContent(
+                        state = RemoteState(isAuthority = true, authorityDeviceId = "self-1"),
+                        pending = activePendingOp(unset) != null,
+                    )
+                }
+            }
+            ui.onNodeWithText("未完成的安全操作").assertDoesNotExist()
+            ui.onNodeWithText("本机").assertExists()
+        } finally {
+            remote.close()
+        }
     }
 }

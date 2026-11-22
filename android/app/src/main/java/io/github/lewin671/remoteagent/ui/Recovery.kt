@@ -24,9 +24,14 @@ import io.github.lewin671.remoteagent.core.SecurityClient
 import io.github.lewin671.remoteagent.core.StandaloneSecurityHost
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind
+import io.github.lewin671.remoteagent.core.proto.SecurityPendingOpSummary
 import io.github.lewin671.remoteagent.core.proto.SecurityRecoveryInfo
+import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
 import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse
 import kotlinx.coroutines.launch
+
+internal fun activePendingOp(status: SecurityWorkflowStatus?): SecurityPendingOpSummary? =
+    status?.takeIf { it.hasPendingOp() }?.pendingOp
 
 /**
  * 管理端 · 恢复: a pending recovery can be vetoed here. The new code is shown and saved first; the
@@ -38,7 +43,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     val secStatus by remote.securityStatus.collectAsState()
-    val pendingOp = secStatus?.pendingOp
+    val pendingOp = activePendingOp(secStatus)
     val scope = rememberAuthorityScope()
     var page by remember { mutableStateOf("overview") }
     var error by remember { mutableStateOf("") }
@@ -66,7 +71,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                     scope.launch {
                         try {
                             remote.resumeSecurityOperation()
-                            val curPending = remote.securityStatus.value?.pendingOp
+                            val curPending = activePendingOp(remote.securityStatus.value)
                             if (curPending != null && curPending.hasDelivery && curPending.deliveryPairingId.isNotEmpty()) {
                                 val res = remote.finishPairingDelivery(curPending.deliveryPairingId)
                                 if (!res.delivered) error = copy(UiMessages.securityTheOriginalOperationIsUnfinishedContinueVerifying())
@@ -193,7 +198,7 @@ fun RecoverScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
     LaunchedEffect(secStatus?.bootstrap, secStatus?.pendingOp?.recoveryId) {
-        val op = secStatus?.pendingOp
+        val op = activePendingOp(secStatus)
         if (pending && op != null) {
             if (op.codeSaved) codeSaved = true
             if (op.server.isNotEmpty()) {
@@ -284,7 +289,7 @@ fun RecoverScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit
                     Hint(copy(UiMessages.securityAndroidThisRecoveryWasSubmittedIfYouHaveNotSavedThe()), Modifier)
                 }
 
-                if (signatureMissing && secStatus?.pendingOp?.signed == false) {
+                if (signatureMissing && activePendingOp(secStatus)?.signed == false) {
                     RecoveryField(copy(UiMessages.securityOriginalRecoveryCode()), oldCode, { oldCode = it }, "XXXX-XXXX-…", lines = 3)
                     PillButton(
                         copy(UiMessages.securityContinueOriginalDraft()),
@@ -362,7 +367,7 @@ fun RecoverScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit
                     Modifier,
                 )
                 GLabel(copy(UiMessages.securityAndroidWait()))
-                val readyMs = info?.readyMs ?: secStatus?.pendingOp?.recoveryReadyMs ?: 0L
+                val readyMs = info?.readyMs ?: activePendingOp(secStatus)?.recoveryReadyMs ?: 0L
                 Hint(
                     if (readyMs > 0L) copy(UiMessages.securityAndroidRecoveryEligibleAt(io.github.lewin671.remoteagent.core.securityTime(readyMs, t, copy = copy)))
                     else copy(UiMessages.securityAndroidCompletionRequires48Hours()),

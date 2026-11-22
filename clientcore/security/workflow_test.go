@@ -1303,17 +1303,18 @@ func TestWorkflowHandoffAndEmergencyRecovery(t *testing.T) {
 	// Test VETO flow: D submits recovery -> B vetoes -> D DiscardRejectedRecovery!
 	d := newFakeClientHarness(t, relay, 0x95)
 	_ = d.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}}})
-	_ = d.runAction(&corev1.SecurityWorkflowActionEvent{
+	dPrep := d.runAction(&corev1.SecurityWorkflowActionEvent{
 		Action: &corev1.SecurityWorkflowActionEvent_PrepareEmergencyRecovery{
 			PrepareEmergencyRecovery: &corev1.SecurityServerCodeAction{Server: "https://relay.example.com", Code: currentCode},
 		},
 	})
+	if !dPrep.Ok || dPrep.RecoveryCode == "" || dPrep.Recovery != nil || len(d.eng.wf.pendingOp.Signed) == 0 {
+		t.Fatalf("expected signed emergency recovery draft without premature RecoveryInfo on D, got %+v", dPrep)
+	}
 	_ = d.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved{ConfirmRecoveryCodeSaved: &corev1.SecurityActionEmpty{}}})
-	dSub := d.runAction(&corev1.SecurityWorkflowActionEvent{
-		Action: &corev1.SecurityWorkflowActionEvent_ContinueRecoverySigning{ContinueRecoverySigning: &corev1.SecurityStringAction{Value: currentCode}},
-	})
+	dSub := d.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: &corev1.SecurityActionEmpty{}}})
 	if !dSub.Ok || dSub.Recovery == nil || dSub.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_PENDING {
-		t.Fatalf("expected PHASE_PENDING recovery on D, got %+v", dSub)
+		t.Fatalf("expected PHASE_PENDING recovery on D via ResumeRecovery, got %+v", dSub)
 	}
 	bVetoRot := b.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_PrepareRecoveryRotation{PrepareRecoveryRotation: &corev1.SecurityActionEmpty{}}})
 	_ = b.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ConfirmRecoveryRotation{ConfirmRecoveryRotation: &corev1.SecurityActionEmpty{}}})
@@ -1335,15 +1336,13 @@ func TestWorkflowHandoffAndEmergencyRecovery(t *testing.T) {
 			PrepareEmergencyRecovery: &corev1.SecurityServerCodeAction{Server: "https://relay.example.com", Code: currentCode},
 		},
 	})
-	if !cPrep.Ok || cPrep.RecoveryCode == "" || c.eng.wf.pendingOp.Recovery.RetiringMemberID != cOldMemberID {
-		t.Fatalf("expected C emergency recovery draft with RetiringMemberID=%s, got %+v", cOldMemberID, cPrep)
+	if !cPrep.Ok || cPrep.RecoveryCode == "" || cPrep.Recovery != nil || len(c.eng.wf.pendingOp.Signed) == 0 || c.eng.wf.pendingOp.Recovery.RetiringMemberID != cOldMemberID {
+		t.Fatalf("expected C signed emergency recovery draft with RetiringMemberID=%s, got %+v", cOldMemberID, cPrep)
 	}
 	_ = c.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved{ConfirmRecoveryCodeSaved: &corev1.SecurityActionEmpty{}}})
-	cSub := c.runAction(&corev1.SecurityWorkflowActionEvent{
-		Action: &corev1.SecurityWorkflowActionEvent_ContinueRecoverySigning{ContinueRecoverySigning: &corev1.SecurityStringAction{Value: currentCode}},
-	})
-	if !cSub.Ok || cSub.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_PENDING {
-		t.Fatalf("expected PHASE_PENDING on C, got %+v", cSub)
+	cSub := c.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: &corev1.SecurityActionEmpty{}}})
+	if !cSub.Ok || cSub.Recovery == nil || cSub.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_PENDING || cSub.Recovery.ReadyMs <= c.nowMs {
+		t.Fatalf("expected PHASE_PENDING with future ReadyMs on C, got %+v", cSub)
 	}
 
 	c.nowMs += 49 * 60 * 60 * 1000
@@ -1492,5 +1491,64 @@ func TestConcurrentPrepareCreationUsesDistinctSlotsAndDiscardsLoser(t *testing.T
 	}
 	if len(h1.candEd) != 0 || len(h1.candX) != 0 {
 		t.Fatalf("expected all candidate slots cleared after promotion, got ed=%d x=%d", len(h1.candEd), len(h1.candX))
+	}
+}
+
+func TestContinueRecoverySigningResumesUnsignedDraftAfterCrash(t *testing.T) {
+	relay := newFakeRelay(1_700_000_000_000)
+	a := newFakeClientHarness(t, relay, 0x71)
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}}})
+	prepA := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com"},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}}})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}}})
+
+	b := newFakeClientHarness(t, relay, 0x72)
+	_ = b.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}}})
+	prepB := b.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareEmergencyRecovery{
+			PrepareEmergencyRecovery: &corev1.SecurityServerCodeAction{Server: "https://relay.example.com", Code: prepA.RecoveryCode},
+		},
+	})
+	if !prepB.Ok || prepB.Recovery != nil || len(b.eng.wf.pendingOp.Signed) == 0 {
+		t.Fatalf("expected signed draft after PrepareEmergencyRecovery, got %+v", prepB)
+	}
+
+	// Simulate crash right after claimOperationCAS before Signed was written.
+	key := mockStoreKey{bucket: bktOp, key: "pending"}
+	entry := b.store[key]
+	op, err := DecodePersistedOperation(entry.data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op.Signed = nil
+	op.Recovery.TargetState = nil
+	op.Recovery.Proof = nil
+	entry.data, err = op.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.store[key] = entry
+
+	b.restart("https://relay.example.com", false)
+	boot := b.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}}})
+	if !boot.Ok || boot.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_PENDING_RECOVERY || boot.Status.PendingOp == nil || boot.Status.PendingOp.Signed {
+		t.Fatalf("expected unsigned PENDING_RECOVERY draft on restart, got %+v", boot)
+	}
+	res := b.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: &corev1.SecurityActionEmpty{}}})
+	if !res.Ok || !res.ResumedDraft || res.Recovery != nil {
+		t.Fatalf("expected ResumeRecovery on unsigned draft to signal ResumedDraft without Recovery, got %+v", res)
+	}
+	cont := b.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ContinueRecoverySigning{ContinueRecoverySigning: &corev1.SecurityStringAction{Value: prepA.RecoveryCode}},
+	})
+	if !cont.Ok || cont.Recovery == nil || cont.Recovery.Phase != v1.GetRecoveryContextResponse_PHASE_PENDING || cont.Recovery.RecoveryId == "" || cont.Recovery.ReadyMs <= b.nowMs {
+		t.Fatalf("expected ContinueRecoverySigning to sign and submit recovery, got %+v", cont)
+	}
+	if len(b.eng.wf.pendingOp.Signed) == 0 {
+		t.Fatal("expected Signed payload persisted after ContinueRecoverySigning")
 	}
 }

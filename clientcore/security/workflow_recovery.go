@@ -150,6 +150,7 @@ func (t *fetchRecoveryCtxTask) step(e *Engine, ev *secEvent) error {
 type prepareEmergencyRecoveryTask struct {
 	taskBase
 	rawServer, code, server, retiring, edSlot, xSlot, newCode string
+	oldSeed                                                   [32]byte
 	resp                                                      *v1.GetRecoveryContextResponse
 	pin                                                       devicesec.Pin
 	acctPub                                                   [32]byte
@@ -160,6 +161,7 @@ type prepareEmergencyRecoveryTask struct {
 }
 
 func (t *prepareEmergencyRecoveryTask) onError(e *Engine, err error) {
+	zeroBytes(t.oldSeed[:])
 	ed, x := "", ""
 	if t.cleanEd {
 		ed = t.edSlot
@@ -194,9 +196,9 @@ func (t *prepareEmergencyRecoveryTask) step(e *Engine, ev *secEvent) error {
 				zeroBytes(oldSeed[:])
 				return err
 			}
-			t.server = server
-			e.startFetchRecoveryCtxWithSeed(server, oldRecPub, genPrefix, wf.record, t.fgGen, oldSeed, parentTarget(t, 0))
+			t.server, t.oldSeed = server, oldSeed
 			zeroBytes(oldSeed[:])
+			e.startFetchRecoveryCtxWithSeed(server, oldRecPub, genPrefix, wf.record, t.fgGen, t.oldSeed, parentTarget(t, 0))
 			return nil
 		}
 		rc := ev.recCtx
@@ -247,114 +249,115 @@ func (t *prepareEmergencyRecoveryTask) step(e *Engine, ev *secEvent) error {
 			AccountID: t.pin.Account, AccountPublicKey: slices.Clone(t.acctPub[:]), Domain: t.pin.Domain, Genesis: t.pin.Genesis,
 			EdSlot: t.edSlot, XSlot: t.xSlot, CandidateEdPub: slices.Clone(t.candEdPub), CandidateXPub: slices.Clone(ev.bytes),
 			RecoveryEd: slices.Clone(newRecPub), Secret: slices.Clone(newSecret[:]), NowMs: int64(now), RetiringMemberID: t.retiring,
-			RecoveryID: t.resp.RecoveryId, ReadyMs: int64(t.resp.ReadyMs), States: t.rawStates, RecoveryProofs: t.rawProofs,
+			States: t.rawStates, RecoveryProofs: t.rawProofs,
 		}
 		zeroBytes(newSecret[:])
 		t.stage = 4
 		e.claimOperationCAS(op, nil, candID, parentTarget(t, 0))
 	case 4: // claim
 		wf.server = t.server
+		t.cleanEd, t.cleanX = false, false
+		seed := t.oldSeed
+		zeroBytes(t.oldSeed[:])
+		t.stage = 5
+		e.startSignRecoveryDraft(ev.op, seed, t.fgGen, parentTarget(t, 0))
+		zeroBytes(seed[:])
+	case 5: // signed
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
 			RecoveryCode: t.newCode,
-			Recovery:     &corev1.SecurityRecoveryInfo{RecoveryId: t.resp.RecoveryId, Phase: t.resp.Phase, ReadyMs: int64(t.resp.ReadyMs)},
 		})
 	}
 	return nil
 }
 
-type continueRecoverySigningTask struct {
+type signRecoveryDraftTask struct {
 	taskBase
-	op         *PersistedOperation
-	oldCode    string
-	oldSeed    [32]byte
-	parent     devicesec.State
-	newMember  devicesec.Member
-	members    []devicesec.Member
-	newRecEd   [32]byte
-	now        uint64
-	recoveryID string
-	readyMs    int64
+	op        *PersistedOperation
+	oldSeed   [32]byte
+	parent    devicesec.State
+	newMember devicesec.Member
+	members   []devicesec.Member
+	newRecEd  [32]byte
+	now       uint64
 }
 
-func (t *continueRecoverySigningTask) onError(e *Engine, err error) {
+func (t *signRecoveryDraftTask) onError(e *Engine, err error) {
 	zeroBytes(t.oldSeed[:])
 	e.failTarget(t.target, err)
 }
 
-func (t *continueRecoverySigningTask) submitSigned(e *Engine, curOp *PersistedOperation) {
-	t.op, t.stage = curOp, 4
-	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY, curOp.Server, "", curOp.Signed, t, 0)
+func (t *signRecoveryDraftTask) fgCheckMask() uint32 { return 1<<0 | 1<<1 }
+
+func (e *Engine) startSignRecoveryDraft(op *PersistedOperation, oldSeed [32]byte, fgGen uint64, target taskTarget) {
+	defer zeroBytes(oldSeed[:])
+	if err := e.checkFG(fgGen); err != nil {
+		e.failTarget(target, err)
+		return
+	}
+	draft := op.Recovery
+	if draft == nil || len(draft.States) == 0 || len(draft.RecoveryEd) != 32 || len(draft.Secret) != 32 {
+		e.failTarget(target, devicesec.ErrInvalid)
+		return
+	}
+	oldRecPub, err := devicesec.Ed25519PublicFromSeed(oldSeed[:])
+	if err != nil {
+		e.failTarget(target, err)
+		return
+	}
+	pin := devicesec.Pin{Account: draft.AccountID, Domain: draft.Domain, Genesis: draft.Genesis}
+	states, _, _, err := parseAndVerifyChain(pin, draft.States, draft.RecoveryProofs)
+	if err != nil || len(states) == 0 {
+		if err == nil {
+			err = devicesec.ErrInvalid
+		}
+		e.failTarget(target, err)
+		return
+	}
+	parent := states[len(states)-1]
+	if !bytes.Equal(parent.Core.RecoveryEd[:], oldRecPub) {
+		e.failTarget(target, newWfError("invalid", errInvalidRecoveryCode.Error()))
+		return
+	}
+	newMember, err := devicesec.NewMember(draft.CandidateEdPub, draft.CandidateXPub, devicesec.Client)
+	if err != nil {
+		e.failTarget(target, err)
+		return
+	}
+	members := make([]devicesec.Member, 0, len(parent.Core.Members)+1)
+	var replaced bool
+	for _, m := range parent.Core.Members {
+		if m.ID == parent.Core.AuthorityID {
+			continue
+		}
+		if m.ID == newMember.ID {
+			members, replaced = append(members, newMember), true
+		} else {
+			members = append(members, m)
+		}
+	}
+	if !replaced {
+		members = append(members, newMember)
+	}
+	now := max(max(uint64(max(1, draft.NowMs)), uint64(max(1, e.lastNowMs))), parent.Core.IssuedAt)
+	t := &signRecoveryDraftTask{
+		taskBase: taskBase{fgGen: fgGen, target: target}, op: op, oldSeed: oldSeed,
+		parent: parent, newMember: newMember, members: members, now: now,
+	}
+	copy(t.newRecEd[:], draft.RecoveryEd)
+	e.waitEntropy(64, t, 0)
 }
 
-func (t *continueRecoverySigningTask) fgCheckMask() uint32 { return fgOnStart | 1<<0 | 1<<1 }
-
-func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
-	wf := e.ensureWF()
+func (t *signRecoveryDraftTask) step(e *Engine, ev *secEvent) error {
 	switch t.stage {
 	case 0:
-		op := wf.pendingOp
-		if op == nil || op.Kind != "recovery" || op.Recovery == nil {
-			return devicesec.ErrStale
-		}
-		if len(op.Signed) > 0 {
-			t.submitSigned(e, op)
-			return nil
-		}
-		draft := op.Recovery
-		oldSeed, genPrefix, ok := DecodeRecoveryCode(t.oldCode)
-		if !ok || !bytes.Equal(draft.Genesis[:10], genPrefix[:]) {
-			zeroBytes(oldSeed[:])
-			return newWfError("invalid", errInvalidRecoveryCode.Error())
-		}
-		t.oldSeed = oldSeed
-		zeroBytes(oldSeed[:])
-		oldRecPub, err := devicesec.Ed25519PublicFromSeed(t.oldSeed[:])
-		if err != nil {
-			return err
-		}
-		if len(draft.States) == 0 || len(draft.RecoveryEd) != 32 || len(draft.Secret) != 32 {
-			return devicesec.ErrInvalid
-		}
-		pin := devicesec.Pin{Account: draft.AccountID, Domain: draft.Domain, Genesis: draft.Genesis}
-		states, _, _, err := parseAndVerifyChain(pin, draft.States, draft.RecoveryProofs)
-		if err != nil || len(states) == 0 {
-			return err
-		}
-		parent := states[len(states)-1]
-		if !bytes.Equal(parent.Core.RecoveryEd[:], oldRecPub) {
-			return newWfError("invalid", errInvalidRecoveryCode.Error())
-		}
-		newMember, err := devicesec.NewMember(draft.CandidateEdPub, draft.CandidateXPub, devicesec.Client)
-		if err != nil {
-			return err
-		}
-		members := make([]devicesec.Member, 0, len(parent.Core.Members)+1)
-		var replaced bool
-		for _, m := range parent.Core.Members {
-			if m.ID == parent.Core.AuthorityID {
-				continue
-			}
-			if m.ID == newMember.ID {
-				members, replaced = append(members, newMember), true
-			} else {
-				members = append(members, m)
-			}
-		}
-		if !replaced {
-			members = append(members, newMember)
-		}
-		copy(t.newRecEd[:], draft.RecoveryEd)
-		t.op, t.parent, t.newMember, t.members, t.now, t.stage = op, parent, newMember, members, max(max(uint64(max(1, draft.NowMs)), uint64(max(1, e.lastNowMs))), parent.Core.IssuedAt), 1
-		e.waitEntropy(64, t, 0)
-	case 1:
 		draft := t.op.Recovery
 		var secretCopy [32]byte
 		copy(secretCopy[:], draft.Secret)
 		params := kemBuildParams{kind: kemBuildRecovery, parent: t.parent, member: t.newMember, members: t.members, newSecret: secretCopy, recoveryEd: t.newRecEd, now: t.now}
 		zeroBytes(secretCopy[:])
-		t.stage = 2
+		t.stage = 1
 		e.buildAndSignStateWithKEM(keyCandEd, draft.EdSlot, true, t.fgGen, params, t.members, parentTarget(t, 0))
-	case 2:
+	case 1:
 		target := *ev.state
 		stmt, err := devicesec.NewRecoveryStatement(t.parent, target, e.entropy)
 		if err != nil {
@@ -388,11 +391,52 @@ func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
 		nextDraft := *t.op.Recovery
 		nextDraft.TargetState, nextDraft.Proof = targetBytes, proofBytes
 		nextOp := *t.op
-		nextOp.Signed, nextOp.Recovery, t.stage = reqBytes, &nextDraft, 3
+		nextOp.Signed, nextOp.Recovery, t.stage = reqBytes, &nextDraft, 2
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
-	case 3:
+	case 2:
+		e.completeTarget(t.target, &secEvent{op: ev.op})
+	}
+	return nil
+}
+
+type continueRecoverySigningTask struct {
+	taskBase
+	op         *PersistedOperation
+	oldCode    string
+	recoveryID string
+	readyMs    int64
+}
+
+func (t *continueRecoverySigningTask) submitSigned(e *Engine, curOp *PersistedOperation) {
+	t.op, t.stage = curOp, 2
+	e.waitRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY, curOp.Server, "", curOp.Signed, t, 0)
+}
+
+func (t *continueRecoverySigningTask) fgCheckMask() uint32 { return fgOnStart | 1<<1 }
+
+func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
+	wf := e.ensureWF()
+	switch t.stage {
+	case 0:
+		op := wf.pendingOp
+		if op == nil || op.Kind != "recovery" || op.Recovery == nil {
+			return devicesec.ErrStale
+		}
+		if len(op.Signed) > 0 {
+			t.submitSigned(e, op)
+			return nil
+		}
+		oldSeed, genPrefix, ok := DecodeRecoveryCode(t.oldCode)
+		if !ok || !bytes.Equal(op.Recovery.Genesis[:10], genPrefix[:]) {
+			zeroBytes(oldSeed[:])
+			return newWfError("invalid", errInvalidRecoveryCode.Error())
+		}
+		t.stage = 1
+		e.startSignRecoveryDraft(op, oldSeed, t.fgGen, parentTarget(t, 0))
+		zeroBytes(oldSeed[:])
+	case 1:
 		t.submitSigned(e, ev.op)
-	case 4:
+	case 2:
 		var sr v1.SubmitRecoveryResponse
 		if sr.Unmarshal(ev.bytes) != nil || sr.RecoveryId == "" {
 			return devicesec.ErrInvalid
@@ -400,9 +444,9 @@ func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
 		nextDraft := *t.op.Recovery
 		nextDraft.RecoveryID, nextDraft.ReadyMs = sr.RecoveryId, int64(sr.ReadyMs)
 		nextOp := *t.op
-		nextOp.Phase, nextOp.Recovery, t.recoveryID, t.readyMs, t.stage = "PUBLISHED", &nextDraft, sr.RecoveryId, int64(sr.ReadyMs), 5
+		nextOp.Phase, nextOp.Recovery, t.recoveryID, t.readyMs, t.stage = "PUBLISHED", &nextDraft, sr.RecoveryId, int64(sr.ReadyMs), 3
 		e.saveOperationCAS(t.op, &nextOp, parentTarget(t, 0))
-	case 5:
+	case 3:
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{
 			Recovery: &corev1.SecurityRecoveryInfo{RecoveryId: t.recoveryID, Phase: v1.GetRecoveryContextResponse_PHASE_PENDING, ReadyMs: t.readyMs},
 		})
