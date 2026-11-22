@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -230,7 +231,7 @@ func sortedByID[E any, T any](entries map[string]*E, view func(*E) *T) []*T {
 			ids = append(ids, id)
 		}
 	}
-	slices.Sort(ids)
+	sortutil.Strings(ids)
 	out := make([]*T, len(ids))
 	for i, id := range ids {
 		out[i] = view(entries[id])

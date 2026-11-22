@@ -3,6 +3,7 @@ package lists
 import (
 	"slices"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
@@ -46,7 +47,7 @@ func newInheritance(w *World, allProjects []*projectAgg, key string) *inheritanc
 			all = append(all, s)
 		}
 	}
-	slices.SortFunc(all, CompareSession)
+	sortutil.Sort(len(all), func(i, j int) bool { return CompareSession(all[i], all[j]) < 0 }, func(i, j int) { all[i], all[j] = all[j], all[i] })
 
 	var sure []*Session
 	var exitedCount int32
@@ -188,7 +189,7 @@ func ResolveProjectStart(w *World, key, pickMachineID string, pickAgent v1.Agent
 		for mid := range machinesByID {
 			projectMachines = append(projectMachines, mid)
 		}
-		slices.SortFunc(projectMachines, compareUTF16)
+		sortutil.Sort(len(projectMachines), func(i, j int) bool { return compareUTF16(projectMachines[i], projectMachines[j]) < 0 }, func(i, j int) { projectMachines[i], projectMachines[j] = projectMachines[j], projectMachines[i] })
 	}
 	res.ProjectMachines = projectMachines
 

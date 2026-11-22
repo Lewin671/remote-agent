@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -204,23 +205,14 @@ func buildDirPickerView(st *State) *corev1.DirPickerView {
 			sorted = append(sorted, m)
 		}
 	}
-	slices.SortFunc(sorted, func(a, b *lists.Machine) int {
-		oa := lists.MachineReachable(a)
-		ob := lists.MachineReachable(b)
+	sortutil.Sort(len(sorted), func(i, j int) bool {
+		oa := lists.MachineReachable(sorted[i])
+		ob := lists.MachineReachable(sorted[j])
 		if oa != ob {
-			if oa {
-				return -1
-			}
-			return 1
+			return oa
 		}
-		if a.ID < b.ID {
-			return -1
-		}
-		if a.ID > b.ID {
-			return 1
-		}
-		return 0
-	})
+		return sorted[i].ID < sorted[j].ID
+	}, func(i, j int) { sorted[i], sorted[j] = sorted[j], sorted[i] })
 
 	machines := make([]*corev1.DirPickerMachineView, 0, len(sorted))
 	for _, m := range sorted {

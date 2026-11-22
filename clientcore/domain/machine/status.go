@@ -2,10 +2,10 @@ package machine
 
 import (
 	"math"
-	"sort"
 	"strconv"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -396,7 +396,7 @@ func BuildChart(
 		}
 		pts = append(pts, &corev1.MachineChartPoint{TimeMs: s.TimeMs, Value: v})
 	}
-	sort.Slice(pts, func(i, j int) bool { return pts[i].TimeMs < pts[j].TimeMs })
+	sortutil.Sort(len(pts), func(i, j int) bool { return pts[i].TimeMs < pts[j].TimeMs }, func(i, j int) { pts[i], pts[j] = pts[j], pts[i] })
 	if len(pts) == 0 && status.ObservedMs > 0 {
 		v := status.CpuPercent
 		if memory {
@@ -493,13 +493,13 @@ func StableUsage(previousIDs []string, rows []*v1.ResourceUsage, memory bool) []
 	for _, r := range byID {
 		remaining = append(remaining, r)
 	}
-	sort.Slice(remaining, func(i, j int) bool {
+	sortutil.Sort(len(remaining), func(i, j int) bool {
 		di, dj := metric(remaining[i]), metric(remaining[j])
 		if di != dj {
 			return di > dj
 		}
 		return remaining[i].Id < remaining[j].Id
-	})
+	}, func(i, j int) { remaining[i], remaining[j] = remaining[j], remaining[i] })
 	ordered = append(ordered, remaining...)
 
 	threshold := CPUHysteresis
@@ -652,7 +652,7 @@ func BuildDiskReminders(machines []*lists.Machine) []*corev1.DiskReminderView {
 			ActionLabel:    text.Msg(text.KeyMachineStatusCleanupAction),
 		})
 	}
-	sort.Slice(out, func(i, j int) bool {
+	sortutil.Sort(len(out), func(i, j int) bool {
 		if out[i].Critical != out[j].Critical {
 			return out[i].Critical
 		}
@@ -660,7 +660,7 @@ func BuildDiskReminders(machines []*lists.Machine) []*corev1.DiskReminderView {
 			return out[i].AvailableBytes < out[j].AvailableBytes
 		}
 		return out[i].MachineId < out[j].MachineId
-	})
+	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }
 

@@ -1,12 +1,12 @@
 package screens
 
 import (
-	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/schedule"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -1863,8 +1863,8 @@ func BuildScheduleSessionStrip(st *State, sessionID string) *corev1.ScheduleSess
 		return &corev1.ScheduleSessionStripViewModel{SessionId: sessionID, Visible: false}
 	}
 
-	slices.SortFunc(matching, func(a, b schedule.TaskEntry) int {
-		na, nb := a.Task.NextRunAt, b.Task.NextRunAt
+	sortutil.Sort(len(matching), func(i, j int) bool {
+		na, nb := matching[i].Task.NextRunAt, matching[j].Task.NextRunAt
 		if na == "" {
 			na = "~"
 		}
@@ -1872,13 +1872,13 @@ func BuildScheduleSessionStrip(st *State, sessionID string) *corev1.ScheduleSess
 			nb = "~"
 		}
 		if na != nb {
-			return strings.Compare(na, nb)
+			return na < nb
 		}
-		if a.MachineID != b.MachineID {
-			return strings.Compare(a.MachineID, b.MachineID)
+		if matching[i].MachineID != matching[j].MachineID {
+			return matching[i].MachineID < matching[j].MachineID
 		}
-		return strings.Compare(a.Task.ID, b.Task.ID)
-	})
+		return matching[i].Task.ID < matching[j].Task.ID
+	}, func(i, j int) { matching[i], matching[j] = matching[j], matching[i] })
 
 	first := matching[0]
 	writable := schedule.Writable(&st.World, first.MachineID)

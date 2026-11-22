@@ -1,10 +1,9 @@
 package sync
 
 import (
-	"slices"
-
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
@@ -1059,15 +1058,7 @@ func (e *Engine) trimHistory(ctx *StepContext) {
 		idle = append(idle, idleEntry{sid: sid, buf: b})
 		totalBytes += b.approxBytes
 	}
-	slices.SortFunc(idle, func(a, b idleEntry) int {
-		if a.buf.usedAtMs < b.buf.usedAtMs {
-			return -1
-		}
-		if a.buf.usedAtMs > b.buf.usedAtMs {
-			return 1
-		}
-		return 0
-	})
+	sortutil.Sort(len(idle), func(i, j int) bool { return idle[i].buf.usedAtMs < idle[j].buf.usedAtMs }, func(i, j int) { idle[i], idle[j] = idle[j], idle[i] })
 	count := len(idle)
 	for _, it := range idle {
 		missingSession := e.sessions[it.sid] == nil

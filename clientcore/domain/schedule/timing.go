@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -126,7 +127,7 @@ func uniqueSortedWeekdays(days []int) []int {
 			out = append(out, d)
 		}
 	}
-	slices.Sort(out)
+	sortutil.Ints(out)
 	return out
 }
 
@@ -138,7 +139,7 @@ func JitterOptionMinutes(current int64) []int64 {
 	out := slices.Clone(defaultJitterOptions)
 	if current > 0 && !slices.Contains(out, current) {
 		out = append(out, current)
-		slices.Sort(out)
+		sortutil.Int64s(out)
 	}
 	return out
 }

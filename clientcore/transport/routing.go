@@ -8,7 +8,8 @@ package transport
 
 import (
 	"math"
-	"slices"
+
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 )
 
 // Route is the path a request takes.
@@ -161,7 +162,7 @@ func median(s []sample) float64 {
 	for i, x := range s {
 		v[i] = x.ms
 	}
-	slices.Sort(v)
+	sortutil.Float64s(v)
 	return v[len(v)/2]
 }
 

@@ -48,6 +48,7 @@ func (r *binReader) bool() bool {
 	return v == 1
 }
 
+//go:noinline
 func (r *binReader) u32() uint32 {
 	if r.err != nil || len(r.b) < 4 {
 		r.err = errStoreCorrupt
@@ -58,6 +59,7 @@ func (r *binReader) u32() uint32 {
 	return n
 }
 
+//go:noinline
 func (r *binReader) u64() uint64 {
 	if r.err != nil || len(r.b) < 8 {
 		r.err = errStoreCorrupt
@@ -71,10 +73,12 @@ func (r *binReader) u64() uint64 {
 	return n
 }
 
+//go:noinline
 func (r *binReader) i64() int64 {
 	return int64(r.u64())
 }
 
+//go:noinline
 func (r *binReader) raw(n int) []byte {
 	if r.err != nil || n < 0 || len(r.b) < n {
 		r.err = errStoreCorrupt
@@ -85,6 +89,7 @@ func (r *binReader) raw(n int) []byte {
 	return out
 }
 
+//go:noinline
 func (r *binReader) lp(max int) []byte {
 	n := r.u32()
 	if r.err != nil || uint64(n) > uint64(max) || int(n) > len(r.b) {
@@ -97,6 +102,7 @@ func (r *binReader) lp(max int) []byte {
 	return r.raw(int(n))
 }
 
+//go:noinline
 func (r *binReader) str() string {
 	b := r.lp(maxStoreStringLen)
 	if r.err != nil || len(b) == 0 {
@@ -105,6 +111,7 @@ func (r *binReader) str() string {
 	return string(b)
 }
 
+//go:noinline
 func (r *binReader) checkMagic(magic string, ver uint32) bool {
 	if r.err != nil || len(r.b) < len(magic) || string(r.b[:len(magic)]) != magic {
 		r.err = errStoreCorrupt
@@ -118,6 +125,7 @@ func (r *binReader) checkMagic(magic string, ver uint32) bool {
 	return r.err == nil
 }
 
+//go:noinline
 func (r *binReader) done() error {
 	if r.err != nil {
 		return r.err
@@ -128,6 +136,7 @@ func (r *binReader) done() error {
 	return nil
 }
 
+//go:noinline
 func encodeBool(e *devicesec.Encoder, v bool) {
 	if v {
 		e.B = append(e.B, 1)

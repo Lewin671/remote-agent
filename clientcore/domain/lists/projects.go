@@ -1,10 +1,10 @@
 package lists
 
 import (
-	"cmp"
 	"slices"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
@@ -196,9 +196,9 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 	for _, m := range machinesByID {
 		sortedMachines = append(sortedMachines, m)
 	}
-	slices.SortFunc(sortedMachines, func(a, b *Machine) int {
-		return compareUTF16(a.ID, b.ID)
-	})
+	sortutil.Sort(len(sortedMachines), func(i, j int) bool {
+		return compareUTF16(sortedMachines[i].ID, sortedMachines[j].ID) < 0
+	}, func(i, j int) { sortedMachines[i], sortedMachines[j] = sortedMachines[j], sortedMachines[i] })
 
 	type machineSummary struct {
 		machineID string
@@ -215,12 +215,12 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 			}
 		}
 	}
-	slices.SortStableFunc(summaries, func(a, b machineSummary) int {
-		if c := cmp.Compare(b.summary.LatestCreatedMs, a.summary.LatestCreatedMs); c != 0 {
-			return c
+	sortutil.Stable(len(summaries), func(i, j int) bool {
+		if summaries[i].summary.LatestCreatedMs != summaries[j].summary.LatestCreatedMs {
+			return summaries[i].summary.LatestCreatedMs > summaries[j].summary.LatestCreatedMs
 		}
-		return compareUTF16(a.machineID, b.machineID)
-	})
+		return compareUTF16(summaries[i].machineID, summaries[j].machineID) < 0
+	}, func(i, j int) { summaries[i], summaries[j] = summaries[j], summaries[i] })
 
 	sums := make(map[string]*projectSums)
 	for _, item := range summaries {
@@ -375,18 +375,15 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 		})
 	}
 
-	slices.SortFunc(out, func(a, b *projectAgg) int {
-		if a.hasLive != b.hasLive {
-			if a.hasLive {
-				return -1
-			}
-			return 1
+	sortutil.Sort(len(out), func(i, j int) bool {
+		if out[i].hasLive != out[j].hasLive {
+			return out[i].hasLive
 		}
-		if c := cmp.Compare(b.latestCreatedMs, a.latestCreatedMs); c != 0 {
-			return c
+		if out[i].latestCreatedMs != out[j].latestCreatedMs {
+			return out[i].latestCreatedMs > out[j].latestCreatedMs
 		}
-		return compareUTF16(a.key, b.key)
-	})
+		return compareUTF16(out[i].key, out[j].key) < 0
+	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 
 	return out, machinesByID
 }
@@ -642,9 +639,9 @@ func ApplySettings(stored *v1.ProjectSettings, op *PrefsSetSettingsOp, nowMs int
 	for _, s := range sets {
 		agents = append(agents, s)
 	}
-	slices.SortFunc(agents, func(a, b *v1.AgentSettings) int {
-		return cmp.Compare(a.Agent, b.Agent)
-	})
+	sortutil.Sort(len(agents), func(i, j int) bool {
+		return agents[i].Agent < agents[j].Agent
+	}, func(i, j int) { agents[i], agents[j] = agents[j], agents[i] })
 	b.Agents = agents
 	b.UpdatedMs = nowMs
 	return b

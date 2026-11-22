@@ -2,13 +2,13 @@ package screens
 
 import (
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/quota"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -139,14 +139,14 @@ func buildMachineListCards(st *State, machines []*lists.Machine, extra *Settings
 		}
 	}
 	clientVer := st.World.ClientVersion
-	sort.Slice(sorted, func(i, j int) bool {
+	sortutil.Sort(len(sorted), func(i, j int) bool {
 		ni := strings.ToLower(lists.MachineName(sorted[i], sorted[i].ID))
 		nj := strings.ToLower(lists.MachineName(sorted[j], sorted[j].ID))
 		if ni != nj {
 			return ni < nj
 		}
 		return sorted[i].ID < sorted[j].ID
-	})
+	}, func(i, j int) { sorted[i], sorted[j] = sorted[j], sorted[i] })
 
 	out := make([]*corev1.MachineListCardView, 0, len(sorted))
 	for _, m := range sorted {

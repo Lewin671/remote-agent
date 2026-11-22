@@ -10,6 +10,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
@@ -161,16 +162,13 @@ func AllRuns(t *Task) []*Run {
 	for _, r := range byID {
 		out = append(out, r)
 	}
-	slices.SortFunc(out, func(a, b *Run) int {
-		ta, tb := RunTimeMs(a), RunTimeMs(b)
+	sortutil.Sort(len(out), func(i, j int) bool {
+		ta, tb := RunTimeMs(out[i]), RunTimeMs(out[j])
 		if ta != tb {
-			if ta > tb {
-				return -1
-			}
-			return 1
+			return ta > tb
 		}
-		return strings.Compare(b.ID, a.ID)
-	})
+		return out[i].ID > out[j].ID
+	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }
 
@@ -222,23 +220,18 @@ func SortInbox(entries []TaskEntry, group InboxGroup, hasNew func(TaskEntry) boo
 			out = append(out, e)
 		}
 	}
-	slices.SortFunc(out, func(a, b TaskEntry) int {
+	sortutil.Sort(len(out), func(i, j int) bool {
+		a, b := out[i], out[j]
 		switch group {
 		case InboxAttention:
 			sa, sb := StoppedTimeMs(a.Task), StoppedTimeMs(b.Task)
 			if sa != sb {
-				if sa > sb {
-					return -1
-				}
-				return 1
+				return sa > sb
 			}
 		case InboxEnded:
 			na, nb := NotificationTimeMs(LatestNotification(a.Task)), NotificationTimeMs(LatestNotification(b.Task))
 			if na != nb {
-				if na > nb {
-					return -1
-				}
-				return 1
+				return na > nb
 			}
 			ua, ub := ParseRFC3339Ms(a.Task.UpdatedAt), ParseRFC3339Ms(b.Task.UpdatedAt)
 			if ua == 0 {
@@ -248,18 +241,12 @@ func SortInbox(entries []TaskEntry, group InboxGroup, hasNew func(TaskEntry) boo
 				ub = ParseRFC3339Ms(b.Task.CreatedAt)
 			}
 			if ua != ub {
-				if ua > ub {
-					return -1
-				}
-				return 1
+				return ua > ub
 			}
 		case InboxRecent:
 			na, nb := NotificationTimeMs(LatestNotification(a.Task)), NotificationTimeMs(LatestNotification(b.Task))
 			if na != nb {
-				if na > nb {
-					return -1
-				}
-				return 1
+				return na > nb
 			}
 			xa, xb := ParseRFC3339Ms(a.Task.NextRunAt), ParseRFC3339Ms(b.Task.NextRunAt)
 			if xa == 0 {
@@ -269,17 +256,14 @@ func SortInbox(entries []TaskEntry, group InboxGroup, hasNew func(TaskEntry) boo
 				xb = math.MaxInt64
 			}
 			if xa != xb {
-				if xa < xb {
-					return -1
-				}
-				return 1
+				return xa < xb
 			}
 		}
 		if a.MachineID != b.MachineID {
-			return strings.Compare(a.MachineID, b.MachineID)
+			return a.MachineID < b.MachineID
 		}
-		return strings.Compare(a.Task.ID, b.Task.ID)
-	})
+		return a.Task.ID < b.Task.ID
+	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }
 
@@ -479,16 +463,13 @@ func EditAccess(t *Task, writable, busy, frozen bool) Access {
 // RunGroups groups runs ordered by notificationTime desc, folding same-local-day quiet runs.
 func RunGroups(runs []*Run, bounds CalendarBounds) []RunGroup {
 	ordered := slices.Clone(runs)
-	slices.SortFunc(ordered, func(a, b *Run) int {
-		ta, tb := NotificationTimeMs(a), NotificationTimeMs(b)
+	sortutil.Sort(len(ordered), func(i, j int) bool {
+		ta, tb := NotificationTimeMs(ordered[i]), NotificationTimeMs(ordered[j])
 		if ta != tb {
-			if ta > tb {
-				return -1
-			}
-			return 1
+			return ta > tb
 		}
-		return strings.Compare(b.ID, a.ID)
-	})
+		return ordered[i].ID > ordered[j].ID
+	}, func(i, j int) { ordered[i], ordered[j] = ordered[j], ordered[i] })
 
 	groups := make([]RunGroup, 0, len(ordered))
 	quietByDay := make(map[string]*RunGroup)
@@ -537,15 +518,7 @@ func FinalAnswer(runID string, events []*v1.Event) string {
 		return ""
 	}
 	ordered := slices.Clone(events)
-	slices.SortFunc(ordered, func(a, b *v1.Event) int {
-		if a.GetSeq() < b.GetSeq() {
-			return -1
-		}
-		if a.GetSeq() > b.GetSeq() {
-			return 1
-		}
-		return 0
-	})
+	sortutil.Sort(len(ordered), func(i, j int) bool { return ordered[i].GetSeq() < ordered[j].GetSeq() }, func(i, j int) { ordered[i], ordered[j] = ordered[j], ordered[i] })
 	start := -1
 	for i, e := range ordered {
 		if e != nil && e.GetUserMessage() != nil && e.GetOrigin().GetScheduledRunId() == runID {

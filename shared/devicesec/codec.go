@@ -81,12 +81,21 @@ func hexString(b []byte) string {
 // in this package is made of.
 type Encoder struct{ B []byte }
 
+//go:noinline
 func (e *Encoder) U32(n uint32) { e.B = appendU32(e.B, n) }
+
+//go:noinline
 func (e *Encoder) U64(n uint64) {
 	e.B = append(e.B, byte(n>>56), byte(n>>48), byte(n>>40), byte(n>>32), byte(n>>24), byte(n>>16), byte(n>>8), byte(n))
 }
+
+//go:noinline
 func (e *Encoder) Raw(b []byte) { e.B = append(e.B, b...) }
+
+//go:noinline
 func (e *Encoder) LP(b []byte)  { e.U32(uint32(len(b))); e.Raw(b) }
+
+//go:noinline
 func (e *Encoder) Str(s string) { e.LP([]byte(s)) }
 
 func appendU32(b []byte, n uint32) []byte {
@@ -98,6 +107,7 @@ type decoder struct {
 	err error
 }
 
+//go:noinline
 func (d *decoder) u32() uint32 {
 	if d.err != nil || len(d.b) < 4 {
 		d.err = ErrInvalid
@@ -107,6 +117,8 @@ func (d *decoder) u32() uint32 {
 	d.b = d.b[4:]
 	return n
 }
+
+//go:noinline
 func (d *decoder) u64() uint64 {
 	if d.err != nil || len(d.b) < 8 {
 		d.err = ErrInvalid
@@ -119,6 +131,8 @@ func (d *decoder) u64() uint64 {
 	d.b = d.b[8:]
 	return n
 }
+
+//go:noinline
 func (d *decoder) raw(n int) []byte {
 	if d.err != nil || n < 0 || len(d.b) < n {
 		d.err = ErrInvalid
@@ -128,6 +142,8 @@ func (d *decoder) raw(n int) []byte {
 	d.b = d.b[n:]
 	return b
 }
+
+//go:noinline
 func (d *decoder) lp(max int) []byte {
 	n := d.u32()
 	if d.err != nil || uint64(n) > uint64(max) || int(n) > len(d.b) {
@@ -136,7 +152,11 @@ func (d *decoder) lp(max int) []byte {
 	}
 	return d.raw(int(n))
 }
+
+//go:noinline
 func (d *decoder) str() string { return string(d.lp(MaxStateBytes)) }
+
+//go:noinline
 func (d *decoder) hash() Hash {
 	var h Hash
 	copy(h[:], d.raw(32))

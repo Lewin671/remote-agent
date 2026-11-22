@@ -1,13 +1,13 @@
 package lists
 
 import (
-	"cmp"
 	"crypto/hmac"
 	"crypto/sha256"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
 
@@ -657,23 +657,23 @@ func computeTimeline(w *World, allProjects []*projectAgg, scope Scope, query str
 	}
 
 	if len(waiting) > 1 {
-		slices.SortFunc(waiting, CompareAttention)
+		sortutil.Sort(len(waiting), func(i, j int) bool { return CompareAttention(waiting[i], waiting[j]) < 0 }, func(i, j int) { waiting[i], waiting[j] = waiting[j], waiting[i] })
 	}
 	if len(runEntries) > 1 {
-		slices.SortFunc(runEntries, func(a, b sortEntry) int {
-			if c := cmp.Compare(b.ms, a.ms); c != 0 {
-				return c
+		sortutil.Sort(len(runEntries), func(i, j int) bool {
+			if runEntries[i].ms != runEntries[j].ms {
+				return runEntries[i].ms > runEntries[j].ms
 			}
-			return compareUTF16(a.s.ID, b.s.ID)
-		})
+			return compareUTF16(runEntries[i].s.ID, runEntries[j].s.ID) < 0
+		}, func(i, j int) { runEntries[i], runEntries[j] = runEntries[j], runEntries[i] })
 	}
 	if len(endedEntries) > 1 {
-		slices.SortFunc(endedEntries, func(a, b sortEntry) int {
-			if c := cmp.Compare(b.ms, a.ms); c != 0 {
-				return c
+		sortutil.Sort(len(endedEntries), func(i, j int) bool {
+			if endedEntries[i].ms != endedEntries[j].ms {
+				return endedEntries[i].ms > endedEntries[j].ms
 			}
-			return compareUTF16(a.s.ID, b.s.ID)
-		})
+			return compareUTF16(endedEntries[i].s.ID, endedEntries[j].s.ID) < 0
+		}, func(i, j int) { endedEntries[i], endedEntries[j] = endedEntries[j], endedEntries[i] })
 	}
 
 	running := make([]*Session, len(runEntries))
@@ -1128,7 +1128,7 @@ func BuildProjectPage(w *World, key string, endedLimit int, cal Calendar) *Proje
 			sessions = append(sessions, s)
 		}
 	}
-	slices.SortFunc(sessions, CompareSession)
+	sortutil.Sort(len(sessions), func(i, j int) bool { return CompareSession(sessions[i], sessions[j]) < 0 }, func(i, j int) { sessions[i], sessions[j] = sessions[j], sessions[i] })
 
 	var pr *projectAgg
 	for _, p := range allAgg {

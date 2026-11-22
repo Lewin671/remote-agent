@@ -1415,22 +1415,6 @@ func (m *RevealPairingRequest) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-type RevealPairingResponse struct {
-}
-
-func (m *RevealPairingResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type ApprovePairingRequest struct {
 	PairingId         string
 	Payload           *Envelope
@@ -1534,22 +1518,6 @@ func (m *ApprovePairingRequest) Unmarshal(b []byte) error {
 	return nil
 }
 
-type ApprovePairingResponse struct {
-}
-
-func (m *ApprovePairingResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type CancelPairingRequest struct {
 	PairingId      string
 	CandidateToken string
@@ -1581,22 +1549,6 @@ func (m *CancelPairingRequest) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 1, m.PairingId)
 	b = litewire.AppendString(b, 2, m.CandidateToken)
 	return b
-}
-
-type CancelPairingResponse struct {
-}
-
-func (m *CancelPairingResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type Machine struct {
@@ -2068,22 +2020,6 @@ func (m *PinSecurityDomainRequest) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBytes(b, 1, m.GenesisState)
 	return b
-}
-
-type PinSecurityDomainResponse struct {
-}
-
-func (m *PinSecurityDomainResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type SecurityState struct {
@@ -2667,39 +2603,6 @@ func (m *SubmitRecoveryRequest) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-func (m *SubmitRecoveryRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Statement = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.State = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type SubmitRecoveryResponse struct {
 	RecoveryId string
 	ReadyMs    uint64
@@ -2782,39 +2685,6 @@ func (m *CompleteRecoveryRequest) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendString(b, 1, m.RecoveryId)
 	b = litewire.AppendBytes(b, 2, m.Signature)
 	return b
-}
-
-func (m *CompleteRecoveryRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.RecoveryId = v
-				continue
-			}
-		case 2:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadBytes(&b)
-				if err != nil {
-					return err
-				}
-				m.Signature = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type CompleteRecoveryResponse struct {
@@ -3473,46 +3343,6 @@ func (m *DeleteMachineRecordsRequest) AppendMarshal(b []byte) []byte {
 	return b
 }
 
-func (m *DeleteMachineRecordsRequest) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		switch num {
-		case 1:
-			if wtyp == litewire.BytesType {
-				v, err := litewire.ReadString(&b)
-				if err != nil {
-					return err
-				}
-				m.MachineId = v
-				continue
-			}
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type DeleteMachineRecordsResponse struct {
-}
-
-func (m *DeleteMachineRecordsResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type DeleteAccountRequest struct {
 	StateHash []byte
 	Challenge []byte
@@ -3552,20 +3382,4 @@ func (m *DeleteAccountRequest) AppendMarshal(b []byte) []byte {
 	b = litewire.AppendBytes(b, 2, m.Challenge)
 	b = litewire.AppendBytes(b, 3, m.Signature)
 	return b
-}
-
-type DeleteAccountResponse struct {
-}
-
-func (m *DeleteAccountResponse) Unmarshal(b []byte) error {
-	for len(b) > 0 {
-		num, wtyp, err := litewire.ReadTag(&b)
-		if err != nil {
-			return err
-		}
-		if err := litewire.Skip(&b, num, wtyp); err != nil {
-			return err
-		}
-	}
-	return nil
 }

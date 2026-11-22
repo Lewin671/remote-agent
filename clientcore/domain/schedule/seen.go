@@ -1,6 +1,10 @@
 package schedule
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
+)
 
 // SeenToken is an opaque (task_id, run_id) read marker persisted per machine.
 type SeenToken struct {
@@ -95,21 +99,12 @@ func (s *SeenTracker) TokensFor(machineID string) []SeenToken {
 	for tok := range m {
 		out = append(out, tok)
 	}
-	slices.SortFunc(out, func(a, b SeenToken) int {
-		if a.TaskID != b.TaskID {
-			if a.TaskID < b.TaskID {
-				return -1
-			}
-			return 1
+	sortutil.Sort(len(out), func(i, j int) bool {
+		if out[i].TaskID != out[j].TaskID {
+			return out[i].TaskID < out[j].TaskID
 		}
-		if a.RunID < b.RunID {
-			return -1
-		}
-		if a.RunID > b.RunID {
-			return 1
-		}
-		return 0
-	})
+		return out[i].RunID < out[j].RunID
+	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }
 

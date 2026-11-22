@@ -3,6 +3,7 @@ package security
 import (
 	"slices"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -692,7 +693,7 @@ func (e *Engine) buildAndPersistStateDraft(op *PersistedOperation, fgGen uint64,
 				}
 			}
 			removed := append(slices.Clone(parent.Core.Removed), op.TargetDeviceID)
-			slices.Sort(removed)
+			sortutil.Strings(removed)
 			kemMembers = members
 			buildFn = func(hpke devicesec.HPKESender) (devicesec.State, error) {
 				return devicesec.NewMembershipState(parent, members, removed, oldSecret[:], newSecret[:], now, hpke, e.entropy)

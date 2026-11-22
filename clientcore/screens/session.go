@@ -1,11 +1,11 @@
 package screens
 
 import (
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -2022,7 +2022,7 @@ func collectRetainedAttachmentIDs(p *corev1.ProjectionState, ui *SessionUIState)
 	for id := range set {
 		out = append(out, id)
 	}
-	sort.Strings(out)
+	sortutil.Strings(out)
 	return out
 }
 

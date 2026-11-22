@@ -2,7 +2,6 @@ package security
 
 import (
 	"crypto/sha256"
-	"errors"
 	"slices"
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -507,8 +506,8 @@ func (e *Engine) continueCreationOp(fgGen uint64, setupToken string, done func(*
 			finishWithToken(tok)
 			return
 		}
-		var re *rpcError
-		if !errors.As(lErr, &re) || (re.code != connectCodePermissionDenied && re.code != connectCodeNotFound && re.code != connectCodeUnauthenticated) {
+		re := asRpcError(lErr)
+		if re == nil || (re.code != connectCodePermissionDenied && re.code != connectCodeNotFound && re.code != connectCodeUnauthenticated) {
 			done(nil, lErr)
 			return
 		}
@@ -1623,8 +1622,7 @@ func (e *Engine) checkRetainedDeniedOp(actionID uint64) {
 				e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{Flag: false}, nil)
 				return
 			}
-			var re *rpcError
-			if errors.As(err, &re) && re.code == connectCodePermissionDenied {
+			if re := asRpcError(err); re != nil && re.code == connectCodePermissionDenied {
 				if retries == 0 {
 					attemptLogin(1)
 					return

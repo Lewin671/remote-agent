@@ -1,10 +1,10 @@
 package machine
 
 import (
-	"sort"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -54,7 +54,7 @@ func BuildIdleCloseChoices(current int32) []*corev1.IdleCloseChoiceView {
 	}
 	if !found {
 		vals = append(vals, cur)
-		sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+		sortutil.Int32s(vals)
 	}
 	out := make([]*corev1.IdleCloseChoiceView, 0, len(vals))
 	for _, v := range vals {
@@ -95,7 +95,7 @@ func BuildTimeoutChoices(current int32) []*corev1.TimeoutChoiceView {
 		}
 		if !found {
 			vals = append(vals, current)
-			sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+			sortutil.Int32s(vals)
 		}
 	}
 	out := make([]*corev1.TimeoutChoiceView, 0, len(vals))
@@ -122,7 +122,7 @@ func BuildImageQuotaChoices(current int64) []*corev1.QuotaSizeChoiceView {
 		}
 		if !found {
 			vals = append(vals, current)
-			sort.Slice(vals, func(i, j int) bool { return vals[i] < vals[j] })
+			sortutil.Int64s(vals)
 		}
 	}
 	out := make([]*corev1.QuotaSizeChoiceView, 0, len(vals))
@@ -178,7 +178,7 @@ func SortClients(devices []*corev1.SyncDeviceView, selfID string) []*corev1.Sync
 			out = append(out, d)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
+	sortutil.Sort(len(out), func(i, j int) bool {
 		a, b := out[i], out[j]
 		aSelf := a.DeviceId == selfID
 		bSelf := b.DeviceId == selfID
@@ -192,7 +192,7 @@ func SortClients(devices []*corev1.SyncDeviceView, selfID string) []*corev1.Sync
 			return a.CreatedMs > b.CreatedMs
 		}
 		return a.DeviceId < b.DeviceId
-	})
+	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }
 
@@ -275,12 +275,12 @@ func CollectMachineProjects(m *lists.Machine, sessions []*lists.Session) []Machi
 	for _, v := range byPath {
 		out = append(out, v)
 	}
-	sort.Slice(out, func(i, j int) bool {
+	sortutil.Sort(len(out), func(i, j int) bool {
 		if out[i].LastActiveMs != out[j].LastActiveMs {
 			return out[i].LastActiveMs > out[j].LastActiveMs
 		}
 		return out[i].Path < out[j].Path
-	})
+	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }
 

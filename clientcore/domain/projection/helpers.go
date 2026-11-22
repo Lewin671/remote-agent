@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
@@ -419,6 +420,6 @@ func sortedSeqs(m map[uint64]struct{}) []uint64 {
 	for k := range m {
 		out = append(out, k)
 	}
-	slices.Sort(out)
+	sortutil.Uint64s(out)
 	return out
 }

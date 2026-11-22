@@ -1,7 +1,5 @@
 package outcome
 
-import "errors"
-
 // The outermost execution decision wins. In particular, uncertainty after a
 // native write must hide any earlier/preflight FinalError further in the chain.
 type completionError struct {
@@ -12,9 +10,15 @@ type completionError struct {
 func (e *completionError) Unwrap() error { return e.error }
 
 func decision(err error) *completionError {
-	var e *completionError
-	if errors.As(err, &e) {
-		return e
+	for err != nil {
+		if e, ok := err.(*completionError); ok {
+			return e
+		}
+		u, ok := err.(interface{ Unwrap() error })
+		if !ok {
+			return nil
+		}
+		err = u.Unwrap()
 	}
 	return nil
 }

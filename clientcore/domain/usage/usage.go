@@ -5,10 +5,10 @@ package usage
 
 import (
 	"math"
-	"sort"
 	"strconv"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
@@ -111,7 +111,7 @@ func ActiveSeries(resp *v1.UsageStatsResponse) []*v1.UsageSeries {
 		}
 		out = append(out, s)
 	}
-	sort.Slice(out, func(i, j int) bool {
+	sortutil.Sort(len(out), func(i, j int) bool {
 		ti := TotalTokens(out[i].Current)
 		tj := TotalTokens(out[j].Current)
 		if ti != tj {
@@ -121,7 +121,7 @@ func ActiveSeries(resp *v1.UsageStatsResponse) []*v1.UsageSeries {
 			return out[i].Agent < out[j].Agent
 		}
 		return out[i].Model < out[j].Model
-	})
+	}, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }
 
@@ -277,7 +277,7 @@ func buildStripView(
 	} else {
 		sorted := make([]float64, len(validVals))
 		copy(sorted, validVals)
-		sort.Float64s(sorted)
+		sortutil.Float64s(sorted)
 		hasValue = true
 		curValue = sorted[len(sorted)/2]
 	}
@@ -401,7 +401,7 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 	if sortBy == corev1.UsageSortColumn_USAGE_SORT_COLUMN_UNSPECIFIED {
 		sortBy = corev1.UsageSortColumn_USAGE_SORT_COLUMN_TOKENS
 	}
-	sort.SliceStable(rows, func(i, j int) bool {
+	sortutil.Stable(len(rows), func(i, j int) bool {
 		a, b := rows[i], rows[j]
 		switch sortBy {
 		case corev1.UsageSortColumn_USAGE_SORT_COLUMN_CACHE_HIT:
@@ -433,7 +433,7 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 			return a.Agent < b.Agent
 		}
 		return a.Model < b.Model
-	})
+	}, func(i, j int) { rows[i], rows[j] = rows[j], rows[i] })
 
 	bucketCount := 0
 	for _, s := range active {

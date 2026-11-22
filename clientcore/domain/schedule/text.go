@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -218,7 +219,7 @@ func FrequencyText(tr Trigger, b CalendarBounds) *corev1.Text {
 		return text.Msg(text.KeyScheduleOnceSchedules)
 	case triggerTypeCalendar:
 		days := slices.Clone(tr.Weekdays)
-		slices.Sort(days)
+		sortutil.Ints(days)
 		clock := text.Str("time", tr.Time)
 		if hr, mn, ok := parseHHMM(tr.Time); ok && tr.JitterMinutes > 0 {
 			end := min(hr*60+mn+int(tr.JitterMinutes), 23*60+59)

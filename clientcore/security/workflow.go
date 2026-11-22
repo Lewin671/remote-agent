@@ -574,15 +574,14 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 	} else {
 		res.Ok = false
 		res.Error = err.Error()
-		var we *wfError
-		if errors.As(err, &we) {
+		if we := asWfError(err); we != nil {
 			res.ErrorCode = we.code
 			res.Retryable = we.retryable
 			res.Uncertain = we.uncertain
 			res.ErrorAction = we.action
 		} else {
 			res.ErrorCode = ErrorCode(err)
-			if re := (&rpcError{}); errors.As(err, &re) {
+			if re := asRpcError(err); re != nil {
 				if re.code == connectCodeUnavailable || re.network {
 					res.ErrorCode = "unavailable"
 					res.Retryable = true
@@ -1311,8 +1310,7 @@ func (e *Engine) forceLoginToken(server string, keyKind corev1.SecurityKeyKind, 
 func (e *Engine) callAuthedRpc(method corev1.SecurityRpcMethod, server, preferred string, fgCheck bool, capturedGen uint64, reqBytes []byte, fn func(resp []byte, rErr *rpcError)) {
 	e.withAuthToken(server, preferred, fgCheck, capturedGen, func(tok string, err error) {
 		if err != nil {
-			var re *rpcError
-			if errors.As(err, &re) {
+			if re := asRpcError(err); re != nil {
 				fn(nil, re)
 			} else {
 				fn(nil, &rpcError{msg: err.Error()})
@@ -1324,8 +1322,7 @@ func (e *Engine) callAuthedRpc(method corev1.SecurityRpcMethod, server, preferre
 				e.ensureWF().cachedToken = ""
 				e.forceLoginToken(server, corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_ED, "", e.selfDeviceID, fgCheck, capturedGen, true, func(freshTok string, lErr error) {
 					if lErr != nil {
-						var lre *rpcError
-						if errors.As(lErr, &lre) {
+						if lre := asRpcError(lErr); lre != nil {
 							fn(nil, lre)
 						} else {
 							fn(nil, &rpcError{msg: lErr.Error()})
@@ -1339,6 +1336,34 @@ func (e *Engine) callAuthedRpc(method corev1.SecurityRpcMethod, server, preferre
 			fn(resp, rErr)
 		})
 	})
+}
+
+func asWfError(err error) *wfError {
+	for err != nil {
+		if we, ok := err.(*wfError); ok {
+			return we
+		}
+		u, ok := err.(interface{ Unwrap() error })
+		if !ok {
+			return nil
+		}
+		err = u.Unwrap()
+	}
+	return nil
+}
+
+func asRpcError(err error) *rpcError {
+	for err != nil {
+		if re, ok := err.(*rpcError); ok {
+			return re
+		}
+		u, ok := err.(interface{ Unwrap() error })
+		if !ok {
+			return nil
+		}
+		err = u.Unwrap()
+	}
+	return nil
 }
 
 // currentHeadBytes returns the serialized head state bytes from the active PersistedRecord or Head.

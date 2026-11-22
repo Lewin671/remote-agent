@@ -1,12 +1,12 @@
 package app
 
 import (
-	"sort"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -512,7 +512,7 @@ func (c *Core) reconcileWatchedMachinePolls(effects *[]*corev1.Effect) {
 	if len(ids) == 0 {
 		return
 	}
-	sort.Strings(ids)
+	sortutil.Strings(ids)
 	res := c.m.sync.Run(func(ctx *sync.StepContext) {
 		for _, id := range ids {
 			*effects = append(*effects, c.reconcilePollFeed(ctx, id, c.m.settings.PollFeeds[id], false)...)

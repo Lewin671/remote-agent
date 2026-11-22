@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"slices"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -862,7 +863,7 @@ func (e *Engine) completeRecoveryOp(fgGen uint64, done func(*corev1.SecurityWork
 						}
 					}
 					removed := append(slices.Clone(targetState.Core.Removed), retiring)
-					slices.Sort(removed)
+					sortutil.Strings(removed)
 					rNow := max(signAt, targetState.Core.IssuedAt)
 					e.buildAndSignStateWithKEM(
 						corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED,

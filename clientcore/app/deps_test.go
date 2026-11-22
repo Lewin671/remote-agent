@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -22,7 +23,7 @@ func TestCoreWasmDependencies(t *testing.T) {
 	forbidden := map[string]bool{
 		"fmt": true, "reflect": true, "crypto/rand": true,
 		"math/rand": true, "math/rand/v2": true, "math/big": true,
-		"os": true,
+		"os": true, "sort": true,
 	}
 	for k := range neverAllowed {
 		forbidden[k] = true
@@ -132,7 +133,7 @@ func TestCoreWasmDependencies(t *testing.T) {
 // draw randomness, start goroutines, log nor bloat the wasm build.
 func TestTransportImports(t *testing.T) {
 	const module = "github.com/Lewin671/remote-agent/"
-	std := map[string]bool{"math": true, "slices": true, "strconv": true, "strings": true, "errors": true, "bytes": true, "sort": true, "unicode/utf8": true}
+	std := map[string]bool{"math": true, "slices": true, "strconv": true, "strings": true, "errors": true, "bytes": true, "unicode/utf8": true}
 	cmd := exec.Command("go", "list", "-f", "{{join .Imports \" \"}}", "./transport/...")
 	cmd.Dir = ".."
 	out, err := cmd.Output()
@@ -186,5 +187,38 @@ func TestCoreLayerDependencies(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// TestCoreNoReflectiveErrorsOrGenericSort prevents non-test clientcore packages
+// from pulling internal/reflectlite (via errors.As) or stdlib/monomorphized sort bloat.
+func TestCoreNoReflectiveErrorsOrGenericSort(t *testing.T) {
+	err := filepath.WalkDir("..", func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			if d.Name() == "gen" || d.Name() == "vendor" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		src := string(raw)
+		for _, banned := range []string{"errors.As(", "slices.Sort", "sort."} {
+			if strings.Contains(src, banned) {
+				t.Errorf("%s contains forbidden %q (use concrete Unwrap loops or domain/sortutil)", path, banned)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
@@ -365,14 +366,6 @@ func sameBytes(a, b []byte) bool {
 
 func sortedMembersCopy(members []devicesec.Member) []devicesec.Member {
 	out := slices.Clone(members)
-	slices.SortFunc(out, func(a, b devicesec.Member) int {
-		if a.ID < b.ID {
-			return -1
-		}
-		if a.ID > b.ID {
-			return 1
-		}
-		return 0
-	})
+	sortutil.Sort(len(out), func(i, j int) bool { return out[i].ID < out[j].ID }, func(i, j int) { out[i], out[j] = out[j], out[i] })
 	return out
 }

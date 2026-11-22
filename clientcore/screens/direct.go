@@ -2,10 +2,10 @@ package screens
 
 import (
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
@@ -617,13 +617,13 @@ func diagFamilyText(t transport.Tally, fam transport.Family) *corev1.Text {
 			return 4
 		}
 	}
-	sort.Slice(rows, func(i, j int) bool {
+	sortutil.Sort(len(rows), func(i, j int) bool {
 		ri, rj := typeRank(rows[i].k.Type), typeRank(rows[j].k.Type)
 		if ri != rj {
 			return ri < rj
 		}
 		return rows[i].k.Class < rows[j].k.Class
-	})
+	}, func(i, j int) { rows[i], rows[j] = rows[j], rows[i] })
 	parts := make([]*corev1.Text, 0, len(rows))
 	for _, r := range rows {
 		parts = append(parts, text.Msg(text.KeyTransportDiagCand,

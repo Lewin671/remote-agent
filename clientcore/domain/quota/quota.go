@@ -2,10 +2,10 @@ package quota
 
 import (
 	"math"
-	"sort"
 	"strconv"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -305,7 +305,7 @@ func OrderedWindows(agent v1.Agent, windows []*v1.QuotaWindow, nowMs int64, stal
 			extras = append(extras, name)
 		}
 	}
-	sort.Strings(extras)
+	sortutil.Strings(extras)
 	for _, name := range extras {
 		if row := BuildWindow(agent, byName[name], nowMs, stale); row != nil {
 			out = append(out, row)

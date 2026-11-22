@@ -1,10 +1,9 @@
 package sync
 
 import (
-	"slices"
-
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
@@ -163,15 +162,7 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 			devices = append(devices, dv)
 		}
 	}
-	slices.SortFunc(devices, func(a, b *corev1.SyncDeviceView) int {
-		if a.DeviceId < b.DeviceId {
-			return -1
-		}
-		if a.DeviceId > b.DeviceId {
-			return 1
-		}
-		return 0
-	})
+	sortutil.Sort(len(devices), func(i, j int) bool { return devices[i].DeviceId < devices[j].DeviceId }, func(i, j int) { devices[i], devices[j] = devices[j], devices[i] })
 
 	var nextCursor *v1.SessionCursor
 	if w.World.SessionsNext != nil {
@@ -194,13 +185,13 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 				trustedMachineIDs = append(trustedMachineIDs, id)
 			}
 		}
-		slices.Sort(trustedMachineIDs)
+		sortutil.Strings(trustedMachineIDs)
 		for id, ok := range e.security.ArchiveMachines {
 			if ok {
 				archiveMachineIDs = append(archiveMachineIDs, id)
 			}
 		}
-		slices.Sort(archiveMachineIDs)
+		sortutil.Strings(archiveMachineIDs)
 	}
 
 	return &corev1.SyncStateView{
@@ -302,7 +293,7 @@ func (e *Engine) BuildSessionDataView(sessionID string) *corev1.SessionDataView 
 			for seq := range buf.unavailableSeqs {
 				seqs = append(seqs, seq)
 			}
-			slices.Sort(seqs)
+			sortutil.Uint64s(seqs)
 			out.UnavailableSeqs = seqs
 			out.UnavailableCount = uint32(len(seqs))
 		}
