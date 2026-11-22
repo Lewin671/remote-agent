@@ -27,7 +27,10 @@ import {
 } from "../gen/remoteagent/core/v1/security_pb";
 import vectors from "../../../internal/deviceauth/testdata/domain-v3.json";
 import { concat, fromHex, utf8 } from "../crypto";
-import { unb64 } from "../device-security";
+
+const unb64 = (s: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const fromB64Url = (s: string): Uint8Array<ArrayBuffer> =>
+  Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
 
 function waitForEvent(events: CoreEvent[], predicate: (ev: CoreEvent) => boolean): Promise<CoreEvent> {
   return vi.waitFor(() => {
@@ -40,7 +43,6 @@ function waitForEvent(events: CoreEvent[], predicate: (ev: CoreEvent) => boolean
 describe("WebSecurityExecutor", () => {
   it("signs payloads with devicePrivate and reports missing signing key", async () => {
     const seed = fromHex(vectors.phone_seed);
-    const keyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
     const pkcs8Signer = await crypto.subtle.importKey(
       "pkcs8",
       concat(fromHex("302e020100300506032b657004220420"), seed),
@@ -48,15 +50,8 @@ describe("WebSecurityExecutor", () => {
       true,
       ["sign"],
     );
-    void keyPair;
-    const rawPub = fromHex(vectors.genesis.state ? vectors.phone_seed : "").length
-      ? await (async () => {
-          const jwk = await crypto.subtle.exportKey("jwk", pkcs8Signer);
-          const { ed25519SeedPublic } = await import("./sec-call");
-          void jwk;
-          return ed25519SeedPublic(seed);
-        })()
-      : new Uint8Array(32);
+    const jwk = await crypto.subtle.exportKey("jwk", pkcs8Signer);
+    const rawPub = fromB64Url(jwk.x!);
 
     const emitted: CoreEvent[] = [];
     let currentKey: CryptoKey | undefined = pkcs8Signer;

@@ -6,10 +6,20 @@ import { IDBFactory } from "fake-indexeddb";
 import { NotifyContentSchema, type NotifyContent } from "./gen/remoteagent/v1/remote_pb";
 import { EnvelopeSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
-import { stateHash, type SecurityHeader } from "./device-security";
-import { initializeSecurity, loadSecurity, touchSecurity } from "./device-security-store";
-import { parseTestHeader, rawSecurity, sealTestEnvelope, storedSecurity } from "./test/stored-security-fixture";
+import { SecurityStoreBucket } from "./gen/remoteagent/core/v1/security_pb";
+import { fromHex } from "./crypto";
+import {
+  encodeV4Record,
+  parseTestHeader,
+  rawV4Buckets,
+  sealTestEnvelope,
+  seedV4Database,
+  stateHash,
+  storedSecurity,
+  type SecurityHeader,
+} from "./test/stored-security-fixture";
 import { GoSecurityFixture, recordFromJSON } from "./test/security-fixture";
+import vectors from "../../internal/deviceauth/testdata/domain-v3.json";
 import { pushContent } from "./sw-notify";
 import rawSource from "./sw.js?raw";
 
@@ -17,11 +27,22 @@ afterEach(() => { localeStore.overrideForTesting(); vi.restoreAllMocks(); vi.uns
 const generic = { title: "remote-agent", body: message("notifications.scheduled_tasks_have_new_results") };
 
 it("opens the actual Go sender's signed and compressed NotifyContent using stored browser keys", async () => {
-  const f = await GoSecurityFixture.create();
+  const phoneSeed = fromHex(vectors.phone_seed);
+  const f = await GoSecurityFixture.create(phoneSeed);
   try {
-    vi.stubGlobal("indexedDB", new IDBFactory());
-    const { record: r } = await recordFromJSON(await f.fixture.record(f.phone.json.member));
-    await initializeSecurity(r.pin, r.states, r.proofs, r.memberID, r.xPrivate, false, r.lease);
+    const idb = new IDBFactory();
+    vi.stubGlobal("indexedDB", idb);
+    const { recordBlob, edPublic, xPublic, xPrivate } = await recordFromJSON(
+      await f.fixture.record(f.phone.json.member),
+    );
+    const edPrivate = await crypto.subtle.importKey(
+      "pkcs8",
+      new Uint8Array([...fromHex("302e020100300506032b657004220420"), ...phoneSeed]),
+      "Ed25519",
+      false,
+      ["sign"],
+    );
+    await seedV4Database(idb, { recordBlob, edPrivate, xPrivate, edPublic, xPublic });
     const text = "结果摘要".repeat(40);
     const env = await f.fixture.seal(f.machine, { kind: 10, machineId: f.machine,
       sessionId: "session", requestId: "scheduled:7", sender: f.machine },
@@ -44,15 +65,15 @@ it("opens the actual Go sender's signed and compressed NotifyContent using store
 }, 20000);
 
 async function notification(fields: Partial<NotifyContent> = {}, header: Partial<SecurityHeader> = {}, compressed = false, wrongKey = false) {
-  const f = await storedSecurity(), record = await loadSecurity();
-  const head = record.states.at(-1)!, machine = head.core.members.find((m) => m.kind === 1)!.id;
+  const f = await storedSecurity();
+  const head = f.states.at(-1)!, machine = head.core.members.find((m) => m.kind === 1)!.id;
   let body = toBinary(NotifyContentSchema, create(NotifyContentSchema, {
     machineId: machine, sessionId: "session", kind: NotifyKind.SCHEDULED,
     machineName:"", title: "每天的研究任务", text: "结果摘要", sourceEventSeq: 7n, sharedFileCount: 0, ...fields,
   }));
   if (compressed) body = deflateRawSync(body);
-  const env = await sealTestEnvelope(wrongKey ? new Uint8Array(32) : record.secret, undefined, {
-    account: record.pin.account, domain: record.pin.domain, epoch: head.core.epoch,
+  const env = await sealTestEnvelope(wrongKey ? new Uint8Array(32) : f.secret, undefined, {
+    account: f.pin.account, domain: f.pin.domain, epoch: head.core.epoch,
     state: await stateHash(head), contentEpoch: head.core.contentEpoch, sender: machine,
     kind: 10, purpose: 10, machine, session: "session", request: fields.kind === NotifyKind.TURN_ENDED ? "notify:2:7" : "scheduled:7", seq: 0n,
     deadline: 0n, compression: compressed ? 1 : 0, ...header,
@@ -62,7 +83,7 @@ async function notification(fields: Partial<NotifyContent> = {}, header: Partial
     tag: fields.kind === NotifyKind.TURN_ENDED ? "session/NOTIFY_KIND_TURN_ENDED" : "session/scheduled:7/NOTIFY_KIND_SCHEDULED",
     content: btoa(String.fromCharCode(...toBinary(EnvelopeSchema, envelope))),
   });
-  return { env, payload };
+  return { env, payload, f };
 }
 
 it.each([false, true])("verifies and decrypts signed scheduled content from IndexedDB (compressed=%s)", async (compressed) => {
@@ -96,7 +117,7 @@ it("falls back on missing storage, missing content, malformed/oversized payloads
   expect(await pushContent(payload())).toEqual(generic);
   const wrongKey = await notification({}, {}, false, true);
   expect(await pushContent(wrongKey.payload())).toEqual(generic);
-  await rawSecurity("readwrite", (s) => s.delete("current"));
+  await rawV4Buckets("readwrite", (s) => s.delete(`${SecurityStoreBucket.RECORD}:record`));
   expect(await pushContent(payload())).toEqual(generic);
 });
 
@@ -112,12 +133,30 @@ it("rejects an unknown future state, a stale lease, and an unavailable key", asy
   let n = await notification({}, { epoch: 3n });
   expect(await pushContent(n.payload())).toEqual(generic);
   n = await notification();
-  const r = await loadSecurity();
-  await touchSecurity(r.lease!.notAfter + 1n);
+  const expiredBlob = encodeV4Record({
+    pin: n.f.pin,
+    memberID: n.f.memberID,
+    rawStates: n.f.rawStates,
+    rawLease: n.f.lease.raw,
+    floorMs: n.f.lease.notAfter + 1n,
+    contentKeys: [{ epoch: 2n, secret: n.f.secret }],
+  });
+  await rawV4Buckets("readwrite", (s) =>
+    s.put({ bucket: SecurityStoreBucket.RECORD, key: "record", revision: crypto.randomUUID(), data: expiredBlob }, `${SecurityStoreBucket.RECORD}:record`),
+  );
   expect(await pushContent(n.payload())).toEqual(generic);
   n = await notification();
-  const good = await loadSecurity();
-  await rawSecurity("readwrite", (s) => { s.put(crypto.randomUUID(), "record-revision"); return s.put({ ...good, secret: new Uint8Array(32) }, "current"); });
+  const badSecretBlob = encodeV4Record({
+    pin: n.f.pin,
+    memberID: n.f.memberID,
+    rawStates: n.f.rawStates,
+    rawLease: n.f.lease.raw,
+    floorMs: n.f.lease.issuedAt,
+    contentKeys: [{ epoch: 2n, secret: new Uint8Array(32) }],
+  });
+  await rawV4Buckets("readwrite", (s) =>
+    s.put({ bucket: SecurityStoreBucket.RECORD, key: "record", revision: crypto.randomUUID(), data: badSecretBlob }, `${SecurityStoreBucket.RECORD}:record`),
+  );
   expect(await pushContent(n.payload())).toEqual(generic);
 });
 
@@ -173,9 +212,9 @@ it.each([1, 2])("uses the English file plural for count %s", async (sharedFileCo
 
 it.each(["zh-CN","en"] as const)("receives verified machine-scoped data-only push in %s",async locale=>{
  localeStore.overrideForTesting(locale);
- const f=await storedSecurity(),record=await loadSecurity(),head=record.states.at(-1)!,machine=head.core.members.find(m=>m.kind===1)!.id;
+ const f = await storedSecurity(), head = f.states.at(-1)!, machine = head.core.members.find((m) => m.kind === 1)!.id;
  const content=create(NotifyContentSchema,{kind:NotifyKind.MACHINE_DISK,machineId:machine,machineName:"电脑 A",diskStatus:{observedMs:1700000000000n,availableBytes:1_500_000_000n,pressure:3}});
- const env=await sealTestEnvelope(record.secret,undefined,{account:record.pin.account,domain:record.pin.domain,epoch:head.core.epoch,state:await stateHash(head),contentEpoch:head.core.contentEpoch,sender:machine,kind:10,purpose:10,machine,session:"",request:"disk:1700000000000:3",seq:0n,deadline:0n,compression:0},toBinary(NotifyContentSchema,content),f.machineEd);
+ const env=await sealTestEnvelope(f.secret,undefined,{account:f.pin.account,domain:f.pin.domain,epoch:head.core.epoch,state:await stateHash(head),contentEpoch:head.core.contentEpoch,sender:machine,kind:10,purpose:10,machine,session:"",request:"disk:1700000000000:3",seq:0n,deadline:0n,compression:0},toBinary(NotifyContentSchema,content),f.machineEd);
  const payload={session:"",machine,tag:`${machine}/NOTIFY_KIND_MACHINE_DISK`,content:btoa(String.fromCharCode(...toBinary(EnvelopeSchema,env)))};
  const result=await pushContent(payload);expect(result.machineId).toBe(machine);expect(result.body).toBe(locale==="en"?"Clean up now or sessions may not start.":"现在清理，否则会话可能启动不了。");
  expect((await pushContent({...payload,machine:"other"})).machineId).toBeUndefined();

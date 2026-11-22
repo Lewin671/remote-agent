@@ -5,21 +5,19 @@ import { createServer } from "node:http";
 import { fromJson, toJson } from "@bufbuild/protobuf";
 import { Remote, CommandError, restoreSlot, type RequestSlot } from "../remote";
 import { CommandSchema, CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
-import { MemorySecurityStorage, recordFromJSON } from "./security-fixture";
-import { concat, fromHex } from "../crypto";
+import { createTestSecurityStore } from "./security-fixture";
 
 test.skipIf(!process.env.RA_TRANSPORT_WEB)("serve the real Web Remote RPC path",async()=>{
  const root=process.env.RA_DEV_DIR!;
  if(!realpathSync(root).startsWith("/private/tmp/") || process.env.REMOTE_AGENT_HOME!==root+"/bootstrap") throw Error("isolated bootstrap required");
  const data=JSON.parse(readFileSync(root+"/web-bootstrap.json","utf8"));
- const {record}=await recordFromJSON(data.record);
  const seed=Uint8Array.from(Buffer.from(data.seed,"base64"));
- const key=await crypto.subtle.importKey("pkcs8",concat(fromHex("302e020100300506032b657004220420"),seed),"Ed25519",false,["sign"]);
- class DriverRemote extends Remote { constructor(){super({server:data.server,deviceId:record.memberID,devicePrivate:key},undefined,new MemorySecurityStorage(record));} }
+ const { store, record } = await createTestSecurityStore(data.record, seed, data.server);
+ class DriverRemote extends Remote { constructor(){super({server:data.server,deviceId:record.memberID,accountId:record.pin.account},undefined,undefined,undefined,undefined,store);} }
  const remote=new DriverRemote();
- const runtime=remote as unknown as {token:string; trustedMembers:Map<string,unknown>;forward(machine:string,sid:string,cmd:unknown,slot:RequestSlot):Promise<import("../gen/remoteagent/v1/remote_pb").CommandResult>};
+ await (remote as unknown as { ensureHost(): { securityClient: { bootstrap(): Promise<unknown> } } }).ensureHost().securityClient.bootstrap();
+ const runtime=remote as unknown as {token:string; forward(machine:string,sid:string,cmd:unknown,slot:RequestSlot):Promise<import("../gen/remoteagent/v1/remote_pb").CommandResult>};
  runtime.token=data.token;
- runtime.trustedMembers=new Map(record.states.at(-1)!.core.members.map(m=>[m.id,m]));
  const slots=new Map<string,RequestSlot>();
  let finish!:()=>void;const stopped=new Promise<void>(resolve=>{finish=resolve});
  const server=createServer(async(req,res)=>{

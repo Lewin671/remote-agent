@@ -4,17 +4,19 @@ import { futureTime } from "../model";
 import { useEffect, useState } from "react";
 import {
   BROWSER_AUTHORITY_NOTICE,
-  authorityExitAdvice,
-  type SecurityOperation,
-} from "../security-operation";
+  createStandaloneSecurityClient,
+  requestAuthorityPersistence,
+  translateSecurityKey,
+} from "../core/security-client";
+import type {
+  SecurityHandoffCandidate,
+  SecurityPendingOpSummary,
+} from "../gen/remoteagent/core/v1/security_pb";
 import { clientName } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { errorText, type Remote } from "../remote";
 import { Alert, Banner, NavBar, useRemote, useNow, usePageVisible } from "../ui";
 import { CodeBackup, PersistenceResult } from "./AuthorityKit";
-import { forgetAccount } from "../storage";
-import type { HandoffOffer } from "../authority-client";
-import { equal } from "../device-security";
 
 import { authorityName } from "./authority-notice";
 export {
@@ -51,9 +53,14 @@ export function LeaveAlert({ onCancel }: { onCancel: () => void }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
-    void authorityExitAdvice()
-      .then((a) => setAdvice(a.message))
-      .catch((e) => setError(errorText(e)));
+    const standalone = createStandaloneSecurityClient();
+    void (async () => {
+      await standalone.client.bootstrap();
+      const a = await standalone.client.checkExitAdvice();
+      setAdvice(translateSecurityKey(a.message));
+    })()
+      .catch((e) => setError(errorText(e)))
+      .finally(() => standalone.dispose());
   }, []);
   return (
     <Alert
@@ -65,7 +72,11 @@ export function LeaveAlert({ onCancel }: { onCancel: () => void }) {
       onOk={() => {
         if (!advice || busy) return;
         setBusy(true);
-        void forgetAccount()
+        const standalone = createStandaloneSecurityClient();
+        void (async () => {
+          await standalone.client.bootstrap();
+          await standalone.client.clearSecurity();
+        })()
           .then(() => {
             location.hash = "";
             location.reload();
@@ -73,7 +84,8 @@ export function LeaveAlert({ onCancel }: { onCancel: () => void }) {
           .catch((e) => {
             setError(errorText(e));
             setBusy(false);
-          });
+          })
+          .finally(() => standalone.dispose());
       }}
     />
   );
@@ -96,32 +108,25 @@ export function SecurityPage({
     [saved, setSaved] = useState(false);
   const [persisted, setPersisted] = useState<boolean>();
   const [lease, setLease] = useState<bigint | null>();
-  const [pending, setPending] = useState<SecurityOperation>();
+  const [pending, setPending] = useState<SecurityPendingOpSummary>();
   const [rotation, setRotation] = useState(false);
-  const [offers, setOffers] = useState<HandoffOffer[]>([]);
+  const [offers, setOffers] = useState<SecurityHandoffCandidate[]>([]);
   const [target, setTarget] = useState("");
   const [message, setMessage] = useState("");
   const [profileCode, setProfileCode] = useState("");
   const [profileReady, setProfileReady] = useState(true);
   const [takingOver, setTakingOver] = useState(false);
+  const [offeredState, setOfferedState] = useState(false);
   const [abandonOffer, setAbandonOffer] = useState(false);
   const refresh = async () => {
-    const r = await remote.security.verifiedRecord();
-    setLease(
-      r.lease && equal(r.lease.head, r.stateHash)
-        ? r.lease.notAfter
-        : null,
-    );
-    setTakingOver(
-      remote.isAuthority &&
-        remote.devices.get(remote.account.deviceId)?.meta?.handoffRecoveryEd
-          .length === 32 &&
-        (!r.lease || !equal(r.lease.head, r.stateHash)),
-    );
-    setPending(await remote.authority.pending());
-    setRotation(await remote.authority.needsRecoveryCodeRotation());
-    setProfileReady(await remote.authority.hasAccountPublicProfile());
-    if (remote.isAuthority) setOffers(await remote.handoffCandidates());
+    const st = await remote.getSecurityStatus();
+    setLease(st.leaseEndMs > 0n ? st.leaseEndMs : null);
+    setTakingOver(st.takingOver);
+    setPending(st.pendingOp);
+    setRotation(st.needsRecoveryCodeRotation);
+    setProfileReady(st.hasAccountPublicProfile);
+    setOfferedState(st.hasHandoffOffer);
+    if (st.isAuthority || remote.isAuthority) setOffers(await remote.handoffCandidates());
   };
   useEffect(() => {
     if (!visible) return;
@@ -158,12 +163,12 @@ export function SecurityPage({
     }
   };
   const offered =
+    offeredState ||
     remote.devices.get(remote.account.deviceId)?.meta?.handoffRecoveryEd
       .length === 32;
   const draft =
     pending?.kind === "offer" ||
-    (pending?.kind === "state" &&
-      (pending.local as { action?: string }).action === "recovery");
+    (pending?.kind === "state" && pending.action === "recovery");
   const localClient =
     remote.devices.get(remote.account.deviceId)?.kind === DeviceKind.CLIENT;
   return (
@@ -172,7 +177,7 @@ export function SecurityPage({
         text={l10n.t("security.the_public_key_may_already_be_published_abandoning_only")}
         ok={l10n.t("new_session.android_abandon")} danger onCancel={() => setAbandonOffer(false)} onOk={() => {
           setAbandonOffer(false);
-          void run(async () => { await remote.authority.discardUnpublishedCode(); setCode(""); setSaved(false); });
+          void run(async () => { await remote.discardPendingOp(); setCode(""); setSaved(false); });
         }} />}
       <NavBar title={page === "overview" ? l10n.t("security.account_security") : page === "recovery" ? l10n.t("security.recovery_code") : page === "pending" ? l10n.t("security.unfinished_security_operation") : remote.isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")} onBack={page === "overview" ? onBack : () => setPage("overview")} />
       <div className="body security-body">
@@ -182,7 +187,7 @@ export function SecurityPage({
             {l10n.t("security.someone_is_requesting_management_takeover_with_a_recovery_code", { value: String(remote.recoveryReadyMs > 0n ? futureTime(remote.recoveryReadyMs) : l10n.t("security.duration_48_hours")) })}
           </Banner>
         )}
-        {remote.security.recoveryStatusStale && (
+        {remote.recoveryStatusStale && (
           <Banner kind="warn">{l10n.t("security.security_state_may_be_out_of_date_connect_and")}</Banner>
         )}
         {takingOver && (
@@ -212,9 +217,9 @@ export function SecurityPage({
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  await remote.authority.renewLeaseNow();
-                  const pending = await remote.authority.pending();
-                  if (pending && (pending.kind === "state" || pending.kind === "lease"))
+                  await remote.renewLeaseNow();
+                  const st = await remote.getSecurityStatus();
+                  if (st.pendingOp && (st.pendingOp.kind === "state" || st.pendingOp.kind === "lease"))
                     throw new Error(l10n.t("security.finish_the_current_security_operation_before_renewing"));
                   setMessage(l10n.t("security.remote_control_renewed"));
                 })
@@ -238,7 +243,7 @@ export function SecurityPage({
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  await remote.authority.resumeSecurityOperation();
+                  await remote.resumeSecurityOperation();
                 })
               }
             >
@@ -251,7 +256,7 @@ export function SecurityPage({
                 onClick={() =>
                   void run(async () => {
                     if (pending.kind === "offer") { setAbandonOffer(true); return; }
-                    await remote.authority.discardUnpublishedCode();
+                    await remote.discardPendingOp();
                     setCode(""); setSaved(false);
                   })
                 }
@@ -265,7 +270,7 @@ export function SecurityPage({
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    await remote.authority.discardUnsignedStateDraft();
+                    await remote.discardPendingOp();
                   })
                 }
               >
@@ -285,9 +290,9 @@ export function SecurityPage({
               onClick={() =>
                 void run(async () => {
                   if (remote.isAuthority)
-                    await remote.authority.publishRecovery();
-                  else await remote.authority.offerHandoff();
-                  if (await remote.authority.pending())
+                    await remote.confirmRecoveryRotation();
+                  else await remote.publishHandoffOffer();
+                  if ((await remote.getSecurityStatus()).pendingOp)
                     throw new Error(l10n.t("security.the_original_operation_is_unfinished_continue_verifying"));
                   setCode("");
                   setSaved(false);
@@ -317,8 +322,8 @@ export function SecurityPage({
               disabled={busy || !!pending}
               onClick={() =>
                 void run(async () => {
-                  const p = await remote.authority.prepareRecovery();
-                  setCode(p.code);
+                  const p = await remote.prepareRecoveryRotation();
+                  setCode(p.recoveryCode);
                   setSaved(false);
                 })
               }
@@ -335,12 +340,12 @@ export function SecurityPage({
               {offers.map((o) => (
                 <button
                   className="row"
-                  key={o.id}
+                  key={o.deviceId}
                   disabled={busy || !!pending}
-                  onClick={() => setTarget(o.id)}
+                  onClick={() => setTarget(o.deviceId)}
                 >
                   {l10n.t("security.transfer_to")}{" "}
-                  {clientName(remote.devices.get(o.id), remote.devices, o.id)}
+                  {clientName(remote.devices.get(o.deviceId), remote.devices, o.deviceId)}
                   <ChevronRight className="chev" />
                 </button>
               ))}
@@ -369,9 +374,10 @@ export function SecurityPage({
               disabled={busy || !!pending || !!code}
               onClick={() =>
                 void run(async () => {
-                  const p = await remote.authority.prepareHandoffCode();
-                  setCode(p.code);
-                  setPersisted(p.storagePersisted);
+                  const sp = await requestAuthorityPersistence();
+                  const p = await remote.prepareHandoffCode(sp);
+                  setCode(p.recoveryCode);
+                  setPersisted(sp);
                   setSaved(false);
                 })
               }
@@ -406,18 +412,9 @@ export function SecurityPage({
               disabled={busy || !profileCode}
               onClick={() =>
                 void run(async () => {
-                  const { AuthoritySetup } = await import("../authority-setup");
-                  const setup = new AuthoritySetup();
-                  try {
-                    await setup.completeAccountPublicProfile(
-                      remote.account.server,
-                      profileCode,
-                    );
-                    setProfileCode("");
-                    setMessage(l10n.t("security.account_public_key_restored"));
-                  } finally {
-                    setup.lifecycle.dispose();
-                  }
+                  await remote.completeAccountPublicProfile(profileCode);
+                  setProfileCode("");
+                  setMessage(l10n.t("security.account_public_key_restored"));
                 })
               }
             >
@@ -441,7 +438,7 @@ export function SecurityPage({
             setTarget("");
             void run(async () => {
               await remote.handoffAuthority(id);
-              if (await remote.authority.pending())
+              if ((await remote.getSecurityStatus()).pendingOp)
                 throw new Error(l10n.t("security.transfer_result_unverified_continue_the_original_operation"));
               setMessage(l10n.t("security.management_transferred_waiting_for_the_successor_to_complete_takeover"));
             });

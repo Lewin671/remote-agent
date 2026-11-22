@@ -2,7 +2,13 @@ import * as l10n from "../i18n";
 import { SetupReset } from "../SetupReset";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
-import { joinByPairing, PairCanceled, PairingStatusError, parsePairLink } from "../pairing";
+import {
+  createStandaloneSecurityClient,
+  parsePairLinkQuery,
+  SecurityWorkflowError,
+  type SecurityClient,
+  type StandaloneSecurityHandle,
+} from "../core/security-client";
 import { errorText } from "../remote";
 import { Banner } from "../ui";
 import { LoaderCircle } from "../icons";
@@ -26,6 +32,29 @@ export function joinBanner(e: unknown): {
   text: string;
   action: "" | "restart" | "retry" | "refill";
 } {
+  if (e instanceof SecurityWorkflowError) {
+    if (e.code === "clock") {
+      return {
+        kind: "warn",
+        text: l10n.t("security.this_device_s_clock_is_behind_the_managing_client"),
+        action: "retry",
+      };
+    }
+    if (e.code === "capacity") {
+      return {
+        kind: "err",
+        text: l10n.t("security.the_account_s_state_chain_is_too_long_to"),
+        action: "",
+      };
+    }
+    if (e.errorAction === "refill" || ["not_found", "invalid", "expired", "invalid_argument"].includes(e.code)) {
+      return { kind: "err", text: e.message, action: "refill" };
+    }
+    if (e.uncertain || e.retryable || e.code === "unavailable" || e.code === "deadline_exceeded") {
+      return { kind: "warn", text: e.message, action: "retry" };
+    }
+    return { kind: "err", text: e.message, action: "restart" };
+  }
   const text = errorText(e);
   if (e instanceof ConnectError && e.code === Code.PermissionDenied && e.rawMessage === "login failed")
     return { kind: "err", text, action: "restart" };
@@ -64,10 +93,6 @@ export function joinBanner(e: unknown): {
     return { kind: "err", text: l10n.t("security.the_pairing_code_is_wrong_or_has_already_been"), action: "refill" };
   if (e instanceof ConnectError && e.code === Code.ResourceExhausted)
     return { kind: "err", text: l10n.t("security.too_many_attempts_wait_a_minute_and_retry"), action: "refill" };
-  if (e instanceof PairingStatusError && e.code === "expired_or_canceled")
-    return { kind: "err", text: l10n.t("security.this_pairing_expired_generate_a_new_code_on_the"), action: "refill" };
-  if (e instanceof PairingStatusError && e.code === "refused")
-    return { kind: "err", text: l10n.t("security.the_other_device_refused_this_join_request"), action: "restart" };
   if (
     (e instanceof ConnectError && e.code === Code.Unavailable) ||
     e instanceof TypeError
@@ -80,88 +105,136 @@ export function joinBanner(e: unknown): {
 export function Setup({
   onDone,
   existing,
+  existingServer,
+  client: suppliedClient,
 }: {
   onDone: () => void;
   existing?: import("../storage").StoredAccount;
+  existingServer?: string;
+  client?: SecurityClient;
 }) {
   const fromLink = location.hash.startsWith("#/pair?")
-    ? parsePairLink(location.hash.slice("#/pair?".length))
+    ? parsePairLinkQuery(location.hash.slice("#/pair?".length))
     : undefined;
+  const repairServer = existing?.server ?? existingServer;
+  const isExistingRepair = Boolean(existing || existingServer);
   const [code, setCode] = useState(fromLink ? spaced(fromLink.code) : "");
   const [server, setServer] = useState(
-    existing?.server ?? fromLink?.server ?? defaultServer(),
+    repairServer ?? fromLink?.server ?? defaultServer(),
   );
   const [emoji, setEmoji] = useState<string[]>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ReturnType<typeof joinBanner>>();
   const stopped = useRef(false);
-  // The user gave up waiting; and whether this device already began to
-  // register, after which giving up cannot undo the join.
-  // One token per attempt: giving up cancels that attempt for good, and a
-  // new attempt never revives an old one or takes its late callbacks.
-  const attempt = useRef<{ canceled: boolean }>({ canceled: false });
+  const attempt = useRef<{ canceled: boolean; pairingId: string }>({ canceled: false, pairingId: "" });
   const [registering, setRegistering] = useState(false);
   const [comparisonPending, setComparisonPending] = useState(false);
-  const comparison = useRef<((allowed: boolean) => void) | undefined>(
-    undefined,
-  );
+  const ownClient = useRef<StandaloneSecurityHandle | undefined>(undefined);
+  const bootstrappedRef = useRef(false);
+  const registeringRef = useRef(false);
+  registeringRef.current = registering;
   const started = useRef(false);
-  // Mounting again, as StrictMode does in development, must not leave the
-  // join in progress marked as stopped.
+
+  const ensureClient = async (): Promise<SecurityClient> => {
+    const client = suppliedClient ?? (ownClient.current ??= createStandaloneSecurityClient()).client;
+    if (!bootstrappedRef.current) {
+      bootstrappedRef.current = true;
+      try {
+        await client.bootstrap();
+      } catch (err) {
+        bootstrappedRef.current = false;
+        throw err;
+      }
+    }
+    return client;
+  };
+
   useEffect(() => {
     stopped.current = false;
     return () => {
       stopped.current = true;
-      comparison.current?.(false);
-      comparison.current = undefined;
+      const pid = attempt.current.pairingId;
+      attempt.current.canceled = true;
+      attempt.current.pairingId = "";
+      if (pid && !registeringRef.current) {
+        const c = suppliedClient ?? ownClient.current?.client;
+        if (c) void c.cancelJoinPairing(pid).catch(() => {});
+      }
+      ownClient.current?.dispose();
+      ownClient.current = undefined;
+      bootstrappedRef.current = false;
     };
-  }, []);
+  }, [suppliedClient]);
 
-  const pair = async (link = fromLink ?? { code, server }) => {
-    const mine = { canceled: false };
+  const pair = async (link: { code: string; server: string; commit?: Uint8Array } = fromLink ?? { code, server }) => {
+    const mine = { canceled: false, pairingId: "" };
     attempt.current = mine;
-    const current = () => attempt.current === mine;
-    comparison.current?.(false);
-    comparison.current = undefined;
+    const current = () => attempt.current === mine && !mine.canceled && !stopped.current;
     setComparisonPending(false);
     setRegistering(false);
     setBusy(true);
     setError(undefined);
     setEmoji(undefined);
     try {
-      await joinByPairing(
-        link,
-        (e) => current() && setEmoji(e),
-        () => stopped.current || mine.canceled || !current(),
-        () => current() && setRegistering(true),
-        existing,
-        async () => {
-          if (!current() || stopped.current || mine.canceled) return false;
-          setComparisonPending(true);
-          return new Promise<boolean>((resolve) => {
-            comparison.current = resolve;
-          });
-        },
-      );
+      const client = await ensureClient();
+      const info = await client.startJoinPairing({
+        server: link.server,
+        code: link.code.replace(/\s+/g, ""),
+        commitHint: link.commit,
+        existingRepair: isExistingRepair,
+        existingServer: repairServer,
+        rawLink: location.hash.startsWith("#/pair?") ? location.hash : "",
+      });
+      mine.pairingId = info.pairingId;
+      if (!current()) {
+        if (info.pairingId) void client.cancelJoinPairing(info.pairingId).catch(() => {});
+        return;
+      }
+      setEmoji(info.sasEmoji);
+      setComparisonPending(true);
+    } catch (e) {
       if (!current()) return;
+      setRegistering(false);
+      setComparisonPending(false);
+      setError(joinBanner(e));
+      setEmoji(undefined);
+      setBusy(false);
+    }
+  };
+
+  const confirmMatch = async () => {
+    const mine = attempt.current;
+    const pid = mine.pairingId;
+    if (!pid) return;
+    const current = () => attempt.current === mine && !mine.canceled && !stopped.current;
+    setComparisonPending(false);
+    setRegistering(true);
+    try {
+      const client = await ensureClient();
+      await client.confirmJoinSas(pid);
+      if (!current()) return;
+      mine.pairingId = "";
       location.hash = "";
       onDone();
     } catch (e) {
-      // Given up or replaced: the page already says what it is doing.
-      if (!current() || (e instanceof PairCanceled && mine.canceled)) return;
+      if (!current()) return;
+      mine.pairingId = "";
       setRegistering(false);
       setError(joinBanner(e));
       setEmoji(undefined);
       setBusy(false);
     }
   };
-  /** Stops waiting on this device and goes back to the code. The server
-   * is kept and the old code cleared; the old request may still hold the
-   * code on the other device, which should refuse it. */
+
+  /** Stops waiting on this device and goes back to the code. */
   const giveUp = () => {
+    const pid = attempt.current.pairingId;
     attempt.current.canceled = true;
-    comparison.current?.(false);
-    comparison.current = undefined;
+    attempt.current.pairingId = "";
+    if (pid) {
+      const c = suppliedClient ?? ownClient.current?.client;
+      if (c) void c.cancelJoinPairing(pid).catch(() => {});
+    }
     setComparisonPending(false);
     setEmoji(undefined);
     setBusy(false);
@@ -209,13 +282,7 @@ export function Setup({
         {comparisonPending && (
           <button
             className="btn pri"
-            onClick={() => {
-              const finish = comparison.current;
-              comparison.current = undefined;
-              setComparisonPending(false);
-              setRegistering(true);
-              finish?.(true);
-            }}
+            onClick={() => void confirmMatch()}
           >
             {l10n.t("security.patterns_match_trust_and_continue")}</button>
         )}
@@ -238,10 +305,10 @@ export function Setup({
 
   return (
     <div className="setup">
-      <h3 className="hl">{existing ? l10n.t("security.one_time_security_setup") : l10n.t("security.join_account")}</h3>
+      <h3 className="hl">{isExistingRepair ? l10n.t("security.one_time_security_setup") : l10n.t("security.join_account")}</h3>
       <>
         <p className="txt lead">
-          {existing
+          {isExistingRepair
             ? joinExistingLead()
             : joinLead()}
         </p>

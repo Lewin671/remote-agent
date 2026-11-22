@@ -1,5 +1,5 @@
 import { t as message } from "../i18n";
-import { PairingStatusError } from "../pairing";
+import { SecurityWorkflowError } from "../core/security-client";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it } from "vitest";
 import { joinBanner, joinExistingLead, joinLead } from "./Pairing";
@@ -13,12 +13,12 @@ it("tells a release mismatch apart from a wrong code", () => {
 
 
 it("an expired-or-canceled pairing does not accuse the other device of refusing", () => {
-  expect(joinBanner(new PairingStatusError("expired_or_canceled"))).toEqual({
+  expect(joinBanner(new SecurityWorkflowError(message("security.this_pairing_expired_generate_a_new_code_on_the"), "expired", false, false, "refill"))).toEqual({
     kind: "err",
     text: message("security.this_pairing_expired_generate_a_new_code_on_the"),
     action: "refill",
   });
-  expect(joinBanner(new PairingStatusError("refused")).text).toBe(message("security.the_other_device_refused_this_join_request"));
+  expect(joinBanner(new SecurityWorkflowError(message("security.the_other_device_refused_this_join_request"), "refused", false, false, "restart")).text).toBe(message("security.the_other_device_refused_this_join_request"));
 });
 
 it("tells a browser to type the code the phone shows, never to scan", () => {

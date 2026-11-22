@@ -1,10 +1,11 @@
 import * as l10n from "./i18n";
 import { getCoreHost } from "./core/host";
 import { ensureCore } from "./core/runtime";
+import { createStandaloneSecurityClient } from "./core/security-client";
+import { SecurityBootstrapKind, type SecurityWorkflowStatus } from "./gen/remoteagent/core/v1/security_pb";
 import { useLocale } from "./i18n";
 import { Startup } from "./Startup";
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
-import { authorityStartup } from "./authority-startup";
 import {
   lazy,
   Suspense,
@@ -13,10 +14,9 @@ import {
   useState,
 } from "react";
 import { SetupReset } from "./SetupReset";
-import { Remote, resumeRegistration, errorText } from "./remote";
+import { Remote, errorText } from "./remote";
 import { bindNetworkChanges, stableNetworkSignature, type NetworkConnection } from "./transport/network";
-import { loadAccount, type StoredAccount, watchAccountLogout } from "./storage";
-import { securitySetupStatus } from "./device-security-store";
+import { watchAccountLogout } from "./storage";
 import { guardUpdateInput } from "./update";
 import { page, preloadRoute } from "./views/pages";
 
@@ -53,7 +53,8 @@ export function App() {
   useLocale();
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
   const [workspace, setWorkspace] = useState<Awaited<ReturnType<typeof loadWorkspace>>>();
-  const [retained, setRetained] = useState<StoredAccount>();
+  const [entryStatus, setEntryStatus] = useState<SecurityWorkflowStatus>();
+  const [retainedServer, setRetainedServer] = useState<string>();
   const [denied, setDenied] = useState(false);
   const loadGeneration = useRef(0);
   const [setupError, setSetupError] = useState("");
@@ -63,7 +64,8 @@ export function App() {
   const load = async () => {
     const generation = ++loadGeneration.current;
     const active = () => generation === loadGeneration.current;
-    setRetained(undefined);
+    setRetainedServer(undefined);
+    setEntryStatus(undefined);
     setDenied(false);
     let coreFailed = false;
     const corePromise = ensureCore().catch((error) => {
@@ -74,54 +76,84 @@ export function App() {
     try {
       setSetupError("");
       setCoreError("");
-      if (!demo) {
-        const startup = await authorityStartup();
-        if (startup.kind === "create" || startup.kind === "recovery") { setRemote(null); return; }
-        await resumeRegistration();
-      }
-      const account = await loadAccount();
-      if (account && !demo) {
-        const status = await securitySetupStatus();
-        if (status === "missing") {
-          const { retainedIdentityDenied } = await import("./pairing");
-          const denied = await retainedIdentityDenied(account);
-          if (!active()) return;
-          setDenied(denied);
-          setRetained(account);
-          setRemote(null);
-          return;
-        }
-        if (status === "clock") {
-          setSetupError(
-            l10n.t("errors.this_device_s_clock_is_behind_the_account_state"),
-          );
-          setRemote(null);
-          return;
-        }
-        if (status === "invalid") {
-          setSetupError(
-            l10n.t("errors.this_device_s_security_state_could_not_be_verified"),
-          );
-          setRemote(null);
-          return;
-        }
-      }
-      // Read the sealed snapshot while the workspace and current route chunk download.
       const initialRoute = location.hash.replace(/^#\/?/, "");
-      const hasWorkspace = Boolean(account || demo);
-      const [, loaded, workspace] = await Promise.all([
-        corePromise,
-        loadRemote(),
-        hasWorkspace ? loadWorkspace().catch(() => undefined) : undefined,
-        hasWorkspace ? preloadRoute(initialRoute).catch(() => undefined) : undefined,
+      if (demo) {
+        const [, loaded, ws] = await Promise.all([
+          corePromise,
+          loadRemote(),
+          loadWorkspace().catch(() => undefined),
+          preloadRoute(initialRoute).catch(() => undefined),
+        ]);
+        if (!active()) return;
+        if (loaded) {
+          await getCoreHost(loaded).warmLocalCache(initialRoute);
+          if (!active()) return;
+        }
+        setWorkspace(ws);
+        setRemote(loaded ?? null);
+        return;
+      }
+
+      await corePromise;
+      if (!active()) return;
+      const standalone = createStandaloneSecurityClient();
+      let st: SecurityWorkflowStatus;
+      try {
+        st = await standalone.client.bootstrap();
+        if (st.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION) {
+          const resumed = await standalone.client.resumePendingOp();
+          if (resumed.status) st = resumed.status;
+        }
+        if (!active()) return;
+        if (st.bootstrap === SecurityBootstrapKind.EMPTY && st.deviceId && st.server) {
+          const isDenied = await standalone.client.checkRetainedDenied();
+          if (!active()) return;
+          setDenied(isDenied);
+          setRetainedServer(st.server);
+          setEntryStatus(st);
+          setRemote(null);
+          return;
+        }
+      } finally {
+        standalone.dispose();
+      }
+      if (!active()) return;
+      if (st.bootstrap === SecurityBootstrapKind.CLOCK_SKEWED) {
+        setSetupError(
+          l10n.t("errors.this_device_s_clock_is_behind_the_account_state"),
+        );
+        setRemote(null);
+        return;
+      }
+      if (st.bootstrap === SecurityBootstrapKind.INVALID) {
+        setSetupError(
+          l10n.t("errors.this_device_s_security_state_could_not_be_verified"),
+        );
+        setRemote(null);
+        return;
+      }
+      if (
+        st.bootstrap === SecurityBootstrapKind.EMPTY ||
+        st.bootstrap === SecurityBootstrapKind.PENDING_CREATE ||
+        st.bootstrap === SecurityBootstrapKind.PENDING_RECOVERY
+      ) {
+        setEntryStatus(st);
+        setRemote(null);
+        return;
+      }
+
+      // READY or REMOVED: load Remote and workspace chunk concurrently.
+      const [loaded, ws] = await Promise.all([
+        Remote.load(st),
+        loadWorkspace().catch(() => undefined),
+        preloadRoute(initialRoute).catch(() => undefined),
       ]);
       if (!active()) return;
       if (loaded) {
         await getCoreHost(loaded).warmLocalCache(initialRoute);
         if (!active()) return;
       }
-      setRetained(undefined);
-      setWorkspace(workspace);
+      setWorkspace(ws);
       setRemote(loaded ?? null);
     } catch (error) {
       if (!active()) return;
@@ -220,12 +252,12 @@ export function App() {
         {!coreError && <SetupReset onDone={() => void load()} />}
       </div>
     );
-  if (remote === null && denied && retained)
-    return <RetainedIdentityDeniedScreen server={retained.server} onDone={() => void load()} />;
+  if (remote === null && denied && retainedServer)
+    return <RetainedIdentityDeniedScreen server={retainedServer} onDone={() => void load()} />;
   if (remote === null)
     return (
       <Suspense fallback={loading}>
-        {retained ? <Setup existing={retained} onDone={() => void load()} /> : <AccountEntry onDone={() => void load()} />}
+        {retainedServer ? <Setup existingServer={retainedServer} onDone={() => void load()} /> : <AccountEntry initialStatus={entryStatus} onDone={() => void load()} />}
       </Suspense>
     );
   const Workspace = workspace?.default ?? WorkspaceFallback;

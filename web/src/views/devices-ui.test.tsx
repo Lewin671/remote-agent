@@ -68,21 +68,24 @@ it("shows a QR code and waits for explicit candidate-first SAS confirmation", as
 });
 it("leaves a failed cancellation retryable after the local SAS key is gone", async () => {
   const r = demo("role=authority");
-  const start = r.startPairing;
-  Object.defineProperty(r, "startPairing", {value:async (web:string) => { const pair = await start(web); pair.cancel = async () => {throw new Error("cancel acknowledgement lost");}; return pair; }});
-  await mount(<PairCodePage remote={r} onBack={() => {}} />); await click(message("security.generate_pairing_code")); await click(message("security.cancel_pairing"));
-  expect(host.textContent).toContain("cancel acknowledgement lost"); expect(button(message("security.generate_pairing_code"))).toBeTruthy();
+  vi.spyOn(r, "cancelPairing").mockRejectedValueOnce(new Error("cancel acknowledgement lost"));
+  await mount(<PairCodePage remote={r} onBack={() => {}} />);
+  await click(message("security.generate_pairing_code"));
+  await click(message("security.cancel_pairing"));
+  expect(host.textContent).toContain("cancel acknowledgement lost");
+  expect(button(message("security.generate_pairing_code"))).toBeTruthy();
 });
 
 it.each([false, true])("keeps approved delivery after leaving the page (approval still pending: %s)", async (pending) => {
   const r = demo("role=authority&pair=compare");
-  const pair = await r.startPairing("https://app.example.com");
-  const cancel = vi.spyOn(pair, "cancel");
+  const cancel = vi.spyOn(r, "cancelPairing");
   let release!: () => void;
   const wait = new Promise<void>(resolve => { release = resolve; });
-  pair.approve = async () => { if (pending) await wait; };
-  vi.spyOn(r, "startPairing").mockResolvedValue(pair);
-  vi.spyOn(r.authority, "pending").mockResolvedValue({} as never);
+  const origApprove = r.approvePairing.bind(r);
+  vi.spyOn(r, "approvePairing").mockImplementation(async (pid, confirmed) => {
+    if (pending) await wait;
+    return origApprove(pid, confirmed);
+  });
   await mount(<PairCodePage remote={r} onBack={() => {}} />);
   await click(message("security.generate_pairing_code"));
   await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());

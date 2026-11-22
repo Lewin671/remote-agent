@@ -1,5 +1,4 @@
 import { DirectExecutor, peerFrameBody } from "./transport/direct-executor";
-import { watchSecurityInstall } from "./device-security-store";
 import { RESULT_RETENTION_MS } from "./result-retention.gen";
 import { abortable, ownedRound, PathChanged } from "./transport/recovery";
 import { cleanup } from "./cleanup";
@@ -10,19 +9,30 @@ import { machineNotificationKinds } from "./machine-notifications";
 import * as l10n from "./i18n";
 import { UnsupportedHistoryError } from "./crypto";
 import { ComposerDraftStore, DraftTexts } from "./composer-drafts";
-import { AuthorityLifecycle, PairingDeliveryError, readSecurityOperation } from "./security-operation";
-import type { AuthorityClient, HandoffOffer } from "./authority-client";
-import type { AuthorityPairing } from "./authority-pairing";
-import { clearLoginToken, loadLoginToken, saveLoginToken } from "./device-security-store";
+import {
+  clearLoginToken,
+  loadLoginToken,
+  saveLoginToken,
+  securityStoreV4,
+  type SecurityStoreV4,
+} from "./core/security-store-v4";
 import {
   CommandRouteLeg,
   disposeCoreHost,
   getCoreHost,
+  SecurityError,
   type CoreExecutor,
   type HostBridge,
   type StreamLegCallbacks,
 } from "./core/host";
+export { SecurityError };
 export type { StreamLegCallbacks } from "./core/host";
+import {
+  SecurityClient,
+  SecurityWorkflowError,
+  createStandaloneSecurityClient,
+  translateSecurityErrorMessage,
+} from "./core/security-client";
 import { renderText } from "./core/text";
 import {
   AccountPrefsFetchedEventSchema,
@@ -52,13 +62,23 @@ import {
   type TokenResultEvent,
 } from "./gen/remoteagent/core/v1/app_pb";
 import {
+  SecurityBootstrapKind,
+  SecurityKeyKind,
   SecurityOpenEnvelopeOpSchema,
-  SecurityRecordEventSchema,
   SecuritySealEnvelopeOpSchema,
   type SecurityCryptoBatchEffect,
+  type SecurityHandoffCandidate,
   type SecurityKeyAgreeEffect,
+  type SecurityKeyDiscardEffect,
+  type SecurityKeyEncapsulateEffect,
+  type SecurityKeyGenerateEffect,
   type SecurityKeySignEffect,
-  type SecurityRecordEvent,
+  type SecurityPairingInfo,
+  type SecurityRpcEffect,
+  type SecurityStatusChangedEffect,
+  type SecurityStorageEffect,
+  type SecurityTokenUpdatedEffect,
+  type SecurityWorkflowStatus,
 } from "./gen/remoteagent/core/v1/security_pb";
 import type {
   DirectDcReadStatsEffect,
@@ -84,31 +104,35 @@ import type { SyncMachineView, SyncSessionView, SyncStateView } from "./gen/remo
 import {
   type LiveSnapshot,
 } from "./gen/remoteagent/v1/remote_pb";
-import type { SecurityRecord } from "./device-security-store";
 import { machineName } from "./model";
 import { DEFAULT_AGENT } from "./agents";
 import type { SharedFileChunkResult } from "./shared-files";
 import { WebSecurityExecutor } from "./core/security-executor";
-import {
-  AuthoritySecurity,
-  recordToSecurityEvent,
-  type SecurityStorage,
-} from "./authority-security";
-import {
-  MAX_CLOCK_SKEW,
-  equal,
-  Purpose,
-  SecurityError,
-  type Member,
-} from "./device-security";
+
+export const MAX_CLOCK_SKEW = 5 * 60 * 1000;
+
+export enum Purpose {
+  Event = 1,
+  SessionMeta = 2,
+  SessionKey = 3,
+  MachineMeta = 4,
+  Command = 5,
+  Result = 6,
+  TerminalOutput = 7,
+  TerminalInput = 8,
+  Notify = 10,
+  Image = 11,
+  Prefs = 12,
+  DeviceMeta = 13,
+  TerminalResize = 14,
+  TerminalHistory = 15,
+}
+
 import {
   AuthService,
   ClientService,
-  PairingService,
   DeviceKind,
-  DeviceRegistrationSchema,
   ForwardResponseSchema,
-  PutDeviceMetaRequestSchema,
   ListMachinesResponseSchema,
   ListRemoteSessionsResponseSchema,
   NotifyKind,
@@ -116,8 +140,6 @@ import {
   ServerFrameSchema,
   StoredEventSchema,
   TermHelloSchema,
-  PairApprovalSchema,
-  RegisterDeviceRequestSchema,
   AccountPrefsObjectSchema,
   type AccountPrefsObject,
   type Device,
@@ -147,9 +169,8 @@ import { closeScheduleNotification, restorePushPrefs, watchSecurityPush } from "
 import {
   checkServer,
   concat,
-  deviceID,
   newRequestID,
-  signLogin,
+  utf8,
 } from "./crypto";
 import {
   EnvelopeSchema,
@@ -174,12 +195,10 @@ import {
 import {
   CommandResultSchema,
   CommandSchema,
-  DeviceMetaSchema,
   ImagePayloadSchema,
   ProjectPrefsSchema,
   TerminalFrameSchema,
   type CommandResult,
-  type DeviceMeta,
   type MachineMeta,
   type ProjectPrefs,
   type TerminalFrame,
@@ -189,15 +208,7 @@ import type { Prepare, Tray } from "./attach";
 import { modelLabel } from "./model";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
-import {
-  loadAccount,
-  saveAccount,
-  saveAccountPublicProfile,
-  loadRegistration,
-  saveRegistration,
-  clearRegistration,
-  type StoredAccount,
-} from "./storage";
+import { type StoredAccount } from "./storage";
 
 export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 
@@ -328,40 +339,6 @@ export type ImageResult = { kind: "ok"; blob: Blob; width: number; height: numbe
 export interface PrefsState { status: "loading" | "ready" | "error"; error: string; snap?: { revision: bigint; prefs: ProjectPrefs }; pending: Map<string, string>; failed?: { op: { id: string; kind: string; path: string }; error: string }; changedAt?: number; }
 const emptyPrefs = () => create(ProjectPrefsSchema, { schema: 1 });
 
-export async function joinWithApproval(
-  accountPublicKey: Uint8Array<ArrayBuffer>,
-  server: string,
-  enrollment: { device: CryptoKeyPair; pairingId: string; approval: Uint8Array; approvalSignature: Uint8Array },
-  existing?: StoredAccount,
-  security?: SecurityRecord,
-  replace = false,
-): Promise<StoredAccount> {
-  server = checkServer(server);
-  const account = await deviceID(accountPublicKey);
-  const device = enrollment.device;
-  const pub = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
-  const a = fromBinary(PairApprovalSchema, enrollment.approval);
-  const same = (x: Uint8Array, y: Uint8Array) => x.length === y.length && x.every((v, i) => v === y[i]);
-  if (
-    a.accountId !== account || a.pairingId !== enrollment.pairingId || a.candidateKind !== DeviceKind.CLIENT || a.replacesDeviceId !== "" ||
-    !same(a.candidateDevicePublicKey, pub) || a.nonce.length !== 16 || a.expiresMs <= BigInt(Date.now()) ||
-    a.approverPublicKey.length !== 32 || (await deviceID(a.approverPublicKey as Uint8Array<ArrayBuffer>)) !== a.approverDeviceId ||
-    a.approverDeviceId === (await deviceID(pub))
-  ) {
-    throw new Error(l10n.t("security.pairing_approval_does_not_match_this_device_or_has"));
-  }
-  const signer = await crypto.subtle.importKey("raw", a.approverPublicKey as Uint8Array<ArrayBuffer>, "Ed25519", false, ["verify"]);
-  if (!(await crypto.subtle.verify("Ed25519", signer, enrollment.approvalSignature as Uint8Array<ArrayBuffer>, concat(new TextEncoder().encode("remote-agent/v1/pair-approval\0"), enrollment.approval)))) {
-    throw new Error(l10n.t("errors.invalid_pairing_approval_signature"));
-  }
-  const reg = toBinary(DeviceRegistrationSchema, create(DeviceRegistrationSchema, { accountPublicKey, devicePublicKey: pub, kind: DeviceKind.CLIENT, createdMs: BigInt(Date.now()) }));
-  const stored: StoredAccount = { server, root: existing?.root, rootRaw: existing?.rootRaw && new Uint8Array(existing.rootRaw), devicePrivate: device.privateKey, deviceId: await deviceID(pub) };
-  const request = toBinary(RegisterDeviceRequestSchema, create(RegisterDeviceRequestSchema, { protocolVersion: RELAY_PROTOCOL_VERSION, registration: reg, approval: enrollment.approval, approvalSignature: enrollment.approvalSignature }));
-  await saveRegistration({ account: stored, request, security, replace });
-  await resumeRegistration();
-  return stored;
-}
-
 const PAYLOAD_PURPOSES: Partial<Record<PayloadKind, Purpose>> = {
   [PayloadKind.EVENT]: Purpose.Event,
   [PayloadKind.SESSION_META]: Purpose.SessionMeta,
@@ -417,31 +394,6 @@ function syncSessionToView(sv: SyncSessionView): SessionView {
   };
 }
 
-export type AuthorityBridge = Pick<
-  AuthorityClient,
-  | "lifecycle"
-  | "account"
-  | "security"
-  | "isAuthority"
-  | "pending"
-  | "hasAccountPublicProfile"
-  | "needsRecoveryCodeRotation"
-  | "resumeSecurityOperation"
-  | "renewLeaseNow"
-  | "renewLeaseIfNeeded"
-  | "removeDevice"
-  | "deleteMachineRecords"
-  | "prepareRecovery"
-  | "prepareHandoffCode"
-  | "publishRecovery"
-  | "offerHandoff"
-  | "discardUnpublishedCode"
-  | "discardUnsignedStateDraft"
-  | "handoffAuthority"
-  | "hasMachineArchive"
-  | "approvePairing"
->;
-
 export class Remote implements CoreExecutor {
   private hostBridge?: HostBridge;
   private syncStateView?: SyncStateView;
@@ -450,40 +402,26 @@ export class Remote implements CoreExecutor {
   private persistedSessions = new Map<string, RemoteSession>();
   private persistedOpen = new Set<string>();
 
-  private trustedMembers = new Map<string, Member>();
-  private archiveMachines = new Set<string>();
   private watchedSessionIds: string[] = [];
-  private recoveryObjectsPending = false;
-  private descriptionPending = false;
-  private needsDescribeSelf = false;
-  private securityPushSeq = 1n;
+  private describingSelf = false;
   private devicesPushSeq = 1n;
-  private reconcilingSecurity = 0;
-  private coreSyncDepth = 0;
-  private securityRecordLoaded = false;
-  private securityRecordLoading?: Promise<void>;
-  private lastDispatchedRecord?: SecurityRecord;
   private devicesSyncWaiters: Array<() => void> = [];
   private serverAhead = false;
+  private securityStatusSnapshot?: SecurityWorkflowStatus;
   authorityDeviceId = "";
   clockWarning = "";
   authorityError = "";
 
-  readonly security: AuthoritySecurity;
-  readonly authority: AuthorityBridge;
-  private authorityClientPromise?: Promise<AuthorityClient>;
   directExec: DirectExecutor;
+  private readonly secStore: SecurityStoreV4;
   private readonly secExec: WebSecurityExecutor;
   readonly deviceLink: DeviceLink;
-  readonly startPairing: (web: string, replacesDeviceId?: string) => Promise<AuthorityPairing>;
 
   protected api: Client<typeof ClientService>;
-  private unwatchDirectInstall?: () => void;
   private unwatchSecurityPush?: () => void;
   private securityTimer?: ReturnType<typeof setInterval>;
   private foreground = true;
   private cachedSyncMachines = new Map<string, SyncMachineView>();
-  private latestXPrivate?: CryptoKey;
   private token = "";
   private tokenExpires = 0;
   private tokenWarmed = false;
@@ -534,10 +472,16 @@ export class Remote implements CoreExecutor {
   protected constructor(
     readonly account: StoredAccount,
     private cache?: EventCache,
-    securityStorage?: SecurityStorage,
+    initialStatus?: SecurityWorkflowStatus,
     protected readonly historyPageSize = 500,
     protected readonly sessionPageSize = SESSION_PAGE,
+    store: SecurityStoreV4 = securityStoreV4,
+    fetchFn: typeof fetch = relayFetch,
   ) {
+    this.secStore = store;
+    if (initialStatus) {
+      this.applySecurityStatusSnapshot(initialStatus);
+    }
     const auth: Interceptor = (next) => (req) => {
       const sentToken = this.token;
       req.header.set("Authorization", "Bearer " + sentToken);
@@ -551,44 +495,16 @@ export class Remote implements CoreExecutor {
     this.api = createClient(
       ClientService,
       createConnectTransport({
-        fetch: relayFetch,
+        fetch: fetchFn,
         baseUrl: apiBase(account.server),
         useBinaryFormat: true,
         defaultTimeoutMs: RPC_TIMEOUT_MS,
         interceptors: [auth],
       }),
     );
-    this.security = new AuthoritySecurity(
-      account.deviceId,
-      account.devicePrivate,
-      async (after, limit, signal) => {
-        const request = { afterEpoch: after, limit };
-        const options = { signal, timeoutMs: this.everOnline ? 3000 : RPC_TIMEOUT_MS };
-        const used = this.token;
-        let reply;
-        try {
-          reply = await this.api.getSecurityStates(request, options);
-        } catch (error) {
-          signal?.throwIfAborted();
-          if (!(error instanceof ConnectError) || error.code !== Code.Unauthenticated) throw error;
-          if (!this.token || this.token === used) await this.login(signal);
-          reply = await this.api.getSecurityStates(request, options);
-        }
-        return {
-          states: reply.states.map((s) => ({ state: s.state, recovery: s.recovery })),
-          headEpoch: reply.headEpoch,
-          lease: reply.lease,
-          recoveryPending: reply.recoveryPending,
-          recoveryReadyMs: reply.recoveryReadyMs,
-        };
-      },
-      () => !this.closed || this.reconcilingSecurity > 0,
-      securityStorage,
-      () => this.roundBudget(),
-    );
     this.secExec = new WebSecurityExecutor({
-      devicePrivate: () => this.account.devicePrivate,
-      xPrivate: () => this.latestXPrivate,
+      store,
+      fetch: fetchFn,
       emit: (ev) => this.hostBridge?.dispatchEvent(ev),
     });
     this.deviceLink = new DeviceLink(
@@ -602,7 +518,7 @@ export class Remote implements CoreExecutor {
             unlinked: this.unlinked,
             reachable: direct || !!m?.online,
             ready: direct || this.conn === "online",
-            authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)),
+            authorized: !this.removed && this.isMachineAuthorized(id),
             protocolVersion: direct ? PEER_PROTOCOL_VERSION : (sm?.protocolVersion || m?.meta?.protocolVersion),
             capabilities: sm?.meta?.capabilities ?? m?.meta?.capabilities,
           };
@@ -613,70 +529,37 @@ export class Remote implements CoreExecutor {
       ),
     );
     this.directExec = this.newDirectExecutor();
-    this.security.onSync = (record, _started) => {
-      void this.pushSecurityRecord(record);
-    };
-    this.security.onSyncFailed = () => {};
-    this.security.onInstall = (record) => {
-      void this.pushSecurityRecord(record);
-    };
-    const pairing = createClient(
-      PairingService,
-      createConnectTransport({
-        fetch: relayFetch,
-        baseUrl: apiBase(account.server),
-        useBinaryFormat: true,
-        defaultTimeoutMs: RPC_TIMEOUT_MS,
-        interceptors: [auth],
-      }),
-    );
-    const lifecycle = new AuthorityLifecycle();
-    const loadAuthority = (): Promise<AuthorityClient> => {
-      return (this.authorityClientPromise ??= import("./authority-client").then(
-        ({ AuthorityClient }) =>
-          new AuthorityClient(
-            account,
-            this.security,
-            this.api,
-            pairing,
-            (publicKey, check, persist, request) => this.publishHandoffOffer(publicKey, check, persist, request),
-            lifecycle,
-            () => void this.watchPairingDelivery(),
-          ),
-      ));
-    };
-    this.authority = {
-      lifecycle,
-      account,
-      security: this.security,
-      pending: () => readSecurityOperation(),
-      isAuthority: async () => (await loadAuthority()).isAuthority(),
-      hasAccountPublicProfile: async () => (await loadAuthority()).hasAccountPublicProfile(),
-      needsRecoveryCodeRotation: async () => (await loadAuthority()).needsRecoveryCodeRotation(),
-      resumeSecurityOperation: async () => (await loadAuthority()).resumeSecurityOperation(),
-      renewLeaseNow: async () => (await loadAuthority()).renewLeaseNow(),
-      renewLeaseIfNeeded: async () => (await loadAuthority()).renewLeaseIfNeeded(),
-      removeDevice: async (id) => (await loadAuthority()).removeDevice(id),
-      deleteMachineRecords: async (id) => (await loadAuthority()).deleteMachineRecords(id),
-      prepareRecovery: async () => (await loadAuthority()).prepareRecovery(),
-      prepareHandoffCode: async () => (await loadAuthority()).prepareHandoffCode(),
-      publishRecovery: async () => (await loadAuthority()).publishRecovery(),
-      offerHandoff: async () => (await loadAuthority()).offerHandoff(),
-      discardUnpublishedCode: async () => (await loadAuthority()).discardUnpublishedCode(),
-      discardUnsignedStateDraft: async () => (await loadAuthority()).discardUnsignedStateDraft(),
-      handoffAuthority: async (incoming, verifiedOffers) => (await loadAuthority()).handoffAuthority(incoming, verifiedOffers),
-      hasMachineArchive: async (id) => (await loadAuthority()).hasMachineArchive(id),
-      approvePairing: async (pair) => (await loadAuthority()).approvePairing(pair),
-    };
-    this.startPairing = async (web, replacesDeviceId = "") =>
-      (await import("./authority-pairing")).AuthorityPairing.start(this.authority, pairing, web, replacesDeviceId);
   }
 
-  static async load(): Promise<Remote | undefined> {
-    await resumeRegistration();
-    const acct = await loadAccount();
-    if (!acct) return undefined;
-    const r = new Remote(acct, eventCache());
+  static async load(initialStatus?: SecurityWorkflowStatus): Promise<Remote | undefined> {
+    let status = initialStatus;
+    if (!status) {
+      const standalone = createStandaloneSecurityClient();
+      try {
+        status = await standalone.client.bootstrap();
+        if (status.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION) {
+          const resumed = await standalone.client.resumePendingOp();
+          if (resumed.status) status = resumed.status;
+        }
+      } finally {
+        standalone.dispose();
+      }
+    }
+    if (
+      !status ||
+      (status.bootstrap !== SecurityBootstrapKind.READY &&
+        status.bootstrap !== SecurityBootstrapKind.REMOVED) ||
+      !status.server ||
+      !status.deviceId
+    ) {
+      return undefined;
+    }
+    const acct: StoredAccount = {
+      server: status.server,
+      deviceId: status.deviceId,
+      accountId: status.accountId,
+    };
+    const r = new Remote(acct, eventCache(), status);
     r.localDrafts = new ComposerDraftStore(acct);
     return r;
   }
@@ -732,32 +615,26 @@ export class Remote implements CoreExecutor {
     // stop() closes the executor for good, so a page that was hidden and came
     // back needs a fresh one; otherwise every handshake is silently dropped.
     if (this.directExec.isClosed) this.directExec = this.newDirectExecutor();
-    this.unwatchDirectInstall?.();
-    this.unwatchDirectInstall = watchSecurityInstall((record) => {
-      void this.pushSecurityRecord(record);
-    });
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = watchSecurityPush(() => {
-      if (!this.closed) void this.security.sync(undefined, 5000, true).catch(() => undefined);
+      if (!this.closed) {
+        void this.ensureHost().securityClient.syncNow(true, this.token).catch(() => undefined);
+      }
     });
     clearInterval(this.securityTimer);
     this.securityTimer = setInterval(() => {
       if (!this.closed && this.foreground && this.conn === "online") {
-        void this.security.sync(undefined, 5000).catch(() => undefined);
+        void this.ensureHost().securityClient.syncNow(false, this.token).catch(() => undefined);
       }
     }, 12_000);
-    this.authority.lifecycle.resume();
-    void this.watchPairingDelivery();
     this.ensureHost().start();
+    void this.watchPairingDelivery();
   }
 
   stop() {
     this.closed = true;
     this.directExec.close();
-    this.secExec.close();
     while (this.devicesSyncWaiters.length) this.devicesSyncWaiters.shift()!();
-    this.unwatchDirectInstall?.();
-    this.unwatchDirectInstall = undefined;
     this.unwatchSecurityPush?.();
     this.unwatchSecurityPush = undefined;
     clearInterval(this.securityTimer);
@@ -766,28 +643,41 @@ export class Remote implements CoreExecutor {
     this.deviceLink.closeStreams(l10n.t("errors.terminal_connection_closed"));
     this.retireNetworkIO();
     for (const legId of [...this.legs.keys()]) this.closeStreamLeg(legId);
-    cleanup(() => this.authority.lifecycle.pause());
     this.hostBridge?.stop();
   }
 
   dispose() {
     this.stop();
+    this.secExec.close();
     disposeCoreHost(this);
     this.hostBridge = undefined;
   }
 
-  private async watchPairingDelivery() {
-    try {
-      const pending = await this.authority.pending();
-      if (this.closed || !pending?.delivery) {
-        this.stopPairingDelivery();
-        return;
-      }
-      this.pairingTimer ??= setInterval(() => void this.continuePairing(), 1500);
-    } catch (e) {
+  private applySecurityStatusSnapshot(status: SecurityWorkflowStatus) {
+    const prevRemoved = this.removed;
+    this.securityStatusSnapshot = status;
+    if (status.isAuthority && status.deviceId) this.authorityDeviceId = status.deviceId;
+    this.clockWarning = status.clockSkewed ? l10n.t("errors.this_device_s_clock_is_behind_the_account_state") : "";
+    if (status.removed && !this.removalVerified) {
+      this.removalVerified = true;
+      this.discardToken();
+      if (!this.closed) this.stop();
+    } else if (status.pendingOp?.hasDelivery && !this.closed && this.started) {
+      void this.watchPairingDelivery();
+    } else if (!status.pendingOp?.hasDelivery) {
       this.stopPairingDelivery();
-      this.authorityError = errorText(e);
     }
+    if (this.removed !== prevRemoved || this.hostBridge) {
+      this.changed();
+    }
+  }
+
+  private async watchPairingDelivery() {
+    if (this.closed || !this.securityStatusSnapshot?.pendingOp?.hasDelivery) {
+      this.stopPairingDelivery();
+      return;
+    }
+    this.pairingTimer ??= setInterval(() => void this.continuePairing(), 1500);
   }
 
   private stopPairingDelivery() {
@@ -799,19 +689,19 @@ export class Remote implements CoreExecutor {
     if (this.closed || this.pairingBusy || (typeof document !== "undefined" && document.hidden)) return;
     this.pairingBusy = true;
     try {
-      if (!(await this.authority.pending())?.delivery) {
+      if (!this.securityStatusSnapshot?.pendingOp?.hasDelivery) {
         this.stopPairingDelivery();
         return;
       }
-      await this.authority.resumeSecurityOperation();
-      if (!(await this.authority.pending())?.delivery) this.stopPairingDelivery();
+      await this.ensureHost().securityClient.resumePendingOp();
+      if (!this.securityStatusSnapshot?.pendingOp?.hasDelivery) this.stopPairingDelivery();
       this.authorityError = "";
       if (!this.closed) await this.loadDevices(false);
     } catch (e) {
       this.authorityError = errorText(e);
       if (
-        e instanceof PairingDeliveryError ||
-        (e instanceof SecurityError && ["invalid", "untrusted", "conflict", "storage", "capacity"].includes(e.code)) ||
+        (e instanceof SecurityWorkflowError &&
+          ["invalid", "untrusted", "conflict", "storage", "capacity", "expired", "canceled"].includes(e.code)) ||
         (e instanceof ConnectError &&
           [Code.InvalidArgument, Code.NotFound, Code.PermissionDenied, Code.Unauthenticated, Code.FailedPrecondition].includes(e.code))
       ) {
@@ -915,16 +805,28 @@ export class Remote implements CoreExecutor {
 
   // --- SyncStateView projection ---
 
+  private isMachineAuthorized(id: string): boolean {
+    const v = this.syncStateView;
+    if (!v || !v.securityLoaded) return true;
+    const dev = v.devices.find((d) => d.deviceId === id);
+    return dev ? dev.trusted : v.devices.length === 0;
+  }
+
   applySyncStateView(view: SyncStateView) {
     const wasOnline = this.conn === "online";
     this.syncStateView = view;
     if (view.authorityDeviceId) this.authorityDeviceId = view.authorityDeviceId;
-    this.clockWarning = view.accountClockSkewed ? l10n.t("errors.this_device_s_clock_is_behind_the_account_state") : "";
+    this.clockWarning = view.accountClockSkewed || this.securityStatusSnapshot?.clockSkewed
+      ? l10n.t("errors.this_device_s_clock_is_behind_the_account_state")
+      : "";
 
     const nextMachines = new Map<string, MachineView>();
     for (const pm of view.machines) {
-      const authorized = !(this.archiveMachines.has(pm.machineId) && !this.trustedMembers.has(pm.machineId));
+      const authorized = this.isMachineAuthorized(pm.machineId);
       nextMachines.set(pm.machineId, { id: pm.machineId, online: authorized && pm.online, lastSeenMs: pm.lastSeenMs, meta: pm.meta, metaRev: pm.metaRev, keptOnline: !view.machinesListed ? authorized && pm.online : undefined });
+      if (view.securityLoaded && !authorized) {
+        void this.keepValue("schedules:" + pm.machineId, undefined);
+      }
     }
     this.cachedMachineMap = nextMachines;
     this.cachedSyncMachines = new Map(view.machines.map((pm) => [pm.machineId, pm]));
@@ -960,7 +862,7 @@ export class Remote implements CoreExecutor {
   get connStep(): string { return renderText(this.syncStateView?.connectionStep); }
   get connStartedAt(): number | undefined { return undefined; }
   get everOnline(): boolean { return this.syncStateView?.liveLoaded ?? false; }
-  get removed(): boolean { return Boolean(this.syncStateView?.removed || this.removalVerified); }
+  get removed(): boolean { return Boolean(this.syncStateView?.removed || this.securityStatusSnapshot?.removed || this.removalVerified); }
   get link(): Link {
     if (!this.network) return "no-network";
     const v = this.syncStateView;
@@ -999,10 +901,21 @@ export class Remote implements CoreExecutor {
     return { status: (v?.prefsLoadFailed || v?.prefsBroken) && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading", error: "", snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined, pending: this.cachedPrefPending };
   }
   projectPrefs(): ProjectPrefs { return this.syncStateView?.prefs ?? emptyPrefs(); }
-  get isAuthority() { return (this.authorityDeviceId || this.syncStateView?.authorityDeviceId) === this.account.deviceId; }
-  get recoveryPending() { return this.syncStateView?.recoveryPending ?? this.security.recoveryPending; }
-  get recoveryReadyMs() { return this.syncStateView?.recoveryReadyMs || this.security.recoveryReadyMs; }
-  get recoveryStatusStale() { return this.security.recoveryStatusStale; }
+  get securityStatus(): SecurityWorkflowStatus | undefined { return this.securityStatusSnapshot; }
+  get securityClient(): SecurityClient { return this.ensureHost().securityClient; }
+  get isAuthority() { return Boolean(this.securityStatusSnapshot?.isAuthority || (this.authorityDeviceId || this.syncStateView?.authorityDeviceId) === this.account.deviceId); }
+  get recoveryPending() { return this.syncStateView?.recoveryPending ?? this.securityStatusSnapshot?.recoveryPending ?? false; }
+  get recoveryReadyMs() { return this.syncStateView?.recoveryReadyMs || this.securityStatusSnapshot?.recoveryReadyMs || 0n; }
+  get recoveryStatusStale() { return this.securityStatusSnapshot?.recoveryStatusStale ?? false; }
+  get leaseEndMs(): bigint | null | undefined {
+    const st = this.securityStatusSnapshot;
+    if (!st) return undefined;
+    return st.leaseEndMs > 0n ? st.leaseEndMs : null;
+  }
+  get needsRecoveryCodeRotation() { return this.securityStatusSnapshot?.needsRecoveryCodeRotation ?? false; }
+  get hasAccountPublicProfile() { return this.securityStatusSnapshot?.hasAccountPublicProfile ?? true; }
+  get takingOver() { return this.securityStatusSnapshot?.takingOver ?? false; }
+  get hasHandoffOffer() { return this.securityStatusSnapshot?.hasHandoffOffer ?? false; }
   demoFlag(_name: string): boolean { return false; }
   peer(machineId: string | undefined) { return this.deviceLink.status(machineId ?? ""); }
   onlineOf(m: MachineView): boolean { return this.listed ? this.peer(m.id).reachable : (m.keptOnline ?? this.peer(m.id).reachable); }
@@ -1134,8 +1047,16 @@ export class Remote implements CoreExecutor {
     this.tokenWrites = this.tokenWrites.then(() => clearLoginToken(this.account.server, this.account.deviceId)).catch(() => undefined);
   }
 
-  securityConfig(): { account: string; deviceId: string } | undefined {
-    return { account: "", deviceId: this.account.deviceId };
+  securityConfig(): { account: string; deviceId: string; server?: string } | undefined {
+    return {
+      account: this.account.accountId ?? "",
+      deviceId: this.account.deviceId,
+      server: this.account.server,
+    };
+  }
+
+  securityKeyGenerate(eff: SecurityKeyGenerateEffect) {
+    void this.secExec.keyGenerate(eff);
   }
 
   securityKeySign(eff: SecurityKeySignEffect) {
@@ -1146,128 +1067,42 @@ export class Remote implements CoreExecutor {
     void this.secExec.keyAgree(eff);
   }
 
+  securityKeyEncapsulate(eff: SecurityKeyEncapsulateEffect) {
+    void this.secExec.keyEncapsulate(eff);
+  }
+
+  securityKeyDiscard(eff: SecurityKeyDiscardEffect) {
+    void this.secExec.keyDiscard(eff);
+  }
+
+  securityStorage(eff: SecurityStorageEffect) {
+    void this.secExec.storage(eff);
+  }
+
+  securityRpc(eff: SecurityRpcEffect) {
+    void this.secExec.rpc(eff);
+  }
+
   securityCryptoBatch(eff: SecurityCryptoBatchEffect) {
     void this.secExec.cryptoBatch(eff);
   }
 
-  private applySecurityRecordSets(record: SecurityRecord) {
-    const head = record.states[record.states.length - 1];
-    this.latestXPrivate = record.xPrivate;
-    this.authorityDeviceId = head.core.authorityID;
-    this.trustedMembers = new Map(head.core.members.map((m) => [m.id, m]));
-    this.archiveMachines = new Set(record.states.flatMap((s) => s.core.members.filter((m) => m.kind === 1).map((m) => m.id)));
-  }
-
-  private async toSecurityRecordEvent(
-    record: SecurityRecord,
-    opts: { opId?: bigint; pushSeq?: bigint; networkGeneration?: bigint; error?: string } = {},
-  ): Promise<SecurityRecordEvent> {
-    this.applySecurityRecordSets(record);
-    return recordToSecurityEvent(record, {
-      opId: opts.opId ?? 0n,
-      pushSeq: opts.pushSeq ?? 0n,
-      networkGeneration: opts.networkGeneration ?? BigInt(this.networkGeneration),
-      recoveryPending: this.security.recoveryPending,
-      recoveryReadyMs: this.security.recoveryReadyMs,
-      recoveryObjectsPending: this.recoveryObjectsPending,
-      error: opts.error,
-    });
-  }
-
-  async readCachedSecurityRecord(): Promise<SecurityRecordEvent | undefined> {
-    const rec = await this.security.verifiedRecord();
-    const ev = await this.toSecurityRecordEvent(rec);
-    if (this.hostBridge) {
-      this.securityRecordLoaded = true;
-      this.lastDispatchedRecord = rec;
+  securityTokenUpdated(eff: SecurityTokenUpdatedEffect) {
+    if (eff.cleared) {
+      this.discardToken();
+      return;
     }
-    return ev;
+    this.token = eff.token;
+    this.tokenExpires = Number(eff.expiresMs);
+    this.tokenWrites = this.tokenWrites
+      .then(() => saveLoginToken(this.account.server, this.account.deviceId, { token: eff.token, expiresMs: Number(eff.expiresMs) }))
+      .catch(() => undefined);
   }
 
-  private async ensureSecurityRecordLoaded(knownRecord?: SecurityRecord): Promise<void> {
-    if (knownRecord) this.applySecurityRecordSets(knownRecord);
-    const prev = this.securityRecordLoading ?? Promise.resolve();
-    const job = prev
-      .catch(() => undefined)
-      .then(async () => {
-        const rec = knownRecord ?? (await this.security.verifiedRecord());
-        if (this.hostBridge && this.securityRecordLoaded && this.lastDispatchedRecord === rec) {
-          return;
-        }
-        const pushSeq = this.securityPushSeq++;
-        const ev = await this.toSecurityRecordEvent(rec, { pushSeq });
-        if (!this.closed) {
-          this.ensureHost().dispatchEvent(create(CoreEventSchema, { event: { case: "securityRecord", value: ev } }));
-          this.securityRecordLoaded = true;
-          this.lastDispatchedRecord = rec;
-        }
-      })
-      .finally(() => {
-        if (this.securityRecordLoading === job) {
-          this.securityRecordLoading = undefined;
-        }
-      });
-    this.securityRecordLoading = job;
-    return job;
-  }
-
-  private async pushSecurityRecord(record: SecurityRecord): Promise<void> {
-    this.applySecurityRecordSets(record);
-    if (this.coreSyncDepth === 0 && !this.closed && this.hostBridge) {
-      const pushSeq = this.securityPushSeq++;
-      try {
-        const ev = await this.toSecurityRecordEvent(record, { pushSeq });
-        if (!this.closed && this.hostBridge) {
-          this.hostBridge.dispatchEvent(create(CoreEventSchema, { event: { case: "securityRecord", value: ev } }));
-          this.securityRecordLoaded = true;
-          this.lastDispatchedRecord = record;
-        }
-      } catch {
-        // Record serialization failure will be retried on next sync.
-      }
+  securityStatusChanged(eff: SecurityStatusChangedEffect) {
+    if (eff.status) {
+      this.applySecurityStatusSnapshot(eff.status);
     }
-  }
-
-  async syncSecurity(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecurityRecordEvent> {
-    const pushSeq = opId === 0n ? this.securityPushSeq++ : 0n;
-    const gen = Number(networkGeneration);
-    if (gen > this.networkGeneration) { this.networkGeneration = gen; this.retireNetworkIO(); }
-    if (touch) this.touchAfterWake();
-    this.coreSyncDepth++;
-    try {
-      const record = await this.security.sync(undefined, 5000, true);
-      this.verifiedNetworkGeneration = this.networkGeneration;
-      this.wakeRequired = false;
-      this.maintainAuthority();
-      if (this.recoveryObjectsPending) {
-        const preEv = await this.toSecurityRecordEvent(record, { opId: 0n, pushSeq: this.securityPushSeq++, networkGeneration });
-        if (!this.closed) {
-          this.ensureHost().dispatchEvent(create(CoreEventSchema, { event: { case: "securityRecord", value: preEv } }));
-          this.securityRecordLoaded = true;
-          this.lastDispatchedRecord = record;
-        }
-        try { await this.republishRecoveryObjects(record, this.api); this.recoveryObjectsPending = false; }
-        catch { /* Retry on subsequent security sync. */ }
-      }
-      if (this.needsDescribeSelf) await this.describeSelf();
-      if (record.member === false) { this.removalVerified = true; this.discardToken(); await this.tokenWrites; }
-      const ev = await this.toSecurityRecordEvent(record, { opId, pushSeq, networkGeneration });
-      if (this.hostBridge) {
-        this.securityRecordLoaded = true;
-        this.lastDispatchedRecord = record;
-      }
-      return ev;
-    } catch (e) {
-      return create(SecurityRecordEventSchema, {
-        opId,
-        pushSeq,
-        networkGeneration,
-        recoveryPending: this.security.recoveryPending,
-        recoveryReadyMs: this.security.recoveryReadyMs,
-        recoveryObjectsPending: this.recoveryObjectsPending,
-        error: errorText(e),
-      });
-    } finally { this.coreSyncDepth--; }
   }
 
   async readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent> {
@@ -1281,9 +1116,6 @@ export class Remote implements CoreExecutor {
       const existingKey = await this.cache.get(SCOPE_HMAC_KEY_VALUE);
       if (existingKey instanceof Uint8Array && existingKey.length === 32) scopeHmacKey = new Uint8Array(existingKey);
       else { crypto.getRandomValues(scopeHmacKey); await this.cache.set(SCOPE_HMAC_KEY_VALUE, scopeHmacKey); }
-      const rec = await this.security.verifiedRecord();
-      await this.ensureSecurityRecordLoaded(rec);
-      for (const id of this.archiveMachines) if (!this.trustedMembers.has(id)) void this.keepValue("schedules:" + id, undefined);
 
       const [keptMachines, keptSessions, keptPrefs, keptOpen] = await Promise.all([
         this.cache.get("machines"), this.cache.get("sessions"), this.cache.get("prefs"), this.cache.get("open-sessions"),
@@ -1405,8 +1237,7 @@ export class Remote implements CoreExecutor {
             this.api.listRemoteSessions({ limit: eff.kind.value.limit || this.sessionPageSize }),
             this.api.listDevices({}),
           ]);
-          await this.ensureSecurityRecordLoaded();
-          await this.maybeRepublishAndDescribe(dRes.devices);
+          this.maybeDescribeSelf(dRes.devices);
           return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, wireMachines: mRes.machines, wireSessions: sRes.sessions, next: sRes.next, wireDevices: dRes.devices }) });
         } catch (e) {
           return this.rpcEv({ case: "listsFetched", value: create(ListsFetchedEventSchema, { opId, error: errorText(e) }) });
@@ -1458,8 +1289,7 @@ export class Remote implements CoreExecutor {
       case "fetchDevices":
         try {
           const res = await this.api.listDevices({});
-          await this.ensureSecurityRecordLoaded();
-          await this.maybeRepublishAndDescribe(res.devices);
+          this.maybeDescribeSelf(res.devices);
           return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, wireDevices: res.devices }) });
         } catch (e) {
           return this.rpcEv({ case: "devicesFetched", value: create(DevicesFetchedEventSchema, { opId, error: errorText(e) }) });
@@ -1469,21 +1299,10 @@ export class Remote implements CoreExecutor {
     }
   }
 
-  private async maybeRepublishAndDescribe(devices: Device[]) {
-    try {
-      const record = await this.security.verifiedRecord();
-      this.recoveryObjectsPending = false;
-      try {
-        await this.republishRecoveryObjects(record, this.api);
-      } catch {
-        this.recoveryObjectsPending = true;
-      }
-      const me = devices.find((d) => d.id === this.account.deviceId);
-      if (me && (!me.meta || !me.meta.securityHeader.length)) {
-        void this.describeSelf();
-      }
-    } catch {
-      /* Verified record missing before initial security sync. */
+  private maybeDescribeSelf(devices: Device[]) {
+    const me = devices.find((d) => d.id === this.account.deviceId);
+    if (me && (!me.meta || !me.meta.securityHeader.length)) {
+      void this.describeSelf();
     }
   }
 
@@ -1636,7 +1455,7 @@ export class Remote implements CoreExecutor {
           parsedCmd?.kind.case === "schedule" &&
           parsedCmd.kind.value.operation === "list" &&
           res.result &&
-          !(this.archiveMachines.has(params.machineId) && !this.trustedMembers.has(params.machineId))
+          this.isMachineAuthorized(params.machineId)
         ) {
           try {
             const { msg: schedMsg } = await this.openSecureMessage(
@@ -1688,7 +1507,7 @@ export class Remote implements CoreExecutor {
           ok: false,
         };
       }
-      const hashesMatch = !!requestKeyHash && !!payloadHash && equal(msg.requestKeyHash, requestKeyHash) && equal(msg.payloadHash, payloadHash) && (msg.outcome === "conflict" || msg.conflictKind === "");
+      const hashesMatch = !!requestKeyHash && !!payloadHash && equalBytes(msg.requestKeyHash, requestKeyHash) && equalBytes(msg.payloadHash, payloadHash) && (msg.outcome === "conflict" || msg.conflictKind === "");
       const outerMatchesInner = isDirect || (res.outcome === msg.outcome && res.reason === msg.reason);
       const bytes = BigInt(
         parsedCmd?.kind.case === "putImageChunk"
@@ -1703,7 +1522,7 @@ export class Remote implements CoreExecutor {
         parsedCmd.kind.value.operation === "list" &&
         ok &&
         res.result &&
-        !(this.archiveMachines.has(params.machineId) && !this.trustedMembers.has(params.machineId))
+        this.isMachineAuthorized(params.machineId)
       ) {
         await this.keepValue("schedules:" + params.machineId, { bytes: toBinary(EnvelopeSchema, res.result), requestId: params.requestId });
       }
@@ -1794,7 +1613,6 @@ export class Remote implements CoreExecutor {
     if (!env) throw new Error(l10n.t("errors.security_envelope_missing"));
     if ([PayloadKind.ACCOUNT_PREFS, PayloadKind.DEVICE_META, PayloadKind.MACHINE_META, PayloadKind.SESSION_META, PayloadKind.IMAGE].includes(want.kind)) history = true;
     if (!history) await this.ensureWakeSecurity();
-    await this.ensureSecurityRecordLoaded();
     const res = await this.ensureHost().securityOp({
       case: "openEnvelope",
       value: create(SecurityOpenEnvelopeOpSchema, {
@@ -1834,7 +1652,7 @@ export class Remote implements CoreExecutor {
   private async checkNetworkSecurity() {
     if (this.verifiedNetworkGeneration === this.networkGeneration) return;
     const generation = this.networkGeneration, wake = this.wakeRevision;
-    await this.security.sync();
+    await this.ensureHost().securityClient.syncNow(false, this.token);
     this.confirmWake(generation, wake);
     if (generation !== this.networkGeneration) throw new SecurityError("stale");
     this.verifiedNetworkGeneration = generation;
@@ -1850,7 +1668,6 @@ export class Remote implements CoreExecutor {
   ): Promise<{ envelope: Envelope; requestKeyHash: Uint8Array<ArrayBuffer>; payloadHash: Uint8Array<ArrayBuffer> }> {
     await this.ensureWakeSecurity();
     if (h.kind === PayloadKind.COMMAND) await this.checkNetworkSecurity();
-    await this.ensureSecurityRecordLoaded();
     let purpose = purposeOf(h.kind ?? PayloadKind.UNSPECIFIED);
     if (h.kind === PayloadKind.TERMINAL_INPUT) {
       const f = msg as unknown as { kind: { case?: string } };
@@ -1890,7 +1707,6 @@ export class Remote implements CoreExecutor {
     this.wakeRequired = true;
     this.wakeRevision++;
   }
-  private touchAfterWake() { this.wakeRequired = true; this.wakeRevision++; }
   private confirmWake(generation: number, wake: number) { if (generation === this.networkGeneration && wake === this.wakeRevision) this.wakeRequired = false; }
 
   private async ensureWakeSecurity() {
@@ -1899,7 +1715,7 @@ export class Remote implements CoreExecutor {
       const generation = this.networkGeneration, wake = this.wakeRevision, controller = new AbortController();
       this.wakeController = controller;
       const pending = ownedRound(controller, this.roundBudget(), async () => {
-        await this.security.sync(controller.signal);
+        await this.ensureHost().securityClient.syncNow(false, this.token);
         this.confirmWake(generation, wake);
         this.verifiedNetworkGeneration = generation;
       }).finally(() => { if (this.wakeSecurity === pending) { this.wakeSecurity = undefined; this.wakeController = undefined; } });
@@ -1936,7 +1752,10 @@ export class Remote implements CoreExecutor {
         const timeoutMs = this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS;
         const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs });
         signal.throwIfAborted();
-        const res = await auth.login({ protocolVersion: RELAY_PROTOCOL_VERSION, deviceId: this.account.deviceId, challenge: ch.challenge, signature: await signLogin(this.account.devicePrivate, ch.challenge) }, { signal, timeoutMs });
+        const challengeMsg = concat(utf8("remote-agent/v1/login\0"), new Uint8Array(ch.challenge));
+        const signature = await this.secStore.signKey(SecurityKeyKind.DEVICE_ED, "", challengeMsg);
+        signal.throwIfAborted();
+        const res = await auth.login({ protocolVersion: RELAY_PROTOCOL_VERSION, deviceId: this.account.deviceId, challenge: ch.challenge, signature }, { signal, timeoutMs });
         signal.throwIfAborted();
         if (this.closed) return;
         this.token = res.token;
@@ -1953,17 +1772,6 @@ export class Remote implements CoreExecutor {
         throw e;
       }
     }
-  }
-
-  private maintainAuthority() {
-    if (typeof navigator === "undefined" || !navigator.locks) return;
-    void (async () => {
-      try {
-        if (!this.isAuthority && !(await readSecurityOperation())) return;
-        await this.authority.renewLeaseIfNeeded();
-        this.authorityError = "";
-      } catch (e) { this.authorityError = errorText(e); }
-    })();
   }
 
   private noteClock(e: unknown) { if (e instanceof SecurityError && e.code === "clock") this.clockWarning = l10n.t("errors.this_device_s_clock_is_behind_the_account_state"); }
@@ -2172,7 +1980,7 @@ export class Remote implements CoreExecutor {
   }
 
   async readScheduleCache(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent> {
-    if (!machineId || this.closed || (this.archiveMachines.has(machineId) && !this.trustedMembers.has(machineId))) {
+    if (!machineId || this.closed || !this.isMachineAuthorized(machineId)) {
       return create(ScheduleCacheLoadedEventSchema, { opId, machineId });
     }
     try {
@@ -2626,10 +2434,9 @@ export class Remote implements CoreExecutor {
   async loadDevices(_describe = true): Promise<void> {
     const devPushSeq = this.devicesPushSeq++;
     try {
-      const record = await this.security.sync();
-      await this.ensureSecurityRecordLoaded(record);
+      await this.ensureHost().securityClient.syncNow(false, this.token);
       const res = await this.api.listDevices({});
-      await this.maybeRepublishAndDescribe(res.devices);
+      this.maybeDescribeSelf(res.devices);
       const synced = new Promise<void>((resolve) => {
         this.devicesSyncWaiters.push(resolve);
       });
@@ -2654,212 +2461,117 @@ export class Remote implements CoreExecutor {
     }
   }
 
-  async handoffCandidates(): Promise<HandoffOffer[]> {
+  async getSecurityStatus(): Promise<SecurityWorkflowStatus> {
+    const st = await this.ensureHost().securityClient.getStatus();
+    this.applySecurityStatusSnapshot(st);
+    return st;
+  }
+
+  async renewLeaseNow(): Promise<SecurityWorkflowStatus> {
+    const st = await this.ensureHost().securityClient.renewLease(true);
+    this.applySecurityStatusSnapshot(st);
+    return st;
+  }
+
+  prepareRecoveryRotation() {
+    return this.ensureHost().securityClient.prepareRecoveryRotation();
+  }
+
+  confirmRecoveryRotation() {
+    return this.ensureHost().securityClient.confirmRecoveryRotation();
+  }
+
+  prepareHandoffCode(storagePersisted: boolean) {
+    return this.ensureHost().securityClient.prepareHandoffCode(storagePersisted);
+  }
+
+  publishHandoffOffer() {
+    return this.ensureHost().securityClient.publishHandoffOffer();
+  }
+
+  discardPendingOp(abandonHandoff = false) {
+    return this.ensureHost().securityClient.discardPendingOp(abandonHandoff);
+  }
+
+  completeAccountPublicProfile(code: string) {
+    return this.ensureHost().securityClient.completeAccountPublicProfile(this.account.server, code);
+  }
+
+  startPairing(webOrigin: string, replacesDeviceId = ""): Promise<SecurityPairingInfo> {
+    return this.ensureHost().securityClient.startPairing(webOrigin, replacesDeviceId);
+  }
+
+  pollPairing(pairingId: string): Promise<SecurityPairingInfo> {
+    return this.ensureHost().securityClient.pollPairing(pairingId);
+  }
+
+  approvePairing(pairingId: string, sasConfirmed: boolean): Promise<SecurityPairingInfo> {
+    return this.ensureHost().securityClient.approvePairing(pairingId, sasConfirmed);
+  }
+
+  finishPairingDelivery(pairingId: string): Promise<SecurityPairingInfo> {
+    return this.ensureHost().securityClient.finishPairingDelivery(pairingId);
+  }
+
+  cancelPairing(pairingId: string): Promise<void> {
+    return this.ensureHost().securityClient.cancelPairing(pairingId);
+  }
+
+  async handoffCandidates(): Promise<SecurityHandoffCandidate[]> {
     await this.loadDevices(false);
-    const { handoffCandidates: verifiedHandoffCandidates } = await import("./authority-client");
-    return verifiedHandoffCandidates(
-      await this.security.verifiedRecord(),
-      [...this.devices.values()].flatMap((d) =>
-        d.meta?.handoffRecoveryEd.length === 32 ? [{ id: d.id, recoveryEd: new Uint8Array(d.meta.handoffRecoveryEd) }] : [],
-      ),
-    );
+    return this.ensureHost().securityClient.listHandoffCandidates();
   }
 
   async handoffAuthority(incoming: string) {
-    await this.authority.handoffAuthority(incoming, await this.handoffCandidates());
+    await this.ensureHost().securityClient.handoffAuthority(incoming);
     await this.loadDevices(false);
     this.hostBridge?.retryList();
   }
 
-  private async checkLocalRemoval() {
-    this.reconcilingSecurity++;
-    try {
-      if ((await this.security.verifiedRecord()).member === false) {
-        this.removalVerified = true;
-        this.discardToken();
-        this.stop();
-      }
-    } catch {
-      /* Keep unverified notice and completion material. */
-    } finally {
-      this.reconcilingSecurity--;
-    }
-  }
-
   async resumeSecurityOperation() {
-    const stopped = this.closed;
-    if (stopped) this.authority.lifecycle.resume();
-    this.reconcilingSecurity++;
-    try {
-      await this.authority.resumeSecurityOperation();
-      await this.checkLocalRemoval();
-      if (!this.closed) await this.loadDevices(false);
-      this.hostBridge?.retryList();
-    } finally {
-      this.reconcilingSecurity--;
-      if (stopped || this.closed) this.authority.lifecycle.pause();
-    }
+    await this.ensureHost().securityClient.resumePendingOp();
+    if (!this.closed) await this.loadDevices(false);
+    this.hostBridge?.retryList();
   }
 
   async removeDevice(id: string) {
-    await this.authority.removeDevice(id);
+    await this.ensureHost().securityClient.removeDevice(id);
     await this.loadDevices(false);
     this.hostBridge?.retryList();
   }
 
   async deleteMachineRecords(id: string) {
-    await this.authority.deleteMachineRecords(id);
+    await this.ensureHost().securityClient.deleteMachineRecords(id);
     this.hostBridge?.retryList();
   }
 
   renameDevice(id: string, name: string): Promise<void> {
     if (id !== this.account.deviceId) throw new Error(l10n.t("errors.names_can_only_be_changed_on_that_device"));
-    return this.changeDeviceMeta(id, (m) => ({
-      name: name.trim(),
-      platform: m?.platform ?? "",
-      description: m?.description ?? "",
-      handoffRecoveryEd: m?.handoffRecoveryEd,
-    }));
+    return this.ensureHost().securityClient.updateDeviceMeta({ deviceId: id, name: name.trim() }).then(async () => {
+      if (!this.closed) await this.loadDevices(false);
+    });
   }
 
   private async describeSelf() {
-    if (this.descriptionPending) return;
-    this.descriptionPending = true;
+    if (this.describingSelf) return;
+    this.describingSelf = true;
     try {
-      await this.changeDeviceMeta(this.account.deviceId, (m) => ({
-        name: m?.name ?? "",
+      await this.ensureHost().securityClient.updateDeviceMeta({
         platform: "web",
-        description: m?.description || describeBrowser(navigator.userAgent),
-        handoffRecoveryEd: m?.handoffRecoveryEd,
-      }));
-      this.needsDescribeSelf = false;
+        description: typeof navigator === "undefined" ? "" : describeBrowser(navigator.userAgent),
+        describeSelfOnly: true,
+      });
+      if (!this.closed) await this.loadDevices(false);
     } catch {
-      this.needsDescribeSelf = true;
+      /* Will retry on subsequent devices refresh. */
     } finally {
-      this.descriptionPending = false;
-    }
-  }
-
-  private async publishHandoffOffer(
-    publicKey: Uint8Array<ArrayBuffer>,
-    check: () => void,
-    persist: (request: Uint8Array<ArrayBuffer>) => Promise<void>,
-    signed?: Uint8Array<ArrayBuffer>,
-  ) {
-    let request;
-    if (signed) request = fromBinary(PutDeviceMetaRequestSchema, signed);
-    else {
-      await this.loadDevices(false);
-      check();
-      if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.device_information_could_not_be_verified"));
-      const own = this.devices.get(this.account.deviceId);
-      const revision = own?.metaRev ?? 0n;
-      const meta = (await this.sealSecureMessage(
-        { kind: PayloadKind.DEVICE_META, requestId: this.account.deviceId, seq: revision + 1n, sender: this.account.deviceId },
-        DeviceMetaSchema,
-        create(DeviceMetaSchema, { ...create(DeviceMetaSchema, own?.meta), handoffRecoveryEd: publicKey }),
-        check,
-      )).envelope;
-      request = create(PutDeviceMetaRequestSchema, { deviceId: this.account.deviceId, expectedRevision: revision, meta });
-      check();
-      await persist(toBinary(PutDeviceMetaRequestSchema, request));
-      check();
-    }
-    if (request.deviceId !== this.account.deviceId) throw new SecurityError("untrusted");
-    check();
-    const result = await this.api.putDeviceMeta(request);
-    check();
-    if (!result.applied) {
-      await this.loadDevices(false);
-      check();
-      const own = this.devices.get(this.account.deviceId);
-      if (!own?.meta || own.metaRev <= request.expectedRevision || !equalBytes(own.meta.handoffRecoveryEd, publicKey)) return false;
-    }
-    return true;
-  }
-
-  private async changeDeviceMeta(
-    id: string,
-    change: (m: DeviceMeta | undefined) => Omit<Partial<DeviceMeta>, "$typeName">,
-    check: () => void = () => undefined,
-  ) {
-    if (id !== this.account.deviceId) throw new Error(l10n.t("errors.names_can_only_be_changed_on_that_device"));
-    for (let i = 0; i < 5; i++) {
-      await this.loadDevices(false);
-      if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.device_information_could_not_be_verified"));
-      check();
-      const cur = this.devices.get(id);
-      const rev = cur?.metaRev ?? 0n;
-      const env = (await this.sealSecureMessage(
-        { kind: PayloadKind.DEVICE_META, requestId: id, seq: rev + 1n, sender: this.account.deviceId },
-        DeviceMetaSchema,
-        create(DeviceMetaSchema, change(cur?.meta)),
-        check,
-      )).envelope;
-      check();
-      const r = await this.api.putDeviceMeta({ deviceId: id, expectedRevision: rev, meta: env });
-      check();
-      if (r.applied) {
-        await this.loadDevices(false);
-        return;
-      }
-    }
-    throw new Error(l10n.t("errors.device_information_is_changing_retry"));
-  }
-
-  private async republishRecoveryObjects(record: SecurityRecord, api = this.api) {
-    const boundary = record.states.filter((_, i) => record.proofs[i]).at(-1)?.core.contentEpoch;
-    if (!boundary) return;
-    await this.ensureSecurityRecordLoaded(record);
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const { object: o } = await api.getAccountPrefs({ objectId: PREFS_OBJECT });
-      if (!o?.envelope || o.revision === 0n) break;
-      let snapshot;
-      try {
-        snapshot = await this.openSecureMessage(
-          o.envelope,
-          { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: o.revision },
-          ProjectPrefsSchema,
-          true,
-        );
-      } catch (e) {
-        if (e instanceof SecurityError && e.code === "unavailable") break;
-        throw e;
-      }
-      if (snapshot.contentEpoch >= boundary) break;
-      const { envelope } = await this.sealSecureMessage(
-        { kind: PayloadKind.ACCOUNT_PREFS, requestId: PREFS_OBJECT, seq: o.revision + 1n, sender: this.account.deviceId },
-        ProjectPrefsSchema,
-        snapshot.msg,
-      );
-      if ((await api.putAccountPrefs({ objectId: PREFS_OBJECT, expectedRevision: o.revision, envelope })).applied) break;
-      if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
-    }
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const own = (await api.listDevices({})).devices.find((d) => d.id === this.account.deviceId);
-      if (!own?.meta) break;
-      const snapshot = await this.openSecureMessage(
-        own.meta,
-        { kind: PayloadKind.DEVICE_META, requestId: own.id, seq: own.metaRevision },
-        DeviceMetaSchema,
-        true,
-      );
-      if (snapshot.header.sender !== own.id) {
-        throw new SecurityError("untrusted");
-      }
-      if (snapshot.contentEpoch >= boundary) break;
-      const { envelope: meta } = await this.sealSecureMessage(
-        { kind: PayloadKind.DEVICE_META, requestId: own.id, seq: own.metaRevision + 1n, sender: this.account.deviceId },
-        DeviceMetaSchema,
-        snapshot.msg,
-      );
-      if ((await api.putDeviceMeta({ deviceId: own.id, expectedRevision: own.metaRevision, meta })).applied) break;
-      if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
+      this.describingSelf = false;
     }
   }
 }
 
 export function errorText(e: unknown): string {
+  if (e instanceof SecurityWorkflowError) return e.message;
   if (e instanceof SecurityError) {
     if (e.code === "lease") return l10n.t("errors.remote_control_expired_saving_changes_session_control_and_new");
     if (e.code === "unavailable") return l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current_remote");
@@ -2881,30 +2593,4 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   return a.length === b.length && a.every((x, i) => x === b[i]);
 }
 
-export async function resumeRegistration(): Promise<void> {
-  const authority = await readSecurityOperation();
-  if (authority?.kind === "create") throw new Error(l10n.t("errors.account_creation_draft_preserved_continue_the_original_creation_flow"));
-  if (authority?.kind === "recovery") throw new Error(l10n.t("errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing"));
-  const pending = await loadRegistration();
-  if (!pending) return;
-  const request = fromBinary(RegisterDeviceRequestSchema, pending.request);
-  if (pending.security) {
-    const registration = fromBinary(DeviceRegistrationSchema, request.registration);
-    await saveAccountPublicProfile(pending.account.server, pending.security.pin, new Uint8Array(registration.accountPublicKey));
-    const r = pending.security;
-    const { initializeSecurity } = await import("./device-security-store");
-    await initializeSecurity(r.pin, r.states, r.proofs, r.memberID, r.xPrivate, pending.replace, r.lease);
-  }
-  await saveAccount(pending.account);
-  localStorage.setItem("ra-server", pending.account.server);
-  const auth = createClient(
-    AuthService,
-    createConnectTransport({ fetch: relayFetch, baseUrl: apiBase(pending.account.server), useBinaryFormat: true }),
-  );
-  const res = await auth.registerDevice(request, { timeoutMs: 15_000 });
-  if (res.deviceId !== pending.account.deviceId) throw new Error(l10n.t("errors.the_server_returned_an_unexpected_device_id"));
-  const approval = fromBinary(PairApprovalSchema, fromBinary(RegisterDeviceRequestSchema, pending.request).approval);
-  const { clearPairingIdentity } = await import("./device-security-store");
-  await clearPairingIdentity(pending.account.server, approval.pairingId);
-  await clearRegistration(pending);
-}
+export { translateSecurityErrorMessage };

@@ -1,21 +1,22 @@
 import * as l10n from "../i18n";
 import { ChevronRight } from "../icons";
 import { futureTime } from "../model";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Startup } from "../Startup";
 import { page } from "./pages";
 import {
-  AuthoritySetup,
-  RecoverySignatureMissing,
-  authorityStartup,
-  type AuthorityStartup,
-  type RecoveryStatus,
-} from "../authority-setup";
-import { GetRecoveryContextResponse_Phase as Phase } from "../gen/remoteagent/v1/relay_pb";
-import {
   BROWSER_AUTHORITY_NOTICE,
+  createStandaloneSecurityClient,
   requestAuthorityPersistence,
-} from "../security-operation";
+  SecurityClient,
+  type StandaloneSecurityHandle,
+} from "../core/security-client";
+import {
+  SecurityBootstrapKind,
+  type SecurityRecoveryInfo,
+  type SecurityWorkflowStatus,
+} from "../gen/remoteagent/core/v1/security_pb";
+import { GetRecoveryContextResponse_Phase as Phase } from "../gen/remoteagent/v1/relay_pb";
 import { errorText } from "../remote";
 import { Banner, NavBar } from "../ui";
 import { CodeBackup, PersistenceResult } from "./AuthorityKit";
@@ -26,16 +27,19 @@ const Setup = page(() => import("./Pairing").then(m => ({ default: m.Setup })));
 
 export function AccountEntry({
   onDone,
-  setup: supplied,
+  client: supplied,
+  initialStatus,
 }: {
   onDone: () => void;
-  setup?: AuthoritySetup;
+  client?: SecurityClient;
+  initialStatus?: SecurityWorkflowStatus;
 }) {
-  const [setup, setSetup] = useState(supplied);
+  const ownHandle = useRef<StandaloneSecurityHandle | undefined>(undefined);
+  const [client, setClient] = useState(supplied);
   const [mode, setMode] = useState<"" | "join" | "create" | "recovery">(
     location.hash.startsWith("#/pair?") ? "join" : "",
   );
-  const [startup, setStartup] = useState<AuthorityStartup>();
+  const [startup, setStartup] = useState<SecurityWorkflowStatus | undefined>(initialStatus);
   const [server, setServer] = useState(
     localStorage.getItem("ra-server") ||
       import.meta.env.VITE_DEFAULT_SERVER ||
@@ -46,24 +50,49 @@ export function AccountEntry({
   const [code, setCode] = useState("");
   const [saved, setSaved] = useState(false);
   const [persisted, setPersisted] = useState<boolean>();
-  const [status, setStatus] = useState<RecoveryStatus>();
+  const [status, setStatus] = useState<SecurityRecoveryInfo>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [signatureMissing, setSignatureMissing] = useState(false);
-  const refresh = async () => {
-    const state = await authorityStartup();
-    setStartup(state);
-    if (state.kind === "create" || state.kind === "recovery")
-      setMode(state.kind);
+
+  const syncMode = (st: SecurityWorkflowStatus) => {
+    setStartup(st);
+    if (st.bootstrap === SecurityBootstrapKind.PENDING_CREATE) {
+      setMode("create");
+    } else if (st.bootstrap === SecurityBootstrapKind.PENDING_RECOVERY) {
+      setMode("recovery");
+      if (st.pendingOp && !st.pendingOp.recoveryId && !st.pendingOp.signed) {
+        setSignatureMissing(true);
+      }
+    }
   };
+
   useEffect(() => {
-    const instance = supplied ?? new AuthoritySetup();
-    setSetup(instance);
-    void refresh().catch((e) => setError(errorText(e)));
+    const handle = supplied ? undefined : createStandaloneSecurityClient();
+    ownHandle.current = handle;
+    const activeClient = supplied ?? handle!.client;
+    setClient(activeClient);
+    let alive = true;
+    void activeClient
+      .bootstrap()
+      .then((st) => {
+        if (alive) syncMode(st);
+      })
+      .catch((e) => {
+        if (alive) setError(errorText(e));
+      });
     return () => {
-      if (!supplied) instance.lifecycle.dispose();
+      alive = false;
+      ownHandle.current = undefined;
+      handle?.dispose();
     };
   }, [supplied]);
+
+  const refresh = async () => {
+    if (!client) return;
+    syncMode(await client.getStatus());
+  };
+
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
     setError("");
@@ -72,15 +101,28 @@ export function AccountEntry({
       await work();
       await refresh();
     } catch (e) {
-      setSignatureMissing(e instanceof RecoverySignatureMissing);
       setError(errorText(e));
       await refresh().catch(() => {});
     } finally {
       setBusy(false);
     }
   };
-  if (!setup || (!startup && !error))
+  if (!client || (!startup && !error))
     return <div className="center muted">{l10n.t("security.loading")}</div>;
+
+  const repairBanner = startup?.legacyRepairNotice && (
+    <Banner
+      kind="warn"
+      action={l10n.t("common.got_it")}
+      onAction={() => void run(async () => {
+        setStartup(await client.dismissUpgradeNotice());
+      })}
+    >
+      <strong>{l10n.t("security.upgrade_repair_title")}</strong>{" "}
+      {l10n.t("security.upgrade_repair_notice")}
+    </Banner>
+  );
+
   if (mode === "join")
     return (
       <>
@@ -101,6 +143,7 @@ export function AccountEntry({
           <h3 className="hl">remote-agent</h3>
           <p className="hl-sub">{l10n.t("security.control_ai_coding_clis_on_your_computer_from_any")}</p>
         </div>
+        {repairBanner}
         <div className="entry-actions">
           <div className="grp">
             <button className="row entry-row" aria-label={l10n.t("security.create_account")} onClick={() => setMode("create")}>
@@ -121,13 +164,16 @@ export function AccountEntry({
         {error && <div className="set-banners"><Banner kind="err">{error}</Banner></div>}
       </div>
     );
-  const pending = startup?.kind === mode;
+  const pending =
+    (mode === "create" && startup?.bootstrap === SecurityBootstrapKind.PENDING_CREATE) ||
+    (mode === "recovery" && startup?.bootstrap === SecurityBootstrapKind.PENDING_RECOVERY);
   return (
     <div className="setup authority-setup">
       <NavBar
         title={mode === "create" ? l10n.t("security.create_account") : l10n.t("security.recover_management_with_a_recovery_code")}
         onBack={!pending ? () => setMode("") : undefined}
       />
+      {repairBanner}
       <Banner kind="">{BROWSER_AUTHORITY_NOTICE()}</Banner>
       {!pending && (
         <label className="field">
@@ -170,23 +216,28 @@ export function AccountEntry({
             onClick={() =>
               void run(async () => {
                 if (!pending) {
-                  const p = await setup.prepareCreation(server);
-                  setCode(p.code ?? "");
-                  setPersisted(p.storagePersisted);
+                  const sp = await requestAuthorityPersistence();
+                  const p = await client.prepareCreation(server, sp);
+                  setCode(p.recoveryCode ?? "");
+                  if (p.resumedDraft && p.codeSaved) setSaved(true);
+                  setPersisted(sp);
                   return;
                 }
                 if (code && saved) {
-                  await setup.confirmCreationCodeSaved();
+                  await client.confirmCreationCodeSaved();
                 }
-                if ((await authorityStartup()).kind === "create")
-                  await setup.continueCreation(token);
+                let cur = await client.getStatus();
+                if (cur.bootstrap === SecurityBootstrapKind.PENDING_CREATE) {
+                  const res = await client.continueCreation(token);
+                  if (res.status) cur = res.status;
+                }
                 if (
                   !code &&
-                  startup?.kind === "create" &&
-                  !startup.codeSaved &&
-                  (await authorityStartup()).kind === "create"
-                )
-                  await setup.adoptCreationWithoutCode();
+                  cur.bootstrap === SecurityBootstrapKind.PENDING_CREATE &&
+                  !cur.pendingOp?.codeSaved
+                ) {
+                  await client.adoptCreationWithoutCode();
+                }
                 onDone();
               })
             }
@@ -213,12 +264,11 @@ export function AccountEntry({
                 disabled={busy || !server || !oldCode.trim()}
                 onClick={() =>
                   void run(async () => {
-                    setPersisted(await requestAuthorityPersistence());
-                    const p = await setup.prepareEmergencyRecovery(
-                      server,
-                      oldCode,
-                    );
-                    setCode(p.code);
+                    const sp = await requestAuthorityPersistence();
+                    setPersisted(sp);
+                    const p = await client.prepareEmergencyRecovery(server, oldCode);
+                    setCode(p.recoveryCode);
+                    if (p.recovery) setStatus(p.recovery);
                     setOldCode("");
                   })
                 }
@@ -254,7 +304,9 @@ export function AccountEntry({
                     disabled={busy || !oldCode}
                     onClick={() =>
                       void run(async () => {
-                        await setup.continueRecoverySigning(oldCode);
+                        const next = await client.continueRecoverySigning(oldCode);
+                        if (next) setStatus(next);
+                        setSignatureMissing(false);
                         setOldCode("");
                       })
                     }
@@ -265,7 +317,8 @@ export function AccountEntry({
                     disabled={busy}
                     onClick={() =>
                       void run(async () => {
-                        await setup.discardUnsignedRecovery();
+                        await client.discardUnsignedRecovery();
+                        setSignatureMissing(false);
                         setMode("");
                       })
                     }
@@ -278,14 +331,21 @@ export function AccountEntry({
                 disabled={busy || (!!code && !saved)}
                 onClick={() =>
                   void run(async () => {
-                    if (saved) await setup.confirmRecoveryCodeSaved();
+                    if (saved) await client.confirmRecoveryCodeSaved();
                     if (
                       status &&
                       [Phase.READY, Phase.PUBLISHED].includes(status.phase)
                     ) {
-                      await setup.completeRecovery();
+                      await client.completeRecovery();
                       onDone();
-                    } else setStatus(await setup.resumeRecovery());
+                    } else {
+                      const next = await client.resumeRecovery();
+                      if (next) {
+                        setStatus(next);
+                      } else {
+                        setSignatureMissing(true);
+                      }
+                    }
                   })
                 }
               >
@@ -302,7 +362,7 @@ export function AccountEntry({
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      await setup.discardRejectedRecovery();
+                      await client.discardRejectedRecovery();
                       setStatus(undefined);
                       setCode("");
                       setSaved(false);

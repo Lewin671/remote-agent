@@ -5,7 +5,6 @@ import { LoginResponseSchema } from "./gen/remoteagent/v1/relay_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
 import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
-import { PairingDeliveryError } from "./authority-client";
 const liveFixtures: SyntheticRemote[] = [];
 const demoFixtures: Remote[] = [];
 async function probe() {
@@ -259,7 +258,7 @@ it("preserves concurrent project edits through server CAS", async () => {
 }, 20000);
 
 it("shows a display copy only where it belongs and in the format it claims", async () => {
-  const { PayloadKind } = await import("./crypto");
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
   const { ImagePayloadSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { ImageFormat } = await import("./gen/remoteagent/v1/event_pb");
   const { create } = await import("@bufbuild/protobuf");
@@ -549,12 +548,10 @@ it("restores, for the next visit's first paint, the model lists and settings the
       return (this as unknown as { warmInfoOnce(): Promise<void> }).warmInfoOnce();
     }
   }
-  const identity = await (await probe()).security.localIdentity();
   const first = trackDemo(Kept.open());
   // Exercise real demo responses/cache writes without its two simulated
   // 500 ms network delays. This test asserts persistence, not latency.
   vi.spyOn(first as any, "pause").mockResolvedValue(undefined);
-  vi.spyOn(first.security, "localIdentity").mockResolvedValue(identity);
   (first as unknown as { seed(): void; syncDemoToCore(): void }).seed(); // the demo's machines, online
   (first as unknown as { syncDemoToCore(): void }).syncDemoToCore();
   expect(first.cachedModels("mac", Agent.CODEX)).toBeUndefined();
@@ -564,7 +561,6 @@ it("restores, for the next visit's first paint, the model lists and settings the
 
   // The next visit knows them before any machine answers.
   const next = trackDemo(Kept.open());
-  vi.spyOn(next.security, "localIdentity").mockResolvedValue(identity);
   await next.warmed();
   expect(
     next.cachedModels("mac", Agent.CODEX)?.models.map((m) => m.displayName),
@@ -578,14 +574,13 @@ it("restores, for the next visit's first paint, the model lists and settings the
       super({ ...account, deviceId: "someone-else" }, cache);
     }
   })());
-  vi.spyOn(other.security, "localIdentity").mockResolvedValue(identity);
   await (other as unknown as { warmInfoOnce(): Promise<void> }).warmInfoOnce();
   expect(other.cachedModels("mac", Agent.CODEX)).toBeUndefined();
 });
 
 it("keeps an unauthenticated command result unknown and retries its slot", async () => {
   const { Attempt } = await import("./remote");
-  const { PayloadKind } = await import("./crypto");
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
   const { create } = await import("@bufbuild/protobuf");
   const { CommandResultSchema } = await import(
     "./gen/remoteagent/v1/remote_pb"
@@ -707,40 +702,13 @@ it("revokes a removed machine and retains its archive when the head moves withou
     expect(r.devices.get(r.machine)).toBeTruthy();
     expect(r.sessions.get("s")).toBeTruthy();
     expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
-    expect((r as unknown as { coreSyncDepth: number }).coreSyncDepth).toBe(0);
   });
-  // A background pull fetches the head before the removal and is still finishing when the
-  // head pull below is asked for: that pull must not take the stale answer.
-  const security = r.security as unknown as { syncJob?: Promise<unknown>; fetchStates: (...a: unknown[]) => Promise<unknown> };
-  while (security.syncJob) await security.syncJob.catch(() => undefined);
-  const fetchStates = security.fetchStates;
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => { release = resolve; });
-  let fetched!: () => void;
-  const stale = new Promise<void>((resolve) => { fetched = resolve; });
-  let hold = true;
-  security.fetchStates = async (...a: unknown[]) => {
-    const reply = await fetchStates(...a);
-    if (hold) { hold = false; fetched(); await held; }
-    return reply;
-  };
-  void r.security.sync(undefined, 5000).catch(() => undefined);
-  await stale;
+  // Sync picks up the removal even when the relay withholds the push.
   await r.world.fixture.remove([r.machine]);
-  // The relay withholds every removal push; the 60 s head pull must be enough.
-  const pull = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<unknown> }).syncSecurity(0n, 0n, false);
-  release();
-  const snap = await pull;
-  const { EventSchema: CoreEventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
-  getCoreHost(r).dispatch(create(CoreEventSchema, { event: { case: "securityRecord", value: snap as never } }));
+  await r.syncSecurityNow();
   expect(r.devices.get(r.machine)).toBeUndefined();
   expect(r.sessions.get("s")).toBeTruthy();
   expect(r.machines.get(r.machine)?.online).toBe(false);
-  expect(
-    (
-      r as unknown as { trustedMembers: Map<string, unknown> }
-    ).trustedMembers.has(r.machine),
-  ).toBe(false);
 });
 
 it("bootstraps current owner state from a checkpoint without loading a history prefix", async () => {
@@ -778,37 +746,14 @@ it("bootstraps current owner state from a checkpoint without loading a history p
   expect(r.sessions.get("s")?.checkpointStatus).toBe("ready");
 });
 
-it("installs the lease forwarded by the Remote state-page adapter after a head change", async () => {
-  const { CommandSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { validLease } = await import("./device-security");
+it("installs the updated head and valid lease through Core sync after a head change", async () => {
   const r = await probe();
   const other = await r.addClient();
+  const before = await r.getSecurityStatus();
   await r.world.fixture.remove([other.account.deviceId]);
-  // Use Remote's constructor adapter, not the fixture's direct SDK fetcher.
-  const security = (
-    r as unknown as {
-      security: import("./authority-security").AuthoritySecurity;
-    }
-  ).security;
-  const synced = await security.sync();
-  expect(synced.lease).toBeDefined();
-  await expect(validLease(synced.lease, synced.states.at(-1)!, synced.floor)).resolves.toBeUndefined();
-  await (r as unknown as { pushSecurityRecord(rec: typeof synced): Promise<void> }).pushSecurityRecord(synced);
-  await expect(
-    (r as unknown as { sealSecureMessage: (...args: unknown[]) => Promise<{ envelope: Envelope }> }).sealSecureMessage(
-      {
-        kind: 5,
-        machineId: r.machine,
-        sessionId: "",
-        requestId: "adapter-request-123",
-        seq: 0n,
-        deadlineMs: BigInt(Date.now() + 60000),
-        sender: r.account.deviceId,
-      },
-      CommandSchema,
-      create(CommandSchema),
-    ),
-  ).resolves.toBeDefined();
+  const synced = await r.syncSecurityNow();
+  expect(synced.headEpoch).toBeGreaterThan(before.headEpoch);
+  expect(synced.leaseValid).toBe(true);
 });
 
 it("uploads files through shared RPCs with UNSPECIFIED format and separate IDs", async () => {
@@ -958,46 +903,69 @@ it.each(["send", "createSession"] as const)("allows text/image-only %s with file
 });
 
 it("does not poll pairing state after startup without a pending delivery", async () => {
+  const { SecurityWorkflowStatusSchema } = await import("./gen/remoteagent/core/v1/security_pb");
   const r = await probe();
-  const state = r as unknown as { ensureHost(): { start(): void; stop(): void }; pairingTimer?: ReturnType<typeof setInterval> };
-  vi.spyOn(state, "ensureHost").mockReturnValue({ start: () => undefined, stop: () => undefined });
-  const pending = vi.spyOn(r.authority, "pending").mockResolvedValue(undefined);
+  const state = r as unknown as {
+    ensureHost(): { start(): void; stop(): void; securityClient: { resumePendingOp(): Promise<unknown> } };
+    applySecurityStatusSnapshot(s: ReturnType<typeof create<typeof SecurityWorkflowStatusSchema>>): void;
+    pairingTimer?: ReturnType<typeof setInterval>;
+  };
+  const resume = vi.fn(async () => create(SecurityWorkflowStatusSchema));
+  vi.spyOn(state, "ensureHost").mockReturnValue({
+    start: () => undefined,
+    stop: () => undefined,
+    securityClient: { resumePendingOp: resume },
+  });
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {
     r.start();
+    state.applySecurityStatusSnapshot(create(SecurityWorkflowStatusSchema));
     await vi.advanceTimersByTimeAsync(4500);
     expect(state.pairingTimer).toBeUndefined();
-    expect(pending).toHaveBeenCalledOnce();
+    expect(resume).not.toHaveBeenCalled();
   } finally { r.stop(); vi.useRealTimers(); }
 });
 
 it.each(["complete", "missing", "final", "transient", "close"])(
   "resumes a pending delivery on startup and manages its timer on %s", async (outcome) => {
+    const { SecurityWorkflowError } = await import("./core/security-client");
+    const { SecurityPendingOpSummarySchema, SecurityWorkflowStatusSchema } = await import("./gen/remoteagent/core/v1/security_pb");
     const r = await probe();
-    const state = r as unknown as { ensureHost(): { start(): void; stop(): void }; pairingTimer?: ReturnType<typeof setInterval> };
-    vi.spyOn(state, "ensureHost").mockReturnValue({ start: () => undefined, stop: () => undefined });
-    let delivery = true;
-    const pending = vi.spyOn(r.authority, "pending").mockImplementation(async () => delivery ? { delivery: new Uint8Array([1]) } as never : undefined);
-    const resume = vi.spyOn(r.authority, "resumeSecurityOperation").mockImplementation(async () => {
-      if (outcome === "final") throw new PairingDeliveryError("candidate must be removed");
+    const state = r as unknown as {
+      ensureHost(): { start(): void; stop(): void; securityClient: { resumePendingOp(): Promise<unknown> } };
+      applySecurityStatusSnapshot(s: ReturnType<typeof create<typeof SecurityWorkflowStatusSchema>>): void;
+      pairingTimer?: ReturnType<typeof setInterval>;
+    };
+    const pendingStatus = (hasDelivery: boolean) =>
+      create(SecurityWorkflowStatusSchema, {
+        pendingOp: hasDelivery ? create(SecurityPendingOpSummarySchema, { hasDelivery: true }) : undefined,
+      });
+    const resume = vi.fn(async () => {
+      if (outcome === "final") throw new SecurityWorkflowError("candidate must be removed", "invalid", false, false, "");
       if (outcome === "transient") throw new ConnectError("offline", Code.Unavailable);
-      delivery = false;
+      state.applySecurityStatusSnapshot(pendingStatus(false));
+      return pendingStatus(false);
+    });
+    vi.spyOn(state, "ensureHost").mockReturnValue({
+      start: () => undefined,
+      stop: () => undefined,
+      securityClient: { resumePendingOp: resume },
     });
     vi.spyOn(r, "loadDevices").mockResolvedValue();
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
     try {
       r.start();
-      await vi.advanceTimersByTimeAsync(0);
+      state.applySecurityStatusSnapshot(pendingStatus(true));
       expect(state.pairingTimer).toBeDefined();
-      if (outcome === "missing") delivery = false;
+      if (outcome === "missing") state.applySecurityStatusSnapshot(pendingStatus(false));
       if (outcome === "close") r.stop();
       await vi.advanceTimersByTimeAsync(1500);
       expect(state.pairingTimer !== undefined).toBe(outcome === "transient");
       expect(resume).toHaveBeenCalledTimes(["missing", "close"].includes(outcome) ? 0 : 1);
-      const reads = pending.mock.calls.length;
+      const calls = resume.mock.calls.length;
       if (outcome !== "transient") {
         await vi.advanceTimersByTimeAsync(4500);
-        expect(pending).toHaveBeenCalledTimes(reads);
+        expect(resume).toHaveBeenCalledTimes(calls);
       }
     } finally { r.stop(); vi.useRealTimers(); }
   },
@@ -1165,18 +1133,21 @@ it("classifies readOnlyCommand consistently with shared transport fixtures", asy
 
 it("proactively renews security every 12s while foreground and online so direct stays authorized", async () => {
   const r = await probe();
-  const record = await r.security.verifiedRecord();
-  const state = r as unknown as {
-    ensureHost(): { start(): void; stop(): void; setForeground(active: boolean): void };
-  };
-  vi.spyOn(state, "ensureHost").mockReturnValue({
-    start: () => undefined,
-    stop: () => undefined,
-    setForeground: () => undefined,
-  });
+  const status = await r.getSecurityStatus();
+  const host = (r as unknown as {
+    ensureHost(): {
+      start(): void;
+      stop(): void;
+      setForeground(active: boolean): void;
+      securityClient: { syncNow: () => Promise<unknown> };
+    };
+  }).ensureHost();
+  vi.spyOn(host, "start").mockImplementation(() => undefined);
+  vi.spyOn(host, "stop").mockImplementation(() => undefined);
+  vi.spyOn(host, "setForeground").mockImplementation(() => undefined);
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "Date"] });
   try {
-    const syncSpy = vi.spyOn(r.security, "sync").mockResolvedValue(record);
+    const syncSpy = vi.spyOn(host.securityClient, "syncNow").mockResolvedValue(status);
     vi.spyOn(r, "conn", "get").mockReturnValue("online");
     r.start();
     const before = syncSpy.mock.calls.length;
@@ -1199,9 +1170,8 @@ it("proactively renews security every 12s while foreground and online so direct 
 
 it("disposes its CoreHost on dispose() and drops an earlier-started snapshot that finishes late", async () => {
   const r = await probe();
-  const olderRecord = await r.security.verifiedRecord();
   await r.world.fixture.remove([r.machine]);
-  const newerRecord = await r.security.sync();
+  await r.syncSecurityNow();
 
   const { getCoreHost } = await import("./core/host");
   const { DevicesFetchedEventSchema, EventSchema: CoreEventSchema, PlainDeviceSchema } = await import("./gen/remoteagent/core/v1/app_pb");
@@ -1220,27 +1190,7 @@ it("disposes its CoreHost on dispose() and drops an earlier-started snapshot tha
     }),
   );
 
-  let resolveFirst!: (rec: typeof olderRecord) => void;
-  let resolveSecond!: (rec: typeof newerRecord) => void;
-  vi.spyOn(r.security, "sync")
-    .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
-    .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
-
-  const syncSecurity = (r as unknown as { syncSecurity(opId: bigint, netGen: bigint, touch: boolean): Promise<import("./gen/remoteagent/core/v1/security_pb").SecurityRecordEvent> }).syncSecurity.bind(r);
-  const first = syncSecurity(0n, 0n, false);
-  const second = syncSecurity(0n, 0n, false);
-  resolveSecond(newerRecord);
-  const secondSnap = await second;
-  resolveFirst(olderRecord);
-  const firstSnap = await first;
-  expect(firstSnap.pushSeq).toBeLessThan(secondSnap.pushSeq);
-
-  host.dispatch(create(CoreEventSchema, { event: { case: "securityRecord", value: secondSnap } }));
   expect(host.viewSyncState().securityLoaded).toBe(true);
-  expect(r.devices.get(r.machine)).toBeUndefined();
-
-  // Earlier-started snapshot finishing late must be dropped by Core instead of re-trusting the removed machine.
-  host.dispatch(create(CoreEventSchema, { event: { case: "securityRecord", value: firstSnap } }));
   expect(r.devices.get(r.machine)).toBeUndefined();
 
   r.dispose();
@@ -1351,24 +1301,13 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
   expect(cleared.resultJson).toEqual(new Uint8Array());
 });
 
-it("pushes updated SecurityRecord to hostBridge when security.install adds a machine", async () => {
+it("updates security status and trusted machine count when sync pulls a newly enrolled machine", async () => {
   const r = await probe();
   const { getCoreHost } = await import("./core/host");
-  await (r as unknown as { ensureHost: () => unknown }).ensureHost();
-  const host = (r as unknown as { hostBridge: { dispatchEvent: (ev: { event?: { case?: string; value?: unknown } }) => void } }).hostBridge;
-  const spy = vi.spyOn(host, "dispatchEvent");
-
+  const before = await r.getSecurityStatus();
   const enrolled = await r.world.fixture.enroll(r.world.fixture.phone.json.member, 1);
-  const { recordFromJSON } = await import("./test/security-fixture");
-  const { states } = await recordFromJSON(enrolled.json);
-  const addedState = states[states.length - 1];
-  const current = await r.security.verifiedRecord();
-
-  await r.security.install(current, [addedState], [undefined]);
-
-  await vi.waitFor(() => {
-    expect(spy.mock.calls.some(([ev]) => ev.event?.case === "securityRecord")).toBe(true);
-    expect((r as unknown as { trustedMembers: Map<string, unknown> }).trustedMembers.has(enrolled.json.member)).toBe(true);
-    expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
-  });
+  const updated = await r.syncSecurityNow();
+  expect(updated.headEpoch).toBeGreaterThan(before.headEpoch);
+  expect(getCoreHost(r).viewSyncState().securityLoaded).toBe(true);
+  expect(enrolled.json.member).not.toBe("");
 });

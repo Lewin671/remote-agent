@@ -1,4 +1,4 @@
-import { loadLocalData, saveLocalData, removeLocalData, CorruptLocalContent } from "./device-security-store";
+import { loadLocalData, saveLocalData, removeLocalData, CorruptLocalContent } from "./core/security-store-v4";
 import { newRequestID } from "./crypto";
 import type { StoredAccount } from "./storage";
 import type { Tray } from "./attach";

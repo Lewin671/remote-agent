@@ -1,41 +1,33 @@
 import { create } from "@bufbuild/protobuf";
+import { Code } from "@connectrpc/connect";
+import { checkServer } from "../crypto";
+import { EventSchema as CoreEventSchema, type Event as CoreEvent } from "../gen/remoteagent/core/v1/app_pb";
 import {
   SecurityContentKeySchema,
   SecurityCryptoBatchDoneEventSchema,
   SecurityCryptoBatchResultSchema,
   SecurityKeyAgreedEventSchema,
+  SecurityKeyGeneratedEventSchema,
+  SecurityKeyKind,
+  SecurityKeyEncapsulatedEventSchema,
   SecurityKeySignedEventSchema,
   SecurityRecordEventSchema,
+  SecurityRpcMethod,
+  SecurityRpcResultEventSchema,
+  SecurityStorageResultEventSchema,
   type SecurityCryptoBatchEffect,
   type SecurityCryptoBatchResult,
   type SecurityKeyAgreeEffect,
+  type SecurityKeyDiscardEffect,
+  type SecurityKeyEncapsulateEffect,
+  type SecurityKeyGenerateEffect,
   type SecurityKeySignEffect,
   type SecurityRecordEvent,
+  type SecurityRpcEffect,
+  type SecurityStorageEffect,
 } from "../gen/remoteagent/core/v1/security_pb";
-import { EventSchema as CoreEventSchema, type Event as CoreEvent } from "../gen/remoteagent/core/v1/app_pb";
-import {
-  SecurityError,
-  ed25519SeedPublic,
-  ed25519SeedSign,
-  makeSecPin,
-  secCall,
-  secCallWith,
-  x25519DeriveWithPrivateKey,
-  x25519PrivateKeyFromSeed,
-  x25519SeedPublicKey,
-} from "./sec-call";
-
-export {
-  SecurityError,
-  ed25519SeedPublic,
-  ed25519SeedSign,
-  makeSecPin,
-  secCall,
-  secCallWith,
-  x25519DeriveWithPrivateKey,
-  x25519PrivateKeyFromSeed,
-  x25519SeedPublicKey,
-};
+import { relayFetch } from "../transport";
+import { SecurityStoreV4, securityStoreV4 } from "./security-store-v4";
 
 function hexKey(b: Uint8Array): string {
   return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -43,6 +35,85 @@ function hexKey(b: Uint8Array): string {
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+function rpcBase(server: string): string {
+  const origin = checkServer(server);
+  return import.meta.env?.VITE_SAME_ORIGIN_API && typeof location !== "undefined" ? location.origin : origin;
+}
+
+const RPC_PATHS: Partial<Record<SecurityRpcMethod, string>> = {
+  [SecurityRpcMethod.GET_SECURITY_STATES]: "/remoteagent.v1.ClientService/GetSecurityStates",
+  [SecurityRpcMethod.PUT_SECURITY_STATE]: "/remoteagent.v1.ClientService/PutSecurityState",
+  [SecurityRpcMethod.PIN_SECURITY_DOMAIN]: "/remoteagent.v1.ClientService/PinSecurityDomain",
+  [SecurityRpcMethod.CREATE_PAIRING]: "/remoteagent.v1.PairingService/CreatePairing",
+  [SecurityRpcMethod.PEEK_PAIRING]: "/remoteagent.v1.PairingService/PeekPairing",
+  [SecurityRpcMethod.JOIN_PAIRING]: "/remoteagent.v1.PairingService/JoinPairing",
+  [SecurityRpcMethod.REVEAL_PAIRING]: "/remoteagent.v1.PairingService/RevealPairing",
+  [SecurityRpcMethod.APPROVE_PAIRING]: "/remoteagent.v1.PairingService/ApprovePairing",
+  [SecurityRpcMethod.GET_PAIRING]: "/remoteagent.v1.PairingService/GetPairing",
+  [SecurityRpcMethod.CANCEL_PAIRING]: "/remoteagent.v1.PairingService/CancelPairing",
+  [SecurityRpcMethod.GET_RECOVERY_CHALLENGE]: "/remoteagent.v1.RecoveryService/GetRecoveryChallenge",
+  [SecurityRpcMethod.GET_RECOVERY_CONTEXT]: "/remoteagent.v1.RecoveryService/GetRecoveryContext",
+  [SecurityRpcMethod.SUBMIT_RECOVERY]: "/remoteagent.v1.RecoveryService/SubmitRecovery",
+  [SecurityRpcMethod.COMPLETE_RECOVERY]: "/remoteagent.v1.RecoveryService/CompleteRecovery",
+  [SecurityRpcMethod.DELETE_MACHINE_RECORDS]: "/remoteagent.v1.ClientService/DeleteMachineRecords",
+  [SecurityRpcMethod.DELETE_ACCOUNT]: "/remoteagent.v1.ClientService/DeleteAccount",
+  [SecurityRpcMethod.GET_CHALLENGE]: "/remoteagent.v1.AuthService/GetChallenge",
+  [SecurityRpcMethod.LOGIN]: "/remoteagent.v1.AuthService/Login",
+  [SecurityRpcMethod.GET_SIGNUP_CHALLENGE]: "/remoteagent.v1.AuthService/GetSignupChallenge",
+  [SecurityRpcMethod.REGISTER_DEVICE]: "/remoteagent.v1.AuthService/RegisterDevice",
+  [SecurityRpcMethod.PUT_DEVICE_META]: "/remoteagent.v1.ClientService/PutDeviceMeta",
+  [SecurityRpcMethod.LIST_DEVICES]: "/remoteagent.v1.ClientService/ListDevices",
+  [SecurityRpcMethod.LIST_MACHINES]: "/remoteagent.v1.ClientService/ListMachines",
+  [SecurityRpcMethod.GET_ACCOUNT_PREFS]: "/remoteagent.v1.ClientService/GetAccountPrefs",
+  [SecurityRpcMethod.PUT_ACCOUNT_PREFS]: "/remoteagent.v1.ClientService/PutAccountPrefs",
+};
+
+const CONNECT_NAME_TO_CODE: Record<string, Code> = {
+  canceled: Code.Canceled,
+  unknown: Code.Unknown,
+  invalid_argument: Code.InvalidArgument,
+  deadline_exceeded: Code.DeadlineExceeded,
+  not_found: Code.NotFound,
+  already_exists: Code.AlreadyExists,
+  permission_denied: Code.PermissionDenied,
+  resource_exhausted: Code.ResourceExhausted,
+  failed_precondition: Code.FailedPrecondition,
+  aborted: Code.Aborted,
+  out_of_range: Code.OutOfRange,
+  unimplemented: Code.Unimplemented,
+  internal: Code.Internal,
+  unavailable: Code.Unavailable,
+  data_loss: Code.DataLoss,
+  unauthenticated: Code.Unauthenticated,
+};
+
+function httpStatusToConnectCode(status: number): Code {
+  switch (status) {
+    case 400:
+      return Code.InvalidArgument;
+    case 401:
+      return Code.Unauthenticated;
+    case 403:
+      return Code.PermissionDenied;
+    case 404:
+      return Code.NotFound;
+    case 409:
+      return Code.Aborted;
+    case 412:
+      return Code.FailedPrecondition;
+    case 429:
+      return Code.ResourceExhausted;
+    case 499:
+      return Code.Canceled;
+    case 502:
+    case 503:
+    case 504:
+      return Code.Unavailable;
+    default:
+      return status >= 500 ? Code.Internal : Code.Unknown;
+  }
 }
 
 export function buildSecurityRecordEvent(params: {
@@ -88,23 +159,30 @@ export function buildSecurityRecordEvent(params: {
 }
 
 /**
- * Executes asynchronous non-extractable WebCrypto operations requested by clientcore/security:
- * Ed25519 leaf signing, X25519 DH agreement, and parallel WebCrypto batch verify / AES-GCM / SHA-256.
+ * Executes asynchronous non-extractable WebCrypto operations, v4 IndexedDB CAS storage,
+ * and unary Connect-RPC calls requested by clientcore/security.
  */
 export class WebSecurityExecutor {
   private readonly xPubKeys = new Map<string, Promise<CryptoKey>>();
   private readonly edPubKeys = new Map<string, Promise<CryptoKey>>();
   private readonly aesOpenKeys = new Map<string, Promise<CryptoKey>>();
   private readonly aesSealKeys = new Map<string, Promise<CryptoKey>>();
+  private readonly store: SecurityStoreV4;
+  private readonly fetchFn: typeof fetch;
   private closed = false;
 
   constructor(
     private readonly options: {
-      devicePrivate: () => CryptoKey | undefined;
-      xPrivate: () => CryptoKey | undefined;
+      store?: SecurityStoreV4;
+      fetch?: typeof fetch;
+      devicePrivate?: () => CryptoKey | undefined;
+      xPrivate?: () => CryptoKey | undefined;
       emit: (ev: CoreEvent) => void;
     },
-  ) {}
+  ) {
+    this.store = options.store ?? securityStoreV4;
+    this.fetchFn = options.fetch ?? relayFetch;
+  }
 
   close() {
     this.closed = true;
@@ -139,17 +217,30 @@ export class WebSecurityExecutor {
     return p;
   }
 
+  async keyGenerate(eff: SecurityKeyGenerateEffect): Promise<void> {
+    try {
+      const publicKey = await this.store.generateKey(eff.keyKind, eff.slot, eff.persist);
+      this.emit({
+        case: "securityKeyGenerated",
+        value: create(SecurityKeyGeneratedEventSchema, { opId: eff.opId, publicKey }),
+      });
+    } catch (err) {
+      this.emit({
+        case: "securityKeyGenerated",
+        value: create(SecurityKeyGeneratedEventSchema, { opId: eff.opId, error: errorMessage(err) }),
+      });
+    }
+  }
+
   async keySign(eff: SecurityKeySignEffect): Promise<void> {
     try {
-      const priv = this.options.devicePrivate();
-      if (!priv) {
-        this.emit({
-          case: "securityKeySigned",
-          value: create(SecurityKeySignedEventSchema, { opId: eff.opId, error: "missing device signing key" }),
-        });
-        return;
+      let sig: Uint8Array;
+      const override = !eff.slot && eff.keyKind === SecurityKeyKind.DEVICE_ED ? this.options.devicePrivate?.() : undefined;
+      if (override) {
+        sig = new Uint8Array(await crypto.subtle.sign("Ed25519", override, new Uint8Array(eff.message)));
+      } else {
+        sig = await this.store.signKey(eff.keyKind || SecurityKeyKind.DEVICE_ED, eff.slot, eff.message);
       }
-      const sig = new Uint8Array(await crypto.subtle.sign("Ed25519", priv, new Uint8Array(eff.message)));
       this.emit({
         case: "securityKeySigned",
         value: create(SecurityKeySignedEventSchema, { opId: eff.opId, signature: sig }),
@@ -164,16 +255,17 @@ export class WebSecurityExecutor {
 
   async keyAgree(eff: SecurityKeyAgreeEffect): Promise<void> {
     try {
-      const priv = this.options.xPrivate();
-      if (!priv || eff.peerPublic.byteLength !== 32) {
-        this.emit({
-          case: "securityKeyAgreed",
-          value: create(SecurityKeyAgreedEventSchema, { opId: eff.opId, error: "missing X25519 key or invalid peer public" }),
-        });
-        return;
+      let shared: Uint8Array;
+      const override = !eff.slot && (!eff.keyKind || eff.keyKind === SecurityKeyKind.DEVICE_X)
+        ? this.options.xPrivate?.()
+        : undefined;
+      if (override) {
+        if (eff.peerPublic.byteLength !== 32) throw new Error("invalid peer public");
+        const pub = await this.importCached(this.xPubKeys, eff.peerPublic, "X25519", []);
+        shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "X25519", public: pub }, override, 256));
+      } else {
+        shared = await this.store.agreeKey(eff.keyKind || SecurityKeyKind.DEVICE_X, eff.slot, eff.peerPublic);
       }
-      const pub = await this.importCached(this.xPubKeys, eff.peerPublic, "X25519", []);
-      const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "X25519", public: pub }, priv, 256));
       this.emit({
         case: "securityKeyAgreed",
         value: create(SecurityKeyAgreedEventSchema, { opId: eff.opId, shared }),
@@ -183,6 +275,121 @@ export class WebSecurityExecutor {
         case: "securityKeyAgreed",
         value: create(SecurityKeyAgreedEventSchema, { opId: eff.opId, error: errorMessage(err) }),
       });
+    }
+  }
+
+  async keyEncapsulate(eff: SecurityKeyEncapsulateEffect): Promise<void> {
+    try {
+      const pairs = await this.store.encapsulate(eff.recipients);
+      this.emit({
+        case: "securityKeyEncapsulated",
+        value: create(SecurityKeyEncapsulatedEventSchema, { opId: eff.opId, pairs }),
+      });
+    } catch (err) {
+      this.emit({
+        case: "securityKeyEncapsulated",
+        value: create(SecurityKeyEncapsulatedEventSchema, { opId: eff.opId, error: errorMessage(err) }),
+      });
+    }
+  }
+
+  async keyDiscard(eff: SecurityKeyDiscardEffect): Promise<void> {
+    await this.store.discardKey(eff).catch(() => undefined);
+  }
+
+  async storage(eff: SecurityStorageEffect): Promise<void> {
+    try {
+      const value = await this.store.executeStorage(eff);
+      this.emit({ case: "securityStorageResult", value });
+    } catch (err) {
+      this.emit({
+        case: "securityStorageResult",
+        value: create(SecurityStorageResultEventSchema, {
+          opId: eff.opId,
+          error: errorMessage(err),
+        }),
+      });
+    }
+  }
+
+  async rpc(eff: SecurityRpcEffect): Promise<void> {
+    const path = RPC_PATHS[eff.method];
+    if (!path) {
+      this.emit({
+        case: "securityRpcResult",
+        value: create(SecurityRpcResultEventSchema, {
+          opId: eff.opId,
+          connectCode: Code.InvalidArgument,
+          error: "unsupported security rpc method",
+        }),
+      });
+      return;
+    }
+    const timeoutMs = eff.method === SecurityRpcMethod.GET_SECURITY_STATES ? 5000 : 15000;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(new Error("timeout")), timeoutMs);
+    try {
+      const url = rpcBase(eff.server) + path;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/proto",
+        "Connect-Protocol-Version": "1",
+      };
+      if (eff.authToken) {
+        headers["Authorization"] = `Bearer ${eff.authToken}`;
+      }
+      const res = await this.fetchFn(url, {
+        method: "POST",
+        headers,
+        body: new Uint8Array(eff.requestBytes),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) {
+        let code = httpStatusToConnectCode(res.status);
+        let msg = `HTTP ${res.status}`;
+        try {
+          const text = await res.text();
+          if (text) {
+            const parsed = JSON.parse(text) as { code?: string; message?: string };
+            if (parsed.code && parsed.code in CONNECT_NAME_TO_CODE) {
+              code = CONNECT_NAME_TO_CODE[parsed.code];
+            }
+            if (parsed.message) msg = parsed.message;
+          }
+        } catch {
+          /* Keep fallback HTTP status code/message. */
+        }
+        this.emit({
+          case: "securityRpcResult",
+          value: create(SecurityRpcResultEventSchema, {
+            opId: eff.opId,
+            connectCode: code,
+            error: msg,
+          }),
+        });
+        return;
+      }
+      const responseBytes = new Uint8Array(await res.arrayBuffer());
+      this.emit({
+        case: "securityRpcResult",
+        value: create(SecurityRpcResultEventSchema, {
+          opId: eff.opId,
+          responseBytes,
+        }),
+      });
+    } catch (err) {
+      const msg = errorMessage(err);
+      const isTimeout = err instanceof Error && err.name === "AbortError";
+      this.emit({
+        case: "securityRpcResult",
+        value: create(SecurityRpcResultEventSchema, {
+          opId: eff.opId,
+          connectCode: isTimeout ? Code.DeadlineExceeded : Code.Unavailable,
+          error: isTimeout ? "connection timed out" : msg,
+          networkError: true,
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
     }
   }
 

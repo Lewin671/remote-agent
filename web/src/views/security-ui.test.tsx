@@ -1,3 +1,4 @@
+import { create } from "@bufbuild/protobuf";
 import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
@@ -12,7 +13,14 @@ import {
   SecurityPage,
 } from "./Security";
 import { Home } from "./Home";
-import * as operations from "../security-operation";
+import * as securityClient from "../core/security-client";
+import {
+  SecurityBootstrapKind,
+  SecurityExitAdviceSchema,
+  SecurityPendingOpSummarySchema,
+  SecurityWorkflowStatusSchema,
+  type SecurityWorkflowStatus,
+} from "../gen/remoteagent/core/v1/security_pb";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
 const remotes: DemoRemote[] = [];
@@ -43,7 +51,7 @@ function demo(q: string) {
 it("distinguishes verified removal from a refused login and uses stopped-transport reconciliation", async () => {
   const r = demo("role=member");
   const resume = vi.spyOn(r, "resumeSecurityOperation").mockResolvedValue();
-  vi.spyOn(r.authority, "pending").mockResolvedValue(undefined);
+  vi.spyOn(r, "getSecurityStatus").mockResolvedValue(create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY }));
   await mount(<RemovedScreen remote={r} />);
   expect(host.textContent).toContain("可能是设备被移除、服务重置或连接出了问题");
   r.removalVerified = true;
@@ -57,10 +65,20 @@ it("distinguishes verified removal from a refused login and uses stopped-transpo
 
 it("offers an explicit exit for a confirmed handoff backup whose offer was never signed", async () => {
   const r = demo("role=member");
-  const op = { ...operations.operation("offer", r.account.server, r.account.deviceId, new Uint8Array(32), {}), codeSaved: true };
-  vi.spyOn(r.authority, "pending").mockImplementation(async () => pending);
-  let pending: typeof op | undefined = op;
-  const discard = vi.spyOn(r.authority, "discardUnpublishedCode").mockImplementation(async () => { pending = undefined; });
+  let pending: SecurityWorkflowStatus["pendingOp"] = create(SecurityPendingOpSummarySchema, {
+    kind: "offer",
+    phase: "PREPARED",
+    codeSaved: true,
+    server: r.account.server,
+  });
+  vi.spyOn(r, "getSecurityStatus").mockImplementation(async () =>
+    create(SecurityWorkflowStatusSchema, {
+      bootstrap: SecurityBootstrapKind.READY,
+      isMember: true,
+      pendingOp: pending,
+    }),
+  );
+  const discard = vi.spyOn(r, "discardPendingOp").mockImplementation(async () => { pending = undefined; });
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
   await click(message("security.unfinished_security_operation"));
   await click(message("security.abandon_this_succession_preparation_security"));
@@ -76,7 +94,7 @@ it("ignores a security read paused by hiding the page and refreshes when it beco
   vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
   const r = demo("role=authority");
   let reject!: (e: Error) => void;
-  const read = vi.spyOn(r.security, "verifiedRecord").mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  const read = vi.spyOn(r, "getSecurityStatus").mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
   await act(async () => {
     hidden = true;
@@ -98,7 +116,7 @@ it("clears a passive read error after a successful foreground refresh", async ()
   let hidden = false;
   vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
   const r = demo("role=member");
-  vi.spyOn(r.security, "verifiedRecord").mockRejectedValueOnce(new Error("injected read failure"));
+  vi.spyOn(r, "getSecurityStatus").mockRejectedValueOnce(new Error("injected read failure"));
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
   expect(host.textContent).toContain("injected read failure");
   await act(async () => { hidden = true; document.dispatchEvent(new Event("visibilitychange")); });
@@ -157,8 +175,8 @@ it.each(["authority", "member"])(
     await mount(<SecurityPage remote={r} onBack={() => {}} />);
     const publish = vi
       .spyOn(
-        r.authority,
-        role === "authority" ? "publishRecovery" : "offerHandoff",
+        r,
+        role === "authority" ? "confirmRecoveryRotation" : "publishHandoffOffer",
       )
       .mockRejectedValue(new Error("storage failed"));
     await click(role === "authority" ? message("security.recovery_code") : message("security.take_over_management"));
@@ -222,11 +240,16 @@ it("requires the candidate to confirm SAS before authority approval and waits fo
   expect(host.textContent).toContain(message("security.device_joined"));
 });
 it("gives authority-specific exit advice before erasing keys", async () => {
-  vi.spyOn(operations, "authorityExitAdvice").mockResolvedValue({
-    authority: true,
-    unresolved: false,
-    message:
-      "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
+  vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
+    client: {
+      bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY, isAuthority: true })),
+      checkExitAdvice: vi.fn(async () => create(SecurityExitAdviceSchema, {
+        authority: true,
+        unresolved: false,
+        message: "security.this_browser_is_the_only_managing_client_transfer_management",
+      })),
+    } as unknown as securityClient.SecurityClient,
+    dispose: vi.fn(),
   });
   await mount(<LeaveAlert onCancel={() => {}} />);
   expect(host.textContent).toContain("建议先交接");
@@ -255,10 +278,21 @@ it.each(["authority", "member", "machine"])("keeps the security overview ordered
 });
 it("lets a confirmed uncertain handoff offer be abandoned with a public-key warning", async () => {
   const r = demo("role=member");
-  const pending = operations.operation("offer", r.account.server, r.account.deviceId, new Uint8Array(32), {});
-  pending.codeSaved = true; pending.signed = new Uint8Array([1]);
-  vi.spyOn(r.authority, "pending").mockResolvedValue(pending);
-  const discard = vi.spyOn(r.authority, "discardUnpublishedCode").mockResolvedValue();
+  const pending = create(SecurityPendingOpSummarySchema, {
+    kind: "offer",
+    phase: "PREPARED",
+    codeSaved: true,
+    signed: true,
+    server: r.account.server,
+  });
+  vi.spyOn(r, "getSecurityStatus").mockResolvedValue(
+    create(SecurityWorkflowStatusSchema, {
+      bootstrap: SecurityBootstrapKind.READY,
+      isMember: true,
+      pendingOp: pending,
+    }),
+  );
+  const discard = vi.spyOn(r, "discardPendingOp").mockResolvedValue();
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
   await click(message("security.unfinished_security_operation"));
   await click(message("security.abandon_this_succession_preparation_security"));

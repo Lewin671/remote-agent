@@ -46,7 +46,8 @@ async function probe() {
 it("does not open a stale main socket when stopped during login", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  vi.spyOn(r.security, "sync").mockResolvedValue(await r.security.verifiedRecord());
+  const status = await r.getSecurityStatus();
+  vi.spyOn((r as unknown as { ensureHost(): { securityClient: { syncNow: () => Promise<unknown> } } }).ensureHost().securityClient, "syncNow").mockResolvedValue(status);
   let finish!: () => void;
   vi.spyOn(r as any, "login").mockImplementation(
     () =>
@@ -355,12 +356,12 @@ it("starts from what the browser kept: the token, and the last listing", async (
     deviceId: r.account.deviceId,
     server: "https://ra.example.com",
   };
-  vi.spyOn(await import("./device-security-store"), "loadLoginToken").mockImplementation(
+  vi.spyOn(await import("./core/security-store-v4"), "loadLoginToken").mockImplementation(
     async (_server, member) => member === r.account.deviceId
       ? { token: "kept-token", expiresMs: Date.now() + 10 * 86_400_000 }
       : undefined,
   );
-  const clearToken = vi.spyOn(await import("./device-security-store"), "clearLoginToken").mockResolvedValue(undefined);
+  const clearToken = vi.spyOn(await import("./core/security-store-v4"), "clearLoginToken").mockResolvedValue(undefined);
   const kept: Record<string, unknown> = {
     token: {
       ...mine,

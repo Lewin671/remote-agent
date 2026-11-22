@@ -121,7 +121,14 @@ import {
   DemoSecuritySchema,
   DemoSessionSchema,
   SeedDemoWorldEventSchema,
-  type SecurityRecordEvent,
+  SecurityBootstrapKind,
+  SecurityHandoffCandidateSchema,
+  SecurityPairingInfoSchema,
+  SecurityPendingOpSummarySchema,
+  SecurityWorkflowStatusSchema,
+  type SecurityHandoffCandidate,
+  type SecurityPairingInfo,
+  type SecurityWorkflowStatus,
 } from "../gen/remoteagent/core/v1/security_pb";
 import { DeviceKind, SessionCursorSchema } from "../gen/remoteagent/v1/relay_pb";
 import {
@@ -1619,8 +1626,8 @@ export class DemoRemote extends Remote {
       archiveMachineIds: [...this.demoMachines.keys()],
       headEpoch: 1n,
       leaseEndMs: this.opts.get("cliswitches") === "lease" ? BigInt(Date.now() - 60_000) : 0n,
-      recoveryPending: this.security.recoveryPending,
-      recoveryReadyMs: this.security.recoveryReadyMs,
+      recoveryPending: this.demoRecoveryPending,
+      recoveryReadyMs: this.demoRecoveryReadyMs,
     });
   }
   private demoBoot(opId: bigint) {
@@ -1714,8 +1721,6 @@ export class DemoRemote extends Remote {
     return Promise.resolve(this.demoToken(opId));
   }
   override securityConfig() { return undefined; }
-  override readCachedSecurityRecord(): Promise<SecurityRecordEvent | undefined> { return Promise.resolve(undefined); }
-  override syncSecurity(): Promise<SecurityRecordEvent> { return new Promise(() => {}); }
   override openStreamLeg(legId: bigint, _token: string, callbacks: StreamLegCallbacks) {
     this.demoStream = { legId, callbacks, ready: false };
     const conn = this.opts.get("conn");
@@ -1881,10 +1886,8 @@ export class DemoRemote extends Remote {
     const r = new DemoRemote(
       {
         server: "https://ra.example.com",
-        root: {} as CryptoKey,
-        rootRaw: new Uint8Array(32),
-        devicePrivate: {} as CryptoKey,
         deviceId: ME,
+        accountId: ME,
       },
     );
     r.opts = q;
@@ -2282,42 +2285,108 @@ export class DemoRemote extends Remote {
   private demoSwitchConflictFired = false;
 
   private removedDemoDevices = new Set<string>();
+  private demoRecoveryPending = false;
+  private demoRecoveryReadyMs = 0n;
+  private demoRecoveryStatusStale = false;
+  private demoLeaseEndMs = 0n;
+  private demoHasProfile = true;
+  private demoNeedsRotation = false;
+  private demoPendingOp?: ReturnType<typeof create<typeof SecurityPendingOpSummarySchema>>;
+  private demoPairings = new Map<string, { code: string; expiresMs: bigint; url: string; approved: boolean }>();
+
+  override get recoveryPending() { return this.demoRecoveryPending; }
+  override get recoveryReadyMs() { return this.demoRecoveryReadyMs; }
+  override get recoveryStatusStale() { return this.demoRecoveryStatusStale; }
+  override get leaseEndMs(): bigint | null | undefined { return this.demoLeaseEndMs > 0n ? this.demoLeaseEndMs : null; }
+  override get needsRecoveryCodeRotation() { return this.demoNeedsRotation; }
+  override get hasAccountPublicProfile() { return this.demoHasProfile; }
+  override get securityStatus(): SecurityWorkflowStatus {
+    return create(SecurityWorkflowStatusSchema, {
+      bootstrap: SecurityBootstrapKind.READY,
+      isMember: !this.removedDemoDevices.has(ME),
+      isAuthority: this.authorityDeviceId === ME,
+      removed: this.removedDemoDevices.has(ME),
+      server: this.account.server,
+      deviceId: this.account.deviceId,
+      accountId: this.account.accountId ?? ME,
+      headEpoch: 1n,
+      leaseEndMs: this.demoLeaseEndMs,
+      leaseValid: this.demoLeaseEndMs > BigInt(Date.now()),
+      recoveryPending: this.demoRecoveryPending,
+      recoveryReadyMs: this.demoRecoveryReadyMs,
+      recoveryStatusStale: this.demoRecoveryStatusStale,
+      needsRecoveryCodeRotation: this.demoNeedsRotation,
+      hasAccountPublicProfile: this.demoHasProfile,
+      hasHandoffOffer: (this.metas.get(ME)?.meta.handoffRecoveryEd?.length ?? 0) === 32,
+      pendingOp: this.demoPendingOp,
+    });
+  }
+
+  private async demoWork() {
+    await this.pause(200);
+    if (this.opts.get("security") === "fail") throw new Error("没能保存安全操作，请重试");
+  }
+
+  override async getSecurityStatus() { return this.securityStatus; }
+  override async renewLeaseNow() { await this.demoWork(); this.demoLeaseEndMs = BigInt(Date.now() + 72 * 60 * min); this.changed(); return this.securityStatus; }
+  override async prepareRecoveryRotation() { await this.demoWork(); return { recoveryCode: "RA3 DEMO-ONLY-OFFLINE-BACKUP EXAMPLE-NOT-A-RECOVERY-CODE" }; }
+  override async confirmRecoveryRotation() { await this.demoWork(); this.demoPendingOp = undefined; this.demoRecoveryPending = false; this.changed(); }
+  override async prepareHandoffCode(_storagePersisted: boolean) { await this.demoWork(); return { recoveryCode: "RA3 DEMO-ONLY-OFFLINE-BACKUP EXAMPLE-NOT-A-RECOVERY-CODE" }; }
+  override async publishHandoffOffer() { await this.demoWork(); this.demoPendingOp = undefined; this.metas.get(ME)!.meta.handoffRecoveryEd = new Uint8Array(32); await this.loadDevices(); }
+  override async discardPendingOp() { await this.demoWork(); this.demoPendingOp = undefined; this.changed(); }
+  override async resumeSecurityOperation() { await this.demoWork(); }
+  override async completeAccountPublicProfile(_code: string) { await this.demoWork(); this.demoHasProfile = true; this.changed(); }
+  override async handoffCandidates(): Promise<SecurityHandoffCandidate[]> {
+    return [create(SecurityHandoffCandidateSchema, { deviceId: ANDROID, recoveryEd: new Uint8Array(32) })];
+  }
+  override async handoffAuthority(id: string) { await this.demoWork(); this.authorityDeviceId = id; this.removedDemoDevices.add(ME); await this.loadDevices(); }
+  override async removeDevice(id: string) { await this.demoWork(); this.removedDemoDevices.add(id); await this.loadDevices(); }
+  override async deleteMachineRecords(id: string) { await this.demoWork(); this.demoMachines.delete(id); this.syncDemoToCore(); }
+  override async startPairing(): Promise<SecurityPairingInfo> {
+    await this.demoWork();
+    const id = "demo-pair-1";
+    const info = { code: "12345678", expiresMs: BigInt(Date.now() + 5 * min), url: "https://app.example.com/#/pair?code=12345678", approved: false };
+    this.demoPairings.set(id, info);
+    return create(SecurityPairingInfoSchema, { pairingId: id, code: info.code, url: info.url, expiresMs: info.expiresMs });
+  }
+  override async pollPairing(pairingId: string): Promise<SecurityPairingInfo> {
+    const info = this.demoPairings.get(pairingId);
+    const compare = this.opts.get("pair") === "compare";
+    return create(SecurityPairingInfoSchema, {
+      pairingId,
+      code: info?.code ?? "12345678",
+      url: info?.url ?? "https://app.example.com/#/pair?code=12345678",
+      expiresMs: info?.expiresMs ?? BigInt(Date.now() + 5 * min),
+      joined: compare,
+      approved: !!info?.approved,
+      delivered: !!info?.approved,
+      joinerKind: DeviceKind.CLIENT,
+      sasEmoji: compare ? ["🌲", "🍋", "🚲", "🐳"] : [],
+    });
+  }
+  override async approvePairing(pairingId: string, sasConfirmed: boolean): Promise<SecurityPairingInfo> {
+    if (!sasConfirmed) throw new Error("请先确认图案");
+    await this.demoWork();
+    const info = this.demoPairings.get(pairingId);
+    if (info) info.approved = true;
+    return this.pollPairing(pairingId);
+  }
+  override async finishPairingDelivery(pairingId: string): Promise<SecurityPairingInfo> {
+    await this.demoWork();
+    return this.pollPairing(pairingId);
+  }
+  override async cancelPairing(pairingId: string): Promise<void> {
+    this.demoPairings.delete(pairingId);
+  }
+
   private seedAuthority() {
     this.authorityDeviceId = this.opts.get("role") === "authority" ? ME : ANDROID;
-    this.security.recoveryPending = this.opts.get("recovery") === "pending";
-    this.security.recoveryReadyMs = BigInt(Date.now() + 47 * 60 * min);
-    this.security.recoveryStatusStale = false;
-    const hash = new Uint8Array(32);
-    const record = { stateHash: hash, lease: { head: hash, notAfter: BigInt(Date.now() + 48 * 60 * min) } };
-    this.security.verifiedRecord = async () => record as Awaited<ReturnType<typeof this.security.verifiedRecord>>;
-    let pending: import("../security-operation").SecurityOperation | undefined;
-    const work = async () => { await this.pause(200); if (this.opts.get("security") === "fail") throw new Error("没能保存安全操作，请重试"); };
-    this.authority.pending = async () => pending;
-    this.authority.hasAccountPublicProfile = async () => this.opts.get("public") !== "missing";
-    this.authority.needsRecoveryCodeRotation = async () => this.opts.has("rotation");
-    this.authority.renewLeaseNow = async () => { await work(); record.lease.notAfter = BigInt(Date.now() + 72 * 60 * min); };
-    const prepare = async () => {
-      await work();
-      return { code: "RA3 DEMO-ONLY-OFFLINE-BACKUP EXAMPLE-NOT-A-RECOVERY-CODE", storagePersisted: true };
-    };
-    this.authority.prepareRecovery = () => prepare();
-    this.authority.prepareHandoffCode = () => prepare();
-    this.authority.publishRecovery = async () => { await work(); pending = undefined; this.security.recoveryPending = false; this.changed(); };
-    this.authority.offerHandoff = async () => { await work(); pending = undefined; this.metas.get(ME)!.meta.handoffRecoveryEd = new Uint8Array(32); await this.loadDevices(); };
-    this.authority.discardUnpublishedCode = async () => { await work(); pending = undefined; };
-    this.authority.resumeSecurityOperation = async () => { await work(); };
-    this.handoffCandidates = async () => [{ id: ANDROID, recoveryEd: hash }];
-    this.handoffAuthority = async (id) => { await work(); this.authorityDeviceId = id; this.removedDemoDevices.add(ME); await this.loadDevices(); };
-    this.removeDevice = async id => { await work(); this.removedDemoDevices.add(id); await this.loadDevices(); };
-    this.deleteMachineRecords = async id => { await work(); this.demoMachines.delete(id); this.syncDemoToCore(); };
-    Object.defineProperty(this, "startPairing", { configurable: true, value: async (_web: string, _replaces: string) => {
-      await work(); let compared = false;
-      return { code: "12345678", expires: BigInt(Date.now() + 5 * min), url: "https://app.example.com/#/pair?code=12345678",
-        joined: async () => this.opts.get("pair") === "compare" ? { emoji: ["🌲", "🍋", "🚲", "🐳"], kind: DeviceKind.CLIENT } : undefined,
-        approve: async (confirmed: boolean) => { if (!confirmed) throw new Error("请先确认图案"); await work(); compared = true; },
-        finishPairingOperation: async () => { if (compared) await work(); }, cancel: async () => {},
-      } as unknown as import("../authority-pairing").AuthorityPairing;
-    } });
+    this.demoRecoveryPending = this.opts.get("recovery") === "pending";
+    this.demoRecoveryReadyMs = BigInt(Date.now() + 47 * 60 * min);
+    this.demoRecoveryStatusStale = false;
+    this.demoLeaseEndMs = BigInt(Date.now() + 48 * 60 * min);
+    this.demoHasProfile = this.opts.get("public") !== "missing";
+    this.demoNeedsRotation = this.opts.has("rotation");
     if (this.opts.has("archive")) this.removedDemoDevices.add("mini");
   }
 

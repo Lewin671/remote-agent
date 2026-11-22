@@ -2,52 +2,31 @@ import { inject } from "vitest";
 /// <reference types="node" />
 // Actual Go protocol and state chain for synthetic Web SDK integration tests.
 // This module is imported only by tests, never by the application.
-import {
-  spawn,
-  type ChildProcessWithoutNullStreams,
-} from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { fromBinary, toBinary, create } from "@bufbuild/protobuf";
-import {
-  EnvelopeSchema,
-  HeaderSchema,
-  type Header,
-  type Envelope,
-} from "../gen/remoteagent/v1/envelope_pb";
-import {
-  concat,
-  deviceID,
-  importRoot,
-  accountKey,
-} from "../crypto";
-import {
-  AuthoritySecurity,
-  type FetchStates,
-  type SecurityStorage,
-} from "../authority-security";
-import { buildRecord, type SecurityRecord } from "../device-security-store";
-import {
-  equal,
-  parseLease,
-  parseRecoveryStatement,
-  parseState,
-  recoveryBytes,
-  stateBytes,
-  SecurityError,
-  type RecoveryStatement,
-  type LeaseCertificate,
-  verifyLease,
-  type SecurityState,
-} from "../device-security";
+import { IDBFactory } from "fake-indexeddb";
+import { SecurityStoreV4 } from "../core/security-store-v4";
+import { concat, hex } from "../crypto";
+import { EnvelopeSchema, HeaderSchema, type Envelope, type Header } from "../gen/remoteagent/v1/envelope_pb";
 import type { StoredAccount } from "../storage";
+import {
+  encodeV4Record,
+  parseTestLease,
+  parseTestState,
+  seedV4Database,
+  type TestLease,
+  type TestState,
+} from "./stored-security-fixture";
 
 type B = Uint8Array<ArrayBuffer>;
 type Reply = Record<string, unknown>;
 const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
 const raw = (r: Reply, key: string): B =>
   new Uint8Array(Buffer.from((r[key] as string | undefined) ?? "", "base64"));
-interface FixtureRecordJSON {
+
+export interface FixtureRecordJSON {
   version: number;
-  lease:string;
+  lease: string;
   account: string;
   domain: string;
   genesis: string;
@@ -56,72 +35,114 @@ interface FixtureRecordJSON {
   states: string[];
   proofs: (string | null)[];
 }
-async function chainFromJSON(r: FixtureRecordJSON): Promise<{
-  states: SecurityState[];
-  proofs: (RecoveryStatement | undefined)[];
-}> {
-  if (
-    r.version !== 3 ||
-    !r.states?.length ||
-    r.states.length !== r.proofs.length
-  )
-    throw new Error("bad synthetic v3 record");
-  const states: SecurityState[] = [];
-  const proofs: (RecoveryStatement | undefined)[] = [];
-  for (let i = 0; i < r.states.length; i++) {
-    states.push(await parseState(raw64(r.states[i])));
-    const proof = r.proofs[i];
-    proofs.push(proof ? await parseRecoveryStatement(raw64(proof)) : undefined);
-  }
-  return { states, proofs };
-}
+
 function raw64(s: string): B {
   return new Uint8Array(Buffer.from(s, "base64"));
 }
-async function xKey(seed: B): Promise<CryptoKey> {
+
+export async function xKey(seed: B): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     "pkcs8",
-    concat(
-      new Uint8Array(Buffer.from("302e020100300506032b656e04220420", "hex")),
-      seed,
-    ),
+    concat(new Uint8Array(Buffer.from("302e020100300506032b656e04220420", "hex")), seed),
     "X25519",
     false,
     ["deriveBits"],
   );
 }
-async function edKey(seed: B): Promise<CryptoKey> {
+
+export async function edKey(seed: B): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     "pkcs8",
-    concat(
-      new Uint8Array(Buffer.from("302e020100300506032b657004220420", "hex")),
-      seed,
-    ),
+    concat(new Uint8Array(Buffer.from("302e020100300506032b657004220420", "hex")), seed),
     "Ed25519",
     false,
     ["sign"],
   );
 }
-export async function recordFromJSON(r: FixtureRecordJSON): Promise<{
-  record: SecurityRecord;
-  states: SecurityState[];
-  proofs: (RecoveryStatement | undefined)[];
-}> {
-  const { states, proofs } = await chainFromJSON(r);
+
+export interface DecodedFixtureRecord {
+  recordBlob: B;
+  pin: { account: string; domain: B; genesis: B };
+  memberID: string;
+  states: TestState[];
+  rawStates: B[];
+  rawProofs: (B | undefined)[];
+  lease: TestLease;
+  head: TestState;
+  xPrivate: CryptoKey;
+  edPublic: B;
+  xPublic: B;
+  server: string;
+}
+
+export async function recordFromJSON(
+  r: FixtureRecordJSON,
+  server = "https://ra.example.com",
+): Promise<DecodedFixtureRecord> {
+  if (r.version !== 3 || !r.states?.length || r.states.length !== r.proofs.length) {
+    throw new Error("bad synthetic v3 record");
+  }
+  const rawStates = r.states.map(raw64);
+  const rawProofs = r.proofs.map((p) => (p ? raw64(p) : undefined));
+  const states = rawStates.map(parseTestState);
+  const head = states.at(-1)!;
+  const self = head.core.members.find((m) => m.id === r.member);
+  if (!self) throw new Error(`member ${r.member} not in head state`);
+  const lease = parseTestLease(raw64(r.lease));
   const pin = {
     account: r.account,
     domain: raw64(r.domain),
     genesis: raw64(r.genesis),
   };
-  const record = await buildRecord(
+  const xPrivate = await xKey(raw64(r.x));
+  const recordBlob = encodeV4Record({
     pin,
+    memberID: r.member,
+    member: true,
+    server,
+    rawStates,
+    rawProofs,
+    rawLease: lease.raw,
+    floorMs: lease.issuedAt,
+  });
+  return {
+    recordBlob,
+    pin,
+    memberID: r.member,
     states,
-    proofs,
-    r.member,
-    await xKey(raw64(r.x)),
-  );
-  record.lease=parseLease(raw64(r.lease));
-  return { record, states, proofs };
+    rawStates,
+    rawProofs,
+    lease,
+    head,
+    xPrivate,
+    edPublic: self.edPublic,
+    xPublic: self.xPublic,
+    server,
+  };
+}
+
+export async function createTestSecurityStore(
+  r: FixtureRecordJSON,
+  edSeed: B,
+  server = "https://ra.example.com",
+): Promise<{
+  store: SecurityStoreV4;
+  idb: IDBFactory;
+  record: DecodedFixtureRecord;
+  edPrivate: CryptoKey;
+}> {
+  const record = await recordFromJSON(r, server);
+  const edPrivate = await edKey(edSeed);
+  const idb = new IDBFactory();
+  await seedV4Database(idb, {
+    recordBlob: record.recordBlob,
+    edPrivate,
+    xPrivate: record.xPrivate,
+    edPublic: record.edPublic,
+    xPublic: record.xPublic,
+  });
+  const store = new SecurityStoreV4(() => idb);
+  return { store, idb, record, edPrivate };
 }
 
 export class GoSecurityFixture {
@@ -134,7 +155,7 @@ export class GoSecurityFixture {
   machine!: string;
   machineRecord!: { json: FixtureRecordJSON };
   rootRaw!: B;
-  root!: CryptoKey;
+
   private constructor() {
     this.process = spawn(inject("securityFixtureBinary"), [], { stdio: "pipe" });
     this.process.stdout.setEncoding("utf8");
@@ -159,22 +180,23 @@ export class GoSecurityFixture {
       this.waiting = undefined;
     });
   }
+
   call(op: string, fields: Reply = {}): Promise<Reply> {
     const reply = this.serial.then(
       () =>
         new Promise<Reply>((resolve, reject) => {
           this.waiting = { resolve, reject };
-          this.process.stdin.write(
-            JSON.stringify({ Op: op, ...fields }) + "\n",
-          );
+          this.process.stdin.write(JSON.stringify({ Op: op, ...fields }) + "\n");
         }),
     );
     this.serial = reply.catch(() => undefined);
     return reply;
   }
+
   close(): Promise<void> {
     return (this.closing ??= this.finishClose());
   }
+
   private async finishClose() {
     await this.serial;
     if (this.process.exitCode !== null) return;
@@ -187,6 +209,7 @@ export class GoSecurityFixture {
       this.process.stdin.end();
     });
   }
+
   async seal(
     member: string,
     header: Omit<Partial<Header>, "$typeName">,
@@ -201,6 +224,7 @@ export class GoSecurityFixture {
     });
     return fromBinary(EnvelopeSchema, raw(r, "Envelope"));
   }
+
   async open(member: string, envelope: Envelope, seed?: B) {
     const r = await this.call("open", {
       Member: member,
@@ -212,49 +236,47 @@ export class GoSecurityFixture {
       plaintext: raw(r, "Plain"),
     };
   }
-  async recover(
-    seed = crypto.getRandomValues(new Uint8Array(32)),
-  ): Promise<FixtureRecordJSON> {
+
+  async recover(seed = crypto.getRandomValues(new Uint8Array(32))): Promise<FixtureRecordJSON> {
     const reply = await this.call("recover", { Seed: b64(seed) });
     this.phone = { json: reply.Record as FixtureRecordJSON };
     return this.phone.json;
   }
+
   async record(member: string): Promise<FixtureRecordJSON> {
-    return (await this.call("record", { Member: member }))
-      .Record as FixtureRecordJSON;
+    return (await this.call("record", { Member: member })).Record as FixtureRecordJSON;
   }
-  async chain(member: string): Promise<{
-    states: SecurityState[];
-    proofs: (RecoveryStatement | undefined)[];
-  }> {
-    return chainFromJSON(await this.record(member));
+
+  async chain(member: string): Promise<{ states: TestState[]; rawStates: B[]; rawProofs: (B | undefined)[] }> {
+    const json = await this.record(member);
+    const rawStates = json.states.map(raw64);
+    const rawProofs = json.proofs.map((p) => (p ? raw64(p) : undefined));
+    return { states: rawStates.map(parseTestState), rawStates, rawProofs };
   }
-  fetcher(member: string): FetchStates {
-    return async (after: bigint, limit: number) => {
-      const json=await this.record(member);
-      const { states, proofs } = await chainFromJSON(json);
-      const out: { state: Uint8Array; recovery: Uint8Array }[] = [];
-      for (let i = 0; i < states.length && out.length < limit; i++) {
-        if (states[i].core.epoch <= after) continue;
-        out.push({
-          state: await stateBytes(states[i]),
-          recovery: proofs[i]
-            ? await recoveryBytes(proofs[i]!)
-            : new Uint8Array(),
-        });
-      }
-      return {
-        states: out,
-        headEpoch: states[states.length - 1].core.epoch,
-        lease: raw64(json.lease),
-      };
+
+  async statesResponse(member: string, after: bigint, limit: number) {
+    const json = await this.record(member);
+    const rawStates = json.states.map(raw64);
+    const rawProofs = json.proofs.map((p) => (p ? raw64(p) : undefined));
+    const states = rawStates.map(parseTestState);
+    const out: { state: Uint8Array; recovery: Uint8Array }[] = [];
+    for (let i = 0; i < states.length && out.length < limit; i++) {
+      if (states[i].core.epoch <= after) continue;
+      out.push({
+        state: rawStates[i],
+        recovery: rawProofs[i] ?? new Uint8Array(),
+      });
+    }
+    return {
+      states: out,
+      headEpoch: states[states.length - 1].core.epoch,
+      lease: raw64(json.lease),
+      recoveryPending: false,
+      recoveryReadyMs: 0n,
     };
   }
-  async enroll(
-    approver: string,
-    kind = 2,
-    seed: B = crypto.getRandomValues(new Uint8Array(32)),
-  ) {
+
+  async enroll(approver: string, kind = 2, seed: B = crypto.getRandomValues(new Uint8Array(32))) {
     const reply = await this.call("enroll", {
       Approver: approver,
       Pair: crypto.randomUUID(),
@@ -263,71 +285,39 @@ export class GoSecurityFixture {
     });
     return {
       json: reply.Record as FixtureRecordJSON,
+      seed,
       signingKey: await edKey(seed),
     };
   }
+
   /** Removes members as the synthetic authority and returns the new state. */
   async remove(targets: string[]): Promise<B> {
     const reply = await this.call("remove", { Targets: targets });
     return raw(reply, "State");
   }
-  /** The fixture's chain and record for a still-known member. */
-  async recordAndChain(member: string) {
-    return recordFromJSON(await this.record(member));
-  }
+
   static async create(machineSeed?: B) {
     const f = new GoSecurityFixture();
     const rootRaw = crypto.getRandomValues(new Uint8Array(32));
-    const root = await importRoot(rootRaw);
-    const account = await accountKey(root);
+    const accountDigest = new Uint8Array(await crypto.subtle.digest("SHA-256", rootRaw));
+    const accountId = hex(accountDigest).slice(0, 32);
     const seed = machineSeed ?? crypto.getRandomValues(new Uint8Array(32));
     const result = await f.call("init", {
-      Account: await deviceID(new Uint8Array(account.publicKey)),
+      Account: accountId,
       Seed: b64(seed),
     });
     f.phone = { json: result.Record as FixtureRecordJSON };
-    // The first device is the phone (a Client). Tests that need a real
-    // Machine enroll one; the phone stays the authority.
     const machine = await f.enroll(f.phone.json.member, 1);
     f.machine = machine.json.member;
     f.machineRecord = { json: machine.json };
     f.rootRaw = rootRaw;
-    f.root = root;
     return {
       fixture: f,
       machine: f.machine,
       phone: f.phone,
       rootRaw,
-      root,
-
       machineRecord: f.machineRecord,
     };
-  }
-}
-
-/** Atomic in-memory state for protocol tests. Production uses strict IndexedDB. */
-export class MemorySecurityStorage implements SecurityStorage {
-  private record: SecurityRecord;
-  constructor(record: SecurityRecord) {
-    this.record = record;
-  }
-  async loadSecurity() {
-    return this.record;
-  }
-  async installSecurity(
-    expected: SecurityRecord,
-    states: SecurityState[],
-    proofs: (RecoveryStatement | undefined)[],
-    lease?:LeaseCertificate,
-  ) {
-    if (!equal(expected.stateHash, this.record.stateHash))
-      throw new SecurityError("stale");
-    const { extendRecord } = await import("../device-security-store");
-    this.record = { ...await extendRecord(this.record, states, proofs) };
-    if(lease){await verifyLease(lease,this.record.states[this.record.states.length-1]);this.record.lease=lease;}
-  }
-  async touchSecurity(now: bigint) {
-    if (now > this.record.floor) this.record = { ...this.record, floor: now };
   }
 }
 
@@ -336,19 +326,15 @@ export async function webMember(
   seed?: B,
 ) {
   const client = await f.fixture.enroll(f.machine, 2, seed);
-  const { record } = await recordFromJSON(client.json);
-  const storage = new MemorySecurityStorage(record);
+  const { store, idb, record, edPrivate } = await createTestSecurityStore(
+    client.json,
+    client.seed,
+    "https://ra.example.com",
+  );
   const account: StoredAccount = {
     server: "https://ra.example.com",
     deviceId: record.memberID,
-    devicePrivate: client.signingKey,
+    accountId: record.pin.account,
   };
-  const sdk = new AuthoritySecurity(
-    account.deviceId,
-    account.devicePrivate,
-    f.fixture.fetcher(record.memberID),
-    () => true,
-    storage,
-  );
-  return { account, storage, sdk, record, client };
+  return { account, store, idb, record, client, edPrivate };
 }

@@ -8,9 +8,8 @@ import { getCoreHost } from "./core/host";
 import { DemoRemote } from "./dev/demo";
 import { patchSyncState } from "./test/remote-fixture";
 import { Remote } from "./remote";
-import * as storage from "./storage";
-import * as authoritySetup from "./authority-startup";
-import * as remoteModule from "./remote";
+import * as securityClient from "./core/security-client";
+import { SecurityBootstrapKind, SecurityWorkflowStatusSchema } from "./gen/remoteagent/core/v1/security_pb";
 import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
 import { run, task, type ScheduleTaskJson } from "./test/schedule-fixture";
 
@@ -41,9 +40,12 @@ afterEach(async () => {
 
 async function mount() {
   vi.spyOn(document, "hidden", "get").mockReturnValue(false);
-  vi.spyOn(storage, "loadAccount").mockResolvedValue(undefined);
-  vi.spyOn(authoritySetup, "authorityStartup").mockResolvedValue({ kind: "none" } as never);
-  vi.spyOn(remoteModule, "resumeRegistration").mockResolvedValue();
+  vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
+    client: {
+      bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY, server: "https://ra.example.com", deviceId: "me", accountId: "acc", isMember: true })),
+    } as unknown as securityClient.SecurityClient,
+    dispose: vi.fn(),
+  });
   const remote = DemoRemote.create(new URLSearchParams());
   activeRemote = remote;
   vi.spyOn(Remote, "load").mockResolvedValue(remote);

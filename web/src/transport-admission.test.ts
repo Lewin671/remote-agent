@@ -5,19 +5,17 @@ import { create } from "@bufbuild/protobuf";
 import { ResolveApprovalRequestSchema } from "./gen/remoteagent/v1/local_pb";
 import { GetLiveSnapshotRequestSchema } from "./gen/remoteagent/v1/remote_pb";
 import { Remote } from "./remote";
-import { MemorySecurityStorage, recordFromJSON } from "./test/security-fixture";
-import { concat, fromHex } from "./crypto";
+import { createTestSecurityStore } from "./test/security-fixture";
 
 test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under daemon saturation", async () => {
   const root = process.env.RA_1B_FLOW_ROOT!;
   expect(realpathSync(root).startsWith("/private/tmp/") || realpathSync(root).startsWith("/tmp/")).toBe(true);
   const config = JSON.parse(readFileSync(root + "/bootstrap.json", "utf8"));
   expect(new URL(config.server).hostname).toBe("127.0.0.1");
-  const { record } = await recordFromJSON(config.record);
   const seed = Uint8Array.from(Buffer.from(config.seed, "base64"));
-  const key = await crypto.subtle.importKey("pkcs8", concat(fromHex("302e020100300506032b657004220420"), seed), "Ed25519", false, ["sign"]);
+  const { store, record } = await createTestSecurityStore(config.record, seed, config.server);
   class MeasurementRemote extends Remote {
-    constructor() { super({ server: config.server, deviceId: record.memberID, devicePrivate: key }, undefined, new MemorySecurityStorage(record)); }
+    constructor() { super({ server: config.server, deviceId: record.memberID, accountId: record.pin.account }, undefined, undefined, undefined, undefined, store); }
   }
   const remote = new MeasurementRemote();
   const control = async (action: string) => {

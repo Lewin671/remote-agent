@@ -1082,8 +1082,9 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
           onClick={async () => {
             try {
               await remote.resumeSecurityOperation();
+              const st = await remote.getSecurityStatus();
               setResult(
-                await remote.authority.pending()
+                st.pendingOp
                   ? l10n.t("settings.the_original_operation_is_unfinished_continue_verifying")
                   : l10n.t("settings.the_original_security_operation_is_verified_complete_you_can"),
               );

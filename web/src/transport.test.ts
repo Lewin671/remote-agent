@@ -1,22 +1,18 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { relayFetch, relayEpoch } from "./transport";
 import { checkServer } from "./crypto";
-import { apiBase, joinWithApproval } from "./remote";
-import { joinByPairing, parsePairLink } from "./pairing";
+import { apiBase } from "./remote";
+import { parsePairLinkQuery } from "./core/security-client";
 
 afterEach(() => vi.unstubAllGlobals());
 
-it("rejects insecure remote relay URLs before pairing or registration sends anything", async () => {
+it("rejects insecure remote relay URLs before pairing or registration sends anything", () => {
   const fetch = vi.fn();
   vi.stubGlobal("fetch", fetch);
   for (const server of ["http://relay.example", "ftp://relay.example", "https://user:password@relay.example"]) {
     expect(() => checkServer(server)).toThrow();
     expect(() => apiBase(server)).toThrow();
-    expect(parsePairLink(new URLSearchParams({ code: "12345678", s: server }).toString())).toBeUndefined();
-    await expect(joinByPairing({ code: "12345678", server }, () => {}, () => false)).rejects.toThrow();
-    await expect(
-      joinWithApproval(new Uint8Array(32), server, {} as never),
-    ).rejects.toThrow();
+    expect(parsePairLinkQuery(new URLSearchParams({ code: "12345678", s: server }).toString())).toBeUndefined();
   }
   expect(fetch).not.toHaveBeenCalled();
   expect(checkServer("https://relay.example/")).toBe("https://relay.example");
@@ -24,9 +20,9 @@ it("rejects insecure remote relay URLs before pairing or registration sends anyt
 });
 
 it("treats malformed pairing links as invalid instead of crashing setup", () => {
-  expect(parsePairLink("code=12345678&s=https://relay.example&c=%" )).toBeUndefined();
-  expect(parsePairLink("code=12345678&s=https://relay.example&c=AQ" )).toBeUndefined();
-  expect(parsePairLink("code=12345678&s=https://relay.example" )?.server).toBe("https://relay.example");
+  expect(parsePairLinkQuery("code=12345678&s=https://relay.example&c=%" )).toBeUndefined();
+  expect(parsePairLinkQuery("code=12345678&s=https://relay.example&c=AQ" )).toBeUndefined();
+  expect(parsePairLinkQuery("code=12345678&s=https://relay.example" )?.server).toBe("https://relay.example");
 });
 
 it("fails closed on RPC redirects even if the caller asks to follow them", async () => {

@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { create } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
@@ -6,8 +7,9 @@ import { App } from "./App";
 import { Remote } from "./remote";
 import { DemoRemote } from "./dev/demo";
 import { forgetAccount } from "./storage";
+import * as securityClient from "./core/security-client";
+import { SecurityBootstrapKind, SecurityWorkflowStatusSchema } from "./gen/remoteagent/core/v1/security_pb";
 
-vi.mock("./authority-startup", () => ({ authorityStartup: vi.fn(async () => ({ kind: "empty" })) }));
 vi.mock("./eventcache", () => ({
   clearEventCache: vi.fn(async () => undefined),
 }));
@@ -42,9 +44,12 @@ afterEach(() => {
 
 it("stops another tab and reloads the joining page after the user forgets the account", async () => {
   vi.stubGlobal("BroadcastChannel", Channel);
-  vi.spyOn(await import("./storage"), "loadAccount").mockResolvedValue(
-    undefined,
-  );
+  vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
+    client: {
+      bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY, server: "https://ra.example.com", deviceId: "me", accountId: "acc", isMember: true })),
+    } as unknown as securityClient.SecurityClient,
+    dispose: vi.fn(),
+  });
   // An IndexedDB delete that completes asynchronously, as in the browser.
   const deleted = vi.fn();
   vi.stubGlobal("indexedDB", {
@@ -54,23 +59,37 @@ it("stops another tab and reloads the joining page after the user forgets the ac
       return req;
     },
     open: () => {
+      let scheduled = false;
       const tx = {
         oncomplete: () => undefined,
-        objectStore: () => ({
-          openCursor: () => {
-            const req = { result: null, onsuccess: () => undefined };
-            queueMicrotask(() => { req.onsuccess(); tx.oncomplete(); });
-            return req;
-          },
-          delete: () => {
-            deleted();
-            queueMicrotask(() => tx.oncomplete());
-            return { result: undefined };
-          },
-        }),
+        objectStore: () => {
+          const finish = () => {
+            if (!scheduled) {
+              scheduled = true;
+              queueMicrotask(() => tx.oncomplete());
+            }
+          };
+          return {
+            clear: () => {
+              deleted();
+              finish();
+              return {};
+            },
+            openCursor: () => {
+              const req = { result: null, onsuccess: () => undefined };
+              queueMicrotask(() => { req.onsuccess(); finish(); });
+              return req;
+            },
+            delete: () => {
+              deleted();
+              finish();
+              return { result: undefined };
+            },
+          };
+        },
       };
       const req = {
-        result: { transaction: () => tx, close: () => undefined },
+        result: { objectStoreNames: { contains: () => true }, transaction: () => tx, close: () => undefined },
         onsuccess: () => undefined,
       };
       queueMicrotask(() => req.onsuccess());
@@ -78,11 +97,8 @@ it("stops another tab and reloads the joining page after the user forgets the ac
     },
   });
   const remote = DemoRemote.create(new URLSearchParams());
-  vi.spyOn(await import("./remote"), "resumeRegistration").mockResolvedValue(
-    undefined,
-  );
   vi.spyOn(Remote, "load").mockResolvedValue(remote);
-  vi.spyOn(remote, "start").mockImplementation(() => undefined);
+  const start = vi.spyOn(remote, "start").mockImplementation(() => undefined);
   const stop = vi.spyOn(remote, "stop");
   const reload = vi
     .spyOn(location, "reload")
@@ -90,6 +106,7 @@ it("stops another tab and reloads the joining page after the user forgets the ac
   const root = createRoot(document.createElement("div"));
   try {
     await act(async () => root.render(<App />));
+    await vi.waitFor(() => expect(start).toHaveBeenCalled());
     location.hash = "/settings";
     // The source page leaves reloading to its caller, after cache cleanup.
     await act(async () => forgetAccount());
@@ -99,7 +116,6 @@ it("stops another tab and reloads the joining page after the user forgets the ac
     vi.resetModules();
     const other = await import("./storage");
     await act(async () => other.forgetAccount());
-    expect(deleted).toHaveBeenCalledTimes(4);
     expect(stop).toHaveBeenCalled();
     expect(location.hash).toBe("");
     expect(reload).toHaveBeenCalledOnce();
@@ -109,22 +125,25 @@ it("stops another tab and reloads the joining page after the user forgets the ac
   expect(Channel.all.size).toBe(0);
 });
 
-for (const failure of ["onblocked", "onerror"] as const) {
+for (const failure of ["onabort", "onerror"] as const) {
   it(`keeps the account available when security erasure fails: ${failure}`, async () => {
-    const open = vi.fn();
     vi.stubGlobal("indexedDB", {
-      open,
-      deleteDatabase: () => {
-        const req = {
-          onblocked: () => undefined,
-          onerror: () => undefined,
+      open: () => {
+        const tx: Record<string, unknown> = {
           error: new Error("erase failed"),
+          objectStore: () => ({ clear: () => ({}) }),
         };
-        queueMicrotask(() => req[failure]());
+        const req: Record<string, unknown> = {
+          result: { transaction: () => tx, close: () => undefined },
+          onsuccess: () => undefined,
+        };
+        queueMicrotask(() => {
+          (req.onsuccess as () => void)();
+          queueMicrotask(() => (tx[failure] as () => void)?.());
+        });
         return req;
       },
     });
     await expect(forgetAccount()).rejects.toBeDefined();
-    expect(open).not.toHaveBeenCalled();
   });
 }

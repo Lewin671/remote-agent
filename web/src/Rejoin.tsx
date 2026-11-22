@@ -1,8 +1,8 @@
 import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
-import { authorityExitAdvice } from "./security-operation";
-import { forgetAccount, loadRegistration } from "./storage";
+import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
+import { SecurityBootstrapKind } from "./gen/remoteagent/core/v1/security_pb";
 import { errorText } from "./remote";
 
 /** Rejoin keeps only the server; account keys and cached ciphertext are erased. */
@@ -15,19 +15,25 @@ export function RejoinButton({ server, children, onDone }: {
   const leave = async (confirmed = false) => {
     if (busy) return;
     setBusy(true);
+    const standalone = createStandaloneSecurityClient();
     try {
-      const status = await authorityExitAdvice();
-      const pending = !!await loadRegistration();
+      const st = await standalone.client.bootstrap();
+      const status = await standalone.client.checkExitAdvice();
+      const pending = st.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION;
+      const msg = translateSecurityKey(status.message);
       const warning = status.authority || status.unresolved || pending
-        ? (pending ? l10n.t("security.this_device_has_an_unfinished_join_request_deleting_it") : status.message)
+        ? (pending ? l10n.t("security.this_device_has_an_unfinished_join_request_deleting_it") : msg)
           + l10n.t("security.this_deletes_the_account_keys_and_cache_on_this") : undefined;
       if (warning && (!confirmed || warning !== advice)) { setAdvice(warning); return; }
       localStorage.setItem("ra-server", server);
-      await forgetAccount();
+      await standalone.client.clearSecurity();
       location.hash = "/pair?";
       if (onDone) onDone(); else location.reload();
     } catch (e) { setError(errorText(e)); }
-    finally { setBusy(false); }
+    finally {
+      standalone.dispose();
+      setBusy(false);
+    }
   };
   return <>
     <button className="btn pri" disabled={busy} onClick={() => void leave()}>{children}</button>

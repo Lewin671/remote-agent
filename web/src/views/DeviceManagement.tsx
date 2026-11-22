@@ -4,7 +4,7 @@ import { pairingQRCode } from "../qr-code";
 import { LoaderCircle, Plus } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
-import type { AuthorityPairing } from "../authority-pairing";
+import type { SecurityPairingInfo } from "../gen/remoteagent/core/v1/security_pb";
 import { errorText, type Remote } from "../remote";
 import { Alert, Banner, NavBar, useRemote } from "../ui";
 import { authorityName } from "./authority-notice";
@@ -137,24 +137,24 @@ export function PairCodePage({
   onBack: () => void;
 }) {
   useRemote(remote);
-  const [pair, setPair] = useState<AuthorityPairing>();
+  const [pair, setPair] = useState<SecurityPairingInfo>();
   const [qr, setQr] = useState<{ url: string; src: string }>();
-  const [emoji, setEmoji] = useState<string[]>();
   const [confirmed, setConfirmed] = useState(false);
   const [approved, setApproved] = useState(false);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const current = useRef<AuthorityPairing | undefined>(undefined);
+  const currentId = useRef<string | undefined>(undefined);
   const alive = useRef(true);
   const handedOff = useRef(false);
+  const emoji = pair?.sasEmoji.length ? pair.sasEmoji : undefined;
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
-      if (current.current && !handedOff.current) void current.current.cancel().catch(() => {});
+      if (currentId.current && !handedOff.current) void remote.cancelPairing(currentId.current).catch(() => {});
     };
-  }, []);
+  }, [remote]);
   useEffect(() => {
     if (!pair || done || (emoji && !approved)) return;
     let stopped = false;
@@ -164,15 +164,19 @@ export function PairCodePage({
       try {
         if (!document.hidden) {
           if (approved) {
-            await pair.finishPairingOperation();
-            if (!(await remote.authority.pending())) {
+            const next = await remote.finishPairingDelivery(pair.pairingId);
+            const st = await remote.getSecurityStatus();
+            if (next.delivered || !st.pendingOp) {
               await remote.loadDevices();
               if (!stopped) setDone(true);
               return;
             }
           } else {
-            const joined = await pair.joined();
-            if (!stopped && joined) setEmoji(joined.emoji);
+            const next = await remote.pollPairing(pair.pairingId);
+            if (!stopped && next.joined && next.sasEmoji.length > 0) {
+              setPair(next);
+              return;
+            }
           }
         }
       } catch (e) {
@@ -240,10 +244,10 @@ export function PairCodePage({
                     location.origin + location.pathname,
                     replaces,
                   );
-                  current.current = p;
+                  currentId.current = p.pairingId;
                   handedOff.current = false;
                   if (!alive.current) {
-                    await p.cancel();
+                    await remote.cancelPairing(p.pairingId);
                     return;
                   }
                   setPair(p);
@@ -260,7 +264,7 @@ export function PairCodePage({
               {pair.code.slice(0, 4)} {pair.code.slice(4)}
             </div>
             <p className="pcs">
-              {l10n.t("security.pair_valid_until", { time: futureTime(pair.expires, Date.now(), "time") })}
+              {l10n.t("security.pair_valid_until", { time: futureTime(pair.expiresMs, Date.now(), "time") })}
             </p>
             {emoji ? (
               <>
@@ -286,7 +290,7 @@ export function PairCodePage({
                           // Approval and its durable delivery belong to the account,
                           // including while approve() is still awaiting its reply.
                           handedOff.current = true;
-                          await pair.approve(confirmed);
+                          await remote.approvePairing(pair.pairingId, confirmed);
                           setApproved(true);
                         })
                       }
@@ -312,14 +316,13 @@ export function PairCodePage({
                 onClick={() =>
                   void run(async () => {
                     try {
-                      await pair.cancel();
+                      await remote.cancelPairing(pair.pairingId);
                     } finally {
                       // The local SAS key is already destroyed even if the
                       // cancel acknowledgement is lost. Durable delivery is
                       // retained by the coordinator and checked on restart.
-                      current.current = undefined;
+                      currentId.current = undefined;
                       setPair(undefined);
-                      setEmoji(undefined);
                       setConfirmed(false);
                     }
                   })

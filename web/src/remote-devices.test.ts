@@ -76,26 +76,19 @@ it("preserves a verified handoff offer when renaming this device", async () => {
     },
   };
   await r.renameDevice(self, "after");
+  await r.loadDevices(false);
   expect(r.devices.get(self)?.meta?.name).toBe("after");
   expect(r.devices.get(self)?.meta?.handoffRecoveryEd).toEqual(handoffRecoveryEd);
   expect(() => r.renameDevice(r.machine, "other")).toThrow("名称只能在那台设备上修改");
 }, 20000);
 
-it("does not reuse a directory while recovery publication or reconciliation is pending", async () => {
+it("always fetches a fresh device directory without caching stale entries", async () => {
   const r = await probe();
   const listDevices = vi.fn(async () => ({ devices: [] }));
   (r as any).api = { listDevices };
   await r.loadDevices(false);
-  (r as any).recoveryObjectsPending = true;
   await r.loadDevices(false);
   expect(listDevices).toHaveBeenCalledTimes(2);
-  (r as any).reconcilingSecurity = 1;
-  await r.loadDevices(false);
-  expect(listDevices).toHaveBeenCalledTimes(3);
-  (r as any).reconcilingSecurity = 0;
-  vi.spyOn(r.authority, "pending").mockResolvedValue({} as never);
-  await r.loadDevices(false);
-  expect(listDevices).toHaveBeenCalledTimes(4);
 }, 20000);
 
 it("describes a newly paired browser without metadata", async () => {
@@ -116,9 +109,11 @@ it("describes a newly paired browser without metadata", async () => {
   };
   await r.loadDevices();
   await vi.waitFor(() => expect(putDeviceMeta).toHaveBeenCalledTimes(1));
-  await vi.waitFor(() => expect(r.devices.get(self)?.meta?.platform).toBe("web"));
+  await vi.waitFor(() => {
+    expect(r.devices.get(self)?.meta?.platform).toBe("web");
+    expect((r as any).describingSelf).toBe(false);
+  });
   expect(r.devices.get(self)?.metaRev).toBe(1n);
-  expect((r as any).descriptionPending).toBe(false);
   await r.loadDevices();
   expect(putDeviceMeta).toHaveBeenCalledTimes(1);
 }, 10000);
