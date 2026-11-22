@@ -152,7 +152,9 @@ import Testing
             var notify: Data?
             var loginToken: Data?
             var upgradeNotice = false
-            var failNextWriteBuckets = true
+            var failNextWriteBuckets = false
+            var writeKeysCall = 0
+            var failWriteKeysOnCall: Int?
 
             func readBuckets() -> [SecurityStoreBucketKey: SecurityStoreStoredBucket] { buckets }
             func writeBuckets(_ next: [SecurityStoreBucketKey: SecurityStoreStoredBucket]) throws {
@@ -163,7 +165,14 @@ import Testing
                 buckets = next
             }
             func readKeys() -> [SecurityStoreKeyId: SecurityStoreStoredKey] { keys }
-            func writeKeys(_ next: [SecurityStoreKeyId: SecurityStoreStoredKey]) { keys = next }
+            func writeKeys(_ next: [SecurityStoreKeyId: SecurityStoreStoredKey]) throws {
+                writeKeysCall += 1
+                if writeKeysCall == failWriteKeysOnCall {
+                    failWriteKeysOnCall = nil
+                    throw InjectError.diskFull
+                }
+                keys = next
+            }
             func readNotify() -> Data? { notify }
             func writeNotify(_ data: Data) { notify = data }
             func deleteNotify() { notify = nil }
@@ -185,6 +194,9 @@ import Testing
         let backing = FaultyBacking()
         let store = SecurityStoreV4Core(backend: backing)
 
+        let oldEdPub = try store.generateKey(kind: .deviceEd, slot: "", persist: true)
+        let oldXPub = try store.generateKey(kind: .deviceX, slot: "", persist: true)
+
         let edPub = try store.generateKey(kind: .candidateEd, slot: "slot-retry", persist: true)
         let xPub = try store.generateKey(kind: .candidateX, slot: "slot-retry", persist: true)
 
@@ -203,12 +215,18 @@ import Testing
             ]
         }
 
+        backing.failNextWriteBuckets = true
         let failed = store.executeStorage(batchEffect)
         #expect(!failed.error.isEmpty)
         #expect(backing.buckets.isEmpty)
+        // Promoted DEVICE_ED/DEVICE_X must roll back to the previous device keys so in-app Crypto/Agree matches old records.
+        #expect(backing.keys[SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceEd.rawValue), slot: "")]?.publicKey == oldEdPub)
+        #expect(backing.keys[SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceX.rawValue), slot: "")]?.publicKey == oldXPub)
         // Candidate slots remain present so retry promotion does not fail with missing promote slot.
         #expect(!((try store.signKey(kind: .candidateEd, slot: "slot-retry", message: Data("probe".utf8))).isEmpty))
 
+        // Fail Phase 3 cleanup writeKeys once during the retry; single retry must still remove candidate slots.
+        backing.failWriteKeysOnCall = backing.writeKeysCall + 2
         let retried = store.executeStorage(batchEffect)
         #expect(retried.error.isEmpty)
         #expect(retried.hasDeviceEd_p)

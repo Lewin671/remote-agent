@@ -173,12 +173,8 @@ export function Setup({
   const isPendingReg = (client: SecurityClient) =>
     client.status?.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION;
 
-  const refreshPendingReg = async (client: SecurityClient) => {
-    if (isPendingReg(client)) return client.status;
-    return typeof client.getStatus === "function"
-      ? await client.getStatus().catch(() => client.status)
-      : client.status;
-  };
+  const refreshPendingReg = async (client: SecurityClient) =>
+    isPendingReg(client) ? client.status : await client.getStatus();
 
   const pair = async (link: { code: string; server: string; commit?: Uint8Array } = fromLink ?? { code, server }) => {
     const mine = { canceled: false, pairingId: "" };

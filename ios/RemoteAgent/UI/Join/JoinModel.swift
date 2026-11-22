@@ -22,8 +22,8 @@ struct JoinCalls: Sendable {
             _ onRegistering: @escaping @Sendable () -> Void,
             _ confirm: @escaping @Sendable ([String]) async -> Bool
         ) async throws -> Account
-    var resumePending: (@Sendable () async throws -> Account?)? = nil
-    var hasPendingRegistration: (@Sendable () async -> Bool)? = nil
+    var resumePending: @Sendable () async throws -> Account?
+    var hasPendingRegistration: @Sendable () async -> Bool
 
     private static func adoptedAccount(
         from res: PBSecurityWorkflowResultEffect, fallbackServer: String, existing: Account?
@@ -273,7 +273,7 @@ final class JoinModel {
         let calls = calls
         Task {
             do {
-                if let account = try await calls.resumePending?() {
+                if let account = try await calls.resumePending() {
                     pendingRegistration = false
                     await finished(attempt, account)
                     return
@@ -316,7 +316,7 @@ final class JoinModel {
         let calls = calls
         Task {
             do {
-                if let account = try await calls.resumePending?() {
+                if let account = try await calls.resumePending() {
                     pendingRegistration = false
                     await finished(attempt, account)
                     return
@@ -364,9 +364,7 @@ final class JoinModel {
         comparisonPending = false
         let current = self.attempt === attempt
         if attempt.registering {
-            if let checkPending = calls.hasPendingRegistration {
-                pendingRegistration = await checkPending()
-            }
+            pendingRegistration = await calls.hasPendingRegistration()
             if current { self.attempt = nil }
             notice = L10n.securityIosUnsureWhetherJoinedCheckTheClientListInThe(
                 detail: String(describing: errorText(error)),

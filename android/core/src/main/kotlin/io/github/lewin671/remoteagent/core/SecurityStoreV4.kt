@@ -310,6 +310,7 @@ class SecurityStoreV4Core(
                         } else null
 
                         // Phase 1: persist promoted DEVICE_* keys BEFORE deleting candidate slots or committing buckets.
+                        val originalKeys = keys.toMap()
                         var promoteDirty = false
                         if (promotedEd != null) {
                             keys[SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED.number, "")] = promotedEd.second
@@ -321,7 +322,7 @@ class SecurityStoreV4Core(
                         }
                         if (promoteDirty) backend.writeKeys(keys)
 
-                        // Phase 2: commit buckets (record, clearing pendingOp / regIntent) while candidate slots remain intact.
+                        // Phase 2: commit buckets (record, clearing pendingOp / regIntent); roll back promoted keys if buckets fail to write.
                         var bucketsDirty = false
                         var notifyUpdate: ByteArray? = null
                         var notifyDeleted = false
@@ -345,13 +346,24 @@ class SecurityStoreV4Core(
                                 }
                             }
                         }
-                        if (bucketsDirty) backend.writeBuckets(buckets)
-                        if (notifyUpdate != null) backend.writeNotifyBlob(notifyUpdate)
-                        else if (notifyDeleted) backend.deleteNotifyBlob()
-                        if (effect.clearLoginToken) backend.deleteLoginToken()
-                        if (recordWritten) backend.clearUpgradeNotice()
+                        var bucketsCommitted = false
+                        try {
+                            if (bucketsDirty) {
+                                backend.writeBuckets(buckets)
+                                bucketsCommitted = true
+                            }
+                            if (notifyUpdate != null) backend.writeNotifyBlob(notifyUpdate)
+                            else if (notifyDeleted) backend.deleteNotifyBlob()
+                            if (effect.clearLoginToken) backend.deleteLoginToken()
+                            if (recordWritten) backend.clearUpgradeNotice()
+                        } catch (e: Exception) {
+                            if (promoteDirty && !bucketsCommitted) {
+                                runCatching { backend.writeKeys(originalKeys) }
+                            }
+                            throw e
+                        }
 
-                        // Phase 3: best-effort post-commit cleanup of promoted candidates and discarded slots.
+                        // Phase 3: best-effort post-commit cleanup of promoted candidates and discarded slots (with one retry).
                         var cleanupDirty = false
                         listOfNotNull(promotedEd?.first, promotedX?.first).forEach { candId ->
                             ephemeralKeys.remove(candId)
@@ -366,7 +378,9 @@ class SecurityStoreV4Core(
                                 }
                             }
                         }
-                        if (cleanupDirty) runCatching { backend.writeKeys(keys) }
+                        if (cleanupDirty && runCatching { backend.writeKeys(keys) }.isFailure) {
+                            runCatching { backend.writeKeys(keys) }
+                        }
                         out.setConflict(false).populateIdentityPubs(keys).build()
                     }
                     else -> out.setError("unsupported storage op").build()

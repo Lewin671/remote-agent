@@ -458,6 +458,7 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                     }
 
                     // Phase 1: persist promoted DEVICE_* keys BEFORE removing candidate slots or committing buckets.
+                    let originalKeys = keys
                     var promoteDirty = false
                     for (devKind, promoted) in [(PBSecurityKeyKind.deviceEd, promotedEd), (.deviceX, promotedX)] {
                         if let p = promoted {
@@ -470,7 +471,7 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                     }
                     if promoteDirty { try backend.writeKeys(keys) }
 
-                    // Phase 2: commit buckets (record, clearing pendingOp / regIntent) before discarding candidate keys.
+                    // Phase 2: commit buckets (record, clearing pendingOp / regIntent); roll back promoted keys if buckets fail to write.
                     var bucketsDirty = false
                     var notifyUpdate: Data?
                     var notifyDeleted = false
@@ -489,16 +490,27 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                             if w.bucket == .notifyRecord { notifyUpdate = w.data; notifyDeleted = false }
                         }
                     }
-                    if bucketsDirty { try backend.writeBuckets(buckets) }
-                    if let blob = notifyUpdate {
-                        if blob.isEmpty { try backend.deleteNotify() } else { try backend.writeNotify(blob) }
-                    } else if notifyDeleted {
-                        try backend.deleteNotify()
+                    var bucketsCommitted = false
+                    do {
+                        if bucketsDirty {
+                            try backend.writeBuckets(buckets)
+                            bucketsCommitted = true
+                        }
+                        if let blob = notifyUpdate {
+                            if blob.isEmpty { try backend.deleteNotify() } else { try backend.writeNotify(blob) }
+                        } else if notifyDeleted {
+                            try backend.deleteNotify()
+                        }
+                        if effect.clearLoginToken_p { try backend.deleteLoginToken() }
+                        if recordWritten, (try backend.hasUpgradeNotice()) { try backend.setUpgradeNotice(false) }
+                    } catch {
+                        if promoteDirty && !bucketsCommitted {
+                            try? backend.writeKeys(originalKeys)
+                        }
+                        throw error
                     }
-                    if effect.clearLoginToken_p { try backend.deleteLoginToken() }
-                    if recordWritten, (try backend.hasUpgradeNotice()) { try backend.setUpgradeNotice(false) }
 
-                    // Phase 3: best-effort post-commit cleanup of promoted candidates and discarded slots.
+                    // Phase 3: best-effort post-commit cleanup of promoted candidates and discarded slots (with one retry).
                     var cleanupDirty = false
                     for p in [promotedEd, promotedX].compactMap({ $0 }) {
                         ephemeralKeys.removeValue(forKey: p.candId)
@@ -511,7 +523,9 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                             if kind != .ephemeralX, keys.removeValue(forKey: id) != nil { cleanupDirty = true }
                         }
                     }
-                    if cleanupDirty { try? backend.writeKeys(keys) }
+                    if cleanupDirty {
+                        do { try backend.writeKeys(keys) } catch { try? backend.writeKeys(keys) }
+                    }
                     out.conflict = false
                     Self.populateIdentityPubs(&out, keys: keys)
                     return out

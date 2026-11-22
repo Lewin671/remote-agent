@@ -8,6 +8,29 @@ import Testing
 
 @testable import RACore
 
+private final class StalledRPCProtocol: URLProtocol, @unchecked Sendable {
+    static let latches = OSAllocatedUnfairLock<(started: TestLatch?, stopped: TestLatch?)>(initialState: (nil, nil))
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let started = Self.latches.withLock { $0.started }
+        if let started { Task { await started.open() } }
+    }
+    override func stopLoading() {
+        let stopped = Self.latches.withLock { $0.stopped }
+        if let stopped { Task { await stopped.open() } }
+    }
+}
+
+private final class TimeoutRPCProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        client?.urlProtocol(self, didFailWithError: URLError(.timedOut))
+    }
+    override func stopLoading() {}
+}
+
 @Suite(.timeLimit(.minutes(2))) struct SecurityExecutorTests {
     @Test func keySignAndKeyAgreeDelegateToStoreAndValidateInputs() async throws {
         let store = MemorySecurityStoreV4()
@@ -77,43 +100,49 @@ import Testing
             _ = try await waiter.value
         }
 
-        // 2. Stalled HTTP unary call is cancelled when rpc timeout fires instead of hanging forever.
-        final class StalledHTTP: HTTPClientInterface, @unchecked Sendable {
-            let started = TestLatch()
-            let canceledCount = OSAllocatedUnfairLock(initialState: 0)
-            func unary(
-                request: HTTPRequest<Data?>,
-                onMetrics: @escaping @Sendable (HTTPMetrics) -> Void,
-                onResponse: @escaping @Sendable (HTTPResponse) -> Void
-            ) -> Cancelable {
-                Task { await started.open() }
-                return Cancelable { self.canceledCount.withLock { $0 += 1 } }
-            }
-            func stream(request: HTTPRequest<Data?>, responseCallbacks: ResponseCallbacks) -> RequestCallbacks<Data> {
-                RequestCallbacks(cancel: {}, sendData: { _ in }, sendClose: {})
-            }
-        }
-        let stalled = StalledHTTP()
-        let mailbox = Mailbox<PBCoreEvent>()
-        let exec = SecurityExecutor(
+        // 2. Closing executor cancels in-flight HTTP request and stops URLSession loading promptly.
+        let started = TestLatch()
+        let stopped = TestLatch()
+        StalledRPCProtocol.latches.withLock { $0 = (started, stopped) }
+        defer { StalledRPCProtocol.latches.withLock { $0 = (nil, nil) } }
+
+        let stalledCfg = HTTP.defaultConfiguration()
+        stalledCfg.protocolClasses = [StalledRPCProtocol.self]
+        let stalledExec = SecurityExecutor(
             store: MemorySecurityStoreV4(),
-            http: stalled,
+            http: HTTP(configuration: stalledCfg),
             allowPlainHttp: true,
-            rpcTimeoutMs: { _ in 25 },
-            emit: { mailbox.put($0) }
+            emit: { _ in }
         )
-        defer { exec.close() }
-        exec.rpc(.with {
+        stalledExec.rpc(.with {
             $0.opID = 77
             $0.method = .getSecurityStates
             $0.server = "https://example.com"
         })
-        await stalled.started.wait()
+        await started.wait()
+        stalledExec.close()
+        await stopped.wait()
+
+        // 3. Timed-out HTTP unary call maps cleanly to deadlineExceeded with networkError = true.
+        let timeoutCfg = HTTP.defaultConfiguration()
+        timeoutCfg.protocolClasses = [TimeoutRPCProtocol.self]
+        let mailbox = Mailbox<PBCoreEvent>()
+        let exec = SecurityExecutor(
+            store: MemorySecurityStoreV4(),
+            http: HTTP(configuration: timeoutCfg),
+            allowPlainHttp: true,
+            emit: { mailbox.put($0) }
+        )
+        defer { exec.close() }
+        exec.rpc(.with {
+            $0.opID = 78
+            $0.method = .getSecurityStates
+            $0.server = "https://example.com"
+        })
         let rpcRes = try await mailbox.take().securityRpcResult
-        #expect(rpcRes.opID == 77)
+        #expect(rpcRes.opID == 78)
         #expect(rpcRes.connectCode == Int32(Code.deadlineExceeded.rawValue))
         #expect(rpcRes.networkError)
-        #expect(stalled.canceledCount.withLock { $0 == 1 })
     }
 }
 

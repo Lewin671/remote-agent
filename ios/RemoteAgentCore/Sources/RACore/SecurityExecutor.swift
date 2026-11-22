@@ -43,14 +43,12 @@ private final class RpcCallState: @unchecked Sendable {
 /// RPC calls requested by Go `clientcore/security`.
 public final class SecurityExecutor: @unchecked Sendable {
     public typealias RpcOverride = @Sendable (PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent
-    public typealias TimeoutForRpc = @Sendable (PBSecurityRpcEffect) -> Int64
 
     public let store: any SecurityStoreV4
-    private let http: (any HTTPClientInterface & Sendable)?
+    private let http: HTTP?
     private let emit: @Sendable (PBCoreEvent) async -> Void
     private let rpcOverride: RpcOverride?
     private let allowPlainHttp: Bool
-    private let rpcTimeoutMs: TimeoutForRpc
     private let queue = DispatchQueue(label: "ra.security.executor", attributes: .concurrent)
     private let lock = NSLock()
     private var closed = false
@@ -58,17 +56,15 @@ public final class SecurityExecutor: @unchecked Sendable {
 
     public init(
         store: any SecurityStoreV4,
-        http: (any HTTPClientInterface & Sendable)? = nil,
+        http: HTTP? = nil,
         allowPlainHttp: Bool = false,
         rpcOverride: RpcOverride? = nil,
-        rpcTimeoutMs: @escaping TimeoutForRpc = { $0.method == .getSecurityStates ? 5_000 : 15_000 },
         emit: @escaping @Sendable (PBCoreEvent) async -> Void
     ) {
         self.store = store
         self.http = http
         self.allowPlainHttp = allowPlainHttp
         self.rpcOverride = rpcOverride
-        self.rpcTimeoutMs = rpcTimeoutMs
         self.emit = emit
     }
 
@@ -184,7 +180,7 @@ public final class SecurityExecutor: @unchecked Sendable {
                 headers["Authorization"] = ["Bearer \(eff.authToken)"]
             }
             let finalHeaders = headers
-            let timeoutMs = rpcTimeoutMs(eff)
+            let timeoutMs: Int64 = eff.method == .getSecurityStates ? 5_000 : 15_000
             let call = RpcCallState()
             let response: HTTPResponse = try await withTimeout(timeoutMs, sleep: realSleep) {
                 try await withTaskCancellationHandler {

@@ -186,7 +186,9 @@ class SecurityStoreV4Test {
         var storedBuckets = emptyMap<SecurityStoreBucketId, SecurityStoreStoredBucket>()
         var storedKeys = emptyMap<SecurityStoreKeyId, SecurityStoreStoredKey>()
         var notifyBlob: ByteArray? = null
-        var failNextWriteBuckets = true
+        var failNextWriteBuckets = false
+        var writeKeysCall = 0
+        var failWriteKeysOnCall: Int? = null
 
         val core = SecurityStoreV4Core(
             object : SecurityStoreV4Backend {
@@ -201,6 +203,11 @@ class SecurityStoreV4Test {
                 }
                 override fun readKeys() = storedKeys
                 override fun writeKeys(keys: Map<SecurityStoreKeyId, SecurityStoreStoredKey>) {
+                    writeKeysCall++
+                    if (writeKeysCall == failWriteKeysOnCall) {
+                        failWriteKeysOnCall = null
+                        throw IllegalStateException("injected cleanup writeKeys failure")
+                    }
                     storedKeys = keys
                 }
                 override fun readNotifyBlob() = notifyBlob
@@ -221,6 +228,9 @@ class SecurityStoreV4Test {
             },
         )
 
+        val oldEdPub = core.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED, "", persist = true)
+        val oldXPub = core.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X, "", persist = true)
+
         val edPub = core.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED, "slot-retry", persist = true)
         val xPub = core.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X, "slot-retry", persist = true)
 
@@ -238,12 +248,18 @@ class SecurityStoreV4Test {
             )
             .build()
 
+        failNextWriteBuckets = true
         val failed = core.executeStorage(batchEffect)
         assertTrue(failed.error.isNotEmpty())
         assertTrue(storedBuckets.isEmpty())
+        // Promoted DEVICE_ED/DEVICE_X must roll back to the previous keys if writeBuckets throws.
+        assertArrayEquals(oldEdPub, storedKeys[SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED.number, "")]?.publicKey)
+        assertArrayEquals(oldXPub, storedKeys[SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X.number, "")]?.publicKey)
         // Candidate key remains intact so retrying the same BATCH_COMMIT promotes and commits cleanly.
         assertEquals(64, core.signKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED, "slot-retry", byteArrayOf(1, 2, 3)).size)
 
+        // Fail Phase 3 cleanup writeKeys once during the retry; single retry must still remove candidate slots.
+        failWriteKeysOnCall = writeKeysCall + 2
         val retried = core.executeStorage(batchEffect)
         assertEquals("", retried.error)
         assertTrue(retried.hasDeviceEd)
