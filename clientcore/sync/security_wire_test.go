@@ -1029,3 +1029,334 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 		t.Fatalf("expected failed SecurityRpcResultEvent to clear activeSecOpID, got %d", h.eng.activeSecOpID)
 	}
 }
+
+func TestInitializedSyncFailureClosesAuthorizingGate(t *testing.T) {
+	nowMs := int64(1_700_000_000_000)
+	phone := newSyncTestActor(t, 1)
+	machine := newSyncTestActor(t, 2)
+	rec := newSyncTestActor(t, 3)
+	dom := devicesec.Digest("sync-auth-domain", []byte{2})
+	sec := bytes.Repeat([]byte{0x6c}, 32)
+
+	u0, err := devicesec.NewGenesis(phone.id, dom, phone.member(devicesec.Client), [32]byte(rec.edP), sec, uint64(nowMs), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, _ := u0.SigningBytes()
+	u0.Signature = ed25519.Sign(phone.ed, sb0)
+	s0Raw, _ := u0.MarshalBinary()
+	s0, _ := devicesec.ParseState(s0Raw)
+	gen, _ := s0.Hash()
+
+	u1, err := devicesec.NewMembershipState(s0, []devicesec.Member{phone.member(devicesec.Client), machine.member(devicesec.Machine)}, nil, sec, sec, uint64(nowMs+10), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb1, _ := u1.SigningBytes()
+	u1.Signature = ed25519.Sign(phone.ed, sb1)
+	s1Raw, _ := u1.MarshalBinary()
+	s1, _ := devicesec.ParseState(s1Raw)
+	lease, _ := devicesec.NewLease(s1, uint64(nowMs+10))
+	lb, _ := lease.SigningBytes()
+	lease.Signature = ed25519.Sign(phone.ed, lb)
+	leaseRaw, _ := lease.MarshalBinary()
+
+	e := NewEngine()
+	detEntropy := make([]byte, 2048)
+	for off := range detEntropy {
+		detEntropy[off] = byte(off*17 + 3)
+	}
+	e.HandleEvent(&corev1.Event{NowMs: nowMs, Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{RandomBytes: detEntropy}}})
+	bootstrapTestSecurityRecord(t, e, phone, nowMs, &security.PersistedRecord{
+		Pin:      devicesec.Pin{Account: phone.id, Domain: dom, Genesis: gen},
+		MemberID: phone.id,
+		Member:   true,
+		Server:   "https://relay.example.com",
+		States:   [][]byte{s0Raw, s1Raw},
+		Lease:    leaseRaw,
+		FloorMs:  nowMs + 60_000,
+	}, "tok-auth-gate")
+	if _, ok := e.secEngine.CoordInfo(); !ok {
+		t.Fatal("expected initialized CoordInfo() to be true")
+	}
+
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 5,
+		Event: &corev1.Event_TransportConfig{
+			TransportConfig: &corev1.TransportConfigEvent{
+				Supported:       true,
+				Account:         phone.id,
+				ProtocolVersion: PeerVersion,
+				ServerHost:      "127.0.0.1",
+				PlatformAgent:   "TestBrowser/1.0",
+			},
+		},
+	})
+	_, startRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
+	_, fgRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND}}})
+	_, tokRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: e.activeTokenOpID, Token: "tok-auth-gate"}}})
+	var legID uint64
+	for _, ef := range tokRes.Effects {
+		if os := ef.GetOpenStream(); os != nil {
+			legID = os.LegId
+		}
+	}
+	_, streamRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 20, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
+	var rpcOp1 uint64
+	for _, effs := range [][]*corev1.Effect{startRes.Effects, fgRes.Effects, tokRes.Effects, streamRes.Effects} {
+		for _, ef := range effs {
+			if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+				rpcOp1 = sr.OpId
+			}
+		}
+	}
+	if rpcOp1 == 0 {
+		// Advance past AuthorizeEveryMs so direct engine timer triggers authorize() -> CoordAuthorize.
+		_, tick1 := e.HandleEvent(&corev1.Event{
+			NowMs:  nowMs + 15_000,
+			MonoMs: 15_000,
+			Event: &corev1.Event_TimerFired{
+				TimerFired: &corev1.TimerFiredEvent{
+					TimerId: e.timers[timerKey{kind: corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE}].id,
+					Kind:    corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE,
+				},
+			},
+		})
+		for _, ef := range tick1.Effects {
+			if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+				rpcOp1 = sr.OpId
+			}
+		}
+	}
+	if rpcOp1 == 0 {
+		t.Fatal("expected first authorize cycle to emit GET_SECURITY_STATES SecurityRpc")
+	}
+
+	// Simulate transient SyncStates failure on already-initialized client.
+	_, errRes := e.HandleEvent(&corev1.Event{
+		NowMs:  nowMs + 15_100,
+		MonoMs: 15_100,
+		Event: &corev1.Event_SecurityRpcResult{
+			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+				OpId:         rpcOp1,
+				ConnectCode:  14,
+				Error:        "transient sync failure",
+				NetworkError: true,
+			},
+		},
+	})
+	pumpSecurityEffects(t, e, phone, nowMs+15_100, errRes)
+
+	// Without Fix 4, OnAuthorizeDone(now, false) was skipped when CoordInfo()==true, locking authorizing=true forever.
+	_, tick2 := e.HandleEvent(&corev1.Event{
+		NowMs:  nowMs + 31_000,
+		MonoMs: 31_000,
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{
+				TimerId: e.timers[timerKey{kind: corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE}].id,
+				Kind:    corev1.TimerKind_TIMER_KIND_DIRECT_ENGINE,
+			},
+		},
+	})
+	var rpcOp2 uint64
+	for _, ef := range tick2.Effects {
+		if sr := ef.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			rpcOp2 = sr.OpId
+		}
+	}
+	if rpcOp2 == 0 {
+		t.Fatal("expected failed SyncStates on initialized client to release authorizing gate so next tick retries")
+	}
+}
+
+func TestCommandRetryResealsEnvelopeAfterContentEpochRotation(t *testing.T) {
+	nowMs := int64(1_700_000_000_000)
+	phone := newSyncTestActor(t, 1)
+	machine := newSyncTestActor(t, 2)
+	rec := newSyncTestActor(t, 3)
+	dom := devicesec.Digest("cmd-reseal-domain", []byte{3})
+	sec1 := bytes.Repeat([]byte{0x41}, 32)
+	sec2 := bytes.Repeat([]byte{0x42}, 32)
+
+	u0, err := devicesec.NewGenesis(phone.id, dom, phone.member(devicesec.Client), [32]byte(rec.edP), sec1, uint64(nowMs), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, _ := u0.SigningBytes()
+	u0.Signature = ed25519.Sign(phone.ed, sb0)
+	s0Raw, _ := u0.MarshalBinary()
+	s0, _ := devicesec.ParseState(s0Raw)
+	gen, _ := s0.Hash()
+
+	u1, err := devicesec.NewMembershipState(s0, []devicesec.Member{phone.member(devicesec.Client), machine.member(devicesec.Machine)}, nil, sec1, sec1, uint64(nowMs+10), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb1, _ := u1.SigningBytes()
+	u1.Signature = ed25519.Sign(phone.ed, sb1)
+	s1Raw, _ := u1.MarshalBinary()
+	s1, _ := devicesec.ParseState(s1Raw)
+	s1Hash, _ := s1.Hash()
+	lease1, _ := devicesec.NewLease(s1, uint64(nowMs+10))
+	lb1, _ := lease1.SigningBytes()
+	lease1.Signature = ed25519.Sign(phone.ed, lb1)
+	lease1Raw, _ := lease1.MarshalBinary()
+
+	e := NewEngine()
+	detEntropy := make([]byte, 4096)
+	for off := range detEntropy {
+		detEntropy[off] = byte(off*29 + 7)
+	}
+	e.HandleEvent(&corev1.Event{NowMs: nowMs, Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{RandomBytes: detEntropy}}})
+	bootstrapTestSecurityRecord(t, e, phone, nowMs, &security.PersistedRecord{
+		Pin:      devicesec.Pin{Account: phone.id, Domain: dom, Genesis: gen},
+		MemberID: phone.id,
+		Member:   true,
+		Server:   "https://relay.example.com",
+		States:   [][]byte{s0Raw, s1Raw},
+		Lease:    lease1Raw,
+		FloorMs:  nowMs,
+	}, "tok-cmd-reseal")
+
+	e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
+	e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND}}})
+	_, tokRes := e.HandleEvent(&corev1.Event{NowMs: nowMs + 10, Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: e.activeTokenOpID, Token: "tok-cmd-reseal"}}})
+	var legID uint64
+	for _, ef := range tokRes.Effects {
+		if os := ef.GetOpenStream(); os != nil {
+			legID = os.LegId
+		}
+	}
+	e.HandleEvent(&corev1.Event{NowMs: nowMs + 20, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
+	mmRaw, _ := (&v1.MachineMeta{Hostname: "host-reseal", ProtocolVersion: PeerVersion}).Marshal()
+	_, listsRes := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 25,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId: e.refreshOpID,
+				WireMachines: []*v1.Machine{{
+					Id:     machine.id,
+					Online: true,
+					Meta:   sealWireObj(t, machine, dom, s1, sec1, nil, mmRaw, devicesec.MachineMeta, machine.id, "", "", 1),
+				}},
+			},
+		},
+	})
+	pumpSecurityEffects(t, e, phone, nowMs+25, listsRes)
+
+	// Initial command is sealed under content epoch s1.Core.ContentEpoch.
+	var reqID string
+	subRes := e.Run(func(ctx *StepContext) {
+		reqID, _ = e.SubmitCommand(ctx, SubmitCommandParams{
+			MachineID: machine.id,
+			SessionID: "s1",
+			Command:   &v1.Command{Kind: &v1.Command_Interrupt{Interrupt: &v1.InterruptRequest{SessionId: "s1"}}},
+		})
+	})
+	eff1, _ := pumpSecurityEffects(t, e, phone, nowMs+30, subRes)
+	var dc1 *corev1.DispatchCommandEffect
+	for _, ef := range eff1 {
+		if got := ef.GetDispatchCommand(); got != nil && got.RequestId == reqID {
+			dc1 = got
+		}
+	}
+	if dc1 == nil || dc1.SealedEnvelope == nil {
+		t.Fatalf("expected initial DispatchCommandEffect with SealedEnvelope (effs=%v)", eff1)
+	}
+	ct1, err := security.FromProtoEnvelope(dc1.SealedEnvelope)
+	if err != nil {
+		t.Fatalf("parse initial envelope: %v", err)
+	}
+	hdr1, err := devicesec.ParseHeader(ct1.Header)
+	if err != nil {
+		t.Fatalf("parse initial header: %v", err)
+	}
+	if hdr1.ContentEpoch != s1.Core.ContentEpoch || hdr1.State != s1Hash {
+		t.Fatalf("expected initial seal at epoch=%d head=%x, got epoch=%d head=%x", s1.Core.ContentEpoch, s1Hash, hdr1.ContentEpoch, hdr1.State)
+	}
+
+	// Transient transport failure schedules TIMER_KIND_COMMAND_RETRY.
+	_, failRes := e.HandleEvent(&corev1.Event{
+		NowMs:  nowMs + 40,
+		MonoMs: 40,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:     reqID,
+				AttemptId:     dc1.AttemptId,
+				Source:        corev1.OutcomeSource_OUTCOME_SOURCE_TRANSPORT,
+				TransportCode: errCodeUnavailable,
+				NotForwarded:  true,
+			},
+		},
+	})
+	var retryDelay int64
+	var retryTimerID uint64
+	for _, ef := range failRes.Effects {
+		if st := ef.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_COMMAND_RETRY {
+			retryDelay = st.DelayMs
+			retryTimerID = st.TimerId
+		}
+	}
+	if retryDelay <= 0 || retryTimerID == 0 {
+		t.Fatalf("expected TIMER_KIND_COMMAND_RETRY after unavailable transport outcome, got %+v", failRes.Effects)
+	}
+
+	// Before retry fires, rotate content epoch via a new membership state s2 + sec2.
+	extra := newSyncTestActor(t, 4)
+	u2, err := devicesec.NewMembershipState(s1, []devicesec.Member{phone.member(devicesec.Client), machine.member(devicesec.Machine), extra.member(devicesec.Client)}, nil, sec1, sec2, uint64(nowMs+50), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb2, _ := u2.SigningBytes()
+	u2.Signature = ed25519.Sign(phone.ed, sb2)
+	s2Raw, _ := u2.MarshalBinary()
+	s2, _ := devicesec.ParseState(s2Raw)
+	s2Hash, _ := s2.Hash()
+	if s2.Core.ContentEpoch == s1.Core.ContentEpoch {
+		t.Fatalf("expected rotated ContentEpoch > %d", s1.Core.ContentEpoch)
+	}
+	lease2, _ := devicesec.NewLease(s2, uint64(nowMs+50))
+	lb2, _ := lease2.SigningBytes()
+	lease2.Signature = ed25519.Sign(phone.ed, lb2)
+	lease2Raw, _ := lease2.MarshalBinary()
+	recRes := applyTestSecurityRecord(e, nowMs+50, security.RecordUpdate{
+		NetworkGeneration: 1,
+		Account:           phone.id,
+		Domain:            dom[:],
+		Genesis:           gen[:],
+		States:            [][]byte{s0Raw, s1Raw, s2Raw},
+		Lease:             lease2Raw,
+	})
+	pumpSecurityEffects(t, e, phone, nowMs+50, recRes)
+
+	// Fire retry timer -> must preserve RequestId/DeadlineMs/CommandBytes while resealing for s2.ContentEpoch.
+	_, retryStep := e.HandleEvent(&corev1.Event{
+		NowMs:  nowMs + 40 + retryDelay,
+		MonoMs: 40 + retryDelay,
+		Event:  &corev1.Event_TimerFired{TimerFired: &corev1.TimerFiredEvent{TimerId: retryTimerID, Kind: corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, Key: reqID}},
+	})
+	eff2, _ := pumpSecurityEffects(t, e, phone, nowMs+40+retryDelay, retryStep)
+	var dc2 *corev1.DispatchCommandEffect
+	for _, ef := range eff2 {
+		if got := ef.GetDispatchCommand(); got != nil && got.RequestId == reqID {
+			dc2 = got
+		}
+	}
+	if dc2 == nil || dc2.SealedEnvelope == nil {
+		t.Fatalf("expected retried DispatchCommandEffect with SealedEnvelope")
+	}
+	if dc2.RequestId != dc1.RequestId || dc2.DeadlineMs != dc1.DeadlineMs || !bytes.Equal(dc2.CommandBytes, dc1.CommandBytes) {
+		t.Fatalf("retry must preserve RequestId/DeadlineMs/CommandBytes, got dc2=%+v vs dc1=%+v", dc2, dc1)
+	}
+	ct2, err := security.FromProtoEnvelope(dc2.SealedEnvelope)
+	if err != nil {
+		t.Fatalf("parse retried envelope: %v", err)
+	}
+	hdr2, err := devicesec.ParseHeader(ct2.Header)
+	if err != nil {
+		t.Fatalf("parse retried header: %v", err)
+	}
+	if hdr2.ContentEpoch != s2.Core.ContentEpoch || hdr2.State != s2Hash {
+		t.Fatalf("expected retried envelope resealed at epoch=%d head=%x, got epoch=%d head=%x", s2.Core.ContentEpoch, s2Hash, hdr2.ContentEpoch, hdr2.State)
+	}
+}

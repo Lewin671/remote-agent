@@ -179,9 +179,19 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 		done(nil, devicesec.ErrStale)
 		return
 	}
-	const edSlot = "create-ed"
-	const xSlot = "create-x"
-	e.withEntropy(128, func() {
+	var edSlot, xSlot string
+	discardCreateSlots := func(hasEd, hasX bool) {
+		if hasEd && edSlot != "" {
+			e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED, edSlot)
+		}
+		if hasX && xSlot != "" {
+			e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_X, xSlot)
+		}
+	}
+	e.withEntropy(160, func() {
+		slotTok := e.nextWorkflowToken()
+		edSlot = "create-ed-" + slotTok
+		xSlot = "create-x-" + slotTok
 		if err := e.checkFG(fgGen); err != nil {
 			done(nil, err)
 			return
@@ -192,15 +202,18 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 				return
 			}
 			if err := e.checkFG(fgGen); err != nil {
+				discardCreateSlots(true, false)
 				done(nil, err)
 				return
 			}
 			e.reqKeyGen(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_X, xSlot, true, func(xPub []byte, xErr error) {
 				if xErr != nil {
+					discardCreateSlots(true, false)
 					done(nil, xErr)
 					return
 				}
 				if err := e.checkFG(fgGen); err != nil {
+					discardCreateSlots(true, true)
 					done(nil, err)
 					return
 				}
@@ -209,6 +222,7 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 					!e.readRandom(recoverySeed[:]) || !e.readRandom(secret[:]) {
 					zeroBytes(rootRaw[:])
 					zeroBytes(recoverySeed[:])
+					discardCreateSlots(true, true)
 					done(nil, ErrNeedEntropy)
 					return
 				}
@@ -220,17 +234,20 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 
 				acctSeed, err := deriveAccountSignSeed(rootRaw[:])
 				if err != nil {
+					discardCreateSlots(true, true)
 					done(nil, err)
 					return
 				}
 				defer zeroBytes(acctSeed)
 				acctPub, err := devicesec.Ed25519PublicFromSeed(acctSeed)
 				if err != nil {
+					discardCreateSlots(true, true)
 					done(nil, err)
 					return
 				}
 				recPubBytes, err := devicesec.Ed25519PublicFromSeed(recoverySeed[:])
 				if err != nil {
+					discardCreateSlots(true, true)
 					done(nil, err)
 					return
 				}
@@ -238,6 +255,7 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 				copy(recEd[:], recPubBytes)
 				member, err := devicesec.NewMember(edPub, xPub, devicesec.Client)
 				if err != nil {
+					discardCreateSlots(true, true)
 					done(nil, err)
 					return
 				}
@@ -252,6 +270,7 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 					CreatedMs:        int64(now),
 				}).Marshal()
 				if err != nil {
+					discardCreateSlots(true, true)
 					done(nil, err)
 					return
 				}
@@ -260,6 +279,7 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 				regSignInput = append(regSignInput, regBody...)
 				regSig, err := devicesec.Ed25519SignSeed(acctSeed, regSignInput)
 				if err != nil {
+					discardCreateSlots(true, true)
 					done(nil, err)
 					return
 				}
@@ -269,6 +289,7 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 					ProtocolVersion: protocolVersion,
 				}).Marshal()
 				if err != nil {
+					discardCreateSlots(true, true)
 					done(nil, err)
 					return
 				}
@@ -288,16 +309,19 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 						defer zeroBytes(recSeedCopy[:])
 						zeroBytes(secretCopy)
 						if gErr != nil {
+							discardCreateSlots(true, true)
 							done(nil, gErr)
 							return
 						}
 						genHash, err := genesis.Hash()
 						if err != nil {
+							discardCreateSlots(true, true)
 							done(nil, err)
 							return
 						}
 						genBytes, err := genesis.MarshalBinary()
 						if err != nil {
+							discardCreateSlots(true, true)
 							done(nil, err)
 							return
 						}
@@ -321,6 +345,7 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 						}
 						e.claimOperationCAS(op, nil, member.ID, func(_ *PersistedOperation, cErr error) {
 							if cErr != nil {
+								discardCreateSlots(true, true)
 								done(nil, cErr)
 								return
 							}

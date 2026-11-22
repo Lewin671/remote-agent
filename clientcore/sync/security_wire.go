@@ -1019,6 +1019,8 @@ func (e *Engine) sealAndEmitCommandAttempt(ctx *StepContext, prep *PreparedComma
 				return
 			}
 			prep.SealedEnvelope = sr.Envelope
+			prep.SealedContentEpoch = sr.ContentEpoch
+			prep.SealedHeadHash = sr.HeadHash
 			prep.RequestKeyHash = sr.RequestKeyHash
 			prep.PayloadHash = sr.PayloadHash
 			e.emitCommandAttempt(stepCtx, prep, prep.SealingRetry)

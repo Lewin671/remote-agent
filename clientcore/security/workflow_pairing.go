@@ -140,8 +140,8 @@ func (e *Engine) startPairingOp(fgGen uint64, webOrigin, replacesDeviceID string
 		}
 
 		beginCreate := func() {
-			ephemSlot := "pair-init-" + e.nextWorkflowToken()
-			e.withEntropy(32, func() {
+			e.withEntropy(64, func() {
+				ephemSlot := "pair-init-" + e.nextWorkflowToken()
 				if err := e.checkFG(fgGen); err != nil {
 					done(nil, err)
 					return
@@ -620,21 +620,19 @@ func (e *Engine) startJoinPairingAction(actionID uint64, act *corev1.SecuritySta
 		delete(wf.joinPairings, id)
 	}
 
-	tok := e.nextWorkflowToken()
 	reusesEd := act.ExistingRepair
-	edSlot := ""
-	if !reusesEd {
-		edSlot = "join-ed-" + tok
-	}
-	xSlot := "join-x-" + tok
-	ephemSlot := "join-ephem-" + tok
+	var edSlot, xSlot, ephemSlot string
 
 	discardSlots := func() {
-		e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_EPHEMERAL_X, ephemSlot)
+		if ephemSlot != "" {
+			e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_EPHEMERAL_X, ephemSlot)
+		}
 		if !reusesEd && edSlot != "" {
 			e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_ED, edSlot)
 		}
-		e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_X, xSlot)
+		if xSlot != "" {
+			e.reqKeyDiscard(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_X, xSlot)
+		}
 	}
 
 	withCandidateKeys := func(edPub, xPub, ephemPub []byte) {
@@ -750,7 +748,13 @@ func (e *Engine) startJoinPairingAction(actionID uint64, act *corev1.SecuritySta
 		})
 	}
 
-	e.withEntropy(64, func() {
+	e.withEntropy(96, func() {
+		tok := e.nextWorkflowToken()
+		if !reusesEd {
+			edSlot = "join-ed-" + tok
+		}
+		xSlot = "join-x-" + tok
+		ephemSlot = "join-ephem-" + tok
 		generateRest := func(edPub []byte) {
 			e.reqKeyGen(corev1.SecurityKeyKind_SECURITY_KEY_KIND_CANDIDATE_X, xSlot, true, func(xPub []byte, xErr error) {
 				if xErr != nil {

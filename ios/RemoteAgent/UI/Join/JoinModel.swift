@@ -22,6 +22,19 @@ struct JoinCalls: Sendable {
             _ onRegistering: @escaping @Sendable () -> Void,
             _ confirm: @escaping @Sendable ([String]) async -> Bool
         ) async throws -> Account
+    var resumePending: (@Sendable () async throws -> Account?)? = nil
+    var hasPendingRegistration: (@Sendable () async -> Bool)? = nil
+
+    private static func adoptedAccount(
+        from res: PBSecurityWorkflowResultEffect, fallbackServer: String, existing: Account?
+    ) -> Account {
+        let st = res.status
+        let adopted = res.accountAdopted
+        let server = !adopted.server.isEmpty ? adopted.server : (!st.server.isEmpty ? st.server : (existing?.server ?? fallbackServer))
+        let deviceId = !adopted.deviceID.isEmpty ? adopted.deviceID : (!st.deviceID.isEmpty ? st.deviceID : (existing?.deviceId ?? ""))
+        let accountId = !adopted.accountID.isEmpty ? adopted.accountID : (!st.accountID.isEmpty ? st.accountID : (existing?.accountId ?? ""))
+        return Account(server: server, deviceId: deviceId, accountId: accountId)
+    }
 
     /// Pre-auth onboarding via a temporary `StandaloneSecurityHost` (closed before returning `Account`),
     /// OR active re-pairing via an existing `Remote.securityClient`.
@@ -33,56 +46,72 @@ struct JoinCalls: Sendable {
         vault: Vault = Vault(),
         allowPlainHttp: Bool = false
     ) -> JoinCalls {
-        JoinCalls(
+        @Sendable func withClient<T: Sendable>(
+            _ body: @Sendable (SecurityClient) async throws -> T
+        ) async throws -> T {
+            let ownHost: StandaloneSecurityHost?
+            let secClient: SecurityClient
+            if let client {
+                ownHost = nil
+                secClient = client
+            } else {
+                let host = try StandaloneSecurityHost(store: vault, http: http, allowPlainHttp: allowPlainHttp)
+                ownHost = host
+                secClient = host.client
+                _ = try? await secClient.bootstrap()
+            }
+            defer { ownHost?.close() }
+            return try await body(secClient)
+        }
+
+        return JoinCalls(
             byPairing: { link, onEmoji, stopped, onRegistering, confirm in
-                let ownHost: StandaloneSecurityHost?
-                let secClient: SecurityClient
-                if let client {
-                    ownHost = nil
-                    secClient = client
-                } else {
-                    let host = try StandaloneSecurityHost(store: vault, http: http, allowPlainHttp: allowPlainHttp)
-                    ownHost = host
-                    secClient = host.client
-                    _ = try? await secClient.bootstrap()
-                }
-                defer { ownHost?.close() }
-
-                let info = try await secClient.startJoinPairing(
-                    server: link.server,
-                    code: link.code,
-                    commitHint: link.commit,
-                    existingRepair: existing != nil,
-                    existingServer: existing?.server ?? ""
-                )
-                if stopped() {
-                    try? await secClient.cancelJoinPairing(pairingId: info.pairingID)
-                    throw SecurityWorkflowError(
-                        message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(),
-                        code: "canceled",
-                        retryable: false
+                try await withClient { secClient in
+                    let info = try await secClient.startJoinPairing(
+                        server: link.server,
+                        code: link.code,
+                        commitHint: link.commit,
+                        existingRepair: existing != nil,
+                        existingServer: existing?.server ?? ""
                     )
-                }
+                    if stopped() {
+                        try? await secClient.cancelJoinPairing(pairingId: info.pairingID)
+                        throw SecurityWorkflowError(
+                            message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(),
+                            code: "canceled",
+                            retryable: false
+                        )
+                    }
 
-                onEmoji(info.sasEmoji)
-                let accepted = await confirm(info.sasEmoji)
-                if !accepted || stopped() {
-                    try? await secClient.cancelJoinPairing(pairingId: info.pairingID)
-                    throw SecurityWorkflowError(
-                        message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(),
-                        code: "canceled",
-                        retryable: false
-                    )
-                }
+                    onEmoji(info.sasEmoji)
+                    let accepted = await confirm(info.sasEmoji)
+                    if !accepted || stopped() {
+                        try? await secClient.cancelJoinPairing(pairingId: info.pairingID)
+                        throw SecurityWorkflowError(
+                            message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(),
+                            code: "canceled",
+                            retryable: false
+                        )
+                    }
 
-                onRegistering()
-                let res = try await secClient.confirmJoinSas(pairingId: info.pairingID)
-                let st = res.status
-                let adopted = res.accountAdopted
-                let server = !adopted.server.isEmpty ? adopted.server : (!st.server.isEmpty ? st.server : (existing?.server ?? link.server))
-                let deviceId = !adopted.deviceID.isEmpty ? adopted.deviceID : (!st.deviceID.isEmpty ? st.deviceID : (existing?.deviceId ?? ""))
-                let accountId = !adopted.accountID.isEmpty ? adopted.accountID : (!st.accountID.isEmpty ? st.accountID : (existing?.accountId ?? ""))
-                return Account(server: server, deviceId: deviceId, accountId: accountId)
+                    onRegistering()
+                    let res = try await secClient.confirmJoinSas(pairingId: info.pairingID)
+                    return Self.adoptedAccount(from: res, fallbackServer: link.server, existing: existing)
+                }
+            },
+            resumePending: {
+                try await withClient { secClient in
+                    let st = (try? await secClient.getStatus()) ?? secClient.currentStatus
+                    guard st?.bootstrap == .pendingRegistration else { return nil }
+                    let res = try await secClient.resumePendingOp()
+                    return Self.adoptedAccount(from: res, fallbackServer: st?.server ?? "", existing: existing)
+                }
+            },
+            hasPendingRegistration: {
+                (try? await withClient { secClient in
+                    let st = (try? await secClient.getStatus()) ?? secClient.currentStatus
+                    return st?.bootstrap == .pendingRegistration
+                }) ?? false
             }
         )
     }
@@ -176,12 +205,14 @@ final class JoinModel {
     @ObservationIgnored private let onJoined: @MainActor (Account) async throws -> Void
 
     let retainedIdentity: Bool
+    private(set) var pendingRegistration: Bool
     init(
-        lastServer: String, calls: JoinCalls, retainedIdentity: Bool = false,
+        lastServer: String, calls: JoinCalls, retainedIdentity: Bool = false, pendingRegistration: Bool = false,
         onJoined: @escaping @MainActor (Account) async throws -> Void
     ) {
         server = lastServer.isEmpty ? "https://" : lastServer
         self.retainedIdentity = retainedIdentity
+        self.pendingRegistration = pendingRegistration
         self.calls = calls
         self.onJoined = onJoined
     }
@@ -191,7 +222,7 @@ final class JoinModel {
         code.count > 4 ? code.prefix(4) + " " + code.dropFirst(4) : code
     }
 
-    var canJoin: Bool { code.count == 8 && server.count > 8 }
+    var canJoin: Bool { pendingRegistration || (code.count == 8 && server.count > 8) }
     /// Working can still be left: a pairing that has not begun to register.
     var canCancel: Bool { !joiningWithSecret && attempt?.registering != true }
 
@@ -219,12 +250,45 @@ final class JoinModel {
 
     // MARK: Joining with a code
 
-    /// 加入 on the form: checks the address, then joins with the code typed or scanned.
+    /// 加入 on the form: checks the address, then joins with the code typed or scanned,
+    /// or resumes a persisted `PENDING_REGISTRATION` without calling `startJoinPairing`.
     func joinWithCode() {
+        if pendingRegistration {
+            resumeRegistration()
+            return
+        }
         do {
             join(PairLink(code: code, server: try Secret.checkServer(server), commit: commit))
         } catch {
             fail(errorText(error))
+        }
+    }
+
+    private func resumeRegistration() {
+        notice = ""
+        step = .working
+        let attempt = JoinAttempt()
+        attempt.beginRegistering()
+        self.attempt = attempt
+        let calls = calls
+        Task {
+            do {
+                if let account = try await calls.resumePending?() {
+                    pendingRegistration = false
+                    await finished(attempt, account)
+                    return
+                }
+                pendingRegistration = false
+                if code.count == 8 {
+                    let checked = try Secret.checkServer(server)
+                    self.join(PairLink(code: code, server: checked, commit: commit))
+                } else {
+                    self.attempt = nil
+                    self.step = .form
+                }
+            } catch {
+                await failed(attempt, error)
+            }
         }
     }
 
@@ -252,15 +316,21 @@ final class JoinModel {
         let calls = calls
         Task {
             do {
+                if let account = try await calls.resumePending?() {
+                    pendingRegistration = false
+                    await finished(attempt, account)
+                    return
+                }
                 let account = try await calls.byPairing(
                     link,
                     { emoji in Task { @MainActor in self.show(emoji, of: attempt) } },
                     { attempt.stopped },
                     { attempt.beginRegistering() },
                     { emoji in await self.requestComparison(emoji, of: attempt) })
+                pendingRegistration = false
                 await finished(attempt, account)
             } catch {
-                failed(attempt, error)
+                await failed(attempt, error)
             }
         }
     }
@@ -290,10 +360,13 @@ final class JoinModel {
         await hand(over: account)
     }
 
-    private func failed(_ attempt: JoinAttempt, _ error: Error) {
+    private func failed(_ attempt: JoinAttempt, _ error: Error) async {
         comparisonPending = false
         let current = self.attempt === attempt
         if attempt.registering {
+            if let checkPending = calls.hasPendingRegistration {
+                pendingRegistration = await checkPending()
+            }
             if current { self.attempt = nil }
             notice = L10n.securityIosUnsureWhetherJoinedCheckTheClientListInThe(
                 detail: String(describing: errorText(error)),

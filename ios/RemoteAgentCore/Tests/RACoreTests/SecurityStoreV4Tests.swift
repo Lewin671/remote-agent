@@ -142,4 +142,83 @@ import Testing
         #expect(st2.pendingOp.codeSaved)
         #expect(!st2.legacyRepairNotice)
     }
+
+    @Test func batchCommitFailureInWriteBucketsPreservesCandidateSlotsForRetry() throws {
+        enum InjectError: Error { case diskFull }
+
+        final class FaultyBacking: @unchecked Sendable {
+            var buckets: [SecurityStoreBucketKey: SecurityStoreStoredBucket] = [:]
+            var keys: [SecurityStoreKeyId: SecurityStoreStoredKey] = [:]
+            var notify: Data?
+            var loginToken: Data?
+            var upgradeNotice = false
+            var failNextWriteBuckets = true
+        }
+
+        let backing = FaultyBacking()
+        let store = SecurityStoreV4Core(
+            backend: SecurityStoreV4Core.Backend(
+                readBuckets: { backing.buckets },
+                writeBuckets: { next in
+                    if backing.failNextWriteBuckets {
+                        backing.failNextWriteBuckets = false
+                        throw InjectError.diskFull
+                    }
+                    backing.buckets = next
+                },
+                readKeys: { backing.keys },
+                writeKeys: { backing.keys = $0 },
+                readNotify: { backing.notify },
+                writeNotify: { backing.notify = $0 },
+                deleteNotify: { backing.notify = nil },
+                readLoginTokenRaw: { backing.loginToken },
+                writeLoginTokenRaw: { backing.loginToken = $0 },
+                deleteLoginToken: { backing.loginToken = nil },
+                hasUpgradeNotice: { backing.upgradeNotice },
+                setUpgradeNotice: { backing.upgradeNotice = $0 },
+                detectAndClearLegacy: { false },
+                clearAllBacking: {
+                    backing.buckets.removeAll()
+                    backing.keys.removeAll()
+                    backing.notify = nil
+                    backing.loginToken = nil
+                    backing.upgradeNotice = false
+                }
+            )
+        )
+
+        let edPub = try store.generateKey(kind: .candidateEd, slot: "slot-retry", persist: true)
+        let xPub = try store.generateKey(kind: .candidateX, slot: "slot-retry", persist: true)
+
+        let batchEffect = PBSecurityStorageEffect.with {
+            $0.opID = 1
+            $0.op = .batchCommit
+            $0.promoteEdSlot = "slot-retry"
+            $0.promoteXSlot = "slot-retry"
+            $0.batch = [
+                PBSecurityStorageWrite.with {
+                    $0.bucket = .record
+                    $0.key = "record"
+                    $0.nextRevision = "rec-1"
+                    $0.data = Data("rec-v1".utf8)
+                }
+            ]
+        }
+
+        let failed = store.executeStorage(batchEffect)
+        #expect(!failed.error.isEmpty)
+        #expect(backing.buckets.isEmpty)
+        // Candidate slots remain present so retry promotion does not fail with missing promote slot.
+        #expect(!((try store.signKey(kind: .candidateEd, slot: "slot-retry", message: Data("probe".utf8))).isEmpty))
+
+        let retried = store.executeStorage(batchEffect)
+        #expect(retried.error.isEmpty)
+        #expect(retried.hasDeviceEd_p)
+        #expect(retried.deviceEdPub == edPub)
+        #expect(retried.deviceXPub == xPub)
+        #expect(backing.buckets[SecurityStoreBucketKey(bucket: Int32(PBSecurityStoreBucket.record.rawValue), key: "record")]?.revision == "rec-1")
+        #expect(throws: Error.self) {
+            _ = try store.signKey(kind: .candidateEd, slot: "slot-retry", message: Data("gone".utf8))
+        }
+    }
 }

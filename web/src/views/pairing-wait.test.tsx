@@ -20,10 +20,23 @@ const calls: {
   releaseConfirm?: (ok: boolean) => void;
 }[] = [];
 
-function makeClient(): SecurityClient {
+function makeClient(opts?: {
+  initialStatus?: ReturnType<typeof create<typeof SecurityWorkflowStatusSchema>>;
+  nextStatus?: () => ReturnType<typeof create<typeof SecurityWorkflowStatusSchema>>;
+}): SecurityClient {
   let nextId = 1;
+  let curStatus =
+    opts?.initialStatus ?? create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.EMPTY });
   return {
-    bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.EMPTY })),
+    get status() {
+      return curStatus;
+    },
+    bootstrap: vi.fn(async () => curStatus),
+    getStatus: vi.fn(async () => {
+      if (opts?.nextStatus) curStatus = opts.nextStatus();
+      return curStatus;
+    }),
+    resumePendingOp: vi.fn(async () => ({})),
     startJoinPairing: vi.fn(async () => {
       const idx = nextId++;
       const pid = `pair-${idx}`;
@@ -161,4 +174,69 @@ it("does not forward empty #/pair? rejoin hash as rawLink on manual submit", asy
       rawLink: "",
     }),
   );
+});
+
+it("resumes PENDING_REGISTRATION via resumePendingOp on retry without starting a new pairing", async () => {
+  let regPersisted = false;
+  const client = makeClient({
+    nextStatus: () =>
+      create(SecurityWorkflowStatusSchema, {
+        bootstrap: regPersisted
+          ? SecurityBootstrapKind.PENDING_REGISTRATION
+          : SecurityBootstrapKind.EMPTY,
+      }),
+  });
+  const onDone = vi.fn();
+  location.hash = "";
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  act(() => root!.render(<Setup client={client} onDone={onDone} />));
+
+  const codeInput = host.querySelector<HTMLInputElement>(
+    `input[aria-label="${message("security.pairing_code")}"]`,
+  )!;
+  const serverInput = host.querySelector<HTMLInputElement>(
+    `input[aria-label="${message("security.server")}"]`,
+  )!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    setter.call(codeInput, "12345678");
+    codeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    setter.call(serverInput, "https://ra.example.com");
+    serverInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const joinBtn = [...host.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes(message("security.join")),
+  )!;
+  await act(async () => {
+    joinBtn.click();
+  });
+  await act(async () => {
+    calls[0].releaseJoin(true);
+  });
+
+  const confirmBtn = [...host.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes(message("security.patterns_match_trust_and_continue")),
+  )!;
+  await act(async () => {
+    confirmBtn.click();
+  });
+  regPersisted = true;
+  await act(async () => {
+    calls[0].releaseConfirm?.(false);
+  });
+
+  const retryBtn = [...host.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes(message("common.retry")),
+  )!;
+  expect(retryBtn).toBeDefined();
+  expect(retryBtn.disabled).toBe(false);
+
+  await act(async () => {
+    retryBtn.click();
+  });
+  expect(client.resumePendingOp).toHaveBeenCalledTimes(1);
+  expect(client.startJoinPairing).toHaveBeenCalledTimes(1);
+  expect(onDone).toHaveBeenCalledTimes(1);
 });

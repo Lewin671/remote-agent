@@ -1380,4 +1380,117 @@ func TestWorkflowHandoffAndEmergencyRecovery(t *testing.T) {
 	if !sawRecCompleteSign {
 		t.Fatal("expected recoveryDonePrefix KeySign golden call on recovery completion")
 	}
+
+	// Regression Fix 1: claimOperationCAS must preserve rec.RecoveryProofs after emergency recovery
+	// so post-recovery restarts, lease renewals, and authority rotations do not degrade to ErrStale.
+	wantProofs := len(c.eng.wf.record.RecoveryProofs)
+	if wantProofs == 0 {
+		t.Fatal("expected CompleteRecovery to persist non-empty RecoveryProofs")
+	}
+	c.restart("https://relay.example.com", false)
+	bootAfterRec := c.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if !bootAfterRec.Ok || bootAfterRec.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_READY || !bootAfterRec.Status.IsAuthority {
+		t.Fatalf("expected post-recovery READY authority on restart, got %+v", bootAfterRec)
+	}
+	if len(c.eng.wf.record.RecoveryProofs) != wantProofs {
+		t.Fatalf("expected RecoveryProofs count %d after restart bootstrap, got %d", wantProofs, len(c.eng.wf.record.RecoveryProofs))
+	}
+	c.nowMs += 60_000
+	relay.nowMs = c.nowMs
+	renewAfterRec := c.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_RenewLease{RenewLease: &corev1.SecurityBoolAction{Flag: true}},
+	})
+	if !renewAfterRec.Ok || !renewAfterRec.Status.LeaseValid {
+		t.Fatalf("expected post-recovery RenewLease to succeed, got %+v", renewAfterRec)
+	}
+	rotAfterRec := c.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareRecoveryRotation{PrepareRecoveryRotation: &corev1.SecurityActionEmpty{}},
+	})
+	if !rotAfterRec.Ok || rotAfterRec.RecoveryCode == "" {
+		t.Fatalf("expected post-recovery PrepareRecoveryRotation to succeed, got %+v", rotAfterRec)
+	}
+	if len(c.eng.wf.record.RecoveryProofs) != wantProofs {
+		t.Fatalf("claimOperationCAS dropped RecoveryProofs: want %d, got %d", wantProofs, len(c.eng.wf.record.RecoveryProofs))
+	}
+	rotConfAfterRec := c.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmRecoveryRotation{ConfirmRecoveryRotation: &corev1.SecurityActionEmpty{}},
+	})
+	if !rotConfAfterRec.Ok {
+		t.Fatalf("expected post-recovery ConfirmRecoveryRotation to succeed, got %+v", rotConfAfterRec)
+	}
+	c.restart("https://relay.example.com", false)
+	bootAfterRot := c.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if !bootAfterRot.Ok || !bootAfterRot.Status.IsAuthority || len(c.eng.wf.record.RecoveryProofs) <= wantProofs {
+		t.Fatalf("expected preserved RecoveryProofs (> %d) after restart post-rotation, got %d (%+v)", wantProofs, len(c.eng.wf.record.RecoveryProofs), bootAfterRot)
+	}
+}
+
+func TestConcurrentPrepareCreationUsesDistinctSlotsAndDiscardsLoser(t *testing.T) {
+	relay := newFakeRelay(1_700_000_000_000)
+	h1 := newFakeClientHarness(t, relay, 0x21)
+	h2 := newFakeClientHarness(t, relay, 0x22)
+	// Simulate two browser tabs backed by the same v4 IndexedDB store and candidate key space.
+	h2.store = h1.store
+	h2.candEd = h1.candEd
+	h2.candX = h1.candX
+	h2.ephemX = h1.ephemX
+
+	b1 := h1.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}}})
+	b2 := h2.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}}})
+	if !b1.Ok || !b2.Ok || b1.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_EMPTY || b2.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_EMPTY {
+		t.Fatalf("expected both tabs to start EMPTY, got b1=%+v b2=%+v", b1, b2)
+	}
+
+	p1 := h1.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com", StoragePersisted: true},
+		},
+	})
+	if !p1.Ok || p1.RecoveryCode == "" || len(h1.candEd) != 1 || len(h1.candX) != 1 {
+		t.Fatalf("expected tab1 PrepareCreation to allocate 1 ed and 1 x candidate slot, got %+v ed=%d x=%d", p1, len(h1.candEd), len(h1.candX))
+	}
+	var slotEd1, slotX1 string
+	for s := range h1.candEd {
+		slotEd1 = s
+	}
+	for s := range h1.candX {
+		slotX1 = s
+	}
+	if slotEd1 == "create-ed" || slotX1 == "create-x" || slotEd1 == "create-ed-wf-1" || slotX1 == "create-x-wf-1" {
+		t.Fatalf("expected per-attempt random creation slots, got ed=%q x=%q", slotEd1, slotX1)
+	}
+	pubEd1 := slices.Clone(h1.candEd[slotEd1].Public().(ed25519.PublicKey))
+
+	// Tab 2 races with PrepareCreation: it allocates its own slots, loses claimOperationCAS on CreateOnly,
+	// discards its own loser slots, and leaves tab 1's candidate keys intact.
+	p2 := h2.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com", StoragePersisted: true},
+		},
+	})
+	if p2.Ok {
+		t.Fatalf("expected concurrent tab2 PrepareCreation to fail CAS claim")
+	}
+	if len(h1.candEd) != 1 || len(h1.candX) != 1 || h1.candEd[slotEd1] == nil || h1.candX[slotX1] == nil {
+		t.Fatalf("expected tab1 candidate slots preserved after tab2 conflict, got ed=%v x=%v", h1.candEd, h1.candX)
+	}
+	if !bytes.Equal(h1.candEd[slotEd1].Public().(ed25519.PublicKey), pubEd1) {
+		t.Fatal("tab2 clobbered tab1 candidate Ed25519 key")
+	}
+
+	_ = h1.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}}})
+	cont := h1.runAction(&corev1.SecurityWorkflowActionEvent{Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}}})
+	if !cont.Ok || !cont.Status.IsAuthority {
+		t.Fatalf("expected tab1 ContinueCreation to succeed using preserved candidate key, got %+v", cont)
+	}
+	if h1.deviceEd == nil || !bytes.Equal(h1.deviceEd.Public().(ed25519.PublicKey), pubEd1) {
+		t.Fatal("expected promoted deviceEd key to match tab1's preserved candidate key")
+	}
+	if len(h1.candEd) != 0 || len(h1.candX) != 0 {
+		t.Fatalf("expected all candidate slots cleared after promotion, got ed=%d x=%d", len(h1.candEd), len(h1.candX))
+	}
 }

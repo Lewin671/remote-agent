@@ -221,4 +221,24 @@ class UnauthenticatedScreensTest {
         ui.onNodeWithContentDescription("返回").performClick()
         org.junit.Assert.assertEquals(1, backs)
     }
+
+    @Test
+    fun pendingRegistrationOpensJoinWithEnabledRetryAndCallsResumeOverride() {
+        val app = app()
+        val resumed = java.util.concurrent.atomic.AtomicInteger()
+        val pendingStatus = io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus.newBuilder()
+            .setBootstrap(io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_REGISTRATION)
+            .setServer("https://ra.example.com")
+            .build()
+        show {
+            JoinContent(
+                app = app,
+                bootstrapOverride = pendingStatus,
+                resumeOverride = { resumed.incrementAndGet() },
+            )
+        }
+        ui.onNodeWithText("重试").assertIsEnabled().performClick()
+        ui.waitUntil { resumed.get() == 1 }
+        org.junit.Assert.assertEquals(1, resumed.get())
+    }
 }

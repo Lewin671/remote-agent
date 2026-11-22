@@ -122,14 +122,17 @@ struct JoinScreen: View {
                 )
                 return
             }
-            if app.joinDirectly { selection = "join" }
+            let isPendingReg = app.securityStatus?.bootstrap == .pendingRegistration
+            if app.joinDirectly || isPendingReg { selection = "join" }
             #if DEBUG
                 if LaunchDriver.joinStep != nil || LaunchDriver.joinRequested { selection = "join" }
             #endif
             let app = app
+            let initialServer = (isPendingReg ? app.securityStatus?.server : nil).flatMap { $0.isEmpty ? nil : $0 } ?? app.lastServer
             let made = JoinModel(
-                lastServer: app.lastServer, calls: app.joiningCalls,
-                retainedIdentity: false
+                lastServer: initialServer, calls: app.joiningCalls,
+                retainedIdentity: false,
+                pendingRegistration: isPendingReg
             ) { account in
                 try await app.joined(account)
             }
@@ -256,7 +259,7 @@ private struct JoinForm: View {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed != text { model.server = trimmed }
         }
-        Btn(L10n.securityJoin(), kind: .primary, enabled: model.canJoin, action: model.joinWithCode)
+        Btn(model.pendingRegistration ? L10n.commonRetry() : L10n.securityJoin(), kind: .primary, enabled: model.canJoin, action: model.joinWithCode)
             .padding(.horizontal, 16).padding(.top, 6)
         JoinLink(text: L10n.securityIosScanQrCode(), action: model.showScanner).padding(.top, 8)
     }

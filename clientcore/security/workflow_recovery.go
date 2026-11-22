@@ -189,10 +189,10 @@ func (e *Engine) prepareEmergencyRecoveryOp(fgGen uint64, rawServer, code string
 			}
 		}
 
-		tok := e.nextWorkflowToken()
-		edSlot := "rec-ed-" + tok
-		xSlot := "rec-x-" + tok
-		e.withEntropy(96, func() {
+		e.withEntropy(128, func() {
+			tok := e.nextWorkflowToken()
+			edSlot := "rec-ed-" + tok
+			xSlot := "rec-x-" + tok
 			if err := e.checkFG(fgGen); err != nil {
 				done(nil, err)
 				return

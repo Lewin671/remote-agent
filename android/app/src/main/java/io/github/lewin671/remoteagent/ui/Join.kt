@@ -161,7 +161,11 @@ fun JoinScreen(app: RaApp) {
 }
 
 @Composable
-private fun JoinContent(app: RaApp) {
+internal fun JoinContent(
+    app: RaApp,
+    bootstrapOverride: SecurityWorkflowStatus? = null,
+    resumeOverride: (suspend () -> Unit)? = null,
+) {
     val copy = uiText()
     val p = pal
     val scope = rememberCoroutineScope()
@@ -180,7 +184,8 @@ private fun JoinContent(app: RaApp) {
     DisposableEffect(secHost) {
         onDispose { secHost.close() }
     }
-    LaunchedEffect(secHost) {
+    LaunchedEffect(secHost, bootstrapOverride) {
+        if (bootstrapOverride != null) return@LaunchedEffect
         secHost.client.setForeground(true)
         runCatching {
             val st = secHost.client.bootstrap()
@@ -189,13 +194,14 @@ private fun JoinContent(app: RaApp) {
     }
 
     val liveStatus by secHost.client.status.collectAsState()
-    val status = liveStatus ?: appBootstrapStatus
+    val status = bootstrapOverride ?: liveStatus ?: appBootstrapStatus
     val existingRepair = status != null &&
         status.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_EMPTY &&
         status.deviceId.isNotEmpty() &&
         status.server.isNotEmpty()
     val pendingCreate = status?.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE
     val pendingRecovery = status?.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_RECOVERY
+    val pendingRegistration = status?.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_REGISTRATION
 
     var step by remember { mutableStateOf<JoinStep>(JoinStep.Form) }
     var code by remember { mutableStateOf("") }
@@ -218,12 +224,12 @@ private fun JoinContent(app: RaApp) {
     var comparisonPending by remember { mutableStateOf(false) }
     var registering by remember { mutableStateOf(false) }
     var activePairingId by remember { mutableStateOf<String?>(null) }
-    var mode by remember(pendingCreate, pendingRecovery, existingRepair) {
+    var mode by remember(pendingCreate, pendingRecovery, pendingRegistration, existingRepair) {
         mutableStateOf(
             when {
                 pendingCreate -> "create"
                 pendingRecovery -> "recover"
-                existingRepair || app.joinDirectly -> "join"
+                pendingRegistration || existingRepair || app.joinDirectly -> "join"
                 else -> "entry"
             },
         )
@@ -271,6 +277,40 @@ private fun JoinContent(app: RaApp) {
                 if (!stopped) error = displayError(e)
                 registering = false
                 comparisonPending = false
+                activePairingId = null
+                step = JoinStep.Form
+            }
+        }
+    }
+
+    fun resumeRegistration() {
+        error = ""
+        stopped = false
+        comparisonPending = false
+        registering = true
+        step = JoinStep.Working
+        job = scope.launch {
+            try {
+                if (resumeOverride != null) {
+                    resumeOverride()
+                } else {
+                    val res = secHost.client.resumePendingOp()
+                    activePairingId = null
+                    app.adoptBootstrappedAccount(res.status)
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (registering) {
+                    error = copy(
+                        UiMessages.securityAndroidCannotConfirmWhetherThisPhoneJoinedValue1CheckTheClient(
+                            displayError(e),
+                        ),
+                    )
+                } else if (!stopped) {
+                    error = displayError(e)
+                }
+                registering = false
                 activePairingId = null
                 step = JoinStep.Form
             }
@@ -548,23 +588,27 @@ private fun JoinContent(app: RaApp) {
                             keyboard = KeyboardType.Uri,
                         )
                         PillButton(
-                            copy(UiMessages.securityJoin()),
+                            copy(if (pendingRegistration) UiMessages.commonRetry() else UiMessages.securityJoin()),
                             {
-                                try {
-                                    join(
-                                        PairLink(
-                                            code.filter { it.isDigit() },
-                                            checkedServer(server),
-                                            commit,
-                                        ),
-                                    )
-                                } catch (e: Exception) {
-                                    error = displayError(e)
+                                if (pendingRegistration) {
+                                    resumeRegistration()
+                                } else {
+                                    try {
+                                        join(
+                                            PairLink(
+                                                code.filter { it.isDigit() },
+                                                checkedServer(server),
+                                                commit,
+                                            ),
+                                        )
+                                    } catch (e: Exception) {
+                                        error = displayError(e)
+                                    }
                                 }
                             },
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             ButtonKind.INK,
-                            enabled = code.count { it.isDigit() } == 8 && server.length > 8,
+                            enabled = pendingRegistration || (code.count { it.isDigit() } == 8 && server.length > 8),
                         )
                         JoinLink(copy(UiMessages.securityAndroidScanQrCode())) {
                             error = ""

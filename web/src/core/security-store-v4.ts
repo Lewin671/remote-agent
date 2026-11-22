@@ -532,6 +532,7 @@ export class SecurityStoreV4 {
           const getReq = store.get(id) as IDBRequest<StoredBucketRow | undefined>;
           const readPubs = this.startReadIdentityPubs(tx);
           let conflict = false;
+          let dismissNotice = false;
           getReq.onsuccess = () => {
             const cur = getReq.result;
             if (eff.op === SecurityStorageOp.WRITE_CAS) {
@@ -546,7 +547,7 @@ export class SecurityStoreV4 {
                 data: toAB(eff.data),
               };
               store.put(row, id);
-              if (eff.bucket === SecurityStoreBucket.RECORD) this.dismissUpgradeNotice();
+              if (eff.bucket === SecurityStoreBucket.RECORD) dismissNotice = true;
             } else {
               if (eff.expectedRevision !== "" && cur && cur.revision !== eff.expectedRevision) {
                 conflict = true;
@@ -556,6 +557,7 @@ export class SecurityStoreV4 {
             }
           };
           tx.oncomplete = () => {
+            if (dismissNotice) this.dismissUpgradeNotice();
             resolve(create(SecurityStorageResultEventSchema, {
               opId: eff.opId,
               conflict,
@@ -576,6 +578,7 @@ export class SecurityStoreV4 {
 
           let conflict = false;
           let outcomeErr = "";
+          let onCommitted: (() => void) | undefined;
           let readPubs: (() => {
             hasDeviceEd: boolean;
             deviceEdPub: Uint8Array;
@@ -614,6 +617,9 @@ export class SecurityStoreV4 {
                 return;
               }
 
+              let ephemeralDeletes: string[] = [];
+              let recordCommitted = false;
+
               // Step 2: Promote candidate slots -> device identity keys.
               if (eff.promoteEdSlot) {
                 const cand = edCandReq?.result ?? this.ephemeralKeys.get(candEdId);
@@ -624,7 +630,7 @@ export class SecurityStoreV4 {
                 }
                 kStore.put(cand, keyId(SecurityKeyKind.DEVICE_ED, ""));
                 kStore.delete(candEdId);
-                this.ephemeralKeys.delete(candEdId);
+                ephemeralDeletes.push(candEdId);
               }
               if (eff.promoteXSlot) {
                 const cand = xCandReq?.result ?? this.ephemeralKeys.get(candXId);
@@ -635,7 +641,7 @@ export class SecurityStoreV4 {
                 }
                 kStore.put(cand, keyId(SecurityKeyKind.DEVICE_X, ""));
                 kStore.delete(candXId);
-                this.ephemeralKeys.delete(candXId);
+                ephemeralDeletes.push(candXId);
               }
 
               // Step 3: Commit all bucket writes/removals.
@@ -650,18 +656,23 @@ export class SecurityStoreV4 {
                     revision: w.nextRevision,
                     data: toAB(w.data),
                   } satisfies StoredBucketRow, id);
-                  if (w.bucket === SecurityStoreBucket.RECORD) this.dismissUpgradeNotice();
+                  if (w.bucket === SecurityStoreBucket.RECORD) recordCommitted = true;
                 }
               }
 
               // Step 4: Discard remaining candidate/ephemeral slots and optionally clear login token.
               for (const slot of eff.discardSlots) {
                 for (const kind of [SecurityKeyKind.CANDIDATE_ED, SecurityKeyKind.CANDIDATE_X, SecurityKeyKind.EPHEMERAL_X]) {
-                  this.ephemeralKeys.delete(keyId(kind, slot));
+                  ephemeralDeletes.push(keyId(kind, slot));
                   if (kind !== SecurityKeyKind.EPHEMERAL_X) kStore.delete(keyId(kind, slot));
                 }
               }
               if (eff.clearLoginToken) mStore.delete(LOGIN_TOKEN_KEY);
+
+              onCommitted = () => {
+                for (const id of ephemeralDeletes) this.ephemeralKeys.delete(id);
+                if (recordCommitted) this.dismissUpgradeNotice();
+              };
 
               readPubs = this.startReadIdentityPubs(tx);
             } catch (e) {
@@ -686,6 +697,7 @@ export class SecurityStoreV4 {
           }
 
           tx.oncomplete = () => {
+            onCommitted?.();
             const pubs = readPubs
               ? readPubs()
               : { hasDeviceEd: false, deviceEdPub: new Uint8Array(), hasDeviceX: false, deviceXPub: new Uint8Array() };

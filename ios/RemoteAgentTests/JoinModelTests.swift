@@ -19,9 +19,20 @@ final class FakeJoin: @unchecked Sendable {
     private let lock = NSLock()
     private var pairingList: [Pairing] = []
     private var secretList: [(Secret, CheckedContinuation<Account, Error>)] = []
+    private var resumeCount = 0
+    var resumeHandler: (@Sendable () async throws -> Account?)?
+    var pendingRegCheck: (@Sendable () async -> Bool)?
 
     var pairings: [Pairing] { lock.withLock { pairingList } }
     var secrets: [(Secret, CheckedContinuation<Account, Error>)] { lock.withLock { secretList } }
+    var resumeCalls: Int { lock.withLock { resumeCount } }
+
+    func setPendingRegistration(resume: (@Sendable () async throws -> Account?)?, hasPending: (@Sendable () async -> Bool)?) {
+        lock.withLock {
+            resumeHandler = resume
+            pendingRegCheck = hasPending
+        }
+    }
 
     var calls: JoinCalls {
         JoinCalls(
@@ -34,6 +45,17 @@ final class FakeJoin: @unchecked Sendable {
                                 onRegistering: onRegistering, confirm: confirm, end: end))
                     }
                 }
+            },
+            resumePending: {
+                let handler = self.lock.withLock {
+                    self.resumeCount += 1
+                    return self.resumeHandler
+                }
+                return try await handler?()
+            },
+            hasPendingRegistration: {
+                let check = self.lock.withLock { self.pendingRegCheck }
+                return await check?() ?? false
             })
     }
 }
@@ -298,5 +320,41 @@ final class FakeJoin: @unchecked Sendable {
         p.end.resume(returning: account)
         await eventually("said") { m.notice.hasPrefix("已经加入，但没能保存账户密钥") }
         #expect(m.step == .form && m.noticeIsError)
+    }
+
+    @Test func retriesPendingRegistrationViaResumePendingWithoutStartingNewPairing() async {
+        let account = self.account
+        let (m, p) = await started()
+        fake.setPendingRegistration(resume: { account }, hasPending: { true })
+        p.onRegistering()
+        p.end.resume(throwing: URLError(.networkConnectionLost))
+        await eventually("pendingRegistration armed") { m.step == .form && m.pendingRegistration }
+
+        m.typeCode("") // Even without 8 digits, retry resumes the persisted registration.
+        #expect(m.canJoin)
+        let resumesBefore = fake.resumeCalls
+        m.joinWithCode()
+        await eventually("resumed") { joined.accounts.count == 1 }
+        #expect(fake.resumeCalls == resumesBefore + 1)
+        #expect(fake.pairings.count == 1)
+        #expect(joined.accounts == [account])
+    }
+
+    @Test func startsWithPendingRegistrationEnabledAndResumesDirectly() async {
+        let account = self.account
+        fake.setPendingRegistration(resume: { account }, hasPending: { true })
+        let m = JoinModel(
+            lastServer: "https://ra.example.com",
+            calls: fake.calls,
+            pendingRegistration: true
+        ) { acc in
+            joined.accounts.append(acc)
+        }
+        #expect(m.pendingRegistration)
+        #expect(m.canJoin)
+        m.joinWithCode()
+        await eventually("resumed") { joined.accounts.count == 1 }
+        #expect(fake.resumeCalls == 1)
+        #expect(fake.pairings.isEmpty)
     }
 }

@@ -74,6 +74,8 @@ type PreparedCommand struct {
 	Sealing            bool
 	SealingRetry       bool
 	SealedEnvelope     *v1.Envelope
+	SealedContentEpoch uint64
+	SealedHeadHash     [32]byte
 	RequestKeyHash     []byte
 	PayloadHash        []byte
 }
@@ -275,10 +277,21 @@ func (e *Engine) preflightAndEmit(ctx *StepContext, prep *PreparedCommand, retry
 }
 
 func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, retryOfUnknown bool) {
-	if e.secEngine != nil && e.secEngine.Locked() && prep.SealedEnvelope == nil {
-		e.inFlightCmds[prep.RequestID] = prep
-		e.sealAndEmitCommandAttempt(ctx, prep, retryOfUnknown)
-		return
+	if e.secEngine != nil && e.secEngine.Locked() {
+		if prep.SealedEnvelope != nil {
+			if curCE, curHead, ok := e.secEngine.CurrentSealScope(); ok && (prep.SealedContentEpoch != curCE || prep.SealedHeadHash != curHead) {
+				prep.SealedEnvelope = nil
+				prep.SealedContentEpoch = 0
+				prep.SealedHeadHash = [32]byte{}
+				prep.RequestKeyHash = nil
+				prep.PayloadHash = nil
+			}
+		}
+		if prep.SealedEnvelope == nil {
+			e.inFlightCmds[prep.RequestID] = prep
+			e.sealAndEmitCommandAttempt(ctx, prep, retryOfUnknown)
+			return
+		}
 	}
 	if prep.ActiveLegs == nil {
 		prep.ActiveLegs = make(map[string]*CommandLeg)

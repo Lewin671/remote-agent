@@ -2,6 +2,7 @@ import * as l10n from "../i18n";
 import { SetupReset } from "../SetupReset";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
+import { SecurityBootstrapKind } from "../gen/remoteagent/core/v1/security_pb";
 import {
   createStandaloneSecurityClient,
   parsePairLinkQuery,
@@ -129,6 +130,9 @@ export function Setup({
   const attempt = useRef<{ canceled: boolean; pairingId: string }>({ canceled: false, pairingId: "" });
   const [registering, setRegistering] = useState(false);
   const [comparisonPending, setComparisonPending] = useState(false);
+  const [pendingRegistration, setPendingRegistration] = useState(
+    suppliedClient?.status?.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION,
+  );
   const ownClient = useRef<StandaloneSecurityHandle | undefined>(undefined);
   const bootstrappedRef = useRef(false);
   const registeringRef = useRef(false);
@@ -166,6 +170,16 @@ export function Setup({
     };
   }, [suppliedClient]);
 
+  const isPendingReg = (client: SecurityClient) =>
+    client.status?.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION;
+
+  const refreshPendingReg = async (client: SecurityClient) => {
+    if (isPendingReg(client)) return client.status;
+    return typeof client.getStatus === "function"
+      ? await client.getStatus().catch(() => client.status)
+      : client.status;
+  };
+
   const pair = async (link: { code: string; server: string; commit?: Uint8Array } = fromLink ?? { code, server }) => {
     const mine = { canceled: false, pairingId: "" };
     attempt.current = mine;
@@ -177,6 +191,19 @@ export function Setup({
     setEmoji(undefined);
     try {
       const client = await ensureClient();
+      const status = await refreshPendingReg(client);
+      if (status?.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION) {
+        setPendingRegistration(true);
+        setRegistering(true);
+        await client.resumePendingOp();
+        if (!current()) return;
+        mine.pairingId = "";
+        setPendingRegistration(false);
+        location.hash = "";
+        onDone();
+        return;
+      }
+      setPendingRegistration(false);
       const info = await client.startJoinPairing({
         server: link.server,
         code: link.code.replace(/\s+/g, ""),
@@ -220,6 +247,12 @@ export function Setup({
       if (!current()) return;
       mine.pairingId = "";
       setRegistering(false);
+      const client = suppliedClient ?? ownClient.current?.client;
+      if (client) {
+        const st = await refreshPendingReg(client);
+        if (!current()) return;
+        setPendingRegistration(st?.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION);
+      }
       setError(joinBanner(e));
       setEmoji(undefined);
       setBusy(false);
@@ -337,10 +370,14 @@ export function Setup({
         <div className="setup-go">
           <button
             className="btn pri"
-            disabled={busy || code.replace(/\s/g, "").length !== 8 || !server}
+            disabled={busy || (!pendingRegistration && (code.replace(/\s/g, "").length !== 8 || !server))}
             onClick={() => void pair({ code, server })}
           >
-            {busy ? l10n.t("connection.connecting") : l10n.t("security.join")}
+            {busy
+              ? l10n.t("connection.connecting")
+              : pendingRegistration
+                ? l10n.t("common.retry")
+                : l10n.t("security.join")}
           </button>
         </div>
       </>

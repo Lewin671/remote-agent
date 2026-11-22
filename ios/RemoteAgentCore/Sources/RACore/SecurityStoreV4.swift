@@ -478,63 +478,53 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                             return out
                         }
                     }
-                    var promotedEd: SecurityStoreStoredKey?
-                    var promotedX: SecurityStoreStoredKey?
+                    var promotedEd: (candId: SecurityStoreKeyId, key: SecurityStoreStoredKey)?
+                    var promotedX: (candId: SecurityStoreKeyId, key: SecurityStoreStoredKey)?
                     if !effect.promoteEdSlot.isEmpty {
                         let candId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.candidateEd.rawValue), slot: effect.promoteEdSlot)
-                        promotedEd = ephemeralKeys[candId] ?? keys[candId]
-                        if promotedEd == nil {
+                        guard let ed = ephemeralKeys[candId] ?? keys[candId] else {
                             out.error = "missing promote ed slot"
                             Self.populateIdentityPubs(&out, keys: keys)
                             return out
                         }
+                        promotedEd = (candId, ed)
                     }
                     if !effect.promoteXSlot.isEmpty {
                         let candId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.candidateX.rawValue), slot: effect.promoteXSlot)
-                        promotedX = ephemeralKeys[candId] ?? keys[candId]
-                        if promotedX == nil {
+                        guard let x = ephemeralKeys[candId] ?? keys[candId] else {
                             out.error = "missing promote x slot"
                             Self.populateIdentityPubs(&out, keys: keys)
                             return out
                         }
+                        promotedX = (candId, x)
                     }
-                    var keysDirty = false
-                    var bucketsDirty = false
-                    var notifyUpdate: Data?
-                    var notifyDeleted = false
+
+                    // Phase 1: persist promoted DEVICE_* keys BEFORE removing candidate slots or committing buckets.
+                    var promoteDirty = false
                     if let ed = promotedEd {
-                        let candId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.candidateEd.rawValue), slot: effect.promoteEdSlot)
                         keys[SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceEd.rawValue), slot: "")] = SecurityStoreStoredKey(
                             kind: Int32(PBSecurityKeyKind.deviceEd.rawValue),
                             slot: "",
-                            privateKey: ed.privateKey,
-                            publicKey: ed.publicKey
+                            privateKey: ed.key.privateKey,
+                            publicKey: ed.key.publicKey
                         )
-                        keys.removeValue(forKey: candId)
-                        ephemeralKeys.removeValue(forKey: candId)
-                        keysDirty = true
+                        promoteDirty = true
                     }
                     if let x = promotedX {
-                        let candId = SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.candidateX.rawValue), slot: effect.promoteXSlot)
                         keys[SecurityStoreKeyId(kind: Int32(PBSecurityKeyKind.deviceX.rawValue), slot: "")] = SecurityStoreStoredKey(
                             kind: Int32(PBSecurityKeyKind.deviceX.rawValue),
                             slot: "",
-                            privateKey: x.privateKey,
-                            publicKey: x.publicKey
+                            privateKey: x.key.privateKey,
+                            publicKey: x.key.publicKey
                         )
-                        keys.removeValue(forKey: candId)
-                        ephemeralKeys.removeValue(forKey: candId)
-                        keysDirty = true
+                        promoteDirty = true
                     }
-                    for slot in effect.discardSlots {
-                        for kind in [PBSecurityKeyKind.candidateEd, .candidateX, .ephemeralX] {
-                            let id = SecurityStoreKeyId(kind: Int32(kind.rawValue), slot: slot)
-                            ephemeralKeys.removeValue(forKey: id)
-                            if kind != .ephemeralX, keys.removeValue(forKey: id) != nil {
-                                keysDirty = true
-                            }
-                        }
-                    }
+                    if promoteDirty { try backend.writeKeys(keys) }
+
+                    // Phase 2: commit buckets (record, clearing pendingOp / regIntent) before discarding candidate keys.
+                    var bucketsDirty = false
+                    var notifyUpdate: Data?
+                    var notifyDeleted = false
                     var recordWritten = false
                     for w in effect.batch {
                         let id = SecurityStoreBucketKey(bucket: Int32(w.bucket.rawValue), key: w.key)
@@ -559,7 +549,6 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                             }
                         }
                     }
-                    if keysDirty { try backend.writeKeys(keys) }
                     if bucketsDirty { try backend.writeBuckets(buckets) }
                     if let blob = notifyUpdate {
                         if blob.isEmpty { try backend.deleteNotify() } else { try backend.writeNotify(blob) }
@@ -572,6 +561,27 @@ public final class SecurityStoreV4Core: @unchecked Sendable {
                     if recordWritten, (try backend.hasUpgradeNotice()) {
                         try backend.setUpgradeNotice(false)
                     }
+
+                    // Phase 3: best-effort post-commit cleanup of promoted candidates and discarded slots.
+                    var cleanupDirty = false
+                    if let ed = promotedEd {
+                        ephemeralKeys.removeValue(forKey: ed.candId)
+                        if keys.removeValue(forKey: ed.candId) != nil { cleanupDirty = true }
+                    }
+                    if let x = promotedX {
+                        ephemeralKeys.removeValue(forKey: x.candId)
+                        if keys.removeValue(forKey: x.candId) != nil { cleanupDirty = true }
+                    }
+                    for slot in effect.discardSlots {
+                        for kind in [PBSecurityKeyKind.candidateEd, .candidateX, .ephemeralX] {
+                            let id = SecurityStoreKeyId(kind: Int32(kind.rawValue), slot: slot)
+                            ephemeralKeys.removeValue(forKey: id)
+                            if kind != .ephemeralX, keys.removeValue(forKey: id) != nil {
+                                cleanupDirty = true
+                            }
+                        }
+                    }
+                    if cleanupDirty { try? backend.writeKeys(keys) }
                     out.conflict = false
                     Self.populateIdentityPubs(&out, keys: keys)
                     return out

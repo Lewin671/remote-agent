@@ -180,4 +180,77 @@ class SecurityStoreV4Test {
             host2.close()
         }
     }
+
+    @Test
+    fun batchCommitFailureInWriteBucketsPreservesCandidateSlotsForRetry() {
+        var storedBuckets = emptyMap<SecurityStoreBucketId, SecurityStoreStoredBucket>()
+        var storedKeys = emptyMap<SecurityStoreKeyId, SecurityStoreStoredKey>()
+        var notifyBlob: ByteArray? = null
+        var failNextWriteBuckets = true
+
+        val core = SecurityStoreV4Core(
+            object : SecurityStoreV4Backend {
+                override fun <T> transaction(block: () -> T): T = block()
+                override fun readBuckets() = storedBuckets
+                override fun writeBuckets(buckets: Map<SecurityStoreBucketId, SecurityStoreStoredBucket>) {
+                    if (failNextWriteBuckets) {
+                        failNextWriteBuckets = false
+                        throw IllegalStateException("injected writeBuckets failure")
+                    }
+                    storedBuckets = buckets
+                }
+                override fun readKeys() = storedKeys
+                override fun writeKeys(keys: Map<SecurityStoreKeyId, SecurityStoreStoredKey>) {
+                    storedKeys = keys
+                }
+                override fun readNotifyBlob() = notifyBlob
+                override fun writeNotifyBlob(blob: ByteArray) {
+                    notifyBlob = blob
+                }
+                override fun deleteNotifyBlob() {
+                    notifyBlob = null
+                }
+                override fun deleteLoginToken() {}
+                override fun clearUpgradeNotice() {}
+                override fun detectAndClearLegacy(): Boolean = false
+                override fun clearAll() {
+                    storedBuckets = emptyMap()
+                    storedKeys = emptyMap()
+                    notifyBlob = null
+                }
+            },
+        )
+
+        val edPub = core.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED, "slot-retry", persist = true)
+        val xPub = core.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X, "slot-retry", persist = true)
+
+        val batchEffect = SecurityStorageEffect.newBuilder()
+            .setOpId(1L)
+            .setOp(SecurityStorageOp.SECURITY_STORAGE_OP_BATCH_COMMIT)
+            .setPromoteEdSlot("slot-retry")
+            .setPromoteXSlot("slot-retry")
+            .addBatch(
+                SecurityStorageWrite.newBuilder()
+                    .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD)
+                    .setKey("record")
+                    .setNextRevision("rec-1")
+                    .setData(ByteString.copyFromUtf8("rec-v1")),
+            )
+            .build()
+
+        val failed = core.executeStorage(batchEffect)
+        assertTrue(failed.error.isNotEmpty())
+        assertTrue(storedBuckets.isEmpty())
+        // Candidate key remains intact so retrying the same BATCH_COMMIT promotes and commits cleanly.
+        assertEquals(64, core.signKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED, "slot-retry", byteArrayOf(1, 2, 3)).size)
+
+        val retried = core.executeStorage(batchEffect)
+        assertEquals("", retried.error)
+        assertTrue(retried.hasDeviceEd)
+        assertArrayEquals(edPub, retried.deviceEdPub.toByteArray())
+        assertArrayEquals(xPub, retried.deviceXPub.toByteArray())
+        assertEquals("rec-1", storedBuckets[SecurityStoreBucketId(SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD.number, "record")]?.revision)
+        assertTrue(storedKeys.containsKey(SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED.number, "")))
+        assertFalse(storedKeys.containsKey(SecurityStoreKeyId(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED.number, "slot-retry")))
+    }
 }

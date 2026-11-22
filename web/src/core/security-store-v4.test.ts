@@ -258,4 +258,104 @@ describe("SecurityStoreV4", () => {
     await rawV4Buckets("readwrite", (s) => s.delete(`${SecurityStoreBucket.RECORD}:record`));
     expect(await readV4RecordForNotify()).toBeUndefined();
   });
+
+  it("preserves ephemeral candidate keys across aborted BATCH_COMMIT so retry promotes cleanly", async () => {
+    const idb = new IDBFactory();
+    let abortFirstBatch = true;
+    const wrappedOpen = (...args: Parameters<IDBFactory["open"]>) => {
+      const req = idb.open(...args);
+      return new Proxy(req, {
+        get(target, prop, receiver) {
+          if (prop === "result") {
+            const db = target.result;
+            return new Proxy(db, {
+              get(dbTarget, dbProp) {
+                if (dbProp === "transaction") {
+                  return (...txArgs: Parameters<IDBDatabase["transaction"]>) => {
+                    const tx = dbTarget.transaction(...txArgs);
+                    const stores = Array.isArray(txArgs[0]) ? txArgs[0] : [txArgs[0]];
+                    if (abortFirstBatch && txArgs[1] === "readwrite" && stores.includes("keys") && stores.includes("buckets")) {
+                      const origObjectStore = tx.objectStore.bind(tx);
+                      return new Proxy(tx, {
+                        get(txTarget, txProp) {
+                          if (txProp === "objectStore") {
+                            return (name: string) => {
+                              const os = origObjectStore(name);
+                              if (name !== "buckets") return os;
+                              return new Proxy(os, {
+                                get(osTarget, osProp) {
+                                  if (osProp === "put") {
+                                    return (...putArgs: Parameters<IDBObjectStore["put"]>) => {
+                                      if (abortFirstBatch) {
+                                        abortFirstBatch = false;
+                                        txTarget.abort();
+                                      }
+                                      return osTarget.put(...putArgs);
+                                    };
+                                  }
+                                  const v = Reflect.get(osTarget, osProp);
+                                  return typeof v === "function" ? v.bind(osTarget) : v;
+                                },
+                              });
+                            };
+                          }
+                          const tv = Reflect.get(txTarget, txProp);
+                          return typeof tv === "function" ? tv.bind(txTarget) : tv;
+                        },
+                      });
+                    }
+                    return tx;
+                  };
+                }
+                const dv = Reflect.get(dbTarget, dbProp);
+                return typeof dv === "function" ? dv.bind(dbTarget) : dv;
+              },
+            });
+          }
+          const rv = Reflect.get(target, prop, receiver);
+          return typeof rv === "function" ? rv.bind(target) : rv;
+        },
+      });
+    };
+    const fakeIdb = new Proxy(idb, {
+      get(target, prop) {
+        if (prop === "open") return wrappedOpen;
+        const v = Reflect.get(target, prop);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    }) as IDBFactory;
+
+    const store = new SecurityStoreV4(() => fakeIdb);
+    const edPub = new Uint8Array(await store.generateKey(SecurityKeyKind.CANDIDATE_ED, "slot-retry", false));
+    const xPub = new Uint8Array(await store.generateKey(SecurityKeyKind.CANDIDATE_X, "slot-retry", false));
+
+    const batchEffect = create(SecurityStorageEffectSchema, {
+      opId: 1n,
+      op: SecurityStorageOp.BATCH_COMMIT,
+      promoteEdSlot: "slot-retry",
+      promoteXSlot: "slot-retry",
+      batch: [
+        {
+          bucket: SecurityStoreBucket.RECORD,
+          key: "record",
+          nextRevision: "rec-1",
+          data: new TextEncoder().encode("rec-v1"),
+        },
+      ],
+    });
+
+    const first = await store.executeStorage(batchEffect);
+    expect(first.error).not.toBe("");
+
+    // Ephemeral candidate slots must survive the aborted transaction so retry can promote them.
+    const probe = new TextEncoder().encode("probe");
+    await expect(store.signKey(SecurityKeyKind.CANDIDATE_ED, "slot-retry", probe)).resolves.toBeInstanceOf(Uint8Array);
+
+    const retried = await store.executeStorage(batchEffect);
+    expect(retried.error).toBe("");
+    expect(retried.hasDeviceEd).toBe(true);
+    expect(retried.deviceEdPub).toEqual(edPub);
+    expect(retried.deviceXPub).toEqual(xPub);
+    await expect(store.signKey(SecurityKeyKind.CANDIDATE_ED, "slot-retry", probe)).rejects.toThrow();
+  });
 });

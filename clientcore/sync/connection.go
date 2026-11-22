@@ -364,9 +364,7 @@ func (e *Engine) requestSyncSecurity(ctx *StepContext, touch bool) {
 			return
 		}
 		if err != nil {
-			if _, ok := e.secEngine.CoordInfo(); !ok {
-				e.emitCoordEffects(stepCtx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
-			}
+			e.emitCoordEffects(stepCtx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
 		} else {
 			e.syncSecurityStateFromEngine(stepCtx, true)
 		}

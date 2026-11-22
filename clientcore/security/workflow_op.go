@@ -49,7 +49,7 @@ func (e *Engine) claimOperationCAS(op *PersistedOperation, expectedHead *devices
 				fn(nil, devicesec.ErrStale)
 				return
 			}
-			states, _, _, err := parseAndVerifyChain(rec.Pin, rec.States, nil)
+			states, _, _, err := parseAndVerifyChain(rec.Pin, rec.States, rec.RecoveryProofs)
 			if err != nil {
 				fn(nil, devicesec.ErrStale)
 				return
