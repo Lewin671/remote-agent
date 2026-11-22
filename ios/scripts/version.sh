@@ -13,10 +13,12 @@
 set -eu
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
-version=$(sed -n 's/^version=//p' "$root/version.properties")
+# RA_APP_VERSION lets TestFlight beta builds target the next patch train
+# without editing version.properties.
+version=${RA_APP_VERSION:-$(sed -n 's/^version=//p' "$root/version.properties")}
 case "$version" in
     [0-9]*.[0-9]*.[0-9]*) ;;
-    *) echo "version.sh: no version= in $root/version.properties" >&2; exit 1 ;;
+    *) echo "version.sh: invalid version '$version'" >&2; exit 1 ;;
 esac
 
 # RA_SOURCE_COMMIT lets a build made outside a checkout say where it is from.
@@ -33,6 +35,9 @@ if [ "${1:-}" = "--stamp" ]; then
     plist=${2:?version.sh --stamp needs the path of a built Info.plist}
     /usr/bin/plutil -replace CFBundleShortVersionString -string "$version" "$plist"
     /usr/bin/plutil -replace RASourceCommit -string "$commit" "$plist"
+    # The app uses only Apple CryptoKit (exempt encryption); stamping this in Info.plist
+    # prevents TestFlight builds from blocking on Missing Compliance before deliver runs.
+    /usr/bin/plutil -replace ITSAppUsesNonExemptEncryption -bool NO "$plist"
 else
     echo "MARKETING_VERSION = $version"
     echo "RA_SOURCE_COMMIT = $commit"

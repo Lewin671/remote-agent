@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   FASTLANE_SKIP_UPDATE_CHECK: '1'
@@ -30,7 +31,8 @@ jobs:
       ${{ github.event_name == 'workflow_dispatch' ||
           (vars.IOS_APP_STORE_ENABLED == 'true' &&
            github.event.workflow_run.conclusion == 'success' &&
-           github.event.workflow_run.event == 'push' &&
+           (github.event.workflow_run.event == 'push' ||
+            github.event.workflow_run.event == 'workflow_dispatch') &&
            github.event.workflow_run.head_repository.full_name == github.repository) }}
     # Evaluate the enable/success condition before reserving Apple's single slot.
     # Disabled workflow_run events must not displace a queued manual rehearsal.
@@ -54,16 +56,33 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_PUBLISH: ${{ inputs.publish }}
           RUN_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
         shell: bash
         run: |
           set -euo pipefail
           publish=false
           tag="$INPUT_TAG"
           if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
-            git fetch origin "$RUN_COMMIT"
-            version=$(git show "${RUN_COMMIT}:version.properties" | sed -n 's/^version=//p')
-            tag="v$version"
-            publish=true
+            if [ "$RUN_EVENT" = push ]; then
+              git fetch origin "$RUN_COMMIT"
+              version=$(git show "${RUN_COMMIT}:version.properties" | sed -n 's/^version=//p')
+              tag="v$version"
+              publish=true
+            elif [ "$RUN_EVENT" = workflow_dispatch ]; then
+              publish_conclusion=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs" --jq '.jobs[] | select(.name == "publish") | .conclusion' | awk 'NR==1 { print }')
+              if [ "$publish_conclusion" != success ]; then
+                echo "Skipping Release workflow_dispatch rehearsal (publish job conclusion: ${publish_conclusion:-missing})"
+                echo 'skip=true' >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              tag=$(gh release view --json tagName --jq .tagName)
+              publish=true
+            else
+              echo "Unexpected Release trigger event: $RUN_EVENT" >&2
+              exit 1
+            fi
           elif [ "$INPUT_PUBLISH" = true ]; then
             [ -n "$tag" ] || { echo 'Publishing requires an explicit tag'; exit 1; }
             publish=true
@@ -82,7 +101,15 @@ jobs:
             fi
             ref=$(git rev-parse "$tag^{commit}")
             if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
-              [ "$ref" = "$RUN_COMMIT" ] || { echo "Tag does not match the successful release run"; exit 1; }
+              if [ "$RUN_EVENT" = push ]; then
+                [ "$ref" = "$RUN_COMMIT" ] || { echo "Tag does not match the successful release run"; exit 1; }
+              else
+                git fetch origin "$RUN_COMMIT"
+                if ! git merge-base --is-ancestor "$ref" "$RUN_COMMIT"; then
+                  echo "Skipping: latest release $tag ($ref) is not an ancestor of dispatched release run ($RUN_COMMIT)"
+                  echo 'skip=true' >> "$GITHUB_OUTPUT"
+                fi
+              fi
             fi
           else
             ref=$(git rev-parse HEAD)
@@ -148,6 +175,7 @@ jobs:
         env:
           IOS_SOURCE_DIR: ${{ github.workspace }}/product
           IOS_OUTPUT_DIR: ${{ runner.temp }}/ios-publish
+          IOS_TESTFLIGHT_INTERNAL_GROUP: ${{ vars.IOS_TESTFLIGHT_INTERNAL_GROUP }}
           ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
           IOS_SIGNING: ${{ secrets.IOS_SIGNING }}
           RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}

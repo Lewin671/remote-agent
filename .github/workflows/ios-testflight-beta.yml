@@ -1,0 +1,138 @@
+name: iOS TestFlight Beta
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ios/**
+      - clientcore/**
+      - shared/**
+      - proto/**
+      - scripts/core/**
+      - go.mod
+      - go.sum
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload signed internal TestFlight build (unchecked rehearses unsigned archive)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  FASTLANE_SKIP_UPDATE_CHECK: '1'
+  FASTLANE_HIDE_CHANGELOG: '1'
+  FASTLANE_OPT_OUT_USAGE: '1'
+
+jobs:
+  beta:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          vars.IOS_TESTFLIGHT_BETA_ENABLED == 'true' }}
+    # Evaluate the enable condition before canceling an active manual rehearsal.
+    concurrency:
+      group: ios-testflight-beta
+      cancel-in-progress: true
+    # Match the Xcode 27 toolchain used for official App Store releases.
+    runs-on: xcode-27
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Decide whether to build beta
+        id: plan
+        env:
+          INPUT_UPLOAD: ${{ inputs.upload }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          upload=false
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            version=$(sed -n 's/^version=//p' version.properties)
+            if git rev-parse --verify --quiet "refs/tags/v${version}^{commit}" >/dev/null &&
+               [ "$(git rev-parse "refs/tags/v${version}^{commit}")" = "$(git rev-parse HEAD)" ]; then
+              echo "Skipping release tag commit v${version} (handled by iOS App Store)"
+              echo 'skip=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            changed=$(git diff-tree --no-commit-id --name-only -r HEAD)
+            if [ "$changed" = version.properties ]; then
+              echo "Skipping version.properties-only commit (handled by iOS App Store)"
+              echo 'skip=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            upload=true
+          elif [ "$INPUT_UPLOAD" = true ]; then
+            upload=true
+          fi
+          echo "upload=$upload" >> "$GITHUB_OUTPUT"
+      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: ios
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.mod', 'go.sum', 'clientcore/go.mod', 'clientcore/go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.plan.outputs.skip != 'true'
+        id: core-ios-cache
+        with:
+          path: build/core/ios
+          key: core-ios-beta-${{ runner.os }}-${{ hashFiles('clientcore/**', 'shared/**', 'proto/**', 'scripts/core/build.sh', 'go.mod', 'go.sum') }}
+      - name: Refresh cached Corebind timestamp
+        if: steps.plan.outputs.skip != 'true' && steps.core-ios-cache.outputs.cache-hit == 'true'
+        run: touch build/core/ios/Corebind.xcframework/Info.plist
+      - name: Report Xcode toolchain
+        if: steps.plan.outputs.skip != 'true'
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Publishing policy tests
+        if: steps.plan.outputs.skip != 'true'
+        working-directory: ios
+        run: bundle exec ruby fastlane/publishing_test.rb
+      - name: Rehearse unsigned iOS beta archive
+        if: steps.plan.outputs.skip != 'true' && steps.plan.outputs.upload != 'true'
+        working-directory: ios
+        env:
+          IOS_SOURCE_DIR: ${{ github.workspace }}
+          IOS_OUTPUT_DIR: ${{ runner.temp }}/ios-beta-verify
+        run: |
+          mkdir -p "$IOS_OUTPUT_DIR"
+          bundle exec fastlane ios verify beta:true tests:false
+      - name: Upload internal TestFlight beta build
+        if: steps.plan.outputs.skip != 'true' && steps.plan.outputs.upload == 'true'
+        working-directory: ios
+        env:
+          IOS_SOURCE_DIR: ${{ github.workspace }}
+          IOS_OUTPUT_DIR: ${{ runner.temp }}/ios-beta
+          IOS_TESTFLIGHT_INTERNAL_GROUP: ${{ vars.IOS_TESTFLIGHT_INTERNAL_GROUP }}
+          ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
+          IOS_SIGNING: ${{ secrets.IOS_SIGNING }}
+          RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
+        run: |
+          test -n "$ASC_API_KEY" && test -n "$IOS_SIGNING"
+          bundle exec fastlane ios beta
+      - name: Remove temporary signing and build files
+        if: always()
+        shell: bash
+        run: |
+          keychain="$RUNNER_TEMP/ios-beta/signing.keychain-db"
+          if [ -f "$keychain" ]; then security delete-keychain "$keychain"; fi
+          rm -rf "$RUNNER_TEMP/ios-beta" "$RUNNER_TEMP/ios-beta-verify"

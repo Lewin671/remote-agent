@@ -10,7 +10,8 @@ opt_out_usage
 platform :ios do
   desc 'Check core tests and archive Release without signing or contacting Apple'
   lane :verify do |options|
-    FileUtils.mkdir_p(ENV.fetch('IOS_OUTPUT_DIR'))
+    output = ENV.fetch('IOS_OUTPUT_DIR')
+    FileUtils.mkdir_p(output)
     root = Publishing.source
     sh(File.join(root, 'scripts/core/build.sh'), 'ios')
     if options[:tests].to_s != 'false'
@@ -18,16 +19,46 @@ platform :ios do
     end
     # A publishing run archives with its distribution signature in the next lane.
     if options[:archive].to_s != 'false'
-      sh('xcodebuild', '-project', File.join(root, 'ios/RemoteAgent.xcodeproj'),
-         '-scheme', 'RemoteAgent', '-configuration', 'Release', '-destination', 'generic/platform=iOS',
-         '-archivePath', File.join(ENV.fetch('IOS_OUTPUT_DIR'), 'RemoteAgent.xcarchive'),
-         'CODE_SIGNING_ALLOWED=NO', 'archive')
+      derived_data_args = ENV['IOS_DERIVED_DATA_PATH'].to_s.empty? ? [] : ['-derivedDataPath', ENV['IOS_DERIVED_DATA_PATH']]
+      if options[:beta].to_s == 'true'
+        app_version = Publishing.next_patch_version
+        build_number = Publishing.beta_build_number
+        previous_version = ENV['RA_APP_VERSION']
+        previous_commit = ENV['RA_SOURCE_COMMIT']
+        begin
+          ENV['RA_APP_VERSION'] = app_version
+          ENV['RA_SOURCE_COMMIT'] = Publishing.git('rev-parse', '--short=12', 'HEAD')
+          sh('xcodebuild', '-project', File.join(root, 'ios/RemoteAgent.xcodeproj'),
+             '-scheme', 'RemoteAgent', '-configuration', 'Release', '-destination', 'generic/platform=iOS',
+             *derived_data_args,
+             '-archivePath', File.join(output, 'RemoteAgent.xcarchive'),
+             "MARKETING_VERSION=#{app_version}",
+             "CURRENT_PROJECT_VERSION=#{build_number}",
+             'CODE_SIGNING_ALLOWED=NO', 'archive')
+        ensure
+          ENV['RA_APP_VERSION'] = previous_version
+          ENV['RA_SOURCE_COMMIT'] = previous_commit
+        end
+        Publishing.verify_archive!(output,
+                                   expected_version: app_version,
+                                   expected_build_number: build_number,
+                                   verify_signature: false)
+        UI.success("Verified the unsigned beta archive version (#{app_version}), build (#{build_number}) and commit")
+      else
+        sh('xcodebuild', '-project', File.join(root, 'ios/RemoteAgent.xcodeproj'),
+           '-scheme', 'RemoteAgent', '-configuration', 'Release', '-destination', 'generic/platform=iOS',
+           *derived_data_args,
+           '-archivePath', File.join(output, 'RemoteAgent.xcarchive'),
+           'CODE_SIGNING_ALLOWED=NO', 'archive')
+      end
     end
   end
 
-  desc 'Build and validate a signed IPA without uploading to Apple'
-  lane :package do
-    Publishing.validate_source!
+  private_lane :package_ipa do |options|
+    require_tag = options.fetch(:require_tag, true)
+    marketing_version = options[:app_version] || Publishing.version
+    build_number = options[:build_number] || Publishing.build_number
+    Publishing.validate_source!(require_tag: require_tag)
     output = ENV.fetch('IOS_OUTPUT_DIR')
     FileUtils.mkdir_p(output)
     signing = Publishing.secret('IOS_SIGNING', %w[certificate password profile team_id])
@@ -46,19 +77,25 @@ platform :ios do
       installed_profile = install_provisioning_profile(path: profile)
       profile_info = FastlaneCore::ProvisioningProfile.parse(profile)
       sh(File.join(Publishing.source, 'scripts/core/build.sh'), 'ios')
-      Publishing.with_app_signing(signing.fetch('team_id'), profile_info.fetch('Name')) do
+      xcargs = ["CURRENT_PROJECT_VERSION=#{build_number}"]
+      xcargs << "MARKETING_VERSION=#{marketing_version}" if options[:app_version]
+      Publishing.with_app_signing(signing.fetch('team_id'), profile_info.fetch('Name'),
+                                  require_tag: require_tag,
+                                  app_version: options[:app_version]) do
         build_app(project: File.join(Publishing.source, 'ios/RemoteAgent.xcodeproj'), scheme: 'RemoteAgent',
                   configuration: 'Release', clean: true, export_method: 'app-store',
                   output_directory: output, output_name: 'RemoteAgent.ipa',
                   archive_path: File.join(output, 'RemoteAgent.xcarchive'),
                   skip_profile_detection: true,
-                  xcargs: "CURRENT_PROJECT_VERSION=#{Publishing.build_number}",
+                  xcargs: xcargs.join(' '),
                   export_options: { signingStyle: 'manual', teamID: signing.fetch('team_id'),
                                     manageAppVersionAndBuildNumber: false,
                                     provisioningProfiles: { Publishing::BUNDLE_ID => profile_info['Name'] } })
       end
-      Publishing.verify_archive!(output)
-      UI.success('Verified the signed archive version, build, commit and signature')
+      Publishing.verify_archive!(output,
+                                 expected_version: marketing_version,
+                                 expected_build_number: build_number)
+      UI.success("Verified the signed archive version (#{marketing_version}), build (#{build_number}), commit and signature")
     ensure
       delete_keychain(keychain_path: keychain) if File.exist?(keychain)
       File.delete(certificate) if certificate && File.exist?(certificate)
@@ -66,6 +103,80 @@ platform :ios do
       File.delete(installed_profile) if installed_profile && File.exist?(installed_profile)
     end
     File.join(output, 'RemoteAgent.ipa')
+  end
+
+  private_lane :distribute_to_internal_group do |options|
+    app = options.fetch(:app)
+    app_version = options.fetch(:version)
+    build_number = options.fetch(:build_number)
+    group = options[:group] || Publishing.resolve_internal_beta_group(app.get_beta_groups)
+    build = Spaceship::ConnectAPI::Build.all(app_id: app.id, version: app_version,
+                                             build_number: build_number, platform: 'IOS').first
+    UI.user_error!("Uploaded build #{app_version} (#{build_number}) was not found in App Store Connect") unless build
+    if !build.processed? || !build.build_beta_detail&.processed?
+      build = FastlaneCore::BuildWatcher.wait_for_build_processing_to_be_complete(
+        app_id: app.id, platform: 'ios',
+        app_version: app_version, build_version: build_number,
+        poll_interval: 30, timeout_duration: 1800,
+        return_spaceship_testflight_build: false,
+        wait_for_build_beta_detail_processing: true
+      )
+    end
+    build = Spaceship::ConnectAPI::Build.get(build_id: build.id)
+    UI.user_error!("Uploaded build #{app_version} (#{build_number}) is #{build.processing_state}") if %w[FAILED INVALID].include?(build.processing_state)
+    assigned_groups = app.get_beta_groups(filter: { builds: build.id })
+    already_in_group = assigned_groups.any? { |item| item.id == group.id }
+    state = build.build_beta_detail&.internal_build_state
+    action = Publishing.internal_distribution_action(state, already_in_group: already_in_group)
+    if action == :add_to_group
+      Spaceship::ConnectAPI.add_beta_groups_to_build(build_id: build.id, beta_group_ids: [group.id])
+      deadline = Time.now + 60
+      loop do
+        build = Spaceship::ConnectAPI::Build.get(build_id: build.id)
+        state = build.build_beta_detail&.internal_build_state
+        break if state == 'IN_BETA_TESTING' || Time.now >= deadline
+        sleep(5)
+      end
+    end
+    Publishing.verify_internal_beta_testing!(state)
+    UI.success("Build #{app_version} (#{build_number}) is IN_BETA_TESTING in internal group '#{group.name}'")
+    build
+  end
+
+  desc 'Build and validate a signed IPA without uploading to Apple'
+  lane :package do
+    package_ipa
+  end
+
+  desc 'Upload an internal TestFlight build from main without submitting for review'
+  lane :beta do
+    Publishing.validate_source!(require_tag: false)
+    app_version = Publishing.next_patch_version
+    build_number = Publishing.beta_build_number
+    changelog = Publishing.beta_changelog
+    output = ENV.fetch('IOS_OUTPUT_DIR')
+    FileUtils.mkdir_p(output)
+    changelog_path = File.join(output, 'beta-changelog.txt')
+    File.write(changelog_path, changelog)
+    sh('python3', File.expand_path('../../scripts/public_scan.py', __dir__), changelog_path)
+    key = Publishing.secret('ASC_API_KEY', %w[key_id issuer_id key])
+    api_key = app_store_connect_api_key(key_id: key.fetch('key_id'), issuer_id: key.fetch('issuer_id'),
+                                       key_content: key.fetch('key'), in_house: false)
+    app = Spaceship::ConnectAPI::App.find(Publishing::BUNDLE_ID)
+    UI.user_error!('App Store app was not found') unless app
+    group = Publishing.resolve_internal_beta_group(app.get_beta_groups)
+    ipa = package_ipa(require_tag: false,
+                      app_version: app_version,
+                      build_number: build_number)
+    # Keep skip_submission: true so pilot never calls post_beta_app_review_submission
+    # (pilot submits for external beta review whenever groups is passed with default submit_beta_review).
+    upload_to_testflight(api_key: api_key, app_identifier: Publishing::BUNDLE_ID,
+                         ipa: ipa, changelog: changelog,
+                         skip_submission: true, distribute_external: false,
+                         skip_waiting_for_build_processing: false,
+                         wait_processing_timeout_duration: 1800,
+                         uses_non_exempt_encryption: false)
+    distribute_to_internal_group(app: app, version: app_version, build_number: build_number, group: group)
   end
 
   desc 'Upload an immutable release to TestFlight, submit for review and release after approval'
@@ -82,6 +193,7 @@ platform :ios do
       UI.success('This version is already submitted with automatic release enabled')
       next
     end
+    group = Publishing.resolve_internal_beta_group(app.get_beta_groups)
     notes = Publishing.notes
     metadata_version = versions.find { |version| version.version_string == Publishing.version } || app.get_live_app_store_version(platform: 'IOS')
     locales = metadata_version ? metadata_version.get_app_store_version_localizations.map(&:locale) : []
@@ -103,6 +215,7 @@ platform :ios do
                            skip_waiting_for_build_processing: false, wait_processing_timeout_duration: 1800,
                            uses_non_exempt_encryption: false)
     end
+    distribute_to_internal_group(app: app, version: Publishing.version, build_number: Publishing.build_number, group: group)
     # Apple reviews one version at a time; the build is still available in
     # TestFlight while an earlier version waits.
     if decision == :waiting

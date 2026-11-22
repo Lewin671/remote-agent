@@ -54,7 +54,8 @@ class ReleaseTests(unittest.TestCase):
 
     def test_release_tooling_and_public_pages_do_not_release(self):
         for path in ('scripts/release.py', 'scripts/public_scan.py', 'scripts/publish-public.sh', 'scripts/dist-smoke.sh', '.github/workflows/release.yml',
-                     'ios/Gemfile', 'ios/Gemfile.lock', 'ios/fastlane/Fastfile', 'ios/fastlane/publishing.rb', '.github/workflows/ios-app-store.yml',
+                     'ios/Gemfile', 'ios/Gemfile.lock', 'ios/fastlane/Fastfile', 'ios/fastlane/publishing.rb',
+                     '.github/workflows/ios-app-store.yml', '.github/workflows/ios-testflight-beta.yml',
                      'scripts/i18n_lint.py', 'i18n/lint-baseline.json', 'i18n/lint-allowlist.json',
                      'deploy/deploy.sh', 'install.sh', 'docs/assets/demo-light.svg', 'README.md'):
             self.assertFalse(release.product_change(path), path)
