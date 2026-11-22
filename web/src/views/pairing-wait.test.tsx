@@ -65,6 +65,7 @@ afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   calls.length = 0;
+  location.hash = "";
 });
 
 async function start() {
@@ -148,4 +149,16 @@ it("keeps a given-up attempt canceled when the user pairs again", async () => {
   expect(calls[0].canceled).toBe(true);
   expect(calls[1].canceled).toBe(false);
   expect(give().disabled).toBe(false);
+});
+
+it("does not forward empty #/pair? rejoin hash as rawLink on manual submit", async () => {
+  location.hash = "#/pair?";
+  const { client } = await start();
+  expect(client.startJoinPairing).toHaveBeenCalledWith(
+    expect.objectContaining({
+      server: "https://ra.example.com",
+      code: "48291756",
+      rawLink: "",
+    }),
+  );
 });

@@ -183,7 +183,7 @@ export function Setup({
         commitHint: link.commit,
         existingRepair: isExistingRepair,
         existingServer: repairServer,
-        rawLink: location.hash.startsWith("#/pair?") ? location.hash : "",
+        rawLink: fromLink && link === fromLink ? location.hash : "",
       });
       mine.pairingId = info.pairingId;
       if (!current()) {
