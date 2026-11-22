@@ -124,7 +124,8 @@ platform :ios do
     end
     build = Spaceship::ConnectAPI::Build.get(build_id: build.id)
     UI.user_error!("Uploaded build #{app_version} (#{build_number}) is #{build.processing_state}") if %w[FAILED INVALID].include?(build.processing_state)
-    assigned_groups = app.get_beta_groups(filter: { builds: build.id })
+    # The API accepts one relationship filter per request, so query by build only.
+    assigned_groups = Spaceship::ConnectAPI.get_beta_groups(filter: { builds: build.id }).to_models
     already_in_group = assigned_groups.any? { |item| item.id == group.id }
     state = build.build_beta_detail&.internal_build_state
     action = Publishing.internal_distribution_action(state, already_in_group: already_in_group)
