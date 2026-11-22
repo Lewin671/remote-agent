@@ -82,7 +82,7 @@
       "event": {
         "nowMs": "1791078060040",
         "listsFetched": {
-          "opId": "4",
+          "opId": "3",
           "machines": [
             {
               "machineId": "m1",
@@ -132,7 +132,7 @@
         "nowMs": "1791078060060",
         "monoMs": "1200",
         "cacheEventsLoaded": {
-          "opId": "6",
+          "opId": "5",
           "sessionId": "s1",
           "events": [
             {
@@ -205,7 +205,7 @@
         "nowMs": "1791078071010",
         "monoMs": "12310",
         "tokenResult": {
-          "opId": "8",
+          "opId": "7",
           "token": "tok-2"
         }
       }
@@ -225,7 +225,7 @@
         "nowMs": "1791078071030",
         "monoMs": "12330",
         "listsFetched": {
-          "opId": "9",
+          "opId": "8",
           "machines": [
             {
               "machineId": "m1",

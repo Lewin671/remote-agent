@@ -12,7 +12,7 @@ enum AuthorityDemo {
         guard let i = args.firstIndex(of: "-authorityDemo"), i + 1 < args.count else { return nil }
         return args[i + 1]
     }
-    static var code: String { try! RecoveryCode.encode(seed: Data(repeating: 7, count: 32), genesis: Data(repeating: 8, count: 32)) }
+    static var code: String { "TEST-RECOVERY-CODE-DEMO" }
     static func apply(_ state: inout RemoteState) {
         state.authorityDeviceId = ["authority", "pending", "outgoing", "pair", "rotate"].contains(mode ?? "") ? Demo.me : other
         state.recoveryStatusStale = false

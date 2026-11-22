@@ -11,7 +11,7 @@ import UIKit
 @MainActor
 @Suite struct ImageViewerTests {
     private let remote = try! Remote(
-        account: Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff"),
+        account: Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff"),
         http: AppModel.http)
 
     private func center() -> ImageCenter {

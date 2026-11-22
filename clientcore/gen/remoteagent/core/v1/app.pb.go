@@ -6064,10 +6064,6 @@ type Event_SecurityConfig struct{ SecurityConfig *SecurityConfigEvent }
 
 func (*Event_SecurityConfig) isEvent_Event() {}
 
-type Event_SecurityRecord struct{ SecurityRecord *SecurityRecordEvent }
-
-func (*Event_SecurityRecord) isEvent_Event() {}
-
 type Event_SecurityKeySigned struct{ SecurityKeySigned *SecurityKeySignedEvent }
 
 func (*Event_SecurityKeySigned) isEvent_Event() {}
@@ -6959,12 +6955,6 @@ func (m *Event) GetDirectPreferencesLoaded() *DirectPreferencesLoadedEvent {
 func (m *Event) GetSecurityConfig() *SecurityConfigEvent {
 	if x, ok := m.GetEvent().(*Event_SecurityConfig); ok && x != nil {
 		return x.SecurityConfig
-	}
-	return nil
-}
-func (m *Event) GetSecurityRecord() *SecurityRecordEvent {
-	if x, ok := m.GetEvent().(*Event_SecurityRecord); ok && x != nil {
-		return x.SecurityRecord
 	}
 	return nil
 }
@@ -9172,21 +9162,6 @@ func (m *Event) Unmarshal(b []byte) error {
 				m.Event = &Event_SecurityConfig{SecurityConfig: sub}
 				continue
 			}
-		case 451:
-			if wtyp == litewire.BytesType {
-				var sub *SecurityRecordEvent
-				if cur, ok := m.Event.(*Event_SecurityRecord); ok && cur != nil {
-					sub = cur.SecurityRecord
-				}
-				if sub == nil {
-					sub = &SecurityRecordEvent{}
-				}
-				if err := litewire.ReadMessage(&b, sub); err != nil {
-					return err
-				}
-				m.Event = &Event_SecurityRecord{SecurityRecord: sub}
-				continue
-			}
 		case 452:
 			if wtyp == litewire.BytesType {
 				var sub *SecurityKeySignedEvent
@@ -9586,47 +9561,6 @@ func (m *DiscardTokenEffect) AppendMarshal(b []byte) []byte {
 		return b
 	}
 	b = litewire.AppendString(b, 1, m.Token)
-	return b
-}
-
-type SyncSecurityEffect struct {
-	OpId              uint64
-	NetworkGeneration uint64
-	Touch             bool
-}
-
-func (m *SyncSecurityEffect) GetOpId() uint64 {
-	if m != nil {
-		return m.OpId
-	}
-	return 0
-}
-func (m *SyncSecurityEffect) GetNetworkGeneration() uint64 {
-	if m != nil {
-		return m.NetworkGeneration
-	}
-	return 0
-}
-func (m *SyncSecurityEffect) GetTouch() bool {
-	if m != nil {
-		return m.Touch
-	}
-	return false
-}
-
-func (m *SyncSecurityEffect) Size() int { return len(m.AppendMarshal(nil)) }
-
-func (m *SyncSecurityEffect) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *SyncSecurityEffect) AppendMarshal(b []byte) []byte {
-	if m == nil {
-		return b
-	}
-	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
-	b = litewire.AppendVarint(b, 2, uint64(m.NetworkGeneration))
-	b = litewire.AppendBool(b, 3, m.Touch)
 	return b
 }
 
@@ -10820,10 +10754,6 @@ type Effect_DiscardToken struct{ DiscardToken *DiscardTokenEffect }
 
 func (*Effect_DiscardToken) isEffect_Effect() {}
 
-type Effect_SyncSecurity struct{ SyncSecurity *SyncSecurityEffect }
-
-func (*Effect_SyncSecurity) isEffect_Effect() {}
-
 type Effect_ScheduleTimer struct{ ScheduleTimer *ScheduleTimerEffect }
 
 func (*Effect_ScheduleTimer) isEffect_Effect() {}
@@ -11061,12 +10991,6 @@ func (m *Effect) GetEnsureToken() *EnsureTokenEffect {
 func (m *Effect) GetDiscardToken() *DiscardTokenEffect {
 	if x, ok := m.GetEffect().(*Effect_DiscardToken); ok && x != nil {
 		return x.DiscardToken
-	}
-	return nil
-}
-func (m *Effect) GetSyncSecurity() *SyncSecurityEffect {
-	if x, ok := m.GetEffect().(*Effect_SyncSecurity); ok && x != nil {
-		return x.SyncSecurity
 	}
 	return nil
 }
@@ -11410,12 +11334,6 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.DiscardToken != nil {
 				b = litewire.AppendMessage(b, 5, x.DiscardToken)
-			}
-		}
-	case *Effect_SyncSecurity:
-		if x != nil {
-			if x.SyncSecurity != nil {
-				b = litewire.AppendMessage(b, 6, x.SyncSecurity)
 			}
 		}
 	case *Effect_ScheduleTimer:

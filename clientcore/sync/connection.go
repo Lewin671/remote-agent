@@ -338,7 +338,7 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 			},
 		},
 	})
-	if (e.secEngine == nil || !e.secEngine.HasWorkflowBootstrapped() || e.cachedToken != "") &&
+	if e.secEngine != nil && e.secEngine.HasWorkflowBootstrapped() && e.cachedToken != "" &&
 		(!e.security.Loaded || e.security.VerifiedNetGen != e.networkGen) {
 		e.requestSyncSecurity(ctx, true)
 	}
@@ -346,42 +346,34 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 }
 
 func (e *Engine) requestSyncSecurity(ctx *StepContext, touch bool) {
+	if e.secEngine == nil {
+		return
+	}
+	e.secEngine.SetNetworkGeneration(e.networkGen)
+	if !e.secEngine.HasWorkflowBootstrapped() {
+		return
+	}
 	e.activeSecOpID = e.allocOpID()
-	if e.secEngine != nil {
-		e.secEngine.SetNetworkGeneration(e.networkGen)
-		if e.secEngine.HasWorkflowBootstrapped() {
-			opID := e.activeSecOpID
-			effs := e.secEngine.SyncStates(e.nowMs, touch, e.cachedToken, func(err error) {
-				if e.activeSecOpID == opID {
-					e.activeSecOpID = 0
-				}
-				stepCtx := e.activeStepCtx
-				if stepCtx == nil {
-					return
-				}
-				if err != nil {
-					if _, ok := e.secEngine.CoordInfo(); !ok {
-						e.emitCoordEffects(stepCtx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
-					}
-				} else {
-					e.syncSecurityStateFromEngine(stepCtx, true)
-				}
-				e.maybeRequestEntropy(stepCtx)
-			})
-			e.emitSecurityEffects(ctx, effs)
-			e.maybeRequestEntropy(ctx)
+	opID := e.activeSecOpID
+	effs := e.secEngine.SyncStates(e.nowMs, touch, e.cachedToken, func(err error) {
+		if e.activeSecOpID == opID {
+			e.activeSecOpID = 0
+		}
+		stepCtx := e.activeStepCtx
+		if stepCtx == nil {
 			return
 		}
-	}
-	ctx.emit(&corev1.Effect{
-		Effect: &corev1.Effect_SyncSecurity{
-			SyncSecurity: &corev1.SyncSecurityEffect{
-				OpId:              e.activeSecOpID,
-				NetworkGeneration: e.networkGen,
-				Touch:             touch,
-			},
-		},
+		if err != nil {
+			if _, ok := e.secEngine.CoordInfo(); !ok {
+				e.emitCoordEffects(stepCtx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
+			}
+		} else {
+			e.syncSecurityStateFromEngine(stepCtx, true)
+		}
+		e.maybeRequestEntropy(stepCtx)
 	})
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
 }
 
 func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent) {

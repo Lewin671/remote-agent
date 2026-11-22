@@ -154,40 +154,48 @@ struct DirectE2ETests {
     func make() async throws -> (Remote, CoreHost, CoreScreens, String, E2EFactory) {
         let server = try read("url"), token = try read("setup-token")
         let vault = Vault(service: "io.github.lewin671.remoteagent.e2e.\(UUID().uuidString)")
-        let gate = AuthorityGate(); gate.set(active: true, protectedDataAvailable: true)
         let http = HTTP()
-        let bootstrap = AuthorityBootstrap(storage: vault, gate: gate, http: http)
-        _ = try await bootstrap.prepareCreation(server: server)
-        try await bootstrap.confirmRecoveryCodeSaved()
-        let account = try await bootstrap.continueCreation(setupToken: token)
-        try await bootstrap.finishCreation()
+        var setupHost: StandaloneSecurityHost? = try StandaloneSecurityHost(store: vault, http: http, allowPlainHttp: true)
+        defer { setupHost?.close() }
+        guard let hostClient = setupHost?.client else { throw UserError("missing host") }
+        _ = try await hostClient.bootstrap()
+        _ = try await hostClient.prepareCreation(server: server)
+        try await hostClient.confirmCreationCodeSaved()
+        let created = try await hostClient.continueCreation(setupToken: token)
+        let st = created.status
+        let account = Account(
+            server: !created.accountAdopted.server.isEmpty ? created.accountAdopted.server : st.server,
+            deviceId: !created.accountAdopted.deviceID.isEmpty ? created.accountAdopted.deviceID : st.deviceID,
+            accountId: !created.accountAdopted.accountID.isEmpty ? created.accountAdopted.accountID : st.accountID
+        )
+        setupHost?.close()
+        setupHost = nil
         say("account made")
         let factory = E2EFactory()
         factory.log = { [dir, started] in e2eSay(dir, started, $0) }
         factory.swallow = E2E.scenario == "udpdrop"
         let prefs: any DirectPreferenceStore = E2E.scenario == "switchoff" ? E2EOff() : UserDefaultsDirectPreferences(UserDefaults(suiteName: "e2e-\(UUID().uuidString)")!)
-        let remote = try Remote(account: account, http: http, log: { [dir, started] line in e2eSay(dir, started, "remote: " + line) }, securityStorage: vault, rtc: factory, directPreferences: prefs, directStun: [try read("stun-url")])
-        remote.setAuthorityAvailability(active: true, protectedDataAvailable: true)
-        let authority = try await remote.authorityCoordinator()
-        let initiation = try await authority.startPairing()
-        try initiation.link.url(web: "https://example.com").write(toFile: dir + "/link", atomically: true, encoding: .utf8)
-        say("pairing code written")
-        var candidate: PairCandidate?
-        _ = try await wait("a joining computer", seconds: 90) {
-            candidate = try await authority.pairingCandidate(initiation)
-            return candidate != nil
-        }
-        try await authority.approvePairing(try #require(candidate), sasConfirmed: true)
-        for _ in 0..<100 {
-            try await authority.resumeSecurityOperation()
-            try await authority.finishPairingOperation(pairingID: initiation.pairingID)
-            if try await authority.pendingOperation() == nil { break }
-            try await Task.sleep(nanoseconds: 100_000_000)
-        }
-        say("paired")
+        let remote = try Remote(account: account, http: http, log: { [dir, started] line in e2eSay(dir, started, "remote: " + line) }, securityStore: vault, allowPlainHttp: true, rtc: factory, directPreferences: prefs, directStun: [try read("stun-url")])
         let screens = await MainActor.run { CoreScreens() }
         let host = try CoreHost.live(remote: remote, account: account, defaults: .standard, screens: screens, onNavigate: { _ in })
         await host.startAsync()
+        let initiation = try await remote.securityClient.startPairing(webOrigin: "https://example.com")
+        try initiation.url.write(toFile: dir + "/link", atomically: true, encoding: .utf8)
+        say("pairing code written")
+        var polled = initiation
+        _ = try await wait("a joining computer", seconds: 90) {
+            polled = try await remote.securityClient.pollPairing(pairingId: initiation.pairingID)
+            return polled.joined
+        }
+        _ = try await remote.securityClient.approvePairing(pairingId: initiation.pairingID, sasConfirmed: true)
+        for _ in 0..<100 {
+            try await remote.resumeSecurityOperation()
+            _ = try await remote.finishPairingDelivery(pairingId: initiation.pairingID)
+            let cur = try await remote.getSecurityStatus()
+            if !cur.hasPendingOp { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        say("paired")
         var machine = ""
         _ = try await wait("the computer online", seconds: 90) {
             if let m = remote.current.machines.values.first(where: { $0.pathState.reachable }) { machine = m.id; return true }

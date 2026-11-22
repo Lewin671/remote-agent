@@ -7,7 +7,7 @@ extension ServerTests {
     @Test func retiredHeaderCannotEraseVerifiedRevisionOrAllowMetadataReplay() async throws {
         try await World.run(setUp: { w in try await w.daemon.putMachine("fixture-machine") }) { w in
             let r = try await w.client()
-            _ = await r.syncSecurityRecord(opId: 1, networkGeneration: 0, touch: false)
+            _ = try await r.syncSecurity()
             let security = try TestSecurity.get(w.server.url)
             var h = PBHeader(); h.machineID = w.daemon.id; h.sessionID = "known"; h.seq = 1
             var older = PBRemoteSession(); older.sessionID = "known"; older.machineID = w.daemon.id
@@ -36,7 +36,7 @@ extension ServerTests {
             for kind: PBPayloadKind in [.sessionKey, .sessionMeta] {
                 var header = PBHeader(); header.version = 1; header.kind = kind
                 var retired = PBEnvelope(); retired.header = try header.serializedData()
-                let expectedPurpose: DeviceSecurity.Purpose = kind == .sessionKey ? .sessionKey : .sessionMeta
+                let expectedPurpose: SecurityPurpose = kind == .sessionKey ? .sessionKey : .sessionMeta
                 await #expect(throws: UnsupportedHistoryError.self) {
                     _ = try await r.openEnvelopeOp(
                         envelope: retired,
@@ -64,7 +64,7 @@ extension ServerTests {
             await cache.putImage(key: "s1/retired", envelope: try image.serializedData())
             let r = try await w.client(cache: cache)
             _ = await r.ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
-            _ = await r.syncSecurityRecord(opId: 2, networkGeneration: 0, touch: false)
+            _ = try await r.syncSecurity()
             let fetched = await r.executeRpc(PBCoreRpcEffect.with {
                 $0.opID = 3
                 $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
@@ -105,7 +105,7 @@ extension ServerTests {
     @Test func retiredSessionRemainsVisibleWithTheSameHistoryError() async throws {
         try await World.run(setUp: { w in try await w.daemon.putMachine("fixture-machine") }) { w in
             let r = try await w.client()
-            _ = await r.syncSecurityRecord(opId: 1, networkGeneration: 0, touch: false)
+            _ = try await r.syncSecurity()
             var header = PBHeader(); header.version = 1; header.kind = .sessionKey
             var row = PBRemoteSession(); row.sessionID = "retired"; row.machineID = w.daemon.account.deviceId
             row.key.header = try header.serializedData()

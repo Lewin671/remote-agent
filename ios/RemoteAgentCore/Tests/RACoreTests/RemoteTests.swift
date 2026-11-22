@@ -92,7 +92,7 @@ final class World: @unchecked Sendable {
         let r = try fixtureRemote(
             account: account, http: http ?? self.http, cache: cache, frameQueue: frameQueue,
             frameQueueBytes: frameQueueBytes, streamOpenMs: streamOpenMs,
-            securityStorage: TestSecurity.find(server.url)?.store(account.deviceId))
+            securityStore: TestSecurity.find(server.url)?.store(account.deviceId))
         onClose { r.close() }
         return r
     }
@@ -138,7 +138,7 @@ private final class Frames: TermListener, Sendable {
 private extension Remote {
     func hydrateExecutorState() async throws {
         _ = await ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
-        _ = await syncSecurityRecord(opId: 2, networkGeneration: 0, touch: false)
+        _ = try await syncSecurity()
         let fetched = await executeRpc(PBCoreRpcEffect.with {
             $0.opID = 3
             $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
@@ -265,8 +265,9 @@ extension SyncServerTests {
             try await world { w in
                 let acct = try await w.join()
                 let api = try Api(server: w.server.url, http: w.http)
+                let store = try #require(TestSecurity.find(w.server.url)?.store(acct.deviceId))
                 var hello = PBPeerFrame()
-                hello.hello.token = try await login(api: api, account: acct)
+                hello.hello.token = try await loginWithStore(api: api, deviceId: acct.deviceId, store: store).token
                 let http = HTTP(), ready = Signal(), answered = Signal()
                 let ticks = Counter()
                 let parked = AsyncStream<Void>.makeStream()
@@ -314,28 +315,37 @@ extension SyncServerTests {
 
         @Test func pairsANewDevice() async throws {
             try await world { w in
-                let r = try await w.client()
-                try await r.hydrateExecutorState()
-                let pairing = try await PhonePairing.start(w.phone)
-                let link = try #require(
-                    PairLink.parse(pairing.link.url(web: "https://app.example.com")))
-                #expect(link.code == pairing.code)
-                let joinerEmoji = Mailbox<[String]>()
-                let http = w.http
-                async let joining = joinByPairing(
-                    link: link, http: http, onEmoji: { joinerEmoji.put($0) }, stopped: { false },
-                    persist: { acct, record in try TestSecurity.get(acct.server).install(record) },
-                    persistRegistration: { _ in }, persistIdentity: { _ in }, confirm: { _ in true })
-                let (emoji, st) = try await pairing.reveal()
-                #expect(st.joinerKind == .client)
-                try await pairing.approve()
-                let acct = try await joining
-                #expect(emoji.count == 4)
-                #expect(joinerEmoji.all.suffix(1) == [emoji])
-                #expect(acct.root.isEmpty)
-                #expect(acct.server == w.server.url)
-                #expect(acct.accountId == w.phone.pin.account)
-                let joined = try await w.remote(acct)
+                let admin = try await w.remote(w.phone.account)
+                try await admin.hydrateExecutorState()
+                let started = try await admin.securityClient.startPairing(webOrigin: "https://app.example.com")
+                let link = try #require(PairLink.parse(started.url))
+                #expect(link.code == started.code)
+
+                let joinStore = MemorySecurityStoreV4()
+                let joinHost = try StandaloneSecurityHost(store: joinStore, http: w.http, allowPlainHttp: true)
+                defer { joinHost.close() }
+                async let joining = joinHost.client.startJoinPairing(rawLink: started.url)
+
+                var polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                while !polled.joined {
+                    try await realSleep(10)
+                    polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                }
+                let joinerInfo = try await joining
+                #expect(polled.joinerKind == .client)
+                #expect(polled.sasEmoji.count == 4)
+                #expect(joinerInfo.sasEmoji == polled.sasEmoji)
+
+                async let confirmJoin: PBSecurityWorkflowResultEffect = joinHost.client.confirmJoinSas(pairingId: joinerInfo.pairingID)
+                async let approveAdmin = admin.securityClient.approvePairing(pairingId: started.pairingID, sasConfirmed: true)
+                _ = try await (confirmJoin, approveAdmin)
+
+                let status = try await joinHost.client.bootstrap()
+                #expect(status.bootstrap == .ready)
+                #expect(status.accountID == w.phone.account.accountId)
+                let acct = Account(server: w.server.url, deviceId: status.deviceID, accountId: status.accountID)
+                let joined = try Remote(account: acct, http: w.http, securityStore: joinStore, allowPlainHttp: true)
+                defer { joined.close() }
                 try await joined.hydrateExecutorState()
                 #expect(joined.current.sessions["s1"]?.info != nil)
             }
@@ -401,41 +411,21 @@ extension SyncServerTests {
             }
         }
 
-        @Test func installPublicationAndSyncEmitSecurityRecordHook() async throws {
+        @Test func syncSecurityReflectsEnrolledAndRemovedDevices() async throws {
             try await world { w in
-                let r = try await w.client()
-                try await r.hydrateExecutorState()
-                let records = Mailbox<PBSecurityRecordEvent>()
-                await r.installCoreHooks(Remote.CoreHooks(
-                    onFetchSession: { _ in },
-                    onRefresh: {},
-                    onRefreshDevices: {},
-                    onSavePrefs: { _ in },
-                    onSecurityRecord: { records.put($0) }
-                ))
-                let client = try await r.securitySession()
+                let admin = try await w.remote(w.phone.account)
+                try await admin.ensureSecurityBootstrapped()
                 let newSeed = randomBytes(32)
-                let (enrolledAcct, enrolledRec) = try await w.phone.enroll(seed: newSeed, kind: .machine)
-                let rawState = try DeviceSecurity.stateBytes(enrolledRec.state)
-                var stateMsg = PBSecurityState()
-                stateMsg.state = rawState
-                var req = PBPutSecurityStateRequest()
-                req.states = [stateMsg]
-                if let lease = enrolledRec.lease {
-                    req.lease = try lease.bytes()
-                }
-                try await client.installPublication(req)
-                let rec = try await records.take()
-                let head1 = try DeviceSecurity.parseState(try #require(rec.states.last))
-                #expect(head1.core.members.contains { $0.id == enrolledAcct.deviceId && $0.kind == 1 })
+                let (enrolledAcct, _) = try await w.phone.enroll(seed: newSeed, kind: .machine)
+                let st1 = try await admin.syncSecurity()
+                #expect(st1.isMember)
+                let view1 = try #require(await admin.currentCoreSyncStateView())
+                #expect(view1.trustedMachineIds.contains(enrolledAcct.deviceId))
 
-                // Sync outside syncSecurityRecord also notifies onSecurityRecord.
-                let seed2 = randomBytes(32)
-                let (acct2, _) = try await w.phone.enroll(seed: seed2, kind: .machine)
-                _ = try await client.sync()
-                let rec2 = try await records.take()
-                let head2 = try DeviceSecurity.parseState(try #require(rec2.states.last))
-                #expect(head2.core.members.contains { $0.id == acct2.deviceId && $0.kind == 1 })
+                try await w.phone.remove([enrolledAcct.deviceId])
+                _ = try await admin.syncSecurity()
+                let view2 = try #require(await admin.currentCoreSyncStateView())
+                #expect(!view2.trustedMachineIds.contains(enrolledAcct.deviceId) && view2.archiveMachineIds.contains(enrolledAcct.deviceId))
             }
         }
     }

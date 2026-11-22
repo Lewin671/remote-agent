@@ -65,7 +65,6 @@ import Testing
         #expect(errorText(OpenError("envelope does not open")) == "envelope does not open")
         #expect(
             detailText(OpenError("envelope does not open")) == "OpenError: envelope does not open")
-        #expect(errorText(PairError(L10nMessage.queueCanceled())) == L10n.queueCanceled())
         #expect(errorText(PrefsConflictError()) == L10n.errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot())
         // One without words is called by its type, never by NSError's sentence about it.
         struct Wordless: Error {}
@@ -174,7 +173,7 @@ import Testing
     @Test func showsStateAndHistoryWithoutFetching() async throws {
         let remote = try fixtureRemote(
             account: Account(
-                server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32),
+                server: "http://127.0.0.1:1",
                 deviceId: "2222222222222222"),
             http: HTTP())
         defer { remote.close() }

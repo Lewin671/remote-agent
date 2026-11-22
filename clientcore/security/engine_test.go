@@ -360,7 +360,7 @@ func TestEngineUnlockSealOpenAndBatchThresholds(t *testing.T) {
 		if !eng.Locked() {
 			t.Fatal("expected Locked() after Configure")
 		}
-		effs := eng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+		effs := eng.ApplyRecord(nowMs+100, RecordUpdate{
 			NetworkGeneration: 1,
 			Account:           acct,
 			Domain:            dom[:],
@@ -514,7 +514,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 		DeviceId:     phone.id,
 		InlineCrypto: true,
 	})
-	effs := eng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+	effs := eng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account: acct,
 		Domain:  dom[:],
 		Genesis: gen[:],
@@ -538,7 +538,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 	}
 	skewEng := NewEngine(pool)
 	skewEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
-	executeHostEffects(t, skewEng, phone, nowMs-int64(devicesec.MaxClockSkew)-100, skewEng.ApplyRecord(nowMs-int64(devicesec.MaxClockSkew)-100, &corev1.SecurityRecordEvent{
+	executeHostEffects(t, skewEng, phone, nowMs-int64(devicesec.MaxClockSkew)-100, skewEng.ApplyRecord(nowMs-int64(devicesec.MaxClockSkew)-100, RecordUpdate{
 		Account: acct, Domain: dom[:], Genesis: gen[:], States: rawStates, Lease: leaseRaw,
 	}))
 	if err := skewEng.CanSeal(nowMs - int64(devicesec.MaxClockSkew) - 100); !errors.Is(err, ErrClockSkewed) || ErrorCode(err) != "clock" {
@@ -633,7 +633,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 
 	recEng := NewEngine(pool)
 	recEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: newPhone.id, InlineCrypto: true})
-	executeHostEffects(t, recEng, newPhone, nowMs+100, recEng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+	executeHostEffects(t, recEng, newPhone, nowMs+100, recEng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account:        acct,
 		Domain:         dom[:],
 		Genesis:        gen[:],
@@ -670,7 +670,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 	bnb, _ := badNext.SigningBytes()
 	badNext.Signature = ed25519.Sign(newPhone.ed, bnb)
 	badRaw, _ := badNext.MarshalBinary()
-	executeHostEffects(t, recEng, newPhone, nowMs+200, recEng.ApplyRecord(nowMs+200, &corev1.SecurityRecordEvent{
+	executeHostEffects(t, recEng, newPhone, nowMs+200, recEng.ApplyRecord(nowMs+200, RecordUpdate{
 		Account:        acct,
 		Domain:         dom[:],
 		Genesis:        gen[:],
@@ -753,7 +753,7 @@ func TestEngineRecoveryContentKeysAndNonEventUnavailable(t *testing.T) {
 	// (b) Without ContentKeys, pre-recovery historical Prefs/DeviceMeta also report ErrRecoveryHistoryUnavailable.
 	noKeysEng := NewEngine(pool)
 	noKeysEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: newPhone.id, InlineCrypto: true})
-	executeHostEffects(t, noKeysEng, newPhone, nowMs+100, noKeysEng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+	executeHostEffects(t, noKeysEng, newPhone, nowMs+100, noKeysEng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account:        acct,
 		Domain:         dom[:],
 		Genesis:        gen[:],
@@ -769,18 +769,18 @@ func TestEngineRecoveryContentKeysAndNonEventUnavailable(t *testing.T) {
 		t.Fatalf("expected ErrRecoveryHistoryUnavailable for pre-recovery Prefs without ContentKeys, got %+v", noKeysRes)
 	}
 
-	// (a) With pre-recovery ContentKeys in SecurityRecordEvent (plus a bogus attempt to inject head epoch),
+	// (a) With pre-recovery ContentKeys in RecordUpdate (plus a bogus attempt to inject head epoch),
 	// head epoch still requires real KeyAgree while retained epoch unlocks pre-recovery Event and Prefs.
 	retEng := NewEngine(pool)
 	retEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: retained.id, InlineCrypto: true})
-	effs := retEng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+	effs := retEng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account:        acct,
 		Domain:         dom[:],
 		Genesis:        gen[:],
 		States:         append(slices.Clone(baseRaw), recRaw),
 		RecoveryProofs: [][]byte{stmtRaw},
 		Lease:          recLeaseRaw,
-		ContentKeys: []*corev1.SecurityContentKey{
+		ContentKeys: []ContentKey{
 			{ContentEpoch: sRetParsed.Core.ContentEpoch, Secret: sec2Ret},
 			{ContentEpoch: recParsed.Core.ContentEpoch, Secret: bytes.Repeat([]byte{0x99}, 32)},
 		},
@@ -848,7 +848,7 @@ func TestEngineApplyRecordGuardsTransientErrorAndRemovedHistory(t *testing.T) {
 	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
 
 	// Zero-op with PushSeq 2 advances, PushSeq 1 and unsequenced PushSeq 0 are ignored.
-	executeHostEffects(t, eng, phone, nowMs+100, eng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+	executeHostEffects(t, eng, phone, nowMs+100, eng.ApplyRecord(nowMs+100, RecordUpdate{
 		PushSeq: 2,
 		Account: acct,
 		Domain:  dom[:],
@@ -856,21 +856,21 @@ func TestEngineApplyRecordGuardsTransientErrorAndRemovedHistory(t *testing.T) {
 		States:  rawStates,
 		Lease:   leaseRaw,
 	}))
-	if effs := eng.ApplyRecord(nowMs+101, &corev1.SecurityRecordEvent{PushSeq: 1, Cleared: true}); len(effs) != 0 || !eng.Snapshot().IsMember {
+	if effs := eng.ApplyRecord(nowMs+101, RecordUpdate{PushSeq: 1, Cleared: true}); len(effs) != 0 || !eng.Snapshot().IsMember {
 		t.Fatalf("expected stale PushSeq=1 overwrite to be ignored")
 	}
-	if effs := eng.ApplyRecord(nowMs+102, &corev1.SecurityRecordEvent{PushSeq: 0, Cleared: true}); len(effs) != 0 || !eng.Snapshot().IsMember {
+	if effs := eng.ApplyRecord(nowMs+102, RecordUpdate{PushSeq: 0, Cleared: true}); len(effs) != 0 || !eng.Snapshot().IsMember {
 		t.Fatalf("expected unsequenced PushSeq=0 overwrite to be ignored once PushSeq is active")
 	}
 
 	// Transient sync error preserves already loaded verified state.
-	eng.ApplyRecord(nowMs+103, &corev1.SecurityRecordEvent{PushSeq: 3, Error: "network timeout"})
+	eng.ApplyRecord(nowMs+103, RecordUpdate{PushSeq: 3, Error: "network timeout"})
 	if !eng.Snapshot().Loaded || !eng.Snapshot().IsMember {
 		t.Fatalf("expected transient error to preserve Loaded and IsMember: %+v", eng.Snapshot())
 	}
 
 	// Monotonic chain guard rejects shorter epoch even on fresh PushSeq.
-	eng.ApplyRecord(nowMs+104, &corev1.SecurityRecordEvent{
+	eng.ApplyRecord(nowMs+104, RecordUpdate{
 		PushSeq: 4,
 		Account: acct,
 		Domain:  dom[:],
@@ -884,7 +884,7 @@ func TestEngineApplyRecordGuardsTransientErrorAndRemovedHistory(t *testing.T) {
 	// Removed client's engine: live sealing/opening rejected (ErrNotMember), historical read unlocks s2 via startUnlockForState.
 	remEng := NewEngine(pool)
 	remEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: removedClient.id, InlineCrypto: true})
-	applyEffs := remEng.ApplyRecord(nowMs+110, &corev1.SecurityRecordEvent{
+	applyEffs := remEng.ApplyRecord(nowMs+110, RecordUpdate{
 		PushSeq: 5,
 		Account: acct,
 		Domain:  dom[:],
@@ -915,7 +915,7 @@ func TestEngineApplyRecordGuardsTransientErrorAndRemovedHistory(t *testing.T) {
 	}
 }
 
-func TestEngineOverrideSessionSeedAndSecCallNotifyPurposeKey(t *testing.T) {
+func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 	nowMs := int64(1_700_000_000_000)
 	acct, dom, gen, phone, machine, _, _, sec2, rawStates, leaseRaw, states := makeGenesisAndTwoStateRecord(t, uint64(nowMs))
 	entropyBytes := bytes.Repeat([]byte{0x23}, 256)
@@ -923,7 +923,7 @@ func TestEngineOverrideSessionSeedAndSecCallNotifyPurposeKey(t *testing.T) {
 	pool.Append(entropyBytes)
 	eng := NewEngine(pool)
 	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
-	executeHostEffects(t, eng, phone, nowMs+100, eng.ApplyRecord(nowMs+100, &corev1.SecurityRecordEvent{
+	executeHostEffects(t, eng, phone, nowMs+100, eng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account: acct,
 		Domain:  dom[:],
 		Genesis: gen[:],
@@ -973,20 +973,10 @@ func TestEngineOverrideSessionSeedAndSecCallNotifyPurposeKey(t *testing.T) {
 		t.Fatalf("expected OpenBatch with OverrideSeed to succeed, got %+v", opened)
 	}
 
-	// DerivePurposeKey + OpenNotifyEnvelope using single head state (epoch > 1) and PurposeKey.
-	pkResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_DerivePurposeKey{
-			DerivePurposeKey: &corev1.SecDerivePurposeKeyCall{
-				Secret:       sec2,
-				AccountId:    acct,
-				Domain:       dom[:],
-				ContentEpoch: states[1].Core.ContentEpoch,
-				Purpose:      uint32(devicesec.Notify),
-			},
-		},
-	})
-	if pkResp.Error != "" || len(pkResp.Data) != 32 {
-		t.Fatalf("DerivePurposeKey failed: %+v", pkResp)
+	// DerivePurposeKeyRaw + HandleOpenNotify using single head state (epoch > 1) and PurposeKey.
+	pk, err := devicesec.DerivePurposeKeyRaw(sec2, acct, dom, states[1].Core.ContentEpoch, devicesec.Notify)
+	if err != nil || len(pk) != 32 {
+		t.Fatalf("DerivePurposeKeyRaw failed: err=%v len=%d", err, len(pk))
 	}
 
 	sh2, _ := states[1].Hash()
@@ -1010,30 +1000,37 @@ func TestEngineOverrideSessionSeedAndSecCallNotifyPurposeKey(t *testing.T) {
 	nct.Origin = ed25519.Sign(machine.ed, nOrigMsg)
 	nEnv, _ := ToProtoEnvelope(nct)
 
-	notifyResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_OpenNotifyEnvelope{
-			OpenNotifyEnvelope: &corev1.SecOpenNotifyEnvelopeCall{
-				Pin:        &corev1.SecPin{Account: acct, Domain: dom[:], Genesis: gen[:]},
-				States:     [][]byte{rawStates[1]},
-				PurposeKey: pkResp.Data,
-				Envelope:   nEnv,
-			},
-		},
-	})
-	if notifyResp.Error != "" || len(notifyResp.Data) == 0 {
-		t.Fatalf("OpenNotifyEnvelope with PurposeKey failed: %+v", notifyResp)
+	var pkArr [32]byte
+	copy(pkArr[:], pk)
+	ntfBlob, err := (&PersistedNotifyRecord{
+		Pin:        devicesec.Pin{Account: acct, Domain: dom, Genesis: gen},
+		HeadState:  rawStates[1],
+		PurposeKey: pkArr,
+	}).Encode()
+	if err != nil {
+		t.Fatal(err)
 	}
-	var gotNotify v1.NotifyContent
-	if err := gotNotify.Unmarshal(notifyResp.Data); err != nil || gotNotify.Title != "done" || gotNotify.Text != "body" {
-		t.Fatalf("decoded NotifyContent mismatch: err=%v got=%+v", err, gotNotify)
+	openEffs := eng.HandleOpenNotify(nowMs+100, &corev1.SecurityOpenNotifyEvent{
+		OpId:       88,
+		NotifyBlob: ntfBlob,
+		Envelope:   nEnv,
+	})
+	var openedNotify *corev1.SecurityNotifyOpenedEffect
+	for _, ef := range openEffs {
+		if no := ef.GetSecurityNotifyOpened(); no != nil {
+			openedNotify = no
+		}
+	}
+	if openedNotify == nil || openedNotify.Error != "" || openedNotify.Content == nil || openedNotify.Content.Title != "done" || openedNotify.Content.Text != "body" {
+		t.Fatalf("HandleOpenNotify with PurposeKey failed: %+v", openedNotify)
 	}
 }
 
-func TestSecCallVerifyTransitionAndSecurityGates(t *testing.T) {
+func TestDevicesecVerifyTransitionAndSecurityGates(t *testing.T) {
 	nowMs := int64(1_700_000_000_000)
 	acct, dom, gen, phone, machine, rec, _, sec2, rawStates, leaseRaw, states := makeGenesisAndTwoStateRecord(t, uint64(nowMs))
 
-	// 1. SecCall VerifyTransition across multi-epoch, bad signer, and recovery transitions.
+	// 1. VerifyTransition across multi-epoch, bad signer, and recovery transitions.
 	extra := newTestIdentity(t, 5)
 	sec3 := bytes.Repeat([]byte{0x44}, 32)
 	s3U, err := devicesec.NewPairState(states[1], extra.member(devicesec.Client), extra.xPub[:], sec2, sec3, uint64(nowMs+20), stdHPKESender{}, rand.Reader)
@@ -1044,32 +1041,20 @@ func TestSecCallVerifyTransitionAndSecurityGates(t *testing.T) {
 	s3 := s3U
 	s3.Signature = ed25519.Sign(phone.ed, s3SB)
 	s3Raw, _ := s3.MarshalBinary()
-
-	okVT := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyTransition{
-			VerifyTransition: &corev1.SecVerifyTransitionCall{
-				ParentState: rawStates[1],
-				NextState:   s3Raw,
-			},
-		},
-	})
-	if okVT.Error != "" || okVT.ParsedState == nil || okVT.ParsedState.Epoch != 3 {
-		t.Fatalf("expected multi-epoch VerifyTransition to succeed, got %+v", okVT)
+	s3Parsed, err := devicesec.ParseState(s3Raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := devicesec.VerifyTransition(states[1], s3Parsed, nil); err != nil || s3Parsed.Core.Epoch != 3 {
+		t.Fatalf("expected multi-epoch VerifyTransition to succeed, got %v (epoch=%d)", err, s3Parsed.Core.Epoch)
 	}
 
 	badS3 := s3U
 	badS3.Signature = ed25519.Sign(machine.ed, s3SB)
 	badS3Raw, _ := badS3.MarshalBinary()
-	badVT := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyTransition{
-			VerifyTransition: &corev1.SecVerifyTransitionCall{
-				ParentState: rawStates[1],
-				NextState:   badS3Raw,
-			},
-		},
-	})
-	if badVT.ErrorCode != "untrusted" {
-		t.Fatalf("expected untrusted error for unauthorized signer, got %+v", badVT)
+	badS3Parsed, _ := devicesec.ParseState(badS3Raw)
+	if err := devicesec.VerifyTransition(states[1], badS3Parsed, nil); !errors.Is(err, devicesec.ErrUntrusted) {
+		t.Fatalf("expected untrusted error for unauthorized signer, got %v", err)
 	}
 
 	newPhone := newTestIdentity(t, 6)
@@ -1086,18 +1071,10 @@ func TestSecCallVerifyTransitionAndSecurityGates(t *testing.T) {
 	stmtSB, _ := stmtU.SigningBytes()
 	stmtU.Signature = ed25519.Sign(rec.ed, stmtSB)
 	stmtRaw, _ := stmtU.MarshalBinary()
+	stmtParsed, _ := devicesec.ParseRecoveryStatement(stmtRaw)
 
-	recVT := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyTransition{
-			VerifyTransition: &corev1.SecVerifyTransitionCall{
-				ParentState:   rawStates[1],
-				NextState:     recRaw,
-				RecoveryProof: stmtRaw,
-			},
-		},
-	})
-	if recVT.Error != "" || recVT.ParsedState == nil || recVT.ParsedState.Epoch != 3 {
-		t.Fatalf("expected recovery VerifyTransition to succeed, got %+v", recVT)
+	if err := devicesec.VerifyTransition(states[1], recParsed, &stmtParsed); err != nil || recParsed.Core.Epoch != 3 {
+		t.Fatalf("expected recovery VerifyTransition to succeed, got %v (epoch=%d)", err, recParsed.Core.Epoch)
 	}
 
 	// 2. Dynamic clock skew clearance + SealEnvelope scope check + OpenBatch(History: true) control rejection.
@@ -1106,7 +1083,7 @@ func TestSecCallVerifyTransitionAndSecurityGates(t *testing.T) {
 	skewedNow := nowMs - int64(devicesec.MaxClockSkew) - 100
 	eng := NewEngine(pool)
 	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
-	executeHostEffects(t, eng, phone, skewedNow, eng.ApplyRecord(skewedNow, &corev1.SecurityRecordEvent{
+	executeHostEffects(t, eng, phone, skewedNow, eng.ApplyRecord(skewedNow, RecordUpdate{
 		Account: acct, Domain: dom[:], Genesis: gen[:], States: rawStates, Lease: leaseRaw,
 	}))
 	if !eng.Snapshot().ClockSkewed {

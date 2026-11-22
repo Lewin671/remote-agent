@@ -82,7 +82,7 @@
       "event": {
         "nowMs": "1791078060040",
         "listsFetched": {
-          "opId": "4",
+          "opId": "3",
           "machines": [
             {
               "machineId": "m1",
@@ -132,7 +132,7 @@
       "event": {
         "nowMs": "1791078060050",
         "accountPrefsFetched": {
-          "opId": "5",
+          "opId": "4",
           "prefs": {
             "revision": "1",
             "prefs": {
@@ -172,7 +172,7 @@
       "event": {
         "nowMs": "1791078060070",
         "accountPrefsFetched": {
-          "opId": "6",
+          "opId": "5",
           "prefs": {
             "revision": "1",
             "prefs": {
@@ -192,7 +192,7 @@
       "event": {
         "nowMs": "1791078060080",
         "accountPrefsPutResult": {
-          "opId": "7",
+          "opId": "6",
           "applied": true,
           "current": {
             "revision": "2",
@@ -290,7 +290,7 @@
       "event": {
         "nowMs": "1791078060120",
         "accountPrefsFetched": {
-          "opId": "8",
+          "opId": "7",
           "prefs": {
             "revision": "2",
             "prefs": {
@@ -314,7 +314,7 @@
       "event": {
         "nowMs": "1791078060130",
         "accountPrefsPutResult": {
-          "opId": "9",
+          "opId": "8",
           "applied": true,
           "current": {
             "revision": "3",

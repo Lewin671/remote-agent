@@ -1559,17 +1559,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent getSecurityConfig();
 
   /**
-   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-   * @return Whether the securityRecord field is set.
-   */
-  boolean hasSecurityRecord();
-  /**
-   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-   * @return The securityRecord.
-   */
-  io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent getSecurityRecord();
-
-  /**
    * <code>.remoteagent.core.v1.SecurityKeySignedEvent security_key_signed = 452 [json_name = "securityKeySigned"];</code>
    * @return Whether the securityKeySigned field is set.
    */

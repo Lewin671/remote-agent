@@ -322,26 +322,6 @@ internal fun seedCoreForTest(
             setTokenResult(tb)
         }
     }
-    coreHost.onSyncSecurity = { eff ->
-        send {
-            setSeedDemoWorld(
-                SeedDemoWorldEvent.newBuilder().setSecurity(
-                    DemoSecurity.newBuilder()
-                        .setIsMember(!state.removed).setRemoved(state.removed).setSelfDeviceId(selfDeviceId)
-                        .setAuthorityDeviceId(state.authorityDeviceId.ifEmpty { if (state.isAuthority) selfDeviceId else "authority" })
-                        .addAllTrustedMachineIds(state.machines.keys)
-                        .addAllTrustedClientIds(
-                            state.devices.values
-                                .filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT }
-                                .map { it.id },
-                        )
-                        .setHeadEpoch(1L).setLeaseEndMs(state.leaseEndMs)
-                        .setClockSkewed(state.clockWarning).setRecoveryPending(state.recoveryPending)
-                        .setRecoveryReadyMs(state.recoveryReadyMs).setNetworkGeneration(eff.networkGeneration),
-                ),
-            )
-        }
-    }
     coreHost.onOpenStream = { eff -> if (state.conn == ConnState.ONLINE) pendingStreamLeg = eff.legId }
     coreHost.onRpc = { eff -> pendingRpcs.add(eff) }
     coreHost.onDispatchCommand = { eff ->
@@ -364,6 +344,24 @@ internal fun seedCoreForTest(
         }
     }
     send { setSyncLifecycle(SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_STOP)) }
+    send {
+        setSeedDemoWorld(
+            SeedDemoWorldEvent.newBuilder().setSecurity(
+                DemoSecurity.newBuilder()
+                    .setIsMember(!state.removed).setRemoved(state.removed).setSelfDeviceId(selfDeviceId)
+                    .setAuthorityDeviceId(state.authorityDeviceId.ifEmpty { if (state.isAuthority) selfDeviceId else "authority" })
+                    .addAllTrustedMachineIds(state.machines.keys)
+                    .addAllTrustedClientIds(
+                        state.devices.values
+                            .filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT }
+                            .map { it.id },
+                    )
+                    .setHeadEpoch(1L).setLeaseEndMs(state.leaseEndMs)
+                    .setClockSkewed(state.clockWarning).setRecoveryPending(state.recoveryPending)
+                    .setRecoveryReadyMs(state.recoveryReadyMs).setNetworkGeneration(seedGen.toLong()),
+            ),
+        )
+    }
     if (state.link == Link.NO_NETWORK) send {
         setNetworkChanged(NetworkChangedEvent.newBuilder().setAvailable(false).setSignature("none-$seedGen"))
     } else send {

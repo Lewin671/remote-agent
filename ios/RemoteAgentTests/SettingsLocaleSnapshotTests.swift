@@ -29,8 +29,12 @@ import UIKit
         }
         for locale in ["zh-CN", "en"] {
             MessageLocale.$overrideForTesting.withValue(locale) {
-                let create = AuthoritySetupModel(mode: .create, bootstrap: model.authorityBootstrap, server: "https://relay.example.com")
-                let recover = AuthoritySetupModel(mode: .recover, bootstrap: model.authorityBootstrap, server: "https://relay.example.com")
+                let create = AuthoritySetupModel(
+                    mode: .create, server: "https://relay.example.com",
+                    makeHost: { try StandaloneSecurityHost(store: MemorySecurityStoreV4(), http: AppModel.http, allowPlainHttp: true) })
+                let recover = AuthoritySetupModel(
+                    mode: .recover, server: "https://relay.example.com",
+                    makeHost: { try StandaloneSecurityHost(store: MemorySecurityStoreV4(), http: AppModel.http, allowPlainHttp: true) })
                 let screens: [(String, AnyView)] = [
                     ("first-use", AnyView(JoinScreen())),
                     ("create-account", AnyView(AuthoritySetupScreen(flow: create))),
@@ -41,7 +45,7 @@ import UIKit
                     ("local-errors", AnyView(ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
                             Text(L10n.securityAccountSecurity())
-                            Text(errorText(DeviceSecurity.Failure.lease))
+                            Text(errorText(SecurityFailure.lease))
                             ForEach(["20 MB", "pixels", "source missing", "decode", "storage full", "offline", "opaque"], id: \.self) { raw in
                                 Text(rawImageProblem(raw).message)
                             }

@@ -710,7 +710,7 @@ func (e *Engine) adoptCreationOp(op *PersistedOperation, fgGen uint64, done func
 		} else if m, ok := genesis.Core.Member(op.MemberID); ok {
 			wf.deviceXPub = slices.Clone(m.XPublic[:])
 		}
-		e.applyPersistedRecordToEngine(rec, 0, func(unlockErr error) {
+		e.applyPersistedRecordToEngine(rec, func(unlockErr error) {
 			if unlockErr != nil {
 				done(nil, unlockErr)
 				return

@@ -1,19 +1,10 @@
 // The join flow's state and rules, apart from how it is drawn: the
-// counterpart of the state in Android's ui/Join.kt, with the paths
-// architecture §9 describes for a new device that stops waiting.
-//
-// A join by pairing runs to its own end: it is never cut off in the middle
-// of a request. Stopping sets a flag the pairing reads between two looks at
-// the server, so it ends within a second, and its one-off key goes with it.
-// That leaves one case to get right. The other device may allow the join in
-// the same moment this one cancels: the pairing has then already passed its
-// last look at the flag and registers this device. Cancelling says 已取消
-// only for what really stopped; an attempt that registered anyway hands
-// over its account, and one that failed while registering says the outcome
-// is not known.
+// counterpart of the state in Android's ui/Join.kt, powered by Go clientcore's
+// `SecurityClient` for pre-auth onboarding and active re-pairing.
 import Foundation
 import Observation
 import RACore
+import RAProto
 import UIKit
 import os
 
@@ -32,49 +23,68 @@ struct JoinCalls: Sendable {
             _ confirm: @escaping @Sendable ([String]) async -> Bool
         ) async throws -> Account
 
-    static func live(http: HTTP, existing: Account? = nil, vault: Vault = Vault()) -> JoinCalls {
+    /// Pre-auth onboarding via a temporary `StandaloneSecurityHost` (closed before returning `Account`),
+    /// OR active re-pairing via an existing `Remote.securityClient`.
+    @MainActor
+    static func live(
+        http: HTTP = AppModel.http,
+        client: SecurityClient? = nil,
+        existing: Account? = nil,
+        vault: Vault = Vault(),
+        allowPlainHttp: Bool = false
+    ) -> JoinCalls {
         JoinCalls(
             byPairing: { link, onEmoji, stopped, onRegistering, confirm in
-                if let delivery = try vault.loadPairDeliveryReceipt() {
-                    guard delivery.intent.targetServer == link.server else { throw PairError(L10nMessage.securityIosPairingDeliveryOnAnotherServerIsUnfinished()) }
-                    onRegistering()
-                    let account = try await delivery.resume(http: http) { account, record in
-                        // The registration receipt remains until this retry succeeds.
-                        try vault.saveRegistrationBootstrap(account, record: record)
-                    }
-                    try vault.clearPairDeliveryReceipt()
-                    try vault.clearRegistrationIntent(delivery.intent)
-                    return account
+                let ownHost: StandaloneSecurityHost?
+                let secClient: SecurityClient
+                if let client {
+                    ownHost = nil
+                    secClient = client
+                } else {
+                    let host = try StandaloneSecurityHost(store: vault, http: http, allowPlainHttp: allowPlainHttp)
+                    ownHost = host
+                    secClient = host.client
+                    _ = try? await secClient.bootstrap()
                 }
-                if let pending = try vault.loadRegistrationIntent() {
-                    guard pending.targetServer == link.server else { throw PairError(L10nMessage.securityRegistrationOnAnotherServerIsUnfinishedRetryItOr()) }
-                    onRegistering()
-                    let account = try await pending.resume(http: http) { account,record in try vault.saveRegistrationBootstrap(account,record:record) }
-                    try vault.clearRegistrationIntent(pending)
-                    return account
+                defer { ownHost?.close() }
+
+                let info = try await secClient.startJoinPairing(
+                    server: link.server,
+                    code: link.code,
+                    commitHint: link.commit,
+                    existingRepair: existing != nil,
+                    existingServer: existing?.server ?? ""
+                )
+                if stopped() {
+                    try? await secClient.cancelJoinPairing(pairingId: info.pairingID)
+                    throw SecurityWorkflowError(
+                        message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(),
+                        code: "canceled",
+                        retryable: false
+                    )
                 }
-                let joined = try await joinByPairing(
-                    link: link, http: http, onEmoji: onEmoji, stopped: stopped,
-                    onRegistering: onRegistering,
-                    persist: { acct, record in
-                        try vault.saveRegistrationBootstrap(acct, record: record)
-                    }, persistRegistration: { intent in
-                        try vault.saveRegistrationIntent(intent)
-                    }, clearRegistration: { try vault.clearRegistrationIntent($0) }, loadIdentity: { server, pairingID in
-                        try vault.readNamed(PairingIdentity.storageKey(server: server, pairingID: pairingID)).map { try JSONDecoder().decode(PairingIdentity.self, from: $0) }
-                    },
-                    persistIdentity: { identity in
-                        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
-                        try vault.savePairingIdentity(PairingIdentity.storageKey(server: identity.server, pairingID: identity.pairingID), encoder.encode(identity))
-                    },
-                    persistDelivery: { try vault.savePairDeliveryReceipt($0) },
-                    clearDelivery: {
-                        try vault.clearPairDeliveryReceipt()
-                        if let pending = try vault.loadRegistrationIntent() { try vault.clearRegistrationIntent(pending) }
-                    },
-                    existing: existing, confirm: confirm)
-                return joined
-            })
+
+                onEmoji(info.sasEmoji)
+                let accepted = await confirm(info.sasEmoji)
+                if !accepted || stopped() {
+                    try? await secClient.cancelJoinPairing(pairingId: info.pairingID)
+                    throw SecurityWorkflowError(
+                        message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(),
+                        code: "canceled",
+                        retryable: false
+                    )
+                }
+
+                onRegistering()
+                let res = try await secClient.confirmJoinSas(pairingId: info.pairingID)
+                let st = res.status
+                let adopted = res.accountAdopted
+                let server = !adopted.server.isEmpty ? adopted.server : (!st.server.isEmpty ? st.server : (existing?.server ?? link.server))
+                let deviceId = !adopted.deviceID.isEmpty ? adopted.deviceID : (!st.deviceID.isEmpty ? st.deviceID : (existing?.deviceId ?? ""))
+                let accountId = !adopted.accountID.isEmpty ? adopted.accountID : (!st.accountID.isEmpty ? st.accountID : (existing?.accountId ?? ""))
+                return Account(server: server, deviceId: deviceId, accountId: accountId)
+            }
+        )
     }
 }
 
@@ -105,6 +115,7 @@ private final class JoinAttempt: Sendable {
         }
         continuation?.resume(returning: accepted)
     }
+
     func waitForComparison() async -> Bool {
         await withCheckedContinuation { continuation in
             let immediate: Bool? = flags.withLock { f in
@@ -116,6 +127,7 @@ private final class JoinAttempt: Sendable {
             if let immediate { continuation.resume(returning: immediate) }
         }
     }
+
     func stop() -> Bool {
         let stopped = flags.withLock { f -> (Bool, CheckedContinuation<Bool, Never>?) in
             if f.registering { return (false, nil) }
@@ -128,7 +140,6 @@ private final class JoinAttempt: Sendable {
         stopped.1?.resume(returning: false)
         return stopped.0
     }
-
 }
 
 @MainActor
@@ -139,8 +150,6 @@ final class JoinModel {
         case form
         /// The camera, looking for a pairing QR code.
         case scan
-        /// The account secret, to paste.
-        case secret
         /// Reaching the server and waiting for the other device to show itself.
         case working
         /// The four pictures to compare, waiting for the other device to allow.
@@ -152,13 +161,12 @@ final class JoinModel {
     /// The pairing code: digits only, eight at most. Typed through `typeCode`.
     private(set) var code = ""
     var server: String
-    /// The account secret as pasted. Emptied as soon as it has been used, or the page is left.
+    /// Legacy secret box retained only as empty property if referenced; unused.
     var secret = ""
     /// What went wrong or what happened, over the form; empty for nothing.
     private(set) var notice = ""
     /// The notice is a failure, not an account of what the user did.
     private(set) var noticeIsError = false
-    /// A join by secret is on its way; it cannot be cancelled.
     private(set) var joiningWithSecret = false
 
     /// The other device's commitment, from a scanned code: the server's answer is checked against it.
@@ -187,8 +195,7 @@ final class JoinModel {
     /// Working can still be left: a pairing that has not begun to register.
     var canCancel: Bool { !joiningWithSecret && attempt?.registering != true }
 
-    /// What was typed or pasted into the code field: its digits are kept,
-    /// so a code copied as "4829 1756" goes in as it is.
+    /// What was typed or pasted into the code field: its digits are kept.
     func typeCode(_ text: String) {
         let digits = String(text.filter { $0.isASCII && $0.isNumber }.prefix(8))
         guard digits != code else { return }
@@ -203,11 +210,6 @@ final class JoinModel {
         notice = ""
         secret = ""
         step = .form
-    }
-
-    func showSecret() {
-        notice = ""
-        step = .secret
     }
 
     func showScanner() {
@@ -227,8 +229,7 @@ final class JoinModel {
     }
 
     /// What the camera read. Anything but a pairing link of this app is said
-    /// and left. The camera may still hand over a code after 取消 was
-    /// tapped: the scanner is not what is shown then, and nothing is joined.
+    /// and left.
     func scanned(_ text: String) {
         guard step == .scan else { return }
         guard let link = PairLink.parse(text) else {
@@ -239,7 +240,6 @@ final class JoinModel {
         }
         typeCode(link.code)
         server = link.server
-        // After the code, whose change forgets the commitment of the one before.
         commit = link.commit
         join(link)
     }
@@ -271,19 +271,19 @@ final class JoinModel {
         comparisonPending = true
         return await attempt.waitForComparison()
     }
+
     func confirmPictures() {
         guard comparisonPending, let attempt else { return }
         comparisonPending = false
         attempt.comparisonDecision(true)
     }
+
     private func show(_ emoji: [String], of attempt: JoinAttempt) {
         guard self.attempt === attempt, !attempt.stopped, step == .working else { return }
         step = .emoji(emoji)
     }
 
     private func finished(_ attempt: JoinAttempt, _ account: Account) async {
-        // Registered, whatever was tapped meanwhile: the device is in the
-        // account, so it is used. An attempt begun after the cancel gives way.
         if self.attempt !== attempt { _ = self.attempt?.stop() }
         self.attempt = nil
         comparisonPending = false
@@ -294,25 +294,21 @@ final class JoinModel {
         comparisonPending = false
         let current = self.attempt === attempt
         if attempt.registering {
-            // Whatever the page says now, this is what is known of the device.
             if current { self.attempt = nil }
-            notice = L10n.securityIosUnsureWhetherJoinedCheckTheClientListInThe(detail: String(describing: errorText(error)), value: String(describing: thisDeviceWord))
+            notice = L10n.securityIosUnsureWhetherJoinedCheckTheClientListInThe(
+                detail: String(describing: errorText(error)),
+                value: String(describing: thisDeviceWord)
+            )
             noticeIsError = true
             if current { step = .form }
             return
         }
-        // Stopped by the user: the page already says so.
         guard current, !attempt.stopped else { return }
         self.attempt = nil
         fail(errorText(error))
     }
 
-    /// Stops waiting, from 取消 or 图案不一致: no more polling or joining by
-    /// itself, the one-off pairing key goes with the attempt. The server is
-    /// kept and the old code cleared. This device leaving does not withdraw
-    /// the request on the server, which may still hold the code: the notice
-    /// says to reject it on the authority client. Once registering has begun
-    /// the join goes on and its outcome is shown instead.
+    /// Stops waiting, from 取消 or 图案不一致.
     func cancel() {
         guard let attempt else {
             if !joiningWithSecret { step = .form }
@@ -330,8 +326,6 @@ final class JoinModel {
         step = .form
     }
 
-    // MARK: Joining with the account secret
-
     func joinWithSecret() {
         secret = ""
         step = .form
@@ -346,7 +340,6 @@ final class JoinModel {
         do {
             try await onJoined(account)
         } catch {
-            // Registered, but the Keychain did not keep the keys.
             notice = L10n.securityIosJoinedButCouldNotSaveAccountKeys(value: String(describing: errorText(error)))
             noticeIsError = true
             step = .form
@@ -362,7 +355,6 @@ final class JoinModel {
     // MARK: Fixed states
 
     #if DEBUG
-        /// Puts the flow in a state to look at, without a server (`-joinStep`).
         func show(
             step: Step, code: String = "", server: String? = nil, secret: String = "",
             notice: String = "", error: Bool = false

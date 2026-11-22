@@ -1,13 +1,14 @@
 import Observation
 import RACore
+import RAProto
 import SwiftUI
 
 @MainActor @Observable
 final class HandoffDraft {
-    var prepared: PreparedRecovery?
+    var code: String?
     var saved = false
     var offered = false
-    var canPublish: Bool { prepared != nil && saved }
+    var canPublish: Bool { code != nil && saved }
 }
 
 struct HandoffScreen: View {
@@ -16,8 +17,8 @@ struct HandoffScreen: View {
     @Environment(Navigator.self) private var nav
     @State private var draft = HandoffDraft()
     @State private var action = ActionRunner()
-    @State private var candidates: [DeviceView] = []
-    @State private var target: DeviceView?
+    @State private var candidates: [PBSecurityHandoffCandidate] = []
+    @State private var target: PBSecurityHandoffCandidate?
     @State private var confirming = false
     @State private var publicCode = ""
     @State private var completedProfile = false
@@ -36,18 +37,30 @@ struct HandoffScreen: View {
             draft = context.memory.value { HandoffDraft() }
             if app.isDemo {
                 #if DEBUG
-                candidates = app.state.devices.values.filter { $0.id != context.me && $0.kind == .client && $0.meta?.handoffRecoveryEd.count == 32 }
+                candidates = app.state.devices.values
+                    .filter { $0.id != context.me && $0.kind == .client && $0.meta?.handoffRecoveryEd.count == 32 }
+                    .map { d in
+                        PBSecurityHandoffCandidate.with {
+                            $0.deviceID = d.id
+                            $0.recoveryEd = d.meta?.handoffRecoveryEd ?? Data()
+                        }
+                    }
                 #endif
             } else if access.isAuthority { loadCandidates() }
         }
         .confirm(isPresented: $confirming, title: L10n.securityIosTransferManagement(),
-            text: L10n.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(value: String(describing: target.map { clientName($0, id: $0.id, among: app.state.devices) } ?? L10n.securityIosSuccessorDevice())),
+            text: L10n.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(
+                value: String(describing: target.map {
+                    clientName(app.state.devices[$0.deviceID], id: $0.deviceID, among: app.state.devices)
+                } ?? L10n.securityIosSuccessorDevice())),
             confirm: L10n.securityConfirmTransfer(), danger: true) {
                 action.run {
                     guard let target else { return }
-                    try await context.remote.handoffAuthority(incoming: target.id)
-                    let c = try await context.remote.authorityCoordinator()
-                    guard try await c.pendingOperation() == nil else { throw UserError(L10nMessage.securityIosTransferResultUnverifiedContinueTheOriginalOperation()) }
+                    try await context.remote.handoffAuthority(targetDeviceId: target.deviceID)
+                    let st = try await context.remote.getSecurityStatus()
+                    guard !st.hasPendingOp else {
+                        throw UserError(L10nMessage.securityIosTransferResultUnverifiedContinueTheOriginalOperation())
+                    }
                     handedOff = true
                     app.authorityHandoffComplete = true
                 }
@@ -58,9 +71,10 @@ struct HandoffScreen: View {
             GroupLabel(L10n.securityTransferManagement())
             GroupNote(L10n.securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts())
             GroupCard {
-                ForEach(candidates) { device in
-                    GRow(L10n.securityIosTransferTo(value: String(describing: clientName(device, id: device.id, among: app.state.devices))),
-                        chevron: true, enabled: !action.running) { target = device; confirming = true }
+                ForEach(candidates, id: \.deviceID) { candidate in
+                    let label = clientName(app.state.devices[candidate.deviceID], id: candidate.deviceID, among: app.state.devices)
+                    GRow(L10n.securityIosTransferTo(value: String(describing: label)),
+                        chevron: true, enabled: !action.running) { target = candidate; confirming = true }
                 }
                 GRow(L10n.securityRefreshSuccessorDevices(), action: true, enabled: !action.running) { loadCandidates() }
             }
@@ -76,15 +90,17 @@ struct HandoffScreen: View {
             #if DEBUG
             if app.isDemo { AuthorityDemoCode(handoff: true) }
             #endif
-            if let prepared = draft.prepared {
-                RecoveryCodeFigure(code: prepared.code, saved: $draft.saved)
+            if let code = draft.code {
+                RecoveryCodeFigure(code: code, saved: $draft.saved)
                 Btn(L10n.securitySavedNotifyManagingClient(), kind: .primary, enabled: draft.canPublish && !action.running) {
                     action.run {
                         guard draft.saved else { throw UserError(L10nMessage.securityIosSaveTheRecoveryCodeOfflineFirst()) }
-                        let c = try await context.remote.authorityCoordinator()
-                        try await c.offerHandoff(prepared, codeSaved: draft.saved)
-                        guard try await c.pendingOperation() == nil else { throw UserError(L10nMessage.securityIosSuccessorPreparationResultUnverifiedContinueTheOriginalOperation()) }
-                        draft.offered = true; draft.prepared = nil; draft.saved = false
+                        try await context.remote.publishHandoffOffer()
+                        let st = try await context.remote.getSecurityStatus()
+                        guard !st.hasPendingOp else {
+                            throw UserError(L10nMessage.securityIosSuccessorPreparationResultUnverifiedContinueTheOriginalOperation())
+                        }
+                        draft.offered = true; draft.code = nil; draft.saved = false
                         await context.remote.refreshDevices()
                     }
                 }.padding(.horizontal, 16)
@@ -94,8 +110,8 @@ struct HandoffScreen: View {
                 }
                 Btn(draft.offered || app.state.devices[context.me]?.meta?.handoffRecoveryEd.count == 32 ? L10n.securityRegenerateRecoveryCode() : L10n.securityGenerateNewRecoveryCode(), kind: .primary, enabled: !action.running) {
                     action.run {
-                        let c = try await context.remote.authorityCoordinator()
-                        draft.prepared = try await c.prepareHandoffCode(); draft.saved = false
+                        draft.code = try await context.remote.prepareHandoffCode()
+                        draft.saved = false
                     }
                 }.padding(16)
             }
@@ -106,7 +122,7 @@ struct HandoffScreen: View {
                 .padding(.horizontal, 16).privacySensitive()
             TextAction(L10n.securityIosRestoreInformation(), enabled: !publicCode.isEmpty && !action.running) {
                 action.run {
-                    try await app.authorityBootstrap.completeAccountPublicProfile(server: context.account.server, code: publicCode)
+                    try await context.remote.completeAccountPublicProfile(server: context.account.server, code: publicCode)
                     publicCode = ""; completedProfile = true
                 }
             }.padding(.horizontal, 16)
@@ -115,6 +131,6 @@ struct HandoffScreen: View {
     }
     private func loadCandidates() {
         guard !app.isDemo else { return }
-        action.run { candidates = try await context.remote.handoffCandidates() }
+        action.run { candidates = try await context.remote.listHandoffCandidates() }
     }
 }

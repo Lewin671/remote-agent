@@ -145,7 +145,6 @@ class CoreHost(
     var onCloseStream: (CloseStreamEffect) -> Unit = {}
     var onEnsureToken: (EnsureTokenEffect) -> Unit = {}
     var onDiscardToken: (DiscardTokenEffect) -> Unit = {}
-    var onSyncSecurity: (SyncSecurityEffect) -> Unit = {}
     var onCacheRead: (CacheReadEffect) -> Unit = {}
     var onCacheWrite: (CacheWriteEffect) -> Unit = {}
     var onCacheDelete: (CacheDeleteEffect) -> Unit = {}
@@ -524,7 +523,6 @@ class CoreHost(
             Effect.EffectCase.CLOSE_STREAM -> onCloseStream(effect.closeStream)
             Effect.EffectCase.ENSURE_TOKEN -> onEnsureToken(effect.ensureToken)
             Effect.EffectCase.DISCARD_TOKEN -> onDiscardToken(effect.discardToken)
-            Effect.EffectCase.SYNC_SECURITY -> onSyncSecurity(effect.syncSecurity)
             Effect.EffectCase.SCHEDULE_TIMER -> scheduleTimer(effect.scheduleTimer)
             Effect.EffectCase.CANCEL_TIMER -> cancelTimer(effect.cancelTimer)
             Effect.EffectCase.CACHE_READ -> onCacheRead(effect.cacheRead)
@@ -1497,13 +1495,6 @@ class CoreHost(
             SecurityForegroundEvent.newBuilder().setForeground(foreground),
         )
     }
-
-    fun dispatchSecurityRecord(ev: SecurityRecordEvent) = send {
-        setSecurityRecord(ev)
-    }
-
-    suspend fun dispatchSecurityRecordAndWait(ev: SecurityRecordEvent): EffectBatch =
-        dispatchAndWait(CoreEvent.newBuilder().setSecurityRecord(ev).build())
 
     suspend fun securityOp(configure: SecurityOpRequestEvent.Builder.() -> Unit): SecurityOpResultEffect {
         if (closed.get()) throw IllegalStateException("core closed")

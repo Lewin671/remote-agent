@@ -5,171 +5,92 @@ import Testing
 @testable import RACore
 
 extension ServerTests {
-    @Suite(.serialized, .timeLimit(.minutes(2))) struct DeviceEnrollment {
-        @Test func aCompletedPairingAcceptsTheSameApprovalAgain() async throws {
-            try await World.run(setUp: { w in
-                try await w.daemon.putMachine("synthetic-manager")
-                try await w.daemon.connect()
-                try await w.daemon.waitReady()
-            }) { w in
-                let pairing = try await PhonePairing.start(w.phone)
-                let candidateSaved = Signal(), accountSaved = Signal(), intentSaved = Signal()
-                let receipt = RegistrationReceipt()
-                let joiningHTTP = Intercept.http(for: w.server.url) { request in
-                    if request.url?.path.hasSuffix("/JoinPairing") == true { #expect(candidateSaved.isSet) }
-                    if request.url?.path.hasSuffix("/RegisterDevice") == true { #expect(accountSaved.isSet) }
-                    return request
-                }
-                let emoji = Mailbox<[String]>()
-                let joining = Task {
-                    try await joinByPairing(
-                        link: pairing.link, http: joiningHTTP, onEmoji: { emoji.put($0) },
-                        stopped: { false }, sleep: { _ in try await realSleep(10) },
-                        persist: { acct, record in #expect(intentSaved.isSet); accountSaved.set(); try TestSecurity.get(acct.server).install(record)
-                        }, persistRegistration: { intent in try receipt.save(intent); intentSaved.set() }, persistIdentity: { _ in candidateSaved.set() }, confirm: { _ in true })
-                }
-                defer { joining.cancel() }
-                let expected = try await pairing.reveal()
-                #expect(try await emoji.take() == expected.emoji)
-                let approving = Task { try await pairing.approve() }
-                defer { approving.cancel() }
-                let account = try await joining.value
-                let saved = try receipt.load()
-                #expect(String(reflecting:saved)=="RegistrationIntent")
-                #expect(Mirror(reflecting:saved).children.isEmpty)
-                let retried = try await saved.resume(http:joiningHTTP) { acct,record in try TestSecurity.get(acct.server).install(record) }
-                #expect(retried.deviceId == account.deviceId)
-                try await approving.value
-                // The same approved request is accepted again.
-                try await pairing.approve()
-                let login = try await login(
-                    api: Api(server: w.server.url, http: w.http), account: account)
-                #expect(!login.isEmpty)
-            }
-        }
-
-        @Test func coldStartWithLostReceiptUsesLoginWithoutReplayingExpiredRegistration() async throws {
-            try await World.run(setUp: { w in
-                try await w.daemon.putMachine("synthetic-manager")
-                try await w.daemon.connect()
-                try await w.daemon.waitReady()
-            }) { w in
-                let pairing = try await PhonePairing.start(w.phone)
-                let emoji = Mailbox<[String]>(), receipts = Mailbox<PairDeliveryReceipt>()
-                let deliveryCleared = Signal(), intentCleared = Signal()
-                let faulty = Intercept.http(for: w.server.url) { request in
-                    if request.url?.path.hasSuffix("/GetPairing") == true,
-                       let body = request.httpBody, try PBGetPairingRequest(serializedBytes: body).received {
-                        throw URLError(.networkConnectionLost)
-                    }
-                    return request
-                }
-                let joining = Task {
-                    try await joinByPairing(link: pairing.link, http: faulty, onEmoji: { emoji.put($0) },
-                        stopped: { false }, sleep: { _ in try await realSleep(10) },
-                        persist: { acct, record in try TestSecurity.get(acct.server).install(record) },
-                        persistRegistration: { _ in }, clearRegistration: { _ in intentCleared.set() }, persistIdentity: { _ in },
-                        persistDelivery: { receipts.put($0) }, clearDelivery: { deliveryCleared.set() }, confirm: { _ in true })
-                }
-                defer { joining.cancel() }
-                let expected = try await pairing.reveal()
-                #expect(try await emoji.take() == expected.emoji)
-                let approving = Task { try await pairing.approve() }
-                defer { approving.cancel() }
-                let account = try await joining.value
-                #expect(deliveryCleared.isSet && intentCleared.isSet)
-                let receipt = try await receipts.take()
-                let replayed = Counter(), bootstrapped = Counter()
-                let restartedHTTP = Intercept.http(for: w.server.url) { request in
-                    if request.url?.path.hasSuffix("/RegisterDevice") == true {
-                        replayed.increment()
-                        throw URLError(.badServerResponse) // expired admission must never be replayed
-                    }
-                    if request.url?.path.hasSuffix("/GetPairing") == true {
-                        throw URLError(.resourceUnavailable) // old pairing slot is gone
-                    }
-                    return request
-                }
-                let resumed = try await receipt.resume(http: restartedHTTP) { _, _ in bootstrapped.increment() }
-                #expect(resumed.deviceId == account.deviceId)
-                #expect(replayed.value == 0)
-                #expect(bootstrapped.value == 1) // idempotent install also repairs an interrupted re-pairing
-            }
-        }
-
+    @Suite(.serialized, .timeLimit(.minutes(2))) struct PairingRetryTests {
         @Test func candidateDoesNotSignOrPersistWithoutLocalSasConfirmation() async throws {
             try await World.run(setUp: { w in
                 try await w.daemon.putMachine("synthetic-manager")
                 try await w.daemon.connect()
                 try await w.daemon.waitReady()
             }) { w in
-                let before = try DeviceSecurity.parseState(
-                    try await w.phone.chain().last!.state).core.members.count
-                let pairing = try await PhonePairing.start(w.phone)
-                let displayed = Mailbox<[String]>()
-                let persisted = Counter()
-                let joining = Task {
-                    do {
-                        _ = try await joinByPairing(
-                            link: pairing.link, http: w.http, onEmoji: { displayed.put($0) },
-                            stopped: { false }, sleep: { _ in try await realSleep(10) }, persist: { _, _ in _ = persisted.increment() }, persistRegistration: { _ in }, persistIdentity: { _ in })
-                        return false
-                    } catch { return errorText(error).contains("本机未确认") }
+                let admin = try await w.remote(w.phone.account)
+                try await admin.ensureSecurityBootstrapped()
+                let started = try await admin.securityClient.startPairing(webOrigin: "https://app.example.com")
+
+                let joinStore = MemorySecurityStoreV4()
+                let joinHost = try StandaloneSecurityHost(store: joinStore, http: w.http, allowPlainHttp: true)
+                defer { joinHost.close() }
+                async let joining = joinHost.client.startJoinPairing(rawLink: started.url)
+
+                var polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                while !polled.joined {
+                    try await realSleep(10)
+                    polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
                 }
-                let expected = try await pairing.reveal()
-                #expect(try await displayed.take() == expected.emoji)
-                #expect(await joining.value)
-                #expect(persisted.value == 0)
-                let chain = try await w.phone.chain()
-                let head = try DeviceSecurity.parseState(chain[chain.count - 1].state)
-                #expect(head.core.members.count == before)
+                let joined = try await joining
+                #expect(joined.sasEmoji == polled.sasEmoji)
+
+                // User cancels instead of confirming SAS: no record persisted and not added to chain.
+                try await joinHost.client.cancelJoinPairing(pairingId: joined.pairingID)
+                let afterBoot = try await joinHost.client.bootstrap()
+                #expect(afterBoot.bootstrap == .empty)
+                #expect(!joinStore.hasPersistedState())
             }
         }
 
-        // Delivery acknowledgement is best effort: a transport failure must not
-        // discard an already registered, usable device identity.
-        @Test func aFailedDeliveryAcknowledgementDoesNotDiscardTheRegisteredIdentity() async throws
-        {
+        @Test func aFailedDeliveryAcknowledgementDoesNotDiscardTheRegisteredIdentity() async throws {
             try await World.run(setUp: { w in
                 try await w.daemon.putMachine("synthetic-manager")
                 try await w.daemon.connect()
                 try await w.daemon.waitReady()
             }) { w in
-                let pairing = try await PhonePairing.start(w.phone)
-                let emoji = Mailbox<[String]>()
+                let admin = try await w.remote(w.phone.account)
+                try await admin.ensureSecurityBootstrapped()
+                let started = try await admin.securityClient.startPairing(webOrigin: "https://app.example.com")
+
                 let faulty = Intercept.http(for: w.server.url) { request in
                     if request.url?.path.hasSuffix("/GetPairing") == true,
-                        let body = request.httpBody,
-                        try PBGetPairingRequest(serializedBytes: body).received
+                       let body = request.httpBody,
+                       let req = try? PBGetPairingRequest(serializedBytes: body),
+                       req.received
                     {
                         throw URLError(.networkConnectionLost)
                     }
                     return request
                 }
-                let joining = Task {
-                    try await joinByPairing(
-                        link: pairing.link, http: faulty, onEmoji: { emoji.put($0) },
-                        stopped: { false }, sleep: { _ in try await realSleep(10) },
-                        persist: { acct, record in try TestSecurity.get(acct.server).install(record)
-                        }, persistRegistration: { _ in }, persistIdentity: { _ in }, confirm: { _ in true })
+                let joinStore = MemorySecurityStoreV4()
+                let joinHost = try StandaloneSecurityHost(store: joinStore, http: faulty, allowPlainHttp: true)
+                defer { joinHost.close() }
+                async let joining = joinHost.client.startJoinPairing(rawLink: started.url)
+
+                var polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
+                while !polled.joined {
+                    try await realSleep(10)
+                    polled = try await admin.securityClient.pollPairing(pairingId: started.pairingID)
                 }
-                defer { joining.cancel() }
-                let expected = try await pairing.reveal()
-                #expect(try await emoji.take() == expected.emoji)
-                let approving = Task { try await pairing.approve() }
-                let account = try await joining.value
-                approving.cancel()
-                _ = try? await approving.value
-                let login = try await login(
-                    api: Api(server: w.server.url, http: w.http), account: account)
-                #expect(!login.isEmpty)
+                let joined = try await joining
+
+                async let confirmJoin = joinHost.client.confirmJoinSas(pairingId: joined.pairingID)
+                async let approveAdmin = admin.securityClient.approvePairing(pairingId: started.pairingID, sasConfirmed: true)
+                _ = try await (confirmJoin, approveAdmin)
+
+                let boot = try await joinHost.client.bootstrap()
+                #expect(boot.bootstrap == .ready)
+                let login = try await loginWithStore(api: Api(server: w.server.url, http: w.http), deviceId: boot.deviceID, store: joinStore)
+                #expect(!login.token.isEmpty)
             }
         }
-    }
-}
 
-private final class RegistrationReceipt: @unchecked Sendable {
-    private let lock=NSLock();private var raw=Data()
-    func save(_ intent:RegistrationIntent) throws { let data=try JSONEncoder().encode(intent);lock.withLock{raw=data} }
-    func load() throws -> RegistrationIntent { try JSONDecoder().decode(RegistrationIntent.self,from:lock.withLock{raw}) }
+        @Test func rawServerErrorsTranslateToUserSafeLocalizedMessages() {
+            let fx = PBSecurityWorkflowResultEffect.with {
+                $0.ok = false
+                $0.error = "security.pairing_expired_or_was_canceled"
+                $0.errorCode = "not_found"
+                $0.retryable = false
+                $0.uncertain = false
+            }
+            let msg = translateSecurityErrorMessage(fx)
+            #expect(msg == L10n.securityPairingExpiredOrWasCanceled())
+            #expect(!msg.contains("security."))
+        }
+    }
 }

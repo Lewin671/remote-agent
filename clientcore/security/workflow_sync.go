@@ -212,7 +212,7 @@ func (e *Engine) installRecordCASAttempt(
 			}
 			wf.record = next
 			wf.recordRev = nextRev
-			e.applyPersistedRecordToEngine(next, 0, func(unlockErr error) {
+			e.applyPersistedRecordToEngine(next, func(unlockErr error) {
 				if next.Member && !wroteNotify {
 					// Newly unlocked head secret can now persist notify_blob cleanly.
 					if ntf := e.buildNotifyRecordBytes(next, newHead); len(ntf) > 0 {
@@ -353,7 +353,13 @@ func (e *Engine) syncStates(touch bool, authToken string, onDone func(err error)
 					rawStates = append(rawStates, ss.State)
 					rawProofs = append(rawProofs, ss.Recovery)
 				}
-				e.installRecordCAS(parsed, rawStates, rawProofs, nil, e.lastNowMs, nil, func(updated *PersistedRecord, iErr error) {
+				var pageLease []byte
+				if len(resp.Lease) > 0 && len(parsed) > 0 {
+					if l, lErr := devicesec.ParseLease(resp.Lease); lErr == nil && l.Verify(parsed[len(parsed)-1]) == nil {
+						pageLease = resp.Lease
+					}
+				}
+				e.installRecordCAS(parsed, rawStates, rawProofs, pageLease, e.lastNowMs, nil, func(updated *PersistedRecord, iErr error) {
 					if iErr != nil {
 						finishAll(iErr)
 						return

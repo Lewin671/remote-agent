@@ -779,7 +779,7 @@ public struct OutgoingRecords: Sendable {
             let fileIds = try files.get(folder: f, name: "file-ids").map { text($0).split(ascii: 0x0A).filter { !$0.isEmpty } } ?? []
             let (images, original) = try loadStored(files, folder: f)
             let mode = try files.get(folder: f, name: "mode").flatMap { modeNamed(text($0)) } ?? .steer
-            guard let prepared=try files.get(folder:f,name:"prepared-command") else {throw DeviceSecurity.Failure.storage}
+            guard let prepared=try files.get(folder:f,name:"prepared-command") else {throw SecurityFailure.storage}
             let authorization=prepared == Data("null".utf8) ? nil : try PreparedCommand(recordBytes:prepared, prior: true)
             return OutgoingRecord(requestId: parts[1], text: text(body), imageIds: ids, fileIds: fileIds, images: images, original: original, mode: mode,prepared:authorization)
         }

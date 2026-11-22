@@ -264,25 +264,6 @@ func (e *Engine) handleSecurityConfig(ctx *StepContext, ev *corev1.SecurityConfi
 	e.maybeRequestEntropy(ctx)
 }
 
-func (e *Engine) handleSecurityRecord(ctx *StepContext, ev *corev1.SecurityRecordEvent) {
-	if ev == nil {
-		return
-	}
-	if ev.OpId != 0 {
-		if ev.OpId != e.activeSecOpID {
-			return
-		}
-		e.activeSecOpID = 0
-	}
-	effs := e.secEngine.ApplyRecord(e.nowMs, ev)
-	e.emitSecurityEffects(ctx, effs)
-	e.syncSecurityStateFromEngine(ctx, true)
-	if _, ok := e.secEngine.CoordInfo(); ev.Error != "" || (!ok && !ev.Removed && !ev.Cleared) {
-		e.emitCoordEffects(ctx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
-	}
-	e.maybeRequestEntropy(ctx)
-}
-
 func (e *Engine) handleSecurityKeySigned(ctx *StepContext, ev *corev1.SecurityKeySignedEvent) {
 	effs := e.secEngine.HandleKeySigned(e.nowMs, ev)
 	e.emitSecurityEffects(ctx, effs)

@@ -19,17 +19,38 @@ private func linkedState(_ id: String) -> RemoteState {
     return state
 }
 
-private final class GuardedLinkStorage: DeviceSecurity.Storage, Sendable {
-    let base: any DeviceSecurity.Storage
+private final class GuardedSecurityStore: SecurityStoreV4, Sendable {
+    let base: MemorySecurityStoreV4
     let blocked = OSAllocatedUnfairLock(initialState: false)
-    init(_ base: any DeviceSecurity.Storage) { self.base = base }
-    func readSecurity() throws -> DeviceSecurity.Record {
-        if blocked.withLock({ $0 }) { throw DeviceSecurity.Failure.lease }
-        return try base.readSecurity()
+    init(_ base: MemorySecurityStoreV4) { self.base = base }
+    func hasPersistedState() -> Bool { base.hasPersistedState() }
+    func generateKey(kind: PBSecurityKeyKind, slot: String, persist: Bool) throws -> Data {
+        try base.generateKey(kind: kind, slot: slot, persist: persist)
     }
-    func initializeSecurity(_ record: DeviceSecurity.Record) throws { try base.initializeSecurity(record) }
-    func writeSecurity(expectedHead: Data, _ record: DeviceSecurity.Record) throws -> DeviceSecurity.Record {
-        try base.writeSecurity(expectedHead: expectedHead, record)
+    func signKey(kind: PBSecurityKeyKind, slot: String, message: Data) throws -> Data {
+        if blocked.withLock({ $0 }) { throw SecurityFailure.lease }
+        return try base.signKey(kind: kind, slot: slot, message: message)
+    }
+    func agreeKey(kind: PBSecurityKeyKind, slot: String, peerPublic: Data) throws -> Data {
+        try base.agreeKey(kind: kind, slot: slot, peerPublic: peerPublic)
+    }
+    func encapsulate(recipients: [PBSecurityEncapsulateRecipient]) throws -> [PBSecurityEncapsulatedPair] {
+        try base.encapsulate(recipients: recipients)
+    }
+    func discardKey(kind: PBSecurityKeyKind, slot: String) { base.discardKey(kind: kind, slot: slot) }
+    func executeStorage(_ effect: PBSecurityStorageEffect) -> PBSecurityStorageResultEvent {
+        base.executeStorage(effect)
+    }
+    func dismissLegacyRepairNotice() { base.dismissLegacyRepairNotice() }
+    func clearMemoryCache() { base.clearMemoryCache() }
+    func loadLoginToken(server: String, deviceId: String) -> SavedLogin? {
+        base.loadLoginToken(server: server, deviceId: deviceId)
+    }
+    func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String) {
+        base.saveLoginToken(token, server: server, deviceId: deviceId)
+    }
+    func clearLoginToken(server: String, deviceId: String) {
+        base.clearLoginToken(server: server, deviceId: deviceId)
     }
 }
 
@@ -42,7 +63,7 @@ extension ServerTests {
             }) { w in
                 let remote = try await w.client()
                 let state = linkedState(w.daemon.id)
-                remote.state.set(state)
+                await remote.showForTest(state: state)
                 #expect(state.peer(w.daemon.id).available)
                 #expect(fileSupported(state.machines[w.daemon.id]))
                 #expect(protocolMismatch(state.machines[w.daemon.id]) == nil)
@@ -59,16 +80,18 @@ extension ServerTests {
         @Test func reachabilityCannotAuthorizeOrClearPriorEvidence() async throws {
             try await World.run(setUp: { _ in }) { w in
                 let account = try await w.join()
-                let store = GuardedLinkStorage(try #require(TestSecurity.find(w.server.url)?.store(account.deviceId)))
+                let baseStore = try #require(TestSecurity.find(w.server.url)?.store(account.deviceId))
+                let store = GuardedSecurityStore(baseStore)
                 let forwards = Counter()
                 let http = Intercept.http(for: w.server.url) { request in
                     if request.url?.path.hasSuffix("/Forward") == true { forwards.increment() }
                     return request
                 }
-                let remote = try Remote(account: account, http: http, securityStorage: store)
+                let remote = try Remote(account: account, http: http, securityStore: store, allowPlainHttp: true)
                 defer { remote.close() }
                 _ = try await remote.currentToken()
-                remote.state.set(linkedState(w.daemon.id))
+                try await remote.ensureSecurityBootstrapped()
+                await remote.showForTest(state: linkedState(w.daemon.id))
                 let prepared = try remote.prepare(machineId: w.daemon.id, sessionId: "", PBCommand.with { $0.getSettings = PBGetSettingsRequest() })
                 store.blocked.withLock { $0 = true }
                 do { _ = try await remote.forward(prepared); Issue.record("authorization bypassed") }

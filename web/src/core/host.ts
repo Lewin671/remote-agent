@@ -122,7 +122,6 @@ import {
   SecurityConfigEventSchema,
   SecurityForegroundEventSchema,
   SecurityOpRequestEventSchema,
-  SecurityRecordEventSchema,
   type SecurityCryptoBatchEffect,
   type SecurityKeyAgreeEffect,
   type SecurityKeyDiscardEffect,
@@ -131,7 +130,6 @@ import {
   type SecurityKeySignEffect,
   type SecurityOpRequestEvent,
   type SecurityOpResultEffect,
-  type SecurityRecordEvent,
   type SecurityRpcEffect,
   type SecurityStatusChangedEffect,
   type SecurityStorageEffect,
@@ -348,8 +346,6 @@ export interface CoreExecutor {
   ensureToken(opId: bigint, forceLogin: boolean, timeoutMs: bigint): Promise<TokenResultEvent>;
   discardToken(token: string): void;
   securityConfig?(): { account: string; deviceId: string; server?: string } | undefined;
-  readCachedSecurityRecord?(): Promise<SecurityRecordEvent | undefined>;
-  syncSecurity?(opId: bigint, networkGeneration: bigint, touch: boolean): Promise<SecurityRecordEvent>;
   readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent>;
   readEventsCache(
     opId: bigint,
@@ -835,7 +831,6 @@ export class CoreHost {
   private bootstrapped = false;
   private preloadedBootstrap?: CacheBootstrapLoadedEvent;
   private securityConfigured = false;
-  private securityRecordDispatched = false;
   private securityBootstrapped = false;
   private securityBootstrapPromise?: Promise<void>;
   readonly securityClient: SecurityClient;
@@ -949,23 +944,9 @@ export class CoreHost {
     });
   }
 
-  private async ensureSecurityRecordPreloaded() {
-    if (this.closed || this.securityRecordDispatched || !this.executor?.securityConfig?.()) return;
-    try {
-      const rec = await this.executor.readCachedSecurityRecord?.();
-      if (rec && !this.closed && !this.securityRecordDispatched) {
-        this.securityRecordDispatched = true;
-        this.emit({ case: "securityRecord", value: rec });
-      }
-    } catch {
-      // Missing local security record falls back to live syncSecurity.
-    }
-  }
-
   private async ensureSecurityBootstrapped(): Promise<void> {
     if (this.closed) return;
     if (!this.executor?.securityStorage) {
-      await this.ensureSecurityRecordPreloaded();
       return;
     }
     if (this.securityBootstrapped || !this.executor?.securityConfig?.()) return;
@@ -2226,10 +2207,6 @@ export class CoreHost {
     if (ev.event.case === "cacheBootstrapLoaded") {
       this.bootstrapped = true;
     }
-    if (ev.event.case === "securityRecord") {
-      this.ensureSecurityConfigured();
-      this.securityRecordDispatched = true;
-    }
     if (ev.event.case === "newSessionSubmit") {
       ev = this.enrichNewSessionSubmit(ev);
     }
@@ -2360,22 +2337,6 @@ export class CoreHost {
       case "discardToken":
         this.executor?.discardToken(val.value.token);
         break;
-
-      case "syncSecurity": {
-        const { opId, networkGeneration, touch } = val.value;
-        if (this.executor?.syncSecurity) {
-          void this.executor.syncSecurity(opId, networkGeneration, touch).then(
-            (value) => !this.closed && this.emit({ case: "securityRecord", value }),
-            (err) =>
-              !this.closed &&
-              this.emit({
-                case: "securityRecord",
-                value: create(SecurityRecordEventSchema, { opId, networkGeneration, error: errorMessage(err) }),
-              }),
-          );
-        }
-        break;
-      }
 
       case "cacheRead": {
         const kind = val.value.kind;

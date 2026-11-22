@@ -6,7 +6,6 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ed25519"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -14,6 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -103,90 +103,62 @@ func TestFrozenDomainV3ChainRecoveryLeaseAndCompressedVectors(t *testing.T) {
 
 	dom := mustHex(t, dv3.Domain)
 	genHash := mustHex(t, dv3.Genesis.Hash)
-	pin := &corev1.SecPin{Account: dv3.Account, Domain: dom, Genesis: genHash}
+	var pin devicesec.Pin
+	pin.Account = dv3.Account
+	copy(pin.Domain[:], dom)
+	copy(pin.Genesis[:], genHash)
 
 	// Verify normal chain: genesis -> added with renewed lease (and renewal + recovery chain).
 	phoneID := devicesec.ID(ed25519.NewKeyFromSeed(mustHex(t, dv3.PhoneSeed)).Public().(ed25519.PublicKey))
-	chainResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyChain{
-			VerifyChain: &corev1.SecVerifyChainCall{
-				Pin:      pin,
-				States:   [][]byte{mustB64(t, dv3.Genesis.State), mustB64(t, dv3.Added.State)},
-				Lease:    mustB64(t, dv3.RenewedLease),
-				MemberId: phoneID,
-			},
-		},
-	})
-	if chainResp.Error != "" || chainResp.ParsedState == nil {
-		t.Fatalf("domain-v3 verify_chain failed: %s", chainResp.Error)
+	chainStates, _, _, err := parseAndVerifyChain(pin, [][]byte{mustB64(t, dv3.Genesis.State), mustB64(t, dv3.Added.State)}, nil)
+	if err != nil {
+		t.Fatalf("domain-v3 parseAndVerifyChain failed: %v", err)
+	}
+	renLease, err := devicesec.ParseLease(mustB64(t, dv3.RenewedLease))
+	if err != nil || renLease.Verify(chainStates[1]) != nil {
+		t.Fatalf("domain-v3 lease verify failed: %v", err)
+	}
+	if _, ok := chainStates[1].Core.Member(phoneID); !ok {
+		t.Fatalf("expected phone %s in added state", phoneID)
 	}
 
 	// Verify GrantChallenge + OpenGrantWithDH for added state (secret 2).
-	chal := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_GrantChallenge{
-			GrantChallenge: &corev1.SecGrantChallengeCall{
-				Pin:      pin,
-				State:    mustB64(t, dv3.Added.State),
-				MemberId: phoneID,
-			},
-		},
-	})
-	if chal.Error != "" {
-		t.Fatalf("grant_challenge failed: %s", chal.Error)
+	chalEnc, _, err := pin.GrantChallenge(chainStates[1], phoneID)
+	if err != nil {
+		t.Fatalf("GrantChallenge failed: %v", err)
 	}
-	dh := ecdhWithRawPriv(t, mustHex(t, dv3.PhoneX), chal.Data)
-	openGrant := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_OpenGrantWithDh{
-			OpenGrantWithDh: &corev1.SecOpenGrantWithDHCall{
-				Pin:      pin,
-				State:    mustB64(t, dv3.Added.State),
-				MemberId: phoneID,
-				Dh:       dh,
-			},
-		},
-	})
-	if openGrant.Error != "" || !bytes.Equal(openGrant.Data, mustHex(t, dv3.ContentSecret2)) {
-		t.Fatalf("open_grant_with_dh mismatch: err=%s got=%x want=%s", openGrant.Error, openGrant.Data, dv3.ContentSecret2)
+	dh := ecdhWithRawPriv(t, mustHex(t, dv3.PhoneX), chalEnc[:])
+	openGrant, err := pin.OpenGrantWithDH(chainStates[1], phoneID, dh)
+	if err != nil || !bytes.Equal(openGrant, mustHex(t, dv3.ContentSecret2)) {
+		t.Fatalf("OpenGrantWithDH mismatch: err=%v got=%x want=%s", err, openGrant, dv3.ContentSecret2)
 	}
 
 	// Verify handoff chain & lease (descends directly from Added).
-	handoffResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyChain{
-			VerifyChain: &corev1.SecVerifyChainCall{
-				Pin:    pin,
-				States: [][]byte{mustB64(t, dv3.Genesis.State), mustB64(t, dv3.Added.State), mustB64(t, dv3.HandoffParent.State), mustB64(t, dv3.Handoff.State)},
-				Lease:  mustB64(t, dv3.HandoffLease),
-			},
-		},
-	})
-	if handoffResp.Error != "" {
-		t.Fatalf("domain-v3 handoff verify_chain failed: %s", handoffResp.Error)
+	handoffStates, _, _, err := parseAndVerifyChain(
+		pin,
+		[][]byte{mustB64(t, dv3.Genesis.State), mustB64(t, dv3.Added.State), mustB64(t, dv3.HandoffParent.State), mustB64(t, dv3.Handoff.State)},
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("domain-v3 handoff chain failed: %v", err)
+	}
+	handoffLease, err := devicesec.ParseLease(mustB64(t, dv3.HandoffLease))
+	if err != nil || handoffLease.Verify(handoffStates[len(handoffStates)-1]) != nil {
+		t.Fatalf("domain-v3 handoff lease failed: %v", err)
 	}
 
 	// Verify recovery chain & statement (descends from Renewal).
-	fullRecResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyChain{
-			VerifyChain: &corev1.SecVerifyChainCall{
-				Pin:            pin,
-				States:         [][]byte{mustB64(t, dv3.Genesis.State), mustB64(t, dv3.Added.State), mustB64(t, dv3.Renewal.State), mustB64(t, dv3.Recovery.State)},
-				RecoveryProofs: [][]byte{mustB64(t, dv3.RecoveryStatement)},
-			},
-		},
-	})
-	if fullRecResp.Error != "" {
-		t.Fatalf("domain-v3 recovery verify_chain failed: %s", fullRecResp.Error)
+	recStates, _, _, err := parseAndVerifyChain(
+		pin,
+		[][]byte{mustB64(t, dv3.Genesis.State), mustB64(t, dv3.Added.State), mustB64(t, dv3.Renewal.State), mustB64(t, dv3.Recovery.State)},
+		[][]byte{mustB64(t, dv3.RecoveryStatement)},
+	)
+	if err != nil {
+		t.Fatalf("domain-v3 recovery chain failed: %v", err)
 	}
-	recResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyRecoveryStatement{
-			VerifyRecoveryStatement: &corev1.SecVerifyRecoveryStatementCall{
-				Statement:   mustB64(t, dv3.RecoveryStatement),
-				ParentState: mustB64(t, dv3.Renewal.State),
-				NextState:   mustB64(t, dv3.Recovery.State),
-			},
-		},
-	})
-	if recResp.Error != "" {
-		t.Fatalf("domain-v3 verify_recovery_statement failed: %s", recResp.Error)
+	stmt, err := devicesec.ParseRecoveryStatement(mustB64(t, dv3.RecoveryStatement))
+	if err != nil || stmt.Verify(recStates[2], recStates[3]) != nil {
+		t.Fatalf("domain-v3 recovery statement verify failed: %v", err)
 	}
 
 	// Verify compressed envelopes unpack + decode matching expected plain bytes.
@@ -233,14 +205,14 @@ func TestFrozenChainRecoveryAndReplacementVectors(t *testing.T) {
 	for i, st := range cv3.States {
 		rawStates[i] = mustB64(t, st.State)
 	}
-	chainPin := pinToProto(devicesec.Pin{Account: s0.Core.Account, Domain: s0.Core.Domain, Genesis: [32]byte(mustHex(t, cv3.States[0].Hash))})
-	if r := SecCall(&corev1.SecCallRequest{Call: &corev1.SecCallRequest_VerifyChain{VerifyChain: &corev1.SecVerifyChainCall{Pin: chainPin, States: rawStates}}}); r.Error != "" {
-		t.Fatalf("chain-v3 failed: %s", r.Error)
+	chainPin := devicesec.Pin{Account: s0.Core.Account, Domain: s0.Core.Domain, Genesis: [32]byte(mustHex(t, cv3.States[0].Hash))}
+	if _, _, _, err := parseAndVerifyChain(chainPin, rawStates, nil); err != nil {
+		t.Fatalf("chain-v3 failed: %v", err)
 	}
-	if r := SecCall(&corev1.SecCallRequest{Call: &corev1.SecCallRequest_VerifyChain{VerifyChain: &corev1.SecVerifyChainCall{Pin: chainPin, States: append(append([][]byte(nil), rawStates...), mustB64(t, cv3.Fork.State))}}}); r.Error == "" {
+	if _, _, _, err := parseAndVerifyChain(chainPin, append(append([][]byte(nil), rawStates...), mustB64(t, cv3.Fork.State)), nil); err == nil {
 		t.Fatalf("expected fork state to be rejected")
 	}
-	if r := SecCall(&corev1.SecCallRequest{Call: &corev1.SecCallRequest_VerifyChain{VerifyChain: &corev1.SecVerifyChainCall{Pin: chainPin, States: append(append([][]byte(nil), rawStates...), mustB64(t, cv3.BadReplay.State))}}}); r.Error == "" {
+	if _, _, _, err := parseAndVerifyChain(chainPin, append(append([][]byte(nil), rawStates...), mustB64(t, cv3.BadReplay.State)), nil); err == nil {
 		t.Fatalf("expected bad_replay state to be rejected")
 	}
 
@@ -253,32 +225,17 @@ func TestFrozenChainRecoveryAndReplacementVectors(t *testing.T) {
 	}
 	loadVectorJSON(t, "internal/deviceauth/testdata/recovery-removed-v3.json", &rrv3)
 	rrS0, _ := devicesec.ParseState(mustB64(t, rrv3.States[0].State))
-	rrPin := pinToProto(devicesec.Pin{Account: rrS0.Core.Account, Domain: rrS0.Core.Domain, Genesis: [32]byte(mustHex(t, rrv3.States[0].Hash))})
+	rrPin := devicesec.Pin{Account: rrS0.Core.Account, Domain: rrS0.Core.Domain, Genesis: [32]byte(mustHex(t, rrv3.States[0].Hash))}
 	var rrChain [][]byte
 	for _, st := range rrv3.States {
 		rrChain = append(rrChain, mustB64(t, st.State))
 	}
 	rrChain = append(rrChain, mustB64(t, rrv3.Recovery.State))
-	if r := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyChain{
-			VerifyChain: &corev1.SecVerifyChainCall{
-				Pin:            rrPin,
-				States:         rrChain,
-				RecoveryProofs: [][]byte{mustB64(t, rrv3.RecoveryStatement)},
-			},
-		},
-	}); r.Error != "" {
-		t.Fatalf("recovery-removed-v3 failed: %s", r.Error)
+	if _, _, _, err := parseAndVerifyChain(rrPin, rrChain, [][]byte{mustB64(t, rrv3.RecoveryStatement)}); err != nil {
+		t.Fatalf("recovery-removed-v3 failed: %v", err)
 	}
 	// Missing recovery proof must fail.
-	if r := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyChain{
-			VerifyChain: &corev1.SecVerifyChainCall{
-				Pin:    rrPin,
-				States: rrChain,
-			},
-		},
-	}); r.Error == "" {
+	if _, _, _, err := parseAndVerifyChain(rrPin, rrChain, nil); err == nil {
 		t.Fatalf("expected missing recovery proof to fail")
 	}
 
@@ -297,9 +254,13 @@ func TestFrozenChainRecoveryAndReplacementVectors(t *testing.T) {
 		ExpiredProofs   []vecProof `json:"expired_proofs"`
 	}
 	loadVectorJSON(t, "internal/e2e/testdata/machine-replacement-vectors.json", &mrv)
-	mrStates := make([][]byte, len(mrv.States))
+	mrStates := make([]devicesec.State, len(mrv.States))
 	for i, s := range mrv.States {
-		mrStates[i] = mustB64(t, s)
+		st, err := devicesec.ParseState(mustB64(t, s))
+		if err != nil {
+			t.Fatal(err)
+		}
+		mrStates[i] = st
 	}
 	toProofs := func(in []vecProof) []*v1.MachineReplacementProof {
 		out := make([]*v1.MachineReplacementProof, len(in))
@@ -311,56 +272,21 @@ func TestFrozenChainRecoveryAndReplacementVectors(t *testing.T) {
 		}
 		return out
 	}
-	mrOK := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_MachineReplacementOrigins{
-			MachineReplacementOrigins: &corev1.SecMachineReplacementOriginsCall{
-				Account:         mrv.Account,
-				TargetMachineId: mrv.Target,
-				States:          mrStates,
-				Proofs:          toProofs(mrv.Proofs),
-			},
-		},
-	})
-	if mrOK.Error != "" {
-		t.Fatalf("machine-replacement-vectors failed: %s", mrOK.Error)
+	mrOK, err := MachineReplacementOrigins(mrv.Account, mrv.Target, mrStates, toProofs(mrv.Proofs))
+	if err != nil {
+		t.Fatalf("machine-replacement-vectors failed: %v", err)
 	}
-	var foundOld bool
-	for _, s := range mrOK.Strings {
-		if s == mrv.Old {
-			foundOld = true
-		}
+	if !mrOK[mrv.Old] {
+		t.Fatalf("expected old machine %s in replacement origins %v", mrv.Old, mrOK)
 	}
-	if !foundOld {
-		t.Fatalf("expected old machine %s in replacement origins %v", mrv.Old, mrOK.Strings)
+	if _, err := MachineReplacementOrigins(mrv.Account, mrv.Target, mrStates, toProofs(mrv.ClockSkewProofs)); err != nil {
+		t.Fatalf("clock_skew_proofs failed: %v", err)
 	}
-	mrSkew := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_MachineReplacementOrigins{
-			MachineReplacementOrigins: &corev1.SecMachineReplacementOriginsCall{
-				Account:         mrv.Account,
-				TargetMachineId: mrv.Target,
-				States:          mrStates,
-				Proofs:          toProofs(mrv.ClockSkewProofs),
-			},
-		},
-	})
-	if mrSkew.Error != "" {
-		t.Fatalf("clock_skew_proofs failed: %s", mrSkew.Error)
-	}
-	mrExp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_MachineReplacementOrigins{
-			MachineReplacementOrigins: &corev1.SecMachineReplacementOriginsCall{
-				Account:         mrv.Account,
-				TargetMachineId: mrv.Target,
-				States:          mrStates,
-				Proofs:          toProofs(mrv.ExpiredProofs),
-			},
-		},
-	})
-	if mrExp.Error == "" {
+	if _, err := MachineReplacementOrigins(mrv.Account, mrv.Target, mrStates, toProofs(mrv.ExpiredProofs)); err == nil {
 		t.Fatalf("expected expired_proofs to be rejected")
 	}
 
-	// 4. pair-approval-vectors.json + v3-vectors.json + SecCall builder round-trips.
+	// 4. pair-approval-vectors.json + v3-vectors.json.
 	var pav struct {
 		Approval        string `json:"approval"`
 		Signature       string `json:"signature"`
@@ -372,30 +298,19 @@ func TestFrozenChainRecoveryAndReplacementVectors(t *testing.T) {
 		SAS             string `json:"sas"`
 	}
 	loadVectorJSON(t, "internal/e2e/testdata/pair-approval-vectors.json", &pav)
-	paResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_VerifyPairApproval{
-			VerifyPairApproval: &corev1.SecVerifyPairApprovalCall{
-				Approval:  mustHex(t, pav.Approval),
-				Signature: mustHex(t, pav.Signature),
-			},
-		},
-	})
-	if paResp.Error != "" || paResp.ParsedApproval == nil || paResp.ParsedApproval.PairingId != pav.PairingID {
-		t.Fatalf("pair_approval vector failed: err=%s", paResp.Error)
+	ap, err := VerifyPairApproval(mustHex(t, pav.Approval), mustHex(t, pav.Signature))
+	if err != nil || ap == nil || ap.PairingId != pav.PairingID {
+		t.Fatalf("pair_approval vector failed: err=%v ap=%+v", err, ap)
 	}
-	ptResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_PairIdentityTranscript{
-			PairIdentityTranscript: &corev1.SecPairIdentityTranscriptCall{
-				PairingId:       pav.PairingID,
-				InitiatorPublic: mustHex(t, pav.InitiatorPublic),
-				JoinerPublic:    mustHex(t, pav.JoinerPublic),
-				DeviceEdPublic:  mustHex(t, pav.CandidatePublic),
-				JoinerKind:      int32(v1.DeviceKind_DEVICE_KIND_CLIENT),
-			},
-		},
-	})
-	if !bytes.Equal(ptResp.Data, mustHex(t, pav.Transcript)) {
-		t.Fatalf("pair_identity_transcript vector mismatch: got=%x want=%s", ptResp.Data, pav.Transcript)
+	pt := devicesec.PairIdentityTranscript(
+		pav.PairingID,
+		mustHex(t, pav.InitiatorPublic),
+		mustHex(t, pav.JoinerPublic),
+		mustHex(t, pav.CandidatePublic),
+		int32(v1.DeviceKind_DEVICE_KIND_CLIENT),
+	)
+	if !bytes.Equal(pt, mustHex(t, pav.Transcript)) {
+		t.Fatalf("pair_identity_transcript vector mismatch: got=%x want=%s", pt, pav.Transcript)
 	}
 
 	var v3v struct {
@@ -446,126 +361,70 @@ func TestFrozenChainRecoveryAndReplacementVectors(t *testing.T) {
 	}
 }
 
-func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
+func TestDevicesecBuildersNotifyAndSeedSigningRoundTrip(t *testing.T) {
 	nowMs := uint64(1_700_000_000_000)
 	phone := newTestIdentity(t, 11)
-	rec := newTestIdentity(t, 12)
 	dom := devicesec.Digest("seccall-dom", []byte{1})
 	sec1 := bytes.Repeat([]byte{0x12}, 32)
 
-	eph, _ := ecdh.X25519().GenerateKey(rand.Reader)
-	dh, _ := eph.ECDH(phone.x.PublicKey())
-
-	genResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_BuildState{
-			BuildState: &corev1.SecBuildStateCall{
-				Kind:       1,
-				Account:    phone.id,
-				Domain:     dom[:],
-				RecoveryEd: phone.edP,
-				Secret:     sec1,
-				NowMs:      nowMs,
-				Member: &corev1.SecMember{
-					Id:       phone.id,
-					EdPublic: phone.edP,
-					XPublic:  phone.xPub[:],
-					Kind:     uint32(devicesec.Client),
-				},
-				Kems: []*corev1.SecKemPair{{
-					MemberId: phone.id,
-					Enc:      eph.PublicKey().Bytes(),
-					Dh:       dh,
-				}},
-			},
-		},
-	})
-	if genResp.Error != "" || genResp.UnsignedState == nil {
-		t.Fatalf("BuildState(Genesis) failed: %s", genResp.Error)
+	u0, err := devicesec.NewGenesis(phone.id, dom, phone.member(devicesec.Client), [32]byte(phone.edP), sec1, nowMs, stdHPKESender{})
+	if err != nil {
+		t.Fatalf("NewGenesis failed: %v", err)
 	}
-	sig0 := ed25519.Sign(phone.ed, genResp.UnsignedState.SigningBytes)
-	mResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_MarshalState{
-			MarshalState: &corev1.SecMarshalStateCall{
-				UnsignedCore: genResp.UnsignedState.UnsignedCore,
-				Grants:       genResp.UnsignedState.Grants,
-				PrevSecret:   genResp.UnsignedState.PrevSecret,
-				Signature:    sig0,
-			},
-		},
-	})
-	if mResp.Error != "" || mResp.ParsedState == nil {
-		t.Fatalf("MarshalState failed: %s", mResp.Error)
+	sb0, err := u0.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
 	}
-	pin := &corev1.SecPin{Account: phone.id, Domain: dom[:], Genesis: mResp.ParsedState.StateHash}
+	u0.Signature = ed25519.Sign(phone.ed, sb0)
+	s0Raw, err := u0.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s0Parsed, err := devicesec.ParseState(s0Raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s0Hash, _ := s0Parsed.Hash()
+	pin := devicesec.Pin{Account: phone.id, Domain: dom, Genesis: s0Hash}
 
-	// Build & open a NotifyContent envelope via SecCall.
+	// Build second state + lease + NotifyContent envelope and open via HandleOpenNotify.
 	machine := newTestIdentity(t, 13)
-	_ = rec
-	ephM, _ := ecdh.X25519().GenerateKey(rand.Reader)
-	dhM, _ := ephM.ECDH(machine.x.PublicKey())
 	sec2 := bytes.Repeat([]byte{0x34}, 32)
-	addResp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_BuildState{
-			BuildState: &corev1.SecBuildStateCall{
-				Kind:            2,
-				ParentState:     mResp.Data,
-				OldSecret:       sec1,
-				Secret:          sec2,
-				NowMs:           nowMs + 10,
-				PrevSecretNonce: bytes.Repeat([]byte{0xaa}, 12),
-				Members: []*corev1.SecMember{
-					{Id: phone.id, EdPublic: phone.edP, XPublic: phone.xPub[:], Kind: uint32(devicesec.Client)},
-					{Id: machine.id, EdPublic: machine.edP, XPublic: machine.xPub[:], Kind: uint32(devicesec.Machine)},
-				},
-				Kems: []*corev1.SecKemPair{
-					{MemberId: phone.id, Enc: eph.PublicKey().Bytes(), Dh: dh},
-					{MemberId: machine.id, Enc: ephM.PublicKey().Bytes(), Dh: dhM},
-				},
-			},
-		},
-	})
-	if addResp.Error != "" {
-		t.Fatalf("BuildState(Membership) failed: %s", addResp.Error)
+	u1, err := devicesec.NewState(s0Parsed, []devicesec.Member{phone.member(devicesec.Client), machine.member(devicesec.Machine)}, nil, sec2, nil, nowMs+10, stdHPKESender{})
+	if err != nil {
+		t.Fatalf("NewState failed: %v", err)
 	}
-	m2Resp := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_MarshalState{
-			MarshalState: &corev1.SecMarshalStateCall{
-				UnsignedCore: addResp.UnsignedState.UnsignedCore,
-				Grants:       addResp.UnsignedState.Grants,
-				PrevSecret:   addResp.UnsignedState.PrevSecret,
-				Signature:    ed25519.Sign(phone.ed, addResp.UnsignedState.SigningBytes),
-			},
-		},
-	})
-	if m2Resp.Error != "" {
-		t.Fatalf("MarshalState(2) failed: %s", m2Resp.Error)
+	sb1, err := u1.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	u1.Signature = ed25519.Sign(phone.ed, sb1)
+	s1Raw, err := u1.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	s1Parsed, err := devicesec.ParseState(s1Raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaseU, err := devicesec.NewLease(s1Parsed, nowMs+10)
+	if err != nil {
+		t.Fatalf("NewLease failed: %v", err)
+	}
+	lsb, err := leaseU.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaseU.Signature = ed25519.Sign(phone.ed, lsb)
+	leaseRaw, err := leaseU.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := leaseU.Valid(s1Parsed, nowMs+10); err != nil {
+		t.Fatalf("lease Valid failed: %v", err)
 	}
 
-	// Lease unsigned + marshal_lease + verify_lease.
-	lu := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_NewLeaseUnsigned{
-			NewLeaseUnsigned: &corev1.SecNewLeaseUnsignedCall{HeadState: m2Resp.Data, NowMs: nowMs + 10},
-		},
-	})
-	if lu.Error != "" {
-		t.Fatalf("NewLeaseUnsigned failed: %s", lu.Error)
-	}
-	lm := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_MarshalLease{
-			MarshalLease: &corev1.SecMarshalLeaseCall{
-				Domain:    lu.ParsedLease.Domain,
-				Head:      lu.ParsedLease.Head,
-				IssuedAt:  lu.ParsedLease.IssuedAt,
-				NotAfter:  lu.ParsedLease.NotAfter,
-				Signature: ed25519.Sign(phone.ed, lu.Data),
-			},
-		},
-	})
-	if lm.Error != "" {
-		t.Fatalf("MarshalLease failed: %s", lm.Error)
-	}
-
-	// Seal NotifyContent and open via OpenNotifyEnvelope.
+	// Seal NotifyContent and open via Engine.HandleOpenNotify using PersistedNotifyRecord.
 	nPlain, err := proto.Marshal(&stdv1.NotifyContent{
 		Kind:        stdv1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
 		MachineId:   machine.id,
@@ -576,11 +435,10 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var sh32 devicesec.Hash
-	copy(sh32[:], m2Resp.ParsedState.StateHash)
+	sh2, _ := s1Parsed.Hash()
 	nh := devicesec.Header{
-		Account: phone.id, Domain: dom, Epoch: m2Resp.ParsedState.Epoch, State: sh32,
-		ContentEpoch: m2Resp.ParsedState.ContentEpoch, Sender: machine.id,
+		Account: phone.id, Domain: dom, Epoch: s1Parsed.Core.Epoch, State: sh2,
+		ContentEpoch: s1Parsed.Core.ContentEpoch, Sender: machine.id,
 		Kind: devicesec.Notify.Kind(), Purpose: devicesec.Notify,
 		Machine: machine.id, Session: "sess-n1", Request: "notify-req-1",
 	}
@@ -599,33 +457,42 @@ func TestSecCallBuildersNotifyAndHelpersRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	openN := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_OpenNotifyEnvelope{
-			OpenNotifyEnvelope: &corev1.SecOpenNotifyEnvelopeCall{
-				Pin:      pin,
-				States:   [][]byte{mResp.Data, m2Resp.Data},
-				MemberId: phone.id,
-				Dh:       dh,
-				Envelope: nEnv,
-			},
-		},
+	pkRaw, err := devicesec.DerivePurposeKeyRaw(sec2, phone.id, dom, s1Parsed.Core.ContentEpoch, devicesec.Notify)
+	if err != nil || len(pkRaw) != 32 {
+		t.Fatalf("DerivePurposeKeyRaw failed: err=%v len=%d", err, len(pkRaw))
+	}
+	var pkArr [32]byte
+	copy(pkArr[:], pkRaw)
+	ntfRaw, err := (&PersistedNotifyRecord{Pin: pin, HeadState: s1Raw, PurposeKey: pkArr}).Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	eng := NewEngine(&entropy.Pool{})
+	eng.Configure(&corev1.SecurityConfigEvent{Account: phone.id, DeviceId: phone.id, InlineCrypto: true})
+	_ = leaseRaw
+	openEffs := eng.HandleOpenNotify(int64(nowMs+20), &corev1.SecurityOpenNotifyEvent{
+		OpId:       9,
+		NotifyBlob: ntfRaw,
+		Envelope:   nEnv,
 	})
-	var gotNotify v1.NotifyContent
-	if openN.Error != "" || len(openN.Data) == 0 || !bytes.Equal(openN.SecondaryData, sec2) || gotNotify.Unmarshal(openN.Data) != nil || gotNotify.Title != "done" {
-		t.Fatalf("OpenNotifyEnvelope failed: err=%s dataLen=%d title=%q", openN.Error, len(openN.Data), gotNotify.Title)
+	var opened *corev1.SecurityNotifyOpenedEffect
+	for _, ef := range openEffs {
+		if no := ef.GetSecurityNotifyOpened(); no != nil {
+			opened = no
+		}
+	}
+	if opened == nil || opened.Error != "" || opened.Content == nil || opened.Content.Title != "done" {
+		t.Fatalf("HandleOpenNotify failed: %+v", opened)
 	}
 
 	// Verify ed25519 seed signing helpers.
 	seed := bytes.Repeat([]byte{0x15}, 32)
-	pubR := SecCall(&corev1.SecCallRequest{Call: &corev1.SecCallRequest_Ed25519SeedPublic{Ed25519SeedPublic: seed}})
-	msg := append([]byte("remote-agent/v1/delete-account\x00"+devicesec.ID(pubR.Data)+"\x00"), m2Resp.ParsedState.StateHash...)
+	priv := ed25519.NewKeyFromSeed(seed)
+	pub := priv.Public().(ed25519.PublicKey)
+	msg := append([]byte("remote-agent/v1/delete-account\x00"+devicesec.ID(pub)+"\x00"), sh2[:]...)
 	msg = append(msg, []byte("chal-1")...)
-	sigDel := SecCall(&corev1.SecCallRequest{
-		Call: &corev1.SecCallRequest_Ed25519SeedSign{
-			Ed25519SeedSign: &corev1.SecEd25519SeedSignCall{Seed: seed, Message: msg},
-		},
-	})
-	if !ed25519.Verify(pubR.Data, msg, sigDel.Data) {
-		t.Fatalf("Ed25519SeedSign verification failed")
+	sigDel := ed25519.Sign(priv, msg)
+	if !ed25519.Verify(pub, msg, sigDel) {
+		t.Fatalf("ed25519 seed signature verification failed")
 	}
 }

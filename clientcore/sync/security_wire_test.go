@@ -120,7 +120,72 @@ func sealWireObj(
 	return env
 }
 
-func pumpSyncSecurityEffects(t *testing.T, e *Engine, actor syncTestActor, nowMs int64, initRes StepResult) ([]*corev1.Effect, []SettledCommand) {
+func applyTestSecurityRecord(e *Engine, nowMs int64, rec security.RecordUpdate) StepResult {
+	effs := e.secEngine.ApplyRecord(nowMs, rec)
+	res := e.Run(func(ctx *StepContext) {
+		e.syncSecurityStateFromEngine(ctx, true)
+	})
+	return StepResult{Effects: append(effs, res.Effects...)}
+}
+
+func bootstrapTestSecurityRecord(t *testing.T, e *Engine, actor syncTestActor, nowMs int64, rec *security.PersistedRecord, token string) {
+	t.Helper()
+	raw, err := rec.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{
+				Account:      rec.Pin.Account,
+				DeviceId:     rec.MemberID,
+				Server:       rec.Server,
+				InlineCrypto: true,
+				Foreground:   true,
+			},
+		},
+	})
+	_, bootRes := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_SecurityAction{
+			SecurityAction: &corev1.SecurityWorkflowActionEvent{
+				ActionId: 1,
+				Action:   &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+			},
+		},
+	})
+	var storOp uint64
+	for _, eff := range bootRes.Effects {
+		if st := eff.GetSecurityStorage(); st != nil {
+			storOp = st.OpId
+		}
+	}
+	if storOp == 0 {
+		t.Fatalf("expected bootstrap storage effect")
+	}
+	_, storRes := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_SecurityStorageResult{
+			SecurityStorageResult: &corev1.SecurityStorageResultEvent{
+				OpId: storOp,
+				Entries: []*corev1.SecurityStorageEntry{{
+					Bucket:   corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD,
+					Key:      "record",
+					Revision: "rev-1",
+					Data:     raw,
+				}},
+			},
+		},
+	})
+	pumpSecurityEffects(t, e, actor, nowMs, storRes)
+	if token != "" {
+		e.cachedToken = token
+		e.secEngine.SetAuthToken(token, nowMs+7*86_400_000)
+	}
+}
+
+func pumpSecurityEffects(t *testing.T, e *Engine, actor syncTestActor, nowMs int64, initRes StepResult) ([]*corev1.Effect, []SettledCommand) {
 	t.Helper()
 	var allEffects []*corev1.Effect
 	var allSettled []SettledCommand
@@ -275,20 +340,15 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 		t.Fatalf("expected SeedDemoWorld to be ignored after SecurityConfig")
 	}
 
-	_, recRes := e.HandleEvent(&corev1.Event{
-		NowMs: nowMs + 50,
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				NetworkGeneration: 1,
-				Account:           phone.id,
-				Domain:            dom[:],
-				Genesis:           gen[:],
-				States:            [][]byte{s0Raw, s1Raw},
-				Lease:             leaseRaw,
-			},
-		},
+	recRes := applyTestSecurityRecord(e, nowMs+50, security.RecordUpdate{
+		NetworkGeneration: 1,
+		Account:           phone.id,
+		Domain:            dom[:],
+		Genesis:           gen[:],
+		States:            [][]byte{s0Raw, s1Raw},
+		Lease:             leaseRaw,
 	})
-	pumpSyncSecurityEffects(t, e, phone, nowMs+50, recRes)
+	pumpSecurityEffects(t, e, phone, nowMs+50, recRes)
 	if !e.security.Loaded || !e.security.IsMember || !e.security.TrustedMachines[machine.id] {
 		t.Fatalf("expected security state synced, got %+v", e.security)
 	}
@@ -336,7 +396,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 			},
 		},
 	})
-	pumpSyncSecurityEffects(t, e, phone, nowMs+80, listsRes)
+	pumpSecurityEffects(t, e, phone, nowMs+80, listsRes)
 	if m := e.MachineEntry(machine.id); m == nil || m.Meta.GetHostname() != "host-a" {
 		t.Fatalf("expected decrypted machine host-a, got %+v", m)
 	}
@@ -367,7 +427,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 			},
 		},
 	})
-	pageEffects, _ := pumpSyncSecurityEffects(t, e, phone, nowMs+100, pageRes)
+	pageEffects, _ := pumpSecurityEffects(t, e, phone, nowMs+100, pageRes)
 	var sawBatchVerify, sawWriteStored bool
 	for _, ef := range pageEffects {
 		if cb := ef.GetSecurityCryptoBatch(); cb != nil && len(cb.Items) == 10 {
@@ -390,7 +450,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 			Command:   &v1.Command{Kind: &v1.Command_Interrupt{Interrupt: &v1.InterruptRequest{SessionId: "s1"}}},
 		})
 	})
-	cmdEffs, _ := pumpSyncSecurityEffects(t, e, phone, nowMs+110, cmdStep)
+	cmdEffs, _ := pumpSecurityEffects(t, e, phone, nowMs+110, cmdStep)
 	var dc *corev1.DispatchCommandEffect
 	for _, ef := range cmdEffs {
 		if got := ef.GetDispatchCommand(); got != nil && got.RequestId == reqID {
@@ -422,7 +482,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 			},
 		},
 	})
-	_, settled := pumpSyncSecurityEffects(t, e, phone, nowMs+120, outRes)
+	_, settled := pumpSecurityEffects(t, e, phone, nowMs+120, outRes)
 	if len(settled) != 1 || settled[0].Category != outcome.Executed {
 		t.Fatalf("expected Executed from SealedResult, got settled=%+v", settled)
 	}
@@ -436,7 +496,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 			Command:   &v1.Command{Kind: &v1.Command_Interrupt{Interrupt: &v1.InterruptRequest{SessionId: "s1"}}},
 		})
 	})
-	badEffs, _ := pumpSyncSecurityEffects(t, e, phone, nowMs+121, badStep)
+	badEffs, _ := pumpSecurityEffects(t, e, phone, nowMs+121, badStep)
 	var badDC *corev1.DispatchCommandEffect
 	for _, ef := range badEffs {
 		if got := ef.GetDispatchCommand(); got != nil && got.RequestId == badReqID {
@@ -468,7 +528,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 			},
 		},
 	})
-	_, badSettled := pumpSyncSecurityEffects(t, e, phone, nowMs+125, badOutRes)
+	_, badSettled := pumpSecurityEffects(t, e, phone, nowMs+125, badOutRes)
 	if len(badSettled) != 1 || badSettled[0].Category != outcome.Unknown {
 		t.Fatalf("expected Unknown on tampered PayloadHash, got settled=%+v", badSettled)
 	}
@@ -492,7 +552,7 @@ func TestSyncSeedDemoLockOutAndWireEndToEndFlow(t *testing.T) {
 			},
 		},
 	})
-	casEffs, _ := pumpSyncSecurityEffects(t, e, phone, nowMs+130, casGetRes)
+	casEffs, _ := pumpSecurityEffects(t, e, phone, nowMs+130, casGetRes)
 	var putRpc *corev1.PutAccountPrefsRpc
 	for _, ef := range casEffs {
 		if rpc := ef.GetRpc(); rpc != nil && rpc.GetPutAccountPrefs() != nil {
@@ -763,16 +823,14 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 		}
 	}
 
-	drainEffects(h.step(&corev1.Event{Event: &corev1.Event_SecurityRecord{
-		SecurityRecord: &corev1.SecurityRecordEvent{
-			NetworkGeneration: 1,
-			Account:           h.account,
-			Domain:            h.domain[:],
-			Genesis:           gen[:],
-			States:            [][]byte{s0Raw, s1Raw, s2Raw},
-			Lease:             leaseRaw,
-		},
-	}}).Effects)
+	drainEffects(applyTestSecurityRecord(h.eng, h.now, security.RecordUpdate{
+		NetworkGeneration: 1,
+		Account:           h.account,
+		Domain:            h.domain[:],
+		Genesis:           gen[:],
+		States:            [][]byte{s0Raw, s1Raw, s2Raw},
+		Lease:             leaseRaw,
+	}).Effects)
 	if !h.eng.security.Loaded || !h.eng.security.IsMember {
 		t.Fatalf("security record not active: sec=%+v", h.eng.security)
 	}
@@ -885,7 +943,7 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 			},
 		},
 	})
-	pumpSyncSecurityEffects(t, h.eng, phone, h.now, listsRes)
+	pumpSecurityEffects(t, h.eng, phone, h.now, listsRes)
 	h.step(&corev1.Event{Event: &corev1.Event_SessionWatch{SessionWatch: &corev1.SessionWatchEvent{SessionId: sid, Watched: true}}})
 	b := h.eng.Buffer(sid)
 	h.step(&corev1.Event{Event: &corev1.Event_CacheEventsLoaded{CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: b.activeCacheOpID, SessionId: sid}}})
@@ -902,7 +960,7 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 			},
 		},
 	})
-	pumpSyncSecurityEffects(t, h.eng, phone, h.now, badRes)
+	pumpSecurityEffects(t, h.eng, phone, h.now, badRes)
 	if buf := h.eng.Buffer(sid); buf != nil && buf.PrefixLen() != 0 {
 		t.Fatalf("expected wire direct event from non-machine signer to be rejected, got PrefixLen=%d", buf.PrefixLen())
 	}
@@ -918,47 +976,56 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 			},
 		},
 	})
-	pumpSyncSecurityEffects(t, h.eng, phone, h.now, goodRes)
+	pumpSecurityEffects(t, h.eng, phone, h.now, goodRes)
 	if buf := h.eng.Buffer(sid); buf == nil || buf.PrefixLen() != 1 {
 		t.Fatalf("expected wire direct event from trusted machine to ingest seq 1, got %v", buf)
 	}
 
-	// When secEngine is locked, CoordAuthorize triggers SyncSecurityEffect, and a failed SecurityRecordEvent closes the authorizing gate.
+	// When bootstrapped workflow SyncStates fails on CoordAuthorize, activeSecOpID resets and authorizing closes cleanly.
+	bootstrapTestSecurityRecord(t, h.eng, phone, h.now, &security.PersistedRecord{
+		Pin:      devicesec.Pin{Account: h.account, Domain: h.domain, Genesis: gen},
+		MemberID: phone.id,
+		Member:   true,
+		Server:   "https://relay.example.com",
+		States:   [][]byte{s0Raw, s1Raw, s2Raw},
+		Lease:    leaseRaw,
+		FloorMs:  h.now,
+	}, "tok-auth")
 	authEffs := h.eng.Run(func(ctx *StepContext) {
 		h.eng.emitCoordEffects(ctx, []transport.CoordEffect{transport.CoordAuthorize{}})
 	}).Effects
-	var authSyncOp uint64
+	var rpcOp uint64
 	for _, eff := range authEffs {
-		if ss := eff.GetSyncSecurity(); ss != nil {
-			authSyncOp = ss.OpId
+		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			rpcOp = sr.OpId
 		}
 	}
-	if authSyncOp == 0 {
-		t.Fatalf("expected CoordAuthorize with locked secEngine to emit SyncSecurityEffect")
+	if rpcOp == 0 || h.eng.activeSecOpID == 0 {
+		t.Fatalf("expected CoordAuthorize with bootstrapped secEngine to emit SecurityRpc GET_SECURITY_STATES, got rpcOp=%d activeSecOpID=%d", rpcOp, h.eng.activeSecOpID)
+	}
+	// Stale SecurityRpcResultEvent must not clear activeSecOpID.
+	h.step(&corev1.Event{
+		Event: &corev1.Event_SecurityRpcResult{
+			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+				OpId:        999999,
+				Error:       "stale",
+				ConnectCode: 14,
+			},
+		},
+	})
+	if h.eng.activeSecOpID == 0 {
+		t.Fatalf("expected stale SecurityRpcResultEvent to be ignored cleanly")
 	}
 	h.step(&corev1.Event{
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				OpId:              authSyncOp,
-				NetworkGeneration: 1,
-				Error:             "sync failed",
+		Event: &corev1.Event_SecurityRpcResult{
+			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+				OpId:        rpcOp,
+				Error:       "sync failed",
+				ConnectCode: 14,
 			},
 		},
 	})
 	if h.eng.activeSecOpID != 0 {
-		t.Fatalf("expected failed SecurityRecordEvent to clear activeSecOpID, got %d", h.eng.activeSecOpID)
-	}
-
-	// Stale non-zero OpId must be ignored even when activeSecOpID == 0.
-	staleRes := h.step(&corev1.Event{
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				OpId:    999999,
-				Cleared: true,
-			},
-		},
-	})
-	if !h.eng.security.Loaded || !h.eng.security.IsMember || h.eng.secEngine.Snapshot().Cleared || len(staleRes.Effects) != 0 {
-		t.Fatalf("expected stale SecurityRecordEvent with unexpected OpId to be ignored cleanly")
+		t.Fatalf("expected failed SecurityRpcResultEvent to clear activeSecOpID, got %d", h.eng.activeSecOpID)
 	}
 }

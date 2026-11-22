@@ -66,17 +66,6 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect getDiscardToken();
 
   /**
-   * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-   * @return Whether the syncSecurity field is set.
-   */
-  boolean hasSyncSecurity();
-  /**
-   * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-   * @return The syncSecurity.
-   */
-  io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect getSyncSecurity();
-
-  /**
    * <code>.remoteagent.core.v1.ScheduleTimerEffect schedule_timer = 7 [json_name = "scheduleTimer"];</code>
    * @return Whether the scheduleTimer field is set.
    */

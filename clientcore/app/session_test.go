@@ -74,7 +74,7 @@ func bootstrapReadyApp(t *testing.T, machines []*corev1.PlainMachine, sessions [
 		NowMs: 1_791_078_060_040,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId:     4,
+				OpId:     3,
 				Machines: machines,
 				Sessions: sessions,
 			},
@@ -84,7 +84,7 @@ func bootstrapReadyApp(t *testing.T, machines []*corev1.PlainMachine, sessions [
 		NowMs: 1_791_078_060_042,
 		Event: &corev1.Event_AccountPrefsFetched{
 			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId: 5,
+				OpId: 4,
 				Prefs: &corev1.PlainAccountPrefs{
 					Revision: 1,
 					Prefs: &v1.ProjectPrefs{

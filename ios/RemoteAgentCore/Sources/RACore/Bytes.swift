@@ -54,7 +54,14 @@ public func hmacSha256(key: Data, _ message: Data) -> Data {
 
 /// HKDF-SHA256 with the given salt and info.
 public func hkdf(secret: Data, salt: Data?, info: Data, size: Int) -> Data {
-    (try? SecCall.hkdfSha256(secret: secret, salt: salt ?? Data(), info: info, size: size)) ?? Data()
+    guard size > 0 else { return Data() }
+    let derived = HKDF<SHA256>.deriveKey(
+        inputKeyMaterial: SymmetricKey(data: secret),
+        salt: salt ?? Data(),
+        info: info,
+        outputByteCount: size
+    )
+    return derived.withUnsafeBytes { Data($0) }
 }
 
 /// The low 32 bits of `n`, most significant byte first: what the other

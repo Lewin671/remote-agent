@@ -224,7 +224,6 @@ export interface MessageArgs {
   "errors.connection_timed_out": { [name: string]: never };
   "errors.connection_timed_out_reconnecting": { [name: string]: never };
   "errors.core_load_failed": { reason: string };
-  "errors.device_information_is_changing_retry": { [name: string]: never };
   "errors.disconnected_from_server": { [name: string]: never };
   "errors.establishing_push_connection": { [name: string]: never };
   "errors.executed_result_unavailable": { [name: string]: never };
@@ -275,7 +274,6 @@ export interface MessageArgs {
   "errors.this_device_s_clock_is_behind_the_account_state_remote": { [name: string]: never };
   "errors.this_device_s_security_state_could_not_be_verified": { [name: string]: never };
   "errors.this_history_uses_an_old_encryption_format_and_can": { [name: string]: never };
-  "errors.this_is_not_a_remote_agent_account_key": { [name: string]: never };
   "errors.this_page_is_out_of_date_refresh_or_update": { [name: string]: never };
   "errors.this_request_has_not_been_verified_by_the_computer": { [name: string]: never };
   "errors.upload_made_no_progress": { [name: string]: never };
@@ -1047,7 +1045,6 @@ export interface MessageArgs {
   "security.recovery_was_rejected_you_can_apply_again": { [name: string]: never };
   "security.refresh_successor_devices": { [name: string]: never };
   "security.regenerate_recovery_code": { [name: string]: never };
-  "security.registration_on_another_server_is_unfinished_retry_it_or": { [name: string]: never };
   "security.registration_proof_of_work_expired_retry_the_original_draft": { [name: string]: never };
   "security.registration_proof_of_work_is_invalid_or_expired": { [name: string]: never };
   "security.reject": { [name: string]: never };
@@ -1071,7 +1068,6 @@ export interface MessageArgs {
   "security.save_the_recovery_code_offline_anyone_with_it_can": { [name: string]: never };
   "security.saved_notify_managing_client": { [name: string]: never };
   "security.saved_publish_replacement": { [name: string]: never };
-  "security.security_setup_must_use_the_original_account_s_server": { [name: string]: never };
   "security.security_state_may_be_out_of_date_connect_and": { [name: string]: never };
   "security.server": { [name: string]: never };
   "security.setup_token_optional_with_open_registration": { [name: string]: never };
@@ -1081,13 +1077,11 @@ export interface MessageArgs {
   "security.submit_or_check_original_recovery": { [name: string]: never };
   "security.success_is_uncertain_connection_lost": { [name: string]: never };
   "security.take_over_management": { [name: string]: never };
-  "security.the_account_belongs_to_another_server": { [name: string]: never };
   "security.the_account_keys_and_cache_in_this_browser_will": { [name: string]: never };
   "security.the_account_s_state_chain_is_too_long_to": { [name: string]: never };
   "security.the_browser_did_not_promise_to_retain_data": { [name: string]: never };
   "security.the_computer_s_archive_was_deleted_join_as_a": { [name: string]: never };
   "security.the_local_account_unfinished_registration_and_security_operations_will": { [name: string]: never };
-  "security.the_managing_client_canceled_pairing": { [name: string]: never };
   "security.the_managing_client_cannot_be_removed_directly_transfer_management": { [name: string]: never };
   "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": { [name: string]: never };
   "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": { [name: string]: never };
@@ -1100,7 +1094,6 @@ export interface MessageArgs {
   "security.the_public_key_may_already_be_published_abandoning_only": { [name: string]: never };
   "security.the_security_operation_s_outcome_is_unverified_continue_the": { [name: string]: never };
   "security.the_server_does_not_recognize_this_device": { [name: string]: never };
-  "security.the_server_returned_information_for_a_different_device_from": { [name: string]: never };
   "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": { [name: string]: never };
   "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": { [name: string]: never };
   "security.this_browser_is_the_only_managing_client_transfer_management": { [name: string]: never };
@@ -2055,7 +2048,6 @@ export const messages = {
     "errors.connection_timed_out": "Connection timed out",
     "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
     "errors.core_load_failed": "Failed to load core module: {reason}",
-    "errors.device_information_is_changing_retry": "Device information is changing. Retry.",
     "errors.disconnected_from_server": "Disconnected from server",
     "errors.establishing_push_connection": "Establishing push connection",
     "errors.executed_result_unavailable": "Done on the computer, but the result couldn't be retrieved. Refresh to see the latest state.",
@@ -2106,7 +2098,6 @@ export const messages = {
     "errors.this_device_s_clock_is_behind_the_account_state_remote": "This device’s clock is behind the account state. Correct the time and time zone before continuing; the operation has not been sent.",
     "errors.this_device_s_security_state_could_not_be_verified": "This device’s security state could not be verified. Remote operations are paused. Your original keys and history are preserved; check local storage.",
     "errors.this_history_uses_an_old_encryption_format_and_can": "This history uses an old encryption format and can no longer be viewed",
-    "errors.this_is_not_a_remote_agent_account_key": "This is not a remote-agent account key",
     "errors.this_page_is_out_of_date_refresh_or_update": "This page is out of date. Refresh or update it and retry.",
     "errors.this_request_has_not_been_verified_by_the_computer": "This request has not been verified by the computer yet. Wait for sync.",
     "errors.upload_made_no_progress": "Upload made no progress",
@@ -3304,7 +3295,6 @@ export const messages = {
     "security.recovery_was_rejected_you_can_apply_again": "Recovery was rejected. You can apply again.",
     "security.refresh_successor_devices": "Refresh successor devices",
     "security.regenerate_recovery_code": "Regenerate recovery code",
-    "security.registration_on_another_server_is_unfinished_retry_it_or": "Registration on another server is unfinished. Retry it or exit and start over.",
     "security.registration_proof_of_work_expired_retry_the_original_draft": "Registration proof of work expired. Retry the original draft.",
     "security.registration_proof_of_work_is_invalid_or_expired": "Registration proof of work is invalid or expired",
     "security.reject": "Reject",
@@ -3328,7 +3318,6 @@ export const messages = {
     "security.save_the_recovery_code_offline_anyone_with_it_can": "Save the recovery code offline. Anyone with it can request management takeover; do not send it to others.",
     "security.saved_notify_managing_client": "Saved, notify managing client",
     "security.saved_publish_replacement": "Saved, publish replacement",
-    "security.security_setup_must_use_the_original_account_s_server": "Security setup must use the original account’s server",
     "security.security_state_may_be_out_of_date_connect_and": "Security state may be out of date. Connect and verify again.",
     "security.server": "Server",
     "security.setup_token_optional_with_open_registration": "Setup token (optional with open registration)",
@@ -3338,13 +3327,11 @@ export const messages = {
     "security.submit_or_check_original_recovery": "Submit or check original recovery",
     "security.success_is_uncertain_connection_lost": "Success is uncertain: connection lost",
     "security.take_over_management": "Take over management",
-    "security.the_account_belongs_to_another_server": "The account belongs to another server",
     "security.the_account_keys_and_cache_in_this_browser_will": "The account keys and cache in this browser will be deleted before joining with a pairing code.",
     "security.the_account_s_state_chain_is_too_long_to": "The account’s state chain is too long to join. Rebuild the account on the managing client.",
     "security.the_browser_did_not_promise_to_retain_data": "The browser did not promise to retain data",
     "security.the_computer_s_archive_was_deleted_join_as_a": "The computer’s archive was deleted. Join as a new device.",
     "security.the_local_account_unfinished_registration_and_security_operations_will": "The local account, unfinished registration, and security operations will be cleared. You will need to pair again or create an account. Sessions and archives on the server will remain. Operations with an unknown outcome may have succeeded; verify them on the managing client.",
-    "security.the_managing_client_canceled_pairing": "The managing client canceled pairing",
     "security.the_managing_client_cannot_be_removed_directly_transfer_management": "The managing client cannot be removed directly. Transfer management first.",
     "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": "The managing client cannot be removed directly. Transfer management first.",
     "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": "The new recovery code backup is unconfirmed. Replace the code and save it offline immediately.",
@@ -3357,7 +3344,6 @@ export const messages = {
     "security.the_public_key_may_already_be_published_abandoning_only": "The public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control; keep the saved recovery code.",
     "security.the_security_operation_s_outcome_is_unverified_continue_the": "The security operation’s outcome is unverified. Continue the original operation first; exiting deletes the only completion materials.",
     "security.the_server_does_not_recognize_this_device": "The server does not recognize this device",
-    "security.the_server_returned_information_for_a_different_device_from": "The server returned information for a different device from the one that started pairing. Pairing stopped.",
     "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "The unpublished pairing draft expired. You can explicitly abandon it and start over.",
     "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over.",
     "security.this_browser_is_the_only_managing_client_transfer_management": "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
@@ -4418,7 +4404,6 @@ export const messages = {
     "errors.connection_timed_out": "连接超时",
     "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
     "errors.core_load_failed": "核心模块加载失败：{reason}",
-    "errors.device_information_is_changing_retry": "设备信息正在变化，请重试",
     "errors.disconnected_from_server": "与 server 的连接断开",
     "errors.establishing_push_connection": "建立推送连接",
     "errors.executed_result_unavailable": "电脑已执行，但结果没能取回，请刷新查看最新状态",
@@ -4469,7 +4454,6 @@ export const messages = {
     "errors.this_device_s_clock_is_behind_the_account_state_remote": "本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出",
     "errors.this_device_s_security_state_could_not_be_verified": "本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。",
     "errors.this_history_uses_an_old_encryption_format_and_can": "这条历史是旧版加密格式，已不再支持查看",
-    "errors.this_is_not_a_remote_agent_account_key": "这不是 remote-agent 的账户密钥",
     "errors.this_page_is_out_of_date_refresh_or_update": "这个网页版本较旧，请刷新或更新后再试",
     "errors.this_request_has_not_been_verified_by_the_computer": "当前请求尚未由电脑核实，请等待同步",
     "errors.upload_made_no_progress": "上传没有进展",
@@ -5596,7 +5580,6 @@ export const messages = {
     "security.recovery_was_rejected_you_can_apply_again": "恢复已被否决，可以重新申请。",
     "security.refresh_successor_devices": "刷新接任设备",
     "security.regenerate_recovery_code": "重新生成恢复码",
-    "security.registration_on_another_server_is_unfinished_retry_it_or": "另一个服务器的注册尚未完成，请先重试或退出并重新开始",
     "security.registration_proof_of_work_expired_retry_the_original_draft": "注册工作量证明已过期，请重试原草稿",
     "security.registration_proof_of_work_is_invalid_or_expired": "注册工作量证明无效或已过期",
     "security.reject": "否决",
@@ -5620,7 +5603,6 @@ export const messages = {
     "security.save_the_recovery_code_offline_anyone_with_it_can": "请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。",
     "security.saved_notify_managing_client": "我已保存，通知管理端",
     "security.saved_publish_replacement": "我已保存，发布换码",
-    "security.security_setup_must_use_the_original_account_s_server": "安全设置必须使用原账户的服务器",
     "security.security_state_may_be_out_of_date_connect_and": "安全状态可能过期，请联网后重新核实。",
     "security.server": "服务器",
     "security.setup_token_optional_with_open_registration": "Setup token（开放注册可留空）",
@@ -5630,13 +5612,11 @@ export const messages = {
     "security.submit_or_check_original_recovery": "提交或查询原恢复",
     "security.success_is_uncertain_connection_lost": "不确定是否成功：网络断了",
     "security.take_over_management": "接管管理权",
-    "security.the_account_belongs_to_another_server": "账户属于另一个服务器",
     "security.the_account_keys_and_cache_in_this_browser_will": "会先删除这个浏览器里的账户密钥和缓存，再用配对码加入。",
     "security.the_account_s_state_chain_is_too_long_to": "账户的状态链太长，无法加入；请在管理端重建账户。",
     "security.the_browser_did_not_promise_to_retain_data": "浏览器没有承诺保留数据",
     "security.the_computer_s_archive_was_deleted_join_as_a": "电脑档案已删除，请按新设备加入",
     "security.the_local_account_unfinished_registration_and_security_operations_will": "本机账户、未完成的注册和安全操作会被清除，需要重新配对或创建。服务器上的会话和档案不会被删除；结果未明的操作可能已经成功，请在管理端核实。",
-    "security.the_managing_client_canceled_pairing": "管理端取消了配对",
     "security.the_managing_client_cannot_be_removed_directly_transfer_management": "管理端不能被普通删除，请先交接",
     "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": "管理端不能直接移除，请先交接管理权。",
     "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": "新恢复码尚未确认备份，请立即换码并离线保存。",
@@ -5649,7 +5629,6 @@ export const messages = {
     "security.the_public_key_may_already_be_published_abandoning_only": "接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。",
     "security.the_security_operation_s_outcome_is_unverified_continue_the": "安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。",
     "security.the_server_does_not_recognize_this_device": "服务器不认识这台设备",
-    "security.the_server_returned_information_for_a_different_device_from": "服务器返回的不是发起配对那台设备的信息，已停止配对",
     "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "配对草稿已过期，尚未发布，可明确放弃后重新开始",
     "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始",
     "security.this_browser_is_the_only_managing_client_transfer_management": "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",

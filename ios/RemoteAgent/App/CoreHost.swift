@@ -105,7 +105,6 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func setNetworkGeneration(_ gen: UInt64) async
     func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent
     func discardToken(_ rejected: String) async
-    func syncSecurityRecord(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBSecurityRecordEvent
     func openStream(legId: UInt64, token: String, callbacks: Remote.StreamCallbacks) async
     func closeStream(legId: UInt64) async
     func executeCacheRead(_ effect: PBCoreCacheReadEffect) async -> PBCoreEvent
@@ -122,8 +121,13 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func loadDirectPreferences() -> [String: Bool]
     func persistDirectPreference(_ machineId: String, enabled: Bool)
     func detachDirectStreams()
-    func handleSecurityKeySign(_ eff: PBSecurityKeySignEffect) -> PBSecurityKeySignedEvent
-    func handleSecurityKeyAgree(_ eff: PBSecurityKeyAgreeEffect) -> PBSecurityKeyAgreedEvent
+    var optionalSecurityExecutor: SecurityExecutor? { get }
+    var optionalSecurityClient: SecurityClient? { get }
+    func ensureSecurityBootstrapped() async throws
+    func setSecurityForeground(_ foreground: Bool) async
+    func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) async
+    func applySecurityStatusSnapshot(_ status: PBSecurityWorkflowStatus) async
+    @discardableResult func syncSecurity(touch: Bool) async throws -> PBSecurityWorkflowStatus
     func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool
     func handleDirectPcCreate(_ eff: PBCoreDirectPcCreateEffect)
     func handleDirectPcDescribe(_ eff: PBCoreDirectPcDescribeEffect) async
@@ -139,26 +143,18 @@ extension CoreHostExecutor {
     var directSupported: Bool { false }
     var directServerHost: String { "" }
     var directConfiguredStun: String { "" }
-    func syncSecurityRecord(opId: UInt64, networkGeneration: UInt64, touch: Bool) async -> PBSecurityRecordEvent {
-        PBSecurityRecordEvent()
-    }
+    var optionalSecurityExecutor: SecurityExecutor? { nil }
+    var optionalSecurityClient: SecurityClient? { nil }
+    func ensureSecurityBootstrapped() async throws {}
+    func setSecurityForeground(_ foreground: Bool) async {}
+    func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) async {}
+    func applySecurityStatusSnapshot(_ status: PBSecurityWorkflowStatus) async {}
+    @discardableResult func syncSecurity(touch: Bool) async throws -> PBSecurityWorkflowStatus { PBSecurityWorkflowStatus() }
     func cachedScheduleResultJson(_ machineId: String) async -> Data? { nil }
     func deleteScheduleCache(_ machineId: String) async {}
     func loadDirectPreferences() -> [String: Bool] { [:] }
     func persistDirectPreference(_ machineId: String, enabled: Bool) {}
     func detachDirectStreams() {}
-    func handleSecurityKeySign(_ eff: PBSecurityKeySignEffect) -> PBSecurityKeySignedEvent {
-        .with {
-            $0.opID = eff.opID
-            $0.error = "security executor unavailable"
-        }
-    }
-    func handleSecurityKeyAgree(_ eff: PBSecurityKeyAgreeEffect) -> PBSecurityKeyAgreedEvent {
-        .with {
-            $0.opID = eff.opID
-            $0.error = "security executor unavailable"
-        }
-    }
     func handleDirectSignalSend(_ eff: PBCoreDirectSignalSendEffect) -> Bool { false }
     func handleDirectPcCreate(_ eff: PBCoreDirectPcCreateEffect) {}
     func handleDirectPcDescribe(_ eff: PBCoreDirectPcDescribeEffect) async {}
@@ -167,9 +163,16 @@ extension CoreHostExecutor {
     func handleDirectPcConfirm(_ eff: PBCoreDirectPcConfirmEffect) {}
     func handleDirectPcClose(_ eff: PBCoreDirectPcCloseEffect) {}
     func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {}
+    func discardToken(_ rejected: String) async {}
+    func setWatchedSessions(_ sessionIds: [String]) async {}
+    func applyTransitionalPrefsOp(_ op: PrefsOp) async throws {}
+    func renameDevice(_ id: String, name: String) async throws {}
 }
 
-extension Remote: CoreHostExecutor {}
+extension Remote: CoreHostExecutor {
+    nonisolated var optionalSecurityExecutor: SecurityExecutor? { securityExecutor }
+    nonisolated var optionalSecurityClient: SecurityClient? { securityClient }
+}
 
 private let monotonicOrigin = ContinuousClock.now
 private func hostMonoMs() -> Int64 {
@@ -370,7 +373,7 @@ actor CoreHost: SyncEngine {
             executor: remote,
             screens: screens,
             defaults: ScopeDefaults(defaults, scope: [account.server, account.deviceId]),
-            scopeHmacKey: RACore.scopeHmacKey(root: account.root),
+            scopeHmacKey: RACore.scopeHmacKey(localKey: account.localKey),
             clock: clock,
             monoClock: hostMonoMs,
             sleep: sleep,
@@ -429,7 +432,7 @@ actor CoreHost: SyncEngine {
                 await self?.reconnectNowAsync()
             },
             onRefreshDevices: { [weak self] in
-                await self?.syncSecurityNow()
+                _ = try? await self?.executor.syncSecurity(touch: false)
             },
             onSavePrefs: { [weak self] op in
                 guard let self else { return }
@@ -440,14 +443,8 @@ actor CoreHost: SyncEngine {
                     $0.homeLoadMoreEnded = PBCoreHomeLoadMoreEndedAction()
                 }
             },
-            onSecurityConfig: { [weak self] cfg in
-                await self?.dispatch { $0.securityConfig = cfg }
-            },
-            onSecurityRecord: { [weak self] record in
-                await self?.dispatchSecurityRecord(record)
-            },
-            onSecurityRecordAndWait: { [weak self] record in
-                await self?.dispatchSecurityRecord(record)
+            onQuerySyncState: { [weak self] in
+                await self?.querySyncStateView()
             },
             onSecurityOp: { [weak self] req in
                 await self?.runSecurityOp(req) ?? .with {
@@ -555,12 +552,17 @@ actor CoreHost: SyncEngine {
                     }
                 }
             }
-            await dispatch {
-                $0.securityConfig = .with {
-                    $0.account = acct.accountId
-                    $0.deviceID = acct.deviceId
-                    $0.inlineCrypto = true
+            if executor.optionalSecurityExecutor != nil {
+                await dispatch {
+                    $0.securityConfig = .with {
+                        $0.account = acct.accountId
+                        $0.deviceID = acct.deviceId
+                        $0.server = acct.server
+                        $0.inlineCrypto = true
+                        $0.foreground = self.foregrounded
+                    }
                 }
+                try? await executor.ensureSecurityBootstrapped()
             }
         }
         let savedScope = defaults.homeScopeToken()
@@ -584,9 +586,9 @@ actor CoreHost: SyncEngine {
         cancelAllMachinePollTimers()
         cancelIOTasks()
         executor.detachDirectStreams()
-        await dispatch {
-            $0.syncLifecycle.kind = .stop
-        }
+        await executor.setSecurityForeground(false)
+        await dispatch { $0.securityForeground = .with { $0.foreground = false } }
+        await dispatch { $0.syncLifecycle.kind = .stop }
     }
 
     func setForeground(_ foreground: Bool) async {
@@ -595,9 +597,9 @@ actor CoreHost: SyncEngine {
         if foreground {
             await dispatchClockUpdated()
         }
-        await dispatch {
-            $0.syncLifecycle.kind = foreground ? .foreground : .background
-        }
+        await executor.setSecurityForeground(foreground)
+        await dispatch { $0.securityForeground = .with { $0.foreground = foreground } }
+        await dispatch { $0.syncLifecycle.kind = foreground ? .foreground : .background }
     }
 
     func reconnectNowAsync() async {
@@ -612,20 +614,6 @@ actor CoreHost: SyncEngine {
         await dispatch {
             $0.syncLifecycle.kind = .retryLogin
         }
-    }
-
-    // Unrequested records carry a push sequence taken before the sync
-    // starts, so the core drops one that finishes after a newer one.
-    private var securityPushSeq: UInt64 = 1
-
-    private func dispatchSecurityRecord(_ record: PBSecurityRecordEvent) async {
-        guard !closed else { return }
-        var ev = record
-        if ev.pushSeq == 0 {
-            ev.pushSeq = securityPushSeq
-            securityPushSeq += 1
-        }
-        await dispatch { $0.securityRecord = ev }
     }
 
     private func runSecurityOp(_ req: PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect {
@@ -659,10 +647,11 @@ actor CoreHost: SyncEngine {
         await dispatch { $0.securityOpRequest = request }
     }
 
-    private func syncSecurityNow() async {
-        guard !closed else { return }
-        let rec = await executor.syncSecurityRecord(opId: 0, networkGeneration: networkGen, touch: false)
-        await dispatchSecurityRecord(rec)
+    private func querySyncStateView() -> PBCoreSyncStateView? {
+        guard !closed else { return nil }
+        return try? client.view(PBCoreScreen.with {
+            $0.syncState = PBCoreSyncStateScreenRequest()
+        }).syncState
     }
 
     private func handleNetworkChange(signature: String, available: Bool) async {
@@ -1653,16 +1642,8 @@ actor CoreHost: SyncEngine {
                     await host.executor.discardToken(tok)
                 }
 
-            case .syncSecurity(let s):
-                guard !demoMode else { continue }
-                spawnIO { host in
-                    let rec = await host.executor.syncSecurityRecord(
-                        opId: s.opID,
-                        networkGeneration: s.networkGeneration,
-                        touch: s.touch
-                    )
-                    await host.dispatch { $0.securityRecord = rec }
-                }
+            case .securityNotifyOpened:
+                break
 
             case .scheduleTimer(let t):
                 guard !demoMode else { continue }
@@ -1846,15 +1827,57 @@ actor CoreHost: SyncEngine {
                     await host.executor.handleDirectDcReadStats(eff)
                 }
 
+            case .securityKeyGenerate(let eff):
+                guard !demoMode else { continue }
+                executor.optionalSecurityExecutor?.keyGenerate(eff)
+
             case .securityKeySign(let eff):
                 guard !demoMode else { continue }
-                let signed = executor.handleSecurityKeySign(eff)
-                await dispatch { $0.securityKeySigned = signed }
+                executor.optionalSecurityExecutor?.keySign(eff)
 
             case .securityKeyAgree(let eff):
                 guard !demoMode else { continue }
-                let agreed = executor.handleSecurityKeyAgree(eff)
-                await dispatch { $0.securityKeyAgreed = agreed }
+                executor.optionalSecurityExecutor?.keyAgree(eff)
+
+            case .securityKeyEncapsulate(let eff):
+                guard !demoMode else { continue }
+                executor.optionalSecurityExecutor?.keyEncapsulate(eff)
+
+            case .securityKeyDiscard(let eff):
+                guard !demoMode else { continue }
+                executor.optionalSecurityExecutor?.keyDiscard(eff)
+
+            case .securityStorage(let eff):
+                guard !demoMode else { continue }
+                executor.optionalSecurityExecutor?.storage(eff)
+
+            case .securityRpc(let eff):
+                guard !demoMode else { continue }
+                executor.optionalSecurityExecutor?.rpc(eff)
+
+            case .securityTokenUpdated(let eff):
+                guard !demoMode else { continue }
+                await executor.applySecurityTokenUpdated(eff)
+
+            case .securityWorkflowResult(let eff):
+                guard !demoMode else { continue }
+                executor.optionalSecurityClient?.handleWorkflowResult(eff)
+                if eff.hasStatus {
+                    let st = eff.status
+                    spawnIO { host in
+                        await host.executor.applySecurityStatusSnapshot(st)
+                    }
+                }
+
+            case .securityStatusChanged(let eff):
+                guard !demoMode else { continue }
+                if eff.hasStatus {
+                    let st = eff.status
+                    executor.optionalSecurityClient?.handleStatusChanged(st)
+                    spawnIO { host in
+                        await host.executor.applySecurityStatusSnapshot(st)
+                    }
+                }
 
             case .securityCryptoBatch(let eff):
                 await dispatch {

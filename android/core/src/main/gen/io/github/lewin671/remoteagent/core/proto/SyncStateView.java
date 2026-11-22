@@ -26,6 +26,8 @@ public  final class SyncStateView extends
     machines_ = emptyProtobufList();
     sessions_ = emptyProtobufList();
     devices_ = emptyProtobufList();
+    trustedMachineIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    archiveMachineIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   private int bitField0_;
   public static final int CONNECTION_FIELD_NUMBER = 1;
@@ -1445,6 +1447,196 @@ public  final class SyncStateView extends
   private void clearReachabilityUnknown() {
 
     reachabilityUnknown_ = false;
+  }
+
+  public static final int TRUSTED_MACHINE_IDS_FIELD_NUMBER = 40;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> trustedMachineIds_;
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @return A list containing the trustedMachineIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getTrustedMachineIdsList() {
+    return trustedMachineIds_;
+  }
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @return The count of trustedMachineIds.
+   */
+  @java.lang.Override
+  public int getTrustedMachineIdsCount() {
+    return trustedMachineIds_.size();
+  }
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The trustedMachineIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getTrustedMachineIds(int index) {
+    return trustedMachineIds_.get(index);
+  }
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the trustedMachineIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getTrustedMachineIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        trustedMachineIds_.get(index));
+  }
+  private void ensureTrustedMachineIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        trustedMachineIds_;  if (!tmp.isModifiable()) {
+      trustedMachineIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The trustedMachineIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTrustedMachineIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureTrustedMachineIdsIsMutable();
+    trustedMachineIds_.set(index, value);
+  }
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @param value The trustedMachineIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addTrustedMachineIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureTrustedMachineIdsIsMutable();
+    trustedMachineIds_.add(value);
+  }
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @param values The trustedMachineIds to add.
+   */
+  private void addAllTrustedMachineIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureTrustedMachineIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, trustedMachineIds_);
+  }
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   */
+  private void clearTrustedMachineIds() {
+    trustedMachineIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @param value The bytes of the trustedMachineIds to add.
+   */
+  private void addTrustedMachineIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureTrustedMachineIdsIsMutable();
+    trustedMachineIds_.add(value.toStringUtf8());
+  }
+
+  public static final int ARCHIVE_MACHINE_IDS_FIELD_NUMBER = 41;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> archiveMachineIds_;
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @return A list containing the archiveMachineIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getArchiveMachineIdsList() {
+    return archiveMachineIds_;
+  }
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @return The count of archiveMachineIds.
+   */
+  @java.lang.Override
+  public int getArchiveMachineIdsCount() {
+    return archiveMachineIds_.size();
+  }
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The archiveMachineIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getArchiveMachineIds(int index) {
+    return archiveMachineIds_.get(index);
+  }
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the archiveMachineIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getArchiveMachineIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        archiveMachineIds_.get(index));
+  }
+  private void ensureArchiveMachineIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        archiveMachineIds_;  if (!tmp.isModifiable()) {
+      archiveMachineIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The archiveMachineIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setArchiveMachineIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureArchiveMachineIdsIsMutable();
+    archiveMachineIds_.set(index, value);
+  }
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @param value The archiveMachineIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addArchiveMachineIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureArchiveMachineIdsIsMutable();
+    archiveMachineIds_.add(value);
+  }
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @param values The archiveMachineIds to add.
+   */
+  private void addAllArchiveMachineIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureArchiveMachineIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, archiveMachineIds_);
+  }
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   */
+  private void clearArchiveMachineIds() {
+    archiveMachineIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @param value The bytes of the archiveMachineIds to add.
+   */
+  private void addArchiveMachineIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureArchiveMachineIdsIsMutable();
+    archiveMachineIds_.add(value.toStringUtf8());
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SyncStateView parseFrom(
@@ -3038,6 +3230,190 @@ public  final class SyncStateView extends
       return this;
     }
 
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @return A list containing the trustedMachineIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getTrustedMachineIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getTrustedMachineIdsList());
+    }
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @return The count of trustedMachineIds.
+     */
+    @java.lang.Override
+    public int getTrustedMachineIdsCount() {
+      return instance.getTrustedMachineIdsCount();
+    }
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @param index The index of the element to return.
+     * @return The trustedMachineIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getTrustedMachineIds(int index) {
+      return instance.getTrustedMachineIds(index);
+    }
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the trustedMachineIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getTrustedMachineIdsBytes(int index) {
+      return instance.getTrustedMachineIdsBytes(index);
+    }
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The trustedMachineIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTrustedMachineIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setTrustedMachineIds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @param value The trustedMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addTrustedMachineIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addTrustedMachineIds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @param values The trustedMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllTrustedMachineIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllTrustedMachineIds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTrustedMachineIds() {
+      copyOnWrite();
+      instance.clearTrustedMachineIds();
+      return this;
+    }
+    /**
+     * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+     * @param value The bytes of the trustedMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addTrustedMachineIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addTrustedMachineIdsBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @return A list containing the archiveMachineIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getArchiveMachineIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getArchiveMachineIdsList());
+    }
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @return The count of archiveMachineIds.
+     */
+    @java.lang.Override
+    public int getArchiveMachineIdsCount() {
+      return instance.getArchiveMachineIdsCount();
+    }
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @param index The index of the element to return.
+     * @return The archiveMachineIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getArchiveMachineIds(int index) {
+      return instance.getArchiveMachineIds(index);
+    }
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the archiveMachineIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getArchiveMachineIdsBytes(int index) {
+      return instance.getArchiveMachineIdsBytes(index);
+    }
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The archiveMachineIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setArchiveMachineIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setArchiveMachineIds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @param value The archiveMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addArchiveMachineIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addArchiveMachineIds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @param values The archiveMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllArchiveMachineIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllArchiveMachineIds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearArchiveMachineIds() {
+      copyOnWrite();
+      instance.clearArchiveMachineIds();
+      return this;
+    }
+    /**
+     * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+     * @param value The bytes of the archiveMachineIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addArchiveMachineIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addArchiveMachineIdsBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncStateView)
   }
   @java.lang.Override
@@ -3097,14 +3473,17 @@ public  final class SyncStateView extends
             io.github.lewin671.remoteagent.core.proto.SyncDeviceView.class,
             "displayGrace_",
             "reachabilityUnknown_",
+            "trustedMachineIds_",
+            "archiveMachineIds_",
           };
           java.lang.String info =
-              "\u0000\'\u0000\u0001\u0001\'\'\u0000\u0003\u0000\u0001\f\u0002\u1009\u0000\u0003" +
-              "\u1009\u0001\u0004\u0002\u0005\u0007\u0006\u0007\u0007\u0007\b\u0208\t\u0208\n\u1009" +
-              "\u0002\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0007\u0010\u0002\u0011\u0007" +
-              "\u0012\u0002\u0013\u0007\u0014\u000b\u0015\u001b\u0016\u0007\u0017\u001b\u0018\u0007" +
-              "\u0019\u0007\u001a\u0007\u001b\u1009\u0003\u001c\u0007\u001d\u0007\u001e\u1009\u0004" +
-              "\u001f\u0007 \u0007!\u0007\"\u0003#\u0007$\u1009\u0005%\u001b&\u0007\'\u0007";
+              "\u0000)\u0000\u0001\u0001))\u0000\u0005\u0000\u0001\f\u0002\u1009\u0000\u0003\u1009" +
+              "\u0001\u0004\u0002\u0005\u0007\u0006\u0007\u0007\u0007\b\u0208\t\u0208\n\u1009\u0002" +
+              "\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0007\u0010\u0002\u0011\u0007\u0012" +
+              "\u0002\u0013\u0007\u0014\u000b\u0015\u001b\u0016\u0007\u0017\u001b\u0018\u0007\u0019" +
+              "\u0007\u001a\u0007\u001b\u1009\u0003\u001c\u0007\u001d\u0007\u001e\u1009\u0004\u001f" +
+              "\u0007 \u0007!\u0007\"\u0003#\u0007$\u1009\u0005%\u001b&\u0007\'\u0007(\u021a)\u021a" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -161,7 +161,6 @@ public  final class Event extends
     TERMINAL_STREAM(420),
     DIRECT_PREFERENCES_LOADED(421),
     SECURITY_CONFIG(450),
-    SECURITY_RECORD(451),
     SECURITY_KEY_SIGNED(452),
     SECURITY_KEY_AGREED(453),
     SECURITY_CRYPTO_BATCH_DONE(456),
@@ -329,7 +328,6 @@ public  final class Event extends
         case 420: return TERMINAL_STREAM;
         case 421: return DIRECT_PREFERENCES_LOADED;
         case 450: return SECURITY_CONFIG;
-        case 451: return SECURITY_RECORD;
         case 452: return SECURITY_KEY_SIGNED;
         case 453: return SECURITY_KEY_AGREED;
         case 456: return SECURITY_CRYPTO_BATCH_DONE;
@@ -7658,58 +7656,6 @@ public  final class Event extends
    */
   private void clearSecurityConfig() {
     if (eventCase_ == 450) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int SECURITY_RECORD_FIELD_NUMBER = 451;
-  /**
-   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSecurityRecord() {
-    return eventCase_ == 451;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent getSecurityRecord() {
-    if (eventCase_ == 451) {
-       return (io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSecurityRecord(io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 451;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSecurityRecord(io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 451 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 451;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-   */
-  private void clearSecurityRecord() {
-    if (eventCase_ == 451) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -15411,54 +15357,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSecurityRecord() {
-      return instance.hasSecurityRecord();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent getSecurityRecord() {
-      return instance.getSecurityRecord();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-     */
-    public Builder setSecurityRecord(io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent value) {
-      copyOnWrite();
-      instance.setSecurityRecord(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-     */
-    public Builder setSecurityRecord(
-        io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSecurityRecord(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-     */
-    public Builder mergeSecurityRecord(io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent value) {
-      copyOnWrite();
-      instance.mergeSecurityRecord(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SecurityRecordEvent security_record = 451 [json_name = "securityRecord"];</code>
-     */
-    public Builder clearSecurityRecord() {
-      copyOnWrite();
-      instance.clearSecurityRecord();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SecurityKeySignedEvent security_key_signed = 452 [json_name = "securityKeySigned"];</code>
      */
     @java.lang.Override
@@ -16413,7 +16311,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent.class,
-            io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchDoneEvent.class,
@@ -16428,7 +16325,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u009d\u0001\u0000\u0001\u01d1\u009d\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u009c\u0001\u0000\u0001\u01d1\u009c\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
@@ -16449,9 +16346,9 @@ public  final class Event extends
               "\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197" +
               "<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000" +
               "\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4" +
-              "<\u0000\u01a5<\u0000\u01c2<\u0000\u01c3<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000" +
-              "\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf" +
-              "<\u0000\u01d0<\u0000\u01d1<\u0000";
+              "<\u0000\u01a5<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000" +
+              "\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000\u01d0" +
+              "<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

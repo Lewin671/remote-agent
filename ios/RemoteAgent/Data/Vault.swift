@@ -1,18 +1,16 @@
 // Keeps the account's secrets on this device (architecture §15), the
-// counterpart of Android's data/Vault.kt. Android wraps them with a
-// Keystore key and stores the result in a file; here the Keychain holds
-// them itself, as generic-password items that are readable only while the
-// device is unlocked, never leave it (no iCloud Keychain, no backup to
-// another device) and are never written anywhere weaker when the Keychain
-// refuses: a failure is thrown, with the system's status.
-//
-// The Keychain protects storage only. Signing and pairing need the raw
-// bytes, so they are in memory while the app uses them. Nothing here logs
-// or prints key material; the types that carry it describe themselves
-// without it.
+// counterpart of Android's data/Vault.kt. Keychain generic-password items never
+// sync or leave this device (`kSecAttrSynchronizable = false`):
+// - Security buckets, private keys, login token, upgrade notice, pending image key:
+//   WhenUnlockedThisDeviceOnly
+// - Notify decryption mirror (`security-v4-notify`): AfterFirstUnlockThisDeviceOnly
+//   (no device private keys; deleted on logout / non-member)
+// Locked Keychain reads fail cleanly (`errSecInteractionNotAllowed`) without
+// deleting or mutating any existing items.
 import Foundation
-import Security
 import RACore
+import RAProto
+import Security
 
 /// The Keychain refused, or what it holds cannot be read. `status` is the system's OSStatus, 0 when the data itself is at fault.
 struct VaultError: Error, LocalizedError, Equatable, CustomStringConvertible {
@@ -42,126 +40,317 @@ struct VaultError: Error, LocalizedError, Equatable, CustomStringConvertible {
     var description: String { "VaultError(\(operation), status=\(status))" }
 }
 
-/// The Keychain items of one installation. Calls block on the Keychain; make them off the main actor.
-struct Vault: Sendable {
-    /// One Keychain item of the vault.
+/// Keychain wrapper so tests can inject simulated lock errors (`errSecInteractionNotAllowed`)
+/// while production uses OS Keychain directly.
+struct KeychainOps: Sendable {
+    var copyMatching: @Sendable ([CFString: Any], UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus
+    var add: @Sendable ([CFString: Any], UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus
+    var update: @Sendable ([CFString: Any], [CFString: Any]) -> OSStatus
+    var delete: @Sendable ([CFString: Any]) -> OSStatus
+
+    static let live = KeychainOps(
+        copyMatching: { SecItemCopyMatching($0 as CFDictionary, $1) },
+        add: { SecItemAdd($0 as CFDictionary, $1) },
+        update: { SecItemUpdate($0 as CFDictionary, $1 as CFDictionary) },
+        delete: { SecItemDelete($0 as CFDictionary) }
+    )
+}
+
+/// The Keychain-backed S6 v4 security store of one installation.
+struct Vault: SecurityStoreV4, @unchecked Sendable {
+    /// Non-security Keychain items exposed directly to app subsystems (`PendingStore`).
     enum Item: String, Sendable, CaseIterable {
-        /// Server, device ID, root key and device seed, in one item so that they are written and read together.
-        case account
-        case securityState = "security-v3"
-        /// The notify key (architecture §9), on its own so that a push can be opened without the root key.
-        case notifyKey = "notify-key"
-        case loginToken = "login-token"
-        /// The key images waiting to be sent are sealed with on disk (`PendingStore`).
         case pendingKey = "pending-key"
     }
 
-    /// The Keychain service the items are under. The debug build's bundle ID differs, so its items are its own.
-    let service: String
+    private enum KeychainAccount {
+        static let buckets = "security-v4-buckets"
+        static let keys = "security-v4-keys"
+        static let notify = "security-v4-notify"
+        static let token = "security-v4-token"
+        static let upgradeNotice = "security-v4-upgrade-notice"
 
-    init(
-        service: String = (Bundle.main.bundleIdentifier ?? "io.github.lewin671.remoteagent")
-            + ".vault"
-    ) {
-        self.service = service
-    }
-
-    // MARK: The account
-
-    /// Whether an account is stored, without reading it: true also while the device is locked.
-    func hasAccount() throws -> Bool { try exists(.account) }
-
-    /// The stored account, or nil when this device has not joined one.
-    func load() throws -> Account? {
-        guard let blob = try read(.account) else { return nil }
-        guard
-            let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil)
-                as? [String: Any],
-            let v = plist["v"] as? Int, v == 1 || v == 2,
-            let server = plist["server"] as? String, let deviceId = plist["deviceId"] as? String,
-            let root = plist["root"] as? Data, let seed = plist["seed"] as? Data
-        else { throw VaultError.unreadable }
-        let accountId = plist["accountId"] as? String ?? ""
-        return Account(
-            server: server, root: root, deviceSeed: seed, deviceId: deviceId, accountId: accountId)
-    }
-
-    /// Stores the account with its notify key, replacing any before. The
-    /// notify key goes first: an account is then never stored without it.
-    func save(_ account: Account, notifyKey: Data) throws {
-        let plist: [String: Any] = [
-            "v": 2, "server": account.server, "deviceId": account.deviceId, "root": account.root,
-            "seed": account.deviceSeed, "accountId": account.accountId,
+        static let legacyExact: Set<String> = [
+            "account",
+            "security-v3",
+            "notify-key",
+            "login-token",
+            "registration-intent",
+            "pair-delivery",
+            "authority-operation",
         ]
-        guard
-            let blob = try? PropertyListSerialization.data(
-                fromPropertyList: plist, format: .binary, options: 0)
-        else { throw VaultError(operation: .save, status: errSecParam) }
-        try write(.notifyKey, notifyKey)
-        try write(.account, blob)
-    }
+        static let legacyPrefixes = ["account-public-", "pairing-identity-"]
+        static let v4SecurityAccounts = [buckets, keys, notify, token]
 
-    /// The notify key, for decrypting pushes.
-    ///
-    /// It has the account's accessibility for now. A notification extension
-    /// that opens pushes while the device is locked will need it readable
-    /// after the first unlock, in a shared access group; that is decided
-    /// with the extension.
-    func notifyKey() throws -> Data? { try read(.notifyKey) }
-
-    // MARK: The login token
-
-    /// The login kept for this device on this server, or nil: when none is
-    /// kept, and just the same when the one kept is another account's or
-    /// does not say whose it is. Such a token is not an error and not a
-    /// login; whoever asks signs in anew, and the next one kept replaces it.
-    func loginToken(server: String, deviceId: String) throws -> SavedLogin? {
-        guard let blob = try read(.loginToken) else { return nil }
-        guard
-            let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil)
-                as? [String: Any],
-            let token = plist["token"] as? String, let expires = plist["expiresAt"] as? Date
-        else { throw VaultError.unreadable }
-        guard let owner = plist["server"] as? String, let device = plist["deviceId"] as? String,
-            owner == server, device == deviceId, !deviceId.isEmpty
-        else { return nil }
-        return SavedLogin(token: token, expiresMs: Int64(expires.timeIntervalSince1970 * 1000))
-    }
-
-    func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String) throws {
-        let plist: [String: Any] = [
-            "token": token.token, "expiresAt": Date(timeIntervalSince1970: Double(token.expiresMs) / 1000), "server": server,
-            "deviceId": deviceId,
-        ]
-        guard
-            let blob = try? PropertyListSerialization.data(
-                fromPropertyList: plist, format: .binary, options: 0)
-        else { throw VaultError(operation: .save, status: errSecParam) }
-        try write(.loginToken, blob)
-    }
-
-    func deleteLoginToken() throws { try delete(.loginToken) }
-
-    // MARK: Everything
-
-    /// Logging out: removes every item of the vault.
-    func clear() throws {
-        SecurityVaultLock.lock.lock()
-        defer { SecurityVaultLock.lock.unlock() }
-        let status = SecItemDelete(query(nil) as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw VaultError(operation: .delete, status: status)
+        static func isLegacy(_ name: String) -> Bool {
+            legacyExact.contains(name) || legacyPrefixes.contains(where: { name.hasPrefix($0) })
         }
     }
 
-    // MARK: Items
+    let service: String
+    private let lock = NSRecursiveLock()
+    private let kc: KeychainOps
+    private let core: SecurityStoreV4Core
+
+    init(
+        service: String = (Bundle.main.bundleIdentifier ?? "io.github.lewin671.remoteagent") + ".vault",
+        onLegacyWipe: (@Sendable () -> Void)? = nil,
+        keychain: KeychainOps = .live
+    ) {
+        self.service = service
+        self.kc = keychain
+        let lock = self.lock
+        let storage = KeychainStorage(service: service, kc: keychain)
+        self.core = SecurityStoreV4Core(
+            lock: lock,
+            backend: SecurityStoreV4Core.Backend(
+                readBuckets: {
+                    guard let raw = try storage.read(account: KeychainAccount.buckets) else { return [:] }
+                    return try SecurityStoreCodec.decodeBuckets(raw)
+                },
+                writeBuckets: { buckets in
+                    let data = try SecurityStoreCodec.encodeBuckets(buckets)
+                    try storage.write(account: KeychainAccount.buckets, data: data, afterFirstUnlock: false)
+                },
+                readKeys: {
+                    guard let raw = try storage.read(account: KeychainAccount.keys) else { return [:] }
+                    return try SecurityStoreCodec.decodeKeys(raw)
+                },
+                writeKeys: { keys in
+                    let data = try SecurityStoreCodec.encodeKeys(keys)
+                    try storage.write(account: KeychainAccount.keys, data: data, afterFirstUnlock: false)
+                },
+                readNotify: {
+                    try storage.read(account: KeychainAccount.notify)
+                },
+                writeNotify: { data in
+                    try storage.write(account: KeychainAccount.notify, data: data, afterFirstUnlock: true)
+                },
+                deleteNotify: {
+                    try storage.delete(account: KeychainAccount.notify)
+                },
+                readLoginTokenRaw: {
+                    try storage.read(account: KeychainAccount.token)
+                },
+                writeLoginTokenRaw: { data in
+                    try storage.write(account: KeychainAccount.token, data: data, afterFirstUnlock: false)
+                },
+                deleteLoginToken: {
+                    try storage.delete(account: KeychainAccount.token)
+                },
+                hasUpgradeNotice: {
+                    try storage.read(account: KeychainAccount.upgradeNotice) != nil
+                },
+                setUpgradeNotice: { on in
+                    if on {
+                        try storage.write(account: KeychainAccount.upgradeNotice, data: Data([1]), afterFirstUnlock: false)
+                    } else {
+                        try storage.delete(account: KeychainAccount.upgradeNotice)
+                    }
+                },
+                detectAndClearLegacy: {
+                    try Self.detectAndClearLegacyLocked(storage: storage, onLegacyWipe: onLegacyWipe)
+                },
+                clearAllBacking: {
+                    for name in KeychainAccount.v4SecurityAccounts + [KeychainAccount.upgradeNotice] {
+                        try storage.delete(account: name)
+                    }
+                    let accounts = try storage.listAccounts()
+                    for name in accounts where KeychainAccount.isLegacy(name) {
+                        try storage.delete(account: name)
+                    }
+                }
+            )
+        )
+    }
+
+    // MARK: - Startup Legacy Detection & Notify Mirror
+
+    @discardableResult
+    func detectAndClearLegacy(onLegacyWipe: (@Sendable () -> Void)? = nil) throws -> Bool {
+        try lock.withLock {
+            let storage = KeychainStorage(service: service, kc: kc)
+            return try Self.detectAndClearLegacyLocked(storage: storage, onLegacyWipe: onLegacyWipe)
+        }
+    }
+
+    private static func detectAndClearLegacyLocked(
+        storage: KeychainStorage,
+        onLegacyWipe: (@Sendable () -> Void)?
+    ) throws -> Bool {
+        let existingBuckets: [SecurityStoreBucketKey: SecurityStoreStoredBucket]
+        if let raw = try storage.read(account: KeychainAccount.buckets) {
+            existingBuckets = (try? SecurityStoreCodec.decodeBuckets(raw)) ?? [:]
+        } else {
+            existingBuckets = [:]
+        }
+        let hasV4State = existingBuckets.values.contains { row in
+            !row.data.isEmpty && (
+                row.bucket == Int32(PBSecurityStoreBucket.record.rawValue)
+                || row.bucket == Int32(PBSecurityStoreBucket.operation.rawValue)
+                || row.bucket == Int32(PBSecurityStoreBucket.registrationIntent.rawValue)
+            )
+        }
+        if hasV4State {
+            return false
+        }
+
+        let accounts = try storage.listAccounts()
+        let legacyAccounts = accounts.filter { KeychainAccount.isLegacy($0) }
+        if !legacyAccounts.isEmpty {
+            // Wipe legacy v3 and stray v4 security items while preserving pending image key (`pending-key`).
+            for name in legacyAccounts {
+                try storage.delete(account: name)
+            }
+            for name in KeychainAccount.v4SecurityAccounts {
+                try storage.delete(account: name)
+            }
+            try storage.write(account: KeychainAccount.upgradeNotice, data: Data([1]), afterFirstUnlock: false)
+            onLegacyWipe?()
+            return true
+        }
+        return (try? storage.read(account: KeychainAccount.upgradeNotice)) != nil
+    }
+
+    func hasUpgradeNotice() -> Bool {
+        lock.withLock {
+            (try? KeychainStorage(service: service, kc: kc).read(account: KeychainAccount.upgradeNotice)) != nil
+        }
+    }
+
+    func readNotifyBlob() -> Data? {
+        core.readNotifyBlob()
+    }
+
+    // MARK: - SecurityStoreV4 Conformance
+
+    func hasPersistedState() -> Bool { core.hasPersistedState() }
+
+    func generateKey(kind: PBSecurityKeyKind, slot: String, persist: Bool) throws -> Data {
+        try core.generateKey(kind: kind, slot: slot, persist: persist)
+    }
+
+    func signKey(kind: PBSecurityKeyKind, slot: String, message: Data) throws -> Data {
+        try core.signKey(kind: kind, slot: slot, message: message)
+    }
+
+    func agreeKey(kind: PBSecurityKeyKind, slot: String, peerPublic: Data) throws -> Data {
+        try core.agreeKey(kind: kind, slot: slot, peerPublic: peerPublic)
+    }
+
+    func encapsulate(recipients: [PBSecurityEncapsulateRecipient]) throws -> [PBSecurityEncapsulatedPair] {
+        try core.encapsulate(recipients: recipients)
+    }
+
+    func discardKey(kind: PBSecurityKeyKind, slot: String) {
+        core.discardKey(kind: kind, slot: slot)
+    }
+
+    func executeStorage(_ effect: PBSecurityStorageEffect) -> PBSecurityStorageResultEvent {
+        core.executeStorage(effect)
+    }
+
+    func dismissLegacyRepairNotice() {
+        core.dismissLegacyRepairNotice()
+    }
+
+    func clearMemoryCache() {
+        core.clearMemoryCache()
+    }
+
+    func loadLoginToken(server: String, deviceId: String) -> SavedLogin? {
+        core.loadLoginToken(server: server, deviceId: deviceId)
+    }
+
+    func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String) {
+        core.saveLoginToken(token, server: server, deviceId: deviceId)
+    }
+
+    func clearLoginToken(server: String, deviceId: String) {
+        core.clearLoginToken(server: server, deviceId: deviceId)
+    }
+
+    // MARK: - Pending Image Key & Full Service Clear
 
     func read(_ item: Item) throws -> Data? {
-        var q = query(item)
+        try lock.withLock {
+            try KeychainStorage(service: service, kc: kc).read(account: item.rawValue)
+        }
+    }
+
+    func write(_ item: Item, _ data: Data) throws {
+        try lock.withLock {
+            try KeychainStorage(service: service, kc: kc).write(account: item.rawValue, data: data, afterFirstUnlock: false)
+        }
+    }
+
+    func delete(_ item: Item) throws {
+        try lock.withLock {
+            try KeychainStorage(service: service, kc: kc).delete(account: item.rawValue)
+        }
+    }
+
+    /// Removing the entire installation's Keychain service on explicit logout.
+    func clear() throws {
+        try lock.withLock {
+            let status = kc.delete([
+                kSecClass: kSecClassGenericPassword,
+                kSecAttrService: service,
+                kSecAttrSynchronizable: false,
+            ])
+            guard status == errSecSuccess || status == errSecItemNotFound else {
+                throw VaultError(operation: .delete, status: status)
+            }
+        }
+        core.clearMemoryCache()
+    }
+
+    // MARK: - Test Helpers
+
+    #if DEBUG
+    func writeRawKeychainItemForTest(account: String, data: Data, afterFirstUnlock: Bool = false) throws {
+        try lock.withLock {
+            try KeychainStorage(service: service, kc: kc).write(account: account, data: data, afterFirstUnlock: afterFirstUnlock)
+        }
+    }
+
+    func readRawKeychainItemForTest(account: String) throws -> Data? {
+        try lock.withLock {
+            try KeychainStorage(service: service, kc: kc).read(account: account)
+        }
+    }
+
+    func readStoredBucketsForTest() -> [SecurityStoreBucketKey: SecurityStoreStoredBucket] {
+        lock.withLock {
+            guard let raw = try? KeychainStorage(service: service, kc: kc).read(account: KeychainAccount.buckets) else {
+                return [:]
+            }
+            return (try? SecurityStoreCodec.decodeBuckets(raw)) ?? [:]
+        }
+    }
+    #endif
+}
+
+private struct KeychainStorage: Sendable {
+    let service: String
+    let kc: KeychainOps
+
+    private func baseQuery(account: String?) -> [CFString: Any] {
+        var q: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrSynchronizable: false,
+        ]
+        if let account { q[kSecAttrAccount] = account }
+        return q
+    }
+
+    func read(account: String) throws -> Data? {
+        var q = baseQuery(account: account)
         q[kSecReturnData] = true
         q[kSecMatchLimit] = kSecMatchLimitOne
         var out: CFTypeRef?
-        let status = SecItemCopyMatching(q as CFDictionary, &out)
+        let status = kc.copyMatching(q, &out)
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess, let data = out as? Data else {
             throw VaultError(operation: .read, status: status)
@@ -169,129 +358,43 @@ struct Vault: Sendable {
         return data
     }
 
-    /// Adds the item or replaces its value; either way it ends up readable only while unlocked, on this device only.
-    func write(_ item: Item, _ data: Data) throws {
-        var add = query(item)
+    func write(account: String, data: Data, afterFirstUnlock: Bool) throws {
+        let accessible: CFString = afterFirstUnlock
+            ? kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            : kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        var add = baseQuery(account: account)
         add[kSecValueData] = data
-        add[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        var status = SecItemAdd(add as CFDictionary, nil)
+        add[kSecAttrAccessible] = accessible
+        var status = kc.add(add, nil)
         if status == errSecDuplicateItem {
             let change: [CFString: Any] = [
                 kSecValueData: data,
-                kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                kSecAttrAccessible: accessible,
             ]
-            status = SecItemUpdate(query(item) as CFDictionary, change as CFDictionary)
+            status = kc.update(baseQuery(account: account), change)
         }
-        guard status == errSecSuccess else { throw VaultError(operation: .save, status: status) }
+        guard status == errSecSuccess else {
+            throw VaultError(operation: .save, status: status)
+        }
     }
 
-    /// A concurrent pairing must never overwrite candidate private keys.
-    func savePairingIdentity(_ name: String, _ data: Data) throws {
-        var add = query(nil)
-        add[kSecAttrAccount] = name
-        add[kSecValueData] = data
-        add[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        let status = SecItemAdd(add as CFDictionary, nil)
-        if status == errSecDuplicateItem {
-            guard try readNamed(name) == data else { throw VaultError(operation: .save, status: errSecDuplicateItem) }
-            return
-        }
-        guard status == errSecSuccess else { throw VaultError(operation: .save, status: status) }
-    }
-
-    func loadRegistrationIntent() throws -> RegistrationIntent? {
-        SecurityVaultLock.lock.lock();defer{SecurityVaultLock.lock.unlock()}
-        return try readNamed("registration-intent").map{try JSONDecoder().decode(RegistrationIntent.self,from:$0)}
-    }
-    func saveRegistrationIntent(_ intent:RegistrationIntent) throws {
-        SecurityVaultLock.lock.lock();defer{SecurityVaultLock.lock.unlock()}
-        let encoder=JSONEncoder();encoder.outputFormatting=[.sortedKeys]
-        try savePairingIdentity("registration-intent",encoder.encode(intent))
-    }
-    func clearRegistrationIntent(_ expected:RegistrationIntent) throws {
-        SecurityVaultLock.lock.lock();defer{SecurityVaultLock.lock.unlock()}
-        let encoder=JSONEncoder();encoder.outputFormatting=[.sortedKeys]
-        if try readNamed("pair-delivery") != nil { return }
-        if try readNamed("registration-intent")==encoder.encode(expected){
-            try deleteNamed(expected.candidateStorageKey)
-            try deleteNamed("registration-intent")
-        }
-    }
-    func loadPairDeliveryReceipt() throws -> PairDeliveryReceipt? {
-        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
-        return try readNamed("pair-delivery").map { try JSONDecoder().decode(PairDeliveryReceipt.self, from: $0) }
-    }
-    func savePairDeliveryReceipt(_ receipt: PairDeliveryReceipt) throws {
-        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
-        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
-        try savePairingIdentity("pair-delivery", encoder.encode(receipt))
-    }
-    func clearPairDeliveryReceipt() throws {
-        SecurityVaultLock.lock.lock(); defer { SecurityVaultLock.lock.unlock() }
-        try deleteNamed("pair-delivery")
-    }
-    func deleteNamed(_ name: String) throws {
-        var q=query(nil);q[kSecAttrAccount]=name
-        let status=SecItemDelete(q as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw VaultError(operation:.delete,status:status) }
-    }
-    func delete(_ item: Item) throws {
-        let status = SecItemDelete(query(item) as CFDictionary)
+    func delete(account: String) throws {
+        let status = kc.delete(baseQuery(account: account))
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw VaultError(operation: .delete, status: status)
         }
     }
 
-    func exists(_ item: Item) throws -> Bool {
-        var q = query(item)
-        q[kSecMatchLimit] = kSecMatchLimitOne
+    func listAccounts() throws -> [String] {
+        var q = baseQuery(account: nil)
         q[kSecReturnAttributes] = true
+        q[kSecMatchLimit] = kSecMatchLimitAll
         var out: CFTypeRef?
-        switch SecItemCopyMatching(q as CFDictionary, &out) {
-        case errSecSuccess, errSecInteractionNotAllowed: return true
-        case errSecItemNotFound: return false
-        case let status: throw VaultError(operation: .read, status: status)
-        }
-    }
-
-    /// One item, or all of the service's. Only items that do not sync are ever written or matched.
-    private func query(_ item: Item?) -> [CFString: Any] {
-        var q: [CFString: Any] = [
-            kSecClass: kSecClassGenericPassword, kSecAttrService: service,
-            kSecAttrSynchronizable: false,
-        ]
-        if let item { q[kSecAttrAccount] = item.rawValue }
-        return q
-    }
-    func readNamed(_ name: String) throws -> Data? {
-        var q = query(nil)
-        q[kSecAttrAccount] = name
-        q[kSecReturnData] = true
-        q[kSecMatchLimit] = kSecMatchLimitOne
-        var out: CFTypeRef?
-        let status = SecItemCopyMatching(q as CFDictionary, &out)
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = out as? Data else {
+        let status = kc.copyMatching(q, &out)
+        if status == errSecItemNotFound { return [] }
+        guard status == errSecSuccess, let rows = out as? [[String: Any]] else {
             throw VaultError(operation: .read, status: status)
         }
-        return data
+        return rows.compactMap { $0[kSecAttrAccount as String] as? String }
     }
-    func writeNamed(_ name: String, _ data: Data) throws {
-        var q = query(nil)
-        q[kSecAttrAccount] = name
-        var add = q
-        add[kSecValueData] = data
-        add[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        var status = SecItemAdd(add as CFDictionary, nil)
-        if status == errSecDuplicateItem {
-            status = SecItemUpdate(
-                q as CFDictionary,
-                [
-                    kSecValueData: data,
-                    kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-                ] as CFDictionary)
-        }
-        guard status == errSecSuccess else { throw VaultError(operation: .save, status: status) }
-    }
-
 }

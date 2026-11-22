@@ -16,7 +16,7 @@ struct RePairScreen: View {
         .task {
             guard flow == nil, !app.isDemo else { return }
             flow = JoinModel(lastServer: context.account.server,
-                calls: app.rePairingCalls(for: context.account), retainedIdentity: true) { account in
+                calls: app.rePairingCalls(context: context), retainedIdentity: true) { account in
                     try await app.joined(account)
                 }
         }

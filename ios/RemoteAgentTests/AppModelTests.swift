@@ -17,7 +17,7 @@ final class FakeEngine: SyncEngine, @unchecked Sendable {
     var networkSignatures: [String] { lock.withLock { signatures } }
 
     init(account: Account) throws {
-        remote = try Remote(account: account, http: HTTP())
+        remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
     }
 
     var account: Account { remote.account }
@@ -41,7 +41,7 @@ final class FakeEngine: SyncEngine, @unchecked Sendable {
     func reconnectNow() { note("reconnect") }
     func retryLogin() { note("retryLogin") }
     func close() { note("close") }
-    /// What `describeSelf` throws, for a description that does not arrive.
+
     var describeFailure: (any Error)? {
         get { lock.withLock { failure } }
         set { lock.withLock { failure = newValue } }
@@ -67,18 +67,18 @@ final class Harness {
     let root = FileManager.default.temporaryDirectory.appending(
         path: "ra-app-\(UUID().uuidString)", directoryHint: .isDirectory)
     let suite = "ra-app-\(UUID().uuidString)"
-    let notificationCenter = NotificationCenter()
     let defaults: UserDefaults
     let settings: SettingsStore
     let pending: PendingStore
     let account = Account(
-        server: "http://127.0.0.1:1", root: Data((0..<32).map { UInt8($0) }),
-        deviceSeed: Data((0..<32).map { UInt8(90 - $0) }),
-        deviceId: "00112233445566778899aabbccddeeff")
+        server: "http://127.0.0.1:1",
+        deviceId: "00112233445566778899aabbccddeeff",
+        accountId: "11111111111111111111111111111111")
     private(set) var engines: [FakeEngine] = []
     var cleared = 0
-    var securityReady = true
-    var identityCheck: @Sendable (Account) async throws -> Void = { _ in }
+    var bootstrapStatus: PBSecurityWorkflowStatus?
+    var bootstrapError: (any Error)?
+    var exitAdvice = PBSecurityExitAdvice()
 
     /// What the erase of a logout does instead of erasing, when set: called off the main actor.
     var erase: (@Sendable (AccountStorage) throws -> Void)?
@@ -88,12 +88,16 @@ final class Harness {
             vault: vault, cacheRoot: root.appending(path: "cache"), pending: pending)
         parts.network = FakeNetwork()
         parts.defaults = defaults
-        parts.notificationCenter = notificationCenter
-        parts.saveJoined = { vault, account in
-            try vault.save(account, notifyKey: Data(repeating: 0, count: 32))
+        parts.allowPlainHttp = true
+        parts.bootstrapSecurity = { [unowned self] vault in
+            let (err, status) = await MainActor.run { (self.bootstrapError, self.bootstrapStatus) }
+            if let err { throw err }
+            if let status { return status }
+            let host = try StandaloneSecurityHost(store: vault, http: AppModel.http, allowPlainHttp: true)
+            defer { host.close() }
+            return try await host.client.bootstrap()
         }
-        parts.securityReady = { [securityReady] _, _ in securityReady }  // This lifecycle suite uses a mock engine; protocol setup has separate tests.
-        parts.checkRetainedIdentity = identityCheck
+        parts.checkExitAdvice = { [unowned self] _ in await MainActor.run { self.exitAdvice } }
         parts.makeEngine = { [unowned self] account, _, _ in
             let engine = try FakeEngine(account: account)
             self.engines.append(engine)
@@ -115,13 +119,28 @@ final class Harness {
 
     var engine: FakeEngine { engines.last! }
 
-    func store() throws {
-        try vault.save(account, notifyKey: Data(repeating: 5, count: 32))
+    func storeReady() throws {
+        _ = vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data("ready".utf8)
+        })
+        bootstrapStatus = .with {
+            $0.bootstrap = .ready
+            $0.server = account.server
+            $0.deviceID = account.deviceId
+            $0.accountID = account.accountId
+            $0.isMember = true
+        }
+        bootstrapError = nil
     }
 
     /// An account on the device, read and in use, in the foreground.
     func ready() async throws {
-        try store()
+        try storeReady()
         model.setForeground(true)
         await model.waitForLoadForTest()
         #expect(model.stage == .ready)
@@ -141,21 +160,30 @@ final class Harness {
 
     @Test func failedPendingRegistrationCanBeExplicitlyDiscardedWithoutAnAccount() async throws {
         defer { h.cleanUp() }
-        try h.vault.savePairingIdentity("registration-intent",Data("synthetic-invalid-receipt".utf8))
+        // Seed malformed registration intent bytes so real Go bootstrap reports .invalid cleanly.
+        _ = h.vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .registrationIntent
+            $0.key = "intent"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data("synthetic-invalid-receipt".utf8)
+        })
         h.model.setForeground(true)
         await h.model.waitForLoadForTest()
         guard case .failed = h.model.stage else {
             Issue.record("expected failed pending registration, got \(h.model.stage)")
             return
         }
-        #expect(try h.vault.readNamed("registration-intent") != nil)
+        #expect(h.vault.hasPersistedState())
         await h.model.logout()
         #expect(h.model.stage == .join)
-        #expect(try h.vault.readNamed("registration-intent") == nil)
+        #expect(!h.vault.hasPersistedState())
         h.model.loadAccount()
         await h.model.waitForLoadForTest()
         #expect(h.model.stage == .join)
     }
+
     @Test func withoutAnAccountTheJoinFlowIsShown() async {
         defer { h.cleanUp() }
         #expect(h.model.stage == .loading)
@@ -182,7 +210,7 @@ final class Harness {
 
     @Test func nothingIsReadInTheBackground() async throws {
         defer { h.cleanUp() }
-        try h.store()
+        try h.storeReady()
         h.model.setForeground(false)
         h.model.loadAccount()
         await h.model.waitForLoadForTest()
@@ -193,11 +221,11 @@ final class Harness {
 
     @Test func aKeychainThatCannotBeReadIsSaidAndTriedAgain() async throws {
         defer { h.cleanUp() }
-        try h.vault.write(.account, Data("not an account".utf8))
+        h.bootstrapError = VaultError.unreadable
         h.model.setForeground(true)
         await h.model.waitForLoadForTest()
         #expect(h.model.stage == .failed(VaultError.unreadable.localizedDescription))
-        try h.store()
+        try h.storeReady()
         h.model.loadAccount()
         await h.model.waitForLoadForTest()
         #expect(h.model.stage == .ready)
@@ -275,12 +303,12 @@ final class Harness {
     }
 
     @Test func networkCapabilitiesChangingOnTheSameInterfaceAreNotIgnored() {
-        let old=NetworkPath(available:true,interface:"en0",ipv4:true,ipv6:false,dns:true,expensive:false,constrained:false)
-        var next=old;next.ipv6=true
-        #expect(NetworkChange.from(old,to:next) == .gained)
-        next=old;next.constrained=true
-        #expect(NetworkChange.from(old,to:next) == .gained)
-        #expect(NetworkChange.from(next,to:next) == .none)
+        let old = NetworkPath(available: true, interface: "en0", ipv4: true, ipv6: false, dns: true, expensive: false, constrained: false)
+        var next = old; next.ipv6 = true
+        #expect(NetworkChange.from(old, to: next) == .gained)
+        next = old; next.constrained = true
+        #expect(NetworkChange.from(old, to: next) == .gained)
+        #expect(NetworkChange.from(next, to: next) == .none)
     }
 
     @Test func anAccountOfflineAtStartIsToldSo() async throws {
@@ -309,8 +337,7 @@ final class Harness {
         s.removed = true
         await h.engine.remote.showForTest(state: s)
         await eventually("removed") { h.model.removed }
-        // The keys stay until the user says otherwise.
-        #expect(try h.vault.hasAccount())
+        #expect(h.vault.hasPersistedState())
         h.model.retryLogin()
         #expect(h.engine.calls.last == "retryLogin")
     }
@@ -323,13 +350,11 @@ final class Harness {
             id: h.account.deviceId, kind: .client, createdMs: 1)
         await h.engine.remote.showForTest(state: s)
         await eventually("state") { h.model.state == s }
-        // Not while offline.
         #expect(!h.engine.calls.contains { $0.hasPrefix("describe") })
         s.conn = .online
         s.link = .online
         await h.engine.remote.showForTest(state: s)
         await eventually("described") { h.engine.calls.contains("describe ios iOS 26.0 · iPhone") }
-        // Stored as wanted: nothing more to say.
         h.engine.forget()
         s.devices[h.account.deviceId]?.meta = .with {
             $0.platform = "ios"
@@ -341,21 +366,21 @@ final class Harness {
         #expect(h.engine.calls.isEmpty)
     }
 
-    @Test func joiningStoresTheAccountAndStartsSyncing() async throws {
+    @Test func joiningStartsSyncingForTheJoinedAccount() async throws {
         defer { h.cleanUp() }
         h.model.setForeground(true)
         await h.model.waitForLoadForTest()
         #expect(h.model.stage == .join)
         try await h.model.joined(h.account)
         #expect(h.model.stage == .ready)
-        #expect(try h.vault.load() == h.account)
-        #expect(try h.vault.notifyKey() == Data(repeating: 0, count: 32))
+        #expect(h.model.account == h.account)
         #expect(h.engine.calls == ["network true", "start"])
     }
 
     @Test func loggingOutWipesTheKeysTheCacheAndWhatWasKeptForTheAccount() async throws {
         defer { h.cleanUp() }
         try await h.ready()
+        try h.vault.writeRawKeychainItemForTest(account: "security-v4-notify", data: Data(repeating: 3, count: 32), afterFirstUnlock: true)
         try h.pending.put(folder: "s", name: "a", data: Data([1, 2, 3]))
         h.settings.update { $0.theme = .dark }
         h.defaults.set("x", forKey: AccountDefaults.key("home-scope"))
@@ -374,8 +399,8 @@ final class Harness {
         #expect(h.model.state == RemoteState())
         #expect(h.model.lastServer == h.account.server)
         #expect(engine.calls.last == "close")
-        #expect(try !h.vault.hasAccount())
-        #expect(try h.vault.notifyKey() == nil)
+        #expect(!h.vault.hasPersistedState())
+        #expect(h.vault.readNotifyBlob() == nil)
         #expect(try h.vault.read(.pendingKey) == nil)
         #expect(!FileManager.default.fileExists(atPath: cache.path))
         #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
@@ -383,13 +408,11 @@ final class Harness {
         #expect(h.defaults.object(forKey: AccountDefaults.key("home-scope")) == nil)
         #expect(h.defaults.string(forKey: "other") == "kept")
         #expect(h.cleared == 1)
-        // A state the old engine publishes afterwards is nobody's.
         var late = RemoteState()
         late.machines["m"] = MachineView(id: "m", online: true, lastSeenMs: 1)
         await engine.remote.showForTest(state: late)
         await Task.yield()
         #expect(h.model.state == RemoteState())
-        // The next account starts from nothing kept in memory.
         try await h.model.joined(h.account)
         let next = try #require(h.model.context)
         #expect(next !== context)
@@ -417,7 +440,6 @@ final class Harness {
 
     @Test func nothingIsReadWhileALogoutIsErasing() async throws {
         defer { h.cleanUp() }
-        // The erase is slow: it has not reached the keys when the app goes to the background and comes back.
         let started = OSAllocatedUnfairLock(initialState: false)
         let go = DispatchSemaphore(value: 0)
         h.erase = { storage in
@@ -433,7 +455,6 @@ final class Harness {
         h.model.scenePhase(.active)
         h.model.loadAccount()
         await h.model.waitForLoadForTest()
-        // The account being removed is not found and put back in use.
         #expect(h.model.stage == .loading)
         #expect(h.model.context == nil)
         #expect(h.engines.count == 1)
@@ -441,7 +462,7 @@ final class Harness {
         await leaving.value
         #expect(h.model.stage == .join)
         #expect(h.model.context == nil && h.engines.count == 1)
-        #expect(try !h.vault.hasAccount())
+        #expect(!h.vault.hasPersistedState())
     }
 
     @Test func anEraseThatFailedIsFinishedBeforeAnythingIsReadAgain() async throws {
@@ -449,11 +470,7 @@ final class Harness {
         struct Stuck: LocalizedError { var errorDescription: String? { "没能删除缓存" } }
         let tries = OSAllocatedUnfairLock(initialState: 0)
         h.erase = { storage in
-            // The first try gets as far as the keys.
-            if tries.withLock({
-                $0 += 1
-                return $0
-            }) == 1 {
+            if tries.withLock({ $0 += 1; return $0 }) == 1 {
                 try storage.vault.clear()
                 throw Stuck()
             }
@@ -465,14 +482,13 @@ final class Harness {
         await h.model.logout()
         #expect(h.model.stage == .failed("没能删除缓存"))
         #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
-        // 重试 erases again, and only then is there no account to find.
+        h.bootstrapStatus = nil
         h.model.loadAccount()
         await h.model.waitForLoadForTest()
         #expect(h.model.stage == .join)
         #expect(tries.withLock { $0 } == 2)
         #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
         #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
-        // Erased once: the next read is only a read.
         h.model.scenePhase(.background)
         h.model.scenePhase(.active)
         await h.model.waitForLoadForTest()
@@ -490,12 +506,10 @@ final class Harness {
         s.link = .online
         await h.engine.remote.showForTest(state: s)
         await eventually("tried") { h.engine.calls.contains { $0.hasPrefix("describe") } }
-        // Still the same connection and the same revision: the failure is not tried over and over.
         s.machines["m1"] = MachineView(id: "m1", online: true, lastSeenMs: 1)
         await h.engine.remote.showForTest(state: s)
         await eventually("state") { h.model.state == s }
         #expect(h.engine.calls.filter { $0.hasPrefix("describe") }.count == 1)
-        // The connection drops and comes back. The server stored nothing, so the revision is the same.
         var off = s
         off.conn = .offline
         off.link = .waiting
@@ -507,11 +521,12 @@ final class Harness {
             h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2
         }
     }
+
     @Test func aLeaseRenewalRetriesAnAutomaticDescriptionWithoutAConnectionOrRevisionChange() async throws {
         let h = Harness()
         defer { h.cleanUp() }
         try await h.ready()
-        h.engine.describeFailure = DeviceSecurity.Failure.lease
+        h.engine.describeFailure = SecurityFailure.lease
         var s = RemoteState()
         s.devices[h.account.deviceId] = DeviceView(id: h.account.deviceId, kind: .client, createdMs: 1)
         s.conn = .online; s.link = .online; s.leaseEndMs = 1
@@ -523,117 +538,72 @@ final class Harness {
         await eventually("description after renewal") { h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2 }
     }
 
-}
+    @Test func legacyV3WipeClearsCipherCachePreservesPendingKeyAndPersistsRepairNoticeAcrossColdRestart() async throws {
+        defer { h.cleanUp() }
+        try h.vault.writeRawKeychainItemForTest(account: "account", data: Data("v3-acct".utf8))
+        try h.vault.writeRawKeychainItemForTest(account: "security-v3", data: Data("v3-sec".utf8))
+        try h.vault.write(.pendingKey, Data(repeating: 9, count: 32))
+        let cache = try CipherStore.open(root: h.root.appending(path: "cache"), account: "legacy")
+        await cache.putBlob(name: "stale", data: Data([1]))
+        try cache.close()
 
-@MainActor @Suite struct RetainedIdentityTests {
-    @Test func logoutClearsSetupAndCanLoadAgain() async throws {
-        let h = Harness(); defer { h.cleanUp() }
-        h.securityReady = false
-        try h.store()
         h.model.setForeground(true)
         await h.model.waitForLoadForTest()
         #expect(h.model.stage == .join)
-        #expect(h.model.securitySetup != nil)
-        let generation = h.model.joinGeneration
-        await h.model.logout()
-        #expect(h.model.securitySetup == nil)
-        #expect(!h.model.retainedIdentityDenied)
-        #expect(h.model.authorityBootstrapPending == nil)
-        #expect(h.model.joinGeneration != generation)
-        #expect(!h.model.joinDirectly)
-        h.model.loadAccount()
-        await h.model.waitForLoadForTest()
-        #expect(h.model.stage == .join)
-        #expect(h.model.securitySetup == nil)
-        #expect(try !h.vault.hasAccount())
-    }
+        #expect(h.model.legacyRepairNotice)
+        #expect(try h.vault.read(.pendingKey) == Data(repeating: 9, count: 32))
+        #expect(!FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
 
-    @Test func onlyDeniedLoginShowsTheRecoveryScreen() async throws {
-        for denied in [true, false] {
-            let h = Harness(); defer { h.cleanUp() }
-            h.securityReady = false
-            h.identityCheck = { _ in
-                if denied { throw ConnectError(code: .permissionDenied, message: "login failed") }
-                throw URLError(.notConnectedToInternet)
-            }
-            try h.store()
-            h.model.setForeground(true)
-            await h.model.waitForLoadForTest()
-            #expect(h.model.stage == .join)
-            #expect(h.model.retainedIdentityDenied == denied)
-            #expect(h.model.securitySetup != nil)
-            #expect(try h.vault.hasAccount())
-            await h.model.logout(pairing: true)
-            #expect(h.model.securitySetup == nil && !h.model.retainedIdentityDenied)
-            #expect(h.model.joinDirectly)
-            #expect(h.model.lastServer == h.account.server)
-        }
-    }
+        // Cold restart still sees the banner until dismissed.
+        var parts = AppModel.Parts()
+        parts.storage = AccountStorage(vault: h.vault, cacheRoot: h.root.appending(path: "cache"), pending: h.pending)
+        parts.network = FakeNetwork()
+        parts.defaults = h.defaults
+        parts.allowPlainHttp = true
+        let second = AppModel(settings: h.settings, parts: parts)
+        second.setForeground(true)
+        await second.waitForLoadForTest()
+        #expect(second.stage == .join)
+        #expect(second.legacyRepairNotice)
 
-    @Test func aTransientDenialOrTimeoutKeepsTheRetainedFlow() async throws {
-        for timeout in [false, true] {
-            let h = Harness(); defer { h.cleanUp() }
-            let calls = OSAllocatedUnfairLock(initialState: 0)
-            h.securityReady = false
-            h.identityCheck = { _ in
-                let n = calls.withLock { $0 += 1; return $0 }
-                if timeout { throw URLError(.timedOut) }
-                if n == 1 { throw ConnectError(code: .permissionDenied, message: "login failed") }
-            }
-            try h.store(); h.model.setForeground(true)
-            await h.model.waitForLoadForTest()
-            #expect(h.model.stage == .join)
-            #expect(!h.model.retainedIdentityDenied)
-            #expect(h.model.securitySetup != nil)
-            #expect(try h.vault.hasAccount())
-            #expect(calls.withLock { $0 } == (timeout ? 1 : 2))
-        }
+        second.dismissUpgradeNotice()
+        await Task.yield()
+        #expect(!second.legacyRepairNotice)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        #expect(!h.vault.hasUpgradeNotice())
     }
 
     @Test func logoutClearsPendingBootstrapAndDoesNotResumeIt() async throws {
         let h = Harness(); defer { h.cleanUp() }
-        h.model.bootstrapGate.set(active: true, protectedDataAvailable: true)
-        _ = try await h.model.authorityBootstrap.prepareCreation(server: "https://relay.example.com")
+        let host = try StandaloneSecurityHost(store: h.vault, http: AppModel.http, allowPlainHttp: true)
+        _ = try await host.client.prepareCreation(server: "https://relay.example.com")
+        host.close()
         h.model.setForeground(true)
         await h.model.waitForLoadForTest()
-        #expect(h.model.authorityBootstrapPending != nil)
-        #expect(try h.model.rejoinAdvice()?.text.contains(L10n.securityUnfinishedSecurityOperation()) == true)
+        #expect(h.model.securityStatus?.bootstrap == .pendingCreate)
+        h.exitAdvice = .with { $0.authority = true; $0.unresolved = true }
+        let adv = await h.model.rejoinAdvice()
+        #expect(adv?.text.contains(L10n.securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts()) == true)
         await h.model.logout()
-        #expect(h.model.authorityBootstrapPending == nil)
-        #expect(h.model.securitySetup == nil)
+        #expect(h.model.securityStatus == nil)
+        #expect(!h.vault.hasPersistedState())
         h.model.loadAccount()
         await h.model.waitForLoadForTest()
         #expect(h.model.stage == .join)
-        #expect(h.model.authorityBootstrapPending == nil)
-        #expect(try h.vault.readOperation() == nil)
+        #expect(h.model.securityStatus?.bootstrap == .empty)
     }
 
-    @Test func unreadableSecurityRequiresConfirmationButDoesNotTrapTheUser() throws {
+    @Test func unreadableSecurityRequiresConfirmationButDoesNotTrapTheUser() async throws {
         let h = Harness(); defer { h.cleanUp() }
-        try h.vault.write(.securityState, Data([0]))
-        #expect(try h.model.rejoinAdvice()?.text.contains("没能读取") == true)
-        #expect(try h.model.rejoinAdvice()?.text.contains("电脑上的会话不受影响") == true)
-    }
-
-    @Test func lateLoginCannotRestoreDiscardedIdentity() async throws {
-        let h = Harness(); defer { h.cleanUp() }
-        let (enteredStream, entered) = AsyncStream.makeStream(of: Void.self)
-        let (releaseStream, release) = AsyncStream.makeStream(of: Void.self)
-        let (doneStream, done) = AsyncStream.makeStream(of: Void.self)
-        h.securityReady = false
-        h.identityCheck = { _ in
-            entered.yield()
-            for await _ in releaseStream { break }
-            defer { done.yield() }
-            throw ConnectError(code: .permissionDenied, message: "login failed")
-        }
-        try h.store(); h.model.setForeground(true)
-        for await _ in enteredStream { break }
-        await h.model.logout()
-        release.yield()
-        for await _ in doneStream { break }
-        await h.model.waitForLoadForTest()
-        #expect(h.model.securitySetup == nil && !h.model.retainedIdentityDenied)
-        #expect(h.model.stage == .join)
+        try h.vault.writeRawKeychainItemForTest(account: "security-v4-buckets", data: Data([0]))
+        var parts = AppModel.Parts()
+        parts.storage = AccountStorage(vault: h.vault, cacheRoot: h.root.appending(path: "cache"), pending: h.pending)
+        parts.network = FakeNetwork()
+        parts.defaults = h.defaults
+        parts.allowPlainHttp = true
+        let realModel = AppModel(settings: h.settings, parts: parts)
+        let adv = await realModel.rejoinAdvice()
+        #expect(adv?.text.contains("没能读取") == true)
+        #expect(adv?.text.contains("电脑上的会话不受影响") == true)
     }
 }

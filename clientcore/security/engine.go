@@ -340,14 +340,38 @@ func (e *Engine) requestKeyAgreeKind(kind corev1.SecurityKeyKind, slot string, p
 	})
 }
 
-// ApplyRecord validates raw chain states, recovery proofs, and lease from the shell
+// ContentKey provides a pre-decrypted historical content epoch secret.
+type ContentKey struct {
+	ContentEpoch uint64
+	Secret       []byte
+}
+
+// RecordUpdate conveys a verified or persisted security state update to Engine.ApplyRecord.
+type RecordUpdate struct {
+	Direct                 bool
+	PushSeq                uint64
+	NetworkGeneration      uint64
+	Account                string
+	Domain                 []byte
+	Genesis                []byte
+	States                 [][]byte
+	RecoveryProofs         [][]byte
+	Lease                  []byte
+	FloorMs                int64
+	RecoveryPending        bool
+	RecoveryReadyMs        int64
+	RecoveryObjectsPending bool
+	Removed                bool
+	Cleared                bool
+	Error                  string
+	ContentKeys            []ContentKey
+}
+
+// ApplyRecord validates raw chain states, recovery proofs, and lease
 // and kicks off head grant unlocking via KeyAgree if the current ContentEpoch is unopened.
-func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*corev1.Effect {
+func (e *Engine) ApplyRecord(nowMs int64, ev RecordUpdate) []*corev1.Effect {
 	e.touchNow(nowMs)
-	if ev == nil {
-		return nil
-	}
-	if ev.OpId == 0 {
+	if !ev.Direct {
 		if ev.PushSeq != 0 {
 			if ev.PushSeq <= e.lastPushSeq {
 				return nil
@@ -482,6 +506,10 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 		e.unlocking = false
 	} else if !sameHead {
 		clear(e.peerShared)
+		if e.unlocking {
+			e.unlockGen++
+			e.unlocking = false
+		}
 	}
 
 	_, e.isMember = head.Core.Member(e.selfDeviceID)
@@ -499,7 +527,7 @@ func (e *Engine) ApplyRecord(nowMs int64, ev *corev1.SecurityRecordEvent) []*cor
 
 	targetState := e.states[selfIdx]
 	for _, ck := range ev.ContentKeys {
-		if ck == nil || ck.ContentEpoch == 0 || ck.ContentEpoch >= targetState.Core.ContentEpoch || len(ck.Secret) != 32 {
+		if ck.ContentEpoch == 0 || ck.ContentEpoch >= targetState.Core.ContentEpoch || len(ck.Secret) != 32 {
 			continue
 		}
 		if _, exists := e.epochSecrets[ck.ContentEpoch]; !exists {

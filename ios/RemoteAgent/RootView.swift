@@ -67,16 +67,20 @@ struct SetupDiscardButton: View {
     var body: some View {
         if !error.isEmpty { Banner(error, tone: .error) }
         Button(L10n.securityExitAndStartOver(), role: .destructive) {
-            do {
-                if let warning = try model.rejoinAdvice() { advice = warning; asking = true }
-                else { Task { await discard() } }
-            } catch { self.error = errorText(error) }
+            Task {
+                if let warning = await model.rejoinAdvice() {
+                    advice = warning
+                    asking = true
+                } else {
+                    await discard()
+                }
+            }
         }
             .confirmationDialog(L10n.securityExitAndDeleteLocalKeys(), isPresented: $asking, titleVisibility: .visible) {
                 Button(L10n.securityConfirmExit(), role: .destructive) {
                     Task {
                         do {
-                            guard try model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToExitAgain()) }
+                            guard await model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToExitAgain()) }
                             await discard()
                         } catch { self.error = errorText(error) }
                     }

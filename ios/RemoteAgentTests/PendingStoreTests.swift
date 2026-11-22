@@ -278,15 +278,23 @@ import Testing
         let cacheRoot = FileManager.default.temporaryDirectory.appending(path: "ra-cache-\(UUID().uuidString)", directoryHint: .isDirectory)
         defer { try? FileManager.default.removeItem(at: cacheRoot) }
         let s = store()
-        try vault.save(Account(server: "https://ra.example.com", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 2, count: 32), deviceId: "d"), notifyKey: Data(repeating: 3, count: 32))
+        _ = vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data("rec".utf8)
+        })
+        try vault.writeRawKeychainItemForTest(account: "security-v4-notify", data: Data(repeating: 3, count: 32), afterFirstUnlock: true)
         try s.put(folder: "a", name: "1", data: Data([1]))
         let cache = try CipherStore.open(root: cacheRoot, account: "acct")
         await cache.putBlob(name: "x", data: Data([1]))
         try cache.close()
 
         try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, pending: s)
-        #expect(try !vault.hasAccount())
-        #expect(try vault.notifyKey() == nil)
+        #expect(!vault.hasPersistedState())
+        #expect(vault.readNotifyBlob() == nil)
         #expect(!FileManager.default.fileExists(atPath: cacheRoot.path))
         #expect(!FileManager.default.fileExists(atPath: dir.path))
     }
@@ -304,12 +312,19 @@ import Testing
         }
         let s = store()
         let first = s.scoped()
-        try vault.save(Account(server: "https://ra.example.com", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 2, count: 32), deviceId: "d"), notifyKey: Data(repeating: 3, count: 32))
+        _ = vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data("rec".utf8)
+        })
         try first.put(folder: "project:/Users/me/Code/foo", name: "1.jpg", data: Data("one".utf8))
 
         #expect(throws: (any Error).self) { try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, pending: s) }
         #expect(FileManager.default.fileExists(atPath: cacheRoot.path))
-        #expect(try !vault.hasAccount())
+        #expect(!vault.hasPersistedState())
         // The images, the key in memory and the account's scope went all the same.
         #expect(!FileManager.default.fileExists(atPath: dir.path))
         #expect(try vault.read(.pendingKey) == nil)

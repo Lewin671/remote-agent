@@ -484,14 +484,6 @@ class Remote(
                 applySecurityStatusSnapshot(eff.status)
             }
         }
-        coreHost.onSyncSecurity = {
-            scope.launch {
-                runCatching {
-                    ensureSecurityBootstrapped()
-                    coreHost.securityClient.syncNow(false, cachedToken?.token.orEmpty())
-                }
-            }
-        }
         coreHost.onDirectSignalSend = { eff -> directExecutor.signalSend(eff) }
         coreHost.onDirectPcCreate = { eff -> scope.launch(directDispatcher) { directExecutor.pcCreate(eff) } }
         coreHost.onDirectPcDescribe = { eff -> scope.launch(directDispatcher) { directExecutor.pcDescribe(eff) } }
@@ -740,6 +732,7 @@ class Remote(
         val candidates = buildSet {
             v.machinesList.forEach { add(it.machineId) }
             v.devicesList.filter { it.kind == DeviceKind.DEVICE_KIND_MACHINE }.forEach { add(it.deviceId) }
+            v.archiveMachineIdsList.forEach { add(it) }
             cache?.machines().orEmpty().forEach { add(it.id) }
         }
         if (v.removed || !v.isMember) {
@@ -750,9 +743,12 @@ class Remote(
             }
             return
         }
-        if (v.devicesList.isEmpty()) return
-        val trustedMachineIds = v.devicesList.filter { it.trusted && it.kind == DeviceKind.DEVICE_KIND_MACHINE }
-            .map { it.deviceId }.toSet()
+        val trustedMachineIds = when {
+            v.trustedMachineIdsCount > 0 -> v.trustedMachineIdsList.toSet()
+            v.devicesList.isNotEmpty() -> v.devicesList.filter { it.trusted && it.kind == DeviceKind.DEVICE_KIND_MACHINE }
+                .map { it.deviceId }.toSet()
+            else -> return
+        }
         candidates.forEach { mid ->
             if (mid !in trustedMachineIds) {
                 cache?.removeBlob("schedule:$mid")

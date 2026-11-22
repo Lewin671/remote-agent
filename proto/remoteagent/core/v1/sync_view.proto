@@ -145,6 +145,8 @@ message SyncStateView {
   repeated SyncDeviceView devices = 37;
   bool display_grace = 38;
   bool reachability_unknown = 39;
+  repeated string trusted_machine_ids = 40;
+  repeated string archive_machine_ids = 41;
 }
 
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,

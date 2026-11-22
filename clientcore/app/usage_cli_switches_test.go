@@ -54,7 +54,7 @@ func seedDualCLIMachine(t *testing.T, c *Core) {
 		NowMs: 1_791_633_600_040,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 4,
+				OpId: 3,
 				Machines: []*corev1.PlainMachine{
 					{
 						MachineId: "m-1",
@@ -200,7 +200,7 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 		NowMs: 1_791_633_600_085,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 4,
+				OpId: 3,
 				Machines: []*corev1.PlainMachine{
 					{
 						MachineId: "m-1",

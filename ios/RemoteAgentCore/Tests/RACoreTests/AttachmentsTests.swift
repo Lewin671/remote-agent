@@ -65,7 +65,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         #expect(try loaded.commandBytes()==raw);#expect(loaded.requestId=="original-request");#expect(loaded.deadlineMs==123456)
         #expect(loaded.machineId=="machine")
         try files.remove(folder:"out:session:message",name:"prepared-command")
-        #expect(throws:DeviceSecurity.Failure.self) {try OutgoingRecords(files:files).loadRecords(sid:"session")}
+        #expect(throws:SecurityFailure.self) {try OutgoingRecords(files:files).loadRecords(sid:"session")}
     }
 
     @Test func aRestoredDraftKeepsThePickOrder() throws {

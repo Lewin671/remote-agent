@@ -8,7 +8,7 @@ import (
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
-// HandleOpenNotify verifies and decrypts a push notification envelope without SecCall.
+// HandleOpenNotify verifies and decrypts a push notification envelope inside Go clientcore.
 // Supports locked Android/iOS mode via persisted notify_blob AND Web Service Worker mode via record_blob + KeyAgree.
 func (e *Engine) HandleOpenNotify(nowMs int64, ev *corev1.SecurityOpenNotifyEvent) []*corev1.Effect {
 	e.touchNow(nowMs)

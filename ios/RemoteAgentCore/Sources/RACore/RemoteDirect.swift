@@ -70,20 +70,6 @@ func peerFrameBody(_ raw: Data, targetField: UInt64) -> Data? {
 }
 
 extension Remote {
-    func securityObserver() -> SyncObserver {
-        SyncObserver(
-            synced: { [weak self] record, _ in
-                await self?.pushObservedSecurityRecord(record)
-            },
-            failed: {},
-            installed: { [weak self] record in
-                Task {
-                    await self?.pushObservedSecurityRecord(record)
-                }
-            }
-        )
-    }
-
     public nonisolated func loadDirectPreferences() -> [String: Bool] {
         directPreferences.allEnabled(server: account.server, deviceId: account.deviceId)
     }
@@ -94,14 +80,6 @@ extension Remote {
 
     public nonisolated func detachDirectStreams() {
         directExecutor.detachAll()
-    }
-
-    public nonisolated func handleSecurityKeySign(_ eff: PBSecurityKeySignEffect) -> PBSecurityKeySignedEvent {
-        securityExecutor.keySign(eff)
-    }
-
-    public nonisolated func handleSecurityKeyAgree(_ eff: PBSecurityKeyAgreeEffect) -> PBSecurityKeyAgreedEvent {
-        securityExecutor.keyAgree(eff)
     }
 
     @discardableResult

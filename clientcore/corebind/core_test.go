@@ -128,30 +128,3 @@ func TestCoreRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected HomeViewModel: %+v", vm.GetHome())
 	}
 }
-
-func TestCoreSecCallRoundTrip(t *testing.T) {
-	seedReq, err := proto.Marshal(&stdcorev1.SecCallRequest{
-		Call: &stdcorev1.SecCallRequest_Ed25519SeedPublic{
-			Ed25519SeedPublic: make([]byte, 32),
-		},
-	})
-	if err != nil {
-		t.Fatalf("marshal SecCallRequest: %v", err)
-	}
-	respBytes, err := SecCall(seedReq)
-	if err != nil {
-		t.Fatalf("SecCall(Ed25519SeedPublic): %v", err)
-	}
-	var resp stdcorev1.SecCallResponse
-	if err := proto.Unmarshal(respBytes, &resp); err != nil {
-		t.Fatalf("unmarshal SecCallResponse: %v", err)
-	}
-	if resp.Error != "" || len(resp.Data) != 32 {
-		t.Fatalf("unexpected SecCall(Ed25519SeedPublic) response: %+v", &resp)
-	}
-
-	_, err = SecCall([]byte{0xff, 0xff, 0xff})
-	if err == nil {
-		t.Fatalf("expected invalid SecCall bytes to fail")
-	}
-}

@@ -3,9 +3,10 @@ import RAProto
 import SwiftProtobuf
 
 extension Remote {
-    /// Revalidates the cached signed ciphertext against its machine before opening it.
+    /// Revalidates the cached signed ciphertext against trusted membership before opening it.
     public func cachedScheduleResultJson(_ machineID: String) async -> Data? {
-        guard currentScheduleMember(machineID) else {
+        try? await ensureSecurityBootstrapped()
+        guard await currentScheduleMember(machineID) else {
             await cache?.removeBlob(name: "schedules/" + machineID)
             return nil
         }
@@ -20,7 +21,7 @@ extension Remote {
               ),
               let result = try? PBCommandResult(serializedBytes: opened.plaintext)
         else { return nil }
-        guard currentScheduleMember(machineID) else {
+        guard await currentScheduleMember(machineID) else {
             await cache?.removeBlob(name: "schedules/" + machineID)
             return nil
         }
@@ -32,14 +33,27 @@ extension Remote {
         await cache?.removeBlob(name: "schedules/" + machineID)
     }
 
-    func currentScheduleMember(_ id: String) -> Bool {
-        !closed && (try? securityIdentity().1.core.member(id)?.kind) == 1
+    func currentScheduleMember(_ id: String) async -> Bool {
+        guard !closed else { return false }
+        if let st = securityClient.currentStatus, (!st.isMember || st.removed) {
+            return false
+        }
+        if let v = await currentCoreSyncStateView(), v.securityLoaded {
+            if v.removed || !v.isMember { return false }
+            return v.trustedMachineIds.contains(id)
+        }
+        if state.value.removed { return false }
+        if state.value.loaded {
+            return state.value.currentMachines.contains(id)
+        }
+        return true
     }
 
     func keepScheduleSnapshot(_ machine: String, data: Data) async {
-        guard currentScheduleMember(machine) else { return }
+        guard await currentScheduleMember(machine) else { return }
         await cache?.putBlob(name: "schedules/" + machine, data: data)
-        // A directory removal can overtake the suspended cache write.
-        if !currentScheduleMember(machine) { await cache?.removeBlob(name: "schedules/" + machine) }
+        if !(await currentScheduleMember(machine)) {
+            await cache?.removeBlob(name: "schedules/" + machine)
+        }
     }
 }

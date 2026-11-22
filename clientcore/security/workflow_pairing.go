@@ -1334,7 +1334,7 @@ func (e *Engine) resumeRegistration(fgGen uint64, done func(*corev1.SecurityWork
 					}
 				}
 			}
-			e.applyPersistedRecordToEngine(rec, 0, func(unlockErr error) {
+			e.applyPersistedRecordToEngine(rec, func(unlockErr error) {
 				if unlockErr != nil {
 					done(nil, unlockErr)
 					return

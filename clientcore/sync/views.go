@@ -186,6 +186,23 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		prefsCopy = w.World.Prefs.Clone()
 	}
 
+	var trustedMachineIDs []string
+	var archiveMachineIDs []string
+	if e.security.Loaded {
+		for id, ok := range e.security.TrustedMachines {
+			if ok {
+				trustedMachineIDs = append(trustedMachineIDs, id)
+			}
+		}
+		slices.Sort(trustedMachineIDs)
+		for id, ok := range e.security.ArchiveMachines {
+			if ok {
+				archiveMachineIDs = append(archiveMachineIDs, id)
+			}
+		}
+		slices.Sort(archiveMachineIDs)
+	}
+
 	return &corev1.SyncStateView{
 		Connection:             protoConnState(w.World.Connection),
 		ConnectionReason:       w.ConnectionReasonText,
@@ -226,6 +243,8 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		Devices:                devices,
 		DisplayGrace:           w.DisplayGrace,
 		ReachabilityUnknown:    w.ReachabilityUnknown,
+		TrustedMachineIds:      trustedMachineIDs,
+		ArchiveMachineIds:      archiveMachineIDs,
 	}
 }
 

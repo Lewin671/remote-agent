@@ -561,6 +561,16 @@ public struct PBCoreSyncStateView: @unchecked Sendable {
     set {_uniqueStorage()._reachabilityUnknown = newValue}
   }
 
+  public var trustedMachineIds: [String] {
+    get {return _storage._trustedMachineIds}
+    set {_uniqueStorage()._trustedMachineIds = newValue}
+  }
+
+  public var archiveMachineIds: [String] {
+    get {return _storage._archiveMachineIds}
+    set {_uniqueStorage()._archiveMachineIds = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1331,7 +1341,7 @@ extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncStateView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0\u{3}display_grace\0\u{3}reachability_unknown\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0\u{3}display_grace\0\u{3}reachability_unknown\0\u{3}trusted_machine_ids\0\u{3}archive_machine_ids\0")
 
   fileprivate class _StorageClass {
     var _connection: PBCoreConnState = .unspecified
@@ -1373,6 +1383,8 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _devices: [PBCoreSyncDeviceView] = []
     var _displayGrace: Bool = false
     var _reachabilityUnknown: Bool = false
+    var _trustedMachineIds: [String] = []
+    var _archiveMachineIds: [String] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1422,6 +1434,8 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _devices = source._devices
       _displayGrace = source._displayGrace
       _reachabilityUnknown = source._reachabilityUnknown
+      _trustedMachineIds = source._trustedMachineIds
+      _archiveMachineIds = source._archiveMachineIds
     }
   }
 
@@ -1479,6 +1493,8 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 37: try { try decoder.decodeRepeatedMessageField(value: &_storage._devices) }()
         case 38: try { try decoder.decodeSingularBoolField(value: &_storage._displayGrace) }()
         case 39: try { try decoder.decodeSingularBoolField(value: &_storage._reachabilityUnknown) }()
+        case 40: try { try decoder.decodeRepeatedStringField(value: &_storage._trustedMachineIds) }()
+        case 41: try { try decoder.decodeRepeatedStringField(value: &_storage._archiveMachineIds) }()
         default: break
         }
       }
@@ -1608,6 +1624,12 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._reachabilityUnknown != false {
         try visitor.visitSingularBoolField(value: _storage._reachabilityUnknown, fieldNumber: 39)
       }
+      if !_storage._trustedMachineIds.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._trustedMachineIds, fieldNumber: 40)
+      }
+      if !_storage._archiveMachineIds.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._archiveMachineIds, fieldNumber: 41)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1656,6 +1678,8 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._devices != rhs_storage._devices {return false}
         if _storage._displayGrace != rhs_storage._displayGrace {return false}
         if _storage._reachabilityUnknown != rhs_storage._reachabilityUnknown {return false}
+        if _storage._trustedMachineIds != rhs_storage._trustedMachineIds {return false}
+        if _storage._archiveMachineIds != rhs_storage._archiveMachineIds {return false}
         return true
       }
       if !storagesAreEqual {return false}

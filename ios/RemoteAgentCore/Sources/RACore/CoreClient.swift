@@ -59,8 +59,8 @@ public final class CoreClient: @unchecked Sendable {
 }
 
 /// Derives the account-specific HMAC key used to obfuscate remembered home scopes on disk.
-public func scopeHmacKey(root: Data) -> Data {
-    Keys.deriveKey(root: root, purpose: "home-scope")
+public func scopeHmacKey(localKey: Data) -> Data {
+    deriveScopeKey(key: localKey, purpose: "home-scope")
 }
 
 /// Encodes a core scope key (`""` for all projects, otherwise a project path) as an opaque token.

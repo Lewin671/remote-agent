@@ -77,7 +77,7 @@ public final class TermConn: Sendable {
                         o.queued += encoded.count - bytes
                         return true
                     }
-                    guard accepted else { throw DeviceSecurity.Failure.capacity }
+                    guard accepted else { throw SecurityFailure.capacity }
                     reserved = encoded.count
                     try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
                         socket.send(encoded) { error in
@@ -156,11 +156,11 @@ extension Remote {
                         requestId: streamId,
                         history: false
                     )
-                    guard res.purpose == DeviceSecurity.Purpose.terminalOutput.rawValue,
+                    guard res.purpose == SecurityPurpose.terminalOutput.rawValue,
                           res.machineID == machineId,
                           res.sessionID == sid,
                           res.requestID == streamId
-                    else { throw DeviceSecurity.Failure.untrusted }
+                    else { throw SecurityFailure.untrusted }
                     if res.seq <= last { throw OpenError(L10nMessage.errorsTerminalFramesAreOutOfOrder()) }
                     last = res.seq
                     let frame = try PBTerminalFrame(serializedBytes: res.plaintext)
@@ -185,13 +185,13 @@ extension Remote {
         return TermConn(
             socket: socket,
             seal: { frame, seq, deadline in
-                guard !closed.withLock({ $0 }) else { throw DeviceSecurity.Failure.storage }
-                let purpose: DeviceSecurity.Purpose
+                guard !closed.withLock({ $0 }) else { throw SecurityFailure.storage }
+                let purpose: SecurityPurpose
                 switch frame.kind {
                 case .input: purpose = .terminalInput
                 case .resize: purpose = .terminalResize
                 case .historyRequest: purpose = .terminalHistory
-                default: throw DeviceSecurity.Failure.invalid
+                default: throw SecurityFailure.invalid
                 }
                 let sealed = try await self.sealEnvelopeOp(
                     purpose: purpose,
@@ -203,7 +203,7 @@ extension Remote {
                     plaintext: try frame.serializedData(),
                     useSessionSeed: true
                 )
-                guard !closed.withLock({ $0 }) else { throw DeviceSecurity.Failure.storage }
+                guard !closed.withLock({ $0 }) else { throw SecurityFailure.storage }
                 return try sealed.envelope.serializedData()
             },
             finish: finish,

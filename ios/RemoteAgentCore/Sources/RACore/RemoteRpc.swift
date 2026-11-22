@@ -1,126 +1,9 @@
-// Security Gate executor: syncs verified DeviceSecurity records into Go
-// `clientcore/security`, executes wire RPC / CipherCache I/O, and forwards raw
-// envelopes to Go without client-side protobuf decryption in Swift.
 import Connect
 import Foundation
 import RAProto
 import SwiftProtobuf
 
 extension Remote {
-    // MARK: - Security Record Sync
-
-    func pushObservedSecurityRecord(_ record: DeviceSecurity.Record) async {
-        guard coreSyncDepth == 0, !closed, let client = deviceSecurity else { return }
-        await ensureSecurityConfigured()
-        let head = record.state
-        let members = Dictionary(uniqueKeysWithValues: head.core.members.map { ($0.id, $0) })
-        let archive = Set(record.states.values.flatMap(\.core.members).filter { $0.kind == 1 }.map(\.id))
-        for id in archive where members[id]?.kind != 1 {
-            await cache?.removeBlob(name: "schedules/" + id)
-        }
-        guard let ev = try? buildSecurityRecordEvent(
-            record: record,
-            opId: 0,
-            pushSeq: nextSecurityPushSeq(),
-            networkGeneration: networkGeneration,
-            recoveryPending: await client.recoveryPending,
-            recoveryReadyMs: await client.recoveryReadyMs,
-            recoveryObjectsPending: recoveryObjectsPending
-        ) else { return }
-        if let onRecord = hostHooks?.onSecurityRecord {
-            await onRecord(ev)
-        } else {
-            try? ensureFallbackRunner().syncRecord(ev, nowMs: clock())
-        }
-        securityRecordLoaded = true
-    }
-
-    public func syncSecurityRecord(
-        opId: UInt64,
-        networkGeneration netGen: UInt64,
-        touch: Bool
-    ) async -> PBSecurityRecordEvent {
-        var event = PBSecurityRecordEvent()
-        event.opID = opId
-        event.networkGeneration = netGen
-        event.account = account.accountId
-        coreSyncDepth += 1
-        defer { coreSyncDepth -= 1 }
-        do {
-            if netGen != verifiedNetworkGeneration {
-                try await refreshNetworkSecurity()
-            }
-            let client = try securitySession()
-            if touch {
-                try await client.touchAfterWake()
-            }
-            let synced = try await client.sync()
-            var maintenancePending = false
-            if !synced.recovery.isEmpty {
-                await ensureSecurityConfigured()
-                let preEv = try buildSecurityRecordEvent(
-                    record: synced,
-                    opId: 0,
-                    pushSeq: nextSecurityPushSeq(),
-                    networkGeneration: netGen,
-                    recoveryPending: await client.recoveryPending,
-                    recoveryReadyMs: await client.recoveryReadyMs,
-                    recoveryObjectsPending: recoveryObjectsPending
-                )
-                if let onWait = hostHooks?.onSecurityRecordAndWait {
-                    await onWait(preEv)
-                } else {
-                    try ensureFallbackRunner().syncRecord(preEv, nowMs: clock())
-                }
-                securityRecordLoaded = true
-                recoveryObjectsPending = true
-                do {
-                    try await republishRecoveryObjects(synced)
-                    recoveryObjectsPending = false
-                } catch DeviceSecurity.Failure.lease {
-                    recoveryObjectsPending = false
-                    maintenancePending = true
-                } catch {
-                    recoveryObjectsPending = false
-                    throw error
-                }
-            }
-            let latest = (try? await client.record()) ?? synced
-            let head = latest.state
-            let members = Dictionary(uniqueKeysWithValues: head.core.members.map { ($0.id, $0) })
-            let archive = Set(latest.states.values.flatMap(\.core.members).filter { $0.kind == 1 }.map(\.id))
-            for id in archive where members[id]?.kind != 1 {
-                await cache?.removeBlob(name: "schedules/" + id)
-            }
-            await ensureSecurityConfigured()
-            let built = try buildSecurityRecordEvent(
-                record: latest,
-                opId: opId,
-                pushSeq: nextSecurityPushSeq(),
-                networkGeneration: netGen,
-                recoveryPending: await client.recoveryPending,
-                recoveryReadyMs: await client.recoveryReadyMs,
-                recoveryObjectsPending: maintenancePending
-            )
-            if hostHooks?.onSecurityOp == nil {
-                try ensureFallbackRunner().syncRecord(built, nowMs: clock())
-            }
-            securityRecordLoaded = true
-            self.clockSkewed = false
-            if netGen == self.networkGeneration {
-                self.verifiedNetworkGeneration = netGen
-            }
-            return built
-        } catch {
-            if let secErr = error as? DeviceSecurity.Failure, secErr == .clock {
-                self.clockSkewed = true
-            }
-            report(error)
-            event.error = errorText(error)
-            return event
-        }
-    }
-
     // MARK: - Cache I/O Execution
 
     public func executeCacheRead(_ effect: PBCoreCacheReadEffect) async -> PBCoreEvent {
@@ -130,39 +13,17 @@ extension Remote {
             var loaded = PBCoreCacheBootstrapLoadedEvent()
             loaded.opID = req.opID
             do {
-                _ = try securityIdentity()
-                _ = try securitySession()
-                guard let securityStorage else { throw DeviceSecurity.Failure.storage }
-                let record = try securityStorage.readSecurity()
-                let members = Dictionary(uniqueKeysWithValues: record.state.core.members.map { ($0.id, $0) })
-                let archive = Set(record.states.values.flatMap { $0.core.members }.filter { $0.kind == 1 }.map { $0.id })
-                for id in archive where members[id]?.kind != 1 {
-                    await cache?.removeBlob(name: "schedules/" + id)
-                }
-                await ensureSecurityConfigured()
-                let recEv = try buildSecurityRecordEvent(
-                    record: record,
-                    opId: 0,
-                    pushSeq: nextSecurityPushSeq(),
-                    networkGeneration: networkGeneration,
-                    recoveryPending: recoveryPending,
-                    recoveryReadyMs: recoveryReadyMs,
-                    recoveryObjectsPending: recoveryObjectsPending
-                )
-                if let onWait = hostHooks?.onSecurityRecordAndWait {
-                    await onWait(recEv)
-                } else {
-                    try? ensureFallbackRunner().syncRecord(recEv, nowMs: clock())
-                }
-                securityRecordLoaded = true
+                try await ensureSecurityBootstrapped()
+                await pruneUntrustedCaches()
                 if let cache {
+                    let allowed = await cachedAllowedMachines()
                     for var m in await cache.machines() {
-                        guard members[m.id]?.kind == 1 || archive.contains(m.id) else { continue }
+                        if let allowed, !allowed.contains(m.id) { continue }
                         m.online = false
                         loaded.wireMachines.append(m)
                     }
                     for s in await cache.sessions() {
-                        guard members[s.machineID]?.kind == 1 || archive.contains(s.machineID) else { continue }
+                        if let allowed, !allowed.contains(s.machineID) { continue }
                         loaded.wireSessions.append(s)
                     }
                     if let blob = await cache.blob(name: projectPrefsID),
@@ -380,9 +241,9 @@ extension Remote {
                             seq: req.expectedRevision + 1,
                             plaintext: try req.nextPrefs.serializedData()
                         ).envelope
-                    } catch DeviceSecurity.Failure.conflict {
+                    } catch SecurityFailure.conflict {
                         res.sealConflict = true
-                        res.error = errorText(DeviceSecurity.Failure.conflict)
+                        res.error = errorText(SecurityFailure.conflict)
                         event.accountPrefsPutResult = res
                         return event
                     }

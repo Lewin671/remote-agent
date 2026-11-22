@@ -545,22 +545,6 @@
     "zh-CN": "连接中途断了"
   },
   {
-    "en": "This is not a remote-agent account key",
-    "key": "errors.this_is_not_a_remote_agent_account_key",
-    "notes": "crypto 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "这不是 remote-agent 的账户密钥"
-  },
-  {
     "en": "The server must use HTTPS",
     "key": "errors.the_server_must_use_https",
     "notes": "crypto 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
@@ -1195,22 +1179,6 @@
     "zh-CN": "名称只能在那台设备上修改"
   },
   {
-    "en": "Device information is changing. Retry.",
-    "key": "errors.device_information_is_changing_retry",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "设备信息正在变化，请重试"
-  },
-  {
     "en": "Project preferences format is not supported",
     "key": "errors.project_preferences_format_is_not_supported",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
@@ -1465,128 +1433,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。"
-  },
-  {
-    "en": "bad key or nonce size",
-    "key": "errors.ios_crypto_bad_key_nonce_size",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "bad key or nonce size"
-  },
-  {
-    "en": "envelope does not open",
-    "key": "errors.ios_crypto_envelope_does_not_open",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "envelope does not open"
-  },
-  {
-    "en": "envelope is not where it belongs",
-    "key": "errors.ios_crypto_envelope_location",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "envelope is not where it belongs"
-  },
-  {
-    "en": "malformed content",
-    "key": "errors.ios_crypto_malformed_content",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "malformed content"
-  },
-  {
-    "en": "malformed header",
-    "key": "errors.ios_crypto_malformed_header",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "malformed header"
-  },
-  {
-    "en": "root key must be {count} bytes",
-    "key": "errors.ios_crypto_root_key_bytes",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。count 为固定密钥字节数。",
-    "params": {
-      "count": {
-        "example": 2,
-        "type": "integer"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "root key must be {count} bytes"
-  },
-  {
-    "en": "signing seed must be {count} bytes",
-    "key": "errors.ios_crypto_signing_seed_bytes",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。count 为固定密钥字节数。",
-    "params": {
-      "count": {
-        "example": 2,
-        "type": "integer"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "signing seed must be {count} bytes"
-  },
-  {
-    "en": "unsupported envelope version",
-    "key": "errors.ios_crypto_unsupported_envelope_version",
-    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "unsupported envelope version"
   },
   {
     "en": "Remote control expired. Control and new uploads are paused; {renewal}",

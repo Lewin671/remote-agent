@@ -23,12 +23,11 @@ import {
   SecurityKeyAgreeEffectSchema,
   SecurityKeyKind,
   SecurityKeySignEffectSchema,
-  SecurityRecordEventSchema,
+  SecurityStorageResultEventSchema,
 } from "../gen/remoteagent/core/v1/security_pb";
 import vectors from "../../../internal/deviceauth/testdata/domain-v3.json";
 import { concat, fromHex, utf8 } from "../crypto";
 
-const unb64 = (s: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const fromB64Url = (s: string): Uint8Array<ArrayBuffer> =>
   Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
 
@@ -215,7 +214,7 @@ describe("CoreHost cold-boot security ordering", () => {
     while (hosts.length) hosts.pop()!.dispose();
   });
 
-  it("dispatches securityConfig -> securityRecord before cacheBootstrapLoaded during warmLocalCache", async () => {
+  it("dispatches securityConfig -> security bootstrap before cacheBootstrapLoaded during warmLocalCache", async () => {
     const dispatched: Array<CoreEvent["event"]["case"]> = [];
     const origDispatch = (CoreHost.prototype as unknown as { dispatch(ev: CoreEvent, cb?: () => void): void }).dispatch;
     vi.spyOn(CoreHost.prototype as unknown as { dispatch(ev: CoreEvent, cb?: () => void): void }, "dispatch").mockImplementation(function (
@@ -227,16 +226,7 @@ describe("CoreHost cold-boot security ordering", () => {
       return origDispatch.call(this, ev, cb);
     });
 
-    const cachedRecord = create(SecurityRecordEventSchema, {
-      account: vectors.account,
-      domain: fromHex(vectors.domain),
-      genesis: fromHex(vectors.genesis.hash),
-      states: [unb64(vectors.genesis.state), unb64(vectors.added.state)],
-      recoveryProofs: [new Uint8Array(0), new Uint8Array(0)],
-      lease: unb64(vectors.lease),
-      floorMs: BigInt(Date.now()),
-    });
-
+    let host!: CoreHost;
     const exec: CoreExecutor = {
       openStreamLeg() {},
       closeStreamLeg() {},
@@ -247,11 +237,15 @@ describe("CoreHost cold-boot security ordering", () => {
       securityConfig() {
         return { account: vectors.account, deviceId: "dev-client" };
       },
-      async readCachedSecurityRecord() {
-        return cachedRecord;
-      },
-      async syncSecurity(opId, networkGeneration) {
-        return create(SecurityRecordEventSchema, { opId, networkGeneration });
+      securityStorage(eff) {
+        host.dispatch(
+          create(CoreEventSchema, {
+            event: {
+              case: "securityStorageResult",
+              value: create(SecurityStorageResultEventSchema, { opId: eff.opId }),
+            },
+          }),
+        );
       },
       async readBootstrapCache(opId) {
         return create(CacheBootstrapLoadedEventSchema, {
@@ -274,15 +268,15 @@ describe("CoreHost cold-boot security ordering", () => {
       applySyncStateView() {},
     };
 
-    const host = new CoreHost(undefined, { executor: exec });
+    host = new CoreHost(undefined, { executor: exec });
     hosts.push(host);
     await host.warmLocalCache("/");
 
     const cfgIdx = dispatched.indexOf("securityConfig");
-    const recIdx = dispatched.indexOf("securityRecord");
+    const actIdx = dispatched.indexOf("securityAction");
     const bootIdx = dispatched.indexOf("cacheBootstrapLoaded");
     expect(cfgIdx).toBeGreaterThanOrEqual(0);
-    expect(recIdx).toBeGreaterThan(cfgIdx);
-    expect(bootIdx).toBeGreaterThan(recIdx);
+    expect(actIdx).toBeGreaterThan(cfgIdx);
+    expect(bootIdx).toBeGreaterThan(actIdx);
   });
 });

@@ -43,8 +43,9 @@ final class FakeJoin: @unchecked Sendable {
     let fake = FakeJoin()
     let joined = Joined()
     let account = Account(
-        server: "https://ra.example.com", root: Data(repeating: 1, count: 32),
-        deviceSeed: Data(repeating: 2, count: 32), deviceId: "d1")
+        server: "https://ra.example.com",
+        deviceId: "d1",
+        accountId: "acct-1")
 
     @MainActor final class Joined {
         var accounts: [Account] = []
@@ -89,7 +90,7 @@ final class FakeJoin: @unchecked Sendable {
         m.cancel()
         #expect(await task.value == false)
         #expect(p.stopped() && joined.accounts.isEmpty)
-        p.end.resume(throwing: PairError("已取消"))
+        p.end.resume(throwing: SecurityWorkflowError(message: "已取消", code: "canceled", retryable: false))
     }
     @Test func theCodeKeepsOnlyEightDigitsAndIsShownInTwoGroups() {
         let m = model()
@@ -198,9 +199,9 @@ final class FakeJoin: @unchecked Sendable {
         #expect(m.notice == L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe())
         #expect(!m.noticeIsError)
         // The pairing ending because it was stopped changes nothing on the page.
-        p.end.resume(throwing: PairError("已取消"))
+        p.end.resume(throwing: SecurityWorkflowError(message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(), code: "canceled", retryable: false))
         try? await Task.sleep(nanoseconds: 50_000_000)
-        #expect(m.notice.hasPrefix(L10n.securityIosJoiningCanceled()) && m.step == .form)
+        #expect(m.notice == L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe() && m.step == .form)
         #expect(joined.accounts.isEmpty)
         // Pictures that arrive late are not shown.
         p.onEmoji(["🐶", "🐱", "🐭", "🐹"])
@@ -226,7 +227,7 @@ final class FakeJoin: @unchecked Sendable {
 
     @Test func aJoinThatFailsSaysWhyAndKeepsWhatWasTyped() async {
         let (m, p) = await started()
-        p.end.resume(throwing: PairError("配对码不对，或者已经用过了"))
+        p.end.resume(throwing: SecurityWorkflowError(message: "配对码不对，或者已经用过了", code: "invalid", retryable: false))
         await eventually("failed") { m.step == .form }
         #expect(m.notice == L10n.securityThePairingCodeIsWrongOrHasAlreadyBeen() && m.noticeIsError)
         #expect(m.code == "48291756")

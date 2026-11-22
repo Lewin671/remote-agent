@@ -26,8 +26,10 @@ private func diskPressureCritical(_ disk: PBDiskStatus) -> Bool { disk.pressure 
 /// iOS currently has no OS push delivery adapter. This RACore receiver is the
 /// verified envelope -> localized notification + machine destination boundary.
 public func receiveMachineDiskNotification(envelope: Data, notifyRecord: Data, locale: String = MessageLocale.current) throws -> MachineDiskNotice? {
-    let c=try DeviceSecurity.NotifyRecord.parse(notifyRecord).open(PBEnvelope(serializedBytes:envelope))
-    return machineDiskNotice(c,locale:locale)
+    guard let c = try openNotifyEnvelopeViaCore(notifyBlob: notifyRecord, envelope: PBEnvelope(serializedBytes: envelope)) else {
+        return nil
+    }
+    return machineDiskNotice(c, locale: locale)
 }
 extension Remote {
     public func setMachinePushTarget(type: PBPushType, target: String, kinds: [PBNotifyKind]) async throws -> PBSetPushTargetResponse {

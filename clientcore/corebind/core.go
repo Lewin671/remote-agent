@@ -5,7 +5,6 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/app"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
-	"github.com/Lewin671/remote-agent/clientcore/security"
 )
 
 var errNilCore = errors.New("corebind: nil Core handle")
@@ -59,16 +58,4 @@ func (c *Core) Close() {
 		return
 	}
 	c.inner.Close()
-}
-
-// SecCall executes a stateless security primitive call on a serialized
-// corev1.SecCallRequest and returns a serialized corev1.SecCallResponse.
-func SecCall(reqBytes []byte) ([]byte, error) {
-	var req corev1.SecCallRequest
-	if len(reqBytes) > 0 {
-		if err := req.Unmarshal(reqBytes); err != nil {
-			return nil, err
-		}
-	}
-	return security.SecCall(&req).Marshal()
 }

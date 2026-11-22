@@ -69,7 +69,7 @@ func TestSyncEngineRoutesS6WorkflowEventsAndPollTimers(t *testing.T) {
 		t.Fatal("expected Bootstrap result to surface LegacyRepairNotice")
 	}
 
-	// Verify SyncStates via requestSyncSecurity uses Core RPC instead of legacy SyncSecurityEffect once bootstrapped.
+	// Verify SyncStates via requestSyncSecurity uses Core RPC once bootstrapped.
 	eng.secEngine.SetAuthToken("tok-1", 1_700_000_100_000)
 	_ = eng.secEngine
 	// Verify SecurityTokenUpdated updates eng.cachedToken cleanly

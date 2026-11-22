@@ -5,34 +5,38 @@ import Foundation
 import RAProto
 import os
 
-/// A device of the account. `root` and `deviceSeed` are secrets: the app
-/// keeps them in the Keychain and never logs them.
+/// A device of the account. Private keys never leave `SecurityStoreV4` / `Vault`.
 public struct Account: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let server: String
-    /// Protocol 8 and earlier history only. A device that joined by pairing
-    /// does not receive it; an empty value means it has none.
-    public let root: Data
-    public let deviceSeed: Data
     public let deviceId: String
-    /// The account ID (the security domain's Pin.account). Empty only for
-    /// callers that predate it and can derive it from `root`.
     public let accountId: String
+    public var localKey: Data { Data((accountId.isEmpty ? deviceId : accountId).utf8) }
 
-    public init(
-        server: String, root: Data, deviceSeed: Data, deviceId: String, accountId: String = ""
-    ) {
+    public init(server: String, deviceId: String, accountId: String = "") {
         self.server = server
-        self.root = root
-        self.deviceSeed = deviceSeed
         self.deviceId = deviceId
         self.accountId = accountId
     }
 
-    /// Never the keys, so that they cannot reach a log by accident.
     public var description: String { "Account(server=\(server), device=\(deviceId))" }
     public var debugDescription: String { description }
     public var customMirror: Mirror { Mirror(self, children: ["server": server, "deviceId": deviceId]) }
-    public var hasRoot: Bool { root.count == 32 }
+}
+
+public typealias Sleeper = @Sendable (_ ms: Int64) async throws -> Void
+
+public let realSleep: Sleeper = {
+    try await Task.sleep(nanoseconds: UInt64(max($0, 0)) * 1_000_000)
+}
+
+public enum SecurityFailure: Error, Equatable, Sendable {
+    case invalid, stale, lease, unavailable, untrusted, conflict, capacity, storage, clock
+}
+
+public enum SecurityPurpose: UInt32, Sendable {
+    case event = 1, sessionMeta = 2, sessionKey = 3, machineMeta = 4, command = 5, result = 6,
+         terminalOutput = 7, terminalInput = 8, notify = 10, image = 11, prefs = 12,
+         deviceMeta = 13, terminalResize = 14, terminalHistory = 15
 }
 
 /// The app's one HTTP stack: requests, RPCs and WebSockets share its
@@ -249,7 +253,7 @@ public final class Api: Sendable {
         let url = URL(string: server)!
         if let epoch = http.relayEpoch(for: url) { return epoch }
         _ = try await http.data(for: URLRequest(url: URL(string: server + "/healthz")!))
-        guard let epoch = http.relayEpoch(for: url) else { throw DeviceSecurity.Failure.untrusted }
+        guard let epoch = http.relayEpoch(for: url) else { throw SecurityFailure.untrusted }
         return epoch
     }
 
@@ -269,21 +273,16 @@ extension ResponseMessage {
     public func value() throws -> Output { try result.get() }
 }
 
-/// Logs in with the device key and returns a bearer token.
-public func login(api: Api, account: Account) async throws -> String {
-    try await loginResponse(api: api, account: account).token
-}
-
-/// Logs in with the device key and returns the token with its expiry.
-public func loginResponse(api: Api, account: Account) async throws -> PBLoginResponse {
+/// Logs in with the device Ed25519 key in `SecurityStoreV4` and returns the login response with expiry.
+public func loginWithStore(api: Api, deviceId: String, store: any SecurityStoreV4) async throws -> PBLoginResponse {
     var ask = PBGetChallengeRequest()
-    ask.deviceID = account.deviceId
+    ask.deviceID = deviceId
     let ch = try await api.auth.getChallenge(request: ask).value()
     var req = PBLoginRequest()
     req.protocolVersion = relayProtocolVersion
-    req.deviceID = account.deviceId
+    req.deviceID = deviceId
     req.challenge = ch.challenge
-    req.signature = try SigningKey(seed: account.deviceSeed).sign(loginMessage(ch.challenge))
+    req.signature = try store.signKey(kind: .deviceEd, slot: "", message: loginMessage(ch.challenge))
     return try await api.auth.login(request: req).value()
 }
 
@@ -418,15 +417,16 @@ private func ownText(_ e: Error) -> String {
 
 /// Short text for an error, without content.
 public func errorText(_ e: Error) -> String {
-    if let f=e as? DeviceSecurity.Failure {
+    if let f = e as? SecurityFailure {
         switch f {
-        case .lease:return L10n.errorsIosRemoteControlExpiredSavingChangesSessionControlAndNew()
-        case .unavailable:return L10n.errorsWaitingForTheOwningComputerToUpdateTheCurrentRemote()
-        case .invalid,.untrusted:return L10n.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed()
-        case .conflict:return L10n.errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd()
-        default:break
+        case .lease: return L10n.errorsIosRemoteControlExpiredSavingChangesSessionControlAndNew()
+        case .unavailable: return L10n.errorsWaitingForTheOwningComputerToUpdateTheCurrentRemote()
+        case .invalid, .untrusted: return L10n.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed()
+        case .conflict: return L10n.errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd()
+        default: break
         }
     }
+    if let sw = e as? SecurityWorkflowError { return sw.message }
     if let c = e as? CommandError { return c.message }
     if let ce = e as? ConnectError {
         // A request that never reached the server carries the network failure
@@ -475,29 +475,4 @@ func neverSent(_ e: Error?) -> Bool {
 /// Call only for a login attempt: transport failures never establish identity rejection.
 public func loginDenied(_ error: Error) -> Bool {
     (error as? ConnectError)?.code == .permissionDenied
-}
-
-/// Startup only: both challenge/login attempts share one short deadline.
-/// A lost challenge after a relay restart is indistinguishable from a denied
-/// identity until a fresh challenge/login is denied too. Cancellation and
-/// transport failures leave the retained setup available.
-public func probeRetainedIdentity(
-    timeoutMs: Int64 = 5_000,
-    sleep: @escaping Sleeper = realSleep,
-    attempt: @escaping @Sendable () async throws -> Void
-) async -> Bool {
-    do {
-        return try await withTimeout(timeoutMs, sleep: sleep) {
-            do {
-                do { try await attempt() }
-                catch where loginDenied(error) {
-                    try Task.checkCancellation()
-                    try await attempt()
-                }
-                return false
-            } catch {
-                return !Task.isCancelled && loginDenied(error)
-            }
-        }
-    } catch { return false }
 }

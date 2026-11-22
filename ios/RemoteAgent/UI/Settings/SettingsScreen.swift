@@ -194,12 +194,10 @@ struct SettingsScreen: View {
             // It asks first, as every row that ends in an ellipsis does (design-system §8).
             GRow(L10n.settingsExitAndDeleteLocalKeys(), danger: true) {
                 Task {
-                    do {
-                        let c = try await context.remote.authorityCoordinator()
-                        let pending = try await c.pendingOperation()
-                        exitText = AuthorityAccess.exitAdvice(authority: try await c.isAuthority(), unresolved: pending != nil)
-                    } catch {
-                        exitText = AuthorityAccess.exitAdvice(authority: true, unresolved: true)
+                    if let adv = await model.rejoinAdvice() {
+                        exitText = adv.text
+                    } else {
+                        exitText = AuthorityAccess.exitAdvice(authority: false, unresolved: false)
                     }
                     leaving = true
                 }

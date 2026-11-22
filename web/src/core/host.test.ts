@@ -20,7 +20,7 @@ import {
   type Event,
   type RpcEffect,
 } from "../gen/remoteagent/core/v1/app_pb";
-import { DemoSecuritySchema, SecurityConfigEventSchema, SecurityRecordEventSchema, SeedDemoWorldEventSchema } from "../gen/remoteagent/core/v1/security_pb";
+import { DemoSecuritySchema, SeedDemoWorldEventSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { Agent, SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
@@ -70,9 +70,6 @@ function makeExecutor(overrides: Partial<CoreExecutor> = {}): CoreExecutor & {
       });
     },
     discardToken() {},
-    syncSecurity() {
-      return new Promise(() => {});
-    },
     async readBootstrapCache(opId) {
       return create(CacheBootstrapLoadedEventSchema, {
         opId,
@@ -296,53 +293,6 @@ test("CoreHost serializes prepared cache writes in effect order and releases unu
     .map((e) => e.i);
   expect(startIndices.length).toBeGreaterThanOrEqual(2);
   expect(endIndices[0]).toBeLessThan(startIndices[1]);
-});
-
-test("CoreHost dispatches unrequested securityRecord when pushSeq increases monotonically", async () => {
-  const exec = makeExecutor();
-  const host = new CoreHost(undefined, { executor: exec });
-  hosts.push(host);
-  host.start();
-  host.dispatch(
-    create(EventSchema, {
-      event: {
-        case: "securityConfig",
-        value: create(SecurityConfigEventSchema, { account: "acc-1", deviceId: "dev-client", inlineCrypto: true }),
-      },
-    }),
-  );
-  await flushPromises();
-  await flushPromises();
-
-  // OpId=0 with monotonic pushSeq updates security state; stale pushSeq is ignored.
-  host.dispatch(
-    create(EventSchema, {
-      event: {
-        case: "securityRecord",
-        value: create(SecurityRecordEventSchema, {
-          opId: 0n,
-          pushSeq: 2n,
-          removed: true,
-        }),
-      },
-    }),
-  );
-  expect(host.viewSyncState().isMember).toBe(false);
-
-  // Stale pushSeq=1n (< 2n) must be ignored and keep isMember=false.
-  host.dispatch(
-    create(EventSchema, {
-      event: {
-        case: "securityRecord",
-        value: create(SecurityRecordEventSchema, {
-          opId: 0n,
-          pushSeq: 1n,
-          account: "acc-1",
-        }),
-      },
-    }),
-  );
-  expect(host.viewSyncState().isMember).toBe(false);
 });
 
 test("CoreHost honors fake timers for clock ticks and cleans up on dispose without hanging", async () => {

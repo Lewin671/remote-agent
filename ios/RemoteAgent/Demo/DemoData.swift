@@ -25,8 +25,8 @@ enum DemoSet: String, CaseIterable, Sendable {
 
 enum Demo {
     static let me = "2222222222222222"
-    /// An account that opens nothing: the keys are zeros and the server is a closed port on this device.
-    static let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: me)
+    /// An account that opens nothing: the server is a closed port on this device.
+    static let account = Account(server: "http://127.0.0.1:1", deviceId: me, accountId: me)
 
     static let home = "/Users/me"
     static let foo = home + "/Code/foo"

@@ -40,12 +40,6 @@
             }
           },
           {
-            "syncSecurity": {
-              "opId": "3",
-              "touch": true
-            }
-          },
-          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
@@ -122,7 +116,7 @@
           },
           {
             "rpc": {
-              "opId": "4",
+              "opId": "3",
               "fetchLists": {
                 "limit": 50
               }
@@ -130,7 +124,7 @@
           },
           {
             "rpc": {
-              "opId": "5",
+              "opId": "4",
               "getAccountPrefs": {
                 "objectId": "project-prefs"
               }
@@ -272,12 +266,6 @@
     {
       "effects": {
         "effects": [
-          {
-            "syncSecurity": {
-              "opId": "6",
-              "touch": true
-            }
-          },
           {
             "requestEntropy": {
               "minRandomBytes": 4096
@@ -2829,15 +2817,33 @@
       "effects": {
         "effects": [
           {
-            "securityKeyAgree": {
+            "securityStorage": {
               "opId": "1",
-              "keyKind": "SECURITY_KEY_KIND_DEVICE_X",
-              "peerPublic": "pOuub6GSvelOBE4TUb8MNQjjTAR3jTQ50REkDqJ1IEE="
+              "op": "SECURITY_STORAGE_OP_READ_BOOTSTRAP"
             }
-          },
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
           {
             "securityKeyAgree": {
               "opId": "2",
+              "keyKind": "SECURITY_KEY_KIND_DEVICE_X",
+              "peerPublic": "pOuub6GSvelOBE4TUb8MNQjjTAR3jTQ50REkDqJ1IEE="
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "securityKeyAgree": {
+              "opId": "3",
               "keyKind": "SECURITY_KEY_KIND_DEVICE_X",
               "peerPublic": "0uWjKfLzwvNjLEhBOjAjueSB/ju6M7JD/+uFm0OjzEw="
             }
@@ -2847,6 +2853,38 @@
               "timerId": "5",
               "kind": "TIMER_KIND_DIRECT_SESSION",
               "delayMs": "10000"
+            }
+          },
+          {
+            "securityWorkflowResult": {
+              "actionId": "1",
+              "ok": true,
+              "status": {
+                "bootstrap": "SECURITY_BOOTSTRAP_KIND_READY",
+                "isMember": true,
+                "isAuthority": true,
+                "server": "https://relay.example.com",
+                "deviceId": "99bc54e6bec99f6a08855c24cade3ab7",
+                "accountId": "00000000000000000000000000000001",
+                "headEpoch": "2",
+                "leaseEndMs": "1791337260001",
+                "leaseValid": true
+              }
+            }
+          },
+          {
+            "securityStatusChanged": {
+              "status": {
+                "bootstrap": "SECURITY_BOOTSTRAP_KIND_READY",
+                "isMember": true,
+                "isAuthority": true,
+                "server": "https://relay.example.com",
+                "deviceId": "99bc54e6bec99f6a08855c24cade3ab7",
+                "accountId": "00000000000000000000000000000001",
+                "headEpoch": "2",
+                "leaseEndMs": "1791337260001",
+                "leaseValid": true
+              }
             }
           },
           {
@@ -2871,16 +2909,13 @@
       }
     },
     {
-      "effects": {}
-    },
-    {
       "effects": {
         "effects": [
           {
             "securityKeySign": {
-              "opId": "3",
+              "opId": "4",
               "keyKind": "SECURITY_KEY_KIND_DEVICE_ED",
-              "message": "AAAAHnJlbW90ZS1hZ2VudC9wZWVyLXNpZ25hdHVyZS92MQAAAMwAAAAYcmVtb3RlLWFnZW50L3BlZXItYWFkL3YxAAAAIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxAAAAIGWVrcq4msoIlDWB0ztJ9suWbMMLKZcZLMnb7DObAUCzAAAACAAAAAAAAAARAAAAWAogOTliYzU0ZTZiZWM5OWY2YTA4ODU1YzI0Y2FkZTNhYjcSIDg1ZDIzNjI5NTlmMjU0YWM0ZmZlZWJhNzBkOTU2MTU0GAEiEDAxMjM0NTY3ODlhYmNkZWYAAAAMMDEyMzQ1Njc4OWFiAAABfBlXTntUxzpH5+5YE49mg77BgD1raVNMHWC8DlOhFzzV8ABbQ/qr21jcTIK7PbDkrnkcNdwppuYX8QRpHMwKmYCu5BKQuIErExoITd9raLA7puyX6rwDEhDG2nDLXJwxKJE/yzws9hVxJCgkYinoKjTIL2HyLMZFWnQlXJ2Qyv9JgVJOxD64d4GAoEMqRzW/ldM/lz2j3ulkIVtBX1k7ff7YS6E6KXppiXFaCnFaF5AvlKhBFDkUTX08xaCRFsLeXvbCzl5x2DUJGyvxvKzwVXSdhx/X/z2RSb7EyzopE+tbiP0d+S6yXy+kk/iAhYmEZ/MW/NoDV1nynzV8Rgj48jrP2MGSI09EFyaN6udlnY2jcqxdwh+jNMeyCq6R3rEPtlEvRaJeQ//WIv6MrTAtM24qpmjN1G0veiXSrcfHlJn30zQFX62e3plgolL5PiwlqbQUu9g2iOTL2q6ySc1Bho5Pq93s6Kql8o7CX65l9G6FzuojcVVPG8Gb11BRAAAADGNkZWYwMTIzNDU2NwAAAFwXb3vxN2ELn4LO95BXkcJc1183b60HRA8u/oNrZLRzO9388X0XtRldxNojzKAZt+gbyy3xoFfy0KsjuAgjGjGfy3RqerJ746vLwuqr4y3ghA7eQb/7LIWuO+3a4w=="
+              "message": "AAAAHnJlbW90ZS1hZ2VudC9wZWVyLXNpZ25hdHVyZS92MQAAAMwAAAAYcmVtb3RlLWFnZW50L3BlZXItYWFkL3YxAAAAIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxAAAAIGWVrcq4msoIlDWB0ztJ9suWbMMLKZcZLMnb7DObAUCzAAAACAAAAAAAAAARAAAAWAogOTliYzU0ZTZiZWM5OWY2YTA4ODU1YzI0Y2FkZTNhYjcSIDg1ZDIzNjI5NTlmMjU0YWM0ZmZlZWJhNzBkOTU2MTU0GAEiEDAxMjM0NTY3ODlhYmNkZWYAAAAMMDEyMzQ1Njc4OWFiAAABfBlXTntUxzpH5+5YE49mg77BgD1raVNMHWC8DlOhFzzV8ABbQ/qr21jcTIK7PbDkrnkcNdwppuYX8QRpHMwKmYCu5BKQuIErExoITd9raLA7puyX6rwDEhDG2nDLXJwxKJE/yzws9hVxJCgkYinoKjTIL2HyLMZFWnQlXJ2Qyv9JgVJOxD64d4GAoEMqRzW/ldM/lz2j3ulkIVtBX1k7ff7YS6E6KXppiXFaCnFaF5AvlKhBFDkUTX08xaCRFsLeXvbCzl5x2DUJGyvxvKzwVXSdhx/X/z2RSb7EyzopE+tbiP0d+S6yXy+kk/iAhYmEZ/MW/NoDV1nynzV8Rgj48jrP2MGSI09EFyaN6udlnY2jcqxdwh+jNMeyCtOQ3rEPtlEvRaJeQ//WIv6MrTAtM24qpmjN1G0veiXSrcfHlJn30zQFX62e3plgolL5PiwlqbQUu9g2iOTL2q6ySc1Bho5Pq93s6Kql8o7CX67zb038Y3O1XlljAktSgioKAAAADGNkZWYwMTIzNDU2NwAAAFwXb3vxN2ELn4LO95BXkcJc1183b60HRA8u/oNrZLRzO9388X0XtRldxNojzKAZt+gbyy3xoFfy0KsjuAgjGjGfy3RqerJ746vLwuqroYtX0iUAo+ylmWhTe10TMA=="
             }
           },
           {
@@ -2893,7 +2928,7 @@
             "scheduleTimer": {
               "timerId": "6",
               "kind": "TIMER_KIND_DIRECT_SESSION",
-              "delayMs": "8490"
+              "delayMs": "8495"
             }
           }
         ]

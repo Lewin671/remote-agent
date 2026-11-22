@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bytes"
+	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
@@ -13,8 +14,11 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
+	"github.com/Lewin671/remote-agent/clientcore/security"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
+	"google.golang.org/protobuf/proto"
 )
 
 func seedEntropy(n int) ([]string, []float64) {
@@ -41,41 +45,51 @@ func startAndConnect(t *testing.T, e *Engine, nowMs int64) (legID uint64, listsO
 			},
 		},
 	})
-	var tokOp, secOp uint64
+	respondSyncRpc := func(effs []*corev1.Effect) {
+		for _, eff := range effs {
+			if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+				emptyStatesRaw, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: e.security.HeadEpoch})
+				e.HandleEvent(&corev1.Event{
+					NowMs: nowMs + 25,
+					Event: &corev1.Event_SecurityRpcResult{
+						SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: sr.OpId, ResponseBytes: emptyStatesRaw},
+					},
+				})
+			}
+		}
+	}
+	var tokOp uint64
 	for _, eff := range res.Effects {
 		if et := eff.GetEnsureToken(); et != nil {
 			tokOp = et.OpId
 		}
-		if ss := eff.GetSyncSecurity(); ss != nil {
-			secOp = ss.OpId
-		}
 	}
+	respondSyncRpc(res.Effects)
 	if tokOp == 0 {
 		t.Fatalf("expected EnsureTokenEffect on Start")
 	}
-	if secOp != 0 {
-		e.HandleEvent(&corev1.Event{
-			NowMs: nowMs + 10,
-			Event: &corev1.Event_SeedDemoWorld{
-				SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-					Security: &corev1.DemoSecurity{
-						IsMember:          true,
-						SelfDeviceId:      "c1",
-						AuthorityDeviceId: "c1",
-						LeaseEndMs:        nowMs + 86_400_000,
-						TrustedMachineIds: []string{"m1", "m2"},
-						NetworkGeneration: e.networkGen,
-					},
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 10,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "c1",
+					AuthorityDeviceId: "c1",
+					LeaseEndMs:        nowMs + 86_400_000,
+					TrustedMachineIds: []string{"m1", "m2"},
+					NetworkGeneration: e.networkGen,
 				},
 			},
-		})
-	}
+		},
+	})
 	_, tokRes := e.HandleEvent(&corev1.Event{
 		NowMs: nowMs + 20,
 		Event: &corev1.Event_TokenResult{
-			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-1"},
+			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-1", ExpiresMs: nowMs + 7*86_400_000},
 		},
 	})
+	respondSyncRpc(tokRes.Effects)
 	for _, eff := range tokRes.Effects {
 		if os := eff.GetOpenStream(); os != nil {
 			legID = os.LegId
@@ -90,6 +104,7 @@ func startAndConnect(t *testing.T, e *Engine, nowMs int64) (legID uint64, listsO
 			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: nowMs + 30},
 		},
 	})
+	respondSyncRpc(readyRes.Effects)
 	for _, eff := range readyRes.Effects {
 		if rpc := eff.GetRpc(); rpc != nil && rpc.GetFetchLists() != nil {
 			listsOpID = rpc.OpId
@@ -1359,50 +1374,49 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 		},
 	})
 
-	// 1. Push with PushSeq=2 applies epoch=2; opId=0/pushSeq=0 or stale pushSeq=1 afterwards is ignored.
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 10,
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				PushSeq: 2,
-				Account: client.id,
-				Domain:  dom[:],
-				Genesis: genHash[:],
-				States:  [][]byte{s0Raw, s1Raw},
-			},
-		},
+	// 1. Push with PushSeq=2 applies epoch=2; PushSeq=0 or stale PushSeq=1 afterwards is ignored.
+	applyTestSecurityRecord(e, now+10, security.RecordUpdate{
+		PushSeq: 2,
+		Account: client.id,
+		Domain:  dom[:],
+		Genesis: genHash[:],
+		States:  [][]byte{s0Raw, s1Raw},
 	})
 	if !e.security.Loaded || e.security.HeadEpoch != 2 {
-		t.Fatalf("expected pushSeq=2 SecurityRecord to apply, got loaded=%v epoch=%d", e.security.Loaded, e.security.HeadEpoch)
+		t.Fatalf("expected pushSeq=2 RecordUpdate to apply, got loaded=%v epoch=%d", e.security.Loaded, e.security.HeadEpoch)
 	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 15,
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				Account: client.id,
-				Domain:  dom[:],
-				Genesis: genHash[:],
-				States:  [][]byte{s0Raw},
-			},
-		},
+	applyTestSecurityRecord(e, now+15, security.RecordUpdate{
+		Account: client.id,
+		Domain:  dom[:],
+		Genesis: genHash[:],
+		States:  [][]byte{s0Raw},
 	})
 	if !e.security.Loaded || e.security.HeadEpoch != 2 || !e.security.IsMember {
-		t.Fatalf("expected pushSeq=0 SecurityRecord after pushSeq=2 to be dropped, got member=%v epoch=%d", e.security.IsMember, e.security.HeadEpoch)
+		t.Fatalf("expected pushSeq=0 RecordUpdate after pushSeq=2 to be dropped, got member=%v epoch=%d", e.security.IsMember, e.security.HeadEpoch)
 	}
-	e.HandleEvent(&corev1.Event{
-		NowMs: now + 20,
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				PushSeq: 1,
-				Removed: true,
-			},
-		},
+	applyTestSecurityRecord(e, now+20, security.RecordUpdate{
+		PushSeq: 1,
+		Removed: true,
 	})
 	if !e.security.Loaded || e.security.HeadEpoch != 2 || !e.security.IsMember {
-		t.Fatalf("expected stale pushSeq=1 SecurityRecord to be dropped, got member=%v epoch=%d", e.security.IsMember, e.security.HeadEpoch)
+		t.Fatalf("expected stale pushSeq=1 RecordUpdate to be dropped, got member=%v epoch=%d", e.security.IsMember, e.security.HeadEpoch)
 	}
 
-	// 2. MachineRemovedId stream frame emits SyncSecurityEffect; wrong opId is rejected; matching opId succeeds even with pushSeq=0.
+	// 2. MachineRemovedId stream frame emits SecurityRpc(GET_SECURITY_STATES); wrong opId is rejected; matching opId updates epoch=3.
+	actor := syncTestActor{id: client.id, ed: client.signPriv, edP: client.signPub[:], x: client.xPriv, xPub: client.xPub}
+	secRec := &security.PersistedRecord{
+		Pin:      devicesec.Pin{Account: client.id, Domain: dom, Genesis: genHash},
+		MemberID: client.id,
+		Member:   true,
+		Server:   "https://relay.example.com",
+		States:   [][]byte{s0Raw, s1Raw},
+		FloorMs:  now + 100_000,
+	}
+	recRaw, err := secRec.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bootstrapTestSecurityRecord(t, e, actor, now+25, secRec, "tok-1")
 	e.running = true
 	e.legID = 42
 	_, mrRes := e.HandleEvent(&corev1.Event{
@@ -1416,42 +1430,101 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 	})
 	var secOp uint64
 	for _, eff := range mrRes.Effects {
-		if ss := eff.GetSyncSecurity(); ss != nil {
-			secOp = ss.OpId
+		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			secOp = sr.OpId
 		}
 	}
 	if secOp == 0 {
-		t.Fatalf("expected MachineRemovedId stream frame to emit SyncSecurityEffect with non-zero OpId")
+		t.Fatalf("expected MachineRemovedId stream frame to emit GET_SECURITY_STATES SecurityRpcEffect with non-zero OpId")
+	}
+	statesRespRaw, err := proto.Marshal(&stdv1.GetSecurityStatesResponse{
+		HeadEpoch: 3,
+		States:    []*stdv1.SecurityState{{State: s2Raw}},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	e.HandleEvent(&corev1.Event{
 		NowMs: now + 35,
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				OpId:    secOp + 99,
-				Account: client.id,
-				Domain:  dom[:],
-				Genesis: genHash[:],
-				States:  [][]byte{s0Raw, s1Raw, s2Raw},
+		Event: &corev1.Event_SecurityRpcResult{
+			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+				OpId:          secOp + 99,
+				ResponseBytes: statesRespRaw,
 			},
 		},
 	})
 	if e.security.HeadEpoch != 2 {
-		t.Fatalf("expected wrong opId SecurityRecord to be ignored, got epoch=%d", e.security.HeadEpoch)
+		t.Fatalf("expected wrong opId SecurityRpcResult to be ignored, got epoch=%d", e.security.HeadEpoch)
 	}
-	e.HandleEvent(&corev1.Event{
+	_, rpcDone := e.HandleEvent(&corev1.Event{
 		NowMs: now + 40,
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				OpId:    secOp,
-				Account: client.id,
-				Domain:  dom[:],
-				Genesis: genHash[:],
-				States:  [][]byte{s0Raw, s1Raw, s2Raw},
+		Event: &corev1.Event_SecurityRpcResult{
+			SecurityRpcResult: &corev1.SecurityRpcResultEvent{
+				OpId:          secOp,
+				ResponseBytes: statesRespRaw,
 			},
 		},
 	})
+	// Pump CAS storage effects emitted by SyncStates so epoch=3 persists into secEngine.
+	storeBlob := recRaw
+	storeRev := "rev-1"
+	q := append([]*corev1.Effect(nil), rpcDone.Effects...)
+	for len(q) > 0 {
+		eff := q[0]
+		q = q[1:]
+		if st := eff.GetSecurityStorage(); st != nil {
+			var rep *corev1.SecurityStorageResultEvent
+			switch st.Op {
+			case corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ:
+				rep = &corev1.SecurityStorageResultEvent{
+					OpId:     st.OpId,
+					Found:    st.Bucket == corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD,
+					Revision: storeRev,
+					Data:     storeBlob,
+				}
+			case corev1.SecurityStorageOp_SECURITY_STORAGE_OP_WRITE_CAS:
+				if st.Bucket == corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD {
+					storeBlob = st.Data
+					storeRev = st.NextRevision
+				}
+				rep = &corev1.SecurityStorageResultEvent{OpId: st.OpId, Revision: st.NextRevision}
+			case corev1.SecurityStorageOp_SECURITY_STORAGE_OP_BATCH_COMMIT:
+				for _, w := range st.Batch {
+					if w.Bucket == corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD && !w.Remove {
+						storeBlob = w.Data
+						storeRev = w.NextRevision
+					}
+				}
+				rep = &corev1.SecurityStorageResultEvent{OpId: st.OpId}
+			}
+			if rep != nil {
+				_, nextRes := e.HandleEvent(&corev1.Event{
+					NowMs: now + 41,
+					Event: &corev1.Event_SecurityStorageResult{SecurityStorageResult: rep},
+				})
+				q = append(q, nextRes.Effects...)
+			}
+		} else if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			emptyStates3Raw, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: 3})
+			_, nextRes := e.HandleEvent(&corev1.Event{
+				NowMs: now + 42,
+				Event: &corev1.Event_SecurityRpcResult{
+					SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: sr.OpId, ResponseBytes: emptyStates3Raw},
+				},
+			})
+			q = append(q, nextRes.Effects...)
+		} else if ka := eff.GetSecurityKeyAgree(); ka != nil {
+			peer, _ := ecdh.X25519().NewPublicKey(ka.PeerPublic)
+			shared, _ := actor.x.ECDH(peer)
+			_, nextRes := e.HandleEvent(&corev1.Event{
+				NowMs: now + 43,
+				Event: &corev1.Event_SecurityKeyAgreed{SecurityKeyAgreed: &corev1.SecurityKeyAgreedEvent{OpId: ka.OpId, Shared: shared}},
+			})
+			q = append(q, nextRes.Effects...)
+		}
+	}
 	if e.security.HeadEpoch != 3 {
-		t.Fatalf("expected matching opId SecurityRecord to apply epoch=3, got %d", e.security.HeadEpoch)
+		t.Fatalf("expected matching opId SecurityRpcResult to apply epoch=3, got %d", e.security.HeadEpoch)
 	}
 
 	// 4. DevicesFetched: opId=0, pushSeq=0 is rejected; pushSeq=2 accepted; pushSeq=1 rejected.
@@ -1494,7 +1567,7 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 		t.Fatalf("expected stale DevicesFetched pushSeq=1 not to add d-stale")
 	}
 
-	// 5. DeviceRemovedId stream frame also emits SyncSecurityEffect directly from core.
+	// 5. DeviceRemovedId stream frame also emits SecurityRpc(GET_SECURITY_STATES) directly from core.
 	_, drRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 70,
 		Event: &corev1.Event_StreamFrame{
@@ -1506,12 +1579,12 @@ func TestSecurityAndDevicesGenerationChecks(t *testing.T) {
 	})
 	var gotSecSync bool
 	for _, eff := range drRes.Effects {
-		if eff.GetSyncSecurity() != nil && eff.GetSyncSecurity().OpId != 0 {
+		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES && sr.OpId != 0 {
 			gotSecSync = true
 		}
 	}
 	if !gotSecSync {
-		t.Fatalf("expected DeviceRemovedId stream frame to emit SyncSecurityEffect with non-zero OpId")
+		t.Fatalf("expected DeviceRemovedId stream frame to emit GET_SECURITY_STATES SecurityRpcEffect")
 	}
 }
 
@@ -1551,72 +1624,94 @@ func TestBackgroundAndStopClearDirectReady(t *testing.T) {
 	}
 }
 
-func TestResumeAfterStopAndBackgroundEmitsTouchSyncSecurity(t *testing.T) {
+func TestResumeAfterStopAndBackgroundEmitsSyncStatesRpc(t *testing.T) {
+	now := int64(1_700_000_000_000)
+	phone := newSyncTestActor(t, 1)
+	rec := newSyncTestActor(t, 2)
+	dom := devicesec.Digest("resume-sync-dom", []byte{1})
+	sec := bytes.Repeat([]byte{0x42}, 32)
+	u0, err := devicesec.NewGenesis(phone.id, dom, phone.member(devicesec.Client), [32]byte(rec.edP), sec, uint64(now), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, _ := u0.SigningBytes()
+	u0.Signature = ed25519.Sign(phone.ed, sb0)
+	s0Raw, _ := u0.MarshalBinary()
+	s0, _ := devicesec.ParseState(s0Raw)
+	gen, _ := s0.Hash()
+	lease, _ := devicesec.NewLease(s0, uint64(now))
+	lb, _ := lease.SigningBytes()
+	lease.Signature = ed25519.Sign(phone.ed, lb)
+	leaseRaw, _ := lease.MarshalBinary()
+
 	e := NewEngine()
-	startAndConnect(t, e, 1_000)
-	if !e.security.Loaded || e.security.VerifiedNetGen != e.networkGen {
-		t.Fatalf("expected loaded security at VerifiedNetGen=%d", e.networkGen)
+	bootstrapTestSecurityRecord(t, e, phone, now, &security.PersistedRecord{
+		Pin:      devicesec.Pin{Account: phone.id, Domain: dom, Genesis: gen},
+		MemberID: phone.id,
+		Member:   true,
+		Server:   "https://relay.example.com",
+		States:   [][]byte{s0Raw},
+		Lease:    leaseRaw,
+		FloorMs:  now + 100_000,
+	}, "tok-1")
+	startAndConnect(t, e, now+100)
+	if !e.security.Loaded {
+		t.Fatalf("expected loaded security before STOP/START")
 	}
 
-	// 1. STOP -> START on unchanged network must advance networkGen and emit SyncSecurityEffect(Touch=true).
+	// 1. STOP -> START on unchanged network must advance networkGen and emit GET_SECURITY_STATES SecurityRpcEffect.
 	e.HandleEvent(&corev1.Event{
-		NowMs: 2_000,
+		NowMs: 2_000 + now,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP},
 		},
 	})
 	_, res := e.HandleEvent(&corev1.Event{
-		NowMs: 2_100,
+		NowMs: 2_100 + now,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var startSec *corev1.SyncSecurityEffect
+	var startRpcOp uint64
 	for _, eff := range res.Effects {
-		if ss := eff.GetSyncSecurity(); ss != nil {
-			startSec = ss
+		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			startRpcOp = sr.OpId
 		}
 	}
-	if startSec == nil || !startSec.Touch || startSec.NetworkGeneration == 0 {
-		t.Fatalf("expected START after STOP to emit SyncSecurityEffect(Touch=true, NetworkGeneration>0), got %+v", startSec)
+	if startRpcOp == 0 || e.networkGen == 0 {
+		t.Fatalf("expected START after STOP to emit GET_SECURITY_STATES SecurityRpcEffect and advance networkGen, got op=%d gen=%d", startRpcOp, e.networkGen)
 	}
+	emptyStatesRaw, _ := proto.Marshal(&stdv1.GetSecurityStatesResponse{HeadEpoch: 1})
 	e.HandleEvent(&corev1.Event{
-		NowMs: 2_110,
-		Event: &corev1.Event_SeedDemoWorld{
-			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-				Security: &corev1.DemoSecurity{
-					NetworkGeneration: startSec.NetworkGeneration,
-					IsMember:          true,
-					HeadEpoch:         1,
-					LeaseEndMs:        9_999_999,
-				},
-			},
+		NowMs: 2_110 + now,
+		Event: &corev1.Event_SecurityRpcResult{
+			SecurityRpcResult: &corev1.SecurityRpcResultEvent{OpId: startRpcOp, ResponseBytes: emptyStatesRaw},
 		},
 	})
 
-	// 2. BACKGROUND -> FOREGROUND while running/stream open must also emit SyncSecurityEffect(Touch=true).
-	prevGen := startSec.NetworkGeneration
+	// 2. BACKGROUND -> FOREGROUND while running/stream open must also emit GET_SECURITY_STATES SecurityRpcEffect.
+	prevGen := e.networkGen
 	e.w.LivePushConnected = true
 	e.HandleEvent(&corev1.Event{
-		NowMs: 2_200,
+		NowMs: 2_200 + now,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_BACKGROUND},
 		},
 	})
 	_, fgRes := e.HandleEvent(&corev1.Event{
-		NowMs: 2_300,
+		NowMs: 2_300 + now,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND},
 		},
 	})
-	var fgSec *corev1.SyncSecurityEffect
+	var fgRpcOp uint64
 	for _, eff := range fgRes.Effects {
-		if ss := eff.GetSyncSecurity(); ss != nil {
-			fgSec = ss
+		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			fgRpcOp = sr.OpId
 		}
 	}
-	if fgSec == nil || !fgSec.Touch || fgSec.NetworkGeneration <= prevGen {
-		t.Fatalf("expected FOREGROUND after BACKGROUND to emit SyncSecurityEffect(Touch=true, NetworkGeneration>%d), got %+v", prevGen, fgSec)
+	if fgRpcOp == 0 || e.networkGen <= prevGen {
+		t.Fatalf("expected FOREGROUND after BACKGROUND to emit GET_SECURITY_STATES SecurityRpcEffect with networkGen>%d, got op=%d gen=%d", prevGen, fgRpcOp, e.networkGen)
 	}
 }
 
@@ -2703,25 +2798,86 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 
 func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 	now := int64(1700000000000)
+	cSelf := newSyncTestActor(t, 51)
+	cKnown := newSyncTestActor(t, 52)
+	mKnown := newSyncTestActor(t, 53)
+	mArchive := newSyncTestActor(t, 54)
+	recActor := newSyncTestActor(t, 55)
+	dom := devicesec.Digest("stream-sync-dom", []byte{1})
+	sec1 := bytes.Repeat([]byte{0x11}, 32)
+	sec2 := bytes.Repeat([]byte{0x22}, 32)
+	sec3 := bytes.Repeat([]byte{0x33}, 32)
+	sec4 := bytes.Repeat([]byte{0x44}, 32)
+	sec5 := bytes.Repeat([]byte{0x55}, 32)
+	u0, err := devicesec.NewGenesis(cSelf.id, dom, cSelf.member(devicesec.Client), [32]byte(recActor.edP), sec1, uint64(now), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, _ := u0.SigningBytes()
+	u0.Signature = ed25519.Sign(cSelf.ed, sb0)
+	s0Raw, _ := u0.MarshalBinary()
+	s0, _ := devicesec.ParseState(s0Raw)
+	gen, _ := s0.Hash()
+	u1, err := devicesec.NewMembershipState(s0, []devicesec.Member{
+		cSelf.member(devicesec.Client),
+		cKnown.member(devicesec.Client),
+	}, nil, sec1, sec2, uint64(now+1), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb1, _ := u1.SigningBytes()
+	u1.Signature = ed25519.Sign(cSelf.ed, sb1)
+	s1Raw, _ := u1.MarshalBinary()
+	s1, _ := devicesec.ParseState(s1Raw)
+	u2, err := devicesec.NewMembershipState(s1, []devicesec.Member{
+		cSelf.member(devicesec.Client),
+		cKnown.member(devicesec.Client),
+		mKnown.member(devicesec.Machine),
+	}, nil, sec2, sec3, uint64(now+2), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb2, _ := u2.SigningBytes()
+	u2.Signature = ed25519.Sign(cSelf.ed, sb2)
+	s2Raw, _ := u2.MarshalBinary()
+	s2, _ := devicesec.ParseState(s2Raw)
+	u3, err := devicesec.NewMembershipState(s2, []devicesec.Member{
+		cSelf.member(devicesec.Client),
+		cKnown.member(devicesec.Client),
+		mKnown.member(devicesec.Machine),
+		mArchive.member(devicesec.Machine),
+	}, nil, sec3, sec4, uint64(now+3), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb3, _ := u3.SigningBytes()
+	u3.Signature = ed25519.Sign(cSelf.ed, sb3)
+	s3Raw, _ := u3.MarshalBinary()
+	s3, _ := devicesec.ParseState(s3Raw)
+	u4, err := devicesec.NewMembershipState(s3, []devicesec.Member{
+		cSelf.member(devicesec.Client),
+		cKnown.member(devicesec.Client),
+		mKnown.member(devicesec.Machine),
+	}, []string{mArchive.id}, sec4, sec5, uint64(now+4), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb4, _ := u4.SigningBytes()
+	u4.Signature = ed25519.Sign(cSelf.ed, sb4)
+	s4Raw, _ := u4.MarshalBinary()
 
 	setup := func() (*Engine, uint64) {
 		e := NewEngine()
+		bootstrapTestSecurityRecord(t, e, cSelf, now, &security.PersistedRecord{
+			Pin:      devicesec.Pin{Account: cSelf.id, Domain: dom, Genesis: gen},
+			MemberID: cSelf.id,
+			Member:   true,
+			Server:   "https://relay.example.com",
+			States:   [][]byte{s0Raw, s1Raw, s2Raw, s3Raw, s4Raw},
+			FloorMs:  now + 100_000,
+		}, "tok-stream")
 		e.running = true
 		e.legID = 7
-		e.HandleEvent(&corev1.Event{
-			NowMs: now,
-			Event: &corev1.Event_SeedDemoWorld{
-				SeedDemoWorld: &corev1.SeedDemoWorldEvent{
-					Security: &corev1.DemoSecurity{
-						IsMember:          true,
-						SelfDeviceId:      "c-self",
-						TrustedMachineIds: []string{"m-known"},
-						TrustedClientIds:  []string{"c-self", "c-known"},
-						ArchiveMachineIds: []string{"m-archive"},
-					},
-				},
-			},
-		})
 		return e, 7
 	}
 
@@ -2743,7 +2899,7 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 			name: "trusted_machine_device_updated",
 			frame: &corev1.StreamFrameEvent{
 				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: "m-known", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: mKnown.id, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE},
 				},
 			},
 			wantSync: false,
@@ -2761,7 +2917,7 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 			name: "trusted_client_device_updated",
 			frame: &corev1.StreamFrameEvent{
 				Frame: &corev1.StreamFrameEvent_DeviceUpdated{
-					DeviceUpdated: &corev1.PlainDevice{DeviceId: "c-known", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
+					DeviceUpdated: &corev1.PlainDevice{DeviceId: cKnown.id, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT},
 				},
 			},
 			wantSync: false,
@@ -2788,7 +2944,7 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 			name: "trusted_online_machine_updated",
 			frame: &corev1.StreamFrameEvent{
 				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: "m-known", Online: true},
+					MachineUpdated: &corev1.PlainMachine{MachineId: mKnown.id, Online: true},
 				},
 			},
 			wantSync: false,
@@ -2797,7 +2953,7 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 			name: "archive_online_machine_updated",
 			frame: &corev1.StreamFrameEvent{
 				Frame: &corev1.StreamFrameEvent_MachineUpdated{
-					MachineUpdated: &corev1.PlainMachine{MachineId: "m-archive", Online: true},
+					MachineUpdated: &corev1.PlainMachine{MachineId: mArchive.id, Online: true},
 				},
 			},
 			wantSync: false,
@@ -2815,21 +2971,21 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 			})
 			var syncOp uint64
 			for _, eff := range res.Effects {
-				if ss := eff.GetSyncSecurity(); ss != nil {
-					syncOp = ss.OpId
+				if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+					syncOp = sr.OpId
 				}
 			}
 			if tc.wantSync && syncOp == 0 {
-				t.Fatalf("expected SyncSecurityEffect for %s", tc.name)
+				t.Fatalf("expected GET_SECURITY_STATES SecurityRpcEffect for %s", tc.name)
 			}
 			if !tc.wantSync && syncOp != 0 {
-				t.Fatalf("unexpected SyncSecurityEffect op=%d for %s", syncOp, tc.name)
+				t.Fatalf("unexpected GET_SECURITY_STATES SecurityRpcEffect op=%d for %s", syncOp, tc.name)
 			}
 		})
 	}
 
 	// Verify end-to-end core flow: untrusted direct events are dropped before sync refresh,
-	// and accepted with a valid confirmed direct PC after SecuritySnapshot adds the newly paired machine.
+	// and accepted with a valid confirmed direct PC after security refresh adds the newly paired machine.
 	e, legID := setup()
 	client := newDirectTestActor(t, 61, 1)
 	mNewActor := newDirectTestActor(t, 62, 2)
@@ -2887,12 +3043,12 @@ func TestStreamFrameDeviceAndMachineSecuritySync(t *testing.T) {
 	})
 	var secOp uint64
 	for _, eff := range devRes.Effects {
-		if ss := eff.GetSyncSecurity(); ss != nil {
-			secOp = ss.OpId
+		if sr := eff.GetSecurityRpc(); sr != nil && sr.Method == corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES {
+			secOp = sr.OpId
 		}
 	}
 	if secOp == 0 {
-		t.Fatalf("expected SyncSecurityEffect on DeviceUpdated")
+		t.Fatalf("expected GET_SECURITY_STATES SecurityRpcEffect on DeviceUpdated")
 	}
 	readPCID, hsNow := connectDirectForExistingEngine(t, e, now+10, client, mNewActor)
 	e.HandleEvent(&corev1.Event{

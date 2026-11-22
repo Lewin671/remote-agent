@@ -30,15 +30,19 @@ import Testing
         #expect(AuthorityAccess.exitAdvice(authority: false, unresolved: false) == L10n.securityExitingDeletesLocalKeysYouWillNeedToPair())
     }
     @Test func unrelatedPendingCannotBecomeAPairingSuccessAfterRetry() throws {
-        let lease = SecurityOperation(kind: .lease, parent: Data(count: 32), signed: Data())
+        var lease = PBSecurityPendingOpSummary()
+        lease.kind = "lease"
         #expect(!AuthorityPairingModel.ownsDelivery(lease, pairingID: "pair-one"))
         #expect(!AuthorityPairingModel.ownsDelivery(nil, pairingID: "pair-one"))
-        var request = PBApprovePairingRequest(); request.pairingID = "pair-one"
-        let pair = SecurityOperation(kind: .state, parent: Data(count: 32), signed: Data(), delivery: try request.serializedData())
+        var pair = PBSecurityPendingOpSummary()
+        pair.kind = "state"
+        pair.hasDelivery_p = true
+        pair.deliveryPairingID = "pair-one"
         #expect(AuthorityPairingModel.ownsDelivery(pair, pairingID: "pair-one"))
         #expect(!AuthorityPairingModel.ownsDelivery(pair, pairingID: "pair-two"))
-        let malformed = SecurityOperation(kind: .state, parent: Data(count: 32), signed: Data(), delivery: Data([255]))
-        #expect(!AuthorityPairingModel.ownsDelivery(malformed, pairingID: "pair-one"))
+        var withoutDelivery = pair
+        withoutDelivery.hasDelivery_p = false
+        #expect(!AuthorityPairingModel.ownsDelivery(withoutDelivery, pairingID: "pair-one"))
     }
 
 }

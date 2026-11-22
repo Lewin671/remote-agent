@@ -17,8 +17,6 @@
 //                                    (UI/Home/HomeLaunch.swift)
 //
 // A real account (here)
-//   -joinSecret <ra1…>               join with an account secret (an account already on the device is
-//                                    kept when it is the same one, and replaced otherwise)
 //   -joinServer <url> -joinCode <8 digits>   join with a pairing code
 //   -resetAccount                    forget the account on this device first
 //   -route <route>                   open on a destination once the account is in use
@@ -173,7 +171,6 @@ enum LaunchDriver {
     static let joinStep = value("-joinStep")
     static var joinRequested: Bool { code != nil }
     static let startRoute: Route? = (value("-demoRoute") ?? value("-route")).flatMap(Route.init(path:))
-    private static var secret = value("-joinSecret")
     private static var code = value("-joinCode")
     private static var reset = args.contains("-resetAccount")
 
@@ -242,12 +239,6 @@ enum LaunchDriver {
         if reset {
             reset = false
             await model.logout()
-        } else if let text = secret, let wanted = try? Secret.parse(text) {
-            if model.account?.root == wanted.root && model.account?.server == wanted.server {
-                secret = nil
-            } else {
-                await model.logout()
-            }
         }
     }
 
@@ -255,11 +246,6 @@ enum LaunchDriver {
     static func drive(_ join: JoinModel) {
         if let step = joinStep {
             preview(join, step)
-        } else if let text = secret {
-            secret = nil
-            join.showSecret()
-            join.secret = text
-            join.joinWithSecret()
         } else if let digits = code, let server = value("-joinServer") {
             code = nil
             join.server = server
@@ -277,9 +263,6 @@ enum LaunchDriver {
         case "working": join.show(step: .working, code: "48291756")
         case "emoji": join.show(step: .emoji(emoji), code: "48291756")
         case "registering": join.show(step: .emoji(emoji), code: "48291756", notice: L10n.errorsIosAlreadyRegisteringWaitForTheResult(value: String(describing: thisDeviceWord)))
-        case "secret": join.show(step: .secret)
-        case "secretError":
-            join.show(step: .secret, secret: "ra1.not-a-secret", notice: L10n.errorsThisIsNotARemoteAgentAccountKey(), error: true)
         case "scan", "scanDenied", "scanMissing": join.show(step: .scan)
         default: join.show(step: .form, server: "https://")
         }

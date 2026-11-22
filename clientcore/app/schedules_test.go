@@ -71,7 +71,7 @@ func bootConnectedScheduleHost(t *testing.T, caps bool, rev uint64, defaultMode 
 		NowMs: 1791633600040,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 4,
+				OpId: 3,
 				Machines: []*corev1.PlainMachine{
 					{
 						MachineId: "m-1",

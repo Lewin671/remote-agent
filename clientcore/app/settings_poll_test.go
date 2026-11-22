@@ -75,7 +75,7 @@ func TestMachineStatusWatchStartsPollOnceMachineBecomesOnline(t *testing.T) {
 		NowMs: 1040,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 4,
+				OpId: 3,
 				Machines: []*corev1.PlainMachine{
 					{
 						MachineId: "m-1",
@@ -124,13 +124,10 @@ func TestMachineStatusWatchBeforeConnectedStartsPollOnStreamReady(t *testing.T) 
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
 	})
-	var bootOpID, secOpID, tokOpID uint64
+	var bootOpID, tokOpID uint64
 	for _, eff := range startBatch.Effects {
 		if cr := eff.GetCacheRead(); cr != nil && cr.GetBootstrap() != nil {
 			bootOpID = cr.GetBootstrap().OpId
-		}
-		if ss := eff.GetSyncSecurity(); ss != nil {
-			secOpID = ss.OpId
 		}
 		if et := eff.GetEnsureToken(); et != nil {
 			tokOpID = et.OpId
@@ -182,7 +179,6 @@ func TestMachineStatusWatchBeforeConnectedStartsPollOnStreamReady(t *testing.T) 
 		}
 	}
 
-	_ = secOpID
 	c.Dispatch(&corev1.Event{
 		NowMs: 1010,
 		Event: &corev1.Event_SeedDemoWorld{

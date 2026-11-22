@@ -40,12 +40,6 @@
             }
           },
           {
-            "syncSecurity": {
-              "opId": "3",
-              "touch": true
-            }
-          },
-          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_HOME",
@@ -122,7 +116,7 @@
           },
           {
             "rpc": {
-              "opId": "4",
+              "opId": "3",
               "fetchLists": {
                 "limit": 50
               }
@@ -130,7 +124,7 @@
           },
           {
             "rpc": {
-              "opId": "5",
+              "opId": "4",
               "getAccountPrefs": {
                 "objectId": "project-prefs"
               }
@@ -266,7 +260,7 @@
         "effects": [
           {
             "rpc": {
-              "opId": "6",
+              "opId": "5",
               "getAccountPrefs": {
                 "objectId": "project-prefs"
               }
@@ -290,7 +284,7 @@
         "effects": [
           {
             "rpc": {
-              "opId": "7",
+              "opId": "6",
               "putAccountPrefs": {
                 "objectId": "project-prefs",
                 "expectedRevision": "1",
@@ -550,7 +544,7 @@
         "effects": [
           {
             "rpc": {
-              "opId": "8",
+              "opId": "7",
               "getAccountPrefs": {
                 "objectId": "project-prefs"
               }
@@ -574,7 +568,7 @@
         "effects": [
           {
             "rpc": {
-              "opId": "9",
+              "opId": "8",
               "putAccountPrefs": {
                 "objectId": "project-prefs",
                 "expectedRevision": "2",

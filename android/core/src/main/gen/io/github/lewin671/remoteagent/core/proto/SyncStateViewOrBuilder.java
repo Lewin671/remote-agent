@@ -314,4 +314,54 @@ public interface SyncStateViewOrBuilder extends
    * @return The reachabilityUnknown.
    */
   boolean getReachabilityUnknown();
+
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @return A list containing the trustedMachineIds.
+   */
+  java.util.List<java.lang.String>
+      getTrustedMachineIdsList();
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @return The count of trustedMachineIds.
+   */
+  int getTrustedMachineIdsCount();
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The trustedMachineIds at the given index.
+   */
+  java.lang.String getTrustedMachineIds(int index);
+  /**
+   * <code>repeated string trusted_machine_ids = 40 [json_name = "trustedMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The trustedMachineIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getTrustedMachineIdsBytes(int index);
+
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @return A list containing the archiveMachineIds.
+   */
+  java.util.List<java.lang.String>
+      getArchiveMachineIdsList();
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @return The count of archiveMachineIds.
+   */
+  int getArchiveMachineIdsCount();
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The archiveMachineIds at the given index.
+   */
+  java.lang.String getArchiveMachineIds(int index);
+  /**
+   * <code>repeated string archive_machine_ids = 41 [json_name = "archiveMachineIds"];</code>
+   * @param index The index of the element to return.
+   * @return The archiveMachineIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getArchiveMachineIdsBytes(int index);
 }

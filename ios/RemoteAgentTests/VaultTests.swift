@@ -1,22 +1,27 @@
 import Foundation
 import RACore
+import RAProto
 import Security
 import Testing
+import os
 
 @testable import RemoteAgent
 
 /// The Keychain as the vault uses it, on the simulator's real Keychain: each test has a service of its own and removes it.
 @Suite struct VaultTests {
     let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")
-    let account = Account(
-        server: "https://ra.example.com", root: Data((0..<32).map { UInt8($0) }),
-        deviceSeed: Data((0..<32).map { UInt8(200 - $0) }), deviceId: "00112233445566778899aabbccddeeff")
+    let server = "https://ra.example.com"
+    let devId = "00112233445566778899aabbccddeeff"
     let notify = Data((0..<32).map { UInt8($0 &* 7) })
 
-    private func attributes(_ item: Vault.Item) -> [String: Any]? {
+    private func attributes(_ accountName: String, service: String? = nil) -> [String: Any]? {
         let q: [CFString: Any] = [
-            kSecClass: kSecClassGenericPassword, kSecAttrService: vault.service, kSecAttrAccount: item.rawValue,
-            kSecAttrSynchronizable: kSecAttrSynchronizableAny, kSecReturnAttributes: true, kSecMatchLimit: kSecMatchLimitOne,
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service ?? vault.service,
+            kSecAttrAccount: accountName,
+            kSecAttrSynchronizable: kSecAttrSynchronizableAny,
+            kSecReturnAttributes: true,
+            kSecMatchLimit: kSecMatchLimitOne,
         ]
         var out: CFTypeRef?
         guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess else { return nil }
@@ -24,183 +29,201 @@ import Testing
     }
 
     @Test func nothingIsStoredAtFirst() throws {
-        #expect(try !vault.hasAccount())
-        #expect(try vault.load() == nil)
-        #expect(try vault.notifyKey() == nil)
-        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
+        #expect(!vault.hasPersistedState())
+        #expect(!vault.hasUpgradeNotice())
+        #expect(vault.readNotifyBlob() == nil)
+        #expect(vault.loadLoginToken(server: server, deviceId: devId) == nil)
+        #expect(try !vault.detectAndClearLegacy())
+        let boot = vault.executeStorage(.with { $0.op = .readBootstrap })
+        #expect(boot.error.isEmpty && !boot.legacyCleared && boot.entries.isEmpty && !boot.hasDeviceEd_p && !boot.hasDeviceX_p)
     }
 
-    @Test func theAccountComesBackAsItWasSaved() throws {
+    @Test func bucketsKeysAndNotifyMirrorFollowAccessibilityAndCasContract() throws {
         defer { try? vault.clear() }
-        try vault.save(account, notifyKey: notify)
-        #expect(try vault.hasAccount())
-        #expect(try vault.load() == account)
-        #expect(try vault.notifyKey() == notify)
-    }
+        let edPub = try vault.generateKey(kind: .deviceEd, slot: "", persist: true)
+        let xPub = try vault.generateKey(kind: .deviceX, slot: "", persist: true)
+        #expect(edPub.count == 32 && xPub.count == 32)
 
-    /// Binary plists produced by the pre-consolidation writer, with synthetic material.
-    @Test func currentAccountAndLoginPlistsKeepTheirFields() throws {
-        defer { try? vault.clear() }
-        let accountBytes = Data(base64Encoded: "YnBsaXN0MDDWAQIDBAUGBwgJCgsMVnNlcnZlclF2VHNlZWRYZGV2aWNlSWRUcm9vdFlhY2NvdW50SWRfEBlodHRwczovL3JlbGF5LmV4YW1wbGUuY29tEAJDBAUGXmZpeHR1cmUtZGV2aWNlQwECA18QD2ZpeHR1cmUtYWNjb3VudAgVHB4jLDE7V1ldbHAAAAAAAAABAQAAAAAAAAANAAAAAAAAAAAAAAAAAAAAgg==")!
-        let loginBytes = Data(base64Encoded: "YnBsaXN0MDDUAQIDBAUGBwhZZXhwaXJlc0F0VXRva2VuVnNlcnZlclhkZXZpY2VJZDNByH0EwAAAAF1maXh0dXJlLXRva2VuXxAZaHR0cHM6Ly9yZWxheS5leGFtcGxlLmNvbV5maXh0dXJlLWRldmljZQgRGyEoMTpIZAAAAAAAAAEBAAAAAAAAAAkAAAAAAAAAAAAAAAAAAABz")!
-        try vault.write(.account, accountBytes)
-        try vault.write(.loginToken, loginBytes)
-        let loaded = try #require(try vault.load())
-        #expect(loaded == Account(server: "https://relay.example.com", root: Data([1, 2, 3]),
-            deviceSeed: Data([4, 5, 6]), deviceId: "fixture-device", accountId: "fixture-account"))
-        let login = try #require(try vault.loginToken(server: loaded.server, deviceId: loaded.deviceId))
-        #expect(login == SavedLogin(token: "fixture-token", expiresMs: 1_800_000_000_000))
-        try vault.save(loaded, notifyKey: notify)
-        try vault.saveLoginToken(login, server: loaded.server, deviceId: loaded.deviceId)
-        // Foundation can reorder binary-plist dictionary keys between processes.
-        // Compare every typed value, including raw key bytes and the Date representation.
-        for (item, bytes) in [(Vault.Item.account, accountBytes), (.loginToken, loginBytes)] {
-            let written = try #require(try vault.read(item))
-            let before = try PropertyListSerialization.propertyList(from: bytes, format: nil) as! NSDictionary
-            let after = try PropertyListSerialization.propertyList(from: written, format: nil) as! NSDictionary
-            #expect(before == after)
+        let msg = Data("hello-v4".utf8)
+        let sig = try vault.signKey(kind: .deviceEd, slot: "", message: msg)
+        #expect(sig.count == 64)
+
+        let peer = try vault.generateKey(kind: .ephemeralX, slot: "ephem-1", persist: false)
+        let agreed = try vault.agreeKey(kind: .deviceX, slot: "", peerPublic: peer)
+        #expect(agreed.count == 32)
+        vault.discardKey(kind: .ephemeralX, slot: "ephem-1")
+        #expect(throws: (any Error).self) {
+            try vault.agreeKey(kind: .ephemeralX, slot: "ephem-1", peerPublic: xPub)
         }
-    }
 
-    @Test func storedRootAccountStillResolvesItsDomainIdOnlyForUse() throws {
-        defer { try? vault.clear() }
-        try vault.save(account, notifyKey: notify)
-        let loaded = try #require(try vault.load())
-        #expect(loaded.accountId.isEmpty)
-        let expected = try deviceId(publicKey: Keys.derive(root: account.root).account.publicKey)
-        #expect(loaded.resolvingAccountId().accountId == expected)
-        let named = Account(server: loaded.server, root: loaded.root, deviceSeed: loaded.deviceSeed,
-            deviceId: loaded.deviceId, accountId: "explicit-account")
-        #expect(named.resolvingAccountId() == named)
-    }
+        let write1 = vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data("rec-v1".utf8)
+        })
+        #expect(write1.error.isEmpty && !write1.conflict && write1.hasDeviceEd_p && write1.hasDeviceX_p)
+        #expect(vault.hasPersistedState())
 
-    @Test func savingAgainReplacesTheAccount() throws {
-        defer { try? vault.clear() }
-        try vault.save(account, notifyKey: notify)
-        let other = Account(server: "http://localhost:8080", root: Data(repeating: 9, count: 32),
-            deviceSeed: account.deviceSeed, deviceId: account.deviceId)
-        try vault.save(other, notifyKey: Data(repeating: 1, count: 32))
-        #expect(try vault.load() == other)
-        #expect(try vault.notifyKey() == Data(repeating: 1, count: 32))
-    }
+        // CAS mismatch fails cleanly without overwriting.
+        let conflict = vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.expectedRevision = "stale-rev"
+            $0.nextRevision = "r2"
+            $0.data = Data("rec-v2".utf8)
+        })
+        #expect(conflict.conflict)
 
-    @Test func itemsAreForThisDeviceOnlyWhileUnlockedAndDoNotSync() throws {
-        defer { try? vault.clear() }
-        try vault.save(account, notifyKey: notify)
-        try vault.saveLoginToken(SavedLogin(
-            token: "t", expiresMs: 1_800_000_000_000), server: account.server, deviceId: account.deviceId)
-        for item in [Vault.Item.account, .notifyKey, .loginToken] {
-            let a = try #require(attributes(item))
+        let batch = vault.executeStorage(.with {
+            $0.op = .batchCommit
+            $0.batch = [
+                .with {
+                    $0.bucket = .notifyRecord
+                    $0.key = "notify"
+                    $0.nextRevision = "n1"
+                    $0.data = notify
+                },
+            ]
+        })
+        #expect(batch.error.isEmpty && !batch.conflict)
+        #expect(vault.readNotifyBlob() == notify)
+
+        let tok = SavedLogin(token: "tok-1", expiresMs: 1_800_000_000_000)
+        vault.saveLoginToken(tok, server: server, deviceId: devId)
+        try vault.write(.pendingKey, Data(repeating: 4, count: 32))
+
+        // Notify mirror must use AfterFirstUnlockThisDeviceOnly; keys/buckets/token/pendingKey use WhenUnlockedThisDeviceOnly.
+        let notifyAttr = try #require(attributes("security-v4-notify"))
+        #expect(notifyAttr[kSecAttrAccessible as String] as? String == kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+        #expect((notifyAttr[kSecAttrSynchronizable as String] as? NSNumber)?.boolValue != true)
+
+        for name in ["security-v4-buckets", "security-v4-keys", "security-v4-token", "pending-key"] {
+            let a = try #require(attributes(name))
             #expect(a[kSecAttrAccessible as String] as? String == kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
             #expect((a[kSecAttrSynchronizable as String] as? NSNumber)?.boolValue != true)
         }
-        // Replacing a value keeps the item's protection.
-        try vault.save(account, notifyKey: notify)
-        let again = try #require(attributes(.account))
-        #expect(again[kSecAttrAccessible as String] as? String == kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
-    }
 
-    @Test func theLoginTokenIsKeptAndDeletedOnItsOwn() throws {
-        defer { try? vault.clear() }
-        let token = SavedLogin(token: "bearer-abc", expiresMs: 1_800_000_000_000)
-        try vault.save(account, notifyKey: notify)
-        try vault.saveLoginToken(token, server: account.server, deviceId: account.deviceId)
-        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == token)
-        try vault.deleteLoginToken()
-        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
-        #expect(try vault.load() == account)
-        // Deleting what is not there is not an error.
-        try vault.deleteLoginToken()
+        // Cold Vault instance reads persisted state accurately.
+        let reopened = Vault(service: vault.service)
+        #expect(reopened.hasPersistedState())
+        #expect(reopened.readNotifyBlob() == notify)
+        #expect(reopened.loadLoginToken(server: server, deviceId: devId) == tok)
+        #expect(reopened.loadLoginToken(server: server, deviceId: "other-device") == nil)
+        #expect(reopened.loadLoginToken(server: "https://other.example.com", deviceId: devId) == nil)
     }
 
     @Test func clearRemovesEveryItemAndOnlyThisVaults() throws {
         let other = Vault(service: vault.service + ".other")
         defer { try? other.clear() }
-        try vault.save(account, notifyKey: notify)
-        try vault.saveLoginToken(SavedLogin(token: "t", expiresMs: nowMs()), server: account.server, deviceId: account.deviceId)
+        _ = vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data("rec".utf8)
+        })
+        vault.saveLoginToken(SavedLogin(token: "t", expiresMs: nowMs()), server: server, deviceId: devId)
         try vault.write(.pendingKey, Data(repeating: 3, count: 32))
-        try other.save(account, notifyKey: notify)
+        _ = other.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data("other".utf8)
+        })
+
         try vault.clear()
-        #expect(try !vault.hasAccount())
-        #expect(try vault.load() == nil)
-        #expect(try vault.notifyKey() == nil)
-        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
+        #expect(!vault.hasPersistedState())
+        #expect(vault.readNotifyBlob() == nil)
+        #expect(vault.loadLoginToken(server: server, deviceId: devId) == nil)
         #expect(try vault.read(.pendingKey) == nil)
-        #expect(try other.load() == account)
-        // Clearing an empty vault is not an error.
+        #expect(other.hasPersistedState())
         try vault.clear()
     }
 
-    @Test func bytesThatAreNotAnAccountAreAnErrorNotAMissingAccount() throws {
+    @Test func legacyV3ItemsTriggerWipePreservePendingKeyAndPersistNoticeAcrossColdRestart() throws {
         defer { try? vault.clear() }
-        try vault.write(.account, Data("not a property list".utf8))
-        #expect(try vault.hasAccount())
-        #expect(throws: VaultError.unreadable) { try vault.load() }
-        try vault.write(.loginToken, Data([1, 2, 3]))
-        #expect(throws: VaultError.unreadable) { try vault.loginToken(server: account.server, deviceId: account.deviceId) }
-    }
+        let wipedCount = OSAllocatedUnfairLock(initialState: 0)
+        let pendingSecret = Data((0..<32).map { UInt8($0 + 10) })
+        try vault.write(.pendingKey, pendingSecret)
 
-    // MARK: Whose login it is
-
-    @Test func aLoginKeptForOneAccountIsNeverGivenToAnother() throws {
-        defer { try? vault.clear() }
-        let token = SavedLogin(
-            token: "bearer-abc", expiresMs: 1_800_000_000_000)
-        try vault.saveLoginToken(token, server: account.server, deviceId: account.deviceId)
-        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == token)
-        // Another device of the same server, the same device ID on another server, and neither: none of them gets it.
-        #expect(try vault.loginToken(server: account.server, deviceId: "another-device") == nil)
-        #expect(try vault.loginToken(server: "https://other.example.com", deviceId: account.deviceId) == nil)
-        #expect(try vault.loginToken(server: "https://other.example.com", deviceId: "another-device") == nil)
-        // Close is not the same: the server is compared as it is written, and no device ID matches nothing.
-        #expect(try vault.loginToken(server: account.server + "/", deviceId: account.deviceId) == nil)
-        #expect(try vault.loginToken(server: account.server, deviceId: "") == nil)
-        // It is still kept for its own.
-        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == token)
-    }
-
-    @Test func aLoginThatDoesNotSayWhoseItIsIsNone() throws {
-        defer { try? vault.clear() }
-        let plist: [String: Any] = ["token": "bearer-abc", "expiresAt": Date(timeIntervalSince1970: 1_800_000_000)]
-        try vault.write(.loginToken, PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0))
-        #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
-    }
-
-    @Test func theKeeperOnlyHandsOverItsOwnAccountsLogin() {
-        defer { try? vault.clear() }
-        let mine = LoginKeeper(vault: vault, server: account.server, deviceId: account.deviceId)
-        mine.keep(SavedLogin(token: "bearer-mine", expiresMs: 1_800_000_000_000))
-        // `load` runs after what was asked before it.
-        #expect(mine.load()?.token == "bearer-mine")
-        // The account on this device changed without the vault being cleared between: the old login is not the new one's.
-        let other = LoginKeeper(vault: vault, server: account.server, deviceId: "another-device")
-        #expect(other.load() == nil)
-        // Its own replaces the one kept, which is then nobody else's either.
-        other.keep(SavedLogin(token: "bearer-other", expiresMs: 1_800_000_000_000))
-        #expect(other.load()?.token == "bearer-other")
-        #expect(mine.load() == nil)
-        // A keeper that was closed neither reads nor writes.
-        other.close()
-        other.keep(nil)
-        #expect(other.load() == nil)
-        #expect(LoginKeeper(vault: vault, server: account.server, deviceId: "another-device").load()?.token == "bearer-other")
-    }
-
-    @Test func descriptionsLeaveTheKeysOut() {
-        let token = SavedLogin(token: "bearer-secret-value", expiresMs: 0)
-        var dumped = ""
-        dump(account, to: &dumped)
-        dump(token, to: &dumped)
-        let texts = [String(describing: account), String(reflecting: account), "\(account)", "\([account])", dumped,
-                     String(describing: token), String(reflecting: token)]
-        for text in texts {
-            #expect(!text.contains(account.root.hex))
-            #expect(!text.contains(account.deviceSeed.hex))
-            #expect(!text.contains(account.root.base64EncodedString()))
-            #expect(!text.contains("32 bytes"))
-            #expect(!text.contains("bearer-secret-value"))
+        // Seed v3 Keychain items + stray pre-migration v4 token.
+        let legacyNames = [
+            "account", "security-v3", "notify-key", "login-token",
+            "registration-intent", "pair-delivery", "authority-operation",
+            "account-public-abc", "pairing-identity-xyz",
+        ]
+        for name in legacyNames {
+            try vault.writeRawKeychainItemForTest(account: name, data: Data("legacy-\(name)".utf8))
         }
-        #expect(String(describing: account).contains("ra.example.com"))
+        try vault.writeRawKeychainItemForTest(account: "security-v4-token", data: Data("stray-token".utf8))
+
+        let wiped = try vault.detectAndClearLegacy { wipedCount.withLock { $0 += 1 } }
+        #expect(wiped)
+        #expect(wipedCount.withLock { $0 } == 1)
+        #expect(try vault.read(.pendingKey) == pendingSecret)
+        for name in legacyNames + ["security-v4-token", "security-v4-notify"] {
+            #expect(try vault.readRawKeychainItemForTest(account: name) == nil)
+        }
+        #expect(vault.hasUpgradeNotice())
+        let noticeAttr = try #require(attributes("security-v4-upgrade-notice"))
+        #expect(noticeAttr[kSecAttrAccessible as String] as? String == kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+
+        // Cold restart still sees the upgrade notice until dismissed or re-paired.
+        let restarted = Vault(service: vault.service)
+        #expect(restarted.hasUpgradeNotice())
+        #expect(try restarted.detectAndClearLegacy())
+        let boot = restarted.executeStorage(.with { $0.op = .readBootstrap })
+        #expect(boot.legacyCleared)
+        #expect(try restarted.read(.pendingKey) == pendingSecret)
+
+        restarted.dismissLegacyRepairNotice()
+        #expect(!restarted.hasUpgradeNotice())
+        #expect(try !restarted.detectAndClearLegacy())
+    }
+
+    @Test func writingV4RecordClearsUpgradeNotice() throws {
+        defer { try? vault.clear() }
+        try vault.writeRawKeychainItemForTest(account: "account", data: Data("v3".utf8))
+        #expect(try vault.detectAndClearLegacy())
+        #expect(vault.hasUpgradeNotice())
+
+        _ = vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data("repaired".utf8)
+        })
+        #expect(!vault.hasUpgradeNotice())
+    }
+
+    @Test func lockedKeychainFailsClosedWithoutMutatingOrDeletingItems() throws {
+        let locked = Vault(
+            service: vault.service,
+            keychain: KeychainOps(
+                copyMatching: { _, _ in errSecInteractionNotAllowed },
+                add: { _, _ in errSecInteractionNotAllowed },
+                update: { _, _ in errSecInteractionNotAllowed },
+                delete: { _ in
+                    Issue.record("locked Keychain must never delete items")
+                    return errSecInteractionNotAllowed
+                }
+            )
+        )
+        #expect(throws: VaultError(operation: .read, status: errSecInteractionNotAllowed)) {
+            _ = try locked.detectAndClearLegacy()
+        }
+        #expect(locked.loadLoginToken(server: server, deviceId: devId) == nil)
+        let boot = locked.executeStorage(.with { $0.op = .readBootstrap })
+        #expect(!boot.error.isEmpty)
     }
 
     @Test func errorsSayWhatFailedInWords() {

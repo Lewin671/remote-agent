@@ -12,6 +12,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/security"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
@@ -256,13 +257,10 @@ func (h *directSyncHarness) connectMainAndList(sessionID string) {
 	res := h.step(&corev1.Event{
 		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
 	})
-	var tokenOp, secOp uint64
+	var tokenOp uint64
 	for _, eff := range res.Effects {
 		if et := eff.GetEnsureToken(); et != nil {
 			tokenOp = et.OpId
-		}
-		if ss := eff.GetSyncSecurity(); ss != nil {
-			secOp = ss.OpId
 		}
 	}
 	res = h.step(&corev1.Event{
@@ -283,7 +281,6 @@ func (h *directSyncHarness) connectMainAndList(sessionID string) {
 			listOp = r.OpId
 		}
 	}
-	_ = secOp
 	h.step(&corev1.Event{
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
@@ -525,19 +522,19 @@ func (h *directSyncHarness) driveDirectHandshake() {
 		}
 	}
 
-	drainEffects(h.step(&corev1.Event{
-		Event: &corev1.Event_SecurityRecord{
-			SecurityRecord: &corev1.SecurityRecordEvent{
-				OpId:              h.eng.activeSecOpID,
-				PushSeq:           1,
-				NetworkGeneration: 1,
-				Account:           h.account,
-				Domain:            h.domain[:],
-				Genesis:           h.genHash[:],
-				States:            h.statesRaw,
-				Lease:             h.leaseRaw,
-			},
-		},
+	recEffs := h.eng.secEngine.ApplyRecord(h.now, security.RecordUpdate{
+		Direct:            true,
+		PushSeq:           1,
+		NetworkGeneration: 1,
+		Account:           h.account,
+		Domain:            h.domain[:],
+		Genesis:           h.genHash[:],
+		States:            h.statesRaw,
+		Lease:             h.leaseRaw,
+	})
+	drainEffects(recEffs)
+	drainEffects(h.eng.Run(func(ctx *StepContext) {
+		h.eng.syncSecurityStateFromEngine(ctx, true)
 	}).Effects)
 
 	for step := 0; step < 40 && !h.eng.ensureTransportCoord().Ready(h.now, h.daemon.id, transport.Hint{Use: transport.UseRead}); step++ {

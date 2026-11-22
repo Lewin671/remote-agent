@@ -52,7 +52,7 @@ func TestNewSessionProjectAddAndLatePrefsReloadModels(t *testing.T) {
 		NowMs: 1080,
 		Event: &corev1.Event_AccountPrefsFetched{
 			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
-				OpId: 5,
+				OpId: 4,
 				Prefs: &corev1.PlainAccountPrefs{
 					Revision: 2,
 					Prefs: &v1.ProjectPrefs{
@@ -151,7 +151,7 @@ func seedOneMachine(c *Core) {
 		NowMs: 1040,
 		Event: &corev1.Event_ListsFetched{
 			ListsFetched: &corev1.ListsFetchedEvent{
-				OpId: 4,
+				OpId: 3,
 				Machines: []*corev1.PlainMachine{
 					{
 						MachineId: "m-1",
@@ -178,7 +178,7 @@ func TestStandaloneNewTaskTakesCLIAndModelPicks(t *testing.T) {
 	defer c.Close()
 	seedOneMachine(c)
 	// A saved project lists it; nothing has opened a new task on it by key.
-	c.Dispatch(&corev1.Event{NowMs: 1050, Event: &corev1.Event_AccountPrefsFetched{AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{OpId: 5, Prefs: &corev1.PlainAccountPrefs{Revision: 1, Prefs: &v1.ProjectPrefs{Schema: 1, Settings: []*v1.ProjectSettings{{Path: "/Users/alice", MachineId: "m-1", Agent: v1.Agent_AGENT_CODEX}}}}}}})
+	c.Dispatch(&corev1.Event{NowMs: 1050, Event: &corev1.Event_AccountPrefsFetched{AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{OpId: 4, Prefs: &corev1.PlainAccountPrefs{Revision: 1, Prefs: &v1.ProjectPrefs{Schema: 1, Settings: []*v1.ProjectSettings{{Path: "/Users/alice", MachineId: "m-1", Agent: v1.Agent_AGENT_CODEX}}}}}}})
 	c.Dispatch(&corev1.Event{NowMs: 1060, Event: &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{}}})
 	view := func() *corev1.NewSessionViewModel {
 		vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_NewSession{NewSession: &corev1.NewSessionScreenRequest{}}})

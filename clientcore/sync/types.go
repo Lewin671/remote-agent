@@ -694,8 +694,6 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleTerminalStream(ctx, k.TerminalStream)
 	case *corev1.Event_SecurityConfig:
 		e.handleSecurityConfig(ctx, k.SecurityConfig)
-	case *corev1.Event_SecurityRecord:
-		e.handleSecurityRecord(ctx, k.SecurityRecord)
 	case *corev1.Event_SecurityKeySigned:
 		e.handleSecurityKeySigned(ctx, k.SecurityKeySigned)
 	case *corev1.Event_SecurityKeyAgreed:

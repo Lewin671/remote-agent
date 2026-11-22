@@ -786,6 +786,8 @@ type SyncStateView struct {
 	Devices                []*SyncDeviceView      `protobuf:"bytes,37,rep,name=devices,proto3" json:"devices,omitempty"`
 	DisplayGrace           bool                   `protobuf:"varint,38,opt,name=display_grace,json=displayGrace,proto3" json:"display_grace,omitempty"`
 	ReachabilityUnknown    bool                   `protobuf:"varint,39,opt,name=reachability_unknown,json=reachabilityUnknown,proto3" json:"reachability_unknown,omitempty"`
+	TrustedMachineIds      []string               `protobuf:"bytes,40,rep,name=trusted_machine_ids,json=trustedMachineIds,proto3" json:"trusted_machine_ids,omitempty"`
+	ArchiveMachineIds      []string               `protobuf:"bytes,41,rep,name=archive_machine_ids,json=archiveMachineIds,proto3" json:"archive_machine_ids,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -1091,6 +1093,20 @@ func (x *SyncStateView) GetReachabilityUnknown() bool {
 		return x.ReachabilityUnknown
 	}
 	return false
+}
+
+func (x *SyncStateView) GetTrustedMachineIds() []string {
+	if x != nil {
+		return x.TrustedMachineIds
+	}
+	return nil
+}
+
+func (x *SyncStateView) GetArchiveMachineIds() []string {
+	if x != nil {
+		return x.ArchiveMachineIds
+	}
+	return nil
 }
 
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,
@@ -1410,7 +1426,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\bmeta_rev\x18\x06 \x01(\x04R\ametaRev\x12\x1f\n" +
 	"\vmeta_broken\x18\a \x01(\bR\n" +
 	"metaBroken\x12\x18\n" +
-	"\atrusted\x18\b \x01(\bR\atrusted\"\xd0\x0e\n" +
+	"\atrusted\x18\b \x01(\bR\atrusted\"\xb0\x0f\n" +
 	"\rSyncStateView\x12>\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\n" +
@@ -1457,7 +1473,9 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\x05prefs\x18$ \x01(\v2\x1c.remoteagent.v1.ProjectPrefsR\x05prefs\x12=\n" +
 	"\adevices\x18% \x03(\v2#.remoteagent.core.v1.SyncDeviceViewR\adevices\x12#\n" +
 	"\rdisplay_grace\x18& \x01(\bR\fdisplayGrace\x121\n" +
-	"\x14reachability_unknown\x18' \x01(\bR\x13reachabilityUnknown\"\xcb\a\n" +
+	"\x14reachability_unknown\x18' \x01(\bR\x13reachabilityUnknown\x12.\n" +
+	"\x13trusted_machine_ids\x18( \x03(\tR\x11trustedMachineIds\x12.\n" +
+	"\x13archive_machine_ids\x18) \x03(\tR\x11archiveMachineIds\"\xcb\a\n" +
 	"\x0fSessionDataView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +

@@ -25,31 +25,6 @@ message SecurityForegroundEvent {
   bool foreground = 1;
 }
 
-message SecurityContentKey {
-  uint64 content_epoch = 1;
-  bytes secret = 2;
-}
-
-message SecurityRecordEvent {
-  uint64 op_id = 1;
-  uint64 push_seq = 2;
-  uint64 network_generation = 3;
-  string account = 4;
-  bytes domain = 5;
-  bytes genesis = 6;
-  repeated bytes states = 7;
-  repeated bytes recovery_proofs = 8;
-  bytes lease = 9;
-  int64 floor_ms = 10;
-  bool recovery_pending = 11;
-  int64 recovery_ready_ms = 12;
-  bool recovery_objects_pending = 13;
-  bool removed = 14;
-  bool cleared = 15;
-  string error = 16;
-  repeated SecurityContentKey content_keys = 17;
-}
-
 // ---- Externalized Private-Key Effects & Events ----
 
 enum SecurityKeyKind {

@@ -1061,14 +1061,18 @@ func (e *Engine) bootstrapFromStorage(actionID uint64) {
 			if wf.record.Server != "" {
 				wf.server = wf.record.Server
 			}
-			e.applyPersistedRecordToEngine(wf.record, 0, nil)
+			e.applyPersistedRecordToEngine(wf.record, func(_ error) {
+				e.emitActionResult(actionID, nil, nil)
+				e.emitStatusChanged()
+			})
+			return
 		}
 		e.emitActionResult(actionID, nil, nil)
 		e.emitStatusChanged()
 	})
 }
 
-func (e *Engine) applyPersistedRecordToEngine(rec *PersistedRecord, opID uint64, onDone func(err error)) {
+func (e *Engine) applyPersistedRecordToEngine(rec *PersistedRecord, onDone func(err error)) {
 	if rec == nil {
 		if onDone != nil {
 			onDone(nil)
@@ -1079,8 +1083,8 @@ func (e *Engine) applyPersistedRecordToEngine(rec *PersistedRecord, opID uint64,
 	e.configured = true
 	e.account = rec.Pin.Account
 	e.selfDeviceID = rec.MemberID
-	ev := &corev1.SecurityRecordEvent{
-		OpId:                   opID,
+	ev := RecordUpdate{
+		Direct:                 true,
 		Account:                rec.Pin.Account,
 		Domain:                 slices.Clone(rec.Pin.Domain[:]),
 		Genesis:                slices.Clone(rec.Pin.Genesis[:]),
@@ -1092,10 +1096,10 @@ func (e *Engine) applyPersistedRecordToEngine(rec *PersistedRecord, opID uint64,
 		RecoveryReadyMs:        e.recoveryReadyMs,
 		RecoveryObjectsPending: rec.RecoveryObjectsPending,
 		Removed:                false,
-		ContentKeys:            make([]*corev1.SecurityContentKey, 0, len(rec.ContentKeys)),
+		ContentKeys:            make([]ContentKey, 0, len(rec.ContentKeys)),
 	}
 	for _, ck := range rec.ContentKeys {
-		ev.ContentKeys = append(ev.ContentKeys, &corev1.SecurityContentKey{
+		ev.ContentKeys = append(ev.ContentKeys, ContentKey{
 			ContentEpoch: ck.Epoch,
 			Secret:       slices.Clone(ck.Secret[:]),
 		})
@@ -1111,7 +1115,7 @@ func (e *Engine) applyPersistedRecordToEngine(rec *PersistedRecord, opID uint64,
 	})
 }
 
-func (e *Engine) applyRecordInternal(nowMs int64, ev *corev1.SecurityRecordEvent, onDone func(nowMs int64, err error)) {
+func (e *Engine) applyRecordInternal(nowMs int64, ev RecordUpdate, onDone func(nowMs int64, err error)) {
 	prior := e.out
 	e.out = nil
 	effs := e.ApplyRecord(nowMs, ev)

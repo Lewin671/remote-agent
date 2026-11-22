@@ -274,7 +274,6 @@
     <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
     <string name="errors_connection_timed_out" formatted="false">"连接超时"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"连接超时，正在重连"</string>
-    <string name="errors_device_information_is_changing_retry" formatted="false">"设备信息正在变化，请重试"</string>
     <string name="errors_disconnected_from_server" formatted="false">"与 server 的连接断开"</string>
     <string name="errors_establishing_push_connection" formatted="false">"建立推送连接"</string>
     <string name="errors_executed_result_unavailable" formatted="false">"电脑已执行，但结果没能取回，请刷新查看最新状态"</string>
@@ -325,7 +324,6 @@
     <string name="errors_this_device_s_clock_is_behind_the_account_state_remote" formatted="false">"本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出"</string>
     <string name="errors_this_device_s_security_state_could_not_be_verified" formatted="false">"本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。"</string>
     <string name="errors_this_history_uses_an_old_encryption_format_and_can" formatted="false">"这条历史是旧版加密格式，已不再支持查看"</string>
-    <string name="errors_this_is_not_a_remote_agent_account_key" formatted="false">"这不是 remote-agent 的账户密钥"</string>
     <string name="errors_this_page_is_out_of_date_refresh_or_update" formatted="false">"这个网页版本较旧，请刷新或更新后再试"</string>
     <string name="errors_this_request_has_not_been_verified_by_the_computer" formatted="false">"当前请求尚未由电脑核实，请等待同步"</string>
     <string name="errors_upload_made_no_progress" formatted="false">"上传没有进展"</string>
@@ -1447,7 +1445,6 @@
     <string name="security_recovery_was_rejected_you_can_apply_again" formatted="false">"恢复已被否决，可以重新申请。"</string>
     <string name="security_refresh_successor_devices" formatted="false">"刷新接任设备"</string>
     <string name="security_regenerate_recovery_code" formatted="false">"重新生成恢复码"</string>
-    <string name="security_registration_on_another_server_is_unfinished_retry_it_or" formatted="false">"另一个服务器的注册尚未完成，请先重试或退出并重新开始"</string>
     <string name="security_registration_proof_of_work_expired_retry_the_original_draft" formatted="false">"注册工作量证明已过期，请重试原草稿"</string>
     <string name="security_registration_proof_of_work_is_invalid_or_expired" formatted="false">"注册工作量证明无效或已过期"</string>
     <string name="security_reject" formatted="false">"否决"</string>
@@ -1471,7 +1468,6 @@
     <string name="security_save_the_recovery_code_offline_anyone_with_it_can" formatted="false">"请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。"</string>
     <string name="security_saved_notify_managing_client" formatted="false">"我已保存，通知管理端"</string>
     <string name="security_saved_publish_replacement" formatted="false">"我已保存，发布换码"</string>
-    <string name="security_security_setup_must_use_the_original_account_s_server" formatted="false">"安全设置必须使用原账户的服务器"</string>
     <string name="security_security_state_may_be_out_of_date_connect_and" formatted="false">"安全状态可能过期，请联网后重新核实。"</string>
     <string name="security_server" formatted="false">"服务器"</string>
     <string name="security_setup_token_optional_with_open_registration" formatted="false">"Setup token（开放注册可留空）"</string>
@@ -1481,13 +1477,11 @@
     <string name="security_submit_or_check_original_recovery" formatted="false">"提交或查询原恢复"</string>
     <string name="security_success_is_uncertain_connection_lost" formatted="false">"不确定是否成功：网络断了"</string>
     <string name="security_take_over_management" formatted="false">"接管管理权"</string>
-    <string name="security_the_account_belongs_to_another_server" formatted="false">"账户属于另一个服务器"</string>
     <string name="security_the_account_keys_and_cache_in_this_browser_will" formatted="false">"会先删除这个浏览器里的账户密钥和缓存，再用配对码加入。"</string>
     <string name="security_the_account_s_state_chain_is_too_long_to" formatted="false">"账户的状态链太长，无法加入；请在管理端重建账户。"</string>
     <string name="security_the_browser_did_not_promise_to_retain_data" formatted="false">"浏览器没有承诺保留数据"</string>
     <string name="security_the_computer_s_archive_was_deleted_join_as_a" formatted="false">"电脑档案已删除，请按新设备加入"</string>
     <string name="security_the_local_account_unfinished_registration_and_security_operations_will" formatted="false">"本机账户、未完成的注册和安全操作会被清除，需要重新配对或创建。服务器上的会话和档案不会被删除；结果未明的操作可能已经成功，请在管理端核实。"</string>
-    <string name="security_the_managing_client_canceled_pairing" formatted="false">"管理端取消了配对"</string>
     <string name="security_the_managing_client_cannot_be_removed_directly_transfer_management" formatted="false">"管理端不能被普通删除，请先交接"</string>
     <string name="security_the_managing_client_cannot_be_removed_directly_transfer_management_device_management" formatted="false">"管理端不能直接移除，请先交接管理权。"</string>
     <string name="security_the_new_recovery_code_backup_is_unconfirmed_replace_the" formatted="false">"新恢复码尚未确认备份，请立即换码并离线保存。"</string>
@@ -1500,7 +1494,6 @@
     <string name="security_the_public_key_may_already_be_published_abandoning_only" formatted="false">"接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"</string>
     <string name="security_the_security_operation_s_outcome_is_unverified_continue_the" formatted="false">"安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。"</string>
     <string name="security_the_server_does_not_recognize_this_device" formatted="false">"服务器不认识这台设备"</string>
-    <string name="security_the_server_returned_information_for_a_different_device_from" formatted="false">"服务器返回的不是发起配对那台设备的信息，已停止配对"</string>
     <string name="security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon" formatted="false">"配对草稿已过期，尚未发布，可明确放弃后重新开始"</string>
     <string name="security_the_unpublished_pairing_draft_was_canceled_or_its_candidate" formatted="false">"配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始"</string>
     <string name="security_this_browser_is_the_only_managing_client_transfer_management" formatted="false">"此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。"</string>

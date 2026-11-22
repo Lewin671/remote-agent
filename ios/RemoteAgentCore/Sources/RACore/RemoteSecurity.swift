@@ -1,156 +1,335 @@
-import Connect
 import Foundation
 import RAProto
 import SwiftProtobuf
 
 extension Remote {
-    func securitySession() throws -> AuthoritySecurity {
-        if let deviceSecurity { return deviceSecurity }
-        guard let securityStorage else { throw DeviceSecurity.Failure.storage }
-        let record = try securityStorage.readSecurity()
-        guard record.memberID == account.deviceId else {
-            throw DeviceSecurity.Failure.untrusted
+    // MARK: - Core Security Lifecycle & Workflows
+
+    func ensureSecurityConfigured() async {
+        guard !closed, !securityConfiguredInCore else { return }
+        securityConfiguredInCore = true
+        let cfg = PBSecurityConfigEvent.with {
+            $0.account = account.accountId
+            $0.deviceID = account.deviceId
+            $0.server = account.server
+            $0.inlineCrypto = true
+            $0.foreground = foregroundActive
         }
-        if !account.accountId.isEmpty, record.pin.account != account.accountId {
-            throw DeviceSecurity.Failure.untrusted
-        }
-        latestXPrivateLock.withLock { $0 = record.xPrivateRaw }
-        let client = AuthoritySecurity(
-            store: securityStorage,
-            memberID: account.deviceId,
-            signingKey: device,
-            clock: { [clock] in UInt64(bitPattern: clock()) },
-            pullTimeoutMs: 3000,
-            observer: securityObserver(),
-            fetchStates: { [weak self] after in
-                guard let self else { throw DeviceSecurity.Failure.storage }
-                return try await self.fetchSecurityPage(after)
-            }
-        )
-        deviceSecurity = client
-        return client
+        await emitSecurityCoreEvent(PBCoreEvent.with { $0.securityConfig = cfg })
     }
 
-    private func fetchSecurityPage(_ after: UInt64) async throws -> PBGetSecurityStatesResponse {
-        var req = PBGetSecurityStatesRequest(); req.afterEpoch = after; req.limit = 8
-        let request = req
+    public func ensureSecurityBootstrapped() async throws {
+        if closed || securityBootstrapped { return }
+        await ensureSecurityConfigured()
+        if let existing = securityBootstrapTask {
+            try await existing.value
+            return
+        }
+        let task = Task<Void, Error> {
+            let st = try await securityClient.bootstrap()
+            await applySecurityStatusSnapshotAndPrune(st)
+            securityBootstrapped = true
+        }
+        securityBootstrapTask = task
         do {
-            let response = try await withAuthRetry { [api] headers in
-                try await api.client.getSecurityStates(request: request, headers: headers).value()
-            }
-            try Task.checkCancellation()
-            receivedRecoveryStatus(response)
-            return response
+            try await task.value
+            securityBootstrapTask = nil
         } catch {
-            if !Task.isCancelled { markRecoveryStatusStale() }
+            securityBootstrapTask = nil
             throw error
         }
     }
 
-    func ensureFallbackRunner() throws -> CoreSecurityRunner {
-        if let fallbackSecurityRunner { return fallbackSecurityRunner }
-        let runner = try CoreSecurityRunner(executor: securityExecutor)
-        fallbackSecurityRunner = runner
-        return runner
+    func emitSecurityCoreEvent(_ ev: PBCoreEvent) async {
+        guard !closed else { return }
+        if let onCore = hostHooks?.onCoreEvent {
+            await onCore(ev)
+            return
+        }
+        ensureFallbackSecurityDriver()?.enqueueEvent(ev)
     }
 
-    func nextSecurityPushSeq() -> UInt64 {
-        let seq = securityPushSeq
-        securityPushSeq &+= 1
-        return seq
+    private func ensureFallbackSecurityDriver() -> CoreSecurityDriver? {
+        guard !closed else { return nil }
+        if let fallbackSecurityDriver { return fallbackSecurityDriver }
+        let driver = try? CoreSecurityDriver(
+            executor: securityExecutor,
+            client: securityClient,
+            clock: clock,
+            sleep: sleep,
+            onStatusSnapshot: { [weak self] st in
+                Task { await self?.applySecurityStatusSnapshot(st) }
+            },
+            onTokenUpdated: { [weak self] eff in
+                Task { await self?.applySecurityTokenUpdated(eff) }
+            }
+        )
+        fallbackSecurityDriver = driver
+        return driver
     }
 
-    func ensureSecurityConfigured() async {
-        guard !securityConfiguredInCore else { return }
-        if let onConfig = hostHooks?.onSecurityConfig {
-            securityConfiguredInCore = true
-            let cfg = PBSecurityConfigEvent.with {
-                $0.account = account.accountId
-                $0.deviceID = account.deviceId
-                $0.inlineCrypto = true
-            }
-            await onConfig(cfg)
-        } else {
-            do {
-                try ensureFallbackRunner().configure(account: account.accountId, deviceId: account.deviceId, nowMs: clock())
-                securityConfiguredInCore = true
-            } catch {
-                // Propagated if an op runs against unconfigured runner.
-            }
+    public func setSecurityForeground(_ foreground: Bool) async {
+        foregroundActive = foreground
+        if securityConfiguredInCore {
+            await emitSecurityCoreEvent(PBCoreEvent.with {
+                $0.securityForeground = .with { $0.foreground = foreground }
+            })
         }
     }
 
-    func buildSecurityRecordEvent(
-        record: DeviceSecurity.Record,
-        opId: UInt64,
-        pushSeq: UInt64,
-        networkGeneration netGen: UInt64,
-        recoveryPending: Bool,
-        recoveryReadyMs: UInt64,
-        recoveryObjectsPending: Bool
-    ) throws -> PBSecurityRecordEvent {
-        latestXPrivateLock.withLock { $0 = record.xPrivateRaw }
-        authorityDeviceId = record.state.core.authorityID
-        leaseEndMs = record.lease?.notAfter ?? 0
-        return try CoreSecurityRunner.makeRecordEvent(
-            record: record,
-            opId: opId,
-            pushSeq: pushSeq,
-            networkGeneration: netGen,
-            recoveryPending: recoveryPending,
-            recoveryReadyMs: recoveryReadyMs,
-            recoveryObjectsPending: recoveryObjectsPending
-        )
-    }
-
-    func ensureSecurityRecordLoaded() async throws {
-        await ensureSecurityConfigured()
-        if securityRecordLoaded { return }
-        guard let securityStorage else { throw DeviceSecurity.Failure.storage }
-        let record = try securityStorage.readSecurity()
-        let ev = try buildSecurityRecordEvent(
-            record: record,
-            opId: 0,
-            pushSeq: nextSecurityPushSeq(),
-            networkGeneration: networkGeneration,
-            recoveryPending: recoveryPending,
-            recoveryReadyMs: recoveryReadyMs,
-            recoveryObjectsPending: recoveryObjectsPending
-        )
-        if let onWait = hostHooks?.onSecurityRecordAndWait {
-            await onWait(ev)
-        } else {
-            try ensureFallbackRunner().syncRecord(ev, nowMs: clock())
+    func currentCoreSyncStateView() async -> PBCoreSyncStateView? {
+        if let onQuery = hostHooks?.onQuerySyncState {
+            return await onQuery()
         }
-        securityRecordLoaded = true
+        return fallbackSecurityDriver?.syncStateView()
     }
 
-    func runSecurityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
-        try await ensureSecurityRecordLoaded()
+    func cachedAllowedMachines() async -> Set<String>? {
+        guard let v = await currentCoreSyncStateView(), v.securityLoaded else { return nil }
+        if v.removed || !v.isMember { return [] }
+        return Set(v.trustedMachineIds).union(v.archiveMachineIds)
+    }
+
+    public func applySecurityTokenUpdated(_ eff: PBSecurityTokenUpdatedEffect) {
+        if eff.cleared {
+            token = ""
+            tokenExpires = 0
+            securityStore.clearLoginToken(server: account.server, deviceId: account.deviceId)
+            return
+        }
+        token = eff.token
+        tokenExpires = eff.expiresMs
+        securityStore.saveLoginToken(
+            SavedLogin(token: eff.token, expiresMs: eff.expiresMs),
+            server: account.server,
+            deviceId: account.deviceId
+        )
+    }
+
+    public func applySecurityStatusSnapshot(_ status: PBSecurityWorkflowStatus) async {
+        clockSkewed = status.clockSkewed
+        if status.removed {
+            dropToken()
+        }
+        await pruneUntrustedCaches(status: status)
+    }
+
+    func applySecurityStatusSnapshotAndPrune(_ status: PBSecurityWorkflowStatus) async {
+        clockSkewed = status.clockSkewed
+        if status.removed {
+            dropToken()
+        }
+        await pruneUntrustedCaches(status: status)
+    }
+
+    func pruneUntrustedCaches(status: PBSecurityWorkflowStatus? = nil) async {
+        guard let cache else { return }
+        let st = status ?? securityClient.currentStatus
+        var candidates = Set<String>()
+        for m in state.value.machines.keys { candidates.insert(m) }
+        for d in state.value.devices.values where d.kind == .machine { candidates.insert(d.id) }
+        for m in await cache.machines() { candidates.insert(m.id) }
+        let view = await currentCoreSyncStateView()
+        if let view, view.securityLoaded {
+            for mid in view.archiveMachineIds { candidates.insert(mid) }
+            if view.removed || !view.isMember {
+                for mid in candidates { await cache.removeBlob(name: "schedules/" + mid) }
+                return
+            }
+            let trusted = Set(view.trustedMachineIds)
+            for mid in candidates where !trusted.contains(mid) {
+                await cache.removeBlob(name: "schedules/" + mid)
+            }
+            return
+        }
+        if let st, st.removed || !st.isMember {
+            for mid in candidates { await cache.removeBlob(name: "schedules/" + mid) }
+        }
+    }
+
+    @discardableResult
+    public func syncSecurity(touch: Bool = false) async throws -> PBSecurityWorkflowStatus {
+        try await ensureSecurityBootstrapped()
+        let st = try await securityClient.syncNow(touch: touch, authToken: token)
+        await applySecurityStatusSnapshotAndPrune(st)
+        return st
+    }
+
+    public func getSecurityStatus() async throws -> PBSecurityWorkflowStatus {
+        try await ensureSecurityBootstrapped()
+        let st = try await securityClient.getStatus()
+        await applySecurityStatusSnapshotAndPrune(st)
+        return st
+    }
+
+    @discardableResult
+    public func renewLeaseBlocking(force: Bool = true) async throws -> PBSecurityWorkflowStatus {
+        try await ensureSecurityBootstrapped()
+        let st = try await securityClient.renewLease(force: force)
+        await applySecurityStatusSnapshotAndPrune(st)
+        return st
+    }
+
+    public func renewLeaseNow() async {
+        do {
+            _ = try await renewLeaseBlocking(force: true)
+        } catch {
+            if !(error is CancellationError) { report(error) }
+        }
+    }
+
+    public func resumeSecurityOperation() async throws {
+        try await ensureSecurityBootstrapped()
+        _ = try await securityClient.resumePendingOp()
+        if !closed { await refreshDevices() }
+    }
+
+    public func discardPendingOp(abandonHandoff: Bool = false) async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.discardPendingOp(abandonHandoff: abandonHandoff)
+    }
+
+    public func prepareRecoveryRotation() async throws -> String {
+        try await ensureSecurityBootstrapped()
+        return try await securityClient.prepareRecoveryRotation()
+    }
+
+    public func confirmRecoveryRotation() async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.confirmRecoveryRotation()
+    }
+
+    public func prepareHandoffCode(storagePersisted: Bool = true) async throws -> String {
+        try await ensureSecurityBootstrapped()
+        return try await securityClient.prepareHandoffCode(storagePersisted: storagePersisted)
+    }
+
+    public func publishHandoffOffer() async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.publishHandoffOffer()
+        if !closed { await refreshDevices() }
+    }
+
+    public func listHandoffCandidates() async throws -> [PBSecurityHandoffCandidate] {
+        try await ensureSecurityBootstrapped()
+        await refreshDevices()
+        return try await securityClient.listHandoffCandidates()
+    }
+
+    public func handoffAuthority(targetDeviceId: String) async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.handoffAuthority(targetDeviceId: targetDeviceId)
+    }
+
+    public func completeAccountPublicProfile(server: String, code: String) async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.completeAccountPublicProfile(server: server, code: code)
+    }
+
+    public func finishPairingDelivery(pairingId: String) async throws -> PBSecurityPairingInfo {
+        try await ensureSecurityBootstrapped()
+        let res = try await securityClient.finishPairingDelivery(pairingId: pairingId)
+        if res.delivered, !closed { await refreshDevices() }
+        return res
+    }
+
+    public func checkExitAdvice() async throws -> PBSecurityExitAdvice {
+        try await ensureSecurityBootstrapped()
+        return try await securityClient.checkExitAdvice()
+    }
+
+    public func clearSecurity() async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.clearSecurity()
+    }
+
+    public func republishRecoveryObjects(flag: Bool = false) async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.republishRecoveryObjects(flag: flag)
+    }
+
+    public func renameDevice(_ id: String, name: String) async throws {
+        guard id == account.deviceId else {
+            throw CommandError("failed_precondition", L10nMessage.errorsIosOnlyTheDeviceItselfCanChangeItsName())
+        }
+        try await ensureSecurityBootstrapped()
+        try await securityClient.updateDeviceMeta(deviceId: id, name: name.trimmingCharacters(in: .whitespacesAndNewlines))
+        if !closed { await refreshDevices() }
+    }
+
+    public func describeSelf(platform: String, description: String) async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.updateDeviceMeta(
+            platform: platform,
+            description: description,
+            describeSelfOnly: true
+        )
+        if !closed { await refreshDevices() }
+    }
+
+    public func removeDevice(_ id: String, abandonPairDelivery: Bool = false) async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.removeDevice(id, abandonPairDelivery: abandonPairDelivery)
+        if !closed { await refreshDevices() }
+    }
+
+    public func deleteMachineRecords(_ id: String) async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.deleteMachineRecords(id)
+        if !closed { await refreshDevices() }
+    }
+
+    public func deleteAccount() async throws {
+        try await ensureSecurityBootstrapped()
+        try await securityClient.deleteAccount()
+    }
+
+    // MARK: - Crypto Envelope Operations
+
+    private func runSecurityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
+        try await ensureSecurityBootstrapped()
+        let res: PBSecurityOpResultEffect
         if let onOp = hostHooks?.onSecurityOp {
             var req = PBSecurityOpRequestEvent()
             configure(&req)
-            let res = await onOp(req)
-            if !res.error.isEmpty {
-                throw CoreSecurityRunner.mapOpError(res)
+            res = await onOp(req)
+        } else {
+            guard let driver = ensureFallbackSecurityDriver() else {
+                throw SecurityFailure.storage
             }
-            return res
+            res = try await driver.runSecurityOp(configure)
         }
-        let runner = try ensureFallbackRunner()
-        if let record = try? securityStorage?.readSecurity() {
-            try runner.syncRecord(
-                record,
-                recoveryPending: recoveryPending,
-                recoveryReadyMs: recoveryReadyMs,
-                recoveryObjectsPending: recoveryObjectsPending,
-                nowMs: clock()
-            )
+        if !res.error.isEmpty {
+            throw Self.mapOpError(res)
         }
-        return try runner.runOp(configure)
+        return res
+    }
+
+    static func mapOpError(_ res: PBSecurityOpResultEffect) -> Error {
+        switch res.errorCode {
+        case "unsupported_history":
+            return UnsupportedHistoryError()
+        case "recovery_unavailable":
+            return SecurityFailure.unavailable
+        case "stale":
+            return res.error.contains("lease expired") ? SecurityFailure.lease : SecurityFailure.stale
+        case "clock":
+            return SecurityFailure.clock
+        case "untrusted":
+            return SecurityFailure.untrusted
+        case "capacity":
+            return SecurityFailure.capacity
+        case "storage":
+            return SecurityFailure.storage
+        case "conflict":
+            return SecurityFailure.conflict
+        default:
+            return SecurityFailure.invalid
+        }
     }
 
     func sealEnvelopeOp(
-        purpose: DeviceSecurity.Purpose,
+        purpose: SecurityPurpose,
         machineId: String = "",
         sessionId: String = "",
         requestId: String = "",
@@ -174,14 +353,14 @@ extension Remote {
             }
         }
         guard case .sealed(let sealed)? = res.result else {
-            throw DeviceSecurity.Failure.invalid
+            throw SecurityFailure.invalid
         }
         return sealed
     }
 
     func openEnvelopeOp(
         envelope: PBEnvelope,
-        expectedPurpose: DeviceSecurity.Purpose,
+        expectedPurpose: SecurityPurpose,
         machineId: String = "",
         sessionId: String = "",
         requestId: String = "",
@@ -202,7 +381,7 @@ extension Remote {
             }
         }
         guard case .opened(let opened)? = res.result else {
-            throw DeviceSecurity.Failure.invalid
+            throw SecurityFailure.invalid
         }
         return opened
     }
@@ -223,10 +402,12 @@ extension Remote {
     }
 
     func authorizationStateHash() async throws -> Data {
-        do { return try await securitySession().headStateHash() } catch {
-            if error is CancellationError { throw error }
-            throw CommandError("authorization_unavailable", L10nMessage.securityIosCouldNotVerifyTheCurrentSecurityStateTheOperation())
-        }
+        try await ensureSecurityBootstrapped()
+        let st = securityClient.currentStatus
+        var seed = Data((st?.accountID ?? account.accountId).utf8)
+        var epoch = st?.headEpoch ?? 0
+        withUnsafeBytes(of: &epoch) { seed.append(contentsOf: $0) }
+        return sha256(seed)
     }
 
     func authorizeCommandBytes(
@@ -237,11 +418,10 @@ extension Remote {
         commandBytes: Data
     ) async throws -> PreparedCommand.AuthorizedCommand {
         do {
-            guard !clockSkewed else {
+            try await ensureSecurityBootstrapped()
+            guard !(securityClient.currentStatus?.clockSkewed ?? clockSkewed) else {
                 throw CommandError("failed_precondition", L10n.securityIosThisDeviceIsOver5MinutesBehindTheSecurity())
             }
-            let client = try securitySession()
-            _ = try await client.sync()
             let sealed = try await sealEnvelopeOp(
                 purpose: .command,
                 machineId: machineId,
@@ -257,11 +437,12 @@ extension Remote {
             )
         } catch let e as CommandError {
             throw e
-        } catch DeviceSecurity.Failure.lease {
+        } catch SecurityFailure.lease {
             let devices = state.value.devices
-            let renewal = authorityDeviceId == account.deviceId
+            let authId = state.value.authorityDeviceId
+            let renewal = authId == account.deviceId
                 ? L10n.securityIosOpenSettingsAccountSecurityAndTapRenewNow()
-                : L10n.securityIosOpenToRenew(value: String(describing: clientName(devices[authorityDeviceId], id: authorityDeviceId, among: devices)))
+                : L10n.securityIosOpenToRenew(value: String(describing: clientName(devices[authId], id: authId, among: devices)))
             throw CommandError(
                 "failed_precondition", L10nMessage.errorsIosExpiredControlRenewal(renewal: renewal))
         } catch {
@@ -281,24 +462,14 @@ extension Remote {
         )
     }
 
-    public func securityIdentity() throws -> (DeviceSecurity.Pin, DeviceSecurity.State) {
-        guard let storage = securityStorage else { throw DeviceSecurity.Failure.storage }
-        let r = try storage.readSecurity()
-        guard r.memberID == account.deviceId else { throw DeviceSecurity.Failure.untrusted }
-        if !account.accountId.isEmpty, r.pin.account != account.accountId {
-            throw DeviceSecurity.Failure.untrusted
-        }
-        return (r.pin, r.state)
-    }
-
     func openSecureMessage<M: SwiftProtobuf.Message>(
         envelope: PBEnvelope?,
         want: Place,
         as type: M.Type,
         history: Bool = false
     ) async throws -> (PBHeader, M) {
-        guard let envelope else { throw DeviceSecurity.Failure.invalid }
-        let expectedPurpose: DeviceSecurity.Purpose
+        guard let envelope else { throw SecurityFailure.invalid }
+        let expectedPurpose: SecurityPurpose
         switch want.kind {
         case .event: expectedPurpose = .event
         case .sessionMeta: expectedPurpose = .sessionMeta
@@ -312,7 +483,7 @@ extension Remote {
         case .image: expectedPurpose = .image
         case .accountPrefs: expectedPurpose = .prefs
         case .deviceMeta: expectedPurpose = .deviceMeta
-        default: throw DeviceSecurity.Failure.invalid
+        default: throw SecurityFailure.invalid
         }
         let history = history || [PBPayloadKind.accountPrefs, .deviceMeta, .machineMeta, .sessionMeta, .image].contains(want.kind)
         let opened = try await openEnvelopeOp(
@@ -331,9 +502,9 @@ extension Remote {
     private static func projection(_ r: PBSecurityOpenEnvelopeResult) -> PBHeader {
         var out = PBHeader()
         out.version = 3
-        let rawKind: Int = (r.purpose == DeviceSecurity.Purpose.terminalResize.rawValue
-            || r.purpose == DeviceSecurity.Purpose.terminalHistory.rawValue)
-            ? Int(DeviceSecurity.Purpose.terminalInput.rawValue)
+        let rawKind: Int = (r.purpose == SecurityPurpose.terminalResize.rawValue
+            || r.purpose == SecurityPurpose.terminalHistory.rawValue)
+            ? Int(SecurityPurpose.terminalInput.rawValue)
             : Int(r.purpose)
         out.kind = PBPayloadKind(rawValue: rawKind) ?? .unspecified
         out.machineID = r.machineID
@@ -343,17 +514,5 @@ extension Remote {
         out.deadlineMs = r.deadlineMs
         out.sender = r.sender
         return out
-    }
-}
-
-extension Remote {
-    func receivedRecoveryStatus(_ response: PBGetSecurityStatesResponse) {
-        recoveryPending = response.recoveryPending
-        recoveryReadyMs = response.recoveryReadyMs
-        recoveryStatusStale = false
-    }
-
-    func markRecoveryStatusStale() {
-        recoveryStatusStale = true
     }
 }

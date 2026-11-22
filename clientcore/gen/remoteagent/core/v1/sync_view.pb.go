@@ -662,6 +662,8 @@ type SyncStateView struct {
 	Devices                []*SyncDeviceView
 	DisplayGrace           bool
 	ReachabilityUnknown    bool
+	TrustedMachineIds      []string
+	ArchiveMachineIds      []string
 }
 
 func (m *SyncStateView) GetConnection() ConnState {
@@ -898,6 +900,18 @@ func (m *SyncStateView) GetReachabilityUnknown() bool {
 	}
 	return false
 }
+func (m *SyncStateView) GetTrustedMachineIds() []string {
+	if m != nil {
+		return m.TrustedMachineIds
+	}
+	return nil
+}
+func (m *SyncStateView) GetArchiveMachineIds() []string {
+	if m != nil {
+		return m.ArchiveMachineIds
+	}
+	return nil
+}
 
 func (m *SyncStateView) Size() int { return len(m.AppendMarshal(nil)) }
 
@@ -972,6 +986,12 @@ func (m *SyncStateView) AppendMarshal(b []byte) []byte {
 	}
 	b = litewire.AppendBool(b, 38, m.DisplayGrace)
 	b = litewire.AppendBool(b, 39, m.ReachabilityUnknown)
+	for _, v := range m.TrustedMachineIds {
+		b = litewire.AppendStringAlways(b, 40, v)
+	}
+	for _, v := range m.ArchiveMachineIds {
+		b = litewire.AppendStringAlways(b, 41, v)
+	}
 	return b
 }
 

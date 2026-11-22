@@ -303,7 +303,8 @@ actor FakeDaemon {
     }
 
     func login() async throws {
-        token = try await RACore.login(api: rpc, account: account)
+        let store = try security.store(account.deviceId) ?? { throw TestFailure("missing daemon test store") }()
+        token = try await RACore.loginWithStore(api: rpc, deviceId: account.deviceId, store: store).token
     }
 
     private func header(_ kind: PBPayloadKind) -> PBHeader {
@@ -454,8 +455,8 @@ actor FakeDaemon {
             if case .openTerminal(let open)? = cmd.kind { serveTerminal(open) }
             result = await answer(h, cmd)
         }
-        guard let pin = try? security.store(account.deviceId)?.readSecurity().pin else { return }
-        let binding = testRequestIdentity(pin: pin, header: h, plaintext: pt)
+        guard let rec = try? security.record(member: account.deviceId) else { return }
+        let binding = testRequestIdentity(account: rec.account, domain: rec.domain, header: h, plaintext: pt)
         result.requestKeyHash=binding.key; result.payloadHash=binding.payload
         if result.outcome.isEmpty { result.outcome="executed"; result.reason="completed"; result.resultAvailable=true }
         var rh = header(.commandResult)
@@ -515,8 +516,7 @@ actor FakeDaemon {
                 guard let env = try? PBEnvelope(serializedBytes: bytes),
                     let (hh, raw) = try? security.open(account, env, seed: key),
                     let frame = try? PBTerminalFrame(serializedBytes: raw), hh.seq > 0,
-                    (try? Envelopes.expect(
-                        hh, Place(.terminalInput, sessionId: sid, requestId: stream))) != nil
+                    hh.kind == .terminalInput, hh.sessionID == sid, hh.requestID == stream
                 else { continue }
                 input.put(frame)
             }

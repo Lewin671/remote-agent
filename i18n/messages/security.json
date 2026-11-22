@@ -2018,89 +2018,9 @@
     }
   },
   {
-    "key": "security.the_managing_client_canceled_pairing",
-    "zh-CN": "管理端取消了配对",
-    "en": "The managing client canceled pairing",
-    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.pairing_expired_or_was_canceled",
     "zh-CN": "配对已过期或被取消",
     "en": "Pairing expired or was canceled",
-    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.registration_on_another_server_is_unfinished_retry_it_or",
-    "zh-CN": "另一个服务器的注册尚未完成，请先重试或退出并重新开始",
-    "en": "Registration on another server is unfinished. Retry it or exit and start over.",
-    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.security_setup_must_use_the_original_account_s_server",
-    "zh-CN": "安全设置必须使用原账户的服务器",
-    "en": "Security setup must use the original account’s server",
-    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.the_server_returned_information_for_a_different_device_from",
-    "zh-CN": "服务器返回的不是发起配对那台设备的信息，已停止配对",
-    "en": "The server returned information for a different device from the one that started pairing. Pairing stopped.",
-    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.the_account_belongs_to_another_server",
-    "zh-CN": "账户属于另一个服务器",
-    "en": "The account belongs to another server",
     "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
@@ -4474,20 +4394,6 @@
     }
   },
   {
-    "key": "security.ios_continue_the_account_creation_recovery_or_successor_draft",
-    "zh-CN": "请继续账户创建、恢复或接任草稿",
-    "en": "Continue the account creation, recovery, or successor draft",
-    "notes": "iOS AuthorityCoordinator.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_copy_pairing_code",
     "zh-CN": "复制配对码",
     "en": "Copy pairing code",
@@ -4520,20 +4426,6 @@
         "example": "Example"
       }
     },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_could_not_verify_the_current_security_state_the_operation",
-    "zh-CN": "未能核实当前安全状态，操作没有发出；请重试",
-    "en": "Could not verify the current security state. The operation was not sent; retry.",
-    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
     "platforms": [
       "ios"
     ],
@@ -4697,20 +4589,6 @@
     }
   },
   {
-    "key": "security.ios_finish_or_abandon_unfinished_account_security_operations_before_deleting",
-    "zh-CN": "请先完成或放弃未完成的账户安全操作，再删除账户。",
-    "en": "Finish or abandon unfinished account security operations before deleting the account.",
-    "notes": "iOS AccountDeletion.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_generate_another_pairing_code",
     "zh-CN": "重新生成配对码",
     "en": "Generate another pairing code",
@@ -4767,20 +4645,6 @@
     }
   },
   {
-    "key": "security.ios_invalid_pairing_approval",
-    "zh-CN": "配对批准无效",
-    "en": "Invalid pairing approval",
-    "notes": "iOS Approval.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_joined_but_could_not_save_account_keys",
     "zh-CN": "已经加入，但没能保存账户密钥：{value}",
     "en": "Joined, but could not save account keys: {value}",
@@ -4804,20 +4668,6 @@
     "zh-CN": "加入已有账户需要在管理端批准，请使用配对码。",
     "en": "Joining an existing account requires managing client approval. Use a pairing code.",
     "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_joining_canceled",
-    "zh-CN": "已取消本次加入",
-    "en": "Joining canceled",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -4982,104 +4832,6 @@
     "zh-CN": "配对已放弃，可以重新生成配对码。",
     "en": "Pairing abandoned. You can generate a new pairing code.",
     "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_pairing_approval_does_not_match_this_device",
-    "zh-CN": "配对批准与这台设备不匹配",
-    "en": "Pairing approval does not match this device",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_pairing_approval_does_not_match_this_device_has_expired",
-    "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效",
-    "en": "Pairing approval does not match this device, has expired, or has an invalid signature",
-    "notes": "iOS Approval.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_pairing_canceled_explicitly_remove_the_approved_candidate_before_starting",
-    "zh-CN": "配对已取消；请明确移除已批准候选后重新开始",
-    "en": "Pairing canceled. Explicitly remove the approved candidate before starting over.",
-    "notes": "iOS AuthorityCoordinator.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_pairing_commitment_changed_after_the_ephemeral_public_key_was",
-    "zh-CN": "临时公钥公开后配对承诺发生变化",
-    "en": "Pairing commitment changed after the ephemeral public key was revealed",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_pairing_commitment_mismatch",
-    "zh-CN": "配对承诺不匹配",
-    "en": "Pairing commitment mismatch",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_pairing_delivery_on_another_server_is_unfinished",
-    "zh-CN": "另一个服务器的配对收件尚未完成",
-    "en": "Pairing delivery on another server is unfinished",
-    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_patterns_are_not_confirmed_locally_secure_binding_stopped",
-    "zh-CN": "本机未确认图案，已停止安全绑定",
-    "en": "Patterns are not confirmed locally. Secure binding stopped.",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -5594,38 +5346,10 @@
     }
   },
   {
-    "key": "security.ios_the_managing_client_s_trust_information_does_not_match",
-    "zh-CN": "管理端的信任信息与配对承诺不匹配",
-    "en": "The managing client’s trust information does not match its commitment",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_the_new_recovery_code_is_active_the_old_code",
     "zh-CN": "新恢复码已生效，旧码已作废。",
     "en": "The new recovery code is active. The old code is invalid.",
     "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_the_new_state_did_not_add_this_device",
-    "zh-CN": "新状态没有把这台设备加进去",
-    "en": "The new state did not add this device",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -5678,66 +5402,10 @@
     }
   },
   {
-    "key": "security.ios_the_pairing_payload_s_account_differs_from_the_one",
-    "zh-CN": "配对载荷的账户与本机核对的不一致",
-    "en": "The pairing payload’s account differs from the one verified locally",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_the_pairing_payload_s_state_chain_is_incomplete",
-    "zh-CN": "配对载荷的状态链不完整",
-    "en": "The pairing payload’s state chain is incomplete",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_the_phone_s_security_state_is_over_5_minutes",
-    "zh-CN": "手机的安全状态时间比本机快 5 分钟以上，请校准时间后重试",
-    "en": "The phone’s security state is over 5 minutes ahead of this device. Correct the clock and retry.",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_the_previously_displayed_recovery_code_cannot_be_shown_again",
     "zh-CN": "上次显示的恢复码无法再次显示。先核实并完成原请求，再立即更换恢复码。",
     "en": "The previously displayed recovery code cannot be shown again. Verify and finish the original request, then replace the code immediately.",
     "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_the_security_state_chain_is_too_long_to_join",
-    "zh-CN": "账户的状态链太长，无法加入；请在管理端重建账户。",
-    "en": "The security state chain is too long to join. Rebuild the account on the managing client.",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -5762,38 +5430,10 @@
     }
   },
   {
-    "key": "security.ios_the_server_returned_an_unexpected_device_type_pairing_stopped",
-    "zh-CN": "服务器返回了意外的设备类型，已停止配对",
-    "en": "The server returned an unexpected device type. Pairing stopped.",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_the_successor_s_public_key_may_already_be_published",
     "zh-CN": "接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。",
     "en": "The successor’s public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control. Keep the saved recovery code.",
     "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_the_successor_s_public_key_may_already_be_published_278",
-    "zh-CN": "接任公钥可能已经发布；放弃只清除本机准备，不会撤回公钥。请保留恢复码并明确确认后再放弃。",
-    "en": "The successor’s public key may already be published. Abandoning only clears local preparation and does not withdraw the key. Keep the recovery code and explicitly confirm before abandoning.",
-    "notes": "iOS AuthorityRecovery.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -5934,20 +5574,6 @@
     "zh-CN": "会先删除这台手机上的账户密钥和缓存，再用配对码加入。",
     "en": "This phone’s account keys and cache will be deleted before joining with a pairing code.",
     "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "security.ios_too_many_attempts_wait_a_minute_and_retry",
-    "zh-CN": "试得太频繁了，等一分钟再试",
-    "en": "Too many attempts. Wait a minute and retry.",
-    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"

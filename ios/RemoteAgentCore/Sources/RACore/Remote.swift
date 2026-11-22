@@ -197,18 +197,14 @@ public final actor Remote {
     public nonisolated let account: Account
     public nonisolated let api: Api
     nonisolated let http: HTTP
-    nonisolated let device: SigningKey
     nonisolated let cache: (any CipherCache)?
     nonisolated let log: @Sendable (String) -> Void
     nonisolated let clock: @Sendable () -> Int64
     nonisolated let sleep: Sleeper
-    public nonisolated let authorityGate = AuthorityGate()
-    let securityStorage: (any DeviceSecurity.Storage)?
-    var deviceSecurity: AuthoritySecurity?
-    var management: AuthorityCoordinator?
-
-    nonisolated let latestXPrivateLock: OSAllocatedUnfairLock<Data?>
+    public nonisolated let securityStore: any SecurityStoreV4
     public nonisolated let securityExecutor: SecurityExecutor
+    public nonisolated let securityClient: SecurityClient
+    private nonisolated let closedLock = OSAllocatedUnfairLock(initialState: false)
     nonisolated let directPreferences: any DirectPreferenceStore
     public nonisolated let directServerHost: String
     public nonisolated let directConfiguredStun: String
@@ -240,7 +236,7 @@ public final actor Remote {
     private var streamLegs: [UInt64: StreamLeg] = [:]
     private var activeLegId: UInt64?
 
-    // Security Gate & transport state
+    // Security Workflow & Direct Gate state
     let directGate: DirectEventQueueGate
     var sessionMachines: [String: String] = [:] {
         didSet {
@@ -252,21 +248,13 @@ public final actor Remote {
             if watchedSessionIds != oldValue { directGate.updateWatched(watchedSessionIds) }
         }
     }
-    var authorityDeviceId = ""
-    var leaseEndMs: UInt64 = 0
-    var recoveryPending = false
-    var recoveryReadyMs: UInt64 = 0
-    var recoveryObjectsPending = false
-    var recoveryStatusStale = true
     var clockSkewed = false
+    var foregroundActive = true
     var networkGeneration: UInt64 = 0
-    var verifiedNetworkGeneration: UInt64 = 0
-    var coreSyncDepth = 0
-    private var securityNetworkReset: (UInt64, Task<Void, Never>)?
-    var fallbackSecurityRunner: CoreSecurityRunner?
+    var fallbackSecurityDriver: CoreSecurityDriver?
     var securityConfiguredInCore = false
-    var securityRecordLoaded = false
-    var securityPushSeq: UInt64 = 1
+    var securityBootstrapped = false
+    var securityBootstrapTask: Task<Void, Error>?
     var models: [String: ModelList] = [:]
 
     // Transitional Step 4 dumb state feed (populated strictly by CoreHost from SyncStateView)
@@ -281,9 +269,7 @@ public final actor Remote {
         public var onRefreshDevices: @Sendable () async -> Void
         public var onSavePrefs: @Sendable (PrefsOp) async throws -> Void
         public var onLoadMoreSessions: @Sendable () async -> Void
-        public var onSecurityConfig: (@Sendable (PBSecurityConfigEvent) async -> Void)?
-        public var onSecurityRecord: (@Sendable (PBSecurityRecordEvent) async -> Void)?
-        public var onSecurityRecordAndWait: (@Sendable (PBSecurityRecordEvent) async -> Void)?
+        public var onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)?
         public var onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)?
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
         public var onBeginDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect
@@ -294,9 +280,7 @@ public final actor Remote {
             onRefreshDevices: @escaping @Sendable () async -> Void,
             onSavePrefs: @escaping @Sendable (PrefsOp) async throws -> Void,
             onLoadMoreSessions: @escaping @Sendable () async -> Void = {},
-            onSecurityConfig: (@Sendable (PBSecurityConfigEvent) async -> Void)? = nil,
-            onSecurityRecord: (@Sendable (PBSecurityRecordEvent) async -> Void)? = nil,
-            onSecurityRecordAndWait: (@Sendable (PBSecurityRecordEvent) async -> Void)? = nil,
+            onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)? = nil,
             onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
             onBeginDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect = { _ in PBCoreDirectBulkRouteEffect() },
@@ -307,9 +291,7 @@ public final actor Remote {
             self.onRefreshDevices = onRefreshDevices
             self.onSavePrefs = onSavePrefs
             self.onLoadMoreSessions = onLoadMoreSessions
-            self.onSecurityConfig = onSecurityConfig
-            self.onSecurityRecord = onSecurityRecord
-            self.onSecurityRecordAndWait = onSecurityRecordAndWait
+            self.onQuerySyncState = onQuerySyncState
             self.onSecurityOp = onSecurityOp
             self.onCoreEvent = onCoreEvent
             self.onBeginDirectBulkTransfer = onBeginDirectBulkTransfer
@@ -330,7 +312,9 @@ public final actor Remote {
         frameQueue: Int = 1024,
         frameQueueBytes: Int = 32 << 20,
         streamOpenMs: Int64 = 15_000,
-        securityStorage: (any DeviceSecurity.Storage)? = nil,
+        securityStore: (any SecurityStoreV4)? = nil,
+        allowPlainHttp: Bool = false,
+        rpcOverride: SecurityExecutor.RpcOverride? = nil,
         monotonic: (@Sendable () -> Int64)? = nil,
         rtc: (any RtcFactory)? = nil,
         directPreferences: any DirectPreferenceStore = UserDefaultsDirectPreferences(),
@@ -346,7 +330,8 @@ public final actor Remote {
             self.directConfiguredStun = ""
         }
         self.directSupported = rtc != nil
-        self.securityStorage = securityStorage
+        let store = securityStore ?? MemorySecurityStoreV4()
+        self.securityStore = store
         self.http = http
         self.cache = cache
         self.log = log
@@ -354,19 +339,31 @@ public final actor Remote {
         self.sleep = sleep
         self.frameQueue = frameQueue
         self.frameQueueBytes = frameQueueBytes
-        device = try SigningKey(seed: account.deviceSeed)
         let builtApi = try Api(server: account.server, http: http)
         api = builtApi
         state = Feed(RemoteState())
         let holder = WeakRemote()
-        let initialX = try? securityStorage?.readSecurity().xPrivateRaw
-        let xLock = OSAllocatedUnfairLock<Data?>(initialState: initialX)
+        let closedFlag = self.closedLock
         let gate = DirectEventQueueGate()
         let eventChain = SerialChain()
-        self.latestXPrivateLock = xLock
         self.securityExecutor = SecurityExecutor(
-            signer: { [device] in device },
-            xPrivate: { [xLock] in xLock.withLock { $0 } }
+            store: store,
+            http: http,
+            allowPlainHttp: allowPlainHttp,
+            rpcOverride: rpcOverride,
+            emit: { ev in
+                await holder.remote?.emitSecurityCoreEvent(ev)
+            }
+        )
+        self.securityClient = SecurityClient(
+            dispatchEvent: { ev in
+                Task { await holder.remote?.emitSecurityCoreEvent(ev) }
+            },
+            setForegroundFn: { fg in
+                Task { await holder.remote?.setSecurityForeground(fg) }
+            },
+            isClosedFn: { closedFlag.withLock { $0 } },
+            onDismissUpgradeNotice: { store.dismissLegacyRepairNotice() }
         )
         self.directGate = gate
         self.coreEventChain = eventChain
@@ -402,15 +399,15 @@ public final actor Remote {
         deviceLink = Link(relay: RelayPath(
             api: builtApi, sleep: sleep,
             prepare: { [holder] prior in
-                guard let remote = holder.remote else { throw DeviceSecurity.Failure.storage }
+                guard let remote = holder.remote else { throw SecurityFailure.storage }
                 try await remote.prepareRelayAttempt(prior)
             },
             token: { [holder] in
-                guard let remote = holder.remote else { throw DeviceSecurity.Failure.storage }
+                guard let remote = holder.remote else { throw SecurityFailure.storage }
                 return await remote.relayToken()
             },
             renew: { [holder] prior in
-                guard let remote = holder.remote else { throw DeviceSecurity.Failure.storage }
+                guard let remote = holder.remote else { throw SecurityFailure.storage }
                 try await remote.renewRelayAttempt(prior)
             }
         ))
@@ -495,10 +492,21 @@ public final actor Remote {
             dropToken()
             retireLogin()
         }
-        if !forceLogin, !token.isEmpty, tokenExpires == 0 || tokenExpires >= clock() + 86_400_000 {
-            ev.token = token
-            ev.expiresMs = tokenExpires
-            return ev
+        if !forceLogin {
+            if !token.isEmpty, tokenExpires == 0 || tokenExpires >= clock() + 86_400_000 {
+                ev.token = token
+                ev.expiresMs = tokenExpires
+                return ev
+            }
+            if let saved = securityStore.loadLoginToken(server: account.server, deviceId: account.deviceId),
+               saved.expiresMs == 0 || saved.expiresMs >= clock() + 86_400_000
+            {
+                token = saved.token
+                tokenExpires = saved.expiresMs
+                ev.token = saved.token
+                ev.expiresMs = saved.expiresMs
+                return ev
+            }
         }
         do {
             let tok: String
@@ -567,24 +575,6 @@ public final actor Remote {
         loginFlight = nil
     }
 
-    func refreshNetworkSecurity() async throws {
-        let gen = networkGeneration
-        let task: Task<Void, Never>
-        if let current = securityNetworkReset, current.0 == gen {
-            task = current.1
-        } else {
-            let client = try securitySession()
-            let previous = securityNetworkReset?.1
-            task = Task {
-                await previous?.value
-                await client.networkChanged()
-            }
-            securityNetworkReset = (gen, task)
-        }
-        await task.value
-        guard gen == networkGeneration else { throw PathChanged() }
-    }
-
     private func performSignIn() async throws -> String {
         while signingIn {
             await withCheckedContinuation { signInWaiters.append($0) }
@@ -597,14 +587,14 @@ public final actor Remote {
         try Task.checkCancellation()
         let timeout: Int64 = networkGeneration > 0 ? 3000 : 15_000
         do {
-            let response = try await withTimeout(timeout, sleep: sleep) { [api, account] in
-                try await loginResponse(api: api, account: account)
+            let response = try await withTimeout(timeout, sleep: sleep) { [api, account, securityStore] in
+                try await loginWithStore(api: api, deviceId: account.deviceId, store: securityStore)
             }
             try Task.checkCancellation()
             return signedIn(response)
         } catch let first as ConnectError where first.code == .permissionDenied {
-            let response = try await withTimeout(timeout, sleep: sleep) { [api, account] in
-                try await loginResponse(api: api, account: account)
+            let response = try await withTimeout(timeout, sleep: sleep) { [api, account, securityStore] in
+                try await loginWithStore(api: api, deviceId: account.deviceId, store: securityStore)
             }
             try Task.checkCancellation()
             return signedIn(response)
@@ -615,7 +605,9 @@ public final actor Remote {
         if !closed {
             token = res.token
             tokenExpires = res.expiresMs
-            onLogin?(SavedLogin(token: res.token, expiresMs: res.expiresMs))
+            let saved = SavedLogin(token: res.token, expiresMs: res.expiresMs)
+            securityStore.saveLoginToken(saved, server: account.server, deviceId: account.deviceId)
+            onLogin?(saved)
         }
         return res.token
     }
@@ -627,6 +619,7 @@ public final actor Remote {
     func dropToken() {
         token = ""
         tokenExpires = 0
+        securityStore.clearLoginToken(server: account.server, deviceId: account.deviceId)
         if !closed { onLogin?(nil) }
     }
 
@@ -812,78 +805,13 @@ public final actor Remote {
         await callbacks.onClosed(closedEvent)
     }
 
-    // MARK: - Device Metadata & Lifecycle
-
-    public func renameDevice(_ id: String, name: String) async throws {
-        guard id == account.deviceId else {
-            throw CommandError("failed_precondition", L10nMessage.errorsIosOnlyTheDeviceItselfCanChangeItsName())
-        }
-        try await changeDeviceMeta(id) { $0.name = name }
-    }
-
-    public func describeSelf(platform: String, description: String) async throws {
-        try await changeDeviceMeta(account.deviceId) {
-            $0.platform = platform
-            $0.description_p = description
-        }
-    }
-
-    func changeDeviceMeta(_ id: String, _ change: (inout PBDeviceMeta) -> Void) async throws {
-        for _ in 0..<5 {
-            _ = try await securitySession().sync()
-            let listed = try await withAuthRetry { [api] headers in
-                try await api.client.listDevices(request: .init(), headers: headers).value()
-            }
-            guard let raw = listed.devices.first(where: { $0.id == id }) else {
-                throw CommandError("not_found", L10nMessage.settingsDeviceNotFound())
-            }
-            var metaRev = raw.metaRevision
-            var meta = PBDeviceMeta()
-            if raw.hasMeta && raw.kind == .client {
-                do {
-                    let opened = try await openEnvelopeOp(
-                        envelope: raw.meta,
-                        expectedPurpose: .deviceMeta,
-                        requestId: raw.id,
-                        history: true
-                    )
-                    try DeviceSecurity.check(opened.seq >= raw.metaRevision, .stale)
-                    meta = try PBDeviceMeta(serializedBytes: opened.plaintext)
-                    metaRev = opened.seq
-                } catch {
-                    report(error)
-                }
-            }
-            change(&meta)
-            do {
-                let env = try await sealEnvelopeOp(
-                    purpose: .deviceMeta,
-                    requestId: id,
-                    seq: metaRev + 1,
-                    plaintext: try meta.serializedData()
-                ).envelope
-                var req = PBPutDeviceMetaRequest()
-                req.deviceID = id
-                req.expectedRevision = metaRev
-                req.meta = env
-                let request = req
-                let result = try await withAuthRetry { [api] headers in
-                    try await api.client.putDeviceMeta(request: request, headers: headers).value()
-                }
-                if !result.applied { continue }
-                await refreshDevices()
-                return
-            } catch DeviceSecurity.Failure.conflict {
-                continue
-            }
-        }
-        throw CommandError("aborted", L10nMessage.errorsDeviceInformationIsChangingRetry())
-    }
-
     public nonisolated func close() {
+        closedLock.withLock { $0 = true }
         directGate.markClosed()
         deviceLink.closeStreams()
         directExecutor.close()
+        securityExecutor.close()
+        securityClient.rejectAll()
         Task { await self.closeActor() }
     }
 
@@ -893,6 +821,8 @@ public final actor Remote {
         loginGeneration += 1
         loginFlight?.task.cancel()
         loginFlight = nil
+        securityBootstrapTask?.cancel()
+        securityBootstrapTask = nil
         for leg in streamLegs.values {
             leg.closed = true
             leg.queue?.finish()
@@ -904,12 +834,10 @@ public final actor Remote {
         activeLegId = nil
         deviceLink.closeStreams()
         directExecutor.close()
-        fallbackSecurityRunner?.close()
-        fallbackSecurityRunner = nil
-        if let sec = deviceSecurity {
-            deviceSecurity = nil
-            Task { await sec.close() }
-        }
+        securityExecutor.close()
+        securityClient.rejectAll()
+        fallbackSecurityDriver?.close()
+        fallbackSecurityDriver = nil
     }
 
     // MARK: - Transitional Step 3-4 Forwarding to Core

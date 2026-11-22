@@ -114,7 +114,7 @@
       "event": {
         "nowMs": "1791078060040",
         "listsFetched": {
-          "opId": "4",
+          "opId": "3",
           "machines": [
             {
               "machineId": "m1",
@@ -218,7 +218,7 @@
       "event": {
         "nowMs": "1791078060050",
         "accountPrefsFetched": {
-          "opId": "5",
+          "opId": "4",
           "prefs": {
             "revision": "1",
             "prefs": {
@@ -312,7 +312,7 @@
         "nowMs": "1791078060100",
         "monoMs": "1300",
         "cacheEventsLoaded": {
-          "opId": "6",
+          "opId": "5",
           "sessionId": "s-qp",
           "events": [
             {

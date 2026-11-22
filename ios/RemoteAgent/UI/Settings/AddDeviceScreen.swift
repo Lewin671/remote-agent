@@ -6,53 +6,77 @@ import UIKit
 
 @MainActor @Observable
 final class AuthorityPairingModel {
-    var initiation: PairInitiation?
-    var candidate: PairCandidate?
+    var initiation: PBSecurityPairingInfo?
     var approved = false
     var delivered = false
     var error = ""
     var busy = false
 
-    static func ownsDelivery(_ operation: SecurityOperation?, pairingID: String) -> Bool {
-        guard let operation, operation.kind == .state, !operation.delivery.isEmpty,
-            let delivery = try? PBApprovePairingRequest(serializedBytes: operation.delivery)
-        else { return false }
-        return delivery.pairingID == pairingID
+    static func ownsDelivery(_ pending: PBSecurityPendingOpSummary?, pairingID: String) -> Bool {
+        guard let pending, !pairingID.isEmpty, pending.kind == "state", pending.hasDelivery_p else { return false }
+        return pending.deliveryPairingID == pairingID
     }
-    func start(_ coordinator: AuthorityCoordinator, replacing: String) async {
+
+    func start(_ remote: Remote, replacing: String) async {
         guard !busy else { return }
         busy = true; error = ""
         defer { busy = false }
         do {
-            if let initiation, !delivered, nowMs() < initiation.expiresMs { try await coordinator.cancelPairing(initiation) }
-            initiation = try await coordinator.startPairing(replacesDeviceID: replacing)
-            candidate = nil; approved = false; delivered = false
+            try await remote.ensureSecurityBootstrapped()
+            if let initiation, !delivered, nowMs() < initiation.expiresMs {
+                try await remote.securityClient.cancelPairing(pairingId: initiation.pairingID)
+            }
+            initiation = try await remote.securityClient.startPairing(
+                webOrigin: webOrigin(server: remote.account.server, preferred: ""),
+                replacesDeviceId: replacing
+            )
+            approved = false; delivered = false
         } catch { self.error = errorText(error) }
     }
-    func poll(_ coordinator: AuthorityCoordinator) async {
+
+    func poll(_ remote: Remote) async {
         guard let initiation, !busy, !delivered else { return }
         busy = true
         defer { busy = false }
         do {
+            try await remote.ensureSecurityBootstrapped()
             if approved {
-                try await coordinator.resumeSecurityOperation()
-                try await coordinator.finishPairingOperation(pairingID: initiation.pairingID)
-                delivered = try await coordinator.pendingOperation() == nil
-            } else if candidate == nil { candidate = try await coordinator.pairingCandidate(initiation) }
+                try await remote.resumeSecurityOperation()
+                let res = try await remote.finishPairingDelivery(pairingId: initiation.pairingID)
+                self.initiation = res
+                if res.delivered {
+                    delivered = true
+                } else {
+                    let st = try await remote.getSecurityStatus()
+                    delivered = !st.hasPendingOp
+                }
+            } else if !initiation.joined {
+                self.initiation = try await remote.securityClient.pollPairing(pairingId: initiation.pairingID)
+            }
             error = ""
         } catch { self.error = errorText(error) }
     }
-    func approve(_ coordinator: AuthorityCoordinator) async {
-        guard let candidate, !busy else { return }
+
+    func approve(_ remote: Remote) async {
+        guard let initiation, initiation.joined, !busy else { return }
         busy = true; error = ""
         defer { busy = false }
         do {
-            try await coordinator.approvePairing(candidate, sasConfirmed: true)
+            try await remote.ensureSecurityBootstrapped()
+            let res = try await remote.securityClient.approvePairing(pairingId: initiation.pairingID, sasConfirmed: true)
+            self.initiation = res
             approved = true
-            delivered = try await coordinator.pendingOperation() == nil
+            if res.delivered {
+                delivered = true
+            } else {
+                let st = try await remote.getSecurityStatus()
+                delivered = !st.hasPendingOp
+            }
+            if delivered { await remote.refreshDevices() }
         } catch {
             // A signed approval may already be published. Continue that receipt.
-            approved = Self.ownsDelivery(try? await coordinator.pendingOperation(), pairingID: initiation?.pairingID ?? "")
+            let st = try? await remote.getSecurityStatus()
+            approved = Self.ownsDelivery(st?.hasPendingOp == true ? st?.pendingOp : nil, pairingID: initiation.pairingID)
             self.error = errorText(error)
         }
     }
@@ -63,7 +87,7 @@ final class AuthorityPairingSessions {
     private var flows: [String: AuthorityPairingModel] = [:]
     func discard(pairingID: String) {
         for flow in flows.values where flow.initiation?.pairingID == pairingID {
-            flow.initiation = nil; flow.candidate = nil; flow.approved = false; flow.delivered = false
+            flow.initiation = nil; flow.approved = false; flow.delivered = false
             flow.error = L10n.securityIosPairingAbandonedYouCanGenerateANewPairingCode()
         }
     }
@@ -97,9 +121,9 @@ struct AddDeviceScreen: View {
                         else { nav.open(.addDevice()) }
                     }.padding(16)
                 }
-                else if let candidate = flow.candidate {
+                else if let initiation = flow.initiation, initiation.joined {
                     GroupLabel(L10n.securityComparePatterns())
-                    Text(candidate.emoji.joined(separator: " "))
+                    Text(initiation.sasEmoji.joined(separator: " "))
                         .font(.system(size: 36)).minimumScaleFactor(0.5).lineLimit(1)
                         .frame(maxWidth: .infinity).padding(16)
                     GroupNote(L10n.securityCompareThe4PatternsOnTheNewDeviceConfirm())
@@ -112,11 +136,11 @@ struct AddDeviceScreen: View {
                     } else { GroupNote(L10n.securityIosApprovedVerifyingDeliveryToTheDeviceContinueTheOriginal()) }
                 } else if let initiation = flow.initiation {
                     VStack(spacing: 12) {
-                        QRCodeView(text: initiation.link.url(web: webOrigin(server: context.account.server, preferred: "")), label: L10n.securityQrCodeForAddingADevice())
-                        Text(String(initiation.link.code.prefix(4)) + " " + String(initiation.link.code.suffix(4))).font(.title2.monospaced().weight(.semibold)).ink(DS.ink).textSelection(.enabled)
+                        QRCodeView(text: initiation.url, label: L10n.securityQrCodeForAddingADevice())
+                        Text(String(initiation.code.prefix(4)) + " " + String(initiation.code.suffix(4))).font(.title2.monospaced().weight(.semibold)).ink(DS.ink).textSelection(.enabled)
                         Text(L10n.securityPairValidUntil(time: String(describing: securityTime(UInt64(max(initiation.expiresMs, 0)), timeOnly: true))))
                             .font(.footnote).ink(DS.ink2)
-                        Btn(L10n.securityIosCopyPairingCode()) { UIPasteboard.general.string = initiation.link.code }
+                        Btn(L10n.securityIosCopyPairingCode()) { UIPasteboard.general.string = initiation.code }
                         Btn(L10n.securityCancelPairing(), enabled: !flow.busy) { cancel() }
                     }.padding(16)
                 } else if !app.isDemo {
@@ -126,9 +150,9 @@ struct AddDeviceScreen: View {
                 }
                 if !flow.error.isEmpty {
                     GroupBanner(flow.error, tone: .error, action: L10n.commonRetry()) {
-                        perform { c in
-                            if flow.initiation == nil { await flow.start(c, replacing: replacing) }
-                            else { await flow.poll(c) }
+                        perform { r in
+                            if flow.initiation == nil { await flow.start(r, replacing: replacing) }
+                            else { await flow.poll(r) }
                         }
                     }
                 }
@@ -144,18 +168,21 @@ struct AddDeviceScreen: View {
         .debugSignal("schedule.pair.start") {
             #if DEBUG
             guard URL(string: context.account.server)?.host == "127.0.0.1" else { return }
-            perform { c in
-                await flow.start(c, replacing: replacing)
-                if let initiation = flow.initiation { ScheduleAcceptance.write("pair-code", initiation.link.code) }
+            perform { r in
+                await flow.start(r, replacing: replacing)
+                if let initiation = flow.initiation { ScheduleAcceptance.write("pair-code", initiation.code) }
             }
             #endif
         }
         .debugSignal("schedule.pair.approve") {
             #if DEBUG
             guard URL(string: context.account.server)?.host == "127.0.0.1" else { return }
-            perform { c in
-                await flow.poll(c)
-                if let candidate = flow.candidate { ScheduleAcceptance.write("pair-sas", candidate.emoji.joined(separator: " ")); await flow.approve(c) }
+            perform { r in
+                await flow.poll(r)
+                if let initiation = flow.initiation, initiation.joined {
+                    ScheduleAcceptance.write("pair-sas", initiation.sasEmoji.joined(separator: " "))
+                    await flow.approve(r)
+                }
             }
             #endif
         }
@@ -164,20 +191,20 @@ struct AddDeviceScreen: View {
             flow = context.memory.value { AuthorityPairingSessions() }.flow(replacing: replacing)
             guard !app.isDemo else { return }
             while !Task.isCancelled {
-                if let c = try? await context.remote.authorityCoordinator() { await flow.poll(c) }
+                await flow.poll(context.remote)
                 do { try await Task.sleep(for: .seconds(2)) } catch { return }
             }
         }
     }
-    private func perform(_ work: @escaping @MainActor (AuthorityCoordinator) async -> Void) {
-        action.run { let c = try await context.remote.authorityCoordinator(); await work(c) }
+    private func perform(_ work: @escaping @MainActor (Remote) async -> Void) {
+        action.run { await work(context.remote) }
     }
     private func cancel() {
         action.run {
             guard let initiation = flow.initiation else { return }
-            let c = try await context.remote.authorityCoordinator()
-            try await c.cancelPairing(initiation)
-            flow.initiation = nil; flow.candidate = nil
+            try await context.remote.ensureSecurityBootstrapped()
+            try await context.remote.securityClient.cancelPairing(pairingId: initiation.pairingID)
+            flow.initiation = nil
         }
     }
 }

@@ -5308,5 +5308,65 @@
     "path": "clientcore/security/workflow.go",
     "literal": "foreground",
     "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "ios/RemoteAgent/App/AppModel.swift",
+    "literal": "stored account preparation failed: \\(String(describing: type(of: error)), privacy: .public)",
+    "reason": "Internal OSLog error message for stored account preparation failure; never displayed to users."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Settings/AccountSecurityScreen.swift",
+    "literal": "handoffOffer",
+    "reason": "Internal pending operation kind discriminator returned by clientcore; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/RemoteSecurity.swift",
+    "literal": "unsupported_history",
+    "reason": "Internal Go clientcore SecurityOpResult errorCode token inspected before mapping to UnsupportedHistoryError; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/RemoteSecurity.swift",
+    "literal": "recovery_unavailable",
+    "reason": "Internal Go clientcore SecurityOpResult errorCode token inspected before mapping to SecurityFailure; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/RemoteSecurity.swift",
+    "literal": "stale",
+    "reason": "Internal Go clientcore SecurityOpResult errorCode token inspected before mapping to SecurityFailure; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/SecurityClient.swift",
+    "literal": "ra.core.security.driver",
+    "reason": "Internal DispatchQueue label for CoreSecurityDriver synchronization; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/SecurityClient.swift",
+    "literal": "security client closed",
+    "reason": "Internal lifecycle cancellation message passed in SecurityWorkflowError when SecurityClient closes; never rendered directly to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/SecurityClient.swift",
+    "literal": "canceled",
+    "reason": "Internal SecurityWorkflowError code token when SecurityClient is closed or canceled; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/SecurityExecutor.swift",
+    "literal": "ra.security.executor",
+    "reason": "Internal DispatchQueue label for SecurityExecutor synchronization; never rendered to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/SecurityExecutor.swift",
+    "literal": "/remoteagent.v1.RecoveryService/GetRecoveryContext",
+    "reason": "Connect RPC service path constant routed through SecurityRpcMethod; never displayed to users."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/SecurityExecutor.swift",
+    "literal": "HTTP error (\\(fallbackCode.name))",
+    "reason": "Internal Connect RPC transport fallback string returned to Go clientcore; localized at UI boundary or used diagnostically."
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/SecurityExecutor.swift",
+    "literal": "invalid",
+    "reason": "Internal SecurityWorkflowError code token parsed from JSON error mapping; never rendered to users."
   }
 ]

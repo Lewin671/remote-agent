@@ -94,7 +94,6 @@ public func imageProblem(_ error: Error) -> ImageProblem {
     case let e as UserError: message = e.localized
     case let e as CommandError: message = e.localized
     case let e as UploadError: message = e.localized
-    case let e as PairError: message = e.localized
     case let e as CryptoError: message = e.localized
     case let e as OpenError: message = e.localized
     default: message = nil

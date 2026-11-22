@@ -140,7 +140,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
 @Suite struct ImageStorageModelTests {
     private let root = FileManager.default.temporaryDirectory.appending(path: "ra-settings-\(UUID().uuidString)", directoryHint: .isDirectory)
     private let account = Account(
-        server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
+        server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
 
     private func cache() throws -> CipherStore {
         try CipherStore.open(root: root.appending(path: "cache"), account: CipherStore.accountKey(server: account.server, deviceId: account.deviceId))

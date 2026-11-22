@@ -759,7 +759,7 @@ func (e *Engine) completeRecoveryOp(fgGen uint64, done func(*corev1.SecurityWork
 			} else {
 				wf.deviceXPub = slices.Clone(curOp.Recovery.CandidateXPub)
 			}
-			e.applyPersistedRecordToEngine(rec, 0, func(unlockErr error) {
+			e.applyPersistedRecordToEngine(rec, func(unlockErr error) {
 				if unlockErr != nil {
 					done(nil, unlockErr)
 					return

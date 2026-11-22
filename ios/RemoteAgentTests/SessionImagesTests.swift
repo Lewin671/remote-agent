@@ -17,7 +17,7 @@ import UIKit
     }
 
     private let remote = try! Remote(
-        account: Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff"),
+        account: Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff"),
         http: AppModel.http)
     private let files = VolatileFiles()
     private let store = SessionStore()
@@ -136,7 +136,7 @@ import UIKit
             let rendered = ImageRenderer(content: OutgoingImageThumbs(center: c, message: o).frame(width: 320))
             #expect(try #require(rendered.uiImage).size.height >= 56)
         }
-        let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
+        let account = Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
         let context = AccountContext(account: account, remote: remote)
         // PendingThumb draws the retained local attachment whenever Core shows a pending/queued item for requestId.
         let rendered = ImageRenderer(content:

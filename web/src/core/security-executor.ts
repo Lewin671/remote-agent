@@ -3,7 +3,6 @@ import { Code } from "@connectrpc/connect";
 import { checkServer } from "../crypto";
 import { EventSchema as CoreEventSchema, type Event as CoreEvent } from "../gen/remoteagent/core/v1/app_pb";
 import {
-  SecurityContentKeySchema,
   SecurityCryptoBatchDoneEventSchema,
   SecurityCryptoBatchResultSchema,
   SecurityKeyAgreedEventSchema,
@@ -11,7 +10,6 @@ import {
   SecurityKeyKind,
   SecurityKeyEncapsulatedEventSchema,
   SecurityKeySignedEventSchema,
-  SecurityRecordEventSchema,
   SecurityRpcMethod,
   SecurityRpcResultEventSchema,
   SecurityStorageResultEventSchema,
@@ -22,7 +20,6 @@ import {
   type SecurityKeyEncapsulateEffect,
   type SecurityKeyGenerateEffect,
   type SecurityKeySignEffect,
-  type SecurityRecordEvent,
   type SecurityRpcEffect,
   type SecurityStorageEffect,
 } from "../gen/remoteagent/core/v1/security_pb";
@@ -114,48 +111,6 @@ function httpStatusToConnectCode(status: number): Code {
     default:
       return status >= 500 ? Code.Internal : Code.Unknown;
   }
-}
-
-export function buildSecurityRecordEvent(params: {
-  opId?: bigint;
-  pushSeq?: bigint;
-  networkGeneration: number | bigint;
-  account: string;
-  domain: Uint8Array;
-  genesis: Uint8Array;
-  states: Uint8Array[];
-  recoveryProofs?: Uint8Array[];
-  lease?: Uint8Array;
-  floorMs?: bigint;
-  recoveryPending?: boolean;
-  recoveryReadyMs?: bigint;
-  recoveryObjectsPending?: boolean;
-  removed?: boolean;
-  cleared?: boolean;
-  error?: string;
-  contentKeys?: { epoch: bigint; secret: Uint8Array }[];
-}): SecurityRecordEvent {
-  return create(SecurityRecordEventSchema, {
-    opId: params.opId ?? 0n,
-    pushSeq: params.pushSeq ?? 0n,
-    networkGeneration: BigInt(params.networkGeneration),
-    account: params.account,
-    domain: new Uint8Array(params.domain),
-    genesis: new Uint8Array(params.genesis),
-    states: params.states.map((s) => new Uint8Array(s)),
-    recoveryProofs: (params.recoveryProofs ?? []).map((p) => new Uint8Array(p)),
-    lease: params.lease ? new Uint8Array(params.lease) : new Uint8Array(),
-    floorMs: params.floorMs ?? 0n,
-    recoveryPending: !!params.recoveryPending,
-    recoveryReadyMs: params.recoveryReadyMs ?? 0n,
-    recoveryObjectsPending: !!params.recoveryObjectsPending,
-    removed: !!params.removed,
-    cleared: !!params.cleared,
-    error: params.error ?? "",
-    contentKeys: (params.contentKeys ?? []).map((k) =>
-      create(SecurityContentKeySchema, { contentEpoch: k.epoch, secret: new Uint8Array(k.secret) }),
-    ),
-  });
 }
 
 /**

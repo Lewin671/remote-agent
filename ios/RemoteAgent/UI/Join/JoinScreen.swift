@@ -5,6 +5,24 @@
 import RACore
 import SwiftUI
 
+struct LegacyRepairBanner: View {
+    let show: Bool
+    let dismiss: () -> Void
+
+    var body: some View {
+        if show {
+            Banner(
+                L10n.securityUpgradeRepairTitle() + "\n" + L10n.securityUpgradeRepairNotice(),
+                tone: .warn,
+                action: L10n.commonGotIt(),
+                onAction: dismiss
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+        }
+    }
+}
+
 /// First run: create, join, or recover an account.
 struct JoinScreen: View {
     @Environment(AppModel.self) private var app
@@ -13,7 +31,12 @@ struct JoinScreen: View {
     @State private var setup: AuthoritySetupModel?
 
     private func begin(_ mode: AuthoritySetupModel.Mode) {
-        setup = AuthoritySetupModel(mode: mode, bootstrap: app.authorityBootstrap, server: app.lastServer)
+        setup = AuthoritySetupModel(
+            mode: mode,
+            server: app.lastServer,
+            status: app.securityStatus,
+            makeHost: { try app.makeStandaloneSecurityHost() }
+        )
     }
     var body: some View {
         Group {
@@ -21,7 +44,7 @@ struct JoinScreen: View {
                 RetainedIdentityDeniedScreen()
             } else if let setup {
                 AuthoritySetupScreen(flow: setup, back: { self.setup = nil })
-            } else if selection == nil && app.securitySetup == nil {
+            } else if selection == nil {
                 Page {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 28) {
@@ -39,6 +62,9 @@ struct JoinScreen: View {
                             }
                             .padding(.init(top: 28, leading: 24, bottom: 0, trailing: 24))
                             Spacer(minLength: 0)
+                            LegacyRepairBanner(show: app.legacyRepairNotice) {
+                                app.dismissUpgradeNotice()
+                            }
                             VStack(spacing: 12) {
                                 VStack(spacing: 0) {
                                     EntryRow(
@@ -86,9 +112,14 @@ struct JoinScreen: View {
         }
         .task {
             guard model == nil else { return }
-            if let pending = app.authorityBootstrapPending {
-                setup = AuthoritySetupModel(mode: pending.kind == .creation ? .create : .recover,
-                    bootstrap: app.authorityBootstrap, server: app.lastServer, status: pending)
+            if let st = app.securityStatus,
+               st.bootstrap == .pendingCreate || st.bootstrap == .pendingRecovery {
+                setup = AuthoritySetupModel(
+                    mode: st.bootstrap == .pendingCreate ? .create : .recover,
+                    server: st.server.isEmpty ? app.lastServer : st.server,
+                    status: st,
+                    makeHost: { try app.makeStandaloneSecurityHost() }
+                )
                 return
             }
             if app.joinDirectly { selection = "join" }
@@ -98,7 +129,7 @@ struct JoinScreen: View {
             let app = app
             let made = JoinModel(
                 lastServer: app.lastServer, calls: app.joiningCalls,
-                retainedIdentity: app.securitySetup != nil
+                retainedIdentity: false
             ) { account in
                 try await app.joined(account)
             }
@@ -128,7 +159,6 @@ struct JoinFlow: View {
                         if model.noticeIsError, let discard { SetupDiscardButton(discard: discard) }
                         switch model.step {
                         case .form, .scan: JoinForm(model: model)
-                        case .secret: JoinForm(model: model)
                         case .working: Working(model: model)
                         case .emoji(let emoji): Compare(model: model, emoji: emoji)
                         }
@@ -189,12 +219,16 @@ private struct JoinNotice: View {
 }
 
 private struct JoinForm: View {
+    @Environment(AppModel.self) private var app
     @Bindable var model: JoinModel
     /// What the code field shows: the model's digits in two groups.
     @State private var typed = ""
 
     var body: some View {
         JoinTitle(text: model.retainedIdentity ? L10n.securityOneTimeSecuritySetup() : L10n.securityJoinAccount())
+        LegacyRepairBanner(show: app.legacyRepairNotice) {
+            app.dismissUpgradeNotice()
+        }
         JoinText(text: L10n.securityIosOnTheManagingClientOpenSettingsAddDeviceScan())
         JoinNotice(model: model)
         InputField(

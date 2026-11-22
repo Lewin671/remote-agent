@@ -26,7 +26,7 @@ import Testing
     }
 
     private func center() throws -> (Remote, ImageCenter) {
-        let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
+        let account = Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
         let remote = try Remote(account: account, http: AppModel.http)
         ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
         return (remote, ImageCenter.of(remote))
@@ -95,7 +95,7 @@ import Testing
     @Test func losingFileSupportCancelsEvenAnAlreadyReadyFilesRefresh() async throws {
         let (url, p) = try document()
         defer { try? FileManager.default.removeItem(at: url) }
-        let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
+        let account = Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
         let remote = try Remote(account: account, http: AppModel.http)
         ImageCenter.install(remote: remote, files: VolatileFiles())
         defer { ImageCenter.remove(remote) }
@@ -137,7 +137,7 @@ import Testing
     @Test func fileOnlySessionMessagePersistsAndRestoresWithOriginalRequest() async throws {
         let (url, p) = try document()
         defer { try? FileManager.default.removeItem(at: url) }
-        let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
+        let account = Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
         let remote = try Remote(account: account, http: AppModel.http)
         var state = RemoteState()
         state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = true })

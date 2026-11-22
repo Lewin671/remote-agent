@@ -190,7 +190,7 @@ private final class PingGate: @unchecked Sendable {
             #expect(throws: UserError.self, "\(server)") {
                 try fixtureRemote(
                     account: Account(
-                        server: server, root: Data(count: 32), deviceSeed: Data(count: 32),
+                        server: server,
                         deviceId: "d"), http: HTTP())
             }
         }

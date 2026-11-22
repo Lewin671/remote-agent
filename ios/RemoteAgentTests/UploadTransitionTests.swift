@@ -30,7 +30,7 @@ private struct TransitionChannel: UploadChannel {
         return (url, p)
     }
     private func remote() throws -> Remote {
-        try Remote(account: Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff"), http: AppModel.http)
+        try Remote(account: Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff"), http: AppModel.http)
     }
     private func machine(_ id: String) -> MachineView {
         MachineView(id: id, online: true, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = true })

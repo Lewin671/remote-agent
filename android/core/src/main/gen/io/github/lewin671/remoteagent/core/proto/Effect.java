@@ -24,7 +24,6 @@ public  final class Effect extends
     CLOSE_STREAM(3),
     ENSURE_TOKEN(4),
     DISCARD_TOKEN(5),
-    SYNC_SECURITY(6),
     SCHEDULE_TIMER(7),
     CANCEL_TIMER(8),
     CACHE_READ(9),
@@ -95,7 +94,6 @@ public  final class Effect extends
         case 3: return CLOSE_STREAM;
         case 4: return ENSURE_TOKEN;
         case 5: return DISCARD_TOKEN;
-        case 6: return SYNC_SECURITY;
         case 7: return SCHEDULE_TIMER;
         case 8: return CANCEL_TIMER;
         case 9: return CACHE_READ;
@@ -422,58 +420,6 @@ public  final class Effect extends
    */
   private void clearDiscardToken() {
     if (effectCase_ == 5) {
-      effectCase_ = 0;
-      effect_ = null;
-    }
-  }
-
-  public static final int SYNC_SECURITY_FIELD_NUMBER = 6;
-  /**
-   * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSyncSecurity() {
-    return effectCase_ == 6;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect getSyncSecurity() {
-    if (effectCase_ == 6) {
-       return (io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect) effect_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSyncSecurity(io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect value) {
-    value.getClass();  // minimal bytecode null check
-    effect_ = value;
-    effectCase_ = 6;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeSyncSecurity(io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect value) {
-    value.getClass();  // minimal bytecode null check
-    if (effectCase_ == 6 &&
-        effect_ != io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect.getDefaultInstance()) {
-      effect_ = io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect) effect_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      effect_ = value;
-    }
-    effectCase_ = 6;
-  }
-  /**
-   * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-   */
-  private void clearSyncSecurity() {
-    if (effectCase_ == 6) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -3449,54 +3395,6 @@ public  final class Effect extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSyncSecurity() {
-      return instance.hasSyncSecurity();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect getSyncSecurity() {
-      return instance.getSyncSecurity();
-    }
-    /**
-     * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-     */
-    public Builder setSyncSecurity(io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect value) {
-      copyOnWrite();
-      instance.setSyncSecurity(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-     */
-    public Builder setSyncSecurity(
-        io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSyncSecurity(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-     */
-    public Builder mergeSyncSecurity(io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect value) {
-      copyOnWrite();
-      instance.mergeSyncSecurity(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.SyncSecurityEffect sync_security = 6 [json_name = "syncSecurity"];</code>
-     */
-    public Builder clearSyncSecurity() {
-      copyOnWrite();
-      instance.clearSyncSecurity();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.ScheduleTimerEffect schedule_timer = 7 [json_name = "scheduleTimer"];</code>
      */
     @java.lang.Override
@@ -5943,7 +5841,6 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.CloseStreamEffect.class,
             io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect.class,
             io.github.lewin671.remoteagent.core.proto.DiscardTokenEffect.class,
-            io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleTimerEffect.class,
             io.github.lewin671.remoteagent.core.proto.CancelTimerEffect.class,
             io.github.lewin671.remoteagent.core.proto.CacheReadEffect.class,
@@ -5996,14 +5893,14 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u00008\u0001\u0000\u0001\u00918\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
-              "<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<" +
-              "\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
-              "<\u0000(<\u0000)<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G" +
-              "<\u0000H<\u0000I<\u0000J<\u0000K<\u0000L<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j" +
-              "<\u0000k<\u0000l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000" +
-              "\u0087<\u0000\u0088<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d" +
-              "<\u0000\u008e<\u0000\u008f<\u0000\u0090<\u0000\u0091<\u0000";
+              "\u00007\u0001\u0000\u0001\u00917\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
+              "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000(<\u0000" +
+              ")<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000" +
+              "I<\u0000J<\u0000K<\u0000L<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000" +
+              "l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088" +
+              "<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000" +
+              "\u008f<\u0000\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

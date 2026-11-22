@@ -18,10 +18,14 @@ struct RemovedScreen: View {
                         model.authorityHandoffComplete ? L10n.securityIosManagementTransferred() : L10n.securityIosTheServerRejectedThisDeviceSLogin(),
                         text: model.authorityHandoffComplete ? L10n.securityIosThisDeviceWasRemovedTheSuccessorIsNowThe() : L10n.settingsTheDeviceMayHaveBeenRemovedTheServiceReset(),
                         action: L10n.settingsRejoinAccount(), onAction: {
-                            do {
-                                if let warning = try model.rejoinAdvice() { advice = warning; leaving = true }
-                                else { action.run { await model.logout(pairing: true) } }
-                            } catch { action.run { throw error } }
+                            action.run {
+                                if let warning = await model.rejoinAdvice() {
+                                    advice = warning
+                                    leaving = true
+                                } else {
+                                    await model.logout(pairing: true)
+                                }
+                            }
                         },
                         note: L10n.securityIosThisDeviceSAccountKeysAndCacheWillBe(),
                         link: L10n.sessionTryAgain(), onLink: { model.retryLogin() })
@@ -30,9 +34,9 @@ struct RemovedScreen: View {
                         Btn(L10n.securityIosVerifyOriginalSecurityOperation(), kind: .primary, enabled: !action.running) {
                             action.run {
                                 guard let remote = model.remote else { return }
-                                let c = try await remote.authorityCoordinator()
-                                try await c.resumeSecurityOperation()
-                                pending = try await c.pendingOperation() != nil
+                                try await remote.resumeSecurityOperation()
+                                let st = try await remote.getSecurityStatus()
+                                pending = st.hasPendingOp
                                 verified = !pending
                             }
                         }
@@ -45,15 +49,15 @@ struct RemovedScreen: View {
         .task {
             guard !model.isDemo, let remote = model.remote else { return }
             do {
-                let c = try await remote.authorityCoordinator()
-                pending = try await c.pendingOperation() != nil
+                let st = try await remote.getSecurityStatus()
+                pending = st.hasPendingOp
             } catch { pending = true }
         }
         .confirm(isPresented: $leaving, title: L10n.securityExitAndDeleteLocalKeys(),
             text: advice?.text ?? "",
             confirm: L10n.securityExit(), danger: true) {
                 action.run {
-                    guard try model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToJoinAgain()) }
+                    guard await model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToJoinAgain()) }
                     await model.logout(pairing: true)
                 }
             }
@@ -70,8 +74,12 @@ struct RetainedIdentityDeniedScreen: View {
 
     private func rejoin() {
         action.run {
-            if let warning = try model.rejoinAdvice() { advice = warning; asking = true }
-            else { await model.logout(pairing: true) }
+            if let warning = await model.rejoinAdvice() {
+                advice = warning
+                asking = true
+            } else {
+                await model.logout(pairing: true)
+            }
         }
     }
     var body: some View {
@@ -89,7 +97,7 @@ struct RetainedIdentityDeniedScreen: View {
         .confirm(isPresented: $asking, title: L10n.securityDeleteLocalKeysAndRejoin(),
             text: advice?.text ?? "", confirm: L10n.securityRejoin(), danger: true) {
                 action.run {
-                    guard try model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToJoinAgain()) }
+                    guard await model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToJoinAgain()) }
                     await model.logout(pairing: true)
                 }
             }

@@ -638,7 +638,6 @@ message Event {
 
     // Security engine (450-499 reserved for security).
     SecurityConfigEvent security_config = 450;
-    SecurityRecordEvent security_record = 451;
     SecurityKeySignedEvent security_key_signed = 452;
     SecurityKeyAgreedEvent security_key_agreed = 453;
     SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456;
@@ -704,12 +703,6 @@ message EnsureTokenEffect {
 
 message DiscardTokenEffect {
   string token = 1;
-}
-
-message SyncSecurityEffect {
-  uint64 op_id = 1;
-  uint64 network_generation = 2;
-  bool touch = 3;
 }
 
 message ScheduleTimerEffect {
@@ -882,7 +875,6 @@ message Effect {
     CloseStreamEffect close_stream = 3;
     EnsureTokenEffect ensure_token = 4;
     DiscardTokenEffect discard_token = 5;
-    SyncSecurityEffect sync_security = 6;
     ScheduleTimerEffect schedule_timer = 7;
     CancelTimerEffect cancel_timer = 8;
     CacheReadEffect cache_read = 9;

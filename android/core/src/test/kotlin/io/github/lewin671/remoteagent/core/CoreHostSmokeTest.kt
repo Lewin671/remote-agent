@@ -35,7 +35,6 @@ import io.github.lewin671.remoteagent.core.proto.StreamClosedEvent
 import io.github.lewin671.remoteagent.core.proto.StreamReadyEvent
 import io.github.lewin671.remoteagent.core.proto.SyncLifecycleAction
 import io.github.lewin671.remoteagent.core.proto.SyncLifecycleKind
-import io.github.lewin671.remoteagent.core.proto.SyncSecurityEffect
 import io.github.lewin671.remoteagent.core.proto.TokenResultEvent
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.AgentInfo
@@ -89,7 +88,6 @@ class CoreHostSmokeTest {
         var savedScope: String? = null
         val cacheReads = ArrayList<CacheReadEffect>()
         val tokens = ArrayList<EnsureTokenEffect>()
-        val secs = ArrayList<SyncSecurityEffect>()
         val streams = ArrayList<OpenStreamEffect>()
         val rpcs = ArrayList<RpcEffect>()
         val cmds = ArrayList<DispatchCommandEffect>()
@@ -99,7 +97,6 @@ class CoreHostSmokeTest {
         h.onSaveHomeScope = { savedScope = it.scopeKey }
         h.onCacheRead = { cacheReads += it }
         h.onEnsureToken = { tokens += it }
-        h.onSyncSecurity = { secs += it }
         h.onOpenStream = { streams += it }
         h.onRpc = { rpcs += it }
         h.onDispatchCommand = { cmds += it }
@@ -141,7 +138,7 @@ class CoreHostSmokeTest {
 
         fun drainFakeTransport() {
             while (
-                cacheReads.isNotEmpty() || tokens.isNotEmpty() || secs.isNotEmpty() ||
+                cacheReads.isNotEmpty() || tokens.isNotEmpty() ||
                 streams.isNotEmpty() || rpcs.isNotEmpty()
             ) {
                 while (cacheReads.isNotEmpty()) {
@@ -163,25 +160,6 @@ class CoreHostSmokeTest {
                         )
                         else -> {}
                     }
-                }
-                while (secs.isNotEmpty()) {
-                    val s = secs.removeAt(0)
-                    h.dispatchOnWorker(
-                        CoreEvent.newBuilder()
-                            .setSeedDemoWorld(
-                                SeedDemoWorldEvent.newBuilder().setSecurity(
-                                    DemoSecurity.newBuilder()
-                                        .setIsMember(true)
-                                        .setSelfDeviceId("c1")
-                                        .setAuthorityDeviceId("c1")
-                                        .addTrustedMachineIds("m1")
-                                        .setHeadEpoch(1L)
-                                        .setLeaseEndMs(now + 3_600_000L)
-                                        .setNetworkGeneration(s.networkGeneration),
-                                ),
-                            )
-                            .build(),
-                    )
                 }
                 while (tokens.isNotEmpty()) {
                     val t = tokens.removeAt(0)
@@ -279,6 +257,22 @@ class CoreHostSmokeTest {
 
         try {
             // 1. Start -> Connected -> Lists -> Home rows
+            h.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setSeedDemoWorld(
+                        SeedDemoWorldEvent.newBuilder().setSecurity(
+                            DemoSecurity.newBuilder()
+                                .setIsMember(true)
+                                .setSelfDeviceId("c1")
+                                .setAuthorityDeviceId("c1")
+                                .addTrustedMachineIds("m1")
+                                .setHeadEpoch(1L)
+                                .setLeaseEndMs(now + 3_600_000L)
+                                .setNetworkGeneration(1L),
+                        ),
+                    )
+                    .build(),
+            )
             h.dispatchOnWorker(
                 CoreEvent.newBuilder()
                     .setSyncLifecycle(SyncLifecycleAction.newBuilder().setKind(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START))
