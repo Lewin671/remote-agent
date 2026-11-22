@@ -5368,5 +5368,65 @@
     "path": "ios/RemoteAgentCore/Sources/RACore/SecurityExecutor.swift",
     "literal": "invalid",
     "reason": "Internal SecurityWorkflowError code token parsed from JSON error mapping; never rendered to users."
+  },
+  {
+    "path": "clientcore/security/task.go",
+    "literal": "foreground",
+    "reason": "Internal workflow error code token passed to fatalWfError alongside localized message key; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "permission_denied",
+    "reason": "Internal workflow error code token stored on result ErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_notify.go",
+    "literal": "invalid notify",
+    "reason": "Internal fallback diagnostic string for malformed server notify envelopes; never displayed directly in client UI."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "m.clone%sPart%d(&cp)",
+    "reason": "Go code generator template string emitted into generated protobuf files; developer build tool only."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "\\tif m.",
+    "reason": "Go code generator template fragment emitted into generated protobuf files; developer build tool only."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": " != nil {",
+    "reason": "Go code generator template fragment emitted into generated protobuf files; developer build tool only."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "unsupported litewire field kind: %v",
+    "reason": "Developer compiler panic in internal protobuf codegen tool when encountering an unsupported descriptor kind."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "\\t\\t{Num: %d, Offset: %s(%s{}.%s), Kind: %s",
+    "reason": "Go code generator template fragment emitted into generated protobuf files; developer build tool only."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": "%s.Fields[%d].Sub = %s",
+    "reason": "Go code generator template fragment emitted into generated protobuf files; developer build tool only."
+  },
+  {
+    "path": "cmd/protoc-gen-go-lite/main.go",
+    "literal": ", Sub: ",
+    "reason": "Go code generator template fragment emitted into generated protobuf files; developer build tool only."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "raw",
+    "reason": "WebCrypto importKey format identifier ('raw'); technical API constant, never displayed to users."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "missing promote ${label} slot",
+    "reason": "Internal IndexedDB three-phase key promotion transaction invariant error; caught by security workflow."
   }
 ]
