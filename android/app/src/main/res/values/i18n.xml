@@ -239,7 +239,6 @@
     <string name="dock_submitting" formatted="false">"提交中…"</string>
     <string name="dock_trust_folder" formatted="false">"默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"等待确认"</string>
-    <string name="errors_account_creation_draft_preserved_continue_the_original_creation_flow" formatted="false">"账户创建草稿已保留，请继续原创建流程和恢复码确认"</string>
     <string name="errors_android_attachment_transfer_content_changed_retry" formatted="false">"附件传输内容已改变，请重试"</string>
     <string name="errors_android_attachment_transfer_stopped_or_changed_retry" formatted="false">"附件传输已中止或发生变化，请重试"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"找不到服务器，检查一下网络"</string>
@@ -252,12 +251,9 @@
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"图片内容和格式对不上"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"server 地址无效"</string>
     <string name="errors_android_login_expired">"登录失效：%1$s"</string>
-    <string name="errors_android_only_the_managing_client_can_veto_recovery" formatted="false">"只有管理端能否决恢复"</string>
     <string name="errors_android_open_value1_to_renew">"请打开%1$s续期"</string>
-    <string name="errors_android_pairing_approval_does_not_match_this_device_has_expired_or" formatted="false">"配对批准与这台设备不匹配、已过期或签名无效"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"远程控制有效期已过，无法保存更改、控制会话或上传新内容；%1$s后重试。历史仍可查看"</string>
     <string name="errors_android_remote_control_paused_value1_and_retry">"远程控制已暂停：%1$s后再试"</string>
-    <string name="errors_android_remove_devices_on_the_managing_client" formatted="false">"请在管理端上删除设备"</string>
     <string name="errors_android_secure_connection_failed">"安全连接失败：%1$s"</string>
     <string name="errors_android_security_authorization_or_the_current_request_is_unverified_nothing_was" formatted="false">"安全授权或当前请求尚未核实，操作没有发出；请重试"</string>
     <string name="errors_android_security_state_unavailable" formatted="false">"安全状态不可用"</string>
@@ -268,7 +264,6 @@
     <string name="errors_android_the_computer_did_not_return_a_file_id" formatted="false">"电脑没有返回文件 ID"</string>
     <string name="errors_android_the_computer_returned_invalid_file_progress" formatted="false">"电脑返回的文件上传进度无效"</string>
     <string name="errors_android_the_file_changed_during_upload_retry_or_select_the_file" formatted="false">"文件在上传时发生变化，请重试或重新选择文件"</string>
-    <string name="errors_android_the_managing_client_cannot_be_removed_normally" formatted="false">"管理端不能被普通删除"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"手机时钟比服务器快，成员状态暂不可用；请校准系统时间"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"手机时钟比服务器快，远程控制暂停；请校准系统时间"</string>
     <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"这条指令已过期，没有发出"</string>
@@ -279,18 +274,14 @@
     <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
     <string name="errors_connection_timed_out" formatted="false">"连接超时"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"连接超时，正在重连"</string>
-    <string name="errors_device_information_could_not_be_verified" formatted="false">"无法核实设备信息"</string>
     <string name="errors_device_information_is_changing_retry" formatted="false">"设备信息正在变化，请重试"</string>
-    <string name="errors_device_registration_is_unfinished_retry_it_first" formatted="false">"还有未完成的设备注册，请先重试"</string>
     <string name="errors_disconnected_from_server" formatted="false">"与 server 的连接断开"</string>
-    <string name="errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing" formatted="false">"紧急恢复草稿已保留，请继续查询、等待或完成原恢复"</string>
     <string name="errors_establishing_push_connection" formatted="false">"建立推送连接"</string>
     <string name="errors_executed_result_unavailable" formatted="false">"电脑已执行，但结果没能取回，请刷新查看最新状态"</string>
     <string name="errors_history_could_not_continue_loading_retry" formatted="false">"历史记录未能继续加载，请重试"</string>
     <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"历史密钥不可用：恢复前的记录无法解密"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"密文无效：签名、密钥或内容校验失败"</string>
-    <string name="errors_invalid_pairing_approval_signature" formatted="false">"配对批准签名无效"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"它可能已经被删除，或者属于一台被移除的电脑。"</string>
     <string name="errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" formatted="false">"成员链冲突，安全操作已停止；请核对设备后明确重新加入"</string>
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"名称只能在那台设备上修改"</string>
@@ -328,7 +319,6 @@
     <string name="errors_the_server_address_cannot_include_a_username_or_password" formatted="false">"server 地址不能包含用户名或密码"</string>
     <string name="errors_the_server_does_not_recognize_this_device_it_may" formatted="false">"服务器不认识这台设备（可能已被移除，或服务已重建）"</string>
     <string name="errors_the_server_must_use_https" formatted="false">"server 必须使用 https"</string>
-    <string name="errors_the_server_returned_an_unexpected_device_id" formatted="false">"服务器返回了意外的设备 ID"</string>
     <string name="errors_the_task_was_just_changed_updated_to_the_latest" formatted="false">"任务刚被修改，已更新为最新内容"</string>
     <string name="errors_this_browser_has_already_joined_an_account_open_this" formatted="false">"这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。"</string>
     <string name="errors_this_device_s_clock_is_behind_the_account_state" formatted="false">"本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。"</string>
@@ -1282,11 +1272,8 @@
     <string name="security_after_submission_wait_48_hours_the_current_managing_client" formatted="false">"提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。"</string>
     <string name="security_allow_to_join" formatted="false">"允许加入"</string>
     <string name="security_android_abandon_this_recovery_and_enter_a_new_code" formatted="false">"放弃这次恢复，输入新恢复码"</string>
-    <string name="security_android_after_completion_wait_for_retained_computers_to_come_online_and" formatted="false">"完成后等待保留电脑上线并发布当前状态"</string>
     <string name="security_android_already_registering_this_phone_wait_for_the_result" formatted="false">"已经在登记这台手机，稍等结果"</string>
     <string name="security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key" formatted="false">"尚未确认保存；本机没有恢复码私钥，完成后立即换码"</string>
-    <string name="security_android_cannot_complete_yet_or_recovery_was_vetoed" formatted="false">"还不能完成，或者恢复已被否决"</string>
-    <string name="security_android_cannot_confirm_whether_the_new_device_joined_check_your_network" formatted="false">"暂时无法确认新设备是否已加入，请检查网络后重试同一次批准，或在新设备上查看结果"</string>
     <string name="security_android_cannot_confirm_whether_this_phone_joined_value1_check_the_client">"不确定这台手机有没有加入：%1$s。可以在管理端的设置里看看客户端列表"</string>
     <string name="security_android_clearing" formatted="false">"正在清除…"</string>
     <string name="security_android_compare_the_4_patterns_on_the_managing_client_if_they" formatted="false">"核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。"</string>
@@ -1298,14 +1285,11 @@
     <string name="security_android_could_not_read_security_operation_state_before_exiting_value1">"退出前没能读取安全操作状态：%1$s"</string>
     <string name="security_android_create_account" formatted="false">"创建账户"</string>
     <string name="security_android_current_client" formatted="false">"当前客户端"</string>
-    <string name="security_android_current_content_key_missing" formatted="false">"缺少当前内容密钥"</string>
     <string name="security_android_do_not_publish_yet" formatted="false">"先不发布"</string>
     <string name="security_android_enter_the_8_digit_pairing_code" formatted="false">"输入 8 位配对码"</string>
     <string name="security_android_enter_the_recovery_code_saved_during_setup_after_submitting_wait" formatted="false">"输入初始化时保存的恢复码。提交后要等 48 小时，原管理端打开客户端可看到请求（推送可能不到达）；期间它可以显式否决；普通续期不会使恢复作废。"</string>
     <string name="security_android_exit_and_delete_local_keys_in_settings" formatted="false">"退出并删除本机密钥在设置页"</string>
     <string name="security_android_exit_incomplete_value1">"退出未完成：%1$s"</string>
-    <string name="security_android_export_genesis_state" formatted="false">"导出创世状态"</string>
-    <string name="security_android_export_genesis_state_for_offline_relay_pinning" formatted="false">"导出创世状态（中继离线固定用）"</string>
     <string name="security_android_first_delete_the_account_keys_and_cache_on_this_device" formatted="false">"会先删除这台设备上的账户密钥和缓存，再用配对码加入。"</string>
     <string name="security_android_first_delete_the_account_keys_and_cache_on_this_phone" formatted="false">"会先删除这台手机上的账户密钥和缓存，再用配对码加入。"</string>
     <string name="security_android_generating" formatted="false">"正在生成…"</string>
@@ -1313,48 +1297,20 @@
     <string name="security_android_i_saved_it_start_using_the_app" formatted="false">"我已保存，开始使用"</string>
     <string name="security_android_i_saved_the_new_recovery_code_offline" formatted="false">"我已离线保存新的恢复码"</string>
     <string name="security_android_if_48_hours_have_not_passed_or_the_original_managing" formatted="false">"如果还没到 48 小时，或者原管理端否决了，完成会失败并说明原因。"</string>
-    <string name="security_android_incorrect_recovery_code" formatted="false">"恢复码不对"</string>
-    <string name="security_android_incorrect_recovery_code_or_no_pending_recovery" formatted="false">"恢复码不对，或者没有待处理的恢复"</string>
-    <string name="security_android_incorrect_recovery_code_or_the_recovery_statement_was_rejected" formatted="false">"恢复码不对，或者恢复声明已被拒绝"</string>
-    <string name="security_android_join_receipt_device_public_key_mismatch" formatted="false">"加入回执的本机公钥不匹配"</string>
-    <string name="security_android_join_receipt_does_not_contain_this_device_s_identity" formatted="false">"加入回执没有本机身份"</string>
-    <string name="security_android_keep_this_phone_s_account_root_key_and_device_identity" formatted="false">"保留这台手机的账户根密钥和设备身份，丢弃协议 9 的安全状态，生成协议 10 的创世状态并让这台手机成为管理端。协议 9 的历史要用旧版本读。"</string>
-    <string name="security_android_membership_sync_failed_there_may_be_an_invalid_pairing_check" formatted="false">"同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。"</string>
     <string name="security_android_name_changes_sync_to_other_clients_set_notifications_on_this" formatted="false">"修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。"</string>
     <string name="security_android_new_recovery_code_confirmed_saved_offline" formatted="false">"已确认离线保存新恢复码"</string>
-    <string name="security_android_no_account_available_to_upgrade" formatted="false">"没有可升级的账户"</string>
-    <string name="security_android_no_candidate_device" formatted="false">"没有候选设备"</string>
-    <string name="security_android_no_device_has_joined_yet" formatted="false">"还没有设备加入"</string>
     <string name="security_android_not_read_yet" formatted="false">"尚未读取"</string>
-    <string name="security_android_only_a_removed_computer_s_archive_from_the_same_account" formatted="false">"只能接续同一账户已移除电脑的档案"</string>
-    <string name="security_android_only_the_managing_client_can_add_devices" formatted="false">"只有管理端能添加设备"</string>
-    <string name="security_android_only_the_managing_client_can_approve" formatted="false">"只有管理端能批准"</string>
     <string name="security_android_only_this_client_can_change_its_name_notification_settings_must" formatted="false">"名称只能由该客户端自己修改。通知开关也要在该设备上设置。"</string>
     <string name="security_android_open_settings_add_device_on_the_managing_client_scan_its" formatted="false">"在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。"</string>
     <string name="security_android_optional" formatted="false">"可留空"</string>
     <string name="security_android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the" formatted="false">"结果尚未确定，回到前台后重试同一次批准"</string>
-    <string name="security_android_pairing_approval_does_not_match_this_device_or_its_signature" formatted="false">"配对批准与这台设备不匹配或签名无效"</string>
-    <string name="security_android_pairing_cannot_finish_right_now_check_your_network_then_start" formatted="false">"配对暂时无法完成，请检查网络后重新开始"</string>
-    <string name="security_android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed" formatted="false">"临时公钥公开后配对承诺发生变化"</string>
-    <string name="security_android_pairing_commitment_mismatch" formatted="false">"配对承诺不匹配"</string>
-    <string name="security_android_pairing_payload_belongs_to_another_security_domain" formatted="false">"配对载荷属于另一个安全域"</string>
-    <string name="security_android_pairing_payload_is_missing_the_account_public_key" formatted="false">"配对载荷缺少账户公钥"</string>
-    <string name="security_android_pairing_payload_managing_client_mismatch" formatted="false">"配对载荷的管理端不匹配"</string>
-    <string name="security_android_pairing_payload_state_chain_is_incomplete" formatted="false">"配对载荷的状态链不完整"</string>
-    <string name="security_android_pairing_trust_information_is_too_large" formatted="false">"配对信任信息过大"</string>
-    <string name="security_android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped" formatted="false">"本机未确认图案，已停止安全绑定"</string>
     <string name="security_android_paused_retry_after_returning_to_the_foreground" formatted="false">"已暂停，回到前台后可重试"</string>
     <string name="security_android_publishing" formatted="false">"正在发布…"</string>
     <string name="security_android_reading_membership_state" formatted="false">"正在读取成员状态…"</string>
-    <string name="security_android_rebuild_security_domain" formatted="false">"重建安全域"</string>
-    <string name="security_android_rebuild_security_domain_and_become_managing_client" formatted="false">"重建安全域并成为管理端"</string>
-    <string name="security_android_rebuilding" formatted="false">"正在重建…"</string>
     <string name="security_android_recovery_can_now_be_completed" formatted="false">"已经可以完成恢复。"</string>
     <string name="security_android_recovery_code_backup_status" formatted="false">"恢复码保存状态"</string>
     <string name="security_android_recovery_code_shown_only_once" formatted="false">"恢复码 · 只显示这一次"</string>
     <string name="security_android_recovery_eligible_at">"可生效时间：%1$s"</string>
-    <string name="security_android_recovery_not_found_it_may_be_complete_or_vetoed" formatted="false">"找不到这次恢复，它可能已经完成或被否决"</string>
-    <string name="security_android_registration_challenge_expired_retry" formatted="false">"注册挑战已过期，请重试"</string>
     <string name="security_android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端上批准。"</string>
     <string name="security_android_remove_this_client" formatted="false">"移除这个客户端"</string>
     <string name="security_android_removed" formatted="false">"已移除"</string>
@@ -1362,74 +1318,38 @@
     <string name="security_android_renews_automatically_when_you_return_to_the_managing_client_after" formatted="false">"回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"</string>
     <string name="security_android_saving" formatted="false">"正在保存…"</string>
     <string name="security_android_scan_qr_code" formatted="false">"扫描二维码"</string>
-    <string name="security_android_security_domain_pinning_failed" formatted="false">"安全域固定失败"</string>
-    <string name="security_android_server_registration_computation_requirement_is_too_high_value1_bits_maximum">"服务器要求的注册计算量过高（%1$s 位，最多 28 位）"</string>
     <string name="security_android_setup_token_if_required_by_the_server" formatted="false">"Setup token（服务器要求时）"</string>
     <string name="security_android_someone_is_requesting_management_takeover_with_a_recovery_code_veto" formatted="false">"有人正在用恢复码申请接管管理权。不是你本人就点了否决。"</string>
-    <string name="security_android_state_chain_is_too_large_to_pair_recreate_the_account" formatted="false">"状态链太大，无法配对；请重建账户"</string>
     <string name="security_android_still_within_the_48_hour_waiting_period" formatted="false">"还在 48 小时等待期内。"</string>
     <string name="security_android_submit_recovery" formatted="false">"提交恢复"</string>
     <string name="security_android_submitting" formatted="false">"正在提交…"</string>
     <string name="security_android_takes_effect_after_48_hours_a_veto_from_the_original" formatted="false">"48 小时后生效；如果原管理端否决了这次恢复，它会作废。请现在抄下来或拍照保存。"</string>
-    <string name="security_android_the_account_saved_on_this_phone_does_not_match_its" formatted="false">"这台手机保存的账户与根密钥不一致"</string>
-    <string name="security_android_the_candidate_device_cannot_use_the_managing_client_s_identity" formatted="false">"候选设备不能使用管理端身份"</string>
-    <string name="security_android_the_candidate_device_needs_an_update" formatted="false">"候选设备需要更新"</string>
-    <string name="security_android_the_managing_client_s_trust_information_does_not_match_its" formatted="false">"管理端的信任信息与配对承诺不匹配"</string>
     <string name="security_android_the_new_code_is_still_on_this_page_save_it" formatted="false">"新码仍显示在本页，请离线保存"</string>
     <string name="security_android_the_new_recovery_code_generated_for_this_request_is_invalid" formatted="false">"这次申请生成的新恢复码已作废。请使用原管理端上的替换恢复码重新申请。"</string>
     <string name="security_android_the_original_device_identity_keys_and_history_are_kept_open" formatted="false">"原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"</string>
     <string name="security_android_the_original_managing_client_vetoed_this_recovery" formatted="false">"这次恢复被原管理端否决了。"</string>
     <string name="security_android_the_original_security_operation_is_verified_complete" formatted="false">"原安全操作已核实完成。"</string>
-    <string name="security_android_the_recovery_chain_published_by_the_server_differs_from_the" formatted="false">"服务器发布的恢复链与提交的不一致"</string>
-    <string name="security_android_the_recovery_state_published_by_the_server_differs_from_the" formatted="false">"服务器发布的恢复状态与提交的不一致"</string>
-    <string name="security_android_the_relay_has_not_pinned_this_security_domain_an_upgrade" formatted="false">"中继还没有固定这个安全域（从旧版本升级，或中继正停着）。先导出公开的创世状态，在中继停服时固定（docs/self-hosting 第 4–5 步），再启动中继。"</string>
-    <string name="security_android_the_server_did_not_accept_this_approval_check_whether_the" formatted="false">"服务器未接受这次批准，请在新设备核对是否已加入，再重新开始"</string>
     <string name="security_android_the_server_rejected_this_device_s_login" formatted="false">"服务器拒绝了这台设备的登录"</string>
-    <string name="security_android_the_server_returned_an_invalid_registration_challenge" formatted="false">"服务器返回了无效的注册挑战"</string>
-    <string name="security_android_the_server_returned_an_unexpected_device_id" formatted="false">"服务器返回了意外的设备 ID"</string>
-    <string name="security_android_these_computers_must_republish_checkpoints_after_recovery" formatted="false">"；完成恢复后需这些电脑重新发布 checkpoint"</string>
     <string name="security_android_this_client_is_no_longer_in_the_current_member_list" formatted="false">"这个客户端已不在当前成员列表中"</string>
     <string name="security_android_this_deletes_the_account_keys_and_cache_on_this_phone" formatted="false">"这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"</string>
-    <string name="security_android_this_device_is_not_the_managing_client_in_the_recovery" formatted="false">"恢复链的管理端不是这台设备"</string>
-    <string name="security_android_this_device_s_identity_differs_from_its_member_record_cannot" formatted="false">"这台设备的身份与成员记录不一致，不能重新加入"</string>
-    <string name="security_android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin" formatted="false">"这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份"</string>
     <string name="security_android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端上重新批准。"</string>
     <string name="security_android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and" formatted="false">"这会立即断开连接并撤销权限，保留中继上的会话和图片；它需要重新加入账户才能连接。"</string>
-    <string name="security_android_this_is_a_saved_rebuild_draft_the_recovery_code_will" formatted="false">"这是已保存的重建草稿，恢复码不会再次显示。请确认已有离线备份；若未保存，进入后立即更换恢复码。"</string>
     <string name="security_android_this_is_not_a_remote_agent_pairing_qr_code" formatted="false">"这不是 remote-agent 的配对二维码"</string>
     <string name="security_android_this_is_the_only_managing_client_transfer_management_first_exiting" formatted="false">"本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。"</string>
-    <string name="security_android_this_join_attempt_was_cancelled" formatted="false">"已取消本次加入"</string>
     <string name="security_android_this_join_attempt_was_cancelled_the_old_request_may_still" formatted="false">"已取消本次加入。旧请求可能还占着配对码：请在管理端上拒绝它，再生成新的配对码"</string>
-    <string name="security_android_this_pairing_is_no_longer_valid_cannot_verify_whether_the" formatted="false">"这次配对已失效，暂时无法核实新设备是否已加入。请在新设备或设备列表确认后重新开始。"</string>
-    <string name="security_android_this_pairing_is_no_longer_valid_the_new_device_did" formatted="false">"这次配对已失效，新设备未加入。请先在设备列表移除未完成配对的设备，再重新开始。"</string>
-    <string name="security_android_this_pairing_only_allows_the_original_computer_to_rejoin" formatted="false">"这份配对只允许原电脑重新加入"</string>
-    <string name="security_android_this_phone_has_no_account_public_key_and_cannot_register" formatted="false">"这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入"</string>
-    <string name="security_android_this_phone_has_no_account_root_key_and_cannot_become" formatted="false">"这台手机没有账户根密钥，不能成为管理端。请用保留账户根密钥的设备操作，或在接任设备上用恢复码找回。"</string>
-    <string name="security_android_this_phone_has_no_account_root_key_and_cannot_rebuild" formatted="false">"这台手机没有账户根密钥，不能重建安全域；请用管理端重新配对"</string>
     <string name="security_android_this_phone_will_become_the_managing_client_the_account_root" formatted="false">"这台手机会成为管理端。账户根密钥和设备身份只保存在手机上；恢复码只显示一次，请准备好纸笔或相机。"</string>
-    <string name="security_android_this_public_genesis_state_contains_no_keys_use_it_only" formatted="false">"这是公开的创世状态，不含密钥；只在升级指南要求中继离线固定时使用。"</string>
     <string name="security_android_this_recovery_is_complete" formatted="false">"这次恢复已经完成。"</string>
-    <string name="security_android_this_recovery_was_submitted_complete_it_on_the_phone_that" formatted="false">"这次恢复已提交；请在保存了恢复身份的那台手机上完成"</string>
     <string name="security_android_this_recovery_was_submitted_if_you_have_not_saved_the" formatted="false">"这次恢复已提交。若尚未保存新恢复码，完成后请立即在设置中更换恢复码。"</string>
     <string name="security_android_this_recovery_was_vetoed_the_new_recovery_code_generated_for" formatted="false">"这次恢复已被否决，申请中生成的新恢复码也已作废。"</string>
-    <string name="security_android_too_many_attempts_wait_a_minute_and_retry" formatted="false">"试得太频繁了，等一分钟再试"</string>
     <string name="security_android_transfer_to">"交接给 %1$s"</string>
-    <string name="security_android_unrecognized_recovery_status" formatted="false">"恢复状态无法识别"</string>
-    <string name="security_android_upgrading_an_existing_account_rebuild_the_security_domain_and_become" formatted="false">"已有账户升级？重建安全域并成为管理端"</string>
     <string name="security_android_use_this_to_recover_management_if_the_managing_client_is" formatted="false">"管理端丢失时用它找回管理权；它只签恢复声明，不能解密内容。管理密钥和恢复码都丢失后只能重建账户。"</string>
     <string name="security_android_verify_original_security_operation" formatted="false">"核实原安全操作"</string>
     <string name="security_android_view" formatted="false">"查看"</string>
     <string name="security_android_view_status" formatted="false">"查看状态"</string>
     <string name="security_android_wait" formatted="false">"等待"</string>
-    <string name="security_android_waiting_for_computers_to_restore_current_sessions" formatted="false">"等待电脑恢复当前会话"</string>
     <string name="security_android_waiting_for_managing_client_approval_and_completing_join" formatted="false">"等待管理端批准并完成加入…"</string>
     <string name="security_android_write_it_down_or_photograph_it_before_publishing_publishing_immediately" formatted="false">"先抄下来或拍照保存，再发布。发布成功后旧码立即作废。"</string>
-    <string name="security_android_write_it_down_or_photograph_it_it_only_signs_recovery" formatted="false">"请抄下来或拍照保存。它只签恢复声明，不能解密内容。"</string>
-    <string name="security_another_pairing_draft_is_unfinished" formatted="false">"另一个配对草稿仍待完成"</string>
-    <string name="security_another_pairing_draft_is_unfinished_complete_this_pairing_or" formatted="false">"另一个配对草稿未完成，请先完成本次配对或明确退出后重试"</string>
-    <string name="security_another_security_operation_is_unfinished" formatted="false">"另一次安全操作尚未完成"</string>
     <string name="security_apply_again" formatted="false">"重新申请"</string>
-    <string name="security_apply_again_with_the_current_recovery_code" formatted="false">"请使用当前恢复码重新申请"</string>
     <string name="security_approved_waiting_for_the_new_device_to_finish_binding" formatted="false">"已批准，等待新设备完成绑定…"</string>
     <string name="security_asked_the_browser_to_retain_data" formatted="false">"已请求浏览器保留数据"</string>
     <string name="security_automatically_renews_when_you_return_to_the_managing_client" formatted="false">"回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。网页关闭或冻结时无法续期。"</string>
@@ -1445,6 +1365,7 @@
     <string name="security_computer_run_remote_agent_account_join_and_enter_the" formatted="false">"电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。"</string>
     <string name="security_computers_can_only_run_clis_and_cannot_take_over" formatted="false">"电脑只能运行 CLI，不能接管管理权。"</string>
     <string name="security_confirm_exit" formatted="false">"确认退出"</string>
+    <string name="security_confirm_recovery_code_saved_first" formatted="false">"请先确认已离线保存新的恢复码"</string>
     <string name="security_confirm_that_the_successor_device_saved_the_new_recovery">"确认接任设备（%1$s）已经保存新的恢复码。交接后本机会被移除，接任设备成为唯一管理端。"</string>
     <string name="security_confirm_the_patterns_on_the_new_device_before_approving" formatted="false">"请先由新设备确认图案，再在管理端批准"</string>
     <string name="security_confirm_the_patterns_on_this_device_first" formatted="false">"请先在本机确认图案"</string>
@@ -1452,7 +1373,6 @@
     <string name="security_confirmed_here_waiting_for_managing_client_approval_and_binding" formatted="false">"本机已确认，等待管理端批准并完成绑定…"</string>
     <string name="security_continue_creation" formatted="false">"继续创建账户"</string>
     <string name="security_continue_original_draft" formatted="false">"继续原草稿"</string>
-    <string name="security_continue_the_original_recovery_or_explicitly_abandon_the_rejected" formatted="false">"请先继续原恢复或明确放弃已否决的恢复"</string>
     <string name="security_control_ai_coding_clis_on_your_computer_from_any" formatted="false">"在手机或任何浏览器里，接着用电脑 tmux 里的编程 CLI。"</string>
     <string name="security_create_account" formatted="false">"创建账户"</string>
     <string name="security_current_managing_client" formatted="false">"当前管理端"</string>
@@ -1471,7 +1391,6 @@
     <string name="security_exit_this_browser" formatted="false">"退出这个浏览器？"</string>
     <string name="security_exiting" formatted="false">"退出中…"</string>
     <string name="security_exiting_deletes_local_keys_you_will_need_to_pair" formatted="false">"退出会删除本机密钥，需要重新配对。"</string>
-    <string name="security_finish_device_registration_first" formatted="false">"请先完成设备注册"</string>
     <string name="security_finish_the_current_security_operation_before_renewing" formatted="false">"请先完成当前安全操作，再续期"</string>
     <string name="security_finish_the_current_security_operation_first" formatted="false">"请先完成当前安全操作"</string>
     <string name="security_finish_the_original_security_operation_first" formatted="false">"请先完成原安全操作"</string>
@@ -1483,7 +1402,6 @@
     <string name="security_i_saved_the_new_recovery_code_offline" formatted="false">"我已离线保存新的恢复码"</string>
     <string name="security_if_this_browser_is_already_a_member_recovery_will" formatted="false">"若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。"</string>
     <string name="security_invalid_pairing_key" formatted="false">"配对密钥无效"</string>
-    <string name="security_invalid_pairing_trust_information" formatted="false">"无效的配对信任信息"</string>
     <string name="security_invalid_recovery_code" formatted="false">"恢复码无效"</string>
     <string name="security_it_may_have_been_removed_or_the_service_may" formatted="false">"可能已被移除，或服务已重建。电脑上的会话不受影响。"</string>
     <string name="security_join" formatted="false">"加入"</string>
@@ -1499,22 +1417,17 @@
     <string name="security_on_the_managing_client_open_settings_add_device_and" formatted="false">"在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。"</string>
     <string name="security_once_the_successor_device_joins_and_confirms_saving_its" formatted="false">"在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。"</string>
     <string name="security_one_time_security_setup" formatted="false">"一次性安全设置"</string>
-    <string name="security_only_a_removed_computer_s_archive_can_be_rejoined" formatted="false">"只能从已移除电脑的档案重新加入"</string>
     <string name="security_only_this_computer_can_rejoin_its_original_archive_with" formatted="false">"只允许这台电脑以新身份接回原档案，保留原会话和历史。"</string>
     <string name="security_open_to_renew">"请打开%1$s续期"</string>
     <string name="security_original_recovery_code" formatted="false">"原恢复码"</string>
     <string name="security_pair_again" formatted="false">"重新配对"</string>
     <string name="security_pair_valid_until">"有效期至 %1$s"</string>
     <string name="security_paired" formatted="false">"已配对"</string>
-    <string name="security_pairing_approval_does_not_match_this_device_or_has" formatted="false">"配对批准与这台设备不匹配或已过期"</string>
     <string name="security_pairing_canceled" formatted="false">"配对已取消"</string>
     <string name="security_pairing_code" formatted="false">"配对码"</string>
-    <string name="security_pairing_commitment_mismatch_pairing_stopped" formatted="false">"配对承诺不匹配，已停止配对"</string>
     <string name="security_pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before" formatted="false">"配对交付已失效，请明确移除未完成候选后重新开始"</string>
-    <string name="security_pairing_expired" formatted="false">"配对已过期"</string>
     <string name="security_pairing_expired_or_was_canceled" formatted="false">"配对已过期或被取消"</string>
     <string name="security_pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before" formatted="false">"配对已取消，请明确移除未完成候选后重新开始"</string>
-    <string name="security_pairing_was_canceled_or_expired" formatted="false">"配对已取消或过期"</string>
     <string name="security_patterns_differ_return_to_code_entry" formatted="false">"图案不一致，返回填码"</string>
     <string name="security_patterns_match_the_new_device_confirmed_first" formatted="false">"图案一致，新设备已先确认"</string>
     <string name="security_patterns_match_trust_and_continue" formatted="false">"图案一致，信任并继续"</string>
@@ -1529,10 +1442,8 @@
     <string name="security_recovery_code_for_restoring_public_information" formatted="false">"补齐资料的恢复码"</string>
     <string name="security_recovery_code_saved_and_confirmed_waiting_for_the_current" formatted="false">"恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。"</string>
     <string name="security_recovery_code_updated_the_previous_code_and_pending_recovery" formatted="false">"恢复码已更新，原恢复码和待处理恢复申请已作废。"</string>
-    <string name="security_recovery_is_pending_or_its_outcome_is_unknown_and" formatted="false">"恢复仍待处理或结果未明，不能放弃"</string>
     <string name="security_recovery_request_pending" formatted="false">"恢复申请待处理"</string>
     <string name="security_recovery_request_pending_eligible_at">"恢复申请待处理 · 可生效时间：%1$s"</string>
-    <string name="security_recovery_was_rejected_explicitly_apply_again" formatted="false">"恢复已被否决，请明确重新申请"</string>
     <string name="security_recovery_was_rejected_you_can_apply_again" formatted="false">"恢复已被否决，可以重新申请。"</string>
     <string name="security_refresh_successor_devices" formatted="false">"刷新接任设备"</string>
     <string name="security_regenerate_recovery_code" formatted="false">"重新生成恢复码"</string>
@@ -1570,43 +1481,29 @@
     <string name="security_submit_or_check_original_recovery" formatted="false">"提交或查询原恢复"</string>
     <string name="security_success_is_uncertain_connection_lost" formatted="false">"不确定是否成功：网络断了"</string>
     <string name="security_take_over_management" formatted="false">"接管管理权"</string>
-    <string name="security_the_48_hour_wait_has_not_ended" formatted="false">"48 小时等待尚未结束"</string>
     <string name="security_the_account_belongs_to_another_server" formatted="false">"账户属于另一个服务器"</string>
-    <string name="security_the_account_does_not_match_the_managing_client_s" formatted="false">"账户与管理端的信任信息不匹配"</string>
     <string name="security_the_account_keys_and_cache_in_this_browser_will" formatted="false">"会先删除这个浏览器里的账户密钥和缓存，再用配对码加入。"</string>
     <string name="security_the_account_s_state_chain_is_too_long_to" formatted="false">"账户的状态链太长，无法加入；请在管理端重建账户。"</string>
     <string name="security_the_browser_did_not_promise_to_retain_data" formatted="false">"浏览器没有承诺保留数据"</string>
     <string name="security_the_computer_s_archive_was_deleted_join_as_a" formatted="false">"电脑档案已删除，请按新设备加入"</string>
-    <string name="security_the_join_receipt_does_not_contain_the_correct_identity" formatted="false">"加入回执没有本机的正确身份"</string>
     <string name="security_the_local_account_unfinished_registration_and_security_operations_will" formatted="false">"本机账户、未完成的注册和安全操作会被清除，需要重新配对或创建。服务器上的会话和档案不会被删除；结果未明的操作可能已经成功，请在管理端核实。"</string>
-    <string name="security_the_local_security_state_is_damaged_and_cannot_be" formatted="false">"本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试"</string>
     <string name="security_the_managing_client_canceled_pairing" formatted="false">"管理端取消了配对"</string>
     <string name="security_the_managing_client_cannot_be_removed_directly_transfer_management" formatted="false">"管理端不能被普通删除，请先交接"</string>
     <string name="security_the_managing_client_cannot_be_removed_directly_transfer_management_device_management" formatted="false">"管理端不能直接移除，请先交接管理权。"</string>
-    <string name="security_the_managing_client_s_trust_information_does_not_match" formatted="false">"管理端的信任信息与配对承诺不匹配"</string>
     <string name="security_the_new_recovery_code_backup_is_unconfirmed_replace_the" formatted="false">"新恢复码尚未确认备份，请立即换码并离线保存。"</string>
     <string name="security_the_original_creation_draft_is_preserved_continue_with_the" formatted="false">"原创建草稿已保留，继续同一个账户。恢复码不会再次显示；没有备份时，进入账户后立即换码。"</string>
     <string name="security_the_original_device_identity_keys_and_history_are_preserved" formatted="false">"原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对 4 个图案完成加入。"</string>
-    <string name="security_the_original_device_public_key_does_not_match_the" formatted="false">"原设备公钥与本机签名密钥不匹配"</string>
     <string name="security_the_original_operation_is_unfinished_continue_verifying" formatted="false">"原操作尚未完成，请继续核实"</string>
     <string name="security_the_original_recovery_draft_is_preserved_the_new_recovery" formatted="false">"原恢复草稿已保留。新恢复码不会再次显示；未保存时仍可完成原恢复，进入账户后立即换码。"</string>
-    <string name="security_the_other_device_refused_this_join_request" formatted="false">"对方拒绝了这次加入"</string>
     <string name="security_the_page_is_paused_return_to_the_foreground_to" formatted="false">"页面已暂停，请回到前台继续安全操作"</string>
-    <string name="security_the_pairing_code_belongs_to_another_security_domain_original" formatted="false">"配对码属于另一个安全域，原密钥已保留"</string>
     <string name="security_the_pairing_code_is_wrong_or_has_already_been" formatted="false">"配对码不对，或者已经用过了"</string>
-    <string name="security_the_pairing_draft_conflicts_with_the_current_identity" formatted="false">"配对草稿与当前身份冲突"</string>
-    <string name="security_the_pairing_receipt_was_approved_by_a_device_other" formatted="false">"配对回执的批准设备不是当前管理端"</string>
     <string name="security_the_public_key_may_already_be_published_abandoning_only" formatted="false">"接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"</string>
-    <string name="security_the_recovery_signature_has_not_been_saved_re_enter" formatted="false">"恢复签名尚未保存，请重新输入原恢复码继续原草稿"</string>
     <string name="security_the_security_operation_s_outcome_is_unverified_continue_the" formatted="false">"安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。"</string>
     <string name="security_the_server_does_not_recognize_this_device" formatted="false">"服务器不认识这台设备"</string>
-    <string name="security_the_server_replaced_the_pairing_commitment_after_receiving_the" formatted="false">"服务器在获得临时公钥后替换了配对承诺，已停止配对"</string>
     <string name="security_the_server_returned_information_for_a_different_device_from" formatted="false">"服务器返回的不是发起配对那台设备的信息，已停止配对"</string>
     <string name="security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon" formatted="false">"配对草稿已过期，尚未发布，可明确放弃后重新开始"</string>
     <string name="security_the_unpublished_pairing_draft_was_canceled_or_its_candidate" formatted="false">"配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始"</string>
-    <string name="security_this_browser_does_not_support_web_locks_it_cannot" formatted="false">"浏览器不支持 Web Locks，无法安全管理账户"</string>
     <string name="security_this_browser_is_the_only_managing_client_transfer_management" formatted="false">"此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。"</string>
-    <string name="security_this_browser_s_original_public_key_could_not_be" formatted="false">"无法核实这台浏览器原来的公钥，原密钥已保留"</string>
     <string name="security_this_browser_will_be_the_only_managing_client_clearing" formatted="false">"此浏览器将是唯一管理端。清理网站数据或换浏览器会丢失管理密钥；恢复码必须离线保存。日常建议用 App 管理。"</string>
     <string name="security_this_deletes_the_account_keys_and_cache_on_this" formatted="false">"这会删除本机的账户密钥和缓存，电脑上的会话不受影响。"</string>
     <string name="security_this_device" formatted="false">"本机"</string>
@@ -1615,7 +1512,6 @@
     <string name="security_this_device_manages_the_account" formatted="false">"本机是管理端"</string>
     <string name="security_this_device_s_clock_is_behind_the_managing_client" formatted="false">"本机时间比管理端慢，操作会被拒绝。请校准系统时间和时区后再加入。"</string>
     <string name="security_this_page_and_the_server_or_pairing_device_use" formatted="false">"这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试"</string>
-    <string name="security_this_pairing_expired_generate_a_new_code_on_the" formatted="false">"这次配对已失效，请在管理端重新生成配对码"</string>
     <string name="security_this_permanently_deletes_sessions_events_and_images_on_the" formatted="false">"将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。"</string>
     <string name="security_too_many_attempts_wait_a_minute_and_retry" formatted="false">"试得太频繁了，等一分钟再试"</string>
     <string name="security_transfer_management" formatted="false">"交接管理权"</string>

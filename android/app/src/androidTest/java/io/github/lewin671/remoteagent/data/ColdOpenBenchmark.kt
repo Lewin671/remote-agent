@@ -2,20 +2,36 @@ package io.github.lewin671.remoteagent.data
 
 import android.os.Bundle
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.lewin671.remoteagent.core.*
-import io.github.lewin671.remoteagent.proto.*
+import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.Account
+import io.github.lewin671.remoteagent.core.Api
+import io.github.lewin671.remoteagent.core.LoginToken
+import io.github.lewin671.remoteagent.core.MemorySecurityStoreV4
+import io.github.lewin671.remoteagent.core.value
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageOp
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageWrite
+import io.github.lewin671.remoteagent.core.proto.SecurityStoreBucket
+import io.github.lewin671.remoteagent.proto.AgentMessage
+import io.github.lewin671.remoteagent.proto.Event
+import io.github.lewin671.remoteagent.proto.GetChallengeRequest
+import io.github.lewin671.remoteagent.proto.GetEventsRequest
+import io.github.lewin671.remoteagent.proto.GetEventsResponse
+import io.github.lewin671.remoteagent.proto.LoginRequest
+import io.github.lewin671.remoteagent.proto.LoginResponse
+import io.github.lewin671.remoteagent.proto.StoredEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /**
  * Controlled old/new path measurement: fake Connect API with 50 ms per call, real signed envelopes
- * and Android Vault/Keystore. Two shared RTTs model the WS upgrade and parallel session listing.
+ * and Android Vault/Keystore v4 store. Two shared RTTs model the WS upgrade and parallel session listing.
  * This measures first-page verification, not Compose layout or a real CLI round trip.
  */
 class ColdOpenBenchmark {
@@ -24,30 +40,24 @@ class ColdOpenBenchmark {
         val context = instrumentation.targetContext
         assumeTrue(context.packageName.endsWith(".securityaudit"))
         val vault = Vault(context)
-        val signer = SigningKey(ByteArray(32) { 1 })
-        val x = ByteArray(32) { 2 }
-        val phone = Authority.newMember(signer, x, 2u)
-        val secret = ByteArray(32) { 3 }
-        val genesis = Authority.genesis(
-            "a".repeat(32), ByteArray(32) { 4 }, phone,
-            SigningKey(ByteArray(32) { 5 }).publicKey, secret, signer, 1_700_000_000_000,
-        )
-        val machineSigner = SigningKey(ByteArray(32) { 7 })
-        val machineX = ByteArray(32) { 8 }
-        val machine = Authority.newMember(machineSigner, machineX, 1u)
-        val state = Authority.pair(genesis, machine, secret, secret, signer, 1_700_000_000_001)
-        val lease = HeadLease.sign(state, signer, 1_700_000_000_001)
-        val record = DeviceSecurity.Record.fromChain(
-            state.core.account, state.core.domain, DeviceSecurity.stateHash(genesis), phone.id, x,
-            listOf(genesis, state).map { DeviceSecurity.stateBytes(it) }, listOf(null, null),
-        ).installed(emptyList(), emptyList(), lease)
-        val machineRecord = DeviceSecurity.Record.fromChain(
-            state.core.account, state.core.domain, DeviceSecurity.stateHash(genesis), machine.id, machineX,
-            listOf(genesis, state).map { DeviceSecurity.stateBytes(it) }, listOf(null, null),
-        ).installed(emptyList(), emptyList(), lease)
-        val account = Account("https://example.com", ByteArray(0), ByteArray(32) { 1 }, phone.id, record.pin.account)
+        val machineStore = MemorySecurityStoreV4().apply {
+            seedTestRecord(
+                edPrivate = BenchmarkVectors.machineSeed,
+                edPublic = BenchmarkVectors.machineEdPub,
+                xPrivate = BenchmarkVectors.machineX,
+                xPublic = io.github.lewin671.remoteagent.corebind.Corebind.x25519PublicKey(BenchmarkVectors.machineX),
+                recordBytes = BenchmarkVectors.machineRecordBytes,
+            )
+        }
+        val account = Account(BenchmarkVectors.SERVER, BenchmarkVectors.phoneId, BenchmarkVectors.ACCOUNT_ID)
         val seed = ByteArray(32) { 6 }
-        val stored = BenchmarkCoreSecurity(machineRecord, machine.id, machineSigner, machineX, 1_700_000_000_002).use { sealer ->
+        val stored = BenchmarkCoreSecurity(
+            machineStore,
+            BenchmarkVectors.ACCOUNT_ID,
+            BenchmarkVectors.machineId,
+            BenchmarkVectors.SERVER,
+            BenchmarkVectors.nowMs + 1,
+        ).use { sealer ->
             (1..1100).map { seq ->
                 val event = Event.newBuilder().setSeq(seq.toLong()).setSessionId("test-session")
                     .setAgentMessage(AgentMessage.newBuilder().setText("Synthetic message $seq")).build()
@@ -59,16 +69,37 @@ class ColdOpenBenchmark {
         try {
             for (sample in 0..3) for (newestFirst in listOf(false, true)) {
                 vault.clear()
-                vault.initializeSecurity(record)
-                vault.save(account, DeviceSecurity.NotifyRecord.fromRecord(record).bytes())
-                vault.saveLoginToken(account, LoginToken("synthetic-token", System.currentTimeMillis() + 60000))
-                vault.clearSecurityCache()
+                val seedRes = vault.executeStorage(
+                    SecurityStorageEffect.newBuilder()
+                        .setOpId(1L)
+                        .setOp(SecurityStorageOp.SECURITY_STORAGE_OP_BATCH_COMMIT)
+                        .addBatch(
+                            SecurityStorageWrite.newBuilder()
+                                .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD)
+                                .setKey("record")
+                                .setCreateOnly(true)
+                                .setNextRevision("r1")
+                                .setData(ByteString.copyFrom(BenchmarkVectors.phoneRecordBytes)),
+                        )
+                        .addBatch(
+                            SecurityStorageWrite.newBuilder()
+                                .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD)
+                                .setKey("notify")
+                                .setCreateOnly(true)
+                                .setNextRevision("r1")
+                                .setData(ByteString.copyFrom(BenchmarkVectors.phoneNotifyBytes)),
+                        )
+                        .build(),
+                )
+                assertEquals("", seedRes.error)
+                vault.saveLoginToken(account.server, account.deviceId, LoginToken("synthetic-token", System.currentTimeMillis() + 60000))
+                vault.clearMemoryCache()
                 var calls = 0
                 val http = Api.defaultHttp().newBuilder().addInterceptor { chain ->
                     calls++
                     Thread.sleep(50)
                     val response: com.google.protobuf.MessageLite = when (chain.request().url.encodedPath.substringAfterLast('/')) {
-                        "GetChallenge" -> GetChallengeResponse.getDefaultInstance()
+                        "GetChallenge" -> io.github.lewin671.remoteagent.proto.GetChallengeResponse.getDefaultInstance()
                         "Login" -> LoginResponse.newBuilder().setToken("synthetic-token").setExpiresMs(System.currentTimeMillis() + 60000).build()
                         "GetEvents" -> {
                             val bytes = Buffer().also { chain.request().body!!.writeTo(it) }.readByteArray()
@@ -80,13 +111,20 @@ class ColdOpenBenchmark {
                         else -> error("unexpected fake RPC")
                     }
                     okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1)
-                        .code(200).message("OK").header("Content-Type", "application/proto").body(response.toByteArray().toResponseBody("application/proto".toMediaType())).build()
+                        .code(200).message("OK").header("Content-Type", "application/proto")
+                        .body(response.toByteArray().toResponseBody("application/proto".toMediaType())).build()
                 }.build()
                 val api = Api(account.server, http)
-                val security = BenchmarkCoreSecurity(vault.readSecurity(), phone.id, signer, x, 1_700_000_000_002)
+                val security = BenchmarkCoreSecurity(
+                    vault,
+                    BenchmarkVectors.ACCOUNT_ID,
+                    BenchmarkVectors.phoneId,
+                    BenchmarkVectors.SERVER,
+                    BenchmarkVectors.nowMs + 1,
+                )
                 try {
                     val start = System.nanoTime()
-                    val token = if (newestFirst) vault.loadLoginToken(account)!!.value else {
+                    val token = if (newestFirst) vault.loadLoginToken(account.server, account.deviceId)!!.token else {
                         api.auth.getChallenge(GetChallengeRequest.getDefaultInstance()).value()
                         api.auth.login(LoginRequest.getDefaultInstance()).value().token
                     }
@@ -94,8 +132,11 @@ class ColdOpenBenchmark {
                     var after = if (newestFirst) 600L else 0L
                     var visible = 0
                     do {
-                        val page = api.client.getEvents(GetEventsRequest.newBuilder().setSessionId("test-session")
-                            .setAfterSeq(after).setLimit(500).build(), Api.headers(token)).value()
+                        val page = api.client.getEvents(
+                            GetEventsRequest.newBuilder().setSessionId("test-session")
+                                .setAfterSeq(after).setLimit(500).build(),
+                            Api.headers(token),
+                        ).value()
                         for (event in page.eventsList) {
                             val opened = Event.parseFrom(security.openHistory(event.envelope, seed))
                             assertEquals(event.seq, opened.seq)
@@ -109,8 +150,12 @@ class ColdOpenBenchmark {
                     val result = "newestFirst=$newestFirst sample=$sample warmup=${sample == 0} newestVerifiedMs=$elapsed rpcCalls=$calls sharedModeledRtts=2 visible=$visible"
                     instrumentation.sendStatus(0, Bundle().apply { putString("stream", "\nColdOpenBenchmark $result\n") })
                     android.util.Log.i("ColdOpenBenchmark", result)
-                } finally { security.close() }
+                } finally {
+                    security.close()
+                }
             }
-        } finally { vault.clear() }
+        } finally {
+            vault.clear()
+        }
     }
 }

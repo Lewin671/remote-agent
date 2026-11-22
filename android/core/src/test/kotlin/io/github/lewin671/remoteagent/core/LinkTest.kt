@@ -63,13 +63,17 @@ class LinkTest {
                     if (chain.request().url.encodedPath.endsWith("/Forward")) forwards.incrementAndGet()
                     chain.proceed(chain.request())
                 }.build()
-                val guarded = object : DeviceSecurity.Storage by store {
-                    override fun readSecurity(): DeviceSecurity.Record {
-                        if (blocked.get()) throw DeviceSecurity.Failure("lease")
-                        return store.readSecurity()
+                val guarded = object : SecurityStoreV4 by store {
+                    override fun signKey(
+                        kind: io.github.lewin671.remoteagent.core.proto.SecurityKeyKind,
+                        slot: String,
+                        message: ByteArray,
+                    ): ByteArray {
+                        if (blocked.get()) throw SecurityFailure("lease")
+                        return store.signKey(kind, slot, message)
                     }
                 }
-                remote = Remote(account, measured, securityStorage = guarded)
+                remote = Remote(account, measured, securityStore = guarded)
                 remote.currentToken()
                 remote.showForTest(projected(daemon.id))
                 blocked.set(true)

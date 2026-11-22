@@ -8,6 +8,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -518,7 +519,7 @@ func (e *Engine) HandleRpcResult(nowMs int64, ev *corev1.SecurityRpcResultEvent)
 func (e *Engine) checkFG(capturedGen uint64) error {
 	wf := e.ensureWF()
 	if !wf.foreground || wf.fgGen != capturedGen {
-		return fatalWfError("foreground", "security.the_page_is_paused_return_to_the_foreground_to", "")
+		return fatalWfError("foreground", text.KeySecurityThePageIsPausedReturnToTheForegroundTo, "")
 	}
 	return nil
 }
@@ -529,7 +530,7 @@ func (e *Engine) runOp(actionID uint64, requireFG bool, work func(fgGen uint64, 
 		capturedGen := wf.fgGen
 		if requireFG && !wf.foreground {
 			wf.opBusy = false
-			e.emitActionResult(actionID, nil, fatalWfError("foreground", "security.the_page_is_paused_return_to_the_foreground_to", ""))
+			e.emitActionResult(actionID, nil, fatalWfError("foreground", text.KeySecurityThePageIsPausedReturnToTheForegroundTo, ""))
 			e.pumpNextOp()
 			return
 		}

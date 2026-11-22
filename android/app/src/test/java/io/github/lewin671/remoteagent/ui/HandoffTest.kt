@@ -27,7 +27,7 @@ class HandoffTest {
     @get:Rule val ui = createComposeRule()
     private val self = "1111111111111111"
     private val remote =
-        Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), self), Api.defaultHttp())
+        Remote(Account("http://127.0.0.1:1", self), Api.defaultHttp())
 
     @After
     fun close() {

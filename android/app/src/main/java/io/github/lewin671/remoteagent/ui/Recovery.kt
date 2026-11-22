@@ -1,16 +1,13 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
-
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,25 +19,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.Account
-import io.github.lewin671.remoteagent.core.CreatedAccount
-import io.github.lewin671.remoteagent.core.DeviceSecurity
-import io.github.lewin671.remoteagent.core.PreparedRecovery
-import io.github.lewin671.remoteagent.core.Recovery
-import io.github.lewin671.remoteagent.core.RecoveryChain
-import io.github.lewin671.remoteagent.core.RecoveryCode
-import io.github.lewin671.remoteagent.core.RecoverySubmission
 import io.github.lewin671.remoteagent.core.Secret
-import io.github.lewin671.remoteagent.core.SigningKey
-import io.github.lewin671.remoteagent.core.createAccount
-import io.github.lewin671.remoteagent.core.deviceId
-import io.github.lewin671.remoteagent.ui.displayError
-import io.github.lewin671.remoteagent.core.randomBytes
-import io.github.lewin671.remoteagent.core.rebuildSecurityDomain
+import io.github.lewin671.remoteagent.core.SecurityClient
+import io.github.lewin671.remoteagent.core.StandaloneSecurityHost
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind
+import io.github.lewin671.remoteagent.core.proto.SecurityRecoveryInfo
 import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * 管理端 · 恢复: a pending recovery can be vetoed here. The new code is shown and saved first; the
@@ -51,14 +37,19 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
     val copy = uiText()
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
+    val secStatus by remote.securityStatus.collectAsState()
+    val pendingOp = secStatus?.pendingOp
     val scope = rememberAuthorityScope()
     var page by remember { mutableStateOf("overview") }
-    var pending by remember { mutableStateOf<io.github.lewin671.remoteagent.core.SecurityOperation?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     suspend fun read() {
-        try { pending = withContext(Dispatchers.IO) { RaApp.instance.vault.readSecurityOperation() }; error = "" }
-        catch (e: Exception) { error = displayError(e, state) }
+        try {
+            remote.getSecurityStatus()
+            error = ""
+        } catch (e: Exception) {
+            error = displayError(e, state)
+        }
     }
     LaunchedEffect(state.leaseEndMs, state.authorityDeviceId) { read() }
     if (page != "overview") androidx.activity.compose.BackHandler { page = "overview" }
@@ -75,21 +66,32 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                     scope.launch {
                         try {
                             remote.resumeSecurityOperation()
-                            pending?.delivery?.takeIf { it.isNotEmpty() }?.let {
-                                remote.finishPairingOperation(io.github.lewin671.remoteagent.proto.ApprovePairingRequest.parseFrom(it).pairingId)
+                            val curPending = remote.securityStatus.value?.pendingOp
+                            if (curPending != null && curPending.hasDelivery && curPending.deliveryPairingId.isNotEmpty()) {
+                                val res = remote.finishPairingDelivery(curPending.deliveryPairingId)
+                                if (!res.delivered) error = copy(UiMessages.securityTheOriginalOperationIsUnfinishedContinueVerifying())
                             }
-                            read()
-                            if (pending == null) page = "overview"
-                        } catch (e: Exception) { error = displayError(e, state) }
-                        finally { busy = false }
+                            val latest = remote.getSecurityStatus()
+                            if (!latest.hasPendingOp()) page = "overview"
+                        } catch (e: Exception) {
+                            error = displayError(e, state)
+                        } finally {
+                            busy = false
+                        }
                     }
                 }, enabled = !busy)
                 if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             }
         }
-        else -> AccountSecurityContent(state, pending != null, { page = "pending" }, { page = "recovery" }, { page = "handoff" }, {
-            scope.launch { remote.renewLeaseNow(); read() }
-        }, error = error)
+        else -> AccountSecurityContent(
+            state = state,
+            pending = pendingOp != null,
+            onPending = { page = "pending" },
+            onRecovery = { page = "recovery" },
+            onHandoff = { page = "handoff" },
+            onRenew = { scope.launch { remote.renewLeaseNow(); read() } },
+            error = error,
+        )
     }
 }
 
@@ -130,56 +132,102 @@ internal fun AccountSecurityContent(
     }
 }
 
+@Composable
+private fun rememberStandaloneOrExternalClient(
+    app: RaApp,
+    externalClient: SecurityClient?,
+): SecurityClient {
+    val ownHost = remember(app, externalClient) {
+        if (externalClient == null) {
+            StandaloneSecurityHost(
+                store = app.vault,
+                http = app.http,
+                messageResolver = ::sessionText,
+                allowPlainHttp = true,
+                monotonic = android.os.SystemClock::elapsedRealtime,
+            )
+        } else {
+            null
+        }
+    }
+    DisposableEffect(ownHost) {
+        onDispose { ownHost?.close() }
+    }
+    LaunchedEffect(ownHost) {
+        if (ownHost != null) {
+            ownHost.client.setForeground(true)
+            runCatching {
+                val st = ownHost.client.bootstrap()
+                app.updateBootstrapStatus(st)
+            }
+        }
+    }
+    return externalClient ?: ownHost!!.client
+}
+
 /** 紧急恢复: the recovering client submits the old recovery code and shows the new one once. */
 @Composable
-fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
+fun RecoverScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit = {}) {
     val copy = uiText()
     val p = pal
     val scope = rememberAuthorityScope()
-    var deviceSeed by remember { mutableStateOf(randomBytes(32)) }
-    var code by remember { mutableStateOf("") }
-    var server by remember { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
-    var submission by remember { mutableStateOf<RecoverySubmission?>(null) }
+    val secClient = rememberStandaloneOrExternalClient(app, client)
+    val secStatus by secClient.status.collectAsState()
+    val pending = secStatus?.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_RECOVERY
+
+    var oldCode by remember { mutableStateOf("") }
+    var server by remember {
+        mutableStateOf(
+            secStatus?.server?.takeIf { it.isNotEmpty() }
+                ?: app.lastServer.ifEmpty { "https://" },
+        )
+    }
+    var newRecoveryCode by remember { mutableStateOf("") }
     var codeSaved by remember { mutableStateOf(false) }
-    var chain by remember { mutableStateOf<RecoveryChain?>(null) }
+    var recoveryInfo by remember { mutableStateOf<SecurityRecoveryInfo?>(null) }
+    var signatureMissing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     val t = now()
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
-    AuthorityEffect(Unit) {
-        val saved = withContext(Dispatchers.IO) { app.vault.loadRecoveryPublication() }
-        codeSaved = app.vault.readSecurityOperation()?.codeSaved == true
-        if (saved != null) {
-            busy = true
-            try {
-                server = checkedServer(saved.server)
-                app.lastServer = server
-                submission =
-                    withContext(Dispatchers.IO) {
-                        Recovery.resume(
-                            app.http,
-                            saved,
-                            app.vault::saveRecoveryPublication,
-                        )
-                    }
-            } catch (e: Exception) {
-                error = displayError(e)
-            } finally {
-                busy = false
+
+    LaunchedEffect(secStatus?.bootstrap, secStatus?.pendingOp?.recoveryId) {
+        val op = secStatus?.pendingOp
+        if (pending && op != null) {
+            if (op.codeSaved) codeSaved = true
+            if (op.server.isNotEmpty()) {
+                server = op.server
+                app.lastServer = op.server
+            }
+            if (!op.signed && newRecoveryCode.isEmpty()) {
+                signatureMissing = true
+            }
+            if (recoveryInfo == null && op.recoveryId.isNotEmpty()) {
+                recoveryInfo = SecurityRecoveryInfo.newBuilder()
+                    .setRecoveryId(op.recoveryId)
+                    .setReadyMs(op.recoveryReadyMs)
+                    .build()
             }
         }
     }
 
     PageScaffold(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), onBack = onBack, wrapTitle = true) {
+        LegacyRepairBanner(secStatus, {
+            scope.launch {
+                runCatching {
+                    val next = secClient.dismissUpgradeNotice()
+                    app.updateBootstrapStatus(next)
+                }
+            }
+        })
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         FormColumn(
             Modifier.fillMaxWidth()
-            .verticalScrollFaded()
-            .imePadding(),
+                .verticalScrollFaded()
+                .imePadding(),
         ) {
-            val s = submission
-            if (s == null) {
+            if (!pending) {
                 Text(
                     copy(UiMessages.securityAndroidEnterTheRecoveryCodeSavedDuringSetupAfterSubmittingWait()),
                     style = T.s13,
@@ -187,7 +235,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (error.isNotEmpty()) Notice(error, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
-                RecoveryField(copy(UiMessages.securityRecoveryCode()), code, { code = it }, "XXXX-XXXX-…", lines = 3)
+                RecoveryField(copy(UiMessages.securityRecoveryCode()), oldCode, { oldCode = it }, "XXXX-XXXX-…", lines = 3)
                 RecoveryField(copy(UiMessages.securityServer()), server, { server = it.trim() }, "https://")
                 PillButton(
                     if (busy) copy(UiMessages.securityAndroidSubmitting()) else copy(UiMessages.securityAndroidSubmitRecovery()),
@@ -196,116 +244,14 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         error = ""
                         scope.launch {
                             try {
-                                val decoded =
-                                    RecoveryCode.decode(code)
-                                        ?: throw IllegalArgumentException(copy(UiMessages.securityAndroidIncorrectRecoveryCode()))
-                                val seed = decoded.seed
                                 val url = checkedServer(server)
                                 app.lastServer = url
-                                val recoveryEd = SigningKey(seed).publicKey
-                                val draft =
-                                    app.vault.loadRecoveryPublication()?.takeIf {
-                                        it.submission.genesisPrefix.contentEquals(decoded.genesis)
-                                    }
-                                val existing =
-                                    withContext(Dispatchers.IO) {
-                                        val saved = draft?.submission
-                                        if (saved != null && saved.recoveryId.isNotEmpty())
-                                            Recovery.context(
-                                                url,
-                                                app.http,
-                                                ByteArray(0),
-                                                saved.deviceSeed,
-                                                recoveryId = saved.recoveryId,
-                                                expectedGenesis = decoded.genesis,
-                                            )
-                                        else
-                                            Recovery.context(
-                                                url,
-                                                app.http,
-                                                recoveryEd,
-                                                seed,
-                                                expectedGenesis = decoded.genesis,
-                                            )
-                                    }
-                                submission =
-                                    if (
-                                        existing.phase ==
-                                            GetRecoveryContextResponse.Phase.PHASE_PENDING ||
-                                            existing.phase ==
-                                                GetRecoveryContextResponse.Phase.PHASE_READY ||
-                                            existing.phase ==
-                                                GetRecoveryContextResponse.Phase.PHASE_PUBLISHED
-                                    ) {
-                                        val saved =
-                                            app.vault
-                                                .loadRecoveryPublication()
-                                                ?.submission
-                                                ?.takeIf {
-                                                    it.accountId == existing.accountId &&
-                                                        it.genesisPrefix.contentEquals(
-                                                            decoded.genesis,
-                                                        )
-                                                }
-                                        if (saved == null)
-                                            throw IllegalStateException(copy(UiMessages.securityAndroidThisRecoveryWasSubmittedCompleteItOnThePhoneThat()))
-                                        RecoverySubmission(
-                                            existing.recoveryId,
-                                            existing.readyMs,
-                                            "",
-                                            saved.deviceSeed,
-                                            deviceId(SigningKey(saved.deviceSeed).publicKey),
-                                            saved.xPrivate,
-                                            existing.accountId,
-                                            existing.accountPublicKey,
-                                            saved.stateHash,
-                                            existing.pin.genesis.copyOf(10),
-                                        )
-                                    } else {
-                                        val r =
-                                            withContext(Dispatchers.IO) {
-                                                Recovery.submit(
-                                                    url,
-                                                    app.http,
-                                                    seed,
-                                                    deviceSeed,
-                                                    decoded.genesis,
-                                                    floor = app.vault.signingTime().toULong(),
-                                                    draft =
-                                                        draft?.takeIf {
-                                                            DeviceSecurity.parseRecoveryStatement(
-                                                                    it.statement,
-                                                                )
-                                                                .parent
-                                                                .contentEquals(
-                                                                    DeviceSecurity.stateHash(
-                                                                        existing.head,
-                                                                    ),
-                                                                )
-                                                        },
-                                                    persist = app.vault::saveRecoveryPublication,
-                                                )
-                                            }
-                                        r
-                                    }
-                                submission?.let { current ->
-                                    draft
-                                        ?.takeIf {
-                                            it.submission.stateHash.contentEquals(current.stateHash)
-                                        }
-                                        ?.let {
-                                            app.vault.saveRecoveryPublication(
-                                                io.github.lewin671.remoteagent.core
-                                                    .RecoveryPublication(
-                                                        it.server,
-                                                        current,
-                                                        it.statement,
-                                                        it.state,
-                                                    ),
-                                            )
-                                        }
-                                }
-                                app.lastServer = url
+                                val prep = secClient.prepareEmergencyRecovery(url, oldCode)
+                                newRecoveryCode = prep.recoveryCode
+                                recoveryInfo = prep.recovery
+                                codeSaved = false
+                                signatureMissing = false
+                                oldCode = ""
                             } catch (e: Exception) {
                                 error = displayError(e)
                             } finally {
@@ -315,7 +261,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     },
                     Modifier.fillMaxWidth().padding(top = 8.dp),
                     ButtonKind.INK,
-                    enabled = !busy && code.isNotBlank() && server.length > 8,
+                    enabled = !busy && oldCode.isNotBlank() && server.length > 8,
                 )
                 TextAction(
                     copy(UiMessages.commonCancel()),
@@ -326,53 +272,104 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     alignment = Alignment.CenterStart,
                 )
             } else {
-                val rejected = recoveryNextAction(chain?.phase) == RecoveryNextAction.RESTART
+                val info = recoveryInfo
+                val rejected = recoveryNextAction(info?.phase) == RecoveryNextAction.RESTART
                 if (rejected) {
                     Hint(copy(UiMessages.securityAndroidThisRecoveryWasVetoedTheNewRecoveryCodeGeneratedFor()), Modifier)
-                } else if (s.newCode.isNotEmpty()) {
+                } else if (newRecoveryCode.isNotEmpty()) {
                     GLabel(copy(UiMessages.securityNewRecoveryCodeShownOnlyOnce()))
-                    RecoveryCodeFigure(s.newCode)
+                    RecoveryCodeFigure(newRecoveryCode)
                     Hint(copy(UiMessages.securityAndroidTakesEffectAfter48HoursAVetoFromTheOriginal()), Modifier)
                 } else {
                     Hint(copy(UiMessages.securityAndroidThisRecoveryWasSubmittedIfYouHaveNotSavedThe()), Modifier)
                 }
-                val computers = chain?.head?.core?.members?.filter { it.kind == 1u }.orEmpty()
-                if (!rejected && s.newCode.isNotEmpty() && !codeSaved)
+
+                if (signatureMissing && secStatus?.pendingOp?.signed == false) {
+                    RecoveryField(copy(UiMessages.securityOriginalRecoveryCode()), oldCode, { oldCode = it }, "XXXX-XXXX-…", lines = 3)
                     PillButton(
-                        copy(UiMessages.securityAndroidISavedTheNewRecoveryCodeOffline()),
+                        copy(UiMessages.securityContinueOriginalDraft()),
                         {
-                            try {
-                                app.vault.confirmRecoveryCodeSaved()
-                                codeSaved = true
-                            } catch (e: Exception) {
-                                error = displayError(e)
+                            busy = true
+                            error = ""
+                            scope.launch {
+                                try {
+                                    val next = secClient.continueRecoverySigning(oldCode)
+                                    if (next != null) recoveryInfo = next
+                                    signatureMissing = false
+                                    oldCode = ""
+                                } catch (e: Exception) {
+                                    error = displayError(e)
+                                } finally {
+                                    busy = false
+                                }
                             }
                         },
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         ButtonKind.SECONDARY,
+                        enabled = !busy && oldCode.isNotBlank(),
                     )
+                    TextAction(
+                        copy(UiMessages.securityAbandonUnsignedDraft()),
+                        {
+                            busy = true
+                            error = ""
+                            scope.launch {
+                                try {
+                                    secClient.discardUnsignedRecovery()
+                                    newRecoveryCode = ""
+                                    codeSaved = false
+                                    recoveryInfo = null
+                                    signatureMissing = false
+                                    oldCode = ""
+                                } catch (e: Exception) {
+                                    error = displayError(e)
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        enabled = !busy,
+                    )
+                }
+
+                if (!rejected && newRecoveryCode.isNotEmpty() && !codeSaved) {
+                    PillButton(
+                        copy(UiMessages.securityAndroidISavedTheNewRecoveryCodeOffline()),
+                        {
+                            busy = true
+                            error = ""
+                            scope.launch {
+                                try {
+                                    secClient.confirmRecoveryCodeSaved()
+                                    codeSaved = true
+                                } catch (e: Exception) {
+                                    error = displayError(e)
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        Modifier.fillMaxWidth().padding(top = 8.dp),
+                        ButtonKind.SECONDARY,
+                        enabled = !busy,
+                    )
+                }
                 GLabel(copy(UiMessages.securityAndroidRecoveryCodeBackupStatus()))
                 Hint(
                     if (codeSaved) copy(UiMessages.securityAndroidNewRecoveryCodeConfirmedSavedOffline())
-                    else if (s.newCode.isNotEmpty()) copy(UiMessages.securityAndroidTheNewCodeIsStillOnThisPageSaveIt())
+                    else if (newRecoveryCode.isNotEmpty()) copy(UiMessages.securityAndroidTheNewCodeIsStillOnThisPageSaveIt())
                     else copy(UiMessages.securityAndroidBackupNotConfirmedThisPhoneHasNoRecoveryPrivateKey()),
                     Modifier,
                 )
-                GLabel(copy(UiMessages.securityAndroidWaitingForComputersToRestoreCurrentSessions()))
-                Hint(
-                    if (computers.isEmpty()) copy(UiMessages.securityAndroidAfterCompletionWaitForRetainedComputersToComeOnlineAnd())
-                    else
-                        computers.joinToString("、") { it.id.take(8) } +
-                            copy(UiMessages.securityAndroidTheseComputersMustRepublishCheckpointsAfterRecovery()),
-                    Modifier,
-                )
                 GLabel(copy(UiMessages.securityAndroidWait()))
+                val readyMs = info?.readyMs ?: secStatus?.pendingOp?.recoveryReadyMs ?: 0L
                 Hint(
-                    if (s.readyMs > 0) copy(UiMessages.securityAndroidRecoveryEligibleAt(io.github.lewin671.remoteagent.core.securityTime(s.readyMs, t, copy = copy))) else copy(UiMessages.securityAndroidCompletionRequires48Hours()),
+                    if (readyMs > 0L) copy(UiMessages.securityAndroidRecoveryEligibleAt(io.github.lewin671.remoteagent.core.securityTime(readyMs, t, copy = copy)))
+                    else copy(UiMessages.securityAndroidCompletionRequires48Hours()),
                     Modifier,
                 )
                 RecoveryStatus(
-                    phase = chain?.phase,
+                    phase = info?.phase,
                     busy = busy,
                     error = error,
                     onRefresh = {
@@ -380,17 +377,8 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         error = ""
                         scope.launch {
                             try {
-                                chain =
-                                    withContext(Dispatchers.IO) {
-                                        Recovery.context(
-                                            checkedServer(server),
-                                            app.http,
-                                            ByteArray(0),
-                                            s.deviceSeed,
-                                            recoveryId = s.recoveryId,
-                                            expectedGenesis = s.genesisPrefix,
-                                        )
-                                    }
+                                val next = secClient.resumeRecovery()
+                                if (next != null) recoveryInfo = next else signatureMissing = true
                             } catch (e: Exception) {
                                 error = displayError(e)
                             } finally {
@@ -403,23 +391,12 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         error = ""
                         scope.launch {
                             try {
-                                val url = checkedServer(server)
-                                app.lastServer = url
                                 completeRecoveryAndAdopt(
                                     complete = {
-                                        withContext(Dispatchers.IO) {
-                                            Recovery.complete(
-                                                url,
-                                                app.http,
-                                                s.recoveryId,
-                                                s.accountId,
-                                                s.deviceSeed,
-                                                s.xPrivate,
-                                                s.stateHash,
-                                            )
-                                        }
+                                        if (codeSaved) secClient.confirmRecoveryCodeSaved()
+                                        secClient.completeRecovery().status
                                     },
-                                    adopt = app::recovered,
+                                    adopt = app::adoptBootstrappedAccount,
                                 )
                             } catch (e: Exception) {
                                 error = displayError(e)
@@ -434,19 +411,15 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         scope.launch {
                             try {
                                 restartRejectedRecovery(
-                                    chain?.phase,
-                                    clearPending = {
-                                        withContext(Dispatchers.IO) {
-                                            app.vault.clearPendingRecovery()
-                                        }
-                                    },
+                                    recoveryInfo?.phase,
+                                    clearPending = { secClient.discardRejectedRecovery() },
                                     resetScreen = {
-                                        submission = null
-                                        code = ""
+                                        oldCode = ""
+                                        newRecoveryCode = ""
                                         codeSaved = false
-                                        chain = null
+                                        recoveryInfo = null
+                                        signatureMissing = false
                                         error = ""
-                                        deviceSeed = randomBytes(32)
                                     },
                                 )
                             } catch (e: Exception) {
@@ -505,27 +478,43 @@ internal fun RecoveryStatus(
 
 /** 新账户: create the root key, device identity and recovery code on this phone. */
 @Composable
-fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
+fun CreateAccountScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit = {}) {
     val copy = uiText()
     val p = pal
     val scope = rememberAuthorityScope()
-    var server by remember { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
+    val secClient = rememberStandaloneOrExternalClient(app, client)
+    val secStatus by secClient.status.collectAsState()
+    val pending = secStatus?.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE
+
+    var server by remember {
+        mutableStateOf(
+            secStatus?.server?.takeIf { it.isNotEmpty() }
+                ?: app.lastServer.ifEmpty { "https://" },
+        )
+    }
     var setupToken by remember { mutableStateOf("") }
-    var created by remember { mutableStateOf<CreatedAccount?>(null) }
+    var recoveryCode by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
     PageScaffold(copy(UiMessages.securityCreateAccount()), onBack = onBack) {
+        LegacyRepairBanner(secStatus, {
+            scope.launch {
+                runCatching {
+                    val next = secClient.dismissUpgradeNotice()
+                    app.updateBootstrapStatus(next)
+                }
+            }
+        })
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         FormColumn(
             Modifier.fillMaxWidth()
-            .verticalScrollFaded()
-            .imePadding(),
+                .verticalScrollFaded()
+                .imePadding(),
         ) {
-            val c = created
-            if (c == null) {
+            if (!pending) {
                 Text(
                     copy(UiMessages.securityAndroidThisPhoneWillBecomeTheManagingClientTheAccountRoot()),
                     style = T.s13,
@@ -544,18 +533,8 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                             try {
                                 val url = checkedServer(server)
                                 app.lastServer = url
-                                created =
-                                    withContext(Dispatchers.IO) {
-                                        createAccount(
-                                            url,
-                                            app.http,
-                                            setupToken.trim(),
-                                            now = app.vault.signingTime(),
-                                            draft = app.vault.loadCreationOperation(),
-                                            persistDraft = app.vault::saveCreationOperation,
-                                        )
-                                    }
-                                app.lastServer = url
+                                val prep = secClient.prepareCreation(url, storagePersisted = true)
+                                recoveryCode = prep.recoveryCode
                             } catch (e: Exception) {
                                 error = displayError(e)
                             } finally {
@@ -568,19 +547,37 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                     enabled = !busy && server.length > 8,
                 )
             } else {
-                GLabel(copy(UiMessages.securityAndroidRecoveryCodeShownOnlyOnce()))
-                RecoveryCodeFigure(c.recoveryCode)
-                Hint(copy(UiMessages.securityAndroidUseThisToRecoverManagementIfTheManagingClientIs()), Modifier)
-                if (error.isNotEmpty())
+                if (recoveryCode.isNotEmpty()) {
+                    GLabel(copy(UiMessages.securityAndroidRecoveryCodeShownOnlyOnce()))
+                    RecoveryCodeFigure(recoveryCode)
+                    Hint(copy(UiMessages.securityAndroidUseThisToRecoverManagementIfTheManagingClientIs()), Modifier)
+                } else {
+                    Hint(copy(UiMessages.securityTheOriginalCreationDraftIsPreservedContinueWithThe()), Modifier)
+                    RecoveryField(copy(UiMessages.securityAndroidSetupTokenIfRequiredByTheServer()), setupToken, { setupToken = it }, copy(UiMessages.securityAndroidOptional()))
+                }
+                if (error.isNotEmpty()) {
                     Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
+                }
                 PillButton(
-                    copy(UiMessages.securityAndroidISavedItStartUsingTheApp()),
+                    if (busy) copy(UiMessages.securityAndroidSaving()) else copy(UiMessages.securityAndroidISavedItStartUsingTheApp()),
                     {
                         busy = true
                         error = ""
                         scope.launch {
                             try {
-                                app.created(c.account, c.record)
+                                if (recoveryCode.isNotEmpty()) {
+                                    secClient.confirmCreationCodeSaved()
+                                }
+                                var res = secClient.continueCreation(setupToken.trim())
+                                var st = res.status
+                                if (recoveryCode.isEmpty() &&
+                                    st.bootstrap == SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE &&
+                                    !st.pendingOp.codeSaved
+                                ) {
+                                    res = secClient.adoptCreationWithoutCode()
+                                    st = res.status
+                                }
+                                app.adoptBootstrappedAccount(st)
                             } catch (e: Exception) {
                                 error = displayError(e)
                                 busy = false
@@ -634,160 +631,44 @@ private fun RecoveryField(
     )
 }
 
-/**
- * 已有账户升级到协议 10: rebuild the domain locally and show the recovery code before the account is
- * adopted. An upgraded relay pins offline instead.
- */
-@Composable
-fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {}) {
-    val copy = uiText()
-    val p = pal
-    val ctx = androidx.compose.ui.platform.LocalContext.current
-    val scope = rememberAuthorityScope()
-    var created by remember { mutableStateOf<CreatedAccount?>(null) }
-    var error by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
-    LaunchedEffect(existing) {
-        val saved = withContext(Dispatchers.IO) { app.vault.loadCreationOperation() }
-        if (
-            saved != null &&
-                existing != null &&
-                saved.account.deviceId == existing.deviceId &&
-                saved.account.server == existing.server
-        )
-            created = saved.copy(needsOfflinePin = true)
-    }
-    PageScaffold(copy(UiMessages.securityAndroidRebuildSecurityDomain()), onBack = onBack) {
-        if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
-        FormColumn(
-            Modifier.fillMaxWidth()
-            .verticalScrollFaded()
-            .imePadding(),
-        ) {
-            val c = created
-            if (c == null) {
-                Text(
-                    copy(UiMessages.securityAndroidKeepThisPhoneSAccountRootKeyAndDeviceIdentity()),
-                    style = T.s13,
-                    color = p.ink2,
-                    modifier = Modifier.padding(vertical = 10.dp),
-                )
-                if (existing == null || !existing.hasRoot)
-                    Hint(copy(UiMessages.securityAndroidThisPhoneHasNoAccountRootKeyAndCannotBecome()), Modifier)
-                if (error.isNotEmpty())
-                    Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
-                PillButton(
-                    if (busy) copy(UiMessages.securityAndroidRebuilding()) else copy(UiMessages.securityAndroidRebuildSecurityDomainAndBecomeManagingClient()),
-                    {
-                        if (existing == null) {
-                            error = copy(UiMessages.securityAndroidNoAccountAvailableToUpgrade())
-                            return@PillButton
-                        }
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                created =
-                                    withContext(Dispatchers.IO) {
-                                        rebuildSecurityDomain(
-                                            existing.server,
-                                            app.http,
-                                            existing,
-                                            now = app.vault.signingTime(),
-                                            draft = app.vault.loadCreationOperation(),
-                                            persistDraft = app.vault::saveCreationOperation,
-                                        )
-                                    }
-                            } catch (e: Exception) {
-                                error = displayError(e)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
-                    Modifier.fillMaxWidth().padding(top = 10.dp),
-                    ButtonKind.INK,
-                    enabled = !busy && existing != null && existing.hasRoot,
-                )
-            } else {
-                GLabel(copy(UiMessages.securityNewRecoveryCodeShownOnlyOnce()))
-                if (c.recoveryCode.isNotEmpty()) RecoveryCodeFigure(c.recoveryCode)
-                else Hint(copy(UiMessages.securityAndroidThisIsASavedRebuildDraftTheRecoveryCodeWill()), Modifier)
-                Hint(copy(UiMessages.securityAndroidWriteItDownOrPhotographItItOnlySignsRecovery()), Modifier)
-                if (c.needsOfflinePin)
-                    Notice(
-                        copy(UiMessages.securityAndroidTheRelayHasNotPinnedThisSecurityDomainAnUpgrade()),
-                        Modifier.padding(top = 10.dp),
-                        NoticeTone.WARN,
-                    )
-                if (c.needsOfflinePin)
-                    TextAction(
-                        copy(UiMessages.securityAndroidExportGenesisStateForOfflineRelayPinning()),
-                        { shareGenesis(ctx, DeviceSecurity.stateBytes(c.record.chain.first()), copy = copy) },
-                        alignment = Alignment.CenterStart,
-                    )
-                if (error.isNotEmpty()) Notice(error, Modifier.padding(top = 8.dp), NoticeTone.ERROR)
-                PillButton(
-                    if (busy) copy(UiMessages.securityAndroidSaving()) else copy(UiMessages.securityAndroidISavedItStartUsingTheApp()),
-                    {
-                        busy = true
-                        error = ""
-                        scope.launch {
-                            try {
-                                app.created(c.account, c.record)
-                            } catch (e: Exception) {
-                                error = displayError(e)
-                            } finally {
-                                busy = false
-                            }
-                        }
-                    },
-                    Modifier.fillMaxWidth().padding(top = 12.dp),
-                    ButtonKind.INK,
-                    enabled = !busy,
-                )
-            }
-        }
-    }
-}
-
 /** 更换恢复码: rotate on suspected leak, with the same save-before-publish order. */
 @Composable
 fun RotateRecoveryScreen(onBack: () -> Unit = {}) {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
-    RotateRecoveryContent(state, remote::prepareRecovery, remote::publishRecovery, onBack)
+    RotateRecoveryContent(state, remote::prepareRecoveryRotation, remote::confirmRecoveryRotation, onBack)
 }
 
 @Composable
 internal fun RotateRecoveryContent(
     state: io.github.lewin671.remoteagent.core.RemoteState,
-    prepareCode: suspend () -> PreparedRecovery,
-    publishCode: suspend (PreparedRecovery) -> Unit,
+    prepareCode: suspend () -> String,
+    publishCode: suspend () -> Unit,
     onBack: () -> Unit,
 ) {
     val copy = uiText()
     val p = pal
     val scope = rememberAuthorityScope()
-    var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
+    var prepared by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     PageScaffold(copy(UiMessages.securityRecoveryCode()), onBack = onBack) {
         FormColumn(
             Modifier.fillMaxWidth()
-            .verticalScrollFaded()
-            .imePadding(),
+                .verticalScrollFaded()
+                .imePadding(),
         ) {
-            val pv = prepared
-            if (pv == null) {
+            val codeValue = prepared
+            if (codeValue == null) {
                 Text(
                     copy(UiMessages.securityReplacingTheRecoveryCodeImmediatelyInvalidatesTheOldCode()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
-                if (error.isNotEmpty())
+                if (error.isNotEmpty()) {
                     Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
+                }
                 PillButton(
                     if (busy) copy(UiMessages.securityAndroidGenerating()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
                     {
@@ -809,10 +690,11 @@ internal fun RotateRecoveryContent(
                 )
             } else {
                 GLabel(copy(UiMessages.securityNewRecoveryCodeShownOnlyOnce()))
-                RecoveryCodeFigure(pv.code)
+                RecoveryCodeFigure(codeValue)
                 Hint(copy(UiMessages.securityAndroidWriteItDownOrPhotographItBeforePublishingPublishingImmediately()), Modifier)
-                if (error.isNotEmpty())
+                if (error.isNotEmpty()) {
                     Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
+                }
                 PillButton(
                     if (busy) copy(UiMessages.securityAndroidPublishing()) else copy(UiMessages.securitySavedPublishReplacement()),
                     {
@@ -820,7 +702,7 @@ internal fun RotateRecoveryContent(
                         error = ""
                         scope.launch {
                             try {
-                                publishCode(pv)
+                                publishCode()
                                 onBack()
                             } catch (e: Exception) {
                                 error = displayError(e, state)

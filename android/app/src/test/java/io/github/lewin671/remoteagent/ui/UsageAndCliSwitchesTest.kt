@@ -389,7 +389,7 @@ class UsageAndCliSwitchesTest {
 
     @Test
     fun machineStatusModelUsagePreviewAndSessionUsageEntryNavigateToUsage() {
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), Api.defaultHttp())
         val openedFromStatus = mutableListOf<Pair<Agent, String>>()
         var closedSheet = false
         var openedFromSession = false
@@ -666,7 +666,7 @@ class UsageAndCliSwitchesTest {
 
     @Test
     fun coreHostDeliversCachedUsageSnapshotWhenOffline() {
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), Api.defaultHttp())
         try {
             val offlineMachine = MachineView(
                 id = "m1",

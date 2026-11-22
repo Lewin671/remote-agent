@@ -56,7 +56,7 @@ fun buildScheduleLocalContext(nowMs: Long, zone: ZoneId = ZoneId.systemDefault()
 
 fun encodeHomeScopeToken(root: ByteArray, scopeKey: String): String =
     if (scopeKey.isEmpty()) "all"
-    else "project:" + hmacSha256(Keys.deriveKey(root, "home-scope"), scopeKey.toByteArray()).hex()
+    else "project:" + hmacSha256(deriveScopeKey(root, "home-scope"), scopeKey.toByteArray()).hex()
 
 fun buildLocalCalendar(nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): LocalCalendar {
     val instant = Instant.ofEpochMilli(nowMs)
@@ -155,8 +155,26 @@ class CoreHost(
     var onNavigate: (NavigateEffect) -> Unit = {}
     var onAttachmentsSettled: (AttachmentsSettledEffect) -> Unit = {}
     var onDirectPreference: (DirectPreferenceEffect) -> Unit = {}
-    var onSecurityKeySign: ((SecurityKeySignEffect) -> SecurityKeySignedEvent)? = null
-    var onSecurityKeyAgree: ((SecurityKeyAgreeEffect) -> SecurityKeyAgreedEvent)? = null
+    var onSecurityKeyGenerate: (SecurityKeyGenerateEffect) -> Unit = {}
+    var onSecurityKeySign: (SecurityKeySignEffect) -> Unit = {}
+    var onSecurityKeyAgree: (SecurityKeyAgreeEffect) -> Unit = {}
+    var onSecurityKeyEncapsulate: (SecurityKeyEncapsulateEffect) -> Unit = {}
+    var onSecurityKeyDiscard: (SecurityKeyDiscardEffect) -> Unit = {}
+    var onSecurityStorage: (SecurityStorageEffect) -> Unit = {}
+    var onSecurityRpc: (SecurityRpcEffect) -> Unit = {}
+    var onSecurityTokenUpdated: (SecurityTokenUpdatedEffect) -> Unit = {}
+    var onSecurityStatusChanged: (SecurityStatusChangedEffect) -> Unit = {}
+    var onDismissUpgradeNotice: () -> Unit = {}
+    var resolveUiMessage: MessageResolver = { it.key }
+    val securityClient: SecurityClient by lazy {
+        SecurityClient(
+            dispatchEvent = ::dispatch,
+            setForegroundFn = ::sendSecurityForeground,
+            isClosedFn = { closed.get() },
+            onDismissUpgradeNotice = { onDismissUpgradeNotice() },
+            messageResolver = { resolveUiMessage(it) },
+        )
+    }
     var onDirectSignalSend: (DirectSignalSendEffect) -> Unit = {}
     var onDirectPcCreate: (DirectPcCreateEffect) -> Unit = {}
     var onDirectPcDescribe: (DirectPcDescribeEffect) -> Unit = {}
@@ -571,26 +589,22 @@ class CoreHost(
             Effect.EffectCase.USAGE_CACHE_WRITE -> {
                 onUsageCacheWrite(effect.usageCacheWrite)
             }
-            Effect.EffectCase.SECURITY_KEY_SIGN -> {
-                val eff = effect.securityKeySign
-                val signed =
-                    onSecurityKeySign?.invoke(eff)
-                        ?: SecurityKeySignedEvent.newBuilder()
-                            .setOpId(eff.opId)
-                            .setError("security key signer not configured")
-                            .build()
-                dispatchOnWorker(CoreEvent.newBuilder().setSecurityKeySigned(signed).build())
+            Effect.EffectCase.SECURITY_KEY_GENERATE -> onSecurityKeyGenerate(effect.securityKeyGenerate)
+            Effect.EffectCase.SECURITY_KEY_SIGN -> onSecurityKeySign(effect.securityKeySign)
+            Effect.EffectCase.SECURITY_KEY_AGREE -> onSecurityKeyAgree(effect.securityKeyAgree)
+            Effect.EffectCase.SECURITY_KEY_ENCAPSULATE -> onSecurityKeyEncapsulate(effect.securityKeyEncapsulate)
+            Effect.EffectCase.SECURITY_KEY_DISCARD -> onSecurityKeyDiscard(effect.securityKeyDiscard)
+            Effect.EffectCase.SECURITY_STORAGE -> onSecurityStorage(effect.securityStorage)
+            Effect.EffectCase.SECURITY_RPC -> onSecurityRpc(effect.securityRpc)
+            Effect.EffectCase.SECURITY_TOKEN_UPDATED -> onSecurityTokenUpdated(effect.securityTokenUpdated)
+            Effect.EffectCase.SECURITY_WORKFLOW_RESULT ->
+                securityClient.handleWorkflowResult(effect.securityWorkflowResult)
+            Effect.EffectCase.SECURITY_STATUS_CHANGED -> {
+                val st = effect.securityStatusChanged
+                if (st.hasStatus()) securityClient.handleStatusChanged(st.status)
+                onSecurityStatusChanged(st)
             }
-            Effect.EffectCase.SECURITY_KEY_AGREE -> {
-                val eff = effect.securityKeyAgree
-                val agreed =
-                    onSecurityKeyAgree?.invoke(eff)
-                        ?: SecurityKeyAgreedEvent.newBuilder()
-                            .setOpId(eff.opId)
-                            .setError("security key agreement not configured")
-                            .build()
-                dispatchOnWorker(CoreEvent.newBuilder().setSecurityKeyAgreed(agreed).build())
-            }
+            Effect.EffectCase.SECURITY_NOTIFY_OPENED -> {}
             Effect.EffectCase.SECURITY_OP_RESULT -> {
                 val res = effect.securityOpResult
                 pendingSecurityOps.remove(res.opId)?.complete(res)
@@ -1461,12 +1475,26 @@ class CoreHost(
         setDirectPreferencesLoaded(b)
     }
 
-    fun sendSecurityConfig(account: String, deviceId: String, inlineCrypto: Boolean = true) = send {
+    fun sendSecurityConfig(
+        account: String,
+        deviceId: String,
+        server: String = "",
+        inlineCrypto: Boolean = true,
+        foreground: Boolean = true,
+    ) = send {
         setSecurityConfig(
             SecurityConfigEvent.newBuilder()
                 .setAccount(account)
                 .setDeviceId(deviceId)
-                .setInlineCrypto(inlineCrypto),
+                .setServer(server)
+                .setInlineCrypto(inlineCrypto)
+                .setForeground(foreground),
+        )
+    }
+
+    fun sendSecurityForeground(foreground: Boolean) = send {
+        setSecurityForeground(
+            SecurityForegroundEvent.newBuilder().setForeground(foreground),
         )
     }
 

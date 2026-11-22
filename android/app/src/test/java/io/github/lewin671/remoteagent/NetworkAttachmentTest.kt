@@ -34,7 +34,10 @@ class NetworkAttachmentTest {
             }
             override fun stream(request:HTTPRequest,duplex:Boolean,onResult:suspend (StreamResult<Buffer>)->Unit):Stream=error("unused stream")
         }
-        val r=Remote(Account("https://example.com",byteArrayOf(),ByteArray(32){1},"fixture-device"),Api.defaultHttp(),dispatcher=StandardTestDispatcher(testScheduler),rpcTransport=transport)
+        val store=MemorySecurityStoreV4().apply {
+            generateKey(io.github.lewin671.remoteagent.core.proto.SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED, "", persist=true)
+        }
+        val r=Remote(Account("https://example.com","fixture-device"),Api.defaultHttp(),securityStore=store,dispatcher=StandardTestDispatcher(testScheduler),rpcTransport=transport)
         val login=async(start=CoroutineStart.LAZY){r.currentToken()}
         try {
             app.attachNetwork(r);runCurrent()

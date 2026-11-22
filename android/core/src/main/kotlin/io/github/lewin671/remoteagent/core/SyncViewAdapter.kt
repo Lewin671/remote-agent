@@ -32,12 +32,6 @@ data class LoginToken(val value: String, val expiresMs: Long) {
     override fun toString(): String = "LoginToken(expiresMs=$expiresMs)"
 }
 
-interface LoginTokenStore {
-    fun loadLoginToken(account: Account): LoginToken? = null
-    fun saveLoginToken(account: Account, token: LoginToken) {}
-    fun clearLoginToken(account: Account) {}
-}
-
 data class PrefsObject(val revision: Long, val prefs: ProjectPrefs) {
     val pinned: List<String> get() = prefs.pinnedList.map { it.path }
     val hidden: Set<String> get() = prefs.hiddenList.map { it.path }.toSet()

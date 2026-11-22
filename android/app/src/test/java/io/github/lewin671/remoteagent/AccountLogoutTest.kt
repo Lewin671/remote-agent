@@ -18,19 +18,21 @@ class AccountLogoutTest {
     @Test
     fun logoutDropsTheRetainedAccountEvenWhenKeyErasureNeedsRetry() = runBlocking {
         val app = appFixture.app
-        val old = Account("https://relay.example.com", ByteArray(32), ByteArray(32), "synthetic-device")
+        val old = Account("https://relay.example.com", "synthetic-device")
         @Suppress("UNCHECKED_CAST")
-        val setup = RaApp::class.java.getDeclaredField("_securitySetup").apply { isAccessible = true }
-            .get(app) as MutableStateFlow<Account?>
-        setup.value = old
+        val statusField = RaApp::class.java.getDeclaredField("_bootstrapStatus").apply { isAccessible = true }
+            .get(app) as MutableStateFlow<io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus?>
+        statusField.value = io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus.newBuilder()
+            .setBootstrap(io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE)
+            .setServer(old.server)
+            .setDeviceId(old.deviceId)
+            .build()
         app.logout(pairing = true)
-        assertNull(app.securitySetup.value)
-        assertFalse(app.pendingCreation.value)
+        assertNull(app.bootstrapStatus.value?.takeIf { it.server.isNotEmpty() || it.bootstrap == io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE })
         assertTrue(app.joinDirectly)
         assertEquals(old.server, app.lastServer)
         assertEquals(1, app.joinGeneration.value)
         app.logout()
-        assertNull(app.securitySetup.value)
         assertFalse(app.joinDirectly)
     }
 }

@@ -1,60 +1,88 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.proto.SecurityPairingInfo
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 sealed interface PairingUiState {
     data object Starting : PairingUiState
-    data class Waiting(val code: String, val link: PairLink, val expiresMs: Long) : PairingUiState
+    data class Waiting(val code: String, val url: String, val expiresMs: Long) : PairingUiState
     data class Compare(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
     data class Sending(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
     data object Done : PairingUiState
     data class Failed(val message: MessageText, val uncertain: Boolean, val canRetry: Boolean) : PairingUiState
 }
 
-/** Retained by the account on its UI dispatcher. Once consent is given, page
- * disposal must not withdraw a possibly published admission. Approval and delivery
- * use the account scope; Initiation guards every authority signature in foreground. */
+/**
+ * Retained by the account on its UI dispatcher. Delegates all pairing choreography and
+ * state delivery to Core `SecurityClient` while preserving foreground pause / background finish semantics.
+ */
 class PairingController(
     private val scope: CoroutineScope,
     private val operationScope: CoroutineScope = scope,
-    private val begin: suspend () -> PairingInitiation,
+    private val client: SecurityClient,
+    private val webOrigin: String,
+    private val replacesDeviceId: String = "",
+    private val onCompleted: suspend () -> Unit = {},
 ) {
     private val mutable = MutableStateFlow<PairingUiState>(PairingUiState.Starting)
     val state = mutable.asStateFlow()
     private var generation = 0
-    private var current: PairingInitiation? = null
+    private var pairingId: String? = null
     private var consent: Pair<List<String>, DeviceKind>? = null
 
-    /** Reopening a page keeps an in-flight approval and its eventual outcome. */
     fun enter() {
-        if (current == null && mutable.value == PairingUiState.Starting) start()
+        if (pairingId == null && mutable.value == PairingUiState.Starting) start()
     }
 
     fun start() {
         val run = ++generation
-        val withdrawing = withdraw()
+        val cancellingId = if (consent == null) pairingId else null
+        if (cancellingId != null) pairingId = null
         mutable.value = PairingUiState.Starting
         scope.launch {
             try {
-                withdrawing?.join()
-                val pairing = begin()
-                if (run != generation) { operationScope.launch { pairing.cancelOnServer() }; return@launch }
-                current = pairing
-                mutable.value = PairingUiState.Waiting(pairing.code, pairing.link, pairing.expiresMs)
-                val (emoji, kind) = pairing.joined()
-                if (run == generation) mutable.value = PairingUiState.Compare(emoji, kind)
+                if (cancellingId != null) {
+                    runCatching { client.cancelPairing(cancellingId) }
+                }
+                val info = client.startPairing(webOrigin, replacesDeviceId)
+                if (run != generation) {
+                    operationScope.launch { runCatching { client.cancelPairing(info.pairingId) } }
+                    return@launch
+                }
+                pairingId = info.pairingId
+                mutable.value = PairingUiState.Waiting(info.code, info.url, info.expiresMs)
+                var cur: SecurityPairingInfo = info
+                while (isActive && run == generation && !cur.joined) {
+                    delay(1_000L)
+                    if (run != generation) return@launch
+                    cur = client.pollPairing(info.pairingId)
+                }
+                if (run == generation && cur.joined) {
+                    val kind = cur.joinerKind
+                    mutable.value = PairingUiState.Compare(cur.sasEmojiList.toList(), kind)
+                }
             } catch (e: CancellationException) {
-                if (run == generation) mutable.value = PairingUiState.Failed(UiMessages.securityAndroidPausedRetryAfterReturningToTheForeground().messageText(), false, false)
+                if (run == generation) {
+                    mutable.value = PairingUiState.Failed(
+                        UiMessages.securityAndroidPausedRetryAfterReturningToTheForeground().messageText(),
+                        uncertain = false,
+                        canRetry = false,
+                    )
+                }
                 throw e
-            }
-            catch (e: Exception) {
-                if (run == generation) mutable.value = PairingUiState.Failed(words(e), false, false)
+            } catch (e: Exception) {
+                if (run == generation) {
+                    val retryable = (e as? SecurityWorkflowError)?.retryable == true
+                    val uncertain = (e as? SecurityWorkflowError)?.uncertain == true
+                    mutable.value = PairingUiState.Failed(errorText(e), uncertain, retryable)
+                }
             }
         }
     }
@@ -67,30 +95,45 @@ class PairingController(
 
     fun retry() {
         val failure = mutable.value as? PairingUiState.Failed ?: return
-        if (failure.canRetry && current != null && consent != null) sendApproval() else start()
+        if (failure.canRetry && pairingId != null && consent != null) sendApproval() else {
+            consent = null
+            start()
+        }
     }
 
     private fun sendApproval() {
-        val pairing = current ?: return
+        val id = pairingId ?: return
         val (emoji, kind) = consent ?: return
         val run = generation
         mutable.value = PairingUiState.Sending(emoji, kind)
         operationScope.launch {
             try {
-                pairing.approve()
-                if (run == generation) { current = null; consent = null; mutable.value = PairingUiState.Done }
-            } catch (e: CancellationException) {
-                if (run == generation) mutable.value = PairingUiState.Failed(UiMessages.securityAndroidOutcomeUnconfirmedRetryTheSameApprovalAfterReturningToThe().messageText(), true, true)
-                throw e
-            }
-            catch (e: Exception) {
+                var res = client.approvePairing(id, sasConfirmed = true)
+                while (!res.delivered) {
+                    delay(1_200L)
+                    res = client.finishPairingDelivery(id)
+                }
                 if (run == generation) {
-                    val uncertain = e !is PairException || e.uncertain
-                    val retryable = canRetryPairApproval(e)
-                    val message = if (e is PairException) words(e)
-                        else if (retryable) UiMessages.securityAndroidCannotConfirmWhetherTheNewDeviceJoinedCheckYourNetwork().messageText()
-                        else UiMessages.securityAndroidTheServerDidNotAcceptThisApprovalCheckWhetherThe().messageText()
-                    mutable.value = PairingUiState.Failed(message, uncertain, retryable)
+                    pairingId = null
+                    consent = null
+                    mutable.value = PairingUiState.Done
+                }
+                runCatching { onCompleted() }
+            } catch (e: CancellationException) {
+                if (run == generation) {
+                    mutable.value = PairingUiState.Failed(
+                        UiMessages.securityAndroidOutcomeUnconfirmedRetryTheSameApprovalAfterReturningToThe().messageText(),
+                        uncertain = true,
+                        canRetry = true,
+                    )
+                }
+                throw e
+            } catch (e: Exception) {
+                if (run == generation) {
+                    val se = e as? SecurityWorkflowError
+                    val uncertain = se?.uncertain ?: true
+                    val retryable = se?.retryable ?: true
+                    mutable.value = PairingUiState.Failed(errorText(e), uncertain, retryable)
                 }
             }
         }
@@ -99,15 +142,11 @@ class PairingController(
     fun leave() {
         if (consent != null) return
         generation++
-        withdraw()
+        val id = pairingId
+        pairingId = null
         mutable.value = PairingUiState.Starting
+        if (id != null) {
+            operationScope.launch { runCatching { client.cancelPairing(id) } }
+        }
     }
-
-    private fun withdraw(): Job? {
-        val old = current
-        current = null; consent = null
-        return old?.let { operationScope.launch { it.cancelOnServer() } }
-    }
-
-    private fun words(e: Exception) = if (e is PairException) e.display else UiMessages.securityAndroidPairingCannotFinishRightNowCheckYourNetworkThenStart().messageText()
 }

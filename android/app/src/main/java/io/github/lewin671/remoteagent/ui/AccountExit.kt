@@ -4,6 +4,8 @@ import io.github.lewin671.remoteagent.core.UiMessages
 
 import androidx.compose.runtime.*
 import io.github.lewin671.remoteagent.core.RemoteState
+import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
+import io.github.lewin671.remoteagent.core.translateSecurityKey
 import io.github.lewin671.remoteagent.ui.displayError
 import kotlinx.coroutines.launch
 
@@ -24,18 +26,25 @@ internal fun authorityExitAdvice(risk: ExitRisk, copy: io.github.lewin671.remote
 internal fun authorityExitAdvice(authority: Boolean, unresolved: Boolean, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String =
     authorityExitAdvice(authorityExitRisk(authority, unresolved), copy)
 
-/** A failed read must never turn an unresolved operation into an ordinary logout. */
+/** Core computes exit advice; a failed check must never downgrade an unresolved operation to ordinary logout. */
 @Composable
 internal fun AccountExitAction(
     state: RemoteState,
-    readPending: suspend () -> Boolean,
+    readAdvice: suspend () -> SecurityExitAdvice,
     exit: suspend () -> Unit,
 ) {
     val copy = uiText()
     val scope = rememberCoroutineScope()
-    var advice by remember { mutableStateOf<ExitRisk?>(null) }
+    var checked by remember { mutableStateOf<Pair<ExitRisk, String>?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+
+    fun toPair(a: SecurityExitAdvice): Pair<ExitRisk, String> {
+        val risk = authorityExitRisk(a.authority, a.unresolved)
+        val msg = if (a.message.isNotEmpty()) translateSecurityKey(a.message, copy) else authorityExitAdvice(risk, copy)
+        return risk to msg
+    }
+
     // It asks first, as every row that ends in an ellipsis does (design-system §8).
     GRow(
         copy(UiMessages.settingsExitAndDeleteLocalKeys()),
@@ -44,7 +53,7 @@ internal fun AccountExitAction(
             error = ""
             scope.launch {
                 try {
-                    advice = authorityExitRisk(state.isAuthority, readPending())
+                    checked = toPair(readAdvice())
                 } catch (e: Exception) {
                     error = copy(UiMessages.securityAndroidCouldNotReadSecurityOperationStateBeforeExitingValue1((displayError(e, state)).toString()))
                 } finally {
@@ -56,27 +65,26 @@ internal fun AccountExitAction(
         enabled = !busy,
     )
     if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
-    advice?.let { risk ->
+    checked?.let { (risk, message) ->
         Confirm(
             copy(UiMessages.securityExitAndDeleteLocalKeys()),
-            authorityExitAdvice(risk, copy),
+            message,
             copy(UiMessages.securityExit()),
             danger = true,
-            onDismiss = { if (!busy) advice = null },
+            onDismiss = { if (!busy) checked = null },
         ) {
             if (!busy) {
                 busy = true
                 scope.launch {
                     try {
-                        // A publication may have started while the confirmation was open.
-                        val current = authorityExitRisk(state.isAuthority, readPending())
-                        if (current != risk) advice = current
+                        val current = toPair(readAdvice())
+                        if (current.first != risk) checked = current
                         else {
                             exit()
-                            advice = null
+                            checked = null
                         }
                     } catch (e: Exception) {
-                        advice = null
+                        checked = null
                         error = copy(UiMessages.securityAndroidExitIncompleteValue1((displayError(e, state)).toString()))
                     } finally {
                         busy = false

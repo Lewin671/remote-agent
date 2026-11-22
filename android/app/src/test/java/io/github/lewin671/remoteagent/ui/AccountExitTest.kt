@@ -25,7 +25,18 @@ class AccountExitTest {
         var exits = 0
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
-                Column { AccountExitAction(RemoteState(isAuthority = true), { pending }, { exits++ }) }
+                Column {
+                    AccountExitAction(
+                        RemoteState(isAuthority = true),
+                        {
+                            io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.newBuilder()
+                                .setAuthority(true)
+                                .setUnresolved(pending)
+                                .build()
+                        },
+                        { exits++ },
+                    )
+                }
             }
         }
         ui.onNodeWithText("退出并删除本机密钥…").performClick()
@@ -59,7 +70,13 @@ class AccountExitTest {
         var exits = 0
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
-                Column { AccountExitAction(RemoteState(), { false }, { exits++ }) }
+                Column {
+                    AccountExitAction(
+                        RemoteState(),
+                        { io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.getDefaultInstance() },
+                        { exits++ },
+                    )
+                }
             }
         }
         ui.onNodeWithText("退出并删除本机密钥…").performClick()

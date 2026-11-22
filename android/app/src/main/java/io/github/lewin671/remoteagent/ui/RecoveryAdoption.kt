@@ -1,19 +1,17 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.Account
-import io.github.lewin671.remoteagent.core.DeviceSecurity
+import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
 import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase
 
 /**
- * Keep the completed identity until adopt has durably saved both account files. RaApp.adopt owns
- * draft cleanup after that boundary.
+ * Keep the completed status until adopt opens the enrolled Remote cleanly.
  */
 internal suspend fun completeRecoveryAndAdopt(
-    complete: suspend () -> Pair<Account, DeviceSecurity.Record>,
-    adopt: suspend (Account, DeviceSecurity.Record) -> Unit,
+    complete: suspend () -> SecurityWorkflowStatus,
+    adopt: suspend (SecurityWorkflowStatus) -> Unit,
 ) {
-    val (account, record) = complete()
-    adopt(account, record)
+    val status = complete()
+    adopt(status)
 }
 
 internal enum class RecoveryNextAction {

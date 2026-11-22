@@ -22,7 +22,7 @@ class LocalizedActionIdentityTest {
         var locale by mutableStateOf("zh-CN")
         var exits = 0
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalMessageLocale provides locale) {
-            Column { AccountExitAction(RemoteState(), { false }, { exits++ }) }
+            Column { AccountExitAction(RemoteState(), { io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.getDefaultInstance() }, { exits++ }) }
         } } }
         ui.onNodeWithText(messageTextForTest(UiMessages.settingsExitAndDeleteLocalKeys())).performClick()
         ui.runOnIdle { locale = "en" }

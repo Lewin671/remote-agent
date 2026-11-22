@@ -148,52 +148,38 @@ class TestServer(
  */
 class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone: Account) :
     AutoCloseable {
-    private val store = TestSecurity.get(account.server)!!.stores.getValue(account.deviceId)
-    private val local =
-        CoreSecurityBridge(
-            store,
-            account.deviceId,
-            SigningKey(account.deviceSeed),
-            account.accountId,
-            fetchStates = { after ->
-                val r = store.readSecurity()
-                val b =
-                    io.github.lewin671.remoteagent.proto.GetSecurityStatesResponse.newBuilder()
-                        .setHeadEpoch(r.head.core.epoch.toLong())
-                        .setLease(ByteString.copyFrom(r.lease?.bytes() ?: byteArrayOf()))
-                for (state in r.chain.filter { it.core.epoch > after }) {
-                    val sb =
-                        io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
-                            .setState(ByteString.copyFrom(DeviceSecurity.stateBytes(state)))
-                    r.proofs[state.core.epoch]?.let { sb.setRecovery(ByteString.copyFrom(it)) }
-                    b.addStates(sb)
-                }
-                b.build()
-            },
-        )
-
-    private fun purposeOf(kind: PayloadKind): DeviceSecurity.Purpose =
-        DeviceSecurity.Purpose.entries.first { it.value == kind.number.toUInt() }
+    private val security = TestSecurity.get(account.server)
+    private val store = security.stores.getValue(account.deviceId)
+    private fun newBridge() = CoreMemoryBridge(
+        store = store,
+        server = account.server,
+        deviceId = account.deviceId,
+        accountId = account.accountId,
+    )
 
     private fun seal(h: Header, plain: ByteArray, seed: ByteArray? = null): Envelope =
-        local.seal(
-            purposeOf(h.kind),
-            h.machineId,
-            h.sessionId,
-            h.requestId,
-            h.seq.toULong(),
-            h.deadlineMs.toULong(),
-            plain,
-            seed,
-        )
+        newBridge().use { bridge ->
+            bridge.seal(
+                purpose = h.kindValue,
+                machine = h.machineId,
+                session = h.sessionId,
+                request = h.requestId,
+                seq = h.seq,
+                deadline = h.deadlineMs,
+                plain = plain,
+                useSessionSeed = seed != null,
+                overrideSessionSeed = seed,
+            )
+        }
 
     private fun openWithMeta(
         env: Envelope,
         seed: ByteArray? = null,
-    ): Triple<Header, ByteArray, io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult> {
-        val (opened, plain) = local.open(env, history = false, seed = seed)
-        return Triple(local.headerFromOpened(opened), plain, opened)
-    }
+    ): Triple<Header, ByteArray, io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult> =
+        newBridge().use { bridge ->
+            val (opened, plain) = bridge.open(env, overrideSessionSeed = seed)
+            Triple(bridge.headerFromOpened(opened), plain, opened)
+        }
 
     private fun open(env: Envelope, seed: ByteArray? = null): Pair<Header, ByteArray> {
         val (h, plain, _) = openWithMeta(env, seed)
@@ -236,19 +222,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
     var answer: (Header, Command) -> CommandResult = { _, c -> defaultResult(c) }
 
     suspend fun login() {
-        token = login(Api(account.server, http), account)
-        if (TestSecurity.find(account.server) == null) {
-            val (_, genesis) = TestSecurity.initialize(account)
-            Api(account.server, http)
-                .client
-                .pinSecurityDomain(
-                    PinSecurityDomainRequest.newBuilder()
-                        .setGenesisState(ByteString.copyFrom(genesis))
-                        .build(),
-                    Api.headers(token),
-                )
-                .value()
-        }
+        token = loginWithStore(Api(account.server, http), account.deviceId, store).token
     }
 
     suspend fun putMachine(
@@ -458,7 +432,9 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
                                     )
                                     .build()
                             } else answer(h, cmd)
-                        val binding = local.requestIdentity(opened, pt)
+                        val domain = security.domains[account.accountId]
+                            ?: security.record(account.deviceId).domain
+                        val binding = requestIdentityForTest(account.accountId, domain, opened, pt)
                         val proof=result.toBuilder().setRequestKeyHash(ByteString.copyFrom(binding.first)).setPayloadHash(ByteString.copyFrom(binding.second)).apply {
                             if (result.outcome.isEmpty()) { setOutcome("executed"); setReason("completed"); setResultAvailable(true) }
                         }.build()
@@ -554,14 +530,11 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
 
                 override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
                     val (hh, raw) = open(Envelope.parseFrom(bytes.toByteArray()), seed = sessionKeys[sid])
-                    Envelopes.expect(
-                        hh,
-                        Place(
-                            PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT,
-                            sessionId = sid,
-                            requestId = stream,
-                        ),
-                    )
+                    check(
+                        hh.kind == PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT &&
+                            hh.sessionId == sid &&
+                            hh.requestId == stream,
+                    ) { "unexpected terminal input header" }
                     val frame = TerminalFrame.parseFrom(raw)
                     check(hh.seq > 0)
                     termInput += frame
@@ -575,7 +548,6 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
 
     override fun close() {
         disconnect()
-        local.close()
     }
 
     companion object {

@@ -4893,5 +4893,420 @@
     "path": "ios/RemoteAgentCore/Sources/RACore/CoreSecurityRunner.swift",
     "literal": "recovery_unavailable",
     "reason": "Internal Go clientcore SecurityOpResult errorCode token inspected before mapping to DeviceSecurity.Failure.unavailable; never rendered to users."
+  },
+  {
+    "path": "web/src/App.tsx",
+    "literal": "(); const [entryStatus, setEntryStatus] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/App.tsx",
+    "literal": "(); const [retainedServer, setRetainedServer] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/App.tsx",
+    "literal": "); if (remote === null && denied && retainedServer) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "core wasm unavailable",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "invalid peer public",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "raw",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "missing notify result",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "session mismatch",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "missing v4 record",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "open notify failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "disk check failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "turn check failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "scheduled check failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "conflict",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "undefined",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/core/security-executor.ts",
+    "literal": "invalid peer public",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-executor.ts",
+    "literal": "timeout",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "unsupported key kind",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "indexeddb open failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "logout",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "key store write failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "key store read failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "missing signing key",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "Ed25519",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "missing agreement key or invalid peer public key",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "invalid recipient x25519 public key",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "key discard failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "clear all failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "storage read failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "bootstrap read failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "cas write failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "batch commit failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "AES-GCM",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "corrupt wrapped key",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "save login token failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "load login token failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "save local data failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "remove local data failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "load local data failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "notify v4 open failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-store-v4.ts",
+    "literal": "notify v4 read failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/core/security-client.ts",
+    "literal": "action",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/core/security-client.ts",
+    "literal": "security client closed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "web/src/views/DeviceManagement.tsx",
+    "literal": "(); const [confirmed, setConfirmed] = useState(false); const [approved, setApproved] = useState(false); const [done, setDone] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState(\"\"); const currentId = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/AuthoritySetup.tsx",
+    "literal": "(undefined); const [client, setClient] = useState(supplied); const [mode, setMode] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/AuthoritySetup.tsx",
+    "literal": "(initialStatus); const [server, setServer] = useState( localStorage.getItem(\"ra-server\") || import.meta.env.VITE_DEFAULT_SERVER || \"\", ); const [token, setToken] = useState(\"\"); const [oldCode, setOldCode] = useState(\"\"); const [code, setCode] = useState(\"\"); const [saved, setSaved] = useState(false); const [persisted, setPersisted] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/AuthoritySetup.tsx",
+    "literal": "; const repairBanner = startup?.legacyRepairNotice && (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/AuthoritySetup.tsx",
+    "literal": "); if (mode === \"join\") return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/AuthoritySetup.tsx",
+    "literal": "); const pending = (mode === \"create\" && startup?.bootstrap === SecurityBootstrapKind.PENDING_CREATE) || (mode === \"recovery\" && startup?.bootstrap === SecurityBootstrapKind.PENDING_RECOVERY); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Pairing.tsx",
+    "literal": "err",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/views/Pairing.tsx",
+    "literal": "capacity",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/views/Pairing.tsx",
+    "literal": "not_found",
+    "reason": "WebCrypto algorithm/encoding identifier, BroadcastChannel token, TypeScript literal type, or internal error code; not displayed."
+  },
+  {
+    "path": "web/src/views/Pairing.tsx",
+    "literal": "(undefined); const bootstrappedRef = useRef(false); const registeringRef = useRef(false); registeringRef.current = registering; const started = useRef(false); const ensureClient = async (): Promise",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/data/Vault.kt",
+    "literal": "missing promote ed slot",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/data/Vault.kt",
+    "literal": "missing promote x slot",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/data/Vault.kt",
+    "literal": "unsupported storage op",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityStoreV4.kt",
+    "literal": "missing promote ed slot",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityStoreV4.kt",
+    "literal": "missing promote x slot",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityStoreV4.kt",
+    "literal": "unsupported storage op",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/SecurityExecutor.kt",
+    "literal": "unknown rpc method: ${eff.method.number}",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "clientcore/security/workflow_recovery.go",
+    "literal": "pending",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_recovery.go",
+    "literal": "invalid",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/store_codec.go",
+    "literal": "security: corrupt persisted record",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "clientcore/security/workflow_pairing.go",
+    "literal": "canceled",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_pairing.go",
+    "literal": "pending",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_pairing.go",
+    "literal": "invalid",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_pairing.go",
+    "literal": "not_found",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_op.go",
+    "literal": "pending",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_op.go",
+    "literal": "conflict",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_op.go",
+    "literal": "expired",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_op.go",
+    "literal": "canceled",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_op.go",
+    "literal": "invalid",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_op.go",
+    "literal": "pairing_delivery",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_authority.go",
+    "literal": "conflict",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_authority.go",
+    "literal": "failed_precondition",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_authority.go",
+    "literal": "pending",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow_authority.go",
+    "literal": "invalid",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "remote-agent/v1/login\\x00",
+    "reason": "Wire protocol domain-separation prefix constant; never shown to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "remote-agent/v1/register\\x00",
+    "reason": "Wire protocol domain-separation prefix constant; never shown to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "remote-agent/v1/delete-account\\x00",
+    "reason": "Wire protocol domain-separation prefix constant; never shown to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "retry",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "rpc failed",
+    "reason": "Internal security storage, key provider, or RPC diagnostic exception string never shown as a localized UI message."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "foreground",
+    "reason": "Internal workflow error code or action identifier returned by clientcore; not rendered directly to users."
   }
 ]

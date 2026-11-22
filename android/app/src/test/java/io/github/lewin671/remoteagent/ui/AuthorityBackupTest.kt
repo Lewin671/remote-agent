@@ -32,15 +32,19 @@ class AuthorityBackupTest {
 
     @Test
     fun handoffOfferRequiresBackupConfirmationAndFailureRetainsTheCode() {
-        val pub = ByteArray(32) { 7 }
         var attempts = 0
-        var state by mutableStateOf(RemoteState())
+        var offerPublished by mutableStateOf(false)
+        val state = RemoteState()
         show {
-                HandoffPreparationContent(state, "self", { "synthetic-offline-code" to pub }) {
+                HandoffPreparationContent(
+                    state = state,
+                    self = "self",
+                    hasHandoffOffer = offerPublished,
+                    prepareCode = { "synthetic-offline-code" },
+                ) {
                     attempts++
                     if (attempts == 1) throw IllegalStateException("save failed")
-                    state = state.copy(devices = mapOf("self" to DeviceView("self", DeviceKind.DEVICE_KIND_CLIENT, 0,
-                        DeviceMeta.newBuilder().setHandoffRecoveryEd(ByteString.copyFrom(it)).build())))
+                    offerPublished = true
                 }
         }
         ui.onNodeWithText("我已保存，通知管理端").assertDoesNotExist()
@@ -58,15 +62,10 @@ class AuthorityBackupTest {
 
     @Test
     fun rotationRequiresBackupConfirmationAndFailedPublicationDoesNotNavigateAway() {
-        val signer = SigningKey(ByteArray(32) { 1 })
-        val member = Authority.newMember(signer, ByteArray(32) { 2 }, 2u)
-        val state = Authority.genesis("11111111111111111111111111111111", ByteArray(32) { 3 }, member,
-            SigningKey(ByteArray(32) { 4 }).publicKey, ByteArray(32) { 5 }, signer, 1_700_000_000_000)
-        val prepared = PreparedRecovery("synthetic-offline-code", state, ByteArray(32) { 4 })
         var attempts = 0
         var backs = 0
         show {
-                RotateRecoveryContent(RemoteState(isAuthority = true), { prepared }, {
+                RotateRecoveryContent(RemoteState(isAuthority = true), { "synthetic-offline-code" }, {
                     attempts++
                     if (attempts == 1) throw IllegalStateException("save failed")
                 }, { backs++ })

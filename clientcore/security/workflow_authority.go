@@ -7,6 +7,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -160,7 +161,7 @@ func (e *Engine) prepareCreationOp(fgGen uint64, rawServer string, storagePersis
 	}
 	if op := wf.pendingOp; op != nil {
 		if op.Kind != "create" || op.Server != server {
-			done(nil, newWfError("conflict", "security.finish_the_original_security_operation_first"))
+			done(nil, newWfError("conflict", text.KeySecurityFinishTheOriginalSecurityOperationFirst))
 			return
 		}
 		persisted := storagePersisted
@@ -535,7 +536,7 @@ func (e *Engine) continueCreationOp(fgGen uint64, setupToken string, done func(*
 				var sc v1.GetSignupChallengeResponse
 				if err := sc.Unmarshal(scBytes); err != nil || len(sc.Challenge) == 0 || sc.DifficultyBits > 24 ||
 					(e.lastNowMs > 0 && sc.ExpiresMs <= e.lastNowMs) {
-					done(nil, newWfError("failed_precondition", "security.registration_proof_of_work_is_invalid_or_expired"))
+					done(nil, newWfError("failed_precondition", text.KeySecurityRegistrationProofOfWorkIsInvalidOrExpired))
 					return
 				}
 				if err := e.checkFG(fgGen); err != nil {
@@ -544,7 +545,7 @@ func (e *Engine) continueCreationOp(fgGen uint64, setupToken string, done func(*
 				}
 				nonce, ok := solveSignupPoW(sc.Challenge, sc.DifficultyBits)
 				if !ok {
-					done(nil, newWfError("failed_precondition", "security.registration_proof_of_work_expired_retry_the_original_draft"))
+					done(nil, newWfError("failed_precondition", text.KeySecurityRegistrationProofOfWorkExpiredRetryTheOriginalDraft))
 					return
 				}
 				registerAttempt(wf.pendingOp, &v1.SignupProof{
@@ -746,7 +747,7 @@ func (e *Engine) removeDeviceOp(fgGen uint64, id string, abandonPairDelivery boo
 	}
 	proceedAfterPre := func() {
 		if wf.pendingOp != nil {
-			done(nil, newWfError("pending", "security.finish_the_current_security_operation_first"))
+			done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
 			return
 		}
 		e.syncStates(false, "", func(sErr error) {
@@ -763,7 +764,7 @@ func (e *Engine) removeDeviceOp(fgGen uint64, id string, abandonPairDelivery boo
 				return
 			}
 			if id == e.selfDeviceID {
-				done(nil, newWfError("invalid", "security.the_managing_client_cannot_be_removed_directly_transfer_management"))
+				done(nil, newWfError("invalid", text.KeySecurityTheManagingClientCannotBeRemovedDirectlyTransferManagement))
 				return
 			}
 			if _, ok := e.head.Core.Member(id); !ok {
@@ -868,7 +869,7 @@ func (e *Engine) deleteMachineRecordsOp(fgGen uint64, machineID string, done fun
 				return
 			}
 			if wf.pendingOp != nil {
-				done(nil, newWfError("pending", "security.finish_the_current_security_operation_first"))
+				done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
 				return
 			}
 			reqBytes, _ := (&v1.DeleteMachineRecordsRequest{MachineId: machineID}).Marshal()
@@ -902,7 +903,7 @@ func (e *Engine) deleteAccountOp(fgGen uint64, done func(*corev1.SecurityWorkflo
 		return
 	}
 	if wf.pendingOp != nil {
-		done(nil, newWfError("pending", "security.finish_or_abandon_unfinished_account_security_operations_before_deleting"))
+		done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
 		return
 	}
 	e.syncStates(false, "", func(sErr error) {
@@ -995,7 +996,7 @@ func (e *Engine) prepareRecoveryRotationOp(fgGen uint64, done func(*corev1.Secur
 				return
 			}
 			if wf.pendingOp != nil {
-				done(nil, newWfError("pending", "security.finish_the_current_security_operation_first"))
+				done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
 				return
 			}
 			e.withEntropy(64, func() {
@@ -1034,7 +1035,7 @@ func (e *Engine) prepareHandoffCodeOp(fgGen uint64, storagePersisted bool, done 
 		return
 	}
 	if wf.pendingOp != nil {
-		done(nil, newWfError("pending", "security.finish_the_current_security_operation_first"))
+		done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
 		return
 	}
 	e.syncStates(false, "", func(sErr error) {
@@ -1283,11 +1284,11 @@ func (e *Engine) handoffAuthorityOp(fgGen uint64, incomingID string, done func(*
 				proceed := func(list []*corev1.SecurityHandoffCandidate) {
 					offer := findOffer(list)
 					if offer == nil || len(offer.RecoveryEd) != 32 {
-						done(nil, newWfError("invalid", "security.generate_and_save_a_recovery_code_on_the_successor"))
+						done(nil, newWfError("invalid", text.KeySecurityGenerateAndSaveARecoveryCodeOnTheSuccessor))
 						return
 					}
 					if wf.pendingOp != nil {
-						done(nil, newWfError("pending", "security.finish_the_current_security_operation_first"))
+						done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
 						return
 					}
 					hh := e.headHash
@@ -1367,7 +1368,7 @@ func (e *Engine) updateDeviceMetaOp(actionID uint64, act *corev1.SecurityUpdateD
 		targetID = e.selfDeviceID
 	}
 	if targetID == "" || targetID != e.selfDeviceID {
-		e.emitActionResult(actionID, nil, newWfError("invalid", "errors.names_can_only_be_changed_on_that_device"))
+		e.emitActionResult(actionID, nil, newWfError("invalid", text.KeyErrorsNamesCanOnlyBeChangedOnThatDevice))
 		return
 	}
 	server := e.effectiveServer()
@@ -1617,11 +1618,11 @@ func (e *Engine) checkExitAdviceOp(actionID uint64) {
 	wf := e.ensureWF()
 	unresolved := wf.pendingOp != nil || wf.regIntent != nil
 	auth := e.isAuthority()
-	msg := "security.exiting_deletes_local_keys_you_will_need_to_pair"
+	msg := text.KeySecurityExitingDeletesLocalKeysYouWillNeedToPair
 	if unresolved {
-		msg = "security.the_security_operation_s_outcome_is_unverified_continue_the"
+		msg = text.KeySecurityTheSecurityOperationSOutcomeIsUnverifiedContinueThe
 	} else if auth {
-		msg = "security.this_browser_is_the_only_managing_client_transfer_management"
+		msg = text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement
 	}
 	e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
 		ExitAdvice: &corev1.SecurityExitAdvice{

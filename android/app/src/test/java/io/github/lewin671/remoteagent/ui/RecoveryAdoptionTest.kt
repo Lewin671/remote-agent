@@ -11,28 +11,17 @@ class RecoveryAdoptionTest {
     @Test
     fun failedOrCanceledAdoptionRetainsTheCompletedRecoveryIdentity() =
         runBlocking<Unit> {
-            val signer = SigningKey(ByteArray(32) { 1 })
-            val x = ByteArray(32) { 2 }
-            val account =
-                Account(
-                    "https://example.com",
-                    ByteArray(32) { 3 },
-                    ByteArray(32) { 1 },
-                    deviceId(signer.publicKey),
-                )
-            val member = Authority.newMember(signer, x, 2u)
-            val genesis =
-                Authority.genesis(
-                    account.accountId,
-                    ByteArray(32) { 4 },
-                    member,
-                    SigningKey(ByteArray(32) { 5 }).publicKey,
-                    ByteArray(32) { 6 },
-                    signer,
-                    System.currentTimeMillis(),
-                )
-            val record =
-                DeviceSecurity.Record(DeviceSecurity.pinOf(genesis), listOf(genesis), member.id, x)
+            val status =
+                io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus.newBuilder()
+                    .setBootstrap(
+                        io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY
+                    )
+                    .setServer("https://example.com")
+                    .setDeviceId("recovered-device")
+                    .setAccountId("acct-1")
+                    .setIsMember(true)
+                    .setIsAuthority(true)
+                    .build()
             for (cancel in listOf(false, true)) {
                 val file = kotlin.io.path.createTempFile("recovery-adoption").toFile()
                 val durableIdentity = ByteArray(32) { 7 }
@@ -41,8 +30,8 @@ class RecoveryAdoptionTest {
                     val failure =
                         runCatching {
                                 completeRecoveryAndAdopt(
-                                    complete = { account to record },
-                                    adopt = { _, _ ->
+                                    complete = { status },
+                                    adopt = { _ ->
                                         assertTrue(
                                             "draft was removed before adoption",
                                             file.exists(),

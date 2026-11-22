@@ -32,7 +32,7 @@ class ForegroundPushTest {
         val context = RuntimeEnvironment.getApplication()
         val app = appFixture.app
         // Only account presence is needed for a generic push, not any account keys.
-        val account = File(context.noBackupFilesDir, "account-v2.bin")
+        val account = File(context.noBackupFilesDir, "security-v4-buckets.bin")
         account.writeBytes(byteArrayOf(0))
         app.prefs.update { it.copy(notifyAttention = true, notifyTurnEnded = true) }
         Push.createChannels(context)

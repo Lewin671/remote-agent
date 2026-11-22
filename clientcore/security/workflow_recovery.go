@@ -6,6 +6,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -143,7 +144,7 @@ func (e *Engine) prepareEmergencyRecoveryOp(fgGen uint64, rawServer, code string
 		return
 	}
 	if wf.pendingOp != nil || wf.regIntent != nil || wf.bootstrapInvalid {
-		done(nil, newWfError("pending", "security.finish_the_current_security_operation_first"))
+		done(nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
 		return
 	}
 	oldSeed, genPrefix, ok := DecodeRecoveryCode(code)
@@ -630,7 +631,7 @@ func (e *Engine) completeRecoveryOp(fgGen uint64, done func(*corev1.SecurityWork
 		return
 	}
 	if !op.CodeSaved {
-		done(nil, newWfError("invalid", "security.confirm_recovery_code_saved_first"))
+		done(nil, newWfError("invalid", text.KeySecurityConfirmRecoveryCodeSavedFirst))
 		return
 	}
 	draft := op.Recovery

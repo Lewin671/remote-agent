@@ -2,13 +2,20 @@ package io.github.lewin671.remoteagent.data
 
 import android.os.Bundle
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.lewin671.remoteagent.core.*
+import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.MemorySecurityStoreV4
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageOp
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageWrite
+import io.github.lewin671.remoteagent.core.proto.SecurityStoreBucket
+import io.github.lewin671.remoteagent.corebind.Corebind
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
-/** Synthetic history, real Android Keystore; no network or existing account is used. */
+/** Synthetic history, real Android Keystore v4 Vault; no network or existing account is used. */
 class HistoryOpenBenchmark {
     @Test
     fun openColdHistory() = runBlocking {
@@ -19,41 +26,56 @@ class HistoryOpenBenchmark {
         var parses = 0
         val vault = Vault(context, { name -> decrypts[name] = (decrypts[name] ?: 0) + 1 }, { parses++ })
         vault.clear()
-        val signer = SigningKey(ByteArray(32) { 1 })
-        val x = ByteArray(32) { 2 }
-        val phone = Authority.newMember(signer, x, 2u)
-        val secret = ByteArray(32) { 3 }
-        val genesis = Authority.genesis(
-            "a".repeat(32), ByteArray(32) { 4 }, phone,
-            SigningKey(ByteArray(32) { 5 }).publicKey, secret, signer, 1_700_000_000_000,
-        )
-        val machineSigner = SigningKey(ByteArray(32) { 7 })
-        val machineX = ByteArray(32) { 8 }
-        val machine = Authority.newMember(machineSigner, machineX, 1u)
-        val state = Authority.pair(genesis, machine, secret, secret, signer, 1_700_000_000_001)
-        val lease = HeadLease.sign(state, signer, 1_700_000_000_001)
-        val record = DeviceSecurity.Record.fromChain(
-            state.core.account, state.core.domain, DeviceSecurity.stateHash(genesis), phone.id, x,
-            listOf(genesis, state).map { DeviceSecurity.stateBytes(it) }, listOf(null, null),
-        ).installed(emptyList(), emptyList(), lease)
-        val machineRecord = DeviceSecurity.Record.fromChain(
-            state.core.account, state.core.domain, DeviceSecurity.stateHash(genesis), machine.id, machineX,
-            listOf(genesis, state).map { DeviceSecurity.stateBytes(it) }, listOf(null, null),
-        ).installed(emptyList(), emptyList(), lease)
+        val machineStore = MemorySecurityStoreV4().apply {
+            seedTestRecord(
+                edPrivate = BenchmarkVectors.machineSeed,
+                edPublic = BenchmarkVectors.machineEdPub,
+                xPrivate = BenchmarkVectors.machineX,
+                xPublic = Corebind.x25519PublicKey(BenchmarkVectors.machineX),
+                recordBytes = BenchmarkVectors.machineRecordBytes,
+            )
+        }
         val seed = ByteArray(32) { 6 }
         val plain = "synthetic history message".toByteArray()
         // Each envelope has its own nonce and sequence, just as persisted history does.
-        val events = BenchmarkCoreSecurity(machineRecord, machine.id, machineSigner, machineX, 1_700_000_000_002).use { sealer ->
+        val events = BenchmarkCoreSecurity(
+            machineStore,
+            BenchmarkVectors.ACCOUNT_ID,
+            BenchmarkVectors.machineId,
+            BenchmarkVectors.SERVER,
+            BenchmarkVectors.nowMs + 1,
+        ).use { sealer ->
             (1..300).map { seq -> sealer.sealEvent("test-session", seq.toLong(), seed, plain) }
         }
         try {
             val samples = mutableListOf<Long>()
             repeat(3) { sample ->
                 vault.clear()
-                vault.initializeSecurity(record)
+                val seedRes = vault.executeStorage(
+                    SecurityStorageEffect.newBuilder()
+                        .setOpId(1L)
+                        .setOp(SecurityStorageOp.SECURITY_STORAGE_OP_BATCH_COMMIT)
+                        .addBatch(
+                            SecurityStorageWrite.newBuilder()
+                                .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD)
+                                .setKey("record")
+                                .setCreateOnly(true)
+                                .setNextRevision("r1")
+                                .setData(ByteString.copyFrom(BenchmarkVectors.phoneRecordBytes)),
+                        )
+                        .build(),
+                )
+                assertEquals("", seedRes.error)
+                vault.clearMemoryCache()
                 decrypts.clear()
                 parses = 0
-                val client = BenchmarkCoreSecurity(vault.readSecurity(), phone.id, signer, x, 1_700_000_000_002)
+                val client = BenchmarkCoreSecurity(
+                    vault,
+                    BenchmarkVectors.ACCOUNT_ID,
+                    BenchmarkVectors.phoneId,
+                    BenchmarkVectors.SERVER,
+                    BenchmarkVectors.nowMs + 1,
+                )
                 val start = System.nanoTime()
                 for (event in events) assertArrayEquals(plain, client.openHistory(event, seed))
                 val elapsed = (System.nanoTime() - start) / 1_000_000

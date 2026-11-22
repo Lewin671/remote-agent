@@ -10,7 +10,7 @@ import org.junit.Test
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class FileCapabilityGateTest {
     @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
-    private fun remote() = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), okhttp3.OkHttpClient())
+    private fun remote() = Remote(Account("http://127.0.0.1:1", "test"), okhttp3.OkHttpClient())
     private fun show(r: Remote, supported: Boolean?) = r.showForTest(RemoteState(
         machines = mapOf("computer" to MachineView("computer", true, 0, MachineMeta.newBuilder().apply {
             if (supported != null) setCapabilities(MachineCapabilities.newBuilder().setFileUpload(supported))

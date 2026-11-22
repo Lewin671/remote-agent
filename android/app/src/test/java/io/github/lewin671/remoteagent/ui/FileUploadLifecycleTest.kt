@@ -146,7 +146,7 @@ class FileUploadLifecycleTest {
         val d = ImageDraft("new:project", disk).apply { images += restored }
         var aborted = 0
         restored.abortTransfer = { aborted++ }
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), okhttp3.OkHttpClient())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), okhttp3.OkHttpClient())
         try {
             val turn = restored.generation
             d.retarget(remote, null) // ProjectStart/follow has not resolved yet after process death.

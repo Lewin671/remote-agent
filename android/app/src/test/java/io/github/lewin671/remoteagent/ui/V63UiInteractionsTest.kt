@@ -107,7 +107,7 @@ class V63UiInteractionsTest {
 
     @Test
     fun homeQuestionSlotHandlesTerminalOfflineFailureRetryAndElsewhereExit() {
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), Api.defaultHttp())
         var terminalOpened = ""
         val cardState = mutableStateOf<HomeQuestionCardView?>(sampleQuestion(canAnswer = false, offlineNote = "Mac Studio 离线，无法作答"))
         val baseState = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true)
@@ -197,7 +197,7 @@ class V63UiInteractionsTest {
 
     @Test
     fun homeQuestionSlotShowsDeliveredLineWhenAnsweredLocally() {
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), Api.defaultHttp())
         val cardState = mutableStateOf<HomeQuestionCardView?>(sampleQuestion(canAnswer = true))
         val baseState = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true)
         val baseVm = SessionViewModel.newBuilder().setSessionId("s-q1").build()
@@ -378,7 +378,7 @@ class V63UiInteractionsTest {
             synced = true,
             machines = mapOf("m1" to MachineView("m1", online = true, lastSeenMs = 0L)),
         )
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), Api.defaultHttp())
         var connectionOpened = ""
         val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {}, deviceConnection = { connectionOpened = it })
         val directChip = SessionDirectChipView.newBuilder()

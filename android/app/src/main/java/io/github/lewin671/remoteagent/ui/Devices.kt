@@ -34,16 +34,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import io.github.lewin671.remoteagent.core.ConnState
-import io.github.lewin671.remoteagent.core.DeviceSecurity
 import io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel
 import io.github.lewin671.remoteagent.core.proto.ClientRowView
 import io.github.lewin671.remoteagent.core.proto.DevicesViewModel
-import java.io.File
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * 客户端: paired clients and unfinished pairings on this account. Computers are managed from Settings.
@@ -73,17 +68,6 @@ fun DevicesScreen() {
         onRecovery = { nav.recovery() },
         onClientClick = { nav.client(it) },
         onPair = { nav.pair() },
-        onExportGenesis = {
-            scope.launch {
-                val genesis =
-                    withContext(Dispatchers.IO) {
-                        DeviceSecurity.stateBytes(remote.chain().first())
-                    }
-                withContext(Dispatchers.Main) {
-                    shareGenesis(context, genesis, copy = copy)
-                }
-            }
-        },
     )
 }
 
@@ -97,7 +81,6 @@ internal fun DevicesScreenContent(
     onRecovery: () -> Unit = {},
     onClientClick: (String) -> Unit = {},
     onPair: () -> Unit = {},
-    onExportGenesis: () -> Unit = {},
 ) {
     val copy = uiText()
     val p = pal
@@ -186,21 +169,6 @@ internal fun DevicesScreenContent(
                 )
             }
             Hint(copy(UiMessages.settingsClientsFooterRedesign()), Modifier.padding(bottom = 8.dp), inset = 32.dp)
-
-            if (vm.isManager) {
-                Box(Modifier.padding(horizontal = 16.dp)) {
-                    TextAction(
-                        copy(UiMessages.securityAndroidExportGenesisStateForOfflineRelayPinning()),
-                        onExportGenesis,
-                        arrow = true,
-                    )
-                }
-                Hint(
-                    copy(UiMessages.securityAndroidThisPublicGenesisStateContainsNoKeysUseItOnly()),
-                    Modifier.padding(bottom = 4.dp),
-                    inset = 32.dp,
-                )
-            }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -468,23 +436,6 @@ internal fun removalDialog(name: String, machine: Boolean, copy: io.github.lewin
     copy(UiMessages.projectsRemoveTitle((name).toString())) to
         if (machine) copy(UiMessages.securityAndroidThisImmediatelyDisconnectsItAndRevokesAccessKeepingSessionsAnd())
         else copy(UiMessages.securityAndroidThisDisconnectsItsLoginAndClearsPushSubscriptionsComputerSessions())
-
-/** Shares the public genesis state for the relay's offline pin step. */
-internal fun shareGenesis(context: android.content.Context, state: ByteArray, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) {
-    val dir = File(context.cacheDir, SHARED_DIR).apply { mkdirs() }
-    val file = File(dir, "public-genesis.bin")
-    file.writeBytes(state)
-    val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
-    context.startActivity(
-        Intent.createChooser(
-            Intent(Intent.ACTION_SEND)
-                .setType("application/octet-stream")
-                .putExtra(Intent.EXTRA_STREAM, uri)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-            copy(UiMessages.securityAndroidExportGenesisState()),
-        ),
-    )
-}
 
 /** Both name actions follow the same client ownership/connection policy. */
 internal fun clientCanRename(id: String, me: String, connection: ConnState): Boolean =

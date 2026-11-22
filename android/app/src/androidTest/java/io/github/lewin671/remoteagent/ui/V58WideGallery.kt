@@ -70,7 +70,7 @@ class V58WideGallery {
     @get:Rule val ui = createComposeRule()
 
     private val now = System.currentTimeMillis()
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "2222222222222222"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private val home = "/Users/me"
     private val foo = "$home/Code/foo"

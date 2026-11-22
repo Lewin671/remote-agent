@@ -1,0 +1,655 @@
+package io.github.lewin671.remoteagent.core
+
+import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.proto.Effect
+import io.github.lewin671.remoteagent.core.proto.EffectBatch
+import io.github.lewin671.remoteagent.core.proto.EntropyProvided
+import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
+import io.github.lewin671.remoteagent.core.proto.SecurityActionEmpty
+import io.github.lewin671.remoteagent.core.proto.SecurityApprovePairingAction
+import io.github.lewin671.remoteagent.core.proto.SecurityBoolAction
+import io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent
+import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
+import io.github.lewin671.remoteagent.core.proto.SecurityForegroundEvent
+import io.github.lewin671.remoteagent.core.proto.SecurityHandoffCandidate
+import io.github.lewin671.remoteagent.core.proto.SecurityPairingInfo
+import io.github.lewin671.remoteagent.core.proto.SecurityPrepareCreationAction
+import io.github.lewin671.remoteagent.core.proto.SecurityRecoveryInfo
+import io.github.lewin671.remoteagent.core.proto.SecurityRemoveDeviceAction
+import io.github.lewin671.remoteagent.core.proto.SecurityServerCodeAction
+import io.github.lewin671.remoteagent.core.proto.SecurityStartJoinPairingAction
+import io.github.lewin671.remoteagent.core.proto.SecurityStartPairingAction
+import io.github.lewin671.remoteagent.core.proto.SecurityStringAction
+import io.github.lewin671.remoteagent.core.proto.SecuritySyncNowAction
+import io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect
+import io.github.lewin671.remoteagent.core.proto.SecurityUpdateDeviceMetaAction
+import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowActionEvent
+import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowResultEffect
+import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
+import io.github.lewin671.remoteagent.core.proto.TimerFiredEvent
+import io.github.lewin671.remoteagent.corebind.Core
+import io.github.lewin671.remoteagent.corebind.Corebind
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.security.SecureRandom
+import java.util.Base64
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+
+/** Light QR/deep-link query parser for UI prefill; all cryptographic verification runs in Go clientcore. */
+data class PairLink(val code: String, val server: String, val commit: ByteArray? = null) {
+    fun url(web: String): String {
+        val q = buildList {
+            add("code=" + enc(code))
+            commit?.let {
+                add("c=" + Base64.getUrlEncoder().withoutPadding().encodeToString(it))
+            }
+            add("s=" + enc(server))
+        }.joinToString("&")
+        return web.trimEnd('/') + "/#/pair?" + q
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is PairLink) return false
+        return code == other.code && server == other.server && commit.contentEquals(other.commit)
+    }
+
+    override fun hashCode(): Int {
+        var result = code.hashCode()
+        result = 31 * result + server.hashCode()
+        result = 31 * result + (commit?.contentHashCode() ?: 0)
+        return result
+    }
+
+    companion object {
+        private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+
+        fun parse(raw: String): PairLink? {
+            val i = raw.indexOf("#/pair?")
+            if (i < 0) return null
+            return try {
+                val q = raw.substring(i + 7)
+                    .split("&")
+                    .mapNotNull {
+                        val kv = it.split("=", limit = 2)
+                        if (kv.size == 2) kv[0] to URLDecoder.decode(kv[1], "UTF-8") else null
+                    }
+                    .toMap()
+                val code = q["code"] ?: return null
+                val server = q["s"] ?: return null
+                val commit = q["c"]?.let { Base64.getUrlDecoder().decode(it.trimEnd('=')) }
+                if (!Regex("[0-9]{8}").matches(code) || (commit != null && commit.size != 32)) {
+                    null
+                } else {
+                    PairLink(code, Secret.checkServer(server, allowPlainHttp = true), commit)
+                }
+            } catch (_: IllegalArgumentException) {
+                null
+            }
+        }
+    }
+}
+
+class SecurityWorkflowError(
+    message: String,
+    val code: String,
+    val retryable: Boolean,
+    val uncertain: Boolean,
+    val errorAction: String,
+) : Exception(message), MessageFailure {
+    override val display: MessageText = message.messageText()
+}
+
+fun translateSecurityKey(raw: String, resolver: MessageResolver): String {
+    if (raw.contains('.') && !raw.contains(' ')) {
+        val resolved = resolver(uiMessage(raw))
+        if (resolved.isNotEmpty() && resolved != raw) return resolved
+    }
+    return raw
+}
+
+fun translateSecurityErrorMessage(
+    res: SecurityWorkflowResultEffect,
+    resolver: MessageResolver,
+): String {
+    val raw = res.error.ifEmpty { res.errorCode.ifEmpty { "security error" } }
+    return translateSecurityKey(raw, resolver)
+}
+
+data class PreparedCreationResult(
+    val recoveryCode: String,
+    val resumedDraft: Boolean,
+    val codeSaved: Boolean,
+)
+
+data class PreparedEmergencyRecoveryResult(
+    val recoveryCode: String,
+    val recovery: SecurityRecoveryInfo?,
+)
+
+/**
+ * Promise/Deferred client for all S6 `SecurityWorkflowActionEvent` / `SecurityWorkflowResultEffect`
+ * round-trips hosted in Go `clientcore`.
+ */
+class SecurityClient(
+    private val dispatchEvent: (CoreEvent) -> Unit,
+    private val setForegroundFn: (Boolean) -> Unit,
+    private val isClosedFn: () -> Boolean,
+    private val onDismissUpgradeNotice: (() -> Unit)? = null,
+    private val messageResolver: MessageResolver = { it.key },
+) {
+    private val nextActionId = AtomicLong(1L)
+    private val waiters = ConcurrentHashMap<Long, CompletableDeferred<SecurityWorkflowResultEffect>>()
+    private val _status = MutableStateFlow<SecurityWorkflowStatus?>(null)
+    val status: StateFlow<SecurityWorkflowStatus?> = _status.asStateFlow()
+
+    val currentStatus: SecurityWorkflowStatus? get() = _status.value
+
+    fun handleWorkflowResult(res: SecurityWorkflowResultEffect) {
+        if (res.hasStatus()) {
+            _status.value = res.status
+        }
+        val deferred = waiters.remove(res.actionId) ?: return
+        if (!res.ok) {
+            val msg = translateSecurityErrorMessage(res, messageResolver)
+            deferred.completeExceptionally(
+                SecurityWorkflowError(
+                    message = msg,
+                    code = res.errorCode,
+                    retryable = res.retryable,
+                    uncertain = res.uncertain,
+                    errorAction = res.errorAction,
+                ),
+            )
+            return
+        }
+        deferred.complete(res)
+    }
+
+    fun handleStatusChanged(status: SecurityWorkflowStatus) {
+        _status.value = status
+    }
+
+    fun rejectAll(reason: String = "security client closed") {
+        val entries = waiters.entries.toList()
+        for ((id, d) in entries) {
+            if (waiters.remove(id, d)) {
+                d.completeExceptionally(IllegalStateException(reason))
+            }
+        }
+    }
+
+    private suspend fun run(
+        configure: SecurityWorkflowActionEvent.Builder.() -> Unit,
+    ): SecurityWorkflowResultEffect {
+        if (isClosedFn()) throw IllegalStateException("security client closed")
+        val actionId = nextActionId.getAndIncrement()
+        val deferred = CompletableDeferred<SecurityWorkflowResultEffect>()
+        waiters[actionId] = deferred
+        try {
+            val ev = CoreEvent.newBuilder()
+                .setSecurityAction(
+                    SecurityWorkflowActionEvent.newBuilder()
+                        .setActionId(actionId)
+                        .apply(configure)
+                        .build(),
+                )
+                .build()
+            dispatchEvent(ev)
+            if (isClosedFn() && !deferred.isCompleted) {
+                waiters.remove(actionId, deferred)
+                throw IllegalStateException("security client closed")
+            }
+            return deferred.await()
+        } catch (t: Throwable) {
+            waiters.remove(actionId, deferred)
+            throw t
+        }
+    }
+
+    suspend fun bootstrap(): SecurityWorkflowStatus =
+        run { setBootstrap(SecurityActionEmpty.getDefaultInstance()) }.status
+
+    suspend fun getStatus(): SecurityWorkflowStatus =
+        run { setGetStatus(SecurityActionEmpty.getDefaultInstance()) }.status
+
+    suspend fun dismissUpgradeNotice(): SecurityWorkflowStatus {
+        val r = run { setDismissUpgradeNotice(SecurityActionEmpty.getDefaultInstance()) }
+        onDismissUpgradeNotice?.invoke()
+        return r.status
+    }
+
+    suspend fun syncNow(touch: Boolean = false, authToken: String = ""): SecurityWorkflowStatus =
+        run {
+            setSyncNow(
+                SecuritySyncNowAction.newBuilder()
+                    .setTouch(touch)
+                    .setAuthToken(authToken)
+                    .build(),
+            )
+        }.status
+
+    suspend fun renewLease(force: Boolean = true): SecurityWorkflowStatus =
+        run { setRenewLease(SecurityBoolAction.newBuilder().setFlag(force).build()) }.status
+
+    suspend fun resumePendingOp(): SecurityWorkflowResultEffect =
+        run { setResumePendingOp(SecurityActionEmpty.getDefaultInstance()) }
+
+    suspend fun discardPendingOp(abandonHandoff: Boolean = false) {
+        run { setDiscardPendingOp(SecurityBoolAction.newBuilder().setFlag(abandonHandoff).build()) }
+    }
+
+    suspend fun prepareCreation(server: String, storagePersisted: Boolean = true): PreparedCreationResult {
+        val r = run {
+            setPrepareCreation(
+                SecurityPrepareCreationAction.newBuilder()
+                    .setServer(server)
+                    .setStoragePersisted(storagePersisted)
+                    .build(),
+            )
+        }
+        return PreparedCreationResult(
+            recoveryCode = r.recoveryCode,
+            resumedDraft = r.resumedDraft,
+            codeSaved = r.codeSaved,
+        )
+    }
+
+    suspend fun confirmCreationCodeSaved() {
+        run { setConfirmCreationCodeSaved(SecurityActionEmpty.getDefaultInstance()) }
+    }
+
+    suspend fun continueCreation(setupToken: String = ""): SecurityWorkflowResultEffect =
+        run { setContinueCreation(SecurityStringAction.newBuilder().setValue(setupToken).build()) }
+
+    suspend fun adoptCreationWithoutCode(): SecurityWorkflowResultEffect =
+        run { setAdoptCreationWithoutCode(SecurityActionEmpty.getDefaultInstance()) }
+
+    suspend fun removeDevice(deviceId: String, abandonPairDelivery: Boolean = false) {
+        run {
+            setRemoveDevice(
+                SecurityRemoveDeviceAction.newBuilder()
+                    .setDeviceId(deviceId)
+                    .setAbandonPairDelivery(abandonPairDelivery)
+                    .build(),
+            )
+        }
+    }
+
+    suspend fun deleteMachineRecords(machineId: String) {
+        run { setDeleteMachineRecords(SecurityStringAction.newBuilder().setValue(machineId).build()) }
+    }
+
+    suspend fun deleteAccount() {
+        run { setDeleteAccount(SecurityActionEmpty.getDefaultInstance()) }
+    }
+
+    suspend fun prepareRecoveryRotation(): String =
+        run { setPrepareRecoveryRotation(SecurityActionEmpty.getDefaultInstance()) }.recoveryCode
+
+    suspend fun confirmRecoveryRotation() {
+        run { setConfirmRecoveryRotation(SecurityActionEmpty.getDefaultInstance()) }
+    }
+
+    suspend fun prepareHandoffCode(storagePersisted: Boolean = true): String =
+        run { setPrepareHandoffCode(SecurityBoolAction.newBuilder().setFlag(storagePersisted).build()) }.recoveryCode
+
+    suspend fun publishHandoffOffer() {
+        run { setPublishHandoffOffer(SecurityActionEmpty.getDefaultInstance()) }
+    }
+
+    suspend fun listHandoffCandidates(): List<SecurityHandoffCandidate> =
+        run { setListHandoffCandidates(SecurityActionEmpty.getDefaultInstance()) }.handoffCandidatesList
+
+    suspend fun handoffAuthority(targetDeviceId: String) {
+        run { setHandoffAuthority(SecurityStringAction.newBuilder().setValue(targetDeviceId).build()) }
+    }
+
+    suspend fun completeAccountPublicProfile(server: String, code: String) {
+        run {
+            setCompleteAccountPublicProfile(
+                SecurityServerCodeAction.newBuilder()
+                    .setServer(server)
+                    .setCode(code)
+                    .build(),
+            )
+        }
+    }
+
+    suspend fun startPairing(webOrigin: String, replacesDeviceId: String = ""): SecurityPairingInfo =
+        run {
+            setStartPairing(
+                SecurityStartPairingAction.newBuilder()
+                    .setWebOrigin(webOrigin)
+                    .setReplacesDeviceId(replacesDeviceId)
+                    .build(),
+            )
+        }.pairing
+
+    suspend fun pollPairing(pairingId: String): SecurityPairingInfo =
+        run { setPollPairing(SecurityStringAction.newBuilder().setValue(pairingId).build()) }.pairing
+
+    suspend fun approvePairing(pairingId: String, sasConfirmed: Boolean): SecurityPairingInfo =
+        run {
+            setApprovePairing(
+                SecurityApprovePairingAction.newBuilder()
+                    .setPairingId(pairingId)
+                    .setSasConfirmed(sasConfirmed)
+                    .build(),
+            )
+        }.pairing
+
+    suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo =
+        run { setFinishPairingDelivery(SecurityStringAction.newBuilder().setValue(pairingId).build()) }.pairing
+
+    suspend fun cancelPairing(pairingId: String) {
+        run { setCancelPairing(SecurityStringAction.newBuilder().setValue(pairingId).build()) }
+    }
+
+    suspend fun startJoinPairing(
+        server: String = "",
+        code: String = "",
+        commitHint: ByteArray? = null,
+        existingRepair: Boolean = false,
+        existingServer: String = "",
+        rawLink: String = "",
+    ): SecurityPairingInfo =
+        run {
+            setStartJoinPairing(
+                SecurityStartJoinPairingAction.newBuilder()
+                    .setServer(server)
+                    .setCode(code)
+                    .apply {
+                        if (commitHint != null && commitHint.isNotEmpty()) {
+                            setCommitHint(ByteString.copyFrom(commitHint))
+                        }
+                    }
+                    .setExistingRepair(existingRepair)
+                    .setExistingServer(existingServer)
+                    .setRawLink(rawLink)
+                    .build(),
+            )
+        }.pairing
+
+    suspend fun confirmJoinSas(pairingId: String): SecurityWorkflowResultEffect =
+        run { setConfirmJoinSas(SecurityStringAction.newBuilder().setValue(pairingId).build()) }
+
+    suspend fun cancelJoinPairing(pairingId: String) {
+        run { setCancelJoinPairing(SecurityStringAction.newBuilder().setValue(pairingId).build()) }
+    }
+
+    suspend fun prepareEmergencyRecovery(server: String, code: String): PreparedEmergencyRecoveryResult {
+        val r = run {
+            setPrepareEmergencyRecovery(
+                SecurityServerCodeAction.newBuilder()
+                    .setServer(server)
+                    .setCode(code)
+                    .build(),
+            )
+        }
+        return PreparedEmergencyRecoveryResult(
+            recoveryCode = r.recoveryCode,
+            recovery = if (r.hasRecovery()) r.recovery else null,
+        )
+    }
+
+    suspend fun confirmRecoveryCodeSaved() {
+        run { setConfirmRecoveryCodeSaved(SecurityActionEmpty.getDefaultInstance()) }
+    }
+
+    suspend fun continueRecoverySigning(oldCode: String): SecurityRecoveryInfo? {
+        val r = run { setContinueRecoverySigning(SecurityStringAction.newBuilder().setValue(oldCode).build()) }
+        return if (r.hasRecovery()) r.recovery else null
+    }
+
+    suspend fun resumeRecovery(): SecurityRecoveryInfo? {
+        val r = run { setResumeRecovery(SecurityActionEmpty.getDefaultInstance()) }
+        return if (r.hasRecovery()) r.recovery else null
+    }
+
+    suspend fun completeRecovery(): SecurityWorkflowResultEffect =
+        run { setCompleteRecovery(SecurityActionEmpty.getDefaultInstance()) }
+
+    suspend fun discardUnsignedRecovery() {
+        run { setDiscardUnsignedRecovery(SecurityActionEmpty.getDefaultInstance()) }
+    }
+
+    suspend fun discardRejectedRecovery() {
+        run { setDiscardRejectedRecovery(SecurityActionEmpty.getDefaultInstance()) }
+    }
+
+    suspend fun checkExitAdvice(): SecurityExitAdvice =
+        run { setCheckExitAdvice(SecurityActionEmpty.getDefaultInstance()) }.exitAdvice
+
+    suspend fun clearSecurity() {
+        run { setClearSecurity(SecurityActionEmpty.getDefaultInstance()) }
+    }
+
+    suspend fun checkRetainedDenied(): Boolean =
+        run { setCheckRetainedDenied(SecurityActionEmpty.getDefaultInstance()) }.flag
+
+    suspend fun updateDeviceMeta(
+        deviceId: String = "",
+        name: String = "",
+        platform: String = "",
+        description: String = "",
+        describeSelfOnly: Boolean = false,
+    ) {
+        run {
+            setUpdateDeviceMeta(
+                SecurityUpdateDeviceMetaAction.newBuilder()
+                    .setDeviceId(deviceId)
+                    .setName(name)
+                    .setPlatform(platform)
+                    .setDescription(description)
+                    .setDescribeSelfOnly(describeSelfOnly)
+                    .build(),
+            )
+        }
+    }
+
+    suspend fun republishRecoveryObjects(flag: Boolean = false) {
+        run { setRepublishRecoveryObjects(SecurityBoolAction.newBuilder().setFlag(flag).build()) }
+    }
+
+    fun setForeground(active: Boolean) {
+        setForegroundFn(active)
+    }
+}
+
+/**
+ * Hosts a standalone Go `Core` + [SecurityExecutor] for pre-auth and unauthenticated screens
+ * (bootstrap, account creation, pairing join, emergency recovery, exit cleanup).
+ */
+class StandaloneSecurityHost(
+    private val store: SecurityStoreV4,
+    http: OkHttpClient,
+    messageResolver: MessageResolver = { it.key },
+    allowPlainHttp: Boolean = true,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val monotonic: () -> Long = System::currentTimeMillis,
+    private val onToken: ((SecurityTokenUpdatedEffect) -> Unit)? = null,
+) {
+    private val closed = AtomicBoolean(false)
+    private val workerExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "ra-standalone-sec").apply { isDaemon = true }
+    }
+    private val workerDispatcher = workerExecutor.asCoroutineDispatcher()
+    private val scope = CoroutineScope(SupervisorJob() + workerDispatcher)
+    private val rng = SecureRandom()
+    private val timers = ConcurrentHashMap<String, Pair<Long, Job>>()
+    private val core: Core = Corebind.new_()
+    private val executor = SecurityExecutor(
+        store = store,
+        http = http,
+        emit = { ev -> dispatch(ev) },
+        parentScope = scope,
+        allowPlainHttp = allowPlainHttp,
+    )
+
+    val client: SecurityClient = SecurityClient(
+        dispatchEvent = { ev -> dispatch(ev) },
+        setForegroundFn = { active ->
+            if (!closed.get()) {
+                dispatch(
+                    CoreEvent.newBuilder()
+                        .setSecurityForeground(SecurityForegroundEvent.newBuilder().setForeground(active))
+                        .build(),
+                )
+            }
+        },
+        isClosedFn = { closed.get() },
+        onDismissUpgradeNotice = { store.dismissUpgradeNotice() },
+        messageResolver = messageResolver,
+    )
+
+    init {
+        dispatch(
+            CoreEvent.newBuilder()
+                .setSecurityConfig(
+                    SecurityConfigEvent.newBuilder()
+                        .setInlineCrypto(true)
+                        .setForeground(true),
+                )
+                .build(),
+        )
+    }
+
+    fun dispatch(ev: CoreEvent) {
+        if (closed.get()) return
+        val stamped = ev.toBuilder().apply {
+            if (nowMs == 0L) nowMs = clock()
+            if (monoMs == 0L) monoMs = monotonic()
+        }.build()
+        scope.launch {
+            if (closed.get()) return@launch
+            dispatchOnWorker(stamped)
+        }
+    }
+
+    private fun dispatchOnWorker(ev: CoreEvent) {
+        val queue = ArrayDeque<CoreEvent>()
+        queue.addLast(ev)
+        while (queue.isNotEmpty() && !closed.get()) {
+            val next = queue.removeFirst()
+            val bytes: ByteArray? = core.dispatch(next.toByteArray())
+            if (bytes == null || bytes.isEmpty()) continue
+            val batch = io.github.lewin671.remoteagent.core.proto.EffectBatch.parseFrom(bytes)
+            for (eff in batch.effectsList) {
+                if (closed.get()) break
+                handleEffect(eff, queue)
+            }
+        }
+    }
+
+    private fun handleEffect(eff: Effect, inlineQueue: ArrayDeque<CoreEvent>) {
+        when (eff.effectCase) {
+            Effect.EffectCase.REQUEST_ENTROPY -> {
+                val req = eff.requestEntropy
+                val idCount = maxOf(req.minIds, 16)
+                val floatCount = maxOf(req.minFloats, 16)
+                val byteCount = if (req.minRandomBytes > 0) maxOf(req.minRandomBytes, 4096) else 0
+                val eb = EntropyProvided.newBuilder()
+                repeat(idCount) { eb.addRandomIds(UUID.randomUUID().toString()) }
+                repeat(floatCount) {
+                    val v = (rng.nextInt().toLong() and 0xFFFFFFFFL).toDouble() / 4294967296.0
+                    eb.addUnitFloats(v)
+                }
+                if (byteCount > 0) {
+                    val buf = ByteArray(byteCount)
+                    rng.nextBytes(buf)
+                    eb.setRandomBytes(ByteString.copyFrom(buf))
+                }
+                inlineQueue.addLast(
+                    CoreEvent.newBuilder()
+                        .setNowMs(clock())
+                        .setMonoMs(monotonic())
+                        .setEntropyProvided(eb)
+                        .build(),
+                )
+            }
+            Effect.EffectCase.SCHEDULE_TIMER -> {
+                val st = eff.scheduleTimer
+                val tk = "${st.kind}:${st.key}"
+                timers.remove(tk)?.second?.cancel()
+                val job = scope.launch {
+                    val delayMs = maxOf(0L, st.delayMs)
+                    if (delayMs > 0L) delay(delayMs)
+                    val cur = timers[tk] ?: return@launch
+                    if (cur.first != st.timerId) return@launch
+                    timers.remove(tk, cur)
+                    if (!closed.get()) {
+                        dispatchOnWorker(
+                            CoreEvent.newBuilder()
+                                .setNowMs(clock())
+                                .setMonoMs(monotonic())
+                                .setTimerFired(
+                                    TimerFiredEvent.newBuilder()
+                                        .setTimerId(st.timerId)
+                                        .setKind(st.kind)
+                                        .setKey(st.key),
+                                )
+                                .build(),
+                        )
+                    }
+                }
+                timers[tk] = st.timerId to job
+            }
+            Effect.EffectCase.CANCEL_TIMER -> {
+                val ct = eff.cancelTimer
+                val tk = "${ct.kind}:${ct.key}"
+                val cur = timers[tk]
+                if (cur != null && (ct.timerId == 0L || cur.first == ct.timerId)) {
+                    timers.remove(tk, cur)
+                    cur.second.cancel()
+                }
+            }
+            Effect.EffectCase.SECURITY_KEY_GENERATE -> executor.keyGenerate(eff.securityKeyGenerate)
+            Effect.EffectCase.SECURITY_KEY_SIGN -> executor.keySign(eff.securityKeySign)
+            Effect.EffectCase.SECURITY_KEY_AGREE -> executor.keyAgree(eff.securityKeyAgree)
+            Effect.EffectCase.SECURITY_KEY_ENCAPSULATE -> executor.keyEncapsulate(eff.securityKeyEncapsulate)
+            Effect.EffectCase.SECURITY_KEY_DISCARD -> executor.keyDiscard(eff.securityKeyDiscard)
+            Effect.EffectCase.SECURITY_STORAGE -> executor.storage(eff.securityStorage)
+            Effect.EffectCase.SECURITY_RPC -> executor.rpc(eff.securityRpc)
+            Effect.EffectCase.SECURITY_TOKEN_UPDATED -> onToken?.invoke(eff.securityTokenUpdated)
+            Effect.EffectCase.SECURITY_WORKFLOW_RESULT -> client.handleWorkflowResult(eff.securityWorkflowResult)
+            Effect.EffectCase.SECURITY_STATUS_CHANGED ->
+                if (eff.securityStatusChanged.hasStatus()) {
+                    client.handleStatusChanged(eff.securityStatusChanged.status)
+                }
+            else -> {}
+        }
+    }
+
+    fun close() {
+        if (!closed.compareAndSet(false, true)) return
+        timers.values.forEach { it.second.cancel() }
+        timers.clear()
+        executor.close()
+        client.rejectAll()
+        scope.launch {
+            runCatching { core.close() }
+        }.invokeOnCompletion {
+            scope.cancel()
+            workerExecutor.shutdown()
+        }
+    }
+}

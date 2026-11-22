@@ -70,7 +70,7 @@ class SessionViewTest {
         val cliErr = ScreenGoldenLoader.sessionView("session_cli_error_turn", "cliErrorTurns")
         val folded = ScreenGoldenLoader.sessionView("session_scheduled_fold", "foldedQuietRuns")
 
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), Api.defaultHttp())
         val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
         try {
             val st = RemoteState(
@@ -191,7 +191,7 @@ class SessionViewTest {
             .setTimeline(SessionTimelineView.newBuilder().setLoaded(true))
             .build()
 
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), Api.defaultHttp())
         val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
         try {
             val st = RemoteState(

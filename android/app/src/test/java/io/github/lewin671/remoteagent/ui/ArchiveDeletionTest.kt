@@ -21,7 +21,7 @@ class ArchiveDeletionTest {
     private val id = "1111111111111111"
     private val remote =
         Remote(
-            Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"),
+            Account("http://127.0.0.1:1", "2222222222222222"),
             Api.defaultHttp(),
         )
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})

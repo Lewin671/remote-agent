@@ -338,7 +338,8 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 			},
 		},
 	})
-	if !e.security.Loaded || e.security.VerifiedNetGen != e.networkGen {
+	if (e.secEngine == nil || !e.secEngine.HasWorkflowBootstrapped() || e.cachedToken != "") &&
+		(!e.security.Loaded || e.security.VerifiedNetGen != e.networkGen) {
 		e.requestSyncSecurity(ctx, true)
 	}
 	ctx.Dirty.Add(true, true, true)
@@ -422,6 +423,9 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 	e.tokenExpiresMs = ev.ExpiresMs
 	if e.secEngine != nil {
 		e.secEngine.SetAuthToken(ev.Token, ev.ExpiresMs)
+		if e.secEngine.HasWorkflowBootstrapped() && (!e.security.Loaded || e.security.VerifiedNetGen != e.networkGen) {
+			e.requestSyncSecurity(ctx, true)
+		}
 	}
 	e.forceLogin = false
 	e.connStepText = text.Msg(text.KeyErrorsEstablishingPushConnection)

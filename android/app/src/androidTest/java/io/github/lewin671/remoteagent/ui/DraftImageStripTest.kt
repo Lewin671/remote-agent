@@ -32,7 +32,7 @@ class DraftImageStripTest {
             override fun remove(folder: String, name: String) { data.remove("$folder/$name") }
             override fun clearFolder(folder: String) { data.keys.removeAll { it.startsWith("$folder/") } }
         }
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "2222222222222222"), Api.defaultHttp())
         val draft = ImageDraft("session:geometry", files, scope = null)
         val colors = listOf(0xff79abc4.toInt(), 0xffb9ca85.toInt(), 0xffd9ac84.toInt())
         draft.attach(colors.mapIndexed { index, color ->

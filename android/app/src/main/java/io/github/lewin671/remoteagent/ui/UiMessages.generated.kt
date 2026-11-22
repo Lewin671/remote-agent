@@ -712,9 +712,6 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "dock.waiting_confirmation" -> {
             resources.getString(R.string.dock_waiting_confirmation)
         }
-        "errors.account_creation_draft_preserved_continue_the_original_creation_flow" -> {
-            resources.getString(R.string.errors_account_creation_draft_preserved_continue_the_original_creation_flow)
-        }
         "errors.android_attachment_transfer_content_changed_retry" -> {
             resources.getString(R.string.errors_android_attachment_transfer_content_changed_retry)
         }
@@ -753,15 +750,9 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.errors_android_login_expired, reason)
         }
-        "errors.android_only_the_managing_client_can_veto_recovery" -> {
-            resources.getString(R.string.errors_android_only_the_managing_client_can_veto_recovery)
-        }
         "errors.android_open_value1_to_renew" -> {
             val value1 = message.args.getValue("value1") as String
             resources.getString(R.string.errors_android_open_value1_to_renew, value1)
-        }
-        "errors.android_pairing_approval_does_not_match_this_device_has_expired_or" -> {
-            resources.getString(R.string.errors_android_pairing_approval_does_not_match_this_device_has_expired_or)
         }
         "errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or" -> {
             val value1 = message.args.getValue("value1") as String
@@ -770,9 +761,6 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "errors.android_remote_control_paused_value1_and_retry" -> {
             val value1 = message.args.getValue("value1") as String
             resources.getString(R.string.errors_android_remote_control_paused_value1_and_retry, value1)
-        }
-        "errors.android_remove_devices_on_the_managing_client" -> {
-            resources.getString(R.string.errors_android_remove_devices_on_the_managing_client)
         }
         "errors.android_secure_connection_failed" -> {
             val reason = message.args.getValue("reason") as String
@@ -807,9 +795,6 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "errors.android_the_file_changed_during_upload_retry_or_select_the_file" -> {
             resources.getString(R.string.errors_android_the_file_changed_during_upload_retry_or_select_the_file)
         }
-        "errors.android_the_managing_client_cannot_be_removed_normally" -> {
-            resources.getString(R.string.errors_android_the_managing_client_cannot_be_removed_normally)
-        }
         "errors.android_the_phone_clock_is_ahead_of_the_server_membership_state" -> {
             resources.getString(R.string.errors_android_the_phone_clock_is_ahead_of_the_server_membership_state)
         }
@@ -841,20 +826,11 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "errors.connection_timed_out_reconnecting" -> {
             resources.getString(R.string.errors_connection_timed_out_reconnecting)
         }
-        "errors.device_information_could_not_be_verified" -> {
-            resources.getString(R.string.errors_device_information_could_not_be_verified)
-        }
         "errors.device_information_is_changing_retry" -> {
             resources.getString(R.string.errors_device_information_is_changing_retry)
         }
-        "errors.device_registration_is_unfinished_retry_it_first" -> {
-            resources.getString(R.string.errors_device_registration_is_unfinished_retry_it_first)
-        }
         "errors.disconnected_from_server" -> {
             resources.getString(R.string.errors_disconnected_from_server)
-        }
-        "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing" -> {
-            resources.getString(R.string.errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing)
         }
         "errors.establishing_push_connection" -> {
             resources.getString(R.string.errors_establishing_push_connection)
@@ -873,9 +849,6 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         }
         "errors.invalid_ciphertext_signature_key_or_content_verification_failed" -> {
             resources.getString(R.string.errors_invalid_ciphertext_signature_key_or_content_verification_failed)
-        }
-        "errors.invalid_pairing_approval_signature" -> {
-            resources.getString(R.string.errors_invalid_pairing_approval_signature)
         }
         "errors.it_may_have_been_deleted_or_belong_to_a" -> {
             resources.getString(R.string.errors_it_may_have_been_deleted_or_belong_to_a)
@@ -991,15 +964,6 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "errors.the_server_must_use_https" -> {
             resources.getString(R.string.errors_the_server_must_use_https)
         }
-        "errors.the_server_returned_an_unexpected_device_id" -> {
-            resources.getString(R.string.errors_the_server_returned_an_unexpected_device_id)
-        }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage2(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "errors.the_task_was_just_changed_updated_to_the_latest" -> {
             resources.getString(R.string.errors_the_task_was_just_changed_updated_to_the_latest)
         }
@@ -1030,6 +994,12 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
         "errors.upload_made_no_progress" -> {
             resources.getString(R.string.errors_upload_made_no_progress)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage2(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "errors.waiting_for_the_owning_computer_to_update_the_current_remote" -> {
             resources.getString(R.string.errors_waiting_for_the_owning_computer_to_update_the_current_remote)
         }
@@ -1505,12 +1475,6 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
             val index = message.args.getValue("index") as Int
             resources.getQuantityString(R.plurals.image_position, count, count, index)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage3(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "image.position_state" -> {
             val count = message.args.getValue("count") as Int
             val index = message.args.getValue("index") as Int
@@ -1547,6 +1511,12 @@ private fun resolveUiMessage3(resources: android.content.res.Resources, message:
         "image.the_computer_s_attachment_storage_is_full_clear_space" -> {
             resources.getString(R.string.image_the_computer_s_attachment_storage_is_full_clear_space)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage3(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "image.the_image_could_not_reach_the_computer_retry_when" -> {
             resources.getString(R.string.image_the_image_could_not_reach_the_computer_retry_when)
         }
@@ -2026,12 +1996,6 @@ private fun resolveUiMessage3(resources: android.content.res.Resources, message:
         "modes.ask_permission_desc" -> {
             resources.getString(R.string.modes_ask_permission_desc)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage4(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "modes.auto" -> {
             resources.getString(R.string.modes_auto)
         }
@@ -2067,6 +2031,12 @@ private fun resolveUiMessage4(resources: android.content.res.Resources, message:
         "modes.full_title" -> {
             resources.getString(R.string.modes_full_title)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage4(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "modes.locked" -> {
             resources.getString(R.string.modes_locked)
         }
@@ -2534,12 +2504,6 @@ private fun resolveUiMessage4(resources: android.content.res.Resources, message:
         "projects.no_sessions" -> {
             resources.getString(R.string.projects_no_sessions)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage5(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "projects.no_subdirectories" -> {
             resources.getString(R.string.projects_no_subdirectories)
         }
@@ -2573,6 +2537,12 @@ private fun resolveUiMessage5(resources: android.content.res.Resources, message:
         "projects.remove_explanation" -> {
             resources.getString(R.string.projects_remove_explanation)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage5(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "projects.remove_note" -> {
             resources.getString(R.string.projects_remove_note)
         }
@@ -3066,12 +3036,6 @@ private fun resolveUiMessage5(resources: android.content.res.Resources, message:
         "schedule.creating" -> {
             resources.getString(R.string.schedule_creating)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage6(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "schedule.creation_summary" -> {
             val kind = message.args.getValue("kind") as String
             val owner = message.args.getValue("owner") as String
@@ -3108,6 +3072,12 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.deleted" -> {
             resources.getString(R.string.schedule_deleted)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage6(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "schedule.delivery_before_the_computer_restarted_could_not_be_confirmed" -> {
             resources.getString(R.string.schedule_delivery_before_the_computer_restarted_could_not_be_confirmed)
         }
@@ -3577,12 +3547,6 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.tell_the_agent_in_a_conversation_check_for_me" -> {
             resources.getString(R.string.schedule_tell_the_agent_in_a_conversation_check_for_me)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "schedule.the_agent_created_task_interval_is_too_short" -> {
             resources.getString(R.string.schedule_the_agent_created_task_interval_is_too_short)
         }
@@ -3613,6 +3577,12 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "schedule.the_previous_operation_s_result_is_unconfirmed_verify_the" -> {
             resources.getString(R.string.schedule_the_previous_operation_s_result_is_unconfirmed_verify_the)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "schedule.the_relay_s_session_limit_has_been_reached" -> {
             resources.getString(R.string.schedule_the_relay_s_session_limit_has_been_reached)
         }
@@ -3761,20 +3731,11 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_abandon_this_recovery_and_enter_a_new_code" -> {
             resources.getString(R.string.security_android_abandon_this_recovery_and_enter_a_new_code)
         }
-        "security.android_after_completion_wait_for_retained_computers_to_come_online_and" -> {
-            resources.getString(R.string.security_android_after_completion_wait_for_retained_computers_to_come_online_and)
-        }
         "security.android_already_registering_this_phone_wait_for_the_result" -> {
             resources.getString(R.string.security_android_already_registering_this_phone_wait_for_the_result)
         }
         "security.android_backup_not_confirmed_this_phone_has_no_recovery_private_key" -> {
             resources.getString(R.string.security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key)
-        }
-        "security.android_cannot_complete_yet_or_recovery_was_vetoed" -> {
-            resources.getString(R.string.security_android_cannot_complete_yet_or_recovery_was_vetoed)
-        }
-        "security.android_cannot_confirm_whether_the_new_device_joined_check_your_network" -> {
-            resources.getString(R.string.security_android_cannot_confirm_whether_the_new_device_joined_check_your_network)
         }
         "security.android_cannot_confirm_whether_this_phone_joined_value1_check_the_client" -> {
             val value1 = message.args.getValue("value1") as String
@@ -3812,9 +3773,6 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_current_client" -> {
             resources.getString(R.string.security_android_current_client)
         }
-        "security.android_current_content_key_missing" -> {
-            resources.getString(R.string.security_android_current_content_key_missing)
-        }
         "security.android_do_not_publish_yet" -> {
             resources.getString(R.string.security_android_do_not_publish_yet)
         }
@@ -3830,12 +3788,6 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_exit_incomplete_value1" -> {
             val value1 = message.args.getValue("value1") as String
             resources.getString(R.string.security_android_exit_incomplete_value1, value1)
-        }
-        "security.android_export_genesis_state" -> {
-            resources.getString(R.string.security_android_export_genesis_state)
-        }
-        "security.android_export_genesis_state_for_offline_relay_pinning" -> {
-            resources.getString(R.string.security_android_export_genesis_state_for_offline_relay_pinning)
         }
         "security.android_first_delete_the_account_keys_and_cache_on_this_device" -> {
             resources.getString(R.string.security_android_first_delete_the_account_keys_and_cache_on_this_device)
@@ -3858,53 +3810,14 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_if_48_hours_have_not_passed_or_the_original_managing" -> {
             resources.getString(R.string.security_android_if_48_hours_have_not_passed_or_the_original_managing)
         }
-        "security.android_incorrect_recovery_code" -> {
-            resources.getString(R.string.security_android_incorrect_recovery_code)
-        }
-        "security.android_incorrect_recovery_code_or_no_pending_recovery" -> {
-            resources.getString(R.string.security_android_incorrect_recovery_code_or_no_pending_recovery)
-        }
-        "security.android_incorrect_recovery_code_or_the_recovery_statement_was_rejected" -> {
-            resources.getString(R.string.security_android_incorrect_recovery_code_or_the_recovery_statement_was_rejected)
-        }
-        "security.android_join_receipt_device_public_key_mismatch" -> {
-            resources.getString(R.string.security_android_join_receipt_device_public_key_mismatch)
-        }
-        "security.android_join_receipt_does_not_contain_this_device_s_identity" -> {
-            resources.getString(R.string.security_android_join_receipt_does_not_contain_this_device_s_identity)
-        }
-        "security.android_keep_this_phone_s_account_root_key_and_device_identity" -> {
-            resources.getString(R.string.security_android_keep_this_phone_s_account_root_key_and_device_identity)
-        }
-        "security.android_membership_sync_failed_there_may_be_an_invalid_pairing_check" -> {
-            resources.getString(R.string.security_android_membership_sync_failed_there_may_be_an_invalid_pairing_check)
-        }
         "security.android_name_changes_sync_to_other_clients_set_notifications_on_this" -> {
             resources.getString(R.string.security_android_name_changes_sync_to_other_clients_set_notifications_on_this)
         }
         "security.android_new_recovery_code_confirmed_saved_offline" -> {
             resources.getString(R.string.security_android_new_recovery_code_confirmed_saved_offline)
         }
-        "security.android_no_account_available_to_upgrade" -> {
-            resources.getString(R.string.security_android_no_account_available_to_upgrade)
-        }
-        "security.android_no_candidate_device" -> {
-            resources.getString(R.string.security_android_no_candidate_device)
-        }
-        "security.android_no_device_has_joined_yet" -> {
-            resources.getString(R.string.security_android_no_device_has_joined_yet)
-        }
         "security.android_not_read_yet" -> {
             resources.getString(R.string.security_android_not_read_yet)
-        }
-        "security.android_only_a_removed_computer_s_archive_from_the_same_account" -> {
-            resources.getString(R.string.security_android_only_a_removed_computer_s_archive_from_the_same_account)
-        }
-        "security.android_only_the_managing_client_can_add_devices" -> {
-            resources.getString(R.string.security_android_only_the_managing_client_can_add_devices)
-        }
-        "security.android_only_the_managing_client_can_approve" -> {
-            resources.getString(R.string.security_android_only_the_managing_client_can_approve)
         }
         "security.android_only_this_client_can_change_its_name_notification_settings_must" -> {
             resources.getString(R.string.security_android_only_this_client_can_change_its_name_notification_settings_must)
@@ -3918,36 +3831,6 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the" -> {
             resources.getString(R.string.security_android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the)
         }
-        "security.android_pairing_approval_does_not_match_this_device_or_its_signature" -> {
-            resources.getString(R.string.security_android_pairing_approval_does_not_match_this_device_or_its_signature)
-        }
-        "security.android_pairing_cannot_finish_right_now_check_your_network_then_start" -> {
-            resources.getString(R.string.security_android_pairing_cannot_finish_right_now_check_your_network_then_start)
-        }
-        "security.android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed" -> {
-            resources.getString(R.string.security_android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed)
-        }
-        "security.android_pairing_commitment_mismatch" -> {
-            resources.getString(R.string.security_android_pairing_commitment_mismatch)
-        }
-        "security.android_pairing_payload_belongs_to_another_security_domain" -> {
-            resources.getString(R.string.security_android_pairing_payload_belongs_to_another_security_domain)
-        }
-        "security.android_pairing_payload_is_missing_the_account_public_key" -> {
-            resources.getString(R.string.security_android_pairing_payload_is_missing_the_account_public_key)
-        }
-        "security.android_pairing_payload_managing_client_mismatch" -> {
-            resources.getString(R.string.security_android_pairing_payload_managing_client_mismatch)
-        }
-        "security.android_pairing_payload_state_chain_is_incomplete" -> {
-            resources.getString(R.string.security_android_pairing_payload_state_chain_is_incomplete)
-        }
-        "security.android_pairing_trust_information_is_too_large" -> {
-            resources.getString(R.string.security_android_pairing_trust_information_is_too_large)
-        }
-        "security.android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped" -> {
-            resources.getString(R.string.security_android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped)
-        }
         "security.android_paused_retry_after_returning_to_the_foreground" -> {
             resources.getString(R.string.security_android_paused_retry_after_returning_to_the_foreground)
         }
@@ -3956,15 +3839,6 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         }
         "security.android_reading_membership_state" -> {
             resources.getString(R.string.security_android_reading_membership_state)
-        }
-        "security.android_rebuild_security_domain" -> {
-            resources.getString(R.string.security_android_rebuild_security_domain)
-        }
-        "security.android_rebuild_security_domain_and_become_managing_client" -> {
-            resources.getString(R.string.security_android_rebuild_security_domain_and_become_managing_client)
-        }
-        "security.android_rebuilding" -> {
-            resources.getString(R.string.security_android_rebuilding)
         }
         "security.android_recovery_can_now_be_completed" -> {
             resources.getString(R.string.security_android_recovery_can_now_be_completed)
@@ -3978,12 +3852,6 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_recovery_eligible_at" -> {
             val time = message.args.getValue("time") as String
             resources.getString(R.string.security_android_recovery_eligible_at, time)
-        }
-        "security.android_recovery_not_found_it_may_be_complete_or_vetoed" -> {
-            resources.getString(R.string.security_android_recovery_not_found_it_may_be_complete_or_vetoed)
-        }
-        "security.android_registration_challenge_expired_retry" -> {
-            resources.getString(R.string.security_android_registration_challenge_expired_retry)
         }
         "security.android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" -> {
             resources.getString(R.string.security_android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions)
@@ -4006,21 +3874,11 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_scan_qr_code" -> {
             resources.getString(R.string.security_android_scan_qr_code)
         }
-        "security.android_security_domain_pinning_failed" -> {
-            resources.getString(R.string.security_android_security_domain_pinning_failed)
-        }
-        "security.android_server_registration_computation_requirement_is_too_high_value1_bits_maximum" -> {
-            val value1 = message.args.getValue("value1") as String
-            resources.getString(R.string.security_android_server_registration_computation_requirement_is_too_high_value1_bits_maximum, value1)
-        }
         "security.android_setup_token_if_required_by_the_server" -> {
             resources.getString(R.string.security_android_setup_token_if_required_by_the_server)
         }
         "security.android_someone_is_requesting_management_takeover_with_a_recovery_code_veto" -> {
             resources.getString(R.string.security_android_someone_is_requesting_management_takeover_with_a_recovery_code_veto)
-        }
-        "security.android_state_chain_is_too_large_to_pair_recreate_the_account" -> {
-            resources.getString(R.string.security_android_state_chain_is_too_large_to_pair_recreate_the_account)
         }
         "security.android_still_within_the_48_hour_waiting_period" -> {
             resources.getString(R.string.security_android_still_within_the_48_hour_waiting_period)
@@ -4034,24 +3892,6 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.android_takes_effect_after_48_hours_a_veto_from_the_original" -> {
             resources.getString(R.string.security_android_takes_effect_after_48_hours_a_veto_from_the_original)
         }
-        "security.android_the_account_saved_on_this_phone_does_not_match_its" -> {
-            resources.getString(R.string.security_android_the_account_saved_on_this_phone_does_not_match_its)
-        }
-        "security.android_the_candidate_device_cannot_use_the_managing_client_s_identity" -> {
-            resources.getString(R.string.security_android_the_candidate_device_cannot_use_the_managing_client_s_identity)
-        }
-        "security.android_the_candidate_device_needs_an_update" -> {
-            resources.getString(R.string.security_android_the_candidate_device_needs_an_update)
-        }
-        "security.android_the_managing_client_s_trust_information_does_not_match_its" -> {
-            resources.getString(R.string.security_android_the_managing_client_s_trust_information_does_not_match_its)
-        }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "security.android_the_new_code_is_still_on_this_page_save_it" -> {
             resources.getString(R.string.security_android_the_new_code_is_still_on_this_page_save_it)
         }
@@ -4067,29 +3907,8 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.android_the_original_security_operation_is_verified_complete" -> {
             resources.getString(R.string.security_android_the_original_security_operation_is_verified_complete)
         }
-        "security.android_the_recovery_chain_published_by_the_server_differs_from_the" -> {
-            resources.getString(R.string.security_android_the_recovery_chain_published_by_the_server_differs_from_the)
-        }
-        "security.android_the_recovery_state_published_by_the_server_differs_from_the" -> {
-            resources.getString(R.string.security_android_the_recovery_state_published_by_the_server_differs_from_the)
-        }
-        "security.android_the_relay_has_not_pinned_this_security_domain_an_upgrade" -> {
-            resources.getString(R.string.security_android_the_relay_has_not_pinned_this_security_domain_an_upgrade)
-        }
-        "security.android_the_server_did_not_accept_this_approval_check_whether_the" -> {
-            resources.getString(R.string.security_android_the_server_did_not_accept_this_approval_check_whether_the)
-        }
         "security.android_the_server_rejected_this_device_s_login" -> {
             resources.getString(R.string.security_android_the_server_rejected_this_device_s_login)
-        }
-        "security.android_the_server_returned_an_invalid_registration_challenge" -> {
-            resources.getString(R.string.security_android_the_server_returned_an_invalid_registration_challenge)
-        }
-        "security.android_the_server_returned_an_unexpected_device_id" -> {
-            resources.getString(R.string.security_android_the_server_returned_an_unexpected_device_id)
-        }
-        "security.android_these_computers_must_republish_checkpoints_after_recovery" -> {
-            resources.getString(R.string.security_android_these_computers_must_republish_checkpoints_after_recovery)
         }
         "security.android_this_client_is_no_longer_in_the_current_member_list" -> {
             resources.getString(R.string.security_android_this_client_is_no_longer_in_the_current_member_list)
@@ -4097,23 +3916,11 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.android_this_deletes_the_account_keys_and_cache_on_this_phone" -> {
             resources.getString(R.string.security_android_this_deletes_the_account_keys_and_cache_on_this_phone)
         }
-        "security.android_this_device_is_not_the_managing_client_in_the_recovery" -> {
-            resources.getString(R.string.security_android_this_device_is_not_the_managing_client_in_the_recovery)
-        }
-        "security.android_this_device_s_identity_differs_from_its_member_record_cannot" -> {
-            resources.getString(R.string.security_android_this_device_s_identity_differs_from_its_member_record_cannot)
-        }
-        "security.android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin" -> {
-            resources.getString(R.string.security_android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin)
-        }
         "security.android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" -> {
             resources.getString(R.string.security_android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions)
         }
         "security.android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and" -> {
             resources.getString(R.string.security_android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and)
-        }
-        "security.android_this_is_a_saved_rebuild_draft_the_recovery_code_will" -> {
-            resources.getString(R.string.security_android_this_is_a_saved_rebuild_draft_the_recovery_code_will)
         }
         "security.android_this_is_not_a_remote_agent_pairing_qr_code" -> {
             resources.getString(R.string.security_android_this_is_not_a_remote_agent_pairing_qr_code)
@@ -4121,41 +3928,14 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.android_this_is_the_only_managing_client_transfer_management_first_exiting" -> {
             resources.getString(R.string.security_android_this_is_the_only_managing_client_transfer_management_first_exiting)
         }
-        "security.android_this_join_attempt_was_cancelled" -> {
-            resources.getString(R.string.security_android_this_join_attempt_was_cancelled)
-        }
         "security.android_this_join_attempt_was_cancelled_the_old_request_may_still" -> {
             resources.getString(R.string.security_android_this_join_attempt_was_cancelled_the_old_request_may_still)
-        }
-        "security.android_this_pairing_is_no_longer_valid_cannot_verify_whether_the" -> {
-            resources.getString(R.string.security_android_this_pairing_is_no_longer_valid_cannot_verify_whether_the)
-        }
-        "security.android_this_pairing_is_no_longer_valid_the_new_device_did" -> {
-            resources.getString(R.string.security_android_this_pairing_is_no_longer_valid_the_new_device_did)
-        }
-        "security.android_this_pairing_only_allows_the_original_computer_to_rejoin" -> {
-            resources.getString(R.string.security_android_this_pairing_only_allows_the_original_computer_to_rejoin)
-        }
-        "security.android_this_phone_has_no_account_public_key_and_cannot_register" -> {
-            resources.getString(R.string.security_android_this_phone_has_no_account_public_key_and_cannot_register)
-        }
-        "security.android_this_phone_has_no_account_root_key_and_cannot_become" -> {
-            resources.getString(R.string.security_android_this_phone_has_no_account_root_key_and_cannot_become)
-        }
-        "security.android_this_phone_has_no_account_root_key_and_cannot_rebuild" -> {
-            resources.getString(R.string.security_android_this_phone_has_no_account_root_key_and_cannot_rebuild)
         }
         "security.android_this_phone_will_become_the_managing_client_the_account_root" -> {
             resources.getString(R.string.security_android_this_phone_will_become_the_managing_client_the_account_root)
         }
-        "security.android_this_public_genesis_state_contains_no_keys_use_it_only" -> {
-            resources.getString(R.string.security_android_this_public_genesis_state_contains_no_keys_use_it_only)
-        }
         "security.android_this_recovery_is_complete" -> {
             resources.getString(R.string.security_android_this_recovery_is_complete)
-        }
-        "security.android_this_recovery_was_submitted_complete_it_on_the_phone_that" -> {
-            resources.getString(R.string.security_android_this_recovery_was_submitted_complete_it_on_the_phone_that)
         }
         "security.android_this_recovery_was_submitted_if_you_have_not_saved_the" -> {
             resources.getString(R.string.security_android_this_recovery_was_submitted_if_you_have_not_saved_the)
@@ -4163,18 +3943,9 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.android_this_recovery_was_vetoed_the_new_recovery_code_generated_for" -> {
             resources.getString(R.string.security_android_this_recovery_was_vetoed_the_new_recovery_code_generated_for)
         }
-        "security.android_too_many_attempts_wait_a_minute_and_retry" -> {
-            resources.getString(R.string.security_android_too_many_attempts_wait_a_minute_and_retry)
-        }
         "security.android_transfer_to" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.security_android_transfer_to, name)
-        }
-        "security.android_unrecognized_recovery_status" -> {
-            resources.getString(R.string.security_android_unrecognized_recovery_status)
-        }
-        "security.android_upgrading_an_existing_account_rebuild_the_security_domain_and_become" -> {
-            resources.getString(R.string.security_android_upgrading_an_existing_account_rebuild_the_security_domain_and_become)
         }
         "security.android_use_this_to_recover_management_if_the_managing_client_is" -> {
             resources.getString(R.string.security_android_use_this_to_recover_management_if_the_managing_client_is)
@@ -4191,32 +3962,14 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.android_wait" -> {
             resources.getString(R.string.security_android_wait)
         }
-        "security.android_waiting_for_computers_to_restore_current_sessions" -> {
-            resources.getString(R.string.security_android_waiting_for_computers_to_restore_current_sessions)
-        }
         "security.android_waiting_for_managing_client_approval_and_completing_join" -> {
             resources.getString(R.string.security_android_waiting_for_managing_client_approval_and_completing_join)
         }
         "security.android_write_it_down_or_photograph_it_before_publishing_publishing_immediately" -> {
             resources.getString(R.string.security_android_write_it_down_or_photograph_it_before_publishing_publishing_immediately)
         }
-        "security.android_write_it_down_or_photograph_it_it_only_signs_recovery" -> {
-            resources.getString(R.string.security_android_write_it_down_or_photograph_it_it_only_signs_recovery)
-        }
-        "security.another_pairing_draft_is_unfinished" -> {
-            resources.getString(R.string.security_another_pairing_draft_is_unfinished)
-        }
-        "security.another_pairing_draft_is_unfinished_complete_this_pairing_or" -> {
-            resources.getString(R.string.security_another_pairing_draft_is_unfinished_complete_this_pairing_or)
-        }
-        "security.another_security_operation_is_unfinished" -> {
-            resources.getString(R.string.security_another_security_operation_is_unfinished)
-        }
         "security.apply_again" -> {
             resources.getString(R.string.security_apply_again)
-        }
-        "security.apply_again_with_the_current_recovery_code" -> {
-            resources.getString(R.string.security_apply_again_with_the_current_recovery_code)
         }
         "security.approved_waiting_for_the_new_device_to_finish_binding" -> {
             resources.getString(R.string.security_approved_waiting_for_the_new_device_to_finish_binding)
@@ -4263,6 +4016,9 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.confirm_exit" -> {
             resources.getString(R.string.security_confirm_exit)
         }
+        "security.confirm_recovery_code_saved_first" -> {
+            resources.getString(R.string.security_confirm_recovery_code_saved_first)
+        }
         "security.confirm_that_the_successor_device_saved_the_new_recovery" -> {
             val value = message.args.getValue("value") as String
             resources.getString(R.string.security_confirm_that_the_successor_device_saved_the_new_recovery, value)
@@ -4285,15 +4041,18 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.continue_original_draft" -> {
             resources.getString(R.string.security_continue_original_draft)
         }
-        "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected" -> {
-            resources.getString(R.string.security_continue_the_original_recovery_or_explicitly_abandon_the_rejected)
-        }
         "security.control_ai_coding_clis_on_your_computer_from_any" -> {
             resources.getString(R.string.security_control_ai_coding_clis_on_your_computer_from_any)
         }
         "security.create_account" -> {
             resources.getString(R.string.security_create_account)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "security.current_managing_client" -> {
             resources.getString(R.string.security_current_managing_client)
         }
@@ -4343,9 +4102,6 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.exiting_deletes_local_keys_you_will_need_to_pair" -> {
             resources.getString(R.string.security_exiting_deletes_local_keys_you_will_need_to_pair)
         }
-        "security.finish_device_registration_first" -> {
-            resources.getString(R.string.security_finish_device_registration_first)
-        }
         "security.finish_the_current_security_operation_before_renewing" -> {
             resources.getString(R.string.security_finish_the_current_security_operation_before_renewing)
         }
@@ -4378,9 +4134,6 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         }
         "security.invalid_pairing_key" -> {
             resources.getString(R.string.security_invalid_pairing_key)
-        }
-        "security.invalid_pairing_trust_information" -> {
-            resources.getString(R.string.security_invalid_pairing_trust_information)
         }
         "security.invalid_recovery_code" -> {
             resources.getString(R.string.security_invalid_recovery_code)
@@ -4428,9 +4181,6 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.one_time_security_setup" -> {
             resources.getString(R.string.security_one_time_security_setup)
         }
-        "security.only_a_removed_computer_s_archive_can_be_rejoined" -> {
-            resources.getString(R.string.security_only_a_removed_computer_s_archive_can_be_rejoined)
-        }
         "security.only_this_computer_can_rejoin_its_original_archive_with" -> {
             resources.getString(R.string.security_only_this_computer_can_rejoin_its_original_archive_with)
         }
@@ -4451,32 +4201,20 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.paired" -> {
             resources.getString(R.string.security_paired)
         }
-        "security.pairing_approval_does_not_match_this_device_or_has" -> {
-            resources.getString(R.string.security_pairing_approval_does_not_match_this_device_or_has)
-        }
         "security.pairing_canceled" -> {
             resources.getString(R.string.security_pairing_canceled)
         }
         "security.pairing_code" -> {
             resources.getString(R.string.security_pairing_code)
         }
-        "security.pairing_commitment_mismatch_pairing_stopped" -> {
-            resources.getString(R.string.security_pairing_commitment_mismatch_pairing_stopped)
-        }
         "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before" -> {
             resources.getString(R.string.security_pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before)
-        }
-        "security.pairing_expired" -> {
-            resources.getString(R.string.security_pairing_expired)
         }
         "security.pairing_expired_or_was_canceled" -> {
             resources.getString(R.string.security_pairing_expired_or_was_canceled)
         }
         "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before" -> {
             resources.getString(R.string.security_pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before)
-        }
-        "security.pairing_was_canceled_or_expired" -> {
-            resources.getString(R.string.security_pairing_was_canceled_or_expired)
         }
         "security.patterns_differ_return_to_code_entry" -> {
             resources.getString(R.string.security_patterns_differ_return_to_code_entry)
@@ -4508,12 +4246,6 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.recover_management_with_a_recovery_code" -> {
             resources.getString(R.string.security_recover_management_with_a_recovery_code)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "security.recovery_code" -> {
             resources.getString(R.string.security_recovery_code)
         }
@@ -4526,18 +4258,12 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.recovery_code_updated_the_previous_code_and_pending_recovery" -> {
             resources.getString(R.string.security_recovery_code_updated_the_previous_code_and_pending_recovery)
         }
-        "security.recovery_is_pending_or_its_outcome_is_unknown_and" -> {
-            resources.getString(R.string.security_recovery_is_pending_or_its_outcome_is_unknown_and)
-        }
         "security.recovery_request_pending" -> {
             resources.getString(R.string.security_recovery_request_pending)
         }
         "security.recovery_request_pending_eligible_at" -> {
             val value = message.args.getValue("value") as String
             resources.getString(R.string.security_recovery_request_pending_eligible_at, value)
-        }
-        "security.recovery_was_rejected_explicitly_apply_again" -> {
-            resources.getString(R.string.security_recovery_was_rejected_explicitly_apply_again)
         }
         "security.recovery_was_rejected_you_can_apply_again" -> {
             resources.getString(R.string.security_recovery_was_rejected_you_can_apply_again)
@@ -4651,14 +4377,8 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.take_over_management" -> {
             resources.getString(R.string.security_take_over_management)
         }
-        "security.the_48_hour_wait_has_not_ended" -> {
-            resources.getString(R.string.security_the_48_hour_wait_has_not_ended)
-        }
         "security.the_account_belongs_to_another_server" -> {
             resources.getString(R.string.security_the_account_belongs_to_another_server)
-        }
-        "security.the_account_does_not_match_the_managing_client_s" -> {
-            resources.getString(R.string.security_the_account_does_not_match_the_managing_client_s)
         }
         "security.the_account_keys_and_cache_in_this_browser_will" -> {
             resources.getString(R.string.security_the_account_keys_and_cache_in_this_browser_will)
@@ -4672,14 +4392,8 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.the_computer_s_archive_was_deleted_join_as_a" -> {
             resources.getString(R.string.security_the_computer_s_archive_was_deleted_join_as_a)
         }
-        "security.the_join_receipt_does_not_contain_the_correct_identity" -> {
-            resources.getString(R.string.security_the_join_receipt_does_not_contain_the_correct_identity)
-        }
         "security.the_local_account_unfinished_registration_and_security_operations_will" -> {
             resources.getString(R.string.security_the_local_account_unfinished_registration_and_security_operations_will)
-        }
-        "security.the_local_security_state_is_damaged_and_cannot_be" -> {
-            resources.getString(R.string.security_the_local_security_state_is_damaged_and_cannot_be)
         }
         "security.the_managing_client_canceled_pairing" -> {
             resources.getString(R.string.security_the_managing_client_canceled_pairing)
@@ -4690,9 +4404,6 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management" -> {
             resources.getString(R.string.security_the_managing_client_cannot_be_removed_directly_transfer_management_device_management)
         }
-        "security.the_managing_client_s_trust_information_does_not_match" -> {
-            resources.getString(R.string.security_the_managing_client_s_trust_information_does_not_match)
-        }
         "security.the_new_recovery_code_backup_is_unconfirmed_replace_the" -> {
             resources.getString(R.string.security_the_new_recovery_code_backup_is_unconfirmed_replace_the)
         }
@@ -4702,47 +4413,26 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.the_original_device_identity_keys_and_history_are_preserved" -> {
             resources.getString(R.string.security_the_original_device_identity_keys_and_history_are_preserved)
         }
-        "security.the_original_device_public_key_does_not_match_the" -> {
-            resources.getString(R.string.security_the_original_device_public_key_does_not_match_the)
-        }
         "security.the_original_operation_is_unfinished_continue_verifying" -> {
             resources.getString(R.string.security_the_original_operation_is_unfinished_continue_verifying)
         }
         "security.the_original_recovery_draft_is_preserved_the_new_recovery" -> {
             resources.getString(R.string.security_the_original_recovery_draft_is_preserved_the_new_recovery)
         }
-        "security.the_other_device_refused_this_join_request" -> {
-            resources.getString(R.string.security_the_other_device_refused_this_join_request)
-        }
         "security.the_page_is_paused_return_to_the_foreground_to" -> {
             resources.getString(R.string.security_the_page_is_paused_return_to_the_foreground_to)
-        }
-        "security.the_pairing_code_belongs_to_another_security_domain_original" -> {
-            resources.getString(R.string.security_the_pairing_code_belongs_to_another_security_domain_original)
         }
         "security.the_pairing_code_is_wrong_or_has_already_been" -> {
             resources.getString(R.string.security_the_pairing_code_is_wrong_or_has_already_been)
         }
-        "security.the_pairing_draft_conflicts_with_the_current_identity" -> {
-            resources.getString(R.string.security_the_pairing_draft_conflicts_with_the_current_identity)
-        }
-        "security.the_pairing_receipt_was_approved_by_a_device_other" -> {
-            resources.getString(R.string.security_the_pairing_receipt_was_approved_by_a_device_other)
-        }
         "security.the_public_key_may_already_be_published_abandoning_only" -> {
             resources.getString(R.string.security_the_public_key_may_already_be_published_abandoning_only)
-        }
-        "security.the_recovery_signature_has_not_been_saved_re_enter" -> {
-            resources.getString(R.string.security_the_recovery_signature_has_not_been_saved_re_enter)
         }
         "security.the_security_operation_s_outcome_is_unverified_continue_the" -> {
             resources.getString(R.string.security_the_security_operation_s_outcome_is_unverified_continue_the)
         }
         "security.the_server_does_not_recognize_this_device" -> {
             resources.getString(R.string.security_the_server_does_not_recognize_this_device)
-        }
-        "security.the_server_replaced_the_pairing_commitment_after_receiving_the" -> {
-            resources.getString(R.string.security_the_server_replaced_the_pairing_commitment_after_receiving_the)
         }
         "security.the_server_returned_information_for_a_different_device_from" -> {
             resources.getString(R.string.security_the_server_returned_information_for_a_different_device_from)
@@ -4753,14 +4443,8 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate" -> {
             resources.getString(R.string.security_the_unpublished_pairing_draft_was_canceled_or_its_candidate)
         }
-        "security.this_browser_does_not_support_web_locks_it_cannot" -> {
-            resources.getString(R.string.security_this_browser_does_not_support_web_locks_it_cannot)
-        }
         "security.this_browser_is_the_only_managing_client_transfer_management" -> {
             resources.getString(R.string.security_this_browser_is_the_only_managing_client_transfer_management)
-        }
-        "security.this_browser_s_original_public_key_could_not_be" -> {
-            resources.getString(R.string.security_this_browser_s_original_public_key_could_not_be)
         }
         "security.this_browser_will_be_the_only_managing_client_clearing" -> {
             resources.getString(R.string.security_this_browser_will_be_the_only_managing_client_clearing)
@@ -4785,9 +4469,6 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         }
         "security.this_page_and_the_server_or_pairing_device_use" -> {
             resources.getString(R.string.security_this_page_and_the_server_or_pairing_device_use)
-        }
-        "security.this_pairing_expired_generate_a_new_code_on_the" -> {
-            resources.getString(R.string.security_this_pairing_expired_generate_a_new_code_on_the)
         }
         "security.this_permanently_deletes_sessions_events_and_images_on_the" -> {
             resources.getString(R.string.security_this_permanently_deletes_sessions_events_and_images_on_the)
@@ -4828,6 +4509,12 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "security.waiting_for_the_new_device_to_enter_the_pairing" -> {
             resources.getString(R.string.security_waiting_for_the_new_device_to_enter_the_pairing)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "security.waiting_for_the_successor_device_to_generate_and_save" -> {
             resources.getString(R.string.security_waiting_for_the_successor_device_to_generate_and_save)
         }
@@ -4984,12 +4671,6 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "session.go_terminal" -> {
             resources.getString(R.string.session_go_terminal)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "session.history_unavailable" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.session_history_unavailable, count, count)
@@ -5346,6 +5027,12 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "settings.android_fonts_sil_open_font_license_1_1" -> {
             resources.getString(R.string.settings_android_fonts_sil_open_font_license_1_1)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "settings.android_go_runtime_and_standard_library" -> {
             resources.getString(R.string.settings_android_go_runtime_and_standard_library)
         }
@@ -5490,12 +5177,6 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
             val value1 = message.args.getValue("value1") as String
             resources.getString(R.string.settings_android_value1_is_offline_connect_to_read_and_edit_new_session, value1)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "settings.android_version" -> {
             resources.getString(R.string.settings_android_version)
         }
@@ -5835,6 +5516,12 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.notifications_on_this_client" -> {
             resources.getString(R.string.settings_notifications_on_this_client)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "settings.notifications_scheduled_results_desc" -> {
             resources.getString(R.string.settings_notifications_scheduled_results_desc)
         }
@@ -5978,12 +5665,6 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "settings.status_card_title" -> {
             resources.getString(R.string.settings_status_card_title)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "settings.status_needs_update" -> {
             resources.getString(R.string.settings_status_needs_update)
         }
@@ -6331,6 +6012,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "terminal.android_hide_details" -> {
             resources.getString(R.string.terminal_android_hide_details)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "terminal.android_not_running" -> {
             resources.getString(R.string.terminal_android_not_running)
         }
@@ -6490,12 +6177,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.time_hours_ago, count, count)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "time.just_now" -> {
             resources.getString(R.string.time_just_now)
         }
@@ -6853,6 +6534,12 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.diag_retry_wait_desc" -> {
             resources.getString(R.string.transport_diag_retry_wait_desc)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "transport.diag_retrying" -> {
             resources.getString(R.string.transport_diag_retrying)
         }
@@ -6999,12 +6686,6 @@ private fun resolveUiMessage13(resources: android.content.res.Resources, message
         "transport.diag_verdict_cancelled" -> {
             resources.getString(R.string.transport_diag_verdict_cancelled)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage14(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "transport.diag_verdict_channel" -> {
             resources.getString(R.string.transport_diag_verdict_channel)
         }
@@ -7362,6 +7043,12 @@ private fun resolveUiMessage14(resources: android.content.res.Resources, message
             val time = message.args.getValue("time") as String
             resources.getString(R.string.usage_offline_banner, name, time)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage14(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "usage.offline_empty_body" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.usage_offline_empty_body, name)

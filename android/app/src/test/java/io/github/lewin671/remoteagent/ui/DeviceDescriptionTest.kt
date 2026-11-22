@@ -31,7 +31,7 @@ class DeviceDescriptionTest {
         ui.setContent {
             DeviceDescription(state, "me", "Android test") {
                 calls++
-                if (calls == 1) throw DeviceSecurity.Failure("lease")
+                if (calls == 1) throw IllegalStateException("lease")
             }
         }
         ui.runOnIdle {

@@ -10,14 +10,15 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 const crockfordAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 var (
-	errInvalidServer       = errors.New("errors.the_server_must_use_https")
-	errInvalidRecoveryCode = errors.New("security.invalid_recovery_code")
+	errInvalidServer       = errors.New(text.KeyErrorsTheServerMustUseHttps)
+	errInvalidRecoveryCode = errors.New(text.KeySecurityInvalidRecoveryCode)
 )
 
 // EncodeRecoveryCode encodes 10 bytes of genesis prefix + 32-byte Ed25519 seed in Crockford Base32.

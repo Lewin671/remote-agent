@@ -115,7 +115,7 @@ it("goes back to the code, keeping the server, and stops the join", async () => 
   expect(input(message("security.pairing_code")).value).toBe("");
   expect(input(message("security.server")).value).toBe("https://ra.example.com");
   expect(host.textContent).toContain("已停止这次等待");
-  expect(host.textContent).not.toContain(message("security.the_other_device_refused_this_join_request"));
+  expect(host.textContent).not.toContain(message("security.pairing_canceled"));
 });
 
 it("cannot give up once this device began to register, and reports the outcome", async () => {

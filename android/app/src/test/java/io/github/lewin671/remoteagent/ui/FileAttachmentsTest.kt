@@ -68,7 +68,7 @@ class FileAttachmentsTest {
         val store = MemoryFiles()
         val records = OutgoingRecords(store)
         val remote = io.github.lewin671.remoteagent.core.Remote(
-            io.github.lewin671.remoteagent.core.Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), okhttp3.OkHttpClient())
+            io.github.lewin671.remoteagent.core.Account("http://127.0.0.1:1", "test"), okhttp3.OkHttpClient())
         remote.showForTest(io.github.lewin671.remoteagent.core.RemoteState(machines = mapOf("computer" to
             io.github.lewin671.remoteagent.core.MachineView("computer", true, 0, io.github.lewin671.remoteagent.proto.MachineMeta.newBuilder()
                 .setCapabilities(io.github.lewin671.remoteagent.proto.MachineCapabilities.newBuilder().setFileUpload(true)).build()))))

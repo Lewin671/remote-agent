@@ -43,7 +43,7 @@ class ToolExpansionLocalTest {
             event { toolCall = ToolCall.newBuilder().setCallId("single-$turn").setKind(ToolKind.TOOL_KIND_COMMAND).setTitle("benchmark single command").setInput(command).setStatus("completed").build() }
             event { turnEnded = TurnEnded.newBuilder().setDurationMs(1000).build() }
         }
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "benchmark-client"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "benchmark-client"), Api.defaultHttp())
         val st = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true,
             machines = mapOf("machine" to machine), sessions = mapOf(session.id to SessionView(session.id, "machine", session)))
         val vm = sessionFixtureVm(session.id, st.sessions[session.id], machine, events, LiveSnapshot.newBuilder().setSession(session).build())

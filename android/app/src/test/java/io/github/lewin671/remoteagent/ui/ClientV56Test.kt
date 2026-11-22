@@ -22,7 +22,7 @@ class ClientV56Test {
     @get:Rule val ui = createComposeRule()
 
     private val now = System.currentTimeMillis()
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test-client"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "test-client"), Api.defaultHttp())
 
     @After
     fun close() {

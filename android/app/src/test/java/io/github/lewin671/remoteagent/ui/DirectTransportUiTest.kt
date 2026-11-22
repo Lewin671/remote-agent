@@ -75,7 +75,7 @@ class DirectTransportUiTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val store = SharedPrefsDirectPreferenceStore(context).apply { clear() }
         val machineId = "1111111111111111"
-        val acct = Account("https://example.com", ByteArray(32), ByteArray(32), "2222222222222222")
+        val acct = Account("https://example.com", "2222222222222222")
         val remote = Remote(
             acct,
             Api.defaultHttp(),

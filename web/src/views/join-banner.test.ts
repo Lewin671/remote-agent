@@ -13,12 +13,12 @@ it("tells a release mismatch apart from a wrong code", () => {
 
 
 it("an expired-or-canceled pairing does not accuse the other device of refusing", () => {
-  expect(joinBanner(new SecurityWorkflowError(message("security.this_pairing_expired_generate_a_new_code_on_the"), "expired", false, false, "refill"))).toEqual({
+  expect(joinBanner(new SecurityWorkflowError(message("security.pairing_expired_or_was_canceled"), "expired", false, false, "refill"))).toEqual({
     kind: "err",
-    text: message("security.this_pairing_expired_generate_a_new_code_on_the"),
+    text: message("security.pairing_expired_or_was_canceled"),
     action: "refill",
   });
-  expect(joinBanner(new SecurityWorkflowError(message("security.the_other_device_refused_this_join_request"), "refused", false, false, "restart")).text).toBe(message("security.the_other_device_refused_this_join_request"));
+  expect(joinBanner(new SecurityWorkflowError(message("security.pairing_canceled"), "canceled", false, false, "restart")).text).toBe(message("security.pairing_canceled"));
 });
 
 it("tells a browser to type the code the phone shows, never to scan", () => {

@@ -23,7 +23,7 @@ class ComposerMenuKeyboardTest {
     @get:Rule val ui = createAndroidComposeRule<ComponentActivity>()
 
     @Test fun sessionMenusLeaveKeyboardAndComposerInPlace() {
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "menu-test"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "menu-test"), Api.defaultHttp())
         val session = Session.newBuilder().setId("menu-session").setCwd("/example/project")
             .setTitle("Composer menus").setAgent(Agent.AGENT_CODEX).setStatus(SessionStatus.SESSION_STATUS_RUNNING).build()
         val machine = MachineView("machine", true, 0, MachineMeta.newBuilder().setHostname("Test computer")

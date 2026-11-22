@@ -26,7 +26,7 @@ import org.robolectric.annotation.Config
 class LibraryVideoStripTest {
     @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @get:Rule(order = 1) val ui = createComposeRule()
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "2222222222222222"), Api.defaultHttp())
 
     @After fun close() = remote.close()
 

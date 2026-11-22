@@ -108,7 +108,7 @@ class ImageFailureLocaleRegressionTest(private val locale: String) {
     }
 
     private fun viewer(cause: AppImageFailure) {
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "preview"), Api.defaultHttp())
+        val remote = Remote(Account("http://127.0.0.1:1", "preview"), Api.defaultHttp())
         val draft = ImageDraft("locale-failure", MemoryFiles(), scope = null)
         draft.images += PendingImage("image", null, retainSource = false).apply { state = PendingImage.State.Failed(cause) }
         try {

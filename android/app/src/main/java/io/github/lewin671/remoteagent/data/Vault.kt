@@ -1,9 +1,5 @@
 package io.github.lewin671.remoteagent.data
 
-import io.github.lewin671.remoteagent.ui.sessionText
-
-import io.github.lewin671.remoteagent.core.UiMessages
-
 import android.app.KeyguardManager
 import android.content.Context
 import android.os.Build
@@ -11,11 +7,21 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.system.Os
 import android.system.OsConstants
-import io.github.lewin671.remoteagent.core.Account
-import io.github.lewin671.remoteagent.core.DeviceSecurity
-import io.github.lewin671.remoteagent.core.HeadLease
-import io.github.lewin671.remoteagent.core.SecurityOperation
-import io.github.lewin671.remoteagent.core.operationMaterial
+import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.KEY_SIZE
+import io.github.lewin671.remoteagent.core.LoginToken
+import io.github.lewin671.remoteagent.core.SecurityFailure
+import io.github.lewin671.remoteagent.core.SecurityStoreV4
+import io.github.lewin671.remoteagent.core.proto.SecurityEncapsulateRecipient
+import io.github.lewin671.remoteagent.core.proto.SecurityEncapsulatedPair
+import io.github.lewin671.remoteagent.core.proto.SecurityKeyKind
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageEntry
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageOp
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageResultEvent
+import io.github.lewin671.remoteagent.core.proto.SecurityStoreBucket
+import io.github.lewin671.remoteagent.core.randomBytes
+import io.github.lewin671.remoteagent.corebind.Corebind
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -23,517 +29,679 @@ import java.io.DataOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.security.KeyStore
+import java.util.concurrent.ConcurrentHashMap
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Keeps the account's secrets on this device (architecture §15): a non-exportable AES key in the
- * Android Keystore encrypts the root key and the device seed, stored in the app's no-backup
- * directory. The notify key is wrapped on its own, under a key usable while the phone is locked, so
- * a push can be decrypted in the background without unwrapping the root key. Android 8 (API 26/27)
- * lacks the unlocked-device Keystore policy; the foreground-only account loading rule is the
- * protection there.
+ * Keystore-backed S6 v4 security storage on Android:
+ * - Persistent Ed25519/X25519 keys, v4 buckets, and login tokens are encrypted under
+ *   [ACCOUNT_ALIAS] (unlocked-device required on API 28+).
+ * - [SECURITY_STORE_BUCKET_NOTIFY_RECORD] is mirrored to `security-v4-notify.bin` under
+ *   [NOTIFY_ALIAS] (usable while locked) so FCM pushes can open in Core without unwrapping
+ *   device identity keys.
+ * - Legacy v3/v2 files trigger a clean wipe (preserving app [Prefs]) and raise a persistent
+ *   repair notice flag until dismissed or re-paired.
  */
 class Vault internal constructor(
     context: Context,
-    private val onDecrypt: ((String) -> Unit)?,
-    private val onSecurityParse: (() -> Unit)?,
-) : DeviceSecurity.Storage, io.github.lewin671.remoteagent.core.LoginTokenStore {
-    constructor(context: Context) : this(context, null, null)
+    private val onDecrypt: ((String) -> Unit)? = null,
+    private val onParse: ((String) -> Unit)? = null,
+    private val onLegacyWipe: (() -> Unit)? = null,
+    private val onClearAll: (() -> Unit)? = null,
+) : SecurityStoreV4 {
+    constructor(
+        context: Context,
+        onLegacyWipe: (() -> Unit)? = null,
+        onClearAll: (() -> Unit)? = null,
+    ) : this(context, null, null, onLegacyWipe, onClearAll)
+
+    private data class KeyId(val kindNum: Int, val slot: String)
+    private data class BucketId(val bucketNum: Int, val key: String)
+    private data class StoredKey(val privateKey: ByteArray, val publicKey: ByteArray)
+    private data class StoredBucket(
+        val bucketNum: Int,
+        val key: String,
+        val revision: String,
+        val data: ByteArray,
+    )
+
     private val keyguard = context.getSystemService(KeyguardManager::class.java)
     private val dir = context.noBackupFilesDir
-    private val accountFile = File(dir, "account-v2.bin")
-    private val notifyFile = File(dir, "notify.bin")
-    private val tokenFile = File(dir, "login-token.bin")
-    private val securityFile = File(dir, "security-v3.bin")
+    private val bucketsFile = File(dir, "security-v4-buckets.bin")
+    private val keysFile = File(dir, "security-v4-keys.bin")
+    private val tokenFile = File(dir, "security-v4-token.bin")
+    private val notifyFile = File(dir, "security-v4-notify.bin")
+    private val upgradeNoticeFile = File(dir, "security-v4-upgrade-notice.flag")
 
-    // Access only under SECURITY_LOCK. Cache only ciphertext that was decrypted and fully parsed.
-    private var securityCiphertext: ByteArray? = null
-    private var securityRecord: DeviceSecurity.Record? = null
+    private val ephemeralKeys = ConcurrentHashMap<KeyId, StoredKey>()
+
+    // Access under SECURITY_LOCK. Cache only ciphertexts that were decrypted and parsed cleanly.
+    private var bucketsCiphertext: ByteArray? = null
+    private var bucketsCache: LinkedHashMap<BucketId, StoredBucket>? = null
+    private var keysCiphertext: ByteArray? = null
+    private var keysCache: LinkedHashMap<KeyId, StoredKey>? = null
     private var notifyCiphertext: ByteArray? = null
-    private var notifyRecord: DeviceSecurity.Record? = null
+    private var notifyPlain: ByteArray? = null
 
-    override fun clearSecurityCache() = synchronized(SECURITY_LOCK) {
-        securityCiphertext = null
-        securityRecord = null
-        notifyCiphertext = null
-        notifyRecord = null
+    fun hasAccount(): Boolean = securityTransaction {
+        bucketsFile.exists() || notifyFile.exists()
     }
 
-    fun hasAccount(): Boolean = accountFile.exists()
+    fun hasUpgradeNotice(): Boolean = upgradeNoticeFile.exists()
 
-    fun load(): Account? {
-        val blob = read(accountFile, ACCOUNT_ALIAS) ?: return null
-        return DataInputStream(ByteArrayInputStream(blob)).use { s ->
-            val version = s.readInt()
-            if (version !in 1..2) return null
-            val server = s.readUTF()
-            val deviceId = s.readUTF()
-            val root = ByteArray(s.readInt()).also { s.readFully(it) }
-            val seed = ByteArray(s.readInt()).also { s.readFully(it) }
-            if (version == 1) {
-                // Protocol 9 wrote no account public key. Derive it from the
-                // root once and immediately rewrite the file as version 2,
-                // which is the only format read after that.
-                val a = Account(server, root, seed, deviceId)
-                write(accountFile, ACCOUNT_ALIAS, accountBytes(a), unlockedOnly = true)
-                a
-            } else {
-                val accountId = s.readUTF()
-                val publicKey = ByteArray(s.readInt()).also { s.readFully(it) }
-                Account(server, root, seed, deviceId, accountId, publicKey)
+    override fun clearMemoryCache() = synchronized(SECURITY_LOCK) {
+        bucketsCiphertext = null
+        bucketsCache = null
+        keysCiphertext = null
+        keysCache = null
+        notifyCiphertext = null
+        notifyPlain = null
+    }
+
+    override fun dismissUpgradeNotice() {
+        securityTransaction {
+            if (upgradeNoticeFile.exists()) {
+                upgradeNoticeFile.delete()
+                syncDirectory()
             }
         }
     }
 
-    fun save(a: Account, notifyKey: ByteArray) = securityTransaction {
-        deleteLoginToken()
-        write(accountFile, ACCOUNT_ALIAS, accountBytes(a), unlockedOnly = true)
-        write(notifyFile, NOTIFY_ALIAS, notifyKey, unlockedOnly = false)
+    private fun <T> securityTransaction(block: () -> T): T =
+        synchronized(SECURITY_LOCK) {
+            dir.mkdirs()
+            FileOutputStream(File(dir, "security-v4.lock"), true).channel.use { channel ->
+                channel.lock().use { block() }
+            }
+        }
+
+    private fun isPersistent(kind: SecurityKeyKind, persist: Boolean): Boolean =
+        when (kind) {
+            SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X -> false
+            SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED,
+            SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X -> true
+            else -> persist
+        }
+
+    private fun generateRawEd25519(): StoredKey {
+        while (true) {
+            val seed = randomBytes(KEY_SIZE)
+            val pub = runCatching { Corebind.ed25519PublicKey(seed) }.getOrNull() ?: continue
+            return StoredKey(seed, pub)
+        }
     }
 
-    override fun loadLoginToken(account: Account): io.github.lewin671.remoteagent.core.LoginToken? =
+    private fun generateRawX25519(): StoredKey {
+        while (true) {
+            val priv = randomBytes(KEY_SIZE)
+            val pub = runCatching { Corebind.x25519PublicKey(priv) }.getOrNull() ?: continue
+            return StoredKey(priv, pub)
+        }
+    }
+
+    private fun generatePairForKind(kind: SecurityKeyKind): StoredKey = when (kind) {
+        SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED,
+        SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED -> generateRawEd25519()
+        SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X,
+        SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X,
+        SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X -> generateRawX25519()
+        else -> throw IllegalArgumentException("unsupported key kind: $kind")
+    }
+
+    override fun generateKey(kind: SecurityKeyKind, slot: String, persist: Boolean): ByteArray {
+        val pair = generatePairForKind(kind)
+        val id = KeyId(kind.number, slot)
+        if (!isPersistent(kind, persist)) {
+            ephemeralKeys[id] = pair
+            return pair.publicKey.copyOf()
+        }
         securityTransaction {
-            if (!ownsAccount(account)) return@securityTransaction null
-            if (securityFile.exists() && !readSecurityUnlocked().member) {
-                deleteLoginToken()
+            ephemeralKeys.remove(id)
+            val map = LinkedHashMap(readKeysUnlocked())
+            map[id] = pair
+            writeKeysUnlocked(map)
+        }
+        return pair.publicKey.copyOf()
+    }
+
+    private fun loadKeyLocked(kind: SecurityKeyKind, slot: String): StoredKey? {
+        val id = KeyId(kind.number, slot)
+        if (kind == SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X) {
+            return ephemeralKeys[id]
+        }
+        ephemeralKeys[id]?.let { return it }
+        return readKeysUnlocked()[id]
+    }
+
+    override fun signKey(kind: SecurityKeyKind, slot: String, message: ByteArray): ByteArray {
+        val row = securityTransaction { loadKeyLocked(kind, slot) }
+            ?: throw IllegalStateException("missing signing key")
+        return Corebind.ed25519Sign(row.privateKey, message)
+    }
+
+    override fun agreeKey(kind: SecurityKeyKind, slot: String, peerPublic: ByteArray): ByteArray {
+        require(peerPublic.size == KEY_SIZE) { "invalid peer public key" }
+        val row = securityTransaction { loadKeyLocked(kind, slot) }
+            ?: throw IllegalStateException("missing agreement key")
+        return Corebind.x25519Shared(row.privateKey, peerPublic)
+    }
+
+    override fun encapsulate(recipients: List<SecurityEncapsulateRecipient>): List<SecurityEncapsulatedPair> =
+        recipients.map { r ->
+            val peerPub = r.xPublic.toByteArray()
+            require(peerPub.size == KEY_SIZE) { "invalid recipient x25519 public key" }
+            val eph = generateRawX25519()
+            val dh = Corebind.x25519Shared(eph.privateKey, peerPub)
+            SecurityEncapsulatedPair.newBuilder()
+                .setMemberId(r.memberId)
+                .setEnc(ByteString.copyFrom(eph.publicKey))
+                .setDh(ByteString.copyFrom(dh))
+                .build()
+        }
+
+    override fun discardKey(kind: SecurityKeyKind, slot: String) {
+        val id = KeyId(kind.number, slot)
+        ephemeralKeys.remove(id)
+        if (kind == SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X) return
+        securityTransaction {
+            val map = LinkedHashMap(readKeysUnlocked())
+            if (map.remove(id) != null) {
+                writeKeysUnlocked(map)
+            }
+        }
+    }
+
+    override fun executeStorage(effect: SecurityStorageEffect): SecurityStorageResultEvent =
+        securityTransaction {
+            val out = SecurityStorageResultEvent.newBuilder().setOpId(effect.opId)
+            when (effect.op) {
+                SecurityStorageOp.SECURITY_STORAGE_OP_CLEAR_ALL -> {
+                    clearAllUnlocked()
+                    onClearAll?.invoke()
+                    out.build()
+                }
+                SecurityStorageOp.SECURITY_STORAGE_OP_READ -> {
+                    val buckets = readBucketsUnlocked()
+                    val keys = readKeysUnlocked()
+                    val row = buckets[BucketId(effect.bucket.number, effect.key)]
+                    if (row != null) {
+                        out.setFound(true)
+                            .setRevision(row.revision)
+                            .setData(ByteString.copyFrom(row.data))
+                    }
+                    out.populateIdentityPubs(keys).build()
+                }
+                SecurityStorageOp.SECURITY_STORAGE_OP_READ_BOOTSTRAP -> {
+                    val buckets = readBucketsUnlocked()
+                    val keys = readKeysUnlocked()
+                    val hasV4State = buckets.values.any { row ->
+                        row.data.isNotEmpty() && row.bucketNum in setOf(
+                            SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD.number,
+                            SecurityStoreBucket.SECURITY_STORE_BUCKET_OPERATION.number,
+                            SecurityStoreBucket.SECURITY_STORE_BUCKET_REGISTRATION_INTENT.number,
+                        )
+                    }
+                    val legacyCleared = if (!hasV4State) {
+                        detectAndClearLegacyUnlocked()
+                    } else {
+                        if (upgradeNoticeFile.exists()) {
+                            upgradeNoticeFile.delete()
+                            syncDirectory()
+                        }
+                        false
+                    }
+                    for (row in buckets.values) {
+                        val bEnum = SecurityStoreBucket.forNumber(row.bucketNum)
+                            ?: SecurityStoreBucket.SECURITY_STORE_BUCKET_UNSPECIFIED
+                        if (effect.bucket != SecurityStoreBucket.SECURITY_STORE_BUCKET_UNSPECIFIED &&
+                            bEnum != effect.bucket
+                        ) {
+                            continue
+                        }
+                        out.addEntries(
+                            SecurityStorageEntry.newBuilder()
+                                .setBucket(bEnum)
+                                .setKey(row.key)
+                                .setRevision(row.revision)
+                                .setData(ByteString.copyFrom(row.data))
+                                .build(),
+                        )
+                    }
+                    out.setLegacyCleared(legacyCleared)
+                    out.populateIdentityPubs(keys).build()
+                }
+                SecurityStorageOp.SECURITY_STORAGE_OP_WRITE_CAS -> {
+                    val buckets = LinkedHashMap(readBucketsUnlocked())
+                    val keys = readKeysUnlocked()
+                    val id = BucketId(effect.bucket.number, effect.key)
+                    val cur = buckets[id]
+                    val conflict =
+                        (effect.createOnly && cur != null) ||
+                            (effect.expectedRevision.isNotEmpty() && (cur == null || cur.revision != effect.expectedRevision))
+                    if (conflict) {
+                        out.setConflict(true).populateIdentityPubs(keys).build()
+                    } else {
+                        val dataBytes = effect.data.toByteArray()
+                        buckets[id] = StoredBucket(effect.bucket.number, effect.key, effect.nextRevision, dataBytes)
+                        writeBucketsUnlocked(buckets)
+                        if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
+                            writeNotifyBlobUnlocked(dataBytes)
+                        }
+                        if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD && upgradeNoticeFile.exists()) {
+                            upgradeNoticeFile.delete()
+                            syncDirectory()
+                        }
+                        out.setConflict(false)
+                            .setRevision(effect.nextRevision)
+                            .populateIdentityPubs(keys)
+                            .build()
+                    }
+                }
+                SecurityStorageOp.SECURITY_STORAGE_OP_DELETE_CAS -> {
+                    val buckets = LinkedHashMap(readBucketsUnlocked())
+                    val keys = readKeysUnlocked()
+                    val id = BucketId(effect.bucket.number, effect.key)
+                    val cur = buckets[id]
+                    val conflict =
+                        effect.expectedRevision.isNotEmpty() && cur != null && cur.revision != effect.expectedRevision
+                    if (!conflict && buckets.remove(id) != null) {
+                        writeBucketsUnlocked(buckets)
+                        if (effect.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
+                            deleteNotifyBlobUnlocked()
+                        }
+                    }
+                    out.setConflict(conflict).populateIdentityPubs(keys).build()
+                }
+                SecurityStorageOp.SECURITY_STORAGE_OP_BATCH_COMMIT -> {
+                    val buckets = LinkedHashMap(readBucketsUnlocked())
+                    val keys = LinkedHashMap(readKeysUnlocked())
+                    for (w in effect.batchList) {
+                        val cur = buckets[BucketId(w.bucket.number, w.key)]
+                        val mismatch = if (w.remove) {
+                            w.expectedRevision.isNotEmpty() && cur != null && cur.revision != w.expectedRevision
+                        } else {
+                            (w.createOnly && cur != null) ||
+                                (w.expectedRevision.isNotEmpty() && (cur == null || cur.revision != w.expectedRevision))
+                        }
+                        if (mismatch) {
+                            return@securityTransaction out.setConflict(true).populateIdentityPubs(keys).build()
+                        }
+                    }
+                    var promotedEd: StoredKey? = null
+                    var promotedX: StoredKey? = null
+                    var keysDirty = false
+                    var bucketsDirty = false
+                    var notifyUpdate: ByteArray? = null
+                    var notifyDeleted = false
+
+                    if (effect.promoteEdSlot.isNotEmpty()) {
+                        val candId = KeyId(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED.number, effect.promoteEdSlot)
+                        promotedEd = ephemeralKeys[candId] ?: keys[candId]
+                        if (promotedEd == null) {
+                            return@securityTransaction out.setError("missing promote ed slot")
+                                .populateIdentityPubs(keys)
+                                .build()
+                        }
+                    }
+                    if (effect.promoteXSlot.isNotEmpty()) {
+                        val candId = KeyId(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X.number, effect.promoteXSlot)
+                        promotedX = ephemeralKeys[candId] ?: keys[candId]
+                        if (promotedX == null) {
+                            return@securityTransaction out.setError("missing promote x slot")
+                                .populateIdentityPubs(keys)
+                                .build()
+                        }
+                    }
+                    if (promotedEd != null) {
+                        val candId = KeyId(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED.number, effect.promoteEdSlot)
+                        keys[KeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED.number, "")] = promotedEd
+                        keys.remove(candId)
+                        ephemeralKeys.remove(candId)
+                        keysDirty = true
+                    }
+                    if (promotedX != null) {
+                        val candId = KeyId(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X.number, effect.promoteXSlot)
+                        keys[KeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X.number, "")] = promotedX
+                        keys.remove(candId)
+                        ephemeralKeys.remove(candId)
+                        keysDirty = true
+                    }
+                    for (slot in effect.discardSlotsList) {
+                        for (kind in listOf(
+                            SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED,
+                            SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X,
+                            SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X,
+                        )) {
+                            val id = KeyId(kind.number, slot)
+                            ephemeralKeys.remove(id)
+                            if (kind != SecurityKeyKind.SECURITY_KEY_KIND_EPHEMERAL_X && keys.remove(id) != null) {
+                                keysDirty = true
+                            }
+                        }
+                    }
+                    var recordWritten = false
+                    for (w in effect.batchList) {
+                        val id = BucketId(w.bucket.number, w.key)
+                        if (w.remove) {
+                            if (buckets.remove(id) != null) bucketsDirty = true
+                            if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
+                                notifyDeleted = true
+                                notifyUpdate = null
+                            }
+                        } else {
+                            val dataBytes = w.data.toByteArray()
+                            buckets[id] = StoredBucket(w.bucket.number, w.key, w.nextRevision, dataBytes)
+                            bucketsDirty = true
+                            if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD) {
+                                recordWritten = true
+                            }
+                            if (w.bucket == SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD) {
+                                notifyUpdate = dataBytes
+                                notifyDeleted = false
+                            }
+                        }
+                    }
+                    if (keysDirty) writeKeysUnlocked(keys)
+                    if (bucketsDirty) writeBucketsUnlocked(buckets)
+                    if (notifyUpdate != null) writeNotifyBlobUnlocked(notifyUpdate)
+                    else if (notifyDeleted) deleteNotifyBlobUnlocked()
+                    if (effect.clearLoginToken) deleteLoginTokenUnlocked()
+                    if (recordWritten && upgradeNoticeFile.exists()) {
+                        upgradeNoticeFile.delete()
+                        syncDirectory()
+                    }
+                    out.setConflict(false).populateIdentityPubs(keys).build()
+                }
+                else -> out.setError("unsupported storage op").build()
+            }
+        }
+
+    override fun loadLoginToken(server: String, deviceId: String): LoginToken? =
+        securityTransaction {
+            if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) {
+                return@securityTransaction null
+            }
+            val buckets = try {
+                readBucketsUnlocked()
+            } catch (_: java.security.GeneralSecurityException) {
+                return@securityTransaction null
+            } catch (_: java.security.ProviderException) {
+                return@securityTransaction null
+            } catch (_: Exception) {
+                null
+            }
+            if (buckets != null && buckets.isEmpty()) {
+                deleteLoginTokenUnlocked()
+                return@securityTransaction null
+            }
+            val raw = try {
+                read(tokenFile, ACCOUNT_ALIAS) ?: return@securityTransaction null
+            } catch (_: java.security.GeneralSecurityException) {
+                return@securityTransaction null
+            } catch (_: java.security.ProviderException) {
+                return@securityTransaction null
+            } catch (_: SecurityFailure) {
+                deleteLoginTokenUnlocked()
                 return@securityTransaction null
             }
             try {
-                val raw = read(tokenFile, ACCOUNT_ALIAS) ?: return@securityTransaction null
                 DataInputStream(ByteArrayInputStream(raw)).use { s ->
-                    if (s.readUTF() != account.server || s.readUTF() != account.accountId ||
-                        s.readUTF() != account.deviceId) {
-                        deleteLoginToken()
+                    if (s.readUTF() != server || s.readUTF() != deviceId) {
+                        deleteLoginTokenUnlocked()
                         return@securityTransaction null
                     }
-                    io.github.lewin671.remoteagent.core.LoginToken(s.readUTF(), s.readLong())
+                    LoginToken(s.readUTF(), s.readLong())
                 }
-            } catch (e: Exception) {
-                // A bad optional credential never prevents signing in normally.
-                deleteLoginToken()
+            } catch (_: Exception) {
+                deleteLoginTokenUnlocked()
                 null
             }
         }
 
-    override fun saveLoginToken(account: Account, token: io.github.lewin671.remoteagent.core.LoginToken) =
+    override fun saveLoginToken(server: String, deviceId: String, token: LoginToken) =
         securityTransaction {
-            // A login finishing after logout/reset must not recreate account credential.
-            if (!ownsAccount(account)) return@securityTransaction
-            if (securityFile.exists() && !readSecurityUnlocked().member) {
-                deleteLoginToken()
-                return@securityTransaction
-            }
             val out = ByteArrayOutputStream()
             DataOutputStream(out).use { s ->
-                s.writeUTF(account.server)
-                s.writeUTF(account.accountId)
-                s.writeUTF(account.deviceId)
+                s.writeUTF(server)
+                s.writeUTF(deviceId)
                 s.writeUTF(token.value)
                 s.writeLong(token.expiresMs)
             }
             write(tokenFile, ACCOUNT_ALIAS, out.toByteArray(), unlockedOnly = true)
         }
 
-    override fun clearLoginToken(account: Account) = securityTransaction {
-        if (ownsAccount(account)) deleteLoginToken()
+    override fun clearLoginToken(server: String, deviceId: String) =
+        securityTransaction {
+            val existing = runCatching {
+                val raw = read(tokenFile, ACCOUNT_ALIAS) ?: return@securityTransaction
+                DataInputStream(ByteArrayInputStream(raw)).use { s -> s.readUTF() to s.readUTF() }
+            }.getOrNull()
+            if (existing == null || (existing.first == server && existing.second == deviceId)) {
+                deleteLoginTokenUnlocked()
+            }
+        }
+
+    override fun readNotifyBlob(): ByteArray? =
+        securityTransaction {
+            if (!notifyFile.exists()) {
+                notifyCiphertext = null
+                notifyPlain = null
+                return@securityTransaction null
+            }
+            val data = notifyFile.readBytes()
+            if (notifyCiphertext?.contentEquals(data) == true) {
+                return@securityTransaction notifyPlain?.copyOf()
+            }
+            val plain = decrypt(notifyFile, NOTIFY_ALIAS, data) ?: return@securityTransaction null
+            notifyCiphertext = data
+            notifyPlain = plain
+            plain.copyOf()
+        }
+
+    fun clear() = securityTransaction {
+        clearAllUnlocked()
+        onClearAll?.invoke()
     }
 
-    private fun ownsAccount(a: Account): Boolean {
-        val current = load() ?: return false
-        return current.server == a.server && current.accountId == a.accountId &&
-            current.deviceId == a.deviceId && current.deviceSeed.contentEquals(a.deviceSeed)
-    }
-
-    private fun deleteLoginToken() {
-        if (tokenFile.exists() && !tokenFile.delete()) throw DeviceSecurity.Failure("storage")
+    private fun clearAllUnlocked() {
+        ephemeralKeys.clear()
+        clearMemoryCache()
+        deleteLoginTokenUnlocked()
+        deleteNotifyBlobUnlocked()
+        bucketsFile.delete()
+        keysFile.delete()
+        upgradeNoticeFile.delete()
+        deleteLegacyFilesUnlocked()
+        val ks = keyStore()
+        for (a in listOf(ACCOUNT_ALIAS, NOTIFY_ALIAS)) {
+            if (ks.containsAlias(a)) ks.deleteEntry(a)
+        }
         syncDirectory()
     }
 
-    private fun accountBytes(a: Account): ByteArray {
+    private fun detectAndClearLegacyUnlocked(): Boolean {
+        val hasLegacy = LEGACY_FILES.any { File(dir, it).exists() } ||
+            (dir.listFiles()?.any { it.name.startsWith("pair-candidate-") } == true)
+        if (!hasLegacy) {
+            return upgradeNoticeFile.exists()
+        }
+        clearMemoryCache()
+        ephemeralKeys.clear()
+        deleteLegacyFilesUnlocked()
+        deleteLoginTokenUnlocked()
+        deleteNotifyBlobUnlocked()
+        bucketsFile.delete()
+        keysFile.delete()
+        upgradeNoticeFile.writeBytes(byteArrayOf(1))
+        syncDirectory()
+        onLegacyWipe?.invoke()
+        return true
+    }
+
+    private fun deleteLegacyFilesUnlocked() {
+        for (name in LEGACY_FILES) {
+            val f = File(dir, name)
+            if (f.isDirectory) f.deleteRecursively() else f.delete()
+        }
+        dir.listFiles()?.filter { it.name.startsWith("pair-candidate-") }?.forEach { it.delete() }
+    }
+
+    private fun deleteLoginTokenUnlocked() {
+        if (tokenFile.exists() && !tokenFile.delete()) throw SecurityFailure("storage")
+        syncDirectory()
+    }
+
+    private fun writeNotifyBlobUnlocked(blob: ByteArray) {
+        notifyCiphertext = null
+        notifyPlain = null
+        if (blob.isEmpty()) {
+            deleteNotifyBlobUnlocked()
+            return
+        }
+        write(notifyFile, NOTIFY_ALIAS, blob, unlockedOnly = false)
+    }
+
+    private fun deleteNotifyBlobUnlocked() {
+        notifyCiphertext = null
+        notifyPlain = null
+        if (notifyFile.exists() && !notifyFile.delete()) throw SecurityFailure("storage")
+        syncDirectory()
+    }
+
+    private fun SecurityStorageResultEvent.Builder.populateIdentityPubs(
+        keys: Map<KeyId, StoredKey>,
+    ): SecurityStorageResultEvent.Builder {
+        val ed = keys[KeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED.number, "")]
+        val x = keys[KeyId(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X.number, "")]
+        setHasDeviceEd(ed != null)
+        if (ed != null) setDeviceEdPub(ByteString.copyFrom(ed.publicKey))
+        setHasDeviceX(x != null)
+        if (x != null) setDeviceXPub(ByteString.copyFrom(x.publicKey))
+        return this
+    }
+
+    private fun readBucketsUnlocked(): Map<BucketId, StoredBucket> {
+        if (!bucketsFile.exists()) {
+            bucketsCiphertext = null
+            bucketsCache = null
+            return emptyMap()
+        }
+        val data = bucketsFile.readBytes()
+        if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) clearMemoryCache()
+        if (bucketsCiphertext?.contentEquals(data) == true) return bucketsCache ?: emptyMap()
+        bucketsCiphertext = null
+        bucketsCache = null
+        val plain = decrypt(bucketsFile, ACCOUNT_ALIAS, data) ?: throw SecurityFailure("storage")
+        onParse?.invoke(bucketsFile.name)
+        val parsed = decodeBuckets(plain)
+        bucketsCiphertext = data
+        bucketsCache = parsed
+        return parsed
+    }
+
+    private fun writeBucketsUnlocked(map: Map<BucketId, StoredBucket>) {
+        bucketsCiphertext = null
+        bucketsCache = null
+        write(bucketsFile, ACCOUNT_ALIAS, encodeBuckets(map), unlockedOnly = true)
+    }
+
+    private fun readKeysUnlocked(): Map<KeyId, StoredKey> {
+        if (!keysFile.exists()) {
+            keysCiphertext = null
+            keysCache = null
+            return emptyMap()
+        }
+        val data = keysFile.readBytes()
+        if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) clearMemoryCache()
+        if (keysCiphertext?.contentEquals(data) == true) return keysCache ?: emptyMap()
+        keysCiphertext = null
+        keysCache = null
+        val plain = decrypt(keysFile, ACCOUNT_ALIAS, data) ?: throw SecurityFailure("storage")
+        onParse?.invoke(keysFile.name)
+        val parsed = decodeKeys(plain)
+        keysCiphertext = data
+        keysCache = parsed
+        return parsed
+    }
+
+    private fun writeKeysUnlocked(map: Map<KeyId, StoredKey>) {
+        keysCiphertext = null
+        keysCache = null
+        write(keysFile, ACCOUNT_ALIAS, encodeKeys(map), unlockedOnly = true)
+    }
+
+    private fun encodeBuckets(map: Map<BucketId, StoredBucket>): ByteArray {
         val out = ByteArrayOutputStream()
         DataOutputStream(out).use { s ->
-            s.writeInt(2)
-            s.writeUTF(a.server)
-            s.writeUTF(a.deviceId)
-            s.writeInt(a.root.size)
-            s.write(a.root)
-            s.writeInt(a.deviceSeed.size)
-            s.write(a.deviceSeed)
-            s.writeUTF(a.accountId)
-            s.writeInt(a.accountPublicKey.size)
-            s.write(a.accountPublicKey)
+            s.writeInt(CODEC_VERSION)
+            s.writeInt(map.size)
+            for (row in map.values) {
+                s.writeInt(row.bucketNum)
+                s.writeUTF(row.key)
+                s.writeUTF(row.revision)
+                s.writeInt(row.data.size)
+                s.write(row.data)
+            }
         }
         return out.toByteArray()
     }
 
-    private fun <T> securityTransaction(block: () -> T): T =
-        synchronized(SECURITY_LOCK) {
-            FileOutputStream(File(dir, "security-v3.lock"), true).channel.use { channel ->
-                channel.lock().use { block() }
+    private fun decodeBuckets(plain: ByteArray): LinkedHashMap<BucketId, StoredBucket> {
+        val map = LinkedHashMap<BucketId, StoredBucket>()
+        DataInputStream(ByteArrayInputStream(plain)).use { s ->
+            val ver = s.readInt()
+            if (ver != CODEC_VERSION) throw SecurityFailure("storage")
+            val count = s.readInt()
+            repeat(count) {
+                val b = s.readInt()
+                val k = s.readUTF()
+                val rev = s.readUTF()
+                val len = s.readInt()
+                val bytes = ByteArray(len).also { s.readFully(it) }
+                map[BucketId(b, k)] = StoredBucket(b, k, rev, bytes)
             }
         }
-
-    fun hasSecurityState(): Boolean = securityTransaction { securityFile.exists() }
-
-    /** Setup/recovery screens also honor an existing device time floor. */
-    fun signingTime(wall: Long = System.currentTimeMillis()): Long = securityTransaction {
-        if (securityFile.exists()) readSecurityUnlocked().signingTime(wall)
-        else wall.coerceAtLeast(1)
+        return map
     }
 
-    private fun readSecurityUnlocked(): DeviceSecurity.Record {
-        try {
-            val data = securityFile.takeIf { it.exists() }?.readBytes()
-                ?: throw DeviceSecurity.Failure("storage")
-            // A cache hit must not bypass the Keystore's unlocked-device policy.
-            if (Build.VERSION.SDK_INT >= 28 && keyguard.isDeviceLocked) clearSecurityCache()
-            if (securityCiphertext?.contentEquals(data) == true) return securityRecord!!
-            clearSecurityCache()
-            val plain = decrypt(securityFile, ACCOUNT_ALIAS, data)
-                ?: throw DeviceSecurity.Failure("storage")
-            onSecurityParse?.invoke()
-            val record = DeviceSecurity.Record.parse(plain)
-            if (record.member) {
-                securityCiphertext = data
-                securityRecord = record
-            }
-            return record
-        } catch (e: Exception) {
-            clearSecurityCache()
-            throw e
-        }
-    }
-
-    override fun readSecurity(): DeviceSecurity.Record = securityTransaction {
-        readSecurityUnlocked().also { refreshNotifyUnlocked(it) }
-    }
-
-    override fun initializeSecurity(record: DeviceSecurity.Record) {
-        securityTransaction {
-            if (securityFile.exists()) {
-                val old = readSecurityUnlocked()
-                if (old.includesInstallation(record)) {
-                    refreshNotifyUnlocked(old)
-                    return@securityTransaction
-                }
-                throw DeviceSecurity.Failure("conflict")
-            }
-            write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
-            write(
-                notifyFile,
-                NOTIFY_ALIAS,
-                DeviceSecurity.NotifyRecord.fromRecord(record).bytes(),
-                unlockedOnly = false,
-            )
-        }
-    }
-
-    override fun installSecurity(
-        expectedState: ByteArray,
-        states: List<DeviceSecurity.State>,
-        proofs: List<ByteArray?>,
-        lease: HeadLease?,
-    ): DeviceSecurity.Record = securityTransaction {
-        val old = readSecurityUnlocked()
-        if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
-            throw DeviceSecurity.Failure("stale")
-        val record = old.installed(states, proofs, lease)
-        write(securityFile, ACCOUNT_ALIAS, record.bytes(), unlockedOnly = true)
-        refreshNotifyUnlocked(record)
-        record
-    }
-
-    override fun touchSecurity(expectedState: ByteArray, floor: ULong): DeviceSecurity.Record =
-        securityTransaction {
-            val old = readSecurityUnlocked()
-            if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
-                throw DeviceSecurity.Failure("stale")
-            val next = old.touched(floor)
-            if (next === old) return@securityTransaction old
-            write(securityFile, ACCOUNT_ALIAS, next.bytes(), unlockedOnly = true)
-            next
-        }
-
-    override fun cacheSecurityKey(expectedState: ByteArray, epoch: ULong, secret: ByteArray) {
-        securityTransaction {
-            val old = readSecurityUnlocked()
-            if (!DeviceSecurity.stateHash(old.head).contentEquals(expectedState))
-                throw DeviceSecurity.Failure("stale")
-            if (epoch > old.head.core.contentEpoch) throw DeviceSecurity.Failure("untrusted")
-            if (old.cachedKeys().containsKey(epoch)) return@securityTransaction
-            val next = old.withKey(epoch, secret)
-            write(securityFile, ACCOUNT_ALIAS, next.bytes(), unlockedOnly = true)
-        }
-    }
-
-    private fun refreshNotifyUnlocked(record: DeviceSecurity.Record) {
-        if (!record.member) {
-            // A removed device must not keep a key for the new content epoch.
-            clearSecurityCache()
-            deleteLoginToken()
-            if (notifyFile.exists() && !notifyFile.delete()) throw DeviceSecurity.Failure("storage")
-            return
-        }
-        val data = notifyFile.takeIf { it.exists() }?.readBytes()
-        if (notifyRecord === record && data != null && notifyCiphertext?.contentEquals(data) == true)
-            return
-        notifyCiphertext = null
-        notifyRecord = null
-        val old =
-            data?.let { decrypt(notifyFile, NOTIFY_ALIAS, it) }?.let {
-                runCatching { DeviceSecurity.NotifyRecord.parse(it) }.getOrNull()
-            }
-        if (
-            old != null &&
-                DeviceSecurity.stateHash(old.state)
-                    .contentEquals(DeviceSecurity.stateHash(record.head))
-        ) {
-            notifyCiphertext = data
-            notifyRecord = record
-            return
-        }
-        write(
-            notifyFile,
-            NOTIFY_ALIAS,
-            DeviceSecurity.NotifyRecord.fromRecord(record).bytes(),
-            unlockedOnly = false,
-        )
-        // Confirm the persisted notify item on the next read before remembering its ciphertext.
-    }
-
-    override fun readSecurityOperation(): SecurityOperation? = securityTransaction {
-        read(File(dir, "security-operation.bin"), ACCOUNT_ALIAS)?.let {
-            SecurityOperation.parse(it)
-        }
-    }
-
-    override fun writeSecurityOperation(operation: SecurityOperation) = securityTransaction {
-        val existing =
-            read(File(dir, "security-operation.bin"), ACCOUNT_ALIAS)?.let {
-                SecurityOperation.parse(it)
-            }
-        if (existing != null && !operation.preservesProgressOf(existing))
-            throw DeviceSecurity.Failure("stale")
-        if (existing?.kind == "creation" && operation.kind == "creation") {
-            val old =
-                io.github.lewin671.remoteagent.core.CreatedAccount.readOperationMaterial(
-                    existing.local,
-                )
-            val next =
-                io.github.lewin671.remoteagent.core.CreatedAccount.readOperationMaterial(
-                    operation.local,
-                )
-            next.checkSecurityProgressFrom(old)
-            if (old.registration.isNotEmpty()) {
-                val before =
-                    io.github.lewin671.remoteagent.proto.RegisterDeviceRequest.parseFrom(
-                            old.registration,
-                        )
-                        .toBuilder()
-                        .clearSignupProof()
-                        .clearSetupToken()
-                        .build()
-                val after =
-                    io.github.lewin671.remoteagent.proto.RegisterDeviceRequest.parseFrom(
-                            next.registration,
-                        )
-                        .toBuilder()
-                        .clearSignupProof()
-                        .clearSetupToken()
-                        .build()
-                if (before != after) throw DeviceSecurity.Failure("conflict")
-            }
-            if (
-                old.account.deviceId != next.account.deviceId ||
-                    !old.account.deviceSeed.contentEquals(next.account.deviceSeed) ||
-                    old.record.chain.size > next.record.chain.size ||
-                    old.record.chain.indices.any {
-                        !io.github.lewin671.remoteagent.core.DeviceSecurity.stateBytes(
-                                old.record.chain[it],
-                            )
-                            .contentEquals(
-                                io.github.lewin671.remoteagent.core.DeviceSecurity.stateBytes(
-                                    next.record.chain[it],
-                                ),
-                            )
-                    }
-            )
-                throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("conflict")
-        }
-        if (existing?.kind == "lease" && operation.kind == "lease") {
-            val old =
-                io.github.lewin671.remoteagent.core.HeadLease.parse(
-                    io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.parseFrom(
-                            existing.signed,
-                        )
-                        .lease
-                        .toByteArray(),
-                )
-            val next =
-                io.github.lewin671.remoteagent.core.HeadLease.parse(
-                    io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.parseFrom(
-                            operation.signed,
-                        )
-                        .lease
-                        .toByteArray(),
-                )
-            if (
-                !old.head.contentEquals(next.head) ||
-                    next.issuedAt < old.issuedAt ||
-                    next.notAfter < old.notAfter ||
-                    (next.issuedAt == old.issuedAt && next.notAfter != old.notAfter)
-            )
-                throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("conflict")
-        }
-        if (
-            existing != null &&
-                (existing.kind != operation.kind ||
-                    !existing.parent.contentEquals(operation.parent) ||
-                    (existing.kind !in setOf("creation", "lease") &&
-                        !existing.signed.contentEquals(operation.signed) &&
-                        !operation.renewsCertificateOf(existing)))
-        )
-            throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("pending")
-        write(
-            File(dir, "security-operation.bin"),
-            ACCOUNT_ALIAS,
-            operation.bytes(),
-            unlockedOnly = true,
-        )
-    }
-
-    override fun clearSecurityOperation() = securityTransaction {
-        val f = File(dir, "security-operation.bin")
-        if (f.exists() && !f.delete())
-            throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("storage")
-        syncDirectory()
-    }
-
-    private fun pairingIdentityFile(server: String, pairingId: String): File {
-        val digest =
-            java.security.MessageDigest.getInstance("SHA-256")
-                .digest((server + "\u0000" + pairingId).toByteArray())
-        return File(
-            dir,
-            "pair-candidate-" +
-                digest.joinToString("") { "%02x".format(it.toInt() and 255) } +
-                ".bin",
-        )
-    }
-
-    fun loadPairingIdentity(
-        server: String,
-        pairingId: String,
-    ): io.github.lewin671.remoteagent.core.PairingIdentity? =
-        read(pairingIdentityFile(server, pairingId), ACCOUNT_ALIAS)?.let {
-            io.github.lewin671.remoteagent.core.PairingIdentity.parse(it)
-        }
-
-    fun savePairingIdentity(identity: io.github.lewin671.remoteagent.core.PairingIdentity) =
-        securityTransaction {
-            val file = pairingIdentityFile(identity.server, identity.pairingId)
-            val old = read(file, ACCOUNT_ALIAS)
-            if (old != null && !old.contentEquals(identity.bytes()))
-                throw io.github.lewin671.remoteagent.core.PairException(
-                    sessionText(UiMessages.securityAnotherPairingDraftIsUnfinishedCompleteThisPairingOr()),
-                )
-            write(file, ACCOUNT_ALIAS, identity.bytes(), unlockedOnly = true)
-        }
-
-    fun loadRegistrationIntent(): io.github.lewin671.remoteagent.core.RegistrationIntent? =
-        securityTransaction {
-            read(File(dir, "registration-intent.bin"), ACCOUNT_ALIAS)?.let {
-                io.github.lewin671.remoteagent.core.RegistrationIntent.parse(it)
+    private fun encodeKeys(map: Map<KeyId, StoredKey>): ByteArray {
+        val out = ByteArrayOutputStream()
+        DataOutputStream(out).use { s ->
+            s.writeInt(CODEC_VERSION)
+            s.writeInt(map.size)
+            for ((id, row) in map) {
+                s.writeInt(id.kindNum)
+                s.writeUTF(id.slot)
+                s.writeInt(row.privateKey.size)
+                s.write(row.privateKey)
+                s.writeInt(row.publicKey.size)
+                s.write(row.publicKey)
             }
         }
-
-    fun saveRegistrationIntent(intent: io.github.lewin671.remoteagent.core.RegistrationIntent) =
-        securityTransaction {
-            val file = File(dir, "registration-intent.bin")
-            val raw = intent.bytes()
-            val old = read(file, ACCOUNT_ALIAS)
-            if (old != null && !old.contentEquals(raw)) throw DeviceSecurity.Failure("pending")
-            if (old == null) write(file, ACCOUNT_ALIAS, raw, unlockedOnly = true)
-        }
-
-    fun clearRegistrationIntent(expected: io.github.lewin671.remoteagent.core.RegistrationIntent) =
-        securityTransaction {
-            val file = File(dir, "registration-intent.bin")
-            val current = read(file, ACCOUNT_ALIAS) ?: return@securityTransaction
-            if (!current.contentEquals(expected.bytes())) return@securityTransaction
-            val pair =
-                io.github.lewin671.remoteagent.proto.PairApproval.parseFrom(
-                    expected.request.approval,
-                )
-            val candidate = pairingIdentityFile(expected.account.server, pair.pairingId)
-            if (candidate.exists() && !candidate.delete()) throw DeviceSecurity.Failure("storage")
-            if (file.exists() && !file.delete()) throw DeviceSecurity.Failure("storage")
-            syncDirectory()
-        }
-
-    fun saveCreationOperation(draft: io.github.lewin671.remoteagent.core.CreatedAccount) {
-        val raw = draft.operationMaterial()
-        // One account operation may append an already-persisted code rotation.
-        writeSecurityOperation(
-            SecurityOperation(
-                "creation",
-                byteArrayOf(),
-                io.github.lewin671.remoteagent.core.DeviceSecurity.stateBytes(draft.record.head),
-                local = raw,
-                phase = SecurityOperation.Phase.PREPARED,
-            ),
-        )
+        return out.toByteArray()
     }
 
-    fun loadCreationOperation(): io.github.lewin671.remoteagent.core.CreatedAccount? =
-        readSecurityOperation()
-            ?.takeIf { it.kind == "creation" }
-            ?.let {
-                io.github.lewin671.remoteagent.core.CreatedAccount.readOperationMaterial(it.local)
+    private fun decodeKeys(plain: ByteArray): LinkedHashMap<KeyId, StoredKey> {
+        val map = LinkedHashMap<KeyId, StoredKey>()
+        DataInputStream(ByteArrayInputStream(plain)).use { s ->
+            val ver = s.readInt()
+            if (ver != CODEC_VERSION) throw SecurityFailure("storage")
+            val count = s.readInt()
+            repeat(count) {
+                val kind = s.readInt()
+                val slot = s.readUTF()
+                val privLen = s.readInt()
+                val priv = ByteArray(privLen).also { s.readFully(it) }
+                val pubLen = s.readInt()
+                val pub = ByteArray(pubLen).also { s.readFully(it) }
+                map[KeyId(kind, slot)] = StoredKey(priv, pub)
             }
-
-    fun saveRecoveryPublication(draft: io.github.lewin671.remoteagent.core.RecoveryPublication) {
-        val raw = draft.bytes()
-        val existing = readSecurityOperation()
-        writeSecurityOperation(
-            SecurityOperation(
-                "recovery",
-                io.github.lewin671.remoteagent.core.DeviceSecurity.parseState(draft.state)
-                    .core
-                    .parent,
-                io.github.lewin671.remoteagent.proto.SubmitRecoveryRequest.newBuilder()
-                    .setStatement(com.google.protobuf.ByteString.copyFrom(draft.statement))
-                    .setState(com.google.protobuf.ByteString.copyFrom(draft.state))
-                    .build()
-                    .toByteArray(),
-                raw,
-                phase =
-                    if (draft.submission.recoveryId.isEmpty()) SecurityOperation.Phase.PREPARED
-                    else SecurityOperation.Phase.PUBLISHED,
-                codeSaved = existing?.codeSaved ?: false,
-            ),
-        )
+        }
+        return map
     }
-
-    fun loadRecoveryPublication(): io.github.lewin671.remoteagent.core.RecoveryPublication? =
-        readSecurityOperation()
-            ?.takeIf { it.kind == "recovery" }
-            ?.let { io.github.lewin671.remoteagent.core.RecoveryPublication.parse(it.local) }
-
-    fun confirmRecoveryCodeSaved() {
-        val op =
-            readSecurityOperation()
-                ?: throw io.github.lewin671.remoteagent.core.DeviceSecurity.Failure("storage")
-        require(op.kind == "recovery")
-        writeSecurityOperation(
-            SecurityOperation(op.kind, op.parent, op.signed, op.local, op.delivery, op.phase, true),
-        )
-    }
-
-    fun clearPendingRecovery() = clearSecurityOperation()
 
     private fun syncDirectory(directory: File = dir) {
         val parent = Os.open(directory.absolutePath, OsConstants.O_RDONLY, 0)
@@ -544,43 +712,13 @@ class Vault internal constructor(
         }
     }
 
-    fun notifyKey(): ByteArray? = read(notifyFile, NOTIFY_ALIAS)
-
-    fun clear(preserveSecurityOperation: Boolean = false) = securityTransaction {
-        clearSecurityCache()
-        deleteLoginToken()
-        securityFile.delete()
-        File(dir, "registration-intent.bin").let {
-            if (it.exists() && !it.delete()) throw DeviceSecurity.Failure("storage")
-        }
-        File(dir, "security-v2.bin").delete()
-        File(dir, "security-removals-v2.bin").delete()
-        File(dir, "security-history-v2").deleteRecursively()
-        dir.listFiles()?.filter { it.name.startsWith("pair-candidate-") }?.forEach { it.delete() }
-        accountFile.delete()
-        notifyFile.delete()
-        File(dir, "recovery-pending.bin").delete()
-        if (!preserveSecurityOperation) {
-            File(dir, "security-operation.bin").delete()
-        }
-        val ks = keyStore()
-        for (a in listOf(ACCOUNT_ALIAS, NOTIFY_ALIAS)) if (
-            (!preserveSecurityOperation || a != ACCOUNT_ALIAS) && ks.containsAlias(a)
-        )
-            ks.deleteEntry(a)
-    }
-
-    fun clearPendingSecurityOperation() = securityTransaction {
-        File(dir, "security-operation.bin").delete()
-        syncDirectory()
-    }
-
     private fun read(f: File, alias: String): ByteArray? {
         if (!f.exists()) return null
         return decrypt(f, alias, f.readBytes())
     }
 
     private fun decrypt(f: File, alias: String, data: ByteArray): ByteArray? {
+        if (data.size < 12) throw SecurityFailure("storage")
         val key = keyStore().getKey(alias, null) as? SecretKey ?: return null
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, data, 0, 12))
@@ -589,12 +727,6 @@ class Vault internal constructor(
     }
 
     private fun write(f: File, alias: String, plain: ByteArray, unlockedOnly: Boolean) {
-        // Invalidate before attempting a write, including failures after rename/fsync.
-        if (f == securityFile) clearSecurityCache()
-        if (f == notifyFile) {
-            notifyCiphertext = null
-            notifyRecord = null
-        }
         val key = keyStore().getKey(alias, null) as? SecretKey ?: newKey(alias, unlockedOnly)
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.ENCRYPT_MODE, key)
@@ -604,7 +736,7 @@ class Vault internal constructor(
                 out.write(c.iv + c.doFinal(plain))
                 out.fd.sync()
             }
-            check(tmp.renameTo(f)) { "Unable to persist account key" }
+            check(tmp.renameTo(f)) { "Unable to persist security file" }
             syncDirectory(f.parentFile!!)
         } finally {
             tmp.delete()
@@ -612,28 +744,38 @@ class Vault internal constructor(
     }
 
     private fun newKey(alias: String, unlockedOnly: Boolean): SecretKey {
-        fun gen(unlocked: Boolean): SecretKey {
-            val b =
-                KeyGenParameterSpec.Builder(
-                        alias,
-                        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-                    )
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256)
-            if (unlocked && Build.VERSION.SDK_INT >= 28) b.setUnlockedDeviceRequired(true)
-            val g = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-            g.init(b.build())
-            return g.generateKey()
-        }
-        return gen(unlockedOnly)
+        val b = KeyGenParameterSpec.Builder(
+            alias,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+        if (unlockedOnly && Build.VERSION.SDK_INT >= 28) b.setUnlockedDeviceRequired(true)
+        val g = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+        g.init(b.build())
+        return g.generateKey()
     }
 
     private fun keyStore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
     companion object {
         private val SECURITY_LOCK = Any()
+        private const val CODEC_VERSION = 1
         private const val ACCOUNT_ALIAS = "ra-account-unlocked-v2"
         private const val NOTIFY_ALIAS = "ra-notify"
+        private val LEGACY_FILES = listOf(
+            "account-v2.bin",
+            "notify.bin",
+            "login-token.bin",
+            "security-v3.bin",
+            "security-operation.bin",
+            "registration-intent.bin",
+            "security-v2.bin",
+            "security-removals-v2.bin",
+            "security-history-v2",
+            "recovery-pending.bin",
+            "security-v3.lock",
+        )
     }
 }

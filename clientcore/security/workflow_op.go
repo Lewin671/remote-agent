@@ -5,6 +5,7 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -27,7 +28,7 @@ func (e *Engine) claimOperationCAS(op *PersistedOperation, expectedHead *devices
 				continue
 			}
 			if ent.Bucket == corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_OPERATION && len(ent.Data) > 0 {
-				fn(nil, newWfError("pending", "security.a_security_operation_is_unfinished_continue_it_first"))
+				fn(nil, newWfError("pending", text.KeySecurityASecurityOperationIsUnfinishedContinueItFirst))
 				return
 			}
 			if ent.Bucket == corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_REGISTRATION_INTENT && len(ent.Data) > 0 {
@@ -74,7 +75,7 @@ func (e *Engine) claimOperationCAS(op *PersistedOperation, expectedHead *devices
 			Data:       data,
 		}, func(wrep storageReply, werr error) {
 			if wrep.conflict {
-				fn(nil, newWfError("pending", "security.a_security_operation_is_unfinished_continue_it_first"))
+				fn(nil, newWfError("pending", text.KeySecurityASecurityOperationIsUnfinishedContinueItFirst))
 				return
 			}
 			if werr != nil {
@@ -177,7 +178,7 @@ func (e *Engine) resumePendingOp(fgGen uint64, done func(*corev1.SecurityWorkflo
 		}
 	}
 	if op.Kind == "create" || op.Kind == "recovery" {
-		done(nil, newWfError("conflict", "security.return_to_account_creation_or_recovery_to_continue_the"))
+		done(nil, newWfError("conflict", text.KeySecurityReturnToAccountCreationOrRecoveryToContinueThe))
 		return
 	}
 	switch op.Kind {
@@ -266,7 +267,7 @@ func (e *Engine) publishDeviceOfferRPC(op *PersistedOperation, fgGen uint64, don
 							done(nil, sErr)
 							return
 						}
-						done(nil, newWfError("conflict", "security.device_information_changed_the_original_transfer_request_was_not"))
+						done(nil, newWfError("conflict", text.KeySecurityDeviceInformationChangedTheOriginalTransferRequestWasNot))
 					})
 					return
 				}
@@ -630,7 +631,7 @@ func (e *Engine) signStateDraft(op *PersistedOperation, fgGen uint64, fn func(sa
 				return
 			}
 			if uint64(op.Pair.ExpiresMs) <= e.effectiveNow(e.lastNowMs) {
-				fn(nil, newWfError("expired", "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon"))
+				fn(nil, newWfError("expired", text.KeySecurityTheUnpublishedPairingDraftExpiredYouCanExplicitlyAbandon))
 				return
 			}
 			gReq, _ := (&v1.GetPairingRequest{PairingId: op.Pair.PairingID}).Marshal()
@@ -649,7 +650,7 @@ func (e *Engine) signStateDraft(op *PersistedOperation, fgGen uint64, fn func(sa
 					(op.Pair.ReplacesDeviceID != "" && st.JoinerKind != v1.DeviceKind_DEVICE_KIND_MACHINE) ||
 					!sameBytes(st.DevicePublicKey, op.Pair.CandidateEd) ||
 					!sameBytes(st.DeviceHpkePublicKey, op.Pair.CandidateX) {
-					fn(nil, newWfError("canceled", "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate"))
+					fn(nil, newWfError("canceled", text.KeySecurityTheUnpublishedPairingDraftWasCanceledOrItsCandidate))
 					return
 				}
 				e.buildAndPersistStateDraft(op, fgGen, fn)
@@ -844,7 +845,7 @@ func (e *Engine) buildPairDelivery(op *PersistedOperation, nextStateBytes, lease
 		acctPub = prof.AccountPublicKey[:]
 	}
 	if len(acctPub) != 32 {
-		fn(nil, newWfError("invalid", "security.account_public_key_missing_pair_again_or_use_a"))
+		fn(nil, newWfError("invalid", text.KeySecurityAccountPublicKeyMissingPairAgainOrUseA))
 		return
 	}
 	authMem, ok := e.head.Core.Member(e.selfDeviceID)
@@ -1121,7 +1122,7 @@ func (e *Engine) continueStateOpAfterSign(op *PersistedOperation, fgGen uint64, 
 									return
 								}
 							}
-							done(nil, fatalWfError("pairing_delivery", "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before", "pairing_delivery"))
+							done(nil, fatalWfError("pairing_delivery", text.KeySecurityPairingDeliveryExpiredExplicitlyRemoveTheUnfinishedCandidateBefore, "pairing_delivery"))
 						})
 					}
 					if aErr != nil {
@@ -1143,7 +1144,7 @@ func (e *Engine) continueStateOpAfterSign(op *PersistedOperation, fgGen uint64, 
 						case v1.PairingState_PAIRING_STATE_DELIVERED:
 							finishDeliveryAndClear(saved)
 						case v1.PairingState_PAIRING_STATE_CANCELED:
-							done(nil, fatalWfError("pairing_delivery", "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before", "pairing_delivery"))
+							done(nil, fatalWfError("pairing_delivery", text.KeySecurityPairingWasCanceledExplicitlyRemoveTheUnfinishedCandidateBefore, "pairing_delivery"))
 						default:
 							// Waiting for joiner delivery confirmation.
 							done(nil, nil)

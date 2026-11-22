@@ -40,7 +40,7 @@ class ProjectTest {
         ui.waitUntil(5000) { ui.mainClock.advanceTimeByFrame(); ui.waitForIdle(); done() }
     }
 
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test-client"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "test-client"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
 
     @After

@@ -1,0 +1,183 @@
+package io.github.lewin671.remoteagent.core
+
+import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind
+import io.github.lewin671.remoteagent.core.proto.SecurityEncapsulateRecipient
+import io.github.lewin671.remoteagent.core.proto.SecurityKeyKind
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageWrite
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect
+import io.github.lewin671.remoteagent.core.proto.SecurityStorageOp
+import io.github.lewin671.remoteagent.core.proto.SecurityStoreBucket
+import io.github.lewin671.remoteagent.corebind.Corebind
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class SecurityStoreV4Test {
+    @get:org.junit.Rule val hangGuard = hangGuard()
+
+    @Test
+    fun casAndBatchCommitAreAtomicAndPromoteCandidateKeys() {
+        val store = MemorySecurityStoreV4()
+        val edPub = store.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_ED, "slot-a", persist = true)
+        val xPub = store.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_CANDIDATE_X, "slot-a", persist = true)
+        store.saveLoginToken("https://example.com", "dev-1", LoginToken("tok-1", 10_000L))
+
+        val firstWrite = store.executeStorage(
+            SecurityStorageEffect.newBuilder()
+                .setOpId(1L)
+                .setOp(SecurityStorageOp.SECURITY_STORAGE_OP_WRITE_CAS)
+                .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_OPERATION)
+                .setKey("pending")
+                .setCreateOnly(true)
+                .setNextRevision("r1")
+                .setData(ByteString.copyFromUtf8("op-v1"))
+                .build(),
+        )
+        assertFalse(firstWrite.conflict)
+        assertEquals("r1", firstWrite.revision)
+
+        // Conflict on createOnly / bad revision leaves existing state untouched.
+        val conflictWrite = store.executeStorage(
+            SecurityStorageEffect.newBuilder()
+                .setOpId(2L)
+                .setOp(SecurityStorageOp.SECURITY_STORAGE_OP_WRITE_CAS)
+                .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_OPERATION)
+                .setKey("pending")
+                .setExpectedRevision("stale-rev")
+                .setNextRevision("r2")
+                .setData(ByteString.copyFromUtf8("op-v2"))
+                .build(),
+        )
+        assertTrue(conflictWrite.conflict)
+
+        val failedBatch = store.executeStorage(
+            SecurityStorageEffect.newBuilder()
+                .setOpId(3L)
+                .setOp(SecurityStorageOp.SECURITY_STORAGE_OP_BATCH_COMMIT)
+                .setPromoteEdSlot("slot-a")
+                .setPromoteXSlot("slot-a")
+                .setClearLoginToken(true)
+                .addBatch(
+                    SecurityStorageWrite.newBuilder()
+                        .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_OPERATION)
+                        .setKey("pending")
+                        .setRemove(true)
+                        .setExpectedRevision("wrong-rev"),
+                )
+                .build(),
+        )
+        assertTrue(failedBatch.conflict)
+        assertFalse(failedBatch.hasDeviceEd)
+        assertNotNull(store.loadLoginToken("https://example.com", "dev-1"))
+
+        val committedBatch = store.executeStorage(
+            SecurityStorageEffect.newBuilder()
+                .setOpId(4L)
+                .setOp(SecurityStorageOp.SECURITY_STORAGE_OP_BATCH_COMMIT)
+                .setPromoteEdSlot("slot-a")
+                .setPromoteXSlot("slot-a")
+                .setClearLoginToken(true)
+                .addBatch(
+                    SecurityStorageWrite.newBuilder()
+                        .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_RECORD)
+                        .setKey("record")
+                        .setCreateOnly(true)
+                        .setNextRevision("r-rec")
+                        .setData(ByteString.copyFromUtf8("rec-v1")),
+                )
+                .addBatch(
+                    SecurityStorageWrite.newBuilder()
+                        .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_NOTIFY_RECORD)
+                        .setKey("notify")
+                        .setCreateOnly(true)
+                        .setNextRevision("r-ntf")
+                        .setData(ByteString.copyFromUtf8("ntf-v1")),
+                )
+                .addBatch(
+                    SecurityStorageWrite.newBuilder()
+                        .setBucket(SecurityStoreBucket.SECURITY_STORE_BUCKET_OPERATION)
+                        .setKey("pending")
+                        .setRemove(true)
+                        .setExpectedRevision("r1"),
+                )
+                .build(),
+        )
+        assertFalse(committedBatch.conflict)
+        assertTrue(committedBatch.hasDeviceEd)
+        assertTrue(committedBatch.hasDeviceX)
+        assertArrayEquals(edPub, committedBatch.deviceEdPub.toByteArray())
+        assertArrayEquals(xPub, committedBatch.deviceXPub.toByteArray())
+        assertNull(store.loadLoginToken("https://example.com", "dev-1"))
+        assertEquals("ntf-v1", store.readNotifyBlob()!!.decodeToString())
+
+        val sig = store.signKey(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED, "", "msg".toByteArray())
+        assertTrue(Corebind.ed25519Verify(edPub, "msg".toByteArray(), sig))
+    }
+
+    @Test
+    fun legacyClearFlagAndEncapsulateRoundTripWorkCorrectly() {
+        val store = MemorySecurityStoreV4()
+        store.seedLegacyForTest()
+        val boot1 = store.executeStorage(
+            SecurityStorageEffect.newBuilder()
+                .setOpId(1L)
+                .setOp(SecurityStorageOp.SECURITY_STORAGE_OP_READ_BOOTSTRAP)
+                .build(),
+        )
+        assertTrue(boot1.legacyCleared)
+        assertTrue(store.upgradeNoticeActive())
+
+        store.dismissUpgradeNotice()
+        assertFalse(store.upgradeNoticeActive())
+
+        val xPub = store.generateKey(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X, "", persist = true)
+        val pairs = store.encapsulate(
+            listOf(
+                SecurityEncapsulateRecipient.newBuilder()
+                    .setMemberId("m-1")
+                    .setXPublic(ByteString.copyFrom(xPub))
+                    .build(),
+            ),
+        )
+        assertEquals(1, pairs.size)
+        val agree = store.agreeKey(SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_X, "", pairs[0].enc.toByteArray())
+        assertArrayEquals(pairs[0].dh.toByteArray(), agree)
+    }
+
+    @Test
+    fun standaloneHostPersistsPendingCreationDraftAndSurvivesRebootstrap() = runBlocking {
+        val store = MemorySecurityStoreV4()
+        store.seedLegacyForTest()
+        val host1 = StandaloneSecurityHost(store, Api.defaultHttp())
+        try {
+            val st1 = host1.client.bootstrap()
+            assertEquals(SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_EMPTY, st1.bootstrap)
+            assertTrue(st1.legacyRepairNotice)
+
+            val dismissed = host1.client.dismissUpgradeNotice()
+            assertFalse(dismissed.legacyRepairNotice)
+
+            val prep = host1.client.prepareCreation("https://example.com", storagePersisted = true)
+            assertTrue(prep.recoveryCode.isNotBlank())
+            host1.client.confirmCreationCodeSaved()
+        } finally {
+            host1.close()
+        }
+
+        val host2 = StandaloneSecurityHost(store, Api.defaultHttp())
+        try {
+            val st2 = host2.client.bootstrap()
+            assertEquals(SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE, st2.bootstrap)
+            assertTrue(st2.pendingOp.codeSaved)
+            assertFalse(st2.legacyRepairNotice)
+        } finally {
+            host2.close()
+        }
+    }
+}

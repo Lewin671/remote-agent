@@ -43,7 +43,7 @@ class I18nBatchCTest(private val locale: String) {
     @get:Rule(order = 2) val appJobs = appFixture.stopJobs { done ->
         ui.waitUntil(5000) { ui.mainClock.advanceTimeByFrame(); ui.waitForIdle(); done() }
     }
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "preview-client"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "preview-client"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private val stamp = System.currentTimeMillis()
     private val now get() = Instant.ofEpochMilli(stamp)
@@ -250,10 +250,9 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun securityMember() { show { Column { AccountSecurityContent(state.copy(isAuthority = false)) } }; shot("security-member") }
     @Test fun recover() { show { RecoverScreen(appFixture.app) }; shot("recover") }
     @Test fun createAccount() { show { CreateAccountScreen(appFixture.app) }; shot("create-account") }
-    @Test fun rebuild() { show { RebuildSecurityScreen(appFixture.app, null) }; shot("rebuild") }
     @Test fun rotateRecovery() { show { RotateRecoveryContent(state, { error("Preview does not publish") }, {}, {}) }; shot("rotate-recovery") }
     @Test fun recoveryStatus() { show { Column(Modifier.padding(20.dp)) { RecoveryStatus(GetRecoveryContextResponse.Phase.PHASE_READY, false, "", {}, {}, {}) } }; shot("recovery-ready") }
-    @Test fun handoff() { show { HandoffPreparationContent(state.copy(isAuthority = false), client.id, { "EXAMPLE RECOVERY CODE" to ByteArray(32) }, {}, {}) }; shot("handoff") }
+    @Test fun handoff() { show { HandoffPreparationContent(state.copy(isAuthority = false), client.id, prepareCode = { "EXAMPLE RECOVERY CODE" }, publishOffer = {}) }; shot("handoff") }
     @Test fun join() { show { JoinScreen(appFixture.app) }; shot("join") }
     @Test fun removed() { show { RemovedScreen(appFixture.app, remote) }; shot("removed") }
     @Test fun pair() { show { PairScreen() }; shot("pair") }

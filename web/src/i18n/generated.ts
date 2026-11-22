@@ -218,25 +218,20 @@ export interface MessageArgs {
   "dock.submitting": { [name: string]: never };
   "dock.trust_folder": { [name: string]: never };
   "dock.waiting_confirmation": { [name: string]: never };
-  "errors.account_creation_draft_preserved_continue_the_original_creation_flow": { [name: string]: never };
   "errors.cannot_connect_to_terminal": { [name: string]: never };
   "errors.client_out_of_date": { [name: string]: never };
   "errors.connection_dropped_midway": { [name: string]: never };
   "errors.connection_timed_out": { [name: string]: never };
   "errors.connection_timed_out_reconnecting": { [name: string]: never };
   "errors.core_load_failed": { reason: string };
-  "errors.device_information_could_not_be_verified": { [name: string]: never };
   "errors.device_information_is_changing_retry": { [name: string]: never };
-  "errors.device_registration_is_unfinished_retry_it_first": { [name: string]: never };
   "errors.disconnected_from_server": { [name: string]: never };
-  "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": { [name: string]: never };
   "errors.establishing_push_connection": { [name: string]: never };
   "errors.executed_result_unavailable": { [name: string]: never };
   "errors.history_could_not_continue_loading_retry": { [name: string]: never };
   "errors.history_has_a_gap_retry": { [name: string]: never };
   "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": { [name: string]: never };
   "errors.invalid_ciphertext_signature_key_or_content_verification_failed": { [name: string]: never };
-  "errors.invalid_pairing_approval_signature": { [name: string]: never };
   "errors.it_may_have_been_deleted_or_belong_to_a": { [name: string]: never };
   "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": { [name: string]: never };
   "errors.names_can_only_be_changed_on_that_device": { [name: string]: never };
@@ -274,7 +269,6 @@ export interface MessageArgs {
   "errors.the_server_address_cannot_include_a_username_or_password": { [name: string]: never };
   "errors.the_server_does_not_recognize_this_device_it_may": { [name: string]: never };
   "errors.the_server_must_use_https": { [name: string]: never };
-  "errors.the_server_returned_an_unexpected_device_id": { [name: string]: never };
   "errors.the_task_was_just_changed_updated_to_the_latest": { [name: string]: never };
   "errors.this_browser_has_already_joined_an_account_open_this": { [name: string]: never };
   "errors.this_device_s_clock_is_behind_the_account_state": { [name: string]: never };
@@ -955,11 +949,7 @@ export interface MessageArgs {
   "security.after_removing_this_unfinished_pairing_generate_a_new_code": { [name: string]: never };
   "security.after_submission_wait_48_hours_the_current_managing_client": { [name: string]: never };
   "security.allow_to_join": { [name: string]: never };
-  "security.another_pairing_draft_is_unfinished": { [name: string]: never };
-  "security.another_pairing_draft_is_unfinished_complete_this_pairing_or": { [name: string]: never };
-  "security.another_security_operation_is_unfinished": { [name: string]: never };
   "security.apply_again": { [name: string]: never };
-  "security.apply_again_with_the_current_recovery_code": { [name: string]: never };
   "security.approved_waiting_for_the_new_device_to_finish_binding": { [name: string]: never };
   "security.asked_the_browser_to_retain_data": { [name: string]: never };
   "security.automatically_renews_when_you_return_to_the_managing_client": { [name: string]: never };
@@ -975,6 +965,7 @@ export interface MessageArgs {
   "security.computer_run_remote_agent_account_join_and_enter_the": { [name: string]: never };
   "security.computers_can_only_run_clis_and_cannot_take_over": { [name: string]: never };
   "security.confirm_exit": { [name: string]: never };
+  "security.confirm_recovery_code_saved_first": { [name: string]: never };
   "security.confirm_that_the_successor_device_saved_the_new_recovery": { value: string };
   "security.confirm_the_patterns_on_the_new_device_before_approving": { [name: string]: never };
   "security.confirm_the_patterns_on_this_device_first": { [name: string]: never };
@@ -982,7 +973,6 @@ export interface MessageArgs {
   "security.confirmed_here_waiting_for_managing_client_approval_and_binding": { [name: string]: never };
   "security.continue_creation": { [name: string]: never };
   "security.continue_original_draft": { [name: string]: never };
-  "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": { [name: string]: never };
   "security.control_ai_coding_clis_on_your_computer_from_any": { [name: string]: never };
   "security.create_account": { [name: string]: never };
   "security.current_managing_client": { [name: string]: never };
@@ -1001,7 +991,6 @@ export interface MessageArgs {
   "security.exit_this_browser": { [name: string]: never };
   "security.exiting": { [name: string]: never };
   "security.exiting_deletes_local_keys_you_will_need_to_pair": { [name: string]: never };
-  "security.finish_device_registration_first": { [name: string]: never };
   "security.finish_the_current_security_operation_before_renewing": { [name: string]: never };
   "security.finish_the_current_security_operation_first": { [name: string]: never };
   "security.finish_the_original_security_operation_first": { [name: string]: never };
@@ -1013,7 +1002,6 @@ export interface MessageArgs {
   "security.i_saved_the_new_recovery_code_offline": { [name: string]: never };
   "security.if_this_browser_is_already_a_member_recovery_will": { [name: string]: never };
   "security.invalid_pairing_key": { [name: string]: never };
-  "security.invalid_pairing_trust_information": { [name: string]: never };
   "security.invalid_recovery_code": { [name: string]: never };
   "security.it_may_have_been_removed_or_the_service_may": { [name: string]: never };
   "security.join": { [name: string]: never };
@@ -1029,22 +1017,17 @@ export interface MessageArgs {
   "security.on_the_managing_client_open_settings_add_device_and": { [name: string]: never };
   "security.once_the_successor_device_joins_and_confirms_saving_its": { [name: string]: never };
   "security.one_time_security_setup": { [name: string]: never };
-  "security.only_a_removed_computer_s_archive_can_be_rejoined": { [name: string]: never };
   "security.only_this_computer_can_rejoin_its_original_archive_with": { [name: string]: never };
   "security.open_to_renew": { value: string };
   "security.original_recovery_code": { [name: string]: never };
   "security.pair_again": { [name: string]: never };
   "security.pair_valid_until": { time: string };
   "security.paired": { [name: string]: never };
-  "security.pairing_approval_does_not_match_this_device_or_has": { [name: string]: never };
   "security.pairing_canceled": { [name: string]: never };
   "security.pairing_code": { [name: string]: never };
-  "security.pairing_commitment_mismatch_pairing_stopped": { [name: string]: never };
   "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before": { [name: string]: never };
-  "security.pairing_expired": { [name: string]: never };
   "security.pairing_expired_or_was_canceled": { [name: string]: never };
   "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before": { [name: string]: never };
-  "security.pairing_was_canceled_or_expired": { [name: string]: never };
   "security.patterns_differ_return_to_code_entry": { [name: string]: never };
   "security.patterns_match_the_new_device_confirmed_first": { [name: string]: never };
   "security.patterns_match_trust_and_continue": { [name: string]: never };
@@ -1059,10 +1042,8 @@ export interface MessageArgs {
   "security.recovery_code_for_restoring_public_information": { [name: string]: never };
   "security.recovery_code_saved_and_confirmed_waiting_for_the_current": { [name: string]: never };
   "security.recovery_code_updated_the_previous_code_and_pending_recovery": { [name: string]: never };
-  "security.recovery_is_pending_or_its_outcome_is_unknown_and": { [name: string]: never };
   "security.recovery_request_pending": { [name: string]: never };
   "security.recovery_request_pending_eligible_at": { value: string };
-  "security.recovery_was_rejected_explicitly_apply_again": { [name: string]: never };
   "security.recovery_was_rejected_you_can_apply_again": { [name: string]: never };
   "security.refresh_successor_devices": { [name: string]: never };
   "security.regenerate_recovery_code": { [name: string]: never };
@@ -1100,43 +1081,29 @@ export interface MessageArgs {
   "security.submit_or_check_original_recovery": { [name: string]: never };
   "security.success_is_uncertain_connection_lost": { [name: string]: never };
   "security.take_over_management": { [name: string]: never };
-  "security.the_48_hour_wait_has_not_ended": { [name: string]: never };
   "security.the_account_belongs_to_another_server": { [name: string]: never };
-  "security.the_account_does_not_match_the_managing_client_s": { [name: string]: never };
   "security.the_account_keys_and_cache_in_this_browser_will": { [name: string]: never };
   "security.the_account_s_state_chain_is_too_long_to": { [name: string]: never };
   "security.the_browser_did_not_promise_to_retain_data": { [name: string]: never };
   "security.the_computer_s_archive_was_deleted_join_as_a": { [name: string]: never };
-  "security.the_join_receipt_does_not_contain_the_correct_identity": { [name: string]: never };
   "security.the_local_account_unfinished_registration_and_security_operations_will": { [name: string]: never };
-  "security.the_local_security_state_is_damaged_and_cannot_be": { [name: string]: never };
   "security.the_managing_client_canceled_pairing": { [name: string]: never };
   "security.the_managing_client_cannot_be_removed_directly_transfer_management": { [name: string]: never };
   "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": { [name: string]: never };
-  "security.the_managing_client_s_trust_information_does_not_match": { [name: string]: never };
   "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": { [name: string]: never };
   "security.the_original_creation_draft_is_preserved_continue_with_the": { [name: string]: never };
   "security.the_original_device_identity_keys_and_history_are_preserved": { [name: string]: never };
-  "security.the_original_device_public_key_does_not_match_the": { [name: string]: never };
   "security.the_original_operation_is_unfinished_continue_verifying": { [name: string]: never };
   "security.the_original_recovery_draft_is_preserved_the_new_recovery": { [name: string]: never };
-  "security.the_other_device_refused_this_join_request": { [name: string]: never };
   "security.the_page_is_paused_return_to_the_foreground_to": { [name: string]: never };
-  "security.the_pairing_code_belongs_to_another_security_domain_original": { [name: string]: never };
   "security.the_pairing_code_is_wrong_or_has_already_been": { [name: string]: never };
-  "security.the_pairing_draft_conflicts_with_the_current_identity": { [name: string]: never };
-  "security.the_pairing_receipt_was_approved_by_a_device_other": { [name: string]: never };
   "security.the_public_key_may_already_be_published_abandoning_only": { [name: string]: never };
-  "security.the_recovery_signature_has_not_been_saved_re_enter": { [name: string]: never };
   "security.the_security_operation_s_outcome_is_unverified_continue_the": { [name: string]: never };
   "security.the_server_does_not_recognize_this_device": { [name: string]: never };
-  "security.the_server_replaced_the_pairing_commitment_after_receiving_the": { [name: string]: never };
   "security.the_server_returned_information_for_a_different_device_from": { [name: string]: never };
   "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": { [name: string]: never };
   "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": { [name: string]: never };
-  "security.this_browser_does_not_support_web_locks_it_cannot": { [name: string]: never };
   "security.this_browser_is_the_only_managing_client_transfer_management": { [name: string]: never };
-  "security.this_browser_s_original_public_key_could_not_be": { [name: string]: never };
   "security.this_browser_will_be_the_only_managing_client_clearing": { [name: string]: never };
   "security.this_deletes_the_account_keys_and_cache_on_this": { [name: string]: never };
   "security.this_device": { [name: string]: never };
@@ -1145,7 +1112,6 @@ export interface MessageArgs {
   "security.this_device_manages_the_account": { [name: string]: never };
   "security.this_device_s_clock_is_behind_the_managing_client": { [name: string]: never };
   "security.this_page_and_the_server_or_pairing_device_use": { [name: string]: never };
-  "security.this_pairing_expired_generate_a_new_code_on_the": { [name: string]: never };
   "security.this_permanently_deletes_sessions_events_and_images_on_the": { [name: string]: never };
   "security.too_many_attempts_wait_a_minute_and_retry": { [name: string]: never };
   "security.transfer_management": { [name: string]: never };
@@ -2083,25 +2049,20 @@ export const messages = {
     "dock.submitting": "Submitting…",
     "dock.trust_folder": "No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎",
     "dock.waiting_confirmation": "Waiting for confirmation",
-    "errors.account_creation_draft_preserved_continue_the_original_creation_flow": "Account creation draft preserved. Continue the original creation flow and recovery code confirmation.",
     "errors.cannot_connect_to_terminal": "Cannot connect to terminal",
     "errors.client_out_of_date": "This client version is out of date. Update and retry.",
     "errors.connection_dropped_midway": "Connection dropped midway",
     "errors.connection_timed_out": "Connection timed out",
     "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
     "errors.core_load_failed": "Failed to load core module: {reason}",
-    "errors.device_information_could_not_be_verified": "Device information could not be verified",
     "errors.device_information_is_changing_retry": "Device information is changing. Retry.",
-    "errors.device_registration_is_unfinished_retry_it_first": "Device registration is unfinished. Retry it first.",
     "errors.disconnected_from_server": "Disconnected from server",
-    "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": "Emergency recovery draft preserved. Continue checking, waiting, or completing the original recovery.",
     "errors.establishing_push_connection": "Establishing push connection",
     "errors.executed_result_unavailable": "Done on the computer, but the result couldn't be retrieved. Refresh to see the latest state.",
     "errors.history_could_not_continue_loading_retry": "History could not continue loading. Retry.",
     "errors.history_has_a_gap_retry": "History has a gap. Retry.",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "History keys unavailable: records from before recovery cannot be decrypted",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "Invalid ciphertext: signature, key, or content verification failed",
-    "errors.invalid_pairing_approval_signature": "Invalid pairing approval signature",
     "errors.it_may_have_been_deleted_or_belong_to_a": "It may have been deleted, or belong to a computer that was removed.",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.",
     "errors.names_can_only_be_changed_on_that_device": "Names can only be changed on that device",
@@ -2139,7 +2100,6 @@ export const messages = {
     "errors.the_server_address_cannot_include_a_username_or_password": "The server address cannot include a username or password",
     "errors.the_server_does_not_recognize_this_device_it_may": "The server does not recognize this device (it may have been removed or the service rebuilt)",
     "errors.the_server_must_use_https": "The server must use HTTPS",
-    "errors.the_server_returned_an_unexpected_device_id": "The server returned an unexpected device ID",
     "errors.the_task_was_just_changed_updated_to_the_latest": "The task was just changed. Updated to the latest content.",
     "errors.this_browser_has_already_joined_an_account_open_this": "This browser has already joined an account. Open this link on the new device to join.",
     "errors.this_device_s_clock_is_behind_the_account_state": "This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused.",
@@ -3246,11 +3206,7 @@ export const messages = {
     "security.after_removing_this_unfinished_pairing_generate_a_new_code": "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.",
     "security.after_submission_wait_48_hours_the_current_managing_client": "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.",
     "security.allow_to_join": "Allow to join",
-    "security.another_pairing_draft_is_unfinished": "Another pairing draft is unfinished",
-    "security.another_pairing_draft_is_unfinished_complete_this_pairing_or": "Another pairing draft is unfinished. Complete this pairing or explicitly exit before retrying.",
-    "security.another_security_operation_is_unfinished": "Another security operation is unfinished",
     "security.apply_again": "Apply again",
-    "security.apply_again_with_the_current_recovery_code": "Apply again with the current recovery code",
     "security.approved_waiting_for_the_new_device_to_finish_binding": "Approved. Waiting for the new device to finish binding…",
     "security.asked_the_browser_to_retain_data": "Asked the browser to retain data",
     "security.automatically_renews_when_you_return_to_the_managing_client": "Automatically renews when you return to the managing client. Remote control pauses after expiry; chat and history remain available. Cannot renew while the page is closed or frozen.",
@@ -3266,6 +3222,7 @@ export const messages = {
     "security.computer_run_remote_agent_account_join_and_enter_the": "Computer: run remote-agent account join and enter the code below. Client: scan the QR code or enter the pairing code.",
     "security.computers_can_only_run_clis_and_cannot_take_over": "Computers can only run CLIs and cannot take over management.",
     "security.confirm_exit": "Confirm exit",
+    "security.confirm_recovery_code_saved_first": "Confirm the new recovery code is saved offline first",
     "security.confirm_that_the_successor_device_saved_the_new_recovery": "Confirm that the successor device ({value}) saved the new recovery code. Transfer removes this device and makes the successor the only managing client.",
     "security.confirm_the_patterns_on_the_new_device_before_approving": "Confirm the patterns on the new device before approving on the managing client",
     "security.confirm_the_patterns_on_this_device_first": "Confirm the patterns on this device first",
@@ -3273,7 +3230,6 @@ export const messages = {
     "security.confirmed_here_waiting_for_managing_client_approval_and_binding": "Confirmed here. Waiting for managing client approval and binding…",
     "security.continue_creation": "Continue creation",
     "security.continue_original_draft": "Continue original draft",
-    "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": "Continue the original recovery or explicitly abandon the rejected recovery first",
     "security.control_ai_coding_clis_on_your_computer_from_any": "Continue using coding CLIs inside tmux on your computer from your phone or any browser.",
     "security.create_account": "Create account",
     "security.current_managing_client": "Current managing client",
@@ -3292,7 +3248,6 @@ export const messages = {
     "security.exit_this_browser": "Exit this browser?",
     "security.exiting": "Exiting…",
     "security.exiting_deletes_local_keys_you_will_need_to_pair": "Exiting deletes local keys. You will need to pair again.",
-    "security.finish_device_registration_first": "Finish device registration first",
     "security.finish_the_current_security_operation_before_renewing": "Finish the current security operation before renewing",
     "security.finish_the_current_security_operation_first": "Finish the current security operation first",
     "security.finish_the_original_security_operation_first": "Finish the original security operation first",
@@ -3304,7 +3259,6 @@ export const messages = {
     "security.i_saved_the_new_recovery_code_offline": "I saved the new recovery code offline",
     "security.if_this_browser_is_already_a_member_recovery_will": "If this browser is already a member, recovery will remove its old identity and rotate content keys. If interrupted, continue the original recovery.",
     "security.invalid_pairing_key": "Invalid pairing key",
-    "security.invalid_pairing_trust_information": "Invalid pairing trust information",
     "security.invalid_recovery_code": "Invalid recovery code",
     "security.it_may_have_been_removed_or_the_service_may": "It may have been removed, or the service may have been rebuilt. Sessions on your computers are unaffected.",
     "security.join": "Join",
@@ -3320,22 +3274,17 @@ export const messages = {
     "security.on_the_managing_client_open_settings_add_device_and": "On the managing client, open Settings › Add device and enter its 8-digit pairing code here.",
     "security.once_the_successor_device_joins_and_confirms_saving_its": "Once the successor device joins and confirms saving its new recovery code, approve here. Transfer preserves accessible history and removes this device.",
     "security.one_time_security_setup": "One-time security setup",
-    "security.only_a_removed_computer_s_archive_can_be_rejoined": "Only a removed computer’s archive can be rejoined",
     "security.only_this_computer_can_rejoin_its_original_archive_with": "Only this computer can rejoin its original archive with a new identity, preserving its sessions and history.",
     "security.open_to_renew": "Open {value} to renew.",
     "security.original_recovery_code": "Original recovery code",
     "security.pair_again": "Pair again",
     "security.pair_valid_until": "Valid until {time}",
     "security.paired": "Paired",
-    "security.pairing_approval_does_not_match_this_device_or_has": "Pairing approval does not match this device or has expired",
     "security.pairing_canceled": "Pairing canceled",
     "security.pairing_code": "Pairing code",
-    "security.pairing_commitment_mismatch_pairing_stopped": "Pairing commitment mismatch. Pairing stopped.",
     "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before": "Pairing delivery expired. Explicitly remove the unfinished candidate before starting over.",
-    "security.pairing_expired": "Pairing expired",
     "security.pairing_expired_or_was_canceled": "Pairing expired or was canceled",
     "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before": "Pairing was canceled. Explicitly remove the unfinished candidate before starting over.",
-    "security.pairing_was_canceled_or_expired": "Pairing was canceled or expired",
     "security.patterns_differ_return_to_code_entry": "Patterns differ, return to code entry",
     "security.patterns_match_the_new_device_confirmed_first": "Patterns match; the new device confirmed first",
     "security.patterns_match_trust_and_continue": "Patterns match, trust and continue",
@@ -3350,10 +3299,8 @@ export const messages = {
     "security.recovery_code_for_restoring_public_information": "Recovery code for restoring public information",
     "security.recovery_code_saved_and_confirmed_waiting_for_the_current": "Recovery code saved and confirmed. Waiting for the current managing client’s approval; reopen this page to check.",
     "security.recovery_code_updated_the_previous_code_and_pending_recovery": "Recovery code updated. The previous code and pending recovery requests are invalidated.",
-    "security.recovery_is_pending_or_its_outcome_is_unknown_and": "Recovery is pending or its outcome is unknown and cannot be abandoned",
     "security.recovery_request_pending": "Recovery request pending",
     "security.recovery_request_pending_eligible_at": "Recovery request pending. Eligible at: {value}",
-    "security.recovery_was_rejected_explicitly_apply_again": "Recovery was rejected. Explicitly apply again.",
     "security.recovery_was_rejected_you_can_apply_again": "Recovery was rejected. You can apply again.",
     "security.refresh_successor_devices": "Refresh successor devices",
     "security.regenerate_recovery_code": "Regenerate recovery code",
@@ -3391,43 +3338,29 @@ export const messages = {
     "security.submit_or_check_original_recovery": "Submit or check original recovery",
     "security.success_is_uncertain_connection_lost": "Success is uncertain: connection lost",
     "security.take_over_management": "Take over management",
-    "security.the_48_hour_wait_has_not_ended": "The 48-hour wait has not ended",
     "security.the_account_belongs_to_another_server": "The account belongs to another server",
-    "security.the_account_does_not_match_the_managing_client_s": "The account does not match the managing client’s trust information",
     "security.the_account_keys_and_cache_in_this_browser_will": "The account keys and cache in this browser will be deleted before joining with a pairing code.",
     "security.the_account_s_state_chain_is_too_long_to": "The account’s state chain is too long to join. Rebuild the account on the managing client.",
     "security.the_browser_did_not_promise_to_retain_data": "The browser did not promise to retain data",
     "security.the_computer_s_archive_was_deleted_join_as_a": "The computer’s archive was deleted. Join as a new device.",
-    "security.the_join_receipt_does_not_contain_the_correct_identity": "The join receipt does not contain the correct identity for this device",
     "security.the_local_account_unfinished_registration_and_security_operations_will": "The local account, unfinished registration, and security operations will be cleared. You will need to pair again or create an account. Sessions and archives on the server will remain. Operations with an unknown outcome may have succeeded; verify them on the managing client.",
-    "security.the_local_security_state_is_damaged_and_cannot_be": "The local security state is damaged and cannot be overwritten by pairing again. Export and clear it first.",
     "security.the_managing_client_canceled_pairing": "The managing client canceled pairing",
     "security.the_managing_client_cannot_be_removed_directly_transfer_management": "The managing client cannot be removed directly. Transfer management first.",
     "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": "The managing client cannot be removed directly. Transfer management first.",
-    "security.the_managing_client_s_trust_information_does_not_match": "The managing client’s trust information does not match the pairing commitment",
     "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": "The new recovery code backup is unconfirmed. Replace the code and save it offline immediately.",
     "security.the_original_creation_draft_is_preserved_continue_with_the": "The original creation draft is preserved. Continue with the same account. The recovery code will not be shown again; if you have no backup, replace it immediately after entering the account.",
     "security.the_original_device_identity_keys_and_history_are_preserved": "The original device identity, keys, and history are preserved. On the managing client, open Settings › Add device, enter its 8-digit code here, then compare four patterns to finish binding.",
-    "security.the_original_device_public_key_does_not_match_the": "The original device public key does not match the local signing key",
     "security.the_original_operation_is_unfinished_continue_verifying": "The original operation is unfinished. Continue verifying.",
     "security.the_original_recovery_draft_is_preserved_the_new_recovery": "The original recovery draft is preserved. The new recovery code will not be shown again; you can still finish the original recovery without saving it. Replace it immediately after entering the account.",
-    "security.the_other_device_refused_this_join_request": "The other device refused this join request",
     "security.the_page_is_paused_return_to_the_foreground_to": "The page is paused. Return to the foreground to continue security operations.",
-    "security.the_pairing_code_belongs_to_another_security_domain_original": "The pairing code belongs to another security domain. Original keys preserved.",
     "security.the_pairing_code_is_wrong_or_has_already_been": "The pairing code is wrong or has already been used",
-    "security.the_pairing_draft_conflicts_with_the_current_identity": "The pairing draft conflicts with the current identity",
-    "security.the_pairing_receipt_was_approved_by_a_device_other": "The pairing receipt was approved by a device other than the current managing client",
     "security.the_public_key_may_already_be_published_abandoning_only": "The public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control; keep the saved recovery code.",
-    "security.the_recovery_signature_has_not_been_saved_re_enter": "The recovery signature has not been saved. Re-enter the original recovery code to continue the original draft.",
     "security.the_security_operation_s_outcome_is_unverified_continue_the": "The security operation’s outcome is unverified. Continue the original operation first; exiting deletes the only completion materials.",
     "security.the_server_does_not_recognize_this_device": "The server does not recognize this device",
-    "security.the_server_replaced_the_pairing_commitment_after_receiving_the": "The server replaced the pairing commitment after receiving the temporary public key. Pairing stopped.",
     "security.the_server_returned_information_for_a_different_device_from": "The server returned information for a different device from the one that started pairing. Pairing stopped.",
     "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "The unpublished pairing draft expired. You can explicitly abandon it and start over.",
     "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over.",
-    "security.this_browser_does_not_support_web_locks_it_cannot": "This browser does not support Web Locks. It cannot safely manage the account.",
     "security.this_browser_is_the_only_managing_client_transfer_management": "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
-    "security.this_browser_s_original_public_key_could_not_be": "This browser’s original public key could not be verified. Original keys preserved.",
     "security.this_browser_will_be_the_only_managing_client_clearing": "This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended.",
     "security.this_deletes_the_account_keys_and_cache_on_this": "This deletes the account keys and cache on this device. Sessions on your computers are unaffected.",
     "security.this_device": "This device",
@@ -3436,7 +3369,6 @@ export const messages = {
     "security.this_device_manages_the_account": "This device manages the account",
     "security.this_device_s_clock_is_behind_the_managing_client": "This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining.",
     "security.this_page_and_the_server_or_pairing_device_use": "This page and the server or pairing device use different versions. Refresh to update and retry.",
-    "security.this_pairing_expired_generate_a_new_code_on_the": "This pairing expired. Generate a new code on the managing client.",
     "security.this_permanently_deletes_sessions_events_and_images_on_the": "This permanently deletes sessions, events, and images on the relay. Local computer files are unaffected. This does not remove the device.",
     "security.too_many_attempts_wait_a_minute_and_retry": "Too many attempts. Wait a minute and retry.",
     "security.transfer_management": "Transfer management",
@@ -4480,25 +4412,20 @@ export const messages = {
     "dock.submitting": "提交中…",
     "dock.trust_folder": "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎",
     "dock.waiting_confirmation": "等待确认",
-    "errors.account_creation_draft_preserved_continue_the_original_creation_flow": "账户创建草稿已保留，请继续原创建流程和恢复码确认",
     "errors.cannot_connect_to_terminal": "连不上终端",
     "errors.client_out_of_date": "这个客户端版本较旧，请更新后再试",
     "errors.connection_dropped_midway": "连接中途断了",
     "errors.connection_timed_out": "连接超时",
     "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
     "errors.core_load_failed": "核心模块加载失败：{reason}",
-    "errors.device_information_could_not_be_verified": "无法核实设备信息",
     "errors.device_information_is_changing_retry": "设备信息正在变化，请重试",
-    "errors.device_registration_is_unfinished_retry_it_first": "还有未完成的设备注册，请先重试",
     "errors.disconnected_from_server": "与 server 的连接断开",
-    "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": "紧急恢复草稿已保留，请继续查询、等待或完成原恢复",
     "errors.establishing_push_connection": "建立推送连接",
     "errors.executed_result_unavailable": "电脑已执行，但结果没能取回，请刷新查看最新状态",
     "errors.history_could_not_continue_loading_retry": "历史记录未能继续加载，请重试",
     "errors.history_has_a_gap_retry": "历史记录不连续，请重试读取",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "历史密钥不可用：恢复前的记录无法解密",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "密文无效：签名、密钥或内容校验失败",
-    "errors.invalid_pairing_approval_signature": "配对批准签名无效",
     "errors.it_may_have_been_deleted_or_belong_to_a": "它可能已经被删除，或者属于一台被移除的电脑。",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "成员链冲突，安全操作已停止；请核对设备后明确重新加入",
     "errors.names_can_only_be_changed_on_that_device": "名称只能在那台设备上修改",
@@ -4536,7 +4463,6 @@ export const messages = {
     "errors.the_server_address_cannot_include_a_username_or_password": "server 地址不能包含用户名或密码",
     "errors.the_server_does_not_recognize_this_device_it_may": "服务器不认识这台设备（可能已被移除，或服务已重建）",
     "errors.the_server_must_use_https": "server 必须使用 https",
-    "errors.the_server_returned_an_unexpected_device_id": "服务器返回了意外的设备 ID",
     "errors.the_task_was_just_changed_updated_to_the_latest": "任务刚被修改，已更新为最新内容",
     "errors.this_browser_has_already_joined_an_account_open_this": "这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。",
     "errors.this_device_s_clock_is_behind_the_account_state": "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。",
@@ -5572,11 +5498,7 @@ export const messages = {
     "security.after_removing_this_unfinished_pairing_generate_a_new_code": "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。",
     "security.after_submission_wait_48_hours_the_current_managing_client": "提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。",
     "security.allow_to_join": "允许加入",
-    "security.another_pairing_draft_is_unfinished": "另一个配对草稿仍待完成",
-    "security.another_pairing_draft_is_unfinished_complete_this_pairing_or": "另一个配对草稿未完成，请先完成本次配对或明确退出后重试",
-    "security.another_security_operation_is_unfinished": "另一次安全操作尚未完成",
     "security.apply_again": "重新申请",
-    "security.apply_again_with_the_current_recovery_code": "请使用当前恢复码重新申请",
     "security.approved_waiting_for_the_new_device_to_finish_binding": "已批准，等待新设备完成绑定…",
     "security.asked_the_browser_to_retain_data": "已请求浏览器保留数据",
     "security.automatically_renews_when_you_return_to_the_managing_client": "回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。网页关闭或冻结时无法续期。",
@@ -5592,6 +5514,7 @@ export const messages = {
     "security.computer_run_remote_agent_account_join_and_enter_the": "电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。",
     "security.computers_can_only_run_clis_and_cannot_take_over": "电脑只能运行 CLI，不能接管管理权。",
     "security.confirm_exit": "确认退出",
+    "security.confirm_recovery_code_saved_first": "请先确认已离线保存新的恢复码",
     "security.confirm_that_the_successor_device_saved_the_new_recovery": "确认接任设备（{value}）已经保存新的恢复码。交接后本机会被移除，接任设备成为唯一管理端。",
     "security.confirm_the_patterns_on_the_new_device_before_approving": "请先由新设备确认图案，再在管理端批准",
     "security.confirm_the_patterns_on_this_device_first": "请先在本机确认图案",
@@ -5599,7 +5522,6 @@ export const messages = {
     "security.confirmed_here_waiting_for_managing_client_approval_and_binding": "本机已确认，等待管理端批准并完成绑定…",
     "security.continue_creation": "继续创建账户",
     "security.continue_original_draft": "继续原草稿",
-    "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": "请先继续原恢复或明确放弃已否决的恢复",
     "security.control_ai_coding_clis_on_your_computer_from_any": "在手机或任何浏览器里，接着用电脑 tmux 里的编程 CLI。",
     "security.create_account": "创建账户",
     "security.current_managing_client": "当前管理端",
@@ -5618,7 +5540,6 @@ export const messages = {
     "security.exit_this_browser": "退出这个浏览器？",
     "security.exiting": "退出中…",
     "security.exiting_deletes_local_keys_you_will_need_to_pair": "退出会删除本机密钥，需要重新配对。",
-    "security.finish_device_registration_first": "请先完成设备注册",
     "security.finish_the_current_security_operation_before_renewing": "请先完成当前安全操作，再续期",
     "security.finish_the_current_security_operation_first": "请先完成当前安全操作",
     "security.finish_the_original_security_operation_first": "请先完成原安全操作",
@@ -5630,7 +5551,6 @@ export const messages = {
     "security.i_saved_the_new_recovery_code_offline": "我已离线保存新的恢复码",
     "security.if_this_browser_is_already_a_member_recovery_will": "若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。",
     "security.invalid_pairing_key": "配对密钥无效",
-    "security.invalid_pairing_trust_information": "无效的配对信任信息",
     "security.invalid_recovery_code": "恢复码无效",
     "security.it_may_have_been_removed_or_the_service_may": "可能已被移除，或服务已重建。电脑上的会话不受影响。",
     "security.join": "加入",
@@ -5646,22 +5566,17 @@ export const messages = {
     "security.on_the_managing_client_open_settings_add_device_and": "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。",
     "security.once_the_successor_device_joins_and_confirms_saving_its": "在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。",
     "security.one_time_security_setup": "一次性安全设置",
-    "security.only_a_removed_computer_s_archive_can_be_rejoined": "只能从已移除电脑的档案重新加入",
     "security.only_this_computer_can_rejoin_its_original_archive_with": "只允许这台电脑以新身份接回原档案，保留原会话和历史。",
     "security.open_to_renew": "请打开{value}续期",
     "security.original_recovery_code": "原恢复码",
     "security.pair_again": "重新配对",
     "security.pair_valid_until": "有效期至 {time}",
     "security.paired": "已配对",
-    "security.pairing_approval_does_not_match_this_device_or_has": "配对批准与这台设备不匹配或已过期",
     "security.pairing_canceled": "配对已取消",
     "security.pairing_code": "配对码",
-    "security.pairing_commitment_mismatch_pairing_stopped": "配对承诺不匹配，已停止配对",
     "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before": "配对交付已失效，请明确移除未完成候选后重新开始",
-    "security.pairing_expired": "配对已过期",
     "security.pairing_expired_or_was_canceled": "配对已过期或被取消",
     "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before": "配对已取消，请明确移除未完成候选后重新开始",
-    "security.pairing_was_canceled_or_expired": "配对已取消或过期",
     "security.patterns_differ_return_to_code_entry": "图案不一致，返回填码",
     "security.patterns_match_the_new_device_confirmed_first": "图案一致，新设备已先确认",
     "security.patterns_match_trust_and_continue": "图案一致，信任并继续",
@@ -5676,10 +5591,8 @@ export const messages = {
     "security.recovery_code_for_restoring_public_information": "补齐资料的恢复码",
     "security.recovery_code_saved_and_confirmed_waiting_for_the_current": "恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。",
     "security.recovery_code_updated_the_previous_code_and_pending_recovery": "恢复码已更新，原恢复码和待处理恢复申请已作废。",
-    "security.recovery_is_pending_or_its_outcome_is_unknown_and": "恢复仍待处理或结果未明，不能放弃",
     "security.recovery_request_pending": "恢复申请待处理",
     "security.recovery_request_pending_eligible_at": "恢复申请待处理 · 可生效时间：{value}",
-    "security.recovery_was_rejected_explicitly_apply_again": "恢复已被否决，请明确重新申请",
     "security.recovery_was_rejected_you_can_apply_again": "恢复已被否决，可以重新申请。",
     "security.refresh_successor_devices": "刷新接任设备",
     "security.regenerate_recovery_code": "重新生成恢复码",
@@ -5717,43 +5630,29 @@ export const messages = {
     "security.submit_or_check_original_recovery": "提交或查询原恢复",
     "security.success_is_uncertain_connection_lost": "不确定是否成功：网络断了",
     "security.take_over_management": "接管管理权",
-    "security.the_48_hour_wait_has_not_ended": "48 小时等待尚未结束",
     "security.the_account_belongs_to_another_server": "账户属于另一个服务器",
-    "security.the_account_does_not_match_the_managing_client_s": "账户与管理端的信任信息不匹配",
     "security.the_account_keys_and_cache_in_this_browser_will": "会先删除这个浏览器里的账户密钥和缓存，再用配对码加入。",
     "security.the_account_s_state_chain_is_too_long_to": "账户的状态链太长，无法加入；请在管理端重建账户。",
     "security.the_browser_did_not_promise_to_retain_data": "浏览器没有承诺保留数据",
     "security.the_computer_s_archive_was_deleted_join_as_a": "电脑档案已删除，请按新设备加入",
-    "security.the_join_receipt_does_not_contain_the_correct_identity": "加入回执没有本机的正确身份",
     "security.the_local_account_unfinished_registration_and_security_operations_will": "本机账户、未完成的注册和安全操作会被清除，需要重新配对或创建。服务器上的会话和档案不会被删除；结果未明的操作可能已经成功，请在管理端核实。",
-    "security.the_local_security_state_is_damaged_and_cannot_be": "本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试",
     "security.the_managing_client_canceled_pairing": "管理端取消了配对",
     "security.the_managing_client_cannot_be_removed_directly_transfer_management": "管理端不能被普通删除，请先交接",
     "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": "管理端不能直接移除，请先交接管理权。",
-    "security.the_managing_client_s_trust_information_does_not_match": "管理端的信任信息与配对承诺不匹配",
     "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": "新恢复码尚未确认备份，请立即换码并离线保存。",
     "security.the_original_creation_draft_is_preserved_continue_with_the": "原创建草稿已保留，继续同一个账户。恢复码不会再次显示；没有备份时，进入账户后立即换码。",
     "security.the_original_device_identity_keys_and_history_are_preserved": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对 4 个图案完成加入。",
-    "security.the_original_device_public_key_does_not_match_the": "原设备公钥与本机签名密钥不匹配",
     "security.the_original_operation_is_unfinished_continue_verifying": "原操作尚未完成，请继续核实",
     "security.the_original_recovery_draft_is_preserved_the_new_recovery": "原恢复草稿已保留。新恢复码不会再次显示；未保存时仍可完成原恢复，进入账户后立即换码。",
-    "security.the_other_device_refused_this_join_request": "对方拒绝了这次加入",
     "security.the_page_is_paused_return_to_the_foreground_to": "页面已暂停，请回到前台继续安全操作",
-    "security.the_pairing_code_belongs_to_another_security_domain_original": "配对码属于另一个安全域，原密钥已保留",
     "security.the_pairing_code_is_wrong_or_has_already_been": "配对码不对，或者已经用过了",
-    "security.the_pairing_draft_conflicts_with_the_current_identity": "配对草稿与当前身份冲突",
-    "security.the_pairing_receipt_was_approved_by_a_device_other": "配对回执的批准设备不是当前管理端",
     "security.the_public_key_may_already_be_published_abandoning_only": "接任公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。",
-    "security.the_recovery_signature_has_not_been_saved_re_enter": "恢复签名尚未保存，请重新输入原恢复码继续原草稿",
     "security.the_security_operation_s_outcome_is_unverified_continue_the": "安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。",
     "security.the_server_does_not_recognize_this_device": "服务器不认识这台设备",
-    "security.the_server_replaced_the_pairing_commitment_after_receiving_the": "服务器在获得临时公钥后替换了配对承诺，已停止配对",
     "security.the_server_returned_information_for_a_different_device_from": "服务器返回的不是发起配对那台设备的信息，已停止配对",
     "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "配对草稿已过期，尚未发布，可明确放弃后重新开始",
     "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始",
-    "security.this_browser_does_not_support_web_locks_it_cannot": "浏览器不支持 Web Locks，无法安全管理账户",
     "security.this_browser_is_the_only_managing_client_transfer_management": "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
-    "security.this_browser_s_original_public_key_could_not_be": "无法核实这台浏览器原来的公钥，原密钥已保留",
     "security.this_browser_will_be_the_only_managing_client_clearing": "此浏览器将是唯一管理端。清理网站数据或换浏览器会丢失管理密钥；恢复码必须离线保存。日常建议用 App 管理。",
     "security.this_deletes_the_account_keys_and_cache_on_this": "这会删除本机的账户密钥和缓存，电脑上的会话不受影响。",
     "security.this_device": "本机",
@@ -5762,7 +5661,6 @@ export const messages = {
     "security.this_device_manages_the_account": "本机是管理端",
     "security.this_device_s_clock_is_behind_the_managing_client": "本机时间比管理端慢，操作会被拒绝。请校准系统时间和时区后再加入。",
     "security.this_page_and_the_server_or_pairing_device_use": "这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试",
-    "security.this_pairing_expired_generate_a_new_code_on_the": "这次配对已失效，请在管理端重新生成配对码",
     "security.this_permanently_deletes_sessions_events_and_images_on_the": "将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。",
     "security.too_many_attempts_wait_a_minute_and_retry": "试得太频繁了，等一分钟再试",
     "security.transfer_management": "交接管理权",

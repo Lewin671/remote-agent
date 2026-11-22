@@ -178,20 +178,6 @@
     "zh-CN": "登录失效：{reason}"
   },
   {
-    "en": "Only the managing client can veto recovery",
-    "key": "errors.android_only_the_managing_client_can_veto_recovery",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "只有管理端能否决恢复"
-  },
-  {
     "en": "Open {value1} to renew",
     "key": "errors.android_open_value1_to_renew",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：管理端的设备名称，用户内容原样保留。英文为待审初稿；不要替换成浏览器专属安全说明。",
@@ -209,20 +195,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "请打开{value1}续期"
-  },
-  {
-    "en": "Pairing approval does not match this device, has expired, or has an invalid signature",
-    "key": "errors.android_pairing_approval_does_not_match_this_device_has_expired_or",
-    "notes": "Android Approval 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效"
   },
   {
     "en": "Remote control authorization expired. Cannot save changes, control sessions, or upload new content. {value1} and retry. History remains viewable",
@@ -261,20 +233,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "远程控制已暂停：{value1}后再试"
-  },
-  {
-    "en": "Remove devices on the managing client",
-    "key": "errors.android_remove_devices_on_the_managing_client",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "请在管理端上删除设备"
   },
   {
     "en": "Secure connection failed: {reason}",
@@ -430,20 +388,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "文件在上传时发生变化，请重试或重新选择文件"
-  },
-  {
-    "en": "The managing client cannot be removed normally",
-    "key": "errors.android_the_managing_client_cannot_be_removed_normally",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "管理端不能被普通删除"
   },
   {
     "en": "The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time",
@@ -679,22 +623,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "项目列表一直在被别的客户端修改，没能保存"
-  },
-  {
-    "en": "Invalid pairing approval signature",
-    "key": "errors.invalid_pairing_approval_signature",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "配对批准签名无效"
   },
   {
     "en": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
@@ -1267,22 +1195,6 @@
     "zh-CN": "名称只能在那台设备上修改"
   },
   {
-    "en": "Device information could not be verified",
-    "key": "errors.device_information_could_not_be_verified",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "无法核实设备信息"
-  },
-  {
     "en": "Device information is changing. Retry.",
     "key": "errors.device_information_is_changing_retry",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
@@ -1457,70 +1369,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "服务器不认识这台设备（可能已被移除，或服务已重建）"
-  },
-  {
-    "en": "Account creation draft preserved. Continue the original creation flow and recovery code confirmation.",
-    "key": "errors.account_creation_draft_preserved_continue_the_original_creation_flow",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "账户创建草稿已保留，请继续原创建流程和恢复码确认"
-  },
-  {
-    "en": "Emergency recovery draft preserved. Continue checking, waiting, or completing the original recovery.",
-    "key": "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "紧急恢复草稿已保留，请继续查询、等待或完成原恢复"
-  },
-  {
-    "en": "The server returned an unexpected device ID",
-    "key": "errors.the_server_returned_an_unexpected_device_id",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "服务器返回了意外的设备 ID"
-  },
-  {
-    "en": "Device registration is unfinished. Retry it first.",
-    "key": "errors.device_registration_is_unfinished_retry_it_first",
-    "notes": "storage 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "还有未完成的设备注册，请先重试"
   },
   {
     "en": "{reason}. The original request and keys are preserved. Retry; if approval expired or was refused, exit and pair again or create an account.",

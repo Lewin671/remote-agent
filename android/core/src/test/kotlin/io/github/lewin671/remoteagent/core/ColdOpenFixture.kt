@@ -3,122 +3,205 @@ package io.github.lewin671.remoteagent.core
 import com.connectrpc.StreamResult
 import com.connectrpc.http.*
 import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.*
+import java.io.File
+import java.util.Base64
 import kotlinx.coroutines.*
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.*
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
 
-/** Immutable signed corpus, built once per test class. 501 is the minimum multi-page history. */
+/** Immutable signed corpus, built once per test class from Go's vector fixture. */
 internal class ColdOpenFixture(val historySize: Int = 501) {
-    val now = 1_700_000_000_000L
-    private val signer = SigningKey(ByteArray(32) { 1 })
-    private val x = ByteArray(32) { 2 }
-    val phone = Authority.newMember(signer, x, 2u)
-    private val machineSigner = SigningKey(ByteArray(32) { 3 })
-    val machine = Authority.newMember(machineSigner, ByteArray(32) { 4 }, 1u)
-    private val secret = ByteArray(32) { 5 }
+    private val vectors = Json.parseToJsonElement(File(System.getProperty("domainVectors")).readText()).jsonObject
+    private val genesisRaw = Base64.getDecoder().decode(vectors["genesis"]!!.jsonObject["state"]!!.jsonPrimitive.content)
+    private val addedRaw = Base64.getDecoder().decode(vectors["added"]!!.jsonObject["state"]!!.jsonPrimitive.content)
+    private val leaseBytes = Base64.getDecoder().decode(vectors["lease"]!!.jsonPrimitive.content)
+    val now: Long = parseLeaseIssuedAt(leaseBytes)
+    private val domain = vectors["domain"]!!.jsonPrimitive.content.unhex()
+    private val genesisHash = vectors["genesis"]!!.jsonObject["hash"]!!.jsonPrimitive.content.unhex()
+    private val accountId = vectors["account"]!!.jsonPrimitive.content
+    private val contentSecret = vectors["content_secret_2"]!!.jsonPrimitive.content.unhex()
+    private val phoneSeed = vectors["phone_seed"]!!.jsonPrimitive.content.unhex()
+    private val phoneX = vectors["phone_x"]!!.jsonPrimitive.content.unhex()
+    private val machineSeed = vectors["machine_seed"]!!.jsonPrimitive.content.unhex()
+    private val machineX = vectors["machine_x"]!!.jsonPrimitive.content.unhex()
     private val seed = ByteArray(32) { 6 }
-    private val genesis = Authority.genesis("a".repeat(32), ByteArray(32) { 7 }, phone,
-        SigningKey(ByteArray(32) { 8 }).publicKey, secret, signer, now)
-    private val head = Authority.pair(genesis, machine, secret, secret, signer, now)
-    val record = DeviceSecurity.Record.fromChain(
-        head.core.account, head.core.domain, DeviceSecurity.stateHash(genesis), phone.id, x,
-        listOf(genesis, head).map(DeviceSecurity::stateBytes), listOf(null, null),
-    ).installed(emptyList(), emptyList(), HeadLease.sign(head, signer, now))
-    val account = Account("https://example.com", byteArrayOf(), ByteArray(32) { 1 }, phone.id, record.pin.account)
-    private val machineRecord = DeviceSecurity.Record.fromChain(
-        head.core.account, head.core.domain, DeviceSecurity.stateHash(genesis), machine.id, ByteArray(32) { 4 },
-        listOf(genesis, head).map(DeviceSecurity::stateBytes), listOf(null, null),
-    ).installed(emptyList(), emptyList(), HeadLease.sign(head, signer, now))
+    private val contentEpoch = parseStateContentEpochAndParent(addedRaw).first
 
-    fun removeMachine(): DeviceSecurity.State = Authority.remove(record.head, listOf(machine.id),
-        secret, ByteArray(32) { 12 }, signer, now)
+    val phoneEdPub = Corebind.ed25519PublicKey(phoneSeed)
+    val phoneId = deviceIdForEdPublic(phoneEdPub)
+    val machineId = deviceIdForEdPublic(Corebind.ed25519PublicKey(machineSeed))
+    val account = Account("https://example.com", phoneId, accountId)
 
-    private inline fun <T> withBridge(
-        rec: DeviceSecurity.Record,
-        memberId: String,
-        key: SigningKey,
-        block: (CoreSecurityBridge) -> T,
-    ): T = CoreSecurityBridge(TestSecurityStore(rec), memberId, key, clock = { now }).use(block)
+    val recordBytes = encodeV4RecordBytes(
+        account = accountId,
+        domain = domain,
+        genesis = genesisHash,
+        memberId = phoneId,
+        member = true,
+        server = "https://example.com",
+        states = listOf(genesisRaw, addedRaw),
+        lease = leaseBytes,
+        floorMs = now,
+        contentKeys = listOf(contentEpoch to contentSecret),
+    )
 
-    private fun CoreSecurityBridge.sealMachine(purpose: DeviceSecurity.Purpose, sid: String, seq: Long, plain: ByteArray): Envelope =
-        seal(
-            purpose = purpose,
-            machine = machine.id,
-            session = sid,
-            seq = seq.toULong(),
-            plain = plain,
-            seed = if (purpose.sessionKey) seed else null,
+    private val machineRecordBytes = encodeV4RecordBytes(
+        account = accountId,
+        domain = domain,
+        genesis = genesisHash,
+        memberId = machineId,
+        member = true,
+        server = "https://example.com",
+        states = listOf(genesisRaw, addedRaw),
+        lease = leaseBytes,
+        floorMs = now,
+        contentKeys = listOf(contentEpoch to contentSecret),
+    )
+
+    fun newPhoneStore(): MemorySecurityStoreV4 = MemorySecurityStoreV4().apply {
+        seedTestRecord(
+            edPrivate = phoneSeed,
+            edPublic = phoneEdPub,
+            xPrivate = phoneX,
+            xPublic = Corebind.x25519PublicKey(phoneX),
+            recordBytes = recordBytes,
         )
+    }
 
-    private fun seal(purpose: DeviceSecurity.Purpose, sid: String, seq: Long, plain: ByteArray): Envelope =
-        withBridge(machineRecord, machine.id, machineSigner) { it.sealMachine(purpose, sid, seq, plain) }
+    private fun newMachineStore(): MemorySecurityStoreV4 = MemorySecurityStoreV4().apply {
+        seedTestRecord(
+            edPrivate = machineSeed,
+            edPublic = Corebind.ed25519PublicKey(machineSeed),
+            xPrivate = machineX,
+            xPublic = Corebind.x25519PublicKey(machineX),
+            recordBytes = machineRecordBytes,
+        )
+    }
 
-    fun machine(revision: Long, hostname: String): Machine = Machine.newBuilder().setId(machine.id)
-        .setOnline(true).setMeta(seal(DeviceSecurity.Purpose.MACHINE_META, "", revision,
-            MachineMeta.newBuilder().setHostname(hostname).build().toByteArray())).build()
+    private fun sealMachine(purpose: PayloadKind, sid: String, seq: Long, plain: ByteArray): Envelope =
+        CoreMemoryBridge(newMachineStore(), "https://example.com", machineId, accountId, clock = { now }).use { b ->
+            b.seal(
+                purpose = purpose.number,
+                machine = machineId,
+                session = sid,
+                seq = seq,
+                plain = plain,
+                overrideSessionSeed = if (purpose == PayloadKind.PAYLOAD_KIND_EVENT) seed else null,
+            )
+        }
+
+    fun machine(revision: Long, hostname: String): Machine = Machine.newBuilder()
+        .setId(machineId)
+        .setOnline(true)
+        .setMeta(
+            sealMachine(
+                PayloadKind.PAYLOAD_KIND_MACHINE_META,
+                "",
+                revision,
+                MachineMeta.newBuilder().setHostname(hostname).build().toByteArray(),
+            ),
+        )
+        .build()
 
     fun device(revision: Long, name: String): Device {
-        val env = withBridge(record, phone.id, signer) { bridge ->
-            bridge.seal(
-                purpose = DeviceSecurity.Purpose.DEVICE_META,
-                request = phone.id,
-                seq = revision.toULong(),
+        val env = CoreMemoryBridge(newPhoneStore(), "https://example.com", phoneId, accountId, clock = { now }).use { b ->
+            b.seal(
+                purpose = PayloadKind.PAYLOAD_KIND_DEVICE_META.number,
+                request = phoneId,
+                seq = revision,
                 plain = DeviceMeta.newBuilder().setName(name).build().toByteArray(),
             )
         }
-        return Device.newBuilder().setId(phone.id).setKind(DeviceKind.DEVICE_KIND_CLIENT).setMeta(env).build()
+        return Device.newBuilder().setId(phoneId).setKind(DeviceKind.DEVICE_KIND_CLIENT).setMeta(env).build()
     }
 
-    val sessions = withBridge(machineRecord, machine.id, machineSigner) { bridge ->
-        listOf("long", "short", "empty").associateWith { sid ->
-            RemoteSession.newBuilder().setSessionId(sid).setMachineId(machine.id)
-                .setKey(bridge.sealMachine(DeviceSecurity.Purpose.SESSION_KEY, sid, 1, seed))
-                .setMeta(bridge.sealMachine(DeviceSecurity.Purpose.SESSION_META, sid, 1,
-                    Session.newBuilder().setId(sid).setTitle(sid).build().toByteArray()))
-                .setLastSeq(when (sid) { "long" -> historySize; "short" -> 2; else -> 0 }.toLong()).build()
-        }
-    }
-    fun session(sid: String, revision: Long, status: SessionStatus): RemoteSession =
-        sessions.getValue(sid).toBuilder().setMeta(seal(DeviceSecurity.Purpose.SESSION_META, sid, revision,
-            Session.newBuilder().setId(sid).setStatus(status).build().toByteArray())).build()
-
-    fun taskApproval(): RemoteSession = sessions.getValue("empty").toBuilder().setMeta(seal(
-        DeviceSecurity.Purpose.SESSION_META, "empty", 2,
-        Session.newBuilder().setId("empty").setCwd("/scheduled").setTaskOwned(true)
-            .setPendingApprovals(1).setStatus(SessionStatus.SESSION_STATUS_BLOCKED).build().toByteArray())).build()
-
-    val events = withBridge(machineRecord, machine.id, machineSigner) { bridge ->
-        listOf("long", "short", "empty").associateWith { sid ->
-            (1..when (sid) { "long" -> historySize + 1; "short" -> 2; else -> 0 }).map { seq ->
-                val event = Event.newBuilder().setSeq(seq.toLong()).setSessionId(sid)
-                    .setAgentMessage(AgentMessage.newBuilder().setText("Message $seq")).build()
-                StoredEvent.newBuilder().setSeq(seq.toLong())
-                    .setEnvelope(bridge.sealMachine(DeviceSecurity.Purpose.EVENT, sid, seq.toLong(), event.toByteArray())).build()
+    val sessions: Map<String, RemoteSession> =
+        CoreMemoryBridge(newMachineStore(), "https://example.com", machineId, accountId, clock = { now }).use { b ->
+            listOf("long", "short", "empty").associateWith { sid ->
+                RemoteSession.newBuilder()
+                    .setSessionId(sid)
+                    .setMachineId(machineId)
+                    .setKey(b.seal(PayloadKind.PAYLOAD_KIND_SESSION_KEY.number, machine = machineId, session = sid, seq = 1L, plain = seed))
+                    .setMeta(
+                        b.seal(
+                            PayloadKind.PAYLOAD_KIND_SESSION_META.number,
+                            machine = machineId,
+                            session = sid,
+                            seq = 1L,
+                            plain = Session.newBuilder().setId(sid).setTitle(sid).build().toByteArray(),
+                        ),
+                    )
+                    .setLastSeq(when (sid) { "long" -> historySize; "short" -> 2; else -> 0 }.toLong())
+                    .build()
             }
         }
-    }
+
+    fun session(sid: String, revision: Long, status: SessionStatus): RemoteSession =
+        sessions.getValue(sid).toBuilder().setMeta(
+            sealMachine(
+                PayloadKind.PAYLOAD_KIND_SESSION_META,
+                sid,
+                revision,
+                Session.newBuilder().setId(sid).setStatus(status).build().toByteArray(),
+            ),
+        ).build()
+
+    fun taskApproval(): RemoteSession = sessions.getValue("empty").toBuilder().setMeta(
+        sealMachine(
+            PayloadKind.PAYLOAD_KIND_SESSION_META,
+            "empty",
+            2L,
+            Session.newBuilder()
+                .setId("empty")
+                .setCwd("/scheduled")
+                .setTaskOwned(true)
+                .setPendingApprovals(1)
+                .setStatus(SessionStatus.SESSION_STATUS_BLOCKED)
+                .build()
+                .toByteArray(),
+        ),
+    ).build()
+
+    val events: Map<String, List<StoredEvent>> =
+        CoreMemoryBridge(newMachineStore(), "https://example.com", machineId, accountId, clock = { now }).use { b ->
+            listOf("long", "short", "empty").associateWith { sid ->
+                (1..when (sid) { "long" -> historySize + 1; "short" -> 2; else -> 0 }).map { seq ->
+                    val event = Event.newBuilder()
+                        .setSeq(seq.toLong())
+                        .setSessionId(sid)
+                        .setAgentMessage(AgentMessage.newBuilder().setText("Message $seq"))
+                        .build()
+                    StoredEvent.newBuilder()
+                        .setSeq(seq.toLong())
+                        .setEnvelope(
+                            b.seal(
+                                PayloadKind.PAYLOAD_KIND_EVENT.number,
+                                machine = machineId,
+                                session = sid,
+                                seq = seq.toLong(),
+                                plain = event.toByteArray(),
+                                overrideSessionSeed = seed,
+                            ),
+                        )
+                        .build()
+                }
+            }
+        }
 }
 
-/** The real Connect codec, Remote, security verification and cache; only I/O and time are fake. */
 @OptIn(ExperimentalCoroutinesApi::class)
-internal class MemoryTokens : LoginTokenStore {
-    var saved: LoginToken? = null
-    var reads = 0
-    var clears = 0
-    override fun loadLoginToken(account: Account): LoginToken? { reads++; return saved }
-    override fun saveLoginToken(account: Account, token: LoginToken) { saved = token }
-    override fun clearLoginToken(account: Account) { clears++; saved = null }
-}
-
 internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) : HTTPClientInterface, WebSocket.Factory {
     val calls = mutableListOf<String>()
     val after = mutableListOf<Long>()
-    var securityRecord = fixture.record
-    var machineRows = listOf(Machine.newBuilder().setId(fixture.machine.id).setOnline(true).build())
+    var machineRows = listOf(Machine.newBuilder().setId(fixture.machineId).setOnline(true).build())
     var response: (String, UnaryHTTPRequest) -> com.google.protobuf.MessageLite? = { _, _ -> null }
     var count = fixture.historySize
     var missing = 0L
@@ -134,13 +217,24 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
     private var token = "saved-credential"
     private val sockets = mutableListOf<Socket>()
     private val http = Api.defaultHttp()
-    fun saved() = MemoryTokens().apply { saved = LoginToken(token, fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS) }
-    fun remote(cache: CipherCache? = null, tokens: LoginTokenStore? = saved(),
-        sockets: WebSocket.Factory = this) = Remote(
-        fixture.account, http, cache,
+
+    fun saved(): MemoryTokens = MemoryTokens(fixture.newPhoneStore()).apply {
+        saved = LoginToken(token, fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS)
+    }
+
+    fun remote(
+        cache: CipherCache? = null,
+        store: SecurityStoreV4 = saved(),
+        sockets: WebSocket.Factory = this,
+    ) = Remote(
+        account = fixture.account,
+        http = http,
+        cache = cache,
         clock = { fixture.now + test.testScheduler.currentTime },
-        securityStorage = TestSecurityStore(fixture.record), tokenStorage = tokens,
-        dispatcher = StandardTestDispatcher(test.testScheduler), socketFactory = sockets, rpcTransport = this,
+        securityStore = store,
+        dispatcher = StandardTestDispatcher(test.testScheduler),
+        socketFactory = sockets,
+        rpcTransport = this,
         monotonic = { test.testScheduler.currentTime },
     )
 
@@ -157,28 +251,34 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
             val denied = denyLogin && name == "Login"
             if (denied || unavailable || (!auth && bearer != "Bearer $token") || (name == "GetEvents" && rejectNextHistory)) {
                 rejectNextHistory = false
-                onResult(HTTPResponse(trailers = emptyMap(), status = if (denied) 403 else if (unavailable) 503 else 401,
-                    headers = mapOf("content-type" to listOf("application/json"), "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch")),
-                    message = Buffer().writeUtf8(if (denied) "{\"code\":\"permission_denied\"}" else if (unavailable) "{\"code\":\"unavailable\"}" else "{\"code\":\"unauthenticated\"}")))
+                onResult(
+                    HTTPResponse(
+                        trailers = emptyMap(),
+                        status = if (denied) 403 else if (unavailable) 503 else 401,
+                        headers = mapOf(
+                            "content-type" to listOf("application/json"),
+                            "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch"),
+                        ),
+                        message = Buffer().writeUtf8(
+                            if (denied) "{\"code\":\"permission_denied\"}"
+                            else if (unavailable) "{\"code\":\"unavailable\"}"
+                            else "{\"code\":\"unauthenticated\"}",
+                        ),
+                    ),
+                )
                 return@launch
             }
             val response: com.google.protobuf.MessageLite = response(name, request) ?: when (name) {
                 "GetChallenge" -> GetChallengeResponse.newBuilder().setChallenge(ByteString.copyFrom(ByteArray(32) { 9 })).build()
                 "Login" -> {
                     val login = LoginRequest.parseFrom(request.message.clone().readByteArray())
-                    check(login.deviceId == fixture.phone.id && login.protocolVersion == RELAY_PROTOCOL_VERSION)
-                    check(verifyEd25519(fixture.phone.ed, loginMessage(login.challenge.toByteArray()), login.signature.toByteArray()))
+                    check(login.deviceId == fixture.phoneId && login.protocolVersion == RELAY_PROTOCOL_VERSION)
+                    check(Corebind.ed25519Verify(fixture.phoneEdPub, loginMessage(login.challenge.toByteArray()), login.signature.toByteArray()))
                     token = "credential-${++minted}"
                     LoginResponse.newBuilder().setToken(token).setExpiresMs(fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS).build()
                 }
                 "ListMachines" -> ListMachinesResponse.newBuilder().addAllMachines(machineRows).build()
-                "GetSecurityStates" -> {
-                    val after = GetSecurityStatesRequest.parseFrom(request.message.clone().readByteArray()).afterEpoch.toULong()
-                    GetSecurityStatesResponse.newBuilder().setHeadEpoch(securityRecord.head.core.epoch.toLong())
-                        .addAllStates(securityRecord.chain.filter { it.core.epoch > after }.map {
-                            SecurityState.newBuilder().setState(ByteString.copyFrom(DeviceSecurity.stateBytes(it))).build()
-                        }).setLease(ByteString.copyFrom(securityRecord.lease?.bytes() ?: byteArrayOf())).build()
-                }
+                "GetSecurityStates" -> GetSecurityStatesResponse.newBuilder().setHeadEpoch(2L).build()
                 "ListDevices" -> ListDevicesResponse.getDefaultInstance()
                 "ListRemoteSessions" -> ListRemoteSessionsResponse.newBuilder().addAllSessions(fixture.sessions.values).build()
                 "GetAccountPrefs" -> GetAccountPrefsResponse.getDefaultInstance()
@@ -188,13 +288,24 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
                     val available = fixture.events.getValue(page.sessionId)
                         .take(if (page.sessionId == "long") count else Int.MAX_VALUE)
                     val selected = available.filter { it.seq > page.afterSeq }.take(page.limit)
-                    GetEventsResponse.newBuilder().addAllEvents(selected.filter { it.seq != missing })
-                        .setMore(available.any { it.seq > (selected.lastOrNull()?.seq ?: page.afterSeq) }).build()
+                    GetEventsResponse.newBuilder()
+                        .addAllEvents(selected.filter { it.seq != missing })
+                        .setMore(available.any { it.seq > (selected.lastOrNull()?.seq ?: page.afterSeq) })
+                        .build()
                 }
                 else -> error("Unexpected RPC: $name")
             }
-            onResult(HTTPResponse(trailers = emptyMap(), status = 200, headers = mapOf("content-type" to listOf("application/proto"), "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch")),
-                message = Buffer().write(response.toByteArray())))
+            onResult(
+                HTTPResponse(
+                    trailers = emptyMap(),
+                    status = 200,
+                    headers = mapOf(
+                        "content-type" to listOf("application/proto"),
+                        "Remote-Agent-Relay-Epoch" to listOf("fixture-epoch"),
+                    ),
+                    message = Buffer().write(response.toByteArray()),
+                ),
+            )
         }
         return { job.cancel() }
     }
@@ -207,7 +318,15 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
         test.backgroundScope.launch {
             delay(latencyMs)
             if (offline) listener.onFailure(it, java.io.IOException("offline"), null)
-            else listener.onOpen(it, Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(101).message("Switching Protocols").build())
+            else listener.onOpen(
+                it,
+                Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(101)
+                    .message("Switching Protocols")
+                    .build(),
+            )
         }
     }
 
@@ -215,8 +334,11 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
     fun disconnect() { sockets.toList().forEach { it.close(1001, "disconnected"); it.cancel() } }
 
     fun push(event: StoredEvent) {
-        sockets.last().emit(ServerFrame.newBuilder().setEventsAppended(EventsAppended.newBuilder()
-            .setSessionId("long").addEvents(event)).build())
+        sockets.last().emit(
+            ServerFrame.newBuilder()
+                .setEventsAppended(EventsAppended.newBuilder().setSessionId("long").addEvents(event))
+                .build(),
+        )
     }
 
     private inner class Socket(val req: Request, val listener: WebSocketListener) : WebSocket {
@@ -232,7 +354,10 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
             } else {
                 emit(ServerFrame.newBuilder().setReady(Ready.newBuilder().setServerTimeMs(fixture.now + test.testScheduler.currentTime)).build())
                 heartbeat = test.backgroundScope.launch {
-                    while (isActive && !canceled) { delay(1000); emit(ServerFrame.newBuilder().setHeartbeat(Heartbeat.getDefaultInstance()).build()) }
+                    while (isActive && !canceled) {
+                        delay(1000)
+                        emit(ServerFrame.newBuilder().setHeartbeat(Heartbeat.getDefaultInstance()).build())
+                    }
                 }
             }
             return true

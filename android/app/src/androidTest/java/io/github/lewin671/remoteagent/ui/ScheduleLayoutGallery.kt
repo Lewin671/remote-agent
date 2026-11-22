@@ -33,7 +33,7 @@ import org.junit.Test
 @OptIn(ExperimentalTestApi::class)
 class ScheduleLayoutGallery {
     @get:Rule val ui = createAndroidComposeRule<ComponentActivity>()
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "layout-client"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "layout-client"), Api.defaultHttp())
     private val fixtureScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private var dark by mutableStateOf(false)

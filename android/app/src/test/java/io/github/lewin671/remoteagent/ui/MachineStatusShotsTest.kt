@@ -61,7 +61,7 @@ class MachineStatusShotsTest {
     @get:Rule val resources = SessionMessageContextRule()
 
     private val remote = Remote(
-        Account("https://example.com", ByteArray(32), ByteArray(32), "d"),
+        Account("https://example.com", "d"),
         Api.defaultHttp(),
         dispatcher = Dispatchers.Unconfined,
     )

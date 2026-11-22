@@ -10,16 +10,14 @@ import com.connectrpc.impl.ProtocolClient
 import com.connectrpc.okhttp.ConnectOkHttpClient
 import com.connectrpc.protocols.NetworkProtocol
 import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.proto.SecurityKeyKind
 import io.github.lewin671.remoteagent.proto.AuthServiceClient
 import io.github.lewin671.remoteagent.proto.ClientServiceClient
-import io.github.lewin671.remoteagent.proto.DeviceKind
-import io.github.lewin671.remoteagent.proto.DeviceRegistration
 import io.github.lewin671.remoteagent.proto.GetChallengeRequest
 import io.github.lewin671.remoteagent.proto.LoginRequest
 import io.github.lewin671.remoteagent.proto.LoginResponse
 import io.github.lewin671.remoteagent.proto.PairingServiceClient
 import io.github.lewin671.remoteagent.proto.RecoveryServiceClient
-import io.github.lewin671.remoteagent.proto.RegisterDeviceRequest
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -36,28 +34,19 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/**
- * A device of the account. [root] and [deviceSeed] are secrets: the app keeps them wrapped with a
- * Keystore key and never logs them.
- */
-class Account(
-    val server: String,
-    /** The account root is absent on a phone that only joined or recovered; empty bytes mean so. */
-    val root: ByteArray,
-    val deviceSeed: ByteArray,
-    val deviceId: String,
-    val accountId: String =
-        if (root.size == KEY_SIZE) deviceId(Keys.derive(root).account.publicKey) else "",
-    /** Public only; empty when this phone has neither the root nor a pairing payload with it. */
-    val accountPublicKey: ByteArray =
-        if (root.size == KEY_SIZE) Keys.derive(root).account.publicKey else ByteArray(0),
-) {
-    val hasRoot: Boolean
-        get() = root.size == KEY_SIZE
+class SecurityFailure(val code: String, message: String = code) : Exception(message)
 
-    /** Local per-account state keys; rootless phones use the account ID so accounts stay apart. */
+/**
+ * Identity of an enrolled account on this device. All private keys remain inside the host
+ * [SecurityStoreV4] boundary and never cross into app memory via [Account].
+ */
+data class Account(
+    val server: String,
+    val deviceId: String,
+    val accountId: String = "",
+) {
     val localKey: ByteArray
-        get() = if (hasRoot) root else accountId.toByteArray(Charsets.UTF_8)
+        get() = accountId.ifEmpty { deviceId }.toByteArray(Charsets.UTF_8)
 
     override fun toString(): String = "Account(server=$server, device=$deviceId)"
 }
@@ -145,120 +134,24 @@ class Api(
 
 fun <T> ResponseMessage<T>.value(): T = getOrThrow()
 
-/** Registers a new device of the account with root key [root] and logs nothing secret. */
-suspend fun joinWithRoot(
-    root: ByteArray,
-    server: String,
-    http: OkHttpClient,
-    setupToken: String = "",
-    kind: DeviceKind = DeviceKind.DEVICE_KIND_CLIENT,
-    now: Long = System.currentTimeMillis(),
-    enrollment: Enrollment? = null,
-    seed: ByteArray? = null,
-    signupProof: io.github.lewin671.remoteagent.proto.SignupProof? = null,
-    request: RegisterDeviceRequest? = null,
-    beforeRegister: (RegisterDeviceRequest) -> Unit = { throw DeviceSecurity.Failure("storage") },
-): Account {
-    val keys = Keys.derive(root)
-    val deviceSeed = enrollment?.seed ?: seed ?: randomBytes(32)
-    val device = SigningKey(deviceSeed)
-    if (enrollment != null) verifyPairApproval(enrollment, root, kind, now)
-    return registerDevice(
-        server,
-        http,
-        keys.account.publicKey,
-        deviceSeed,
-        kind,
-        now,
-        setupToken,
-        enrollment?.approval,
-        enrollment?.signature,
-        signupProof = signupProof,
-        accountSignature =
-            keys.account.sign(
-                registerMessage(
-                    registrationBytes(keys.account.publicKey, device.publicKey, kind, now),
-                ),
-            ),
-        accountId = deviceId(keys.account.publicKey),
-        root = root.copyOf(),
-        accountKey = keys.account.publicKey,
-        request = request,
-        beforeRegister = beforeRegister,
+/** Logs in using the host [SecurityStoreV4] device Ed25519 key and returns the token with its expiry. */
+suspend fun loginWithStore(api: Api, deviceId: String, store: SecurityStoreV4): LoginResponse {
+    val ch = api.auth
+        .getChallenge(
+            GetChallengeRequest.newBuilder().setDeviceId(deviceId).build(),
+            emptyMap(),
+        )
+        .value()
+    val sig = store.signKey(
+        SecurityKeyKind.SECURITY_KEY_KIND_DEVICE_ED,
+        "",
+        loginMessage(ch.challenge.toByteArray()),
     )
-}
-
-/** The account public key is enough to name an existing account; no root is sent or needed. */
-suspend fun registerDevice(
-    server: String,
-    http: OkHttpClient,
-    accountPublicKey: ByteArray,
-    deviceSeed: ByteArray,
-    kind: DeviceKind = DeviceKind.DEVICE_KIND_CLIENT,
-    now: Long = System.currentTimeMillis(),
-    setupToken: String = "",
-    approval: ByteArray? = null,
-    approvalSignature: ByteArray? = null,
-    signupProof: io.github.lewin671.remoteagent.proto.SignupProof? = null,
-    accountSignature: ByteArray = ByteArray(0),
-    accountId: String = "",
-    root: ByteArray = ByteArray(0),
-    accountKey: ByteArray = ByteArray(0),
-    request: RegisterDeviceRequest? = null,
-    beforeRegister: (RegisterDeviceRequest) -> Unit = { throw DeviceSecurity.Failure("storage") },
-): Account {
-    val device = SigningKey(deviceSeed)
-    val reg = registrationBytes(accountPublicKey, device.publicKey, kind, now)
-    val exact =
-        request
-            ?: RegisterDeviceRequest.newBuilder()
-                .setProtocolVersion(RELAY_PROTOCOL_VERSION)
-                .setRegistration(ByteString.copyFrom(reg))
-                .setSignature(ByteString.copyFrom(accountSignature))
-                .setSetupToken(setupToken)
-                .setApproval(ByteString.copyFrom(approval ?: byteArrayOf()))
-                .setApprovalSignature(ByteString.copyFrom(approvalSignature ?: byteArrayOf()))
-                .apply { signupProof?.let { setSignupProof(it) } }
-                .build()
-    beforeRegister(exact)
-    val res = Api(server, http).auth.registerDevice(exact, emptyMap()).value()
-    if (res.deviceId != deviceId(device.publicKey))
-        throw MessageException(UiMessages.errorsTheServerReturnedAnUnexpectedDeviceId().messageText())
-    return Account(server, root, deviceSeed.copyOf(), res.deviceId, accountId, accountKey)
-}
-
-private fun registrationBytes(
-    accountPublicKey: ByteArray,
-    devicePublicKey: ByteArray,
-    kind: DeviceKind,
-    now: Long,
-): ByteArray =
-    DeviceRegistration.newBuilder()
-        .setAccountPublicKey(ByteString.copyFrom(accountPublicKey))
-        .setDevicePublicKey(ByteString.copyFrom(devicePublicKey))
-        .setKind(kind)
-        .setCreatedMs(now)
-        .build()
-        .toByteArray()
-
-/** Logs in with the device key and returns a bearer token. */
-suspend fun login(api: Api, account: Account): String = loginResponse(api, account).token
-
-/** Logs in with the device key and returns the token with its expiry. */
-suspend fun loginResponse(api: Api, account: Account): LoginResponse {
-    val ch =
-        api.auth
-            .getChallenge(
-                GetChallengeRequest.newBuilder().setDeviceId(account.deviceId).build(),
-                emptyMap(),
-            )
-            .value()
-    val sig = SigningKey(account.deviceSeed).sign(loginMessage(ch.challenge.toByteArray()))
     return api.auth
         .login(
             LoginRequest.newBuilder()
                 .setProtocolVersion(RELAY_PROTOCOL_VERSION)
-                .setDeviceId(account.deviceId)
+                .setDeviceId(deviceId)
                 .setChallenge(ch.challenge)
                 .setSignature(ByteString.copyFrom(sig))
                 .build(),
@@ -299,7 +192,7 @@ class CommandException(val code: String, message: String, val fromDaemon: Boolea
 fun errorText(e: Throwable, state: RemoteState? = null): MessageText = localized { copy ->
     when (e) {
         is MessageFailure -> e.display.resolve(copy)
-        is DeviceSecurity.Failure -> when (e.code) {
+        is SecurityFailure -> when (e.code) {
             "unavailable" -> copy(UiMessages.errorsWaitingForTheOwningComputerToUpdateTheCurrentRemote())
             "invalid", "untrusted" -> copy(UiMessages.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed())
             "conflict" -> copy(UiMessages.errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd())
@@ -326,7 +219,7 @@ fun connectionErrorDetail(error: Throwable): String {
         cause is java.net.SocketTimeoutException || cause is javax.net.ssl.SSLException
     val rawPrimary: String? = when (error) {
         is MessageFailure -> (error.display as? MessageText.Raw)?.value
-        is DeviceSecurity.Failure -> if (error.code in setOf("unavailable", "invalid", "untrusted", "conflict", "lease", "clock")) null else error.message
+        is SecurityFailure -> if (error.code in setOf("unavailable", "invalid", "untrusted", "conflict", "lease", "clock")) null else error.message
         is ConnectException -> when {
             explainedNetwork(error.exception) -> null
             error.code in setOf(Code.UNAVAILABLE, Code.UNAUTHENTICATED) -> null

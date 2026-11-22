@@ -87,7 +87,7 @@ class V8Gallery {
     @get:Rule val ui = createComposeRule()
 
     private val now = System.currentTimeMillis()
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "2222222222222222"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private val home = "/Users/me"
     private val foo = "$home/Code/foo"
@@ -450,19 +450,14 @@ class V8Gallery {
     }
 
     @Test fun recoveryCode() {
-        val signer = io.github.lewin671.remoteagent.core.SigningKey(ByteArray(32) { 1 })
-        val member = io.github.lewin671.remoteagent.core.Authority.newMember(signer, ByteArray(32) { 2 }, 2u)
-        val head = io.github.lewin671.remoteagent.core.Authority.genesis("11111111111111111111111111111111", ByteArray(32) { 3 }, member,
-            io.github.lewin671.remoteagent.core.SigningKey(ByteArray(32) { 4 }).publicKey, ByteArray(32) { 5 }, signer, 1_700_000_000_000)
-        val prepared = io.github.lewin671.remoteagent.core.PreparedRecovery("synthetic-offline-code", head, ByteArray(32) { 4 })
         val state = accountState().copy(isAuthority = true)
-        shoot("53-recovery-code", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) { RotateRecoveryContent(state, { prepared }, {}, {}) }
+        shoot("53-recovery-code", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) { RotateRecoveryContent(state, { "synthetic-offline-code" }, {}, {}) }
     }
 
     @Test fun takeover() {
         val state = accountState().copy(authorityDeviceId = "b71c00000000b71c")
         shoot("54-takeover", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) {
-            HandoffPreparationContent(state, "self", { "synthetic-offline-code" to ByteArray(32) { 7 } }) {}
+            HandoffPreparationContent(state, "self", prepareCode = { "synthetic-offline-code" }) {}
         }
     }
 

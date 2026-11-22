@@ -18,7 +18,7 @@ fun machineDiskNotice(c: NotifyContent, copy: MessageResolver, locale: String = 
 }
 /** The data-only receiver verifies ciphertext before producing local-language copy. */
 fun receiveMachineDiskNotification(envelope: ByteArray, notifyRecord: ByteArray, copy: MessageResolver, locale: String = "zh-CN"): MachineDiskNotice? =
-    machineDiskNotice(DeviceSecurity.NotifyRecord.parse(notifyRecord).open(Envelope.parseFrom(envelope)),copy,locale)
+    openNotifyEnvelopeViaCore(notifyRecord, Envelope.parseFrom(envelope))?.let { machineDiskNotice(it, copy, locale) }
 
 suspend fun Api.setMachinePushTarget(token: String, type: PushType, target: String, kinds: List<NotifyKind>): SetPushTargetResponse {
     val advertised=target.isNotEmpty() && client.getPushKey(GetPushKeyRequest.getDefaultInstance(),Api.headers(token)).value().machineDiskNotifications

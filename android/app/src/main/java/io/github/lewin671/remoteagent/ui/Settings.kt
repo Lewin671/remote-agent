@@ -226,7 +226,7 @@ fun SettingsScreen() {
         onOpenUpdate = { updating = true },
         onLicenses = nav.licenses,
         onOpenConnCheck = { checking = true },
-        readExitPending = { withContext(Dispatchers.IO) { app.vault.readSecurityOperation() != null } },
+        readExitAdvice = remote::checkExitAdvice,
         onExitAccount = { app.logout() },
     )
     if (checking) ConnCheckSheet(state) { checking = false }
@@ -262,7 +262,9 @@ internal fun SettingsScreenContent(
     onOpenUpdate: () -> Unit = {},
     onLicenses: () -> Unit = {},
     onOpenConnCheck: () -> Unit = {},
-    readExitPending: suspend () -> Boolean = { false },
+    readExitAdvice: suspend () -> io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice = {
+        io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.getDefaultInstance()
+    },
     onExitAccount: suspend () -> Unit = {},
 ) {
     val copy = uiText()
@@ -460,7 +462,7 @@ internal fun SettingsScreenContent(
                     rows = listOf {
                         AccountExitAction(
                             state,
-                            readPending = readExitPending,
+                            readAdvice = readExitAdvice,
                             exit = onExitAccount,
                         )
                     },
@@ -1939,7 +1941,13 @@ fun PairScreen(replacesDeviceId: String = "") {
     val nav = LocalNav.current
     val settings by RaApp.instance.prefs.settings.collectAsState(Settings())
     val p = pal
-    val model = remember(remote, replacesDeviceId) { RaApp.instance.pairing(remote, replacesDeviceId) }
+    val model = remember(remote, replacesDeviceId, settings.webOrigin) {
+        RaApp.instance.pairing(
+            remote,
+            replacesDeviceId,
+            webOrigin(remote.account.server, settings.webOrigin),
+        )
+    }
     val state by model.state.collectAsState()
     AuthorityStartEffect(model) { model.enter() }
     DisposableEffect(model) { onDispose { model.leave() } }
@@ -1961,12 +1969,7 @@ fun PairScreen(replacesDeviceId: String = "") {
             when (val step = state) {
                 PairingUiState.Starting -> Skeleton()
                 is PairingUiState.Waiting -> {
-                    val bmp =
-                        remember(step.link) {
-                            qrBitmap(
-                                step.link.url(webOrigin(remote.account.server, settings.webOrigin)),
-                            )
-                        }
+                    val bmp = remember(step.url) { qrBitmap(step.url) }
                     Box(
                         Modifier.padding(top = 14.dp, bottom = 10.dp)
                             .size(170.dp)

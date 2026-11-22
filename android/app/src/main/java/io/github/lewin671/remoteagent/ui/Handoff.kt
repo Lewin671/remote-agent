@@ -20,20 +20,30 @@ import kotlinx.coroutines.launch
 fun HandoffPreparation(onBack: (() -> Unit)? = null) {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
-    HandoffPreparationContent(state, remote.account.deviceId, remote::prepareHandoffCode, onBack = onBack, publishOffer = remote::offerHandoff)
+    val secStatus by remote.securityStatus.collectAsState()
+    HandoffPreparationContent(
+        state = state,
+        self = remote.account.deviceId,
+        hasHandoffOffer = secStatus?.hasHandoffOffer == true ||
+            state.devices[remote.account.deviceId]?.meta?.handoffRecoveryEd?.size() == 32,
+        prepareCode = { remote.prepareHandoffCode(storagePersisted = true) },
+        onBack = onBack,
+        publishOffer = remote::publishHandoffOffer,
+    )
 }
 
 @Composable
 internal fun HandoffPreparationContent(
     state: RemoteState,
     self: String,
-    prepareCode: () -> Pair<String, ByteArray>,
+    hasHandoffOffer: Boolean = state.devices[self]?.meta?.handoffRecoveryEd?.size() == 32,
+    prepareCode: suspend () -> String,
     onBack: (() -> Unit)? = null,
-    publishOffer: suspend (ByteArray) -> Unit,
+    publishOffer: suspend () -> Unit,
 ) {
     val copy = uiText()
     val scope = rememberAuthorityScope()
-    var prepared by remember { mutableStateOf<Pair<String, ByteArray>?>(null) }
+    var prepared by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     PageScaffold(copy(UiMessages.securityTakeOverManagement()), onBack = onBack) {
@@ -43,9 +53,9 @@ internal fun HandoffPreparationContent(
                 style = T.s13,
                 color = pal.ink2,
             )
-            val value = prepared
-            if (value != null) {
-                RecoveryCodeFigure(value.first)
+            val codeValue = prepared
+            if (codeValue != null) {
+                RecoveryCodeFigure(codeValue)
                 PillButton(
                     copy(UiMessages.securitySavedNotifyManagingClient()),
                     {
@@ -53,7 +63,7 @@ internal fun HandoffPreparationContent(
                         error = ""
                         scope.launch {
                             try {
-                                publishOffer(value.second)
+                                publishOffer()
                                 prepared = null
                             } catch (e: Exception) {
                                 error = displayError(e, state)
@@ -67,18 +77,21 @@ internal fun HandoffPreparationContent(
                     enabled = !busy,
                 )
             } else {
-                val offered =
-                    state.devices[self]?.meta?.handoffRecoveryEd?.size() == 32
-                if (offered)
+                if (hasHandoffOffer)
                     Hint(copy(UiMessages.securityRecoveryCodeSavedAndConfirmedWaitingForTheCurrent()), Modifier.padding(vertical = 12.dp))
                 PillButton(
-                    if (offered) copy(UiMessages.securityRegenerateRecoveryCode()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
+                    if (hasHandoffOffer) copy(UiMessages.securityRegenerateRecoveryCode()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
                     {
+                        busy = true
                         error = ""
-                        try {
-                            prepared = prepareCode()
-                        } catch (e: Exception) {
-                            error = displayError(e, state)
+                        scope.launch {
+                            try {
+                                prepared = prepareCode()
+                            } catch (e: Exception) {
+                                error = displayError(e, state)
+                            } finally {
+                                busy = false
+                            }
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 12.dp),

@@ -83,12 +83,6 @@ class UnauthenticatedScreensTest {
     }
 
     @Test
-    fun rebuildHeaderRespectsActivityInsets() {
-        val app = app()
-        assertSetupHeaderBelowSystemBar("重建安全域") { RebuildSecurityScreen(app, null) {} }
-    }
-
-    @Test
     fun refusedStartupHasAnExplicitConfirmedStartOverAction() {
         var retries = 0
         var discarded = 0
@@ -119,8 +113,6 @@ class UnauthenticatedScreensTest {
             io.github.lewin671.remoteagent.core.Remote(
                 io.github.lewin671.remoteagent.core.Account(
                     "http://127.0.0.1:1",
-                    ByteArray(32),
-                    ByteArray(32),
                     "2222222222222222",
                 ),
                 io.github.lewin671.remoteagent.core.Api.defaultHttp(),
@@ -217,17 +209,6 @@ class UnauthenticatedScreensTest {
         ui.onNodeWithText("用恢复码找回管理权").assertIsDisplayed()
         ui.onNodeWithContentDescription("返回").performClick()
         ui.onNodeWithText("用恢复码找回管理权").assertExists()
-    }
-
-    @Test
-    fun rebuildRendersWithoutSignedInNavigation() {
-        val app = app()
-        var backs = 0
-        show { RebuildSecurityScreen(app, null) { backs++ } }
-        ui.onNodeWithText("重建安全域").assertIsDisplayed()
-        ui.onNodeWithText("返回").assertDoesNotExist()
-        ui.onNodeWithContentDescription("返回").performClick()
-        org.junit.Assert.assertEquals(1, backs)
     }
 
     @Test

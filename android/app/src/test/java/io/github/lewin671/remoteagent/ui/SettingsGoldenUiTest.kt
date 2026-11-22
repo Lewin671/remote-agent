@@ -256,7 +256,7 @@ class SettingsGoldenUiTest {
     @Test
     fun coreHostDispatchesSettingsAppearanceDirectAndRenameEffects() = runBlocking {
         val remote = Remote(
-            Account("https://example.com", ByteArray(32), ByteArray(32), "self-client"),
+            Account("https://example.com", "self-client"),
             Api.defaultHttp(),
         )
         try {

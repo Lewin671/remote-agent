@@ -130,7 +130,7 @@ class LayoutTest {
     @get:Rule val ui = createComposeRule()
     private val key = "/Users/me/Code/ai-bot/remote-agent-with-a-very-long-project-name"
     private val machineId = "1111111111111111"
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "2222222222222222"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private fun session(id: String = "s", ended: Boolean = false) = SessionView(id, machineId, Session.newBuilder()
         .setId(id).setCwd(key).setTitle("长标题：核查各端 UI，确保发送和配置按钮在窄屏下都可以操作")

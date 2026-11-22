@@ -36,6 +36,7 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.coreTextToMessageText
+import io.github.lewin671.remoteagent.core.openNotifyEnvelopeViaCore
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
 import io.github.lewin671.remoteagent.data.Settings
@@ -78,7 +79,9 @@ class RaMessagingService : FirebaseMessagingService() {
             return
         }
         val session = data["session"] ?: return
-        val content = data["content"]?.let { open(session, it) }
+        val content = data["content"]?.let {
+            open(session, it, data["machine"].orEmpty(), data["tag"].orEmpty())
+        }
         if (data["content"] != null && content == null) return
         if(kind==NotifyKind.NOTIFY_KIND_MACHINE_DISK && (content==null || content.machineId!=data["machine"] || content.kind!=kind || !content.sessionId.isEmpty() || data["tag"]!="${content.machineId}/NOTIFY_KIND_MACHINE_DISK")) return
         if(kind==NotifyKind.NOTIFY_KIND_MACHINE_DISK && machineDiskNotice(content ?: return,{ io.github.lewin671.remoteagent.ui.resolveUiMessage(this,it) })==null) return
@@ -98,13 +101,18 @@ class RaMessagingService : FirebaseMessagingService() {
         )
     }
 
-    private fun open(session: String, b64: String): NotifyContent? =
+    private fun open(session: String, b64: String, machine: String, tag: String): NotifyContent? =
         try {
-            val key = RaApp.instance.vault.notifyKey() ?: return null
+            val blob = RaApp.instance.vault.readNotifyBlob() ?: return null
             val env = Envelope.parseFrom(Base64.decode(b64, Base64.DEFAULT))
-            val nc =
-                io.github.lewin671.remoteagent.core.DeviceSecurity.NotifyRecord.parse(key).open(env)
-            nc.takeIf { it.sessionId == session }
+            val nc = openNotifyEnvelopeViaCore(
+                notifyBlob = blob,
+                envelope = env,
+                sessionId = session,
+                tag = tag,
+                machineId = machine,
+            )
+            nc?.takeIf { it.sessionId == session }
         } catch (e: Exception) {
             Log.w(TAG, "push content does not open: ${e.javaClass.simpleName}")
             null
@@ -440,7 +448,7 @@ class ApprovalReceiver : BroadcastReceiver() {
         }
         val acct =
             try {
-                RaApp.instance.vault.load()
+                RaApp.instance.loadAccountForBackgroundWork()
             } catch (e: Exception) {
                 null
             } ?: return Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidCouldNotReadTheAccountOpenTheAppToContinue()), true)
@@ -522,7 +530,7 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
         if (recorded() == ApprovalRecord.DONE) return done()
         val acct =
             try {
-                RaApp.instance.vault.load()
+                RaApp.instance.loadAccountForBackgroundWork()
             } catch (e: Exception) {
                 if (deadline == 0L || System.currentTimeMillis() + 5_000 < deadline) {
                     Notifier.update(applicationContext, nid, sessionText(UiMessages.notificationsAndroidPhoneLockedSubmissionContinuesAfterUnlocking()), false)
@@ -531,7 +539,7 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
                 return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.notificationsAndroidCouldNotSubmitPhoneStayedLockedUntilApprovalTimedOut()))
             } ?: return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.notificationsAndroidCouldNotSubmitThisPhoneHasNoAccount()))
         if (machine.isEmpty() || session.isEmpty() || approval.isEmpty()) return Result.failure()
-        val remote = Remote(acct, RaApp.instance.http, securityStorage = RaApp.instance.vault)
+        val remote = Remote(acct, RaApp.instance.http, securityStore = RaApp.instance.vault)
         try {
             remote.start()
             val ready = withTimeoutOrNull(10_000L) {

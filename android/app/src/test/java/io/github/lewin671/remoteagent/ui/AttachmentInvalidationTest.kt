@@ -71,7 +71,7 @@ class AttachmentInvalidationTest {
         d.changeOriginal(true) { error("missing URI cannot be processed") }
         assertTrue(aborted)
         assertTrue(entry.state is PendingImage.State.Failed)
-        val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test"), okhttp3.OkHttpClient())
+        val remote = Remote(Account("http://127.0.0.1:1", "test"), okhttp3.OkHttpClient())
         try {
             d.upload(remote, entry, "A", forceFresh = true)
             assertNull(entry.job); assertNull(entry.imageId); assertFalse(d.ready("A"))

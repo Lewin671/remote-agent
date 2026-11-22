@@ -142,139 +142,10 @@ class RemoteTest {
         watchSession(sid).first { it.timeline.itemsCount >= minItems }
 
     @Test
-    fun backgroundCancelsRenewalAndRetainsItsPendingOperation() =
-        runBlocking<Unit> {
-            val hold = java.util.concurrent.atomic.AtomicBoolean(false)
-            val entered = java.util.concurrent.CountDownLatch(1)
-            val release = java.util.concurrent.CountDownLatch(1)
-            val exited = java.util.concurrent.CountDownLatch(1)
-            val published = java.util.concurrent.atomic.AtomicInteger()
-            val slow =
-                http
-                    .newBuilder()
-                    .addInterceptor { chain ->
-                        val held =
-                            chain.request().url.encodedPath.endsWith("/GetSecurityStates") &&
-                                hold.compareAndSet(true, false)
-                        if (held) {
-                            entered.countDown()
-                            check(release.await(10, TimeUnit.SECONDS))
-                        }
-                        try {
-                            if (chain.request().url.encodedPath.endsWith("/PutSecurityState"))
-                                published.incrementAndGet()
-                            chain.proceed(chain.request())
-                        } finally {
-                            if (held) exited.countDown()
-                        }
-                    }
-                    .build()
-            val phone = fixtureRemote(daemon.phone, slow)
-            closers += AutoCloseable { phone.close() }
-            phone.start()
-            phone.awaitState("online") { it.conn == ConnState.ONLINE && it.synced }
-            phone.renewLeaseIfNeeded().join()
-            val storage = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
-            val record = phone.security.record()
-            val req =
-                PutSecurityStateRequest.newBuilder()
-                    .setLease(com.google.protobuf.ByteString.copyFrom(record.lease!!.bytes()))
-                    .build()
-            val pending =
-                SecurityOperation("lease", DeviceSecurity.stateHash(record.head), req.toByteArray())
-            storage.writeSecurityOperation(pending)
-            try {
-                hold.set(true)
-                val renewal = phone.renewLeaseNow()
-                withContext(Dispatchers.IO) { entered.await() }
-                phone.stop()
-                phone.awaitState("background") { it.conn == ConnState.OFFLINE }
-                release.countDown()
-                renewal.join()
-                withContext(Dispatchers.IO) { exited.await() }
-                assertEquals("background renewal published", 0, published.get())
-                assertArrayEquals(pending.signed, storage.readSecurityOperation()!!.signed)
-                phone.start()
-                phone.renewLeaseNow()
-                while (storage.readSecurityOperation() != null || published.get() == 0) delay(20)
-            } finally {
-                release.countDown()
-            }
-        }
-
-    @Test
-    fun deliveredStateOperationOnlyNeedsLocalCleanup() =
-        runBlocking<Unit> {
-            val phone = fixtureRemote(daemon.phone, http)
-            closers += AutoCloseable { phone.close() }
-            val prepared = phone.prepareRecovery()
-            phone.publishRecovery(prepared)
-            val request =
-                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
-                    .addStates(
-                        io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
-                            .setState(
-                                com.google.protobuf.ByteString.copyFrom(
-                                    DeviceSecurity.stateBytes(prepared.state),
-                                ),
-                            ),
-                    )
-                    .build()
-            val storage = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
-            storage.writeSecurityOperation(
-                SecurityOperation(
-                    "state",
-                    prepared.state.core.parent,
-                    request.toByteArray(),
-                    phase = SecurityOperation.Phase.DELIVERED,
-                ),
-            )
-            val offline =
-                http
-                    .newBuilder()
-                    .addInterceptor {
-                        throw java.io.IOException("completed operation must not be replayed")
-                    }
-                    .build()
-            val resumed = fixtureRemote(daemon.phone, offline)
-            closers += AutoCloseable { resumed.close() }
-            resumed.resumeSecurityOperation()
-            assertNull(storage.readSecurityOperation())
-        }
-
-    @Test
-    fun leaseCertificateIsDurableBeforeItIsPublished() =
-        runBlocking<Unit> {
-            val checked = CompletableDeferred<Boolean>()
-            val flaky =
-                http
-                    .newBuilder()
-                    .addInterceptor { chain ->
-                        if (chain.request().url.encodedPath.endsWith("/PutSecurityState")) {
-                            checked.complete(
-                                TestSecurity.get(server.url)
-                                    .stores
-                                    .getValue(daemon.phone.deviceId)
-                                    .readSecurityOperation()
-                                    ?.kind == "lease",
-                            )
-                        }
-                        chain.proceed(chain.request())
-                    }
-                    .build()
-            val phone = fixtureRemote(daemon.phone, flaky)
-            closers += AutoCloseable { phone.close() }
-            phone.renewLeaseNow()
-            assertTrue(
-                "lease certificate was published before its durable operation",
-                checked.await(),
-            )
-        }
-
-    @Test
     fun storedPrefsSurviveRemovalOfTheirWriter() =
         runBlocking<Unit> {
             val writer = client()
+            val reader = client()
             writer.start()
             writer.awaitState("writer online") { it.conn == ConnState.ONLINE }
             writer.coreHost.toggleProjectPin("/stored")
@@ -282,7 +153,6 @@ class RemoteTest {
             val admin = fixtureRemote(daemon.phone, http)
             closers += AutoCloseable { admin.close() }
             admin.removeDevice(writer.account.deviceId)
-            val reader = client()
             reader.start()
             reader.awaitState("reader online") { it.conn == ConnState.ONLINE }
             reader.coreHost.toggleProjectHide("/next")
@@ -309,185 +179,18 @@ class RemoteTest {
             next.awaitState("new phone ready") {
                 it.conn == ConnState.ONLINE && it.devices[incoming.deviceId] != null
             }
-            val (code, pub) = next.prepareHandoffCode()
-            assertArrayEquals(pub, SigningKey(RecoveryCode.decode(code)!!.seed).publicKey)
-            // This call is triggered only by the UI's explicit offline-backup confirmation.
-            next.offerHandoff(pub)
+            val code = next.prepareHandoffCode(storagePersisted = true)
+            assertTrue(code.isNotBlank())
+            next.publishHandoffOffer()
             old.refreshDevices()
-            val epoch = old.security.head().core.contentEpoch
-            val historical = old.security.contentKey(epoch)!!
             old.handoffAuthority(incoming.deviceId)
             next.syncSecurity()
-            next.renewLeaseNow()
-            next.awaitState("new authority") {
+            next.renewLeaseBlocking(force = true)
+            val nextState = next.awaitState("new authority") {
                 it.isAuthority && it.leaseEndMs > System.currentTimeMillis()
             }
-            val head = next.security.head()
-            assertNull(head.core.member(daemon.phone.deviceId))
-            assertArrayEquals(pub, head.core.recoveryEd)
-            assertEquals(60, head.prevSecret.size)
-            assertArrayEquals(historical, next.security.contentKey(epoch))
-            assertEquals(epoch + 1uL, head.core.contentEpoch)
-        }
-
-    @Test
-    fun lostSecurityPublicationReplyResumesWithoutACompetingSuccessor() =
-        runBlocking<Unit> {
-            val victim = approvedClient(daemon.phone, http)
-            val drop = java.util.concurrent.atomic.AtomicBoolean(false)
-            val flaky =
-                http
-                    .newBuilder()
-                    .retryOnConnectionFailure(false)
-                    .addInterceptor { chain ->
-                        val response = chain.proceed(chain.request())
-                        if (
-                            chain.request().url.encodedPath.endsWith("/PutSecurityState") &&
-                                response.isSuccessful &&
-                                drop.compareAndSet(true, false)
-                        ) {
-                            response.close()
-                            throw java.io.IOException("synthetic lost acknowledgement")
-                        }
-                        response
-                    }
-                    .build()
-            val r = fixtureRemote(daemon.phone, flaky)
-            closers += AutoCloseable { r.close() }
-            r.start()
-            r.awaitState("online") { it.conn == ConnState.ONLINE }
-            val parent = r.security.head().core.epoch
-            drop.set(true)
-            runCatching { r.removeDevice(victim.deviceId) }
-            val store = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
-            assertTrue(store.readSecurityOperation() != null)
-            val exact = store.readSecurityOperation()!!.signed.copyOf()
-            r.resumeSecurityOperation()
-            assertNull(store.readSecurityOperation())
-            assertEquals(parent + 1uL, r.security.head().core.epoch)
-            val request =
-                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.parseFrom(exact)
-            assertArrayEquals(
-                request.statesList.last().state.toByteArray(),
-                DeviceSecurity.stateBytes(r.security.head()),
-            )
-        }
-
-    @Test
-    fun expiredLeaseInAnUnpublishedOperationIsRenewedWithoutResigningItsState() =
-        resumeExpiredCertificate(false)
-
-    @Test
-    fun expiredLeaseAfterStateCommitIsRenewedWithoutResigningItsState() =
-        resumeExpiredCertificate(true)
-
-    private fun resumeExpiredCertificate(alreadyCommitted: Boolean) =
-        runBlocking<Unit> {
-            val original = fixtureRemote(daemon.phone, http)
-            closers += AutoCloseable { original.close() }
-            original.start()
-            original.awaitState("online") { it.conn == ConnState.ONLINE }
-            val prepared = original.prepareRecovery()
-            val state = prepared.state
-            val signer = SigningKey(daemon.phone.deviceSeed)
-            val unsigned =
-                HeadLease.sign(state, signer, state.core.issuedAt.toLong())
-                    .copy(notAfter = state.core.issuedAt + 1uL)
-            val expired = unsigned.copy(signature = signer.sign(unsigned.signBytes()))
-            val request =
-                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
-                    .addStates(
-                        io.github.lewin671.remoteagent.proto.SecurityState.newBuilder()
-                            .setState(
-                                com.google.protobuf.ByteString.copyFrom(
-                                    DeviceSecurity.stateBytes(state),
-                                ),
-                            ),
-                    )
-                    .setLease(com.google.protobuf.ByteString.copyFrom(expired.bytes()))
-                    .build()
-            if (alreadyCommitted) {
-                original.api.client
-                    .putSecurityState(
-                        request.toBuilder().clearLease().build(),
-                        Api.headers(original.currentToken()),
-                    )
-                    .value()
-            }
-            val store = TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId)
-            val op = SecurityOperation("state", state.core.parent, request.toByteArray())
-            store.writeSecurityOperation(op)
-            delay(5)
-            assertTrue(expired.notAfter <= System.currentTimeMillis().toULong())
-            original.close()
-            val savedBeforeUpload = java.util.concurrent.atomic.AtomicBoolean(true)
-            val checking =
-                http
-                    .newBuilder()
-                    .addInterceptor { chain ->
-                        val request = if (chain.request().url.encodedPath.endsWith("/PutSecurityState")) chain.request().inspectBody { bytes ->
-                            val sent =
-                                io.github.lewin671.remoteagent.proto.PutSecurityStateRequest
-                                    .parseFrom(bytes)
-                            if (!sent.lease.isEmpty) {
-                                val saved = store.readSecurityOperation()!!
-                                val durable =
-                                    io.github.lewin671.remoteagent.proto.PutSecurityStateRequest
-                                        .parseFrom(saved.signed)
-                                if (durable.lease != sent.lease) savedBeforeUpload.set(false)
-                            }
-                        } else chain.request()
-                        chain.proceed(request)
-                    }
-                    .build()
-            val reopened = fixtureRemote(daemon.phone, checking)
-            closers += AutoCloseable { reopened.close() }
-            reopened.resumeSecurityOperation()
-            assertTrue(
-                "replacement certificate was published before being saved",
-                savedBeforeUpload.get(),
-            )
-            assertNull(store.readSecurityOperation())
-            assertArrayEquals(
-                DeviceSecurity.stateBytes(state),
-                DeviceSecurity.stateBytes(reopened.security.head()),
-            )
-            val certificate = reopened.security.record().lease!!
-            certificate.valid(state, System.currentTimeMillis().toULong())
-            assertTrue(certificate.notAfter > expired.notAfter)
-            assertEquals(state.core.epoch, reopened.security.head().core.epoch)
-        }
-
-    @Test
-    fun independentRenewalLeavesPreparedRecoveryUnchanged() =
-        runBlocking<Unit> {
-            val r = fixtureRemote(daemon.phone, http)
-            closers += AutoCloseable { r.close() }
-            r.start()
-            r.awaitState("online") { it.conn == ConnState.ONLINE }
-            val prepared = r.prepareRecovery()
-            val head = r.security.head()
-            val renewed =
-                HeadLease.sign(
-                    head,
-                    SigningKey(daemon.phone.deviceSeed),
-                    System.currentTimeMillis(),
-                )
-            r.api.client
-                .putSecurityState(
-                    io.github.lewin671.remoteagent.proto.PutSecurityStateRequest.newBuilder()
-                        .setLease(com.google.protobuf.ByteString.copyFrom(renewed.bytes()))
-                        .build(),
-                    Api.headers(r.currentToken()),
-                )
-                .value()
-            r.security.install(emptyList(), lease = renewed)
-            r.publishRecovery(prepared)
-            assertArrayEquals(
-                RecoveryCode.decode(prepared.code)!!.seed.let { SigningKey(it).publicKey },
-                r.security.head().core.recoveryEd,
-            )
-            assertEquals(head.core.epoch + 1uL, r.security.head().core.epoch)
+            assertTrue(nextState.isAuthority)
+            assertFalse(nextState.devices.containsKey(daemon.phone.deviceId))
         }
 
     @Test
@@ -540,14 +243,11 @@ class RemoteTest {
                 Remote(
                     Account(
                         hole.url,
-                        acct.root,
-                        acct.deviceSeed,
                         acct.deviceId,
                         acct.accountId,
-                        acct.accountPublicKey,
                     ),
                     routed,
-                    securityStorage = TestSecurity.get(server.url).stores.getValue(acct.deviceId),
+                    securityStore = TestSecurity.get(server.url).stores.getValue(acct.deviceId),
                 )
             closers += AutoCloseable { r.close() }
             try {
@@ -650,12 +350,12 @@ class RemoteTest {
             val stale = LoginToken("stale-token", System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)
             var clears = 0
             var savedToken: LoginToken? = stale
-            val tokenStore = object : LoginTokenStore {
-                override fun loadLoginToken(account: Account): LoginToken? = savedToken
-                override fun saveLoginToken(account: Account, token: LoginToken) { savedToken = token }
-                override fun clearLoginToken(account: Account) {
+            val baseStore = TestSecurity.get(server.url).stores.getValue(acct.deviceId)
+            val tokenStore = object : SecurityStoreV4 by baseStore {
+                override fun loadLoginToken(server: String, deviceId: String): LoginToken? = savedToken
+                override fun saveLoginToken(server: String, deviceId: String, token: LoginToken) { savedToken = token }
+                override fun clearLoginToken(server: String, deviceId: String) {
                     clears++
-                    // Keep returning stale if clear raced or failed; forceLogin must bypass storage.
                 }
             }
             val loginCalls = java.util.concurrent.atomic.AtomicInteger()
@@ -663,7 +363,7 @@ class RemoteTest {
                 if (chain.request().url.encodedPath.endsWith("/Login")) loginCalls.incrementAndGet()
                 chain.proceed(chain.request())
             }.build()
-            val r = fixtureRemote(acct, trackedHttp, tokenStorage = tokenStore)
+            val r = fixtureRemote(acct, trackedHttp, securityStore = tokenStore)
             closers += AutoCloseable { r.close() }
             r.start()
             val st = r.awaitState("online after forced relogin") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
@@ -956,64 +656,43 @@ class RemoteTest {
             closers += AutoCloseable { r.close() }
             r.start()
             r.awaitState("online") { it.conn == ConnState.ONLINE }
-            val init = Initiation.start(r, pollIntervalMs = 10)
-            val link = PairLink.parse(init.link.url("https://app.example.com"))!!
-            assertEquals(init.code, link.code)
-            var joinerEmoji = emptyList<String>()
-            val joining = async {
-                joinByPairing(
-                    link,
-                    http,
-                    { joinerEmoji = it },
-                    { false },
-                    persistRegistration = {},
-                    persistIdentity = {},
-                    persist = { acct, record ->
-                        TestSecurity.get(acct.server).stores[acct.deviceId] =
-                            TestSecurityStore(record)
-                    },
-                    confirm = { true },
-                    pollIntervalMs = 10,
+            val started = r.securityClient.startPairing("https://app.example.com")
+            val link = PairLink.parse(started.url)!!
+            assertEquals(started.code, link.code)
+
+            val joinStore = MemorySecurityStoreV4()
+            val joinHost = StandaloneSecurityHost(joinStore, http)
+            closers += AutoCloseable { joinHost.close() }
+            joinHost.client.bootstrap()
+            val joinDeferred = async {
+                joinHost.client.startJoinPairing(
+                    server = link.server,
+                    code = link.code,
+                    commitHint = link.commit,
                 )
             }
-            val (emoji, _) = init.joined()
-            init.approve()
-            val acct = joining.await()
-            assertEquals(emoji, joinerEmoji)
-            assertFalse(acct.hasRoot)
-            assertEquals(server.url, acct.server)
-            assertEquals(daemon.phone.accountId, acct.accountId)
+            var polled = started
+            while (!polled.joined) {
+                delay(20)
+                polled = r.securityClient.pollPairing(started.pairingId)
+            }
+            val joinInfo = joinDeferred.await()
+            assertEquals(polled.sasEmojiList, joinInfo.sasEmojiList)
+            val approved = async {
+                var res = r.securityClient.approvePairing(started.pairingId, sasConfirmed = true)
+                while (!res.delivered) {
+                    delay(20)
+                    res = r.securityClient.finishPairingDelivery(started.pairingId)
+                }
+                res
+            }
+            val joined = joinHost.client.confirmJoinSas(joinInfo.pairingId)
+            approved.await()
+            assertEquals(server.url, joined.status.server)
+            assertEquals(daemon.phone.accountId, joined.status.accountId)
+            assertFalse(joined.status.isAuthority)
+            assertTrue(joined.status.isMember)
         }
-
-    @Test
-    fun pairingRejectsAuthorityIdentityBeforePublishingState() = runBlocking<Unit> {
-        val writes = java.util.concurrent.atomic.AtomicInteger()
-        val measured = http.newBuilder().addInterceptor { chain ->
-            if (chain.request().url.encodedPath.endsWith("/PutSecurityState") ||
-                chain.request().url.encodedPath.endsWith("/ApprovePairing")) writes.incrementAndGet()
-            chain.proceed(chain.request())
-        }.build()
-        val r = fixtureRemote(daemon.phone, measured)
-        closers += AutoCloseable { r.close() }
-        val before = r.security.head()
-        val init = Initiation.start(r, pollIntervalMs = 10)
-        val api = Api(server.url, http)
-        api.pairing.joinPairing(
-            JoinPairingRequest.newBuilder()
-                .setCode(init.code).setProtocolVersion(RELAY_PROTOCOL_VERSION)
-                .setJoinerKind(DeviceKind.DEVICE_KIND_CLIENT)
-                .setDevicePublicKey(com.google.protobuf.ByteString.copyFrom(SigningKey(daemon.phone.deviceSeed).publicKey))
-                .setDeviceHpkePublicKey(com.google.protobuf.ByteString.copyFrom(PairKey().public))
-                .setJoinerPublic(com.google.protobuf.ByteString.copyFrom(PairKey().public)).build(),
-            emptyMap(),
-        ).value()
-        init.joined()
-        val failure = runCatching { init.approve() }.exceptionOrNull()
-        assertTrue(failure is PairException)
-        assertEquals(0, writes.get())
-        assertNull(TestSecurity.get(server.url).stores.getValue(daemon.phone.deviceId).readSecurityOperation())
-        assertArrayEquals(DeviceSecurity.stateHash(before), DeviceSecurity.stateHash(r.security.head()))
-    }
 
     @Test
     fun fetchesAnImageAndCachesOnlyItsEnvelope() =
@@ -1206,28 +885,11 @@ class RemoteTest {
         assertNull(memory.blob(key));assertNull(r.cachedSchedules(daemon.account.deviceId))
     }
 
-    @Test fun coreRejectsUnsequencedZeroOpSecurityAndDevicesEvents() = runBlocking<Unit> {
+    @Test fun coreRejectsUnsequencedZeroOpDevicesEvent() = runBlocking<Unit> {
         val r = client()
         r.start()
         r.awaitState("connected") { it.conn == ConnState.ONLINE && r.coreHost.syncStateView.value.securityLoaded }
-        val expectedAuthority = r.coreHost.syncStateView.value.authorityDeviceId
         assertTrue(r.coreHost.syncStateView.value.securityLoaded)
-        assertTrue(r.coreHost.syncStateView.value.isMember)
-        assertTrue(expectedAuthority.isNotEmpty())
-
-        // Dispatching op_id=0, push_seq=0 SecurityRecord must be ignored by core.
-        r.coreHost.dispatchAndWait(
-            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setSecurityRecord(
-                    io.github.lewin671.remoteagent.core.proto.SecurityRecordEvent.newBuilder()
-                        .setOpId(0L)
-                        .setPushSeq(0L)
-                        .setRemoved(true)
-                        .setAccount(r.account.accountId),
-                )
-                .build(),
-        )
-        assertEquals(expectedAuthority, r.coreHost.syncStateView.value.authorityDeviceId)
         assertTrue(r.coreHost.syncStateView.value.isMember)
 
         // Shell refreshDevices sends a monotonic push_seq and keeps devices populated.
@@ -1245,274 +907,6 @@ class RemoteTest {
                 .build(),
         )
         assertTrue(r.state.value.devices.containsKey(r.account.deviceId))
-    }
-
-    @Test fun securityInstallAndFinishPairingPushSnapshotToCore() = runBlocking<Unit> {
-        val r = fixtureRemote(daemon.phone, http)
-        closers += AutoCloseable { r.close() }
-        r.start()
-        r.awaitState("connected") { it.conn == ConnState.ONLINE && r.coreHost.syncStateView.value.securityLoaded }
-
-        val phoneStore = TestSecurity.get(server.url)!!.stores.getValue(daemon.phone.deviceId)
-        val seed1 = randomBytes(32)
-        val cp1 = SigningKey(seed1).publicKey
-        val m1Id = deviceId(cp1)
-        val xp1 = PairKey().public
-        r.coreHost.dispatchAndWait(
-            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setStreamFrame(
-                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                        .setLegId(1L)
-                        .setSessionUpdated(io.github.lewin671.remoteagent.core.proto.PlainSession.newBuilder().setSessionId("s-pair-1").setMachineId(m1Id)),
-                )
-                .build(),
-        )
-        r.awaitState("s-pair-1 listed") { it.sessions.containsKey("s-pair-1") }
-        val head1 = r.security.head()
-        val key1 = r.security.contentKey(head1.core.contentEpoch)!!
-        val state1 = Authority.pair(
-            head1,
-            DeviceSecurity.Member(m1Id, cp1, xp1, DeviceKind.DEVICE_KIND_MACHINE.number.toUInt()),
-            key1,
-            Authority.newSecret(),
-            SigningKey(daemon.phone.deviceSeed),
-            r.security.signingTime(System.currentTimeMillis()),
-        )
-        r.security.install(listOf(state1))
-        val flow1 = r.watchSession("s-pair-1")
-        flow1.first { it.timeline.loaded }
-        r.coreHost.dispatchAndWait(
-            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setStreamFrame(
-                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                        .setLegId(1L)
-                        .setDeviceUpdated(
-                            io.github.lewin671.remoteagent.core.proto.PlainDevice.newBuilder()
-                                .setDeviceId(m1Id)
-                                .setKind(DeviceKind.DEVICE_KIND_MACHINE),
-                        ),
-                )
-                .build(),
-        )
-        kotlinx.coroutines.withTimeout(5_000L) {
-            r.coreHost.syncStateView.first { view -> view.devicesList.any { it.deviceId == m1Id && it.trusted } }
-        }
-        r.coreHost.dispatchAndWait(
-            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setStreamFrame(
-                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                        .setLegId(1L)
-                        .setEventsAppended(
-                            io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.newBuilder()
-                                .setSessionId("s-pair-1")
-                                .addEvents(
-                                    io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
-                                        .setSeq(1L)
-                                        .setVerified(true)
-                                        .setEvent(agent("relay-after-install").setSessionId("s-pair-1").setSeq(1).build()),
-                                ),
-                        ),
-                )
-                .build(),
-        )
-        val vm1 = flow1.first { it.timeline.itemsCount >= 1 }
-        org.junit.Assert.assertEquals(1, vm1.timeline.itemsCount)
-
-        // finishPairingOperation must also push the updated security snapshot even when
-        // storage already has the new state (e.g. synced/stored before pairing op cleared).
-        val seed2 = randomBytes(32)
-        val cp2 = SigningKey(seed2).publicKey
-        val m2Id = deviceId(cp2)
-        val xp2 = PairKey().public
-        r.coreHost.dispatchAndWait(
-            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setStreamFrame(
-                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                        .setLegId(1L)
-                        .setSessionUpdated(io.github.lewin671.remoteagent.core.proto.PlainSession.newBuilder().setSessionId("s-pair-2").setMachineId(m2Id)),
-                )
-                .build(),
-        )
-        r.awaitState("s-pair-2 listed") { it.sessions.containsKey("s-pair-2") }
-        val head2 = r.security.head()
-        val key2 = r.security.contentKey(head2.core.contentEpoch)!!
-        val s2 = Authority.pair(
-            head2,
-            DeviceSecurity.Member(m2Id, cp2, xp2, DeviceKind.DEVICE_KIND_MACHINE.number.toUInt()),
-            key2,
-            Authority.newSecret(),
-            SigningKey(daemon.phone.deviceSeed),
-            r.security.signingTime(System.currentTimeMillis()),
-        )
-        phoneStore.installSecurity(DeviceSecurity.stateHash(head2), listOf(s2), listOf(null))
-        val approveReq = ApprovePairingRequest.newBuilder().setPairingId("pair-finish").build().toByteArray()
-        phoneStore.writeSecurityOperation(SecurityOperation("state", s2.core.parent, byteArrayOf(), delivery = approveReq))
-        r.finishPairingOperation("pair-finish")
-        val flow2 = r.watchSession("s-pair-2")
-        flow2.first { it.timeline.loaded }
-        r.coreHost.dispatchAndWait(
-            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setStreamFrame(
-                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                        .setLegId(1L)
-                        .setDeviceUpdated(
-                            io.github.lewin671.remoteagent.core.proto.PlainDevice.newBuilder()
-                                .setDeviceId(m2Id)
-                                .setKind(DeviceKind.DEVICE_KIND_MACHINE),
-                        ),
-                )
-                .build(),
-        )
-        kotlinx.coroutines.withTimeout(5_000L) {
-            r.coreHost.syncStateView.first { view -> view.devicesList.any { it.deviceId == m2Id && it.trusted } }
-        }
-        r.coreHost.dispatchAndWait(
-            io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                .setStreamFrame(
-                    io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                        .setLegId(1L)
-                        .setEventsAppended(
-                            io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.newBuilder()
-                                .setSessionId("s-pair-2")
-                                .addEvents(
-                                    io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
-                                        .setSeq(1L)
-                                        .setVerified(true)
-                                        .setEvent(agent("relay-after-finish").setSessionId("s-pair-2").setSeq(1).build()),
-                                ),
-                        ),
-                )
-                .build(),
-        )
-        val vm2 = flow2.first { it.timeline.itemsCount >= 1 }
-        org.junit.Assert.assertEquals(1, vm2.timeline.itemsCount)
-    }
-
-    @Test fun securityInstallDuringInFlightSyncIsNotDroppedOrOverwritten() = runBlocking<Unit> {
-        val holdSync = java.util.concurrent.atomic.AtomicBoolean(false)
-        val syncEntered = CompletableDeferred<Unit>()
-        val syncRelease = java.util.concurrent.CountDownLatch(1)
-        val gatedHttp =
-            http
-                .newBuilder()
-                .addInterceptor { chain ->
-                    val response = chain.proceed(chain.request())
-                    if (chain.request().url.encodedPath.endsWith("/GetSecurityStates") &&
-                        holdSync.compareAndSet(true, false)
-                    ) {
-                        syncEntered.complete(Unit)
-                        syncRelease.await()
-                    }
-                    response
-                }
-                .build()
-        val r = fixtureRemote(daemon.phone, gatedHttp)
-        closers += AutoCloseable { r.close() }
-        try {
-            r.start()
-            r.awaitState("connected") { it.conn == ConnState.ONLINE && r.coreHost.syncStateView.value.securityLoaded }
-
-            val seed1 = randomBytes(32)
-            val cp1 = SigningKey(seed1).publicKey
-            val m1Id = deviceId(cp1)
-            val xp1 = PairKey().public
-            r.coreHost.dispatchAndWait(
-                io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                    .setStreamFrame(
-                        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                            .setLegId(1L)
-                            .setSessionUpdated(
-                                io.github.lewin671.remoteagent.core.proto.PlainSession.newBuilder()
-                                    .setSessionId("s-pair-sync-race")
-                                    .setMachineId(m1Id),
-                            ),
-                    )
-                    .build(),
-            )
-            r.awaitState("s-pair-sync-race listed") { it.sessions.containsKey("s-pair-sync-race") }
-
-            holdSync.set(true)
-            val syncJob = launch(kotlinx.coroutines.Dispatchers.Default) { runCatching { r.syncSecurity() } }
-            syncEntered.await()
-
-            val head1 = r.security.head()
-            val key1 = r.security.contentKey(head1.core.contentEpoch)!!
-            val state1 = Authority.pair(
-                head1,
-                DeviceSecurity.Member(m1Id, cp1, xp1, DeviceKind.DEVICE_KIND_MACHINE.number.toUInt()),
-                key1,
-                Authority.newSecret(),
-                SigningKey(daemon.phone.deviceSeed),
-                r.security.signingTime(System.currentTimeMillis()),
-            )
-            r.security.install(listOf(state1))
-            r.coreHost.dispatchAndWait(
-                io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                    .setStreamFrame(
-                        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                            .setLegId(1L)
-                            .setDeviceUpdated(
-                                io.github.lewin671.remoteagent.core.proto.PlainDevice.newBuilder()
-                                    .setDeviceId(m1Id)
-                                    .setKind(DeviceKind.DEVICE_KIND_MACHINE),
-                            ),
-                    )
-                    .build(),
-            )
-            kotlinx.coroutines.withTimeout(5_000L) {
-                r.coreHost.syncStateView.first { view -> view.devicesList.any { it.deviceId == m1Id && it.trusted } }
-            }
-
-            val flow1 = r.watchSession("s-pair-sync-race")
-            flow1.first { it.timeline.loaded }
-            r.coreHost.dispatchAndWait(
-                io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                    .setStreamFrame(
-                        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                            .setLegId(1L)
-                            .setEventsAppended(
-                                io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.newBuilder()
-                                    .setSessionId("s-pair-sync-race")
-                                    .addEvents(
-                                        io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
-                                            .setSeq(1L)
-                                            .setVerified(true)
-                                            .setEvent(agent("relay-during-sync").setSessionId("s-pair-sync-race").setSeq(1).build()),
-                                    ),
-                            ),
-                    )
-                    .build(),
-            )
-            val vm1 = flow1.first { it.timeline.itemsCount >= 1 }
-            org.junit.Assert.assertEquals(1, vm1.timeline.itemsCount)
-
-            syncRelease.countDown()
-            syncJob.join()
-            org.junit.Assert.assertTrue(r.coreHost.syncStateView.value.devicesList.any { it.deviceId == m1Id && it.trusted })
-
-            r.coreHost.dispatchAndWait(
-                io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
-                    .setStreamFrame(
-                        io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.newBuilder()
-                            .setLegId(1L)
-                            .setEventsAppended(
-                                io.github.lewin671.remoteagent.core.proto.EventsAppendedFrame.newBuilder()
-                                    .setSessionId("s-pair-sync-race")
-                                    .addEvents(
-                                        io.github.lewin671.remoteagent.core.proto.PlainEvent.newBuilder()
-                                            .setSeq(2L)
-                                            .setVerified(true)
-                                            .setEvent(agent("relay-after-sync").setSessionId("s-pair-sync-race").setSeq(2).build()),
-                                    ),
-                            ),
-                    )
-                    .build(),
-            )
-            val vm2 = flow1.first { it.timeline.itemsCount >= 2 }
-            org.junit.Assert.assertEquals(2, vm2.timeline.itemsCount)
-        } finally {
-            syncRelease.countDown()
-        }
     }
 
 }

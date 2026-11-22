@@ -253,7 +253,6 @@
     <string name="dock_submitting" formatted="false">"Submitting…"</string>
     <string name="dock_trust_folder" formatted="false">"No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"Waiting for confirmation"</string>
-    <string name="errors_account_creation_draft_preserved_continue_the_original_creation_flow" formatted="false">"Account creation draft preserved. Continue the original creation flow and recovery code confirmation."</string>
     <string name="errors_android_attachment_transfer_content_changed_retry" formatted="false">"Attachment transfer content changed. Retry"</string>
     <string name="errors_android_attachment_transfer_stopped_or_changed_retry" formatted="false">"Attachment transfer stopped or changed. Retry"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"Cannot find the server. Check your network"</string>
@@ -266,12 +265,9 @@
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"Image content does not match its format"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"Invalid server address"</string>
     <string name="errors_android_login_expired">"Login expired: %1$s"</string>
-    <string name="errors_android_only_the_managing_client_can_veto_recovery" formatted="false">"Only the managing client can veto recovery"</string>
     <string name="errors_android_open_value1_to_renew">"Open %1$s to renew"</string>
-    <string name="errors_android_pairing_approval_does_not_match_this_device_has_expired_or" formatted="false">"Pairing approval does not match this device, has expired, or has an invalid signature"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"Remote control authorization expired. Cannot save changes, control sessions, or upload new content. %1$s and retry. History remains viewable"</string>
     <string name="errors_android_remote_control_paused_value1_and_retry">"Remote control paused: %1$s and retry"</string>
-    <string name="errors_android_remove_devices_on_the_managing_client" formatted="false">"Remove devices on the managing client"</string>
     <string name="errors_android_secure_connection_failed">"Secure connection failed: %1$s"</string>
     <string name="errors_android_security_authorization_or_the_current_request_is_unverified_nothing_was" formatted="false">"Security authorization or the current request is unverified. Nothing was sent. Retry"</string>
     <string name="errors_android_security_state_unavailable" formatted="false">"Security state unavailable"</string>
@@ -282,7 +278,6 @@
     <string name="errors_android_the_computer_did_not_return_a_file_id" formatted="false">"The computer did not return a file ID"</string>
     <string name="errors_android_the_computer_returned_invalid_file_progress" formatted="false">"The computer returned invalid file progress"</string>
     <string name="errors_android_the_file_changed_during_upload_retry_or_select_the_file" formatted="false">"The file changed during upload. Retry or select the file again"</string>
-    <string name="errors_android_the_managing_client_cannot_be_removed_normally" formatted="false">"The managing client cannot be removed normally"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"The phone clock is ahead of the server. Remote control is paused. Correct the system time"</string>
     <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"This command expired and was not sent"</string>
@@ -293,18 +288,14 @@
     <string name="errors_connection_dropped_midway" formatted="false">"Connection dropped midway"</string>
     <string name="errors_connection_timed_out" formatted="false">"Connection timed out"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"Connection timed out. Reconnecting."</string>
-    <string name="errors_device_information_could_not_be_verified" formatted="false">"Device information could not be verified"</string>
     <string name="errors_device_information_is_changing_retry" formatted="false">"Device information is changing. Retry."</string>
-    <string name="errors_device_registration_is_unfinished_retry_it_first" formatted="false">"Device registration is unfinished. Retry it first."</string>
     <string name="errors_disconnected_from_server" formatted="false">"Disconnected from server"</string>
-    <string name="errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing" formatted="false">"Emergency recovery draft preserved. Continue checking, waiting, or completing the original recovery."</string>
     <string name="errors_establishing_push_connection" formatted="false">"Establishing push connection"</string>
     <string name="errors_executed_result_unavailable" formatted="false">"Done on the computer, but the result couldn\'t be retrieved. Refresh to see the latest state."</string>
     <string name="errors_history_could_not_continue_loading_retry" formatted="false">"History could not continue loading. Retry."</string>
     <string name="errors_history_has_a_gap_retry" formatted="false">"History has a gap. Retry."</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"History keys unavailable: records from before recovery cannot be decrypted"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"Invalid ciphertext: signature, key, or content verification failed"</string>
-    <string name="errors_invalid_pairing_approval_signature" formatted="false">"Invalid pairing approval signature"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"It may have been deleted, or belong to a computer that was removed."</string>
     <string name="errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" formatted="false">"Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin."</string>
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"Names can only be changed on that device"</string>
@@ -342,7 +333,6 @@
     <string name="errors_the_server_address_cannot_include_a_username_or_password" formatted="false">"The server address cannot include a username or password"</string>
     <string name="errors_the_server_does_not_recognize_this_device_it_may" formatted="false">"The server does not recognize this device (it may have been removed or the service rebuilt)"</string>
     <string name="errors_the_server_must_use_https" formatted="false">"The server must use HTTPS"</string>
-    <string name="errors_the_server_returned_an_unexpected_device_id" formatted="false">"The server returned an unexpected device ID"</string>
     <string name="errors_the_task_was_just_changed_updated_to_the_latest" formatted="false">"The task was just changed. Updated to the latest content."</string>
     <string name="errors_this_browser_has_already_joined_an_account_open_this" formatted="false">"This browser has already joined an account. Open this link on the new device to join."</string>
     <string name="errors_this_device_s_clock_is_behind_the_account_state" formatted="false">"This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused."</string>
@@ -1369,11 +1359,8 @@
     <string name="security_after_submission_wait_48_hours_the_current_managing_client" formatted="false">"After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable."</string>
     <string name="security_allow_to_join" formatted="false">"Allow to join"</string>
     <string name="security_android_abandon_this_recovery_and_enter_a_new_code" formatted="false">"Abandon this recovery and enter a new code"</string>
-    <string name="security_android_after_completion_wait_for_retained_computers_to_come_online_and" formatted="false">"After completion, wait for retained computers to come online and publish current state"</string>
     <string name="security_android_already_registering_this_phone_wait_for_the_result" formatted="false">"Already registering this phone. Wait for the result"</string>
     <string name="security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key" formatted="false">"Backup not confirmed. This phone has no recovery private key; replace the code immediately after completion"</string>
-    <string name="security_android_cannot_complete_yet_or_recovery_was_vetoed" formatted="false">"Cannot complete yet, or recovery was vetoed"</string>
-    <string name="security_android_cannot_confirm_whether_the_new_device_joined_check_your_network" formatted="false">"Cannot confirm whether the new device joined. Check your network and retry the same approval, or check the new device"</string>
     <string name="security_android_cannot_confirm_whether_this_phone_joined_value1_check_the_client">"Cannot confirm whether this phone joined: %1$s. Check the client list in Settings on the managing client"</string>
     <string name="security_android_clearing" formatted="false">"Clearing…"</string>
     <string name="security_android_compare_the_4_patterns_on_the_managing_client_if_they" formatted="false">"Compare the 4 patterns on the managing client. If they match, confirm here first, then allow on the managing client."</string>
@@ -1385,14 +1372,11 @@
     <string name="security_android_could_not_read_security_operation_state_before_exiting_value1">"Could not read security operation state before exiting: %1$s"</string>
     <string name="security_android_create_account" formatted="false">"Create account"</string>
     <string name="security_android_current_client" formatted="false">"Current client"</string>
-    <string name="security_android_current_content_key_missing" formatted="false">"Current content key missing"</string>
     <string name="security_android_do_not_publish_yet" formatted="false">"Do not publish yet"</string>
     <string name="security_android_enter_the_8_digit_pairing_code" formatted="false">"Enter the 8-digit pairing code"</string>
     <string name="security_android_enter_the_recovery_code_saved_during_setup_after_submitting_wait" formatted="false">"Enter the recovery code saved during setup. After submitting, wait 48 hours. The original managing client can see the request when opened (push may not arrive) and explicitly veto it during this period. Ordinary renewal does not invalidate recovery."</string>
     <string name="security_android_exit_and_delete_local_keys_in_settings" formatted="false">"Exit and delete local keys in Settings"</string>
     <string name="security_android_exit_incomplete_value1">"Exit incomplete: %1$s"</string>
-    <string name="security_android_export_genesis_state" formatted="false">"Export genesis state"</string>
-    <string name="security_android_export_genesis_state_for_offline_relay_pinning" formatted="false">"Export genesis state (for offline relay pinning)"</string>
     <string name="security_android_first_delete_the_account_keys_and_cache_on_this_device" formatted="false">"First delete the account keys and cache on this device, then join with a pairing code."</string>
     <string name="security_android_first_delete_the_account_keys_and_cache_on_this_phone" formatted="false">"First delete the account keys and cache on this phone, then join with a pairing code."</string>
     <string name="security_android_generating" formatted="false">"Generating…"</string>
@@ -1400,48 +1384,20 @@
     <string name="security_android_i_saved_it_start_using_the_app" formatted="false">"I saved it. Start using the app"</string>
     <string name="security_android_i_saved_the_new_recovery_code_offline" formatted="false">"I saved the new recovery code offline"</string>
     <string name="security_android_if_48_hours_have_not_passed_or_the_original_managing" formatted="false">"If 48 hours have not passed or the original managing client vetoed the request, completion fails with a reason."</string>
-    <string name="security_android_incorrect_recovery_code" formatted="false">"Incorrect recovery code"</string>
-    <string name="security_android_incorrect_recovery_code_or_no_pending_recovery" formatted="false">"Incorrect recovery code, or no pending recovery"</string>
-    <string name="security_android_incorrect_recovery_code_or_the_recovery_statement_was_rejected" formatted="false">"Incorrect recovery code, or the recovery statement was rejected"</string>
-    <string name="security_android_join_receipt_device_public_key_mismatch" formatted="false">"Join receipt device public key mismatch"</string>
-    <string name="security_android_join_receipt_does_not_contain_this_device_s_identity" formatted="false">"Join receipt does not contain this device\'s identity"</string>
-    <string name="security_android_keep_this_phone_s_account_root_key_and_device_identity" formatted="false">"Keep this phone\'s account root key and device identity, discard protocol 9 security state, create protocol 10 genesis state, and make this phone the managing client. Use an old version to read protocol 9 history."</string>
-    <string name="security_android_membership_sync_failed_there_may_be_an_invalid_pairing_check" formatted="false">"Membership sync failed. There may be an invalid pairing. Check the device list and remove incomplete devices, then start again."</string>
     <string name="security_android_name_changes_sync_to_other_clients_set_notifications_on_this" formatted="false">"Name changes sync to other clients. Set notifications on this phone; they cannot be changed remotely here."</string>
     <string name="security_android_new_recovery_code_confirmed_saved_offline" formatted="false">"New recovery code confirmed saved offline"</string>
-    <string name="security_android_no_account_available_to_upgrade" formatted="false">"No account available to upgrade"</string>
-    <string name="security_android_no_candidate_device" formatted="false">"No candidate device"</string>
-    <string name="security_android_no_device_has_joined_yet" formatted="false">"No device has joined yet"</string>
     <string name="security_android_not_read_yet" formatted="false">"Not read yet"</string>
-    <string name="security_android_only_a_removed_computer_s_archive_from_the_same_account" formatted="false">"Only a removed computer\'s archive from the same account can be resumed"</string>
-    <string name="security_android_only_the_managing_client_can_add_devices" formatted="false">"Only the managing client can add devices"</string>
-    <string name="security_android_only_the_managing_client_can_approve" formatted="false">"Only the managing client can approve"</string>
     <string name="security_android_only_this_client_can_change_its_name_notification_settings_must" formatted="false">"Only this client can change its name. Notification settings must also be changed on that device."</string>
     <string name="security_android_open_settings_add_device_on_the_managing_client_scan_its" formatted="false">"Open Settings › Add device on the managing client. Scan its QR code or enter the 8-digit pairing code here."</string>
     <string name="security_android_optional" formatted="false">"Optional"</string>
     <string name="security_android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the" formatted="false">"Outcome unconfirmed. Retry the same approval after returning to the foreground"</string>
-    <string name="security_android_pairing_approval_does_not_match_this_device_or_its_signature" formatted="false">"Pairing approval does not match this device or its signature is invalid"</string>
-    <string name="security_android_pairing_cannot_finish_right_now_check_your_network_then_start" formatted="false">"Pairing cannot finish right now. Check your network, then start again"</string>
-    <string name="security_android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed" formatted="false">"Pairing commitment changed after the ephemeral public key was revealed"</string>
-    <string name="security_android_pairing_commitment_mismatch" formatted="false">"Pairing commitment mismatch"</string>
-    <string name="security_android_pairing_payload_belongs_to_another_security_domain" formatted="false">"Pairing payload belongs to another security domain"</string>
-    <string name="security_android_pairing_payload_is_missing_the_account_public_key" formatted="false">"Pairing payload is missing the account public key"</string>
-    <string name="security_android_pairing_payload_managing_client_mismatch" formatted="false">"Pairing payload managing client mismatch"</string>
-    <string name="security_android_pairing_payload_state_chain_is_incomplete" formatted="false">"Pairing payload state chain is incomplete"</string>
-    <string name="security_android_pairing_trust_information_is_too_large" formatted="false">"Pairing trust information is too large"</string>
-    <string name="security_android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped" formatted="false">"Patterns were not confirmed on this device. Secure binding stopped"</string>
     <string name="security_android_paused_retry_after_returning_to_the_foreground" formatted="false">"Paused. Retry after returning to the foreground"</string>
     <string name="security_android_publishing" formatted="false">"Publishing…"</string>
     <string name="security_android_reading_membership_state" formatted="false">"Reading membership state…"</string>
-    <string name="security_android_rebuild_security_domain" formatted="false">"Rebuild security domain"</string>
-    <string name="security_android_rebuild_security_domain_and_become_managing_client" formatted="false">"Rebuild security domain and become managing client"</string>
-    <string name="security_android_rebuilding" formatted="false">"Rebuilding…"</string>
     <string name="security_android_recovery_can_now_be_completed" formatted="false">"Recovery can now be completed."</string>
     <string name="security_android_recovery_code_backup_status" formatted="false">"Recovery code backup status"</string>
     <string name="security_android_recovery_code_shown_only_once" formatted="false">"Recovery code · Shown only once"</string>
     <string name="security_android_recovery_eligible_at">"Eligible at: %1$s"</string>
-    <string name="security_android_recovery_not_found_it_may_be_complete_or_vetoed" formatted="false">"Recovery not found. It may be complete or vetoed"</string>
-    <string name="security_android_registration_challenge_expired_retry" formatted="false">"Registration challenge expired. Retry"</string>
     <string name="security_android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"Removal disconnects its login and clears push subscriptions. Computer sessions and history are kept. Rejoining requires approval on the managing client."</string>
     <string name="security_android_remove_this_client" formatted="false">"Remove this client"</string>
     <string name="security_android_removed" formatted="false">"Removed"</string>
@@ -1449,74 +1405,38 @@
     <string name="security_android_renews_automatically_when_you_return_to_the_managing_client_after" formatted="false">"Renews automatically when you return to the managing client. After expiry, remote control pauses, while chat and history remain viewable."</string>
     <string name="security_android_saving" formatted="false">"Saving…"</string>
     <string name="security_android_scan_qr_code" formatted="false">"Scan QR code"</string>
-    <string name="security_android_security_domain_pinning_failed" formatted="false">"Security domain pinning failed"</string>
-    <string name="security_android_server_registration_computation_requirement_is_too_high_value1_bits_maximum">"Server registration computation requirement is too high (%1$s bits; maximum 28)"</string>
     <string name="security_android_setup_token_if_required_by_the_server" formatted="false">"Setup token (if required by the server)"</string>
     <string name="security_android_someone_is_requesting_management_takeover_with_a_recovery_code_veto" formatted="false">"Someone is requesting management takeover with a recovery code. Veto it if this is not you."</string>
-    <string name="security_android_state_chain_is_too_large_to_pair_recreate_the_account" formatted="false">"State chain is too large to pair. Recreate the account"</string>
     <string name="security_android_still_within_the_48_hour_waiting_period" formatted="false">"Still within the 48-hour waiting period."</string>
     <string name="security_android_submit_recovery" formatted="false">"Submit recovery"</string>
     <string name="security_android_submitting" formatted="false">"Submitting…"</string>
     <string name="security_android_takes_effect_after_48_hours_a_veto_from_the_original" formatted="false">"Takes effect after 48 hours. A veto from the original managing client invalidates it. Write it down or photograph it now."</string>
-    <string name="security_android_the_account_saved_on_this_phone_does_not_match_its" formatted="false">"The account saved on this phone does not match its root key"</string>
-    <string name="security_android_the_candidate_device_cannot_use_the_managing_client_s_identity" formatted="false">"The candidate device cannot use the managing client\'s identity"</string>
-    <string name="security_android_the_candidate_device_needs_an_update" formatted="false">"The candidate device needs an update"</string>
-    <string name="security_android_the_managing_client_s_trust_information_does_not_match_its" formatted="false">"The managing client\'s trust information does not match its commitment"</string>
     <string name="security_android_the_new_code_is_still_on_this_page_save_it" formatted="false">"The new code is still on this page. Save it offline"</string>
     <string name="security_android_the_new_recovery_code_generated_for_this_request_is_invalid" formatted="false">"The new recovery code generated for this request is invalid. Reapply using the replacement code from the original managing client."</string>
     <string name="security_android_the_original_device_identity_keys_and_history_are_kept_open" formatted="false">"The original device identity, keys, and history are kept. Open Settings › Add device on the managing client, scan or enter the pairing code, then compare 4 patterns on both devices to join."</string>
     <string name="security_android_the_original_managing_client_vetoed_this_recovery" formatted="false">"The original managing client vetoed this recovery."</string>
     <string name="security_android_the_original_security_operation_is_verified_complete" formatted="false">"The original security operation is verified complete."</string>
-    <string name="security_android_the_recovery_chain_published_by_the_server_differs_from_the" formatted="false">"The recovery chain published by the server differs from the submitted chain"</string>
-    <string name="security_android_the_recovery_state_published_by_the_server_differs_from_the" formatted="false">"The recovery state published by the server differs from the submitted state"</string>
-    <string name="security_android_the_relay_has_not_pinned_this_security_domain_an_upgrade" formatted="false">"The relay has not pinned this security domain (an upgrade from an old version, or the relay is stopped). Export the public genesis state, pin it while the relay is stopped (self-hosting guide steps 4–5), then start the relay."</string>
-    <string name="security_android_the_server_did_not_accept_this_approval_check_whether_the" formatted="false">"The server did not accept this approval. Check whether the new device joined, then start again"</string>
     <string name="security_android_the_server_rejected_this_device_s_login" formatted="false">"The server rejected this device\'s login"</string>
-    <string name="security_android_the_server_returned_an_invalid_registration_challenge" formatted="false">"The server returned an invalid registration challenge"</string>
-    <string name="security_android_the_server_returned_an_unexpected_device_id" formatted="false">"The server returned an unexpected device ID"</string>
-    <string name="security_android_these_computers_must_republish_checkpoints_after_recovery" formatted="false">"; these computers must republish checkpoints after recovery"</string>
     <string name="security_android_this_client_is_no_longer_in_the_current_member_list" formatted="false">"This client is no longer in the current member list"</string>
     <string name="security_android_this_deletes_the_account_keys_and_cache_on_this_phone" formatted="false">"This deletes the account keys and cache on this phone. Computer sessions are unaffected."</string>
-    <string name="security_android_this_device_is_not_the_managing_client_in_the_recovery" formatted="false">"This device is not the managing client in the recovery chain"</string>
-    <string name="security_android_this_device_s_identity_differs_from_its_member_record_cannot" formatted="false">"This device\'s identity differs from its member record. Cannot rejoin"</string>
-    <string name="security_android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin" formatted="false">"This device was removed. Its old identity cannot rejoin. Rejoin on that device to generate a new identity"</string>
     <string name="security_android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"This disconnects its login and clears push subscriptions. Computer sessions and history are kept. Rejoining requires fresh approval on the managing client."</string>
     <string name="security_android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and" formatted="false">"This immediately disconnects it and revokes access, keeping sessions and images on the relay. It must rejoin the account to connect again."</string>
-    <string name="security_android_this_is_a_saved_rebuild_draft_the_recovery_code_will" formatted="false">"This is a saved rebuild draft. The recovery code will not appear again. Confirm you have an offline backup. If not, replace the code immediately after entering."</string>
     <string name="security_android_this_is_not_a_remote_agent_pairing_qr_code" formatted="false">"This is not a remote-agent pairing QR code"</string>
     <string name="security_android_this_is_the_only_managing_client_transfer_management_first_exiting" formatted="false">"This is the only managing client. Transfer management first. Exiting deletes the management key; without a recovery code backup, management access will be lost."</string>
-    <string name="security_android_this_join_attempt_was_cancelled" formatted="false">"This join attempt was cancelled"</string>
     <string name="security_android_this_join_attempt_was_cancelled_the_old_request_may_still" formatted="false">"This join attempt was cancelled. The old request may still occupy the pairing code. Reject it on the managing client, then generate a new code"</string>
-    <string name="security_android_this_pairing_is_no_longer_valid_cannot_verify_whether_the" formatted="false">"This pairing is no longer valid. Cannot verify whether the new device joined. Check the new device or device list before starting again."</string>
-    <string name="security_android_this_pairing_is_no_longer_valid_the_new_device_did" formatted="false">"This pairing is no longer valid. The new device did not join. Remove the incomplete device from the device list, then start again."</string>
-    <string name="security_android_this_pairing_only_allows_the_original_computer_to_rejoin" formatted="false">"This pairing only allows the original computer to rejoin"</string>
-    <string name="security_android_this_phone_has_no_account_public_key_and_cannot_register" formatted="false">"This phone has no account public key and cannot register a new device. First rejoin using a device with the account root key"</string>
-    <string name="security_android_this_phone_has_no_account_root_key_and_cannot_become" formatted="false">"This phone has no account root key and cannot become the managing client. Use a device retaining the root key, or recover on the successor device with the recovery code."</string>
-    <string name="security_android_this_phone_has_no_account_root_key_and_cannot_rebuild" formatted="false">"This phone has no account root key and cannot rebuild the security domain. Pair again using the managing client"</string>
     <string name="security_android_this_phone_will_become_the_managing_client_the_account_root" formatted="false">"This phone will become the managing client. The account root key and device identity are stored only on the phone. The recovery code appears once; prepare paper or a camera."</string>
-    <string name="security_android_this_public_genesis_state_contains_no_keys_use_it_only" formatted="false">"This public genesis state contains no keys. Use it only when the upgrade guide requires offline relay pinning."</string>
     <string name="security_android_this_recovery_is_complete" formatted="false">"This recovery is complete."</string>
-    <string name="security_android_this_recovery_was_submitted_complete_it_on_the_phone_that" formatted="false">"This recovery was submitted. Complete it on the phone that saved the recovery identity"</string>
     <string name="security_android_this_recovery_was_submitted_if_you_have_not_saved_the" formatted="false">"This recovery was submitted. If you have not saved the new recovery code, replace it in Settings immediately after completion."</string>
     <string name="security_android_this_recovery_was_vetoed_the_new_recovery_code_generated_for" formatted="false">"This recovery was vetoed. The new recovery code generated for it is also invalid."</string>
-    <string name="security_android_too_many_attempts_wait_a_minute_and_retry" formatted="false">"Too many attempts. Wait a minute and retry"</string>
     <string name="security_android_transfer_to">"Transfer to %1$s"</string>
-    <string name="security_android_unrecognized_recovery_status" formatted="false">"Unrecognized recovery status"</string>
-    <string name="security_android_upgrading_an_existing_account_rebuild_the_security_domain_and_become" formatted="false">"Upgrading an existing account? Rebuild the security domain and become managing client"</string>
     <string name="security_android_use_this_to_recover_management_if_the_managing_client_is" formatted="false">"Use this to recover management if the managing client is lost. It only signs recovery statements and cannot decrypt content. If both the management key and recovery code are lost, the account must be recreated."</string>
     <string name="security_android_verify_original_security_operation" formatted="false">"Verify original security operation"</string>
     <string name="security_android_view" formatted="false">"View"</string>
     <string name="security_android_view_status" formatted="false">"View status"</string>
     <string name="security_android_wait" formatted="false">"Wait"</string>
-    <string name="security_android_waiting_for_computers_to_restore_current_sessions" formatted="false">"Waiting for computers to restore current sessions"</string>
     <string name="security_android_waiting_for_managing_client_approval_and_completing_join" formatted="false">"Waiting for managing client approval and completing join…"</string>
     <string name="security_android_write_it_down_or_photograph_it_before_publishing_publishing_immediately" formatted="false">"Write it down or photograph it before publishing. Publishing immediately invalidates the old code."</string>
-    <string name="security_android_write_it_down_or_photograph_it_it_only_signs_recovery" formatted="false">"Write it down or photograph it. It only signs recovery statements and cannot decrypt content."</string>
-    <string name="security_another_pairing_draft_is_unfinished" formatted="false">"Another pairing draft is unfinished"</string>
-    <string name="security_another_pairing_draft_is_unfinished_complete_this_pairing_or" formatted="false">"Another pairing draft is unfinished. Complete this pairing or explicitly exit before retrying."</string>
-    <string name="security_another_security_operation_is_unfinished" formatted="false">"Another security operation is unfinished"</string>
     <string name="security_apply_again" formatted="false">"Apply again"</string>
-    <string name="security_apply_again_with_the_current_recovery_code" formatted="false">"Apply again with the current recovery code"</string>
     <string name="security_approved_waiting_for_the_new_device_to_finish_binding" formatted="false">"Approved. Waiting for the new device to finish binding…"</string>
     <string name="security_asked_the_browser_to_retain_data" formatted="false">"Asked the browser to retain data"</string>
     <string name="security_automatically_renews_when_you_return_to_the_managing_client" formatted="false">"Automatically renews when you return to the managing client. Remote control pauses after expiry; chat and history remain available. Cannot renew while the page is closed or frozen."</string>
@@ -1532,6 +1452,7 @@
     <string name="security_computer_run_remote_agent_account_join_and_enter_the" formatted="false">"Computer: run remote-agent account join and enter the code below. Client: scan the QR code or enter the pairing code."</string>
     <string name="security_computers_can_only_run_clis_and_cannot_take_over" formatted="false">"Computers can only run CLIs and cannot take over management."</string>
     <string name="security_confirm_exit" formatted="false">"Confirm exit"</string>
+    <string name="security_confirm_recovery_code_saved_first" formatted="false">"Confirm the new recovery code is saved offline first"</string>
     <string name="security_confirm_that_the_successor_device_saved_the_new_recovery">"Confirm that the successor device (%1$s) saved the new recovery code. Transfer removes this device and makes the successor the only managing client."</string>
     <string name="security_confirm_the_patterns_on_the_new_device_before_approving" formatted="false">"Confirm the patterns on the new device before approving on the managing client"</string>
     <string name="security_confirm_the_patterns_on_this_device_first" formatted="false">"Confirm the patterns on this device first"</string>
@@ -1539,7 +1460,6 @@
     <string name="security_confirmed_here_waiting_for_managing_client_approval_and_binding" formatted="false">"Confirmed here. Waiting for managing client approval and binding…"</string>
     <string name="security_continue_creation" formatted="false">"Continue creation"</string>
     <string name="security_continue_original_draft" formatted="false">"Continue original draft"</string>
-    <string name="security_continue_the_original_recovery_or_explicitly_abandon_the_rejected" formatted="false">"Continue the original recovery or explicitly abandon the rejected recovery first"</string>
     <string name="security_control_ai_coding_clis_on_your_computer_from_any" formatted="false">"Continue using coding CLIs inside tmux on your computer from your phone or any browser."</string>
     <string name="security_create_account" formatted="false">"Create account"</string>
     <string name="security_current_managing_client" formatted="false">"Current managing client"</string>
@@ -1558,7 +1478,6 @@
     <string name="security_exit_this_browser" formatted="false">"Exit this browser?"</string>
     <string name="security_exiting" formatted="false">"Exiting…"</string>
     <string name="security_exiting_deletes_local_keys_you_will_need_to_pair" formatted="false">"Exiting deletes local keys. You will need to pair again."</string>
-    <string name="security_finish_device_registration_first" formatted="false">"Finish device registration first"</string>
     <string name="security_finish_the_current_security_operation_before_renewing" formatted="false">"Finish the current security operation before renewing"</string>
     <string name="security_finish_the_current_security_operation_first" formatted="false">"Finish the current security operation first"</string>
     <string name="security_finish_the_original_security_operation_first" formatted="false">"Finish the original security operation first"</string>
@@ -1570,7 +1489,6 @@
     <string name="security_i_saved_the_new_recovery_code_offline" formatted="false">"I saved the new recovery code offline"</string>
     <string name="security_if_this_browser_is_already_a_member_recovery_will" formatted="false">"If this browser is already a member, recovery will remove its old identity and rotate content keys. If interrupted, continue the original recovery."</string>
     <string name="security_invalid_pairing_key" formatted="false">"Invalid pairing key"</string>
-    <string name="security_invalid_pairing_trust_information" formatted="false">"Invalid pairing trust information"</string>
     <string name="security_invalid_recovery_code" formatted="false">"Invalid recovery code"</string>
     <string name="security_it_may_have_been_removed_or_the_service_may" formatted="false">"It may have been removed, or the service may have been rebuilt. Sessions on your computers are unaffected."</string>
     <string name="security_join" formatted="false">"Join"</string>
@@ -1586,22 +1504,17 @@
     <string name="security_on_the_managing_client_open_settings_add_device_and" formatted="false">"On the managing client, open Settings › Add device and enter its 8-digit pairing code here."</string>
     <string name="security_once_the_successor_device_joins_and_confirms_saving_its" formatted="false">"Once the successor device joins and confirms saving its new recovery code, approve here. Transfer preserves accessible history and removes this device."</string>
     <string name="security_one_time_security_setup" formatted="false">"One-time security setup"</string>
-    <string name="security_only_a_removed_computer_s_archive_can_be_rejoined" formatted="false">"Only a removed computer’s archive can be rejoined"</string>
     <string name="security_only_this_computer_can_rejoin_its_original_archive_with" formatted="false">"Only this computer can rejoin its original archive with a new identity, preserving its sessions and history."</string>
     <string name="security_open_to_renew">"Open %1$s to renew."</string>
     <string name="security_original_recovery_code" formatted="false">"Original recovery code"</string>
     <string name="security_pair_again" formatted="false">"Pair again"</string>
     <string name="security_pair_valid_until">"Valid until %1$s"</string>
     <string name="security_paired" formatted="false">"Paired"</string>
-    <string name="security_pairing_approval_does_not_match_this_device_or_has" formatted="false">"Pairing approval does not match this device or has expired"</string>
     <string name="security_pairing_canceled" formatted="false">"Pairing canceled"</string>
     <string name="security_pairing_code" formatted="false">"Pairing code"</string>
-    <string name="security_pairing_commitment_mismatch_pairing_stopped" formatted="false">"Pairing commitment mismatch. Pairing stopped."</string>
     <string name="security_pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before" formatted="false">"Pairing delivery expired. Explicitly remove the unfinished candidate before starting over."</string>
-    <string name="security_pairing_expired" formatted="false">"Pairing expired"</string>
     <string name="security_pairing_expired_or_was_canceled" formatted="false">"Pairing expired or was canceled"</string>
     <string name="security_pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before" formatted="false">"Pairing was canceled. Explicitly remove the unfinished candidate before starting over."</string>
-    <string name="security_pairing_was_canceled_or_expired" formatted="false">"Pairing was canceled or expired"</string>
     <string name="security_patterns_differ_return_to_code_entry" formatted="false">"Patterns differ, return to code entry"</string>
     <string name="security_patterns_match_the_new_device_confirmed_first" formatted="false">"Patterns match; the new device confirmed first"</string>
     <string name="security_patterns_match_trust_and_continue" formatted="false">"Patterns match, trust and continue"</string>
@@ -1616,10 +1529,8 @@
     <string name="security_recovery_code_for_restoring_public_information" formatted="false">"Recovery code for restoring public information"</string>
     <string name="security_recovery_code_saved_and_confirmed_waiting_for_the_current" formatted="false">"Recovery code saved and confirmed. Waiting for the current managing client’s approval; reopen this page to check."</string>
     <string name="security_recovery_code_updated_the_previous_code_and_pending_recovery" formatted="false">"Recovery code updated. The previous code and pending recovery requests are invalidated."</string>
-    <string name="security_recovery_is_pending_or_its_outcome_is_unknown_and" formatted="false">"Recovery is pending or its outcome is unknown and cannot be abandoned"</string>
     <string name="security_recovery_request_pending" formatted="false">"Recovery request pending"</string>
     <string name="security_recovery_request_pending_eligible_at">"Recovery request pending. Eligible at: %1$s"</string>
-    <string name="security_recovery_was_rejected_explicitly_apply_again" formatted="false">"Recovery was rejected. Explicitly apply again."</string>
     <string name="security_recovery_was_rejected_you_can_apply_again" formatted="false">"Recovery was rejected. You can apply again."</string>
     <string name="security_refresh_successor_devices" formatted="false">"Refresh successor devices"</string>
     <string name="security_regenerate_recovery_code" formatted="false">"Regenerate recovery code"</string>
@@ -1657,43 +1568,29 @@
     <string name="security_submit_or_check_original_recovery" formatted="false">"Submit or check original recovery"</string>
     <string name="security_success_is_uncertain_connection_lost" formatted="false">"Success is uncertain: connection lost"</string>
     <string name="security_take_over_management" formatted="false">"Take over management"</string>
-    <string name="security_the_48_hour_wait_has_not_ended" formatted="false">"The 48-hour wait has not ended"</string>
     <string name="security_the_account_belongs_to_another_server" formatted="false">"The account belongs to another server"</string>
-    <string name="security_the_account_does_not_match_the_managing_client_s" formatted="false">"The account does not match the managing client’s trust information"</string>
     <string name="security_the_account_keys_and_cache_in_this_browser_will" formatted="false">"The account keys and cache in this browser will be deleted before joining with a pairing code."</string>
     <string name="security_the_account_s_state_chain_is_too_long_to" formatted="false">"The account’s state chain is too long to join. Rebuild the account on the managing client."</string>
     <string name="security_the_browser_did_not_promise_to_retain_data" formatted="false">"The browser did not promise to retain data"</string>
     <string name="security_the_computer_s_archive_was_deleted_join_as_a" formatted="false">"The computer’s archive was deleted. Join as a new device."</string>
-    <string name="security_the_join_receipt_does_not_contain_the_correct_identity" formatted="false">"The join receipt does not contain the correct identity for this device"</string>
     <string name="security_the_local_account_unfinished_registration_and_security_operations_will" formatted="false">"The local account, unfinished registration, and security operations will be cleared. You will need to pair again or create an account. Sessions and archives on the server will remain. Operations with an unknown outcome may have succeeded; verify them on the managing client."</string>
-    <string name="security_the_local_security_state_is_damaged_and_cannot_be" formatted="false">"The local security state is damaged and cannot be overwritten by pairing again. Export and clear it first."</string>
     <string name="security_the_managing_client_canceled_pairing" formatted="false">"The managing client canceled pairing"</string>
     <string name="security_the_managing_client_cannot_be_removed_directly_transfer_management" formatted="false">"The managing client cannot be removed directly. Transfer management first."</string>
     <string name="security_the_managing_client_cannot_be_removed_directly_transfer_management_device_management" formatted="false">"The managing client cannot be removed directly. Transfer management first."</string>
-    <string name="security_the_managing_client_s_trust_information_does_not_match" formatted="false">"The managing client’s trust information does not match the pairing commitment"</string>
     <string name="security_the_new_recovery_code_backup_is_unconfirmed_replace_the" formatted="false">"The new recovery code backup is unconfirmed. Replace the code and save it offline immediately."</string>
     <string name="security_the_original_creation_draft_is_preserved_continue_with_the" formatted="false">"The original creation draft is preserved. Continue with the same account. The recovery code will not be shown again; if you have no backup, replace it immediately after entering the account."</string>
     <string name="security_the_original_device_identity_keys_and_history_are_preserved" formatted="false">"The original device identity, keys, and history are preserved. On the managing client, open Settings › Add device, enter its 8-digit code here, then compare four patterns to finish binding."</string>
-    <string name="security_the_original_device_public_key_does_not_match_the" formatted="false">"The original device public key does not match the local signing key"</string>
     <string name="security_the_original_operation_is_unfinished_continue_verifying" formatted="false">"The original operation is unfinished. Continue verifying."</string>
     <string name="security_the_original_recovery_draft_is_preserved_the_new_recovery" formatted="false">"The original recovery draft is preserved. The new recovery code will not be shown again; you can still finish the original recovery without saving it. Replace it immediately after entering the account."</string>
-    <string name="security_the_other_device_refused_this_join_request" formatted="false">"The other device refused this join request"</string>
     <string name="security_the_page_is_paused_return_to_the_foreground_to" formatted="false">"The page is paused. Return to the foreground to continue security operations."</string>
-    <string name="security_the_pairing_code_belongs_to_another_security_domain_original" formatted="false">"The pairing code belongs to another security domain. Original keys preserved."</string>
     <string name="security_the_pairing_code_is_wrong_or_has_already_been" formatted="false">"The pairing code is wrong or has already been used"</string>
-    <string name="security_the_pairing_draft_conflicts_with_the_current_identity" formatted="false">"The pairing draft conflicts with the current identity"</string>
-    <string name="security_the_pairing_receipt_was_approved_by_a_device_other" formatted="false">"The pairing receipt was approved by a device other than the current managing client"</string>
     <string name="security_the_public_key_may_already_be_published_abandoning_only" formatted="false">"The public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control; keep the saved recovery code."</string>
-    <string name="security_the_recovery_signature_has_not_been_saved_re_enter" formatted="false">"The recovery signature has not been saved. Re-enter the original recovery code to continue the original draft."</string>
     <string name="security_the_security_operation_s_outcome_is_unverified_continue_the" formatted="false">"The security operation’s outcome is unverified. Continue the original operation first; exiting deletes the only completion materials."</string>
     <string name="security_the_server_does_not_recognize_this_device" formatted="false">"The server does not recognize this device"</string>
-    <string name="security_the_server_replaced_the_pairing_commitment_after_receiving_the" formatted="false">"The server replaced the pairing commitment after receiving the temporary public key. Pairing stopped."</string>
     <string name="security_the_server_returned_information_for_a_different_device_from" formatted="false">"The server returned information for a different device from the one that started pairing. Pairing stopped."</string>
     <string name="security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon" formatted="false">"The unpublished pairing draft expired. You can explicitly abandon it and start over."</string>
     <string name="security_the_unpublished_pairing_draft_was_canceled_or_its_candidate" formatted="false">"The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over."</string>
-    <string name="security_this_browser_does_not_support_web_locks_it_cannot" formatted="false">"This browser does not support Web Locks. It cannot safely manage the account."</string>
     <string name="security_this_browser_is_the_only_managing_client_transfer_management" formatted="false">"This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost."</string>
-    <string name="security_this_browser_s_original_public_key_could_not_be" formatted="false">"This browser’s original public key could not be verified. Original keys preserved."</string>
     <string name="security_this_browser_will_be_the_only_managing_client_clearing" formatted="false">"This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended."</string>
     <string name="security_this_deletes_the_account_keys_and_cache_on_this" formatted="false">"This deletes the account keys and cache on this device. Sessions on your computers are unaffected."</string>
     <string name="security_this_device" formatted="false">"This device"</string>
@@ -1702,7 +1599,6 @@
     <string name="security_this_device_manages_the_account" formatted="false">"This device manages the account"</string>
     <string name="security_this_device_s_clock_is_behind_the_managing_client" formatted="false">"This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining."</string>
     <string name="security_this_page_and_the_server_or_pairing_device_use" formatted="false">"This page and the server or pairing device use different versions. Refresh to update and retry."</string>
-    <string name="security_this_pairing_expired_generate_a_new_code_on_the" formatted="false">"This pairing expired. Generate a new code on the managing client."</string>
     <string name="security_this_permanently_deletes_sessions_events_and_images_on_the" formatted="false">"This permanently deletes sessions, events, and images on the relay. Local computer files are unaffected. This does not remove the device."</string>
     <string name="security_too_many_attempts_wait_a_minute_and_retry" formatted="false">"Too many attempts. Wait a minute and retry."</string>
     <string name="security_transfer_management" formatted="false">"Transfer management"</string>

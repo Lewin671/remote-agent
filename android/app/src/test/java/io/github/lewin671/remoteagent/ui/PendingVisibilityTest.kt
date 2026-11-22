@@ -27,7 +27,7 @@ class PendingVisibilityTest {
     @get:Rule(order = 2) val appJobs = appFixture.stopJobs { done ->
         ui.waitUntil(5000) { ui.mainClock.advanceTimeByFrame(); ui.waitForIdle(); done() }
     }
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test-client"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "test-client"), Api.defaultHttp())
     private val session = SessionView("s", "m", Session.newBuilder().setId("s").setCwd("/example/demo").setAgent(Agent.AGENT_CODEX).setStatus(SessionStatus.SESSION_STATUS_RUNNING).build())
     private val state = RemoteState(conn = io.github.lewin671.remoteagent.core.ConnState.ONLINE, loaded = true, machines = mapOf("m" to MachineView("m", true, 0)), sessions = mapOf("s" to session))
 

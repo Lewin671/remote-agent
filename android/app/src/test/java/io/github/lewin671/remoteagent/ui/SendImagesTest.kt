@@ -135,7 +135,7 @@ class SendImagesTest {
     /** A Remote that is never reached when keeping the images fails. */
     private fun throwingRemote(): io.github.lewin671.remoteagent.core.Remote =
         io.github.lewin671.remoteagent.core.Remote(
-            io.github.lewin671.remoteagent.core.Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "dev"),
+            io.github.lewin671.remoteagent.core.Account("http://127.0.0.1:1", "dev"),
             okhttp3.OkHttpClient(),
         )
 }

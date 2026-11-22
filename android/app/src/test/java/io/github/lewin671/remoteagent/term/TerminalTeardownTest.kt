@@ -13,7 +13,7 @@ class TerminalTeardownTest {
     @get:org.junit.Rule(order = 0) val messages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
 
     private fun checkRelease(reconnect: Boolean) {
-        val remote = Remote(Account("https://example.com", byteArrayOf(), ByteArray(32) { 1 }, "fixture-device"), Api.defaultHttp())
+        val remote = Remote(Account("https://example.com", "fixture-device"), Api.defaultHttp())
         remote.showForTest(RemoteState(conn = ConnState.ONLINE,
             machines = mapOf("machine" to MachineView("machine", true, 0)),
             sessions = mapOf("session" to SessionView("session", "machine"))))
@@ -38,7 +38,7 @@ class TerminalTeardownTest {
     @Test fun reconnectDropsTheOldHandleBeforeInvokingItsCleanup() = checkRelease(true)
 
     @Test fun mainPathChangesDoNotReplaceAnExistingTerminal() {
-        val remote = Remote(Account("https://example.com", byteArrayOf(), ByteArray(32) { 1 }, "fixture-device"), Api.defaultHttp())
+        val remote = Remote(Account("https://example.com", "fixture-device"), Api.defaultHttp())
         val scope = CoroutineScope(SupervisorJob())
         val terminal = RemoteTerminal(remote,"session",scope)
         var closes = 0
@@ -59,7 +59,7 @@ class TerminalTeardownTest {
     @Test fun terminalClosureAfterMainRecoveryStartsANewLeg() {
         val dispatcher = kotlinx.coroutines.test.StandardTestDispatcher()
         val remote = Remote(
-            Account("https://example.com", byteArrayOf(), ByteArray(32) { 1 }, "fixture-device"),
+            Account("https://example.com", "fixture-device"),
             Api.defaultHttp(),
         )
         remote.showForTest(
@@ -105,7 +105,7 @@ class TerminalTeardownTest {
     @Test fun closeUnregistersReopenListenerAndPreventsReopen() {
         val dispatcher = kotlinx.coroutines.test.StandardTestDispatcher()
         val remote = Remote(
-            Account("https://example.com", byteArrayOf(), ByteArray(32) { 1 }, "fixture-device"),
+            Account("https://example.com", "fixture-device"),
             Api.defaultHttp(),
         )
         remote.showForTest(

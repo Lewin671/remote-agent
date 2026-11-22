@@ -121,7 +121,7 @@ class SharedFilesUiTest {
     }
 
     private val context: Application get() = ApplicationProvider.getApplicationContext()
-    private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "c1"), Api.defaultHttp())
+    private val remote = Remote(Account("http://127.0.0.1:1", "c1"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private lateinit var tempDir: File
     private lateinit var manager: SharedFileManager

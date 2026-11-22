@@ -1,7 +1,6 @@
 package io.github.lewin671.remoteagent.core.transport
 
 import com.google.protobuf.ByteString
-import io.github.lewin671.remoteagent.core.SigningKey
 import io.github.lewin671.remoteagent.core.proto.DirectCandFamily
 import io.github.lewin671.remoteagent.core.proto.DirectCandType
 import io.github.lewin671.remoteagent.core.proto.DirectDcReadStatsEffect
@@ -247,8 +246,6 @@ class DirectExecutorTest {
         val prewarmedOn = CompletableDeferred<Thread>()
         val account = io.github.lewin671.remoteagent.core.Account(
             server = "https://example.com",
-            root = ByteArray(32) { 1 },
-            deviceSeed = ByteArray(32) { 2 },
             deviceId = "0123456789abcdef0123456789abcdef",
         )
         val remote = io.github.lewin671.remoteagent.core.Remote(
