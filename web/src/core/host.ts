@@ -2743,6 +2743,15 @@ export class CoreHost {
         }
         break;
       }
+      case "securityKeyGenerate":
+      case "securityKeyEncapsulate":
+      case "securityKeyDiscard":
+      case "securityStorage":
+      case "securityRpc":
+      case "securityWorkflowResult":
+      case "securityStatusChanged":
+      case "securityNotifyOpened":
+      case "securityTokenUpdated":
       case undefined:
         break;
 

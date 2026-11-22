@@ -31,6 +31,10 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		if e.security.Loaded || e.everReady {
 			e.networkGen++
 		}
+		if e.secEngine != nil {
+			e.secEngine.SetForeground(true)
+			e.secEngine.SetNetworkGeneration(e.networkGen)
+		}
 		e.connectGen++
 		e.connecting = false
 		e.w.LivePushConnected = false
@@ -120,6 +124,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND:
 		wasForeground := e.foreground
 		e.foreground = true
+		if e.secEngine != nil {
+			e.secEngine.SetForeground(true)
+		}
 		e.emitCoordEffects(ctx, e.ensureTransportCoord().SetLifecycle(e.nowMs, true))
 		e.updateLivePollers(ctx)
 		if !wasForeground && e.everReady && !e.removed && e.running && e.w.World.Connection != lists.ConnConnected {
@@ -134,6 +141,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 			if e.security.Loaded || e.everReady {
 				e.networkGen++
 			}
+			if e.secEngine != nil {
+				e.secEngine.SetNetworkGeneration(e.networkGen)
+			}
 			if !e.w.LivePushConnected && !e.connecting {
 				if e.networkAvailable {
 					e.beginConnect(ctx)
@@ -147,6 +157,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 
 	case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_BACKGROUND:
 		e.foreground = false
+		if e.secEngine != nil {
+			e.secEngine.SetForeground(false)
+		}
 		e.clearDisplayGrace(ctx)
 		e.clearColdStartGrace(ctx)
 		if len(e.directReady) > 0 {
@@ -194,6 +207,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 			})
 			e.cachedToken = ""
 			e.tokenExpiresMs = 0
+			if e.secEngine != nil {
+				e.secEngine.SetAuthToken("", 0)
+			}
 		}
 		e.recovery.Ready()
 		if e.networkAvailable {
@@ -215,6 +231,9 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 	e.networkAvailable = ev.Available
 	if sigChanged || (!prevAvail && ev.Available) {
 		e.networkGen++
+		if e.secEngine != nil {
+			e.secEngine.SetNetworkGeneration(e.networkGen)
+		}
 	}
 
 	if !ev.Available {
@@ -327,6 +346,32 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 
 func (e *Engine) requestSyncSecurity(ctx *StepContext, touch bool) {
 	e.activeSecOpID = e.allocOpID()
+	if e.secEngine != nil {
+		e.secEngine.SetNetworkGeneration(e.networkGen)
+		if e.secEngine.HasWorkflowBootstrapped() {
+			opID := e.activeSecOpID
+			effs := e.secEngine.SyncStates(e.nowMs, touch, e.cachedToken, func(err error) {
+				if e.activeSecOpID == opID {
+					e.activeSecOpID = 0
+				}
+				stepCtx := e.activeStepCtx
+				if stepCtx == nil {
+					return
+				}
+				if err != nil {
+					if _, ok := e.secEngine.CoordInfo(); !ok {
+						e.emitCoordEffects(stepCtx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
+					}
+				} else {
+					e.syncSecurityStateFromEngine(stepCtx, true)
+				}
+				e.maybeRequestEntropy(stepCtx)
+			})
+			e.emitSecurityEffects(ctx, effs)
+			e.maybeRequestEntropy(ctx)
+			return
+		}
+	}
 	ctx.emit(&corev1.Effect{
 		Effect: &corev1.Effect_SyncSecurity{
 			SyncSecurity: &corev1.SyncSecurityEffect{
@@ -351,6 +396,9 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 		e.w.LivePushConnected = false
 		e.cachedToken = ""
 		e.tokenExpiresMs = 0
+		if e.secEngine != nil {
+			e.secEngine.SetAuthToken("", 0)
+		}
 		e.forceLogin = false
 		e.w.World.Connection = lists.ConnOffline
 		if e.w.DisconnectedAtMs == 0 && e.nowMs > 0 {
@@ -372,6 +420,9 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 	}
 	e.cachedToken = ev.Token
 	e.tokenExpiresMs = ev.ExpiresMs
+	if e.secEngine != nil {
+		e.secEngine.SetAuthToken(ev.Token, ev.ExpiresMs)
+	}
 	e.forceLogin = false
 	e.connStepText = text.Msg(text.KeyErrorsEstablishingPushConnection)
 	legID := e.allocLegID()
@@ -461,6 +512,9 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 			})
 			e.cachedToken = ""
 			e.tokenExpiresMs = 0
+			if e.secEngine != nil {
+				e.secEngine.SetAuthToken("", 0)
+			}
 		}
 	}
 

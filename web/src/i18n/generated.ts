@@ -1152,6 +1152,8 @@ export interface MessageArgs {
   "security.transfer_result_unverified_continue_the_original_operation": { [name: string]: never };
   "security.transfer_to": { [name: string]: never };
   "security.unfinished_security_operation": { [name: string]: never };
+  "security.upgrade_repair_notice": { [name: string]: never };
+  "security.upgrade_repair_title": { [name: string]: never };
   "security.use_when_the_managing_client_is_lost": { [name: string]: never };
   "security.verify_and_continue": { [name: string]: never };
   "security.verifying_management_identity_and_unfinished_security_operations": { [name: string]: never };
@@ -3441,6 +3443,8 @@ export const messages = {
     "security.transfer_result_unverified_continue_the_original_operation": "Transfer result unverified. Continue the original operation.",
     "security.transfer_to": "Transfer to",
     "security.unfinished_security_operation": "Unfinished security operation",
+    "security.upgrade_repair_notice": "This update upgrades the local security storage format and cleared the previous pairing record. Please re-pair this device; computer daemons are unaffected and do not need to be reconfigured.",
+    "security.upgrade_repair_title": "Re-pairing required",
     "security.use_when_the_managing_client_is_lost": "Use when the managing client is lost",
     "security.verify_and_continue": "Verify and continue",
     "security.verifying_management_identity_and_unfinished_security_operations": "Verifying management identity and unfinished security operations…",
@@ -5765,6 +5769,8 @@ export const messages = {
     "security.transfer_result_unverified_continue_the_original_operation": "交接结果尚未核实，请继续原操作。",
     "security.transfer_to": "交接给",
     "security.unfinished_security_operation": "未完成的安全操作",
+    "security.upgrade_repair_notice": "本次更新升级了本机安全存储格式，已清除旧版配对记录。请重新配对此设备；电脑端服务不受影响，无需重新配置。",
+    "security.upgrade_repair_title": "需要重新配对",
     "security.use_when_the_managing_client_is_lost": "管理端丢失时使用",
     "security.verify_and_continue": "核实并继续",
     "security.verifying_management_identity_and_unfinished_security_operations": "正在核实管理身份和未完成的安全操作…",

@@ -39,6 +39,7 @@ const (
 	TimerKind_TIMER_KIND_DIRECT_ENGINE       TimerKind = 12
 	TimerKind_TIMER_KIND_DIRECT_SESSION      TimerKind = 13
 	TimerKind_TIMER_KIND_TERMINAL_REOPEN     TimerKind = 14
+	TimerKind_TIMER_KIND_SECURITY_POLL       TimerKind = 15
 )
 
 type OutcomeSource int32
@@ -6087,6 +6088,34 @@ type Event_SeedDemoWorld struct{ SeedDemoWorld *SeedDemoWorldEvent }
 
 func (*Event_SeedDemoWorld) isEvent_Event() {}
 
+type Event_SecurityKeyGenerated struct{ SecurityKeyGenerated *SecurityKeyGeneratedEvent }
+
+func (*Event_SecurityKeyGenerated) isEvent_Event() {}
+
+type Event_SecurityKeyEncapsulated struct{ SecurityKeyEncapsulated *SecurityKeyEncapsulatedEvent }
+
+func (*Event_SecurityKeyEncapsulated) isEvent_Event() {}
+
+type Event_SecurityStorageResult struct{ SecurityStorageResult *SecurityStorageResultEvent }
+
+func (*Event_SecurityStorageResult) isEvent_Event() {}
+
+type Event_SecurityRpcResult struct{ SecurityRpcResult *SecurityRpcResultEvent }
+
+func (*Event_SecurityRpcResult) isEvent_Event() {}
+
+type Event_SecurityForeground struct{ SecurityForeground *SecurityForegroundEvent }
+
+func (*Event_SecurityForeground) isEvent_Event() {}
+
+type Event_SecurityAction struct{ SecurityAction *SecurityWorkflowActionEvent }
+
+func (*Event_SecurityAction) isEvent_Event() {}
+
+type Event_SecurityOpenNotify struct{ SecurityOpenNotify *SecurityOpenNotifyEvent }
+
+func (*Event_SecurityOpenNotify) isEvent_Event() {}
+
 func (m *Event) GetEvent() isEvent_Event {
 	if m != nil {
 		return m.Event
@@ -6966,6 +6995,48 @@ func (m *Event) GetSecurityOpRequest() *SecurityOpRequestEvent {
 func (m *Event) GetSeedDemoWorld() *SeedDemoWorldEvent {
 	if x, ok := m.GetEvent().(*Event_SeedDemoWorld); ok && x != nil {
 		return x.SeedDemoWorld
+	}
+	return nil
+}
+func (m *Event) GetSecurityKeyGenerated() *SecurityKeyGeneratedEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityKeyGenerated); ok && x != nil {
+		return x.SecurityKeyGenerated
+	}
+	return nil
+}
+func (m *Event) GetSecurityKeyEncapsulated() *SecurityKeyEncapsulatedEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityKeyEncapsulated); ok && x != nil {
+		return x.SecurityKeyEncapsulated
+	}
+	return nil
+}
+func (m *Event) GetSecurityStorageResult() *SecurityStorageResultEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityStorageResult); ok && x != nil {
+		return x.SecurityStorageResult
+	}
+	return nil
+}
+func (m *Event) GetSecurityRpcResult() *SecurityRpcResultEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityRpcResult); ok && x != nil {
+		return x.SecurityRpcResult
+	}
+	return nil
+}
+func (m *Event) GetSecurityForeground() *SecurityForegroundEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityForeground); ok && x != nil {
+		return x.SecurityForeground
+	}
+	return nil
+}
+func (m *Event) GetSecurityAction() *SecurityWorkflowActionEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityAction); ok && x != nil {
+		return x.SecurityAction
+	}
+	return nil
+}
+func (m *Event) GetSecurityOpenNotify() *SecurityOpenNotifyEvent {
+	if x, ok := m.GetEvent().(*Event_SecurityOpenNotify); ok && x != nil {
+		return x.SecurityOpenNotify
 	}
 	return nil
 }
@@ -9191,6 +9262,111 @@ func (m *Event) Unmarshal(b []byte) error {
 				m.Event = &Event_SeedDemoWorld{SeedDemoWorld: sub}
 				continue
 			}
+		case 459:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityKeyGeneratedEvent
+				if cur, ok := m.Event.(*Event_SecurityKeyGenerated); ok && cur != nil {
+					sub = cur.SecurityKeyGenerated
+				}
+				if sub == nil {
+					sub = &SecurityKeyGeneratedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityKeyGenerated{SecurityKeyGenerated: sub}
+				continue
+			}
+		case 460:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityKeyEncapsulatedEvent
+				if cur, ok := m.Event.(*Event_SecurityKeyEncapsulated); ok && cur != nil {
+					sub = cur.SecurityKeyEncapsulated
+				}
+				if sub == nil {
+					sub = &SecurityKeyEncapsulatedEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityKeyEncapsulated{SecurityKeyEncapsulated: sub}
+				continue
+			}
+		case 461:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStorageResultEvent
+				if cur, ok := m.Event.(*Event_SecurityStorageResult); ok && cur != nil {
+					sub = cur.SecurityStorageResult
+				}
+				if sub == nil {
+					sub = &SecurityStorageResultEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityStorageResult{SecurityStorageResult: sub}
+				continue
+			}
+		case 462:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityRpcResultEvent
+				if cur, ok := m.Event.(*Event_SecurityRpcResult); ok && cur != nil {
+					sub = cur.SecurityRpcResult
+				}
+				if sub == nil {
+					sub = &SecurityRpcResultEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityRpcResult{SecurityRpcResult: sub}
+				continue
+			}
+		case 463:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityForegroundEvent
+				if cur, ok := m.Event.(*Event_SecurityForeground); ok && cur != nil {
+					sub = cur.SecurityForeground
+				}
+				if sub == nil {
+					sub = &SecurityForegroundEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityForeground{SecurityForeground: sub}
+				continue
+			}
+		case 464:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityWorkflowActionEvent
+				if cur, ok := m.Event.(*Event_SecurityAction); ok && cur != nil {
+					sub = cur.SecurityAction
+				}
+				if sub == nil {
+					sub = &SecurityWorkflowActionEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityAction{SecurityAction: sub}
+				continue
+			}
+		case 465:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityOpenNotifyEvent
+				if cur, ok := m.Event.(*Event_SecurityOpenNotify); ok && cur != nil {
+					sub = cur.SecurityOpenNotify
+				}
+				if sub == nil {
+					sub = &SecurityOpenNotifyEvent{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Event = &Event_SecurityOpenNotify{SecurityOpenNotify: sub}
+				continue
+			}
 		case 98:
 			if wtyp == litewire.VarintType {
 				v, err := litewire.ReadVarint(&b)
@@ -10816,6 +10992,42 @@ type Effect_SecurityOpResult struct{ SecurityOpResult *SecurityOpResultEffect }
 
 func (*Effect_SecurityOpResult) isEffect_Effect() {}
 
+type Effect_SecurityKeyGenerate struct{ SecurityKeyGenerate *SecurityKeyGenerateEffect }
+
+func (*Effect_SecurityKeyGenerate) isEffect_Effect() {}
+
+type Effect_SecurityKeyEncapsulate struct{ SecurityKeyEncapsulate *SecurityKeyEncapsulateEffect }
+
+func (*Effect_SecurityKeyEncapsulate) isEffect_Effect() {}
+
+type Effect_SecurityKeyDiscard struct{ SecurityKeyDiscard *SecurityKeyDiscardEffect }
+
+func (*Effect_SecurityKeyDiscard) isEffect_Effect() {}
+
+type Effect_SecurityStorage struct{ SecurityStorage *SecurityStorageEffect }
+
+func (*Effect_SecurityStorage) isEffect_Effect() {}
+
+type Effect_SecurityRpc struct{ SecurityRpc *SecurityRpcEffect }
+
+func (*Effect_SecurityRpc) isEffect_Effect() {}
+
+type Effect_SecurityWorkflowResult struct{ SecurityWorkflowResult *SecurityWorkflowResultEffect }
+
+func (*Effect_SecurityWorkflowResult) isEffect_Effect() {}
+
+type Effect_SecurityStatusChanged struct{ SecurityStatusChanged *SecurityStatusChangedEffect }
+
+func (*Effect_SecurityStatusChanged) isEffect_Effect() {}
+
+type Effect_SecurityNotifyOpened struct{ SecurityNotifyOpened *SecurityNotifyOpenedEffect }
+
+func (*Effect_SecurityNotifyOpened) isEffect_Effect() {}
+
+type Effect_SecurityTokenUpdated struct{ SecurityTokenUpdated *SecurityTokenUpdatedEffect }
+
+func (*Effect_SecurityTokenUpdated) isEffect_Effect() {}
+
 func (m *Effect) GetEffect() isEffect_Effect {
 	if m != nil {
 		return m.Effect
@@ -11101,6 +11313,60 @@ func (m *Effect) GetSecurityCryptoBatch() *SecurityCryptoBatchEffect {
 func (m *Effect) GetSecurityOpResult() *SecurityOpResultEffect {
 	if x, ok := m.GetEffect().(*Effect_SecurityOpResult); ok && x != nil {
 		return x.SecurityOpResult
+	}
+	return nil
+}
+func (m *Effect) GetSecurityKeyGenerate() *SecurityKeyGenerateEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityKeyGenerate); ok && x != nil {
+		return x.SecurityKeyGenerate
+	}
+	return nil
+}
+func (m *Effect) GetSecurityKeyEncapsulate() *SecurityKeyEncapsulateEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityKeyEncapsulate); ok && x != nil {
+		return x.SecurityKeyEncapsulate
+	}
+	return nil
+}
+func (m *Effect) GetSecurityKeyDiscard() *SecurityKeyDiscardEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityKeyDiscard); ok && x != nil {
+		return x.SecurityKeyDiscard
+	}
+	return nil
+}
+func (m *Effect) GetSecurityStorage() *SecurityStorageEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityStorage); ok && x != nil {
+		return x.SecurityStorage
+	}
+	return nil
+}
+func (m *Effect) GetSecurityRpc() *SecurityRpcEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityRpc); ok && x != nil {
+		return x.SecurityRpc
+	}
+	return nil
+}
+func (m *Effect) GetSecurityWorkflowResult() *SecurityWorkflowResultEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityWorkflowResult); ok && x != nil {
+		return x.SecurityWorkflowResult
+	}
+	return nil
+}
+func (m *Effect) GetSecurityStatusChanged() *SecurityStatusChangedEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityStatusChanged); ok && x != nil {
+		return x.SecurityStatusChanged
+	}
+	return nil
+}
+func (m *Effect) GetSecurityNotifyOpened() *SecurityNotifyOpenedEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityNotifyOpened); ok && x != nil {
+		return x.SecurityNotifyOpened
+	}
+	return nil
+}
+func (m *Effect) GetSecurityTokenUpdated() *SecurityTokenUpdatedEffect {
+	if x, ok := m.GetEffect().(*Effect_SecurityTokenUpdated); ok && x != nil {
+		return x.SecurityTokenUpdated
 	}
 	return nil
 }
@@ -11396,6 +11662,60 @@ func (m *Effect) AppendMarshal(b []byte) []byte {
 		if x != nil {
 			if x.SecurityOpResult != nil {
 				b = litewire.AppendMessage(b, 136, x.SecurityOpResult)
+			}
+		}
+	case *Effect_SecurityKeyGenerate:
+		if x != nil {
+			if x.SecurityKeyGenerate != nil {
+				b = litewire.AppendMessage(b, 137, x.SecurityKeyGenerate)
+			}
+		}
+	case *Effect_SecurityKeyEncapsulate:
+		if x != nil {
+			if x.SecurityKeyEncapsulate != nil {
+				b = litewire.AppendMessage(b, 138, x.SecurityKeyEncapsulate)
+			}
+		}
+	case *Effect_SecurityKeyDiscard:
+		if x != nil {
+			if x.SecurityKeyDiscard != nil {
+				b = litewire.AppendMessage(b, 139, x.SecurityKeyDiscard)
+			}
+		}
+	case *Effect_SecurityStorage:
+		if x != nil {
+			if x.SecurityStorage != nil {
+				b = litewire.AppendMessage(b, 140, x.SecurityStorage)
+			}
+		}
+	case *Effect_SecurityRpc:
+		if x != nil {
+			if x.SecurityRpc != nil {
+				b = litewire.AppendMessage(b, 141, x.SecurityRpc)
+			}
+		}
+	case *Effect_SecurityWorkflowResult:
+		if x != nil {
+			if x.SecurityWorkflowResult != nil {
+				b = litewire.AppendMessage(b, 142, x.SecurityWorkflowResult)
+			}
+		}
+	case *Effect_SecurityStatusChanged:
+		if x != nil {
+			if x.SecurityStatusChanged != nil {
+				b = litewire.AppendMessage(b, 143, x.SecurityStatusChanged)
+			}
+		}
+	case *Effect_SecurityNotifyOpened:
+		if x != nil {
+			if x.SecurityNotifyOpened != nil {
+				b = litewire.AppendMessage(b, 144, x.SecurityNotifyOpened)
+			}
+		}
+	case *Effect_SecurityTokenUpdated:
+		if x != nil {
+			if x.SecurityTokenUpdated != nil {
+				b = litewire.AppendMessage(b, 145, x.SecurityTokenUpdated)
 			}
 		}
 	}

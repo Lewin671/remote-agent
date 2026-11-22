@@ -1335,6 +1335,8 @@
 "security_transfer_result_unverified_continue_the_original_operation" = "Transfer result unverified. Continue the original operation.";
 "security_transfer_to" = "Transfer to";
 "security_unfinished_security_operation" = "Unfinished security operation";
+"security_upgrade_repair_notice" = "This update upgrades the local security storage format and cleared the previous pairing record. Please re-pair this device; computer daemons are unaffected and do not need to be reconfigured.";
+"security_upgrade_repair_title" = "Re-pairing required";
 "security_use_when_the_managing_client_is_lost" = "Use when the managing client is lost";
 "security_verify_and_continue" = "Verify and continue";
 "security_verifying_management_identity_and_unfinished_security_operations" = "Verifying management identity and unfinished security operations…";

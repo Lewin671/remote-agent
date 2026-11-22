@@ -535,5 +535,104 @@ public interface EffectOrBuilder extends
    */
   io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect getSecurityOpResult();
 
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 137 [json_name = "securityKeyGenerate"];</code>
+   * @return Whether the securityKeyGenerate field is set.
+   */
+  boolean hasSecurityKeyGenerate();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGenerateEffect security_key_generate = 137 [json_name = "securityKeyGenerate"];</code>
+   * @return The securityKeyGenerate.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect getSecurityKeyGenerate();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 138 [json_name = "securityKeyEncapsulate"];</code>
+   * @return Whether the securityKeyEncapsulate field is set.
+   */
+  boolean hasSecurityKeyEncapsulate();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulateEffect security_key_encapsulate = 138 [json_name = "securityKeyEncapsulate"];</code>
+   * @return The securityKeyEncapsulate.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulateEffect getSecurityKeyEncapsulate();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 139 [json_name = "securityKeyDiscard"];</code>
+   * @return Whether the securityKeyDiscard field is set.
+   */
+  boolean hasSecurityKeyDiscard();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyDiscardEffect security_key_discard = 139 [json_name = "securityKeyDiscard"];</code>
+   * @return The securityKeyDiscard.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyDiscardEffect getSecurityKeyDiscard();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityStorageEffect security_storage = 140 [json_name = "securityStorage"];</code>
+   * @return Whether the securityStorage field is set.
+   */
+  boolean hasSecurityStorage();
+  /**
+   * <code>.remoteagent.core.v1.SecurityStorageEffect security_storage = 140 [json_name = "securityStorage"];</code>
+   * @return The securityStorage.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect getSecurityStorage();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
+   * @return Whether the securityRpc field is set.
+   */
+  boolean hasSecurityRpc();
+  /**
+   * <code>.remoteagent.core.v1.SecurityRpcEffect security_rpc = 141 [json_name = "securityRpc"];</code>
+   * @return The securityRpc.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect getSecurityRpc();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityWorkflowResultEffect security_workflow_result = 142 [json_name = "securityWorkflowResult"];</code>
+   * @return Whether the securityWorkflowResult field is set.
+   */
+  boolean hasSecurityWorkflowResult();
+  /**
+   * <code>.remoteagent.core.v1.SecurityWorkflowResultEffect security_workflow_result = 142 [json_name = "securityWorkflowResult"];</code>
+   * @return The securityWorkflowResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityWorkflowResultEffect getSecurityWorkflowResult();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityStatusChangedEffect security_status_changed = 143 [json_name = "securityStatusChanged"];</code>
+   * @return Whether the securityStatusChanged field is set.
+   */
+  boolean hasSecurityStatusChanged();
+  /**
+   * <code>.remoteagent.core.v1.SecurityStatusChangedEffect security_status_changed = 143 [json_name = "securityStatusChanged"];</code>
+   * @return The securityStatusChanged.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityStatusChangedEffect getSecurityStatusChanged();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyOpenedEffect security_notify_opened = 144 [json_name = "securityNotifyOpened"];</code>
+   * @return Whether the securityNotifyOpened field is set.
+   */
+  boolean hasSecurityNotifyOpened();
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyOpenedEffect security_notify_opened = 144 [json_name = "securityNotifyOpened"];</code>
+   * @return The securityNotifyOpened.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityNotifyOpenedEffect getSecurityNotifyOpened();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityTokenUpdatedEffect security_token_updated = 145 [json_name = "securityTokenUpdated"];</code>
+   * @return Whether the securityTokenUpdated field is set.
+   */
+  boolean hasSecurityTokenUpdated();
+  /**
+   * <code>.remoteagent.core.v1.SecurityTokenUpdatedEffect security_token_updated = 145 [json_name = "securityTokenUpdated"];</code>
+   * @return The securityTokenUpdated.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect getSecurityTokenUpdated();
+
   public io.github.lewin671.remoteagent.core.proto.Effect.EffectCase getEffectCase();
 }

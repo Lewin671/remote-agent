@@ -136,14 +136,60 @@ func (e *Engine) nextFloat(ctx *StepContext) float64 {
 }
 
 func (e *Engine) emitRawEffects(ctx *StepContext, effs []*corev1.Effect) {
+	e.emitSecurityEffects(ctx, effs)
+}
+
+func (e *Engine) emitSecurityEffects(ctx *StepContext, effs []*corev1.Effect) {
 	if ctx == nil || len(effs) == 0 {
 		return
 	}
 	for _, eff := range effs {
-		if eff != nil {
-			ctx.emit(eff)
+		if eff == nil {
+			continue
 		}
+		if st := eff.GetScheduleTimer(); st != nil && st.Kind == corev1.TimerKind_TIMER_KIND_SECURITY_POLL {
+			e.scheduleTimer(ctx, st.Kind, st.Key, st.DelayMs)
+			continue
+		}
+		if ct := eff.GetCancelTimer(); ct != nil && ct.Kind == corev1.TimerKind_TIMER_KIND_SECURITY_POLL {
+			e.cancelTimer(ctx, ct.Kind, ct.Key)
+			continue
+		}
+		if tu := eff.GetSecurityTokenUpdated(); tu != nil {
+			if tu.Cleared {
+				e.cachedToken = ""
+				e.tokenExpiresMs = 0
+			} else if tu.Token != "" {
+				e.cachedToken = tu.Token
+				e.tokenExpiresMs = tu.ExpiresMs
+			}
+		}
+		ctx.emit(eff)
 	}
+}
+
+func (e *Engine) securityDeviceOffers() []security.DeviceOfferInfo {
+	if len(e.devices) == 0 {
+		return nil
+	}
+	out := make([]security.DeviceOfferInfo, 0, len(e.devices))
+	for _, d := range e.devices {
+		if d == nil {
+			continue
+		}
+		var recEd []byte
+		if d.Meta != nil {
+			recEd = d.Meta.HandoffRecoveryEd
+		}
+		out = append(out, security.DeviceOfferInfo{
+			ID:         d.ID,
+			Kind:       d.Kind,
+			RecoveryEd: recEd,
+			Meta:       d.Meta,
+			MetaRev:    d.MetaRev,
+		})
+	}
+	return out
 }
 
 func (e *Engine) syncSecurityStateFromEngine(ctx *StepContext, pushToTransport bool) {
@@ -155,6 +201,8 @@ func (e *Engine) syncSecurityStateFromEngine(ctx *StepContext, pushToTransport b
 	e.security.IsMember = snap.IsMember
 	if snap.SelfDeviceID != "" {
 		e.security.SelfDeviceID = snap.SelfDeviceID
+	} else if snap.Cleared {
+		e.security.SelfDeviceID = ""
 	}
 	e.security.AuthorityDeviceID = snap.AuthorityDeviceID
 	e.security.TrustedMachines = snap.TrustedMachines
@@ -227,7 +275,7 @@ func (e *Engine) handleSecurityRecord(ctx *StepContext, ev *corev1.SecurityRecor
 		e.activeSecOpID = 0
 	}
 	effs := e.secEngine.ApplyRecord(e.nowMs, ev)
-	e.emitRawEffects(ctx, effs)
+	e.emitSecurityEffects(ctx, effs)
 	e.syncSecurityStateFromEngine(ctx, true)
 	if _, ok := e.secEngine.CoordInfo(); ev.Error != "" || (!ok && !ev.Removed && !ev.Cleared) {
 		e.emitCoordEffects(ctx, e.ensureTransportCoord().OnAuthorizeDone(e.nowMs, false))
@@ -237,7 +285,7 @@ func (e *Engine) handleSecurityRecord(ctx *StepContext, ev *corev1.SecurityRecor
 
 func (e *Engine) handleSecurityKeySigned(ctx *StepContext, ev *corev1.SecurityKeySignedEvent) {
 	effs := e.secEngine.HandleKeySigned(e.nowMs, ev)
-	e.emitRawEffects(ctx, effs)
+	e.emitSecurityEffects(ctx, effs)
 	e.maybeRequestEntropy(ctx)
 }
 
@@ -245,7 +293,7 @@ func (e *Engine) handleSecurityKeyAgreed(ctx *StepContext, ev *corev1.SecurityKe
 	prevMember := e.security.IsMember
 	prevLoaded := e.security.Loaded
 	effs := e.secEngine.HandleKeyAgreed(e.nowMs, ev)
-	e.emitRawEffects(ctx, effs)
+	e.emitSecurityEffects(ctx, effs)
 	snap := e.secEngine.Snapshot()
 	if snap.IsMember != prevMember || snap.Loaded != prevLoaded {
 		e.syncSecurityStateFromEngine(ctx, true)
@@ -255,7 +303,7 @@ func (e *Engine) handleSecurityKeyAgreed(ctx *StepContext, ev *corev1.SecurityKe
 
 func (e *Engine) handleSecurityCryptoBatchDone(ctx *StepContext, ev *corev1.SecurityCryptoBatchDoneEvent) {
 	effs := e.secEngine.HandleCryptoBatchDone(e.nowMs, ev)
-	e.emitRawEffects(ctx, effs)
+	e.emitSecurityEffects(ctx, effs)
 }
 
 func (e *Engine) handleSecurityOpRequest(ctx *StepContext, ev *corev1.SecurityOpRequestEvent) {
@@ -269,7 +317,59 @@ func (e *Engine) handleSecurityOpRequest(ctx *StepContext, ev *corev1.SecurityOp
 		}
 	}
 	effs := e.secEngine.HandleSecurityOp(e.nowMs, ev, repls...)
-	e.emitRawEffects(ctx, effs)
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+func (e *Engine) handleSecurityKeyGenerated(ctx *StepContext, ev *corev1.SecurityKeyGeneratedEvent) {
+	effs := e.secEngine.HandleKeyGenerated(e.nowMs, ev)
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+func (e *Engine) handleSecurityKeyEncapsulated(ctx *StepContext, ev *corev1.SecurityKeyEncapsulatedEvent) {
+	effs := e.secEngine.HandleKeyEncapsulated(e.nowMs, ev)
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+func (e *Engine) handleSecurityStorageResult(ctx *StepContext, ev *corev1.SecurityStorageResultEvent) {
+	effs := e.secEngine.HandleStorageResult(e.nowMs, ev)
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+func (e *Engine) handleSecurityRpcResult(ctx *StepContext, ev *corev1.SecurityRpcResultEvent) {
+	effs := e.secEngine.HandleRpcResult(e.nowMs, ev)
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+func (e *Engine) handleSecurityForeground(ctx *StepContext, ev *corev1.SecurityForegroundEvent) {
+	if ev != nil {
+		e.secEngine.SetForeground(ev.Foreground)
+	}
+}
+
+func (e *Engine) handleSecurityWorkflowAction(ctx *StepContext, ev *corev1.SecurityWorkflowActionEvent) {
+	effs := e.secEngine.HandleWorkflowAction(e.nowMs, ev, e.securityDeviceOffers(), func() {
+		if stepCtx := e.activeStepCtx; stepCtx != nil {
+			e.syncSecurityStateFromEngine(stepCtx, true)
+		}
+	})
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+func (e *Engine) handleSecurityOpenNotify(ctx *StepContext, ev *corev1.SecurityOpenNotifyEvent) {
+	effs := e.secEngine.HandleOpenNotify(e.nowMs, ev)
+	e.emitSecurityEffects(ctx, effs)
+	e.maybeRequestEntropy(ctx)
+}
+
+func (e *Engine) handleSecurityPollTimer(ctx *StepContext) {
+	effs := e.secEngine.HandleSecurityPollTick(e.nowMs)
+	e.emitSecurityEffects(ctx, effs)
 	e.maybeRequestEntropy(ctx)
 }
 

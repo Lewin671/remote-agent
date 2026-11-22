@@ -3789,6 +3789,151 @@ func (m *TerminalResize) Unmarshal(b []byte) error {
 	return nil
 }
 
+type PairingPayload struct {
+	Server            string
+	Approval          []byte
+	ApprovalSignature []byte
+	SecurityStates    []*SecurityState
+	AccountPublicKey  []byte
+	Lease             []byte
+	hasUnknown        bool
+}
+
+func (m *PairingPayload) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *PairingPayload) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+func (m *PairingPayload) GetApproval() []byte {
+	if m != nil {
+		return m.Approval
+	}
+	return nil
+}
+func (m *PairingPayload) GetApprovalSignature() []byte {
+	if m != nil {
+		return m.ApprovalSignature
+	}
+	return nil
+}
+func (m *PairingPayload) GetSecurityStates() []*SecurityState {
+	if m != nil {
+		return m.SecurityStates
+	}
+	return nil
+}
+func (m *PairingPayload) GetAccountPublicKey() []byte {
+	if m != nil {
+		return m.AccountPublicKey
+	}
+	return nil
+}
+func (m *PairingPayload) GetLease() []byte {
+	if m != nil {
+		return m.Lease
+	}
+	return nil
+}
+
+func (m *PairingPayload) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *PairingPayload) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PairingPayload) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 2, m.Server)
+	b = litewire.AppendBytes(b, 3, m.Approval)
+	b = litewire.AppendBytes(b, 4, m.ApprovalSignature)
+	for _, v := range m.SecurityStates {
+		if v != nil {
+			b = litewire.AppendMessage(b, 5, v)
+		}
+	}
+	b = litewire.AppendBytes(b, 6, m.AccountPublicKey)
+	b = litewire.AppendBytes(b, 7, m.Lease)
+	return b
+}
+
+func (m *PairingPayload) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Server = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Approval = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.ApprovalSignature = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				elem := &SecurityState{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				if elem.HasUnknown() {
+					m.hasUnknown = true
+				}
+				m.SecurityStates = append(m.SecurityStates, elem)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.AccountPublicKey = v
+				continue
+			}
+		case 7:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Lease = v
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type NotifyContent struct {
 	MachineId       string
 	SessionId       string
@@ -3864,6 +4009,33 @@ func (m *NotifyContent) GetMachineName() string {
 		return m.MachineName
 	}
 	return ""
+}
+
+func (m *NotifyContent) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *NotifyContent) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *NotifyContent) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.MachineId)
+	b = litewire.AppendString(b, 2, m.SessionId)
+	b = litewire.AppendInt32(b, 3, int32(m.Kind))
+	b = litewire.AppendString(b, 4, m.Title)
+	b = litewire.AppendString(b, 5, m.Text)
+	if m.Approval != nil {
+		b = litewire.AppendMessage(b, 6, m.Approval)
+	}
+	b = litewire.AppendVarint(b, 7, uint64(m.SourceEventSeq))
+	b = litewire.AppendVarint(b, 8, uint64(m.SharedFileCount))
+	if m.DiskStatus != nil {
+		b = litewire.AppendMessage(b, 9, m.DiskStatus)
+	}
+	b = litewire.AppendString(b, 10, m.MachineName)
+	return b
 }
 
 func (m *NotifyContent) Unmarshal(b []byte) error {
@@ -4034,6 +4206,26 @@ func (m *NotifyApproval) GetToolInput() string {
 		return m.ToolInput
 	}
 	return ""
+}
+
+func (m *NotifyApproval) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *NotifyApproval) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *NotifyApproval) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.ApprovalId)
+	b = litewire.AppendString(b, 2, m.ToolName)
+	b = litewire.AppendString(b, 3, m.Description)
+	b = litewire.AppendString(b, 4, m.Command)
+	b = litewire.AppendBool(b, 5, m.Truncated)
+	b = litewire.AppendVarint(b, 6, uint64(m.DeadlineMs))
+	b = litewire.AppendString(b, 7, m.ToolInput)
+	return b
 }
 
 func (m *NotifyApproval) Unmarshal(b []byte) error {

@@ -556,16 +556,7 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 			if ev.TransportCode == errCodeUnauthenticated && prep.AttemptCount < CommandRetryMaxAttempts && e.running {
 				prep.AttemptCount++
 				if !e.security.Loaded || e.security.VerifiedNetGen != e.networkGen {
-					e.activeSecOpID = e.allocOpID()
-					ctx.emit(&corev1.Effect{
-						Effect: &corev1.Effect_SyncSecurity{
-							SyncSecurity: &corev1.SyncSecurityEffect{
-								OpId:              e.activeSecOpID,
-								NetworkGeneration: e.networkGen,
-								Touch:             true,
-							},
-						},
-					})
+					e.requestSyncSecurity(ctx, true)
 				}
 				e.emitCommandAttempt(ctx, prep, prep.Dispatch.HasPrior())
 				return

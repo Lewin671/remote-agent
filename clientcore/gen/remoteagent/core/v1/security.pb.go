@@ -19,10 +19,82 @@ const (
 	SecurityKeyKind_SECURITY_KEY_KIND_EPHEMERAL_X  SecurityKeyKind = 5
 )
 
+type SecurityStoreBucket int32
+
+const (
+	SecurityStoreBucket_SECURITY_STORE_BUCKET_UNSPECIFIED         SecurityStoreBucket = 0
+	SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD              SecurityStoreBucket = 1
+	SecurityStoreBucket_SECURITY_STORE_BUCKET_OPERATION           SecurityStoreBucket = 2
+	SecurityStoreBucket_SECURITY_STORE_BUCKET_REGISTRATION_INTENT SecurityStoreBucket = 3
+	SecurityStoreBucket_SECURITY_STORE_BUCKET_PAIRING_CANDIDATE   SecurityStoreBucket = 4
+	SecurityStoreBucket_SECURITY_STORE_BUCKET_PUBLIC_PROFILE      SecurityStoreBucket = 5
+	SecurityStoreBucket_SECURITY_STORE_BUCKET_NOTIFY_RECORD       SecurityStoreBucket = 6
+)
+
+type SecurityStorageOp int32
+
+const (
+	SecurityStorageOp_SECURITY_STORAGE_OP_UNSPECIFIED    SecurityStorageOp = 0
+	SecurityStorageOp_SECURITY_STORAGE_OP_READ           SecurityStorageOp = 1
+	SecurityStorageOp_SECURITY_STORAGE_OP_WRITE_CAS      SecurityStorageOp = 2
+	SecurityStorageOp_SECURITY_STORAGE_OP_DELETE_CAS     SecurityStorageOp = 3
+	SecurityStorageOp_SECURITY_STORAGE_OP_BATCH_COMMIT   SecurityStorageOp = 4
+	SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP SecurityStorageOp = 5
+	SecurityStorageOp_SECURITY_STORAGE_OP_CLEAR_ALL      SecurityStorageOp = 6
+)
+
+type SecurityRpcMethod int32
+
+const (
+	SecurityRpcMethod_SECURITY_RPC_METHOD_UNSPECIFIED            SecurityRpcMethod = 0
+	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SECURITY_STATES    SecurityRpcMethod = 1
+	SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE     SecurityRpcMethod = 2
+	SecurityRpcMethod_SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN    SecurityRpcMethod = 3
+	SecurityRpcMethod_SECURITY_RPC_METHOD_CREATE_PAIRING         SecurityRpcMethod = 4
+	SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING           SecurityRpcMethod = 5
+	SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING           SecurityRpcMethod = 6
+	SecurityRpcMethod_SECURITY_RPC_METHOD_REVEAL_PAIRING         SecurityRpcMethod = 7
+	SecurityRpcMethod_SECURITY_RPC_METHOD_APPROVE_PAIRING        SecurityRpcMethod = 8
+	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING            SecurityRpcMethod = 9
+	SecurityRpcMethod_SECURITY_RPC_METHOD_CANCEL_PAIRING         SecurityRpcMethod = 10
+	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE SecurityRpcMethod = 11
+	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT   SecurityRpcMethod = 12
+	SecurityRpcMethod_SECURITY_RPC_METHOD_SUBMIT_RECOVERY        SecurityRpcMethod = 13
+	SecurityRpcMethod_SECURITY_RPC_METHOD_COMPLETE_RECOVERY      SecurityRpcMethod = 14
+	SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_MACHINE_RECORDS SecurityRpcMethod = 15
+	SecurityRpcMethod_SECURITY_RPC_METHOD_DELETE_ACCOUNT         SecurityRpcMethod = 16
+	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_CHALLENGE          SecurityRpcMethod = 17
+	SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN                  SecurityRpcMethod = 18
+	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE   SecurityRpcMethod = 19
+	SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE        SecurityRpcMethod = 20
+	SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_DEVICE_META        SecurityRpcMethod = 21
+	SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_DEVICES           SecurityRpcMethod = 22
+	SecurityRpcMethod_SECURITY_RPC_METHOD_LIST_MACHINES          SecurityRpcMethod = 23
+	SecurityRpcMethod_SECURITY_RPC_METHOD_GET_ACCOUNT_PREFS      SecurityRpcMethod = 24
+	SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_ACCOUNT_PREFS      SecurityRpcMethod = 25
+)
+
+type SecurityBootstrapKind int32
+
+const (
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_UNSPECIFIED          SecurityBootstrapKind = 0
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_EMPTY                SecurityBootstrapKind = 1
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_READY                SecurityBootstrapKind = 2
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID              SecurityBootstrapKind = 3
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_CLOCK_SKEWED         SecurityBootstrapKind = 4
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_PENDING_CREATE       SecurityBootstrapKind = 5
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_PENDING_RECOVERY     SecurityBootstrapKind = 6
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_PENDING_REGISTRATION SecurityBootstrapKind = 7
+	SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_REMOVED              SecurityBootstrapKind = 8
+)
+
 type SecurityConfigEvent struct {
-	Account      string
-	DeviceId     string
-	InlineCrypto bool
+	Account       string
+	DeviceId      string
+	InlineCrypto  bool
+	Server        string
+	LegacyCleared bool
+	Foreground    bool
 }
 
 func (m *SecurityConfigEvent) GetAccount() string {
@@ -40,6 +112,24 @@ func (m *SecurityConfigEvent) GetDeviceId() string {
 func (m *SecurityConfigEvent) GetInlineCrypto() bool {
 	if m != nil {
 		return m.InlineCrypto
+	}
+	return false
+}
+func (m *SecurityConfigEvent) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+func (m *SecurityConfigEvent) GetLegacyCleared() bool {
+	if m != nil {
+		return m.LegacyCleared
+	}
+	return false
+}
+func (m *SecurityConfigEvent) GetForeground() bool {
+	if m != nil {
+		return m.Foreground
 	}
 	return false
 }
@@ -76,6 +166,68 @@ func (m *SecurityConfigEvent) Unmarshal(b []byte) error {
 					return err
 				}
 				m.InlineCrypto = litewire.DecodeBool(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Server = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.LegacyCleared = litewire.DecodeBool(v)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Foreground = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityForegroundEvent struct {
+	Foreground bool
+}
+
+func (m *SecurityForegroundEvent) GetForeground() bool {
+	if m != nil {
+		return m.Foreground
+	}
+	return false
+}
+
+func (m *SecurityForegroundEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Foreground = litewire.DecodeBool(v)
 				continue
 			}
 		}
@@ -2557,5 +2709,3742 @@ func (m *CacheWriteStoredEvents) AppendMarshal(b []byte) []byte {
 			b = litewire.AppendMessage(b, 2, v)
 		}
 	}
+	return b
+}
+
+type SecurityKeyGenerateEffect struct {
+	OpId    uint64
+	KeyKind SecurityKeyKind
+	Slot    string
+	Persist bool
+}
+
+func (m *SecurityKeyGenerateEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityKeyGenerateEffect) GetKeyKind() SecurityKeyKind {
+	if m != nil {
+		return m.KeyKind
+	}
+	return 0
+}
+func (m *SecurityKeyGenerateEffect) GetSlot() string {
+	if m != nil {
+		return m.Slot
+	}
+	return ""
+}
+func (m *SecurityKeyGenerateEffect) GetPersist() bool {
+	if m != nil {
+		return m.Persist
+	}
+	return false
+}
+
+func (m *SecurityKeyGenerateEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityKeyGenerateEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityKeyGenerateEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
+	b = litewire.AppendInt32(b, 2, int32(m.KeyKind))
+	b = litewire.AppendString(b, 3, m.Slot)
+	b = litewire.AppendBool(b, 4, m.Persist)
+	return b
+}
+
+type SecurityKeyGeneratedEvent struct {
+	OpId      uint64
+	PublicKey []byte
+	Error     string
+}
+
+func (m *SecurityKeyGeneratedEvent) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityKeyGeneratedEvent) GetPublicKey() []byte {
+	if m != nil {
+		return m.PublicKey
+	}
+	return nil
+}
+func (m *SecurityKeyGeneratedEvent) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+
+func (m *SecurityKeyGeneratedEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.OpId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.PublicKey = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Error = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityEncapsulateRecipient struct {
+	MemberId string
+	XPublic  []byte
+}
+
+func (m *SecurityEncapsulateRecipient) GetMemberId() string {
+	if m != nil {
+		return m.MemberId
+	}
+	return ""
+}
+func (m *SecurityEncapsulateRecipient) GetXPublic() []byte {
+	if m != nil {
+		return m.XPublic
+	}
+	return nil
+}
+
+func (m *SecurityEncapsulateRecipient) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityEncapsulateRecipient) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityEncapsulateRecipient) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.MemberId)
+	b = litewire.AppendBytes(b, 2, m.XPublic)
+	return b
+}
+
+type SecurityKeyEncapsulateEffect struct {
+	OpId       uint64
+	Recipients []*SecurityEncapsulateRecipient
+}
+
+func (m *SecurityKeyEncapsulateEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityKeyEncapsulateEffect) GetRecipients() []*SecurityEncapsulateRecipient {
+	if m != nil {
+		return m.Recipients
+	}
+	return nil
+}
+
+func (m *SecurityKeyEncapsulateEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityKeyEncapsulateEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityKeyEncapsulateEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
+	for _, v := range m.Recipients {
+		if v != nil {
+			b = litewire.AppendMessage(b, 2, v)
+		}
+	}
+	return b
+}
+
+type SecurityEncapsulatedPair struct {
+	MemberId string
+	Enc      []byte
+	Dh       []byte
+}
+
+func (m *SecurityEncapsulatedPair) GetMemberId() string {
+	if m != nil {
+		return m.MemberId
+	}
+	return ""
+}
+func (m *SecurityEncapsulatedPair) GetEnc() []byte {
+	if m != nil {
+		return m.Enc
+	}
+	return nil
+}
+func (m *SecurityEncapsulatedPair) GetDh() []byte {
+	if m != nil {
+		return m.Dh
+	}
+	return nil
+}
+
+func (m *SecurityEncapsulatedPair) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MemberId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Enc = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Dh = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityKeyEncapsulatedEvent struct {
+	OpId  uint64
+	Pairs []*SecurityEncapsulatedPair
+	Error string
+}
+
+func (m *SecurityKeyEncapsulatedEvent) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityKeyEncapsulatedEvent) GetPairs() []*SecurityEncapsulatedPair {
+	if m != nil {
+		return m.Pairs
+	}
+	return nil
+}
+func (m *SecurityKeyEncapsulatedEvent) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+
+func (m *SecurityKeyEncapsulatedEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.OpId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				elem := &SecurityEncapsulatedPair{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Pairs = append(m.Pairs, elem)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Error = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityKeyDiscardEffect struct {
+	KeyKind SecurityKeyKind
+	Slot    string
+}
+
+func (m *SecurityKeyDiscardEffect) GetKeyKind() SecurityKeyKind {
+	if m != nil {
+		return m.KeyKind
+	}
+	return 0
+}
+func (m *SecurityKeyDiscardEffect) GetSlot() string {
+	if m != nil {
+		return m.Slot
+	}
+	return ""
+}
+
+func (m *SecurityKeyDiscardEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityKeyDiscardEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityKeyDiscardEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.KeyKind))
+	b = litewire.AppendString(b, 2, m.Slot)
+	return b
+}
+
+type SecurityStorageEntry struct {
+	Bucket   SecurityStoreBucket
+	Key      string
+	Revision string
+	Data     []byte
+}
+
+func (m *SecurityStorageEntry) GetBucket() SecurityStoreBucket {
+	if m != nil {
+		return m.Bucket
+	}
+	return 0
+}
+func (m *SecurityStorageEntry) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+func (m *SecurityStorageEntry) GetRevision() string {
+	if m != nil {
+		return m.Revision
+	}
+	return ""
+}
+func (m *SecurityStorageEntry) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+func (m *SecurityStorageEntry) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Bucket = SecurityStoreBucket(int32(v))
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Key = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Revision = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Data = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityStorageWrite struct {
+	Bucket           SecurityStoreBucket
+	Key              string
+	ExpectedRevision string
+	NextRevision     string
+	CreateOnly       bool
+	Remove           bool
+	Data             []byte
+}
+
+func (m *SecurityStorageWrite) GetBucket() SecurityStoreBucket {
+	if m != nil {
+		return m.Bucket
+	}
+	return 0
+}
+func (m *SecurityStorageWrite) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+func (m *SecurityStorageWrite) GetExpectedRevision() string {
+	if m != nil {
+		return m.ExpectedRevision
+	}
+	return ""
+}
+func (m *SecurityStorageWrite) GetNextRevision() string {
+	if m != nil {
+		return m.NextRevision
+	}
+	return ""
+}
+func (m *SecurityStorageWrite) GetCreateOnly() bool {
+	if m != nil {
+		return m.CreateOnly
+	}
+	return false
+}
+func (m *SecurityStorageWrite) GetRemove() bool {
+	if m != nil {
+		return m.Remove
+	}
+	return false
+}
+func (m *SecurityStorageWrite) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+func (m *SecurityStorageWrite) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityStorageWrite) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityStorageWrite) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Bucket))
+	b = litewire.AppendString(b, 2, m.Key)
+	b = litewire.AppendString(b, 3, m.ExpectedRevision)
+	b = litewire.AppendString(b, 4, m.NextRevision)
+	b = litewire.AppendBool(b, 5, m.CreateOnly)
+	b = litewire.AppendBool(b, 6, m.Remove)
+	b = litewire.AppendBytes(b, 7, m.Data)
+	return b
+}
+
+type SecurityStorageEffect struct {
+	OpId             uint64
+	Op               SecurityStorageOp
+	Bucket           SecurityStoreBucket
+	Key              string
+	ExpectedRevision string
+	NextRevision     string
+	CreateOnly       bool
+	Data             []byte
+	Batch            []*SecurityStorageWrite
+	PromoteEdSlot    string
+	PromoteXSlot     string
+	ClearLoginToken  bool
+	DiscardSlots     []string
+}
+
+func (m *SecurityStorageEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityStorageEffect) GetOp() SecurityStorageOp {
+	if m != nil {
+		return m.Op
+	}
+	return 0
+}
+func (m *SecurityStorageEffect) GetBucket() SecurityStoreBucket {
+	if m != nil {
+		return m.Bucket
+	}
+	return 0
+}
+func (m *SecurityStorageEffect) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+func (m *SecurityStorageEffect) GetExpectedRevision() string {
+	if m != nil {
+		return m.ExpectedRevision
+	}
+	return ""
+}
+func (m *SecurityStorageEffect) GetNextRevision() string {
+	if m != nil {
+		return m.NextRevision
+	}
+	return ""
+}
+func (m *SecurityStorageEffect) GetCreateOnly() bool {
+	if m != nil {
+		return m.CreateOnly
+	}
+	return false
+}
+func (m *SecurityStorageEffect) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+func (m *SecurityStorageEffect) GetBatch() []*SecurityStorageWrite {
+	if m != nil {
+		return m.Batch
+	}
+	return nil
+}
+func (m *SecurityStorageEffect) GetPromoteEdSlot() string {
+	if m != nil {
+		return m.PromoteEdSlot
+	}
+	return ""
+}
+func (m *SecurityStorageEffect) GetPromoteXSlot() string {
+	if m != nil {
+		return m.PromoteXSlot
+	}
+	return ""
+}
+func (m *SecurityStorageEffect) GetClearLoginToken() bool {
+	if m != nil {
+		return m.ClearLoginToken
+	}
+	return false
+}
+func (m *SecurityStorageEffect) GetDiscardSlots() []string {
+	if m != nil {
+		return m.DiscardSlots
+	}
+	return nil
+}
+
+func (m *SecurityStorageEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityStorageEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityStorageEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
+	b = litewire.AppendInt32(b, 2, int32(m.Op))
+	b = litewire.AppendInt32(b, 3, int32(m.Bucket))
+	b = litewire.AppendString(b, 4, m.Key)
+	b = litewire.AppendString(b, 5, m.ExpectedRevision)
+	b = litewire.AppendString(b, 6, m.NextRevision)
+	b = litewire.AppendBool(b, 7, m.CreateOnly)
+	b = litewire.AppendBytes(b, 8, m.Data)
+	for _, v := range m.Batch {
+		if v != nil {
+			b = litewire.AppendMessage(b, 9, v)
+		}
+	}
+	b = litewire.AppendString(b, 10, m.PromoteEdSlot)
+	b = litewire.AppendString(b, 11, m.PromoteXSlot)
+	b = litewire.AppendBool(b, 12, m.ClearLoginToken)
+	for _, v := range m.DiscardSlots {
+		b = litewire.AppendStringAlways(b, 13, v)
+	}
+	return b
+}
+
+type SecurityStorageResultEvent struct {
+	OpId          uint64
+	Found         bool
+	Revision      string
+	Data          []byte
+	Conflict      bool
+	Error         string
+	Entries       []*SecurityStorageEntry
+	HasDeviceEd   bool
+	DeviceEdPub   []byte
+	HasDeviceX    bool
+	DeviceXPub    []byte
+	LegacyCleared bool
+}
+
+func (m *SecurityStorageResultEvent) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityStorageResultEvent) GetFound() bool {
+	if m != nil {
+		return m.Found
+	}
+	return false
+}
+func (m *SecurityStorageResultEvent) GetRevision() string {
+	if m != nil {
+		return m.Revision
+	}
+	return ""
+}
+func (m *SecurityStorageResultEvent) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+func (m *SecurityStorageResultEvent) GetConflict() bool {
+	if m != nil {
+		return m.Conflict
+	}
+	return false
+}
+func (m *SecurityStorageResultEvent) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+func (m *SecurityStorageResultEvent) GetEntries() []*SecurityStorageEntry {
+	if m != nil {
+		return m.Entries
+	}
+	return nil
+}
+func (m *SecurityStorageResultEvent) GetHasDeviceEd() bool {
+	if m != nil {
+		return m.HasDeviceEd
+	}
+	return false
+}
+func (m *SecurityStorageResultEvent) GetDeviceEdPub() []byte {
+	if m != nil {
+		return m.DeviceEdPub
+	}
+	return nil
+}
+func (m *SecurityStorageResultEvent) GetHasDeviceX() bool {
+	if m != nil {
+		return m.HasDeviceX
+	}
+	return false
+}
+func (m *SecurityStorageResultEvent) GetDeviceXPub() []byte {
+	if m != nil {
+		return m.DeviceXPub
+	}
+	return nil
+}
+func (m *SecurityStorageResultEvent) GetLegacyCleared() bool {
+	if m != nil {
+		return m.LegacyCleared
+	}
+	return false
+}
+
+func (m *SecurityStorageResultEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.OpId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Found = litewire.DecodeBool(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Revision = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Data = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Conflict = litewire.DecodeBool(v)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Error = v
+				continue
+			}
+		case 7:
+			if wtyp == litewire.BytesType {
+				elem := &SecurityStorageEntry{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Entries = append(m.Entries, elem)
+				continue
+			}
+		case 8:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HasDeviceEd = litewire.DecodeBool(v)
+				continue
+			}
+		case 9:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.DeviceEdPub = v
+				continue
+			}
+		case 10:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HasDeviceX = litewire.DecodeBool(v)
+				continue
+			}
+		case 11:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.DeviceXPub = v
+				continue
+			}
+		case 12:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.LegacyCleared = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityRpcEffect struct {
+	OpId         uint64
+	Method       SecurityRpcMethod
+	Server       string
+	AuthToken    string
+	RequestBytes []byte
+}
+
+func (m *SecurityRpcEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityRpcEffect) GetMethod() SecurityRpcMethod {
+	if m != nil {
+		return m.Method
+	}
+	return 0
+}
+func (m *SecurityRpcEffect) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+func (m *SecurityRpcEffect) GetAuthToken() string {
+	if m != nil {
+		return m.AuthToken
+	}
+	return ""
+}
+func (m *SecurityRpcEffect) GetRequestBytes() []byte {
+	if m != nil {
+		return m.RequestBytes
+	}
+	return nil
+}
+
+func (m *SecurityRpcEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityRpcEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityRpcEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
+	b = litewire.AppendInt32(b, 2, int32(m.Method))
+	b = litewire.AppendString(b, 3, m.Server)
+	b = litewire.AppendString(b, 4, m.AuthToken)
+	b = litewire.AppendBytes(b, 5, m.RequestBytes)
+	return b
+}
+
+type SecurityRpcResultEvent struct {
+	OpId          uint64
+	ResponseBytes []byte
+	ConnectCode   int32
+	Error         string
+	NetworkError  bool
+}
+
+func (m *SecurityRpcResultEvent) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityRpcResultEvent) GetResponseBytes() []byte {
+	if m != nil {
+		return m.ResponseBytes
+	}
+	return nil
+}
+func (m *SecurityRpcResultEvent) GetConnectCode() int32 {
+	if m != nil {
+		return m.ConnectCode
+	}
+	return 0
+}
+func (m *SecurityRpcResultEvent) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+func (m *SecurityRpcResultEvent) GetNetworkError() bool {
+	if m != nil {
+		return m.NetworkError
+	}
+	return false
+}
+
+func (m *SecurityRpcResultEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.OpId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.ResponseBytes = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ConnectCode = int32(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Error = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.NetworkError = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityTokenUpdatedEffect struct {
+	Token     string
+	ExpiresMs int64
+	Cleared   bool
+}
+
+func (m *SecurityTokenUpdatedEffect) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+func (m *SecurityTokenUpdatedEffect) GetExpiresMs() int64 {
+	if m != nil {
+		return m.ExpiresMs
+	}
+	return 0
+}
+func (m *SecurityTokenUpdatedEffect) GetCleared() bool {
+	if m != nil {
+		return m.Cleared
+	}
+	return false
+}
+
+func (m *SecurityTokenUpdatedEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityTokenUpdatedEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityTokenUpdatedEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.Token)
+	b = litewire.AppendVarint(b, 2, uint64(m.ExpiresMs))
+	b = litewire.AppendBool(b, 3, m.Cleared)
+	return b
+}
+
+type SecurityPendingOpSummary struct {
+	Kind                string
+	Phase               string
+	Action              string
+	CodeSaved           bool
+	Signed              bool
+	HasDelivery         bool
+	DeliveryPairingId   string
+	DeliveryCandidateId string
+	RecoveryId          string
+	RecoveryReadyMs     int64
+	Rejected            bool
+	TargetDeviceId      string
+	Server              string
+}
+
+func (m *SecurityPendingOpSummary) GetKind() string {
+	if m != nil {
+		return m.Kind
+	}
+	return ""
+}
+func (m *SecurityPendingOpSummary) GetPhase() string {
+	if m != nil {
+		return m.Phase
+	}
+	return ""
+}
+func (m *SecurityPendingOpSummary) GetAction() string {
+	if m != nil {
+		return m.Action
+	}
+	return ""
+}
+func (m *SecurityPendingOpSummary) GetCodeSaved() bool {
+	if m != nil {
+		return m.CodeSaved
+	}
+	return false
+}
+func (m *SecurityPendingOpSummary) GetSigned() bool {
+	if m != nil {
+		return m.Signed
+	}
+	return false
+}
+func (m *SecurityPendingOpSummary) GetHasDelivery() bool {
+	if m != nil {
+		return m.HasDelivery
+	}
+	return false
+}
+func (m *SecurityPendingOpSummary) GetDeliveryPairingId() string {
+	if m != nil {
+		return m.DeliveryPairingId
+	}
+	return ""
+}
+func (m *SecurityPendingOpSummary) GetDeliveryCandidateId() string {
+	if m != nil {
+		return m.DeliveryCandidateId
+	}
+	return ""
+}
+func (m *SecurityPendingOpSummary) GetRecoveryId() string {
+	if m != nil {
+		return m.RecoveryId
+	}
+	return ""
+}
+func (m *SecurityPendingOpSummary) GetRecoveryReadyMs() int64 {
+	if m != nil {
+		return m.RecoveryReadyMs
+	}
+	return 0
+}
+func (m *SecurityPendingOpSummary) GetRejected() bool {
+	if m != nil {
+		return m.Rejected
+	}
+	return false
+}
+func (m *SecurityPendingOpSummary) GetTargetDeviceId() string {
+	if m != nil {
+		return m.TargetDeviceId
+	}
+	return ""
+}
+func (m *SecurityPendingOpSummary) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+
+func (m *SecurityPendingOpSummary) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityPendingOpSummary) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityPendingOpSummary) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.Kind)
+	b = litewire.AppendString(b, 2, m.Phase)
+	b = litewire.AppendString(b, 3, m.Action)
+	b = litewire.AppendBool(b, 4, m.CodeSaved)
+	b = litewire.AppendBool(b, 5, m.Signed)
+	b = litewire.AppendBool(b, 6, m.HasDelivery)
+	b = litewire.AppendString(b, 7, m.DeliveryPairingId)
+	b = litewire.AppendString(b, 8, m.DeliveryCandidateId)
+	b = litewire.AppendString(b, 9, m.RecoveryId)
+	b = litewire.AppendVarint(b, 10, uint64(m.RecoveryReadyMs))
+	b = litewire.AppendBool(b, 11, m.Rejected)
+	b = litewire.AppendString(b, 12, m.TargetDeviceId)
+	b = litewire.AppendString(b, 13, m.Server)
+	return b
+}
+
+type SecurityWorkflowStatus struct {
+	Bootstrap                 SecurityBootstrapKind
+	LegacyRepairNotice        bool
+	IsMember                  bool
+	IsAuthority               bool
+	Removed                   bool
+	Server                    string
+	DeviceId                  string
+	AccountId                 string
+	HeadEpoch                 uint64
+	LeaseEndMs                int64
+	LeaseValid                bool
+	ClockSkewed               bool
+	RecoveryPending           bool
+	RecoveryReadyMs           int64
+	RecoveryStatusStale       bool
+	RecoveryObjectsPending    bool
+	NeedsRecoveryCodeRotation bool
+	HasAccountPublicProfile   bool
+	HasHandoffOffer           bool
+	TakingOver                bool
+	PendingOp                 *SecurityPendingOpSummary
+	Error                     string
+}
+
+func (m *SecurityWorkflowStatus) GetBootstrap() SecurityBootstrapKind {
+	if m != nil {
+		return m.Bootstrap
+	}
+	return 0
+}
+func (m *SecurityWorkflowStatus) GetLegacyRepairNotice() bool {
+	if m != nil {
+		return m.LegacyRepairNotice
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetIsMember() bool {
+	if m != nil {
+		return m.IsMember
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetIsAuthority() bool {
+	if m != nil {
+		return m.IsAuthority
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetRemoved() bool {
+	if m != nil {
+		return m.Removed
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+func (m *SecurityWorkflowStatus) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *SecurityWorkflowStatus) GetAccountId() string {
+	if m != nil {
+		return m.AccountId
+	}
+	return ""
+}
+func (m *SecurityWorkflowStatus) GetHeadEpoch() uint64 {
+	if m != nil {
+		return m.HeadEpoch
+	}
+	return 0
+}
+func (m *SecurityWorkflowStatus) GetLeaseEndMs() int64 {
+	if m != nil {
+		return m.LeaseEndMs
+	}
+	return 0
+}
+func (m *SecurityWorkflowStatus) GetLeaseValid() bool {
+	if m != nil {
+		return m.LeaseValid
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetClockSkewed() bool {
+	if m != nil {
+		return m.ClockSkewed
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetRecoveryPending() bool {
+	if m != nil {
+		return m.RecoveryPending
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetRecoveryReadyMs() int64 {
+	if m != nil {
+		return m.RecoveryReadyMs
+	}
+	return 0
+}
+func (m *SecurityWorkflowStatus) GetRecoveryStatusStale() bool {
+	if m != nil {
+		return m.RecoveryStatusStale
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetRecoveryObjectsPending() bool {
+	if m != nil {
+		return m.RecoveryObjectsPending
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetNeedsRecoveryCodeRotation() bool {
+	if m != nil {
+		return m.NeedsRecoveryCodeRotation
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetHasAccountPublicProfile() bool {
+	if m != nil {
+		return m.HasAccountPublicProfile
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetHasHandoffOffer() bool {
+	if m != nil {
+		return m.HasHandoffOffer
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetTakingOver() bool {
+	if m != nil {
+		return m.TakingOver
+	}
+	return false
+}
+func (m *SecurityWorkflowStatus) GetPendingOp() *SecurityPendingOpSummary {
+	if m != nil {
+		return m.PendingOp
+	}
+	return nil
+}
+func (m *SecurityWorkflowStatus) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+
+func (m *SecurityWorkflowStatus) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityWorkflowStatus) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityWorkflowStatus) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendInt32(b, 1, int32(m.Bootstrap))
+	b = litewire.AppendBool(b, 2, m.LegacyRepairNotice)
+	b = litewire.AppendBool(b, 3, m.IsMember)
+	b = litewire.AppendBool(b, 4, m.IsAuthority)
+	b = litewire.AppendBool(b, 5, m.Removed)
+	b = litewire.AppendString(b, 6, m.Server)
+	b = litewire.AppendString(b, 7, m.DeviceId)
+	b = litewire.AppendString(b, 8, m.AccountId)
+	b = litewire.AppendVarint(b, 9, uint64(m.HeadEpoch))
+	b = litewire.AppendVarint(b, 10, uint64(m.LeaseEndMs))
+	b = litewire.AppendBool(b, 11, m.LeaseValid)
+	b = litewire.AppendBool(b, 12, m.ClockSkewed)
+	b = litewire.AppendBool(b, 13, m.RecoveryPending)
+	b = litewire.AppendVarint(b, 14, uint64(m.RecoveryReadyMs))
+	b = litewire.AppendBool(b, 15, m.RecoveryStatusStale)
+	b = litewire.AppendBool(b, 16, m.RecoveryObjectsPending)
+	b = litewire.AppendBool(b, 17, m.NeedsRecoveryCodeRotation)
+	b = litewire.AppendBool(b, 18, m.HasAccountPublicProfile)
+	b = litewire.AppendBool(b, 19, m.HasHandoffOffer)
+	b = litewire.AppendBool(b, 20, m.TakingOver)
+	if m.PendingOp != nil {
+		b = litewire.AppendMessage(b, 21, m.PendingOp)
+	}
+	b = litewire.AppendString(b, 22, m.Error)
+	return b
+}
+
+type SecurityPairingInfo struct {
+	PairingId   string
+	Code        string
+	Url         string
+	ExpiresMs   int64
+	SasEmoji    []string
+	JoinerKind  v1.DeviceKind
+	Joined      bool
+	Approved    bool
+	Delivered   bool
+	Registering bool
+}
+
+func (m *SecurityPairingInfo) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *SecurityPairingInfo) GetCode() string {
+	if m != nil {
+		return m.Code
+	}
+	return ""
+}
+func (m *SecurityPairingInfo) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+func (m *SecurityPairingInfo) GetExpiresMs() int64 {
+	if m != nil {
+		return m.ExpiresMs
+	}
+	return 0
+}
+func (m *SecurityPairingInfo) GetSasEmoji() []string {
+	if m != nil {
+		return m.SasEmoji
+	}
+	return nil
+}
+func (m *SecurityPairingInfo) GetJoinerKind() v1.DeviceKind {
+	if m != nil {
+		return m.JoinerKind
+	}
+	return 0
+}
+func (m *SecurityPairingInfo) GetJoined() bool {
+	if m != nil {
+		return m.Joined
+	}
+	return false
+}
+func (m *SecurityPairingInfo) GetApproved() bool {
+	if m != nil {
+		return m.Approved
+	}
+	return false
+}
+func (m *SecurityPairingInfo) GetDelivered() bool {
+	if m != nil {
+		return m.Delivered
+	}
+	return false
+}
+func (m *SecurityPairingInfo) GetRegistering() bool {
+	if m != nil {
+		return m.Registering
+	}
+	return false
+}
+
+func (m *SecurityPairingInfo) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityPairingInfo) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityPairingInfo) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.PairingId)
+	b = litewire.AppendString(b, 2, m.Code)
+	b = litewire.AppendString(b, 3, m.Url)
+	b = litewire.AppendVarint(b, 4, uint64(m.ExpiresMs))
+	for _, v := range m.SasEmoji {
+		b = litewire.AppendStringAlways(b, 5, v)
+	}
+	b = litewire.AppendInt32(b, 6, int32(m.JoinerKind))
+	b = litewire.AppendBool(b, 7, m.Joined)
+	b = litewire.AppendBool(b, 8, m.Approved)
+	b = litewire.AppendBool(b, 9, m.Delivered)
+	b = litewire.AppendBool(b, 10, m.Registering)
+	return b
+}
+
+type SecurityRecoveryInfo struct {
+	RecoveryId string
+	Phase      v1.GetRecoveryContextResponse_Phase
+	ReadyMs    int64
+}
+
+func (m *SecurityRecoveryInfo) GetRecoveryId() string {
+	if m != nil {
+		return m.RecoveryId
+	}
+	return ""
+}
+func (m *SecurityRecoveryInfo) GetPhase() v1.GetRecoveryContextResponse_Phase {
+	if m != nil {
+		return m.Phase
+	}
+	return 0
+}
+func (m *SecurityRecoveryInfo) GetReadyMs() int64 {
+	if m != nil {
+		return m.ReadyMs
+	}
+	return 0
+}
+
+func (m *SecurityRecoveryInfo) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityRecoveryInfo) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityRecoveryInfo) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.RecoveryId)
+	b = litewire.AppendInt32(b, 2, int32(m.Phase))
+	b = litewire.AppendVarint(b, 3, uint64(m.ReadyMs))
+	return b
+}
+
+type SecurityHandoffCandidate struct {
+	DeviceId   string
+	RecoveryEd []byte
+}
+
+func (m *SecurityHandoffCandidate) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *SecurityHandoffCandidate) GetRecoveryEd() []byte {
+	if m != nil {
+		return m.RecoveryEd
+	}
+	return nil
+}
+
+func (m *SecurityHandoffCandidate) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityHandoffCandidate) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityHandoffCandidate) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.DeviceId)
+	b = litewire.AppendBytes(b, 2, m.RecoveryEd)
+	return b
+}
+
+type SecurityExitAdvice struct {
+	Authority  bool
+	Unresolved bool
+	Message    string
+}
+
+func (m *SecurityExitAdvice) GetAuthority() bool {
+	if m != nil {
+		return m.Authority
+	}
+	return false
+}
+func (m *SecurityExitAdvice) GetUnresolved() bool {
+	if m != nil {
+		return m.Unresolved
+	}
+	return false
+}
+func (m *SecurityExitAdvice) GetMessage() string {
+	if m != nil {
+		return m.Message
+	}
+	return ""
+}
+
+func (m *SecurityExitAdvice) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityExitAdvice) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityExitAdvice) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBool(b, 1, m.Authority)
+	b = litewire.AppendBool(b, 2, m.Unresolved)
+	b = litewire.AppendString(b, 3, m.Message)
+	return b
+}
+
+type SecurityAccountAdopted struct {
+	Server                string
+	DeviceId              string
+	AccountId             string
+	NeedsRecoveryRotation bool
+}
+
+func (m *SecurityAccountAdopted) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+func (m *SecurityAccountAdopted) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *SecurityAccountAdopted) GetAccountId() string {
+	if m != nil {
+		return m.AccountId
+	}
+	return ""
+}
+func (m *SecurityAccountAdopted) GetNeedsRecoveryRotation() bool {
+	if m != nil {
+		return m.NeedsRecoveryRotation
+	}
+	return false
+}
+
+func (m *SecurityAccountAdopted) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityAccountAdopted) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityAccountAdopted) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.Server)
+	b = litewire.AppendString(b, 2, m.DeviceId)
+	b = litewire.AppendString(b, 3, m.AccountId)
+	b = litewire.AppendBool(b, 4, m.NeedsRecoveryRotation)
+	return b
+}
+
+type SecurityActionEmpty struct {
+}
+
+func (m *SecurityActionEmpty) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityBoolAction struct {
+	Flag bool
+}
+
+func (m *SecurityBoolAction) GetFlag() bool {
+	if m != nil {
+		return m.Flag
+	}
+	return false
+}
+
+func (m *SecurityBoolAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Flag = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityStringAction struct {
+	Value string
+}
+
+func (m *SecurityStringAction) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
+}
+
+func (m *SecurityStringAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Value = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecuritySyncNowAction struct {
+	Touch     bool
+	AuthToken string
+}
+
+func (m *SecuritySyncNowAction) GetTouch() bool {
+	if m != nil {
+		return m.Touch
+	}
+	return false
+}
+func (m *SecuritySyncNowAction) GetAuthToken() string {
+	if m != nil {
+		return m.AuthToken
+	}
+	return ""
+}
+
+func (m *SecuritySyncNowAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Touch = litewire.DecodeBool(v)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.AuthToken = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityPrepareCreationAction struct {
+	Server           string
+	StoragePersisted bool
+}
+
+func (m *SecurityPrepareCreationAction) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+func (m *SecurityPrepareCreationAction) GetStoragePersisted() bool {
+	if m != nil {
+		return m.StoragePersisted
+	}
+	return false
+}
+
+func (m *SecurityPrepareCreationAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Server = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.StoragePersisted = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityRemoveDeviceAction struct {
+	DeviceId            string
+	AbandonPairDelivery bool
+}
+
+func (m *SecurityRemoveDeviceAction) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *SecurityRemoveDeviceAction) GetAbandonPairDelivery() bool {
+	if m != nil {
+		return m.AbandonPairDelivery
+	}
+	return false
+}
+
+func (m *SecurityRemoveDeviceAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.DeviceId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.AbandonPairDelivery = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityServerCodeAction struct {
+	Server string
+	Code   string
+}
+
+func (m *SecurityServerCodeAction) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+func (m *SecurityServerCodeAction) GetCode() string {
+	if m != nil {
+		return m.Code
+	}
+	return ""
+}
+
+func (m *SecurityServerCodeAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Server = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Code = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityStartPairingAction struct {
+	WebOrigin        string
+	ReplacesDeviceId string
+}
+
+func (m *SecurityStartPairingAction) GetWebOrigin() string {
+	if m != nil {
+		return m.WebOrigin
+	}
+	return ""
+}
+func (m *SecurityStartPairingAction) GetReplacesDeviceId() string {
+	if m != nil {
+		return m.ReplacesDeviceId
+	}
+	return ""
+}
+
+func (m *SecurityStartPairingAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.WebOrigin = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ReplacesDeviceId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityApprovePairingAction struct {
+	PairingId    string
+	SasConfirmed bool
+}
+
+func (m *SecurityApprovePairingAction) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *SecurityApprovePairingAction) GetSasConfirmed() bool {
+	if m != nil {
+		return m.SasConfirmed
+	}
+	return false
+}
+
+func (m *SecurityApprovePairingAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.PairingId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.SasConfirmed = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityStartJoinPairingAction struct {
+	Server         string
+	Code           string
+	CommitHint     []byte
+	ExistingRepair bool
+	ExistingServer string
+	RawLink        string
+}
+
+func (m *SecurityStartJoinPairingAction) GetServer() string {
+	if m != nil {
+		return m.Server
+	}
+	return ""
+}
+func (m *SecurityStartJoinPairingAction) GetCode() string {
+	if m != nil {
+		return m.Code
+	}
+	return ""
+}
+func (m *SecurityStartJoinPairingAction) GetCommitHint() []byte {
+	if m != nil {
+		return m.CommitHint
+	}
+	return nil
+}
+func (m *SecurityStartJoinPairingAction) GetExistingRepair() bool {
+	if m != nil {
+		return m.ExistingRepair
+	}
+	return false
+}
+func (m *SecurityStartJoinPairingAction) GetExistingServer() string {
+	if m != nil {
+		return m.ExistingServer
+	}
+	return ""
+}
+func (m *SecurityStartJoinPairingAction) GetRawLink() string {
+	if m != nil {
+		return m.RawLink
+	}
+	return ""
+}
+
+func (m *SecurityStartJoinPairingAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Server = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Code = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.CommitHint = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ExistingRepair = litewire.DecodeBool(v)
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.ExistingServer = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.RawLink = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityUpdateDeviceMetaAction struct {
+	DeviceId         string
+	Name             string
+	Platform         string
+	Description      string
+	DescribeSelfOnly bool
+}
+
+func (m *SecurityUpdateDeviceMetaAction) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *SecurityUpdateDeviceMetaAction) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+func (m *SecurityUpdateDeviceMetaAction) GetPlatform() string {
+	if m != nil {
+		return m.Platform
+	}
+	return ""
+}
+func (m *SecurityUpdateDeviceMetaAction) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+func (m *SecurityUpdateDeviceMetaAction) GetDescribeSelfOnly() bool {
+	if m != nil {
+		return m.DescribeSelfOnly
+	}
+	return false
+}
+
+func (m *SecurityUpdateDeviceMetaAction) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.DeviceId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Name = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Platform = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Description = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.DescribeSelfOnly = litewire.DecodeBool(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityWorkflowActionEvent struct {
+	ActionId uint64
+	Action   isSecurityWorkflowActionEvent_Action
+}
+
+type isSecurityWorkflowActionEvent_Action interface{ isSecurityWorkflowActionEvent_Action() }
+type SecurityWorkflowActionEvent_Bootstrap struct{ Bootstrap *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_Bootstrap) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_DismissUpgradeNotice struct{ DismissUpgradeNotice *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_DismissUpgradeNotice) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_SyncNow struct{ SyncNow *SecuritySyncNowAction }
+
+func (*SecurityWorkflowActionEvent_SyncNow) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_RenewLease struct{ RenewLease *SecurityBoolAction }
+
+func (*SecurityWorkflowActionEvent_RenewLease) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ResumePendingOp struct{ ResumePendingOp *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_ResumePendingOp) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_DiscardPendingOp struct{ DiscardPendingOp *SecurityBoolAction }
+
+func (*SecurityWorkflowActionEvent_DiscardPendingOp) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_PrepareCreation struct {
+	PrepareCreation *SecurityPrepareCreationAction
+}
+
+func (*SecurityWorkflowActionEvent_PrepareCreation) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ConfirmCreationCodeSaved struct{ ConfirmCreationCodeSaved *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_ConfirmCreationCodeSaved) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ContinueCreation struct{ ContinueCreation *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_ContinueCreation) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_AdoptCreationWithoutCode struct{ AdoptCreationWithoutCode *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_AdoptCreationWithoutCode) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_RemoveDevice struct{ RemoveDevice *SecurityRemoveDeviceAction }
+
+func (*SecurityWorkflowActionEvent_RemoveDevice) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_DeleteMachineRecords struct{ DeleteMachineRecords *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_DeleteMachineRecords) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_DeleteAccount struct{ DeleteAccount *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_DeleteAccount) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_PrepareRecoveryRotation struct{ PrepareRecoveryRotation *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_PrepareRecoveryRotation) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ConfirmRecoveryRotation struct{ ConfirmRecoveryRotation *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_ConfirmRecoveryRotation) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_PrepareHandoffCode struct{ PrepareHandoffCode *SecurityBoolAction }
+
+func (*SecurityWorkflowActionEvent_PrepareHandoffCode) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_PublishHandoffOffer struct{ PublishHandoffOffer *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_PublishHandoffOffer) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_HandoffAuthority struct{ HandoffAuthority *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_HandoffAuthority) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_CompleteAccountPublicProfile struct{ CompleteAccountPublicProfile *SecurityServerCodeAction }
+
+func (*SecurityWorkflowActionEvent_CompleteAccountPublicProfile) isSecurityWorkflowActionEvent_Action() {
+}
+
+type SecurityWorkflowActionEvent_StartPairing struct{ StartPairing *SecurityStartPairingAction }
+
+func (*SecurityWorkflowActionEvent_StartPairing) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_PollPairing struct{ PollPairing *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_PollPairing) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ApprovePairing struct{ ApprovePairing *SecurityApprovePairingAction }
+
+func (*SecurityWorkflowActionEvent_ApprovePairing) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_FinishPairingDelivery struct{ FinishPairingDelivery *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_FinishPairingDelivery) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_CancelPairing struct{ CancelPairing *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_CancelPairing) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_StartJoinPairing struct {
+	StartJoinPairing *SecurityStartJoinPairingAction
+}
+
+func (*SecurityWorkflowActionEvent_StartJoinPairing) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ConfirmJoinSas struct{ ConfirmJoinSas *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_ConfirmJoinSas) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_CancelJoinPairing struct{ CancelJoinPairing *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_CancelJoinPairing) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_PrepareEmergencyRecovery struct{ PrepareEmergencyRecovery *SecurityServerCodeAction }
+
+func (*SecurityWorkflowActionEvent_PrepareEmergencyRecovery) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ContinueRecoverySigning struct{ ContinueRecoverySigning *SecurityStringAction }
+
+func (*SecurityWorkflowActionEvent_ContinueRecoverySigning) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved struct{ ConfirmRecoveryCodeSaved *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ResumeRecovery struct{ ResumeRecovery *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_ResumeRecovery) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_CompleteRecovery struct{ CompleteRecovery *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_CompleteRecovery) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_DiscardUnsignedRecovery struct{ DiscardUnsignedRecovery *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_DiscardUnsignedRecovery) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_DiscardRejectedRecovery struct{ DiscardRejectedRecovery *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_DiscardRejectedRecovery) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_CheckExitAdvice struct{ CheckExitAdvice *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_CheckExitAdvice) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ClearSecurity struct{ ClearSecurity *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_ClearSecurity) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_UpdateDeviceMeta struct {
+	UpdateDeviceMeta *SecurityUpdateDeviceMetaAction
+}
+
+func (*SecurityWorkflowActionEvent_UpdateDeviceMeta) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_ListHandoffCandidates struct{ ListHandoffCandidates *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_ListHandoffCandidates) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_GetStatus struct{ GetStatus *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_GetStatus) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_CheckRetainedDenied struct{ CheckRetainedDenied *SecurityActionEmpty }
+
+func (*SecurityWorkflowActionEvent_CheckRetainedDenied) isSecurityWorkflowActionEvent_Action() {}
+
+type SecurityWorkflowActionEvent_RepublishRecoveryObjects struct{ RepublishRecoveryObjects *SecurityBoolAction }
+
+func (*SecurityWorkflowActionEvent_RepublishRecoveryObjects) isSecurityWorkflowActionEvent_Action() {}
+
+func (m *SecurityWorkflowActionEvent) GetAction() isSecurityWorkflowActionEvent_Action {
+	if m != nil {
+		return m.Action
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetActionId() uint64 {
+	if m != nil {
+		return m.ActionId
+	}
+	return 0
+}
+func (m *SecurityWorkflowActionEvent) GetBootstrap() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_Bootstrap); ok && x != nil {
+		return x.Bootstrap
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetDismissUpgradeNotice() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_DismissUpgradeNotice); ok && x != nil {
+		return x.DismissUpgradeNotice
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetSyncNow() *SecuritySyncNowAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_SyncNow); ok && x != nil {
+		return x.SyncNow
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetRenewLease() *SecurityBoolAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_RenewLease); ok && x != nil {
+		return x.RenewLease
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetResumePendingOp() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ResumePendingOp); ok && x != nil {
+		return x.ResumePendingOp
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetDiscardPendingOp() *SecurityBoolAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_DiscardPendingOp); ok && x != nil {
+		return x.DiscardPendingOp
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetPrepareCreation() *SecurityPrepareCreationAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_PrepareCreation); ok && x != nil {
+		return x.PrepareCreation
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetConfirmCreationCodeSaved() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ConfirmCreationCodeSaved); ok && x != nil {
+		return x.ConfirmCreationCodeSaved
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetContinueCreation() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ContinueCreation); ok && x != nil {
+		return x.ContinueCreation
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetAdoptCreationWithoutCode() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_AdoptCreationWithoutCode); ok && x != nil {
+		return x.AdoptCreationWithoutCode
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetRemoveDevice() *SecurityRemoveDeviceAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_RemoveDevice); ok && x != nil {
+		return x.RemoveDevice
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetDeleteMachineRecords() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_DeleteMachineRecords); ok && x != nil {
+		return x.DeleteMachineRecords
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetDeleteAccount() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_DeleteAccount); ok && x != nil {
+		return x.DeleteAccount
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetPrepareRecoveryRotation() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_PrepareRecoveryRotation); ok && x != nil {
+		return x.PrepareRecoveryRotation
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetConfirmRecoveryRotation() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ConfirmRecoveryRotation); ok && x != nil {
+		return x.ConfirmRecoveryRotation
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetPrepareHandoffCode() *SecurityBoolAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_PrepareHandoffCode); ok && x != nil {
+		return x.PrepareHandoffCode
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetPublishHandoffOffer() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_PublishHandoffOffer); ok && x != nil {
+		return x.PublishHandoffOffer
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetHandoffAuthority() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_HandoffAuthority); ok && x != nil {
+		return x.HandoffAuthority
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetCompleteAccountPublicProfile() *SecurityServerCodeAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_CompleteAccountPublicProfile); ok && x != nil {
+		return x.CompleteAccountPublicProfile
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetStartPairing() *SecurityStartPairingAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_StartPairing); ok && x != nil {
+		return x.StartPairing
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetPollPairing() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_PollPairing); ok && x != nil {
+		return x.PollPairing
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetApprovePairing() *SecurityApprovePairingAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ApprovePairing); ok && x != nil {
+		return x.ApprovePairing
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetFinishPairingDelivery() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_FinishPairingDelivery); ok && x != nil {
+		return x.FinishPairingDelivery
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetCancelPairing() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_CancelPairing); ok && x != nil {
+		return x.CancelPairing
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetStartJoinPairing() *SecurityStartJoinPairingAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_StartJoinPairing); ok && x != nil {
+		return x.StartJoinPairing
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetConfirmJoinSas() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ConfirmJoinSas); ok && x != nil {
+		return x.ConfirmJoinSas
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetCancelJoinPairing() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_CancelJoinPairing); ok && x != nil {
+		return x.CancelJoinPairing
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetPrepareEmergencyRecovery() *SecurityServerCodeAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_PrepareEmergencyRecovery); ok && x != nil {
+		return x.PrepareEmergencyRecovery
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetContinueRecoverySigning() *SecurityStringAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ContinueRecoverySigning); ok && x != nil {
+		return x.ContinueRecoverySigning
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetConfirmRecoveryCodeSaved() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved); ok && x != nil {
+		return x.ConfirmRecoveryCodeSaved
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetResumeRecovery() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ResumeRecovery); ok && x != nil {
+		return x.ResumeRecovery
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetCompleteRecovery() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_CompleteRecovery); ok && x != nil {
+		return x.CompleteRecovery
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetDiscardUnsignedRecovery() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_DiscardUnsignedRecovery); ok && x != nil {
+		return x.DiscardUnsignedRecovery
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetDiscardRejectedRecovery() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_DiscardRejectedRecovery); ok && x != nil {
+		return x.DiscardRejectedRecovery
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetCheckExitAdvice() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_CheckExitAdvice); ok && x != nil {
+		return x.CheckExitAdvice
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetClearSecurity() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ClearSecurity); ok && x != nil {
+		return x.ClearSecurity
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetUpdateDeviceMeta() *SecurityUpdateDeviceMetaAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_UpdateDeviceMeta); ok && x != nil {
+		return x.UpdateDeviceMeta
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetListHandoffCandidates() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_ListHandoffCandidates); ok && x != nil {
+		return x.ListHandoffCandidates
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetGetStatus() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_GetStatus); ok && x != nil {
+		return x.GetStatus
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetCheckRetainedDenied() *SecurityActionEmpty {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_CheckRetainedDenied); ok && x != nil {
+		return x.CheckRetainedDenied
+	}
+	return nil
+}
+func (m *SecurityWorkflowActionEvent) GetRepublishRecoveryObjects() *SecurityBoolAction {
+	if x, ok := m.GetAction().(*SecurityWorkflowActionEvent_RepublishRecoveryObjects); ok && x != nil {
+		return x.RepublishRecoveryObjects
+	}
+	return nil
+}
+
+func (m *SecurityWorkflowActionEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ActionId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_Bootstrap); ok && cur != nil {
+					sub = cur.Bootstrap
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_Bootstrap{Bootstrap: sub}
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DismissUpgradeNotice); ok && cur != nil {
+					sub = cur.DismissUpgradeNotice
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_DismissUpgradeNotice{DismissUpgradeNotice: sub}
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				var sub *SecuritySyncNowAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_SyncNow); ok && cur != nil {
+					sub = cur.SyncNow
+				}
+				if sub == nil {
+					sub = &SecuritySyncNowAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_SyncNow{SyncNow: sub}
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityBoolAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_RenewLease); ok && cur != nil {
+					sub = cur.RenewLease
+				}
+				if sub == nil {
+					sub = &SecurityBoolAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_RenewLease{RenewLease: sub}
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ResumePendingOp); ok && cur != nil {
+					sub = cur.ResumePendingOp
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ResumePendingOp{ResumePendingOp: sub}
+				continue
+			}
+		case 7:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityBoolAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DiscardPendingOp); ok && cur != nil {
+					sub = cur.DiscardPendingOp
+				}
+				if sub == nil {
+					sub = &SecurityBoolAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_DiscardPendingOp{DiscardPendingOp: sub}
+				continue
+			}
+		case 8:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityPrepareCreationAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PrepareCreation); ok && cur != nil {
+					sub = cur.PrepareCreation
+				}
+				if sub == nil {
+					sub = &SecurityPrepareCreationAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_PrepareCreation{PrepareCreation: sub}
+				continue
+			}
+		case 9:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ConfirmCreationCodeSaved); ok && cur != nil {
+					sub = cur.ConfirmCreationCodeSaved
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: sub}
+				continue
+			}
+		case 10:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ContinueCreation); ok && cur != nil {
+					sub = cur.ContinueCreation
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: sub}
+				continue
+			}
+		case 11:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_AdoptCreationWithoutCode); ok && cur != nil {
+					sub = cur.AdoptCreationWithoutCode
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_AdoptCreationWithoutCode{AdoptCreationWithoutCode: sub}
+				continue
+			}
+		case 12:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityRemoveDeviceAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_RemoveDevice); ok && cur != nil {
+					sub = cur.RemoveDevice
+				}
+				if sub == nil {
+					sub = &SecurityRemoveDeviceAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_RemoveDevice{RemoveDevice: sub}
+				continue
+			}
+		case 13:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DeleteMachineRecords); ok && cur != nil {
+					sub = cur.DeleteMachineRecords
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_DeleteMachineRecords{DeleteMachineRecords: sub}
+				continue
+			}
+		case 14:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DeleteAccount); ok && cur != nil {
+					sub = cur.DeleteAccount
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_DeleteAccount{DeleteAccount: sub}
+				continue
+			}
+		case 15:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PrepareRecoveryRotation); ok && cur != nil {
+					sub = cur.PrepareRecoveryRotation
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_PrepareRecoveryRotation{PrepareRecoveryRotation: sub}
+				continue
+			}
+		case 16:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ConfirmRecoveryRotation); ok && cur != nil {
+					sub = cur.ConfirmRecoveryRotation
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ConfirmRecoveryRotation{ConfirmRecoveryRotation: sub}
+				continue
+			}
+		case 17:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityBoolAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PrepareHandoffCode); ok && cur != nil {
+					sub = cur.PrepareHandoffCode
+				}
+				if sub == nil {
+					sub = &SecurityBoolAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_PrepareHandoffCode{PrepareHandoffCode: sub}
+				continue
+			}
+		case 18:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PublishHandoffOffer); ok && cur != nil {
+					sub = cur.PublishHandoffOffer
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_PublishHandoffOffer{PublishHandoffOffer: sub}
+				continue
+			}
+		case 19:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_HandoffAuthority); ok && cur != nil {
+					sub = cur.HandoffAuthority
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_HandoffAuthority{HandoffAuthority: sub}
+				continue
+			}
+		case 20:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityServerCodeAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CompleteAccountPublicProfile); ok && cur != nil {
+					sub = cur.CompleteAccountPublicProfile
+				}
+				if sub == nil {
+					sub = &SecurityServerCodeAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_CompleteAccountPublicProfile{CompleteAccountPublicProfile: sub}
+				continue
+			}
+		case 21:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStartPairingAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_StartPairing); ok && cur != nil {
+					sub = cur.StartPairing
+				}
+				if sub == nil {
+					sub = &SecurityStartPairingAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_StartPairing{StartPairing: sub}
+				continue
+			}
+		case 22:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PollPairing); ok && cur != nil {
+					sub = cur.PollPairing
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_PollPairing{PollPairing: sub}
+				continue
+			}
+		case 23:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityApprovePairingAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ApprovePairing); ok && cur != nil {
+					sub = cur.ApprovePairing
+				}
+				if sub == nil {
+					sub = &SecurityApprovePairingAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ApprovePairing{ApprovePairing: sub}
+				continue
+			}
+		case 24:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_FinishPairingDelivery); ok && cur != nil {
+					sub = cur.FinishPairingDelivery
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: sub}
+				continue
+			}
+		case 25:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CancelPairing); ok && cur != nil {
+					sub = cur.CancelPairing
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_CancelPairing{CancelPairing: sub}
+				continue
+			}
+		case 26:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStartJoinPairingAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_StartJoinPairing); ok && cur != nil {
+					sub = cur.StartJoinPairing
+				}
+				if sub == nil {
+					sub = &SecurityStartJoinPairingAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_StartJoinPairing{StartJoinPairing: sub}
+				continue
+			}
+		case 27:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ConfirmJoinSas); ok && cur != nil {
+					sub = cur.ConfirmJoinSas
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: sub}
+				continue
+			}
+		case 28:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CancelJoinPairing); ok && cur != nil {
+					sub = cur.CancelJoinPairing
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_CancelJoinPairing{CancelJoinPairing: sub}
+				continue
+			}
+		case 29:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityServerCodeAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_PrepareEmergencyRecovery); ok && cur != nil {
+					sub = cur.PrepareEmergencyRecovery
+				}
+				if sub == nil {
+					sub = &SecurityServerCodeAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_PrepareEmergencyRecovery{PrepareEmergencyRecovery: sub}
+				continue
+			}
+		case 30:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityStringAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ContinueRecoverySigning); ok && cur != nil {
+					sub = cur.ContinueRecoverySigning
+				}
+				if sub == nil {
+					sub = &SecurityStringAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ContinueRecoverySigning{ContinueRecoverySigning: sub}
+				continue
+			}
+		case 31:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved); ok && cur != nil {
+					sub = cur.ConfirmRecoveryCodeSaved
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ConfirmRecoveryCodeSaved{ConfirmRecoveryCodeSaved: sub}
+				continue
+			}
+		case 32:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ResumeRecovery); ok && cur != nil {
+					sub = cur.ResumeRecovery
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ResumeRecovery{ResumeRecovery: sub}
+				continue
+			}
+		case 33:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CompleteRecovery); ok && cur != nil {
+					sub = cur.CompleteRecovery
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_CompleteRecovery{CompleteRecovery: sub}
+				continue
+			}
+		case 34:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DiscardUnsignedRecovery); ok && cur != nil {
+					sub = cur.DiscardUnsignedRecovery
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_DiscardUnsignedRecovery{DiscardUnsignedRecovery: sub}
+				continue
+			}
+		case 35:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_DiscardRejectedRecovery); ok && cur != nil {
+					sub = cur.DiscardRejectedRecovery
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_DiscardRejectedRecovery{DiscardRejectedRecovery: sub}
+				continue
+			}
+		case 36:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CheckExitAdvice); ok && cur != nil {
+					sub = cur.CheckExitAdvice
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_CheckExitAdvice{CheckExitAdvice: sub}
+				continue
+			}
+		case 37:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ClearSecurity); ok && cur != nil {
+					sub = cur.ClearSecurity
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ClearSecurity{ClearSecurity: sub}
+				continue
+			}
+		case 38:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityUpdateDeviceMetaAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_UpdateDeviceMeta); ok && cur != nil {
+					sub = cur.UpdateDeviceMeta
+				}
+				if sub == nil {
+					sub = &SecurityUpdateDeviceMetaAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_UpdateDeviceMeta{UpdateDeviceMeta: sub}
+				continue
+			}
+		case 39:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_ListHandoffCandidates); ok && cur != nil {
+					sub = cur.ListHandoffCandidates
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_ListHandoffCandidates{ListHandoffCandidates: sub}
+				continue
+			}
+		case 40:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_GetStatus); ok && cur != nil {
+					sub = cur.GetStatus
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_GetStatus{GetStatus: sub}
+				continue
+			}
+		case 41:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityActionEmpty
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_CheckRetainedDenied); ok && cur != nil {
+					sub = cur.CheckRetainedDenied
+				}
+				if sub == nil {
+					sub = &SecurityActionEmpty{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_CheckRetainedDenied{CheckRetainedDenied: sub}
+				continue
+			}
+		case 42:
+			if wtyp == litewire.BytesType {
+				var sub *SecurityBoolAction
+				if cur, ok := m.Action.(*SecurityWorkflowActionEvent_RepublishRecoveryObjects); ok && cur != nil {
+					sub = cur.RepublishRecoveryObjects
+				}
+				if sub == nil {
+					sub = &SecurityBoolAction{}
+				}
+				if err := litewire.ReadMessage(&b, sub); err != nil {
+					return err
+				}
+				m.Action = &SecurityWorkflowActionEvent_RepublishRecoveryObjects{RepublishRecoveryObjects: sub}
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityWorkflowResultEffect struct {
+	ActionId              uint64
+	Ok                    bool
+	Error                 string
+	ErrorCode             string
+	Retryable             bool
+	Uncertain             bool
+	ErrorAction           string
+	Status                *SecurityWorkflowStatus
+	RecoveryCode          string
+	ResumedDraft          bool
+	CodeSaved             bool
+	NeedsRecoveryRotation bool
+	Pairing               *SecurityPairingInfo
+	Recovery              *SecurityRecoveryInfo
+	HandoffCandidates     []*SecurityHandoffCandidate
+	ExitAdvice            *SecurityExitAdvice
+	AccountAdopted        *SecurityAccountAdopted
+	Flag                  bool
+}
+
+func (m *SecurityWorkflowResultEffect) GetActionId() uint64 {
+	if m != nil {
+		return m.ActionId
+	}
+	return 0
+}
+func (m *SecurityWorkflowResultEffect) GetOk() bool {
+	if m != nil {
+		return m.Ok
+	}
+	return false
+}
+func (m *SecurityWorkflowResultEffect) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+func (m *SecurityWorkflowResultEffect) GetErrorCode() string {
+	if m != nil {
+		return m.ErrorCode
+	}
+	return ""
+}
+func (m *SecurityWorkflowResultEffect) GetRetryable() bool {
+	if m != nil {
+		return m.Retryable
+	}
+	return false
+}
+func (m *SecurityWorkflowResultEffect) GetUncertain() bool {
+	if m != nil {
+		return m.Uncertain
+	}
+	return false
+}
+func (m *SecurityWorkflowResultEffect) GetErrorAction() string {
+	if m != nil {
+		return m.ErrorAction
+	}
+	return ""
+}
+func (m *SecurityWorkflowResultEffect) GetStatus() *SecurityWorkflowStatus {
+	if m != nil {
+		return m.Status
+	}
+	return nil
+}
+func (m *SecurityWorkflowResultEffect) GetRecoveryCode() string {
+	if m != nil {
+		return m.RecoveryCode
+	}
+	return ""
+}
+func (m *SecurityWorkflowResultEffect) GetResumedDraft() bool {
+	if m != nil {
+		return m.ResumedDraft
+	}
+	return false
+}
+func (m *SecurityWorkflowResultEffect) GetCodeSaved() bool {
+	if m != nil {
+		return m.CodeSaved
+	}
+	return false
+}
+func (m *SecurityWorkflowResultEffect) GetNeedsRecoveryRotation() bool {
+	if m != nil {
+		return m.NeedsRecoveryRotation
+	}
+	return false
+}
+func (m *SecurityWorkflowResultEffect) GetPairing() *SecurityPairingInfo {
+	if m != nil {
+		return m.Pairing
+	}
+	return nil
+}
+func (m *SecurityWorkflowResultEffect) GetRecovery() *SecurityRecoveryInfo {
+	if m != nil {
+		return m.Recovery
+	}
+	return nil
+}
+func (m *SecurityWorkflowResultEffect) GetHandoffCandidates() []*SecurityHandoffCandidate {
+	if m != nil {
+		return m.HandoffCandidates
+	}
+	return nil
+}
+func (m *SecurityWorkflowResultEffect) GetExitAdvice() *SecurityExitAdvice {
+	if m != nil {
+		return m.ExitAdvice
+	}
+	return nil
+}
+func (m *SecurityWorkflowResultEffect) GetAccountAdopted() *SecurityAccountAdopted {
+	if m != nil {
+		return m.AccountAdopted
+	}
+	return nil
+}
+func (m *SecurityWorkflowResultEffect) GetFlag() bool {
+	if m != nil {
+		return m.Flag
+	}
+	return false
+}
+
+func (m *SecurityWorkflowResultEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityWorkflowResultEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityWorkflowResultEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.ActionId))
+	b = litewire.AppendBool(b, 2, m.Ok)
+	b = litewire.AppendString(b, 3, m.Error)
+	b = litewire.AppendString(b, 4, m.ErrorCode)
+	b = litewire.AppendBool(b, 5, m.Retryable)
+	b = litewire.AppendBool(b, 6, m.Uncertain)
+	b = litewire.AppendString(b, 7, m.ErrorAction)
+	if m.Status != nil {
+		b = litewire.AppendMessage(b, 8, m.Status)
+	}
+	b = litewire.AppendString(b, 9, m.RecoveryCode)
+	b = litewire.AppendBool(b, 10, m.ResumedDraft)
+	b = litewire.AppendBool(b, 11, m.CodeSaved)
+	b = litewire.AppendBool(b, 12, m.NeedsRecoveryRotation)
+	if m.Pairing != nil {
+		b = litewire.AppendMessage(b, 13, m.Pairing)
+	}
+	if m.Recovery != nil {
+		b = litewire.AppendMessage(b, 14, m.Recovery)
+	}
+	for _, v := range m.HandoffCandidates {
+		if v != nil {
+			b = litewire.AppendMessage(b, 15, v)
+		}
+	}
+	if m.ExitAdvice != nil {
+		b = litewire.AppendMessage(b, 16, m.ExitAdvice)
+	}
+	if m.AccountAdopted != nil {
+		b = litewire.AppendMessage(b, 17, m.AccountAdopted)
+	}
+	b = litewire.AppendBool(b, 18, m.Flag)
+	return b
+}
+
+type SecurityStatusChangedEffect struct {
+	Status *SecurityWorkflowStatus
+}
+
+func (m *SecurityStatusChangedEffect) GetStatus() *SecurityWorkflowStatus {
+	if m != nil {
+		return m.Status
+	}
+	return nil
+}
+
+func (m *SecurityStatusChangedEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityStatusChangedEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityStatusChangedEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	if m.Status != nil {
+		b = litewire.AppendMessage(b, 1, m.Status)
+	}
+	return b
+}
+
+type SecurityOpenNotifyEvent struct {
+	OpId       uint64
+	NotifyBlob []byte
+	RecordBlob []byte
+	Envelope   *v1.Envelope
+	NowMs      int64
+	SessionId  string
+	Tag        string
+	MachineId  string
+}
+
+func (m *SecurityOpenNotifyEvent) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityOpenNotifyEvent) GetNotifyBlob() []byte {
+	if m != nil {
+		return m.NotifyBlob
+	}
+	return nil
+}
+func (m *SecurityOpenNotifyEvent) GetRecordBlob() []byte {
+	if m != nil {
+		return m.RecordBlob
+	}
+	return nil
+}
+func (m *SecurityOpenNotifyEvent) GetEnvelope() *v1.Envelope {
+	if m != nil {
+		return m.Envelope
+	}
+	return nil
+}
+func (m *SecurityOpenNotifyEvent) GetNowMs() int64 {
+	if m != nil {
+		return m.NowMs
+	}
+	return 0
+}
+func (m *SecurityOpenNotifyEvent) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SecurityOpenNotifyEvent) GetTag() string {
+	if m != nil {
+		return m.Tag
+	}
+	return ""
+}
+func (m *SecurityOpenNotifyEvent) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+
+func (m *SecurityOpenNotifyEvent) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.OpId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.NotifyBlob = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.RecordBlob = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				if m.Envelope == nil {
+					m.Envelope = &v1.Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Envelope); err != nil {
+					return err
+				}
+				continue
+			}
+		case 5:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.NowMs = int64(v)
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.SessionId = v
+				continue
+			}
+		case 7:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Tag = v
+				continue
+			}
+		case 8:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityNotifyOpenedEffect struct {
+	OpId                  uint64
+	Content               *v1.NotifyContent
+	HeaderBytes           []byte
+	SessionId             string
+	MachineId             string
+	RequestId             string
+	VerifyRecordUnchanged bool
+	Error                 string
+}
+
+func (m *SecurityNotifyOpenedEffect) GetOpId() uint64 {
+	if m != nil {
+		return m.OpId
+	}
+	return 0
+}
+func (m *SecurityNotifyOpenedEffect) GetContent() *v1.NotifyContent {
+	if m != nil {
+		return m.Content
+	}
+	return nil
+}
+func (m *SecurityNotifyOpenedEffect) GetHeaderBytes() []byte {
+	if m != nil {
+		return m.HeaderBytes
+	}
+	return nil
+}
+func (m *SecurityNotifyOpenedEffect) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SecurityNotifyOpenedEffect) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *SecurityNotifyOpenedEffect) GetRequestId() string {
+	if m != nil {
+		return m.RequestId
+	}
+	return ""
+}
+func (m *SecurityNotifyOpenedEffect) GetVerifyRecordUnchanged() bool {
+	if m != nil {
+		return m.VerifyRecordUnchanged
+	}
+	return false
+}
+func (m *SecurityNotifyOpenedEffect) GetError() string {
+	if m != nil {
+		return m.Error
+	}
+	return ""
+}
+
+func (m *SecurityNotifyOpenedEffect) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityNotifyOpenedEffect) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityNotifyOpenedEffect) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.OpId))
+	if m.Content != nil {
+		b = litewire.AppendMessage(b, 2, m.Content)
+	}
+	b = litewire.AppendBytes(b, 3, m.HeaderBytes)
+	b = litewire.AppendString(b, 4, m.SessionId)
+	b = litewire.AppendString(b, 5, m.MachineId)
+	b = litewire.AppendString(b, 6, m.RequestId)
+	b = litewire.AppendBool(b, 7, m.VerifyRecordUnchanged)
+	b = litewire.AppendString(b, 8, m.Error)
 	return b
 }

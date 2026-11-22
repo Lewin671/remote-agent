@@ -92,6 +92,7 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   case directEngine // = 12
   case directSession // = 13
   case terminalReopen // = 14
+  case securityPoll // = 15
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -115,6 +116,7 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 12: self = .directEngine
     case 13: self = .directSession
     case 14: self = .terminalReopen
+    case 15: self = .securityPoll
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -136,6 +138,7 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .directEngine: return 12
     case .directSession: return 13
     case .terminalReopen: return 14
+    case .securityPoll: return 15
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -157,6 +160,7 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .directEngine,
     .directSession,
     .terminalReopen,
+    .securityPoll,
   ]
 
 }
@@ -3308,6 +3312,62 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .seedDemoWorld(newValue)}
   }
 
+  public var securityKeyGenerated: PBSecurityKeyGeneratedEvent {
+    get {
+      if case .securityKeyGenerated(let v)? = _storage._event {return v}
+      return PBSecurityKeyGeneratedEvent()
+    }
+    set {_uniqueStorage()._event = .securityKeyGenerated(newValue)}
+  }
+
+  public var securityKeyEncapsulated: PBSecurityKeyEncapsulatedEvent {
+    get {
+      if case .securityKeyEncapsulated(let v)? = _storage._event {return v}
+      return PBSecurityKeyEncapsulatedEvent()
+    }
+    set {_uniqueStorage()._event = .securityKeyEncapsulated(newValue)}
+  }
+
+  public var securityStorageResult: PBSecurityStorageResultEvent {
+    get {
+      if case .securityStorageResult(let v)? = _storage._event {return v}
+      return PBSecurityStorageResultEvent()
+    }
+    set {_uniqueStorage()._event = .securityStorageResult(newValue)}
+  }
+
+  public var securityRpcResult: PBSecurityRpcResultEvent {
+    get {
+      if case .securityRpcResult(let v)? = _storage._event {return v}
+      return PBSecurityRpcResultEvent()
+    }
+    set {_uniqueStorage()._event = .securityRpcResult(newValue)}
+  }
+
+  public var securityForeground: PBSecurityForegroundEvent {
+    get {
+      if case .securityForeground(let v)? = _storage._event {return v}
+      return PBSecurityForegroundEvent()
+    }
+    set {_uniqueStorage()._event = .securityForeground(newValue)}
+  }
+
+  public var securityAction: PBSecurityWorkflowActionEvent {
+    get {
+      if case .securityAction(let v)? = _storage._event {return v}
+      return PBSecurityWorkflowActionEvent()
+    }
+    set {_uniqueStorage()._event = .securityAction(newValue)}
+  }
+
+  public var securityOpenNotify: PBSecurityOpenNotifyEvent {
+    get {
+      if case .securityOpenNotify(let v)? = _storage._event {return v}
+      return PBSecurityOpenNotifyEvent()
+    }
+    set {_uniqueStorage()._event = .securityOpenNotify(newValue)}
+  }
+
   public var nowMs: Int64 {
     get {return _storage._nowMs}
     set {_uniqueStorage()._nowMs = newValue}
@@ -3478,6 +3538,13 @@ public struct PBCoreEvent: @unchecked Sendable {
     case securityCryptoBatchDone(PBSecurityCryptoBatchDoneEvent)
     case securityOpRequest(PBSecurityOpRequestEvent)
     case seedDemoWorld(PBSeedDemoWorldEvent)
+    case securityKeyGenerated(PBSecurityKeyGeneratedEvent)
+    case securityKeyEncapsulated(PBSecurityKeyEncapsulatedEvent)
+    case securityStorageResult(PBSecurityStorageResultEvent)
+    case securityRpcResult(PBSecurityRpcResultEvent)
+    case securityForeground(PBSecurityForegroundEvent)
+    case securityAction(PBSecurityWorkflowActionEvent)
+    case securityOpenNotify(PBSecurityOpenNotifyEvent)
 
   }
 
@@ -4558,6 +4625,78 @@ public struct PBCoreEffect: Sendable {
     set {effect = .securityOpResult(newValue)}
   }
 
+  public var securityKeyGenerate: PBSecurityKeyGenerateEffect {
+    get {
+      if case .securityKeyGenerate(let v)? = effect {return v}
+      return PBSecurityKeyGenerateEffect()
+    }
+    set {effect = .securityKeyGenerate(newValue)}
+  }
+
+  public var securityKeyEncapsulate: PBSecurityKeyEncapsulateEffect {
+    get {
+      if case .securityKeyEncapsulate(let v)? = effect {return v}
+      return PBSecurityKeyEncapsulateEffect()
+    }
+    set {effect = .securityKeyEncapsulate(newValue)}
+  }
+
+  public var securityKeyDiscard: PBSecurityKeyDiscardEffect {
+    get {
+      if case .securityKeyDiscard(let v)? = effect {return v}
+      return PBSecurityKeyDiscardEffect()
+    }
+    set {effect = .securityKeyDiscard(newValue)}
+  }
+
+  public var securityStorage: PBSecurityStorageEffect {
+    get {
+      if case .securityStorage(let v)? = effect {return v}
+      return PBSecurityStorageEffect()
+    }
+    set {effect = .securityStorage(newValue)}
+  }
+
+  public var securityRpc: PBSecurityRpcEffect {
+    get {
+      if case .securityRpc(let v)? = effect {return v}
+      return PBSecurityRpcEffect()
+    }
+    set {effect = .securityRpc(newValue)}
+  }
+
+  public var securityWorkflowResult: PBSecurityWorkflowResultEffect {
+    get {
+      if case .securityWorkflowResult(let v)? = effect {return v}
+      return PBSecurityWorkflowResultEffect()
+    }
+    set {effect = .securityWorkflowResult(newValue)}
+  }
+
+  public var securityStatusChanged: PBSecurityStatusChangedEffect {
+    get {
+      if case .securityStatusChanged(let v)? = effect {return v}
+      return PBSecurityStatusChangedEffect()
+    }
+    set {effect = .securityStatusChanged(newValue)}
+  }
+
+  public var securityNotifyOpened: PBSecurityNotifyOpenedEffect {
+    get {
+      if case .securityNotifyOpened(let v)? = effect {return v}
+      return PBSecurityNotifyOpenedEffect()
+    }
+    set {effect = .securityNotifyOpened(newValue)}
+  }
+
+  public var securityTokenUpdated: PBSecurityTokenUpdatedEffect {
+    get {
+      if case .securityTokenUpdated(let v)? = effect {return v}
+      return PBSecurityTokenUpdatedEffect()
+    }
+    set {effect = .securityTokenUpdated(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Effect: Equatable, Sendable {
@@ -4609,6 +4748,15 @@ public struct PBCoreEffect: Sendable {
     case securityKeyAgree(PBSecurityKeyAgreeEffect)
     case securityCryptoBatch(PBSecurityCryptoBatchEffect)
     case securityOpResult(PBSecurityOpResultEffect)
+    case securityKeyGenerate(PBSecurityKeyGenerateEffect)
+    case securityKeyEncapsulate(PBSecurityKeyEncapsulateEffect)
+    case securityKeyDiscard(PBSecurityKeyDiscardEffect)
+    case securityStorage(PBSecurityStorageEffect)
+    case securityRpc(PBSecurityRpcEffect)
+    case securityWorkflowResult(PBSecurityWorkflowResultEffect)
+    case securityStatusChanged(PBSecurityStatusChangedEffect)
+    case securityNotifyOpened(PBSecurityNotifyOpenedEffect)
+    case securityTokenUpdated(PBSecurityTokenUpdatedEffect)
 
   }
 
@@ -4636,7 +4784,7 @@ extension PBCoreSyncLifecycleKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreTimerKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TIMER_KIND_UNSPECIFIED\0\u{1}TIMER_KIND_RECONNECT\0\u{1}TIMER_KIND_STREAM_OPEN\0\u{1}TIMER_KIND_LIVENESS\0\u{1}TIMER_KIND_LINK_GRACE\0\u{1}TIMER_KIND_LIST_RETRY\0\u{1}TIMER_KIND_PREFS_RETRY\0\u{1}TIMER_KIND_HISTORY_SWEEP\0\u{1}TIMER_KIND_LIVE_POLL\0\u{1}TIMER_KIND_COMMAND_RETRY\0\u{1}TIMER_KIND_SESSION_UNDO\0\u{1}TIMER_KIND_SESSION_STEER_GRACE\0\u{1}TIMER_KIND_DIRECT_ENGINE\0\u{1}TIMER_KIND_DIRECT_SESSION\0\u{1}TIMER_KIND_TERMINAL_REOPEN\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TIMER_KIND_UNSPECIFIED\0\u{1}TIMER_KIND_RECONNECT\0\u{1}TIMER_KIND_STREAM_OPEN\0\u{1}TIMER_KIND_LIVENESS\0\u{1}TIMER_KIND_LINK_GRACE\0\u{1}TIMER_KIND_LIST_RETRY\0\u{1}TIMER_KIND_PREFS_RETRY\0\u{1}TIMER_KIND_HISTORY_SWEEP\0\u{1}TIMER_KIND_LIVE_POLL\0\u{1}TIMER_KIND_COMMAND_RETRY\0\u{1}TIMER_KIND_SESSION_UNDO\0\u{1}TIMER_KIND_SESSION_STEER_GRACE\0\u{1}TIMER_KIND_DIRECT_ENGINE\0\u{1}TIMER_KIND_DIRECT_SESSION\0\u{1}TIMER_KIND_TERMINAL_REOPEN\0\u{1}TIMER_KIND_SECURITY_POLL\0")
 }
 
 extension PBCoreOutcomeSource: SwiftProtobuf._ProtoNameProviding {
@@ -8280,7 +8428,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{4}\u{2}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{4}\u{2}direct_signal_received\0\u{3}direct_signal_delivery\0\u{4}\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{4}\u{1d}security_config\0\u{3}security_record\0\u{3}security_key_signed\0\u{3}security_key_agreed\0\u{4}\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{4}\u{2}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{4}V\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{4}\u{2}direct_signal_received\0\u{3}direct_signal_delivery\0\u{4}\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{4}\u{1d}security_config\0\u{3}security_record\0\u{3}security_key_signed\0\u{3}security_key_agreed\0\u{4}\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0\u{3}security_key_generated\0\u{3}security_key_encapsulated\0\u{3}security_storage_result\0\u{3}security_rpc_result\0\u{3}security_foreground\0\u{3}security_action\0\u{3}security_open_notify\0")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -10223,6 +10371,97 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
             _storage._event = .seedDemoWorld(v)
           }
         }()
+        case 459: try {
+          var v: PBSecurityKeyGeneratedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityKeyGenerated(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityKeyGenerated(v)
+          }
+        }()
+        case 460: try {
+          var v: PBSecurityKeyEncapsulatedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityKeyEncapsulated(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityKeyEncapsulated(v)
+          }
+        }()
+        case 461: try {
+          var v: PBSecurityStorageResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityStorageResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityStorageResult(v)
+          }
+        }()
+        case 462: try {
+          var v: PBSecurityRpcResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityRpcResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityRpcResult(v)
+          }
+        }()
+        case 463: try {
+          var v: PBSecurityForegroundEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityForeground(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityForeground(v)
+          }
+        }()
+        case 464: try {
+          var v: PBSecurityWorkflowActionEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityAction(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityAction(v)
+          }
+        }()
+        case 465: try {
+          var v: PBSecurityOpenNotifyEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .securityOpenNotify(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .securityOpenNotify(v)
+          }
+        }()
         default: break
         }
       }
@@ -10834,6 +11073,34 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case .seedDemoWorld?: try {
         guard case .seedDemoWorld(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 458)
+      }()
+      case .securityKeyGenerated?: try {
+        guard case .securityKeyGenerated(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 459)
+      }()
+      case .securityKeyEncapsulated?: try {
+        guard case .securityKeyEncapsulated(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 460)
+      }()
+      case .securityStorageResult?: try {
+        guard case .securityStorageResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 461)
+      }()
+      case .securityRpcResult?: try {
+        guard case .securityRpcResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 462)
+      }()
+      case .securityForeground?: try {
+        guard case .securityForeground(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 463)
+      }()
+      case .securityAction?: try {
+        guard case .securityAction(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 464)
+      }()
+      case .securityOpenNotify?: try {
+        guard case .securityOpenNotify(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 465)
       }()
       default: break
       }
@@ -12302,7 +12569,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Effect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{3}sync_security\0\u{3}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{4}\u{13}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{1a}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{3}sync_security\0\u{3}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{4}\u{13}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{1a}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -12921,6 +13188,123 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
           self.effect = .securityOpResult(v)
         }
       }()
+      case 137: try {
+        var v: PBSecurityKeyGenerateEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityKeyGenerate(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityKeyGenerate(v)
+        }
+      }()
+      case 138: try {
+        var v: PBSecurityKeyEncapsulateEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityKeyEncapsulate(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityKeyEncapsulate(v)
+        }
+      }()
+      case 139: try {
+        var v: PBSecurityKeyDiscardEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityKeyDiscard(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityKeyDiscard(v)
+        }
+      }()
+      case 140: try {
+        var v: PBSecurityStorageEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityStorage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityStorage(v)
+        }
+      }()
+      case 141: try {
+        var v: PBSecurityRpcEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityRpc(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityRpc(v)
+        }
+      }()
+      case 142: try {
+        var v: PBSecurityWorkflowResultEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityWorkflowResult(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityWorkflowResult(v)
+        }
+      }()
+      case 143: try {
+        var v: PBSecurityStatusChangedEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityStatusChanged(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityStatusChanged(v)
+        }
+      }()
+      case 144: try {
+        var v: PBSecurityNotifyOpenedEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityNotifyOpened(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityNotifyOpened(v)
+        }
+      }()
+      case 145: try {
+        var v: PBSecurityTokenUpdatedEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .securityTokenUpdated(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .securityTokenUpdated(v)
+        }
+      }()
       default: break
       }
     }
@@ -13119,6 +13503,42 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     case .securityOpResult?: try {
       guard case .securityOpResult(let v)? = self.effect else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 136)
+    }()
+    case .securityKeyGenerate?: try {
+      guard case .securityKeyGenerate(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 137)
+    }()
+    case .securityKeyEncapsulate?: try {
+      guard case .securityKeyEncapsulate(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 138)
+    }()
+    case .securityKeyDiscard?: try {
+      guard case .securityKeyDiscard(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 139)
+    }()
+    case .securityStorage?: try {
+      guard case .securityStorage(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 140)
+    }()
+    case .securityRpc?: try {
+      guard case .securityRpc(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 141)
+    }()
+    case .securityWorkflowResult?: try {
+      guard case .securityWorkflowResult(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 142)
+    }()
+    case .securityStatusChanged?: try {
+      guard case .securityStatusChanged(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 143)
+    }()
+    case .securityNotifyOpened?: try {
+      guard case .securityNotifyOpened(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 144)
+    }()
+    case .securityTokenUpdated?: try {
+      guard case .securityTokenUpdated(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 145)
     }()
     case nil: break
     }

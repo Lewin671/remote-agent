@@ -44,4 +44,28 @@ public interface SecurityConfigEventOrBuilder extends
    * @return The inlineCrypto.
    */
   boolean getInlineCrypto();
+
+  /**
+   * <code>string server = 4 [json_name = "server"];</code>
+   * @return The server.
+   */
+  java.lang.String getServer();
+  /**
+   * <code>string server = 4 [json_name = "server"];</code>
+   * @return The bytes for server.
+   */
+  com.google.protobuf.ByteString
+      getServerBytes();
+
+  /**
+   * <code>bool legacy_cleared = 5 [json_name = "legacyCleared"];</code>
+   * @return The legacyCleared.
+   */
+  boolean getLegacyCleared();
+
+  /**
+   * <code>bool foreground = 6 [json_name = "foreground"];</code>
+   * @return The foreground.
+   */
+  boolean getForeground();
 }

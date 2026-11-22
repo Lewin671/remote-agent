@@ -1622,6 +1622,8 @@
     <string name="security_transfer_result_unverified_continue_the_original_operation" formatted="false">"交接结果尚未核实，请继续原操作。"</string>
     <string name="security_transfer_to" formatted="false">"交接给"</string>
     <string name="security_unfinished_security_operation" formatted="false">"未完成的安全操作"</string>
+    <string name="security_upgrade_repair_notice" formatted="false">"本次更新升级了本机安全存储格式，已清除旧版配对记录。请重新配对此设备；电脑端服务不受影响，无需重新配置。"</string>
+    <string name="security_upgrade_repair_title" formatted="false">"需要重新配对"</string>
     <string name="security_use_when_the_managing_client_is_lost" formatted="false">"管理端丢失时使用"</string>
     <string name="security_verify_and_continue" formatted="false">"核实并继续"</string>
     <string name="security_verifying_management_identity_and_unfinished_security_operations" formatted="false">"正在核实管理身份和未完成的安全操作…"</string>

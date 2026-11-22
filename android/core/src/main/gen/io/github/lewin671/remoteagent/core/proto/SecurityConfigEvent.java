@@ -17,6 +17,7 @@ public  final class SecurityConfigEvent extends
   private SecurityConfigEvent() {
     account_ = "";
     deviceId_ = "";
+    server_ = "";
   }
   public static final int ACCOUNT_FIELD_NUMBER = 1;
   private java.lang.String account_;
@@ -153,6 +154,106 @@ public  final class SecurityConfigEvent extends
   private void clearInlineCrypto() {
 
     inlineCrypto_ = false;
+  }
+
+  public static final int SERVER_FIELD_NUMBER = 4;
+  private java.lang.String server_;
+  /**
+   * <code>string server = 4 [json_name = "server"];</code>
+   * @return The server.
+   */
+  @java.lang.Override
+  public java.lang.String getServer() {
+    return server_;
+  }
+  /**
+   * <code>string server = 4 [json_name = "server"];</code>
+   * @return The bytes for server.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getServerBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(server_);
+  }
+  /**
+   * <code>string server = 4 [json_name = "server"];</code>
+   * @param value The server to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setServer(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    server_ = value;
+  }
+  /**
+   * <code>string server = 4 [json_name = "server"];</code>
+   */
+  private void clearServer() {
+
+    server_ = getDefaultInstance().getServer();
+  }
+  /**
+   * <code>string server = 4 [json_name = "server"];</code>
+   * @param value The bytes for server to set.
+   */
+  private void setServerBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    server_ = value.toStringUtf8();
+
+  }
+
+  public static final int LEGACY_CLEARED_FIELD_NUMBER = 5;
+  private boolean legacyCleared_;
+  /**
+   * <code>bool legacy_cleared = 5 [json_name = "legacyCleared"];</code>
+   * @return The legacyCleared.
+   */
+  @java.lang.Override
+  public boolean getLegacyCleared() {
+    return legacyCleared_;
+  }
+  /**
+   * <code>bool legacy_cleared = 5 [json_name = "legacyCleared"];</code>
+   * @param value The legacyCleared to set.
+   */
+  private void setLegacyCleared(boolean value) {
+    
+    legacyCleared_ = value;
+  }
+  /**
+   * <code>bool legacy_cleared = 5 [json_name = "legacyCleared"];</code>
+   */
+  private void clearLegacyCleared() {
+
+    legacyCleared_ = false;
+  }
+
+  public static final int FOREGROUND_FIELD_NUMBER = 6;
+  private boolean foreground_;
+  /**
+   * <code>bool foreground = 6 [json_name = "foreground"];</code>
+   * @return The foreground.
+   */
+  @java.lang.Override
+  public boolean getForeground() {
+    return foreground_;
+  }
+  /**
+   * <code>bool foreground = 6 [json_name = "foreground"];</code>
+   * @param value The foreground to set.
+   */
+  private void setForeground(boolean value) {
+    
+    foreground_ = value;
+  }
+  /**
+   * <code>bool foreground = 6 [json_name = "foreground"];</code>
+   */
+  private void clearForeground() {
+
+    foreground_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent parseFrom(
@@ -393,6 +494,111 @@ public  final class SecurityConfigEvent extends
       return this;
     }
 
+    /**
+     * <code>string server = 4 [json_name = "server"];</code>
+     * @return The server.
+     */
+    @java.lang.Override
+    public java.lang.String getServer() {
+      return instance.getServer();
+    }
+    /**
+     * <code>string server = 4 [json_name = "server"];</code>
+     * @return The bytes for server.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getServerBytes() {
+      return instance.getServerBytes();
+    }
+    /**
+     * <code>string server = 4 [json_name = "server"];</code>
+     * @param value The server to set.
+     * @return This builder for chaining.
+     */
+    public Builder setServer(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setServer(value);
+      return this;
+    }
+    /**
+     * <code>string server = 4 [json_name = "server"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearServer() {
+      copyOnWrite();
+      instance.clearServer();
+      return this;
+    }
+    /**
+     * <code>string server = 4 [json_name = "server"];</code>
+     * @param value The bytes for server to set.
+     * @return This builder for chaining.
+     */
+    public Builder setServerBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setServerBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool legacy_cleared = 5 [json_name = "legacyCleared"];</code>
+     * @return The legacyCleared.
+     */
+    @java.lang.Override
+    public boolean getLegacyCleared() {
+      return instance.getLegacyCleared();
+    }
+    /**
+     * <code>bool legacy_cleared = 5 [json_name = "legacyCleared"];</code>
+     * @param value The legacyCleared to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLegacyCleared(boolean value) {
+      copyOnWrite();
+      instance.setLegacyCleared(value);
+      return this;
+    }
+    /**
+     * <code>bool legacy_cleared = 5 [json_name = "legacyCleared"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLegacyCleared() {
+      copyOnWrite();
+      instance.clearLegacyCleared();
+      return this;
+    }
+
+    /**
+     * <code>bool foreground = 6 [json_name = "foreground"];</code>
+     * @return The foreground.
+     */
+    @java.lang.Override
+    public boolean getForeground() {
+      return instance.getForeground();
+    }
+    /**
+     * <code>bool foreground = 6 [json_name = "foreground"];</code>
+     * @param value The foreground to set.
+     * @return This builder for chaining.
+     */
+    public Builder setForeground(boolean value) {
+      copyOnWrite();
+      instance.setForeground(value);
+      return this;
+    }
+    /**
+     * <code>bool foreground = 6 [json_name = "foreground"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearForeground() {
+      copyOnWrite();
+      instance.clearForeground();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityConfigEvent)
   }
   @java.lang.Override
@@ -412,10 +618,13 @@ public  final class SecurityConfigEvent extends
             "account_",
             "deviceId_",
             "inlineCrypto_",
+            "server_",
+            "legacyCleared_",
+            "foreground_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0208\u0005\u0007\u0006\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

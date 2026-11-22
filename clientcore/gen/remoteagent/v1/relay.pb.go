@@ -15,6 +15,18 @@ const (
 	DeviceKind_DEVICE_KIND_CLIENT      DeviceKind = 2
 )
 
+type PairingState int32
+
+const (
+	PairingState_PAIRING_STATE_UNSPECIFIED PairingState = 0
+	PairingState_PAIRING_STATE_OPEN        PairingState = 1
+	PairingState_PAIRING_STATE_JOINED      PairingState = 2
+	PairingState_PAIRING_STATE_REVEALED    PairingState = 3
+	PairingState_PAIRING_STATE_APPROVED    PairingState = 4
+	PairingState_PAIRING_STATE_CANCELED    PairingState = 5
+	PairingState_PAIRING_STATE_DELIVERED   PairingState = 6
+)
+
 type NotifyKind int32
 
 const (
@@ -25,6 +37,732 @@ const (
 	NotifyKind_NOTIFY_KIND_SCHEDULED    NotifyKind = 4
 	NotifyKind_NOTIFY_KIND_MACHINE_DISK NotifyKind = 5
 )
+
+type DeviceRegistration struct {
+	AccountPublicKey []byte
+	DevicePublicKey  []byte
+	Kind             DeviceKind
+	CreatedMs        int64
+	hasUnknown       bool
+}
+
+func (m *DeviceRegistration) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *DeviceRegistration) GetAccountPublicKey() []byte {
+	if m != nil {
+		return m.AccountPublicKey
+	}
+	return nil
+}
+func (m *DeviceRegistration) GetDevicePublicKey() []byte {
+	if m != nil {
+		return m.DevicePublicKey
+	}
+	return nil
+}
+func (m *DeviceRegistration) GetKind() DeviceKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *DeviceRegistration) GetCreatedMs() int64 {
+	if m != nil {
+		return m.CreatedMs
+	}
+	return 0
+}
+
+func (m *DeviceRegistration) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *DeviceRegistration) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *DeviceRegistration) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.AccountPublicKey)
+	b = litewire.AppendBytes(b, 2, m.DevicePublicKey)
+	b = litewire.AppendInt32(b, 3, int32(m.Kind))
+	b = litewire.AppendVarint(b, 4, uint64(m.CreatedMs))
+	return b
+}
+
+func (m *DeviceRegistration) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.AccountPublicKey = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.DevicePublicKey = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Kind = DeviceKind(int32(v))
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.CreatedMs = int64(v)
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type RegisterDeviceRequest struct {
+	Registration      []byte
+	Signature         []byte
+	SetupToken        string
+	SignupProof       *SignupProof
+	Approval          []byte
+	ApprovalSignature []byte
+	ProtocolVersion   uint32
+}
+
+func (m *RegisterDeviceRequest) GetRegistration() []byte {
+	if m != nil {
+		return m.Registration
+	}
+	return nil
+}
+func (m *RegisterDeviceRequest) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+func (m *RegisterDeviceRequest) GetSetupToken() string {
+	if m != nil {
+		return m.SetupToken
+	}
+	return ""
+}
+func (m *RegisterDeviceRequest) GetSignupProof() *SignupProof {
+	if m != nil {
+		return m.SignupProof
+	}
+	return nil
+}
+func (m *RegisterDeviceRequest) GetApproval() []byte {
+	if m != nil {
+		return m.Approval
+	}
+	return nil
+}
+func (m *RegisterDeviceRequest) GetApprovalSignature() []byte {
+	if m != nil {
+		return m.ApprovalSignature
+	}
+	return nil
+}
+func (m *RegisterDeviceRequest) GetProtocolVersion() uint32 {
+	if m != nil {
+		return m.ProtocolVersion
+	}
+	return 0
+}
+
+func (m *RegisterDeviceRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *RegisterDeviceRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *RegisterDeviceRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.Registration)
+	b = litewire.AppendBytes(b, 2, m.Signature)
+	b = litewire.AppendString(b, 3, m.SetupToken)
+	if m.SignupProof != nil {
+		b = litewire.AppendMessage(b, 4, m.SignupProof)
+	}
+	b = litewire.AppendBytes(b, 5, m.Approval)
+	b = litewire.AppendBytes(b, 6, m.ApprovalSignature)
+	b = litewire.AppendVarint(b, 7, uint64(m.ProtocolVersion))
+	return b
+}
+
+func (m *RegisterDeviceRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Registration = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Signature = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.SetupToken = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				if m.SignupProof == nil {
+					m.SignupProof = &SignupProof{}
+				}
+				if err := litewire.ReadMessage(&b, m.SignupProof); err != nil {
+					return err
+				}
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Approval = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.ApprovalSignature = v
+				continue
+			}
+		case 7:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ProtocolVersion = uint32(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type GetSignupChallengeRequest struct {
+}
+
+func (m *GetSignupChallengeRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *GetSignupChallengeRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetSignupChallengeRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	return b
+}
+
+type GetSignupChallengeResponse struct {
+	Challenge      []byte
+	DifficultyBits uint32
+	ExpiresMs      int64
+}
+
+func (m *GetSignupChallengeResponse) GetChallenge() []byte {
+	if m != nil {
+		return m.Challenge
+	}
+	return nil
+}
+func (m *GetSignupChallengeResponse) GetDifficultyBits() uint32 {
+	if m != nil {
+		return m.DifficultyBits
+	}
+	return 0
+}
+func (m *GetSignupChallengeResponse) GetExpiresMs() int64 {
+	if m != nil {
+		return m.ExpiresMs
+	}
+	return 0
+}
+
+func (m *GetSignupChallengeResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Challenge = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.DifficultyBits = uint32(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ExpiresMs = int64(v)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SignupProof struct {
+	Challenge []byte
+	Nonce     []byte
+}
+
+func (m *SignupProof) GetChallenge() []byte {
+	if m != nil {
+		return m.Challenge
+	}
+	return nil
+}
+func (m *SignupProof) GetNonce() []byte {
+	if m != nil {
+		return m.Nonce
+	}
+	return nil
+}
+
+func (m *SignupProof) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SignupProof) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SignupProof) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.Challenge)
+	b = litewire.AppendBytes(b, 2, m.Nonce)
+	return b
+}
+
+func (m *SignupProof) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Challenge = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Nonce = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type RegisterDeviceResponse struct {
+	DeviceId string
+}
+
+func (m *RegisterDeviceResponse) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+
+func (m *RegisterDeviceResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.DeviceId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type GetChallengeRequest struct {
+	DeviceId string
+}
+
+func (m *GetChallengeRequest) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+
+func (m *GetChallengeRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *GetChallengeRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetChallengeRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.DeviceId)
+	return b
+}
+
+type GetChallengeResponse struct {
+	Challenge []byte
+}
+
+func (m *GetChallengeResponse) GetChallenge() []byte {
+	if m != nil {
+		return m.Challenge
+	}
+	return nil
+}
+
+func (m *GetChallengeResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Challenge = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type LoginRequest struct {
+	DeviceId        string
+	Challenge       []byte
+	Signature       []byte
+	ProtocolVersion uint32
+}
+
+func (m *LoginRequest) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *LoginRequest) GetChallenge() []byte {
+	if m != nil {
+		return m.Challenge
+	}
+	return nil
+}
+func (m *LoginRequest) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+func (m *LoginRequest) GetProtocolVersion() uint32 {
+	if m != nil {
+		return m.ProtocolVersion
+	}
+	return 0
+}
+
+func (m *LoginRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *LoginRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *LoginRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.DeviceId)
+	b = litewire.AppendBytes(b, 2, m.Challenge)
+	b = litewire.AppendBytes(b, 3, m.Signature)
+	b = litewire.AppendVarint(b, 4, uint64(m.ProtocolVersion))
+	return b
+}
+
+type LoginResponse struct {
+	Token           string
+	ExpiresMs       int64
+	DevicePublicKey []byte
+}
+
+func (m *LoginResponse) GetToken() string {
+	if m != nil {
+		return m.Token
+	}
+	return ""
+}
+func (m *LoginResponse) GetExpiresMs() int64 {
+	if m != nil {
+		return m.ExpiresMs
+	}
+	return 0
+}
+func (m *LoginResponse) GetDevicePublicKey() []byte {
+	if m != nil {
+		return m.DevicePublicKey
+	}
+	return nil
+}
+
+func (m *LoginResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Token = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ExpiresMs = int64(v)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.DevicePublicKey = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type CreatePairingRequest struct {
+	Commit []byte
+}
+
+func (m *CreatePairingRequest) GetCommit() []byte {
+	if m != nil {
+		return m.Commit
+	}
+	return nil
+}
+
+func (m *CreatePairingRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *CreatePairingRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CreatePairingRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.Commit)
+	return b
+}
+
+type CreatePairingResponse struct {
+	PairingId         string
+	Code              string
+	ExpiresMs         int64
+	ApproverPublicKey []byte
+}
+
+func (m *CreatePairingResponse) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *CreatePairingResponse) GetCode() string {
+	if m != nil {
+		return m.Code
+	}
+	return ""
+}
+func (m *CreatePairingResponse) GetExpiresMs() int64 {
+	if m != nil {
+		return m.ExpiresMs
+	}
+	return 0
+}
+func (m *CreatePairingResponse) GetApproverPublicKey() []byte {
+	if m != nil {
+		return m.ApproverPublicKey
+	}
+	return nil
+}
+
+func (m *CreatePairingResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.PairingId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.Code = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ExpiresMs = int64(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.ApproverPublicKey = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 type PairApproval struct {
 	AccountId                string
@@ -94,6 +832,28 @@ func (m *PairApproval) GetReplacesDeviceId() string {
 		return m.ReplacesDeviceId
 	}
 	return ""
+}
+
+func (m *PairApproval) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *PairApproval) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PairApproval) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.AccountId)
+	b = litewire.AppendString(b, 2, m.PairingId)
+	b = litewire.AppendString(b, 3, m.ApproverDeviceId)
+	b = litewire.AppendBytes(b, 4, m.ApproverPublicKey)
+	b = litewire.AppendBytes(b, 5, m.CandidateDevicePublicKey)
+	b = litewire.AppendInt32(b, 6, int32(m.CandidateKind))
+	b = litewire.AppendVarint(b, 7, uint64(m.ExpiresMs))
+	b = litewire.AppendBytes(b, 8, m.Nonce)
+	b = litewire.AppendString(b, 9, m.ReplacesDeviceId)
+	return b
 }
 
 func (m *PairApproval) Unmarshal(b []byte) error {
@@ -186,6 +946,652 @@ func (m *PairApproval) Unmarshal(b []byte) error {
 			}
 		}
 		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PeekPairingRequest struct {
+	Code            string
+	ProtocolVersion uint32
+}
+
+func (m *PeekPairingRequest) GetCode() string {
+	if m != nil {
+		return m.Code
+	}
+	return ""
+}
+func (m *PeekPairingRequest) GetProtocolVersion() uint32 {
+	if m != nil {
+		return m.ProtocolVersion
+	}
+	return 0
+}
+
+func (m *PeekPairingRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *PeekPairingRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PeekPairingRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.Code)
+	b = litewire.AppendVarint(b, 2, uint64(m.ProtocolVersion))
+	return b
+}
+
+type PeekPairingResponse struct {
+	PairingId string
+	Commit    []byte
+}
+
+func (m *PeekPairingResponse) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *PeekPairingResponse) GetCommit() []byte {
+	if m != nil {
+		return m.Commit
+	}
+	return nil
+}
+
+func (m *PeekPairingResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.PairingId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Commit = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type JoinPairingRequest struct {
+	Code                string
+	JoinerPublic        []byte
+	JoinerKind          DeviceKind
+	DevicePublicKey     []byte
+	DeviceHpkePublicKey []byte
+	ProtocolVersion     uint32
+}
+
+func (m *JoinPairingRequest) GetCode() string {
+	if m != nil {
+		return m.Code
+	}
+	return ""
+}
+func (m *JoinPairingRequest) GetJoinerPublic() []byte {
+	if m != nil {
+		return m.JoinerPublic
+	}
+	return nil
+}
+func (m *JoinPairingRequest) GetJoinerKind() DeviceKind {
+	if m != nil {
+		return m.JoinerKind
+	}
+	return 0
+}
+func (m *JoinPairingRequest) GetDevicePublicKey() []byte {
+	if m != nil {
+		return m.DevicePublicKey
+	}
+	return nil
+}
+func (m *JoinPairingRequest) GetDeviceHpkePublicKey() []byte {
+	if m != nil {
+		return m.DeviceHpkePublicKey
+	}
+	return nil
+}
+func (m *JoinPairingRequest) GetProtocolVersion() uint32 {
+	if m != nil {
+		return m.ProtocolVersion
+	}
+	return 0
+}
+
+func (m *JoinPairingRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *JoinPairingRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *JoinPairingRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.Code)
+	b = litewire.AppendBytes(b, 2, m.JoinerPublic)
+	b = litewire.AppendInt32(b, 3, int32(m.JoinerKind))
+	b = litewire.AppendBytes(b, 4, m.DevicePublicKey)
+	b = litewire.AppendBytes(b, 5, m.DeviceHpkePublicKey)
+	b = litewire.AppendVarint(b, 6, uint64(m.ProtocolVersion))
+	return b
+}
+
+type JoinPairingResponse struct {
+	PairingId      string
+	Commit         []byte
+	CandidateToken string
+}
+
+func (m *JoinPairingResponse) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *JoinPairingResponse) GetCommit() []byte {
+	if m != nil {
+		return m.Commit
+	}
+	return nil
+}
+func (m *JoinPairingResponse) GetCandidateToken() string {
+	if m != nil {
+		return m.CandidateToken
+	}
+	return ""
+}
+
+func (m *JoinPairingResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.PairingId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Commit = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.CandidateToken = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type GetPairingRequest struct {
+	PairingId      string
+	CandidateToken string
+	Received       bool
+}
+
+func (m *GetPairingRequest) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *GetPairingRequest) GetCandidateToken() string {
+	if m != nil {
+		return m.CandidateToken
+	}
+	return ""
+}
+func (m *GetPairingRequest) GetReceived() bool {
+	if m != nil {
+		return m.Received
+	}
+	return false
+}
+
+func (m *GetPairingRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *GetPairingRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetPairingRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.PairingId)
+	b = litewire.AppendString(b, 2, m.CandidateToken)
+	b = litewire.AppendBool(b, 3, m.Received)
+	return b
+}
+
+type GetPairingResponse struct {
+	State               PairingState
+	Commit              []byte
+	JoinerPublic        []byte
+	JoinerKind          DeviceKind
+	InitiatorPublic     []byte
+	Payload             *Envelope
+	DevicePublicKey     []byte
+	DeviceHpkePublicKey []byte
+	Trust               []byte
+}
+
+func (m *GetPairingResponse) GetState() PairingState {
+	if m != nil {
+		return m.State
+	}
+	return 0
+}
+func (m *GetPairingResponse) GetCommit() []byte {
+	if m != nil {
+		return m.Commit
+	}
+	return nil
+}
+func (m *GetPairingResponse) GetJoinerPublic() []byte {
+	if m != nil {
+		return m.JoinerPublic
+	}
+	return nil
+}
+func (m *GetPairingResponse) GetJoinerKind() DeviceKind {
+	if m != nil {
+		return m.JoinerKind
+	}
+	return 0
+}
+func (m *GetPairingResponse) GetInitiatorPublic() []byte {
+	if m != nil {
+		return m.InitiatorPublic
+	}
+	return nil
+}
+func (m *GetPairingResponse) GetPayload() *Envelope {
+	if m != nil {
+		return m.Payload
+	}
+	return nil
+}
+func (m *GetPairingResponse) GetDevicePublicKey() []byte {
+	if m != nil {
+		return m.DevicePublicKey
+	}
+	return nil
+}
+func (m *GetPairingResponse) GetDeviceHpkePublicKey() []byte {
+	if m != nil {
+		return m.DeviceHpkePublicKey
+	}
+	return nil
+}
+func (m *GetPairingResponse) GetTrust() []byte {
+	if m != nil {
+		return m.Trust
+	}
+	return nil
+}
+
+func (m *GetPairingResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.State = PairingState(int32(v))
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Commit = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.JoinerPublic = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.JoinerKind = DeviceKind(int32(v))
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.InitiatorPublic = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				if m.Payload == nil {
+					m.Payload = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Payload); err != nil {
+					return err
+				}
+				continue
+			}
+		case 7:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.DevicePublicKey = v
+				continue
+			}
+		case 8:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.DeviceHpkePublicKey = v
+				continue
+			}
+		case 9:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Trust = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type RevealPairingRequest struct {
+	PairingId       string
+	InitiatorPublic []byte
+	Trust           []byte
+}
+
+func (m *RevealPairingRequest) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *RevealPairingRequest) GetInitiatorPublic() []byte {
+	if m != nil {
+		return m.InitiatorPublic
+	}
+	return nil
+}
+func (m *RevealPairingRequest) GetTrust() []byte {
+	if m != nil {
+		return m.Trust
+	}
+	return nil
+}
+
+func (m *RevealPairingRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *RevealPairingRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *RevealPairingRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.PairingId)
+	b = litewire.AppendBytes(b, 2, m.InitiatorPublic)
+	b = litewire.AppendBytes(b, 3, m.Trust)
+	return b
+}
+
+type RevealPairingResponse struct {
+}
+
+func (m *RevealPairingResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type ApprovePairingRequest struct {
+	PairingId         string
+	Payload           *Envelope
+	Approval          []byte
+	ApprovalSignature []byte
+}
+
+func (m *ApprovePairingRequest) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *ApprovePairingRequest) GetPayload() *Envelope {
+	if m != nil {
+		return m.Payload
+	}
+	return nil
+}
+func (m *ApprovePairingRequest) GetApproval() []byte {
+	if m != nil {
+		return m.Approval
+	}
+	return nil
+}
+func (m *ApprovePairingRequest) GetApprovalSignature() []byte {
+	if m != nil {
+		return m.ApprovalSignature
+	}
+	return nil
+}
+
+func (m *ApprovePairingRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *ApprovePairingRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ApprovePairingRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.PairingId)
+	if m.Payload != nil {
+		b = litewire.AppendMessage(b, 2, m.Payload)
+	}
+	b = litewire.AppendBytes(b, 3, m.Approval)
+	b = litewire.AppendBytes(b, 4, m.ApprovalSignature)
+	return b
+}
+
+func (m *ApprovePairingRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.PairingId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				if m.Payload == nil {
+					m.Payload = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Payload); err != nil {
+					return err
+				}
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Approval = v
+				continue
+			}
+		case 4:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.ApprovalSignature = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type ApprovePairingResponse struct {
+}
+
+func (m *ApprovePairingResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type CancelPairingRequest struct {
+	PairingId      string
+	CandidateToken string
+}
+
+func (m *CancelPairingRequest) GetPairingId() string {
+	if m != nil {
+		return m.PairingId
+	}
+	return ""
+}
+func (m *CancelPairingRequest) GetCandidateToken() string {
+	if m != nil {
+		return m.CandidateToken
+	}
+	return ""
+}
+
+func (m *CancelPairingRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *CancelPairingRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CancelPairingRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.PairingId)
+	b = litewire.AppendString(b, 2, m.CandidateToken)
+	return b
+}
+
+type CancelPairingResponse struct {
+}
+
+func (m *CancelPairingResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err
 		}
@@ -588,6 +1994,880 @@ func (m *StoredEvent) Unmarshal(b []byte) error {
 	return nil
 }
 
+type ListMachinesRequest struct {
+}
+
+func (m *ListMachinesRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *ListMachinesRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ListMachinesRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	return b
+}
+
+type ListMachinesResponse struct {
+	Machines []*Machine
+}
+
+func (m *ListMachinesResponse) GetMachines() []*Machine {
+	if m != nil {
+		return m.Machines
+	}
+	return nil
+}
+
+func (m *ListMachinesResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				elem := &Machine{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Machines = append(m.Machines, elem)
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PinSecurityDomainRequest struct {
+	GenesisState []byte
+}
+
+func (m *PinSecurityDomainRequest) GetGenesisState() []byte {
+	if m != nil {
+		return m.GenesisState
+	}
+	return nil
+}
+
+func (m *PinSecurityDomainRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *PinSecurityDomainRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PinSecurityDomainRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.GenesisState)
+	return b
+}
+
+type PinSecurityDomainResponse struct {
+}
+
+func (m *PinSecurityDomainResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SecurityState struct {
+	State      []byte
+	Recovery   []byte
+	hasUnknown bool
+}
+
+func (m *SecurityState) HasUnknown() bool { return m != nil && m.hasUnknown }
+
+func (m *SecurityState) GetState() []byte {
+	if m != nil {
+		return m.State
+	}
+	return nil
+}
+func (m *SecurityState) GetRecovery() []byte {
+	if m != nil {
+		return m.Recovery
+	}
+	return nil
+}
+
+func (m *SecurityState) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SecurityState) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityState) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.State)
+	b = litewire.AppendBytes(b, 2, m.Recovery)
+	return b
+}
+
+func (m *SecurityState) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.State = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Recovery = v
+				continue
+			}
+		}
+		m.hasUnknown = true
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PutSecurityStateRequest struct {
+	States []*SecurityState
+	Lease  []byte
+}
+
+func (m *PutSecurityStateRequest) GetStates() []*SecurityState {
+	if m != nil {
+		return m.States
+	}
+	return nil
+}
+func (m *PutSecurityStateRequest) GetLease() []byte {
+	if m != nil {
+		return m.Lease
+	}
+	return nil
+}
+
+func (m *PutSecurityStateRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *PutSecurityStateRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PutSecurityStateRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	for _, v := range m.States {
+		if v != nil {
+			b = litewire.AppendMessage(b, 1, v)
+		}
+	}
+	b = litewire.AppendBytes(b, 2, m.Lease)
+	return b
+}
+
+func (m *PutSecurityStateRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				elem := &SecurityState{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.States = append(m.States, elem)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Lease = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PutSecurityStateResponse struct {
+	HeadEpoch uint64
+	Head      []byte
+}
+
+func (m *PutSecurityStateResponse) GetHeadEpoch() uint64 {
+	if m != nil {
+		return m.HeadEpoch
+	}
+	return 0
+}
+func (m *PutSecurityStateResponse) GetHead() []byte {
+	if m != nil {
+		return m.Head
+	}
+	return nil
+}
+
+func (m *PutSecurityStateResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HeadEpoch = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Head = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type GetSecurityStatesRequest struct {
+	AfterEpoch uint64
+	Limit      uint32
+}
+
+func (m *GetSecurityStatesRequest) GetAfterEpoch() uint64 {
+	if m != nil {
+		return m.AfterEpoch
+	}
+	return 0
+}
+func (m *GetSecurityStatesRequest) GetLimit() uint32 {
+	if m != nil {
+		return m.Limit
+	}
+	return 0
+}
+
+func (m *GetSecurityStatesRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *GetSecurityStatesRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetSecurityStatesRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendVarint(b, 1, uint64(m.AfterEpoch))
+	b = litewire.AppendVarint(b, 2, uint64(m.Limit))
+	return b
+}
+
+type GetSecurityStatesResponse struct {
+	States          []*SecurityState
+	HeadEpoch       uint64
+	RecoveryPending bool
+	RecoveryReadyMs uint64
+	Lease           []byte
+}
+
+func (m *GetSecurityStatesResponse) GetStates() []*SecurityState {
+	if m != nil {
+		return m.States
+	}
+	return nil
+}
+func (m *GetSecurityStatesResponse) GetHeadEpoch() uint64 {
+	if m != nil {
+		return m.HeadEpoch
+	}
+	return 0
+}
+func (m *GetSecurityStatesResponse) GetRecoveryPending() bool {
+	if m != nil {
+		return m.RecoveryPending
+	}
+	return false
+}
+func (m *GetSecurityStatesResponse) GetRecoveryReadyMs() uint64 {
+	if m != nil {
+		return m.RecoveryReadyMs
+	}
+	return 0
+}
+func (m *GetSecurityStatesResponse) GetLease() []byte {
+	if m != nil {
+		return m.Lease
+	}
+	return nil
+}
+
+func (m *GetSecurityStatesResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				elem := &SecurityState{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.States = append(m.States, elem)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.HeadEpoch = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryPending = litewire.DecodeBool(v)
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryReadyMs = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Lease = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type GetRecoveryChallengeRequest struct {
+}
+
+func (m *GetRecoveryChallengeRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *GetRecoveryChallengeRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetRecoveryChallengeRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	return b
+}
+
+type GetRecoveryChallengeResponse struct {
+	Challenge []byte
+}
+
+func (m *GetRecoveryChallengeResponse) GetChallenge() []byte {
+	if m != nil {
+		return m.Challenge
+	}
+	return nil
+}
+
+func (m *GetRecoveryChallengeResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Challenge = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type GetRecoveryContextRequest struct {
+	RecoveryEd []byte
+	RecoveryId string
+	Challenge  []byte
+	Signature  []byte
+}
+
+func (m *GetRecoveryContextRequest) GetRecoveryEd() []byte {
+	if m != nil {
+		return m.RecoveryEd
+	}
+	return nil
+}
+func (m *GetRecoveryContextRequest) GetRecoveryId() string {
+	if m != nil {
+		return m.RecoveryId
+	}
+	return ""
+}
+func (m *GetRecoveryContextRequest) GetChallenge() []byte {
+	if m != nil {
+		return m.Challenge
+	}
+	return nil
+}
+func (m *GetRecoveryContextRequest) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *GetRecoveryContextRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *GetRecoveryContextRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetRecoveryContextRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.RecoveryEd)
+	b = litewire.AppendString(b, 2, m.RecoveryId)
+	b = litewire.AppendBytes(b, 3, m.Challenge)
+	b = litewire.AppendBytes(b, 4, m.Signature)
+	return b
+}
+
+type GetRecoveryContextResponse_Phase int32
+
+const (
+	GetRecoveryContextResponse_PHASE_UNSPECIFIED GetRecoveryContextResponse_Phase = 0
+	GetRecoveryContextResponse_PHASE_PENDING     GetRecoveryContextResponse_Phase = 1
+	GetRecoveryContextResponse_PHASE_READY       GetRecoveryContextResponse_Phase = 2
+	GetRecoveryContextResponse_PHASE_REJECTED    GetRecoveryContextResponse_Phase = 3
+	GetRecoveryContextResponse_PHASE_PUBLISHED   GetRecoveryContextResponse_Phase = 4
+)
+
+type GetRecoveryContextResponse struct {
+	AccountId        string
+	States           []*SecurityState
+	Phase            GetRecoveryContextResponse_Phase
+	ReadyMs          uint64
+	RecoveryId       string
+	AccountPublicKey []byte
+}
+
+func (m *GetRecoveryContextResponse) GetAccountId() string {
+	if m != nil {
+		return m.AccountId
+	}
+	return ""
+}
+func (m *GetRecoveryContextResponse) GetStates() []*SecurityState {
+	if m != nil {
+		return m.States
+	}
+	return nil
+}
+func (m *GetRecoveryContextResponse) GetPhase() GetRecoveryContextResponse_Phase {
+	if m != nil {
+		return m.Phase
+	}
+	return 0
+}
+func (m *GetRecoveryContextResponse) GetReadyMs() uint64 {
+	if m != nil {
+		return m.ReadyMs
+	}
+	return 0
+}
+func (m *GetRecoveryContextResponse) GetRecoveryId() string {
+	if m != nil {
+		return m.RecoveryId
+	}
+	return ""
+}
+func (m *GetRecoveryContextResponse) GetAccountPublicKey() []byte {
+	if m != nil {
+		return m.AccountPublicKey
+	}
+	return nil
+}
+
+func (m *GetRecoveryContextResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.AccountId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				elem := &SecurityState{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.States = append(m.States, elem)
+				continue
+			}
+		case 3:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Phase = GetRecoveryContextResponse_Phase(int32(v))
+				continue
+			}
+		case 4:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ReadyMs = v
+				continue
+			}
+		case 5:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryId = v
+				continue
+			}
+		case 6:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.AccountPublicKey = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SubmitRecoveryRequest struct {
+	Statement []byte
+	State     []byte
+}
+
+func (m *SubmitRecoveryRequest) GetStatement() []byte {
+	if m != nil {
+		return m.Statement
+	}
+	return nil
+}
+func (m *SubmitRecoveryRequest) GetState() []byte {
+	if m != nil {
+		return m.State
+	}
+	return nil
+}
+
+func (m *SubmitRecoveryRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *SubmitRecoveryRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SubmitRecoveryRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.Statement)
+	b = litewire.AppendBytes(b, 2, m.State)
+	return b
+}
+
+func (m *SubmitRecoveryRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Statement = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.State = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type SubmitRecoveryResponse struct {
+	RecoveryId string
+	ReadyMs    uint64
+}
+
+func (m *SubmitRecoveryResponse) GetRecoveryId() string {
+	if m != nil {
+		return m.RecoveryId
+	}
+	return ""
+}
+func (m *SubmitRecoveryResponse) GetReadyMs() uint64 {
+	if m != nil {
+		return m.ReadyMs
+	}
+	return 0
+}
+
+func (m *SubmitRecoveryResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ReadyMs = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type CompleteRecoveryRequest struct {
+	RecoveryId string
+	Signature  []byte
+}
+
+func (m *CompleteRecoveryRequest) GetRecoveryId() string {
+	if m != nil {
+		return m.RecoveryId
+	}
+	return ""
+}
+func (m *CompleteRecoveryRequest) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *CompleteRecoveryRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *CompleteRecoveryRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CompleteRecoveryRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.RecoveryId)
+	b = litewire.AppendBytes(b, 2, m.Signature)
+	return b
+}
+
+func (m *CompleteRecoveryRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.RecoveryId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.Signature = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type CompleteRecoveryResponse struct {
+	DeviceId         string
+	AccountPublicKey []byte
+}
+
+func (m *CompleteRecoveryResponse) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *CompleteRecoveryResponse) GetAccountPublicKey() []byte {
+	if m != nil {
+		return m.AccountPublicKey
+	}
+	return nil
+}
+
+func (m *CompleteRecoveryResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.DeviceId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadBytes(&b)
+				if err != nil {
+					return err
+				}
+				m.AccountPublicKey = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type Device struct {
 	Id           string
 	Kind         DeviceKind
@@ -704,6 +2984,211 @@ func (m *Device) Unmarshal(b []byte) error {
 	return nil
 }
 
+type ListDevicesRequest struct {
+}
+
+func (m *ListDevicesRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *ListDevicesRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ListDevicesRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	return b
+}
+
+type ListDevicesResponse struct {
+	Devices         []*Device
+	CurrentDeviceId string
+}
+
+func (m *ListDevicesResponse) GetDevices() []*Device {
+	if m != nil {
+		return m.Devices
+	}
+	return nil
+}
+func (m *ListDevicesResponse) GetCurrentDeviceId() string {
+	if m != nil {
+		return m.CurrentDeviceId
+	}
+	return ""
+}
+
+func (m *ListDevicesResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				elem := &Device{}
+				if err := litewire.ReadMessage(&b, elem); err != nil {
+					return err
+				}
+				m.Devices = append(m.Devices, elem)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.CurrentDeviceId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PutDeviceMetaRequest struct {
+	DeviceId         string
+	ExpectedRevision uint64
+	Meta             *Envelope
+}
+
+func (m *PutDeviceMetaRequest) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *PutDeviceMetaRequest) GetExpectedRevision() uint64 {
+	if m != nil {
+		return m.ExpectedRevision
+	}
+	return 0
+}
+func (m *PutDeviceMetaRequest) GetMeta() *Envelope {
+	if m != nil {
+		return m.Meta
+	}
+	return nil
+}
+
+func (m *PutDeviceMetaRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *PutDeviceMetaRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PutDeviceMetaRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.DeviceId)
+	b = litewire.AppendVarint(b, 2, uint64(m.ExpectedRevision))
+	if m.Meta != nil {
+		b = litewire.AppendMessage(b, 3, m.Meta)
+	}
+	return b
+}
+
+func (m *PutDeviceMetaRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.DeviceId = v
+				continue
+			}
+		case 2:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.ExpectedRevision = v
+				continue
+			}
+		case 3:
+			if wtyp == litewire.BytesType {
+				if m.Meta == nil {
+					m.Meta = &Envelope{}
+				}
+				if err := litewire.ReadMessage(&b, m.Meta); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PutDeviceMetaResponse struct {
+	Applied bool
+	Device  *Device
+}
+
+func (m *PutDeviceMetaResponse) GetApplied() bool {
+	if m != nil {
+		return m.Applied
+	}
+	return false
+}
+func (m *PutDeviceMetaResponse) GetDevice() *Device {
+	if m != nil {
+		return m.Device
+	}
+	return nil
+}
+
+func (m *PutDeviceMetaResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Applied = litewire.DecodeBool(v)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				if m.Device == nil {
+					m.Device = &Device{}
+				}
+				if err := litewire.ReadMessage(&b, m.Device); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type AccountPrefsObject struct {
 	ObjectId  string
 	Revision  uint64
@@ -799,6 +3284,284 @@ func (m *AccountPrefsObject) Unmarshal(b []byte) error {
 				m.UpdatedMs = int64(v)
 				continue
 			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type GetAccountPrefsRequest struct {
+	ObjectId string
+}
+
+func (m *GetAccountPrefsRequest) GetObjectId() string {
+	if m != nil {
+		return m.ObjectId
+	}
+	return ""
+}
+
+func (m *GetAccountPrefsRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *GetAccountPrefsRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetAccountPrefsRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.ObjectId)
+	return b
+}
+
+type GetAccountPrefsResponse struct {
+	Object *AccountPrefsObject
+}
+
+func (m *GetAccountPrefsResponse) GetObject() *AccountPrefsObject {
+	if m != nil {
+		return m.Object
+	}
+	return nil
+}
+
+func (m *GetAccountPrefsResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				if m.Object == nil {
+					m.Object = &AccountPrefsObject{}
+				}
+				if err := litewire.ReadMessage(&b, m.Object); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type PutAccountPrefsRequest struct {
+	ObjectId         string
+	ExpectedRevision uint64
+	Envelope         *Envelope
+}
+
+func (m *PutAccountPrefsRequest) GetObjectId() string {
+	if m != nil {
+		return m.ObjectId
+	}
+	return ""
+}
+func (m *PutAccountPrefsRequest) GetExpectedRevision() uint64 {
+	if m != nil {
+		return m.ExpectedRevision
+	}
+	return 0
+}
+func (m *PutAccountPrefsRequest) GetEnvelope() *Envelope {
+	if m != nil {
+		return m.Envelope
+	}
+	return nil
+}
+
+func (m *PutAccountPrefsRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *PutAccountPrefsRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PutAccountPrefsRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.ObjectId)
+	b = litewire.AppendVarint(b, 2, uint64(m.ExpectedRevision))
+	if m.Envelope != nil {
+		b = litewire.AppendMessage(b, 3, m.Envelope)
+	}
+	return b
+}
+
+type PutAccountPrefsResponse struct {
+	Applied bool
+	Object  *AccountPrefsObject
+}
+
+func (m *PutAccountPrefsResponse) GetApplied() bool {
+	if m != nil {
+		return m.Applied
+	}
+	return false
+}
+func (m *PutAccountPrefsResponse) GetObject() *AccountPrefsObject {
+	if m != nil {
+		return m.Object
+	}
+	return nil
+}
+
+func (m *PutAccountPrefsResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.VarintType {
+				v, err := litewire.ReadVarint(&b)
+				if err != nil {
+					return err
+				}
+				m.Applied = litewire.DecodeBool(v)
+				continue
+			}
+		case 2:
+			if wtyp == litewire.BytesType {
+				if m.Object == nil {
+					m.Object = &AccountPrefsObject{}
+				}
+				if err := litewire.ReadMessage(&b, m.Object); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type DeleteMachineRecordsRequest struct {
+	MachineId string
+}
+
+func (m *DeleteMachineRecordsRequest) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+
+func (m *DeleteMachineRecordsRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *DeleteMachineRecordsRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *DeleteMachineRecordsRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendString(b, 1, m.MachineId)
+	return b
+}
+
+func (m *DeleteMachineRecordsRequest) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 1:
+			if wtyp == litewire.BytesType {
+				v, err := litewire.ReadString(&b)
+				if err != nil {
+					return err
+				}
+				m.MachineId = v
+				continue
+			}
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type DeleteMachineRecordsResponse struct {
+}
+
+func (m *DeleteMachineRecordsResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
+		}
+		if err := litewire.Skip(&b, num, wtyp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type DeleteAccountRequest struct {
+	StateHash []byte
+	Challenge []byte
+	Signature []byte
+}
+
+func (m *DeleteAccountRequest) GetStateHash() []byte {
+	if m != nil {
+		return m.StateHash
+	}
+	return nil
+}
+func (m *DeleteAccountRequest) GetChallenge() []byte {
+	if m != nil {
+		return m.Challenge
+	}
+	return nil
+}
+func (m *DeleteAccountRequest) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *DeleteAccountRequest) Size() int { return len(m.AppendMarshal(nil)) }
+
+func (m *DeleteAccountRequest) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *DeleteAccountRequest) AppendMarshal(b []byte) []byte {
+	if m == nil {
+		return b
+	}
+	b = litewire.AppendBytes(b, 1, m.StateHash)
+	b = litewire.AppendBytes(b, 2, m.Challenge)
+	b = litewire.AppendBytes(b, 3, m.Signature)
+	return b
+}
+
+type DeleteAccountResponse struct {
+}
+
+func (m *DeleteAccountResponse) Unmarshal(b []byte) error {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return err
 		}
 		if err := litewire.Skip(&b, num, wtyp); err != nil {
 			return err

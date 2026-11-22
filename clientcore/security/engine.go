@@ -152,6 +152,8 @@ type Engine struct {
 	agreeWait  map[uint64]func(shared []byte, err error)
 	batchWait  map[uint64]func(res []*corev1.SecurityCryptoBatchResult, err error)
 
+	wf *workflowState
+
 	out []*corev1.Effect
 }
 
@@ -208,11 +210,27 @@ func (e *Engine) Configure(ev *corev1.SecurityConfigEvent) {
 	if ev == nil {
 		return
 	}
-	e.securityLocked = true
 	e.configured = true
-	e.account = ev.Account
-	e.selfDeviceID = ev.DeviceId
 	e.inlineCrypto = ev.InlineCrypto
+	if ev.Account != "" || ev.DeviceId != "" {
+		e.securityLocked = true
+		e.account = ev.Account
+		e.selfDeviceID = ev.DeviceId
+	}
+	wf := e.ensureWF()
+	if ev.Server != "" {
+		if norm, err := CheckServerURL(ev.Server); err == nil {
+			wf.server = norm
+		} else {
+			wf.server = ev.Server
+		}
+	}
+	if ev.LegacyCleared {
+		wf.legacyRepairNotice = true
+	}
+	if ev.Server != "" || ev.LegacyCleared {
+		wf.foreground = ev.Foreground
+	}
 }
 
 // HandleKeySigned dispatches a KeySign completion.
@@ -271,13 +289,18 @@ func (e *Engine) HandleCryptoBatchDone(nowMs int64, ev *corev1.SecurityCryptoBat
 
 // RequestKeySign issues an async KeySign effect for DEVICE_ED (shared with transport.Coordinator).
 func (e *Engine) RequestKeySign(msg []byte, fn func(sig []byte, err error)) {
+	e.requestKeySignKind(corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_ED, "", msg, fn)
+}
+
+func (e *Engine) requestKeySignKind(kind corev1.SecurityKeyKind, slot string, msg []byte, fn func(sig []byte, err error)) {
 	opID := e.allocOp()
 	e.signWaiter[opID] = fn
 	e.out = append(e.out, &corev1.Effect{
 		Effect: &corev1.Effect_SecurityKeySign{
 			SecurityKeySign: &corev1.SecurityKeySignEffect{
 				OpId:    opID,
-				KeyKind: corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_ED,
+				KeyKind: kind,
+				Slot:    slot,
 				Message: slices.Clone(msg),
 			},
 		},
@@ -286,7 +309,11 @@ func (e *Engine) RequestKeySign(msg []byte, fn func(sig []byte, err error)) {
 
 // RequestKeyAgree issues or resolves from cache an X25519 ECDH agreement for DEVICE_X.
 func (e *Engine) RequestKeyAgree(peerX [32]byte, cachePeer bool, fn func(shared []byte, err error)) {
-	if cachePeer {
+	e.requestKeyAgreeKind(corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X, "", peerX, cachePeer, fn)
+}
+
+func (e *Engine) requestKeyAgreeKind(kind corev1.SecurityKeyKind, slot string, peerX [32]byte, cachePeer bool, fn func(shared []byte, err error)) {
+	if cachePeer && kind == corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X && slot == "" {
 		if sec, ok := e.peerShared[peerX]; ok {
 			fn(slices.Clone(sec[:]), nil)
 			return
@@ -294,7 +321,7 @@ func (e *Engine) RequestKeyAgree(peerX [32]byte, cachePeer bool, fn func(shared 
 	}
 	opID := e.allocOp()
 	e.agreeWait[opID] = func(shared []byte, err error) {
-		if err == nil && cachePeer && len(shared) == 32 {
+		if err == nil && cachePeer && kind == corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X && slot == "" && len(shared) == 32 {
 			var k [32]byte
 			copy(k[:], shared)
 			e.peerShared[peerX] = k
@@ -305,7 +332,8 @@ func (e *Engine) RequestKeyAgree(peerX [32]byte, cachePeer bool, fn func(shared 
 		Effect: &corev1.Effect_SecurityKeyAgree{
 			SecurityKeyAgree: &corev1.SecurityKeyAgreeEffect{
 				OpId:       opID,
-				KeyKind:    corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X,
+				KeyKind:    kind,
+				Slot:       slot,
 				PeerPublic: slices.Clone(peerX[:]),
 			},
 		},

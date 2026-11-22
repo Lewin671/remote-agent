@@ -1625,6 +1625,83 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent getSeedDemoWorld();
 
   /**
+   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 459 [json_name = "securityKeyGenerated"];</code>
+   * @return Whether the securityKeyGenerated field is set.
+   */
+  boolean hasSecurityKeyGenerated();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyGeneratedEvent security_key_generated = 459 [json_name = "securityKeyGenerated"];</code>
+   * @return The securityKeyGenerated.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent getSecurityKeyGenerated();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 460 [json_name = "securityKeyEncapsulated"];</code>
+   * @return Whether the securityKeyEncapsulated field is set.
+   */
+  boolean hasSecurityKeyEncapsulated();
+  /**
+   * <code>.remoteagent.core.v1.SecurityKeyEncapsulatedEvent security_key_encapsulated = 460 [json_name = "securityKeyEncapsulated"];</code>
+   * @return The securityKeyEncapsulated.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityKeyEncapsulatedEvent getSecurityKeyEncapsulated();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityStorageResultEvent security_storage_result = 461 [json_name = "securityStorageResult"];</code>
+   * @return Whether the securityStorageResult field is set.
+   */
+  boolean hasSecurityStorageResult();
+  /**
+   * <code>.remoteagent.core.v1.SecurityStorageResultEvent security_storage_result = 461 [json_name = "securityStorageResult"];</code>
+   * @return The securityStorageResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityStorageResultEvent getSecurityStorageResult();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
+   * @return Whether the securityRpcResult field is set.
+   */
+  boolean hasSecurityRpcResult();
+  /**
+   * <code>.remoteagent.core.v1.SecurityRpcResultEvent security_rpc_result = 462 [json_name = "securityRpcResult"];</code>
+   * @return The securityRpcResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityRpcResultEvent getSecurityRpcResult();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityForegroundEvent security_foreground = 463 [json_name = "securityForeground"];</code>
+   * @return Whether the securityForeground field is set.
+   */
+  boolean hasSecurityForeground();
+  /**
+   * <code>.remoteagent.core.v1.SecurityForegroundEvent security_foreground = 463 [json_name = "securityForeground"];</code>
+   * @return The securityForeground.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityForegroundEvent getSecurityForeground();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityWorkflowActionEvent security_action = 464 [json_name = "securityAction"];</code>
+   * @return Whether the securityAction field is set.
+   */
+  boolean hasSecurityAction();
+  /**
+   * <code>.remoteagent.core.v1.SecurityWorkflowActionEvent security_action = 464 [json_name = "securityAction"];</code>
+   * @return The securityAction.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityWorkflowActionEvent getSecurityAction();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpenNotifyEvent security_open_notify = 465 [json_name = "securityOpenNotify"];</code>
+   * @return Whether the securityOpenNotify field is set.
+   */
+  boolean hasSecurityOpenNotify();
+  /**
+   * <code>.remoteagent.core.v1.SecurityOpenNotifyEvent security_open_notify = 465 [json_name = "securityOpenNotify"];</code>
+   * @return The securityOpenNotify.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent getSecurityOpenNotify();
+
+  /**
    * <code>int64 now_ms = 98 [json_name = "nowMs"];</code>
    * @return The nowMs.
    */

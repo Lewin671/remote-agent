@@ -150,6 +150,7 @@ enum TimerKind {
   TIMER_KIND_DIRECT_ENGINE = 12;
   TIMER_KIND_DIRECT_SESSION = 13;
   TIMER_KIND_TERMINAL_REOPEN = 14;
+  TIMER_KIND_SECURITY_POLL = 15;
 }
 
 message TimerFiredEvent {
@@ -643,6 +644,13 @@ message Event {
     SecurityCryptoBatchDoneEvent security_crypto_batch_done = 456;
     SecurityOpRequestEvent security_op_request = 457;
     SeedDemoWorldEvent seed_demo_world = 458;
+    SecurityKeyGeneratedEvent security_key_generated = 459;
+    SecurityKeyEncapsulatedEvent security_key_encapsulated = 460;
+    SecurityStorageResultEvent security_storage_result = 461;
+    SecurityRpcResultEvent security_rpc_result = 462;
+    SecurityForegroundEvent security_foreground = 463;
+    SecurityWorkflowActionEvent security_action = 464;
+    SecurityOpenNotifyEvent security_open_notify = 465;
   }
   int64 now_ms = 98;
   int64 mono_ms = 99;
@@ -918,6 +926,15 @@ message Effect {
     SecurityKeyAgreeEffect security_key_agree = 131;
     SecurityCryptoBatchEffect security_crypto_batch = 135;
     SecurityOpResultEffect security_op_result = 136;
+    SecurityKeyGenerateEffect security_key_generate = 137;
+    SecurityKeyEncapsulateEffect security_key_encapsulate = 138;
+    SecurityKeyDiscardEffect security_key_discard = 139;
+    SecurityStorageEffect security_storage = 140;
+    SecurityRpcEffect security_rpc = 141;
+    SecurityWorkflowResultEffect security_workflow_result = 142;
+    SecurityStatusChangedEffect security_status_changed = 143;
+    SecurityNotifyOpenedEffect security_notify_opened = 144;
+    SecurityTokenUpdatedEffect security_token_updated = 145;
   }
 }
 

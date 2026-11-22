@@ -1709,6 +1709,8 @@
     <string name="security_transfer_result_unverified_continue_the_original_operation" formatted="false">"Transfer result unverified. Continue the original operation."</string>
     <string name="security_transfer_to" formatted="false">"Transfer to"</string>
     <string name="security_unfinished_security_operation" formatted="false">"Unfinished security operation"</string>
+    <string name="security_upgrade_repair_notice" formatted="false">"This update upgrades the local security storage format and cleared the previous pairing record. Please re-pair this device; computer daemons are unaffected and do not need to be reconfigured."</string>
+    <string name="security_upgrade_repair_title" formatted="false">"Re-pairing required"</string>
     <string name="security_use_when_the_managing_client_is_lost" formatted="false">"Use when the managing client is lost"</string>
     <string name="security_verify_and_continue" formatted="false">"Verify and continue"</string>
     <string name="security_verifying_management_identity_and_unfinished_security_operations" formatted="false">"Verifying management identity and unfinished security operations…"</string>

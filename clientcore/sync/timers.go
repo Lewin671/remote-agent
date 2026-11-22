@@ -186,5 +186,7 @@ func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) 
 	case corev1.TimerKind_TIMER_KIND_TERMINAL_REOPEN:
 		e.directTermScheduled = false
 		e.emitCoordEffects(ctx, e.ensureTransportCoord().OnTerminalTimer(e.nowMs))
+	case corev1.TimerKind_TIMER_KIND_SECURITY_POLL:
+		e.handleSecurityPollTimer(ctx)
 	}
 }

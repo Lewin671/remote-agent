@@ -7629,5 +7629,37 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "security.upgrade_repair_title",
+    "zh-CN": "需要重新配对",
+    "en": "Re-pairing required",
+    "notes": "S6 安全存储升级后发现旧版配对记录并已清除，提示用户重新配对的标题。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "reviewed"
+    }
+  },
+  {
+    "key": "security.upgrade_repair_notice",
+    "zh-CN": "本次更新升级了本机安全存储格式，已清除旧版配对记录。请重新配对此设备；电脑端服务不受影响，无需重新配置。",
+    "en": "This update upgrades the local security storage format and cleared the previous pairing record. Please re-pair this device; computer daemons are unaffected and do not need to be reconfigured.",
+    "notes": "S6 安全存储升级后发现旧版配对记录并已清除，在未配对入口页面展示给用户的说明。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "reviewed"
+    }
   }
 ]

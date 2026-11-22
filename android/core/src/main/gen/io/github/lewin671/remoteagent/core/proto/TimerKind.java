@@ -71,6 +71,10 @@ public enum TimerKind
    * <code>TIMER_KIND_TERMINAL_REOPEN = 14;</code>
    */
   TIMER_KIND_TERMINAL_REOPEN(14),
+  /**
+   * <code>TIMER_KIND_SECURITY_POLL = 15;</code>
+   */
+  TIMER_KIND_SECURITY_POLL(15),
   UNRECOGNIZED(-1),
   ;
 
@@ -134,6 +138,10 @@ public enum TimerKind
    * <code>TIMER_KIND_TERMINAL_REOPEN = 14;</code>
    */
   public static final int TIMER_KIND_TERMINAL_REOPEN_VALUE = 14;
+  /**
+   * <code>TIMER_KIND_SECURITY_POLL = 15;</code>
+   */
+  public static final int TIMER_KIND_SECURITY_POLL_VALUE = 15;
 
 
   @java.lang.Override
@@ -172,6 +180,7 @@ public enum TimerKind
       case 12: return TIMER_KIND_DIRECT_ENGINE;
       case 13: return TIMER_KIND_DIRECT_SESSION;
       case 14: return TIMER_KIND_TERMINAL_REOPEN;
+      case 15: return TIMER_KIND_SECURITY_POLL;
       default: return null;
     }
   }

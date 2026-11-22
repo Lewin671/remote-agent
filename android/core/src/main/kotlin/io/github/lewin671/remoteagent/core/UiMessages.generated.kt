@@ -1451,6 +1451,8 @@ object UiMessages {
     fun securityTransferResultUnverifiedContinueTheOriginalOperation(): UiMessage = UiMessage("security.transfer_result_unverified_continue_the_original_operation", emptyMap())
     fun securityTransferTo(): UiMessage = UiMessage("security.transfer_to", emptyMap())
     fun securityUnfinishedSecurityOperation(): UiMessage = UiMessage("security.unfinished_security_operation", emptyMap())
+    fun securityUpgradeRepairNotice(): UiMessage = UiMessage("security.upgrade_repair_notice", emptyMap())
+    fun securityUpgradeRepairTitle(): UiMessage = UiMessage("security.upgrade_repair_title", emptyMap())
     fun securityUseWhenTheManagingClientIsLost(): UiMessage = UiMessage("security.use_when_the_managing_client_is_lost", emptyMap())
     fun securityVerifyAndContinue(): UiMessage = UiMessage("security.verify_and_continue", emptyMap())
     fun securityVerifyingManagementIdentityAndUnfinishedSecurityOperations(): UiMessage = UiMessage("security.verifying_management_identity_and_unfinished_security_operations", emptyMap())

@@ -16,6 +16,13 @@ message SecurityConfigEvent {
   // False on Web (heavy batch Ed25519 verify >8 and AEAD >16 KiB route via CryptoBatchEffect).
   // True on Android/iOS (Core executes crypto synchronously in Go).
   bool inline_crypto = 3;
+  string server = 4;
+  bool legacy_cleared = 5;
+  bool foreground = 6;
+}
+
+message SecurityForegroundEvent {
+  bool foreground = 1;
 }
 
 message SecurityContentKey {
@@ -264,4 +271,410 @@ message SeedDemoWorldEvent {
 message CacheWriteStoredEvents {
   string session_id = 1;
   repeated remoteagent.v1.StoredEvent events = 2;
+}
+
+// ---- S6 Externalized Key Generation, KEM, Discard & CAS Storage ----
+
+message SecurityKeyGenerateEffect {
+  uint64 op_id = 1;
+  SecurityKeyKind key_kind = 2;
+  string slot = 3;
+  bool persist = 4;
+}
+
+message SecurityKeyGeneratedEvent {
+  uint64 op_id = 1;
+  bytes public_key = 2;
+  string error = 3;
+}
+
+message SecurityEncapsulateRecipient {
+  string member_id = 1;
+  bytes x_public = 2;
+}
+
+message SecurityKeyEncapsulateEffect {
+  uint64 op_id = 1;
+  repeated SecurityEncapsulateRecipient recipients = 2;
+}
+
+message SecurityEncapsulatedPair {
+  string member_id = 1;
+  bytes enc = 2;
+  bytes dh = 3;
+}
+
+message SecurityKeyEncapsulatedEvent {
+  uint64 op_id = 1;
+  repeated SecurityEncapsulatedPair pairs = 2;
+  string error = 3;
+}
+
+message SecurityKeyDiscardEffect {
+  SecurityKeyKind key_kind = 1;
+  string slot = 2;
+}
+
+enum SecurityStoreBucket {
+  SECURITY_STORE_BUCKET_UNSPECIFIED = 0;
+  SECURITY_STORE_BUCKET_RECORD = 1;
+  SECURITY_STORE_BUCKET_OPERATION = 2;
+  SECURITY_STORE_BUCKET_REGISTRATION_INTENT = 3;
+  SECURITY_STORE_BUCKET_PAIRING_CANDIDATE = 4;
+  SECURITY_STORE_BUCKET_PUBLIC_PROFILE = 5;
+  SECURITY_STORE_BUCKET_NOTIFY_RECORD = 6;
+}
+
+enum SecurityStorageOp {
+  SECURITY_STORAGE_OP_UNSPECIFIED = 0;
+  SECURITY_STORAGE_OP_READ = 1;
+  SECURITY_STORAGE_OP_WRITE_CAS = 2;
+  SECURITY_STORAGE_OP_DELETE_CAS = 3;
+  SECURITY_STORAGE_OP_BATCH_COMMIT = 4;
+  SECURITY_STORAGE_OP_READ_BOOTSTRAP = 5;
+  SECURITY_STORAGE_OP_CLEAR_ALL = 6;
+}
+
+message SecurityStorageEntry {
+  SecurityStoreBucket bucket = 1;
+  string key = 2;
+  string revision = 3;
+  bytes data = 4;
+}
+
+message SecurityStorageWrite {
+  SecurityStoreBucket bucket = 1;
+  string key = 2;
+  string expected_revision = 3;
+  string next_revision = 4;
+  bool create_only = 5;
+  bool remove = 6;
+  bytes data = 7;
+}
+
+message SecurityStorageEffect {
+  uint64 op_id = 1;
+  SecurityStorageOp op = 2;
+  SecurityStoreBucket bucket = 3;
+  string key = 4;
+  string expected_revision = 5;
+  string next_revision = 6;
+  bool create_only = 7;
+  bytes data = 8;
+  repeated SecurityStorageWrite batch = 9;
+  string promote_ed_slot = 10;
+  string promote_x_slot = 11;
+  bool clear_login_token = 12;
+  repeated string discard_slots = 13;
+}
+
+message SecurityStorageResultEvent {
+  uint64 op_id = 1;
+  bool found = 2;
+  string revision = 3;
+  bytes data = 4;
+  bool conflict = 5;
+  string error = 6;
+  repeated SecurityStorageEntry entries = 7;
+  bool has_device_ed = 8;
+  bytes device_ed_pub = 9;
+  bool has_device_x = 10;
+  bytes device_x_pub = 11;
+  bool legacy_cleared = 12;
+}
+
+// ---- S6 Unified Security RPC Transport ----
+
+enum SecurityRpcMethod {
+  SECURITY_RPC_METHOD_UNSPECIFIED = 0;
+  SECURITY_RPC_METHOD_GET_SECURITY_STATES = 1;
+  SECURITY_RPC_METHOD_PUT_SECURITY_STATE = 2;
+  SECURITY_RPC_METHOD_PIN_SECURITY_DOMAIN = 3;
+  SECURITY_RPC_METHOD_CREATE_PAIRING = 4;
+  SECURITY_RPC_METHOD_PEEK_PAIRING = 5;
+  SECURITY_RPC_METHOD_JOIN_PAIRING = 6;
+  SECURITY_RPC_METHOD_REVEAL_PAIRING = 7;
+  SECURITY_RPC_METHOD_APPROVE_PAIRING = 8;
+  SECURITY_RPC_METHOD_GET_PAIRING = 9;
+  SECURITY_RPC_METHOD_CANCEL_PAIRING = 10;
+  SECURITY_RPC_METHOD_GET_RECOVERY_CHALLENGE = 11;
+  SECURITY_RPC_METHOD_GET_RECOVERY_CONTEXT = 12;
+  SECURITY_RPC_METHOD_SUBMIT_RECOVERY = 13;
+  SECURITY_RPC_METHOD_COMPLETE_RECOVERY = 14;
+  SECURITY_RPC_METHOD_DELETE_MACHINE_RECORDS = 15;
+  SECURITY_RPC_METHOD_DELETE_ACCOUNT = 16;
+  SECURITY_RPC_METHOD_GET_CHALLENGE = 17;
+  SECURITY_RPC_METHOD_LOGIN = 18;
+  SECURITY_RPC_METHOD_GET_SIGNUP_CHALLENGE = 19;
+  SECURITY_RPC_METHOD_REGISTER_DEVICE = 20;
+  SECURITY_RPC_METHOD_PUT_DEVICE_META = 21;
+  SECURITY_RPC_METHOD_LIST_DEVICES = 22;
+  SECURITY_RPC_METHOD_LIST_MACHINES = 23;
+  SECURITY_RPC_METHOD_GET_ACCOUNT_PREFS = 24;
+  SECURITY_RPC_METHOD_PUT_ACCOUNT_PREFS = 25;
+}
+
+message SecurityRpcEffect {
+  uint64 op_id = 1;
+  SecurityRpcMethod method = 2;
+  string server = 3;
+  string auth_token = 4;
+  bytes request_bytes = 5;
+}
+
+message SecurityRpcResultEvent {
+  uint64 op_id = 1;
+  bytes response_bytes = 2;
+  int32 connect_code = 3;
+  string error = 4;
+  bool network_error = 5;
+}
+
+message SecurityTokenUpdatedEffect {
+  string token = 1;
+  int64 expires_ms = 2;
+  bool cleared = 3;
+}
+
+// ---- S6 Security Workflows & Push Notify Opening ----
+
+enum SecurityBootstrapKind {
+  SECURITY_BOOTSTRAP_KIND_UNSPECIFIED = 0;
+  SECURITY_BOOTSTRAP_KIND_EMPTY = 1;
+  SECURITY_BOOTSTRAP_KIND_READY = 2;
+  SECURITY_BOOTSTRAP_KIND_INVALID = 3;
+  SECURITY_BOOTSTRAP_KIND_CLOCK_SKEWED = 4;
+  SECURITY_BOOTSTRAP_KIND_PENDING_CREATE = 5;
+  SECURITY_BOOTSTRAP_KIND_PENDING_RECOVERY = 6;
+  SECURITY_BOOTSTRAP_KIND_PENDING_REGISTRATION = 7;
+  SECURITY_BOOTSTRAP_KIND_REMOVED = 8;
+}
+
+message SecurityPendingOpSummary {
+  string kind = 1;
+  string phase = 2;
+  string action = 3;
+  bool code_saved = 4;
+  bool signed = 5;
+  bool has_delivery = 6;
+  string delivery_pairing_id = 7;
+  string delivery_candidate_id = 8;
+  string recovery_id = 9;
+  int64 recovery_ready_ms = 10;
+  bool rejected = 11;
+  string target_device_id = 12;
+  string server = 13;
+}
+
+message SecurityWorkflowStatus {
+  SecurityBootstrapKind bootstrap = 1;
+  bool legacy_repair_notice = 2;
+  bool is_member = 3;
+  bool is_authority = 4;
+  bool removed = 5;
+  string server = 6;
+  string device_id = 7;
+  string account_id = 8;
+  uint64 head_epoch = 9;
+  int64 lease_end_ms = 10;
+  bool lease_valid = 11;
+  bool clock_skewed = 12;
+  bool recovery_pending = 13;
+  int64 recovery_ready_ms = 14;
+  bool recovery_status_stale = 15;
+  bool recovery_objects_pending = 16;
+  bool needs_recovery_code_rotation = 17;
+  bool has_account_public_profile = 18;
+  bool has_handoff_offer = 19;
+  bool taking_over = 20;
+  SecurityPendingOpSummary pending_op = 21;
+  string error = 22;
+}
+
+message SecurityPairingInfo {
+  string pairing_id = 1;
+  string code = 2;
+  string url = 3;
+  int64 expires_ms = 4;
+  repeated string sas_emoji = 5;
+  remoteagent.v1.DeviceKind joiner_kind = 6;
+  bool joined = 7;
+  bool approved = 8;
+  bool delivered = 9;
+  bool registering = 10;
+}
+
+message SecurityRecoveryInfo {
+  string recovery_id = 1;
+  remoteagent.v1.GetRecoveryContextResponse.Phase phase = 2;
+  int64 ready_ms = 3;
+}
+
+message SecurityHandoffCandidate {
+  string device_id = 1;
+  bytes recovery_ed = 2;
+}
+
+message SecurityExitAdvice {
+  bool authority = 1;
+  bool unresolved = 2;
+  string message = 3;
+}
+
+message SecurityAccountAdopted {
+  string server = 1;
+  string device_id = 2;
+  string account_id = 3;
+  bool needs_recovery_rotation = 4;
+}
+
+message SecurityActionEmpty {}
+
+message SecurityBoolAction {
+  bool flag = 1;
+}
+
+message SecurityStringAction {
+  string value = 1;
+}
+
+message SecuritySyncNowAction {
+  bool touch = 1;
+  string auth_token = 2;
+}
+
+message SecurityPrepareCreationAction {
+  string server = 1;
+  bool storage_persisted = 2;
+}
+
+message SecurityRemoveDeviceAction {
+  string device_id = 1;
+  bool abandon_pair_delivery = 2;
+}
+
+message SecurityServerCodeAction {
+  string server = 1;
+  string code = 2;
+}
+
+message SecurityStartPairingAction {
+  string web_origin = 1;
+  string replaces_device_id = 2;
+}
+
+message SecurityApprovePairingAction {
+  string pairing_id = 1;
+  bool sas_confirmed = 2;
+}
+
+message SecurityStartJoinPairingAction {
+  string server = 1;
+  string code = 2;
+  bytes commit_hint = 3;
+  bool existing_repair = 4;
+  string existing_server = 5;
+  string raw_link = 6;
+}
+
+message SecurityUpdateDeviceMetaAction {
+  string device_id = 1;
+  string name = 2;
+  string platform = 3;
+  string description = 4;
+  bool describe_self_only = 5;
+}
+
+message SecurityWorkflowActionEvent {
+  uint64 action_id = 1;
+  oneof action {
+    SecurityActionEmpty bootstrap = 2;
+    SecurityActionEmpty dismiss_upgrade_notice = 3;
+    SecuritySyncNowAction sync_now = 4;
+    SecurityBoolAction renew_lease = 5;
+    SecurityActionEmpty resume_pending_op = 6;
+    SecurityBoolAction discard_pending_op = 7;
+    SecurityPrepareCreationAction prepare_creation = 8;
+    SecurityActionEmpty confirm_creation_code_saved = 9;
+    SecurityStringAction continue_creation = 10;
+    SecurityActionEmpty adopt_creation_without_code = 11;
+    SecurityRemoveDeviceAction remove_device = 12;
+    SecurityStringAction delete_machine_records = 13;
+    SecurityActionEmpty delete_account = 14;
+    SecurityActionEmpty prepare_recovery_rotation = 15;
+    SecurityActionEmpty confirm_recovery_rotation = 16;
+    SecurityBoolAction prepare_handoff_code = 17;
+    SecurityActionEmpty publish_handoff_offer = 18;
+    SecurityStringAction handoff_authority = 19;
+    SecurityServerCodeAction complete_account_public_profile = 20;
+    SecurityStartPairingAction start_pairing = 21;
+    SecurityStringAction poll_pairing = 22;
+    SecurityApprovePairingAction approve_pairing = 23;
+    SecurityStringAction finish_pairing_delivery = 24;
+    SecurityStringAction cancel_pairing = 25;
+    SecurityStartJoinPairingAction start_join_pairing = 26;
+    SecurityStringAction confirm_join_sas = 27;
+    SecurityStringAction cancel_join_pairing = 28;
+    SecurityServerCodeAction prepare_emergency_recovery = 29;
+    SecurityStringAction continue_recovery_signing = 30;
+    SecurityActionEmpty confirm_recovery_code_saved = 31;
+    SecurityActionEmpty resume_recovery = 32;
+    SecurityActionEmpty complete_recovery = 33;
+    SecurityActionEmpty discard_unsigned_recovery = 34;
+    SecurityActionEmpty discard_rejected_recovery = 35;
+    SecurityActionEmpty check_exit_advice = 36;
+    SecurityActionEmpty clear_security = 37;
+    SecurityUpdateDeviceMetaAction update_device_meta = 38;
+    SecurityActionEmpty list_handoff_candidates = 39;
+    SecurityActionEmpty get_status = 40;
+    SecurityActionEmpty check_retained_denied = 41;
+    SecurityBoolAction republish_recovery_objects = 42;
+  }
+}
+
+message SecurityWorkflowResultEffect {
+  uint64 action_id = 1;
+  bool ok = 2;
+  string error = 3;
+  string error_code = 4;
+  bool retryable = 5;
+  bool uncertain = 6;
+  string error_action = 7;
+  SecurityWorkflowStatus status = 8;
+  string recovery_code = 9;
+  bool resumed_draft = 10;
+  bool code_saved = 11;
+  bool needs_recovery_rotation = 12;
+  SecurityPairingInfo pairing = 13;
+  SecurityRecoveryInfo recovery = 14;
+  repeated SecurityHandoffCandidate handoff_candidates = 15;
+  SecurityExitAdvice exit_advice = 16;
+  SecurityAccountAdopted account_adopted = 17;
+  bool flag = 18;
+}
+
+message SecurityStatusChangedEffect {
+  SecurityWorkflowStatus status = 1;
+}
+
+message SecurityOpenNotifyEvent {
+  uint64 op_id = 1;
+  bytes notify_blob = 2;
+  bytes record_blob = 3;
+  remoteagent.v1.Envelope envelope = 4;
+  int64 now_ms = 5;
+  string session_id = 6;
+  string tag = 7;
+  string machine_id = 8;
+}
+
+message SecurityNotifyOpenedEffect {
+  uint64 op_id = 1;
+  remoteagent.v1.NotifyContent content = 2;
+  bytes header_bytes = 3;
+  string session_id = 4;
+  string machine_id = 5;
+  string request_id = 6;
+  bool verify_record_unchanged = 7;
+  string error = 8;
 }

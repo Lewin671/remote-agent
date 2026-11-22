@@ -624,6 +624,7 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.nextPushSeq++
 			e.devicePushes[f.DeviceUpdated.DeviceId] = e.nextPushSeq
 			e.devices[f.DeviceUpdated.DeviceId] = plainToDeviceEntry(f.DeviceUpdated)
+			e.secEngine.SetDeviceDirectory(e.securityDeviceOffers())
 			if e.deviceNeedsSecuritySync(f.DeviceUpdated) {
 				e.requestSyncSecurity(ctx, true)
 			}
@@ -634,6 +635,7 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 			e.nextPushSeq++
 			e.removedPushes[f.DeviceRemovedId] = e.nextPushSeq
 			delete(e.devices, f.DeviceRemovedId)
+			e.secEngine.SetDeviceDirectory(e.securityDeviceOffers())
 			e.requestSyncSecurity(ctx, true)
 			ctx.Dirty.Add(true, false, false)
 		}
@@ -963,6 +965,9 @@ func (e *Engine) reconcileDecodedDevices(items []decodedDevice, removedSnapshot,
 		}
 	}
 	e.devices = next
+	if e.secEngine != nil {
+		e.secEngine.SetDeviceDirectory(e.securityDeviceOffers())
+	}
 }
 
 func plainToMachineEntry(pm *corev1.PlainMachine) *MachineEntry {

@@ -489,6 +489,11 @@ func NewEngine() *Engine {
 	e.w.Init()
 	e.w.World.ClientVersion = PeerVersion
 	e.w.World.Unlinked = &e.unlinkedFlag
+	e.secEngine.SetStateChangedCallback(func() {
+		if stepCtx := e.activeStepCtx; stepCtx != nil {
+			e.syncSecurityStateFromEngine(stepCtx, true)
+		}
+	})
 	e.refreshWorld()
 	return e
 }
@@ -582,6 +587,7 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		if len(ep.RandomBytes) > 0 {
 			e.entropy.Append(ep.RandomBytes)
 			e.handleDirectRandomBytes(ctx, ep.RandomBytes)
+			e.emitSecurityEffects(ctx, e.secEngine.FlushEntropy())
 		}
 		e.maybeRequestEntropy(ctx)
 		return true, finalizeResult(ctx)
@@ -698,6 +704,20 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 		e.handleSecurityCryptoBatchDone(ctx, k.SecurityCryptoBatchDone)
 	case *corev1.Event_SecurityOpRequest:
 		e.handleSecurityOpRequest(ctx, k.SecurityOpRequest)
+	case *corev1.Event_SecurityKeyGenerated:
+		e.handleSecurityKeyGenerated(ctx, k.SecurityKeyGenerated)
+	case *corev1.Event_SecurityKeyEncapsulated:
+		e.handleSecurityKeyEncapsulated(ctx, k.SecurityKeyEncapsulated)
+	case *corev1.Event_SecurityStorageResult:
+		e.handleSecurityStorageResult(ctx, k.SecurityStorageResult)
+	case *corev1.Event_SecurityRpcResult:
+		e.handleSecurityRpcResult(ctx, k.SecurityRpcResult)
+	case *corev1.Event_SecurityForeground:
+		e.handleSecurityForeground(ctx, k.SecurityForeground)
+	case *corev1.Event_SecurityAction:
+		e.handleSecurityWorkflowAction(ctx, k.SecurityAction)
+	case *corev1.Event_SecurityOpenNotify:
+		e.handleSecurityOpenNotify(ctx, k.SecurityOpenNotify)
 	case *corev1.Event_SeedDemoWorld:
 		e.handleSeedDemoWorld(ctx, k.SeedDemoWorld)
 	default:
