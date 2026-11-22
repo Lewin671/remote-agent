@@ -1,5 +1,7 @@
+import Connect
 import CryptoKit
 import Foundation
+import os
 import RAProto
 import SwiftProtobuf
 import Testing
@@ -58,6 +60,60 @@ import Testing
         exec.keyAgree(.with { $0.opID = 5; $0.keyKind = .deviceX; $0.peerPublic = Curve25519.KeyAgreement.PrivateKey().publicKey.rawRepresentation })
         let agreeRes = try await mailbox.take().securityKeyAgreed
         #expect(agreeRes.opID == 5 && !agreeRes.error.isEmpty)
+    }
+
+    @Test func securityClientAndExecutorAbortPromptlyOnCancellationAndTimeout() async throws {
+        // 1. SecurityClient cancelled while waiting on a silent dispatcher throws CancellationError immediately.
+        let dispatched = TestLatch()
+        let client = SecurityClient(
+            dispatchEvent: { _ in Task { await dispatched.open() } },
+            setForegroundFn: { _ in },
+            isClosedFn: { false }
+        )
+        let waiter = Task { try await client.bootstrap() }
+        await dispatched.wait()
+        waiter.cancel()
+        await #expect(throws: CancellationError.self) {
+            _ = try await waiter.value
+        }
+
+        // 2. Stalled HTTP unary call is cancelled when rpc timeout fires instead of hanging forever.
+        final class StalledHTTP: HTTPClientInterface, @unchecked Sendable {
+            let started = TestLatch()
+            let canceledCount = OSAllocatedUnfairLock(initialState: 0)
+            func unary(
+                request: HTTPRequest<Data?>,
+                onMetrics: @escaping @Sendable (HTTPMetrics) -> Void,
+                onResponse: @escaping @Sendable (HTTPResponse) -> Void
+            ) -> Cancelable {
+                Task { await started.open() }
+                return Cancelable { self.canceledCount.withLock { $0 += 1 } }
+            }
+            func stream(request: HTTPRequest<Data?>, responseCallbacks: ResponseCallbacks) -> RequestCallbacks<Data> {
+                RequestCallbacks(cancel: {}, sendData: { _ in }, sendClose: {})
+            }
+        }
+        let stalled = StalledHTTP()
+        let mailbox = Mailbox<PBCoreEvent>()
+        let exec = SecurityExecutor(
+            store: MemorySecurityStoreV4(),
+            http: stalled,
+            allowPlainHttp: true,
+            rpcTimeoutMs: { _ in 25 },
+            emit: { mailbox.put($0) }
+        )
+        defer { exec.close() }
+        exec.rpc(.with {
+            $0.opID = 77
+            $0.method = .getSecurityStates
+            $0.server = "https://example.com"
+        })
+        await stalled.started.wait()
+        let rpcRes = try await mailbox.take().securityRpcResult
+        #expect(rpcRes.opID == 77)
+        #expect(rpcRes.connectCode == Int32(Code.deadlineExceeded.rawValue))
+        #expect(rpcRes.networkError)
+        #expect(stalled.canceledCount.withLock { $0 == 1 })
     }
 }
 

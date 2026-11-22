@@ -102,6 +102,43 @@ public struct PreparedEmergencyRecoveryResult: Equatable, Sendable {
     public let recovery: PBSecurityRecoveryInfo?
 }
 
+/// Lock-protected one-shot bridge between a `CheckedContinuation` and async completion or task cancellation.
+final class ContinuationWaiter<T: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<T, Error>?
+    private var earlyResult: Result<T, Error>?
+
+    func install(_ cont: CheckedContinuation<T, Error>) -> Bool {
+        let immediate: Result<T, Error>? = lock.withLock {
+            if let early = earlyResult {
+                earlyResult = nil
+                return early
+            }
+            continuation = cont
+            return nil
+        }
+        if let immediate {
+            cont.resume(with: immediate)
+            return false
+        }
+        return true
+    }
+
+    func resolve(_ result: Result<T, Error>) {
+        let cont: CheckedContinuation<T, Error>? = lock.withLock {
+            if let c = continuation {
+                continuation = nil
+                return c
+            }
+            if earlyResult == nil {
+                earlyResult = result
+            }
+            return nil
+        }
+        cont?.resume(with: result)
+    }
+}
+
 /// Async promise/continuation wrapper over `SecurityWorkflowActionEvent` / `SecurityWorkflowResultEffect`.
 public final class SecurityClient: @unchecked Sendable {
     private let lock = NSLock()
@@ -110,7 +147,7 @@ public final class SecurityClient: @unchecked Sendable {
     private let isClosedFn: @Sendable () -> Bool
     private let onDismissUpgradeNotice: (@Sendable () -> Void)?
     private var nextActionID: UInt64 = 1
-    private var waiters: [UInt64: CheckedContinuation<PBSecurityWorkflowResultEffect, Error>] = [:]
+    private var waiters: [UInt64: ContinuationWaiter<PBSecurityWorkflowResultEffect>] = [:]
     private var statusBox: PBSecurityWorkflowStatus?
     private var statusListeners: [UUID: @Sendable (PBSecurityWorkflowStatus) -> Void] = [:]
 
@@ -146,31 +183,31 @@ public final class SecurityClient: @unchecked Sendable {
     }
 
     public func handleWorkflowResult(_ res: PBSecurityWorkflowResultEffect) {
-        let (continuation, listeners, newStatus) = lock.withLock { () -> (
-            CheckedContinuation<PBSecurityWorkflowResultEffect, Error>?,
+        let (waiter, listeners, newStatus) = lock.withLock { () -> (
+            ContinuationWaiter<PBSecurityWorkflowResultEffect>?,
             [@Sendable (PBSecurityWorkflowStatus) -> Void],
             PBSecurityWorkflowStatus?
         ) in
             let st: PBSecurityWorkflowStatus? = res.hasStatus ? res.status : nil
             if let st { statusBox = st }
-            let cont = waiters.removeValue(forKey: res.actionID)
-            return (cont, st == nil ? [] : Array(statusListeners.values), st)
+            let w = waiters.removeValue(forKey: res.actionID)
+            return (w, st == nil ? [] : Array(statusListeners.values), st)
         }
         if let newStatus {
             for cb in listeners { cb(newStatus) }
         }
-        guard let continuation else { return }
+        guard let waiter else { return }
         if !res.ok {
             let msg = translateSecurityErrorMessage(res)
-            continuation.resume(throwing: SecurityWorkflowError(
+            waiter.resolve(.failure(SecurityWorkflowError(
                 message: msg,
                 code: res.errorCode,
                 retryable: res.retryable,
                 uncertain: res.uncertain,
                 errorAction: res.errorAction
-            ))
+            )))
         } else {
-            continuation.resume(returning: res)
+            waiter.resolve(.success(res))
         }
     }
 
@@ -183,13 +220,13 @@ public final class SecurityClient: @unchecked Sendable {
     }
 
     public func rejectAll(reason: String = "security client closed") {
-        let pending = lock.withLock { () -> [CheckedContinuation<PBSecurityWorkflowResultEffect, Error>] in
+        let pending = lock.withLock { () -> [ContinuationWaiter<PBSecurityWorkflowResultEffect>] in
             let all = Array(waiters.values)
             waiters.removeAll()
             return all
         }
         let err = SecurityWorkflowError(message: reason, code: "canceled", retryable: false)
-        for cont in pending { cont.resume(throwing: err) }
+        for waiter in pending { waiter.resolve(.failure(err)) }
     }
 
     public func setForeground(_ active: Bool) {
@@ -197,29 +234,37 @@ public final class SecurityClient: @unchecked Sendable {
     }
 
     private func run(_ build: (inout PBSecurityWorkflowActionEvent) -> Void) async throws -> PBSecurityWorkflowResultEffect {
-        if isClosedFn() {
-            throw SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)
+        let waiter = ContinuationWaiter<PBSecurityWorkflowResultEffect>()
+        let actionID = try lock.withLock { () -> UInt64 in
+            guard !isClosedFn() else {
+                throw SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)
+            }
+            try Task.checkCancellation()
+            let id = nextActionID
+            nextActionID &+= 1
+            waiters[id] = waiter
+            return id
         }
-        return try await withCheckedThrowingContinuation { continuation in
-            let actionID = lock.withLock { () -> UInt64 in
-                let id = nextActionID
-                nextActionID &+= 1
-                waiters[id] = continuation
-                return id
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                guard waiter.install(continuation) else { return }
+                if isClosedFn() {
+                    let removed = lock.withLock { waiters.removeValue(forKey: actionID) }
+                    removed?.resolve(.failure(SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)))
+                    return
+                }
+                var action = PBSecurityWorkflowActionEvent()
+                action.actionID = actionID
+                build(&action)
+                dispatchEvent(PBCoreEvent.with { $0.securityAction = action })
+                if isClosedFn() {
+                    let removed = lock.withLock { waiters.removeValue(forKey: actionID) }
+                    removed?.resolve(.failure(SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)))
+                }
             }
-            if isClosedFn() {
-                let removed = lock.withLock { waiters.removeValue(forKey: actionID) }
-                removed?.resume(throwing: SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false))
-                return
-            }
-            var action = PBSecurityWorkflowActionEvent()
-            action.actionID = actionID
-            build(&action)
-            dispatchEvent(PBCoreEvent.with { $0.securityAction = action })
-            if isClosedFn() {
-                let removed = lock.withLock { waiters.removeValue(forKey: actionID) }
-                removed?.resume(throwing: SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false))
-            }
+        } onCancel: {
+            let removed = lock.withLock { waiters.removeValue(forKey: actionID) }
+            removed?.resolve(.failure(CancellationError()))
         }
     }
 
@@ -483,7 +528,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
     private var closed = false
     private var nextOpID: UInt64 = 1
     private var timers: [String: (id: UInt64, task: Task<Void, Never>)] = [:]
-    private var securityOpWaiters: [UInt64: CheckedContinuation<PBSecurityOpResultEffect, Error>] = [:]
+    private var securityOpWaiters: [UInt64: ContinuationWaiter<PBSecurityOpResultEffect>] = [:]
 
     init(
         executor: SecurityExecutor,
@@ -523,23 +568,31 @@ final class CoreSecurityDriver: @unchecked Sendable {
     }
 
     func runSecurityOp(_ configure: @Sendable (inout PBSecurityOpRequestEvent) -> Void) async throws -> PBSecurityOpResultEffect {
-        if isClosed() { throw SecurityFailure.storage }
-        return try await withCheckedThrowingContinuation { continuation in
-            let opID = lock.withLock { () -> UInt64? in
-                guard !closed else { return nil }
-                let id = nextOpID
-                nextOpID &+= 1
-                securityOpWaiters[id] = continuation
-                return id
+        let waiter = ContinuationWaiter<PBSecurityOpResultEffect>()
+        let opID = try lock.withLock { () -> UInt64 in
+            guard !closed else { throw SecurityFailure.storage }
+            try Task.checkCancellation()
+            let id = nextOpID
+            nextOpID &+= 1
+            securityOpWaiters[id] = waiter
+            return id
+        }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                guard waiter.install(continuation) else { return }
+                if isClosed() {
+                    let removed = lock.withLock { securityOpWaiters.removeValue(forKey: opID) }
+                    removed?.resolve(.failure(SecurityFailure.storage))
+                    return
+                }
+                var req = PBSecurityOpRequestEvent()
+                req.opID = opID
+                configure(&req)
+                enqueueEvent(PBCoreEvent.with { $0.securityOpRequest = req })
             }
-            guard let opID else {
-                continuation.resume(throwing: SecurityFailure.storage)
-                return
-            }
-            var req = PBSecurityOpRequestEvent()
-            req.opID = opID
-            configure(&req)
-            enqueueEvent(PBCoreEvent.with { $0.securityOpRequest = req })
+        } onCancel: {
+            let removed = lock.withLock { securityOpWaiters.removeValue(forKey: opID) }
+            removed?.resolve(.failure(CancellationError()))
         }
     }
 
@@ -626,14 +679,14 @@ final class CoreSecurityDriver: @unchecked Sendable {
         case .securityTokenUpdated(let t):
             onTokenUpdated?(t)
         case .securityOpResult(let res):
-            let cont = lock.withLock { securityOpWaiters.removeValue(forKey: res.opID) }
-            cont?.resume(returning: res)
+            let waiter = lock.withLock { securityOpWaiters.removeValue(forKey: res.opID) }
+            waiter?.resolve(.success(res))
         default: break
         }
     }
 
     func close() {
-        let (pendingTimers, pendingOps) = lock.withLock { () -> ([Task<Void, Never>], [CheckedContinuation<PBSecurityOpResultEffect, Error>]) in
+        let (pendingTimers, pendingOps) = lock.withLock { () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>]) in
             guard !closed else { return ([], []) }
             closed = true
             let ts = timers.values.map(\.task)
@@ -643,7 +696,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
             return (ts, ops)
         }
         for t in pendingTimers { t.cancel() }
-        for cont in pendingOps { cont.resume(throwing: SecurityFailure.storage) }
+        for waiter in pendingOps { waiter.resolve(.failure(SecurityFailure.storage)) }
         queue.sync {
             core.close()
         }

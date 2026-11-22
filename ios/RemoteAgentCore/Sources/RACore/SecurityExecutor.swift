@@ -3,16 +3,54 @@ import Foundation
 import RAProto
 import SwiftProtobuf
 
+private final class RpcCallState: @unchecked Sendable {
+    private let waiter = ContinuationWaiter<HTTPResponse>()
+    private let lock = NSLock()
+    private var cancelable: Cancelable?
+    private var cancelled = false
+
+    func install(_ cont: CheckedContinuation<HTTPResponse, Error>) -> Bool {
+        waiter.install(cont)
+    }
+
+    func attach(_ cancelable: Cancelable) {
+        let cancelNow = lock.withLock { () -> Bool in
+            if cancelled { return true }
+            self.cancelable = cancelable
+            return false
+        }
+        if cancelNow { cancelable.cancel() }
+    }
+
+    func complete(_ response: HTTPResponse) {
+        lock.withLock { cancelable = nil }
+        waiter.resolve(.success(response))
+    }
+
+    func cancel() {
+        let cal = lock.withLock { () -> Cancelable? in
+            cancelled = true
+            let cal = cancelable
+            cancelable = nil
+            return cal
+        }
+        cal?.cancel()
+        waiter.resolve(.failure(CancellationError()))
+    }
+}
+
 /// Executes host-side key generation/agreement/signing, v4 storage transactions, and unary Connect
 /// RPC calls requested by Go `clientcore/security`.
 public final class SecurityExecutor: @unchecked Sendable {
     public typealias RpcOverride = @Sendable (PBSecurityRpcEffect) async -> PBSecurityRpcResultEvent
+    public typealias TimeoutForRpc = @Sendable (PBSecurityRpcEffect) -> Int64
 
     public let store: any SecurityStoreV4
-    private let http: HTTP?
+    private let http: (any HTTPClientInterface & Sendable)?
     private let emit: @Sendable (PBCoreEvent) async -> Void
     private let rpcOverride: RpcOverride?
     private let allowPlainHttp: Bool
+    private let rpcTimeoutMs: TimeoutForRpc
     private let queue = DispatchQueue(label: "ra.security.executor", attributes: .concurrent)
     private let lock = NSLock()
     private var closed = false
@@ -20,15 +58,17 @@ public final class SecurityExecutor: @unchecked Sendable {
 
     public init(
         store: any SecurityStoreV4,
-        http: HTTP? = nil,
+        http: (any HTTPClientInterface & Sendable)? = nil,
         allowPlainHttp: Bool = false,
         rpcOverride: RpcOverride? = nil,
+        rpcTimeoutMs: @escaping TimeoutForRpc = { $0.method == .getSecurityStates ? 5_000 : 15_000 },
         emit: @escaping @Sendable (PBCoreEvent) async -> Void
     ) {
         self.store = store
         self.http = http
         self.allowPlainHttp = allowPlainHttp
         self.rpcOverride = rpcOverride
+        self.rpcTimeoutMs = rpcTimeoutMs
         self.emit = emit
     }
 
@@ -155,20 +195,27 @@ public final class SecurityExecutor: @unchecked Sendable {
                 headers["Authorization"] = ["Bearer \(eff.authToken)"]
             }
             let finalHeaders = headers
-            let timeoutMs: Int64 = eff.method == .getSecurityStates ? 5_000 : 15_000
+            let timeoutMs = rpcTimeoutMs(eff)
+            let call = RpcCallState()
             let response: HTTPResponse = try await withTimeout(timeoutMs, sleep: realSleep) {
-                try await withCheckedThrowingContinuation { continuation in
-                    let req = HTTPRequest<Data?>(
-                        url: url,
-                        headers: finalHeaders,
-                        message: eff.requestBytes,
-                        method: .post,
-                        trailers: [:],
-                        idempotencyLevel: .unknown
-                    )
-                    _ = http.unary(request: req, onMetrics: { _ in }) { resp in
-                        continuation.resume(returning: resp)
+                try await withTaskCancellationHandler {
+                    try await withCheckedThrowingContinuation { continuation in
+                        guard call.install(continuation) else { return }
+                        let req = HTTPRequest<Data?>(
+                            url: url,
+                            headers: finalHeaders,
+                            message: eff.requestBytes,
+                            method: .post,
+                            trailers: [:],
+                            idempotencyLevel: .unknown
+                        )
+                        let cancelable = http.unary(request: req, onMetrics: { _ in }) { resp in
+                            call.complete(resp)
+                        }
+                        call.attach(cancelable)
                     }
+                } onCancel: {
+                    call.cancel()
                 }
             }
             if let err = response.error {
