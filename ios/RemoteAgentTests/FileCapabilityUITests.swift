@@ -8,13 +8,13 @@ import Testing
     private func remote() throws -> Remote {
         try Remote(account: Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff"), http: AppModel.http)
     }
-    private func state(support: Bool) -> RemoteState {
+    private func state(support: Bool, metaRev: UInt64 = 1) -> RemoteState {
         var state = RemoteState()
         state.machines["m"] = MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with {
             $0.hostname = "MacBook"
             $0.capabilities.imageUpload = true
             $0.capabilities.fileUpload = support
-        })
+        }, metaRev: metaRev)
         state.sessions["s"] = SessionView(id: "s", machineId: "m")
         return state
     }
@@ -95,7 +95,7 @@ import Testing
             gate.markEntered(); gate.open.wait()
         }, submit: { submitted.append($0) }) { if case .failure(let error) = $0 { failure = errorText(error) } }
         await eventually { gate.entered }
-        let dropped = state(support: false)
+        let dropped = state(support: false, metaRev: 2)
         await remote.showForTest(state: dropped)
         await coreHost.appendDemoSessionData(state: dropped)
         gate.open.signal()
