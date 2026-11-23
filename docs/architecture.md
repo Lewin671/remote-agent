@@ -23,7 +23,7 @@
 | `remote-agent-server` | Go 单二进制，SQLite 存储，不直接对外暴露端口 | VPS 上，前面由 Caddy 负责 HTTPS 和反向代理，域名为 `api.<域名>`（当前部署在 `ra.remote-agent.top`，见下文） |
 | `web` | PWA，React + Vite + TypeScript | Cloudflare Pages，和 server 在同一个注册域名下（当前在 `remote-agent.top`，见下文） |
 | `android` | 原生 App，Kotlin + Jetpack Compose，见 [android-client.md](android-client.md) | 自己签名的 APK，侧载安装 |
-| `ios` | 原生 App，Swift + SwiftUI，见 [ios-client.md](ios-client.md) | 装到真机的渠道未定（[plan.md](plan.md)），目前只在模拟器上运行 |
+| `ios` | 原生 App，Swift + SwiftUI，见 [ios-client.md](ios-client.md) | App Store 正式发布与 TestFlight 内部测试（流程见 [development.md](development.md#ios-app-store-自动发布)） |
 
 当前的 VPS 上有一个多个服务共用的 Caddy（docker compose 项目 `/opt/caddy`，占用 80/443），server 因此也用容器部署：接入 Caddy 所在的 docker 网络 `proxy`，不映射主机端口，Caddyfile 里只加一个站点块反代过去。它是公共中继：服务器上的 `.env`（不在仓库里）设 `RA_SIGNUP=open`，`RA_TRUSTED_PROXIES` 设成 `proxy` 网络的地址段，让 server 按 Caddy 报告的真实地址限流。镜像基于 `scratch`，以 nobody 运行，根文件系统只读（SQLite 的临时文件写在 64 MiB 的 tmpfs `/tmp`），内存上限 256 MiB，健康检查由二进制自己的 `healthcheck` 子命令请求 `/healthz`。`scratch` 里没有 CA 根证书，而 Web Push 和 FCM 都要访问 HTTPS，所以 server 二进制带上了 Go 的 `x509roots/fallback`（Mozilla 的根证书），系统里没有根证书时使用它。部署文件和脚本在 `deploy/`。
 
@@ -43,7 +43,7 @@ Go 构建要求至少 1.26.11，发布流水线用 `govulncheck` 检查代码可
 
 正式 APK 缺少固定签名或 Firebase 客户端配置就停止发布，不退回 debug 签名。GitHub Secrets 的 `ANDROID_SIGNING` 保存签名 keystore 与签名参数，`ANDROID_GOOGLE_SERVICES` 保存客户端配置；FCM 服务账户和账户加密密钥不进入构建流水线。签名密钥必须另有本地备份。手动 `Build development APK` 生成独立 `.dev` 应用，与正式版数据分开，使用固定签名以便后续覆盖升级，推送关闭，产物保留 3 天。
 
-**公开发布**：源码仓库 `Lewin671/remote-agent` 是公开的（2026-10-17 起；之前源码私有，产物另发到 `Lewin671/remote-agent-releases`，那个仓库已归档，只留着让旧安装升级过来）。每一版的全部文件和一份清单 `latest.properties`（版本、versionCode、协议版本、APK 文件名、SHA-256、大小、发布说明）就发布成本仓库的 Release，标为最新的那个有两个用途：App 和 daemon 读它的清单、按版本号下载（[android-client · 更新](android-client.md#更新)、[daemon 更新](#daemon-更新)）；别人照根目录的 README 和 [self-hosting.md](self-hosting.md) 部署自己的中继、网页和 daemon。安装脚本 `install.sh` 和自部署说明直接从 `main` 读取，改了不用发版。
+**公开发布**：源码仓库 `Lewin671/remote-agent` 是公开的（2026-10-17 起；之前源码私有，产物另发到 `Lewin671/remote-agent-releases`，那个仓库已归档，只留着让旧安装升级过来）。每一版的全部文件和一份清单 `latest.properties`（版本、versionCode、端到端协议版本 `protocol`、中继协议版本 `relayProtocol`、APK 文件名、SHA-256、大小、发布说明）就发布成本仓库的 Release，标为最新的那个有两个用途：App 和 daemon 读它的清单、按版本号下载（[android-client · 更新](android-client.md#更新)、[daemon 更新](#daemon-更新)）；别人照根目录的 README 和 [self-hosting.md](self-hosting.md) 部署自己的中继、网页和 daemon。安装脚本 `install.sh` 和自部署说明直接从 `main` 读取，改了不用发版。
 
 给别人用的产物不带我们自己的部署：`scripts/build-dist.sh` 构建网页时不设默认中继（我们自己的网页由 `pnpm run deploy` 另行构建，带默认中继）；server 的压缩包里是 `deploy/self-host/` 的模板（自带 Caddy），不是 `deploy/` 里接入我们那台共用 Caddy 的那份；Go 构建关掉了自动嵌入的仓库信息，压缩包的文件头不记打包者。`scripts/public_scan.py` 把关，查到就失败、不发布，有三层：按名单查域名、主机名、邮箱、设备号、私钥和填了值的 setup token（指向我们自己的条目放在 Secret `RA_PUBLIC_DENY` 和本机 `~/.config/remote-agent/public-deny`，不在公开的源码里；读不到就不发布，命中时只报序号），压缩包和 APK 逐个成员查；按文件名拒绝部署的配置和状态（`.env`、数据库、密钥、日志、sourcemap）和链接，不看内容；打包时（`--release`）要求这一版的文件和每个压缩包的成员正好是预期的那些，多一个少一个都不行。它在打包（`package-release.sh`）和发布（`publish-public.sh`）时各运行一遍。名单挡不住没见过的标识，所以新增公开内容时仍要人看一遍。
 
@@ -63,7 +63,7 @@ Release 不自动部署 VPS/Cloudflare：我们自己的部署在 Release 工作
 
 更新清单复用每个 tag 的 `latest.properties`，附件名由版本和平台推导；每平台大小与 SHA-256 来自已校验的 `SHA256SUMS`，公开发布时再次核对附件和清单。清单与下载通过 HTTPS，附件重定向不得降到 HTTP。信任根是官方 GitHub 发布账户与 TLS；SHA-256 校验传输和文件一致性，不是独立的发布签名。只取正式版，不降级；先确定最新版本，再从固定 tag 获取清单和附件。最新版本不兼容时记录阻止原因，不自动寻找更旧版本。
 
-协议版本和 daemon 全部持久数据的存储代数必须与当前安装相同，并且该版明确允许自动安装；缺字段、未知格式、需人工迁移的版本均拒绝，手动 `update` 也不绕过。破坏性升级仍按发布说明使用安装器、协调客户端与会话内 MCP 重连。中继只转发密文，不核对这个协议号，临时断网不作为回滚条件。
+端到端协议版本（`protocol`）、中继协议版本（`relayProtocol`）和 daemon 全部持久数据的存储代数都必须与当前安装相同，并且该版明确允许自动安装；任一协议号变化、缺字段（包括缺少 `relayProtocol`）、未知格式或需人工迁移的版本均拒绝，手动 `update` 也不绕过。`RelayVersion` 变化时的自动安装门禁见[第 4 节](#4-协议设计要点)。**残留窗口**：拆分前的旧 updater 不认识 `relayProtocol`，只核对 `protocol` 和 `daemonState`；若某版只升 `RelayVersion`（该版关闭自动安装），而后续某版未再改 `RelayVersion` 且把 `daemonAutomatic` 改回 `true`，仍停留在拆分前的旧 daemon 查询最新版时可能跨过这次 `RelayVersion` 升级被自动安装，若其连接的自部署中继未升级就会登录失败且不回滚。因此，**第一次升 `RelayVersion` 的那一版，发布说明必须要求所有 daemon 手动升级**。破坏性升级仍按发布说明使用安装器、协调客户端与会话内 MCP 重连。中继在登记、登录和配对时核对 `RelayVersion`，不核对密文内的 `PeerVersion`；临时断网不作为回滚条件。
 
 存储代数及该版自动安装许可由 `internal/updater/policy.json` 同时提供给编译产物和发布流程。任何 daemon/本机 CLI 写入的持久格式（账户、设置、定时任务、会话及输入队列、图片等）不再能被上一版安全读取时，必须递增代数并将自动安装许可关闭，在发布说明写明人工处理。入口在读写前核对状态目录的 `state-generation`；第 1 代允许为已有安装补上标记，之后拒绝不同代数或未标记的旧数据，不迁移、不改写未知数据。标记只能防止明确的代数不匹配，不能替代开发者对存储格式变化的审查。
 
@@ -170,7 +170,19 @@ RelayPath 的指令由客户端 HTTPS `Forward` 经 server 转给 daemon 主 Web
 - **历史和实时衔接**：server 先写库再推送；客户端按序号去重、补缺口
 - **终端积压**：终端帧和队列有界；路径切换由逻辑流恢复，超出重放/积压窗口才重建并抓快照，见 [transport.md](transport.md#终端连续性)
 - **离线**：server 对不在线的 daemon 立即返回“不可用”、不排队；单路失败不等于逻辑离线，设备间恢复见 [transport.md](transport.md#4-网络切换与第-0-期中继修复)
-- **版本**：不做跨版本兼容，版本不一致就拒绝并提示更新，不逐项降级（规则见 [AGENTS.md](../AGENTS.md)）。全项目只有一个协议版本号（`internal/protocol`，网页、Android 和 iOS 各有一份同值常量），旧版本会误解的改动才提升它。daemon 把它写进机器元数据，客户端发现不一致就不向这台机器发指令，并说明该更新哪一端；客户端把它写进每条指令，daemon 发现不一致就拒绝执行。本机命令和 daemon 之间通过本地 socket 的请求头和响应头互相核对，覆盖更新后没重启的 daemon 和旧会话里还在运行的 MCP 进程。server 在登记、登录和配对时核对协议号；转发密文指令时不参与内层核对，它不认识的接口按普通错误返回。信封格式另有自己的版本号（`Header.version`），当前历史使用 version 3；协议号变化本身不改变已存信封。协议 10 之前的 version-1 历史已停止支持，客户端显示“这条历史是旧版加密格式，已不再支持查看”，不迁移或清除旧密文。当前配对仍使用 version 1，与旧历史无关。当前协议为 13（见第 19 节）；协议 11 引入定时轮次、独立结果通知和任务会话列表语义，协议 12 增加任务级完成通知设置。传输的新约定与协调升级要求见 [transport.md](transport.md#5-协议与安全绑定)，本设计文档不变更协议号。版本搭配及升级要求见[第 18 节](#协议版本与升级)。daemon、本机命令（包括会话内 MCP）、中继和全部客户端需协调更新，不能保留旧执行程序继续发布新内容；恶意中继不会替用户阻止旧程序。中继数据库布局为 6，daemon 状态代数为 3，自动安装关闭。协议 9 或更早版本升级必须先按[手动升级指南](self-hosting.zh-CN.md#升级到手机管理端协议-10)让手机成为管理端并重新配对保留设备。
+- **版本**：不做跨版本兼容，版本不一致就拒绝并提示更新，不逐项降级（规则见 [AGENTS.md](../AGENTS.md)）。协议版本号拆成两层，**各自严格一致，中继暂不做 N-1 兼容**；两套常量均在五处保持同值，以 Go 的 `internal/protocol/parity_test.go` 为权威检查（iOS 的 `VersionTests` 保留并行核对）：
+  - **中继协议版本（`RelayVersion`）**：五处同值常量分别为 Go `internal/relayproto`（`Version`）、`clientcore/sync/types.go`（`RelayVersion`）、网页 `web/src/protocol.ts`（`RELAY_PROTOCOL_VERSION`）、Android `core/Version.kt`（`RELAY_PROTOCOL_VERSION`）、iOS `RACore/Version.swift`（`relayProtocolVersion`）。沿用 `relay.proto` 现有的 `protocol_version` 字段，中继在 4 个入口（`RegisterDevice`、`Login`、`PeekPairing`、`JoinPairing`）做严格相等核对。
+  - **端到端协议版本（`PeerVersion`）**：五处同值常量分别为 Go `internal/protocol`（`PeerVersion`）、`clientcore/sync/types.go`（`PeerVersion`）、网页 `web/src/protocol.ts`（`PEER_PROTOCOL_VERSION`）、Android `core/Version.kt`（`PEER_PROTOCOL_VERSION`）、iOS `RACore/Version.swift`（`peerProtocolVersion`）。用于 `MachineMeta.protocol_version`、`Command.protocol_version`、`peerwire` 的 `Context.protocol` 和本机 Unix socket 的 `Remote-Agent-Protocol` 头（覆盖更新后未重启的 daemon 和旧会话里仍在运行的 MCP 进程）。daemon 把它写进机器元数据，客户端发现不一致就不向这台机器发指令并说明该更新哪一端；客户端把它写进每条指令，daemon 发现不一致就拒绝执行。中继转发密文指令时不参与 `PeerVersion` 核对；只改端到端协议时只升 `PeerVersion`，公共中继和自部署中继都不用升级。
+  - **中继可见面与两项机械检查**：中继可见面包括 `relay.proto`、`envelope.proto`、`transport.proto` 外层帧（`FrameClass`、`DirectedPeerFrame`、`PeerFrameDelivery`、`PeerFrameResult`）与 `shared/peerwire/schema_data.go` 中的 `DirectedPeerFrame` schema、密文大小上限与转发超时（`internal/server/server.go` 的 `maxEnvelopeBytes`、`maxSessionMetaEnvelopeBytes`、`maxSessionKeyEnvelopeBytes`、`ForwardTimeout` 等，以及 `internal/server/directory.go` 的 `maxPrefsBytes`、`maxDeviceMetaBytes`）、`internal/server/push.go` 的 `NotifyKind` 白名单与兜底推送文案、`internal/server/directed.go` 的定向帧类配额，以及明文信封头语义（`Header.kind/seq/request_id` 与 revision CAS）。凡是触及这些的 Peer 功能，都必须判断是否升 `RelayVersion`。
+    - **指纹金样**：`internal/relayproto/surface_test.go` 与 `internal/relayproto/testdata/relay_surface.golden` 核对上述 proto 与 `DirectedPeerFrame` schema；破坏性变化未升 `RelayVersion` 或纯新增未提供 `-additive "<理由>"` 即失败，`-update` 拒绝在金样缺失时重建（首次生成须显式用 `-init`）。`scripts/release.py` 在 `prepare` 和 `validate` 中还会把当前金样与上一个正式 tag 的金样逐项比对，拦住删改或重建金样绕过升号。
+    - **提交尾注与发布门禁**：`scripts/release.py`（`prepare`、`validate`、`check-relay-impact`，以及 `scripts/dev/check.py go full`）校验改动 `internal/server/**`（不含 `*_test.go`）、`proto/remoteagent/v1/{relay,envelope,transport}.proto` 或 `internal/relayproto/testdata/relay_surface.golden` 的提交必须带 `Relay-Impact: none|additive|bump` 尾注（已推到 `main` 的漏写提交可在 `scripts/relay-impact-overrides.txt` 补记）；声明 `bump` 时核对 `relayproto.Version` 相对上一正式 tag 确实变化，且只要 `relayproto.Version` 变化就强制 `internal/updater/policy.json` 将 `automatic` 设为 `false`（即清单 `daemonAutomatic=false`）。
+  - **客户端之间共享的对象（不受 `PeerVersion` 保护）**：经中继存储并在客户端之间共享、daemon 不核对的对象（`ProjectPrefs`、`DEVICE_META`）在拆分后可能被不同 `PeerVersion` 的客户端交替读写。这类对象只能做「旧端原样保留未知字段」的纯增量改动；否则必须递增对象自带的 `schema`，并要求三端遇到不认识的 `schema` 时拒绝写入、提示更新。
+  - **配对载荷（`PairingPayload`）**：封装在 `e2e.Version` 的配对信封内，只能做纯增量改动，否则升 `e2e.Version`。配对时不做 `PeerVersion` 早检，两端 `PeerVersion` 不一致在配对完成后由既有版本不匹配提示引导升级。
+  - **信封格式、持久化布局与升级要求**：信封格式另有版本号 `Header.version`，安全域内容以 `shared/devicesec` 的 `devicesec.Version` 为准，配对以 `internal/e2e` 的 `e2e.Version` 为准；协议号变化本身不改变已存信封。协议 10 之前的 version-1 历史已停止支持，客户端显示「这条历史是旧版加密格式，已不再支持查看」，不迁移或清除旧密文。中继数据库布局以 `internal/server/store.go` 的 `schemaVersion` 为准，daemon 状态代数与自动安装许可由 `internal/updater/policy.json` 定义。传输的新约定与安全绑定见 [transport.md](transport.md#5-协议与安全绑定)，历史版本搭配说明见[第 18 节](#协议版本与升级)。恶意中继不会替用户阻止旧程序。协议 9 或更早版本升级必须先按[手动升级指南](self-hosting.zh-CN.md#升级到手机管理端协议-10)让手机成为管理端并重新配对保留设备。
+  - **拆分解决不了的问题**：
+    1. 同一个用户的电脑、网页和手机三端之间仍然要求 `PeerVersion` 一致，iOS 审核那 1–3 天的空窗照旧。
+    2. 官方网页（`remote-agent.top`）是所有账户共用的：`PeerVersion` 升级并上线后，公共中继上其他账户尚未升级的电脑在网页上只能看、不能操作（是否按 `PeerVersion` 保留上一版网页未定，见 [plan.md](plan.md#待确认)）。
+    3. 协议 10→17 的 7 次升级里，有 4 次中继代码未改动却被迫一起升级；往后多少次升级不碰中继（例如 70%–85%）只是推测，尚无证据。
 
 ## 5. 技术决策
 
@@ -888,7 +900,7 @@ MCP 每次操作先确认 daemon 支持受限委托；不支持时拒绝工具�
 
 定时任务运行记录增加派发来源快照时，未迁移旧开发运行；当时已派发且缺少该快照的运行需要结束后重新派发，不能按修改后的任务定义补写来源。现有任务定义可继续派发新的运行。
 
-通知策略在协议 12 加入，任务定义更新仍是完整替换。当时协议 11 的 iOS Codable 模型会丢弃未知字段，再编辑时把 agent_only 重置为默认完成通知，因此该次升级要求所有端一起更新。当前协议为 13，见第 19 节；版本不一致的两端拒绝互通。此次通知策略升级无需重建账户、数据库或 daemon 状态；未填写通知策略的任务默认通知，不编写迁移。
+通知策略在协议 12 加入，任务定义更新仍是完整替换。当时协议 11 的 iOS Codable 模型会丢弃未知字段，再编辑时把 agent_only 重置为默认完成通知，因此该次升级要求所有端一起更新（当前两层协议版本与规则见[第 4 节](#4-协议设计要点)）。此次通知策略升级无需重建账户、数据库或 daemon 状态；未填写通知策略的任务默认通知，不编写迁移。
 
 定时任务主体自协议 11 起提供。新增字段虽然能被 protobuf 忽略，但旧客户端会把定时消息当普通消息、把实时广播或按 ID 取回的任务会话列进默认列表，旧 server 也不接受定时通知并会让任务会话挤满分页，所以不能把这些搭配视为可互通。三个客户端均已接入协议 11 的任务管理、定时消息和通知事件投影，并按任务归属筛选默认会话列表。独立定时入口、运行历史与离线读取也已实现；验收范围见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)。
 

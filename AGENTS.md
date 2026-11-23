@@ -15,7 +15,9 @@
 
 - 两端能不能互通只看协议版本，不看产品版本。只改某一端自己的逻辑（界面、交互、本地状态）、不改变两端之间约定的改动，不提升协议版本，没升级的旧客户端继续可用
 - 不为旧版本的 daemon、server 或客户端写降级、推断分支，不保留废弃字段。字段或行为变了就直接改，旧的一并删掉
-- 改动会被旧版本的另一端误解时，提升协议版本号：Go 的 `internal/protocol`、网页的 `web/src/protocol.ts`、Android 的 `core/Version.kt`、iOS 的 `RACore/Version.swift` 四处同值（iOS 的测试核对这四处一致）。版本不一致的两端互相拒绝并提示更新，机制见 [docs/architecture.md](docs/architecture.md) 第 4 节的「版本」
+- 改动会被旧版本的另一端误解时，按所属层提升协议版本号（`RelayVersion` 或 `PeerVersion`，各自严格一致，中继暂不做 N-1 兼容；五处常量位置、中继可见面清单、客户端共享对象、`PairingPayload` 与发布门槛完整规则见 [docs/architecture.md](docs/architecture.md) 第 4 节的「版本」）
+- 凡是触及中继可见面的改动（包括触发这些边界的 Peer 功能），必须判断是否升 `RelayVersion`；wire 变化同步更新指纹金样（`go test ./internal/relayproto -update [-additive "<理由>"]`）
+- 改动 `internal/server/**`（不含 `*_test.go`）、`proto/remoteagent/v1/{relay,envelope,transport}.proto` 或中继可见面金样的提交（含 `git revert`），提交说明末尾必须带 `Relay-Impact: none|additive|bump` 尾注；已进 `main` 的漏写提交在 `scripts/relay-impact-overrides.txt` 补记
 - 不写数据迁移代码。存储格式要变时，一次性手动迁移或清掉重建，并在发布说明里写明升级要求
 - 这些不算兼容逻辑，照常保留：适配外部工具的不同版本（Codex、Claude Code、浏览器、Android 和 iOS 系统），以及当前版本自己也会出现的缺失值
 - 有其他人开始使用或到 1.0 时，重新讨论这条规则。v0.32.0（2026-10-10）起产物公开发布，别人可以自己部署，这个条件已经出现；用户还没有重新决定，在那之前规则照旧，但任何要求一起升级或重建数据的改动，都必须在发布说明里写清楚
@@ -34,8 +36,8 @@
 
 所有改动，不论大小，默认直接进 `main`，不提 PR，也不走长期分支；任务完成后按下文自动发布：
 
-- 每次提交只做一件事，出问题时用 `git revert` 撤回
-- 推送前 `go test ./...` 与 `cd clientcore && go test ./...` 必须通过；先 `git fetch`，远端有新提交就 rebase 到最新的 `main` 上，禁止 force push
+- 每次提交只做一件事，出问题时用 `git revert` 撤回（revert 中继相关提交时同样需带 `Relay-Impact:` 尾注）
+- 推送前 `go test ./...`、`cd clientcore && go test ./...` 与 `python3 scripts/release.py check-relay-impact` 必须通过；先 `git fetch`，远端有新提交就 rebase 到最新的 `main` 上，禁止 force push
 - 里程碑（如 P0、P1 完成）可以继续打里程碑 tag；产品发布用 `vMAJOR.MINOR.PATCH`
 
 ### 迭代与全量检查
@@ -78,7 +80,7 @@
 - **发布说明是公开的**：`release-task.sh` 的第二个参数成为 tag 的说明，原样进清单和公开的 Release，显示在 App 的更新弹层里。只写用户看得懂的变化和升级要求，不写服务器地址、部署细节、密钥或内部讨论
 - iOS 发布有两条路径：`iOS App Store` 在 `Release` 成功后（含带 tag 的手动重跑，不含演练）单独执行测试、归档、上传、显式加入 TestFlight 内部组并送审，审核通过后自动上架（开关 `IOS_APP_STORE_ENABLED`）；`iOS TestFlight Beta` 在 `main` 推送涉及 iOS 构建路径时上传并显式加入内部组（下一个补丁号、构建号 `<androidVersionCode>.<run_number>`、不送审，开关 `IOS_TESTFLIGHT_BETA_ENABLED`，内部组默认 `Internal` 可由 `IOS_TESTFLIGHT_INTERNAL_GROUP` 覆盖）。首次配置、版本号规则、重试和凭据维护见 [development.md](docs/development.md#ios-app-store-自动发布)。只改发布工具不升产品版本。
 - 发布产物不代表部署线上服务，不自动升级本机 daemon，也不自动安装 APK。已有部署授权按原任务执行
-- **上线只用 `scripts/ship.sh [--web-only] [vX.Y.Z]`**：我们自己的 server、网页和本机 daemon 只通过它部署，不单独跑 `deploy/deploy.sh`、`pnpm run deploy` 或 `scripts/install.sh` 去更新线上或日常用的 daemon。只更新网页用 `--web-only`：不接触中继和 daemon，协议变化时拒绝，并用 Cloudflare 生产部署 API 校验提交。默认模式等 Release 工作流成功后，从 tag 的干净 checkout 按 server（代码有变才部署）→ 网页 → daemon 的顺序上线，每一步核对线上跑的是这个 tag 再进行下一步；已是这一版的部分跳过，失败后修好原因重跑即可。协议版本一变各端必须一起换，分开部署会让某一端拒绝另一端
+- **上线只用 `scripts/ship.sh [--web-only] [vX.Y.Z]`**：我们自己的 server、网页和本机 daemon 只通过它部署，不单独跑 `deploy/deploy.sh`、`pnpm run deploy` 或 `scripts/install.sh` 去更新线上或日常用的 daemon。只更新网页用 `--web-only`：不接触中继和 daemon，两个协议版本（`PeerVersion` 或 `RelayVersion`）任一变化时拒绝，并用 Cloudflare 生产部署 API 校验提交。默认模式等 Release 工作流成功后，从 tag 的干净 checkout 按 server（代码有变才部署）→ 网页 → daemon 的顺序上线，每一步核对线上跑的是这个 tag 再进行下一步；已是这一版的部分跳过，失败后修好原因重跑即可。协议版本一变各端必须按所属层协调升级，分开部署会让某一端拒绝另一端
 - 手动 APK 工作流只生成独立 `.dev` 应用，推送关闭，短期保留，不更新正式版本、不创建 Release
 
 ### 多 agent 并行
@@ -90,9 +92,10 @@
 git fetch
 git worktree add -b wt/<任务名> ../../worktrees/remote-agent/<任务名> origin/main
 
-# 做完：在 worktree 里提交后，rebase 到最新的 main，测试通过再推
+# 做完：在 worktree 里提交后，rebase 到最新的 main，测试和尾注检查通过再推
 git fetch && git rebase origin/main
 go test ./...
+python3 scripts/release.py check-relay-impact
 git push origin HEAD:main
 
 # 收尾：确认已推送后清理，并把主工作区快进到最新

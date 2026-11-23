@@ -232,7 +232,7 @@ The last command lists your account, with the number of its devices and sessions
 | The Android app says the setup token is required | The token does not match `RA_SETUP_TOKEN` in the relay's `.env`. |
 | The relay exits saying the database has the layout of a relay with a single account | Move the database as described in [Upgrading to v0.41.0](#upgrading-to-v0410). |
 | The Android app says the relay has no room for another account | This relay already has its account. Join it with a code from the phone, or let the relay hold more accounts (see [Opening the relay to others](#opening-the-relay-to-others)). |
-| A client asks you to update | Its protocol version differs from the daemon's. Upgrade every part to the same release. |
+| A client asks you to update | Either its peer protocol version differs from the daemon's (upgrade your clients and daemons to the same release; the relay does not need an upgrade unless `relayProtocol` changed), or its relay protocol version differs from the relay's at sign-in/pairing (upgrade the relay, clients and daemons together). |
 | No notifications in the Android app | Expected on your own relay; see the limits in the [README](../README.md#status-and-limitations). |
 
 

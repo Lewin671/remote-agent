@@ -102,6 +102,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 所有还没定的问题和待实测的行为都列在这里，有了结论就写进对应的文档，再从这里删掉。
 
+- **官方网页在 `PeerVersion` 升级后兼容未升级电脑**：官方网页由公共中继所有账户共用，`PeerVersion` 升级后其他账户尚未升级的电脑在网页上只能查看、不能操作；是否按 `PeerVersion` 保留上一版网页未定（见 [architecture §4](architecture.md#4-协议设计要点)）。
 - **arm64 超 6 MB，待定**：Android release APK 已确定仅打包 `arm64-v8a`（debug / `.dev` 继续保留 `x86_64` 给模拟器使用），`.so` 在 APK 内以 Stored（不压缩）存放，`lib/arm64-v8a/libgojni.so` 实测为 `7,275,936 B`（> 6 MB）。要决定是放宽 `arm64` 预算、继续裁剪还是调整构建/链接策略，数字见 [architecture · 体积与性能预算](architecture.md#体积与性能预算)。
 - Codex 命令中心在进程内新建会话也会使用 StartupDraftPump；此入口的完整真实消息链路尚未验收。本次有界等待仅保护托管 CLI 进程的首次确认阶段，后续内部切换仍依靠逐条提交证据和图片失败清理，见 [codex-notes](codex-notes.md#10-屏幕和输入) 和[本轮验收](acceptance-notes.md#codex-loading-有界等待与清理2026-11-06)。
 
