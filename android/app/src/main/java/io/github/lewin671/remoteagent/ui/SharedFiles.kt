@@ -59,13 +59,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -271,16 +271,9 @@ internal class SharedFileHostState(
     val manager: SharedFileManager,
     val sessionId: String,
 ) {
-    private val autoOpenFiles = mutableSetOf<String>()
-
     fun startDownload(item: SessionSharedFileItem) {
-        autoOpenFiles += item.fileId
-        manager.startOrResume(sessionId, item, userInitiated = true)
+        manager.startDownload(sessionId, item.fileId, autoOpenIfStaying = true)
     }
-
-    fun leavePage() { autoOpenFiles.clear() }
-
-    fun consumeAutoOpen(fileId: String): Boolean = autoOpenFiles.remove(fileId)
 
     var menuTarget by mutableStateOf<SharedFileMenuRequest?>(null)
     var imagePreview by mutableStateOf<SharedFilePreviewTarget?>(null)
@@ -311,7 +304,7 @@ internal fun SharedFileHost(
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
-    val states by manager.store.states.collectAsState()
+    val currentItemsById by rememberUpdatedState(itemsById)
 
     val liveHost = remember(manager, sessionId) {
         SharedFileHostState(manager, sessionId)
@@ -327,30 +320,45 @@ internal fun SharedFileHost(
     }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(liveHost, lifecycle) {
+    DisposableEffect(manager, sessionId, lifecycle) {
+        val token = Any()
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            manager.enterVisibleSession(token, sessionId)
+        }
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) liveHost.leavePage()
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> manager.enterVisibleSession(token, sessionId)
+                Lifecycle.Event.ON_PAUSE -> manager.leaveVisibleSession(token)
+                else -> Unit
+            }
         }
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
-            liveHost.leavePage()
+            manager.leaveVisibleSession(token)
         }
     }
 
     LaunchedEffect(manager, sessionId) {
-        manager.store.completions.collect { comp ->
-            if (comp.sessionId != sessionId) return@collect
+        manager.completions.collect { comp ->
+            if (comp.sessionId != sessionId || comp.deliverOnly) return@collect
             Motion.tap(view)
             view.announceForAccessibility(copy(UiMessages.sharedFileA11YDownloadedAnnounce(name = comp.displayName)))
-            if (comp.userInitiated && liveHost.consumeAutoOpen(comp.fileId)) {
-                val item = itemsById[comp.fileId] ?: SessionSharedFileItem.newBuilder()
-                    .setFileId(comp.fileId)
-                    .setDisplayName(comp.displayName)
-                    .setSizeBytes(comp.sizeBytes)
-                    .setKind(comp.kind)
-                    .build()
-                openSharedFile(context, item, comp.localFile, liveHost)
+            if (comp.autoOpen) {
+                val localFile = withContext(Dispatchers.IO) {
+                    manager.localFileIfDownloaded(comp.sessionId, comp.fileId, comp.displayName)
+                }
+                if (localFile != null) {
+                    val item = currentItemsById[comp.fileId] ?: SessionSharedFileItem.newBuilder()
+                        .setFileId(comp.fileId)
+                        .setDisplayName(comp.displayName)
+                        .setSizeBytes(comp.sizeBytes)
+                        .setKind(comp.kind)
+                        .build()
+                    openSharedFile(context, item, localFile, liveHost)
+                } else {
+                    manager.reportLocalMissing(comp.sessionId, comp.fileId)
+                }
             }
         }
     }
@@ -361,8 +369,11 @@ internal fun SharedFileHost(
 
             liveHost.menuTarget?.let { target ->
                 val freshItem = itemsById[target.item.fileId] ?: target.item
-                val localFile = (states["$sessionId:${freshItem.fileId}"] as? io.github.lewin671.remoteagent.core.SharedFileTransferState.Downloaded)
-                    ?.localFile?.takeIf { it.isFile }
+                val localFile = if (freshItem.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED) {
+                    manager.localFileIfDownloaded(sessionId, freshItem.fileId, freshItem.displayName)
+                } else {
+                    null
+                }
                 if (freshItem.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_CLEANED || freshItem.menuItemsCount == 0) {
                     liveHost.menuTarget = null
                 } else {
@@ -476,6 +487,9 @@ internal fun SharedFileHost(
                     copy = copy,
                 )
             },
+            onDurationKnown = { dur ->
+                manager.reportDurationProbed(sessionId, target.item.fileId, dur)
+            },
         )
     }
 
@@ -527,14 +541,22 @@ private fun handleMenuAction(
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
 ) {
     val name = item.displayName
+    fun resolveLocalOrReportMissing(): File? {
+        val found = localFile?.takeIf { it.isFile }
+            ?: manager.localFileIfDownloaded(sessionId, item.fileId, name)
+        if (found == null) {
+            manager.reportLocalMissing(sessionId, item.fileId)
+        }
+        return found
+    }
     when (action) {
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DOWNLOAD,
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_RESUME,
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_RETRY -> host.startDownload(item)
-        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_PAUSE -> manager.pause(sessionId, item)
-        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD -> manager.cancel(sessionId, item)
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_PAUSE -> manager.pause(sessionId, item.fileId)
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD -> manager.cancel(sessionId, item.fileId)
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM -> {
-            val local = localFile ?: return
+            val local = resolveLocalOrReportMissing() ?: return
             runWithStoragePermission(context, host) {
                 scope.launch {
                     val res = manager.saveToAlbum(local, item.kind, name)
@@ -545,7 +567,7 @@ private fun handleMenuAction(
             }
         }
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE -> {
-            val local = localFile ?: return
+            val local = resolveLocalOrReportMissing() ?: return
             runWithStoragePermission(context, host) {
                 scope.launch {
                     val res = manager.saveToDownloads(local, name)
@@ -556,16 +578,16 @@ private fun handleMenuAction(
             }
         }
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE -> {
-            val local = localFile ?: return
+            val local = resolveLocalOrReportMissing() ?: return
             manager.shareFile(context, local, name)
         }
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH -> {
-            val local = localFile ?: return
+            val local = resolveLocalOrReportMissing() ?: return
             if (!manager.openExternal(context, local, name)) {
                 host.unopenableTarget = SharedFilePreviewTarget(item, local)
             }
         }
-        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DELETE_LOCAL -> manager.deleteLocal(sessionId, item)
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DELETE_LOCAL -> manager.deleteLocal(sessionId, item.fileId)
         else -> Unit
     }
 }
@@ -602,24 +624,32 @@ internal fun SharedFilesBlock(
     val context = LocalContext.current
     val host = LocalSharedFileHost.current
     val manager = host?.manager ?: RaApp.instance.sharedFiles
-    val transferMap by manager.store.states.collectAsState()
 
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         for (item in files) {
-            LaunchedEffect(sessionId, item.fileId) {
-                withContext(Dispatchers.IO) {
-                    manager.registerFile(sessionId, item)
+            val localFile by produceState<File?>(null, sessionId, item.fileId, item.displayName, item.status) {
+                value = if (item.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED) {
+                    withContext(Dispatchers.IO) {
+                        manager.localFileIfDownloaded(sessionId, item.fileId, item.displayName)
+                    }.also { found ->
+                        if (found == null) manager.reportLocalMissing(sessionId, item.fileId)
+                    }
+                } else {
+                    null
                 }
             }
-            val localFile = (transferMap["$sessionId:${item.fileId}"] as? io.github.lewin671.remoteagent.core.SharedFileTransferState.Downloaded)
-                ?.localFile?.takeIf { it.isFile }
             val thumbPx = with(LocalDensity.current) { SharedTileSize.roundToPx() }
             val thumb by produceState<ImageBitmap?>(null, localFile?.absolutePath, item.status, item.kind) {
-                value = if (item.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED && localFile != null) {
-                    manager.loadThumbnail(localFile, item.kind, thumbPx)
+                val file = localFile
+                value = if (item.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED && file != null) {
+                    val bmp = manager.loadThumbnail(file, item.kind, thumbPx)
+                    if (bmp == null && !file.isFile) {
+                        manager.reportLocalMissing(sessionId, item.fileId)
+                    }
+                    bmp
                 } else {
                     null
                 }
@@ -642,10 +672,16 @@ internal fun SharedFilesBlock(
                         SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_RESUME,
                         SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_RETRY ->
                             if (host != null) host.startDownload(item)
-                            else manager.startOrResume(sessionId, item, userInitiated = true)
-                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_PAUSE -> manager.pause(sessionId, item)
-                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN -> localFile?.let { local ->
-                            openSharedFile(context, item, local, host)
+                            else manager.startDownload(sessionId, item.fileId, autoOpenIfStaying = true)
+                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_PAUSE -> manager.pause(sessionId, item.fileId)
+                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN -> {
+                            val local = localFile?.takeIf { it.isFile }
+                                ?: manager.localFileIfDownloaded(sessionId, item.fileId, item.displayName)
+                            if (local != null) {
+                                openSharedFile(context, item, local, host)
+                            } else {
+                                manager.reportLocalMissing(sessionId, item.fileId)
+                            }
                         }
                         else -> Unit
                     }

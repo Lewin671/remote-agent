@@ -1,28 +1,32 @@
 package io.github.lewin671.remoteagent.core
 
 import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect
 import io.github.lewin671.remoteagent.core.proto.SharedFileFailureKind
-import io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateEvent
-import io.github.lewin671.remoteagent.core.proto.SharedFileTransferStatus
-import io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse
-import io.github.lewin671.remoteagent.proto.Command
-import io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest
-import kotlinx.serialization.json.boolean
+import io.github.lewin671.remoteagent.core.proto.SharedFileIOErrorKind
+import io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
-import java.util.concurrent.atomic.AtomicInteger
+import java.security.MessageDigest
+import java.util.Properties
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -30,602 +34,359 @@ import org.junit.Test
 class SharedFilesTest {
     @get:org.junit.Rule val hangGuard = hangGuard()
 
+    private fun tempRoot(): File = Files.createTempDirectory("shared-files-io-test").toFile()
 
-    @Test fun outcomeVectorsPreserveSingleDownloadRetry() = runTest {
-        val fixture=Json.parseToJsonElement(File(System.getProperty("outcomeVectors")).readText()).jsonObject
-        for (row in fixture.getValue("downloads").jsonArray) {
-            val v=row.jsonObject
-            val code=v.getValue("code").jsonPrimitive.content
-            val signed=v.getValue("signed").jsonPrimitive.boolean
-            val retry=v.getValue("androidRetry").jsonPrimitive.boolean
-            val root=tempRoot()
-            val command=Command.newBuilder().setGetSharedFileChunk(GetSharedFileChunkRequest.getDefaultInstance()).build()
-            val error=CommandException(code,"fixture",fromDaemon=signed,readOnly=command.isReadOnlyCommand(),outcome=Outcome.valueOf(v.getValue("outcome").jsonPrimitive.content.uppercase()))
-            assertEquals(v.getValue("outcome").jsonPrimitive.content=="unknown",error.unknown)
-            var calls=0
-            val file=sharedFile(id="policy",name="file.bin",sizeBytes=32L,sha256=ByteArray(32))
-            val store=SharedFileStore(rootDir=root,fetcher=SharedFileChunkFetcher {_,_,offset->
-                calls++;if(offset>0)throw error
-                GetSharedFileChunkResponse.newBuilder().setData(ByteString.copyFrom(ByteArray(16))).setTotalBytes(32L).build()
-            },isMachineOnline={true},blockBytesProvider={16},clock={testScheduler.currentTime},sleeper={kotlinx.coroutines.delay(it)},ioDispatcher=StandardTestDispatcher(testScheduler))
-            try {
-                store.startOrResume("s",file);testScheduler.advanceUntilIdle()
-                assertEquals(row.toString(),if(retry)3 else 2,calls)
-                val state=store.states.value["s:policy"]
-                if(code=="not_found") assertEquals(SharedFileTransferState.CleanedUp,state)
-                else {
-                    assertTrue(row.toString(),state is SharedFileTransferState.Failed)
-                    assertEquals(if(retry)SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED else SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_OTHER,(state as SharedFileTransferState.Failed).kind)
-                }
-            } finally {store.close();root.deleteRecursively()}
-        }
-    }
+    private fun sha256(bytes: ByteArray): ByteArray =
+        MessageDigest.getInstance("SHA-256").digest(bytes)
 
-    private data class VectorCase(
-        val name: String,
-        val sizeBytes: Long,
-        val offsets: List<Long>,
-        val lastBlockFileBytes: Int,
-        val invalidOffsets: List<Long>,
-        val sha256: String,
-    )
-
-    private fun tempRoot(): File = Files.createTempDirectory("shared-files-test").toFile()
-
-    private fun deterministicBytes(size: Int, offset: Long = 0L): ByteArray =
-        ByteArray(size) { idx -> ((offset + idx) % 251L).toByte() }
-
-    private fun hexToBytes(hex: String): ByteArray =
-        ByteArray(hex.length / 2) { i -> hex.substring(i * 2, i * 2 + 2).toInt(16).toByte() }
-
-    private fun sharedFile(
-        id: String = "file-1",
-        name: String = "video.mp4",
-        sizeBytes: Long,
-        sha256: ByteArray = ByteArray(0),
-        path: String = "/Users/alex/Movies/video.mp4",
-    ): SharedFileTarget =
-        SharedFileTarget(
-            fileId = id,
-            displayName = name,
-            sizeBytes = sizeBytes,
-            sha256 = sha256,
+    @Test
+    fun writeVerifyCommitScanAndDeleteLifecycle() = runTest {
+        val root = tempRoot()
+        val deletedCallbacks = mutableListOf<Pair<String?, String?>>()
+        val executor = SharedFileIoExecutor(
+            rootDir = root,
+            availableBytesProvider = { 10_000_000L },
+            durationExtractor = { 102_000L },
+            onLocalDeleted = { sid, fid -> deletedCallbacks += sid to fid },
+            ioDispatcher = StandardTestDispatcher(testScheduler),
         )
-
-    @Test
-    fun vectorsBlockMathAndDownloadsMatchFixture() = runTest {
-        val path = System.getProperty("sharedFileVectors")
-            ?: File("../testdata/shared-files/blocks.json").absolutePath
-        val obj = Json.parseToJsonElement(File(path).readText()).jsonObject
-        val blockBytes = obj.getValue("blockBytes").jsonPrimitive.content.toInt()
-        assertEquals(SHARED_FILE_BLOCK_BYTES, blockBytes)
-        val cases = obj.getValue("cases").jsonArray.map { el ->
-            val c = el.jsonObject
-            VectorCase(
-                name = c.getValue("name").jsonPrimitive.content,
-                sizeBytes = c.getValue("sizeBytes").jsonPrimitive.content.toLong(),
-                offsets = c.getValue("offsets").jsonArray.map { it.jsonPrimitive.content.toLong() },
-                lastBlockFileBytes = c.getValue("lastBlockFileBytes").jsonPrimitive.content.toInt(),
-                invalidOffsets = c.getValue("invalidOffsets").jsonArray.map { it.jsonPrimitive.content.toLong() },
-                sha256 = c["sha256"]?.jsonPrimitive?.content.orEmpty(),
-            )
-        }
-
-        val root = tempRoot()
         try {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val store = SharedFileStore(
-                rootDir = root,
-                fetcher = SharedFileChunkFetcher { _, _, _ ->
-                    error("handled per-case")
-                },
-                isMachineOnline = { true },
-                ioDispatcher = dispatcher,
+            val payload = ByteArray(2500) { (it % 251).toByte() }
+            val digest = sha256(payload)
+
+            // Inspect disk reports known=true with available bytes.
+            val inspect = executor.executeInspectDisk(
+                SharedFileInspectDiskEffect.newBuilder()
+                    .setOpId(1L).setSessionId("s1").setFileId("f1").setRequiredBytes(2500L).build(),
             )
-            store.close()
+            assertEquals(1L, inspect.opId)
+            assertTrue(inspect.known)
+            assertEquals(10_000_000L, inspect.availableBytes)
 
-            for (case in cases) {
-                val caseSize = case.sizeBytes
-                val caseOffsets = case.offsets
-                val caseLastBlockBytes = case.lastBlockFileBytes
-                val plan = planSharedFileBlocks(caseSize, blockBytes)
-                assertEquals("offsets for ${case.name}", caseOffsets, plan.offsets)
-                assertEquals("lastBlockFileBytes for ${case.name}", caseLastBlockBytes, plan.lastBlockFileBytes)
+            // Write two chunks: chunk 0 with reset_partial=true, chunk 1 at offset 1024.
+            val w0 = executor.executeWriteChunk(
+                SharedFileWriteChunkEffect.newBuilder()
+                    .setOpId(2L)
+                    .setSessionId("s1")
+                    .setFileId("f1")
+                    .setDisplayName("clip.mp4")
+                    .setOffset(0L)
+                    .setData(ByteString.copyFrom(payload, 0, 1024))
+                    .setTotalSizeBytes(2500L)
+                    .setChunkBytes(1024)
+                    .setCommittedOffset(1024L)
+                    .setExpectedSha256(ByteString.copyFrom(digest))
+                    .setResetPartial(true)
+                    .build(),
+            )
+            assertTrue(w0.ok)
 
-                // Run end-to-end chunk assembly for all non-largest cases (up to 2 blocks).
-                if (caseSize <= blockBytes * 2L) {
-                    val requestedOffsets = mutableListOf<Long>()
-                    val caseStore = SharedFileStore(
-                        rootDir = File(root, case.name),
-                        fetcher = SharedFileChunkFetcher { _, _, offset ->
-                            requestedOffsets += offset
-                            val block = ByteArray(blockBytes)
-                            val copyLen = minOf(blockBytes.toLong(), (caseSize - offset).coerceAtLeast(0L)).toInt()
-                            for (i in 0 until copyLen) {
-                                block[i] = ((offset + i) % 251L).toByte()
-                            }
-                            GetSharedFileChunkResponse.newBuilder()
-                                .setData(ByteString.copyFrom(block))
-                                .setTotalBytes(caseSize)
-                                .build()
-                        },
-                        isMachineOnline = { true },
-                        clock = { testScheduler.currentTime },
-                        sleeper = { ms -> kotlinx.coroutines.delay(ms) },
-                        ioDispatcher = dispatcher,
-                    )
-                    try {
-                        val file = sharedFile(
-                            id = "id-${case.name}",
-                            name = "${case.name}.bin",
-                            sizeBytes = caseSize,
-                            sha256 = hexToBytes(case.sha256),
-                        )
-                        caseStore.startOrResume("s1", file)
-                        testScheduler.advanceUntilIdle()
-                        val st = caseStore.states.value["s1:${file.fileId}"]
-                        assertTrue("expected Downloaded for ${case.name}, got $st", st is SharedFileTransferState.Downloaded)
-                        val local = (st as SharedFileTransferState.Downloaded).localFile
-                        assertEquals(caseOffsets, requestedOffsets)
-                        assertEquals(caseSize, local.length())
-                        assertArrayEquals(deterministicBytes(caseSize.toInt()), local.readBytes())
-                    } finally {
-                        caseStore.close()
-                    }
-                }
-            }
+            // Scan while partial exists.
+            val partialScan = executor.executeScanLocal(SharedFileScanLocalEffect.newBuilder().setOpId(3L).build())
+            assertEquals(3L, partialScan.opId)
+            assertEquals(1, partialScan.entriesCount)
+            val pe = partialScan.getEntries(0)
+            assertEquals("s1", pe.sessionId)
+            assertEquals("f1", pe.fileId)
+            assertFalse(pe.completed)
+            assertEquals(1024L, pe.bytesOnDisk)
+            assertEquals(2500L, pe.expectedSizeBytes)
+            assertEquals(1024, pe.chunkBytes)
+            assertEquals(1024L, pe.committedOffset)
+            assertArrayEquals(digest, pe.sha256.toByteArray())
+
+            // Write remaining bytes.
+            val w1 = executor.executeWriteChunk(
+                SharedFileWriteChunkEffect.newBuilder()
+                    .setOpId(4L)
+                    .setSessionId("s1")
+                    .setFileId("f1")
+                    .setDisplayName("clip.mp4")
+                    .setOffset(1024L)
+                    .setData(ByteString.copyFrom(payload, 1024, 1476))
+                    .setTotalSizeBytes(2500L)
+                    .setChunkBytes(1024)
+                    .setCommittedOffset(2500L)
+                    .setExpectedSha256(ByteString.copyFrom(digest))
+                    .setResetPartial(false)
+                    .build(),
+            )
+            assertTrue(w1.ok)
+
+            // Verify & commit with duration probing.
+            val vc = executor.executeVerifyAndCommit(
+                SharedFileVerifyAndCommitEffect.newBuilder()
+                    .setOpId(5L)
+                    .setSessionId("s1")
+                    .setFileId("f1")
+                    .setDisplayName("clip.mp4")
+                    .setTotalSizeBytes(2500L)
+                    .setExpectedSha256(ByteString.copyFrom(digest))
+                    .setDeliverOnly(false)
+                    .setProbeDuration(true)
+                    .build(),
+            )
+            assertTrue(vc.ok)
+            assertTrue(vc.hasDuration)
+            assertEquals(102_000L, vc.durationMs)
+            val localFile = executor.localFileIfDownloaded("s1", "f1", "clip.mp4")
+            assertNotNull(localFile)
+            assertArrayEquals(payload, localFile!!.readBytes())
+            assertTrue(executor.usedBytes() >= 2500L)
+
+            // DeletePartial must NOT touch an already committed copy.
+            executor.executeDeletePartial(
+                SharedFileDeletePartialEffect.newBuilder().setSessionId("s1").setFileId("f1").build(),
+            )
+            assertNotNull(executor.localFileIfDownloaded("s1", "f1", "clip.mp4"))
+
+            // Scan after commit reports completed=true with duration.
+            val doneScan = executor.executeScanLocal(SharedFileScanLocalEffect.newBuilder().setOpId(6L).build())
+            assertEquals(1, doneScan.entriesCount)
+            val de = doneScan.getEntries(0)
+            assertTrue(de.completed)
+            assertEquals(2500L, de.bytesOnDisk)
+            assertEquals(2500L, de.expectedSizeBytes)
+            assertTrue(de.hasDuration)
+            assertEquals(102_000L, de.durationMs)
+
+            // DeleteLocal removes committed copy and notifies callback.
+            executor.executeDeleteLocal(
+                SharedFileDeleteLocalEffect.newBuilder().setSessionId("s1").setFileId("f1").build(),
+            )
+            assertNull(executor.localFileIfDownloaded("s1", "f1", "clip.mp4"))
+            assertEquals(listOf("s1" to "f1"), deletedCallbacks)
         } finally {
+            executor.close()
             root.deleteRecursively()
         }
     }
 
     @Test
-    fun pauseAndAppRestartResumesFromPersistedBlocks() = runTest {
+    fun verifyHandlesZeroByteFileAndChecksumMismatchAndStorageFull() = runTest {
         val root = tempRoot()
+        val executor = SharedFileIoExecutor(
+            rootDir = root,
+            availableBytesProvider = { throw IOException("ENOSPC (No space left on device)") },
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+        )
         try {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val blockBytes = 1024
-            val sizeBytes = 3500L
-            val fullPayload = deterministicBytes(sizeBytes.toInt())
-            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(fullPayload)
-            val file = sharedFile(id = "f-resume", name = "movie.mp4", sizeBytes = sizeBytes, sha256 = digest)
-
-            val calls = AtomicInteger(0)
-            var pauseAtCall = 2
-            lateinit var store1: SharedFileStore
-            store1 = SharedFileStore(
-                rootDir = root,
-                fetcher = SharedFileChunkFetcher { _, _, offset ->
-                    val n = calls.incrementAndGet()
-                    if (n == pauseAtCall) {
-                        store1.pause("s1", file)
-                        kotlinx.coroutines.delay(50)
-                    }
-                    val block = ByteArray(blockBytes)
-                    val len = minOf(blockBytes.toLong(), sizeBytes - offset).toInt()
-                    System.arraycopy(fullPayload, offset.toInt(), block, 0, len)
-                    GetSharedFileChunkResponse.newBuilder()
-                        .setData(ByteString.copyFrom(block))
-                        .setTotalBytes(sizeBytes)
-                        .build()
-                },
-                isMachineOnline = { true },
-                blockBytesProvider = { blockBytes },
-                clock = { testScheduler.currentTime },
-                sleeper = { ms -> kotlinx.coroutines.delay(ms) },
-                ioDispatcher = dispatcher,
+            // InspectDisk maps ENOSPC to STORAGE_FULL.
+            val fullInspect = executor.executeInspectDisk(
+                SharedFileInspectDiskEffect.newBuilder()
+                    .setOpId(1L).setSessionId("s1").setFileId("f0").setRequiredBytes(100L).build(),
             )
+            assertFalse(fullInspect.known)
+            assertEquals(SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL, fullInspect.errorKind)
 
-            store1.startOrResume("s1", file)
-            testScheduler.advanceUntilIdle()
-            val pausedState = store1.states.value["s1:f-resume"]
-            assertEquals(SharedFileTransferState.Paused(blockBytes.toLong(), sizeBytes), pausedState)
-            store1.close()
-
-            // Simulate process restart with fresh SharedFileStore reading persisted .part/.meta.
-            val resumedOffsets = mutableListOf<Long>()
-            pauseAtCall = -1
-            val store2 = SharedFileStore(
-                rootDir = root,
-                fetcher = SharedFileChunkFetcher { _, _, offset ->
-                    resumedOffsets += offset
-                    val block = ByteArray(blockBytes)
-                    val len = minOf(blockBytes.toLong(), sizeBytes - offset).toInt()
-                    System.arraycopy(fullPayload, offset.toInt(), block, 0, len)
-                    GetSharedFileChunkResponse.newBuilder()
-                        .setData(ByteString.copyFrom(block))
-                        .setTotalBytes(sizeBytes)
-                        .build()
-                },
-                isMachineOnline = { true },
-                blockBytesProvider = { blockBytes },
-                clock = { testScheduler.currentTime },
-                sleeper = { ms -> kotlinx.coroutines.delay(ms) },
-                ioDispatcher = dispatcher,
-                durationExtractor = { _, _ -> 102_000L },
+            // 0-byte file round-trip.
+            val emptyDigest = sha256(ByteArray(0))
+            val w0 = executor.executeWriteChunk(
+                SharedFileWriteChunkEffect.newBuilder()
+                    .setOpId(2L)
+                    .setSessionId("s1")
+                    .setFileId("f-empty")
+                    .setDisplayName("empty.txt")
+                    .setOffset(0L)
+                    .setData(ByteString.EMPTY)
+                    .setTotalSizeBytes(0L)
+                    .setChunkBytes(1024)
+                    .setCommittedOffset(0L)
+                    .setExpectedSha256(ByteString.copyFrom(emptyDigest))
+                    .setResetPartial(true)
+                    .build(),
             )
-            try {
-                assertEquals(
-                    SharedFileTransferState.Paused(blockBytes.toLong(), sizeBytes),
-                    store2.hydrate("s1", file),
-                )
-                store2.startOrResume("s1", file)
-                testScheduler.advanceUntilIdle()
-                // Should NOT re-fetch block 0!
-                assertEquals(listOf(1024L, 2048L, 3072L), resumedOffsets)
-                val finalState = store2.states.value["s1:f-resume"] as SharedFileTransferState.Downloaded
-                assertEquals(102_000L, finalState.durationMs)
-                assertArrayEquals(fullPayload, finalState.localFile.readBytes())
-            } finally {
-                store2.close()
-            }
-        } finally {
-            root.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun pauseAndCancelCannotBeOverwrittenByALateChunkResponse() = runTest {
-        for (cancel in listOf(false, true)) {
-            val root = tempRoot()
-            val file = sharedFile(sizeBytes = 2048L)
-            lateinit var store: SharedFileStore
-            var interrupt = true
-            val offsets = mutableListOf<Long>()
-            store = SharedFileStore(
-                rootDir = root,
-                fetcher = SharedFileChunkFetcher { _, _, offset ->
-                    offsets += offset
-                    if (offset == 1024L && interrupt) {
-                        // Model a synchronous response arriving while the UI cancels its job.
-                        if (cancel) store.cancel("s", file) else store.pause("s", file)
-                    }
-                    GetSharedFileChunkResponse.newBuilder()
-                        .setData(ByteString.copyFrom(ByteArray(1024)))
-                        .setTotalBytes(2048L).build()
-                },
-                isMachineOnline = { true },
-                blockBytesProvider = { 1024 },
-                ioDispatcher = StandardTestDispatcher(testScheduler),
+            assertTrue(w0.ok)
+            val vc0 = executor.executeVerifyAndCommit(
+                SharedFileVerifyAndCommitEffect.newBuilder()
+                    .setOpId(3L)
+                    .setSessionId("s1")
+                    .setFileId("f-empty")
+                    .setDisplayName("empty.txt")
+                    .setTotalSizeBytes(0L)
+                    .setExpectedSha256(ByteString.copyFrom(emptyDigest))
+                    .build(),
             )
-            try {
-                store.startOrResume("s", file)
-                testScheduler.advanceUntilIdle()
-                if (cancel) {
-                    assertEquals(SharedFileTransferState.Idle, store.states.value["s:file-1"])
-                    assertFalse(File(root, "s/file-1/download.part").exists())
-                } else {
-                    assertEquals(SharedFileTransferState.Paused(1024, 2048), store.states.value["s:file-1"])
-                    assertEquals(1024L, File(root, "s/file-1/download.part").length())
-                }
-                interrupt = false
-                offsets.clear()
-                store.startOrResume("s", file)
-                testScheduler.advanceUntilIdle()
-                assertEquals(if (cancel) listOf(0L, 1024L) else listOf(1024L), offsets)
-                assertTrue(store.states.value["s:file-1"] is SharedFileTransferState.Downloaded)
-            } finally {
-                store.close()
-                root.deleteRecursively()
-            }
-        }
-    }
+            assertTrue(vc0.ok)
+            val emptyFile = executor.localFileIfDownloaded("s1", "f-empty", "empty.txt")
+            assertNotNull(emptyFile)
+            assertEquals(0L, emptyFile!!.length())
 
-    @Test
-    fun cancelAndChecksumMismatchDeletePartialFile() = runTest {
-        val root = tempRoot()
-        try {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val blockBytes = 512
-            val payload = deterministicBytes(1200)
+            // Checksum mismatch deletes partial files and returns CHECKSUM_MISMATCH.
+            val payload = ByteArray(100) { 7 }
             val wrongHash = ByteArray(32) { 0x5A }
-            val file = sharedFile(id = "f-bad", name = "bad.zip", sizeBytes = 1200L, sha256 = wrongHash)
-
-            val store = SharedFileStore(
-                rootDir = root,
-                fetcher = SharedFileChunkFetcher { _, _, offset ->
-                    val block = ByteArray(blockBytes)
-                    val len = minOf(blockBytes.toLong(), 1200L - offset).toInt()
-                    System.arraycopy(payload, offset.toInt(), block, 0, len)
-                    GetSharedFileChunkResponse.newBuilder()
-                        .setData(ByteString.copyFrom(block))
-                        .setTotalBytes(1200L)
-                        .build()
-                },
-                isMachineOnline = { true },
-                blockBytesProvider = { blockBytes },
-                clock = { testScheduler.currentTime },
-                sleeper = { ms -> kotlinx.coroutines.delay(ms) },
-                ioDispatcher = dispatcher,
+            executor.executeWriteChunk(
+                SharedFileWriteChunkEffect.newBuilder()
+                    .setOpId(4L)
+                    .setSessionId("s1")
+                    .setFileId("f-bad")
+                    .setDisplayName("bad.bin")
+                    .setOffset(0L)
+                    .setData(ByteString.copyFrom(payload))
+                    .setTotalSizeBytes(100L)
+                    .setChunkBytes(1024)
+                    .setCommittedOffset(100L)
+                    .setExpectedSha256(ByteString.copyFrom(wrongHash))
+                    .setResetPartial(true)
+                    .build(),
             )
-            try {
-                store.startOrResume("s1", file)
-                testScheduler.advanceUntilIdle()
-                assertEquals(
-                    SharedFileTransferState.Failed(SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH),
-                    store.states.value["s1:f-bad"],
-                )
-                assertEquals(0L, store.usedBytes())
-
-                // Cancel deletes partial files too.
-                val goodHash = java.security.MessageDigest.getInstance("SHA-256").digest(payload)
-                val goodFile = sharedFile(id = "f-cancel", name = "good.zip", sizeBytes = 1200L, sha256 = goodHash)
-                val cancelStore = SharedFileStore(
-                    rootDir = File(root, "cancel"),
-                    fetcher = SharedFileChunkFetcher { _, _, _ ->
-                        kotlinx.coroutines.delay(100)
-                        GetSharedFileChunkResponse.getDefaultInstance()
-                    },
-                    isMachineOnline = { true },
-                    blockBytesProvider = { blockBytes },
-                    ioDispatcher = dispatcher,
-                )
-                cancelStore.startOrResume("s1", goodFile)
-                testScheduler.runCurrent()
-                cancelStore.cancel("s1", goodFile)
-                testScheduler.advanceUntilIdle()
-                assertEquals(SharedFileTransferState.Idle, cancelStore.states.value["s1:f-cancel"])
-                assertFalse(File(root, "cancel/s1/f-cancel/download.part").exists())
-                cancelStore.close()
-            } finally {
-                store.close()
-            }
+            val badVc = executor.executeVerifyAndCommit(
+                SharedFileVerifyAndCommitEffect.newBuilder()
+                    .setOpId(5L)
+                    .setSessionId("s1")
+                    .setFileId("f-bad")
+                    .setDisplayName("bad.bin")
+                    .setTotalSizeBytes(100L)
+                    .setExpectedSha256(ByteString.copyFrom(wrongHash))
+                    .build(),
+            )
+            assertFalse(badVc.ok)
+            assertEquals(SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_CHECKSUM_MISMATCH, badVc.errorKind)
+            assertFalse(File(root, "s1/f-bad/download.part").exists())
+            assertFalse(File(root, "s1/f-bad/partial.meta").exists())
         } finally {
+            executor.close()
             root.deleteRecursively()
         }
     }
 
     @Test
-    fun transientDisconnectWaitsUpTo30SecondsAndRetriesOnce() = runTest {
+    fun scanLocalCleansLegacyMetaFormatAndEvictedCommittedFiles() = runTest {
         val root = tempRoot()
-        try {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val blockBytes = 512
-            val payload = deterministicBytes(800)
-            val hash = java.security.MessageDigest.getInstance("SHA-256").digest(payload)
-            val file = sharedFile(id = "f-retry", name = "doc.pdf", sizeBytes = 800L, sha256 = hash)
-
-            var online = true
-            var attempts = 0
-            val store = SharedFileStore(
-                rootDir = root,
-                fetcher = SharedFileChunkFetcher { _, _, offset ->
-                    attempts++
-                    if (attempts == 2) {
-                        online = false
-                        throw CommandException(CommandException.UNAVAILABLE, "offline")
-                    }
-                    val block = ByteArray(blockBytes)
-                    val len = minOf(blockBytes.toLong(), 800L - offset).toInt()
-                    System.arraycopy(payload, offset.toInt(), block, 0, len)
-                    GetSharedFileChunkResponse.newBuilder()
-                        .setData(ByteString.copyFrom(block))
-                        .setTotalBytes(800L)
-                        .build()
-                },
-                isMachineOnline = {
-                    // Come back online after 5 seconds inside the 30s window.
-                    if (!online && testScheduler.currentTime >= 5_000L) online = true
-                    online
-                },
-                blockBytesProvider = { blockBytes },
-                clock = { testScheduler.currentTime },
-                sleeper = { ms -> kotlinx.coroutines.delay(ms) },
-                ioDispatcher = dispatcher,
-            )
-            try {
-                store.startOrResume("s1", file)
-                testScheduler.advanceUntilIdle()
-                val st = store.states.value["s1:f-retry"]
-                assertTrue("should recover after reconnect, got $st", st is SharedFileTransferState.Downloaded)
-                assertEquals(3, attempts) // block0 ok, block1 fails, block1 retried ok
-            } finally {
-                store.close()
-            }
-        } finally {
-            root.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun remainingTimeIsHiddenForTheFirstThreeSeconds() = runTest {
-        val root = tempRoot()
-        val file = sharedFile(sizeBytes = 5120)
-        lateinit var store: SharedFileStore
-        store = SharedFileStore(
+        val executor = SharedFileIoExecutor(
             rootDir = root,
-            fetcher = SharedFileChunkFetcher { _, _, offset ->
-                val state = store.states.value["s:file-1"] as SharedFileTransferState.Downloading
-                if (offset < 3072) assertEquals(null, state.etaSeconds)
-                if (offset == 3072L) assertTrue(state.etaSeconds != null)
-                kotlinx.coroutines.delay(1000)
-                GetSharedFileChunkResponse.newBuilder().setTotalBytes(5120)
-                    .setData(ByteString.copyFrom(ByteArray(1024))).build()
-            },
-            isMachineOnline = { true },
-            blockBytesProvider = { 1024 },
-            clock = { testScheduler.currentTime },
             ioDispatcher = StandardTestDispatcher(testScheduler),
         )
         try {
-            store.startOrResume("s", file)
-            testScheduler.advanceUntilIdle()
-            assertTrue(store.states.value["s:file-1"] is SharedFileTransferState.Downloaded)
-        } finally {
-            store.close()
-            root.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun longDisconnectFailsWithBlocksIntactAndRetryStartsAtTheirOffset() = runTest {
-        val root = tempRoot()
-        val offsets = mutableListOf<Long>()
-        var online = true
-        var drop = true
-        val file = sharedFile(sizeBytes = 2048)
-        val store = SharedFileStore(
-            rootDir = root,
-            fetcher = SharedFileChunkFetcher { _, _, offset ->
-                offsets += offset
-                if (drop && offset > 0) {
-                    online = false
-                    throw CommandException("network", "connection dropped")
-                }
-                GetSharedFileChunkResponse.newBuilder().setTotalBytes(2048)
-                    .setData(ByteString.copyFrom(ByteArray(1024))).build()
-            },
-            isMachineOnline = { online },
-            blockBytesProvider = { 1024 },
-            clock = { testScheduler.currentTime },
-            sleeper = { kotlinx.coroutines.delay(it) },
-            ioDispatcher = StandardTestDispatcher(testScheduler),
-        )
-        try {
-            store.startOrResume("s", file)
-            testScheduler.advanceUntilIdle()
-            assertEquals(30_000L, testScheduler.currentTime)
-            assertEquals(SharedFileTransferState.Failed(SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED), store.states.value["s:file-1"])
-            assertEquals(1024L, File(root, "s/file-1/download.part").length())
-            online = true
-            drop = false
-            offsets.clear()
-            store.startOrResume("s", file)
-            testScheduler.advanceUntilIdle()
-            assertEquals(listOf(1024L), offsets)
-            assertTrue(store.states.value["s:file-1"] is SharedFileTransferState.Downloaded)
-        } finally {
-            store.close()
-            root.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun disconnectAfter30sTimeoutAndNotFoundAndDiskFull() = runTest {
-        val root = tempRoot()
-        try {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val blockBytes = 512
-            val payload = deterministicBytes(800)
-            val hash = java.security.MessageDigest.getInstance("SHA-256").digest(payload)
-
-            val fileDropZero = sharedFile(id = "f-drop0", name = "a.bin", sizeBytes = 800L, sha256 = hash)
-            val storeDrop = SharedFileStore(
-                rootDir = File(root, "drop"),
-                fetcher = SharedFileChunkFetcher { _, _, _ ->
-                    throw CommandException("network", "network dropped")
-                },
-                isMachineOnline = { true },
-                blockBytesProvider = { blockBytes },
-                clock = { testScheduler.currentTime },
-                sleeper = { ms -> kotlinx.coroutines.delay(ms) },
-                ioDispatcher = dispatcher,
-            )
-            storeDrop.startOrResume("s1", fileDropZero)
-            testScheduler.advanceUntilIdle()
-            assertEquals(
-                SharedFileTransferState.Failed(SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED),
-                storeDrop.states.value["s1:f-drop0"],
-            )
-            storeDrop.close()
-
-            val fileNotFound = sharedFile(id = "f-gone", name = "gone.pdf", sizeBytes = 100L)
-            val storeGone = SharedFileStore(
-                rootDir = File(root, "gone"),
-                fetcher = SharedFileChunkFetcher { _, _, _ ->
-                    throw CommandException("not_found", "cleaned")
-                },
-                isMachineOnline = { true },
-                blockBytesProvider = { blockBytes },
-                ioDispatcher = dispatcher,
-            )
-            storeGone.startOrResume("s1", fileNotFound)
-            testScheduler.advanceUntilIdle()
-            assertEquals(SharedFileTransferState.CleanedUp, storeGone.states.value["s1:f-gone"])
-            storeGone.close()
-
-            val fileFull = sharedFile(id = "f-full", name = "big.zip", sizeBytes = 100L)
-            val storeFull = SharedFileStore(
-                rootDir = File(root, "full"),
-                fetcher = SharedFileChunkFetcher { _, _, _ ->
-                    throw IOException("write failed: ENOSPC (No space left on device)")
-                },
-                isMachineOnline = { true },
-                blockBytesProvider = { blockBytes },
-                ioDispatcher = dispatcher,
-            )
-            storeFull.startOrResume("s1", fileFull)
-            testScheduler.advanceUntilIdle()
-            assertEquals(
-                SharedFileTransferState.Failed(SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL, "write failed: ENOSPC (No space left on device)"),
-                storeFull.states.value["s1:f-full"],
-            )
-            storeFull.close()
-        } finally {
-            root.deleteRecursively()
-        }
-    }
-
-    @Test
-    fun localStateEventsThrottleProgressAndEmitTransitionsImmediately() = runTest {
-        val root = tempRoot()
-        val events = mutableListOf<SharedFileLocalStateEvent>()
-        try {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val blockBytes = 16
-            val sizeBytes = 6400L // 400 blocks = 0.25% each
-            val file = sharedFile(id = "f-throt", name = "big.bin", sizeBytes = sizeBytes)
-            val store = SharedFileStore(
-                rootDir = root,
-                fetcher = SharedFileChunkFetcher { _, _, _ ->
-                    kotlinx.coroutines.delay(50) // < 250ms throttle window, 0.25% per block
-                    GetSharedFileChunkResponse.newBuilder()
-                        .setData(ByteString.copyFrom(ByteArray(blockBytes)))
-                        .setTotalBytes(sizeBytes)
-                        .build()
-                },
-                isMachineOnline = { true },
-                blockBytesProvider = { blockBytes },
-                clock = { testScheduler.currentTime },
-                sleeper = { kotlinx.coroutines.delay(it) },
-                ioDispatcher = dispatcher,
-                onLocalStateEvent = { events += it },
-            )
-            try {
-                store.startOrResume("s1", file)
-                testScheduler.advanceUntilIdle()
-                val dlEvents = events.filter {
-                    it.updatesCount == 1 &&
-                        it.getUpdates(0).fileId == "f-throt" &&
-                        it.getUpdates(0).status == SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_DOWNLOADING
-                }
-                // 400 chunks at 50ms each = 20s -> ~100 integer % changes, strictly fewer than 400 raw chunks.
-                assertTrue("expected throttling (< 200 events for 400 chunks), got ${dlEvents.size}", dlEvents.size < 200)
-                assertTrue("expected downloaded event", events.any {
-                    it.updatesCount == 1 &&
-                        it.getUpdates(0).fileId == "f-throt" &&
-                        it.getUpdates(0).status == SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_DOWNLOADED
-                })
-
-                val snapshot = store.buildFullLocalStateEvent()
-                assertTrue(snapshot.replaceAll)
-                assertEquals(1, snapshot.updatesCount)
-                assertEquals("f-throt", snapshot.getUpdates(0).fileId)
-
-                events.clear()
-                store.removeSession("s1")
-                assertEquals(1, events.size)
-                assertEquals("s1", events.single().clearSessionId)
-
-                events.clear()
-                store.clearAll()
-                assertEquals(1, events.size)
-                assertTrue(events.single().replaceAll)
-                assertEquals(0, events.single().updatesCount)
-            } finally {
-                store.close()
+            // Legacy pre-3B directory with old meta.properties + download.part (no format=2).
+            val legacyDir = File(root, "s-old/f-old").apply { mkdirs() }
+            File(legacyDir, "download.part").writeBytes(ByteArray(1024))
+            val legacyProps = Properties().apply {
+                setProperty("sizeBytes", "2048")
+                setProperty("blockBytes", "1024")
+                setProperty("completedOffset", "1024")
+                setProperty("sha256", "00".repeat(32))
             }
+            File(legacyDir, "meta.properties").outputStream().use { legacyProps.store(it, null) }
+
+            // Evicted committed file: valid committed.meta, but file/<name> was deleted by OS cache cleaner.
+            val evictedFile = executor.seedCommittedFileForTest("s-evict", "f-evict", "gone.pdf", ByteArray(64))
+            assertTrue(evictedFile.delete())
+
+            // Valid v2 committed file should survive scan.
+            executor.seedCommittedFileForTest("s-ok", "f-ok", "keep.pdf", ByteArray(128))
+
+            val scanned = executor.executeScanLocal(SharedFileScanLocalEffect.newBuilder().setOpId(9L).build())
+            assertEquals(1, scanned.entriesCount)
+            assertEquals("s-ok", scanned.getEntries(0).sessionId)
+            assertEquals("f-ok", scanned.getEntries(0).fileId)
+            assertFalse("legacy dir must be cleaned up", legacyDir.exists())
+            assertFalse("evicted dir must be cleaned up", File(root, "s-evict/f-evict").exists())
         } finally {
+            executor.close()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun globalFifoQueueSerializesDirectoryAndPerFileEffects() {
+        val root = tempRoot()
+        val order = CopyOnWriteArrayList<String>()
+        val probeLatch = CountDownLatch(1)
+        val allowProbeFinish = CountDownLatch(1)
+        val executor = SharedFileIoExecutor(
+            rootDir = root,
+            availableBytesProvider = {
+                order += "inspect-start"
+                probeLatch.countDown()
+                allowProbeFinish.await(5, TimeUnit.SECONDS)
+                order += "inspect-end"
+                1_000_000L
+            },
+            onLocalDeleted = { sid, fid -> order += "deleted:$sid:$fid" },
+        )
+        val host = CoreHost()
+        try {
+            executor.attach(host)
+            // Enqueue InspectDisk (blocks on allowProbeFinish), followed by DeleteSession & ClearAll.
+            host.onSharedFileInspectDisk(
+                SharedFileInspectDiskEffect.newBuilder()
+                    .setOpId(10L).setSessionId("s1").setFileId("f1").setRequiredBytes(10L).build(),
+            )
+            host.onSharedFileDeleteSession(
+                SharedFileDeleteSessionEffect.newBuilder().setSessionId("s1").build(),
+            )
+            host.onSharedFileClearAll(SharedFileClearAllEffect.getDefaultInstance())
+
+            assertTrue(probeLatch.await(5, TimeUnit.SECONDS))
+            // DeleteSession and ClearAll MUST NOT run until InspectDisk finishes.
+            assertEquals(listOf("inspect-start"), order.toList())
+            allowProbeFinish.countDown()
+            kotlinx.coroutines.runBlocking { executor.awaitIdle() }
+            assertEquals(
+                listOf("inspect-start", "inspect-end", "deleted:s1:null", "deleted:null:null"),
+                order.toList(),
+            )
+        } finally {
+            host.close()
+            executor.close()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun realCoreHostSmokeScansDeletesAndClearsThroughFifoExecutor() {
+        val root = tempRoot()
+        val executor = SharedFileIoExecutor(rootDir = root)
+        val host = CoreHost()
+        try {
+            val committed = executor.seedCommittedFileForTest("s-smoke", "f-smoke", "report.pdf", ByteArray(200))
+            assertTrue(committed.isFile)
+
+            executor.attach(host)
+            host.sendSharedFileConfig(
+                localCacheMaxBytes = 0L,
+                storageFullKind = SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL,
+                scanLocal = true,
+            )
+            // Wait for Core -> ScanLocal -> LocalScanned round-trip.
+            kotlinx.coroutines.runBlocking {
+                host.dispatchAndWait(
+                    io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                        .setSharedFileSetVisibleSession(
+                            io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction
+                                .newBuilder().setSessionId("s-smoke"),
+                        ).build(),
+                )
+                executor.awaitIdle()
+            }
+            assertTrue(committed.isFile)
+
+            // DeleteLocalAction -> Core emits SharedFileDeleteLocalEffect -> executor deletes file.
+            kotlinx.coroutines.runBlocking {
+                host.dispatchAndWait(
+                    io.github.lewin671.remoteagent.core.proto.Event.newBuilder()
+                        .setSharedFileDeleteLocal(
+                            io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction
+                                .newBuilder().setSessionId("s-smoke").setFileId("f-smoke"),
+                        ).build(),
+                )
+                executor.awaitIdle()
+            }
+            assertFalse("DeleteLocalAction must remove local file", committed.exists())
+
+            // ClearAllAction -> Core emits SharedFileClearAllEffect -> executor wipes rootDir.
+            val extra = executor.seedCommittedFileForTest("s-other", "f-other", "notes.txt", ByteArray(50))
+            assertTrue(extra.isFile)
+            kotlinx.coroutines.runBlocking {
+                host.clearAllSharedFilesAndWait()
+                executor.awaitIdle()
+            }
+            assertFalse("ClearAllAction must wipe all files", extra.exists())
+            assertEquals(0L, executor.usedBytes())
+        } finally {
+            host.close()
+            executor.close()
             root.deleteRecursively()
         }
     }

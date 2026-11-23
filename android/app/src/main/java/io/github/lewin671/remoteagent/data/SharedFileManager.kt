@@ -13,30 +13,35 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.StatFs
 import android.provider.MediaStore
+import android.system.ErrnoException
+import android.system.OsConstants
 import android.util.LruCache
 import android.webkit.MimeTypeMap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.FileProvider
-import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.SharedFileChunkFetcher
-import io.github.lewin671.remoteagent.core.SharedFileStore
-import io.github.lewin671.remoteagent.core.SharedFileTarget
-import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.SharedFileIoExecutor
+import io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileFailureKind
 import io.github.lewin671.remoteagent.core.proto.SharedFileKind
-import io.github.lewin671.remoteagent.core.sharedFileBlockBytes
-import io.github.lewin671.remoteagent.core.toSharedFileTarget
 import java.io.File
 import java.io.IOException
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 
 /**
- * App-wide coordinator for Agent-shared files (`cache/shared-files/<sessionId>/<fileId>/`).
- * Survives leaving individual session screens and cleans up per-session or on logout.
+ * App-wide platform coordinator for Agent-shared files (`cache/shared-files/<sessionId>/<fileId>/`).
+ *
+ * Download orchestration, chunking, reconnect, ETA, and auto-open eligibility live in Core.
+ * This class owns the single global FIFO storage executor, thumbnail/duration extraction,
+ * and Android open/preview/export/share APIs.
  */
 class SharedFileManager(
     private val context: Context,
@@ -44,75 +49,146 @@ class SharedFileManager(
 ) {
     val rootDir = File(context.cacheDir, "shared-files")
 
-    val store = SharedFileStore(
-        rootDir = rootDir,
-        fetcher = SharedFileChunkFetcher { sid, fid, offset ->
-            val r = remoteProvider() ?: throw CommandException("unavailable", "signed out")
-            r.getSharedFileChunk(sid, fid, offset)
-        },
-        isMachineOnline = { sid ->
-            val st = remoteProvider()?.state?.value
-            val mid = st?.sessions?.get(sid)?.machineId
-            mid != null && st.peer(mid).available
-        },
-        blockBytesProvider = { sid ->
-            val st = remoteProvider()?.state?.value
-            val mid = st?.sessions?.get(sid)?.machineId
-            sharedFileBlockBytes(mid?.let { st.machines[it] })
-        },
-        durationExtractor = { file, hasMediaDuration ->
-            if (hasMediaDuration) extractMediaDurationMs(file) else null
-        },
-        onLocalStateEvent = { event ->
-            remoteProvider()?.sendSharedFileLocalState(event)
-        },
-    )
-
     private val thumbCache = LruCache<String, ImageBitmap>(64)
 
-    /** Replays full local state (`replace_all = true`) when attaching a fresh Remote / Core instance. */
+    private val _completions = MutableSharedFlow<SharedFileCompletedEffect>(extraBufferCapacity = 32)
+    val completions: SharedFlow<SharedFileCompletedEffect> = _completions.asSharedFlow()
+
+    private val visibleLock = Any()
+    private var visibleToken: Any? = null
+    private var visibleSessionId: String = ""
+
+    val executor = SharedFileIoExecutor(
+        rootDir = rootDir,
+        availableBytesProvider = { dir ->
+            dir.mkdirs()
+            StatFs(dir.path).availableBytes
+        },
+        durationExtractor = { file -> extractMediaDurationMs(file) },
+        isStorageFullError = { t ->
+            t is ErrnoException && (t.errno == OsConstants.ENOSPC || t.errno == OsConstants.EDQUOT)
+        },
+        onLocalDeleted = { _, _ -> thumbCache.evictAll() },
+    )
+
+    /** Wires the FIFO I/O executor to [remote]'s CoreHost, configures Android cache policy, and scans disk. */
     fun attachRemote(remote: Remote) {
-        remote.sendSharedFileLocalState(store.buildFullLocalStateEvent())
+        executor.attach(remote.coreHost)
+        remote.coreHost.onSharedFileCompleted = { eff -> _completions.tryEmit(eff) }
+        remote.coreHost.sendSharedFileConfig(
+            localCacheMaxBytes = 0L,
+            storageFullKind = SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL,
+            scanLocal = true,
+        )
+        val activeSid = synchronized(visibleLock) { visibleSessionId }
+        if (activeSid.isNotEmpty()) {
+            remote.setSharedFileVisibleSession(activeSid)
+        }
     }
 
-    fun registerFile(sessionId: String, item: SessionSharedFileItem) {
-        store.hydrate(sessionId, item.toSharedFileTarget())
+    fun enterVisibleSession(token: Any, sessionId: String) {
+        if (sessionId.isEmpty()) return
+        synchronized(visibleLock) {
+            visibleToken = token
+            visibleSessionId = sessionId
+        }
+        remoteProvider()?.setSharedFileVisibleSession(sessionId)
     }
 
-    fun startOrResume(sessionId: String, item: SessionSharedFileItem, userInitiated: Boolean = true) {
-        store.startOrResume(sessionId, item.toSharedFileTarget(), userInitiated)
+    fun leaveVisibleSession(token: Any) {
+        val cleared = synchronized(visibleLock) {
+            if (visibleToken === token) {
+                visibleToken = null
+                visibleSessionId = ""
+                true
+            } else {
+                false
+            }
+        }
+        if (cleared) {
+            remoteProvider()?.setSharedFileVisibleSession("")
+        }
     }
 
-    fun pause(sessionId: String, item: SessionSharedFileItem) {
-        store.pause(sessionId, item.toSharedFileTarget())
+    fun startDownload(sessionId: String, fileId: String, autoOpenIfStaying: Boolean = true) {
+        remoteProvider()?.startSharedFileDownload(sessionId, fileId, autoOpenIfStaying)
     }
 
-    fun cancel(sessionId: String, item: SessionSharedFileItem) {
-        store.cancel(sessionId, item.toSharedFileTarget())
+    fun pause(sessionId: String, fileId: String) {
+        remoteProvider()?.pauseSharedFileDownload(sessionId, fileId)
     }
 
-    fun deleteLocal(sessionId: String, item: SessionSharedFileItem) {
-        store.deleteLocal(sessionId, item.toSharedFileTarget())
+    fun cancel(sessionId: String, fileId: String) {
+        remoteProvider()?.cancelSharedFileDownload(sessionId, fileId)
+    }
+
+    fun deleteLocal(sessionId: String, fileId: String) {
+        remoteProvider()?.deleteSharedFileLocal(sessionId, fileId)
+    }
+
+    fun forgetSession(sessionId: String) {
+        val r = remoteProvider()
+        if (r != null) {
+            r.forgetSharedFileSession(sessionId)
+        } else {
+            executor.enqueueDeleteSession(sessionId)
+        }
+    }
+
+    suspend fun clearAll() {
+        val r = remoteProvider()
+        if (r != null) {
+            r.clearAllSharedFilesAndWait()
+            executor.awaitIdle()
+        } else {
+            executor.clearAllAndWait()
+        }
         thumbCache.evictAll()
     }
 
-    fun localFileIfDownloaded(sessionId: String, fileId: String): File? =
-        store.localFileIfDownloaded(sessionId, fileId)
-
-    fun localFileFor(sessionId: String, target: SharedFileTarget): File =
-        store.localFileFor(sessionId, target)
-
-    fun removeSession(sessionId: String) {
-        store.removeSession(sessionId)
+    fun clearAllOnDiskAsync() {
+        executor.enqueueClearAll()
         thumbCache.evictAll()
     }
 
-    fun clearAll() {
-        store.clearAll()
+    suspend fun clearAllOnDisk() {
+        executor.clearAllAndWait()
         thumbCache.evictAll()
     }
 
-    fun usedBytes(): Long = store.usedBytes()
+    fun reportDurationProbed(sessionId: String, fileId: String, durationMs: Long) {
+        if (durationMs <= 0L) return
+        executor.enqueuePersistDuration(sessionId, fileId, durationMs)
+        remoteProvider()?.reportSharedFileDurationProbed(sessionId, fileId, durationMs)
+    }
+
+    fun reportLocalMissing(sessionId: String, fileId: String) {
+        remoteProvider()?.reportSharedFileLocalMissing(sessionId, fileId)
+    }
+
+    fun localFileIfDownloaded(sessionId: String, fileId: String, displayName: String = ""): File? =
+        executor.localFileIfDownloaded(sessionId, fileId, displayName)
+
+    fun localFilePath(sessionId: String, fileId: String, displayName: String): File =
+        executor.localFilePath(sessionId, fileId, displayName)
+
+    fun usedBytes(): Long = executor.usedBytes()
+
+    fun close() {
+        executor.close()
+    }
+
+    fun seedCommittedFileForTest(
+        sessionId: String,
+        fileId: String,
+        displayName: String,
+        bytes: ByteArray,
+        durationMs: Long? = null,
+    ): File = executor.seedCommittedFileForTest(sessionId, fileId, displayName, bytes, durationMs)
+
+    fun emitCompletedForTest(effect: SharedFileCompletedEffect) {
+        _completions.tryEmit(effect)
+    }
 
     fun putThumbnailForTest(file: File, targetPx: Int, bitmap: ImageBitmap) {
         thumbCache.put("${file.absolutePath}:${file.lastModified()}:$targetPx", bitmap)
@@ -184,7 +260,7 @@ class SharedFileManager(
         val mmr = MediaMetadataRetriever()
         return try {
             mmr.setDataSource(file.absolutePath)
-            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.takeIf { it >= 0L }
+            mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.takeIf { it > 0L }
         } catch (_: Exception) {
             null
         } finally {
@@ -192,10 +268,7 @@ class SharedFileManager(
         }
     }
 
-    private fun safeName(displayName: String): String =
-        displayName.substringAfterLast('/').substringAfterLast('\\').trim().takeIf {
-            it.isNotEmpty() && it != "." && it != ".."
-        } ?: "file"
+    private fun safeName(displayName: String): String = SharedFileIoExecutor.safeLocalFileName(displayName)
 
     fun contentUri(file: File): Uri =
         FileProvider.getUriForFile(context, "${context.packageName}.files", file)

@@ -292,11 +292,15 @@ internal fun SharedMediaPlayerDialog(
     video: Boolean,
     onDismiss: () -> Unit,
     onAction: (SharedFileMenuAction) -> Unit,
+    onDurationKnown: (Long) -> Unit = {},
 ) {
     val context = LocalContext.current
     val orientation = LocalConfiguration.current.orientation
     val engine = remember(localFile) { MediaPlayerEngine(context.applicationContext, localFile, video) }
     DisposableEffect(engine) { onDispose { engine.release() } }
+    LaunchedEffect(engine.durationMs) {
+        if (engine.durationMs > 0) onDurationKnown(engine.durationMs.toLong())
+    }
     // Android 11 can retain stale edge-gesture regions when a dialog rotates in place.
     // Recreate just the window; the engine above keeps its playback position and state.
     key(orientation) {
