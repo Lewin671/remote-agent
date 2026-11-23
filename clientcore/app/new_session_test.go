@@ -340,3 +340,143 @@ func TestDirPickerKeyedIsolation(t *testing.T) {
 		t.Fatalf("empty picker_key view must stay closed/empty, got %+v", p)
 	}
 }
+
+func TestNewSessionCreateSessionDiskFullLifecycle(t *testing.T) {
+	c := New()
+	defer c.Close()
+	seedOneMachine(c)
+
+	const projKey = "/Users/alice"
+	c.Dispatch(&corev1.Event{
+		NowMs: 1050,
+		Event: &corev1.Event_AccountPrefsFetched{
+			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
+				OpId: 4,
+				Prefs: &corev1.PlainAccountPrefs{
+					Revision: 1,
+					Prefs: &v1.ProjectPrefs{
+						Schema:   1,
+						Settings: []*v1.ProjectSettings{{Path: projKey, MachineId: "m-1", Agent: v1.Agent_AGENT_CODEX}},
+					},
+				},
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1060,
+		Event: &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{ProjectKey: projKey}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1070,
+		Event: &corev1.Event_NewSessionSetPrompt{NewSessionSetPrompt: &corev1.NewSessionSetPromptAction{Prompt: "hello"}},
+	})
+
+	viewNS := func() *corev1.NewSessionViewModel {
+		vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_NewSession{NewSession: &corev1.NewSessionScreenRequest{ProjectKey: projKey}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return vm.GetNewSession()
+	}
+
+	submitAndFindCmd := func(nowMs int64) *corev1.DispatchCommandEffect {
+		batch := c.Dispatch(&corev1.Event{
+			NowMs: nowMs,
+			Event: &corev1.Event_NewSessionSubmit{NewSessionSubmit: &corev1.NewSessionSubmitAction{ProjectKey: projKey}},
+		})
+		for _, eff := range batch.GetEffects() {
+			if dc := eff.GetDispatchCommand(); dc != nil {
+				return dc
+			}
+		}
+		t.Fatalf("expected DispatchCommandEffect on NewSessionSubmit")
+		return nil
+	}
+
+	settleErr := func(nowMs int64, dc *corev1.DispatchCommandEffect, code, msg string) {
+		c.Dispatch(&corev1.Event{
+			NowMs: nowMs,
+			Event: &corev1.Event_CommandOutcome{
+				CommandOutcome: &corev1.CommandOutcomeEvent{
+					RequestId:         dc.RequestId,
+					AttemptId:         dc.AttemptId,
+					Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+					AttemptBound:      true,
+					Signed:            true,
+					HashesMatch:       true,
+					OuterMatchesInner: true,
+					OuterOutcome:      "executed",
+					OuterReason:       code,
+					Result: &v1.CommandResult{
+						Outcome:         "executed",
+						Reason:          code,
+						ResultAvailable: true,
+						ErrorCode:       code,
+						ErrorMessage:    msg,
+					},
+				},
+			},
+		})
+	}
+
+	// 1. Failing createSession with errorCode=="disk_full" sets DiskFull and emits NOTICE_KIND_DISK_FULL.
+	dc1 := submitAndFindCmd(1080)
+	settleErr(1090, dc1, "disk_full", "no space left on device")
+
+	ns := viewNS()
+	if !ns.GetDiskFull() || ns.GetCanStart() {
+		t.Fatalf("expected DiskFull=true and CanStart=false after disk_full failure, got diskFull=%v canStart=%v", ns.GetDiskFull(), ns.GetCanStart())
+	}
+	var hasDiskFullNotice bool
+	for _, n := range ns.GetNotices() {
+		if n.GetKind() == corev1.NoticeKind_NOTICE_KIND_DISK_FULL && n.GetTargetMachineId() == "m-1" {
+			hasDiskFullNotice = true
+		}
+	}
+	if !hasDiskFullNotice {
+		t.Fatalf("expected NOTICE_KIND_DISK_FULL targeting m-1, got notices=%+v", ns.GetNotices())
+	}
+
+	// 2. Retrying clears DiskFull while in flight; a non-disk_full failure stays DiskFull=false (ordinary FAILED notice).
+	dc2 := submitAndFindCmd(1100)
+	if viewNS().GetDiskFull() {
+		t.Fatalf("expected DiskFull cleared on retry submit")
+	}
+	settleErr(1110, dc2, "storage_exhausted", "quota exceeded")
+	ns2 := viewNS()
+	if ns2.GetDiskFull() {
+		t.Fatalf("expected DiskFull=false after storage_exhausted failure")
+	}
+	for _, n := range ns2.GetNotices() {
+		if n.GetKind() == corev1.NoticeKind_NOTICE_KIND_DISK_FULL {
+			t.Fatalf("unexpected NOTICE_KIND_DISK_FULL on storage_exhausted: %+v", n)
+		}
+	}
+
+	// 3. Re-trigger disk_full and verify switching machine or abandoning clears DiskFull.
+	dc3 := submitAndFindCmd(1120)
+	settleErr(1130, dc3, "disk_full", "no space left on device")
+	if !viewNS().GetDiskFull() {
+		t.Fatalf("expected DiskFull=true after second disk_full failure")
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1140,
+		Event: &corev1.Event_NewSessionAbandonStart{NewSessionAbandonStart: &corev1.NewSessionProjectAction{ProjectKey: projKey}},
+	})
+	if viewNS().GetDiskFull() {
+		t.Fatalf("expected DiskFull cleared on NewSessionAbandonStart")
+	}
+
+	dc4 := submitAndFindCmd(1150)
+	settleErr(1160, dc4, "disk_full", "no space left on device")
+	if !viewNS().GetDiskFull() {
+		t.Fatalf("expected DiskFull=true after third disk_full failure")
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1170,
+		Event: &corev1.Event_NewSessionSelectMachine{NewSessionSelectMachine: &corev1.NewSessionSelectMachineAction{MachineId: "m-1"}},
+	})
+	if viewNS().GetDiskFull() {
+		t.Fatalf("expected DiskFull cleared on NewSessionSelectMachine")
+	}
+}

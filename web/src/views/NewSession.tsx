@@ -224,13 +224,7 @@ export function NewBoxView(p: {
         </div>
       );
     }
-    // TODO(core): remove text fallback once clientcore/app/core.go sets draft.DiskFull on createSession errorCode=="disk_full".
-    if (
-      n.kind === NoticeKind.DISK_FULL ||
-      (n.kind === NoticeKind.FAILED &&
-        n.action === NoticeActionKind.RETRY_START &&
-        (vm.diskFull || renderText(n.text).includes(t("machine_status.disk_full"))))
-    ) {
+    if (n.kind === NoticeKind.DISK_FULL) {
       return <DiskFullCard key={`disk-${idx}`} onUsage={() => p.onOpenDiskUsage(n.targetMachineId || machineId)} onRetry={p.onRetryDiskFull ?? submit} />;
     }
     const label = NOTICE_ACTION_LABEL[n.action]?.();

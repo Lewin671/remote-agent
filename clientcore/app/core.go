@@ -316,6 +316,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.UnknownStart = false
 				d.StartError = ""
 				d.StartErrorText = nil
+				d.DiskFull = false
 				d.ActiveStartRequestID = ""
 				d.Prompt = ""
 				d.AttachmentCount = 0
@@ -361,6 +362,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.Frozen = true
 				d.Expired = sc.Expired
 				d.UnknownStart = true
+				d.DiskFull = false
 				d.StartErrorText = sc.ErrorText
 				d.StartError = sc.ErrorCode
 				if sc.Expired {
@@ -379,6 +381,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.Expired = false
 				d.UnknownStart = false
 				d.ActiveStartRequestID = ""
+				d.DiskFull = sc.ErrorCode == "disk_full"
 				d.StartErrorText = sc.ErrorText
 				d.StartError = sc.ErrorCode
 				if d.StartError == "" && d.StartErrorText == nil {
@@ -565,6 +568,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				d.MachineChosen = machID != ""
 				d.ConfigChosen = false
 				d.ResetOnNextOpen = false
+				d.DiskFull = false
 				d.AgentOverride = v1.Agent_AGENT_UNSPECIFIED
 				res := lists.ResolveProjectStart(&st.World, k.ProjectAdd.Path, machID, 0, nil, false)
 				if res.Found {
@@ -667,6 +671,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					d.DisabledFromAgent = v1.Agent_AGENT_UNSPECIFIED
 					d.ConfigInitialized = false
 					d.ResetOnNextOpen = false
+					d.DiskFull = false
 				}
 				psr := c.m.resolveDraftConfig(key, d)
 				c.m.syncDraftAutoSupport(key, psr)
@@ -704,6 +709,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				d.ConfigChosen = true
 				d.MachineChosen = true
 				d.ResetOnNextOpen = false
+				d.DiskFull = false
 				d.DisabledFromAgent = v1.Agent_AGENT_UNSPECIFIED
 				d.AgentOverride = d.Config.Agent
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
@@ -837,6 +843,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				}
 				if dispatched {
 					d.Busy = true
+					d.DiskFull = false
 					d.StartError = ""
 					d.StartErrorText = nil
 					d.ActiveStartRequestID = reqID
@@ -858,6 +865,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			d.Frozen = false
 			d.Expired = false
 			d.UnknownStart = false
+			d.DiskFull = false
 			d.StartError = ""
 			d.StartErrorText = nil
 			d.ActiveStartRequestID = ""
