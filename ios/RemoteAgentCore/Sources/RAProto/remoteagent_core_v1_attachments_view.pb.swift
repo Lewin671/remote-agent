@@ -323,6 +323,11 @@ public struct PBAttachmentEvalScreenRequest: Sendable {
   /// Optional list of image errors to classify and summarize.
   public var problems: [PBImageProblemInput] = []
 
+  /// Putting a failed message's attachments back into the draft: judge only the machine's
+  /// capabilities and the per-message limits, not whether it is online right now, so a
+  /// message that failed while offline can still be restored.
+  public var putBack: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -736,7 +741,7 @@ extension PBAttachmentCandidateDecision: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttachmentEvalScreenRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{3}current_images\0\u{3}current_files\0\u{1}candidates\0\u{1}problems\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{3}current_images\0\u{3}current_files\0\u{1}candidates\0\u{1}problems\0\u{3}put_back\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -750,6 +755,7 @@ extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
       case 4: try { try decoder.decodeSingularInt32Field(value: &self.currentFiles) }()
       case 5: try { try decoder.decodeRepeatedMessageField(value: &self.candidates) }()
       case 6: try { try decoder.decodeRepeatedMessageField(value: &self.problems) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.putBack) }()
       default: break
       }
     }
@@ -774,6 +780,9 @@ extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
     if !self.problems.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.problems, fieldNumber: 6)
     }
+    if self.putBack != false {
+      try visitor.visitSingularBoolField(value: self.putBack, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -784,6 +793,7 @@ extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.currentFiles != rhs.currentFiles {return false}
     if lhs.candidates != rhs.candidates {return false}
     if lhs.problems != rhs.problems {return false}
+    if lhs.putBack != rhs.putBack {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

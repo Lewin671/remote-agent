@@ -279,6 +279,7 @@ type AttachmentEvalScreenRequest struct {
 	CurrentFiles  int32
 	Candidates    []*AttachmentCandidateInput
 	Problems      []*ImageProblemInput
+	PutBack       bool
 }
 
 func (m *AttachmentEvalScreenRequest) GetMachineId() string {
@@ -317,6 +318,12 @@ func (m *AttachmentEvalScreenRequest) GetProblems() []*ImageProblemInput {
 	}
 	return nil
 }
+func (m *AttachmentEvalScreenRequest) GetPutBack() bool {
+	if m != nil {
+		return m.PutBack
+	}
+	return false
+}
 
 var LitewireDesc_AttachmentEvalScreenRequest = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&AttachmentEvalScreenRequest{}) },
@@ -325,6 +332,7 @@ var LitewireDesc_AttachmentEvalScreenRequest = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.SessionId), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.CurrentImages), Kind: litewire.KindInt32},
 		{Num: 4, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.CurrentFiles), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.PutBack), Kind: litewire.KindBool},
 	},
 }
 

@@ -2478,9 +2478,9 @@ func TestSessionImageViewerOutOfWindowAnchorAndNavigation(t *testing.T) {
 	}
 }
 
-func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
+func newAttachmentEvalCore(t *testing.T, online bool) *Core {
+	t.Helper()
 	c := New()
-	defer c.Close()
 
 	start := c.Dispatch(&corev1.Event{
 		NowMs: 900,
@@ -2520,7 +2520,7 @@ func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
 				Machines: []*corev1.DemoMachine{
 					{
 						MachineId: "m-att",
-						Online:    true,
+						Online:    online,
 						Meta: &v1.MachineMeta{
 							Hostname: "MacBook",
 							Capabilities: &v1.MachineCapabilities{
@@ -2543,6 +2543,13 @@ func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
 			},
 		},
 	})
+
+	return c
+}
+
+func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
+	c := newAttachmentEvalCore(t, true)
+	defer c.Close()
 
 	vm, err := c.View(&corev1.Screen{
 		Screen: &corev1.Screen_AttachmentEval{
@@ -2600,5 +2607,33 @@ func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
 		fev.GetImagesPickBlockedReason().GetKey() != "attachment.max_images" ||
 		fev.GetFilesPickBlockedReason().GetKey() != "attachment.max_files" {
 		t.Fatalf("at the limits the core must explain why picking is blocked: %+v / %+v", fev.GetImagesPickBlockedReason(), fev.GetFilesPickBlockedReason())
+	}
+}
+
+func TestAttachmentEvalPutBackIgnoresOffline(t *testing.T) {
+	c := newAttachmentEvalCore(t, false)
+	defer c.Close()
+
+	eval := func(putBack bool) *corev1.AttachmentEvalViewModel {
+		vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_AttachmentEval{AttachmentEval: &corev1.AttachmentEvalScreenRequest{
+			SessionId:     "s-att",
+			CurrentImages: 5,
+			PutBack:       putBack,
+			Candidates: []*corev1.AttachmentCandidateInput{
+				{Name: "a.png", MimeType: "image/png", SizeBytes: 1024},
+				{Name: "b.png", MimeType: "image/png", SizeBytes: 1024},
+			},
+		}}})
+		if err != nil {
+			t.Fatalf("AttachmentEval View error: %v", err)
+		}
+		return vm.GetAttachmentEval()
+	}
+	if live := eval(false); live.Decisions[0].Accepted {
+		t.Fatalf("an offline machine must block new images: %+v", live.Decisions)
+	}
+	back := eval(true)
+	if !back.Decisions[0].Accepted || back.Decisions[1].Accepted {
+		t.Fatalf("put-back must ignore offline but keep the 6-image limit: %+v", back.Decisions)
 	}
 }

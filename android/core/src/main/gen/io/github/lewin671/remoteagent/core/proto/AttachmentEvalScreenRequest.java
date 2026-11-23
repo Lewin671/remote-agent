@@ -519,6 +519,50 @@ public  final class AttachmentEvalScreenRequest extends
     problems_.remove(index);
   }
 
+  public static final int PUT_BACK_FIELD_NUMBER = 7;
+  private boolean putBack_;
+  /**
+   * <pre>
+   * Putting a failed message's attachments back into the draft: judge only the machine's
+   * capabilities and the per-message limits, not whether it is online right now, so a
+   * message that failed while offline can still be restored.
+   * </pre>
+   *
+   * <code>bool put_back = 7 [json_name = "putBack"];</code>
+   * @return The putBack.
+   */
+  @java.lang.Override
+  public boolean getPutBack() {
+    return putBack_;
+  }
+  /**
+   * <pre>
+   * Putting a failed message's attachments back into the draft: judge only the machine's
+   * capabilities and the per-message limits, not whether it is online right now, so a
+   * message that failed while offline can still be restored.
+   * </pre>
+   *
+   * <code>bool put_back = 7 [json_name = "putBack"];</code>
+   * @param value The putBack to set.
+   */
+  private void setPutBack(boolean value) {
+    
+    putBack_ = value;
+  }
+  /**
+   * <pre>
+   * Putting a failed message's attachments back into the draft: judge only the machine's
+   * capabilities and the per-message limits, not whether it is online right now, so a
+   * message that failed while offline can still be restored.
+   * </pre>
+   *
+   * <code>bool put_back = 7 [json_name = "putBack"];</code>
+   */
+  private void clearPutBack() {
+
+    putBack_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1139,6 +1183,52 @@ public  final class AttachmentEvalScreenRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Putting a failed message's attachments back into the draft: judge only the machine's
+     * capabilities and the per-message limits, not whether it is online right now, so a
+     * message that failed while offline can still be restored.
+     * </pre>
+     *
+     * <code>bool put_back = 7 [json_name = "putBack"];</code>
+     * @return The putBack.
+     */
+    @java.lang.Override
+    public boolean getPutBack() {
+      return instance.getPutBack();
+    }
+    /**
+     * <pre>
+     * Putting a failed message's attachments back into the draft: judge only the machine's
+     * capabilities and the per-message limits, not whether it is online right now, so a
+     * message that failed while offline can still be restored.
+     * </pre>
+     *
+     * <code>bool put_back = 7 [json_name = "putBack"];</code>
+     * @param value The putBack to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPutBack(boolean value) {
+      copyOnWrite();
+      instance.setPutBack(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Putting a failed message's attachments back into the draft: judge only the machine's
+     * capabilities and the per-message limits, not whether it is online right now, so a
+     * message that failed while offline can still be restored.
+     * </pre>
+     *
+     * <code>bool put_back = 7 [json_name = "putBack"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPutBack() {
+      copyOnWrite();
+      instance.clearPutBack();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttachmentEvalScreenRequest)
   }
   @java.lang.Override
@@ -1163,10 +1253,11 @@ public  final class AttachmentEvalScreenRequest extends
             io.github.lewin671.remoteagent.core.proto.AttachmentCandidateInput.class,
             "problems_",
             io.github.lewin671.remoteagent.core.proto.ImageProblemInput.class,
+            "putBack_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0004\u0004\u0004\u0005\u001b\u0006\u001b";
+              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0004\u0004\u0004\u0005\u001b\u0006\u001b\u0007\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

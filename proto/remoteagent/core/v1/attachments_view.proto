@@ -98,6 +98,10 @@ message AttachmentEvalScreenRequest {
   repeated AttachmentCandidateInput candidates = 5;
   // Optional list of image errors to classify and summarize.
   repeated ImageProblemInput problems = 6;
+  // Putting a failed message's attachments back into the draft: judge only the machine's
+  // capabilities and the per-message limits, not whether it is online right now, so a
+  // message that failed while offline can still be restored.
+  bool put_back = 7;
 }
 
 // Computed attachment limits, candidate decisions, and classified image problems.

@@ -540,7 +540,11 @@ type AttachmentEvalScreenRequest struct {
 	// Optional batch of newly picked candidates to route and validate against current limits.
 	Candidates []*AttachmentCandidateInput `protobuf:"bytes,5,rep,name=candidates,proto3" json:"candidates,omitempty"`
 	// Optional list of image errors to classify and summarize.
-	Problems      []*ImageProblemInput `protobuf:"bytes,6,rep,name=problems,proto3" json:"problems,omitempty"`
+	Problems []*ImageProblemInput `protobuf:"bytes,6,rep,name=problems,proto3" json:"problems,omitempty"`
+	// Putting a failed message's attachments back into the draft: judge only the machine's
+	// capabilities and the per-message limits, not whether it is online right now, so a
+	// message that failed while offline can still be restored.
+	PutBack       bool `protobuf:"varint,7,opt,name=put_back,json=putBack,proto3" json:"put_back,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -615,6 +619,13 @@ func (x *AttachmentEvalScreenRequest) GetProblems() []*ImageProblemInput {
 		return x.Problems
 	}
 	return nil
+}
+
+func (x *AttachmentEvalScreenRequest) GetPutBack() bool {
+	if x != nil {
+		return x.PutBack
+	}
+	return false
 }
 
 // Computed attachment limits, candidate decisions, and classified image problems.
@@ -897,7 +908,7 @@ const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"\rreject_reason\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\frejectReason\x12!\n" +
 	"\fdisplay_name\x18\x05 \x01(\tR\vdisplayName\x12%\n" +
 	"\x0eformatted_size\x18\x06 \x01(\tR\rformattedSize\x12\x19\n" +
-	"\bis_video\x18\a \x01(\bR\aisVideo\"\xba\x02\n" +
+	"\bis_video\x18\a \x01(\bR\aisVideo\"\xd5\x02\n" +
 	"\x1bAttachmentEvalScreenRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -908,7 +919,8 @@ const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"\n" +
 	"candidates\x18\x05 \x03(\v2-.remoteagent.core.v1.AttachmentCandidateInputR\n" +
 	"candidates\x12B\n" +
-	"\bproblems\x18\x06 \x03(\v2&.remoteagent.core.v1.ImageProblemInputR\bproblems\"\xe1\v\n" +
+	"\bproblems\x18\x06 \x03(\v2&.remoteagent.core.v1.ImageProblemInputR\bproblems\x12\x19\n" +
+	"\bput_back\x18\a \x01(\bR\aputBack\"\xe1\v\n" +
 	"\x17AttachmentEvalViewModel\x12/\n" +
 	"\x13capabilities_loaded\x18\x01 \x01(\bR\x12capabilitiesLoaded\x12'\n" +
 	"\x0fsupports_images\x18\x02 \x01(\bR\x0esupportsImages\x12%\n" +

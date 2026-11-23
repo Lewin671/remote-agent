@@ -121,4 +121,16 @@ public interface AttachmentEvalScreenRequestOrBuilder extends
    * <code>repeated .remoteagent.core.v1.ImageProblemInput problems = 6 [json_name = "problems"];</code>
    */
   int getProblemsCount();
+
+  /**
+   * <pre>
+   * Putting a failed message's attachments back into the draft: judge only the machine's
+   * capabilities and the per-message limits, not whether it is online right now, so a
+   * message that failed while offline can still be restored.
+   * </pre>
+   *
+   * <code>bool put_back = 7 [json_name = "putBack"];</code>
+   * @return The putBack.
+   */
+  boolean getPutBack();
 }

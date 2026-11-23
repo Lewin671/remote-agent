@@ -52,6 +52,9 @@ func BuildAttachmentEval(st *State, req *corev1.AttachmentEvalScreenRequest) *co
 		st.Removed,
 	)
 
+	if req.PutBack {
+		computerOnline, onlineReady = true, true
+	}
 	caps := attachments.ResolveCaps(lm, machineID, computerOnline, onlineReady)
 
 	imagesAllowed := caps.SupportsImages && caps.ImageUploadBlockedReason == nil
