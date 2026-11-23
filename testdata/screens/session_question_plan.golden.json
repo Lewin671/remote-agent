@@ -552,6 +552,11 @@
               "awaitingCache": true,
               "hasGap": true,
               "canLoadEarlier": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }
@@ -884,6 +889,11 @@
               "awaitingCache": true,
               "hasGap": true,
               "canLoadEarlier": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }
@@ -1216,7 +1226,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "plan migration"
+                      }
+                    ]
                   }
                 },
                 {
@@ -1234,6 +1249,11 @@
               "totalItems": 2,
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }
@@ -1574,7 +1594,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "plan migration"
+                      }
+                    ]
                   }
                 },
                 {
@@ -1592,6 +1617,11 @@
               "totalItems": 2,
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }
@@ -1896,7 +1926,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "plan migration"
+                      }
+                    ]
                   }
                 },
                 {
@@ -1914,6 +1949,11 @@
               "totalItems": 2,
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }

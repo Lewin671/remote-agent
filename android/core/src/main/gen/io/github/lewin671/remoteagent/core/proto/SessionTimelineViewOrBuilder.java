@@ -182,4 +182,18 @@ public interface SessionTimelineViewOrBuilder extends
    * @return The offline.
    */
   boolean getOffline();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionViewerImageView> 
+      getViewerImagesList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionViewerImageView getViewerImages(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  int getViewerImagesCount();
 }

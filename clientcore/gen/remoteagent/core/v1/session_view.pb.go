@@ -165,6 +165,15 @@ const (
 	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_DELETE_LOCAL    SharedFileMenuAction = 10
 )
 
+type SessionImageSourceKind int32
+
+const (
+	SessionImageSourceKind_SESSION_IMAGE_SOURCE_KIND_UNSPECIFIED SessionImageSourceKind = 0
+	SessionImageSourceKind_SESSION_IMAGE_SOURCE_KIND_USER        SessionImageSourceKind = 1
+	SessionImageSourceKind_SESSION_IMAGE_SOURCE_KIND_TOOL        SessionImageSourceKind = 2
+	SessionImageSourceKind_SESSION_IMAGE_SOURCE_KIND_GENERATED   SessionImageSourceKind = 3
+)
+
 type SessionNoteTone int32
 
 const (
@@ -294,13 +303,14 @@ func (m *SessionWindowRequest) Unmarshal(b []byte) error {
 }
 
 type SessionViewModel struct {
-	_         [0]func()
-	SessionId string
-	Header    *SessionHeaderView
-	Actions   *SessionActionsView
-	Dock      *SessionDockView
-	Composer  *SessionComposerView
-	Timeline  *SessionTimelineView
+	_           [0]func()
+	SessionId   string
+	Header      *SessionHeaderView
+	Actions     *SessionActionsView
+	Dock        *SessionDockView
+	Composer    *SessionComposerView
+	Timeline    *SessionTimelineView
+	ImageViewer *SessionImageViewerView
 }
 
 func (m *SessionViewModel) GetSessionId() string {
@@ -339,6 +349,12 @@ func (m *SessionViewModel) GetTimeline() *SessionTimelineView {
 	}
 	return nil
 }
+func (m *SessionViewModel) GetImageViewer() *SessionImageViewerView {
+	if m != nil {
+		return m.ImageViewer
+	}
+	return nil
+}
 
 var LitewireDesc_SessionViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -348,6 +364,7 @@ var LitewireDesc_SessionViewModel = litewire.MessageDesc{
 		{Num: 4, Offset: unsafe.Offsetof(SessionViewModel{}.Dock), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionDockView},
 		{Num: 5, Offset: unsafe.Offsetof(SessionViewModel{}.Composer), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionComposerView},
 		{Num: 6, Offset: unsafe.Offsetof(SessionViewModel{}.Timeline), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionTimelineView},
+		{Num: 7, Offset: unsafe.Offsetof(SessionViewModel{}.ImageViewer), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionImageViewerView},
 	},
 }
 
@@ -3160,6 +3177,7 @@ type SessionTimelineView struct {
 	CanLoadEarlier       bool
 	TailRequested        bool
 	Offline              bool
+	ViewerImages         []*SessionViewerImageView
 }
 
 func (m *SessionTimelineView) GetItems() []*SessionTimelineItem {
@@ -3306,6 +3324,12 @@ func (m *SessionTimelineView) GetOffline() bool {
 	}
 	return false
 }
+func (m *SessionTimelineView) GetViewerImages() []*SessionViewerImageView {
+	if m != nil {
+		return m.ViewerImages
+	}
+	return nil
+}
 
 var LitewireDesc_SessionTimelineView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -3333,6 +3357,7 @@ var LitewireDesc_SessionTimelineView = litewire.MessageDesc{
 		{Num: 22, Offset: unsafe.Offsetof(SessionTimelineView{}.CanLoadEarlier), Kind: litewire.KindBool},
 		{Num: 23, Offset: unsafe.Offsetof(SessionTimelineView{}.TailRequested), Kind: litewire.KindBool},
 		{Num: 24, Offset: unsafe.Offsetof(SessionTimelineView{}.Offline), Kind: litewire.KindBool},
+		{Num: 25, Offset: unsafe.Offsetof(SessionTimelineView{}.ViewerImages), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionViewerImageView},
 	},
 }
 
@@ -3822,6 +3847,82 @@ func (m *SessionFileRefView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionFileRefView)
 }
 
+type SessionMessageTextSegment struct {
+	_          [0]func()
+	Kind       isSessionMessageTextSegment_Kind
+	ImageLabel *Text
+}
+
+type isSessionMessageTextSegment_Kind interface{ isSessionMessageTextSegment_Kind() }
+type SessionMessageTextSegment_Text struct {
+	_    [0]func()
+	Text string
+}
+
+func (*SessionMessageTextSegment_Text) isSessionMessageTextSegment_Kind() {}
+
+type SessionMessageTextSegment_ImageIndex struct {
+	_          [0]func()
+	ImageIndex int32
+}
+
+func (*SessionMessageTextSegment_ImageIndex) isSessionMessageTextSegment_Kind() {}
+
+func (m *SessionMessageTextSegment) GetKind() isSessionMessageTextSegment_Kind {
+	if m != nil {
+		return m.Kind
+	}
+	return nil
+}
+func (m *SessionMessageTextSegment) GetText() string {
+	if x, ok := m.GetKind().(*SessionMessageTextSegment_Text); ok && x != nil {
+		return x.Text
+	}
+	return ""
+}
+func (m *SessionMessageTextSegment) GetImageIndex() int32 {
+	if x, ok := m.GetKind().(*SessionMessageTextSegment_ImageIndex); ok && x != nil {
+		return x.ImageIndex
+	}
+	return 0
+}
+func (m *SessionMessageTextSegment) GetImageLabel() *Text {
+	if m != nil {
+		return m.ImageLabel
+	}
+	return nil
+}
+
+var LitewireDesc_SessionMessageTextSegment = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+		{Num: 3, Offset: unsafe.Offsetof(SessionMessageTextSegment{}.ImageLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *SessionMessageTextSegment) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionMessageTextSegment) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionMessageTextSegment)
+}
+
+func extraMarshal_SessionMessageTextSegment(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*SessionMessageTextSegment)(base)
+	switch x := m.Kind.(type) {
+	case *SessionMessageTextSegment_Text:
+		if x != nil {
+			b = litewire.AppendStringAlways(b, 1, x.Text)
+		}
+	case *SessionMessageTextSegment_ImageIndex:
+		if x != nil {
+			b = litewire.AppendInt32Always(b, 2, int32(x.ImageIndex))
+		}
+	}
+	return b
+}
+
 type SessionUserMessageItem struct {
 	_               [0]func()
 	Text            string
@@ -3833,6 +3934,7 @@ type SessionUserMessageItem struct {
 	ScheduledRunId  string
 	IsScheduled     bool
 	TypedLocally    bool
+	TextSegments    []*SessionMessageTextSegment
 }
 
 func (m *SessionUserMessageItem) GetText() string {
@@ -3889,6 +3991,12 @@ func (m *SessionUserMessageItem) GetTypedLocally() bool {
 	}
 	return false
 }
+func (m *SessionUserMessageItem) GetTextSegments() []*SessionMessageTextSegment {
+	if m != nil {
+		return m.TextSegments
+	}
+	return nil
+}
 
 var LitewireDesc_SessionUserMessageItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -3901,6 +4009,7 @@ var LitewireDesc_SessionUserMessageItem = litewire.MessageDesc{
 		{Num: 7, Offset: unsafe.Offsetof(SessionUserMessageItem{}.ScheduledRunId), Kind: litewire.KindString},
 		{Num: 8, Offset: unsafe.Offsetof(SessionUserMessageItem{}.IsScheduled), Kind: litewire.KindBool},
 		{Num: 9, Offset: unsafe.Offsetof(SessionUserMessageItem{}.TypedLocally), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SessionUserMessageItem{}.TextSegments), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionMessageTextSegment},
 	},
 }
 
@@ -4003,6 +4112,7 @@ type SessionToolCallItem struct {
 	DecisionLabel   *Text
 	DecisionAllowed bool
 	Images          []*v1.ImageRef
+	Seq             uint64
 }
 
 func (m *SessionToolCallItem) GetCallId() string {
@@ -4131,6 +4241,12 @@ func (m *SessionToolCallItem) GetImages() []*v1.ImageRef {
 	}
 	return nil
 }
+func (m *SessionToolCallItem) GetSeq() uint64 {
+	if m != nil {
+		return m.Seq
+	}
+	return 0
+}
 
 var LitewireDesc_SessionToolCallItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4155,6 +4271,7 @@ var LitewireDesc_SessionToolCallItem = litewire.MessageDesc{
 		{Num: 17, Offset: unsafe.Offsetof(SessionToolCallItem{}.DecisionLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 18, Offset: unsafe.Offsetof(SessionToolCallItem{}.DecisionAllowed), Kind: litewire.KindBool},
 		{Num: 19, Offset: unsafe.Offsetof(SessionToolCallItem{}.Images), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &v1.LitewireDesc_ImageRef},
+		{Num: 22, Offset: unsafe.Offsetof(SessionToolCallItem{}.Seq), Kind: litewire.KindUint64},
 	},
 }
 
@@ -4630,6 +4747,250 @@ func (m *SessionGeneratedImagesItem) Marshal() ([]byte, error) {
 
 func (m *SessionGeneratedImagesItem) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionGeneratedImagesItem)
+}
+
+type SessionViewerImageView struct {
+	_                  [0]func()
+	ViewerIndex        int32
+	Seq                uint64
+	EventImageIndex    int32
+	TimestampMs        int64
+	Kind               SessionImageSourceKind
+	Ref                *v1.ImageRef
+	ToolTitle          string
+	RevisedPrompt      string
+	SourceLabel        *Text
+	SizeText           string
+	AspectRatio        float64
+	ClampedAspectRatio float64
+	HasDisplayCopy     bool
+	DisplayName        string
+	DisplayPath        string
+	FileExtension      string
+	MimeType           string
+	InCollapsedGroup   bool
+}
+
+func (m *SessionViewerImageView) GetViewerIndex() int32 {
+	if m != nil {
+		return m.ViewerIndex
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetSeq() uint64 {
+	if m != nil {
+		return m.Seq
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetEventImageIndex() int32 {
+	if m != nil {
+		return m.EventImageIndex
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetTimestampMs() int64 {
+	if m != nil {
+		return m.TimestampMs
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetKind() SessionImageSourceKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetRef() *v1.ImageRef {
+	if m != nil {
+		return m.Ref
+	}
+	return nil
+}
+func (m *SessionViewerImageView) GetToolTitle() string {
+	if m != nil {
+		return m.ToolTitle
+	}
+	return ""
+}
+func (m *SessionViewerImageView) GetRevisedPrompt() string {
+	if m != nil {
+		return m.RevisedPrompt
+	}
+	return ""
+}
+func (m *SessionViewerImageView) GetSourceLabel() *Text {
+	if m != nil {
+		return m.SourceLabel
+	}
+	return nil
+}
+func (m *SessionViewerImageView) GetSizeText() string {
+	if m != nil {
+		return m.SizeText
+	}
+	return ""
+}
+func (m *SessionViewerImageView) GetAspectRatio() float64 {
+	if m != nil {
+		return m.AspectRatio
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetClampedAspectRatio() float64 {
+	if m != nil {
+		return m.ClampedAspectRatio
+	}
+	return 0
+}
+func (m *SessionViewerImageView) GetHasDisplayCopy() bool {
+	if m != nil {
+		return m.HasDisplayCopy
+	}
+	return false
+}
+func (m *SessionViewerImageView) GetDisplayName() string {
+	if m != nil {
+		return m.DisplayName
+	}
+	return ""
+}
+func (m *SessionViewerImageView) GetDisplayPath() string {
+	if m != nil {
+		return m.DisplayPath
+	}
+	return ""
+}
+func (m *SessionViewerImageView) GetFileExtension() string {
+	if m != nil {
+		return m.FileExtension
+	}
+	return ""
+}
+func (m *SessionViewerImageView) GetMimeType() string {
+	if m != nil {
+		return m.MimeType
+	}
+	return ""
+}
+func (m *SessionViewerImageView) GetInCollapsedGroup() bool {
+	if m != nil {
+		return m.InCollapsedGroup
+	}
+	return false
+}
+
+var LitewireDesc_SessionViewerImageView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionViewerImageView{}.ViewerIndex), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SessionViewerImageView{}.Seq), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(SessionViewerImageView{}.EventImageIndex), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionViewerImageView{}.TimestampMs), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(SessionViewerImageView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 6, Offset: unsafe.Offsetof(SessionViewerImageView{}.Ref), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_ImageRef},
+		{Num: 7, Offset: unsafe.Offsetof(SessionViewerImageView{}.ToolTitle), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SessionViewerImageView{}.RevisedPrompt), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SessionViewerImageView{}.SourceLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(SessionViewerImageView{}.SizeText), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(SessionViewerImageView{}.AspectRatio), Kind: litewire.KindDouble},
+		{Num: 12, Offset: unsafe.Offsetof(SessionViewerImageView{}.ClampedAspectRatio), Kind: litewire.KindDouble},
+		{Num: 13, Offset: unsafe.Offsetof(SessionViewerImageView{}.HasDisplayCopy), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SessionViewerImageView{}.DisplayName), Kind: litewire.KindString},
+		{Num: 15, Offset: unsafe.Offsetof(SessionViewerImageView{}.DisplayPath), Kind: litewire.KindString},
+		{Num: 16, Offset: unsafe.Offsetof(SessionViewerImageView{}.FileExtension), Kind: litewire.KindString},
+		{Num: 17, Offset: unsafe.Offsetof(SessionViewerImageView{}.MimeType), Kind: litewire.KindString},
+		{Num: 18, Offset: unsafe.Offsetof(SessionViewerImageView{}.InCollapsedGroup), Kind: litewire.KindBool},
+	},
+}
+
+func (m *SessionViewerImageView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionViewerImageView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionViewerImageView)
+}
+
+type SessionImageViewerView struct {
+	_            [0]func()
+	Open         bool
+	CurrentIndex int32
+	TotalCount   int32
+	HasPrev      bool
+	HasNext      bool
+	PositionText *Text
+	CurrentImage *SessionViewerImageView
+	EmptyText    *Text
+}
+
+func (m *SessionImageViewerView) GetOpen() bool {
+	if m != nil {
+		return m.Open
+	}
+	return false
+}
+func (m *SessionImageViewerView) GetCurrentIndex() int32 {
+	if m != nil {
+		return m.CurrentIndex
+	}
+	return 0
+}
+func (m *SessionImageViewerView) GetTotalCount() int32 {
+	if m != nil {
+		return m.TotalCount
+	}
+	return 0
+}
+func (m *SessionImageViewerView) GetHasPrev() bool {
+	if m != nil {
+		return m.HasPrev
+	}
+	return false
+}
+func (m *SessionImageViewerView) GetHasNext() bool {
+	if m != nil {
+		return m.HasNext
+	}
+	return false
+}
+func (m *SessionImageViewerView) GetPositionText() *Text {
+	if m != nil {
+		return m.PositionText
+	}
+	return nil
+}
+func (m *SessionImageViewerView) GetCurrentImage() *SessionViewerImageView {
+	if m != nil {
+		return m.CurrentImage
+	}
+	return nil
+}
+func (m *SessionImageViewerView) GetEmptyText() *Text {
+	if m != nil {
+		return m.EmptyText
+	}
+	return nil
+}
+
+var LitewireDesc_SessionImageViewerView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionImageViewerView{}.Open), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionImageViewerView{}.CurrentIndex), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionImageViewerView{}.TotalCount), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionImageViewerView{}.HasPrev), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionImageViewerView{}.HasNext), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionImageViewerView{}.PositionText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(SessionImageViewerView{}.CurrentImage), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionViewerImageView},
+		{Num: 8, Offset: unsafe.Offsetof(SessionImageViewerView{}.EmptyText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *SessionImageViewerView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionImageViewerView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionImageViewerView)
 }
 
 type SessionAsyncQuestionItem struct {
@@ -5555,6 +5916,123 @@ func extraUnmarshal_SharedFileLocalStateEvent(base unsafe.Pointer, num litewire.
 	return false, nil
 }
 
+type SessionImageViewerOpenAction struct {
+	_           [0]func()
+	SessionId   string
+	Seq         uint64
+	ImageIndex  int32
+	ViewerIndex int32
+}
+
+func (m *SessionImageViewerOpenAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionImageViewerOpenAction) GetSeq() uint64 {
+	if m != nil {
+		return m.Seq
+	}
+	return 0
+}
+func (m *SessionImageViewerOpenAction) GetImageIndex() int32 {
+	if m != nil {
+		return m.ImageIndex
+	}
+	return 0
+}
+func (m *SessionImageViewerOpenAction) GetViewerIndex() int32 {
+	if m != nil {
+		return m.ViewerIndex
+	}
+	return 0
+}
+
+var LitewireDesc_SessionImageViewerOpenAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionImageViewerOpenAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionImageViewerOpenAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionImageViewerOpenAction{}.Seq), Kind: litewire.KindUint64},
+		{Num: 3, Offset: unsafe.Offsetof(SessionImageViewerOpenAction{}.ImageIndex), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SessionImageViewerOpenAction{}.ViewerIndex), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *SessionImageViewerOpenAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionImageViewerOpenAction)
+}
+
+type SessionImageViewerNavigateAction struct {
+	_         [0]func()
+	SessionId string
+	Delta     int32
+	SetIndex  bool
+	Index     int32
+}
+
+func (m *SessionImageViewerNavigateAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SessionImageViewerNavigateAction) GetDelta() int32 {
+	if m != nil {
+		return m.Delta
+	}
+	return 0
+}
+func (m *SessionImageViewerNavigateAction) GetSetIndex() bool {
+	if m != nil {
+		return m.SetIndex
+	}
+	return false
+}
+func (m *SessionImageViewerNavigateAction) GetIndex() int32 {
+	if m != nil {
+		return m.Index
+	}
+	return 0
+}
+
+var LitewireDesc_SessionImageViewerNavigateAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionImageViewerNavigateAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionImageViewerNavigateAction{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SessionImageViewerNavigateAction{}.Delta), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SessionImageViewerNavigateAction{}.SetIndex), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionImageViewerNavigateAction{}.Index), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *SessionImageViewerNavigateAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionImageViewerNavigateAction)
+}
+
+type SessionImageViewerCloseAction struct {
+	_         [0]func()
+	SessionId string
+}
+
+func (m *SessionImageViewerCloseAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+
+var LitewireDesc_SessionImageViewerCloseAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionImageViewerCloseAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionImageViewerCloseAction{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
+func (m *SessionImageViewerCloseAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionImageViewerCloseAction)
+}
+
 type SessionRestoreComposerEffect struct {
 	_         [0]func()
 	SessionId string
@@ -5698,5 +6176,6 @@ func (m *SessionResendAttachmentsEffect) AppendMarshal(b []byte) []byte {
 func init() {
 	LitewireDesc_SessionDockView.ExtraMarshal = extraMarshal_SessionDockView
 	LitewireDesc_SessionTimelineItem.ExtraMarshal = extraMarshal_SessionTimelineItem
+	LitewireDesc_SessionMessageTextSegment.ExtraMarshal = extraMarshal_SessionMessageTextSegment
 	LitewireDesc_SharedFileLocalStateEvent.ExtraUnmarshal = extraUnmarshal_SharedFileLocalStateEvent
 }

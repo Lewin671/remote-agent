@@ -979,6 +979,39 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateEvent getSharedFileLocalState();
 
   /**
+   * <code>.remoteagent.core.v1.SessionImageViewerOpenAction session_image_viewer_open = 217 [json_name = "sessionImageViewerOpen"];</code>
+   * @return Whether the sessionImageViewerOpen field is set.
+   */
+  boolean hasSessionImageViewerOpen();
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerOpenAction session_image_viewer_open = 217 [json_name = "sessionImageViewerOpen"];</code>
+   * @return The sessionImageViewerOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageViewerOpenAction getSessionImageViewerOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerNavigateAction session_image_viewer_navigate = 218 [json_name = "sessionImageViewerNavigate"];</code>
+   * @return Whether the sessionImageViewerNavigate field is set.
+   */
+  boolean hasSessionImageViewerNavigate();
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerNavigateAction session_image_viewer_navigate = 218 [json_name = "sessionImageViewerNavigate"];</code>
+   * @return The sessionImageViewerNavigate.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageViewerNavigateAction getSessionImageViewerNavigate();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerCloseAction session_image_viewer_close = 219 [json_name = "sessionImageViewerClose"];</code>
+   * @return Whether the sessionImageViewerClose field is set.
+   */
+  boolean hasSessionImageViewerClose();
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerCloseAction session_image_viewer_close = 219 [json_name = "sessionImageViewerClose"];</code>
+   * @return The sessionImageViewerClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageViewerCloseAction getSessionImageViewerClose();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
    * @return Whether the scheduleCacheLoaded field is set.
    */

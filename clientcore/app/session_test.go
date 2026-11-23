@@ -2154,3 +2154,129 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 		t.Fatalf("expected AVAILABLE after clearing local copy, got %v", c3.GetStatus())
 	}
 }
+
+func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {
+	c := New()
+	defer c.Close()
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{
+					{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 17}},
+				},
+				Sessions: []*corev1.DemoSession{
+					{SessionId: "s-img", MachineId: "m1", LastSeq: 3, Meta: &v1.Session{Id: "s-img", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
+				},
+				SessionEvents: []*corev1.DemoSessionEvents{
+					{
+						SessionId: "s-img",
+						Events: []*v1.Event{
+							{
+								Seq: 1,
+								Kind: &v1.Event_UserMessage{
+									UserMessage: &v1.UserMessage{
+										Text: "[Image #1]desktop, [Image #2]phone",
+										Images: []*v1.ImageRef{
+											{ImageId: "img1", CliIndex: 1, Source: v1.ImageSource_IMAGE_SOURCE_USER, Sync: v1.ImageSync_IMAGE_SYNC_SYNCED, Width: 800, Height: 600},
+											{ImageId: "img2", CliIndex: 2, Source: v1.ImageSource_IMAGE_SOURCE_USER, Sync: v1.ImageSync_IMAGE_SYNC_SYNCED, Width: 400, Height: 800},
+										},
+									},
+								},
+							},
+							{
+								Seq: 2,
+								Kind: &v1.Event_ImageGenerated{
+									ImageGenerated: &v1.ImageGenerated{
+										RevisedPrompt: "sunset",
+										Images: []*v1.ImageRef{
+											{ImageId: "img3", Source: v1.ImageSource_IMAGE_SOURCE_GENERATED, Sync: v1.ImageSync_IMAGE_SYNC_SYNCED, Width: 1024, Height: 1024},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	view := func() *corev1.SessionViewModel {
+		vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-img"}}})
+		if err != nil {
+			t.Fatalf("View failed: %v", err)
+		}
+		return vm.GetSession()
+	}
+
+	v0 := view()
+	segs := v0.GetTimeline().GetItems()[0].GetUserMessage().GetTextSegments()
+	if len(segs) != 4 || segs[0].GetImageIndex() != 1 || segs[1].GetText() != "desktop, " || segs[2].GetImageIndex() != 2 || segs[3].GetText() != "phone" {
+		t.Fatalf("unexpected inline placeholder segments: %+v", segs)
+	}
+	if len(v0.GetTimeline().GetViewerImages()) != 3 {
+		t.Fatalf("expected 3 viewer images, got %d", len(v0.GetTimeline().GetViewerImages()))
+	}
+	if v0.GetImageViewer().GetOpen() || v0.GetImageViewer().GetTotalCount() != 3 {
+		t.Fatalf("unexpected closed viewer state: %+v", v0.GetImageViewer())
+	}
+
+	// Open at seq=1, image_index=1 (2nd image, index 1).
+	c.Dispatch(&corev1.Event{
+		NowMs: 1100,
+		Event: &corev1.Event_SessionImageViewerOpen{
+			SessionImageViewerOpen: &corev1.SessionImageViewerOpenAction{SessionId: "s-img", Seq: 1, ImageIndex: 1},
+		},
+	})
+	v1m := view().GetImageViewer()
+	if !v1m.GetOpen() || v1m.GetCurrentIndex() != 1 || !v1m.GetHasPrev() || !v1m.GetHasNext() ||
+		v1m.GetPositionText().GetLiteral() != "2 / 3" || v1m.GetCurrentImage().GetRef().GetImageId() != "img2" {
+		t.Fatalf("unexpected opened viewer: %+v", v1m)
+	}
+
+	// Navigate next (+1) -> index 2 (img3), has_next=false.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1200,
+		Event: &corev1.Event_SessionImageViewerNavigate{
+			SessionImageViewerNavigate: &corev1.SessionImageViewerNavigateAction{SessionId: "s-img", Delta: 1},
+		},
+	})
+	v2m := view().GetImageViewer()
+	if v2m.GetCurrentIndex() != 2 || !v2m.GetHasPrev() || v2m.GetHasNext() || v2m.GetCurrentImage().GetRef().GetImageId() != "img3" {
+		t.Fatalf("unexpected next viewer: %+v", v2m)
+	}
+
+	// Navigate prev (-1) -> index 1, then direct jump to index 0.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1300,
+		Event: &corev1.Event_SessionImageViewerNavigate{
+			SessionImageViewerNavigate: &corev1.SessionImageViewerNavigateAction{SessionId: "s-img", Delta: -1},
+		},
+	})
+	if got := view().GetImageViewer().GetCurrentIndex(); got != 1 {
+		t.Fatalf("expected index 1 after prev, got %d", got)
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1350,
+		Event: &corev1.Event_SessionImageViewerNavigate{
+			SessionImageViewerNavigate: &corev1.SessionImageViewerNavigateAction{SessionId: "s-img", SetIndex: true, Index: 0},
+		},
+	})
+	v3m := view().GetImageViewer()
+	if v3m.GetCurrentIndex() != 0 || v3m.GetHasPrev() || !v3m.GetHasNext() {
+		t.Fatalf("unexpected jumped viewer: %+v", v3m)
+	}
+
+	// Close viewer.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1400,
+		Event: &corev1.Event_SessionImageViewerClose{
+			SessionImageViewerClose: &corev1.SessionImageViewerCloseAction{SessionId: "s-img"},
+		},
+	})
+	if view().GetImageViewer().GetOpen() {
+		t.Fatalf("expected viewer closed")
+	}
+}

@@ -596,6 +596,9 @@ message Event {
     SessionTraySessionAction session_undo_cancel = 214;
     SessionRetryLoadAction session_retry_load = 215;
     SharedFileLocalStateEvent shared_file_local_state = 216;
+    SessionImageViewerOpenAction session_image_viewer_open = 217;
+    SessionImageViewerNavigateAction session_image_viewer_navigate = 218;
+    SessionImageViewerCloseAction session_image_viewer_close = 219;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;

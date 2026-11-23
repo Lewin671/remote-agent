@@ -469,6 +469,7 @@
     <string name="image_download_retry" formatted="false">"没能下载 · 点按重试"</string>
     <string name="image_draft" formatted="false">"待发送的图片"</string>
     <string name="image_generated" formatted="false">"生成的图片"</string>
+    <string name="image_generated_by">"%1$s 生成的图片"</string>
     <string name="image_image_dimensions_are_too_large" formatted="false">"图片尺寸太大"</string>
     <string name="image_image_dimensions_are_too_large_resize_it_and_retry" formatted="false">"图片尺寸太大，缩小后再试"</string>
     <string name="image_image_dimensions_are_too_large_send_a_compressed_version" formatted="false">"图片尺寸太大，请用压缩方式发送"</string>
@@ -518,6 +519,7 @@
     <string name="image_user_source" formatted="false">"用户发送或粘贴的图"</string>
     <string name="image_verification_failed" formatted="false">"图片校验失败，没有显示"</string>
     <string name="image_view" formatted="false">"查看图片"</string>
+    <string name="image_viewer_empty" formatted="false">"没有图片"</string>
     <string name="list_state_agent_asking">"%1$s 在问你"</string>
     <string name="list_state_approval" formatted="false">"等待审批"</string>
     <string name="list_state_ended" formatted="false">"已结束"</string>

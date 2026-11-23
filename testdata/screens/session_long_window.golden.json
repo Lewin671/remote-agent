@@ -534,7 +534,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "Turn 25"
+                      }
+                    ]
                   }
                 },
                 {
@@ -548,13 +553,15 @@
                         "callId": "c25a",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 25a",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "98"
                       },
                       {
                         "callId": "c25b",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 25b",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "99"
                       }
                     ],
                     "summary": {
@@ -594,7 +601,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "Turn 26"
+                      }
+                    ]
                   }
                 },
                 {
@@ -608,13 +620,15 @@
                         "callId": "c26a",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 26a",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "102"
                       },
                       {
                         "callId": "c26b",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 26b",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "103"
                       }
                     ],
                     "summary": {
@@ -654,7 +668,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "Turn 27"
+                      }
+                    ]
                   }
                 },
                 {
@@ -668,13 +687,15 @@
                         "callId": "c27a",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 27a",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "106"
                       },
                       {
                         "callId": "c27b",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 27b",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "107"
                       }
                     ],
                     "summary": {
@@ -707,6 +728,11 @@
               "loading": true,
               "fetching": true,
               "canLoadEarlier": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         },
@@ -950,7 +976,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "Turn 28"
+                      }
+                    ]
                   }
                 },
                 {
@@ -964,13 +995,15 @@
                         "callId": "c28a",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 28a",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "110"
                       },
                       {
                         "callId": "c28b",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 28b",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "111"
                       }
                     ],
                     "summary": {
@@ -1010,7 +1043,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "Turn 29"
+                      }
+                    ]
                   }
                 },
                 {
@@ -1024,13 +1062,15 @@
                         "callId": "c29a",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 29a",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "114"
                       },
                       {
                         "callId": "c29b",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 29b",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "115"
                       }
                     ],
                     "summary": {
@@ -1070,7 +1110,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "Turn 30"
+                      }
+                    ]
                   }
                 },
                 {
@@ -1084,13 +1129,15 @@
                         "callId": "c30a",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 30a",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "118"
                       },
                       {
                         "callId": "c30b",
                         "toolKind": "TOOL_KIND_COMMAND",
                         "title": "cmd 30b",
-                        "status": "SESSION_TOOL_STATUS_OK"
+                        "status": "SESSION_TOOL_STATUS_OK",
+                        "seq": "119"
                       }
                     ],
                     "summary": {
@@ -1123,6 +1170,11 @@
               "loading": true,
               "fetching": true,
               "canLoadEarlier": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }

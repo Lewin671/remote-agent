@@ -20,6 +20,7 @@ public  final class SessionUserMessageItem extends
     files_ = emptyProtobufList();
     scheduledTaskId_ = "";
     scheduledRunId_ = "";
+    textSegments_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int TEXT_FIELD_NUMBER = 1;
@@ -506,6 +507,103 @@ public  final class SessionUserMessageItem extends
   private void clearTypedLocally() {
 
     typedLocally_ = false;
+  }
+
+  public static final int TEXT_SEGMENTS_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment> textSegments_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment> getTextSegmentsList() {
+    return textSegments_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegmentOrBuilder> 
+      getTextSegmentsOrBuilderList() {
+    return textSegments_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  @java.lang.Override
+  public int getTextSegmentsCount() {
+    return textSegments_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment getTextSegments(int index) {
+    return textSegments_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegmentOrBuilder getTextSegmentsOrBuilder(
+      int index) {
+    return textSegments_.get(index);
+  }
+  private void ensureTextSegmentsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment> tmp = textSegments_;
+    if (!tmp.isModifiable()) {
+      textSegments_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTextSegments(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureTextSegmentsIsMutable();
+    textSegments_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addTextSegments(io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureTextSegmentsIsMutable();
+    textSegments_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addTextSegments(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureTextSegmentsIsMutable();
+    textSegments_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  private void addAllTextSegments(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment> values) {
+    ensureTextSegmentsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, textSegments_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  private void clearTextSegments() {
+    textSegments_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  private void removeTextSegments(int index) {
+    ensureTextSegmentsIsMutable();
+    textSegments_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionUserMessageItem parseFrom(
@@ -1106,6 +1204,108 @@ public  final class SessionUserMessageItem extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment> getTextSegmentsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getTextSegmentsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    @java.lang.Override
+    public int getTextSegmentsCount() {
+      return instance.getTextSegmentsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment getTextSegments(int index) {
+      return instance.getTextSegments(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder setTextSegments(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment value) {
+      copyOnWrite();
+      instance.setTextSegments(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder setTextSegments(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTextSegments(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder addTextSegments(io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment value) {
+      copyOnWrite();
+      instance.addTextSegments(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder addTextSegments(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment value) {
+      copyOnWrite();
+      instance.addTextSegments(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder addTextSegments(
+        io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.addTextSegments(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder addTextSegments(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.addTextSegments(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder addAllTextSegments(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment> values) {
+      copyOnWrite();
+      instance.addAllTextSegments(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder clearTextSegments() {
+      copyOnWrite();
+      instance.clearTextSegments();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+     */
+    public Builder removeTextSegments(int index) {
+      copyOnWrite();
+      instance.removeTextSegments(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionUserMessageItem)
   }
   @java.lang.Override
@@ -1134,10 +1334,13 @@ public  final class SessionUserMessageItem extends
             "scheduledRunId_",
             "isScheduled_",
             "typedLocally_",
+            "textSegments_",
+            io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment.class,
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0002\u0000\u0001\u0208\u0002\u001b\u0003\u001b" +
-              "\u0004\u1009\u0000\u0005\u1009\u0001\u0006\u0208\u0007\u0208\b\u0007\t\u0007";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0003\u0000\u0001\u0208\u0002\u001b\u0003\u001b" +
+              "\u0004\u1009\u0000\u0005\u1009\u0001\u0006\u0208\u0007\u0208\b\u0007\t\u0007\n\u001b" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

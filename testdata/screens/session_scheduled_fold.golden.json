@@ -609,7 +609,12 @@
                           },
                           "scheduledTaskId": "task-1",
                           "scheduledRunId": "run-1",
-                          "isScheduled": true
+                          "isScheduled": true,
+                          "textSegments": [
+                            {
+                              "text": "Check health"
+                            }
+                          ]
                         }
                       },
                       {
@@ -665,7 +670,12 @@
                           },
                           "scheduledTaskId": "task-1",
                           "scheduledRunId": "run-2",
-                          "isScheduled": true
+                          "isScheduled": true,
+                          "textSegments": [
+                            {
+                              "text": "Check health"
+                            }
+                          ]
                         }
                       },
                       {
@@ -721,7 +731,12 @@
                           },
                           "scheduledTaskId": "task-1",
                           "scheduledRunId": "run-3",
-                          "isScheduled": true
+                          "isScheduled": true,
+                          "textSegments": [
+                            {
+                              "text": "Check health"
+                            }
+                          ]
                         }
                       },
                       {
@@ -780,7 +795,12 @@
                     },
                     "scheduledTaskId": "task-1",
                     "scheduledRunId": "run-4",
-                    "isScheduled": true
+                    "isScheduled": true,
+                    "textSegments": [
+                      {
+                        "text": "Check health"
+                      }
+                    ]
                   }
                 },
                 {
@@ -843,6 +863,11 @@
               "totalItems": 5,
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         },
@@ -1147,7 +1172,12 @@
                           },
                           "scheduledTaskId": "task-1",
                           "scheduledRunId": "run-1",
-                          "isScheduled": true
+                          "isScheduled": true,
+                          "textSegments": [
+                            {
+                              "text": "Check health"
+                            }
+                          ]
                         }
                       },
                       {
@@ -1203,7 +1233,12 @@
                           },
                           "scheduledTaskId": "task-1",
                           "scheduledRunId": "run-2",
-                          "isScheduled": true
+                          "isScheduled": true,
+                          "textSegments": [
+                            {
+                              "text": "Check health"
+                            }
+                          ]
                         }
                       },
                       {
@@ -1259,7 +1294,12 @@
                           },
                           "scheduledTaskId": "task-1",
                           "scheduledRunId": "run-3",
-                          "isScheduled": true
+                          "isScheduled": true,
+                          "textSegments": [
+                            {
+                              "text": "Check health"
+                            }
+                          ]
                         }
                       },
                       {
@@ -1318,7 +1358,12 @@
                     },
                     "scheduledTaskId": "task-1",
                     "scheduledRunId": "run-4",
-                    "isScheduled": true
+                    "isScheduled": true,
+                    "textSegments": [
+                      {
+                        "text": "Check health"
+                      }
+                    ]
                   }
                 },
                 {
@@ -1383,6 +1428,11 @@
               "anchorItemId": "quiet-run-1",
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }

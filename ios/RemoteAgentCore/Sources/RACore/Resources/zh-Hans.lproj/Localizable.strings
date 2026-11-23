@@ -347,6 +347,7 @@
 "image_download_retry" = "没能下载 · 点按重试";
 "image_draft" = "待发送的图片";
 "image_generated" = "生成的图片";
+"image_generated_by" = "%1$@ 生成的图片";
 "image_image_dimensions_are_too_large" = "图片尺寸太大";
 "image_image_dimensions_are_too_large_resize_it_and_retry" = "图片尺寸太大，缩小后再试";
 "image_image_dimensions_are_too_large_send_a_compressed_version" = "图片尺寸太大，请用压缩方式发送";
@@ -442,6 +443,7 @@
 "image_user_source" = "用户发送或粘贴的图";
 "image_verification_failed" = "图片校验失败，没有显示";
 "image_view" = "查看图片";
+"image_viewer_empty" = "没有图片";
 "list_state_agent_asking" = "%1$@ 在问你";
 "list_state_approval" = "等待审批";
 "list_state_ended" = "已结束";

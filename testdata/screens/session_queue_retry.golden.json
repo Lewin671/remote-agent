@@ -675,6 +675,11 @@
               "awaitingCache": true,
               "hasGap": true,
               "canLoadEarlier": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }
@@ -1077,7 +1082,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "initial task"
+                      }
+                    ]
                   }
                 }
               ],
@@ -1086,6 +1096,11 @@
               "totalItems": 1,
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }

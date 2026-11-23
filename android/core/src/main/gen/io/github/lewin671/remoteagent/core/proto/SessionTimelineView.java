@@ -17,6 +17,7 @@ public  final class SessionTimelineView extends
   private SessionTimelineView() {
     items_ = emptyProtobufList();
     anchorItemId_ = "";
+    viewerImages_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int ITEMS_FIELD_NUMBER = 1;
@@ -800,6 +801,103 @@ public  final class SessionTimelineView extends
   private void clearOffline() {
 
     offline_ = false;
+  }
+
+  public static final int VIEWER_IMAGES_FIELD_NUMBER = 25;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionViewerImageView> viewerImages_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionViewerImageView> getViewerImagesList() {
+    return viewerImages_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SessionViewerImageViewOrBuilder> 
+      getViewerImagesOrBuilderList() {
+    return viewerImages_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  @java.lang.Override
+  public int getViewerImagesCount() {
+    return viewerImages_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionViewerImageView getViewerImages(int index) {
+    return viewerImages_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SessionViewerImageViewOrBuilder getViewerImagesOrBuilder(
+      int index) {
+    return viewerImages_.get(index);
+  }
+  private void ensureViewerImagesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SessionViewerImageView> tmp = viewerImages_;
+    if (!tmp.isModifiable()) {
+      viewerImages_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setViewerImages(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionViewerImageView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureViewerImagesIsMutable();
+    viewerImages_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addViewerImages(io.github.lewin671.remoteagent.core.proto.SessionViewerImageView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureViewerImagesIsMutable();
+    viewerImages_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addViewerImages(
+      int index, io.github.lewin671.remoteagent.core.proto.SessionViewerImageView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureViewerImagesIsMutable();
+    viewerImages_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  private void addAllViewerImages(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionViewerImageView> values) {
+    ensureViewerImagesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, viewerImages_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  private void clearViewerImages() {
+    viewerImages_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+   */
+  private void removeViewerImages(int index) {
+    ensureViewerImagesIsMutable();
+    viewerImages_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionTimelineView parseFrom(
@@ -1723,6 +1821,108 @@ public  final class SessionTimelineView extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SessionViewerImageView> getViewerImagesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getViewerImagesList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    @java.lang.Override
+    public int getViewerImagesCount() {
+      return instance.getViewerImagesCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionViewerImageView getViewerImages(int index) {
+      return instance.getViewerImages(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder setViewerImages(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionViewerImageView value) {
+      copyOnWrite();
+      instance.setViewerImages(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder setViewerImages(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionViewerImageView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setViewerImages(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder addViewerImages(io.github.lewin671.remoteagent.core.proto.SessionViewerImageView value) {
+      copyOnWrite();
+      instance.addViewerImages(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder addViewerImages(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionViewerImageView value) {
+      copyOnWrite();
+      instance.addViewerImages(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder addViewerImages(
+        io.github.lewin671.remoteagent.core.proto.SessionViewerImageView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addViewerImages(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder addViewerImages(
+        int index, io.github.lewin671.remoteagent.core.proto.SessionViewerImageView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addViewerImages(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder addAllViewerImages(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SessionViewerImageView> values) {
+      copyOnWrite();
+      instance.addAllViewerImages(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder clearViewerImages() {
+      copyOnWrite();
+      instance.clearViewerImages();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SessionViewerImageView viewer_images = 25 [json_name = "viewerImages"];</code>
+     */
+    public Builder removeViewerImages(int index) {
+      copyOnWrite();
+      instance.removeViewerImages(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionTimelineView)
   }
   @java.lang.Override
@@ -1765,13 +1965,15 @@ public  final class SessionTimelineView extends
             "canLoadEarlier_",
             "tailRequested_",
             "offline_",
+            "viewerImages_",
+            io.github.lewin671.remoteagent.core.proto.SessionViewerImageView.class,
           };
           java.lang.String info =
-              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0001\u0000\u0001\u001b\u0002\u0007" +
+              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0002\u0000\u0001\u001b\u0002\u0007" +
               "\u0003\u0003\u0004\u0003\u0005\u0003\u0006\u0004\u0007\u0003\b\u0208\t\u0007\n\u0007" +
               "\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0007\u0010\u0007\u0011\u0007\u0012" +
               "\u000b\u0013\u1009\u0000\u0014\u1009\u0001\u0015\u1009\u0002\u0016\u0007\u0017\u0007" +
-              "\u0018\u0007";
+              "\u0018\u0007\u0019\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

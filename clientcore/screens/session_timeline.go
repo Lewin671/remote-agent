@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/images"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
@@ -412,6 +413,7 @@ func buildSessionTimeline(
 		if ui.timeline != nil && !ui.timeline.hasFork && ui.timeline.key == cacheKey {
 			folded := foldQuietScheduledItemsWithSpans(ui.timeline.rawItems, ui.timeline.spans, st.Cal, win)
 			applyTimelineWindow(out, folded, win)
+			populateViewerImages(out, caps.Name, home, ui)
 			return out
 		}
 	}
@@ -598,8 +600,9 @@ func buildSessionTimeline(
 			}
 			tools.flush(&rawItems)
 			um := k.UserMessage
-			clean := withoutFileLines(um.Text, um.Files)
-			clean = cleanImagePlaceholders(clean, um.Images)
+			withoutFiles := withoutFileLines(um.Text, um.Files)
+			clean := cleanImagePlaceholders(withoutFiles, um.Images)
+			segments := images.SplitImagePlaceholders(withoutFiles, um.Images)
 			typedLocal := typedLocallySet[e.Seq]
 			var caption *corev1.Text
 			var schedTaskID, schedRunID string
@@ -646,6 +649,7 @@ func buildSessionTimeline(
 						ScheduledRunId:  schedRunID,
 						IsScheduled:     isSched,
 						TypedLocally:    typedLocal,
+						TextSegments:    segments,
 					},
 				},
 			})
@@ -1009,7 +1013,26 @@ func buildSessionTimeline(
 
 	// Apply window pagination and anchor resolution.
 	applyTimelineWindow(out, folded, win)
+	populateViewerImages(out, caps.Name, home, ui)
 	return out
+}
+
+func populateViewerImages(out *corev1.SessionTimelineView, agentName, machineHome string, ui *SessionUIState) {
+	if out == nil {
+		return
+	}
+	out.ViewerImages = images.CollectViewerImages(out.Items, agentName, machineHome)
+	if ui != nil {
+		if len(out.ViewerImages) == 0 {
+			ui.LastViewerRefs = nil
+		} else {
+			anchors := make([]ViewerImageAnchor, len(out.ViewerImages))
+			for i, img := range out.ViewerImages {
+				anchors[i] = ViewerImageAnchor{Seq: img.Seq, EventImageIndex: img.EventImageIndex}
+			}
+			ui.LastViewerRefs = anchors
+		}
+	}
 }
 
 func eventItemID(seq uint64) string {
@@ -1146,6 +1169,7 @@ func buildToolCallView(
 		NoResult:        noResult,
 		Unconfirmed:     noResult,
 		Images:          slices.Clone(tc.Images),
+		Seq:             e.Seq,
 	}
 }
 
@@ -1179,6 +1203,7 @@ func buildRunningToolView(e *v1.Event, rt *corev1.RunningTool, cwd, home string,
 		SinceMs:     sinceMs,
 		FrozenAtMs:  frozenAtMs,
 		Unconfirmed: unfinished,
+		Seq:         e.Seq,
 	}
 }
 

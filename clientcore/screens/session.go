@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/images"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
@@ -142,7 +143,19 @@ type SessionUIState struct {
 	LookupError            string
 	SharedFiles            map[string]*sharedfiles.LocalState
 	SharedFilesRev         uint64
+	ViewerOpen             bool
+	ViewerUseSeq           bool
+	ViewerSeq              uint64
+	ViewerEventIndex       int32
+	ViewerIndex            int32
+	LastViewerRefs         []ViewerImageAnchor
 	timeline               *timelineCache
+}
+
+// ViewerImageAnchor records a viewer image's (seq, event_image_index) identity from the last rendered window.
+type ViewerImageAnchor struct {
+	Seq             uint64
+	EventImageIndex int32
 }
 
 // ClearTimelineCache releases cached timeline items when the underlying event buffer is evicted.
@@ -214,14 +227,25 @@ func BuildSessionView(
 	dock := buildSessionDock(in, st, ls, lm, caps, ui)
 	composer := buildSessionComposer(in, st, ls, lm, header, caps, dock, ui)
 	timeline := buildSessionTimeline(in, st, ls, lm, header, caps, win, ui)
+	imageViewer := images.BuildViewerView(
+		ui.ViewerOpen,
+		ui.ViewerUseSeq,
+		ui.ViewerSeq,
+		ui.ViewerEventIndex,
+		ui.ViewerIndex,
+		timeline.ViewerImages,
+		header,
+		timeline.Loaded,
+	)
 
 	return &corev1.SessionViewModel{
-		SessionId: sid,
-		Header:    header,
-		Actions:   actions,
-		Dock:      dock,
-		Composer:  composer,
-		Timeline:  timeline,
+		SessionId:   sid,
+		Header:      header,
+		Actions:     actions,
+		Dock:        dock,
+		Composer:    composer,
+		Timeline:    timeline,
+		ImageViewer: imageViewer,
 	}
 }
 

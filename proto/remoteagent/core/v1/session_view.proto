@@ -38,6 +38,7 @@ message SessionViewModel {
   SessionDockView dock = 4;
   SessionComposerView composer = 5;
   SessionTimelineView timeline = 6;
+  SessionImageViewerView image_viewer = 7;
 }
 
 enum SessionCommandStatus {
@@ -501,6 +502,7 @@ message SessionTimelineView {
   bool can_load_earlier = 22;
   bool tail_requested = 23;
   bool offline = 24;
+  repeated SessionViewerImageView viewer_images = 25;
 }
 
 message SessionTimelineItem {
@@ -542,6 +544,14 @@ message SessionFileRefView {
   Text size_text = 8;
 }
 
+message SessionMessageTextSegment {
+  oneof kind {
+    string text = 1;
+    int32 image_index = 2;
+  }
+  Text image_label = 3;
+}
+
 message SessionUserMessageItem {
   string text = 1;
   repeated remoteagent.v1.ImageRef images = 2;
@@ -552,6 +562,7 @@ message SessionUserMessageItem {
   string scheduled_run_id = 7;
   bool is_scheduled = 8;
   bool typed_locally = 9;
+  repeated SessionMessageTextSegment text_segments = 10;
 }
 
 message SessionAgentMessageItem {
@@ -596,6 +607,7 @@ message SessionToolCallItem {
   Text decision_label = 17;
   bool decision_allowed = 18;
   repeated remoteagent.v1.ImageRef images = 19;
+  uint64 seq = 22;
 }
 
 message SessionToolGroupItem {
@@ -728,6 +740,45 @@ message SessionSharedFilesItem {
 message SessionGeneratedImagesItem {
   string revised_prompt = 1;
   repeated remoteagent.v1.ImageRef images = 2;
+}
+
+enum SessionImageSourceKind {
+  SESSION_IMAGE_SOURCE_KIND_UNSPECIFIED = 0;
+  SESSION_IMAGE_SOURCE_KIND_USER = 1;
+  SESSION_IMAGE_SOURCE_KIND_TOOL = 2;
+  SESSION_IMAGE_SOURCE_KIND_GENERATED = 3;
+}
+
+message SessionViewerImageView {
+  int32 viewer_index = 1;
+  uint64 seq = 2;
+  int32 event_image_index = 3;
+  int64 timestamp_ms = 4;
+  SessionImageSourceKind kind = 5;
+  remoteagent.v1.ImageRef ref = 6;
+  string tool_title = 7;
+  string revised_prompt = 8;
+  Text source_label = 9;
+  string size_text = 10;
+  double aspect_ratio = 11;
+  double clamped_aspect_ratio = 12;
+  bool has_display_copy = 13;
+  string display_name = 14;
+  string display_path = 15;
+  string file_extension = 16;
+  string mime_type = 17;
+  bool in_collapsed_group = 18;
+}
+
+message SessionImageViewerView {
+  bool open = 1;
+  int32 current_index = 2;
+  int32 total_count = 3;
+  bool has_prev = 4;
+  bool has_next = 5;
+  Text position_text = 6;
+  SessionViewerImageView current_image = 7;
+  Text empty_text = 8;
 }
 
 message SessionAsyncQuestionItem {
@@ -909,6 +960,27 @@ message SharedFileLocalStateEvent {
   repeated SharedFileLocalStateUpdate updates = 1;
   bool replace_all = 2;
   string clear_session_id = 3;
+}
+
+// SessionImageViewerOpenAction opens the session image viewer anchored to an event image or viewer index.
+message SessionImageViewerOpenAction {
+  string session_id = 1;
+  uint64 seq = 2;
+  int32 image_index = 3;
+  int32 viewer_index = 4;
+}
+
+// SessionImageViewerNavigateAction moves the open session image viewer by delta or to an explicit index.
+message SessionImageViewerNavigateAction {
+  string session_id = 1;
+  int32 delta = 2;
+  bool set_index = 3;
+  int32 index = 4;
+}
+
+// SessionImageViewerCloseAction closes the session image viewer.
+message SessionImageViewerCloseAction {
+  string session_id = 1;
 }
 
 // SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.

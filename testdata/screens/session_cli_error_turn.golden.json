@@ -519,7 +519,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "refactor auth"
+                      }
+                    ]
                   }
                 },
                 {
@@ -583,7 +588,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "retry"
+                      }
+                    ]
                   }
                 },
                 {
@@ -620,7 +630,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "abort manually"
+                      }
+                    ]
                   }
                 },
                 {
@@ -670,6 +685,11 @@
               "totalItems": 8,
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }

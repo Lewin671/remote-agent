@@ -76,4 +76,15 @@ public interface SessionViewModelOrBuilder extends
    * @return The timeline.
    */
   io.github.lewin671.remoteagent.core.proto.SessionTimelineView getTimeline();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+   * @return Whether the imageViewer field is set.
+   */
+  boolean hasImageViewer();
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+   * @return The imageViewer.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionImageViewerView getImageViewer();
 }

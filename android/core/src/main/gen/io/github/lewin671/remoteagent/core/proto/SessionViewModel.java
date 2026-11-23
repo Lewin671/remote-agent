@@ -310,6 +310,54 @@ public  final class SessionViewModel extends
     bitField0_ = (bitField0_ & ~0x00000010);
   }
 
+  public static final int IMAGE_VIEWER_FIELD_NUMBER = 7;
+  private io.github.lewin671.remoteagent.core.proto.SessionImageViewerView imageViewer_;
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+   */
+  @java.lang.Override
+  public boolean hasImageViewer() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionImageViewerView getImageViewer() {
+    return imageViewer_ == null ? io.github.lewin671.remoteagent.core.proto.SessionImageViewerView.getDefaultInstance() : imageViewer_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImageViewer(io.github.lewin671.remoteagent.core.proto.SessionImageViewerView value) {
+    value.getClass();  // minimal bytecode null check
+    imageViewer_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeImageViewer(io.github.lewin671.remoteagent.core.proto.SessionImageViewerView value) {
+    value.getClass();  // minimal bytecode null check
+    if (imageViewer_ != null &&
+        imageViewer_ != io.github.lewin671.remoteagent.core.proto.SessionImageViewerView.getDefaultInstance()) {
+      imageViewer_ =
+        io.github.lewin671.remoteagent.core.proto.SessionImageViewerView.newBuilder(imageViewer_).mergeFrom(value).buildPartial();
+    } else {
+      imageViewer_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+   */
+  private void clearImageViewer() {
+    imageViewer_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -695,6 +743,53 @@ public  final class SessionViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+     */
+    @java.lang.Override
+    public boolean hasImageViewer() {
+      return instance.hasImageViewer();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionImageViewerView getImageViewer() {
+      return instance.getImageViewer();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+     */
+    public Builder setImageViewer(io.github.lewin671.remoteagent.core.proto.SessionImageViewerView value) {
+      copyOnWrite();
+      instance.setImageViewer(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+     */
+    public Builder setImageViewer(
+        io.github.lewin671.remoteagent.core.proto.SessionImageViewerView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setImageViewer(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+     */
+    public Builder mergeImageViewer(io.github.lewin671.remoteagent.core.proto.SessionImageViewerView value) {
+      copyOnWrite();
+      instance.mergeImageViewer(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionImageViewerView image_viewer = 7 [json_name = "imageViewer"];</code>
+     */
+    public Builder clearImageViewer() {  copyOnWrite();
+      instance.clearImageViewer();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionViewModel)
   }
   @java.lang.Override
@@ -718,10 +813,12 @@ public  final class SessionViewModel extends
             "dock_",
             "composer_",
             "timeline_",
+            "imageViewer_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001\u0004\u1009\u0002\u0005\u1009\u0003\u0006\u1009\u0004";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
+              "\u0000\u0003\u1009\u0001\u0004\u1009\u0002\u0005\u1009\u0003\u0006\u1009\u0004\u0007" +
+              "\u1009\u0005";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

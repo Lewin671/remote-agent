@@ -4575,6 +4575,27 @@ type Event_SharedFileLocalState struct {
 
 func (*Event_SharedFileLocalState) isEvent_Event() {}
 
+type Event_SessionImageViewerOpen struct {
+	_                      [0]func()
+	SessionImageViewerOpen *SessionImageViewerOpenAction
+}
+
+func (*Event_SessionImageViewerOpen) isEvent_Event() {}
+
+type Event_SessionImageViewerNavigate struct {
+	_                          [0]func()
+	SessionImageViewerNavigate *SessionImageViewerNavigateAction
+}
+
+func (*Event_SessionImageViewerNavigate) isEvent_Event() {}
+
+type Event_SessionImageViewerClose struct {
+	_                       [0]func()
+	SessionImageViewerClose *SessionImageViewerCloseAction
+}
+
+func (*Event_SessionImageViewerClose) isEvent_Event() {}
+
 type Event_ScheduleCacheLoaded struct {
 	_                   [0]func()
 	ScheduleCacheLoaded *ScheduleCacheLoadedEvent
@@ -5578,6 +5599,24 @@ func (m *Event) GetSharedFileLocalState() *SharedFileLocalStateEvent {
 	}
 	return nil
 }
+func (m *Event) GetSessionImageViewerOpen() *SessionImageViewerOpenAction {
+	if x, ok := m.GetEvent().(*Event_SessionImageViewerOpen); ok && x != nil {
+		return x.SessionImageViewerOpen
+	}
+	return nil
+}
+func (m *Event) GetSessionImageViewerNavigate() *SessionImageViewerNavigateAction {
+	if x, ok := m.GetEvent().(*Event_SessionImageViewerNavigate); ok && x != nil {
+		return x.SessionImageViewerNavigate
+	}
+	return nil
+}
+func (m *Event) GetSessionImageViewerClose() *SessionImageViewerCloseAction {
+	if x, ok := m.GetEvent().(*Event_SessionImageViewerClose); ok && x != nil {
+		return x.SessionImageViewerClose
+	}
+	return nil
+}
 func (m *Event) GetScheduleCacheLoaded() *ScheduleCacheLoadedEvent {
 	if x, ok := m.GetEvent().(*Event_ScheduleCacheLoaded); ok && x != nil {
 		return x.ScheduleCacheLoaded
@@ -6032,22 +6071,24 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart3(num, wtyp, bp)
 	case num <= 212:
 		return m.extraUnmarshalPart4(num, wtyp, bp)
-	case num <= 312:
+	case num <= 304:
 		return m.extraUnmarshalPart5(num, wtyp, bp)
-	case num <= 332:
+	case num <= 326:
 		return m.extraUnmarshalPart6(num, wtyp, bp)
-	case num <= 346:
+	case num <= 343:
 		return m.extraUnmarshalPart7(num, wtyp, bp)
-	case num <= 362:
+	case num <= 355:
 		return m.extraUnmarshalPart8(num, wtyp, bp)
-	case num <= 382:
+	case num <= 379:
 		return m.extraUnmarshalPart9(num, wtyp, bp)
-	case num <= 411:
+	case num <= 408:
 		return m.extraUnmarshalPart10(num, wtyp, bp)
-	case num <= 452:
+	case num <= 420:
 		return m.extraUnmarshalPart11(num, wtyp, bp)
-	case num <= 465:
+	case num <= 463:
 		return m.extraUnmarshalPart12(num, wtyp, bp)
+	case num <= 465:
+		return m.extraUnmarshalPart13(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -6596,6 +6637,27 @@ func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SharedFileLocalState
+		case 217:
+			w, _ := m.Event.(*Event_SessionImageViewerOpen)
+			if w == nil || w.SessionImageViewerOpen == nil {
+				w = &Event_SessionImageViewerOpen{SessionImageViewerOpen: &SessionImageViewerOpenAction{}}
+				m.Event = w
+			}
+			sub = w.SessionImageViewerOpen
+		case 218:
+			w, _ := m.Event.(*Event_SessionImageViewerNavigate)
+			if w == nil || w.SessionImageViewerNavigate == nil {
+				w = &Event_SessionImageViewerNavigate{SessionImageViewerNavigate: &SessionImageViewerNavigateAction{}}
+				m.Event = w
+			}
+			sub = w.SessionImageViewerNavigate
+		case 219:
+			w, _ := m.Event.(*Event_SessionImageViewerClose)
+			if w == nil || w.SessionImageViewerClose == nil {
+				w = &Event_SessionImageViewerClose{SessionImageViewerClose: &SessionImageViewerCloseAction{}}
+				m.Event = w
+			}
+			sub = w.SessionImageViewerClose
 		case 300:
 			w, _ := m.Event.(*Event_ScheduleCacheLoaded)
 			if w == nil || w.ScheduleCacheLoaded == nil {
@@ -6631,6 +6693,24 @@ func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleSetVisibleSession
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 310:
 			w, _ := m.Event.(*Event_ScheduleListOpen)
 			if w == nil || w.ScheduleListOpen == nil {
@@ -6652,24 +6732,6 @@ func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleToggleEnded
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 313:
 			w, _ := m.Event.(*Event_ScheduleMarkRead)
 			if w == nil || w.ScheduleMarkRead == nil {
@@ -6733,6 +6795,24 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleDetailOpenRun
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 330:
 			w, _ := m.Event.(*Event_ScheduleOperate)
 			if w == nil || w.ScheduleOperate == nil {
@@ -6754,24 +6834,6 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleSetNotify
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 333:
 			w, _ := m.Event.(*Event_ScheduleUpdateMessage)
 			if w == nil || w.ScheduleUpdateMessage == nil {
@@ -6835,6 +6897,24 @@ func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleFormSelectProject
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 344:
 			w, _ := m.Event.(*Event_ScheduleFormSelectMachine)
 			if w == nil || w.ScheduleFormSelectMachine == nil {
@@ -6856,24 +6936,6 @@ func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleFormSelectModel
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 347:
 			w, _ := m.Event.(*Event_ScheduleFormUpdateTiming)
 			if w == nil || w.ScheduleFormUpdateTiming == nil {
@@ -6937,6 +6999,24 @@ func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.MachineStatusPollTick
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 360:
 			w, _ := m.Event.(*Event_MachineSettingsOpen)
 			if w == nil || w.MachineSettingsOpen == nil {
@@ -6958,24 +7038,6 @@ func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.UpdateMachineAgentDefaults
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 363:
 			w, _ := m.Event.(*Event_UpdateMachineDaemonSettings)
 			if w == nil || w.UpdateMachineDaemonSettings == nil {
@@ -7039,6 +7101,24 @@ func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.CheckForUpdates
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 380:
 			w, _ := m.Event.(*Event_UsageScreenOpen)
 			if w == nil || w.UsageScreenOpen == nil {
@@ -7060,24 +7140,6 @@ func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.UsageCacheLoaded
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 383:
 			w, _ := m.Event.(*Event_UsageScreenSelectSort)
 			if w == nil || w.UsageScreenSelectSort == nil {
@@ -7141,6 +7203,24 @@ func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcRemoteSet
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 409:
 			w, _ := m.Event.(*Event_DirectPcCandidatesAdded)
 			if w == nil || w.DirectPcCandidatesAdded == nil {
@@ -7162,24 +7242,6 @@ func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcState
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 412:
 			w, _ := m.Event.(*Event_DirectPcStunError)
 			if w == nil || w.DirectPcStunError == nil {
@@ -7243,6 +7305,24 @@ func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.TerminalStream
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 421:
 			w, _ := m.Event.(*Event_DirectPreferencesLoaded)
 			if w == nil || w.DirectPreferencesLoaded == nil {
@@ -7264,24 +7344,6 @@ func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeySigned
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 453:
 			w, _ := m.Event.(*Event_SecurityKeyAgreed)
 			if w == nil || w.SecurityKeyAgreed == nil {
@@ -7345,6 +7407,24 @@ func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityForeground
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 464:
 			w, _ := m.Event.(*Event_SecurityAction)
 			if w == nil || w.SecurityAction == nil {

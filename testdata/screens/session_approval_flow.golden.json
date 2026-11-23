@@ -562,7 +562,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "check status"
+                      }
+                    ]
                   }
                 }
               ],
@@ -571,6 +576,11 @@
               "totalItems": 1,
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }
@@ -871,7 +881,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "check status"
+                      }
+                    ]
                   }
                 }
               ],
@@ -880,6 +895,11 @@
               "totalItems": 1,
               "loading": true,
               "fetching": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "common.loading"
+              }
             }
           }
         }
@@ -1165,7 +1185,12 @@
                         }
                       ]
                     },
-                    "typedLocally": true
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "text": "check status"
+                      }
+                    ]
                   }
                 },
                 {
@@ -1204,7 +1229,8 @@
                         }
                       ]
                     },
-                    "decisionAllowed": true
+                    "decisionAllowed": true,
+                    "seq": "4"
                   }
                 }
               ],
@@ -1212,6 +1238,11 @@
               "windowLastSeq": "4",
               "totalItems": 2,
               "loaded": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "image.viewer_empty"
+              }
             }
           }
         }

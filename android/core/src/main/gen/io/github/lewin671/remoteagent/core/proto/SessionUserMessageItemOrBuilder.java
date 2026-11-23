@@ -107,4 +107,18 @@ public interface SessionUserMessageItemOrBuilder extends
    * @return The typedLocally.
    */
   boolean getTypedLocally();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment> 
+      getTextSegmentsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment getTextSegments(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SessionMessageTextSegment text_segments = 10 [json_name = "textSegments"];</code>
+   */
+  int getTextSegmentsCount();
 }

@@ -865,6 +865,32 @@ public  final class SessionToolCallItem extends
     images_.remove(index);
   }
 
+  public static final int SEQ_FIELD_NUMBER = 22;
+  private long seq_;
+  /**
+   * <code>uint64 seq = 22 [json_name = "seq"];</code>
+   * @return The seq.
+   */
+  @java.lang.Override
+  public long getSeq() {
+    return seq_;
+  }
+  /**
+   * <code>uint64 seq = 22 [json_name = "seq"];</code>
+   * @param value The seq to set.
+   */
+  private void setSeq(long value) {
+    
+    seq_ = value;
+  }
+  /**
+   * <code>uint64 seq = 22 [json_name = "seq"];</code>
+   */
+  private void clearSeq() {
+
+    seq_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionToolCallItem parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1842,6 +1868,34 @@ public  final class SessionToolCallItem extends
       return this;
     }
 
+    /**
+     * <code>uint64 seq = 22 [json_name = "seq"];</code>
+     * @return The seq.
+     */
+    @java.lang.Override
+    public long getSeq() {
+      return instance.getSeq();
+    }
+    /**
+     * <code>uint64 seq = 22 [json_name = "seq"];</code>
+     * @param value The seq to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSeq(long value) {
+      copyOnWrite();
+      instance.setSeq(value);
+      return this;
+    }
+    /**
+     * <code>uint64 seq = 22 [json_name = "seq"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSeq() {
+      copyOnWrite();
+      instance.clearSeq();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionToolCallItem)
   }
   @java.lang.Override
@@ -1881,12 +1935,13 @@ public  final class SessionToolCallItem extends
             io.github.lewin671.remoteagent.proto.ImageRef.class,
             "backgroundKind_",
             "backgroundId_",
+            "seq_",
           };
           java.lang.String info =
-              "\u0000\u0015\u0000\u0001\u0001\u0015\u0015\u0000\u0001\u0000\u0001\u0208\u0002\f" +
+              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0000\u0001\u0000\u0001\u0208\u0002\f" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\f\b\u0004\t\u0007\n\u0002" +
               "\u000b\u0002\f\u0002\r\u0007\u000e\u1009\u0000\u000f\u0007\u0010\u0007\u0011\u1009" +
-              "\u0001\u0012\u0007\u0013\u001b\u0014\f\u0015\u0208";
+              "\u0001\u0012\u0007\u0013\u001b\u0014\f\u0015\u0208\u0016\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

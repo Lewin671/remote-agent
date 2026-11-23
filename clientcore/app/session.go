@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/images"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
@@ -744,6 +745,86 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 			}
 		}
 		if changed {
+			store.pendingDirty = true
+		}
+		return nil
+
+	case *corev1.Event_SessionImageViewerOpen:
+		if k.SessionImageViewerOpen == nil || k.SessionImageViewerOpen.SessionId == "" {
+			return nil
+		}
+		act := k.SessionImageViewerOpen
+		ui := store.ensureUI(act.SessionId)
+		ui.ViewerOpen = true
+		if act.Seq > 0 {
+			ui.ViewerUseSeq = true
+			ui.ViewerSeq = act.Seq
+			ui.ViewerEventIndex = act.ImageIndex
+			ui.ViewerIndex = 0
+		} else {
+			ui.ViewerUseSeq = false
+			ui.ViewerSeq = 0
+			ui.ViewerEventIndex = 0
+			ui.ViewerIndex = act.ViewerIndex
+		}
+		store.pendingDirty = true
+		return nil
+
+	case *corev1.Event_SessionImageViewerNavigate:
+		if k.SessionImageViewerNavigate == nil || k.SessionImageViewerNavigate.SessionId == "" {
+			return nil
+		}
+		act := k.SessionImageViewerNavigate
+		ui := store.ensureUI(act.SessionId)
+		anchors := ui.LastViewerRefs
+		if len(anchors) == 0 {
+			snap := c.m.sync.SessionSnapshot(act.SessionId)
+			vm := screens.BuildSessionView(snap, c.m.state, &corev1.SessionScreenRequest{SessionId: act.SessionId}, ui)
+			_ = vm
+			anchors = ui.LastViewerRefs
+		}
+		total := int32(len(anchors))
+		if total == 0 {
+			return nil
+		}
+		var curIdx int32
+		if ui.ViewerUseSeq {
+			curIdx = 0
+			for i, a := range anchors {
+				if a.Seq == ui.ViewerSeq {
+					curIdx = images.ClampViewerIndex(int32(i)+ui.ViewerEventIndex, total)
+					break
+				}
+			}
+		} else {
+			curIdx = images.ClampViewerIndex(ui.ViewerIndex, total)
+		}
+		var nextIdx int32
+		if act.SetIndex {
+			nextIdx = images.ClampViewerIndex(act.Index, total)
+		} else {
+			nextIdx = images.StepViewerIndex(curIdx, act.Delta, total)
+		}
+		target := anchors[nextIdx]
+		ui.ViewerOpen = true
+		ui.ViewerUseSeq = true
+		ui.ViewerSeq = target.Seq
+		ui.ViewerEventIndex = target.EventImageIndex
+		ui.ViewerIndex = nextIdx
+		store.pendingDirty = true
+		return nil
+
+	case *corev1.Event_SessionImageViewerClose:
+		if k.SessionImageViewerClose == nil || k.SessionImageViewerClose.SessionId == "" {
+			return nil
+		}
+		ui := store.ensureUI(k.SessionImageViewerClose.SessionId)
+		if ui.ViewerOpen {
+			ui.ViewerOpen = false
+			ui.ViewerUseSeq = false
+			ui.ViewerSeq = 0
+			ui.ViewerEventIndex = 0
+			ui.ViewerIndex = 0
 			store.pendingDirty = true
 		}
 		return nil
