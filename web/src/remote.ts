@@ -207,7 +207,7 @@ import { describeBrowser, type DeviceInfo } from "./devices";
 import { fileUploadUpdateRequired, type Prepare, type Tray } from "./attach";
 import { modelLabel } from "./model";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
-import { PROTOCOL_VERSION } from "./protocol";
+import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
 import {
   loadAccount,
   saveAccount,
@@ -375,7 +375,7 @@ export async function joinWithApproval(
   }
   const reg = toBinary(DeviceRegistrationSchema, create(DeviceRegistrationSchema, { accountPublicKey, devicePublicKey: pub, kind: DeviceKind.CLIENT, createdMs: BigInt(Date.now()) }));
   const stored: StoredAccount = { server, root: existing?.root, rootRaw: existing?.rootRaw && new Uint8Array(existing.rootRaw), devicePrivate: device.privateKey, deviceId: await deviceID(pub) };
-  const request = toBinary(RegisterDeviceRequestSchema, create(RegisterDeviceRequestSchema, { protocolVersion: PROTOCOL_VERSION, registration: reg, approval: enrollment.approval, approvalSignature: enrollment.approvalSignature }));
+  const request = toBinary(RegisterDeviceRequestSchema, create(RegisterDeviceRequestSchema, { protocolVersion: RELAY_PROTOCOL_VERSION, registration: reg, approval: enrollment.approval, approvalSignature: enrollment.approvalSignature }));
   await saveRegistration({ account: stored, request, security, replace });
   await resumeRegistration();
   return stored;
@@ -583,7 +583,7 @@ export class Remote implements CoreExecutor {
             reachable: direct || !!m?.online,
             ready: direct || this.conn === "online",
             authorized: !this.removed && !(this.archiveMachines.has(id) && !this.trustedMembers.has(id)),
-            protocolVersion: direct ? PROTOCOL_VERSION : (sm?.protocolVersion || m?.meta?.protocolVersion),
+            protocolVersion: direct ? PEER_PROTOCOL_VERSION : (sm?.protocolVersion || m?.meta?.protocolVersion),
             capabilities: sm?.meta?.capabilities ?? m?.meta?.capabilities,
           };
         },
@@ -2044,7 +2044,7 @@ export class Remote implements CoreExecutor {
         const timeoutMs = this.everOnline || this.networkGeneration > 0 ? 3000 : OPEN_TIMEOUT_MS;
         const ch = await auth.getChallenge({ deviceId: this.account.deviceId }, { signal, timeoutMs });
         signal.throwIfAborted();
-        const res = await auth.login({ protocolVersion: PROTOCOL_VERSION, deviceId: this.account.deviceId, challenge: ch.challenge, signature: await signLogin(this.account.devicePrivate, ch.challenge) }, { signal, timeoutMs });
+        const res = await auth.login({ protocolVersion: RELAY_PROTOCOL_VERSION, deviceId: this.account.deviceId, challenge: ch.challenge, signature: await signLogin(this.account.devicePrivate, ch.challenge) }, { signal, timeoutMs });
         signal.throwIfAborted();
         if (this.closed) return;
         this.token = res.token;
@@ -2118,7 +2118,7 @@ export class Remote implements CoreExecutor {
     const previous = this.authorizedCommands.get(slot);
     if (previous) return previous;
     const saved = slot.prepared;
-    const plain = saved ? new Uint8Array(saved.plain) : (toBinary(CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PROTOCOL_VERSION })) as Uint8Array<ArrayBuffer>);
+    const plain = saved ? new Uint8Array(saved.plain) : (toBinary(CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PEER_PROTOCOL_VERSION })) as Uint8Array<ArrayBuffer>);
     const prepared = { requestId: slot.requestId, deadline: slot.deadline, machineId: saved?.machineId ?? machineId, sid: saved?.sid ?? sid, plain: new Uint8Array(plain) as Uint8Array<ArrayBuffer>, cmd: fromBinary(CommandSchema, plain).kind };
     this.authorizedCommands.set(slot, prepared);
     slot.prepared = { machineId: prepared.machineId, sid: prepared.sid, plain: new Uint8Array(plain) };
@@ -2144,8 +2144,8 @@ export class Remote implements CoreExecutor {
     if (!slot.evidence.unresolved && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS) throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
     const m = this.machines.get(machineId);
     const theirs = this.peer(machineId).protocolVersion;
-    if (theirs !== undefined && theirs !== PROTOCOL_VERSION) {
-      throw new CommandError("failed_precondition", theirs < PROTOCOL_VERSION ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(m)) }) : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"), false, false, slot.evidence.unresolved ? "unknown" : "not_sent");
+    if (theirs !== undefined && theirs !== PEER_PROTOCOL_VERSION) {
+      throw new CommandError("failed_precondition", theirs < PEER_PROTOCOL_VERSION ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(m)) }) : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"), false, false, slot.evidence.unresolved ? "unknown" : "not_sent");
     }
     this.checkFileCapability(machineId, cmd, slot.evidence.unresolved);
     await slot.beforeDispatch?.(slot);

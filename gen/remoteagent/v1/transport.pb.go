@@ -23,6 +23,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Outer directed-peer framing read by the relay (internal/relayproto.Version).
 type FrameClass int32
 
 const (
@@ -726,31 +727,32 @@ func (x *TransportControl) GetBody() *TypedPayload {
 }
 
 type Context struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Domain            []byte                 `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
-	Account           []byte                 `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
-	Sender            []byte                 `protobuf:"bytes,3,opt,name=sender,proto3" json:"sender,omitempty"`
-	Receiver          []byte                 `protobuf:"bytes,4,opt,name=receiver,proto3" json:"receiver,omitempty"`
-	SenderRole        Role                   `protobuf:"varint,5,opt,name=sender_role,json=senderRole,proto3,enum=remoteagent.v1.Role" json:"sender_role,omitempty"`
-	ReceiverRole      Role                   `protobuf:"varint,6,opt,name=receiver_role,json=receiverRole,proto3,enum=remoteagent.v1.Role" json:"receiver_role,omitempty"`
-	Machine           []byte                 `protobuf:"bytes,7,opt,name=machine,proto3" json:"machine,omitempty"`
-	Protocol          uint32                 `protobuf:"varint,8,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	MemberEpoch       uint64                 `protobuf:"varint,9,opt,name=member_epoch,json=memberEpoch,proto3" json:"member_epoch,omitempty"`
-	MemberHead        []byte                 `protobuf:"bytes,10,opt,name=member_head,json=memberHead,proto3" json:"member_head,omitempty"`
-	SenderInstance    []byte                 `protobuf:"bytes,11,opt,name=sender_instance,json=senderInstance,proto3" json:"sender_instance,omitempty"`
-	ReceiverInstance  []byte                 `protobuf:"bytes,12,opt,name=receiver_instance,json=receiverInstance,proto3" json:"receiver_instance,omitempty"`
-	SenderBootNonce   []byte                 `protobuf:"bytes,13,opt,name=sender_boot_nonce,json=senderBootNonce,proto3" json:"sender_boot_nonce,omitempty"`
-	ReceiverBootNonce []byte                 `protobuf:"bytes,14,opt,name=receiver_boot_nonce,json=receiverBootNonce,proto3" json:"receiver_boot_nonce,omitempty"`
-	Connection        []byte                 `protobuf:"bytes,15,opt,name=connection,proto3" json:"connection,omitempty"`
-	Use               *PCUse                 `protobuf:"varint,16,opt,name=use,proto3,enum=remoteagent.v1.PCUse,oneof" json:"use,omitempty"`
-	Generation        *uint64                `protobuf:"varint,17,opt,name=generation,proto3,oneof" json:"generation,omitempty"`
-	Seq               uint64                 `protobuf:"varint,18,opt,name=seq,proto3" json:"seq,omitempty"`
-	IssuedAtMs        int64                  `protobuf:"varint,19,opt,name=issued_at_ms,json=issuedAtMs,proto3" json:"issued_at_ms,omitempty"`
-	DeadlineMs        int64                  `protobuf:"varint,20,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
-	Purpose           FrameClass             `protobuf:"varint,21,opt,name=purpose,proto3,enum=remoteagent.v1.FrameClass" json:"purpose,omitempty"`
-	Direction         []byte                 `protobuf:"bytes,22,opt,name=direction,proto3" json:"direction,omitempty"`
-	AccountDomain     []byte                 `protobuf:"bytes,23,opt,name=account_domain,json=accountDomain,proto3" json:"account_domain,omitempty"`
-	RecipientUnknown  bool                   `protobuf:"varint,24,opt,name=recipient_unknown,json=recipientUnknown,proto3" json:"recipient_unknown,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Domain       []byte                 `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
+	Account      []byte                 `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	Sender       []byte                 `protobuf:"bytes,3,opt,name=sender,proto3" json:"sender,omitempty"`
+	Receiver     []byte                 `protobuf:"bytes,4,opt,name=receiver,proto3" json:"receiver,omitempty"`
+	SenderRole   Role                   `protobuf:"varint,5,opt,name=sender_role,json=senderRole,proto3,enum=remoteagent.v1.Role" json:"sender_role,omitempty"`
+	ReceiverRole Role                   `protobuf:"varint,6,opt,name=receiver_role,json=receiverRole,proto3,enum=remoteagent.v1.Role" json:"receiver_role,omitempty"`
+	Machine      []byte                 `protobuf:"bytes,7,opt,name=machine,proto3" json:"machine,omitempty"`
+	// Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+	Protocol          uint32     `protobuf:"varint,8,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	MemberEpoch       uint64     `protobuf:"varint,9,opt,name=member_epoch,json=memberEpoch,proto3" json:"member_epoch,omitempty"`
+	MemberHead        []byte     `protobuf:"bytes,10,opt,name=member_head,json=memberHead,proto3" json:"member_head,omitempty"`
+	SenderInstance    []byte     `protobuf:"bytes,11,opt,name=sender_instance,json=senderInstance,proto3" json:"sender_instance,omitempty"`
+	ReceiverInstance  []byte     `protobuf:"bytes,12,opt,name=receiver_instance,json=receiverInstance,proto3" json:"receiver_instance,omitempty"`
+	SenderBootNonce   []byte     `protobuf:"bytes,13,opt,name=sender_boot_nonce,json=senderBootNonce,proto3" json:"sender_boot_nonce,omitempty"`
+	ReceiverBootNonce []byte     `protobuf:"bytes,14,opt,name=receiver_boot_nonce,json=receiverBootNonce,proto3" json:"receiver_boot_nonce,omitempty"`
+	Connection        []byte     `protobuf:"bytes,15,opt,name=connection,proto3" json:"connection,omitempty"`
+	Use               *PCUse     `protobuf:"varint,16,opt,name=use,proto3,enum=remoteagent.v1.PCUse,oneof" json:"use,omitempty"`
+	Generation        *uint64    `protobuf:"varint,17,opt,name=generation,proto3,oneof" json:"generation,omitempty"`
+	Seq               uint64     `protobuf:"varint,18,opt,name=seq,proto3" json:"seq,omitempty"`
+	IssuedAtMs        int64      `protobuf:"varint,19,opt,name=issued_at_ms,json=issuedAtMs,proto3" json:"issued_at_ms,omitempty"`
+	DeadlineMs        int64      `protobuf:"varint,20,opt,name=deadline_ms,json=deadlineMs,proto3" json:"deadline_ms,omitempty"`
+	Purpose           FrameClass `protobuf:"varint,21,opt,name=purpose,proto3,enum=remoteagent.v1.FrameClass" json:"purpose,omitempty"`
+	Direction         []byte     `protobuf:"bytes,22,opt,name=direction,proto3" json:"direction,omitempty"`
+	AccountDomain     []byte     `protobuf:"bytes,23,opt,name=account_domain,json=accountDomain,proto3" json:"account_domain,omitempty"`
+	RecipientUnknown  bool       `protobuf:"varint,24,opt,name=recipient_unknown,json=recipientUnknown,proto3" json:"recipient_unknown,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }

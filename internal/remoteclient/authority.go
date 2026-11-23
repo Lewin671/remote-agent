@@ -16,7 +16,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/netpolicy"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
@@ -81,7 +81,7 @@ func NewAuthority(ctx context.Context, server, setupToken string) (*Authority, e
 	if err != nil {
 		return nil, err
 	}
-	res, err := auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Signature: keys.SignRegistration(reg), SetupToken: setupToken}))
+	res, err := auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: reg, Signature: keys.SignRegistration(reg), SetupToken: setupToken}))
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (a *Authority) Enroll(ctx context.Context, ed ed25519.PrivateKey, x []byte,
 	if err != nil {
 		return nil, err
 	}
-	res, err := a.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Approval: approval, ApprovalSignature: sig}))
+	res, err := a.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: reg, Approval: approval, ApprovalSignature: sig}))
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func loginDevice(ctx context.Context, auth remoteagentv1connect.AuthServiceClien
 	if err != nil {
 		return "", err
 	}
-	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(ed, ch.Msg.Challenge)}))
+	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(ed, ch.Msg.Challenge)}))
 	if err != nil {
 		return "", err
 	}

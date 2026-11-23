@@ -75,7 +75,7 @@ func (p *peerSlot) deliver(ctx context.Context, raw []byte) bool {
 
 func testCodec(t *testing.T) *peerwire.Codec {
 	domain, head := sha256.Sum256([]byte("domain")), sha256.Sum256([]byte("head"))
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.Version)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", domain, head, 1, protocol.PeerVersion)
 	if err != nil {
 		t.Fatal(err)
 	}

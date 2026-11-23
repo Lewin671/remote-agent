@@ -20,7 +20,7 @@ import RAProto
 
         var state = RemoteState(); state.conn = .online; state.link = .online; state.synced = true
         let meta = PBMachineMeta.with {
-            $0.hostname = machineName; $0.protocolVersion = protocolVersion; $0.scheduleRevision = 1
+            $0.hostname = machineName; $0.protocolVersion = peerProtocolVersion; $0.scheduleRevision = 1
             $0.capabilities.scheduledTasks = true
             $0.agents = [PBAgent.codex, .claude, .antigravity].map { agent in
                 .with { $0.agent = agent; $0.defaultMode = .auto }

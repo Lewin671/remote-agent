@@ -3,7 +3,7 @@ import Testing
 
 @testable import RACore
 
-/// The protocol version is one number kept in four places; this is the one check that they agree.
+/// Both protocol versions (relay and peer) are kept in five places; this check verifies they agree.
 @Suite(.timeLimit(.minutes(2))) struct VersionTests {
     private func number(in path: String, matching pattern: String) throws -> UInt32 {
         let text = try String(contentsOf: repoRoot.appendingPathComponent(path), encoding: .utf8)
@@ -11,12 +11,22 @@ import Testing
         return try #require(UInt32(String(match.output[1].substring ?? "")))
     }
 
-    @Test func speaksTheProtocolVersionOfTheOtherEnds() throws {
-        #expect(try number(in: "internal/protocol/protocol.go", matching: #"(?m)^const Version = (\d+)$"#) == protocolVersion)
-        #expect(try number(in: "web/src/protocol.ts", matching: #"PROTOCOL_VERSION\s*=\s*(\d+)"#) == protocolVersion)
+    @Test func speaksThePeerProtocolVersionOfTheOtherEnds() throws {
+        #expect(try number(in: "internal/protocol/protocol.go", matching: #"(?m)^const PeerVersion = (\d+)$"#) == peerProtocolVersion)
+        #expect(try number(in: "clientcore/sync/types.go", matching: #"(?m)^\s*PeerVersion\s+uint32\s*=\s*(\d+)$"#) == peerProtocolVersion)
+        #expect(try number(in: "web/src/protocol.ts", matching: #"(?m)^export const PEER_PROTOCOL_VERSION = (\d+);$"#) == peerProtocolVersion)
         #expect(try number(
             in: "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Version.kt",
-            matching: #"const val PROTOCOL_VERSION = (\d+)"#) == protocolVersion)
+            matching: #"(?m)^const val PEER_PROTOCOL_VERSION = (\d+)$"#) == peerProtocolVersion)
+    }
+
+    @Test func speaksTheRelayProtocolVersionOfTheOtherEnds() throws {
+        #expect(try number(in: "internal/relayproto/relayproto.go", matching: #"(?m)^const Version = (\d+)$"#) == relayProtocolVersion)
+        #expect(try number(in: "clientcore/sync/types.go", matching: #"(?m)^\s*RelayVersion\s+uint32\s*=\s*(\d+)$"#) == relayProtocolVersion)
+        #expect(try number(in: "web/src/protocol.ts", matching: #"(?m)^export const RELAY_PROTOCOL_VERSION = (\d+);$"#) == relayProtocolVersion)
+        #expect(try number(
+            in: "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Version.kt",
+            matching: #"(?m)^const val RELAY_PROTOCOL_VERSION = (\d+)$"#) == relayProtocolVersion)
     }
 
     @Test func keepsTheEnvelopeVersionOfStoredData() throws {

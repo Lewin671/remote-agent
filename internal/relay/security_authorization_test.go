@@ -78,7 +78,7 @@ func TestAuthorizationPauseStillReturnsAcceptedResult(t *testing.T) {
 	defer client.Close()
 	now := c.security.now()
 	h := devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "pause-query-result", Deadline: now + 60000}
-	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
+	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
 	saved, _ := proto.Marshal(&pb.CommandResult{ErrorCode: "not_found"})
 	w, err := client.Prepare(h, nil, body)
 	if err != nil {
@@ -134,7 +134,7 @@ func TestTransientAdmissionRefusalDoesNotBecomeRejected(t *testing.T) {
 	}
 	defer client.Close()
 	now := c.security.now()
-	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
+	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_UpdateSettings{UpdateSettings: &pb.UpdateSettingsRequest{}}})
 	wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: c.acct.DeviceID, Request: "transient-same-request", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)

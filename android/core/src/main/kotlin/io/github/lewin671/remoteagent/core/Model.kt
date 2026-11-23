@@ -697,14 +697,14 @@ fun capabilities(m: MachineView?): io.github.lewin671.remoteagent.proto.MachineC
     m?.pathState?.capabilities
 
 /**
- * Why no command goes to [m]: it speaks another protocol version than this app (PROTOCOL_VERSION),
+ * Why no command goes to [m]: it speaks another protocol version than this app (PEER_PROTOCOL_VERSION),
  * said by which side to update; null when they match or the machine's metadata is not read yet.
  */
 fun protocolMismatch(m: MachineView?): MessageText? {
     val theirs = m?.pathState?.protocolVersion ?: return null
     return when {
-        theirs < PROTOCOL_VERSION -> localized { copy -> copy(UiMessages.errorsRemoteAgentOnIsOutOfDateUpdateIt(listMachineName(m).resolve(copy))) }
-        theirs > PROTOCOL_VERSION -> UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry().messageText()
+        theirs < PEER_PROTOCOL_VERSION -> localized { copy -> copy(UiMessages.errorsRemoteAgentOnIsOutOfDateUpdateIt(listMachineName(m).resolve(copy))) }
+        theirs > PEER_PROTOCOL_VERSION -> UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry().messageText()
         else -> null
     }
 }

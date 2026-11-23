@@ -17,8 +17,10 @@ import (
 )
 
 const (
-	// ProtocolVersion must match internal/protocol.Version (and web/android/ios).
-	ProtocolVersion uint32 = 17
+	// RelayVersion must match internal/relayproto.Version (and web/android/ios).
+	RelayVersion uint32 = 17
+	// PeerVersion must match internal/protocol.PeerVersion (and web/android/ios).
+	PeerVersion uint32 = 17
 
 	MaxClockSkewMs             int64  = 300_000
 	CommandTTLMs               int64  = 60_000
@@ -472,11 +474,11 @@ func NewEngine() *Engine {
 		lateDirectTickets:  make(map[string]uint64),
 		lateDirectDeadline: make(map[string]int64),
 		transportCoord: transport.NewCoordinator(transport.CoordConfig{
-			ProtocolVersion: uint64(ProtocolVersion),
+			ProtocolVersion: uint64(PeerVersion),
 		}),
 	}
 	e.w.Init()
-	e.w.World.ClientVersion = ProtocolVersion
+	e.w.World.ClientVersion = PeerVersion
 	e.w.World.Unlinked = &e.unlinkedFlag
 	e.refreshWorld()
 	return e

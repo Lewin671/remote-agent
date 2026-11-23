@@ -172,8 +172,8 @@ func (e *Engine) refreshWorld() {
 			pv = m.Meta.ProtocolVersion
 		}
 		m.ProtocolVersion = pv
-		m.DaemonOutOfDate = pv > 0 && pv < ProtocolVersion
-		m.ClientOutOfDate = pv > 0 && pv > ProtocolVersion
+		m.DaemonOutOfDate = pv > 0 && pv < PeerVersion
+		m.ClientOutOfDate = pv > 0 && pv > PeerVersion
 	}
 
 	e.unlinkedFlag = unlinked

@@ -88,7 +88,7 @@ func seedBenchmarkCore(b *testing.B, numMachines, numProjects, numSessions int) 
 			Online:    i%2 == 0,
 			Meta: &v1.MachineMeta{
 				Hostname:        fmt.Sprintf("host-%d.local", i),
-				ProtocolVersion: sync.ProtocolVersion,
+				ProtocolVersion: sync.PeerVersion,
 				Agents: []*v1.AgentInfo{
 					{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
 				},

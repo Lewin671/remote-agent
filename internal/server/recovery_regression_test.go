@@ -14,7 +14,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
@@ -209,7 +209,7 @@ func TestRegisterDeviceCannotWipeAnotherDevice(t *testing.T) {
 		t.Fatal(err)
 	}
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: victimPub, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT, CreatedMs: time.Now().UnixMilli()})
-	_, err = ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Approval: approval, ApprovalSignature: approvalSig}))
+	_, err = ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: reg, Approval: approval, ApprovalSignature: approvalSig}))
 	if err == nil {
 		t.Fatal("an unauthorized replacement was accepted")
 	}

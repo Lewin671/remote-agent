@@ -1,6 +1,6 @@
 // Displaying the four emoji is not consent: the candidate must confirm them
 // locally before it registers or stores any security state.
-import { PROTOCOL_VERSION } from "./protocol";
+import { RELAY_PROTOCOL_VERSION } from "./protocol";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { checkPairChainSize, joinByPairing, PairCanceled } from "./pairing";
@@ -55,7 +55,7 @@ async function peer(options: {
           PeekPairingRequestSchema,
           new Uint8Array(await request.arrayBuffer()),
         );
-        expect(peek.protocolVersion).toBe(PROTOCOL_VERSION);
+        expect(peek.protocolVersion).toBe(RELAY_PROTOCOL_VERSION);
         return reply(
           toBinary(
             PeekPairingResponseSchema,
@@ -69,7 +69,7 @@ async function peer(options: {
           JoinPairingRequestSchema,
           new Uint8Array(await request.arrayBuffer()),
         );
-        expect(join.protocolVersion).toBe(PROTOCOL_VERSION);
+        expect(join.protocolVersion).toBe(RELAY_PROTOCOL_VERSION);
         return reply(
           toBinary(
             JoinPairingResponseSchema,

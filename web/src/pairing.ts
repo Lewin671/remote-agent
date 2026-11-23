@@ -1,7 +1,7 @@
 import * as l10n from "./i18n";
 import { loadRegistration, loadAccount } from "./storage";
 import { parseLease } from "./device-security";
-import { PROTOCOL_VERSION } from "./protocol";
+import { RELAY_PROTOCOL_VERSION } from "./protocol";
 import {
   buildRecord,
   loadPairingIdentity,
@@ -191,7 +191,7 @@ export async function joinByPairing(
     throw new Error(l10n.t("security.security_setup_must_use_the_original_account_s_server"));
   const peek = await pc.peekPairing({
     code: link.code.replace(/\s/g, ""),
-    protocolVersion: PROTOCOL_VERSION,
+    protocolVersion: RELAY_PROTOCOL_VERSION,
   });
   if (
     peek.commit.length !== 32 ||
@@ -229,7 +229,7 @@ export async function joinByPairing(
     x,
   });
   const joined = await pc.joinPairing({
-    protocolVersion: PROTOCOL_VERSION,
+    protocolVersion: RELAY_PROTOCOL_VERSION,
     devicePublicKey: devicePublic,
     deviceHpkePublicKey: xPublic,
     code: link.code.replace(/\s/g, ""),
@@ -469,7 +469,7 @@ async function loginRetained(account: StoredAccount, signal?: AbortSignal) {
   );
   const challenge = await api.getChallenge({ deviceId: account.deviceId }, { signal });
   return api.login({
-    protocolVersion: PROTOCOL_VERSION,
+    protocolVersion: RELAY_PROTOCOL_VERSION,
     deviceId: account.deviceId,
     challenge: challenge.challenge,
     signature: await signLogin(account.devicePrivate, challenge.challenge),

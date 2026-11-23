@@ -23,6 +23,7 @@ fileprivate struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobuf.ProtobufAP
   typealias Version = _2
 }
 
+/// Outer directed-peer framing read by the relay (internal/relayproto.Version).
 public enum PBFrameClass: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -459,6 +460,7 @@ public struct PBContext: @unchecked Sendable {
     set {_uniqueStorage()._machine = newValue}
   }
 
+  /// Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
   public var `protocol`: UInt32 {
     get {return _storage._protocol}
     set {_uniqueStorage()._protocol = newValue}

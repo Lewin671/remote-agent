@@ -116,7 +116,7 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 			Online:    true,
 			Meta: &v1.MachineMeta{
 				Hostname:        "DevBox",
-				ProtocolVersion: sync.ProtocolVersion,
+				ProtocolVersion: sync.PeerVersion,
 				Capabilities: &v1.MachineCapabilities{
 					ImageUpload:    true,
 					FileUpload:     true,
@@ -366,7 +366,7 @@ func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
 			LastSeenMs: 1_791_000_000_000,
 			Meta: &v1.MachineMeta{
 				Hostname:        "SleepyMac",
-				ProtocolVersion: sync.ProtocolVersion,
+				ProtocolVersion: sync.PeerVersion,
 			},
 		},
 		{
@@ -374,7 +374,7 @@ func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
 			Online:    true,
 			Meta: &v1.MachineMeta{
 				Hostname:        "OldDaemon",
-				ProtocolVersion: sync.ProtocolVersion - 1,
+				ProtocolVersion: sync.PeerVersion - 1,
 			},
 		},
 		{
@@ -383,7 +383,7 @@ func TestSessionMissingLookupMismatchOfflineAndRichTimeline(t *testing.T) {
 			Meta: &v1.MachineMeta{
 				Hostname:        "MainMac",
 				Home:            "/Users/me",
-				ProtocolVersion: sync.ProtocolVersion,
+				ProtocolVersion: sync.PeerVersion,
 				Capabilities: &v1.MachineCapabilities{
 					SharedFiles: true,
 				},
@@ -1128,7 +1128,7 @@ func startSessionForStartupPromptTest(t *testing.T, sid, prompt string) (*Core, 
 				Online:    true,
 				Meta: &v1.MachineMeta{
 					Hostname:        "MacStudio",
-					ProtocolVersion: sync.ProtocolVersion,
+					ProtocolVersion: sync.PeerVersion,
 					Agents: []*v1.AgentInfo{
 						{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
 					},
@@ -1538,7 +1538,7 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 				Online:    true,
 				Meta: &v1.MachineMeta{
 					Hostname:        "MacStudio",
-					ProtocolVersion: sync.ProtocolVersion,
+					ProtocolVersion: sync.PeerVersion,
 					Agents: []*v1.AgentInfo{
 						{Agent: v1.Agent_AGENT_ANTIGRAVITY, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
 					},

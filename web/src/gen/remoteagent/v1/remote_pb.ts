@@ -83,8 +83,8 @@ export type MachineMeta = Message<"remoteagent.v1.MachineMeta"> & {
   quotas: AgentQuota[];
 
   /**
-   * The protocol version this daemon speaks (internal/protocol). A client
-   * of another version sends it no commands and says which side to update.
+   * The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+   * A client of another version sends it no commands and says which side to update.
    *
    * @generated from field: uint32 protocol_version = 12;
    */
@@ -553,8 +553,8 @@ export type Command = Message<"remoteagent.v1.Command"> & {
   } | { case: undefined; value?: undefined };
 
   /**
-   * The protocol version the client speaks (internal/protocol). A daemon
-   * of another version refuses the command and says which side to update.
+   * The peer protocol version the client speaks (internal/protocol.PeerVersion).
+   * A daemon of another version refuses the command and says which side to update.
    *
    * @generated from field: uint32 protocol_version = 100;
    */

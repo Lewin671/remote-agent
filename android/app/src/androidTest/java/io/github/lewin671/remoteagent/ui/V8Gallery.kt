@@ -510,7 +510,7 @@ class V8Gallery {
     }
 
     private val newer = io.github.lewin671.remoteagent.core.Release(
-        "0.29.0", 82, io.github.lewin671.remoteagent.core.PROTOCOL_VERSION, "remote-agent-v0.29.0.apk", "0".repeat(64), 5_976_883,
+        "0.29.0", 82, io.github.lewin671.remoteagent.core.PEER_PROTOCOL_VERSION, "remote-agent-v0.29.0.apk", "0".repeat(64), 5_976_883,
         "项目列表在范围菜单、选项目和项目管理三处统一成一种；新增连接检测。协议版本不变，电脑上的 remote-agent 不用升级。",
     )
 

@@ -14,7 +14,7 @@ import { AuthorityLifecycle, claimSecurityOperation, clearSecurityOperation, ope
 import { loadAccount, loadRegistration, saveAccount, saveAccountPublicProfile, type StoredAccount } from "./storage";
 import { apiBase } from "./remote";
 import { relayFetch } from "./transport";
-import { PROTOCOL_VERSION } from "./protocol";
+import { RELAY_PROTOCOL_VERSION } from "./protocol";
 import { AuthService, ClientService, RecoveryService, DeviceKind, DeviceRegistrationSchema, RegisterDeviceRequestSchema, SubmitRecoveryRequestSchema, CompleteRecoveryRequestSchema, PutSecurityStateRequestSchema, GetRecoveryContextResponse_Phase as RecoveryPhase, type SignupProof, type GetRecoveryContextResponse } from "./gen/remoteagent/v1/relay_pb";
 
 export class RecoverySignatureMissing extends Error {}
@@ -115,7 +115,7 @@ export class AuthoritySetup {
     const registration = toBinary(DeviceRegistrationSchema, create(DeviceRegistrationSchema, { accountPublicKey: l.accountPublicKey, devicePublicKey: member.ed, kind: DeviceKind.CLIENT, createdMs: genesis.core.issuedAt }));
     const signer = await accountKey(l.account.root!);
     check();
-    const signed = toBinary(RegisterDeviceRequestSchema, create(RegisterDeviceRequestSchema, { registration, signature: signer.sign(concat(utf8(REGISTER_CONTEXT), registration)), protocolVersion: PROTOCOL_VERSION }));
+    const signed = toBinary(RegisterDeviceRequestSchema, create(RegisterDeviceRequestSchema, { registration, signature: signer.sign(concat(utf8(REGISTER_CONTEXT), registration)), protocolVersion: RELAY_PROTOCOL_VERSION }));
     check();
     const saved = await saveSecurityOperation(op, { ...op, signed, local: { ...l, record } });
     check();
@@ -460,7 +460,7 @@ async function login(auth: Client<typeof AuthService>, account: StoredAccount, c
   check();
   const signature = await signLogin(account.devicePrivate, challenge);
   check();
-  const reply = await auth.login({ deviceId: account.deviceId, challenge, signature, protocolVersion: PROTOCOL_VERSION });
+  const reply = await auth.login({ deviceId: account.deviceId, challenge, signature, protocolVersion: RELAY_PROTOCOL_VERSION });
   check();
   return reply.token;
 }

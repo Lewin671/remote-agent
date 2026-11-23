@@ -201,7 +201,7 @@ func (s *securitySession) acceptOptions() deviceauth.AcceptOptions {
 		if err != nil || proto.Unmarshal(plain, cmd) != nil {
 			return deviceauth.RejectedEntry("invalid_body", devicesec.ErrInvalid)
 		}
-		if cmd.ProtocolVersion != protocol.Version {
+		if cmd.ProtocolVersion != protocol.PeerVersion {
 			return deviceauth.RejectedEntry("protocol_mismatch", protocol.Mismatch("the client", cmd.ProtocolVersion))
 		}
 		kind := cmd.ProtoReflect().WhichOneof(cmd.ProtoReflect().Descriptor().Oneofs().ByName("kind"))

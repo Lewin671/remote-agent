@@ -128,7 +128,7 @@ import {
   type ProjectPrefs,
   ProjectPrefsSchema,
 } from "../gen/remoteagent/v1/remote_pb";
-import { PROTOCOL_VERSION } from "../protocol";
+import { PEER_PROTOCOL_VERSION } from "../protocol";
 import { DemoStatus, demoDisk, scenarioOf } from "./machine-status-demo";
 import scheduledFixture from "../../../testdata/schedules/clients.json";
 import { ScheduleCacheLoadedEventSchema } from "../gen/remoteagent/core/v1/schedules_view_pb";
@@ -2320,7 +2320,7 @@ export class DemoRemote extends Remote {
         meta: create(MachineMetaSchema, {
           hostname,
           home: "/Users/me",
-          protocolVersion: PROTOCOL_VERSION,
+          protocolVersion: PEER_PROTOCOL_VERSION,
           ...meta,
         }),
       });

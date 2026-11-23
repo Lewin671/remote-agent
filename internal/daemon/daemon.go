@@ -851,7 +851,7 @@ func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	m.DisabledAgents = append([]pb.Agent(nil), st.DisabledAgents...)
 	m.SettingsRevision = st.Revision
 	m.Capabilities = d.capabilities()
-	m.ProtocolVersion = protocol.Version
+	m.ProtocolVersion = protocol.PeerVersion
 	m.DaemonVersion = buildinfo.Version
 	if d.diskGuard != nil {
 		m.DiskStatus = d.diskGuard.Metadata()

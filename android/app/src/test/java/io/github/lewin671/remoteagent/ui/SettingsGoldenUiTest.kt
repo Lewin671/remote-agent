@@ -17,7 +17,7 @@ import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.DeviceView
 import io.github.lewin671.remoteagent.core.MachineView
-import io.github.lewin671.remoteagent.core.PROTOCOL_VERSION
+import io.github.lewin671.remoteagent.core.PEER_PROTOCOL_VERSION
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.proto.ThemePreference
@@ -284,7 +284,7 @@ class SettingsGoldenUiTest {
                             "m1",
                             online = true,
                             lastSeenMs = 1_000L,
-                            meta = MachineMeta.newBuilder().setHostname("BuildBox").setProtocolVersion(PROTOCOL_VERSION).build(),
+                            meta = MachineMeta.newBuilder().setHostname("BuildBox").setProtocolVersion(PEER_PROTOCOL_VERSION).build(),
                         ),
                     ),
                 ),

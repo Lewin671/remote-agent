@@ -393,9 +393,10 @@ type RegisterDeviceRequest struct {
 	// a device to an existing account. Never replaced by root-key possession.
 	Approval          []byte `protobuf:"bytes,5,opt,name=approval,proto3" json:"approval,omitempty"`
 	ApprovalSignature []byte `protobuf:"bytes,6,opt,name=approval_signature,json=approvalSignature,proto3" json:"approval_signature,omitempty"`
-	ProtocolVersion   uint32 `protobuf:"varint,7,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Relay protocol version (internal/relayproto.Version), checked by the relay.
+	ProtocolVersion uint32 `protobuf:"varint,7,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RegisterDeviceRequest) Reset() {
@@ -767,7 +768,8 @@ type LoginRequest struct {
 	Challenge []byte                 `protobuf:"bytes,2,opt,name=challenge,proto3" json:"challenge,omitempty"`
 	// Ed25519 signature by the device key over "remote-agent/v1/login\x00"
 	// followed by challenge.
-	Signature       []byte `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+	Signature []byte `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+	// Relay protocol version (internal/relayproto.Version), checked by the relay.
 	ProtocolVersion uint32 `protobuf:"varint,4,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -1118,9 +1120,10 @@ func (x *PairApproval) GetReplacesDeviceId() string {
 }
 
 type PeekPairingRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Code            string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	ProtocolVersion uint32                 `protobuf:"varint,2,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Code  string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	// Relay protocol version (internal/relayproto.Version), checked by the relay.
+	ProtocolVersion uint32 `protobuf:"varint,2,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1230,9 +1233,10 @@ type JoinPairingRequest struct {
 	DevicePublicKey []byte `protobuf:"bytes,4,opt,name=device_public_key,json=devicePublicKey,proto3" json:"device_public_key,omitempty"`
 	// Independent long-term X25519 recipient key, bound by the SAS.
 	DeviceHpkePublicKey []byte `protobuf:"bytes,5,opt,name=device_hpke_public_key,json=deviceHpkePublicKey,proto3" json:"device_hpke_public_key,omitempty"`
-	ProtocolVersion     uint32 `protobuf:"varint,6,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Relay protocol version (internal/relayproto.Version), checked by the relay.
+	ProtocolVersion uint32 `protobuf:"varint,6,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *JoinPairingRequest) Reset() {

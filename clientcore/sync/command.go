@@ -127,7 +127,7 @@ func (e *Engine) SubmitCommand(ctx *StepContext, in SubmitCommandParams) (reques
 
 	if prep == nil {
 		cmd := in.Command.Clone()
-		cmd.ProtocolVersion = ProtocolVersion
+		cmd.ProtocolVersion = PeerVersion
 		raw, err := cmd.Marshal()
 		if err != nil {
 			return "", false
@@ -917,7 +917,7 @@ func checkProtocolMismatch(m *MachineEntry, prior bool) *corev1.Text {
 		return nil
 	}
 	lm := &lists.Machine{ID: m.ID, Meta: m.Meta}
-	dir := lists.ProtocolMismatchDirection(lm, ProtocolVersion)
+	dir := lists.ProtocolMismatchDirection(lm, PeerVersion)
 	if dir == 0 {
 		return nil
 	}

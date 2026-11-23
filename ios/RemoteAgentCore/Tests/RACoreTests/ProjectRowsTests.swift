@@ -23,7 +23,7 @@ import Testing
         }
     }
 
-    private func machine(_ id: String, _ name: String, online: Bool = true, agents: [PBAgent] = [.codex], version: UInt32 = protocolVersion) -> MachineView {
+    private func machine(_ id: String, _ name: String, online: Bool = true, agents: [PBAgent] = [.codex], version: UInt32 = peerProtocolVersion) -> MachineView {
         MachineView(id: id, online: online, lastSeenMs: 0, meta: .with { meta in
             meta.hostname = name
             meta.protocolVersion = version

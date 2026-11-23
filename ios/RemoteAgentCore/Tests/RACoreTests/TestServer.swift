@@ -315,7 +315,7 @@ actor FakeDaemon {
     }
 
     /// `fileUpload` is what the meta advertises of sending files; nil leaves capabilities out.
-    func putMachine(_ hostname: String, protocol version: UInt32 = protocolVersion, fileUpload: Bool? = nil) async throws {
+    func putMachine(_ hostname: String, protocol version: UInt32 = peerProtocolVersion, fileUpload: Bool? = nil) async throws {
         metaRev += 1
         var meta = PBMachineMeta()
         meta.hostname = hostname

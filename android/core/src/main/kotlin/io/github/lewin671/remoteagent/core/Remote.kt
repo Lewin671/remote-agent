@@ -272,7 +272,7 @@ class Remote(
                     reachable = directReady || it.machines[id]?.online == true,
                     relayRequired = !directReady,
                     knownOffline = !directReady && it.machines[id]?.online == false,
-                    protocolVersion = if (directReady) PROTOCOL_VERSION else base.protocolVersion,
+                    protocolVersion = if (directReady) PEER_PROTOCOL_VERSION else base.protocolVersion,
                     capabilities = base.capabilities,
                 )
             }
@@ -1962,7 +1962,7 @@ class Remote(
         coreHost.sendTransportConfig(
             supported = rtcFactory != null,
             account = account.accountId,
-            protocolVersion = PROTOCOL_VERSION,
+            protocolVersion = PEER_PROTOCOL_VERSION,
             serverHost = directServerHost,
             configuredStun = directConfiguredStun,
             platformAgent = "android",
@@ -2094,7 +2094,7 @@ class Remote(
                     TransportConfigEvent.newBuilder()
                         .setSupported(rtcFactory != null)
                         .setAccount(account.accountId)
-                        .setProtocolVersion(PROTOCOL_VERSION)
+                        .setProtocolVersion(PEER_PROTOCOL_VERSION)
                         .setServerHost(directServerHost)
                         .setConfiguredStun(directConfiguredStun)
                         .setPlatformAgent("android"),
@@ -2679,7 +2679,7 @@ class Remote(
         requestId: String = newRequestId(),
         deadlineMs: Long = clock() + COMMAND_TTL_MS,
     ): CommandResult = withContext(dispatcher) {
-        val versioned = cmd.toBuilder().setProtocolVersion(PROTOCOL_VERSION).build()
+        val versioned = cmd.toBuilder().setProtocolVersion(PEER_PROTOCOL_VERSION).build()
         val hasFiles = when (versioned.kindCase) {
             Command.KindCase.SEND -> versioned.send.fileIdsCount > 0
             Command.KindCase.CREATE_SESSION -> versioned.createSession.fileIdsCount > 0

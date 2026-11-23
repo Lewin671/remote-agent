@@ -829,7 +829,7 @@ class RemoteTest {
             val (h, cmd) = withContext(Dispatchers.IO) { daemon.commands.take() }
             assertEquals("s1", h.sessionId)
             assertEquals("跑一下测试", cmd.send.text)
-            assertEquals(PROTOCOL_VERSION, cmd.protocolVersion)
+            assertEquals(PEER_PROTOCOL_VERSION, cmd.protocolVersion)
             assertEquals(r.account.deviceId, h.sender)
             assertTrue(h.deadlineMs > System.currentTimeMillis())
 
@@ -894,7 +894,7 @@ class RemoteTest {
     @Test
     fun sendsNothingToAMachineOfAnOlderProtocol() =
         runBlocking<Unit> {
-            val e = refused(PROTOCOL_VERSION - 1)
+            val e = refused(PEER_PROTOCOL_VERSION - 1)
             assertEquals("failed_precondition", e.code)
             assertEquals("fake-mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", errorText(e).testText())
         }
@@ -902,7 +902,7 @@ class RemoteTest {
     @Test
     fun sendsNothingToAMachineOfANewerProtocol() =
         runBlocking<Unit> {
-            val e = refused(PROTOCOL_VERSION + 1)
+            val e = refused(PEER_PROTOCOL_VERSION + 1)
             assertEquals("failed_precondition", e.code)
             assertEquals(messageTextForTest(UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry()), errorText(e).testText())
         }
@@ -1001,7 +1001,7 @@ class RemoteTest {
         val api = Api(server.url, http)
         api.pairing.joinPairing(
             JoinPairingRequest.newBuilder()
-                .setCode(init.code).setProtocolVersion(PROTOCOL_VERSION)
+                .setCode(init.code).setProtocolVersion(RELAY_PROTOCOL_VERSION)
                 .setJoinerKind(DeviceKind.DEVICE_KIND_CLIENT)
                 .setDevicePublicKey(com.google.protobuf.ByteString.copyFrom(SigningKey(daemon.phone.deviceSeed).publicKey))
                 .setDeviceHpkePublicKey(com.google.protobuf.ByteString.copyFrom(PairKey().public))

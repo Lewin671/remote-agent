@@ -1084,7 +1084,7 @@ func TestCommandOrigins(t *testing.T) {
 	}
 	// A client of another protocol version is told to update; nothing runs.
 	other := send("d")
-	other.ProtocolVersion = protocol.Version + 1
+	other.ProtocolVersion = protocol.PeerVersion + 1
 	var ce *remoteclient.CommandError
 	if _, err := e.client.Do(ctx, s, other); !errors.As(err, &ce) || ce.Code != connect.CodeFailedPrecondition.String() || !strings.Contains(ce.Message, "update") {
 		t.Fatalf("protocol mismatch: %v", err)

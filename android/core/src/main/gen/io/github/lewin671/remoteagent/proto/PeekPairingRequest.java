@@ -68,6 +68,10 @@ public  final class PeekPairingRequest extends
   public static final int PROTOCOL_VERSION_FIELD_NUMBER = 2;
   private int protocolVersion_;
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 2 [json_name = "protocolVersion"];</code>
    * @return The protocolVersion.
    */
@@ -76,6 +80,10 @@ public  final class PeekPairingRequest extends
     return protocolVersion_;
   }
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 2 [json_name = "protocolVersion"];</code>
    * @param value The protocolVersion to set.
    */
@@ -84,6 +92,10 @@ public  final class PeekPairingRequest extends
     protocolVersion_ = value;
   }
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 2 [json_name = "protocolVersion"];</code>
    */
   private void clearProtocolVersion() {
@@ -238,6 +250,10 @@ public  final class PeekPairingRequest extends
     }
 
     /**
+     * <pre>
+     * Relay protocol version (internal/relayproto.Version), checked by the relay.
+     * </pre>
+     *
      * <code>uint32 protocol_version = 2 [json_name = "protocolVersion"];</code>
      * @return The protocolVersion.
      */
@@ -246,6 +262,10 @@ public  final class PeekPairingRequest extends
       return instance.getProtocolVersion();
     }
     /**
+     * <pre>
+     * Relay protocol version (internal/relayproto.Version), checked by the relay.
+     * </pre>
+     *
      * <code>uint32 protocol_version = 2 [json_name = "protocolVersion"];</code>
      * @param value The protocolVersion to set.
      * @return This builder for chaining.
@@ -256,6 +276,10 @@ public  final class PeekPairingRequest extends
       return this;
     }
     /**
+     * <pre>
+     * Relay protocol version (internal/relayproto.Version), checked by the relay.
+     * </pre>
+     *
      * <code>uint32 protocol_version = 2 [json_name = "protocolVersion"];</code>
      * @return This builder for chaining.
      */

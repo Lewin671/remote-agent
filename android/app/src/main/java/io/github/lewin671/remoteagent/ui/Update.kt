@@ -16,7 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.PROTOCOL_VERSION
+import io.github.lewin671.remoteagent.core.PEER_PROTOCOL_VERSION
 import io.github.lewin671.remoteagent.core.Release
 import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.update.UpdateCheck
@@ -208,6 +208,6 @@ private fun ReleaseNotes(release: Release, installed: String) {
         Text(copy(UiMessages.settingsAndroidCurrentVersionValue1((installed).toString())), style = T.s13, color = p.ink2)
         if (release.notes.isNotEmpty()) Text(release.notes, style = T.s15, color = p.ink, modifier = Modifier.padding(top = 8.dp))
         // Another protocol version: the computers must be upgraded too, or nothing connects.
-        if (release.protocol != PROTOCOL_VERSION) Notice(copy(UiMessages.settingsAndroidThisReleaseChangesTheProtocolAfterInstallingAlsoUpdateRemote()), Modifier.padding(top = 10.dp), tone = NoticeTone.WARN)
+        if (release.protocol != PEER_PROTOCOL_VERSION) Notice(copy(UiMessages.settingsAndroidThisReleaseChangesTheProtocolAfterInstallingAlsoUpdateRemote()), Modifier.padding(top = 10.dp), tone = NoticeTone.WARN)
     }
 }

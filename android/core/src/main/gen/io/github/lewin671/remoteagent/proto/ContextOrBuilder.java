@@ -63,6 +63,10 @@ public interface ContextOrBuilder extends
   com.google.protobuf.ByteString getMachine();
 
   /**
+   * <pre>
+   * Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+   * </pre>
+   *
    * <code>uint32 protocol = 8 [json_name = "protocol"];</code>
    * @return The protocol.
    */

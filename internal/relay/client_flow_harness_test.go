@@ -183,7 +183,7 @@ func TestApprovalClientHarness(t *testing.T) {
 	}
 	e := setup(t)
 	e.backend.machineMeta = func() *pb.MachineMeta {
-		return &pb.MachineMeta{Hostname: "fixture-machine", ProtocolVersion: protocol.Version, Capabilities: &pb.MachineCapabilities{SharedFiles: true, SharedFileChunkBytes: 768 << 10}}
+		return &pb.MachineMeta{Hostname: "fixture-machine", ProtocolVersion: protocol.PeerVersion, Capabilities: &pb.MachineCapabilities{SharedFiles: true, SharedFileChunkBytes: 768 << 10}}
 	}
 	backend := &flowBackend{direct: directFlow, bulkData: make([]byte, 768<<10), fakeBackend: e.backend, closed: map[string]bool{}, snapshots: map[string]int{}, approvals: map[string]int{}}
 	if _, err = rand.Read(backend.bulkData); err != nil {

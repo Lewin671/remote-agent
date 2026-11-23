@@ -102,7 +102,7 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 	authority := e.authority
 	head := authority.States[len(authority.States)-1]
 	hash, _ := head.Hash()
-	codec, err := peerwire.NewCodec(authority.Pin.Account, authority.Pin.Domain, hash, head.Core.Epoch, protocol.Version)
+	codec, err := peerwire.NewCodec(authority.Pin.Account, authority.Pin.Domain, hash, head.Core.Epoch, protocol.PeerVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestDirectCommandAndLargeReadThroughLocalServer(t *testing.T) {
 	defer endpoint.Close()
 	call := func(use int, session string, command *pb.Command) *pb.CommandResult {
 		t.Helper()
-		command.ProtocolVersion = protocol.Version
+		command.ProtocolVersion = protocol.PeerVersion
 		plain, _ := proto.Marshal(command)
 		var nonce [16]byte
 		_, _ = rand.Read(nonce[:])

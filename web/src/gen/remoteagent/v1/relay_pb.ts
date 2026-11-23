@@ -98,6 +98,8 @@ export type RegisterDeviceRequest = Message<"remoteagent.v1.RegisterDeviceReques
   approvalSignature: Uint8Array;
 
   /**
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   *
    * @generated from field: uint32 protocol_version = 7;
    */
   protocolVersion: number;
@@ -253,6 +255,8 @@ export type LoginRequest = Message<"remoteagent.v1.LoginRequest"> & {
   signature: Uint8Array;
 
   /**
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   *
    * @generated from field: uint32 protocol_version = 4;
    */
   protocolVersion: number;
@@ -420,6 +424,8 @@ export type PeekPairingRequest = Message<"remoteagent.v1.PeekPairingRequest"> & 
   code: string;
 
   /**
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   *
    * @generated from field: uint32 protocol_version = 2;
    */
   protocolVersion: number;
@@ -488,6 +494,8 @@ export type JoinPairingRequest = Message<"remoteagent.v1.JoinPairingRequest"> & 
   deviceHpkePublicKey: Uint8Array;
 
   /**
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   *
    * @generated from field: uint32 protocol_version = 6;
    */
   protocolVersion: number;

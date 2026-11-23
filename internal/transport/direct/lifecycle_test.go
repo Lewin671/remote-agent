@@ -17,7 +17,7 @@ func testSession(t *testing.T, ctx context.Context, now func() time.Time, send f
 	t.Helper()
 	self, peer := identity(t, 1), identity(t, 2)
 	h := sha256.Sum256([]byte("fixture"))
-	codec, _ := peerwire.NewCodec("00000000000000000000000000000001", h, h, 1, protocol.Version)
+	codec, _ := peerwire.NewCodec("00000000000000000000000000000001", h, h, 1, protocol.PeerVersion)
 	s, initial, err := newSession(ctx, SessionConfig{Self: self, Peer: peer.Public().Member(), Codec: codec, Connection: make([]byte, 16), Deadline: uint64(now().UnixMilli()) + 10000, Pool: NewPool(1), LoopbackOnly: true, Allow: func() bool { return true }, Send: send, Now: now}, initiate)
 	if err != nil {
 		t.Fatal(err)

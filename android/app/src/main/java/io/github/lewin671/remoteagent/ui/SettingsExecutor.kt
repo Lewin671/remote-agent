@@ -3,7 +3,7 @@ package io.github.lewin671.remoteagent.ui
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailabilityLight
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.PROTOCOL_VERSION
+import io.github.lewin671.remoteagent.core.PEER_PROTOCOL_VERSION
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent
 import io.github.lewin671.remoteagent.core.proto.NotificationPermissionState
@@ -169,7 +169,7 @@ object SettingsExecutor {
     private fun buildUpdateStateEvent(app: RaApp, state: UpdateState, check: UpdateCheck): ClientUpdateStateEvent {
         val b = ClientUpdateStateEvent.newBuilder()
             .setCurrentVersion(app.versionName)
-            .setProtocolVersion(PROTOCOL_VERSION)
+            .setProtocolVersion(PEER_PROTOCOL_VERSION)
             .setChannel(if (Updater.enabled(app)) "stable" else "dev")
             .setChecking(check.running)
         when (state) {

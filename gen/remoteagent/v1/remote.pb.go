@@ -201,8 +201,8 @@ type MachineMeta struct {
 	// Several entries for one CLI are accounts (or, with account empty,
 	// sessions) that could not be told to be the same.
 	Quotas []*AgentQuota `protobuf:"bytes,11,rep,name=quotas,proto3" json:"quotas,omitempty"`
-	// The protocol version this daemon speaks (internal/protocol). A client
-	// of another version sends it no commands and says which side to update.
+	// The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+	// A client of another version sends it no commands and says which side to update.
 	ProtocolVersion uint32 `protobuf:"varint,12,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
 	// The projects this machine has sessions in. Clients list sessions a
 	// page at a time, so they learn of projects, and how many ended sessions
@@ -757,8 +757,8 @@ type Command struct {
 	//	*Command_GetMachineStatus
 	//	*Command_GetUsageStats
 	Kind isCommand_Kind `protobuf_oneof:"kind"`
-	// The protocol version the client speaks (internal/protocol). A daemon
-	// of another version refuses the command and says which side to update.
+	// The peer protocol version the client speaks (internal/protocol.PeerVersion).
+	// A daemon of another version refuses the command and says which side to update.
 	ProtocolVersion uint32 `protobuf:"varint,100,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache

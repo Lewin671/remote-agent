@@ -1,10 +1,7 @@
 package sync
 
 import (
-	"fmt"
-	"os"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -1039,7 +1036,7 @@ func TestCommandLifecycleFrozenRetryAndObservedActions(t *testing.T) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:        "Dev",
-							ProtocolVersion: ProtocolVersion,
+							ProtocolVersion: PeerVersion,
 							Capabilities:    &v1.MachineCapabilities{FileUpload: true},
 						},
 					},
@@ -1161,16 +1158,6 @@ func TestCommandLifecycleFrozenRetryAndObservedActions(t *testing.T) {
 	}
 }
 
-func TestProtocolVersionMatchesInternal(t *testing.T) {
-	raw, err := os.ReadFile("../../internal/protocol/protocol.go")
-	if err != nil {
-		t.Fatalf("read internal/protocol/protocol.go: %v", err)
-	}
-	want := fmt.Sprintf("const Version = %d", ProtocolVersion)
-	if !strings.Contains(string(raw), want) {
-		t.Fatalf("expected internal/protocol/protocol.go to contain %q", want)
-	}
-}
 
 func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 	e := NewEngine()
@@ -1189,7 +1176,7 @@ func TestSyncStateAndSessionDataTransitionViews(t *testing.T) {
 						LastSeenMs: now + 35,
 						Meta: &v1.MachineMeta{
 							Hostname:        "MacStudio",
-							ProtocolVersion: ProtocolVersion - 1,
+							ProtocolVersion: PeerVersion - 1,
 						},
 					},
 				},

@@ -13,7 +13,7 @@ import (
 func (e *Engine) ensureTransportCoord() *transport.Coordinator {
 	if e.transportCoord == nil {
 		e.transportCoord = transport.NewCoordinator(transport.CoordConfig{
-			ProtocolVersion: uint64(ProtocolVersion),
+			ProtocolVersion: uint64(PeerVersion),
 		})
 	}
 	return e.transportCoord
@@ -67,7 +67,7 @@ func (e *Engine) handleTransportConfig(ctx *StepContext, ev *corev1.TransportCon
 	e.platformAgent = ev.PlatformAgent
 	pv := uint64(ev.ProtocolVersion)
 	if pv == 0 {
-		pv = uint64(ProtocolVersion)
+		pv = uint64(PeerVersion)
 	}
 	effs := c.Configure(e.nowMs, transport.CoordConfig{
 		Supported:       ev.Supported,

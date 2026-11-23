@@ -86,7 +86,7 @@ func TestApprovalAdmissionMeasurements(t *testing.T) {
 		}
 	}
 	seal := func(id, session string, cmd *pb.Command) *pb.Envelope {
-		cmd.ProtocolVersion = protocol.Version
+		cmd.ProtocolVersion = protocol.PeerVersion
 		body, err := proto.Marshal(cmd)
 		if err != nil {
 			t.Fatal(err)

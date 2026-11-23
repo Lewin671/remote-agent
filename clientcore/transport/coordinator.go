@@ -345,9 +345,6 @@ type Coordinator struct {
 
 // NewCoordinator constructs a Coordinator wrapped around transport.Engine.
 func NewCoordinator(cfg CoordConfig) *Coordinator {
-	if cfg.ProtocolVersion == 0 {
-		cfg.ProtocolVersion = 17
-	}
 	return &Coordinator{
 		cfg:           cfg,
 		stunServers:   StunServers(cfg.ServerHost, cfg.ConfiguredStun),
@@ -435,11 +432,8 @@ func (c *Coordinator) ProvideRandomBytes(now int64, raw []byte) []CoordEffect {
 
 // Configure updates static transport config (such as STUN host/override or support flag).
 func (c *Coordinator) Configure(now int64, cfg CoordConfig) []CoordEffect {
-	if cfg.ProtocolVersion == 0 {
-		cfg.ProtocolVersion = 17
-	}
 	newStun := StunServers(cfg.ServerHost, cfg.ConfiguredStun)
-	changed := cfg.Supported != c.cfg.Supported || cfg.Account != c.cfg.Account || !slicesEqual(newStun, c.stunServers)
+	changed := cfg.Supported != c.cfg.Supported || cfg.Account != c.cfg.Account || cfg.ProtocolVersion != c.cfg.ProtocolVersion || !slicesEqual(newStun, c.stunServers)
 	c.cfg = cfg
 	c.stunServers = newStun
 	if changed {

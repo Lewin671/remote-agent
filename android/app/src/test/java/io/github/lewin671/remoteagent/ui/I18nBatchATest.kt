@@ -44,7 +44,7 @@ class I18nBatchATest(private val locale: String) {
         .addModels(ModelInfo.newBuilder().setSlug("second").setDisplayName("Example Opus").addAllEfforts(listOf("low", "high")))
         .addModels(ModelInfo.newBuilder().setSlug("third").setDisplayName("Example Haiku").setContextWindow(200_000).addEfforts("low"))
         .addAllModels((4..6).map { ModelInfo.newBuilder().setSlug("model-$it").setDisplayName("Example model $it").build() }).build()
-    private fun machine(id: String) = MachineView(id, true, 0, MachineMeta.newBuilder().setHostname("Computer $id").setProtocolVersion(PROTOCOL_VERSION)
+    private fun machine(id: String) = MachineView(id, true, 0, MachineMeta.newBuilder().setHostname("Computer $id").setProtocolVersion(PEER_PROTOCOL_VERSION)
         .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX)).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).build())
     private val stamp = System.currentTimeMillis()
     private fun session(id: String, folder: String = path, pending: Boolean = false, ended: Boolean = false) = SessionView(id, "a",

@@ -48,7 +48,7 @@ class I18nBatchCTest(private val locale: String) {
     private val stamp = System.currentTimeMillis()
     private val now get() = Instant.ofEpochMilli(stamp)
     private var language by mutableStateOf(locale)
-    private val machine = MachineView("m", true, stamp, MachineMeta.newBuilder().setHostname("Example computer").setProtocolVersion(PROTOCOL_VERSION)
+    private val machine = MachineView("m", true, stamp, MachineMeta.newBuilder().setHostname("Example computer").setProtocolVersion(PEER_PROTOCOL_VERSION)
         .setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE))
         .addQuotas(AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(stamp)
             .addWindows(QuotaWindow.newBuilder().setName("five_hour").setWindowMinutes(300).setUsedPercent(62.0).setResetsAtMs(stamp + 3700_000))).build())
@@ -300,7 +300,7 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun update() {
         @Suppress("UNCHECKED_CAST")
         val updates = Updater::class.java.getDeclaredField("_state").apply { isAccessible = true }.get(Updater) as MutableStateFlow<UpdateState>
-        updates.value = UpdateState.Available(Release("99.0.0", 999999, PROTOCOL_VERSION + 1, "example.apk", "00".repeat(32), 42L shl 20, "Original release notes remain unchanged."))
+        updates.value = UpdateState.Available(Release("99.0.0", 999999, PEER_PROTOCOL_VERSION + 1, "example.apk", "00".repeat(32), 42L shl 20, "Original release notes remain unchanged."))
         remote.coreHost.reportClientUpdateState(
             io.github.lewin671.remoteagent.core.proto.ClientUpdateStateEvent.newBuilder()
                 .setAvailableVersion("99.0.0")

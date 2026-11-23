@@ -23,7 +23,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
@@ -133,7 +133,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	if err != nil {
 		return nil, err
 	}
-	peek, err := pc.PeekPairing(ctx, connect.NewRequest(&pb.PeekPairingRequest{Code: link.Code, ProtocolVersion: protocol.Version}))
+	peek, err := pc.PeekPairing(ctx, connect.NewRequest(&pb.PeekPairingRequest{Code: link.Code, ProtocolVersion: relayproto.Version}))
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 		return nil, err
 	}
 	joined, err := pc.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{
-		Code: link.Code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_MACHINE, DevicePublicKey: pub, DeviceHpkePublicKey: xpub, ProtocolVersion: protocol.Version,
+		Code: link.Code, JoinerPublic: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_MACHINE, DevicePublicKey: pub, DeviceHpkePublicKey: xpub, ProtocolVersion: relayproto.Version,
 	}))
 	if err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func JoinByPairing(ctx context.Context, link PairLink, confirm func(emoji []stri
 	}
 	acct.Security = &SecurityConfig{Pin: pin, XPrivate: x}
 	auth := remoteagentv1connect.NewAuthServiceClient(httpClient(), server)
-	request := &pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Approval: payload.Approval, ApprovalSignature: payload.ApprovalSignature}
+	request := &pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: reg, Approval: payload.Approval, ApprovalSignature: payload.ApprovalSignature}
 	rawRequest, err := proto.Marshal(request)
 	if err != nil {
 		return nil, err

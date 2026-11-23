@@ -24,7 +24,7 @@ import (
 	localclient "github.com/Lewin671/remote-agent/internal/client"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/server"
@@ -411,7 +411,7 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 	auth := remoteagentv1connect.NewAuthServiceClient(http.DefaultClient, hs.URL)
 	ch, e := auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: machine}))
 	if e == nil {
-		_, e = auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: machine, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge)}))
+		_, e = auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version, DeviceId: machine, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge)}))
 	}
 	if e == nil {
 		t.Fatal("removed machine logged in")
@@ -452,7 +452,7 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 	}
 	ch, e = auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: oldMachine}))
 	if e == nil {
-		_, e = auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: oldMachine, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge)}))
+		_, e = auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version, DeviceId: oldMachine, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge)}))
 	}
 	if e == nil {
 		t.Fatal("old identity restored after transfer")
@@ -558,7 +558,7 @@ func liveLogin(t *testing.T, ctx context.Context, url, id string, ed ed25519.Pri
 	auth := remoteagentv1connect.NewAuthServiceClient(http.DefaultClient, url)
 	ch, err := auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: id}))
 	mustLive(t, err)
-	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(ed, ch.Msg.Challenge)}))
+	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(ed, ch.Msg.Challenge)}))
 	mustLive(t, err)
 	return res.Msg.Token
 }
@@ -621,7 +621,7 @@ func livePairCLI(t *testing.T, ctx context.Context, phone *remoteclient.Authorit
 	registration, err := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: phone.AccountPublicKey, DevicePublicKey: candidate.EdPublic[:], Kind: pb.DeviceKind_DEVICE_KIND_MACHINE, CreatedMs: time.Now().UnixMilli()})
 	mustLive(t, err)
 	auth := remoteagentv1connect.NewAuthServiceClient(http.DefaultClient, phone.Server)
-	_, err = auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: registration, Approval: approval, ApprovalSignature: sig}))
+	_, err = auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: registration, Approval: approval, ApprovalSignature: sig}))
 	mustLive(t, err)
 	secret := e2e.NewKey()
 	parent := phone.States[len(phone.States)-1]

@@ -40,6 +40,10 @@ public interface LoginRequestOrBuilder extends
   com.google.protobuf.ByteString getSignature();
 
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 4 [json_name = "protocolVersion"];</code>
    * @return The protocolVersion.
    */

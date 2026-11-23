@@ -66,9 +66,9 @@ import Testing
         func m(_ v: UInt32) -> MachineView {
             MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with { $0.hostname = "mac.local"; $0.protocolVersion = v })
         }
-        #expect(protocolMismatch(m(protocolVersion)) == nil)
-        #expect(protocolMismatch(m(protocolVersion - 1)) == "mac 上的 remote-agent 版本较旧，请在电脑上更新后再试")
-        #expect(protocolMismatch(m(protocolVersion + 1)) == L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd())
+        #expect(protocolMismatch(m(peerProtocolVersion)) == nil)
+        #expect(protocolMismatch(m(peerProtocolVersion - 1)) == "mac 上的 remote-agent 版本较旧，请在电脑上更新后再试")
+        #expect(protocolMismatch(m(peerProtocolVersion + 1)) == L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd())
         // Not read yet: the daemon answers for itself.
         #expect(protocolMismatch(MachineView(id: "m", online: true, lastSeenMs: 0)) == nil)
         #expect(protocolMismatch(nil) == nil)

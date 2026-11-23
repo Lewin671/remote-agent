@@ -400,7 +400,7 @@ struct AuthorityWorkflowTests {
         let initiation = try await c.startPairing()
         let api = try Api(server: server.url, http: HTTP())
         var request = PBJoinPairingRequest()
-        request.code = initiation.link.code; request.protocolVersion = protocolVersion
+        request.code = initiation.link.code; request.protocolVersion = relayProtocolVersion
         request.joinerKind = .client; request.devicePublicKey = try SigningKey(seed: account.deviceSeed).publicKey
         request.deviceHpkePublicKey = try PairKey().publicKey; request.joinerPublic = try PairKey().publicKey
         _ = try await api.pairing.joinPairing(request: request).value()

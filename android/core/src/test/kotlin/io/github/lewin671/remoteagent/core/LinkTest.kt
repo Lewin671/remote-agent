@@ -15,9 +15,9 @@ class LinkTest {
     private fun projected(id: String) = RemoteState(
         conn = ConnState.OFFLINE,
         machines = mapOf(id to MachineView(id, false, 0,
-            MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION - 1).build(),
+            MachineMeta.newBuilder().setProtocolVersion(PEER_PROTOCOL_VERSION - 1).build(),
             linkState = PeerState(reachable = true, ready = true, authorized = true, relayRequired = false,
-                protocolVersion = PROTOCOL_VERSION,
+                protocolVersion = PEER_PROTOCOL_VERSION,
                 capabilities = MachineCapabilities.newBuilder().setScheduledTasks(true).setFileUpload(true).build()),
         )),
     )

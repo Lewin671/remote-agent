@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 )
@@ -42,7 +42,7 @@ func TestRejoiningMachineTransfersItsRetainedSession(t *testing.T) {
 	raw = protowire.AppendString(raw, old)
 	sig := ed25519.Sign(c.phoneEd, append([]byte(e2e.PairApprovalContext), raw...))
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: pb.DeviceKind_DEVICE_KIND_MACHINE, CreatedMs: time.Now().UnixMilli()})
-	req := &pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Approval: raw, ApprovalSignature: sig}
+	req := &pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: reg, Approval: raw, ApprovalSignature: sig}
 	res, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(req))
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestRejoiningMachineTransfersItsRetainedSession(t *testing.T) {
 	}
 	ch, err := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: old}))
 	if err == nil {
-		_, err = ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: old, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(oldKey, ch.Msg.Challenge)}))
+		_, err = ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version, DeviceId: old, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(oldKey, ch.Msg.Challenge)}))
 	}
 	if err == nil {
 		t.Fatal("revoked identity restored")
@@ -119,7 +119,7 @@ func TestReplacementAdmissionRejectsUnsafeSourcesAndRollsBack(t *testing.T) {
 			sig := ed25519.Sign(c.phoneEd, append([]byte(e2e.PairApprovalContext), raw...))
 			reg := &pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind, CreatedMs: time.Now().UnixMilli()}
 			registration, _ := proto.Marshal(reg)
-			request := &pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: registration, Approval: raw, ApprovalSignature: sig}
+			request := &pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: registration, Approval: raw, ApprovalSignature: sig}
 			if scenario == "quota" {
 				a, err := parseApproval(raw, sig)
 				if err != nil {

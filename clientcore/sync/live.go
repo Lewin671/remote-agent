@@ -66,7 +66,7 @@ func (e *Engine) dispatchLivePoll(ctx *StepContext, sid string) {
 		return
 	}
 	cmd := &v1.Command{
-		ProtocolVersion: ProtocolVersion,
+		ProtocolVersion: PeerVersion,
 		Kind: &v1.Command_GetLiveSnapshot{
 			GetLiveSnapshot: &v1.GetLiveSnapshotRequest{SessionId: sid},
 		},

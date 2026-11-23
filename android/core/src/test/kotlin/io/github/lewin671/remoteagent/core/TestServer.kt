@@ -271,7 +271,7 @@ class FakeDaemon(val account: Account, private val http: OkHttpClient, val phone
 
     suspend fun putMachine(
         hostname: String,
-        protocol: Int = PROTOCOL_VERSION,
+        protocol: Int = PEER_PROTOCOL_VERSION,
         projects: List<io.github.lewin671.remoteagent.proto.ProjectSummary> = emptyList(),
     ) {
         metaRev++

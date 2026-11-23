@@ -6,6 +6,10 @@
 package io.github.lewin671.remoteagent.proto;
 
 /**
+ * <pre>
+ * Outer directed-peer framing read by the relay (internal/relayproto.Version).
+ * </pre>
+ *
  * Protobuf enum {@code remoteagent.v1.FrameClass}
  */
 @com.google.protobuf.Generated

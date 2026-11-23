@@ -90,6 +90,10 @@ public interface RegisterDeviceRequestOrBuilder extends
   com.google.protobuf.ByteString getApprovalSignature();
 
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 7 [json_name = "protocolVersion"];</code>
    * @return The protocolVersion.
    */

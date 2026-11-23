@@ -6,7 +6,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"net/http"
 	"testing"
@@ -29,7 +29,7 @@ func TestPairingRateLimitDoesNotRevealValidCodes(t *testing.T) {
 	}
 	ts.srv.pairing.mu.Unlock()
 	for _, code := range []string{"invalid-code", created.Msg.Code} {
-		_, err := anon.JoinPairing(context.Background(), connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: protocol.Version, Code: code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+		_, err := anon.JoinPairing(context.Background(), connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: relayproto.Version, Code: code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 		if connect.CodeOf(err) != connect.CodeResourceExhausted {
 			t.Fatalf("rate-limited lookup leaked validity: %v", err)
 		}
@@ -47,7 +47,7 @@ func TestCanceledPairingCannotReleaseApprovedPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: protocol.Version, Code: created.Msg.Code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+	joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: relayproto.Version, Code: created.Msg.Code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ SELECT 'capacity-' || i, ?, 'synthetic-approver', 'synthetic-candidate', 2, X'01
 				t.Fatal(err)
 			}
 			id := created.Msg.PairingId
-			joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: protocol.Version, Code: created.Msg.Code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+			joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: relayproto.Version, Code: created.Msg.Code, JoinerPublic: key.Public(), DeviceHpkePublicKey: key.Public(), DevicePublicKey: key.Public(), JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 			if err != nil {
 				t.Fatal(err)
 			}

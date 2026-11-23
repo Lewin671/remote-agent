@@ -207,7 +207,7 @@ func (h *directSyncHarness) connectMainAndList(sessionID string) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:        "Workstation",
-							ProtocolVersion: ProtocolVersion,
+							ProtocolVersion: PeerVersion,
 							Capabilities:    &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
 						},
 					},
@@ -282,7 +282,7 @@ func connectDirectForExistingEngine(
 		headHash: sha256.Sum256([]byte("direct-sync-head")),
 	}
 	var err error
-	h.codec, err = peerwire.NewCodec(h.account, h.domain, h.headHash, 1, uint64(ProtocolVersion))
+	h.codec, err = peerwire.NewCodec(h.account, h.domain, h.headHash, 1, uint64(PeerVersion))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +297,7 @@ func (h *directSyncHarness) driveDirectHandshake() {
 			TransportConfig: &corev1.TransportConfigEvent{
 				Supported:       true,
 				Account:         h.account,
-				ProtocolVersion: ProtocolVersion,
+				ProtocolVersion: PeerVersion,
 				ServerHost:      "127.0.0.1",
 				PlatformAgent:   "TestBrowser/1.0",
 			},

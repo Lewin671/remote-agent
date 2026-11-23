@@ -27,7 +27,7 @@ class ComposerMenuKeyboardTest {
         val session = Session.newBuilder().setId("menu-session").setCwd("/example/project")
             .setTitle("Composer menus").setAgent(Agent.AGENT_CODEX).setStatus(SessionStatus.SESSION_STATUS_RUNNING).build()
         val machine = MachineView("machine", true, 0, MachineMeta.newBuilder().setHostname("Test computer")
-            .setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setFileUpload(true).setImageUpload(true)).build())
+            .setProtocolVersion(PEER_PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setFileUpload(true).setImageUpload(true)).build())
         val st = RemoteState(conn = ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true,
             machines = mapOf("machine" to machine), sessions = mapOf("menu-session" to SessionView("menu-session", "machine", session)))
         val evs = listOf(

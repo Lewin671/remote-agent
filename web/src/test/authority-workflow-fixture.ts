@@ -11,7 +11,7 @@ import * as securityStore from "../device-security-store";
 import { DeviceSecurityClient } from "../device-security-client";
 import { signLogin } from "../crypto";
 import { PairingService } from "../gen/remoteagent/v1/relay_pb";
-import { PROTOCOL_VERSION } from "../protocol";
+import { RELAY_PROTOCOL_VERSION } from "../protocol";
 
 // Vitest isolates modules and globals per file. Each file owns its relay,
 // IndexedDB and lifecycle; only the immutable creation draft is reused within it.
@@ -61,7 +61,7 @@ export async function createAccount(token = "test-setup") {
 export async function clients(account: StoredAccount) {
   const services = authorityServices(account.server);
   const { challenge } = await services.auth.getChallenge({ deviceId: account.deviceId });
-  const { token } = await services.auth.login({ deviceId: account.deviceId, challenge, signature: await signLogin(account.devicePrivate, challenge), protocolVersion: PROTOCOL_VERSION });
+  const { token } = await services.auth.login({ deviceId: account.deviceId, challenge, signature: await signLogin(account.devicePrivate, challenge), protocolVersion: RELAY_PROTOCOL_VERSION });
   const api = services.client(token);
   const pairing = createClient(PairingService, createConnectTransport({ baseUrl: account.server, useBinaryFormat: true, interceptors: [(next) => (req) => { req.header.set("Authorization", "Bearer " + token); return next(req); }] }));
   const security = new DeviceSecurityClient(account.deviceId, account.devicePrivate, (afterEpoch, limit) => api.getSecurityStates({ afterEpoch, limit }), () => true, {

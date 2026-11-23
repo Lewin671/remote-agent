@@ -86,9 +86,9 @@ class ModelTest {
     @Test
     fun saysWhichSideToUpdateWhenProtocolVersionsDiffer() {
         fun m(v: Int) = MachineView("m", true, 0, MachineMeta.newBuilder().setHostname("mac.local").setProtocolVersion(v).build())
-        assertEquals(null, protocolMismatch(m(PROTOCOL_VERSION)))
-        assertEquals("mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", protocolMismatch(m(PROTOCOL_VERSION - 1)))
-        assertEquals(messageTextForTest(UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry()), protocolMismatch(m(PROTOCOL_VERSION + 1)))
+        assertEquals(null, protocolMismatch(m(PEER_PROTOCOL_VERSION)))
+        assertEquals("mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", protocolMismatch(m(PEER_PROTOCOL_VERSION - 1)))
+        assertEquals(messageTextForTest(UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry()), protocolMismatch(m(PEER_PROTOCOL_VERSION + 1)))
         // Not read yet: the daemon answers for itself.
         assertEquals(null, protocolMismatch(MachineView("m", true, 0)))
         assertEquals(null, protocolMismatch(null))

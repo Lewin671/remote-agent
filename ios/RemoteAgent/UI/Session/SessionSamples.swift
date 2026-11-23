@@ -149,8 +149,8 @@ enum SessionSamples {
                 }, metaRev: 1)
         }
         return [
-            make(machine, "MacBook", version: protocolVersion, shares: true), make(oldMachine, "旧 Mac mini", version: protocolVersion - 1),
-            make(plainMachine, "Mac mini", version: protocolVersion),
+            make(machine, "MacBook", version: peerProtocolVersion, shares: true), make(oldMachine, "旧 Mac mini", version: peerProtocolVersion - 1),
+            make(plainMachine, "Mac mini", version: peerProtocolVersion),
         ]
     }
 

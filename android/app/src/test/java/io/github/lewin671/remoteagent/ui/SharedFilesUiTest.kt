@@ -58,7 +58,7 @@ import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Link
 import io.github.lewin671.remoteagent.core.MachineView
-import io.github.lewin671.remoteagent.core.PROTOCOL_VERSION
+import io.github.lewin671.remoteagent.core.PEER_PROTOCOL_VERSION
 import io.github.lewin671.remoteagent.core.PrefsObject
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState

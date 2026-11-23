@@ -279,6 +279,7 @@ public struct PBRegisterDeviceRequest: Sendable {
 
   public var approvalSignature: Data = Data()
 
+  /// Relay protocol version (internal/relayproto.Version), checked by the relay.
   public var protocolVersion: UInt32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -381,6 +382,7 @@ public struct PBLoginRequest: Sendable {
   /// followed by challenge.
   public var signature: Data = Data()
 
+  /// Relay protocol version (internal/relayproto.Version), checked by the relay.
   public var protocolVersion: UInt32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -475,6 +477,7 @@ public struct PBPeekPairingRequest: Sendable {
 
   public var code: String = String()
 
+  /// Relay protocol version (internal/relayproto.Version), checked by the relay.
   public var protocolVersion: UInt32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -513,6 +516,7 @@ public struct PBJoinPairingRequest: Sendable {
   /// Independent long-term X25519 recipient key, bound by the SAS.
   public var deviceHpkePublicKey: Data = Data()
 
+  /// Relay protocol version (internal/relayproto.Version), checked by the relay.
   public var protocolVersion: UInt32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()

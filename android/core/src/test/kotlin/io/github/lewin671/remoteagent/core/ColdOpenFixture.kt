@@ -144,7 +144,7 @@ internal class ColdOpenPeer(val fixture: ColdOpenFixture, val test: TestScope) :
                 "GetChallenge" -> GetChallengeResponse.newBuilder().setChallenge(ByteString.copyFrom(ByteArray(32) { 9 })).build()
                 "Login" -> {
                     val login = LoginRequest.parseFrom(request.message.clone().readByteArray())
-                    check(login.deviceId == fixture.phone.id && login.protocolVersion == PROTOCOL_VERSION)
+                    check(login.deviceId == fixture.phone.id && login.protocolVersion == RELAY_PROTOCOL_VERSION)
                     check(verifyEd25519(fixture.phone.ed, loginMessage(login.challenge.toByteArray()), login.signature.toByteArray()))
                     token = "credential-${++minted}"
                     LoginResponse.newBuilder().setToken(token).setExpiresMs(fixture.now + 3 * LOGIN_REFRESH_MARGIN_MS).build()

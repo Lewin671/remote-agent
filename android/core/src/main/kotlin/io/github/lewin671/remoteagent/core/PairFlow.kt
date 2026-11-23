@@ -534,7 +534,7 @@ suspend fun joinByPairing(
             .peekPairing(
                 PeekPairingRequest.newBuilder()
                     .setCode(link.code.filterNot { it.isWhitespace() })
-                    .setProtocolVersion(PROTOCOL_VERSION)
+                    .setProtocolVersion(RELAY_PROTOCOL_VERSION)
                     .build(),
                 emptyMap(),
             )
@@ -565,7 +565,7 @@ suspend fun joinByPairing(
             api.pairing
                 .joinPairing(
                     JoinPairingRequest.newBuilder()
-                        .setProtocolVersion(PROTOCOL_VERSION)
+                        .setProtocolVersion(RELAY_PROTOCOL_VERSION)
                         .setDeviceHpkePublicKey(ByteString.copyFrom(xPublic))
                         .setCode(link.code.filterNot { it.isWhitespace() })
                         .setJoinerPublic(ByteString.copyFrom(key.public))
@@ -728,7 +728,7 @@ suspend fun joinByPairing(
             .build()
     val request =
         io.github.lewin671.remoteagent.proto.RegisterDeviceRequest.newBuilder()
-            .setProtocolVersion(PROTOCOL_VERSION)
+            .setProtocolVersion(RELAY_PROTOCOL_VERSION)
             .setRegistration(registration.toByteString())
             .setApproval(payload.approval)
             .setApprovalSignature(payload.approvalSignature)

@@ -85,7 +85,7 @@ class ScheduleLayoutGallery {
     }
 
     private fun prepare(tasks: List<JsonObject> = listOf(taskJson()), offline: Boolean = false, owned: Boolean = false) {
-        val meta = MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setHostname("Dev Computer").setScheduleRevision(1)
+        val meta = MachineMeta.newBuilder().setProtocolVersion(PEER_PROTOCOL_VERSION).setHostname("Dev Computer").setScheduleRevision(1)
             .setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true))
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).setDefaultMode(ApprovalMode.APPROVAL_MODE_ASK))
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_AUTO)).build()

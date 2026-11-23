@@ -39,7 +39,7 @@ private actor FakeCoreExecutor: CoreHostExecutor {
                 $0.lastSeenMs = 1_791_000_000_000
                 $0.meta = .with {
                     $0.hostname = "MacBook"
-                    $0.protocolVersion = protocolVersion
+                    $0.protocolVersion = peerProtocolVersion
                     $0.agents = [.with { $0.agent = .codex }]
                 }
             }

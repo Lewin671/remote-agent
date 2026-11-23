@@ -702,8 +702,8 @@ public  final class MachineMeta extends
   private int protocolVersion_;
   /**
    * <pre>
-   * The protocol version this daemon speaks (internal/protocol). A client
-   * of another version sends it no commands and says which side to update.
+   * The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+   * A client of another version sends it no commands and says which side to update.
    * </pre>
    *
    * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
@@ -715,8 +715,8 @@ public  final class MachineMeta extends
   }
   /**
    * <pre>
-   * The protocol version this daemon speaks (internal/protocol). A client
-   * of another version sends it no commands and says which side to update.
+   * The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+   * A client of another version sends it no commands and says which side to update.
    * </pre>
    *
    * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
@@ -728,8 +728,8 @@ public  final class MachineMeta extends
   }
   /**
    * <pre>
-   * The protocol version this daemon speaks (internal/protocol). A client
-   * of another version sends it no commands and says which side to update.
+   * The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+   * A client of another version sends it no commands and says which side to update.
    * </pre>
    *
    * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
@@ -2113,8 +2113,8 @@ public  final class MachineMeta extends
 
     /**
      * <pre>
-     * The protocol version this daemon speaks (internal/protocol). A client
-     * of another version sends it no commands and says which side to update.
+     * The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+     * A client of another version sends it no commands and says which side to update.
      * </pre>
      *
      * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
@@ -2126,8 +2126,8 @@ public  final class MachineMeta extends
     }
     /**
      * <pre>
-     * The protocol version this daemon speaks (internal/protocol). A client
-     * of another version sends it no commands and says which side to update.
+     * The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+     * A client of another version sends it no commands and says which side to update.
      * </pre>
      *
      * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>
@@ -2141,8 +2141,8 @@ public  final class MachineMeta extends
     }
     /**
      * <pre>
-     * The protocol version this daemon speaks (internal/protocol). A client
-     * of another version sends it no commands and says which side to update.
+     * The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+     * A client of another version sends it no commands and says which side to update.
      * </pre>
      *
      * <code>uint32 protocol_version = 12 [json_name = "protocolVersion"];</code>

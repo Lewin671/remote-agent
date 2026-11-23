@@ -56,7 +56,7 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 	self, _ := head.Core.Member(selfID)
 	peerMem, _ := head.Core.Member(head.Core.AuthorityID)
 	boxPub, _ := ecdh.X25519().NewPublicKey(peerMem.XPublic[:])
-	codec, _ := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.Version)
+	codec, _ := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.PeerVersion)
 	sess, err := direct.NewSession(ctx, direct.SessionConfig{
 		Self:       m.self,
 		Peer:       peerwire.Public{ID: []byte(peerMem.ID), Role: 1, Sign: peerMem.EdPublic[:], Box: boxPub.Bytes()},
@@ -154,7 +154,7 @@ func TestDirectPeerQueueLimitsAndFreshnessRevocationGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	addedHash, _ := addedState.Hash()
-	addedCodec, err := peerwire.NewCodec(pin.Account, pin.Domain, addedHash, addedState.Core.Epoch, protocol.Version)
+	addedCodec, err := peerwire.NewCodec(pin.Account, pin.Domain, addedHash, addedState.Core.Epoch, protocol.PeerVersion)
 	if err != nil {
 		t.Fatal(err)
 	}

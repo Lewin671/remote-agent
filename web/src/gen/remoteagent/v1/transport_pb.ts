@@ -239,6 +239,8 @@ export type Context = Message<"remoteagent.v1.Context"> & {
   machine: Uint8Array;
 
   /**
+   * Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+   *
    * @generated from field: uint32 protocol = 8;
    */
   protocol: number;
@@ -1385,6 +1387,8 @@ export const DirectEventSubscriptionSchema: GenMessage<DirectEventSubscription> 
   messageDesc(file_remoteagent_v1_transport, 37);
 
 /**
+ * Outer directed-peer framing read by the relay (internal/relayproto.Version).
+ *
  * @generated from enum remoteagent.v1.FrameClass
  */
 export enum FrameClass {

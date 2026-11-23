@@ -16,7 +16,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/coder/websocket"
@@ -244,7 +244,7 @@ func loginWithExpiry(ctx context.Context, acct *Account) (string, int64, error) 
 	if err != nil {
 		return "", 0, err
 	}
-	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version,
+	res, err := auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version,
 		DeviceId: acct.DeviceID, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(acct.DeviceKey(), ch.Msg.Challenge),
 	}))
 	if err != nil {

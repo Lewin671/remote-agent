@@ -38,7 +38,7 @@ func TestRetiredDirectChooserCannotReplaceCurrentPeer(t *testing.T) {
 		return &direct.Identity{ID: []byte(hex.EncodeToString(peerwire.Hash(pub)[:16])), Role: role, Sign: key, Box: box, Instance: make([]byte, 16), Boot: make([]byte, 32)}
 	}
 	self, peer := makeIdentity(2), makeIdentity(1)
-	codec, _ := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1, protocol.Version)
+	codec, _ := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1, protocol.PeerVersion)
 	makePeer := func(value byte) *directPeer {
 		connection := make([]byte, 16)
 		connection[0] = value
@@ -387,7 +387,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 				Sign: daemonMember.EdPublic[:],
 				Box:  daemonBoxPub.Bytes(),
 			}
-			codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.Version)
+			codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.PeerVersion)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -511,7 +511,7 @@ func TestLateProbePreservesEstablishedRealPionSession(t *testing.T) {
 			}
 
 			executeGetSettings := func(path *direct.Path) error {
-				cmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
+				cmd := &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
 				plain, _ := proto.Marshal(cmd)
 				var nonce [16]byte
 				_, _ = rand.Read(nonce[:])
@@ -772,7 +772,7 @@ func TestDirectDualSentInteractiveDeduplicatesAndSharesResult(t *testing.T) {
 	var nonce [16]byte
 	_, _ = rand.Read(nonce[:])
 	reqNow := uint64(time.Now().UnixMilli())
-	cmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}}
+	cmd := &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}}
 	plain, err := proto.Marshal(cmd)
 	if err != nil {
 		t.Fatal(err)
@@ -987,13 +987,13 @@ func TestCoalescedDirectOwnerCloseDoesNotPoisonSurvivingRelayWaiter(t *testing.T
 	close(sendRelease)
 
 	// Occupy session s-dual in scheduler so the dual-sent Send queues in admission.
-	blockerEnv := sealCmd("req-blocker-close-1111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	blockerEnv := sealCmd("req-blocker-close-1111", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
 	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
 	<-blockEntered
 
 	var directAllowed atomic.Bool
 	directAllowed.Store(true)
-	sendEnv := sealCmd("req-dual-close-1111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	sendEnv := sealCmd("req-dual-close-1111111", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
 	directCh := make(chan *pb.ForwardReply, 1)
 	relayCh := make(chan *pb.ForwardReply, 1)
 
@@ -1042,11 +1042,11 @@ func TestCoalescedOwnerContextCancelDoesNotAbortSurvivingWaiter(t *testing.T) {
 	defer cancel()
 	close(sendRelease)
 
-	blockerEnv := sealCmd("req-blocker-cancel-111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	blockerEnv := sealCmd("req-blocker-cancel-111", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
 	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
 	<-blockEntered
 
-	sendEnv := sealCmd("req-dual-cancel-111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	sendEnv := sealCmd("req-dual-cancel-111111", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
 	ownerCtx, cancelOwner := context.WithCancel(ctx)
 	leg1Ch := make(chan *pb.ForwardReply, 1)
 	leg2Ch := make(chan *pb.ForwardReply, 1)
@@ -1134,11 +1134,11 @@ func TestCombinedInflightAndEndpointWaiterLimitRespectsMaxPerKey(t *testing.T) {
 	defer cancel()
 
 	// Block scheduler slot for s-dual so owner + first batch of duplicates sit in a.inflight.
-	blockerEnv := sealCmd("req-blocker-waitcap-111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	blockerEnv := sealCmd("req-blocker-waitcap-111", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
 	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
 	<-blockEntered
 
-	sendEnv := sealCmd("req-waitcap-11111111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	sendEnv := sealCmd("req-waitcap-11111111111", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
 	replies := make(chan *pb.ForwardReply, 80)
 	replied := make(chan struct{}, 80)
 	reply := func(rep *pb.ForwardReply) {
@@ -1226,11 +1226,11 @@ func TestClaimInflightWaitersWakeOnAdmissionCloseAndNoLeakOnLinkShutdown(t *test
 	defer cancel()
 	defer close(sendRelease)
 
-	blockerEnv := sealCmd("req-blocker-closewake-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	blockerEnv := sealCmd("req-blocker-closewake-1", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
 	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
 	<-blockEntered
 
-	sendEnv := sealCmd("req-closewake-1111111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	sendEnv := sealCmd("req-closewake-1111111111", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
 	ep.dispatch(context.Background(), &pb.ForwardCall{CallId: 2, Command: sendEnv}, func(*pb.ForwardReply) {})
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
@@ -1292,13 +1292,13 @@ func TestDirectCoalescedInflightPayloadConflict(t *testing.T) {
 	defer cancel()
 	close(sendRelease)
 
-	blockerEnv := sealCmd("req-blocker-conflict-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	blockerEnv := sealCmd("req-blocker-conflict-1", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
 	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
 	<-blockEntered
 
 	reqID := "req-conflict-11111111"
-	envA := sealCmd(reqID, &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "first"}}})
-	envB := sealCmd(reqID, &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "second"}}})
+	envA := sealCmd(reqID, &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "first"}}})
+	envB := sealCmd(reqID, &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "second"}}})
 
 	ownerCh := make(chan *pb.ForwardReply, 1)
 	conflictCh := make(chan *pb.ForwardReply, 1)
@@ -1374,11 +1374,11 @@ func TestClaimInflightLockDropClaimsExecutionWhenPriorOwnerExitsPreAdmission(t *
 	defer cancel()
 	close(sendRelease)
 
-	blockerEnv := sealCmd("req-blocker-lockdrop-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	blockerEnv := sealCmd("req-blocker-lockdrop-1", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
 	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
 	<-blockEntered
 
-	sendEnv := sealCmd("req-lockdrop-11111111", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	sendEnv := sealCmd("req-lockdrop-11111111", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
 	wireSend, err := deviceauth.FromEnvelope(sendEnv)
 	if err != nil {
 		t.Fatal(err)
@@ -1452,11 +1452,11 @@ func TestClaimInflightJoinsDynamicPeerBindingFailedOwner(t *testing.T) {
 	defer cancel()
 	close(sendRelease)
 
-	blockerEnv := sealCmd("req-blocker-dynbind-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	blockerEnv := sealCmd("req-blocker-dynbind-1", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
 	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
 	<-blockEntered
 
-	sendEnv := sealCmd("req-dynbind-pre-fin-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	sendEnv := sealCmd("req-dynbind-pre-fin-1", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
 	wireSend, err := deviceauth.FromEnvelope(sendEnv)
 	if err != nil {
 		t.Fatal(err)
@@ -1530,11 +1530,11 @@ func TestClaimInflightJoinsCancelledPreAdmissionOwner(t *testing.T) {
 	defer cancel()
 	close(sendRelease)
 
-	blockerEnv := sealCmd("req-blocker-cancelwin-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
+	blockerEnv := sealCmd("req-blocker-cancelwin-1", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "s-dual"}}})
 	go ep.dispatch(ctx, &pb.ForwardCall{CallId: 1, Command: blockerEnv}, func(*pb.ForwardReply) {})
 	<-blockEntered
 
-	sendEnv := sealCmd("req-cancelwin-pre-fin-1", &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
+	sendEnv := sealCmd("req-cancelwin-pre-fin-1", &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-dual", Text: "hello"}}})
 	wireSend, err := deviceauth.FromEnvelope(sendEnv)
 	if err != nil {
 		t.Fatal(err)
@@ -1619,7 +1619,7 @@ func TestDirectReceiveDoesNotDropFramesUnderManagerLockContention(t *testing.T) 
 	_, _ = rand.Read(peer.Instance)
 	_, _ = rand.Read(peer.Boot)
 
-	codec, err := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1, protocol.Version)
+	codec, err := peerwire.NewCodec("00000000000000000000000000000001", [32]byte{1}, [32]byte{2}, 1, protocol.PeerVersion)
 	if err != nil {
 		t.Fatal(err)
 	}

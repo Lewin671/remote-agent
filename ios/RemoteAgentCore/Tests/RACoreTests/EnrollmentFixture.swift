@@ -305,7 +305,7 @@ func joinWithRoot(
     let regBytes: Data = try reg.serializedData()
     let api = try Api(server: server, http: http)
     var req = PBRegisterDeviceRequest()
-    req.protocolVersion = protocolVersion
+    req.protocolVersion = relayProtocolVersion
     req.registration = regBytes
     req.signature = keys.account.sign(registerMessage(regBytes))
     req.setupToken = setupToken
@@ -342,7 +342,7 @@ func registerJoined(
     let regBytes: Data = try reg.serializedData()
     let api = try Api(server: server, http: http)
     var req = PBRegisterDeviceRequest()
-    req.protocolVersion = protocolVersion
+    req.protocolVersion = relayProtocolVersion
     req.registration = regBytes
     req.approval = enrollment.approval
     req.approvalSignature = enrollment.signature

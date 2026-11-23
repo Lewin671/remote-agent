@@ -391,12 +391,12 @@ public func capabilities(_ m: MachineView?) -> PBMachineCapabilities? {
 }
 
 /// Why no command goes to `m`: it speaks another protocol version than this
-/// app (`protocolVersion`), said by which side to update; nil when they
+/// app (`peerProtocolVersion`), said by which side to update; nil when they
 /// match or the machine's metadata is not read yet.
 public func protocolMismatch(_ m: MachineView?) -> String? {
     guard let theirs = m?.pathState.protocolVersion else { return nil }
-    if theirs < protocolVersion { return L10n.errorsRemoteAgentOnIsOutOfDateUpdateIt(value: String(describing: machineName(m))) }
-    if theirs > protocolVersion { return L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd() }
+    if theirs < peerProtocolVersion { return L10n.errorsRemoteAgentOnIsOutOfDateUpdateIt(value: String(describing: machineName(m))) }
+    if theirs > peerProtocolVersion { return L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd() }
     return nil
 }
 

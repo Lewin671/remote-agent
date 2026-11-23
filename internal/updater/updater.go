@@ -55,7 +55,7 @@ type Health struct {
 }
 
 func Build() Health {
-	return Health{Format: 1, Version: buildinfo.Version, Commit: buildinfo.Commit, Channel: buildinfo.Channel, Protocol: protocol.Version, State: BuildPolicy().State, PID: os.Getpid()}
+	return Health{Format: 1, Version: buildinfo.Version, Commit: buildinfo.Commit, Channel: buildinfo.Channel, Protocol: protocol.PeerVersion, State: BuildPolicy().State, PID: os.Getpid()}
 }
 
 type service interface {

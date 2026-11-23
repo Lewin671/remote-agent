@@ -20,7 +20,7 @@ import { PairingService, DeviceKind, PutSecurityStateRequestSchema, DeviceRegist
 import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
 import { MachineMetaSchema, PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
-import { PROTOCOL_VERSION } from "./protocol";
+import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
 import { Remote, joinWithApproval } from "./remote";
 import { RecoveryCode } from "./recovery";
 
@@ -85,7 +85,7 @@ async function pairCandidate(c: Awaited<ReturnType<typeof clients>>, kind = Devi
   const device = await newDeviceKey(), x = await newSecurityKey(), key = newPairKey();
   const ed = new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey));
   const xp = new Uint8Array(await crypto.subtle.exportKey("raw", x.publicKey));
-  const joined = await api.joinPairing({ code: initiation.code, joinerPublic: key.pub, joinerKind: kind, devicePublicKey: ed, deviceHpkePublicKey: xp, protocolVersion: PROTOCOL_VERSION });
+  const joined = await api.joinPairing({ code: initiation.code, joinerPublic: key.pub, joinerKind: kind, devicePublicKey: ed, deviceHpkePublicKey: xp, protocolVersion: RELAY_PROTOCOL_VERSION });
   const sas = await initiation.joined(); expect(sas!.emoji).toHaveLength(4);
   const status = await api.getPairing({ pairingId: joined.pairingId, candidateToken: joined.candidateToken });
   expect(await pairDomainCommit(new Uint8Array(status.initiatorPublic), new Uint8Array(status.trust))).toEqual(new URLSearchParams(link.hash.split("?")[1]).has("c") ? joined.commit : null);
@@ -111,7 +111,7 @@ it("rejects a pairing candidate using the authority Ed key before any state sign
   const initiation = await AuthorityPairing.start(c.authority, c.pairing, "https://app.example.com");
   const api = createClient(PairingService, createConnectTransport({ baseUrl: server.url, useBinaryFormat: true }));
   const ephemeral = newPairKey(), x = await newSecurityKey();
-  await api.joinPairing({ code: initiation.code, protocolVersion: PROTOCOL_VERSION, joinerKind: DeviceKind.CLIENT,
+  await api.joinPairing({ code: initiation.code, protocolVersion: RELAY_PROTOCOL_VERSION, joinerKind: DeviceKind.CLIENT,
     joinerPublic: ephemeral.pub, devicePublicKey: own.ed,
     deviceHpkePublicKey: new Uint8Array(await crypto.subtle.exportKey("raw", x.publicKey)) });
   await initiation.joined();
@@ -534,13 +534,13 @@ it("separates machine revocation, archive rejoin with retained sessions, and per
   const { account } = await createAccount(), c = await clients(account);
   const enroll = async (candidate: Awaited<ReturnType<typeof pairCandidate>>) => {
     const auth = authorityServices(server.url).auth, id = await deviceID(candidate.ed);
-    await auth.registerDevice({ protocolVersion: PROTOCOL_VERSION,
+    await auth.registerDevice({ protocolVersion: RELAY_PROTOCOL_VERSION,
       registration: toBinary(DeviceRegistrationSchema, create(DeviceRegistrationSchema, { accountPublicKey: candidate.msg.accountPublicKey, devicePublicKey: candidate.ed, kind: DeviceKind.MACHINE, createdMs: BigInt(Date.now()) })),
       approval: candidate.msg.approval, approvalSignature: candidate.msg.approvalSignature });
     await candidate.api.getPairing({ pairingId: candidate.joined.pairingId, candidateToken: candidate.joined.candidateToken, received: true });
     await candidate.initiation.finishPairingOperation();
     const challenge = await auth.getChallenge({ deviceId: id });
-    const { token } = await auth.login({ deviceId: id, challenge: challenge.challenge, signature: await signLogin(candidate.device.privateKey, challenge.challenge), protocolVersion: PROTOCOL_VERSION });
+    const { token } = await auth.login({ deviceId: id, challenge: challenge.challenge, signature: await signLogin(candidate.device.privateKey, challenge.challenge), protocolVersion: RELAY_PROTOCOL_VERSION });
     const machine = createClient(MachineService, createConnectTransport({ baseUrl: server.url, useBinaryFormat: true,
       interceptors: [(next) => (req) => { req.header.set("Authorization", "Bearer " + token); return next(req); }] }));
     return { id, machine };
@@ -553,7 +553,7 @@ it("separates machine revocation, archive rejoin with retained sessions, and per
   const { MemorySecurityStorage } = await import("./test/security-fixture");
   const security = new DeviceSecurityClient(first.id, candidate.device.privateKey, async () => { throw new Error("no machine pull required"); }, () => true, new MemorySecurityStorage(record));
   const meta = await security.seal({ kind: 4, purpose: Purpose.MachineMeta, machine: first.id, session: "", request: "", seq: 1n, deadline: 0n, compression: 0 },
-    toBinary(MachineMetaSchema, create(MachineMetaSchema, { hostname: "fixture-computer", protocolVersion: PROTOCOL_VERSION })));
+    toBinary(MachineMetaSchema, create(MachineMetaSchema, { hostname: "fixture-computer", protocolVersion: PEER_PROTOCOL_VERSION })));
   await first.machine.putMachine({ meta });
   const sessionId = "retained-session", seed = Authority.newSecret();
   const sessionMeta = await security.seal({ kind: 2, purpose: Purpose.SessionMeta, machine: first.id, session: sessionId, request: "", seq: 1n, deadline: 0n, compression: 0 },

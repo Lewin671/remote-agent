@@ -103,7 +103,7 @@ func TestDirectEventPushSubscriptionPrioritySizeImageAndRevocation(t *testing.T)
 	authority := e.authority
 	head := authority.States[len(authority.States)-1]
 	hash, _ := head.Hash()
-	codec, err := peerwire.NewCodec(authority.Pin.Account, authority.Pin.Domain, hash, head.Core.Epoch, protocol.Version)
+	codec, err := peerwire.NewCodec(authority.Pin.Account, authority.Pin.Domain, hash, head.Core.Epoch, protocol.PeerVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,7 +284,7 @@ func TestDirectEventPushSubscriptionPrioritySizeImageAndRevocation(t *testing.T)
 	}
 
 	// Verify use=1 is open and Ready(1) has completed on the daemon before appending live events.
-	warmCmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
+	warmCmd := &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
 	warmPlain, _ := proto.Marshal(warmCmd)
 	warmHeader := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: e.acct.DeviceID, Request: "req-direct-push-warmup-check", Deadline: uint64(nowFn().UnixMilli()) + 15000}
 	warmSealed, err := endpoint.Prepare(warmHeader, nil, warmPlain)
@@ -438,7 +438,7 @@ gotSmall:
 	if err := log1.Append(session, burst, "", 0); err != nil {
 		t.Fatal(err)
 	}
-	cmd := &pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
+	cmd := &pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}}
 	plain, _ := proto.Marshal(cmd)
 	h := devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: e.acct.DeviceID, Request: "req-direct-push-priority-check", Deadline: uint64(nowFn().UnixMilli()) + 15000}
 	sealed, err := endpoint.Prepare(h, nil, plain)

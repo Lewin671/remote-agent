@@ -119,7 +119,7 @@ func TestReadLoopPathCancelLeavesAdmittedExecutionDurable(t *testing.T) {
 	defer client.Close()
 
 	now := uint64(time.Now().UnixMilli())
-	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "pause"}}})
+	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Schedule{Schedule: &pb.ScheduleRequest{Operation: "pause"}}})
 	wire, err := client.Prepare(devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: ep.acct.DeviceID, Request: "link-path-disconnect-regression", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)

@@ -30,7 +30,7 @@ import java.io.File
 /** Real Compose layout and hit regions on an isolated emulator app; no live account. */
 class LayoutTest {
     /** The release the update sheet tests are about, as the manifest would describe it. */
-    private val newer = Release("0.36.2", 100, PROTOCOL_VERSION, "remote-agent-v0.36.2.apk", "0".repeat(64), 5_976_883, "更新说明")
+    private val newer = Release("0.36.2", 100, PEER_PROTOCOL_VERSION, "remote-agent-v0.36.2.apk", "0".repeat(64), 5_976_883, "更新说明")
     private var updaterBefore: Pair<UpdateState, UpdateCheck>? = null
 
     /** The update sheet as it looks in [state] with [check] as the last look; [close] puts the updater back. */

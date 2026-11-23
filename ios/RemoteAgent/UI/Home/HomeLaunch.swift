@@ -37,7 +37,7 @@ enum HomeLaunch {
         for tweak in (value("-demoTweak") ?? "").split(separator: ",") {
             switch tweak {
             case "mismatch":
-                s.machines["mac"]?.meta?.protocolVersion = protocolVersion - 1
+                s.machines["mac"]?.meta?.protocolVersion = peerProtocolVersion - 1
             case "machineOffline":
                 s.machines["mac"]?.online = false
             case "fullAccess":
@@ -100,7 +100,7 @@ enum HomeLaunch {
         MachineView(id: "mac", online: online, lastSeenMs: nowMs(), meta: .with { meta in
             meta.hostname = "MacBook"
             meta.home = Demo.home
-            meta.protocolVersion = protocolVersion
+            meta.protocolVersion = peerProtocolVersion
             meta.agents = AGENTS.map { entry in
                 .with {
                     $0.agent = entry.agent

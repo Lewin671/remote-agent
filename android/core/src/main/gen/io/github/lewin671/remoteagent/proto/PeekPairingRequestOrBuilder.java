@@ -23,6 +23,10 @@ public interface PeekPairingRequestOrBuilder extends
       getCodeBytes();
 
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 2 [json_name = "protocolVersion"];</code>
    * @return The protocolVersion.
    */

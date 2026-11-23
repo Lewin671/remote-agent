@@ -61,7 +61,7 @@ func TestOverdueBackendAndContextIOKeepSlotAndQuarantine(t *testing.T) {
 			client := endpointClient(t, e)
 			var once sync.Once
 			defer func() { once.Do(func() { close(backend.release) }); e.link.DrainCalls(); e.admissionOwner().close() }()
-			body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}})
+			body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}})
 			wire, err := client.Prepare(devicesec.Header{Purpose: devicesec.Command, Kind: 5, Machine: e.acct.DeviceID, Request: "overdue-read-request", Deadline: uint64(time.Now().Add(1500 * time.Millisecond).UnixMilli())}, nil, body)
 			if err != nil {
 				t.Fatal(err)

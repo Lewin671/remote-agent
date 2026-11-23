@@ -7,7 +7,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 )
 
 func TestProtocol16CannotLoginTo17(t *testing.T) {
@@ -22,7 +22,7 @@ func TestProtocol16CannotLoginTo17(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := &pb.LoginRequest{DeviceId: id, Challenge: challenge.Msg.Challenge, Signature: e2e.SignLogin(private, challenge.Msg.Challenge), ProtocolVersion: 16}
-	if protocol.Version != 17 {
+	if relayproto.Version != 17 {
 		t.Fatal("test requires protocol 17")
 	}
 	if _, err = ts.auth.Login(ctx, connect.NewRequest(request)); connect.CodeOf(err) != connect.CodeFailedPrecondition {

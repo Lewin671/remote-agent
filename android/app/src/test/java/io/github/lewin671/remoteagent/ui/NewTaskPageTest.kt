@@ -35,7 +35,7 @@ import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.MachineView
-import io.github.lewin671.remoteagent.core.PROTOCOL_VERSION
+import io.github.lewin671.remoteagent.core.PEER_PROTOCOL_VERSION
 import io.github.lewin671.remoteagent.core.PrefsObject
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
@@ -75,7 +75,7 @@ class NewTaskPageTest {
 
     private fun machine(id: String) = MachineView(
         id, true, 0,
-        MachineMeta.newBuilder().setHostname("host-$id").setProtocolVersion(PROTOCOL_VERSION)
+        MachineMeta.newBuilder().setHostname("host-$id").setProtocolVersion(PEER_PROTOCOL_VERSION)
             .addProjects(ProjectSummary.newBuilder().setPath(path))
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX))
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE))

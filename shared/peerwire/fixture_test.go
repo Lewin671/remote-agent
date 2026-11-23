@@ -20,7 +20,7 @@ var testProtocol = func() uint64 {
 	if e != nil {
 		panic(e)
 	}
-	_, rest, ok := strings.Cut(string(src), "\nconst Version = ")
+	_, rest, ok := strings.Cut(string(src), "\nconst PeerVersion = ")
 	line, _, _ := strings.Cut(rest, "\n")
 	v, e := strconv.ParseUint(strings.TrimSpace(line), 10, 64)
 	if !ok || e != nil || v == 0 {

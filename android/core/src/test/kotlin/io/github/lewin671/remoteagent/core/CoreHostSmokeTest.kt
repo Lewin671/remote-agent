@@ -113,7 +113,7 @@ class CoreHostSmokeTest {
             .setMeta(
                 MachineMeta.newBuilder()
                     .setHostname("Laptop")
-                    .setProtocolVersion(PROTOCOL_VERSION)
+                    .setProtocolVersion(PEER_PROTOCOL_VERSION)
                     .setCapabilities(MachineCapabilities.newBuilder().setFileUpload(true))
                     .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX))
                     .addProjects(ProjectSummary.newBuilder().setPath("/work/app")),

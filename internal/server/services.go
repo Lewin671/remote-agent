@@ -15,7 +15,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
@@ -65,8 +65,8 @@ type authService struct {
 }
 
 func (a *authService) RegisterDevice(ctx context.Context, req *connect.Request[pb.RegisterDeviceRequest]) (*connect.Response[pb.RegisterDeviceResponse], error) {
-	if req.Msg.ProtocolVersion != protocol.Version {
-		return nil, protocol.Mismatch("the device", req.Msg.ProtocolVersion)
+	if req.Msg.ProtocolVersion != relayproto.Version {
+		return nil, relayproto.Mismatch("the device", req.Msg.ProtocolVersion)
 	}
 	reg := &pb.DeviceRegistration{}
 	if err := proto.Unmarshal(req.Msg.Registration, reg); err != nil {
@@ -171,8 +171,8 @@ func (a *authService) GetChallenge(ctx context.Context, req *connect.Request[pb.
 }
 
 func (a *authService) Login(ctx context.Context, req *connect.Request[pb.LoginRequest]) (*connect.Response[pb.LoginResponse], error) {
-	if req.Msg.ProtocolVersion != protocol.Version {
-		return nil, protocol.Mismatch("the device", req.Msg.ProtocolVersion)
+	if req.Msg.ProtocolVersion != relayproto.Version {
+		return nil, relayproto.Mismatch("the device", req.Msg.ProtocolVersion)
 	}
 	denied := connect.NewError(connect.CodePermissionDenied, errors.New("login failed"))
 	if !a.s.takeChallenge(req.Msg.DeviceId, req.Msg.Challenge) {

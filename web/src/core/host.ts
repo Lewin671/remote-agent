@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "r
 import type { Tray, TrayItem } from "../attach";
 import { newRequestID } from "../crypto";
 import * as l10n from "../i18n";
-import { PROTOCOL_VERSION } from "../protocol";
+import { PEER_PROTOCOL_VERSION } from "../protocol";
 import { pushPrefs, pushState, pushSupported, setPushPrefs, type PushPrefs } from "../push";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { checkUpdate } from "../update";
@@ -952,7 +952,7 @@ export class CoreHost {
       value: create(TransportConfigEventSchema, {
         supported: typeof RTCPeerConnection !== "undefined",
         account: "",
-        protocolVersion: PROTOCOL_VERSION,
+        protocolVersion: PEER_PROTOCOL_VERSION,
         serverHost,
         configuredStun,
         platformAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,

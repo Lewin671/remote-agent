@@ -232,7 +232,7 @@ extension Remote {
         let requestId = newRequestId()
         let deadline = clock() + commandTTLMs
         var versioned = cmd
-        versioned.protocolVersion = protocolVersion
+        versioned.protocolVersion = peerProtocolVersion
         return PreparedCommand(
             machineId: machineId, sessionId: sessionId, requestId: requestId, deadlineMs: deadline,
             command: versioned)

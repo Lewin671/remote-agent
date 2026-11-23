@@ -60,6 +60,10 @@ public interface JoinPairingRequestOrBuilder extends
   com.google.protobuf.ByteString getDeviceHpkePublicKey();
 
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
    * @return The protocolVersion.
    */

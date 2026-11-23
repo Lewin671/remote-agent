@@ -32,7 +32,7 @@ func TestInFlightDuplicateDoesNotSynchronizeSecurityState(t *testing.T) {
 	}
 	defer client.Close()
 	now := uint64(time.Now().UnixMilli())
-	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.Version, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "test-session"}}})
+	body, _ := proto.Marshal(&pb.Command{ProtocolVersion: protocol.PeerVersion, Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: "test-session"}}})
 	wire, err := client.Prepare(devicesec.Header{Kind: 5, Purpose: devicesec.Command, Machine: c.acct.DeviceID, Session: "test-session", Request: "concurrent-request", Deadline: now + 60000}, nil, body)
 	if err != nil {
 		t.Fatal(err)

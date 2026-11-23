@@ -215,8 +215,8 @@ public struct PBMachineMeta: @unchecked Sendable {
     set {_uniqueStorage()._quotas = newValue}
   }
 
-  /// The protocol version this daemon speaks (internal/protocol). A client
-  /// of another version sends it no commands and says which side to update.
+  /// The peer protocol version this daemon speaks (internal/protocol.PeerVersion).
+  /// A client of another version sends it no commands and says which side to update.
   public var protocolVersion: UInt32 {
     get {return _storage._protocolVersion}
     set {_uniqueStorage()._protocolVersion = newValue}
@@ -653,8 +653,8 @@ public struct PBCommand: Sendable {
     set {kind = .getUsageStats(newValue)}
   }
 
-  /// The protocol version the client speaks (internal/protocol). A daemon
-  /// of another version refuses the command and says which side to update.
+  /// The peer protocol version the client speaks (internal/protocol.PeerVersion).
+  /// A daemon of another version refuses the command and says which side to update.
   public var protocolVersion: UInt32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()

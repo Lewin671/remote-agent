@@ -48,7 +48,7 @@ class I18nBatchBTest(private val locale: String) {
     private val session = SessionView("s", "m", Session.newBuilder().setId("s").setCwd("/example/demo").setTitle("Example task")
         .setAgent(Agent.AGENT_CLAUDE).setMode(ApprovalMode.APPROVAL_MODE_ASK).setStatus(SessionStatus.SESSION_STATUS_IDLE)
         .setModel("example-model").setCreatedAt(Timestamp.newBuilder().setSeconds(stamp / 1000)).build())
-    private val machine = MachineView("m", true, stamp, MachineMeta.newBuilder().setHostname("Example computer").setProtocolVersion(PROTOCOL_VERSION)
+    private val machine = MachineView("m", true, stamp, MachineMeta.newBuilder().setHostname("Example computer").setProtocolVersion(PEER_PROTOCOL_VERSION)
         .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).build())
     private val state = RemoteState(conn = io.github.lewin671.remoteagent.core.ConnState.ONLINE, link = Link.ONLINE, loaded = true, synced = true, isAuthority = true,
         prefs = PrefsObject.EMPTY, machines = mapOf("m" to machine), sessions = mapOf("s" to session))

@@ -30,7 +30,7 @@ class ToolExpansionLocalTest {
         val phase = args.getString("phase", "baseline")
         val session = Session.newBuilder().setId("tool-benchmark").setCwd("/example/project")
             .setTitle("Tool expansion benchmark").setAgent(Agent.AGENT_CODEX).setStatus(SessionStatus.SESSION_STATUS_IDLE).build()
-        val machine = MachineView("machine", true, 0, MachineMeta.newBuilder().setHostname("Test computer").setProtocolVersion(PROTOCOL_VERSION).build())
+        val machine = MachineView("machine", true, 0, MachineMeta.newBuilder().setHostname("Test computer").setProtocolVersion(PEER_PROTOCOL_VERSION).build())
         val events = mutableListOf<Event>()
         fun event(block: Event.Builder.() -> Unit) { events += Event.newBuilder().setSessionId(session.id).setSeq(events.size + 1L).apply(block).build() }
         val command = (1..24).joinToString("\n") { "printf 'long command line $it: measure expansion and layout'" }

@@ -23,7 +23,7 @@ import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Link
 import io.github.lewin671.remoteagent.core.MachineView
-import io.github.lewin671.remoteagent.core.PROTOCOL_VERSION
+import io.github.lewin671.remoteagent.core.PEER_PROTOCOL_VERSION
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
@@ -674,7 +674,7 @@ class UsageAndCliSwitchesTest {
                 lastSeenMs = 0L,
                 meta = MachineMeta.newBuilder()
                     .setHostname("Mac Studio")
-                    .setProtocolVersion(PROTOCOL_VERSION)
+                    .setProtocolVersion(PEER_PROTOCOL_VERSION)
                     .setCapabilities(
                         MachineCapabilities.newBuilder()
                             .setUsageStats(true)

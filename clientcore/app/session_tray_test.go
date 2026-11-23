@@ -24,7 +24,7 @@ func bootstrapTrayApp(t *testing.T, agent v1.Agent, status v1.SessionStatus, run
 			Online:    true,
 			Meta: &v1.MachineMeta{
 				Hostname:        "MacStudio",
-				ProtocolVersion: sync.ProtocolVersion,
+				ProtocolVersion: sync.PeerVersion,
 				Capabilities: &v1.MachineCapabilities{
 					ImageUpload:         true,
 					MaxImagesPerMessage: 6,
@@ -222,7 +222,7 @@ func TestPendingTrayAllSevenGroupsOrderingHeadersAndNumbering(t *testing.T) {
 			Online: true,
 			Meta: &v1.MachineMeta{
 				Hostname:        "Mac",
-				ProtocolVersion: sync.ProtocolVersion,
+				ProtocolVersion: sync.PeerVersion,
 			},
 		},
 		Projection: &corev1.ProjectionState{

@@ -280,7 +280,7 @@ public func loginResponse(api: Api, account: Account) async throws -> PBLoginRes
     ask.deviceID = account.deviceId
     let ch = try await api.auth.getChallenge(request: ask).value()
     var req = PBLoginRequest()
-    req.protocolVersion = protocolVersion
+    req.protocolVersion = relayProtocolVersion
     req.deviceID = account.deviceId
     req.challenge = ch.challenge
     req.signature = try SigningKey(seed: account.deviceSeed).sign(loginMessage(ch.challenge))

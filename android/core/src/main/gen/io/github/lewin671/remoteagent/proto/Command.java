@@ -1730,8 +1730,8 @@ public  final class Command extends
   private int protocolVersion_;
   /**
    * <pre>
-   * The protocol version the client speaks (internal/protocol). A daemon
-   * of another version refuses the command and says which side to update.
+   * The peer protocol version the client speaks (internal/protocol.PeerVersion).
+   * A daemon of another version refuses the command and says which side to update.
    * </pre>
    *
    * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
@@ -1743,8 +1743,8 @@ public  final class Command extends
   }
   /**
    * <pre>
-   * The protocol version the client speaks (internal/protocol). A daemon
-   * of another version refuses the command and says which side to update.
+   * The peer protocol version the client speaks (internal/protocol.PeerVersion).
+   * A daemon of another version refuses the command and says which side to update.
    * </pre>
    *
    * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
@@ -1756,8 +1756,8 @@ public  final class Command extends
   }
   /**
    * <pre>
-   * The protocol version the client speaks (internal/protocol). A daemon
-   * of another version refuses the command and says which side to update.
+   * The peer protocol version the client speaks (internal/protocol.PeerVersion).
+   * A daemon of another version refuses the command and says which side to update.
    * </pre>
    *
    * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
@@ -3378,8 +3378,8 @@ public  final class Command extends
 
     /**
      * <pre>
-     * The protocol version the client speaks (internal/protocol). A daemon
-     * of another version refuses the command and says which side to update.
+     * The peer protocol version the client speaks (internal/protocol.PeerVersion).
+     * A daemon of another version refuses the command and says which side to update.
      * </pre>
      *
      * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
@@ -3391,8 +3391,8 @@ public  final class Command extends
     }
     /**
      * <pre>
-     * The protocol version the client speaks (internal/protocol). A daemon
-     * of another version refuses the command and says which side to update.
+     * The peer protocol version the client speaks (internal/protocol.PeerVersion).
+     * A daemon of another version refuses the command and says which side to update.
      * </pre>
      *
      * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>
@@ -3406,8 +3406,8 @@ public  final class Command extends
     }
     /**
      * <pre>
-     * The protocol version the client speaks (internal/protocol). A daemon
-     * of another version refuses the command and says which side to update.
+     * The peer protocol version the client speaks (internal/protocol.PeerVersion).
+     * A daemon of another version refuses the command and says which side to update.
      * </pre>
      *
      * <code>uint32 protocol_version = 100 [json_name = "protocolVersion"];</code>

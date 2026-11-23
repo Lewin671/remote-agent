@@ -270,7 +270,7 @@ func (m *directManager) scope(id string) (deviceauth.PeerBinding, *peerwire.Code
 	if err != nil || !own || !ok || peer.Kind != devicesec.Client || !m.d.security.directCurrent(self, peer, hash) {
 		return binding, nil, peerwire.Public{}, false
 	}
-	codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.Version)
+	codec, err := peerwire.NewCodec(pin.Account, pin.Domain, hash, head.Core.Epoch, protocol.PeerVersion)
 	if err != nil {
 		return binding, nil, peerwire.Public{}, false
 	}

@@ -224,7 +224,7 @@ func Uncertain(err error) bool {
 // use Forward (or Reseal for a new content key), never encode the Command again.
 func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time, cmd *pb.Command) (*pb.Envelope, error) {
 	if cmd.ProtocolVersion == 0 {
-		cmd.ProtocolVersion = protocol.Version
+		cmd.ProtocolVersion = protocol.PeerVersion
 	}
 	plain, err := proto.Marshal(cmd)
 	if err != nil {

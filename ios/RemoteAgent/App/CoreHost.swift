@@ -512,7 +512,7 @@ actor CoreHost: SyncEngine {
                 $0.transportConfig = .with {
                     $0.supported = supported
                     $0.account = acct.accountId
-                    $0.protocolVersion = UInt32(protocolVersion)
+                    $0.protocolVersion = UInt32(peerProtocolVersion)
                     $0.serverHost = serverHost
                     $0.configuredStun = configuredStun
                     $0.platformAgent = "ios"
@@ -2675,7 +2675,7 @@ actor CoreHost: SyncEngine {
             $0.transportConfig = .with {
                 $0.supported = false
                 $0.account = account.accountId
-                $0.protocolVersion = UInt32(protocolVersion)
+                $0.protocolVersion = UInt32(peerProtocolVersion)
                 $0.platformAgent = "ios"
             }
         })

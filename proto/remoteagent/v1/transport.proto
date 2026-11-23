@@ -3,6 +3,7 @@ syntax = "proto3";
 package remoteagent.v1;
 import "remoteagent/v1/capabilities.proto";
 
+// Outer directed-peer framing read by the relay (internal/relayproto.Version).
 enum FrameClass { FRAME_CLASS_UNSPECIFIED = 0; SIGNAL = 1; CONTROL = 2; }
 message DirectedPeerFrame { bytes to_device = 1; FrameClass frame_class = 2; bytes frame_id = 3; bytes sealed = 4; }
 message PeerFrameDelivery { bytes from_device = 1; bytes to_device = 2; FrameClass frame_class = 3; bytes frame_id = 4; bytes sealed = 5; }
@@ -17,7 +18,9 @@ enum Role { ROLE_UNSPECIFIED = 0; CLIENT = 1; MACHINE = 2; }
 enum PCUse { PEER_SCOPE = 0; INTERACTIVE = 1; BULK = 2; }
 message Context {
   bytes domain = 1; bytes account = 2; bytes sender = 3; bytes receiver = 4;
-  Role sender_role = 5; Role receiver_role = 6; bytes machine = 7; uint32 protocol = 8;
+  Role sender_role = 5; Role receiver_role = 6; bytes machine = 7;
+  // Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+  uint32 protocol = 8;
   uint64 member_epoch = 9; bytes member_head = 10;
   bytes sender_instance = 11; bytes receiver_instance = 12;
   bytes sender_boot_nonce = 13; bytes receiver_boot_nonce = 14;

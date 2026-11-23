@@ -252,6 +252,10 @@ public  final class Context extends
   public static final int PROTOCOL_FIELD_NUMBER = 8;
   private int protocol_;
   /**
+   * <pre>
+   * Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+   * </pre>
+   *
    * <code>uint32 protocol = 8 [json_name = "protocol"];</code>
    * @return The protocol.
    */
@@ -260,6 +264,10 @@ public  final class Context extends
     return protocol_;
   }
   /**
+   * <pre>
+   * Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+   * </pre>
+   *
    * <code>uint32 protocol = 8 [json_name = "protocol"];</code>
    * @param value The protocol to set.
    */
@@ -268,6 +276,10 @@ public  final class Context extends
     protocol_ = value;
   }
   /**
+   * <pre>
+   * Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+   * </pre>
+   *
    * <code>uint32 protocol = 8 [json_name = "protocol"];</code>
    */
   private void clearProtocol() {
@@ -1077,6 +1089,10 @@ public  final class Context extends
     }
 
     /**
+     * <pre>
+     * Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+     * </pre>
+     *
      * <code>uint32 protocol = 8 [json_name = "protocol"];</code>
      * @return The protocol.
      */
@@ -1085,6 +1101,10 @@ public  final class Context extends
       return instance.getProtocol();
     }
     /**
+     * <pre>
+     * Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+     * </pre>
+     *
      * <code>uint32 protocol = 8 [json_name = "protocol"];</code>
      * @param value The protocol to set.
      * @return This builder for chaining.
@@ -1095,6 +1115,10 @@ public  final class Context extends
       return this;
     }
     /**
+     * <pre>
+     * Peer protocol version (internal/protocol.PeerVersion), bound into peerwire AAD.
+     * </pre>
+     *
      * <code>uint32 protocol = 8 [json_name = "protocol"];</code>
      * @return This builder for chaining.
      */

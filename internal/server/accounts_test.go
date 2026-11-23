@@ -19,7 +19,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/coder/websocket"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -189,7 +189,7 @@ func (ts *testServer) signup(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind, p
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
-	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Signature: keys.SignRegistration(reg), SignupProof: proof}))
+	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: reg, Signature: keys.SignRegistration(reg), SignupProof: proof}))
 	if err == nil {
 		ts.rememberKey(res.Msg.DeviceId, priv)
 	}
@@ -261,7 +261,7 @@ func TestOpenSignup(t *testing.T) {
 	stolen, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: thief.AccountPublicKey(), DevicePublicKey: takenReg.DevicePublicKey, Kind: machine})
 	again := ts.proof(t)
 	for range signupsPerHour + 1 {
-		_, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: stolen, Signature: thief.SignRegistration(stolen), SignupProof: again}))
+		_, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: stolen, Signature: thief.SignRegistration(stolen), SignupProof: again}))
 		if connect.CodeOf(err) != connect.CodePermissionDenied || !strings.Contains(err.Error(), "another account") {
 			t.Fatalf("another account's device key: %v", err)
 		}

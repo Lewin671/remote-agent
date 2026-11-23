@@ -218,6 +218,10 @@ public  final class JoinPairingRequest extends
   public static final int PROTOCOL_VERSION_FIELD_NUMBER = 6;
   private int protocolVersion_;
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
    * @return The protocolVersion.
    */
@@ -226,6 +230,10 @@ public  final class JoinPairingRequest extends
     return protocolVersion_;
   }
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
    * @param value The protocolVersion to set.
    */
@@ -234,6 +242,10 @@ public  final class JoinPairingRequest extends
     protocolVersion_ = value;
   }
   /**
+   * <pre>
+   * Relay protocol version (internal/relayproto.Version), checked by the relay.
+   * </pre>
+   *
    * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
    */
   private void clearProtocolVersion() {
@@ -542,6 +554,10 @@ public  final class JoinPairingRequest extends
     }
 
     /**
+     * <pre>
+     * Relay protocol version (internal/relayproto.Version), checked by the relay.
+     * </pre>
+     *
      * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
      * @return The protocolVersion.
      */
@@ -550,6 +566,10 @@ public  final class JoinPairingRequest extends
       return instance.getProtocolVersion();
     }
     /**
+     * <pre>
+     * Relay protocol version (internal/relayproto.Version), checked by the relay.
+     * </pre>
+     *
      * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
      * @param value The protocolVersion to set.
      * @return This builder for chaining.
@@ -560,6 +580,10 @@ public  final class JoinPairingRequest extends
       return this;
     }
     /**
+     * <pre>
+     * Relay protocol version (internal/relayproto.Version), checked by the relay.
+     * </pre>
+     *
      * <code>uint32 protocol_version = 6 [json_name = "protocolVersion"];</code>
      * @return This builder for chaining.
      */

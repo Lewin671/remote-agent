@@ -54,6 +54,7 @@ message RegisterDeviceRequest {
   // a device to an existing account. Never replaced by root-key possession.
   bytes approval = 5;
   bytes approval_signature = 6;
+  // Relay protocol version (internal/relayproto.Version), checked by the relay.
   uint32 protocol_version = 7;
 }
 
@@ -92,6 +93,7 @@ message LoginRequest {
   // Ed25519 signature by the device key over "remote-agent/v1/login\x00"
   // followed by challenge.
   bytes signature = 3;
+  // Relay protocol version (internal/relayproto.Version), checked by the relay.
   uint32 protocol_version = 4;
 }
 
@@ -146,7 +148,11 @@ message PairApproval {
   string replaces_device_id = 9;
 }
 
-message PeekPairingRequest { string code = 1; uint32 protocol_version = 2; }
+message PeekPairingRequest {
+  string code = 1;
+  // Relay protocol version (internal/relayproto.Version), checked by the relay.
+  uint32 protocol_version = 2;
+}
 message PeekPairingResponse { string pairing_id = 1; bytes commit = 2; }
 
 message JoinPairingRequest {
@@ -157,6 +163,7 @@ message JoinPairingRequest {
   bytes device_public_key = 4;
   // Independent long-term X25519 recipient key, bound by the SAS.
   bytes device_hpke_public_key = 5;
+  // Relay protocol version (internal/relayproto.Version), checked by the relay.
   uint32 protocol_version = 6;
 }
 

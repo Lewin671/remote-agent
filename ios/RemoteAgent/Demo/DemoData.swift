@@ -156,7 +156,7 @@ enum Demo {
                 meta.hostname = name
                 meta.home = home
                 meta.os = "darwin"
-                meta.protocolVersion = protocolVersion
+                meta.protocolVersion = peerProtocolVersion
                 meta.capabilities = .with { $0.approvalAlways = true; $0.scheduledTasks = true; $0.machineStatus = true }
                 meta.diskStatus = .with { $0.totalBytes = 460_000_000_000; $0.availableBytes = 42_000_000_000; $0.pressure = .normal }
                 // The project a cleanup session starts in: the one used last.

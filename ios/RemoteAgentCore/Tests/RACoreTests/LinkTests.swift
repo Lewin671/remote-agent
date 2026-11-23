@@ -8,13 +8,13 @@ private func linkedState(_ id: String) -> RemoteState {
     var peer = PeerState()
     peer.reachable = true; peer.ready = true; peer.authorized = true
     peer.relayRequired = false
-    peer.protocolVersion = protocolVersion
+    peer.protocolVersion = peerProtocolVersion
     peer.capabilities = .with { $0.fileUpload = true; $0.scheduledTasks = true }
     var state = RemoteState()
     state.conn = .offline
     state.link = .noServer
     state.machines[id] = MachineView(id: id, online: false, lastSeenMs: 0,
-        meta: .with { $0.protocolVersion = protocolVersion - 1 }, linkState: peer)
+        meta: .with { $0.protocolVersion = peerProtocolVersion - 1 }, linkState: peer)
     state.currentMachines = [id]
     return state
 }

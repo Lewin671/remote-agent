@@ -476,7 +476,7 @@ func (c *Core) submitPlanPreflight(
 	}
 
 	liveCmd := &v1.Command{
-		ProtocolVersion: sync.ProtocolVersion,
+		ProtocolVersion: sync.PeerVersion,
 		Kind: &v1.Command_GetLiveSnapshot{
 			GetLiveSnapshot: &v1.GetLiveSnapshotRequest{SessionId: sid},
 		},
@@ -1037,7 +1037,7 @@ func (c *Core) findTrayViewAndItem(store *sessionStore, sid, reqID string) (*scr
 
 func (c *Core) submitCancelInput(ctx *sync.StepContext, store *sessionStore, ui *screens.SessionUIState, snap world.SessionSnapshot, sid, reqID string) {
 	cmd := &v1.Command{
-		ProtocolVersion: sync.ProtocolVersion,
+		ProtocolVersion: sync.PeerVersion,
 		Kind: &v1.Command_CancelInput{
 			CancelInput: &v1.CancelInputRequest{
 				SessionId: sid,
@@ -1109,7 +1109,7 @@ func (c *Core) resendTrayContent(
 		}
 	}
 	cmd := &v1.Command{
-		ProtocolVersion: sync.ProtocolVersion,
+		ProtocolVersion: sync.PeerVersion,
 		Kind: &v1.Command_Send{
 			Send: &v1.SendRequest{
 				SessionId: sid,
@@ -1261,7 +1261,7 @@ func (c *Core) handleResumeTrayItem(ctx *sync.StepContext, store *sessionStore, 
 		return nil
 	}
 	cmd := &v1.Command{
-		ProtocolVersion: sync.ProtocolVersion,
+		ProtocolVersion: sync.PeerVersion,
 		Kind: &v1.Command_ResumeInput{
 			ResumeInput: &v1.ResumeInputRequest{
 				SessionId: sid,

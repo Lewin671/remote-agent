@@ -212,7 +212,7 @@ suspend fun registerDevice(
     val exact =
         request
             ?: RegisterDeviceRequest.newBuilder()
-                .setProtocolVersion(PROTOCOL_VERSION)
+                .setProtocolVersion(RELAY_PROTOCOL_VERSION)
                 .setRegistration(ByteString.copyFrom(reg))
                 .setSignature(ByteString.copyFrom(accountSignature))
                 .setSetupToken(setupToken)
@@ -257,7 +257,7 @@ suspend fun loginResponse(api: Api, account: Account): LoginResponse {
     return api.auth
         .login(
             LoginRequest.newBuilder()
-                .setProtocolVersion(PROTOCOL_VERSION)
+                .setProtocolVersion(RELAY_PROTOCOL_VERSION)
                 .setDeviceId(account.deviceId)
                 .setChallenge(ch.challenge)
                 .setSignature(ByteString.copyFrom(sig))

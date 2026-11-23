@@ -76,7 +76,7 @@ public actor AuthorityBootstrap {
                 var reg = PBDeviceRegistration(); reg.accountPublicKey = keys.account.publicKey
                 reg.devicePublicKey = signer.publicKey; reg.kind = .client; reg.createdMs = Int64(clamping: genesis.core.issuedAt)
                 var request = PBRegisterDeviceRequest(); request.registration = try reg.serializedData()
-                request.signature = keys.account.sign(registerMessage(request.registration)); request.protocolVersion = protocolVersion
+                request.signature = keys.account.sign(registerMessage(request.registration)); request.protocolVersion = relayProtocolVersion
                 let material = AuthorityMaterial(server: checked, root: root, seed: seed, x: x,
                     publicKey: keys.account.publicKey, chain: try record.bytes())
                 displayed = try RecoveryCode.encode(seed: recovery.seed, genesis: pin.genesis)

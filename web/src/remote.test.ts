@@ -121,7 +121,7 @@ it("sends its protocol version with a command, and sends none to a machine of an
   const { CommandSchema, MachineMetaSchema } = await import(
     "./gen/remoteagent/v1/remote_pb"
   );
-  const { PROTOCOL_VERSION } = await import("./protocol");
+  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
   const r = await probe();
   const sent: Envelope[] = [];
   (r as unknown as { api: object }).api = {
@@ -158,7 +158,7 @@ it("sends its protocol version with a command, and sends none to a machine of an
     );
 
   // The same version, and a machine whose metadata has not opened yet.
-  machine(r.machine, PROTOCOL_VERSION);
+  machine(r.machine, PEER_PROTOCOL_VERSION);
   await run(r.machine);
   const withoutMachine = new Map(r.machines);
   withoutMachine.delete(r.machine);
@@ -171,10 +171,10 @@ it("sends its protocol version with a command, and sends none to a machine of an
         CommandSchema,
         (await r.world.fixture.open(r.machine, env)).plaintext,
       ).protocolVersion,
-    ).toBe(PROTOCOL_VERSION);
+    ).toBe(PEER_PROTOCOL_VERSION);
 
   // An older machine, including one from before it reported a version.
-  machine("older", PROTOCOL_VERSION - 1);
+  machine("older", PEER_PROTOCOL_VERSION - 1);
   const older = await run("older");
   expect(older).toBeInstanceOf(CommandError);
   expect((older as CommandError).message).toBe(
@@ -184,7 +184,7 @@ it("sends its protocol version with a command, and sends none to a machine of an
   expect(uncertain(older)).toBe(false);
 
   // A newer machine: it is this page that is behind.
-  machine("newer", PROTOCOL_VERSION + 1);
+  machine("newer", PEER_PROTOCOL_VERSION + 1);
   const newer = await run("newer");
   expect(newer).toBeInstanceOf(CommandError);
   expect((newer as CommandError).message).toBe(
@@ -849,11 +849,11 @@ it("retries Complete on the same transfer while hashing after a lost reply, with
 it.each(["send", "createSession"] as const)("rejects file-bearing %s when refreshed capability is false", async (kind) => {
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PROTOCOL_VERSION } = await import("./protocol");
+  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
   patchSyncState(r, {
     conn: "online",
     listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: false } }) }]]),
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: false } }) }]]),
   });
   const forward = vi.fn(async () => { throw new ConnectError("reached transport", Code.InvalidArgument); });
   (r as unknown as { api: object }).api = { forward };
@@ -868,11 +868,11 @@ it.each(["send", "createSession"] as const)("rejects file-bearing %s when refres
 it("checks the canonical file-bearing payload again on an authorized create retry", async () => {
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PROTOCOL_VERSION } = await import("./protocol");
+  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
   patchSyncState(r, {
     conn: "online",
     listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
   });
   const forward = vi.fn(async () => { throw new ConnectError("no result", Code.InvalidArgument); });
   (r as unknown as { api: object }).api = { forward };
@@ -889,11 +889,11 @@ it("checks the canonical file-bearing payload again on an authorized create retr
 it("rechecks file capability after asynchronous sealing before first dispatch", async () => {
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PROTOCOL_VERSION } = await import("./protocol");
+  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
   patchSyncState(r, {
     conn: "online",
     listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
   });
   const seal = (r as any).sealSecureMessage.bind(r);
   vi.spyOn(r as any, "sealSecureMessage").mockImplementation(async (...args: unknown[]) => {
@@ -911,11 +911,11 @@ it("rechecks file capability after asynchronous sealing before first dispatch", 
 it("blocks an automatic file retry after metadata refresh and keeps its outcome unknown", async () => {
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PROTOCOL_VERSION } = await import("./protocol");
+  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
   patchSyncState(r, {
     conn: "online",
     listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
   });
   const forward = vi.fn(async () => { r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false; throw new ConnectError("no reply", Code.DeadlineExceeded); });
   (r as unknown as { api: object }).api = { forward };
@@ -940,11 +940,11 @@ it("blocks an automatic file retry after metadata refresh and keeps its outcome 
 it.each(["send", "createSession"] as const)("allows text/image-only %s with file capability off", async (kind) => {
   const r = await probe();
   const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PROTOCOL_VERSION } = await import("./protocol");
+  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
   patchSyncState(r, {
     conn: "online",
     listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PROTOCOL_VERSION, capabilities: { fileUpload: false } }) }]]),
+    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: false } }) }]]),
   });
   const forward = vi.fn(async () => { throw new ConnectError("transport reached", Code.InvalidArgument); });
   (r as unknown as { api: object }).api = { forward };
@@ -1294,13 +1294,13 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
   const { DispatchCommandEffectSchema, CommandRouteHint } = await import("./gen/remoteagent/core/v1/app_pb");
   const { CommandSchema, CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
-  const { PROTOCOL_VERSION } = await import("./protocol");
+  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
   const listJson = new TextEncoder().encode(JSON.stringify({ tasks: [{ id: "t-cached", revision: 2 }] }));
 
   const cmdBytes = toBinary(
     CommandSchema,
     create(CommandSchema, {
-      protocolVersion: PROTOCOL_VERSION,
+      protocolVersion: PEER_PROTOCOL_VERSION,
       kind: { case: "schedule", value: { operation: "list" } },
     }),
   );

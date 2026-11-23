@@ -137,7 +137,7 @@ public func joinByPairing(
     let key = try PairKey()
     var peekAsk = PBPeekPairingRequest()
     peekAsk.code = link.code.filter { !$0.isWhitespace }
-    peekAsk.protocolVersion = protocolVersion
+    peekAsk.protocolVersion = relayProtocolVersion
     let peek = try await api.pairing.peekPairing(request: peekAsk).value()
     guard peek.commit.count == 32, !peek.pairingID.isEmpty,
         link.commit == nil || link.commit == peek.commit
@@ -151,7 +151,7 @@ public func joinByPairing(
     let x = try identity.map { try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: $0.x) } ?? Curve25519.KeyAgreement.PrivateKey()
     let xPublic = x.publicKey.rawRepresentation
     var join = PBJoinPairingRequest()
-    join.protocolVersion = protocolVersion
+    join.protocolVersion = relayProtocolVersion
     join.deviceHpkePublicKey = xPublic
     join.code = link.code.filter { !$0.isWhitespace }
     join.joinerPublic = key.publicKey
@@ -272,7 +272,7 @@ public func joinByPairing(
     var reg = PBDeviceRegistration()
     reg.accountPublicKey=payload.accountPublicKey;reg.devicePublicKey=try SigningKey(seed:deviceSeed).publicKey
     reg.kind = .client;reg.createdMs=Int64(Date().timeIntervalSince1970*1000)
-    var request = PBRegisterDeviceRequest();request.protocolVersion=protocolVersion
+    var request = PBRegisterDeviceRequest();request.protocolVersion=relayProtocolVersion
     request.registration=try reg.serializedData();request.approval=enrollment.approval;request.approvalSignature=enrollment.signature
     let intent = try RegistrationIntent(account:acct,record:record,request:request)
     try persistRegistration(intent)

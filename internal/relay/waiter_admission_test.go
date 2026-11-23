@@ -43,7 +43,7 @@ func endpointClient(t *testing.T, e *endpoint) *deviceauth.Endpoint {
 }
 func commandEnvelope(t *testing.T, client *deviceauth.Endpoint, machine, id string, cmd *pb.Command) *pb.Envelope {
 	t.Helper()
-	cmd.ProtocolVersion = protocol.Version
+	cmd.ProtocolVersion = protocol.PeerVersion
 	body, err := proto.Marshal(cmd)
 	if err != nil {
 		t.Fatal(err)

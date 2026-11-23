@@ -22,7 +22,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"github.com/Lewin671/remote-agent/internal/e2e"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"google.golang.org/protobuf/proto"
 )
@@ -80,7 +80,7 @@ func (ts *testServer) register(t *testing.T, keys *e2e.Keys, kind pb.DeviceKind,
 	t.Helper()
 	pub, priv, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: keys.AccountPublicKey(), DevicePublicKey: pub, Kind: kind})
-	req := &pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Signature: keys.SignRegistration(reg), SetupToken: token}
+	req := &pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: reg, Signature: keys.SignRegistration(reg), SetupToken: token}
 	ts.admitRegistration(t, req)
 	res, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(req))
 	if err != nil {
@@ -361,12 +361,12 @@ func (ts *testServer) login(t *testing.T, priv ed25519.PrivateKey, id string) st
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)}))
+	res, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// A challenge works once.
-	if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)})); err == nil {
+	if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version, DeviceId: id, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(priv, ch.Msg.Challenge)})); err == nil {
 		t.Fatal("challenge reused")
 	}
 	return res.Msg.Token
@@ -401,7 +401,7 @@ func TestRegistration(t *testing.T) {
 	// A registration signed by someone else is refused.
 	pub, _, _ := ed25519.GenerateKey(nil)
 	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: pub, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT})
-	_, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: reg, Signature: other.SignRegistration(reg)}))
+	_, err := ts.auth.RegisterDevice(context.Background(), connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: reg, Signature: other.SignRegistration(reg)}))
 	if connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("forged registration: %v", err)
 	}
@@ -418,7 +418,7 @@ func TestLoginAndAuthorization(t *testing.T) {
 
 	// Wrong key.
 	ch, _ := ts.auth.GetChallenge(ctx, connect.NewRequest(&pb.GetChallengeRequest{DeviceId: mid}))
-	if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: protocol.Version, DeviceId: mid, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(cpriv, ch.Msg.Challenge)})); err == nil {
+	if _, err := ts.auth.Login(ctx, connect.NewRequest(&pb.LoginRequest{ProtocolVersion: relayproto.Version, DeviceId: mid, Challenge: ch.Msg.Challenge, Signature: e2e.SignLogin(cpriv, ch.Msg.Challenge)})); err == nil {
 		t.Fatal("login with another device's key")
 	}
 
@@ -697,7 +697,7 @@ func TestPairingLimits(t *testing.T) {
 	jkey, _ := e2e.NewPairKey()
 	candidate, _, _ := ed25519.GenerateKey(nil)
 	join := func(code string) (*connect.Response[pb.JoinPairingResponse], error) {
-		return anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: protocol.Version, Code: code, JoinerPublic: jkey.Public(), DeviceHpkePublicKey: jkey.Public(), DevicePublicKey: candidate, JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
+		return anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{ProtocolVersion: relayproto.Version, Code: code, JoinerPublic: jkey.Public(), DeviceHpkePublicKey: jkey.Public(), DevicePublicKey: candidate, JoinerKind: pb.DeviceKind_DEVICE_KIND_CLIENT}))
 	}
 	joined, err := join(created.Msg.Code)
 	if err != nil {
@@ -748,7 +748,7 @@ func TestPairingLimits(t *testing.T) {
 		t.Fatalf("unregistered candidate claimed delivery: %v", err)
 	}
 	raw, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: candidate, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT})
-	if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: protocol.Version, Registration: raw, Signature: ts.keys.SignRegistration(raw), Approval: approval, ApprovalSignature: approvalSig})); err != nil {
+	if _, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{ProtocolVersion: relayproto.Version, Registration: raw, Signature: ts.keys.SignRegistration(raw), Approval: approval, ApprovalSignature: approvalSig})); err != nil {
 		t.Fatal(err)
 	}
 	if res, err := get(true); err != nil || res.Msg.State != pb.PairingState_PAIRING_STATE_DELIVERED {

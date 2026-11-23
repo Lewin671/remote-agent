@@ -17,7 +17,7 @@ func (e *Engine) SessionSnapshot(sessionID string) world.SessionSnapshot {
 		Conn:                e.w.World.Connection,
 		Unlinked:            e.worldUnlinked(),
 		ReachabilityUnknown: e.coldStartGraceActive(),
-		ProtocolVersion:     ProtocolVersion,
+		ProtocolVersion:     PeerVersion,
 		DeviceNames:         makeDeviceNameMap(e.devices),
 		ThisDeviceID:        e.security.SelfDeviceID,
 	}

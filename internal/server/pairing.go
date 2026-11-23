@@ -10,7 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"math/big"
 	"net/http"
@@ -167,8 +167,8 @@ func (ps *pairingService) CreatePairing(ctx context.Context, req *connect.Reques
 }
 
 func (ps *pairingService) JoinPairing(ctx context.Context, req *connect.Request[pb.JoinPairingRequest]) (*connect.Response[pb.JoinPairingResponse], error) {
-	if req.Msg.ProtocolVersion != protocol.Version {
-		return nil, protocol.Mismatch("the joining device", req.Msg.ProtocolVersion)
+	if req.Msg.ProtocolVersion != relayproto.Version {
+		return nil, relayproto.Mismatch("the joining device", req.Msg.ProtocolVersion)
 	}
 	if len(req.Msg.JoinerPublic) != 32 || len(req.Msg.DevicePublicKey) != ed25519.PublicKeySize || len(req.Msg.DeviceHpkePublicKey) != 32 {
 		return nil, invalid("the public key must be 32 bytes")
@@ -430,8 +430,8 @@ func (ps *pairingService) codeLocked(code, peer string, header http.Header) (*pa
 	return p, nil
 }
 func (ps *pairingService) PeekPairing(ctx context.Context, req *connect.Request[pb.PeekPairingRequest]) (*connect.Response[pb.PeekPairingResponse], error) {
-	if req.Msg.ProtocolVersion != protocol.Version {
-		return nil, protocol.Mismatch("the joining device", req.Msg.ProtocolVersion)
+	if req.Msg.ProtocolVersion != relayproto.Version {
+		return nil, relayproto.Mismatch("the joining device", req.Msg.ProtocolVersion)
 	}
 	code := strings.ReplaceAll(strings.TrimSpace(req.Msg.Code), " ", "")
 	ps.mu.Lock()

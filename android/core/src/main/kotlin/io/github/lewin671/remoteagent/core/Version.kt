@@ -4,9 +4,17 @@ package io.github.lewin671.remoteagent.core
 const val ENVELOPE_VERSION = 1
 
 /**
- * The protocol version this app speaks with daemons: Command.protocol_version and
- * MachineMeta.protocol_version. Peers of different versions do not work together; keep it in step
- * with Version in the Go package internal/protocol and PROTOCOL_VERSION in web/src. It is not
- * ENVELOPE_VERSION, which stored data keeps.
+ * The relay protocol version checked by remote-agent-server at its entry points
+ * (RegisterDevice, Login, PeekPairing, JoinPairing). Keep it in step with
+ * Version in Go's internal/relayproto, clientcore, web/src and iOS.
  */
-const val PROTOCOL_VERSION = 17
+const val RELAY_PROTOCOL_VERSION = 17
+
+/**
+ * The peer protocol version this app speaks with daemons: Command.protocol_version,
+ * MachineMeta.protocol_version and peerwire Context.protocol. Peers of different
+ * versions do not work together; keep it in step with PeerVersion in Go's
+ * internal/protocol, clientcore, web/src and iOS. It is not ENVELOPE_VERSION,
+ * which stored data keeps.
+ */
+const val PEER_PROTOCOL_VERSION = 17
