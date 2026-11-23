@@ -636,7 +636,7 @@ struct ChatPane: View {
         composer: PBSessionComposerView,
         actions: PBSessionActionsView
     ) -> some View {
-        let taskOwned = header.isScheduled && !header.scheduledTaskID.isEmpty
+        let taskOwned = model.state.sessions[sessionID]?.info?.taskOwned == true
         if header.exited {
             VStack(spacing: 0) {
                 if taskOwned { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }

@@ -223,7 +223,8 @@ struct SessionScreen: View {
         }
         .tint(DS.blue)
         .task(id: header.scheduledTaskID) {
-            guard header.isScheduled, !header.scheduledTaskID.isEmpty,
+            let taskOwned = model.state.sessions[id]?.info?.taskOwned == true
+            guard taskOwned, !header.scheduledTaskID.isEmpty,
                   nav.path.last == page, !nav.path.dropLast().contains(.schedule(machine: machineID, id: header.scheduledTaskID)) else { return }
             nav.path.insert(.schedule(machine: machineID, id: header.scheduledTaskID), at: max(0, nav.path.count - 1))
         }
