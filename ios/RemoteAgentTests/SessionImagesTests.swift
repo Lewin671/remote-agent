@@ -606,7 +606,7 @@ struct StubAttachmentEvaluator: AttachmentEvaluating {
         let large = dir.appendingPathComponent("large.tiff")
         #expect(FileManager.default.createFile(atPath: large.path, contents: nil))
         let handle = try FileHandle(forWritingTo: large)
-        try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false)) + 1)
+        try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false, originalMaxBytes: 0)) + 1)
         try handle.close()
         #expect(try await picked(large).read == .failure(ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), kind: .dimensions)))
     }
