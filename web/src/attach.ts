@@ -188,14 +188,14 @@ export class Tray {
       sessionId: this.sessionId,
       currentImages: 0,
       currentFiles: 0,
-      candidates: this.items.map((item, idx) =>
+      candidates: this.items.map((item) =>
         create(AttachmentCandidateInputSchema, {
           name:
             item.kind === "file"
               ? (item.name ?? "")
               : item.file instanceof File && item.file.name
                 ? item.file.name
-                : `image-${idx + 1}.png`,
+                : "",
           mimeType:
             item.kind === "file"
               ? item.file.type
@@ -302,9 +302,9 @@ export class Tray {
   /** Convenience wrapper for adding image blobs (delegates to Core AttachmentEval). */
   add(files: Blob[]) {
     this.addCandidates(
-      files.map((f, idx) => ({
+      files.map((f) => ({
         file: f,
-        name: f instanceof File && f.name ? f.name : `image-${idx + 1}.png`,
+        name: f instanceof File && f.name ? f.name : "",
         mimeType: f.type || "image/png",
         sizeBytes: f.size,
       })),

@@ -295,7 +295,7 @@ internal fun evaluateDraftAttachmentsBlocked(
         for (pic in pictures) {
             addCandidates(
                 AttachmentCandidateInput.newBuilder()
-                    .setName(pic.fileName ?: "image.jpg")
+                    .setName(pic.fileName.orEmpty())
                     .setMimeType("image/jpeg")
                     .setForceFile(false),
             )

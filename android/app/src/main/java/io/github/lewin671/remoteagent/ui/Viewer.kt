@@ -164,7 +164,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             if (viewer.hasPositionText() && viewer.open && page == viewer.currentIndex) {
                 uiText(viewer.positionText)
             } else {
-                "${page + 1} / ${all.size}"
+                ""
             }
         },
         picture = { page ->
@@ -277,11 +277,14 @@ internal fun PagedImageViewer(
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassButton(Lucide.X, uiText(UiMessages.commonClose()), onClose, dark = true)
             Spacer(Modifier.width(12.dp))
-            Text(
-                positionLabel?.invoke(current) ?: "${current + 1} / $count",
-                color = Color.White,
-                style = T.s15b,
-            )
+            val posLabel = positionLabel?.invoke(current) ?: "${current + 1} / $count"
+            if (posLabel.isNotEmpty()) {
+                Text(
+                    posLabel,
+                    color = Color.White,
+                    style = T.s15b,
+                )
+            }
         }
         Column(
             Modifier.align(Alignment.BottomCenter)

@@ -5651,13 +5651,8 @@
   },
   {
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Viewer.kt",
-    "literal": "${page + 1} / ${all.size}",
-    "reason": "Pager position while swiping (numbers only, no words); the core's position_text replaces it once the page settles."
-  },
-  {
-    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Viewer.kt",
     "literal": "${current + 1} / $count",
-    "reason": "Pager position while swiping (numbers only, no words); the core's position_text replaces it once the page settles."
+    "reason": "Local draft image viewer pager position (numbers only, no words); Core SessionImageViewerView has no position_text for unsent local drafts."
   },
   {
     "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",

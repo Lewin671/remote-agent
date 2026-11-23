@@ -303,7 +303,7 @@ final class ImageCenter {
     }
 
     static func candidates(for items: [PendingImage]) -> [PBAttachmentCandidateInput] {
-        items.enumerated().map { idx, item in
+        items.map { item in
             .with {
                 if let file = item.file {
                     $0.name = file.name
@@ -312,7 +312,6 @@ final class ImageCenter {
                     $0.isDirectory = false
                     $0.forceFile = true
                 } else {
-                    $0.name = "image-\(idx + 1).png"
                     $0.mimeType = "image/png"
                     $0.forceFile = false
                 }
@@ -602,14 +601,13 @@ final class ImageCenter {
             guard let self, !closed else { return }
             await restoredDraft(key)
             guard !closed else { return }
-            let candidates: [PBAttachmentCandidateInput] = picked.enumerated().map { idx, source in
+            let candidates: [PBAttachmentCandidateInput] = picked.map { source in
                 .with {
                     switch source {
                     case .library(let p), .provider(let p):
-                        $0.name = p.suggestedName ?? "image-\(idx + 1).jpg"
+                        $0.name = p.suggestedName ?? ""
                         $0.mimeType = Self.imageMimeType(for: p)
                     case .data:
-                        $0.name = "image-\(idx + 1).png"
                         $0.mimeType = "image/png"
                     }
                     $0.forceFile = false
@@ -644,7 +642,7 @@ final class ImageCenter {
             }
             var items: [PreparedItem] = []
             var copyFailed = false
-            for (idx, provider) in providers.enumerated() {
+            for provider in providers {
                 if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
                     do {
                         let video: LibraryVideo = try await withCheckedThrowingContinuation { done in
@@ -657,7 +655,7 @@ final class ImageCenter {
                     }
                 } else {
                     let candidate = PBAttachmentCandidateInput.with {
-                        $0.name = provider.suggestedName ?? "image-\(idx + 1).jpg"
+                        $0.name = provider.suggestedName ?? ""
                         $0.mimeType = Self.imageMimeType(for: provider)
                         $0.forceFile = false
                     }

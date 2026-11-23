@@ -455,7 +455,7 @@ export function ImageViewer({
   const name = sharedFile
     ? sharedFile.name
     : draft
-      ? (local?.file instanceof File ? local.file.name : `image-${draftIndex + 1}.jpg`)
+      ? ""
       : img?.displayName || `image-${(viewer?.currentIndex ?? 0) + 1}.${img?.fileExtension || "jpg"}`;
   const blob = load.kind === "ok" ? load.blob : undefined;
   const save = () => {
