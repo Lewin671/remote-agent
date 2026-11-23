@@ -711,10 +711,8 @@ final class AppModel {
         if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
         LibraryVideos.discardAll()
         if let leavingHost {
-            Task {
-                await leavingHost.clearAllSharedFiles()
-                await leavingHost.closeAsync()
-            }
+            await leavingHost.clearAllSharedFiles()
+            await leavingHost.closeAsync()
         }
         context = nil
         state = RemoteState()

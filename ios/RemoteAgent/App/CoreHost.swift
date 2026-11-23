@@ -242,6 +242,40 @@ struct ScopeDefaults: @unchecked Sendable {
     }
 }
 
+/// Process-wide single FIFO queue serializing all shared-file disk operations across
+/// CoreHost lifetimes (e.g., logout ClearAll followed by a new account's ScanLocal).
+final class SharedFileStorageQueue: Sendable {
+    static let shared = SharedFileStorageQueue()
+
+    private let continuation: AsyncStream<@Sendable () async -> Void>.Continuation
+
+    init() {
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: (@Sendable () async -> Void).self,
+            bufferingPolicy: .unbounded
+        )
+        self.continuation = continuation
+        Task.detached(priority: .utility) {
+            for await op in stream {
+                await op()
+            }
+        }
+    }
+
+    func enqueue(_ op: @escaping @Sendable () async -> Void) {
+        continuation.yield(op)
+    }
+
+    func drain() async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            let yielded = continuation.yield { c.resume() }
+            if case .terminated = yielded {
+                c.resume()
+            }
+        }
+    }
+}
+
 /// Owns `CoreClient`, feeds system/UI/transport events into Core, and executes every
 /// `Effect` emitted by Core (`OpenStream`, `EnsureToken`, `SyncSecurity`, `ScheduleTimer`,
 /// `CacheRead/Write/Delete`, `Rpc`, `DispatchCommand`, `Render`, `Navigate`, `AttachmentsSettled`,
@@ -270,8 +304,7 @@ actor CoreHost: SyncEngine {
     private let defaults: ScopeDefaults
     private let scopeHmacKey: Data
     private let sharedFileStore: SharedFileStore
-    private let sharedFileContinuation: AsyncStream<@Sendable () async -> Void>.Continuation
-    private var sharedFileWorkerTask: Task<Void, Never>?
+    private let sharedFileQueue: SharedFileStorageQueue
     private var sharedFileHandlers: SharedFileHandlers?
     private var visibleSessions: [(token: UUID, sessionID: String)] = []
     private var currentVisibleSessionID = ""
@@ -373,6 +406,7 @@ actor CoreHost: SyncEngine {
         defaults: UserDefaults,
         screens: CoreScreens,
         sharedFileStore: SharedFileStore = SharedFileStore(root: SharedFileCenter.defaultRoot),
+        sharedFileQueue: SharedFileStorageQueue = .shared,
         demoDirectories: DirectorySource? = nil,
         demoModels: [String: PBListModelsResponse] = [:],
         demoMode: Bool = false,
@@ -389,6 +423,7 @@ actor CoreHost: SyncEngine {
             defaults: ScopeDefaults(defaults, scope: [account.server, account.deviceId]),
             scopeHmacKey: RACore.scopeHmacKey(localKey: account.localKey),
             sharedFileStore: sharedFileStore,
+            sharedFileQueue: sharedFileQueue,
             clock: clock,
             monoClock: hostMonoMs,
             sleep: sleep,
@@ -411,6 +446,7 @@ actor CoreHost: SyncEngine {
         defaults: ScopeDefaults = ScopeDefaults(),
         scopeHmacKey: Data = Data(),
         sharedFileStore: SharedFileStore = SharedFileStore(root: SharedFileCenter.defaultRoot),
+        sharedFileQueue: SharedFileStorageQueue = .shared,
         clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
         monoClock: @escaping @Sendable () -> Int64 = hostMonoMs,
         sleep: @escaping Sleeper = realSleep,
@@ -426,13 +462,7 @@ actor CoreHost: SyncEngine {
         self.defaults = defaults
         self.scopeHmacKey = scopeHmacKey
         self.sharedFileStore = sharedFileStore
-        let (sfStream, sfContinuation) = AsyncStream.makeStream(of: (@Sendable () async -> Void).self, bufferingPolicy: .unbounded)
-        self.sharedFileContinuation = sfContinuation
-        self.sharedFileWorkerTask = Task.detached(priority: .utility) {
-            for await op in sfStream {
-                await op()
-            }
-        }
+        self.sharedFileQueue = sharedFileQueue
         self.clock = clock
         self.monoClock = monoClock
         self.sleep = sleep
@@ -443,10 +473,6 @@ actor CoreHost: SyncEngine {
         self.onScheduleNavigate = onScheduleNavigate
         self.randomIdPool = (0..<16).map { _ in newRequestId() }
         self.unitFloatPool = (0..<16).map { _ in Double.random(in: 0..<1) }
-    }
-
-    deinit {
-        sharedFileContinuation.finish()
     }
 
     func wireExecutorHooks() async {
@@ -718,8 +744,6 @@ actor CoreHost: SyncEngine {
         cancelIOTasks()
         cacheChain?.cancel()
         cacheChain = nil
-        sharedFileContinuation.finish()
-        sharedFileWorkerTask = nil
         sharedFileHandlers = nil
         visibleSessions.removeAll()
         currentVisibleSessionID = ""
@@ -1492,19 +1516,11 @@ actor CoreHost: SyncEngine {
     }
 
     func drainSharedFileQueue() async {
-        guard !closed else { return }
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            let yielded = sharedFileContinuation.yield {
-                continuation.resume()
-            }
-            if case .terminated = yielded {
-                continuation.resume()
-            }
-        }
+        await sharedFileQueue.drain()
     }
 
     private func enqueueSharedFileOp(_ op: @escaping @Sendable () async -> Void) {
-        sharedFileContinuation.yield(op)
+        sharedFileQueue.enqueue(op)
     }
 
     func openSessionImageViewer(sessionID: String, seq: UInt64, imageIndex: Int32 = 0, viewerIndex: Int32 = 0) async {

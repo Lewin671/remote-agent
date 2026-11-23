@@ -430,6 +430,96 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
         #expect(entry.bytesOnDisk == Int64(payload.count))
     }
 
+    @Test func sharedQueueSerializesLogoutClearAllBeforeNextHostScanLocal() async throws {
+        let sharedRoot = FileManager.default.temporaryDirectory.appendingPathComponent("sf-cross-host-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: sharedRoot) }
+        let sharedQueue = SharedFileStorageQueue()
+        let store = SharedFileStore(root: sharedRoot)
+        let hash = Data(SHA256.hash(data: content))
+
+        // Seed a completed file on disk from account 1.
+        #expect(store.writeChunk(.with {
+            $0.opID = 1
+            $0.sessionID = "s1"
+            $0.fileID = "f1"
+            $0.displayName = "old.bin"
+            $0.offset = 0
+            $0.data = content
+            $0.totalSizeBytes = Int64(content.count)
+            $0.chunkBytes = Int32(content.count)
+            $0.committedOffset = Int64(content.count)
+            $0.expectedSha256 = hash
+            $0.resetPartial = true
+        }).ok)
+        #expect(store.verifyAndCommit(.with {
+            $0.opID = 2
+            $0.sessionID = "s1"
+            $0.fileID = "f1"
+            $0.displayName = "old.bin"
+            $0.totalSizeBytes = Int64(content.count)
+            $0.expectedSha256 = hash
+        }).ok)
+        #expect(store.usedBytes() > 0)
+
+        let makeHost: () throws -> (CoreHost, CoreScreens) = {
+            let account = Account(
+                server: "http://127.0.0.1:1",
+                deviceId: "00112233445566778899aabbccddeeff",
+                accountId: "11111111111111111111111111111111"
+            )
+            let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
+            let screens = CoreScreens()
+            let host = try CoreHost.live(
+                remote: remote,
+                account: account,
+                defaults: UserDefaults(suiteName: "sf-cross-\(UUID().uuidString)")!,
+                screens: screens,
+                sharedFileStore: store,
+                sharedFileQueue: sharedQueue,
+                demoMode: true,
+                onNavigate: { _ in }
+            )
+            return (host, screens)
+        }
+
+        let (host1, _) = try makeHost()
+        let (host2, _) = try makeHost()
+        defer {
+            Task {
+                await host1.closeAsync()
+                await host2.closeAsync()
+            }
+        }
+
+        // Hold the shared queue with a blocker so host1's ClearAll is queued behind it.
+        let gateStarted = AsyncStream<Void>.makeStream()
+        let gateRelease = AsyncStream<Void>.makeStream()
+        sharedQueue.enqueue {
+            gateStarted.continuation.yield(())
+            var it = gateRelease.stream.makeAsyncIterator()
+            _ = await it.next()
+        }
+        _ = await nextEvent(gateStarted.stream)
+
+        // Dispatch host1's ClearAll while the shared queue is held (so ClearAll is enqueued
+        // behind the blocker), close host1 immediately, and enqueue host2's ScanLocal next.
+        // Closing host1 must NOT drop the queued ClearAll, and host2's scan must run strictly after it.
+        await host1.dispatch { $0.sharedFileClearAll = PBSharedFileClearAllAction() }
+        await host1.closeAsync()
+
+        let scanDone = AsyncStream<Int>.makeStream()
+        sharedQueue.enqueue {
+            let scanned = store.scanLocal(opID: 77)
+            scanDone.continuation.yield(scanned.entries.count)
+        }
+
+        gateRelease.continuation.yield(())
+        await host2.drainSharedFileQueue()
+        let scannedCount = await nextEvent(scanDone.stream)
+        #expect(scannedCount == 0)
+        #expect(store.usedBytes() == 0)
+    }
+
     @Test func aThumbnailIsMadeFromTheCopy() async throws {
         let png = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 20)).image { ctx in
             UIColor.red.setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 40, height: 20))
