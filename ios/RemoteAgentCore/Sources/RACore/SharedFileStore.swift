@@ -34,6 +34,9 @@ public actor SharedFileStore {
         var completed: Int64
         var sha256: String
         var durationMs: Int64?
+        var sessionId: String?
+        var fileId: String?
+        var fileName: String?
     }
 
     private struct Job {
@@ -88,7 +91,7 @@ public actor SharedFileStore {
     /// Where the finished copy of `file` is, or would be.
     public nonisolated func localURL(_ key: SharedFileKey, name: String) -> URL {
         directory(key).appending(path: "file", directoryHint: .isDirectory)
-            .appending(path: sanitizeSharedFileName(name), directoryHint: .notDirectory)
+            .appending(path: safeLocalSharedFileName(name), directoryHint: .notDirectory)
     }
 
     private nonisolated func readMeta(_ key: SharedFileKey) -> Meta? {
@@ -174,6 +177,51 @@ public actor SharedFileStore {
     }
 
     public func state(_ key: SharedFileKey) -> SharedFileTransfer { states[key] ?? .idle }
+
+    /// Scans all persisted copies and partial downloads on disk so the shell can send a full `replace_all` report on startup or account switch.
+    public func scanPersisted() -> [(SharedFileKey, SharedFileTransfer)] {
+        let fm = FileManager.default
+        guard let sessionDirs = try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) else {
+            return []
+        }
+        var found: [(SharedFileKey, SharedFileTransfer)] = []
+        for sessionDir in sessionDirs {
+            guard let fileDirs = try? fm.contentsOfDirectory(at: sessionDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) else {
+                continue
+            }
+            for fileDir in fileDirs {
+                let metaFile = fileDir.appending(path: ".meta")
+                guard let data = try? Data(contentsOf: metaFile),
+                      let meta = try? JSONDecoder().decode(Meta.self, from: data)
+                else { continue }
+                let sid = meta.sessionId ?? sessionDir.lastPathComponent
+                let fid = meta.fileId ?? fileDir.lastPathComponent
+                let key = SharedFileKey(sessionId: sid, fileId: fid)
+                let fileFolder = fileDir.appending(path: "file", directoryHint: .isDirectory)
+                if let finalURL: URL = {
+                    if let name = meta.fileName, !name.isEmpty {
+                        let candidate = fileFolder.appending(path: safeLocalSharedFileName(name), directoryHint: .notDirectory)
+                        if Self.length(candidate) == meta.size { return candidate }
+                    }
+                    if let items = try? fm.contentsOfDirectory(at: fileFolder, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) {
+                        return items.first { Self.length($0) == meta.size }
+                    }
+                    return nil
+                }() {
+                    let t = SharedFileTransfer.downloaded(url: finalURL, durationMs: meta.durationMs)
+                    if jobs[key] == nil { states[key] = t }
+                    found.append((key, t))
+                } else if meta.blockBytes > 0, meta.completed > 0, meta.completed % Int64(meta.blockBytes) == 0,
+                          (Self.length(fileDir.appending(path: ".part")) ?? 0) >= meta.completed
+                {
+                    let t = SharedFileTransfer.paused(done: min(meta.completed, meta.size), total: meta.size)
+                    if jobs[key] == nil { states[key] = t }
+                    found.append((key, t))
+                }
+            }
+        }
+        return found
+    }
 
     // MARK: Controls
 
@@ -304,7 +352,7 @@ public actor SharedFileStore {
                 try handle.close()
             } else {
                 try? fm.removeItem(at: part)
-                try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: 0, sha256: hashHex, durationMs: nil))
+                try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: 0, sha256: hashHex, durationMs: nil, sessionId: key.sessionId, fileId: key.fileId, fileName: safeLocalSharedFileName(file.name)))
                 fm.createFile(atPath: part.path, contents: nil, attributes: Self.protection)
             }
         } catch {
@@ -363,7 +411,7 @@ public actor SharedFileStore {
                 try handle.seek(toOffset: UInt64(offset))
                 if take > 0 { try handle.write(contentsOf: reply.data.prefix(take)) }
                 try handle.truncate(atOffset: UInt64(offset + Int64(take)))
-                try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: offset + Int64(blockBytes), sha256: hashHex, durationMs: nil))
+                try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: offset + Int64(blockBytes), sha256: hashHex, durationMs: nil, sessionId: key.sessionId, fileId: key.fileId, fileName: safeLocalSharedFileName(file.name)))
             } catch {
                 fail(key, token, Self.failure(for: error))
                 return
@@ -389,7 +437,7 @@ public actor SharedFileStore {
             try fm.createDirectory(at: final.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: Self.protection)
             try? fm.removeItem(at: final)
             try fm.moveItem(at: part, to: final)
-            try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: size, sha256: hashHex, durationMs: nil))
+            try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: size, sha256: hashHex, durationMs: nil, sessionId: key.sessionId, fileId: key.fileId, fileName: safeLocalSharedFileName(file.name)))
         } catch {
             fail(key, token, Self.failure(for: error))
             return

@@ -1,9 +1,9 @@
-// The card of a file the agent handed over, drawn to the lead's mockup
-// (tmp/ra-design-1112/draft.html §①) and ui-spec §3-§4: a 44 point tile that
-// becomes the file's own thumbnail once it is on the phone, two lines of
-// words, and the one control that changes with the state: a download arrow,
-// a progress ring, 打开 or 重试. The whole card is the control's button; a
-// long press floats it with its menu (`SharedFileMenu`).
+// The card of a file the agent handed over, rendered directly from Core's
+// `PBSessionSharedFileItem`: a 44 point tile that becomes the file's own
+// thumbnail once it is on the phone, two lines of words, and the one control
+// that changes with the state: a download arrow, a progress ring, 打开 or 重试.
+// The whole card is the control's button; a long press floats it with its menu
+// (`SharedFileMenu`).
 import RACore
 import RAProto
 import SwiftUI
@@ -24,13 +24,7 @@ struct SharedFilesRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(item.files, id: \.fileID) { file in
-                let pbFile = PBSharedFile.with {
-                    $0.fileID = file.fileID
-                    $0.name = file.name
-                    $0.path = file.path
-                    $0.sizeBytes = file.sizeBytes
-                }
-                SharedFileCardView(file: pbFile, env: env)
+                SharedFileCardView(file: file, env: env)
             }
         }
         // 8 from the next card, as the cards of one row are (the rows themselves are 4 + 4).
@@ -46,23 +40,20 @@ final class FrameBox {
     var frame = CGRect.zero
 }
 
-/// What the card of `file` shows now: the transfer, the computer and the session together.
 @MainActor
-func resolvedSharedFileCard(center: SharedFileCenter, key: SharedFileKey, file: PBSharedFile, env: ChatEnv) -> SharedFileCard {
-    let card = sharedFileCard(center.transfer(key, file: file), machineOnline: env.machineOnline, sessionExited: env.sessionExited)
+func resolvedSharedFileItem(_ item: PBSessionSharedFileItem) -> PBSessionSharedFileItem {
     #if DEBUG
-    // `-sharedFileCards`: a card in a state the sample data cannot reach (there is no computer to download from).
-    return SharedFileDebug.card(for: file) ?? card
+    return SharedFileDebug.overrideItem(item)
     #else
-    return card
+    return item
     #endif
 }
 
 @MainActor
-func resolvedSharedFileThumbnail(center: SharedFileCenter, key: SharedFileKey, file: PBSharedFile, card: SharedFileCard) -> UIImage? {
+func resolvedSharedFileThumbnail(center: SharedFileCenter, key: SharedFileKey, item: PBSessionSharedFileItem) -> UIImage? {
     if let held = center.thumbnail(key) { return held }
     #if DEBUG
-    if case .downloaded = card { return SharedFileDebug.thumbnail(for: classifySharedFile(file.name), name: file.name) }
+    if item.status == .downloaded { return SharedFileDebug.thumbnail(for: item.kind, name: item.displayName) }
     #endif
     return nil
 }
@@ -70,98 +61,89 @@ func resolvedSharedFileThumbnail(center: SharedFileCenter, key: SharedFileKey, f
 // MARK: The card in the chat
 
 struct SharedFileCardView: View {
-    let file: PBSharedFile
+    let file: PBSessionSharedFileItem
     let env: ChatEnv
 
     @Environment(AccountContext.self) private var context
     @State private var box = FrameBox()
     @State private var pressed = false
-    @State private var announced = false
 
     private var key: SharedFileKey { SharedFileKey(sessionId: env.session, fileId: file.fileID) }
 
     var body: some View {
         let center = SharedFileCenter.of(context.remote)
-        let transfer = center.transfer(key, file: file)
-        let card = resolvedSharedFileCard(center: center, key: key, file: file, env: env)
-        let kind = classifySharedFile(file.name)
-        let menu = sharedFileMenu(card, kind: kind)
-        SharedFileCardBody(file: file, card: card, thumbnail: resolvedSharedFileThumbnail(center: center, key: key, file: file, card: card))
+        let item = resolvedSharedFileItem(file)
+        let pbFile = sharedFileDescriptor(item)
+        let transfer = center.transfer(key, file: pbFile)
+        SharedFileCardBody(item: item, thumbnail: resolvedSharedFileThumbnail(center: center, key: key, item: item))
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { box.frame = $0 }
             .opacity(pressed ? 0.7 : 1)
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .onTapGesture { center.tap(card, key: key, file: file) }
+            .onTapGesture { center.tap(item, sessionId: env.session) }
             .onLongPressGesture(minimumDuration: 0.4, maximumDistance: 12) {
-                openMenu(center: center, card: card)
+                openMenu(item: item)
             } onPressingChanged: { pressed = $0 }
             // The card is a button; its control reads as the action it does (ui-spec §9).
             .accessibilityElement(children: .contain)
             .accessibilityChildren {
-                SharedFileAccessibility(file: file, card: card, menu: menu, act: { run($0, center: center) }, tap: { center.tap(card, key: key, file: file) })
+                SharedFileAccessibility(
+                    item: item,
+                    act: { center.runMenuAction($0, item: item, sessionId: env.session) },
+                    tap: { center.tap(item, sessionId: env.session) }
+                )
             }
-            .task(id: file.fileID + env.session) { await center.appeared(key, file: file) }
+            .task(id: item.fileID + env.session) { await center.appeared(key, file: pbFile) }
             .task(id: DownloadedCopy(transfer)) {
-                if case .downloaded(let url, _) = transfer { await center.loadMedia(key, url: url, kind: kind) }
+                if case .downloaded(let url, _) = transfer { await center.loadMedia(key, url: url, kind: item.kind) }
             }
-            .onChange(of: isDownloaded(card)) { was, now in
+            .onChange(of: item.status == .downloaded) { was, now in
                 // Finished while VoiceOver is reading: said once; no toast and no per-percent updates.
                 if !was, now, UIAccessibility.isVoiceOverRunning {
-                    AccessibilityNotification.Announcement(L10n.sharedFileA11YDownloadedAnnounce(name: sanitizeSharedFileName(file.name))).post()
+                    AccessibilityNotification.Announcement(L10n.sharedFileA11YDownloadedAnnounce(name: item.displayName)).post()
                 }
             }
             #if DEBUG
-            .task { await SharedFileDebug.autoMenu(for: file, open: { openMenu(center: center, card: card) }) }
-            .debugSignal("sharedfile.tap." + file.fileID) { center.tap(card, key: key, file: file) }
-            .debugSignal("sharedfile.menu." + file.fileID) { openMenu(center: center, card: card) }
-            .debugSignal("sharedfile.quiet." + file.fileID) { center.begin(key, file: file); center.leftPage() }
-            .debugSignal("sharedfile.photos." + file.fileID) { center.saveToPhotos(key, file: file) }
+            .task { await SharedFileDebug.autoMenu(for: item, open: { openMenu(item: item) }) }
+            .debugSignal("sharedfile.tap." + item.fileID) { center.tap(item, sessionId: env.session) }
+            .debugSignal("sharedfile.menu." + item.fileID) { openMenu(item: item) }
+            .debugSignal("sharedfile.quiet." + item.fileID) { center.begin(key, file: pbFile); center.leftPage() }
+            .debugSignal("sharedfile.photos." + item.fileID) { center.saveToPhotos(key, item: item) }
             #endif
     }
-
-    private func isDownloaded(_ card: SharedFileCard) -> Bool { if case .downloaded = card { true } else { false } }
 
     private struct DownloadedCopy: Equatable {
         let url: URL?
         init(_ t: SharedFileTransfer) { if case .downloaded(let u, _) = t { url = u } else { url = nil } }
     }
 
-    private func openMenu(center: SharedFileCenter, card: SharedFileCard) {
+    private func openMenu(item: PBSessionSharedFileItem) {
         let frame = box.frame
         guard frame.width > 0 else { return }
-        SharedFileMenu.present(SharedFileMenuRequest(file: file, env: env, frame: frame, insets: SystemSheets.top()?.view.window?.safeAreaInsets ?? .zero, context: context))
-    }
-
-    private func run(_ item: SharedFileMenuItem, center: SharedFileCenter) {
-        switch item {
-        case .download, .resume: center.begin(key, file: file)
-        case .pause: center.pause(key, file: file)
-        case .cancelDownload: center.cancel(key)
-        case .saveToPhotos: center.saveToPhotos(key, file: file)
-        case .saveToFiles: center.saveToFiles(key, file: file)
-        case .share: center.share(key, file: file)
-        case .deleteLocal: center.deleteLocal(key)
-        }
+        SharedFileMenu.present(SharedFileMenuRequest(item: item, env: env, frame: frame, insets: SystemSheets.top()?.view.window?.safeAreaInsets ?? .zero, context: context))
     }
 }
 
-/// VoiceOver's view of a card: the card as a button that reads 「{name}，{type}，{size}，{state}」 and does what its control does,
-/// the control as its own button (下载 / 暂停 / 继续下载 / 打开 / 重试), and the long press's menu as actions.
+/// VoiceOver's view of a card: the card as a button reading Core's `a11y_label` and doing its primary action,
+/// the control as its own button, and the long press's menu as actions.
 private struct SharedFileAccessibility: View {
-    let file: PBSharedFile
-    let card: SharedFileCard
-    let menu: [SharedFileMenuItem]
-    let act: (SharedFileMenuItem) -> Void
+    let item: PBSessionSharedFileItem
+    let act: (PBSharedFileMenuAction) -> Void
     let tap: () -> Void
 
     var body: some View {
-        let name = sanitizeSharedFileName(file.name)
         Color.clear
-            .accessibilityLabel(sharedFileA11yLabel(card, name: name, size: file.sizeBytes))
+            .accessibilityLabel(item.a11YLabel.rendered())
             .accessibilityAddTraits(.isButton)
             .accessibilityAction(.default, tap)
-            .accessibilityActions { ForEach(menu, id: \.label) { item in Button(item.label) { act(item) } } }
-        if let control = sharedFileControl(card) {
-            Color.clear.accessibilityLabel(control.label).accessibilityAddTraits(.isButton)
+            .accessibilityActions {
+                ForEach(item.menuItems.filter(\.enabled), id: \.action) { menuItem in
+                    Button(menuItem.label.rendered()) { act(menuItem.action) }
+                }
+            }
+        if item.primaryAction != .unspecified, item.hasPrimaryLabel {
+            Color.clear
+                .accessibilityLabel(item.primaryLabel.rendered())
+                .accessibilityAddTraits(.isButton)
                 .accessibilityAction(.default, tap)
         }
     }
@@ -169,10 +151,9 @@ private struct SharedFileAccessibility: View {
 
 // MARK: The card itself
 
-/// The card as drawn: a value in, a picture out. `lifted` is how the long press shows it floating.
+/// The card as drawn: a Core ViewModel in, a picture out. `lifted` is how the long press shows it floating.
 struct SharedFileCardBody: View {
-    let file: PBSharedFile
-    let card: SharedFileCard
+    let item: PBSessionSharedFileItem
     var thumbnail: UIImage?
     var lifted = false
     var width: CGFloat = 296
@@ -180,17 +161,15 @@ struct SharedFileCardBody: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let kind = classifySharedFile(file.name)
-        let name = sanitizeSharedFileName(file.name)
-        let away: Bool = switch card { case .offline, .cleaned: true; default: false }
-        let gone = card == .cleaned
+        let away = item.status == .offline || item.status == .cleaned
+        let gone = item.status == .cleaned
         // At the accessibility sizes the words need the width of the column: the card spreads over it and the control
         // goes under the words, at the right, instead of taking a third of the 296 away from them.
         let stacked = typeSize.isAccessibilitySize
         let words = VStack(alignment: .leading, spacing: 2) {
-            MiddleEllipsisName(name: name, large: typeSize >= .xxxLarge)
+            MiddleEllipsisName(name: item.displayName, head: item.nameHead, tail: item.nameTail, large: typeSize >= .xxxLarge)
                 .foregroundStyle(gone ? DS.ink3 : away ? DS.ink2 : DS.ink)
-            Text(verbatim: sharedFileSubtitle(card, name: name, size: file.sizeBytes))
+            Text(verbatim: item.subtitle.rendered())
                 .font(.footnote).monospacedDigit()
                 .foregroundStyle(subtitleInk)
                 .fixedSize(horizontal: false, vertical: true)
@@ -200,18 +179,18 @@ struct SharedFileCardBody: View {
             if stacked {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 12) {
-                        SharedFileTile(kind: kind, thumbnail: away ? nil : thumbnail, dimmed: away)
+                        SharedFileTile(kind: item.kind, thumbnail: away ? nil : thumbnail, dimmed: away)
                         words
                     }
-                    if sharedFileControl(card) != nil {
-                        SharedFileControlView(card: card).frame(maxWidth: .infinity, alignment: .trailing)
+                    if item.primaryAction != .unspecified {
+                        SharedFileControlView(item: item).frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
             } else {
                 HStack(spacing: 12) {
-                    SharedFileTile(kind: kind, thumbnail: away ? nil : thumbnail, dimmed: away)
+                    SharedFileTile(kind: item.kind, thumbnail: away ? nil : thumbnail, dimmed: away)
                     words
-                    SharedFileControlView(card: card)
+                    SharedFileControlView(item: item)
                 }
             }
         }
@@ -221,30 +200,32 @@ struct SharedFileCardBody: View {
     }
 
     private var subtitleInk: Color {
-        switch card {
-        case .failed: DS.red
-        case .cleaned: DS.ink3
-        default: DS.ink2
-        }
+        if item.subtitleIsError { return DS.red }
+        if item.status == .cleaned { return DS.ink3 }
+        return DS.ink2
     }
 }
 
-/// 15 points, 600: one line with the middle left out so that the ending stays, or two lines at the largest sizes.
-private struct MiddleEllipsisName: View {
+/// 15 points, 600: one line with the middle left out using Core's `name_head`/`name_tail`, or two lines at the largest sizes.
+struct MiddleEllipsisName: View {
     let name: String
+    let head: String
+    let tail: String
     let large: Bool
+    var font: Font = .subheadline.weight(.semibold)
+    var tracking: CGFloat = -0.1
 
     var body: some View {
         if large {
-            Text(verbatim: name).font(.subheadline.weight(.semibold)).tracking(-0.1)
+            Text(verbatim: name).font(font).tracking(tracking)
                 .lineLimit(2).truncationMode(.middle)
         } else {
-            let (head, tail) = splitMiddleTruncateName(name)
+            let h = head.isEmpty ? name : head
             HStack(spacing: 0) {
-                Text(verbatim: head).lineLimit(1).truncationMode(.tail)
+                Text(verbatim: h).lineLimit(1).truncationMode(.tail)
                 if !tail.isEmpty { Text(verbatim: tail).lineLimit(1).fixedSize().layoutPriority(1) }
             }
-            .font(.subheadline.weight(.semibold)).tracking(-0.1)
+            .font(font).tracking(tracking)
         }
     }
 }
@@ -253,25 +234,24 @@ private struct MiddleEllipsisName: View {
 
 /// The mockup's four gradients at 160 degrees, and audio's own (orange, as on Android).
 private enum TileColors {
-    static func colors(_ kind: SharedFileKind) -> [Color] {
+    static func colors(_ kind: PBSharedFileKind) -> [Color] {
         func c(_ a: UInt32, _ b: UInt32) -> [Color] { [Color(hex: a), Color(hex: b)] }
         switch kind {
         case .video: return c(0x7D7AFF, 0x5856D6)
         case .image: return c(0x5AC8FA, 0x2F9BF0)
         case .audio: return c(0xFFB45E, 0xFF9500)
         case .pdf, .doc: return c(0xFF8A80, 0xFF453A)
-        case .archive, .other: return c(0xB0B0B8, 0x8E8E93)
+        case .archive, .other, .unspecified, .UNRECOGNIZED: return c(0xB0B0B8, 0x8E8E93)
         }
     }
 
-    static func symbol(_ kind: SharedFileKind) -> String {
+    static func symbol(_ kind: PBSharedFileKind) -> String {
         switch kind {
         case .video: "video"
         case .image: "photo"
         case .audio: "music.note"
         case .archive: "doc.zipper"
-        case .pdf, .doc: "doc"
-        case .other: "doc"
+        case .pdf, .doc, .other, .unspecified, .UNRECOGNIZED: "doc"
         }
     }
 }
@@ -283,7 +263,7 @@ private extension Color {
 }
 
 struct SharedFileTile: View {
-    let kind: SharedFileKind
+    let kind: PBSharedFileKind
     var thumbnail: UIImage?
     var dimmed = false
 
@@ -315,31 +295,31 @@ struct SharedFileTile: View {
 
 /// The one control at the card's right. Its pieces cross-fade, 0.9 to 1, 200 ms (ui-spec §4).
 struct SharedFileControlView: View {
-    let card: SharedFileCard
+    let item: PBSessionSharedFileItem
 
     private enum Piece: Hashable { case arrow, grey, ring, open, retry, none }
 
     private var piece: Piece {
-        switch card {
+        switch item.status {
         case .available: .arrow
         case .offline: .grey
         case .downloading, .paused: .ring
         case .downloaded: .open
         case .failed: .retry
-        case .cleaned: .none
+        case .cleaned, .unspecified, .UNRECOGNIZED: .none
         }
     }
 
     var body: some View {
         ZStack {
-            switch card {
+            switch item.status {
             case .available: ArrowCircle(color: DS.blue)
             case .offline: ArrowCircle(color: DS.ink3)
-            case .downloading(let done, let total, _): ProgressRing(done: done, total: total, paused: false)
-            case .paused(let done, let total): ProgressRing(done: done, total: total, paused: true)
-            case .downloaded: Pill(text: L10n.sharedFileActionOpen())
-            case .failed: Pill(text: L10n.sharedFileActionRetry())
-            case .cleaned: EmptyView()
+            case .downloading: ProgressRing(progress: item.progress, paused: false, enabled: item.primaryEnabled)
+            case .paused: ProgressRing(progress: item.progress, paused: true, enabled: item.primaryEnabled)
+            case .downloaded: Pill(text: item.primaryLabel.rendered())
+            case .failed: Pill(text: item.primaryLabel.rendered())
+            case .cleaned, .unspecified, .UNRECOGNIZED: EmptyView()
             }
         }
         .id(piece)
@@ -376,23 +356,24 @@ private struct ArrowCircle: View {
 }
 
 private struct ProgressRing: View {
-    let done: Int64
-    let total: Int64
+    let progress: Double
     let paused: Bool
+    let enabled: Bool
 
     var body: some View {
-        let fraction = total > 0 ? min(1, max(0, Double(done) / Double(total))) : 0
+        let fraction = min(1, max(0, progress))
+        let ink = enabled ? DS.blue : DS.ink3
         ZStack {
             Circle().stroke(DS.fill2, lineWidth: 2.6)
             Circle().trim(from: 0, to: fraction)
-                .stroke(DS.blue, style: StrokeStyle(lineWidth: 2.6, lineCap: .round))
+                .stroke(ink, style: StrokeStyle(lineWidth: 2.6, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 // Grows with the bytes, not in steps.
                 .animation(Motion.reduced ? nil : .linear(duration: 0.4), value: fraction)
             if paused {
-                ArrowShape().stroke(DS.blue, style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round)).frame(width: 13, height: 13)
+                ArrowShape().stroke(ink, style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round)).frame(width: 13, height: 13)
             } else {
-                RoundedRectangle(cornerRadius: 2.5, style: .continuous).fill(DS.blue).frame(width: 9, height: 9)
+                RoundedRectangle(cornerRadius: 2.5, style: .continuous).fill(ink).frame(width: 9, height: 9)
             }
         }
         // The mockup's ring is 30 across with its stroke on a radius of 13.

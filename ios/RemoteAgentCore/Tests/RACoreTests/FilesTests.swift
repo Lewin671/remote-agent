@@ -91,11 +91,7 @@ private actor FileReceiver: UploadChannel {
         #expect(throws: (any Error).self) { try PickedFile(url: url) }
     }
 
-    @Test func namesKeepExtensionsAndUnicodeAndSizesAreReadable() {
-        #expect(fileChipName("数据.csv") == "数据.csv")
-        let name = String(repeating: "报表", count: 40) + ".csv"
-        let short = fileChipName(name, maxCharacters: 20)
-        #expect(short.count == 20 && short.contains("…") && short.hasSuffix(".csv"))
+    @Test func sizesAreReadable() {
         #expect(fileSize(0) == "0 B")
         #expect(fileSize(2048) == "2.0 KB")
     }

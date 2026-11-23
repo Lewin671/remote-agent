@@ -106,14 +106,6 @@ public func fileSize(_ bytes: Int64) -> String {
     return String(format: "%.1f %@", Double(bytes) / (bytes < 1024 * 1024 ? 1024 : 1024 * 1024), bytes < 1024 * 1024 ? "KB" : "MB")
 }
 
-/// Middle truncation keeps a filename's extension, including Unicode names.
-public func fileChipName(_ name: String, maxCharacters: Int = 40) -> String {
-    guard name.count > maxCharacters else { return name }
-    let room = max(2, maxCharacters - 1)
-    let tail = min(room - 1, max(room / 2, (name as NSString).pathExtension.count + 1))
-    return String(name.prefix(room - tail)) + "…" + String(name.suffix(tail))
-}
-
 /// Durable metadata for resuming a current transfer and retiring superseded reservations.
 public struct FileTransfer: Codable, Equatable, Sendable {
     public var transferId: String

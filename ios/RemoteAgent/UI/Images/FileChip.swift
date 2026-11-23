@@ -5,10 +5,42 @@ import SwiftUI
 /// The same file entry in an editable draft, an outgoing bubble and recorded history.
 struct FileChip: View {
     let name: String
-    let size: Int64
+    let head: String
+    let tail: String
+    let sizeText: String
     var state: PendingImage.State? = nil
     var retry: (() -> Void)? = nil
     var remove: (() -> Void)? = nil
+
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    init(
+        name: String,
+        head: String = "",
+        tail: String = "",
+        sizeText: String,
+        state: PendingImage.State? = nil,
+        retry: (() -> Void)? = nil,
+        remove: (() -> Void)? = nil
+    ) {
+        self.name = name
+        self.head = head
+        self.tail = tail
+        self.sizeText = sizeText
+        self.state = state
+        self.retry = retry
+        self.remove = remove
+    }
+
+    init(
+        name: String,
+        size: Int64,
+        state: PendingImage.State? = nil,
+        retry: (() -> Void)? = nil,
+        remove: (() -> Void)? = nil
+    ) {
+        self.init(name: name, sizeText: fileSize(size), state: state, retry: retry, remove: remove)
+    }
 
     private var status: String {
         switch state {
@@ -23,9 +55,15 @@ struct FileChip: View {
         HStack(spacing: 8) {
             SymbolImage("doc", size: 18, color: DS.ink2)
             VStack(alignment: .leading, spacing: 2) {
-                Text(fileChipName(name, maxCharacters: 80)).font(.subheadline).ink(DS.ink2).lineLimit(1).truncationMode(.middle)
-                    .accessibilityLabel(name)
-                Text(fileSize(size) + status).font(.footnote).ink(DS.ink2)
+                if !head.isEmpty || !tail.isEmpty {
+                    MiddleEllipsisName(name: name, head: head, tail: tail, large: typeSize >= .xxxLarge, font: .subheadline, tracking: 0)
+                        .foregroundStyle(DS.ink2)
+                        .accessibilityLabel(name)
+                } else {
+                    Text(name).font(.subheadline).ink(DS.ink2).lineLimit(1).truncationMode(.middle)
+                        .accessibilityLabel(name)
+                }
+                Text(sizeText + status).font(.footnote).ink(DS.ink2)
                 if case .uploading(let progress) = state {
                     ProgressView(value: Double(progress)).tint(DS.blue)
                         .accessibilityLabel(L10n.attachmentFileProgress())
@@ -52,26 +90,19 @@ struct FileChip: View {
 }
 
 struct FileChips: View {
-    let files: [PBSentFile]
-
-    init(files: [PBSentFile]) {
-        self.files = files
-    }
+    private let refs: [PBSessionFileRefView]
 
     init(refs: [PBSessionFileRefView]) {
-        self.files = refs.map { ref in
-            .with {
-                $0.name = ref.name
-                $0.sizeBytes = ref.sizeBytes
-            }
-        }
+        self.refs = refs
     }
 
     var body: some View {
-        if !files.isEmpty {
+        if !refs.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                ForEach(Array(files.enumerated()), id: \.offset) { _, file in
-                    FileChip(name: file.name, size: file.sizeBytes)
+                ForEach(Array(refs.enumerated()), id: \.offset) { _, ref in
+                    let name = ref.displayName.isEmpty ? ref.name : ref.displayName
+                    let sizeText = ref.hasSizeText ? ref.sizeText.rendered() : ""
+                    FileChip(name: name, head: ref.nameHead, tail: ref.nameTail, sizeText: sizeText)
                 }
             }
             .padding(.bottom, 4)

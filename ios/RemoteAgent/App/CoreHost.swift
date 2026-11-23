@@ -1336,6 +1336,13 @@ actor CoreHost: SyncEngine {
         }
     }
 
+    func reportSharedFileLocalState(_ event: PBSharedFileLocalStateEvent) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.sharedFileLocalState = event
+        }
+    }
+
     func submitSessionCommand(
         sessionID: String,
         command: PBCommand,

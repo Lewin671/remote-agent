@@ -31,9 +31,6 @@ struct ChatEnv: Equatable, Sendable {
     var frozenAt: Int64 = 0
     /// Shared files transfer context.
     var session = ""
-    var machine = ""
-    var machineOnline = true
-    var sessionExited = false
 }
 
 /// Row actions routed through `ChatPane` into `Navigator` or `CoreHost`.

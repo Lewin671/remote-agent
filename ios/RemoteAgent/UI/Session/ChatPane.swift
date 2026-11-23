@@ -419,10 +419,7 @@ struct ChatPane: View {
         let env = ChatEnv(
             agent: header.agent != .unspecified ? header.agent : defaultAgent,
             frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : state.offlineSinceMs),
-            session: sessionID,
-            machine: header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: header.machineID),
-            machineOnline: online,
-            sessionExited: header.exited
+            session: sessionID
         )
         let jump = context.sessionStore.scheduledJump(sessionID)
         let ready = vm != nil && (!tl.loading || tl.loaded || !rows.isEmpty)

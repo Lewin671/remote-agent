@@ -1,13 +1,6 @@
-// The long press of a file card (ui-spec §6, mockup §① 长按): the card floats
-// where it was (its ground becomes `lift`, with the floating shadow), the page
-// behind it is blurred 14 points and dimmed, and 10 points under the card is a
-// menu 250 wide: the file's path on the computer and where it came from, then the
-// actions of the card's state, words on the left and icons on the right, the
-// destructive one apart and red.
-//
-// The system's context menu cannot be made to look like this (its width, its
-// header and the side of its icons are the system's), so the page is a snapshot
-// of the window, blurred, under a screen of its own that is presented over it.
+// The long press of a file card (ui-spec §6, mockup §① 长按): renders Core's
+// `PBSessionSharedFileItem` (`display_path`, `source_caption`, `menu_items`)
+// floating above a blurred snapshot of the window.
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import RACore
@@ -16,7 +9,7 @@ import SwiftUI
 import UIKit
 
 struct SharedFileMenuRequest {
-    let file: PBSharedFile
+    let item: PBSessionSharedFileItem
     let env: ChatEnv
     /// The card in the window.
     let frame: CGRect
@@ -74,13 +67,25 @@ private struct SharedFileMenuView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var menuHeight: CGFloat = 0
 
-    private var key: SharedFileKey { SharedFileKey(sessionId: request.env.session, fileId: request.file.fileID) }
+    private var key: SharedFileKey { SharedFileKey(sessionId: request.env.session, fileId: request.item.fileID) }
+
+    /// Finds the latest Core item for this file in the session timeline so live progress/completion updates while the menu is open.
+    private var liveItem: PBSessionSharedFileItem {
+        if let tl = context.core.sessions[request.env.session]?.timeline {
+            for entry in tl.items {
+                if case .sharedFiles(let sf)? = entry.kind,
+                   let match = sf.files.first(where: { $0.fileID == request.item.fileID })
+                {
+                    return resolvedSharedFileItem(match)
+                }
+            }
+        }
+        return resolvedSharedFileItem(request.item)
+    }
 
     var body: some View {
         let center = SharedFileCenter.of(context.remote)
-        let card = resolvedSharedFileCard(center: center, key: key, file: request.file, env: request.env)
-        let kind = classifySharedFile(request.file.name)
-        let items = sharedFileMenu(card, kind: kind)
+        let item = liveItem
         GeometryReader { proxy in
             let screen = proxy.size
             let safe = request.insets
@@ -101,7 +106,7 @@ private struct SharedFileMenuView: View {
                     .onTapGesture { dismiss() }
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 10) {
-                    SharedFileCardBody(file: request.file, card: card, thumbnail: resolvedSharedFileThumbnail(center: center, key: key, file: request.file, card: card), lifted: true, width: cardWidth)
+                    SharedFileCardBody(item: item, thumbnail: resolvedSharedFileThumbnail(center: center, key: key, item: item), lifted: true, width: cardWidth)
                         .frame(width: cardWidth)
                         .shadow(color: .black.opacity(scheme == .dark ? 0.6 : 0.22), radius: shown ? 30 : 0, y: shown ? 20 : 0)
                         .overlay {
@@ -110,7 +115,7 @@ private struct SharedFileMenuView: View {
                         }
                         .scaleEffect(shown && !Motion.reduced && !typeSize.isAccessibilitySize ? 1.03 : 1, anchor: .topLeading)
                         .allowsHitTesting(false)
-                    menu(items: items, width: menuWidth, height: menuHeight == 0 ? nil : min(menuHeight, room))
+                    menu(item: item, width: menuWidth, height: menuHeight == 0 ? nil : min(menuHeight, room))
                         .opacity(shown ? 1 : 0)
                         .scaleEffect(shown || Motion.reduced ? 1 : 0.96, anchor: .topLeading)
                 }
@@ -137,45 +142,38 @@ private struct SharedFileMenuView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + Motion.base * 0.8) { close(action) }
     }
 
-    private func choose(_ item: SharedFileMenuItem) {
+    private func choose(_ menuItem: PBSharedFileMenuItemView, for item: PBSessionSharedFileItem) {
+        guard menuItem.enabled else { return }
         let center = SharedFileCenter.of(context.remote)
-        let (key, file) = (key, request.file)
+        let sessionId = request.env.session
         dismiss {
-            switch item {
-            case .download, .resume: center.begin(key, file: file)
-            case .pause: center.pause(key, file: file)
-            case .cancelDownload: center.cancel(key)
-            case .saveToPhotos: center.saveToPhotos(key, file: file)
-            case .saveToFiles: center.saveToFiles(key, file: file)
-            case .share: center.share(key, file: file)
-            case .deleteLocal: center.deleteLocal(key)
-            }
+            center.runMenuAction(menuItem.action, item: item, sessionId: sessionId)
         }
     }
 
     // MARK: The menu
 
-    private func menu(items: [SharedFileMenuItem], width: CGFloat, height: CGFloat?) -> some View {
-        let state = context.remote.state.value
-        let machineId = state.sessions[request.env.session]?.machineId ?? ""
-        let path = displaySharedPath(request.file.path, home: state.machines[machineId]?.meta?.home ?? "", fallbackName: request.file.name)
+    private func menu(item: PBSessionSharedFileItem, width: CGFloat, height: CGFloat?) -> some View {
+        let caption = item.hasSourceCaption ? item.sourceCaption.rendered() : ""
         return ScrollView {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(verbatim: path)
+                    Text(verbatim: item.displayPath)
                         .font(.system(size: 11.5, design: .monospaced)).lineSpacing(11.5 * 0.45 - 4)
                         .foregroundStyle(DS.ink2)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(verbatim: L10n.sharedFileMenuFromMachine(machine: request.env.machine))
-                        .font(.caption).foregroundStyle(DS.ink3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if !caption.isEmpty {
+                        Text(verbatim: caption)
+                            .font(.caption).foregroundStyle(DS.ink3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
                 .padding(.horizontal, 16).padding(.top, 11).padding(.bottom, 10)
                 .accessibilityElement(children: .combine)
-                ForEach(items, id: \.label) { item in
+                ForEach(item.menuItems, id: \.action) { menuItem in
                     divider
-                    if item == .deleteLocal { Rectangle().fill(DS.fill).frame(height: 8) }
-                    row(item)
+                    if menuItem.separated { Rectangle().fill(DS.fill).frame(height: 8) }
+                    row(menuItem, for: item)
                 }
             }
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { menuHeight = $0 }
@@ -195,30 +193,42 @@ private struct SharedFileMenuView: View {
         Rectangle().fill(DS.sep).frame(height: 0.5)
     }
 
-    private func row(_ item: SharedFileMenuItem) -> some View {
-        let destructive = item == .deleteLocal
-        return Button { choose(item) } label: {
+    private func row(_ menuItem: PBSharedFileMenuItemView, for item: PBSessionSharedFileItem) -> some View {
+        let color: Color = !menuItem.enabled ? DS.ink3 : (menuItem.destructive ? DS.red : DS.ink)
+        return Button { choose(menuItem, for: item) } label: {
             HStack(spacing: 8) {
-                Text(verbatim: item.label).font(.body).multilineTextAlignment(.leading)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: menuItem.label.rendered()).font(.body).multilineTextAlignment(.leading)
+                    if !menuItem.enabled, menuItem.hasDisabledReason {
+                        let why = menuItem.disabledReason.rendered()
+                        if !why.isEmpty {
+                            Text(verbatim: why).font(.caption).foregroundStyle(DS.ink3)
+                        }
+                    }
+                }
                 Spacer(minLength: 8)
-                Image(systemName: icon(item)).font(.system(size: 19)).accessibilityHidden(true)
+                Image(systemName: icon(menuItem.action)).font(.system(size: 19)).accessibilityHidden(true)
             }
-            .foregroundStyle(destructive ? DS.red : DS.ink)
+            .foregroundStyle(color)
             .padding(.horizontal, 16).frame(minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(RowPressStyle())
+        .disabled(!menuItem.enabled)
     }
 
-    private func icon(_ item: SharedFileMenuItem) -> String {
-        switch item {
+    private func icon(_ action: PBSharedFileMenuAction) -> String {
+        switch action {
         case .download, .resume: "arrow.down"
+        case .retry: "arrow.clockwise"
         case .pause: "pause"
         case .cancelDownload: "xmark"
-        case .saveToPhotos: "photo"
-        case .saveToFiles: "square.and.arrow.down"
+        case .saveToAlbum: "photo"
+        case .save: "square.and.arrow.down"
         case .share: "square.and.arrow.up"
+        case .openWith: "arrow.up.forward.app"
         case .deleteLocal: "trash"
+        case .unspecified, .UNRECOGNIZED: "doc"
         }
     }
 }
