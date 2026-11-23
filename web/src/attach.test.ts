@@ -267,7 +267,7 @@ it("puts the original option and source file back, then prepares in that mode", 
   tray.restore([{ imageId: "gone", file: source, thumb: file("compressed-preview") }], true);
   await vi.waitFor(() => expect(tray.ready()).toBe(true));
   expect(tray.original).toBe(true);
-  expect(prepare).toHaveBeenCalledWith(source, true);
+  expect(prepare).toHaveBeenCalledWith(source, true, 20 * 1024 * 1024);
   expect(tray.totalBytes()).toBe(100);
 });
 
