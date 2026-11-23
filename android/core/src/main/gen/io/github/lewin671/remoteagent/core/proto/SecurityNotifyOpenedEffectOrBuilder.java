@@ -86,4 +86,15 @@ public interface SecurityNotifyOpenedEffectOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+   * @return Whether the display field is set.
+   */
+  boolean hasDisplay();
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+   * @return The display.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay getDisplay();
 }

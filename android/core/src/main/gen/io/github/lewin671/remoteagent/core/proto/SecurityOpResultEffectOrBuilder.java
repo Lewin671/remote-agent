@@ -73,5 +73,16 @@ public interface SecurityOpResultEffectOrBuilder extends
    */
   com.google.protobuf.ByteString getSessionSeed();
 
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+   * @return The enum numeric value on the wire for structuredErrorCode.
+   */
+  int getStructuredErrorCodeValue();
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+   * @return The structuredErrorCode.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityErrorCode getStructuredErrorCode();
+
   public io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect.ResultCase getResultCase();
 }

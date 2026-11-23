@@ -71,6 +71,104 @@ public enum PBSecurityKeyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBSecurityErrorCode: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case invalid // = 1
+  case untrusted // = 2
+  case stale // = 3
+  case leaseExpired // = 4
+  case clockSkewed // = 5
+  case capacity // = 6
+  case recoveryUnavailable // = 7
+  case unsupportedHistory // = 8
+  case storage // = 9
+  case conflict // = 10
+  case permissionDenied // = 11
+  case notFound // = 12
+  case failedPrecondition // = 13
+  case resourceExhausted // = 14
+  case canceled // = 15
+  case unavailable // = 16
+  case foreground // = 17
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .invalid
+    case 2: self = .untrusted
+    case 3: self = .stale
+    case 4: self = .leaseExpired
+    case 5: self = .clockSkewed
+    case 6: self = .capacity
+    case 7: self = .recoveryUnavailable
+    case 8: self = .unsupportedHistory
+    case 9: self = .storage
+    case 10: self = .conflict
+    case 11: self = .permissionDenied
+    case 12: self = .notFound
+    case 13: self = .failedPrecondition
+    case 14: self = .resourceExhausted
+    case 15: self = .canceled
+    case 16: self = .unavailable
+    case 17: self = .foreground
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .invalid: return 1
+    case .untrusted: return 2
+    case .stale: return 3
+    case .leaseExpired: return 4
+    case .clockSkewed: return 5
+    case .capacity: return 6
+    case .recoveryUnavailable: return 7
+    case .unsupportedHistory: return 8
+    case .storage: return 9
+    case .conflict: return 10
+    case .permissionDenied: return 11
+    case .notFound: return 12
+    case .failedPrecondition: return 13
+    case .resourceExhausted: return 14
+    case .canceled: return 15
+    case .unavailable: return 16
+    case .foreground: return 17
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSecurityErrorCode] = [
+    .unspecified,
+    .invalid,
+    .untrusted,
+    .stale,
+    .leaseExpired,
+    .clockSkewed,
+    .capacity,
+    .recoveryUnavailable,
+    .unsupportedHistory,
+    .storage,
+    .conflict,
+    .permissionDenied,
+    .notFound,
+    .failedPrecondition,
+    .resourceExhausted,
+    .canceled,
+    .unavailable,
+    .foreground,
+  ]
+
+}
+
 public enum PBSecurityStoreBucket: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -850,6 +948,8 @@ public struct PBSecurityOpResultEffect: Sendable {
     }
     set {result = .sessionSeed(newValue)}
   }
+
+  public var structuredErrorCode: PBSecurityErrorCode = .unspecified
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2272,6 +2372,11 @@ public struct PBSecurityWorkflowResultEffect: @unchecked Sendable {
     set {_uniqueStorage()._flag = newValue}
   }
 
+  public var structuredErrorCode: PBSecurityErrorCode {
+    get {return _storage._structuredErrorCode}
+    set {_uniqueStorage()._structuredErrorCode = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2328,11 +2433,141 @@ public struct PBSecurityOpenNotifyEvent: Sendable {
 
   public var machineID: String = String()
 
+  public var expectedKind: PBNotifyKind = .unspecified
+
+  public var eventKey: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _envelope: PBEnvelope? = nil
+}
+
+public struct PBSecurityNotifyDisplay: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var valid: Bool {
+    get {return _storage._valid}
+    set {_uniqueStorage()._valid = newValue}
+  }
+
+  public var kind: PBNotifyKind {
+    get {return _storage._kind}
+    set {_uniqueStorage()._kind = newValue}
+  }
+
+  public var tag: String {
+    get {return _storage._tag}
+    set {_uniqueStorage()._tag = newValue}
+  }
+
+  public var machineID: String {
+    get {return _storage._machineID}
+    set {_uniqueStorage()._machineID = newValue}
+  }
+
+  public var sessionID: String {
+    get {return _storage._sessionID}
+    set {_uniqueStorage()._sessionID = newValue}
+  }
+
+  public var approvalID: String {
+    get {return _storage._approvalID}
+    set {_uniqueStorage()._approvalID = newValue}
+  }
+
+  public var sourceEventSeq: UInt64 {
+    get {return _storage._sourceEventSeq}
+    set {_uniqueStorage()._sourceEventSeq = newValue}
+  }
+
+  public var deadlineMs: Int64 {
+    get {return _storage._deadlineMs}
+    set {_uniqueStorage()._deadlineMs = newValue}
+  }
+
+  public var truncated: Bool {
+    get {return _storage._truncated}
+    set {_uniqueStorage()._truncated = newValue}
+  }
+
+  public var critical: Bool {
+    get {return _storage._critical}
+    set {_uniqueStorage()._critical = newValue}
+  }
+
+  public var showDetailedByDefault: Bool {
+    get {return _storage._showDetailedByDefault}
+    set {_uniqueStorage()._showDetailedByDefault = newValue}
+  }
+
+  public var title: PBCoreText {
+    get {return _storage._title ?? PBCoreText()}
+    set {_uniqueStorage()._title = newValue}
+  }
+  /// Returns true if `title` has been explicitly set.
+  public var hasTitle: Bool {return _storage._title != nil}
+  /// Clears the value of `title`. Subsequent reads from it will return its default value.
+  public mutating func clearTitle() {_uniqueStorage()._title = nil}
+
+  public var body: PBCoreText {
+    get {return _storage._body ?? PBCoreText()}
+    set {_uniqueStorage()._body = newValue}
+  }
+  /// Returns true if `body` has been explicitly set.
+  public var hasBody: Bool {return _storage._body != nil}
+  /// Clears the value of `body`. Subsequent reads from it will return its default value.
+  public mutating func clearBody() {_uniqueStorage()._body = nil}
+
+  public var genericBody: PBCoreText {
+    get {return _storage._genericBody ?? PBCoreText()}
+    set {_uniqueStorage()._genericBody = newValue}
+  }
+  /// Returns true if `genericBody` has been explicitly set.
+  public var hasGenericBody: Bool {return _storage._genericBody != nil}
+  /// Clears the value of `genericBody`. Subsequent reads from it will return its default value.
+  public mutating func clearGenericBody() {_uniqueStorage()._genericBody = nil}
+
+  public var subText: PBCoreText {
+    get {return _storage._subText ?? PBCoreText()}
+    set {_uniqueStorage()._subText = newValue}
+  }
+  /// Returns true if `subText` has been explicitly set.
+  public var hasSubText: Bool {return _storage._subText != nil}
+  /// Clears the value of `subText`. Subsequent reads from it will return its default value.
+  public mutating func clearSubText() {_uniqueStorage()._subText = nil}
+
+  public var bigText: PBCoreText {
+    get {return _storage._bigText ?? PBCoreText()}
+    set {_uniqueStorage()._bigText = newValue}
+  }
+  /// Returns true if `bigText` has been explicitly set.
+  public var hasBigText: Bool {return _storage._bigText != nil}
+  /// Clears the value of `bigText`. Subsequent reads from it will return its default value.
+  public mutating func clearBigText() {_uniqueStorage()._bigText = nil}
+
+  public var sharedFilesSuffix: PBCoreText {
+    get {return _storage._sharedFilesSuffix ?? PBCoreText()}
+    set {_uniqueStorage()._sharedFilesSuffix = newValue}
+  }
+  /// Returns true if `sharedFilesSuffix` has been explicitly set.
+  public var hasSharedFilesSuffix: Bool {return _storage._sharedFilesSuffix != nil}
+  /// Clears the value of `sharedFilesSuffix`. Subsequent reads from it will return its default value.
+  public mutating func clearSharedFilesSuffix() {_uniqueStorage()._sharedFilesSuffix = nil}
+
+  public var sharedFileCount: Int32 {
+    get {return _storage._sharedFileCount}
+    set {_uniqueStorage()._sharedFileCount = newValue}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBSecurityNotifyOpenedEffect: Sendable {
@@ -2363,11 +2598,21 @@ public struct PBSecurityNotifyOpenedEffect: Sendable {
 
   public var error: String = String()
 
+  public var display: PBSecurityNotifyDisplay {
+    get {return _display ?? PBSecurityNotifyDisplay()}
+    set {_display = newValue}
+  }
+  /// Returns true if `display` has been explicitly set.
+  public var hasDisplay: Bool {return self._display != nil}
+  /// Clears the value of `display`. Subsequent reads from it will return its default value.
+  public mutating func clearDisplay() {self._display = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _content: PBNotifyContent? = nil
+  fileprivate var _display: PBSecurityNotifyDisplay? = nil
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
@@ -2376,6 +2621,10 @@ fileprivate let _protobuf_package = "remoteagent.core.v1"
 
 extension PBSecurityKeyKind: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SECURITY_KEY_KIND_UNSPECIFIED\0\u{1}SECURITY_KEY_KIND_DEVICE_ED\0\u{1}SECURITY_KEY_KIND_DEVICE_X\0\u{1}SECURITY_KEY_KIND_CANDIDATE_ED\0\u{1}SECURITY_KEY_KIND_CANDIDATE_X\0\u{1}SECURITY_KEY_KIND_EPHEMERAL_X\0")
+}
+
+extension PBSecurityErrorCode: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SECURITY_ERROR_CODE_UNSPECIFIED\0\u{1}SECURITY_ERROR_CODE_INVALID\0\u{1}SECURITY_ERROR_CODE_UNTRUSTED\0\u{1}SECURITY_ERROR_CODE_STALE\0\u{1}SECURITY_ERROR_CODE_LEASE_EXPIRED\0\u{1}SECURITY_ERROR_CODE_CLOCK_SKEWED\0\u{1}SECURITY_ERROR_CODE_CAPACITY\0\u{1}SECURITY_ERROR_CODE_RECOVERY_UNAVAILABLE\0\u{1}SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY\0\u{1}SECURITY_ERROR_CODE_STORAGE\0\u{1}SECURITY_ERROR_CODE_CONFLICT\0\u{1}SECURITY_ERROR_CODE_PERMISSION_DENIED\0\u{1}SECURITY_ERROR_CODE_NOT_FOUND\0\u{1}SECURITY_ERROR_CODE_FAILED_PRECONDITION\0\u{1}SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED\0\u{1}SECURITY_ERROR_CODE_CANCELED\0\u{1}SECURITY_ERROR_CODE_UNAVAILABLE\0\u{1}SECURITY_ERROR_CODE_FOREGROUND\0")
 }
 
 extension PBSecurityStoreBucket: SwiftProtobuf._ProtoNameProviding {
@@ -3409,7 +3658,7 @@ extension PBSecuritySealEnvelopeResult: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBSecurityOpResultEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityOpResultEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}error\0\u{3}error_code\0\u{1}opened\0\u{1}sealed\0\u{3}session_seed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}error\0\u{3}error_code\0\u{1}opened\0\u{1}sealed\0\u{3}session_seed\0\u{3}structured_error_code\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3454,6 +3703,7 @@ extension PBSecurityOpResultEffect: SwiftProtobuf.Message, SwiftProtobuf._Messag
           self.result = .sessionSeed(v)
         }
       }()
+      case 7: try { try decoder.decodeSingularEnumField(value: &self.structuredErrorCode) }()
       default: break
       }
     }
@@ -3488,6 +3738,9 @@ extension PBSecurityOpResultEffect: SwiftProtobuf.Message, SwiftProtobuf._Messag
     }()
     case nil: break
     }
+    if self.structuredErrorCode != .unspecified {
+      try visitor.visitSingularEnumField(value: self.structuredErrorCode, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3496,6 +3749,7 @@ extension PBSecurityOpResultEffect: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.error != rhs.error {return false}
     if lhs.errorCode != rhs.errorCode {return false}
     if lhs.result != rhs.result {return false}
+    if lhs.structuredErrorCode != rhs.structuredErrorCode {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6306,7 +6560,7 @@ extension PBSecurityWorkflowActionEvent: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityWorkflowResultEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}action_id\0\u{1}ok\0\u{1}error\0\u{3}error_code\0\u{1}retryable\0\u{1}uncertain\0\u{3}error_action\0\u{1}status\0\u{3}recovery_code\0\u{3}resumed_draft\0\u{3}code_saved\0\u{3}needs_recovery_rotation\0\u{1}pairing\0\u{1}recovery\0\u{3}handoff_candidates\0\u{3}exit_advice\0\u{3}account_adopted\0\u{1}flag\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}action_id\0\u{1}ok\0\u{1}error\0\u{3}error_code\0\u{1}retryable\0\u{1}uncertain\0\u{3}error_action\0\u{1}status\0\u{3}recovery_code\0\u{3}resumed_draft\0\u{3}code_saved\0\u{3}needs_recovery_rotation\0\u{1}pairing\0\u{1}recovery\0\u{3}handoff_candidates\0\u{3}exit_advice\0\u{3}account_adopted\0\u{1}flag\0\u{3}structured_error_code\0")
 
   fileprivate class _StorageClass {
     var _actionID: UInt64 = 0
@@ -6327,6 +6581,7 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
     var _exitAdvice: PBSecurityExitAdvice? = nil
     var _accountAdopted: PBSecurityAccountAdopted? = nil
     var _flag: Bool = false
+    var _structuredErrorCode: PBSecurityErrorCode = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6355,6 +6610,7 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
       _exitAdvice = source._exitAdvice
       _accountAdopted = source._accountAdopted
       _flag = source._flag
+      _structuredErrorCode = source._structuredErrorCode
     }
   }
 
@@ -6391,6 +6647,7 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._exitAdvice) }()
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._accountAdopted) }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._flag) }()
+        case 19: try { try decoder.decodeSingularEnumField(value: &_storage._structuredErrorCode) }()
         default: break
         }
       }
@@ -6457,6 +6714,9 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
       if _storage._flag != false {
         try visitor.visitSingularBoolField(value: _storage._flag, fieldNumber: 18)
       }
+      if _storage._structuredErrorCode != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._structuredErrorCode, fieldNumber: 19)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6484,6 +6744,7 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
         if _storage._exitAdvice != rhs_storage._exitAdvice {return false}
         if _storage._accountAdopted != rhs_storage._accountAdopted {return false}
         if _storage._flag != rhs_storage._flag {return false}
+        if _storage._structuredErrorCode != rhs_storage._structuredErrorCode {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -6529,7 +6790,7 @@ extension PBSecurityStatusChangedEffect: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityOpenNotifyEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}notify_blob\0\u{3}record_blob\0\u{1}envelope\0\u{3}now_ms\0\u{3}session_id\0\u{1}tag\0\u{3}machine_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}notify_blob\0\u{3}record_blob\0\u{1}envelope\0\u{3}now_ms\0\u{3}session_id\0\u{1}tag\0\u{3}machine_id\0\u{3}expected_kind\0\u{3}event_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6545,6 +6806,8 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 6: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.tag) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 9: try { try decoder.decodeSingularEnumField(value: &self.expectedKind) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.eventKey) }()
       default: break
       }
     }
@@ -6579,6 +6842,12 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.machineID.isEmpty {
       try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 8)
     }
+    if self.expectedKind != .unspecified {
+      try visitor.visitSingularEnumField(value: self.expectedKind, fieldNumber: 9)
+    }
+    if !self.eventKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.eventKey, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6591,6 +6860,197 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.sessionID != rhs.sessionID {return false}
     if lhs.tag != rhs.tag {return false}
     if lhs.machineID != rhs.machineID {return false}
+    if lhs.expectedKind != rhs.expectedKind {return false}
+    if lhs.eventKey != rhs.eventKey {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SecurityNotifyDisplay"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}valid\0\u{1}kind\0\u{1}tag\0\u{3}machine_id\0\u{3}session_id\0\u{3}approval_id\0\u{3}source_event_seq\0\u{3}deadline_ms\0\u{1}truncated\0\u{1}critical\0\u{3}show_detailed_by_default\0\u{1}title\0\u{1}body\0\u{3}generic_body\0\u{3}sub_text\0\u{3}big_text\0\u{3}shared_files_suffix\0\u{3}shared_file_count\0")
+
+  fileprivate class _StorageClass {
+    var _valid: Bool = false
+    var _kind: PBNotifyKind = .unspecified
+    var _tag: String = String()
+    var _machineID: String = String()
+    var _sessionID: String = String()
+    var _approvalID: String = String()
+    var _sourceEventSeq: UInt64 = 0
+    var _deadlineMs: Int64 = 0
+    var _truncated: Bool = false
+    var _critical: Bool = false
+    var _showDetailedByDefault: Bool = false
+    var _title: PBCoreText? = nil
+    var _body: PBCoreText? = nil
+    var _genericBody: PBCoreText? = nil
+    var _subText: PBCoreText? = nil
+    var _bigText: PBCoreText? = nil
+    var _sharedFilesSuffix: PBCoreText? = nil
+    var _sharedFileCount: Int32 = 0
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _valid = source._valid
+      _kind = source._kind
+      _tag = source._tag
+      _machineID = source._machineID
+      _sessionID = source._sessionID
+      _approvalID = source._approvalID
+      _sourceEventSeq = source._sourceEventSeq
+      _deadlineMs = source._deadlineMs
+      _truncated = source._truncated
+      _critical = source._critical
+      _showDetailedByDefault = source._showDetailedByDefault
+      _title = source._title
+      _body = source._body
+      _genericBody = source._genericBody
+      _subText = source._subText
+      _bigText = source._bigText
+      _sharedFilesSuffix = source._sharedFilesSuffix
+      _sharedFileCount = source._sharedFileCount
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularBoolField(value: &_storage._valid) }()
+        case 2: try { try decoder.decodeSingularEnumField(value: &_storage._kind) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._tag) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._machineID) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._approvalID) }()
+        case 7: try { try decoder.decodeSingularUInt64Field(value: &_storage._sourceEventSeq) }()
+        case 8: try { try decoder.decodeSingularInt64Field(value: &_storage._deadlineMs) }()
+        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._truncated) }()
+        case 10: try { try decoder.decodeSingularBoolField(value: &_storage._critical) }()
+        case 11: try { try decoder.decodeSingularBoolField(value: &_storage._showDetailedByDefault) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._title) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._body) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._genericBody) }()
+        case 15: try { try decoder.decodeSingularMessageField(value: &_storage._subText) }()
+        case 16: try { try decoder.decodeSingularMessageField(value: &_storage._bigText) }()
+        case 17: try { try decoder.decodeSingularMessageField(value: &_storage._sharedFilesSuffix) }()
+        case 18: try { try decoder.decodeSingularInt32Field(value: &_storage._sharedFileCount) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._valid != false {
+        try visitor.visitSingularBoolField(value: _storage._valid, fieldNumber: 1)
+      }
+      if _storage._kind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._kind, fieldNumber: 2)
+      }
+      if !_storage._tag.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._tag, fieldNumber: 3)
+      }
+      if !_storage._machineID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._machineID, fieldNumber: 4)
+      }
+      if !_storage._sessionID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._sessionID, fieldNumber: 5)
+      }
+      if !_storage._approvalID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._approvalID, fieldNumber: 6)
+      }
+      if _storage._sourceEventSeq != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._sourceEventSeq, fieldNumber: 7)
+      }
+      if _storage._deadlineMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._deadlineMs, fieldNumber: 8)
+      }
+      if _storage._truncated != false {
+        try visitor.visitSingularBoolField(value: _storage._truncated, fieldNumber: 9)
+      }
+      if _storage._critical != false {
+        try visitor.visitSingularBoolField(value: _storage._critical, fieldNumber: 10)
+      }
+      if _storage._showDetailedByDefault != false {
+        try visitor.visitSingularBoolField(value: _storage._showDetailedByDefault, fieldNumber: 11)
+      }
+      try { if let v = _storage._title {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
+      try { if let v = _storage._body {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+      try { if let v = _storage._genericBody {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
+      try { if let v = _storage._subText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      } }()
+      try { if let v = _storage._bigText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
+      } }()
+      try { if let v = _storage._sharedFilesSuffix {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      } }()
+      if _storage._sharedFileCount != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._sharedFileCount, fieldNumber: 18)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSecurityNotifyDisplay, rhs: PBSecurityNotifyDisplay) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._valid != rhs_storage._valid {return false}
+        if _storage._kind != rhs_storage._kind {return false}
+        if _storage._tag != rhs_storage._tag {return false}
+        if _storage._machineID != rhs_storage._machineID {return false}
+        if _storage._sessionID != rhs_storage._sessionID {return false}
+        if _storage._approvalID != rhs_storage._approvalID {return false}
+        if _storage._sourceEventSeq != rhs_storage._sourceEventSeq {return false}
+        if _storage._deadlineMs != rhs_storage._deadlineMs {return false}
+        if _storage._truncated != rhs_storage._truncated {return false}
+        if _storage._critical != rhs_storage._critical {return false}
+        if _storage._showDetailedByDefault != rhs_storage._showDetailedByDefault {return false}
+        if _storage._title != rhs_storage._title {return false}
+        if _storage._body != rhs_storage._body {return false}
+        if _storage._genericBody != rhs_storage._genericBody {return false}
+        if _storage._subText != rhs_storage._subText {return false}
+        if _storage._bigText != rhs_storage._bigText {return false}
+        if _storage._sharedFilesSuffix != rhs_storage._sharedFilesSuffix {return false}
+        if _storage._sharedFileCount != rhs_storage._sharedFileCount {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6598,7 +7058,7 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSecurityNotifyOpenedEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityNotifyOpenedEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}content\0\u{3}header_bytes\0\u{3}session_id\0\u{3}machine_id\0\u{3}request_id\0\u{3}verify_record_unchanged\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}content\0\u{3}header_bytes\0\u{3}session_id\0\u{3}machine_id\0\u{3}request_id\0\u{3}verify_record_unchanged\0\u{1}error\0\u{1}display\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6614,6 +7074,7 @@ extension PBSecurityNotifyOpenedEffect: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 6: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.verifyRecordUnchanged) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 9: try { try decoder.decodeSingularMessageField(value: &self._display) }()
       default: break
       }
     }
@@ -6648,6 +7109,9 @@ extension PBSecurityNotifyOpenedEffect: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 8)
     }
+    try { if let v = self._display {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6660,6 +7124,7 @@ extension PBSecurityNotifyOpenedEffect: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.requestID != rhs.requestID {return false}
     if lhs.verifyRecordUnchanged != rhs.verifyRecordUnchanged {return false}
     if lhs.error != rhs.error {return false}
+    if lhs._display != rhs._display {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

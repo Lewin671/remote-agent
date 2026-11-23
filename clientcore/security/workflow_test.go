@@ -12,6 +12,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -1554,5 +1555,109 @@ func TestContinueRecoverySigningResumesUnsignedDraftAfterCrash(t *testing.T) {
 	}
 	if len(b.eng.wf.pendingOp.Signed) == 0 {
 		t.Fatal("expected Signed payload persisted after ContinueRecoverySigning")
+	}
+}
+
+func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
+	if got := StructuredErrorCode(ErrLeaseExpired); got != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_LEASE_EXPIRED {
+		t.Fatalf("StructuredErrorCode(ErrLeaseExpired) = %v, want LEASE_EXPIRED", got)
+	}
+	if got := StructuredErrorCode(devicesec.ErrStale); got != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STALE {
+		t.Fatalf("StructuredErrorCode(ErrStale) = %v, want STALE", got)
+	}
+	if ErrorCode(ErrLeaseExpired) != "stale" {
+		t.Fatalf("legacy ErrorCode(ErrLeaseExpired) must stay stale for untouched shells")
+	}
+
+	// Disk notification: valid critical vs wrong requestId vs over threshold.
+	diskNC := &v1.NotifyContent{
+		Kind:        v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK,
+		MachineId:   "m1",
+		MachineName: "MacBook",
+		DiskStatus: &v1.DiskStatus{
+			ObservedMs:     1_700_000_000_000,
+			AvailableBytes: 1_500_000_000,
+			Pressure:       v1.ResourcePressure_RESOURCE_PRESSURE_CRITICAL,
+		},
+	}
+	dOK := buildNotifyDisplay(
+		&corev1.SecurityOpenNotifyEvent{MachineId: "m1", Tag: "m1/NOTIFY_KIND_MACHINE_DISK", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK},
+		devicesec.Header{Request: "disk:1700000000000:3"},
+		diskNC,
+	)
+	if !dOK.Valid || !dOK.Critical || !dOK.ShowDetailedByDefault || dOK.Title.GetKey() != text.KeyMachineStatusNotifyCritical {
+		t.Fatalf("expected valid critical disk display, got %+v", dOK)
+	}
+	dBadReq := buildNotifyDisplay(
+		&corev1.SecurityOpenNotifyEvent{MachineId: "m1", Tag: "m1/NOTIFY_KIND_MACHINE_DISK"},
+		devicesec.Header{Request: "disk:999:3"},
+		diskNC,
+	)
+	if dBadReq.Valid {
+		t.Fatalf("expected disk display invalid on mismatched requestId")
+	}
+
+	// Scheduled notification: valid vs event_key mismatch vs oversized title.
+	schedNC := &v1.NotifyContent{
+		Kind:           v1.NotifyKind_NOTIFY_KIND_SCHEDULED,
+		SessionId:      "s1",
+		MachineId:      "m1",
+		SourceEventSeq: 7,
+		Title:          "Daily check",
+		Text:           "All green",
+	}
+	sOK := buildNotifyDisplay(
+		&corev1.SecurityOpenNotifyEvent{SessionId: "s1", Tag: "s1/scheduled:7/NOTIFY_KIND_SCHEDULED", EventKey: "scheduled:7", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED},
+		devicesec.Header{Session: "s1", Request: "scheduled:7"},
+		schedNC,
+	)
+	if !sOK.Valid || !sOK.ShowDetailedByDefault || sOK.Title.GetLiteral() != "Daily check" || sOK.Body.GetLiteral() != "All green" {
+		t.Fatalf("expected valid scheduled display, got %+v", sOK)
+	}
+	sBadEvent := buildNotifyDisplay(
+		&corev1.SecurityOpenNotifyEvent{SessionId: "s1", EventKey: "scheduled:8"},
+		devicesec.Header{Session: "s1", Request: "scheduled:7"},
+		schedNC,
+	)
+	if sBadEvent.Valid {
+		t.Fatalf("expected scheduled display invalid on mismatched eventKey")
+	}
+
+	// Turn ended with shared files suffix.
+	turnNC := &v1.NotifyContent{
+		Kind:            v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
+		SessionId:       "s1",
+		SourceEventSeq:  42,
+		Text:            "Done",
+		SharedFileCount: 2,
+	}
+	tOK := buildNotifyDisplay(
+		&corev1.SecurityOpenNotifyEvent{SessionId: "s1", Tag: "s1/NOTIFY_KIND_TURN_ENDED"},
+		devicesec.Header{Session: "s1", Request: "notify:2:42"},
+		turnNC,
+	)
+	if !tOK.Valid || tOK.SharedFileCount != 2 || tOK.SharedFilesSuffix.GetKey() != text.KeySharedFileNotificationFiles {
+		t.Fatalf("expected valid turn ended display with shared files suffix, got %+v", tOK)
+	}
+
+	// Approval attention notification.
+	appNC := &v1.NotifyContent{
+		Kind:           v1.NotifyKind_NOTIFY_KIND_ATTENTION,
+		SessionId:      "s1",
+		MachineId:      "m1",
+		Title:          "Fix build",
+		SourceEventSeq: 9,
+		Approval: &v1.NotifyApproval{
+			ApprovalId:  "ap-1",
+			ToolName:    "Bash",
+			Command:     "go test ./...",
+			Description: "Run Go tests",
+			DeadlineMs:  1_800_000_000_000,
+			Truncated:   true,
+		},
+	}
+	aOK := buildNotifyDisplay(nil, devicesec.Header{Session: "s1"}, appNC)
+	if !aOK.Valid || aOK.ApprovalId != "ap-1" || !aOK.Truncated || aOK.Title.GetKey() != text.KeyListStateAndroidRequestCommand || aOK.BigText.GetLiteral() != "Run Go tests\ngo test ./..." {
+		t.Fatalf("expected valid approval display, got %+v", aOK)
 	}
 }

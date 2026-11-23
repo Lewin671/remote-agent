@@ -174,4 +174,15 @@ public interface SecurityWorkflowResultEffectOrBuilder extends
    * @return The flag.
    */
   boolean getFlag();
+
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 19 [json_name = "structuredErrorCode"];</code>
+   * @return The enum numeric value on the wire for structuredErrorCode.
+   */
+  int getStructuredErrorCodeValue();
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 19 [json_name = "structuredErrorCode"];</code>
+   * @return The structuredErrorCode.
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityErrorCode getStructuredErrorCode();
 }

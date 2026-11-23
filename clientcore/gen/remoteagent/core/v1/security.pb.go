@@ -20,6 +20,29 @@ const (
 	SecurityKeyKind_SECURITY_KEY_KIND_EPHEMERAL_X  SecurityKeyKind = 5
 )
 
+type SecurityErrorCode int32
+
+const (
+	SecurityErrorCode_SECURITY_ERROR_CODE_UNSPECIFIED          SecurityErrorCode = 0
+	SecurityErrorCode_SECURITY_ERROR_CODE_INVALID              SecurityErrorCode = 1
+	SecurityErrorCode_SECURITY_ERROR_CODE_UNTRUSTED            SecurityErrorCode = 2
+	SecurityErrorCode_SECURITY_ERROR_CODE_STALE                SecurityErrorCode = 3
+	SecurityErrorCode_SECURITY_ERROR_CODE_LEASE_EXPIRED        SecurityErrorCode = 4
+	SecurityErrorCode_SECURITY_ERROR_CODE_CLOCK_SKEWED         SecurityErrorCode = 5
+	SecurityErrorCode_SECURITY_ERROR_CODE_CAPACITY             SecurityErrorCode = 6
+	SecurityErrorCode_SECURITY_ERROR_CODE_RECOVERY_UNAVAILABLE SecurityErrorCode = 7
+	SecurityErrorCode_SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY  SecurityErrorCode = 8
+	SecurityErrorCode_SECURITY_ERROR_CODE_STORAGE              SecurityErrorCode = 9
+	SecurityErrorCode_SECURITY_ERROR_CODE_CONFLICT             SecurityErrorCode = 10
+	SecurityErrorCode_SECURITY_ERROR_CODE_PERMISSION_DENIED    SecurityErrorCode = 11
+	SecurityErrorCode_SECURITY_ERROR_CODE_NOT_FOUND            SecurityErrorCode = 12
+	SecurityErrorCode_SECURITY_ERROR_CODE_FAILED_PRECONDITION  SecurityErrorCode = 13
+	SecurityErrorCode_SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED   SecurityErrorCode = 14
+	SecurityErrorCode_SECURITY_ERROR_CODE_CANCELED             SecurityErrorCode = 15
+	SecurityErrorCode_SECURITY_ERROR_CODE_UNAVAILABLE          SecurityErrorCode = 16
+	SecurityErrorCode_SECURITY_ERROR_CODE_FOREGROUND           SecurityErrorCode = 17
+)
+
 type SecurityStoreBucket int32
 
 const (
@@ -1204,11 +1227,12 @@ func (m *SecuritySealEnvelopeResult) AppendMarshal(b []byte) []byte {
 }
 
 type SecurityOpResultEffect struct {
-	_         [0]func()
-	OpId      uint64
-	Error     string
-	ErrorCode string
-	Result    isSecurityOpResultEffect_Result
+	_                   [0]func()
+	OpId                uint64
+	Error               string
+	ErrorCode           string
+	Result              isSecurityOpResultEffect_Result
+	StructuredErrorCode SecurityErrorCode
 }
 
 type isSecurityOpResultEffect_Result interface{ isSecurityOpResultEffect_Result() }
@@ -1275,6 +1299,12 @@ func (m *SecurityOpResultEffect) GetSessionSeed() []byte {
 	}
 	return nil
 }
+func (m *SecurityOpResultEffect) GetStructuredErrorCode() SecurityErrorCode {
+	if m != nil {
+		return m.StructuredErrorCode
+	}
+	return 0
+}
 
 var LitewireDesc_SecurityOpResultEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1282,6 +1312,7 @@ var LitewireDesc_SecurityOpResultEffect = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.Error), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.ErrorCode), Kind: litewire.KindString},
 		{Num: litewire.Number(1), Kind: litewire.KindCustom},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.StructuredErrorCode), Kind: litewire.KindInt32},
 	},
 }
 
@@ -4514,6 +4545,7 @@ type SecurityWorkflowResultEffect struct {
 	ExitAdvice            *SecurityExitAdvice
 	AccountAdopted        *SecurityAccountAdopted
 	Flag                  bool
+	StructuredErrorCode   SecurityErrorCode
 }
 
 func (m *SecurityWorkflowResultEffect) GetActionId() uint64 {
@@ -4624,6 +4656,12 @@ func (m *SecurityWorkflowResultEffect) GetFlag() bool {
 	}
 	return false
 }
+func (m *SecurityWorkflowResultEffect) GetStructuredErrorCode() SecurityErrorCode {
+	if m != nil {
+		return m.StructuredErrorCode
+	}
+	return 0
+}
 
 var LitewireDesc_SecurityWorkflowResultEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4645,6 +4683,7 @@ var LitewireDesc_SecurityWorkflowResultEffect = litewire.MessageDesc{
 		{Num: 16, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ExitAdvice), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityExitAdvice},
 		{Num: 17, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.AccountAdopted), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityAccountAdopted},
 		{Num: 18, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Flag), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.StructuredErrorCode), Kind: litewire.KindInt32},
 	},
 }
 
@@ -4683,15 +4722,17 @@ func (m *SecurityStatusChangedEffect) AppendMarshal(b []byte) []byte {
 }
 
 type SecurityOpenNotifyEvent struct {
-	_          [0]func()
-	OpId       uint64
-	NotifyBlob []byte
-	RecordBlob []byte
-	Envelope   *v1.Envelope
-	NowMs      int64
-	SessionId  string
-	Tag        string
-	MachineId  string
+	_            [0]func()
+	OpId         uint64
+	NotifyBlob   []byte
+	RecordBlob   []byte
+	Envelope     *v1.Envelope
+	NowMs        int64
+	SessionId    string
+	Tag          string
+	MachineId    string
+	ExpectedKind v1.NotifyKind
+	EventKey     string
 }
 
 func (m *SecurityOpenNotifyEvent) GetOpId() uint64 {
@@ -4742,6 +4783,18 @@ func (m *SecurityOpenNotifyEvent) GetMachineId() string {
 	}
 	return ""
 }
+func (m *SecurityOpenNotifyEvent) GetExpectedKind() v1.NotifyKind {
+	if m != nil {
+		return m.ExpectedKind
+	}
+	return 0
+}
+func (m *SecurityOpenNotifyEvent) GetEventKey() string {
+	if m != nil {
+		return m.EventKey
+	}
+	return ""
+}
 
 var LitewireDesc_SecurityOpenNotifyEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityOpenNotifyEvent{}) },
@@ -4754,11 +4807,175 @@ var LitewireDesc_SecurityOpenNotifyEvent = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.SessionId), Kind: litewire.KindString},
 		{Num: 7, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.Tag), Kind: litewire.KindString},
 		{Num: 8, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.MachineId), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.ExpectedKind), Kind: litewire.KindInt32},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.EventKey), Kind: litewire.KindString},
 	},
 }
 
 func (m *SecurityOpenNotifyEvent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityOpenNotifyEvent)
+}
+
+type SecurityNotifyDisplay struct {
+	_                     [0]func()
+	Valid                 bool
+	Kind                  v1.NotifyKind
+	Tag                   string
+	MachineId             string
+	SessionId             string
+	ApprovalId            string
+	SourceEventSeq        uint64
+	DeadlineMs            int64
+	Truncated             bool
+	Critical              bool
+	ShowDetailedByDefault bool
+	Title                 *Text
+	Body                  *Text
+	GenericBody           *Text
+	SubText               *Text
+	BigText               *Text
+	SharedFilesSuffix     *Text
+	SharedFileCount       int32
+}
+
+func (m *SecurityNotifyDisplay) GetValid() bool {
+	if m != nil {
+		return m.Valid
+	}
+	return false
+}
+func (m *SecurityNotifyDisplay) GetKind() v1.NotifyKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *SecurityNotifyDisplay) GetTag() string {
+	if m != nil {
+		return m.Tag
+	}
+	return ""
+}
+func (m *SecurityNotifyDisplay) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *SecurityNotifyDisplay) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SecurityNotifyDisplay) GetApprovalId() string {
+	if m != nil {
+		return m.ApprovalId
+	}
+	return ""
+}
+func (m *SecurityNotifyDisplay) GetSourceEventSeq() uint64 {
+	if m != nil {
+		return m.SourceEventSeq
+	}
+	return 0
+}
+func (m *SecurityNotifyDisplay) GetDeadlineMs() int64 {
+	if m != nil {
+		return m.DeadlineMs
+	}
+	return 0
+}
+func (m *SecurityNotifyDisplay) GetTruncated() bool {
+	if m != nil {
+		return m.Truncated
+	}
+	return false
+}
+func (m *SecurityNotifyDisplay) GetCritical() bool {
+	if m != nil {
+		return m.Critical
+	}
+	return false
+}
+func (m *SecurityNotifyDisplay) GetShowDetailedByDefault() bool {
+	if m != nil {
+		return m.ShowDetailedByDefault
+	}
+	return false
+}
+func (m *SecurityNotifyDisplay) GetTitle() *Text {
+	if m != nil {
+		return m.Title
+	}
+	return nil
+}
+func (m *SecurityNotifyDisplay) GetBody() *Text {
+	if m != nil {
+		return m.Body
+	}
+	return nil
+}
+func (m *SecurityNotifyDisplay) GetGenericBody() *Text {
+	if m != nil {
+		return m.GenericBody
+	}
+	return nil
+}
+func (m *SecurityNotifyDisplay) GetSubText() *Text {
+	if m != nil {
+		return m.SubText
+	}
+	return nil
+}
+func (m *SecurityNotifyDisplay) GetBigText() *Text {
+	if m != nil {
+		return m.BigText
+	}
+	return nil
+}
+func (m *SecurityNotifyDisplay) GetSharedFilesSuffix() *Text {
+	if m != nil {
+		return m.SharedFilesSuffix
+	}
+	return nil
+}
+func (m *SecurityNotifyDisplay) GetSharedFileCount() int32 {
+	if m != nil {
+		return m.SharedFileCount
+	}
+	return 0
+}
+
+var LitewireDesc_SecurityNotifyDisplay = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Valid), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Kind), Kind: litewire.KindInt32},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Tag), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.MachineId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SessionId), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.ApprovalId), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SourceEventSeq), Kind: litewire.KindUint64},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.DeadlineMs), Kind: litewire.KindInt64},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Truncated), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Critical), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.ShowDetailedByDefault), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Body), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.GenericBody), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SubText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.BigText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 17, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SharedFilesSuffix), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 18, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SharedFileCount), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *SecurityNotifyDisplay) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityNotifyDisplay) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityNotifyDisplay)
 }
 
 type SecurityNotifyOpenedEffect struct {
@@ -4771,6 +4988,7 @@ type SecurityNotifyOpenedEffect struct {
 	RequestId             string
 	VerifyRecordUnchanged bool
 	Error                 string
+	Display               *SecurityNotifyDisplay
 }
 
 func (m *SecurityNotifyOpenedEffect) GetOpId() uint64 {
@@ -4821,6 +5039,12 @@ func (m *SecurityNotifyOpenedEffect) GetError() string {
 	}
 	return ""
 }
+func (m *SecurityNotifyOpenedEffect) GetDisplay() *SecurityNotifyDisplay {
+	if m != nil {
+		return m.Display
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityNotifyOpenedEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4832,6 +5056,7 @@ var LitewireDesc_SecurityNotifyOpenedEffect = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.RequestId), Kind: litewire.KindString},
 		{Num: 7, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.VerifyRecordUnchanged), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.Error), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.Display), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityNotifyDisplay},
 	},
 }
 

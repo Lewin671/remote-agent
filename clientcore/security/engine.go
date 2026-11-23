@@ -53,6 +53,75 @@ func ErrorCode(err error) string {
 	}
 }
 
+// StructuredErrorCode returns a typed SecurityErrorCode that distinguishes
+// ErrLeaseExpired from generic stale state without inspecting error message text.
+func StructuredErrorCode(err error) corev1.SecurityErrorCode {
+	switch {
+	case err == nil:
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNSPECIFIED
+	case errors.Is(err, ErrRecoveryHistoryUnavailable):
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_RECOVERY_UNAVAILABLE
+	case errors.Is(err, ErrUnsupportedHistory):
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY
+	case errors.Is(err, ErrClockSkewed), errors.Is(err, devicesec.ErrClock):
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CLOCK_SKEWED
+	case errors.Is(err, ErrLeaseExpired):
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_LEASE_EXPIRED
+	case errors.Is(err, devicesec.ErrStale):
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STALE
+	case errors.Is(err, devicesec.ErrUntrusted), errors.Is(err, ErrNotMember):
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNTRUSTED
+	case errors.Is(err, devicesec.ErrCapacity):
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CAPACITY
+	default:
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_INVALID
+	}
+}
+
+// StructuredErrorCodeFromString maps a workflow/RPC error_code string to SecurityErrorCode.
+func StructuredErrorCodeFromString(code string) corev1.SecurityErrorCode {
+	switch code {
+	case "":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNSPECIFIED
+	case "invalid":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_INVALID
+	case "untrusted":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNTRUSTED
+	case "stale":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STALE
+	case "lease", "lease_expired":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_LEASE_EXPIRED
+	case "clock":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CLOCK_SKEWED
+	case "capacity":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CAPACITY
+	case "recovery_unavailable":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_RECOVERY_UNAVAILABLE
+	case "unsupported_history":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY
+	case "storage":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STORAGE
+	case "conflict":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CONFLICT
+	case "permission_denied":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_PERMISSION_DENIED
+	case "not_found":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_NOT_FOUND
+	case "failed_precondition":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_FAILED_PRECONDITION
+	case "resource_exhausted":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED
+	case "canceled":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CANCELED
+	case "unavailable":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNAVAILABLE
+	case "foreground":
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_FOREGROUND
+	default:
+		return corev1.SecurityErrorCode_SECURITY_ERROR_CODE_INVALID
+	}
+}
+
 // Snapshot mirrors the verified security summary needed by sync, screens, and transport.
 type Snapshot struct {
 	Loaded                 bool
@@ -1534,7 +1603,12 @@ func (e *Engine) sealEnvelope(
 }
 
 func (e *Engine) emitSecurityOpErr(opID uint64, err error) {
-	e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{OpId: opID, Error: err.Error(), ErrorCode: ErrorCode(err)})
+	e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
+		OpId:                opID,
+		Error:               err.Error(),
+		ErrorCode:           ErrorCode(err),
+		StructuredErrorCode: StructuredErrorCode(err),
+	})
 }
 
 // HandleSecurityOp executes stateful shell bridge operations (for remaining S6/file/terminal callers).

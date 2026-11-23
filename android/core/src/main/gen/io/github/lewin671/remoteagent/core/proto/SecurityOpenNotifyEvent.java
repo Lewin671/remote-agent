@@ -20,6 +20,7 @@ public  final class SecurityOpenNotifyEvent extends
     sessionId_ = "";
     tag_ = "";
     machineId_ = "";
+    eventKey_ = "";
   }
   private int bitField0_;
   public static final int OP_ID_FIELD_NUMBER = 1;
@@ -317,6 +318,96 @@ public  final class SecurityOpenNotifyEvent extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     machineId_ = value.toStringUtf8();
+
+  }
+
+  public static final int EXPECTED_KIND_FIELD_NUMBER = 9;
+  private int expectedKind_;
+  /**
+   * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+   * @return The enum numeric value on the wire for expectedKind.
+   */
+  @java.lang.Override
+  public int getExpectedKindValue() {
+    return expectedKind_;
+  }
+  /**
+   * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+   * @return The expectedKind.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.NotifyKind getExpectedKind() {
+    io.github.lewin671.remoteagent.proto.NotifyKind result = io.github.lewin671.remoteagent.proto.NotifyKind.forNumber(expectedKind_);
+    return result == null ? io.github.lewin671.remoteagent.proto.NotifyKind.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+   * @param value The enum numeric value on the wire for expectedKind to set.
+   */
+  private void setExpectedKindValue(int value) {
+      expectedKind_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+   * @param value The expectedKind to set.
+   */
+  private void setExpectedKind(io.github.lewin671.remoteagent.proto.NotifyKind value) {
+    expectedKind_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+   */
+  private void clearExpectedKind() {
+
+    expectedKind_ = 0;
+  }
+
+  public static final int EVENT_KEY_FIELD_NUMBER = 10;
+  private java.lang.String eventKey_;
+  /**
+   * <code>string event_key = 10 [json_name = "eventKey"];</code>
+   * @return The eventKey.
+   */
+  @java.lang.Override
+  public java.lang.String getEventKey() {
+    return eventKey_;
+  }
+  /**
+   * <code>string event_key = 10 [json_name = "eventKey"];</code>
+   * @return The bytes for eventKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getEventKeyBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(eventKey_);
+  }
+  /**
+   * <code>string event_key = 10 [json_name = "eventKey"];</code>
+   * @param value The eventKey to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setEventKey(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    eventKey_ = value;
+  }
+  /**
+   * <code>string event_key = 10 [json_name = "eventKey"];</code>
+   */
+  private void clearEventKey() {
+
+    eventKey_ = getDefaultInstance().getEventKey();
+  }
+  /**
+   * <code>string event_key = 10 [json_name = "eventKey"];</code>
+   * @param value The bytes for eventKey to set.
+   */
+  private void setEventKeyBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    eventKey_ = value.toStringUtf8();
 
   }
 
@@ -723,6 +814,101 @@ public  final class SecurityOpenNotifyEvent extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+     * @return The enum numeric value on the wire for expectedKind.
+     */
+    @java.lang.Override
+    public int getExpectedKindValue() {
+      return instance.getExpectedKindValue();
+    }
+    /**
+     * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+     * @param value The expectedKind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setExpectedKindValue(int value) {
+      copyOnWrite();
+      instance.setExpectedKindValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+     * @return The expectedKind.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.NotifyKind getExpectedKind() {
+      return instance.getExpectedKind();
+    }
+    /**
+     * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+     * @param value The enum numeric value on the wire for expectedKind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setExpectedKind(io.github.lewin671.remoteagent.proto.NotifyKind value) {
+      copyOnWrite();
+      instance.setExpectedKind(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearExpectedKind() {
+      copyOnWrite();
+      instance.clearExpectedKind();
+      return this;
+    }
+
+    /**
+     * <code>string event_key = 10 [json_name = "eventKey"];</code>
+     * @return The eventKey.
+     */
+    @java.lang.Override
+    public java.lang.String getEventKey() {
+      return instance.getEventKey();
+    }
+    /**
+     * <code>string event_key = 10 [json_name = "eventKey"];</code>
+     * @return The bytes for eventKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getEventKeyBytes() {
+      return instance.getEventKeyBytes();
+    }
+    /**
+     * <code>string event_key = 10 [json_name = "eventKey"];</code>
+     * @param value The eventKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEventKey(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setEventKey(value);
+      return this;
+    }
+    /**
+     * <code>string event_key = 10 [json_name = "eventKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEventKey() {
+      copyOnWrite();
+      instance.clearEventKey();
+      return this;
+    }
+    /**
+     * <code>string event_key = 10 [json_name = "eventKey"];</code>
+     * @param value The bytes for eventKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEventKeyBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setEventKeyBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityOpenNotifyEvent)
   }
   @java.lang.Override
@@ -748,10 +934,12 @@ public  final class SecurityOpenNotifyEvent extends
             "sessionId_",
             "tag_",
             "machineId_",
+            "expectedKind_",
+            "eventKey_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0003\u0002\n\u0003\n\u0004" +
-              "\u1009\u0000\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\u0003\u0002\n\u0003\n\u0004" +
+              "\u1009\u0000\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\f\n\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+import "remoteagent/core/v1/text.proto";
 import "remoteagent/v1/envelope.proto";
 import "remoteagent/v1/event.proto";
 import "remoteagent/v1/local.proto";
@@ -172,6 +173,27 @@ message SecuritySealEnvelopeResult {
   bytes payload_hash = 3;
 }
 
+enum SecurityErrorCode {
+  SECURITY_ERROR_CODE_UNSPECIFIED = 0;
+  SECURITY_ERROR_CODE_INVALID = 1;
+  SECURITY_ERROR_CODE_UNTRUSTED = 2;
+  SECURITY_ERROR_CODE_STALE = 3;
+  SECURITY_ERROR_CODE_LEASE_EXPIRED = 4;
+  SECURITY_ERROR_CODE_CLOCK_SKEWED = 5;
+  SECURITY_ERROR_CODE_CAPACITY = 6;
+  SECURITY_ERROR_CODE_RECOVERY_UNAVAILABLE = 7;
+  SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY = 8;
+  SECURITY_ERROR_CODE_STORAGE = 9;
+  SECURITY_ERROR_CODE_CONFLICT = 10;
+  SECURITY_ERROR_CODE_PERMISSION_DENIED = 11;
+  SECURITY_ERROR_CODE_NOT_FOUND = 12;
+  SECURITY_ERROR_CODE_FAILED_PRECONDITION = 13;
+  SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED = 14;
+  SECURITY_ERROR_CODE_CANCELED = 15;
+  SECURITY_ERROR_CODE_UNAVAILABLE = 16;
+  SECURITY_ERROR_CODE_FOREGROUND = 17;
+}
+
 message SecurityOpResultEffect {
   uint64 op_id = 1;
   string error = 2;
@@ -181,6 +203,7 @@ message SecurityOpResultEffect {
     SecuritySealEnvelopeResult sealed = 5;
     bytes session_seed = 6;
   }
+  SecurityErrorCode structured_error_code = 7;
 }
 
 // ---- Demo/Gallery Mode Seeding (permanently locked out once real security is initialized) ----
@@ -627,6 +650,7 @@ message SecurityWorkflowResultEffect {
   SecurityExitAdvice exit_advice = 16;
   SecurityAccountAdopted account_adopted = 17;
   bool flag = 18;
+  SecurityErrorCode structured_error_code = 19;
 }
 
 message SecurityStatusChangedEffect {
@@ -642,6 +666,29 @@ message SecurityOpenNotifyEvent {
   string session_id = 6;
   string tag = 7;
   string machine_id = 8;
+  remoteagent.v1.NotifyKind expected_kind = 9;
+  string event_key = 10;
+}
+
+message SecurityNotifyDisplay {
+  bool valid = 1;
+  remoteagent.v1.NotifyKind kind = 2;
+  string tag = 3;
+  string machine_id = 4;
+  string session_id = 5;
+  string approval_id = 6;
+  uint64 source_event_seq = 7;
+  int64 deadline_ms = 8;
+  bool truncated = 9;
+  bool critical = 10;
+  bool show_detailed_by_default = 11;
+  Text title = 12;
+  Text body = 13;
+  Text generic_body = 14;
+  Text sub_text = 15;
+  Text big_text = 16;
+  Text shared_files_suffix = 17;
+  int32 shared_file_count = 18;
 }
 
 message SecurityNotifyOpenedEffect {
@@ -653,4 +700,5 @@ message SecurityNotifyOpenedEffect {
   string request_id = 6;
   bool verify_record_unchanged = 7;
   string error = 8;
+  SecurityNotifyDisplay display = 9;
 }

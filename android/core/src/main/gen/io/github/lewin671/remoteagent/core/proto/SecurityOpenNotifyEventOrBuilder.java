@@ -80,4 +80,27 @@ public interface SecurityOpenNotifyEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getMachineIdBytes();
+
+  /**
+   * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+   * @return The enum numeric value on the wire for expectedKind.
+   */
+  int getExpectedKindValue();
+  /**
+   * <code>.remoteagent.v1.NotifyKind expected_kind = 9 [json_name = "expectedKind"];</code>
+   * @return The expectedKind.
+   */
+  io.github.lewin671.remoteagent.proto.NotifyKind getExpectedKind();
+
+  /**
+   * <code>string event_key = 10 [json_name = "eventKey"];</code>
+   * @return The eventKey.
+   */
+  java.lang.String getEventKey();
+  /**
+   * <code>string event_key = 10 [json_name = "eventKey"];</code>
+   * @return The bytes for eventKey.
+   */
+  com.google.protobuf.ByteString
+      getEventKeyBytes();
 }

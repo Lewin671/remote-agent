@@ -2,10 +2,21 @@ package security
 
 import (
 	"slices"
+	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
+)
+
+const (
+	notifyDiskWarningBytes  uint64 = 10_000_000_000
+	notifyDiskCriticalBytes uint64 = 2_000_000_000
+	notifyMaxScheduledTitle        = 60
+	notifyMaxScheduledText         = 200
 )
 
 func (e *Engine) emitNotifyError(opID uint64, err error) {
@@ -38,6 +49,7 @@ func (e *Engine) finishNotifyPlain(ev *corev1.SecurityOpenNotifyEvent, h devices
 		e.emitNotifyError(ev.OpId, devicesec.ErrUntrusted)
 		return
 	}
+	display := buildNotifyDisplay(ev, h, nc)
 	e.out = append(e.out, &corev1.Effect{
 		Effect: &corev1.Effect_SecurityNotifyOpened{
 			SecurityNotifyOpened: &corev1.SecurityNotifyOpenedEffect{
@@ -48,9 +60,195 @@ func (e *Engine) finishNotifyPlain(ev *corev1.SecurityOpenNotifyEvent, h devices
 				MachineId:             h.Machine,
 				RequestId:             h.Request,
 				VerifyRecordUnchanged: verifyUnchanged,
+				Display:               display,
 			},
 		},
 	})
+}
+
+func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, nc *v1.NotifyContent) *corev1.SecurityNotifyDisplay {
+	if nc == nil {
+		return &corev1.SecurityNotifyDisplay{Valid: false}
+	}
+	kind := nc.Kind
+	out := &corev1.SecurityNotifyDisplay{
+		Kind:           kind,
+		MachineId:      nc.MachineId,
+		SessionId:      nc.SessionId,
+		SourceEventSeq: nc.SourceEventSeq,
+	}
+	if ev != nil && ev.ExpectedKind != v1.NotifyKind_NOTIFY_KIND_UNSPECIFIED && kind != ev.ExpectedKind {
+		return out
+	}
+
+	switch kind {
+	case v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK:
+		out.GenericBody = text.Msg(text.KeyMachineStatusHomeWarning)
+		disk := nc.DiskStatus
+		if nc.SessionId != "" || h.Session != "" || nc.MachineId == "" ||
+			strings.TrimSpace(nc.MachineName) == "" ||
+			nc.Title != "" || nc.Text != "" || nc.Approval != nil || disk == nil {
+			return out
+		}
+		if ev != nil && ev.MachineId != "" && nc.MachineId != ev.MachineId {
+			return out
+		}
+		critical := disk.Pressure == v1.ResourcePressure_RESOURCE_PRESSURE_CRITICAL
+		if !critical && disk.Pressure != v1.ResourcePressure_RESOURCE_PRESSURE_WARNING {
+			return out
+		}
+		limit := notifyDiskWarningBytes
+		if critical {
+			limit = notifyDiskCriticalBytes
+		}
+		if disk.AvailableBytes >= limit {
+			return out
+		}
+		expectedTag := nc.MachineId + "/NOTIFY_KIND_MACHINE_DISK"
+		if ev != nil && ev.Tag != "" && ev.Tag != expectedTag {
+			return out
+		}
+		expectedReq := "disk:" + strconv.FormatInt(disk.ObservedMs, 10) + ":" + strconv.FormatInt(int64(disk.Pressure), 10)
+		if h.Request != "" && h.Request != expectedReq {
+			return out
+		}
+		gbStr := strconv.FormatFloat(float64(disk.AvailableBytes)/1e9, 'f', 1, 64)
+		sizeTxt := text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", gbStr))
+		out.Valid = true
+		out.Tag = expectedTag
+		out.Critical = critical
+		out.ShowDetailedByDefault = true
+		if critical {
+			out.Title = text.Msg(text.KeyMachineStatusNotifyCritical, text.Str("computer", nc.MachineName), text.ArgText("size", sizeTxt))
+			out.Body = text.Msg(text.KeyMachineStatusNotifyCriticalBody)
+		} else {
+			out.Title = text.Msg(text.KeyMachineStatusNotifyWarning, text.Str("computer", nc.MachineName), text.ArgText("size", sizeTxt))
+			out.Body = text.Msg(text.KeyMachineStatusNotifyWarningBody)
+		}
+		return out
+
+	case v1.NotifyKind_NOTIFY_KIND_SCHEDULED:
+		out.GenericBody = text.Msg(text.KeyNotificationsScheduledTasksHaveNewResults)
+		if nc.Approval != nil || nc.SourceEventSeq == 0 || nc.SessionId == "" || (h.Session != "" && h.Session != nc.SessionId) {
+			return out
+		}
+		expectedReq := "scheduled:" + strconv.FormatUint(nc.SourceEventSeq, 10)
+		if h.Request != "" && h.Request != expectedReq {
+			return out
+		}
+		if ev != nil && ev.EventKey != "" && ev.EventKey != expectedReq {
+			return out
+		}
+		expectedTag := nc.SessionId + "/" + expectedReq + "/NOTIFY_KIND_SCHEDULED"
+		if ev != nil && ev.Tag != "" && ev.Tag != expectedTag {
+			return out
+		}
+		if strings.TrimSpace(nc.Title) == "" || utf8.RuneCountInString(nc.Title) > notifyMaxScheduledTitle ||
+			strings.TrimSpace(nc.Text) == "" || utf8.RuneCountInString(nc.Text) > notifyMaxScheduledText {
+			return out
+		}
+		out.Valid = true
+		out.Tag = expectedTag
+		out.ShowDetailedByDefault = true
+		out.Title = text.Plain(nc.Title)
+		out.Body = text.Plain(nc.Text)
+		return out
+
+	case v1.NotifyKind_NOTIFY_KIND_TURN_ENDED:
+		out.GenericBody = text.Msg(text.KeyNotificationsAndroidAConversationTurnFinished)
+		if nc.Approval != nil || nc.SourceEventSeq == 0 || nc.SessionId == "" || (h.Session != "" && h.Session != nc.SessionId) {
+			return out
+		}
+		expectedReq := "notify:" + strconv.FormatInt(int64(v1.NotifyKind_NOTIFY_KIND_TURN_ENDED), 10) + ":" + strconv.FormatUint(nc.SourceEventSeq, 10)
+		if h.Request != "" && h.Request != expectedReq {
+			return out
+		}
+		expectedTag := nc.SessionId + "/NOTIFY_KIND_TURN_ENDED"
+		if ev != nil && ev.Tag != "" && ev.Tag != expectedTag {
+			return out
+		}
+		out.Valid = true
+		out.Tag = expectedTag
+		if nc.Title != "" {
+			out.Title = text.Plain(nc.Title)
+		} else {
+			out.Title = text.Plain("remote-agent")
+		}
+		out.SharedFileCount = int32(nc.SharedFileCount)
+		if nc.SharedFileCount > 0 {
+			suffix := text.Msg(text.KeySharedFileNotificationFiles, text.Int("count", int64(nc.SharedFileCount)))
+			out.SharedFilesSuffix = suffix
+			if nc.Text != "" {
+				out.Body = text.JoinLiteral(" ", text.Plain(nc.Text), suffix)
+			} else {
+				out.Body = suffix
+			}
+		} else if nc.Text != "" {
+			out.Body = text.Plain(nc.Text)
+		} else {
+			out.Body = out.GenericBody
+		}
+		return out
+
+	default:
+		out.GenericBody = text.Msg(text.KeyNotificationsAndroidASessionNeedsYourAttention)
+		if nc.SessionId != "" && h.Session != "" && h.Session != nc.SessionId {
+			return out
+		}
+		out.Valid = true
+		if nc.SessionId != "" {
+			out.Tag = nc.SessionId + "/NOTIFY_KIND_ATTENTION"
+		}
+		if a := nc.Approval; a != nil {
+			out.ApprovalId = a.ApprovalId
+			out.DeadlineMs = a.DeadlineMs
+			out.Truncated = a.Truncated
+			var bodyStr string
+			if a.Command != "" {
+				out.Title = text.Msg(text.KeyListStateAndroidRequestCommand)
+				bodyStr = strings.TrimSpace(a.Command)
+			} else {
+				tool := strings.TrimSpace(a.ToolName)
+				if tool != "" {
+					out.Title = text.JoinLiteral(" · ", text.Msg(text.KeyListStateAndroidRequestPermission), text.Plain(tool))
+				} else {
+					out.Title = text.Msg(text.KeyListStateAndroidRequestPermission)
+				}
+				switch {
+				case a.Description != "":
+					bodyStr = strings.TrimSpace(a.Description)
+				case a.ToolInput != "":
+					bodyStr = strings.TrimSpace(a.ToolInput)
+				default:
+					bodyStr = tool
+				}
+			}
+			out.Body = text.Plain(bodyStr)
+			if nc.Title != "" {
+				out.SubText = text.Plain(nc.Title)
+			}
+			descTrim := strings.TrimSpace(a.Description)
+			if descTrim != "" && descTrim != bodyStr && bodyStr != "" {
+				out.BigText = text.Plain(descTrim + "\n" + bodyStr)
+			} else if descTrim != "" {
+				out.BigText = text.Plain(descTrim)
+			} else if bodyStr != "" {
+				out.BigText = text.Plain(bodyStr)
+			}
+		} else {
+			if nc.Title != "" {
+				out.Title = text.Plain(nc.Title)
+			} else {
+				out.Title = text.Plain("remote-agent")
+			}
+			if nc.Text != "" {
+				out.Body = text.Plain(nc.Text)
+			} else {
+				out.Body = out.GenericBody
+			}
+		}
+		return out
+	}
 }
 
 type openNotifyTask struct {

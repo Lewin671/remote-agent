@@ -341,6 +341,54 @@ public  final class SecurityNotifyOpenedEffect extends
 
   }
 
+  public static final int DISPLAY_FIELD_NUMBER = 9;
+  private io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay display_;
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDisplay() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay getDisplay() {
+    return display_ == null ? io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay.getDefaultInstance() : display_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisplay(io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay value) {
+    value.getClass();  // minimal bytecode null check
+    display_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDisplay(io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay value) {
+    value.getClass();  // minimal bytecode null check
+    if (display_ != null &&
+        display_ != io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay.getDefaultInstance()) {
+      display_ =
+        io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay.newBuilder(display_).mergeFrom(value).buildPartial();
+    } else {
+      display_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+   */
+  private void clearDisplay() {
+    display_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecurityNotifyOpenedEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -765,6 +813,53 @@ public  final class SecurityNotifyOpenedEffect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDisplay() {
+      return instance.hasDisplay();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay getDisplay() {
+      return instance.getDisplay();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+     */
+    public Builder setDisplay(io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay value) {
+      copyOnWrite();
+      instance.setDisplay(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+     */
+    public Builder setDisplay(
+        io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDisplay(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+     */
+    public Builder mergeDisplay(io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay value) {
+      copyOnWrite();
+      instance.mergeDisplay(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
+     */
+    public Builder clearDisplay() {  copyOnWrite();
+      instance.clearDisplay();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityNotifyOpenedEffect)
   }
   @java.lang.Override
@@ -790,10 +885,11 @@ public  final class SecurityNotifyOpenedEffect extends
             "requestId_",
             "verifyRecordUnchanged_",
             "error_",
+            "display_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0003\u0002\u1009\u0000\u0003" +
-              "\n\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0007\b\u0208";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0003\u0002\u1009\u0000\u0003" +
+              "\n\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0007\b\u0208\t\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

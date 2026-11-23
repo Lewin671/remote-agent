@@ -328,6 +328,48 @@ public  final class SecurityOpResultEffect extends
     }
   }
 
+  public static final int STRUCTURED_ERROR_CODE_FIELD_NUMBER = 7;
+  private int structuredErrorCode_;
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+   * @return The enum numeric value on the wire for structuredErrorCode.
+   */
+  @java.lang.Override
+  public int getStructuredErrorCodeValue() {
+    return structuredErrorCode_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+   * @return The structuredErrorCode.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityErrorCode getStructuredErrorCode() {
+    io.github.lewin671.remoteagent.core.proto.SecurityErrorCode result = io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.forNumber(structuredErrorCode_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+   * @param value The enum numeric value on the wire for structuredErrorCode to set.
+   */
+  private void setStructuredErrorCodeValue(int value) {
+      structuredErrorCode_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+   * @param value The structuredErrorCode to set.
+   */
+  private void setStructuredErrorCode(io.github.lewin671.remoteagent.core.proto.SecurityErrorCode value) {
+    structuredErrorCode_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+   */
+  private void clearStructuredErrorCode() {
+
+    structuredErrorCode_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecurityOpResultEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -695,6 +737,52 @@ public  final class SecurityOpResultEffect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+     * @return The enum numeric value on the wire for structuredErrorCode.
+     */
+    @java.lang.Override
+    public int getStructuredErrorCodeValue() {
+      return instance.getStructuredErrorCodeValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+     * @param value The structuredErrorCode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStructuredErrorCodeValue(int value) {
+      copyOnWrite();
+      instance.setStructuredErrorCodeValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+     * @return The structuredErrorCode.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityErrorCode getStructuredErrorCode() {
+      return instance.getStructuredErrorCode();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+     * @param value The enum numeric value on the wire for structuredErrorCode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStructuredErrorCode(io.github.lewin671.remoteagent.core.proto.SecurityErrorCode value) {
+      copyOnWrite();
+      instance.setStructuredErrorCode(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SecurityErrorCode structured_error_code = 7 [json_name = "structuredErrorCode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStructuredErrorCode() {
+      copyOnWrite();
+      instance.clearStructuredErrorCode();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityOpResultEffect)
   }
   @java.lang.Override
@@ -718,10 +806,11 @@ public  final class SecurityOpResultEffect extends
             "errorCode_",
             io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult.class,
             io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeResult.class,
+            "structuredErrorCode_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0001\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "\u0003\u0208\u0004<\u0000\u0005<\u0000\u0006=\u0000";
+              "\u0000\u0007\u0001\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0003\u0208\u0004<\u0000\u0005<\u0000\u0006=\u0000\u0007\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
