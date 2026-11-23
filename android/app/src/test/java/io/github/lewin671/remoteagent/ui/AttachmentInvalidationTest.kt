@@ -94,10 +94,10 @@ class AttachmentInvalidationTest {
         entry.abortTransfer = { invalid(entry); originalAborted = true }
         d.retarget("B")
         val b = Channel(); val a = Channel()
-        d.startDocumentUpload(entry, "B", this, b, 100, Dispatchers.Unconfined) { error("superseded source") }
+        d.startDocumentUpload(entry, "B", this, b, 100, Dispatchers.Unconfined, maxNameBytes = 255, maxSizeText = "100 B") { error("superseded source") }
         yield()
         d.retarget("A")
-        d.startDocumentUpload(entry, "A", this, a, 100, Dispatchers.Unconfined) { ByteArrayInputStream(byteArrayOf(1)) }
+        d.startDocumentUpload(entry, "A", this, a, 100, Dispatchers.Unconfined, maxNameBytes = 255, maxSizeText = "100 B") { ByteArrayInputStream(byteArrayOf(1)) }
         invalid(entry)
         assertFalse(entry.change(original, "A") { error("old A result") })
         assertFalse(d.ready("A")); assertTrue(originalAborted)
@@ -118,7 +118,7 @@ class AttachmentInvalidationTest {
             var aborted = false
             entry.abortTransfer = { invalid(entry); aborted = true }
             val d = draft(entry.id).apply { images += entry }
-            d.startDocumentUpload(entry, "A", this, Channel(), 100, Dispatchers.Unconfined, forceFresh = retry) { error("slot still occupied") }
+            d.startDocumentUpload(entry, "A", this, Channel(), 100, Dispatchers.Unconfined, forceFresh = retry, maxNameBytes = 255, maxSizeText = "100 B") { error("slot still occupied") }
             invalid(entry); assertTrue(aborted); assertFalse(d.ready("A"))
             entries += entry
         }
@@ -143,7 +143,7 @@ class AttachmentInvalidationTest {
             }
         }
         var opened = 0
-        d.startDocumentUpload(entry, "A", this, ch, 100, Dispatchers.Unconfined) { opened++; ByteArrayInputStream(byteArrayOf(1)) }
+        d.startDocumentUpload(entry, "A", this, ch, 100, Dispatchers.Unconfined, maxNameBytes = 255, maxSizeText = "100 B") { opened++; ByteArrayInputStream(byteArrayOf(1)) }
         entry.job!!.join()
         assertEquals(listOf("old-file"), ch.begins); assertEquals(0, ch.puts); assertTrue(ch.aborted.isEmpty())
         assertEquals(1, opened); assertEquals("file-file", entry.fileId); assertTrue(d.ready("A"))

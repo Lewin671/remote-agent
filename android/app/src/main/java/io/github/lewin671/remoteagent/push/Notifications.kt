@@ -254,12 +254,13 @@ object Notifier {
         eventKey: String? = null,
         copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) },
     ) {
+        if (kind == NotifyKind.NOTIFY_KIND_UNSPECIFIED) return
         require(kind != NotifyKind.NOTIFY_KIND_SCHEDULED || !eventKey.isNullOrEmpty())
         fun resolveText(t: io.github.lewin671.remoteagent.core.proto.Text): String =
             coreTextToMessageText(t).resolve(copy)
 
         val nm = context.getSystemService(NotificationManager::class.java)
-        val valid = notifyDisplay?.takeIf { it.valid && (it.kind == NotifyKind.NOTIFY_KIND_UNSPECIFIED || it.kind == kind) }
+        val valid = notifyDisplay?.takeIf { it.valid && it.kind == kind }
         val generic = valid?.takeIf { it.hasGenericBody() }?.let { resolveText(it.genericBody) }?.ifEmpty { null }
             ?: notifyDisplay?.takeIf { it.hasGenericBody() }?.let { resolveText(it.genericBody) }?.ifEmpty { null }
             ?: when (kind) {

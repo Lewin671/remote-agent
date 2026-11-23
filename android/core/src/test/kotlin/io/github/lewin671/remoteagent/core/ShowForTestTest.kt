@@ -47,4 +47,19 @@ class ShowForTestTest {
             remote.close()
         }
     }
+
+    @Test
+    fun showForTestWorksWithoutSecurityStorage() {
+        val remote = Remote(
+            Account(server = "https://example.com", deviceId = "d".repeat(32), accountId = "a".repeat(32)),
+            Api.defaultHttp(),
+        )
+        try {
+            val expected = RemoteState(conn = ConnState.ONLINE, loaded = true)
+            remote.showForTest(expected)
+            assertEquals(expected, remote.state.value)
+        } finally {
+            remote.close()
+        }
+    }
 }

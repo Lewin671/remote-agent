@@ -1,26 +1,41 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.*
+import io.github.lewin671.remoteagent.core.proto.AttachmentCandidateInput
+import io.github.lewin671.remoteagent.core.proto.AttachmentCandidateRoute
+import io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest
+import io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel
+import io.github.lewin671.remoteagent.core.proto.ImageProblemInput
+import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
 import io.github.lewin671.remoteagent.core.proto.NewSessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionHeaderView
-import kotlinx.coroutines.*
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import java.io.InputStream
+import kotlinx.coroutines.*
 
 /** Attachment capabilities projected by Core for the current session or new-session target. */
 data class AttachmentCaps(
-    val supportsImages: Boolean = false,
-    val supportsFiles: Boolean = false,
-    val maxImages: Int = MAX_IMAGES,
-    val maxFiles: Int = MAX_FILES,
-    val maxFileBytes: Long = MAX_FILE_BYTES,
-    val capabilitiesLoaded: Boolean = false,
-    val machineOnline: Boolean = false,
+    val supportsImages: Boolean,
+    val supportsFiles: Boolean,
+    val maxImages: Int,
+    val maxFiles: Int,
+    val maxFileBytes: Long,
+    val maxFileNameBytes: Int,
+    val maxFileSizeText: String,
+    val originalImageMaxBytes: Long,
+    val galleryAllowsVideo: Boolean,
+    val galleryAcceptMime: String,
+    val capabilitiesLoaded: Boolean,
+    val machineOnline: Boolean,
+    val imageUploadBlockedReason: CoreText?,
+    val fileUploadBlockedReason: CoreText?,
+    val originalImageHint: CoreText?,
+    val fileMetadataNotice: CoreText?,
 )
 
 internal fun SessionHeaderView.attachmentCaps(): AttachmentCaps {
@@ -28,11 +43,20 @@ internal fun SessionHeaderView.attachmentCaps(): AttachmentCaps {
     return AttachmentCaps(
         supportsImages = caps.supportsImages,
         supportsFiles = caps.supportsFiles,
-        maxImages = caps.maxImages.takeIf { it > 0 } ?: MAX_IMAGES,
-        maxFiles = caps.maxFiles.takeIf { it > 0 } ?: MAX_FILES,
-        maxFileBytes = caps.maxFileBytes.takeIf { it > 0L } ?: MAX_FILE_BYTES,
+        maxImages = caps.maxImages,
+        maxFiles = caps.maxFiles,
+        maxFileBytes = caps.maxFileBytes,
+        maxFileNameBytes = caps.maxFileNameBytes,
+        maxFileSizeText = caps.maxFileSizeText,
+        originalImageMaxBytes = caps.originalImageMaxBytes,
+        galleryAllowsVideo = caps.galleryAllowsVideo,
+        galleryAcceptMime = caps.galleryAcceptMime,
         capabilitiesLoaded = caps.capabilitiesLoaded,
         machineOnline = computerOnline && !computerUnlinked,
+        imageUploadBlockedReason = if (caps.hasImageUploadBlockedReason()) caps.imageUploadBlockedReason else null,
+        fileUploadBlockedReason = if (caps.hasFileUploadBlockedReason()) caps.fileUploadBlockedReason else null,
+        originalImageHint = if (caps.hasOriginalImageHint()) caps.originalImageHint else null,
+        fileMetadataNotice = if (caps.hasFileMetadataNotice()) caps.fileMetadataNotice else null,
     )
 }
 
@@ -43,50 +67,99 @@ internal fun NewSessionViewModel.attachmentCaps(fallbackOnline: Boolean = false)
     return AttachmentCaps(
         supportsImages = supportsImages,
         supportsFiles = supportsFiles,
-        maxImages = maxImages.takeIf { it > 0 } ?: MAX_IMAGES,
-        maxFiles = maxFiles.takeIf { it > 0 } ?: MAX_FILES,
-        maxFileBytes = maxFileBytes.takeIf { it > 0L } ?: MAX_FILE_BYTES,
+        maxImages = maxImages,
+        maxFiles = maxFiles,
+        maxFileBytes = maxFileBytes,
+        maxFileNameBytes = maxFileNameBytes,
+        maxFileSizeText = maxFileSizeText,
+        originalImageMaxBytes = originalImageMaxBytes,
+        galleryAllowsVideo = galleryAllowsVideo,
+        galleryAcceptMime = galleryAcceptMime,
         capabilitiesLoaded = capabilitiesLoaded,
         machineOnline = online,
+        imageUploadBlockedReason = if (hasImageUploadBlockedReason()) imageUploadBlockedReason else null,
+        fileUploadBlockedReason = if (hasFileUploadBlockedReason()) fileUploadBlockedReason else null,
+        originalImageHint = if (hasOriginalImageHint()) originalImageHint else null,
+        fileMetadataNotice = if (hasFileMetadataNotice()) fileMetadataNotice else null,
     )
 }
 
-internal fun MachineView?.toAttachmentCaps(online: Boolean = this?.pathState?.reachable == true): AttachmentCaps =
-    AttachmentCaps(
-        supportsImages = capabilities(this)?.imageUpload == true,
-        supportsFiles = filesSupported(this),
-        maxImages = capabilities(this)?.maxImagesPerMessage?.takeIf { it > 0 } ?: MAX_IMAGES,
-        maxFiles = maxFiles(this),
-        maxFileBytes = maxFileBytes(this),
-        capabilitiesLoaded = capabilities(this) != null,
-        machineOnline = online,
-    )
+internal fun AttachmentEvalViewModel.toAttachmentCaps(online: Boolean = true): AttachmentCaps = AttachmentCaps(
+    supportsImages = supportsImages,
+    supportsFiles = supportsFiles,
+    maxImages = maxImages,
+    maxFiles = maxFiles,
+    maxFileBytes = maxFileBytes,
+    maxFileNameBytes = maxFileNameBytes,
+    maxFileSizeText = maxFileSizeText,
+    originalImageMaxBytes = originalImageMaxBytes,
+    galleryAllowsVideo = galleryAllowsVideo,
+    galleryAcceptMime = galleryAcceptMime,
+    capabilitiesLoaded = capabilitiesLoaded,
+    machineOnline = online,
+    imageUploadBlockedReason = if (hasImageUploadBlockedReason()) imageUploadBlockedReason else null,
+    fileUploadBlockedReason = if (hasFileUploadBlockedReason()) fileUploadBlockedReason else null,
+    originalImageHint = if (hasOriginalImageHint()) originalImageHint else null,
+    fileMetadataNotice = if (hasFileMetadataNotice()) fileMetadataNotice else null,
+)
 
-/** Provider size is a display hint; the hashing pass establishes the actual byte count. */
-internal fun documentEntry(context: Context, uri: Uri): PendingImage {
+internal fun Remote.attachmentCapsFor(machineId: String?, sessionId: String = ""): AttachmentCaps {
+    val req = AttachmentEvalScreenRequest.newBuilder().apply {
+        if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+        if (sessionId.isNotEmpty()) setSessionId(sessionId)
+    }.build()
+    val online = state.value.machines[machineId]?.pathState?.reachable == true
+    return evaluateAttachments(req).toAttachmentCaps(online = online)
+}
+
+internal data class PickedUriMeta(
+    val uri: Uri,
+    val name: String,
+    val mimeType: String,
+    val sizeBytes: Long,
+    val sizeUnknown: Boolean,
+)
+
+/** Reads display name, MIME type, and provider size hint for one picked URI on IO. */
+internal fun queryPickedUriMeta(context: Context, uri: Uri): PickedUriMeta {
     var name: String? = null
-    var size = 0L
-    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use {
-        if (it.moveToFirst()) {
-            val n = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            val b = it.getColumnIndex(OpenableColumns.SIZE)
-            if (n >= 0 && !it.isNull(n)) name = it.getString(n)
-            if (b >= 0 && !it.isNull(b)) size = it.getLong(b).coerceAtLeast(0)
+    var size = -1L
+    val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull().orEmpty()
+    runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use {
+            if (it.moveToFirst()) {
+                val n = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val b = it.getColumnIndex(OpenableColumns.SIZE)
+                if (n >= 0 && !it.isNull(n)) name = it.getString(n)
+                if (b >= 0 && !it.isNull(b)) size = it.getLong(b)
+            }
         }
     }
-    if (name.isNullOrBlank()) throw io.github.lewin671.remoteagent.core.MessageArgumentException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.attachmentAndroidNameUnreadable()), imageKind = ImageProblemKind.SOURCE)
-    if (name.toByteArray().size > 255) throw io.github.lewin671.remoteagent.core.MessageArgumentException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.attachmentAndroidNameTooLong()), imageKind = ImageProblemKind.SOURCE)
-    return PendingImage(newRequestId(), uri.toString(), name, size, retainSource = false)
+    val resolvedName = name?.takeIf { it.isNotBlank() } ?: uri.lastPathSegment.orEmpty()
+    return PickedUriMeta(
+        uri = uri,
+        name = resolvedName,
+        mimeType = mime,
+        sizeBytes = if (size >= 0L) size else 0L,
+        sizeUnknown = size < 0L,
+    )
 }
 
-/** Files from 文件, or ([videos]) videos from the library, which are turned away as they are picked when over the size limit. */
-internal fun ImageDraft.addDocuments(
+/**
+ * Evaluates a batch of picked URIs via Core (`Screen.attachment_eval`) once and routes accepted
+ * candidates into the draft's pictures or documents.
+ *
+ * - `forceFile = false`: photo/video gallery, drag-and-drop, paste (images -> IMAGE, non-images -> FILE/VIDEO_FILE).
+ * - `forceFile = true`: explicit "文件" picker (every item routes as FILE/VIDEO_FILE unchanged).
+ */
+internal fun ImageDraft.addPickedCandidates(
     context: Context,
     uris: List<Uri>,
     remote: Remote,
-    machine: String?,
+    machineId: String?,
+    sessionId: String = "",
     caps: AttachmentCaps? = null,
-    videos: Boolean = false,
+    forceFile: Boolean = false,
 ) {
     if (restoring || readingFiles || uris.isEmpty()) return
     bindRemote(remote)
@@ -94,38 +167,129 @@ internal fun ImageDraft.addDocuments(
     notice = ""
     RaApp.instance.scope.launch {
         try {
-            for (uri in uris) {
-                try {
-                    val effective = caps ?: remote.state.value.machines[machine].toAttachmentCaps()
-                    if (!effective.supportsFiles) throw io.github.lewin671.remoteagent.core.MessageException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.attachmentUpdateRequired()), imageKind = ImageProblemKind.UPDATE_REQUIRED)
-                    if (documents.size >= effective.maxFiles) { notice = sessionText(UiMessages.attachmentAndroidFilesLimit(count = effective.maxFiles)); break }
-                    val entry = withContext(Dispatchers.IO) { documentEntry(context, uri) }
-                    if (videos) pickedVideoError(entry.fileName!!, entry.fileBytes, effective.maxFileBytes)?.let { notice = sessionText(it); continue }
-                    if (AccountMemory.token !== accountToken) { PendingUris.release(entry); return@launch }
-                    PendingUris.retain(entry)
-                    val kept = runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isSuccess
-                    if (!kept) notice = sessionText(UiMessages.attachmentAndroidPermissionTemporary())
-                    images += entry
-                    prepared(entry)
-                    machine?.let { upload(remote, entry, it, caps = effective) }
-                } catch (e: CancellationException) { throw e
-                } catch (e: Exception) {
-                    notice = if (e is java.io.IOException || e is SecurityException) sessionText(UiMessages.attachmentAndroidSourceUnreadable()) else displayError(e)
+            val metas = withContext(Dispatchers.IO) { uris.map { queryPickedUriMeta(context, it) } }
+            val evalReq = AttachmentEvalScreenRequest.newBuilder().apply {
+                if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+                if (sessionId.isNotEmpty()) setSessionId(sessionId)
+                setCurrentImages(pictures.size)
+                setCurrentFiles(documents.size)
+                for (m in metas) {
+                    addCandidates(
+                        AttachmentCandidateInput.newBuilder()
+                            .setName(m.name)
+                            .setMimeType(m.mimeType)
+                            .setSizeBytes(m.sizeBytes)
+                            .setSizeUnknown(m.sizeUnknown)
+                            .setForceFile(forceFile),
+                    )
+                }
+            }.build()
+            val eval = remote.evaluateAttachments(evalReq)
+            val effective = caps ?: eval.toAttachmentCaps(online = remote.state.value.machines[machineId]?.pathState?.reachable == true)
+            if (AccountMemory.token !== accountToken) return@launch
+
+            val notices = mutableListOf<String>()
+            if (eval.hasNotice()) {
+                val resolved = resolveCoreText(context, eval.notice)
+                if (resolved.isNotEmpty()) notices += resolved
+            }
+
+            var permissionTemporary = false
+            val acceptedPictures = mutableListOf<Uri>()
+            for ((meta, decision) in metas.zip(eval.decisionsList)) {
+                if (!decision.accepted) continue
+                when (decision.route) {
+                    AttachmentCandidateRoute.ATTACHMENT_CANDIDATE_ROUTE_IMAGE -> {
+                        acceptedPictures += meta.uri
+                    }
+                    AttachmentCandidateRoute.ATTACHMENT_CANDIDATE_ROUTE_VIDEO_FILE,
+                    AttachmentCandidateRoute.ATTACHMENT_CANDIDATE_ROUTE_FILE -> {
+                        val fileName = decision.displayName.ifEmpty { meta.name }
+                        val entry = PendingImage(
+                            id = newRequestId(),
+                            uri = meta.uri.toString(),
+                            fileName = fileName,
+                            fileBytes = meta.sizeBytes,
+                            retainSource = false,
+                            isVideo = decision.isVideo,
+                            formattedSize = decision.formattedSize,
+                        )
+                        PendingUris.retain(entry)
+                        val kept = runCatching {
+                            context.contentResolver.takePersistableUriPermission(meta.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }.isSuccess
+                        if (!kept) permissionTemporary = true
+                        images += entry
+                        prepared(entry)
+                        machineId?.let { upload(remote, entry, it, caps = effective) }
+                    }
+                    else -> Unit
                 }
             }
-        } finally { readingFiles = false }
+            if (acceptedPictures.isNotEmpty()) {
+                addAcceptedPictures(context, acceptedPictures, remote, effective.originalImageMaxBytes) { machineId }
+            }
+            if (permissionTemporary) {
+                notices += sessionText(UiMessages.attachmentAndroidPermissionTemporary())
+            }
+            if (notices.isNotEmpty()) {
+                notice = notices.joinToString(" · ")
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            notice = if (e is java.io.IOException || e is SecurityException) sessionText(UiMessages.attachmentAndroidSourceUnreadable()) else displayError(e)
+        } finally {
+            readingFiles = false
+        }
     }
 }
 
-internal fun fileDraftBlocked(draft: ImageDraft, caps: AttachmentCaps, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? {
-    if (draft.documents.isEmpty()) return null
-    if (!caps.supportsFiles) return copy(UiMessages.attachmentUpdateRequired())
-    if (draft.documents.size > caps.maxFiles) return copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles))
-    return draft.documents.filter { it.sizeVerified }.firstNotNullOfOrNull { fileLimitError(it.fileBytes, 0, caps.maxFiles, caps.maxFileBytes)?.resolve(copy) }
+/**
+ * Evaluates the draft's current attachments against Core (`Screen.attachment_eval`) to detect
+ * machine-capability or limit violations (e.g., after capabilities drop or switching computers).
+ * Returns Core's localized block reason, or null when all current attachments are accepted.
+ */
+internal fun evaluateDraftAttachmentsBlocked(
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    documents: List<PendingImage>,
+    pictures: List<PendingImage> = emptyList(),
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
+): String? {
+    if (documents.isEmpty() && pictures.isEmpty()) return null
+    val req = AttachmentEvalScreenRequest.newBuilder().apply {
+        if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+        if (sessionId.isNotEmpty()) setSessionId(sessionId)
+        setCurrentImages(0)
+        setCurrentFiles(0)
+        for (doc in documents) {
+            addCandidates(
+                AttachmentCandidateInput.newBuilder()
+                    .setName(doc.fileName.orEmpty())
+                    .setSizeBytes(doc.fileBytes)
+                    .setForceFile(true),
+            )
+        }
+        for (pic in pictures) {
+            addCandidates(
+                AttachmentCandidateInput.newBuilder()
+                    .setName(pic.fileName ?: "image.jpg")
+                    .setMimeType("image/jpeg")
+                    .setForceFile(false),
+            )
+        }
+    }.build()
+    val eval = remote.evaluateAttachments(req)
+    val rejected = eval.decisionsList.firstOrNull { !it.accepted } ?: return null
+    val reason = when {
+        eval.hasNotice() -> coreTextToMessageText(eval.notice).resolve(copy)
+        rejected.hasRejectReason() -> coreTextToMessageText(rejected.rejectReason).resolve(copy)
+        else -> ""
+    }
+    return reason.ifEmpty { null }
 }
-
-internal fun fileDraftBlocked(draft: ImageDraft, machine: MachineView?, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? =
-    fileDraftBlocked(draft, machine.toAttachmentCaps(), copy)
 
 internal fun ImageDraft.uploadDocument(
     remote: Remote,
@@ -135,21 +299,50 @@ internal fun ImageDraft.uploadDocument(
     caps: AttachmentCaps? = null,
 ) {
     bindRemote(remote)
-    val effective = caps ?: remote.state.value.machines[target].toAttachmentCaps()
+    val effective = caps ?: remote.attachmentCapsFor(target)
     if (!effective.supportsFiles) {
         val turn = entry.stopUpload()
-        if (entry.valid(turn)) entry.state = PendingImage.State.Failed(AppImageFailure.UPDATE_REQUIRED)
+        if (entry.valid(turn)) {
+            val detail = effective.fileUploadBlockedReason?.let { coreTextToMessageText(it) }
+                ?: MessageText.Raw("")
+            entry.state = PendingImage.State.Failed(
+                AttachmentFailure(
+                    input = ImageProblemInput.newBuilder()
+                        .setExplicitKind(ImageProblemKind.IMAGE_PROBLEM_KIND_PROCESSING_FAILED)
+                        .build(),
+                    detail = detail,
+                ),
+            )
+        }
         return
     }
-    startDocumentUpload(entry, target, RaApp.instance.scope, remote.uploadChannel(target), effective.maxFileBytes, forceFresh = forceFresh) {
+    startDocumentUpload(
+        entry = entry,
+        target = target,
+        owner = RaApp.instance.scope,
+        channel = remote.uploadChannel(target),
+        limit = effective.maxFileBytes,
+        maxNameBytes = effective.maxFileNameBytes,
+        maxSizeText = effective.maxFileSizeText,
+        forceFresh = forceFresh,
+    ) {
         RaApp.instance.contentResolver.openInputStream(Uri.parse(entry.uri)) ?: throw java.io.FileNotFoundException()
     }
 }
 
 /** Injectable channel/source/scope exercise cancellation races without an Android runtime. */
 internal fun ImageDraft.startDocumentUpload(
-    entry: PendingImage, target: String, owner: CoroutineScope, channel: UploadChannel, limit: Long,
-    io: CoroutineDispatcher = Dispatchers.IO, forceFresh: Boolean = false, open: () -> InputStream) {
+    entry: PendingImage,
+    target: String,
+    owner: CoroutineScope,
+    channel: UploadChannel,
+    limit: Long,
+    io: CoroutineDispatcher = Dispatchers.IO,
+    forceFresh: Boolean = false,
+    maxNameBytes: Int,
+    maxSizeText: String,
+    open: () -> InputStream,
+) {
     if (!forceFresh && !needsUpload(entry, target)) return
     val changed = forceFresh || entry.state is PendingImage.State.Failed || entry.transportMachine() != target || entry.isProtected() || entry.fileId != null && entry.expiresMs <= System.currentTimeMillis()
     var turn = entry.stopUpload(abort = changed)
@@ -175,7 +368,15 @@ internal fun ImageDraft.startDocumentUpload(
                         val attemptTurn = turn
                         val transfer = entry.transferId
                         result = withContext(io) {
-                            uploadFile(channel, transfer, entry.fileName!!, entry.fileBytes, open, maxBytes = limit,
+                            uploadFile(
+                                ch = channel,
+                                transferId = transfer,
+                                name = entry.fileName!!,
+                                total = entry.fileBytes,
+                                open = open,
+                                maxBytes = limit,
+                                maxNameBytes = maxNameBytes,
+                                maxSizeText = maxSizeText,
                                 onPrepared = { actual ->
                                     entry.change(attemptTurn, target) {
                                         entry.fileBytes = actual
@@ -184,9 +385,11 @@ internal fun ImageDraft.startDocumentUpload(
                                         prepared(entry)
                                     }
                                 },
-                                onProgress = { done, total -> entry.change(attemptTurn, target) {
-                                    entry.state = PendingImage.State.Uploading(if (total > 0) done.toFloat() / total else 1f)
-                                } },
+                                onProgress = { done, total ->
+                                    entry.change(attemptTurn, target) {
+                                        entry.state = PendingImage.State.Uploading(if (total > 0) done.toFloat() / total else 1f)
+                                    }
+                                },
                             )
                         }
                         break
@@ -206,7 +409,8 @@ internal fun ImageDraft.startDocumentUpload(
                 }
                 if (entry.current(turn, target)) persistOrder()
             }
-        } catch (e: CancellationException) { throw e
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             entry.change(turn, target) { entry.state = PendingImage.State.Failed(attachmentFailure(e, upload = true)) }
         }

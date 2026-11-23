@@ -30,8 +30,12 @@ import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.core.SharedFileTransferState
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus
+import io.github.lewin671.remoteagent.core.proto.SharedFileKind
+import io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction
+import io.github.lewin671.remoteagent.core.toSharedFileTarget
 import io.github.lewin671.remoteagent.data.SharedFileManager
-import io.github.lewin671.remoteagent.proto.SharedFile
 import java.io.File
 import org.junit.After
 import org.junit.Assert.*
@@ -54,16 +58,25 @@ class SharedPdfViewerOnDeviceTest {
 
     private fun show(name: String) {
         val bytes = instrumentation.context.assets.open(name).use { it.readBytes() }
-        val file = SharedFile.newBuilder().setFileId("pdf-preview").setName(name).setSizeBytes(bytes.size.toLong()).build()
-        local = manager.store.localFileFor("pdf-preview", file).apply { parentFile!!.mkdirs(); writeBytes(bytes) }
+        val file = SessionSharedFileItem.newBuilder()
+            .setFileId("pdf-preview")
+            .setName(name)
+            .setDisplayName(name)
+            .setSizeBytes(bytes.size.toLong())
+            .setKind(SharedFileKind.SHARED_FILE_KIND_PDF)
+            .setStatus(SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED)
+            .setPrimaryAction(SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN)
+            .setPrimaryEnabled(true)
+            .build()
+        local = manager.store.localFileFor("pdf-preview", file.toSharedFileTarget()).apply { parentFile!!.mkdirs(); writeBytes(bytes) }
         manager.store.setStateForTest("pdf-preview", file.fileId, SharedFileTransferState.Downloaded(local))
         ui.setContent {
             RaTheme(if (dark) DarkPalette else LightPalette) {
-                SharedFileHost("pdf-preview", "Test computer", true, false, Modifier.fillMaxSize(), manager) {
+                SharedFileHost("pdf-preview", mapOf(file.fileId to file), Modifier.fillMaxSize(), manager) {
                     host = LocalSharedFileHost.current!!
                     Column(Modifier.fillMaxSize().background(pal.paper).verticalScroll(chatScroll)) {
                         Spacer(Modifier.height(320.dp))
-                        SharedFilesBlock(listOf(file), "pdf-preview", "Test computer", true, false)
+                        SharedFilesBlock(listOf(file), "pdf-preview")
                         Spacer(Modifier.height(900.dp))
                     }
                 }

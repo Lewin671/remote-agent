@@ -1,7 +1,5 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
-
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -21,19 +19,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,30 +39,32 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.RETIRED_HISTORY_ERROR
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.SessionImage
-import io.github.lewin671.remoteagent.core.agentName
+import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
-import io.github.lewin671.remoteagent.ui.displayError
+import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
+import io.github.lewin671.remoteagent.core.proto.SessionViewModel
+import io.github.lewin671.remoteagent.core.proto.SessionViewerImageView
 import io.github.lewin671.remoteagent.proto.ImageFormat
-import io.github.lewin671.remoteagent.proto.ImageSource
+import io.github.lewin671.remoteagent.proto.ImageRef
 import io.github.lewin671.remoteagent.proto.ImageSync
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -94,96 +92,174 @@ sealed interface Big {
 }
 
 /**
- * The image viewer: every image of the session, paged, from the one tapped. The preview shows at
- * once, enlarged, and the display copy replaces it once downloaded and decrypted (in memory only).
- * Pinch to zoom, swipe down or back to close; save and share hand the picture to the system.
+ * The image viewer: every image of the session projected by Core (`timeline.viewerImages` +
+ * `imageViewer`), paged from the tapped anchor. Pinch to zoom, swipe down or back to close;
+ * save and share hand the picture to the system.
  */
 @Composable
 fun ImageViewer(sid: String, seq: Long, index: Int) {
     val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    LaunchedEffect(remote, sid) { remote.openSession(sid) }
-    val win = remember(seq) {
-        io.github.lewin671.remoteagent.core.proto.SessionWindowRequest.newBuilder()
-            .setLimit(200)
-            .apply { if (seq > 0) aroundSeq = seq }
-            .build()
-    }
-    val vm by remote.watchSession(sid, win).collectAsState(
-        initial = io.github.lewin671.remoteagent.core.proto.SessionViewModel.getDefaultInstance(),
-    )
-    val all = remember(vm.timeline.itemsList) { sessionTimelineImages(vm.timeline.itemsList) }
-    val start =
-        remember(all.size > 0) {
-            var n = 0
-            val first = all.indexOfFirst { it.seq == seq }
-            if (first >= 0) n = first + index
-            n.coerceIn(0, (all.size - 1).coerceAtLeast(0))
+    val closed = remember(remote, sid, seq, index) { AtomicBoolean(false) }
+    val closeCoreOnly = remember(remote, sid, closed) {
+        {
+            if (closed.compareAndSet(false, true)) {
+                remote.closeSessionImageViewer(sid)
+            }
         }
-    val emptyNote = if (!vm.header.found && (vm.header.missing || (vm.header.sessionsListed && vm.header.hasMissingText()))) {
-        uiText(vm.header.missingText).ifEmpty { copy(UiMessages.commonAndroidCannotFindThisSession()) }
-    } else {
-        copy(UiMessages.projectsReadingDirectory())
     }
-    BackHandler { nav.back() }
-    PagedImageViewer(all.size, start, nav.back, emptyNote,
-        picture = { page -> ViewerPage(remote, sid, all[page], vm.header.connState == CoreConnState.CONN_STATE_CONNECTED) },
+    val closeAndBack = remember(closeCoreOnly, nav) {
+        {
+            closeCoreOnly()
+            nav.back()
+        }
+    }
+
+    LaunchedEffect(remote, sid) { remote.openSession(sid) }
+    LaunchedEffect(remote, sid, seq, index) {
+        remote.openSessionImageViewer(sid, seq = seq, imageIndex = index)
+    }
+    DisposableEffect(remote, sid, closeCoreOnly) {
+        onDispose { closeCoreOnly() }
+    }
+
+    val vm by remember(remote, sid) { remote.watchSession(sid) }.collectAsState(
+        initial = remember(sid) { remote.currentSessionView(sid) ?: SessionViewModel.getDefaultInstance() },
+    )
+    val all = vm.timeline.viewerImagesList
+    val viewer = vm.imageViewer
+    val previewsById = remember(vm.timeline.itemsList) { indexPreviewsById(vm.timeline.itemsList) }
+
+    val start = remember(all.size, viewer.open, viewer.currentIndex, seq, index) {
+        when {
+            all.isEmpty() -> 0
+            viewer.open -> viewer.currentIndex.coerceIn(0, all.lastIndex)
+            else -> all.indexOfFirst { it.seq == seq && it.eventImageIndex == index }
+                .takeIf { it >= 0 }
+                ?: all.indexOfFirst { it.seq == seq }.takeIf { it >= 0 }?.let { (it + index).coerceIn(0, all.lastIndex) }
+                ?: 0
+        }
+    }
+
+    val emptyNote = when {
+        viewer.hasEmptyText() -> uiText(viewer.emptyText)
+        !vm.header.found && (vm.header.missing || (vm.header.sessionsListed && vm.header.hasMissingText())) ->
+            uiText(vm.header.missingText).ifEmpty { copy(UiMessages.commonAndroidCannotFindThisSession()) }
+        else -> copy(UiMessages.projectsReadingDirectory())
+    }
+
+    PagedImageViewer(
+        count = all.size,
+        start = start,
+        onClose = closeAndBack,
+        empty = emptyNote,
+        syncedPage = if (viewer.open && all.isNotEmpty()) viewer.currentIndex.coerceIn(0, all.lastIndex) else null,
+        onPageSettled = { page ->
+            if (page != viewer.currentIndex) {
+                remote.navigateSessionImageViewer(sid, setIndex = true, index = page)
+            }
+        },
+        positionLabel = { page ->
+            if (viewer.hasPositionText() && viewer.open && page == viewer.currentIndex) {
+                uiText(viewer.positionText)
+            } else {
+                "${page + 1} / ${all.size}"
+            }
+        },
+        picture = { page ->
+            val cur = all[page]
+            ViewerPage(
+                remote = remote,
+                sid = sid,
+                img = cur,
+                previewRef = previewsById[cur.ref.imageId] ?: cur.ref,
+                online = vm.header.connState == CoreConnState.CONN_STATE_CONNECTED,
+            )
+        },
         info = { page ->
             val cur = all[page]
-            val agentValue = vm.header.agent.takeIf { it != io.github.lewin671.remoteagent.proto.Agent.AGENT_UNSPECIFIED }
-                ?: DEFAULT_AGENT
-            val agent = agentName(agentValue, copy = copy)
-            val from = when (cur.ref.source) {
-                ImageSource.IMAGE_SOURCE_TOOL -> copy(UiMessages.imageAndroidViewedBy(agent = agent))
-                ImageSource.IMAGE_SOURCE_GENERATED -> copy(UiMessages.imageAndroidGeneratedBy(agent = agent))
-                else -> copy(UiMessages.imageAndroidUserPasted())
+            val from = if (cur.hasSourceLabel()) uiText(cur.sourceLabel) else ""
+            if (from.isNotEmpty()) {
+                Text(from, color = Color.White, style = T.s13b, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "", color = Color(0xFFD5DADE), style = T.s13, fontFamily = MonoFamily, maxLines = 2)
-            val w = if (cur.ref.originalWidth > 0) cur.ref.originalWidth else cur.ref.width
-            val h = if (cur.ref.originalHeight > 0) cur.ref.originalHeight else cur.ref.height
+            val path = cur.displayPath.ifEmpty { cur.displayName }
+            if (path.isNotEmpty()) {
+                Text(
+                    path,
+                    color = Color(0xFFD5DADE),
+                    style = T.s13,
+                    fontFamily = MonoFamily,
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
+                )
+            }
             val title = uiText(vm.header.title)
-            Text(listOfNotNull(if (w > 0) "$w × $h" else null, title.ifEmpty { null }).joinToString(" · "), color = Color(0xFFB9BFC6), style = T.s13)
-            ViewerActions(remote, sid, cur)
-        })
+            val meta = listOfNotNull(cur.sizeText.ifEmpty { null }, title.ifEmpty { null }).joinToString(" · ")
+            if (meta.isNotEmpty()) {
+                Text(meta, color = Color(0xFFB9BFC6), style = T.s13)
+            }
+            ViewerActions(remote, sid, cur, previewsById[cur.ref.imageId] ?: cur.ref)
+        },
+    )
 }
 
-private fun sessionTimelineImages(items: List<io.github.lewin671.remoteagent.core.proto.SessionTimelineItem>): List<SessionImage> = buildList {
-    fun appendItem(item: io.github.lewin671.remoteagent.core.proto.SessionTimelineItem) {
-        when (item.kindCase) {
-            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.USER_MESSAGE ->
-                item.userMessage.imagesList.forEach {
-                    add(SessionImage(it, item.seq, io.github.lewin671.remoteagent.proto.Event.KindCase.USER_MESSAGE))
-                }
-            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.TOOL_CALL ->
-                item.toolCall.imagesList.forEach {
-                    add(SessionImage(it, item.seq, io.github.lewin671.remoteagent.proto.Event.KindCase.TOOL_CALL, item.toolCall.title))
-                }
-            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.TOOL_GROUP ->
-                item.toolGroup.callsList.forEach { call ->
-                    call.imagesList.forEach {
-                        add(SessionImage(it, item.seq, io.github.lewin671.remoteagent.proto.Event.KindCase.TOOL_CALL, call.title))
-                    }
-                }
-            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.GENERATED_IMAGES ->
-                item.generatedImages.imagesList.forEach {
-                    add(SessionImage(it, item.seq, io.github.lewin671.remoteagent.proto.Event.KindCase.IMAGE_GENERATED))
-                }
-            io.github.lewin671.remoteagent.core.proto.SessionTimelineItem.KindCase.QUIET_SCHEDULED_GROUP ->
-                item.quietScheduledGroup.itemsList.forEach(::appendItem)
-            else -> {}
+private fun indexPreviewsById(items: List<SessionTimelineItem>): Map<String, ImageRef> = buildMap {
+    fun record(refs: List<ImageRef>) {
+        for (ref in refs) {
+            if (ref.imageId.isNotEmpty() && !ref.preview.isEmpty) {
+                put(ref.imageId, ref)
+            }
         }
     }
-    items.forEach(::appendItem)
+    fun visit(list: List<SessionTimelineItem>) {
+        for (item in list) {
+            when (item.kindCase) {
+                SessionTimelineItem.KindCase.USER_MESSAGE -> record(item.userMessage.imagesList)
+                SessionTimelineItem.KindCase.TOOL_CALL -> record(item.toolCall.imagesList)
+                SessionTimelineItem.KindCase.TOOL_GROUP -> item.toolGroup.callsList.forEach { record(it.imagesList) }
+                SessionTimelineItem.KindCase.GENERATED_IMAGES -> record(item.generatedImages.imagesList)
+                SessionTimelineItem.KindCase.QUIET_SCHEDULED_GROUP -> visit(item.quietScheduledGroup.itemsList)
+                else -> Unit
+            }
+        }
+    }
+    visit(items)
 }
 
 /** The same full-screen paging/close controls for message and draft images. */
 @Composable
-internal fun PagedImageViewer(count: Int, start: Int, onClose: () -> Unit, empty: String = uiText(UiMessages.imageAndroidEmpty()), picture: @Composable (Int) -> Unit, info: @Composable (Int) -> Unit) {
+internal fun PagedImageViewer(
+    count: Int,
+    start: Int,
+    onClose: () -> Unit,
+    empty: String = uiText(UiMessages.imageAndroidEmpty()),
+    syncedPage: Int? = null,
+    onPageSettled: ((Int) -> Unit)? = null,
+    positionLabel: (@Composable (Int) -> String)? = null,
+    picture: @Composable (Int) -> Unit,
+    info: @Composable (Int) -> Unit,
+) {
     BackHandler { onClose() }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        if (count == 0) { Text(empty, Modifier.align(Alignment.Center), color = Color.White); return@Box }
+        if (count == 0) {
+            Text(empty, Modifier.align(Alignment.Center), color = Color.White)
+            return@Box
+        }
         val pager = rememberPagerState(initialPage = start.coerceIn(0, count - 1)) { count }
+        LaunchedEffect(syncedPage, count) {
+            val target = syncedPage?.coerceIn(0, count - 1) ?: return@LaunchedEffect
+            if (!pager.isScrollInProgress && pager.currentPage != target) {
+                pager.scrollToPage(target)
+            }
+        }
+        if (onPageSettled != null) {
+            LaunchedEffect(pager) {
+                snapshotFlow { pager.settledPage }
+                    .distinctUntilChanged()
+                    .collect { settled -> onPageSettled(settled) }
+            }
+        }
         var drag by remember { mutableFloatStateOf(0f) }
         HorizontalPager(
             pager,
@@ -197,11 +273,12 @@ internal fun PagedImageViewer(count: Int, start: Int, onClose: () -> Unit, empty
         ) { page ->
             picture(page)
         }
+        val current = pager.currentPage.coerceAtMost(count - 1)
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassButton(Lucide.X, uiText(UiMessages.commonClose()), onClose, dark = true)
             Spacer(Modifier.width(12.dp))
             Text(
-                "${pager.currentPage.coerceAtMost(count - 1) + 1} / $count",
+                positionLabel?.invoke(current) ?: "${current + 1} / $count",
                 color = Color.White,
                 style = T.s15b,
             )
@@ -212,7 +289,7 @@ internal fun PagedImageViewer(count: Int, start: Int, onClose: () -> Unit, empty
                 .background(Color(0xAA000000))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
-            info(pager.currentPage.coerceAtMost(count - 1))
+            info(current)
         }
     }
 }
@@ -224,36 +301,42 @@ internal fun PagedImageViewer(count: Int, start: Int, onClose: () -> Unit, empty
 internal val ViewerImages = AccountCache<Big.Ready>(6)
 
 @Composable
-private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: Boolean) {
+private fun ViewerPage(
+    remote: Remote,
+    sid: String,
+    img: SessionViewerImageView,
+    previewRef: ImageRef,
+    online: Boolean,
+) {
     val copy = uiText()
     val ref = img.ref
-    val preview = rememberPreview(ref)
-    var big by remember(ref.imageId) { mutableStateOf<Big>(Big.Loading) }
+    val preview = rememberPreview(previewRef)
+    var big by remember(ref.imageId, img.hasDisplayCopy) { mutableStateOf<Big>(Big.Loading) }
     var attempt by remember { mutableIntStateOf(0) }
-    LaunchedEffect(ref.imageId, attempt, online) {
+    LaunchedEffect(ref.imageId, img.hasDisplayCopy, attempt, online) {
         big = load(remote, sid, img, online)
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val b = big
         val bmp = (b as? Big.Ready)?.bitmap ?: preview
-        if (bmp != null)
-            ViewerBitmap(bmp, ref.path.ifEmpty { copy(UiMessages.imageTitle()) })
-        else Text(fileName(ref.path, copy = copy), color = Color.White)
-        val note =
-            when (b) {
-                Big.Loading -> null
-                is Big.Ready -> null
-                Big.NotSynced ->
-                    if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) copy(UiMessages.imageAndroidNameOnly())
-                    else copy(UiMessages.imageOriginalOnComputer())
-                Big.Expired -> copy(UiMessages.imageOriginalExpired())
-                Big.Offline -> copy(UiMessages.imageLoadConnected())
-                is Big.Failed -> copy(UiMessages.imageAndroidDownloadRetry(reason = b.why))
-                is Big.Corrupt -> if (b.why === RETIRED_HISTORY_ERROR) uiText(b.why) else copy(UiMessages.imageAndroidVerifyFailed(reason = uiText(b.why)))
-            }
-        if (b == Big.Loading)
+        val label = img.displayName.ifEmpty { ref.path.ifEmpty { copy(UiMessages.imageTitle()) } }
+        if (bmp != null) ViewerBitmap(bmp, label)
+        else Text(label, color = Color.White)
+        val note = when (b) {
+            Big.Loading -> null
+            is Big.Ready -> null
+            Big.NotSynced ->
+                if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) copy(UiMessages.imageAndroidNameOnly())
+                else copy(UiMessages.imageOriginalOnComputer())
+            Big.Expired -> copy(UiMessages.imageOriginalExpired())
+            Big.Offline -> copy(UiMessages.imageLoadConnected())
+            is Big.Failed -> copy(UiMessages.imageAndroidDownloadRetry(reason = b.why))
+            is Big.Corrupt -> if (b.why === RETIRED_HISTORY_ERROR) uiText(b.why) else copy(UiMessages.imageAndroidVerifyFailed(reason = uiText(b.why)))
+        }
+        if (b == Big.Loading) {
             Spinner(Color.White, Modifier.align(Alignment.Center), size = 32.dp, stroke = 3.dp)
-        if (note != null)
+        }
+        if (note != null) {
             Text(
                 note,
                 Modifier.align(Alignment.TopCenter)
@@ -264,6 +347,7 @@ private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: B
                 color = Color.White,
                 style = T.s15,
             )
+        }
     }
 }
 
@@ -275,25 +359,30 @@ internal fun ViewerBitmap(bitmap: ImageBitmap, label: String) {
         scale = (scale * z).coerceIn(1f, 6f)
         offset = if (scale == 1f) androidx.compose.ui.geometry.Offset.Zero else offset + pan
     }
-    Image(bitmap, label, Modifier.fillMaxSize().transformable(zoom, canPan = { scale > 1f }).graphicsLayer {
-        scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y
-    }, contentScale = ContentScale.Fit)
+    Image(
+        bitmap,
+        label,
+        Modifier.fillMaxSize().transformable(zoom, canPan = { scale > 1f }).graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            translationX = offset.x
+            translationY = offset.y
+        },
+        contentScale = ContentScale.Fit,
+    )
 }
 
-private suspend fun load(remote: Remote, sid: String, img: SessionImage, online: Boolean, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): Big {
+private suspend fun load(remote: Remote, sid: String, img: SessionViewerImageView, online: Boolean): Big {
     val ref = img.ref
-    if (ref.sync != ImageSync.IMAGE_SYNC_SYNCED || ref.imageId.isEmpty()) return Big.NotSynced
-    ViewerImages.get(remote, "$sid/${ref.imageId}")?.let {
-        return it
-    }
+    if (!img.hasDisplayCopy || ref.imageId.isEmpty()) return Big.NotSynced
+    ViewerImages.get(remote, "$sid/${ref.imageId}")?.let { return it }
     return try {
         when (val r = remote.image(sid, ref.imageId)) {
             is Remote.ImageResult.Loaded -> {
                 val bytes = r.payload.data.toByteArray()
-                val bmp =
-                    withContext(Dispatchers.Default) {
-                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                    } ?: return Big.Corrupt(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.imageAndroidCannotDecodeImage()))
+                val bmp = withContext(Dispatchers.Default) {
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                } ?: return Big.Corrupt(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.imageAndroidCannotDecodeImage()))
                 Big.Ready(bmp.asImageBitmap(), bytes, r.payload.format).also {
                     ViewerImages.put(remote, "$sid/${ref.imageId}", it)
                 }
@@ -309,60 +398,51 @@ private suspend fun load(remote: Remote, sid: String, img: SessionImage, online:
     }
 }
 
-private fun ext(f: ImageFormat) =
-    when (f) {
-        ImageFormat.IMAGE_FORMAT_PNG -> "png"
-        ImageFormat.IMAGE_FORMAT_WEBP -> "webp"
-        ImageFormat.IMAGE_FORMAT_GIF -> "gif"
-        else -> "jpg"
-    }
-
-private fun mime(f: ImageFormat) =
-    "image/" +
-        when (f) {
-            ImageFormat.IMAGE_FORMAT_JPEG,
-            ImageFormat.IMAGE_FORMAT_UNSPECIFIED -> "jpeg"
-            else -> ext(f)
-        }
-
 /**
  * 保存 and 分享: the display copy (or the preview when that is all there is) leaves the app here, by
  * the user's choice.
  */
 @Composable
-private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
+private fun ViewerActions(
+    remote: Remote,
+    sid: String,
+    img: SessionViewerImageView,
+    previewRef: ImageRef,
+) {
     val copy = uiText()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var msg by remember(img.ref.imageId) { mutableStateOf("") }
-    fun bytes(): Pair<ByteArray, ImageFormat>? {
-        ViewerImages.get(remote, "$sid/${img.ref.imageId}")?.let {
-            return it.bytes to it.format
-        }
-        val p = img.ref.preview.toByteArray()
-        return if (p.isEmpty()) null else p to img.ref.previewFormat
+    val ext = img.fileExtension.ifEmpty { "jpg" }
+    val mime = img.mimeType.ifEmpty { "image/jpeg" }
+    val name = img.displayName.ifEmpty { copy(UiMessages.imageTitle()) }
+
+    fun bytes(): ByteArray? {
+        ViewerImages.get(remote, "$sid/${img.ref.imageId}")?.let { return it.bytes }
+        val p = previewRef.preview.toByteArray()
+        return if (p.isEmpty()) null else p
     }
+
     fun doSave() {
-        val b = bytes() ?: return
+        val data = bytes() ?: return
         scope.launch {
-            msg =
-                try {
-                    withContext(Dispatchers.IO) {
-                        save(context, b.first, b.second, fileName(img.ref.path, copy = copy))
-                    }
-                    copy(UiMessages.imageAndroidSaved())
-                } catch (e: Exception) {
-                    copy(UiMessages.projectsAndroidSaveFailed(reason = (displayError(e)).toString()))
+            msg = try {
+                withContext(Dispatchers.IO) {
+                    save(context, data, ext, mime, name)
                 }
+                copy(UiMessages.imageAndroidSaved())
+            } catch (e: Exception) {
+                copy(UiMessages.projectsAndroidSaveFailed(reason = displayError(e)))
+            }
         }
     }
-    // Android 8 and 9 need the storage permission to add to the gallery; 10 and later do not.
-    val askStorage =
-        androidx.activity.compose.rememberLauncherForActivityResult(
-            androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
-        ) { ok ->
-            if (ok) doSave() else msg = copy(UiMessages.imageAndroidSavePermission())
-        }
+
+    val askStorage = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { ok ->
+        if (ok) doSave() else msg = copy(UiMessages.imageAndroidSavePermission())
+    }
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -371,65 +451,70 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
             onClick = {
                 if (
                     needsStoragePermission(Build.VERSION.SDK_INT) &&
-                        androidx.core.content.ContextCompat.checkSelfPermission(
-                            context,
-                            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-                )
+                    androidx.core.content.ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
                     askStorage.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                else doSave()
+                } else {
+                    doSave()
+                }
             },
         ) {
             Text(copy(UiMessages.commonSave()), style = T.s15b, color = CardColors.link)
         }
         TextButton(
             onClick = {
-                val b = bytes() ?: return@TextButton
+                val data = bytes() ?: return@TextButton
                 scope.launch {
                     try {
-                        val uri =
-                            withContext(Dispatchers.IO) { shareFile(context, b.first, b.second) }
+                        val uri = withContext(Dispatchers.IO) { shareFile(context, data, ext) }
                         context.startActivity(
                             Intent.createChooser(
                                 Intent(Intent.ACTION_SEND)
-                                    .setType(mime(b.second))
+                                    .setType(mime)
                                     .putExtra(Intent.EXTRA_STREAM, uri)
                                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
                                 copy(UiMessages.imageAndroidShareTitle()),
                             ),
                         )
                     } catch (e: Exception) {
-                        msg = copy(UiMessages.imageShareFailed(reason = (displayError(e)).toString()))
+                        msg = copy(UiMessages.imageShareFailed(reason = displayError(e)))
                     }
                 }
             },
         ) {
             Text(copy(UiMessages.imageShare()), style = T.s15b, color = CardColors.link)
         }
-        if (msg.isNotEmpty())
+        if (msg.isNotEmpty()) {
             Text(msg, color = Color.White, style = T.s13)
+        }
     }
 }
 
-private fun save(context: Context, data: ByteArray, format: ImageFormat, name: String, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) {
+private fun save(
+    context: Context,
+    data: ByteArray,
+    ext: String,
+    mime: String,
+    name: String,
+    copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText,
+) {
     val base = name.substringBeforeLast('.').ifEmpty { "remote-agent" }
-    val values =
-        ContentValues().apply {
-            put(
-                MediaStore.Images.Media.DISPLAY_NAME,
-                "$base-${System.currentTimeMillis()}.${ext(format)}",
-            )
-            put(MediaStore.Images.Media.MIME_TYPE, mime(format))
-            if (Build.VERSION.SDK_INT >= 29) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/remote-agent")
-                put(MediaStore.Images.Media.IS_PENDING, 1)
-            }
+    val values = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, "$base-${System.currentTimeMillis()}.$ext")
+        put(MediaStore.Images.Media.MIME_TYPE, mime)
+        if (Build.VERSION.SDK_INT >= 29) {
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/remote-agent")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
         }
+    }
     val resolver = context.contentResolver
-    val uri =
-        resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: throw IllegalStateException(copy(UiMessages.imageAndroidPhotoLibraryIsNotWritable()))
-    resolver.openOutputStream(uri)?.use { it.write(data) } ?: throw IllegalStateException(copy(UiMessages.imageAndroidPhotoLibraryIsNotWritable()))
+    val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        ?: throw IllegalStateException(copy(UiMessages.imageAndroidPhotoLibraryIsNotWritable()))
+    resolver.openOutputStream(uri)?.use { it.write(data) }
+        ?: throw IllegalStateException(copy(UiMessages.imageAndroidPhotoLibraryIsNotWritable()))
     if (Build.VERSION.SDK_INT >= 29) {
         values.clear()
         values.put(MediaStore.Images.Media.IS_PENDING, 0)
@@ -438,9 +523,9 @@ private fun save(context: Context, data: ByteArray, format: ImageFormat, name: S
 }
 
 /** A file for the share sheet; shared files are deleted when the app starts again. */
-private fun shareFile(context: Context, data: ByteArray, format: ImageFormat): android.net.Uri {
+private fun shareFile(context: Context, data: ByteArray, ext: String): android.net.Uri {
     val dir = File(context.cacheDir, SHARED_DIR).apply { mkdirs() }
-    val f = File(dir, "image-${System.currentTimeMillis()}.${ext(format)}")
+    val f = File(dir, "image-${System.currentTimeMillis()}.$ext")
     f.writeBytes(data)
     return FileProvider.getUriForFile(context, context.packageName + ".files", f)
 }

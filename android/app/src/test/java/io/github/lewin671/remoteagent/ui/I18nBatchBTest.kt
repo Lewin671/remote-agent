@@ -306,9 +306,9 @@ class I18nBatchBTest(private val locale: String) {
     @Test fun renameDialog() { show { RenameDialog("s", defaultSessionVm) {} }; shot("rename") }
     @Test fun attachmentRows() {
         show { Column(Modifier.padding(16.dp)) {
-            FileChip("example.patch", 2048, PendingImage.State.Uploading(.42f), {}, {})
-            FileChip("notes.txt", 320, PendingImage.State.Failed.raw("Raw transport diagnostic"), {}, {})
-            Text(uiText(FILES_AS_THEY_ARE))
+            FileChip("example.patch", "2.0 KB", PendingImage.State.Uploading(.42f), {}, {})
+            FileChip("notes.txt", "320 B", PendingImage.State.Failed.raw("Raw transport diagnostic"), {}, {})
+            Text(uiText(UiMessages.attachmentMetadata()))
             GeneratedCard("generated", listOf(ImageRef.newBuilder().setImageId("image").setWidth(640).setHeight(360).build()), "Original image prompt") {}
         } }; shot("attachments")
     }
@@ -319,7 +319,35 @@ class I18nBatchBTest(private val locale: String) {
             .setPreview(com.google.protobuf.ByteString.copyFrom(bytes)).setPreviewWidth(240).setPreviewHeight(160)
             .setWidth(240).setHeight(160).setSync(ImageSync.IMAGE_SYNC_NAME_ONLY).setSource(ImageSource.IMAGE_SOURCE_USER).build()
         val imgItem = tl(6, "e6") { userMessage = SessionUserMessageItem.newBuilder().addImages(image).build() }
-        remote.showForTest(state, sessions = mapOf("s" to sessionVm(items = history + imgItem)))
+        val viewerImg = SessionViewerImageView.newBuilder()
+            .setViewerIndex(0)
+            .setSeq(6)
+            .setEventImageIndex(0)
+            .setKind(SessionImageSourceKind.SESSION_IMAGE_SOURCE_KIND_USER)
+            .setRef(image)
+            .setSourceLabel(Text.newBuilder().setKey(UiMessages.imageUserSource().key))
+            .setSizeText("240 × 160")
+            .setHasDisplayCopy(false)
+            .setDisplayName("example.png")
+            .setDisplayPath("/example/demo/example.png")
+            .setFileExtension("png")
+            .setMimeType("image/png")
+            .build()
+        val vm = sessionVm(items = history + imgItem).toBuilder()
+            .setTimeline(
+                sessionVm(items = history + imgItem).timeline.toBuilder()
+                    .addViewerImages(viewerImg),
+            )
+            .setImageViewer(
+                SessionImageViewerView.newBuilder()
+                    .setOpen(true)
+                    .setCurrentIndex(0)
+                    .setTotalCount(1)
+                    .setPositionText(Text.newBuilder().setLiteral("1 / 1"))
+                    .setCurrentImage(viewerImg),
+            )
+            .build()
+        remote.showForTest(state, sessions = mapOf("s" to vm))
         show { ImageViewer("s", 6, 0) }; shot("image-viewer")
     }
     @Test fun draftViewer() {
@@ -330,7 +358,7 @@ class I18nBatchBTest(private val locale: String) {
             state = PendingImage.State.Uploading(.42f)
         }
         draft.images += image
-        show { DraftImageViewer(draft, remote, "m", 0) {} }; shot("draft-viewer")
+        show { DraftImageViewer(draft, remote, "m", 0, originalMaxBytes = 20L * 1024 * 1024) {} }; shot("draft-viewer")
     }
     @Test fun terminalView() { show { TerminalPane(remote, "s", true) }; shot("terminal") }
     @Test fun terminalReader() {

@@ -790,6 +790,18 @@ class CoreHost(
         return ViewModel.parseFrom(rawVm)
     }
 
+    /** Synchronous stateless attachment/problem evaluation via Core (`Screen.attachment_eval`). */
+    fun evaluateAttachments(req: AttachmentEvalScreenRequest): AttachmentEvalViewModel {
+        val screen = Screen.newBuilder().setAttachmentEval(req).build()
+        val rawVm: ByteArray? = synchronized(coreLock) {
+            if (closed.get()) return AttachmentEvalViewModel.getDefaultInstance()
+            core.view(screen.toByteArray())
+        }
+        if (rawVm == null || rawVm.isEmpty()) return AttachmentEvalViewModel.getDefaultInstance()
+        val vm = ViewModel.parseFrom(rawVm)
+        return if (vm.viewCase == ViewModel.ViewCase.ATTACHMENT_EVAL) vm.attachmentEval else AttachmentEvalViewModel.getDefaultInstance()
+    }
+
     private class KeyedWatchFlow<V, K>(
         private val lock: Any,
         private val key: Any,
@@ -1122,6 +1134,37 @@ class CoreHost(
 
     fun retrySessionEvents(sessionId: String) =
         send { setRetrySessionEvents(RetrySessionEventsAction.newBuilder().setSessionId(sessionId)) }
+
+    fun retrySessionLoad(sessionId: String) =
+        send { setSessionRetryLoad(SessionRetryLoadAction.newBuilder().setSessionId(sessionId)) }
+
+    fun sendSharedFileLocalState(event: SharedFileLocalStateEvent) =
+        send { setSharedFileLocalState(event) }
+
+    fun openSessionImageViewer(sessionId: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) =
+        send {
+            setSessionImageViewerOpen(
+                SessionImageViewerOpenAction.newBuilder()
+                    .setSessionId(sessionId)
+                    .setSeq(seq)
+                    .setImageIndex(imageIndex)
+                    .setViewerIndex(viewerIndex),
+            )
+        }
+
+    fun navigateSessionImageViewer(sessionId: String, delta: Int = 0, setIndex: Boolean = false, index: Int = 0) =
+        send {
+            setSessionImageViewerNavigate(
+                SessionImageViewerNavigateAction.newBuilder()
+                    .setSessionId(sessionId)
+                    .setDelta(delta)
+                    .setSetIndex(setIndex)
+                    .setIndex(index),
+            )
+        }
+
+    fun closeSessionImageViewer(sessionId: String) =
+        send { setSessionImageViewerClose(SessionImageViewerCloseAction.newBuilder().setSessionId(sessionId)) }
 
     fun fetchSession(sessionId: String) =
         send { setFetchSession(FetchSessionAction.newBuilder().setSessionId(sessionId)) }

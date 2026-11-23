@@ -461,6 +461,7 @@ class RaApp : Application() {
         r.uiMessageResolver = { msg -> io.github.lewin671.remoteagent.ui.sessionText(msg) }
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
         io.github.lewin671.remoteagent.ui.SettingsExecutor.attach(this@RaApp, r)
+        sharedFiles.attachRemote(r)
         attachNetwork(r)
         Push.open()
         _remote.value = r

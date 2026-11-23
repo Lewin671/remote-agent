@@ -354,19 +354,9 @@ private fun HeroCard(
         ) {
             val memCaption = uiText(view.memory.caption)
             if (chart.hasScrub) {
-                val pt = chart.pointsList.getOrNull(chart.scrubIndex)
-                if (pt != null) {
-                    if (metric == StatusMetric.CPU) {
-                        val pct = pt.value
-                        BigNumber(kotlin.math.round(pct).toInt().toString(), pct, "%", ink, ink2)
-                    } else {
-                        val gib = pt.value / (1024.0 * 1024.0 * 1024.0)
-                        val text = String.format(java.util.Locale.US, "%.1f", gib)
-                        BigNumber(text, gib, memCaption.ifEmpty { view.memory.unit.takeIf { it.isNotEmpty() } }, ink, ink2)
-                    }
-                } else {
-                    BigNumber(uiText(chart.scrubValue).ifEmpty { "—" }, 0.0, if (metric == StatusMetric.MEMORY) memCaption.ifEmpty { null } else null, ink, ink2)
-                }
+                val text = chart.scrubValueText.ifEmpty { "—" }
+                val unit = chart.scrubUnit.takeIf { it.isNotEmpty() }
+                BigNumber(text, chart.scrubNumericValue, unit, ink, ink2)
             } else if (metric == StatusMetric.CPU) {
                 val cpu = view.cpu
                 BigNumber(cpu.valueText.ifEmpty { "—" }, cpu.value, cpu.unit.takeIf { it.isNotEmpty() }, ink, ink2)
@@ -386,9 +376,9 @@ private fun HeroCard(
                     val pText = uiText(view.memory.pressureText)
                     val tText = uiText(view.memory.totalText)
                     val sText = uiText(view.memory.swapText)
+                    val secondary = tText.ifEmpty { sText }
                     if (pText.isNotEmpty()) Text(pText, style = T.s13b, color = ink, maxLines = 1)
-                    if (tText.isNotEmpty()) Text(tText, style = T.s12.digits(), color = ink2, maxLines = 1)
-                    if (sText.isNotEmpty()) Text(sText, style = T.s12.digits(), color = ink2, maxLines = 1)
+                    if (secondary.isNotEmpty()) Text(secondary, style = T.s12.digits(), color = ink2, maxLines = 1)
                 }
             }
         }
@@ -491,12 +481,12 @@ private fun MemoryTile(
             PressureScale(mem.pressurePosition.toFloat(), Modifier.alpha(if (dim) .5f else 1f))
         }
         Spacer(Modifier.height(10.dp))
+        val secondary = uiText(mem.totalText).ifEmpty { uiText(mem.swapText) }.takeIf { it.isNotEmpty() }
         SayLines(
             uiText(mem.pressureText),
             ink,
-            uiText(mem.totalText),
+            secondary,
             ink2,
-            uiText(mem.swapText).takeIf { it.isNotEmpty() },
         )
     }
 }

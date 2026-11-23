@@ -39,7 +39,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.core.view.WindowCompat
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.sanitizeSharedFileName
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
 
 /** Full-screen file viewers share the image viewer's platform transition and the chat palette. */
 @Composable
@@ -68,8 +68,10 @@ internal fun SharedFileViewerDialog(onDismiss: () -> Unit, content: @Composable 
 internal fun SharedFileViewerPage(
     fileName: String,
     onClose: () -> Unit,
-    onAction: (SharedMenuAction) -> Unit,
+    onAction: (SharedFileMenuAction) -> Unit,
     tag: String,
+    nameHead: String = "",
+    nameTail: String = "",
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val p = pal
@@ -85,16 +87,18 @@ internal fun SharedFileViewerPage(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             GlassButton(Lucide.ChevronLeft, copy(UiMessages.commonBack()), onClose)
-            val name = sanitizeSharedFileName(fileName)
             val measurer = rememberTextMeasurer()
             BoxWithConstraints(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 val width = constraints.maxWidth
-                val title = remember(name, width, measurer) { fitMiddleEllipsizedName(name, T.s17b, width, 1, measurer) }
+                val title = remember(fileName, nameHead, nameTail, width, measurer) {
+                    fitMiddleEllipsizedName(fileName, nameHead, nameTail, T.s17b, width, 1, measurer)
+                }
                 Text(title, style = T.s17b, color = p.ink, maxLines = 1, softWrap = false,
-                    modifier = Modifier.semantics { contentDescription = name })
+                    overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis,
+                    modifier = Modifier.semantics { contentDescription = fileName })
             }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                GlassButton(SharedFileIcons.Share, copy(UiMessages.sharedFileMenuShare()), { onAction(SharedMenuAction.SHARE) })
+                GlassButton(SharedFileIcons.Share, copy(UiMessages.sharedFileMenuShare()), { onAction(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE) })
                 Box {
                     GlassButton(Lucide.Ellipsis, copy(UiMessages.commonAndroidMore()), { menu = true })
                     if (menu) Popup(
@@ -104,13 +108,12 @@ internal fun SharedFileViewerPage(
                         properties = PopupProperties(focusable = true),
                     ) {
                         SharedFileContextMenuCard(
-                            path = "", machineName = "",
+                            path = "", sourceCaption = "",
                             entries = listOf(
-                                MenuEntry(SharedMenuAction.OPEN_WITH, { uiText(UiMessages.sharedFileMenuOpenWith()) }, SharedFileIcons.OpenWith),
-                                MenuEntry(SharedMenuAction.SAVE_TO_DOWNLOADS, { uiText(UiMessages.sharedFileMenuSaveToDownloads()) }, SharedFileIcons.Save),
+                                viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH, UiMessages.sharedFileMenuOpenWith().key),
+                                viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE, UiMessages.sharedFileMenuSaveToDownloads().key),
                             ),
                             onAction = { menu = false; onAction(it) },
-                            copy = copy,
                             modifier = Modifier.testTag("$tag-menu"),
                         )
                     }

@@ -251,6 +251,37 @@ class UnauthenticatedScreensTest {
     }
 
     @Test
+    fun pendingCreateTransitionToReadyDoesNotResetJoinToEntry() {
+        val app = app()
+        val pendingCreate = SecurityWorkflowStatus.newBuilder()
+            .setBootstrap(io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_PENDING_CREATE)
+            .setServer("https://ra.example.com")
+            .build()
+        val ready = SecurityWorkflowStatus.newBuilder()
+            .setBootstrap(io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY)
+            .setServer("https://ra.example.com")
+            .setDeviceId("dev-1")
+            .setAccountId("acct-1")
+            .build()
+        val statusState = androidx.compose.runtime.mutableStateOf(pendingCreate)
+        show {
+            JoinContent(
+                app = app,
+                bootstrapOverride = statusState.value,
+            )
+        }
+        // In pending creation mode: we are on CreateAccountScreen, not the welcome entry screen.
+        ui.onNodeWithText("加入已有账户").assertDoesNotExist()
+
+        // Core transitions status from PENDING_CREATE -> READY as continueCreation persists the account.
+        // JoinContent must stay on CreateAccountScreen (not drop back to welcome entry and cancel adoption).
+        ui.runOnIdle { statusState.value = ready }
+        ui.waitForIdle()
+        ui.onNodeWithText("加入已有账户").assertDoesNotExist()
+        ui.onNodeWithText("用恢复码找回管理权").assertDoesNotExist()
+    }
+
+    @Test
     fun accountSecurityIgnoresDefaultUnsetProtobufPendingOp() {
         val unset = SecurityWorkflowStatus.getDefaultInstance()
         assertNotNull(unset.pendingOp)

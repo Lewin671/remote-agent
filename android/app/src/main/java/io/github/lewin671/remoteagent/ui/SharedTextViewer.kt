@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
 import io.github.lewin671.remoteagent.data.isSharedMarkdownFile
 
 @Composable
@@ -23,10 +24,12 @@ internal fun SharedFileTextViewerDialog(
     fileName: String,
     text: String,
     onDismiss: () -> Unit,
-    onAction: (SharedMenuAction) -> Unit,
+    onAction: (SharedFileMenuAction) -> Unit,
+    nameHead: String = "",
+    nameTail: String = "",
 ) {
     SharedFileViewerDialog(onDismiss) {
-        SharedFileTextViewerPage(fileName, text, onDismiss, onAction)
+        SharedFileTextViewerPage(fileName, text, onDismiss, onAction, nameHead, nameTail)
     }
 }
 
@@ -35,10 +38,12 @@ internal fun SharedFileTextViewerPage(
     fileName: String,
     text: String,
     onClose: () -> Unit,
-    onAction: (SharedMenuAction) -> Unit,
+    onAction: (SharedFileMenuAction) -> Unit,
+    nameHead: String = "",
+    nameTail: String = "",
 ) {
     val p = pal
-    SharedFileViewerPage(fileName, onClose, onAction, tag = "text-viewer") {
+    SharedFileViewerPage(fileName, onClose, onAction, tag = "text-viewer", nameHead = nameHead, nameTail = nameTail) {
         val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         Column(
             Modifier.weight(1f).fillMaxWidth().testTag("text-viewer-body").verticalScroll(rememberScrollState())

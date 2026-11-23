@@ -83,15 +83,14 @@ import kotlin.math.roundToInt
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CORE_SESSION_WINDOW_LIMIT
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
-import io.github.lewin671.remoteagent.core.MAX_IMAGES
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.listWhen
-import io.github.lewin671.remoteagent.core.maxFiles
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
@@ -175,9 +174,10 @@ fun SessionScreen(sid: String) {
                 val cur = draft.text.value
                 draft.text.value = if (cur.isBlank()) eff.text else cur.trimEnd() + "\n" + eff.text
             }
-            if (Outbox.takeBack(sid, eff.requestId, draft)) {
+            val caps = remote.attachmentCapsFor(header.machineId, sid)
+            if (Outbox.takeBack(sid, eff.requestId, draft, caps.maxImages, caps.maxFiles)) {
                 draft.images.forEach { draft.bindAbort(it, remote) }
-                if (header.machineId.isNotEmpty()) draft.sendAllTo(remote, header.machineId)
+                if (header.machineId.isNotEmpty()) draft.sendAllTo(remote, header.machineId, caps, sid)
             }
         }
     }
@@ -210,7 +210,7 @@ fun SessionScreen(sid: String) {
                     color = p.ink,
                     textAlign = TextAlign.Center,
                 )
-                PillButton(uiText(UiMessages.commonRetry()), { remote.openSession(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
+                PillButton(uiText(UiMessages.commonRetry()), { remote.retrySessionLoad(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
                 TextLink(uiText(UiMessages.commonBack()), nav.back)
             } else if (header.missing || (header.sessionsListed && header.hasMissingText())) {
                 Text(
@@ -219,7 +219,7 @@ fun SessionScreen(sid: String) {
                     color = p.ink,
                     textAlign = TextAlign.Center,
                 )
-                PillButton(uiText(UiMessages.commonRetry()), { remote.openSession(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
+                PillButton(uiText(UiMessages.commonRetry()), { remote.retrySessionLoad(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
                 TextLink(uiText(UiMessages.commonBack()), nav.back)
             } else {
                 var showSpinner by remember(sid) { mutableStateOf(false) }
@@ -681,7 +681,6 @@ internal fun ChatPane(
     val remote = LocalRemote.current
     val header = vm.header
     val tl = vm.timeline
-    val machineName = if (header.hasComputerName()) uiText(header.computerName) else header.machineId.take(8)
     val list = rememberLazyListState()
     val followState = remember { Follow() }
     val unseen = remember { NewMessages() }
@@ -755,13 +754,25 @@ internal fun ChatPane(
     entrances.outgoing(trayItems.map { it.requestId })
 
     Column(modifier.clipToBounds().onSizeChanged { shownHeight = it.height }) {
-        val reachabilityUnknown = header.computerReachability == ComputerReachability.COMPUTER_REACHABILITY_UNKNOWN
-        val chatMachineOnline = header.computerOnline || reachabilityUnknown
+        val sharedItemsById = remember(items) {
+            buildMap<String, SessionSharedFileItem> {
+                fun visit(list: List<SessionTimelineItem>) {
+                    for (it in list) {
+                        when (it.kindCase) {
+                            SessionTimelineItem.KindCase.SHARED_FILES ->
+                                it.sharedFiles.filesList.forEach { f -> put(f.fileId, f) }
+                            SessionTimelineItem.KindCase.QUIET_SCHEDULED_GROUP ->
+                                visit(it.quietScheduledGroup.itemsList)
+                            else -> Unit
+                        }
+                    }
+                }
+                visit(items)
+            }
+        }
         SharedFileHost(
             sessionId = sid,
-            machineName = machineName,
-            machineOnline = chatMachineOnline,
-            sessionExited = header.exited,
+            itemsById = sharedItemsById,
             modifier = Modifier.weight(1f),
         ) {
             Box(Modifier.fillMaxSize()) {
@@ -771,9 +782,6 @@ internal fun ChatPane(
                     agentName = header.agentName,
                     onImage = { seq, i -> nav.image(sid, seq, i) },
                     onSession = { nav.session(it) },
-                    machineName = machineName,
-                    machineOnline = chatMachineOnline,
-                    sessionExited = header.exited,
                 )
                 CompositionLocalProvider(LocalChat provides chatCtx) {
                     var showSkeleton by remember(sid) { mutableStateOf(false) }
@@ -1008,14 +1016,20 @@ internal fun Composer(
     val keeping = Outbox.keeping(sid)
     val maxImg = attachCaps.maxImages
     val blocked = if (caps.hasImageUploadBlockedReason()) uiText(caps.imageUploadBlockedReason).ifEmpty { null } else null
-    RefreshDraftUploads(images, remote, machineId, blocked, attachCaps)
-    val pick = rememberImagePicker(images, remote, machineId, blocked, attachCaps)
+    RefreshDraftUploads(images, remote, machineId, blocked, attachCaps, sessionId = sid)
+    val pick = rememberImagePicker(images, remote, machineId, attachCaps, sessionId = sid)
+    val draftBlocked = rememberDraftAttachmentsBlocked(remote, machineId, sid, images.documents, images.pictures, attachCaps)
 
     fun send(requestedMode: SendMode? = null) {
         val mode = requestedMode ?: composer.defaultSendMode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED } ?: SendMode.SEND_MODE_STEER
         val msg = text.trim()
-        if (images.restoring || images.readingFiles || fileDraftBlocked(images, attachCaps, copy = copy) != null || (msg.isEmpty() && images.images.isEmpty())) return
-        images.sendAllTo(remote, machineId, attachCaps)
+        if (images.restoring || images.readingFiles || (msg.isEmpty() && images.images.isEmpty())) return
+        val currentBlocked = evaluateDraftAttachmentsBlocked(remote, machineId, sid, images.documents, images.pictures, copy = copy)
+        if (currentBlocked != null) {
+            images.notice = currentBlocked
+            return
+        }
+        images.sendAllTo(remote, machineId, attachCaps, sid)
         if (!images.ready(machineId) && images.images.isNotEmpty()) return
         val picked = images.images.toList()
         Motion.tap(view)
@@ -1048,7 +1062,7 @@ internal fun Composer(
                 onSent()
             }.onFailure {
                 images.notice = copy(UiMessages.composerAndroidNotSent(reason = displayError(it)))
-                images.sendAllTo(remote, machineId, attachCaps)
+                images.sendAllTo(remote, machineId, attachCaps, sid)
             }
         }
     }
@@ -1065,13 +1079,14 @@ internal fun Composer(
         onText = { text = it },
         placeholder = placeholder,
         canSend = composer.enabled &&
-            !images.restoring && !images.readingFiles && fileDraftBlocked(images, attachCaps, copy = copy) == null &&
+            !images.restoring && !images.readingFiles && draftBlocked == null &&
             !keeping && online &&
             (text.isNotBlank() || images.images.isNotEmpty()) &&
             (images.images.isEmpty() || images.ready(machineId)),
         onSend = { send() },
         onPlus = pick,
-        onFile = rememberDocumentPicker(images, remote, machineId, attachCaps),
+        onFile = rememberDocumentPicker(images, remote, machineId, attachCaps, sessionId = sid),
+        fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty(),
         plusEnabled = composer.canAttachImages && !images.restoring && (blocked == null || (attachCaps.supportsFiles && online && header.computerOnline)),
         onQueue = if (composer.supportsQueueMode && composer.hasActiveTurn) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (composer.interruptVisible) ({
@@ -1101,7 +1116,7 @@ internal fun Composer(
                 onUndo = { remote.undoCancel(sid) },
             )
         }) else null,
-        top = { ImageStrip(images, remote, machineId, maxImg, attachCaps) },
+        top = { ImageStrip(images, remote, machineId, maxImg, attachCaps, sessionId = sid) },
     )
     if (interruptSlot.hasErrorText()) {
         Notice(copy(UiMessages.sessionAndroidInterruptFailed(reason = uiText(interruptSlot.errorText))), Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp), NoticeTone.ERROR)

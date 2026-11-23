@@ -561,6 +561,14 @@ object ScreenGoldenLoader {
         setMaxFileBytes(o.i64("maxFileBytes"))
         o.obj("imageUploadBlockedReason")?.let { setImageUploadBlockedReason(parseText(it)) }
         setDiskFull(o.bool("diskFull"))
+        o.obj("fileUploadBlockedReason")?.let { setFileUploadBlockedReason(parseText(it)) }
+        setGalleryAllowsVideo(o.bool("galleryAllowsVideo"))
+        setGalleryAcceptMime(o.str("galleryAcceptMime"))
+        setMaxFileNameBytes(o.i32("maxFileNameBytes"))
+        setMaxFileSizeText(o.str("maxFileSizeText"))
+        setOriginalImageMaxBytes(o.i64("originalImageMaxBytes"))
+        o.obj("originalImageHint")?.let { setOriginalImageHint(parseText(it)) }
+        o.obj("fileMetadataNotice")?.let { setFileMetadataNotice(parseText(it)) }
     }.build()
 
     private fun parseRing(o: JsonObject): MachineRingView = MachineRingView.newBuilder().apply {
@@ -594,6 +602,9 @@ object ScreenGoldenLoader {
         o.obj("a11ySummary")?.let { setA11YSummary(parseText(it)) }
         setCanStepPrev(o.bool("canStepPrev"))
         setCanStepNext(o.bool("canStepNext"))
+        setScrubNumericValue(o.f64("scrubNumericValue"))
+        setScrubValueText(o.str("scrubValueText"))
+        setScrubUnit(o.str("scrubUnit"))
     }.build()
 
     private fun parseMachineStatus(o: JsonObject): MachineStatusViewModel = MachineStatusViewModel.newBuilder().apply {
@@ -1315,8 +1326,16 @@ object ScreenGoldenLoader {
                                 .setMaxFiles(cp.i32("maxFiles"))
                                 .setMaxFileBytes(cp.i64("maxFileBytes"))
                                 .setCapabilitiesLoaded(cp.bool("capabilitiesLoaded"))
+                                .setGalleryAllowsVideo(cp.bool("galleryAllowsVideo"))
+                                .setGalleryAcceptMime(cp.str("galleryAcceptMime"))
+                                .setMaxFileNameBytes(cp.i32("maxFileNameBytes"))
+                                .setMaxFileSizeText(cp.str("maxFileSizeText"))
+                                .setOriginalImageMaxBytes(cp.i64("originalImageMaxBytes"))
                                 .apply {
                                     cp.obj("imageUploadBlockedReason")?.let { setImageUploadBlockedReason(parseText(it)) }
+                                    cp.obj("fileUploadBlockedReason")?.let { setFileUploadBlockedReason(parseText(it)) }
+                                    cp.obj("originalImageHint")?.let { setOriginalImageHint(parseText(it)) }
+                                    cp.obj("fileMetadataNotice")?.let { setFileMetadataNotice(parseText(it)) }
                                 },
                         )
                     }
@@ -1581,9 +1600,44 @@ object ScreenGoldenLoader {
                     setFetching(tl.bool("fetching"))
                     setAwaitingCache(tl.bool("awaitingCache"))
                     setNextBeforeSeq(tl.i64("nextBeforeSeq"))
+                    tl.arr("viewerImages").forEach { ve -> addViewerImages(parseViewerImage(ve.jsonObject)) }
                 },
             )
         }
+        o.obj("imageViewer")?.let { iv ->
+            setImageViewer(
+                SessionImageViewerView.newBuilder().apply {
+                    setOpen(iv.bool("open"))
+                    setCurrentIndex(iv.i32("currentIndex"))
+                    setTotalCount(iv.i32("totalCount"))
+                    setHasPrev(iv.bool("hasPrev"))
+                    setHasNext(iv.bool("hasNext"))
+                    iv.obj("positionText")?.let { setPositionText(parseText(it)) }
+                    iv.obj("currentImage")?.let { setCurrentImage(parseViewerImage(it)) }
+                    iv.obj("emptyText")?.let { setEmptyText(parseText(it)) }
+                },
+            )
+        }
+    }.build()
+
+    private fun parseViewerImage(o: JsonObject): SessionViewerImageView = SessionViewerImageView.newBuilder().apply {
+        setViewerIndex(o.i32("viewerIndex"))
+        setSeq(o.i64("seq"))
+        setEventImageIndex(o.i32("eventImageIndex"))
+        setTimestampMs(o.i64("timestampMs"))
+        setKind(o.enum("kind", SessionImageSourceKind.SESSION_IMAGE_SOURCE_KIND_UNSPECIFIED))
+        o.obj("ref")?.let { setRef(parseImageRef(it)) }
+        setToolTitle(o.str("toolTitle"))
+        setRevisedPrompt(o.str("revisedPrompt"))
+        o.obj("sourceLabel")?.let { setSourceLabel(parseText(it)) }
+        setSizeText(o.str("sizeText"))
+        setAspectRatio(o.f64("aspectRatio"))
+        setClampedAspectRatio(o.f64("clampedAspectRatio"))
+        setHasDisplayCopy(o.bool("hasDisplayCopy"))
+        setDisplayName(o.str("displayName"))
+        setDisplayPath(o.str("displayPath"))
+        setFileExtension(o.str("fileExtension"))
+        setMimeType(o.str("mimeType"))
     }.build()
 
     private fun parseCommandState(o: JsonObject): SessionCommandState = SessionCommandState.newBuilder().apply {
@@ -1642,7 +1696,25 @@ object ScreenGoldenLoader {
                     u.arr("images").forEach { ie -> addImages(parseImageRef(ie.jsonObject)) }
                     u.arr("files").forEach { fe ->
                         val f = fe.jsonObject
-                        addFiles(SessionFileRefView.newBuilder().setName(f.str("name")).setSizeBytes(f.i64("sizeBytes")).setMimeType(f.str("mimeType")))
+                        addFiles(
+                            SessionFileRefView.newBuilder()
+                                .setName(f.str("name"))
+                                .setSizeBytes(f.i64("sizeBytes"))
+                                .setMimeType(f.str("mimeType"))
+                                .setDisplayName(f.str("displayName"))
+                                .setNameHead(f.str("nameHead"))
+                                .setNameTail(f.str("nameTail"))
+                                .apply { f.obj("sizeText")?.let { setSizeText(parseText(it)) } },
+                        )
+                    }
+                    u.arr("textSegments").forEach { se ->
+                        val s = se.jsonObject
+                        addTextSegments(
+                            SessionMessageTextSegment.newBuilder()
+                                .setText(s.str("text"))
+                                .setImageIndex(s.i32("imageIndex"))
+                                .apply { s.obj("imageLabel")?.let { setImageLabel(parseText(it)) } },
+                        )
                     }
                 },
             )
@@ -1673,7 +1745,46 @@ object ScreenGoldenLoader {
                                 .setName(f.str("name"))
                                 .setPath(f.str("path"))
                                 .setSizeBytes(f.i64("sizeBytes"))
-                                .setAvailable(f.bool("available")),
+                                .setAvailable(f.bool("available"))
+                                .setDisplayName(f.str("displayName"))
+                                .setNameHead(f.str("nameHead"))
+                                .setNameTail(f.str("nameTail"))
+                                .setKind(f.enum("kind", SharedFileKind.SHARED_FILE_KIND_UNSPECIFIED))
+                                .setDisplayPath(f.str("displayPath"))
+                                .setStatus(f.enum("status", SharedFileCardStatus.SHARED_FILE_CARD_STATUS_UNSPECIFIED))
+                                .setSubtitleIsError(f.bool("subtitleIsError"))
+                                .setProgress(f.f64("progress"))
+                                .setPrimaryAction(f.enum("primaryAction", SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_UNSPECIFIED))
+                                .setPrimaryEnabled(f.bool("primaryEnabled"))
+                                .setSupportsAlbumSave(f.bool("supportsAlbumSave"))
+                                .setHasMediaDuration(f.bool("hasMediaDuration"))
+                                .setWebPreviewKind(f.enum("webPreviewKind", SharedFileWebPreviewKind.SHARED_FILE_WEB_PREVIEW_KIND_UNSPECIFIED))
+                                .setWebPreviewMime(f.str("webPreviewMime"))
+                                .setDownloadedBytes(f.i64("downloadedBytes"))
+                                .setWaitingReconnect(f.bool("waitingReconnect"))
+                                .setDurationText(f.str("durationText"))
+                                .apply {
+                                    f.str("sha256").takeIf { it.isNotEmpty() }?.let {
+                                        setSha256(com.google.protobuf.ByteString.copyFrom(java.util.Base64.getDecoder().decode(it)))
+                                    }
+                                    f.obj("kindLabel")?.let { setKindLabel(parseText(it)) }
+                                    f.obj("sizeText")?.let { setSizeText(parseText(it)) }
+                                    f.obj("sourceCaption")?.let { setSourceCaption(parseText(it)) }
+                                    f.obj("subtitle")?.let { setSubtitle(parseText(it)) }
+                                    f.obj("a11yLabel")?.let { setA11YLabel(parseText(it)) }
+                                    f.obj("primaryLabel")?.let { setPrimaryLabel(parseText(it)) }
+                                    f.obj("primaryDisabledReason")?.let { setPrimaryDisabledReason(parseText(it)) }
+                                    f.arr("menuItems").forEach { me ->
+                                        val m = me.jsonObject
+                                        addMenuItems(
+                                            SharedFileMenuItemView.newBuilder()
+                                                .setAction(m.enum("action", SharedFileMenuAction.SHARED_FILE_MENU_ACTION_UNSPECIFIED))
+                                                .setDestructive(m.bool("destructive"))
+                                                .setEnabled(m.bool("enabled"))
+                                                .apply { m.obj("label")?.let { setLabel(parseText(it)) } },
+                                        )
+                                    }
+                                },
                         )
                     }
                 },
@@ -1788,13 +1899,19 @@ object ScreenGoldenLoader {
         setDecisionAllowed(o.bool("decisionAllowed"))
         o.obj("decisionLabel")?.let { setDecisionLabel(parseText(it)) }
         o.obj("backgroundLabel")?.let { setBackgroundLabel(parseText(it)) }
+        setSeq(o.i64("seq"))
+        o.arr("images").forEach { ie -> addImages(parseImageRef(ie.jsonObject)) }
     }.build()
 
     private fun parseImageRef(o: JsonObject): ImageRef = ImageRef.newBuilder().apply {
         setImageId(o.str("imageId"))
+        setSync(o.enum("sync", io.github.lewin671.remoteagent.proto.ImageSync.IMAGE_SYNC_UNSPECIFIED))
+        setCliIndex(o.i32("cliIndex"))
         setWidth(o.i32("width"))
         setHeight(o.i32("height"))
         setPath(o.str("path"))
+        setFormat(o.enum("format", io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_UNSPECIFIED))
+        setSource(o.enum("source", io.github.lewin671.remoteagent.proto.ImageSource.IMAGE_SOURCE_UNSPECIFIED))
     }.build()
 
     private fun parseConnectionStatus(o: JsonObject): ConnectionStatusView = ConnectionStatusView.newBuilder()

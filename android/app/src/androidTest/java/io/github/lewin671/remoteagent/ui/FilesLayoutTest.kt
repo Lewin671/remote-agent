@@ -29,8 +29,8 @@ class FilesLayoutTest {
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                     Column(Modifier.width(320.dp)) {
-                        FileChip(name, 1024, PendingImage.State.Uploading(.4f), onRemove = { removals++ })
-                        FileChip("data.csv", 0, PendingImage.State.Failed(AppImageFailure.FILE_MISSING), onRetry = {}, onRemove = {})
+                        FileChip(name, "1.0 KB", PendingImage.State.Uploading(.4f), onRemove = { removals++ })
+                        FileChip("data.csv", "0 B", PendingImage.State.Failed(AppImageFailure.FILE_MISSING), onRetry = {}, onRemove = {})
                         ComposeBox("", {}, "消息", false, {}, { picturePicks++ }, onFile = { filePicks++ })
                     }
                 }
@@ -45,7 +45,7 @@ class FilesLayoutTest {
         ui.runOnIdle { assertEquals(1, removals) }
         ui.onNodeWithContentDescription("添加附件").performClick()
         ui.onNodeWithText("照片和视频", useUnmergedTree = true).assertIsDisplayed()
-        ui.onNodeWithText(resolveUiMessage(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext, FILES_AS_THEY_ARE), useUnmergedTree = true).assertIsDisplayed()
+        ui.onNodeWithText(resolveUiMessage(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext, io.github.lewin671.remoteagent.core.UiMessages.attachmentMetadata()), useUnmergedTree = true).assertIsDisplayed()
         ui.onNodeWithText("文件", useUnmergedTree = true).performClick()
         ui.runOnIdle { assertEquals(1, filePicks); assertEquals(0, picturePicks) }
     }

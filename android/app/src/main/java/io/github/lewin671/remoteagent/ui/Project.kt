@@ -96,19 +96,26 @@ fun NewSessionBox(
 
     val online = state.peer(machine).ready
     val fallbackOnline = machine != null && online && state.machines[machine]?.pathState?.reachable == true
+    val copy = uiText()
     val attachCaps = view.attachmentCaps(fallbackOnline = fallbackOnline)
     val blocked = if (view.hasImageUploadBlockedReason()) uiText(view.imageUploadBlockedReason).ifEmpty { null } else null
     RefreshDraftUploads(images, remote, machine, blocked, attachCaps)
-    val pick = rememberImagePicker(images, remote, machine, blocked, attachCaps)
+    val pick = rememberImagePicker(images, remote, machine, attachCaps)
+    val draftBlocked = rememberDraftAttachmentsBlocked(remote, machine, "", images.documents, images.pictures, attachCaps)
 
     val uploadsReady =
         !images.restoring &&
             !images.readingFiles &&
-            fileDraftBlocked(images, attachCaps) == null &&
+            draftBlocked == null &&
             (machine == null || images.images.all { it.readyFor(machine) })
     val canStart = view.canStart && uploadsReady
 
     fun start() {
+        val currentBlocked = evaluateDraftAttachmentsBlocked(remote, machine, "", images.documents, images.pictures, copy = copy)
+        if (currentBlocked != null) {
+            images.notice = currentBlocked
+            return
+        }
         if (machine != null && blocked == null) images.sendAllTo(remote, machine, attachCaps)
         if (!canStart) return
         val st = Starts.of(key)
@@ -229,6 +236,7 @@ fun NewSessionBox(
             onSend = { start() },
             onPlus = pick,
             onFile = rememberDocumentPicker(images, remote, machine, attachCaps),
+            fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty(),
             plusEnabled = !images.restoring && (blocked == null || attachCaps.supportsFiles && attachCaps.machineOnline),
             sendLabel = uiText(UiMessages.newSessionAndroidStart()),
             focusRequester = fr,

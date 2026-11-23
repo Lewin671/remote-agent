@@ -200,6 +200,45 @@ class MachineStatusShotsTest {
     }
 
     @Test
+    fun memoryCardDoesNotDuplicateSwapWhenTotalTextAlreadyIncludesSwap() {
+        val base = ScreenGoldenLoader.machineStatusView("machine_status_lifecycle", "liveCriticalDisk")
+        val vm = base.toBuilder()
+            .setMemory(
+                base.memory.toBuilder()
+                    .setTotalText(Text.newBuilder().setLiteral("共 16 GB，交换 6 GB"))
+                    .setSwapText(Text.newBuilder().setLiteral("交换 6 GB")),
+            )
+            .build()
+        var main by mutableStateOf(StatusMetric.CPU)
+        show {
+            MachineStatusContent(
+                view = vm,
+                main = main,
+                onMain = { main = it },
+                onScrub = { _, _, _ -> },
+                onSelectTab = {},
+                onBack = {},
+                onRetry = {},
+                onOpenStorage = {},
+                onCleanup = {},
+                onSession = {},
+            )
+        }
+        // Memory in tile position: swap appears once inside totalText, not repeated as a separate line.
+        assertEquals(
+            1,
+            ui.onAllNodesWithText("交换 6 GB", substring = true, useUnmergedTree = true).fetchSemanticsNodes().size,
+        )
+        // Memory in hero position: same — no duplicate swap line.
+        ui.runOnIdle { main = StatusMetric.MEMORY }
+        ui.waitForIdle()
+        assertEquals(
+            1,
+            ui.onAllNodesWithText("交换 6 GB", substring = true, useUnmergedTree = true).fetchSemanticsNodes().size,
+        )
+    }
+
+    @Test
     fun theSwapShowsOneSetOfFiguresAtATimeAndKeepsTheCardVisible() {
         fun alpha(tag: String): Float? =
             ui.onAllNodesWithText("", useUnmergedTree = true).let {

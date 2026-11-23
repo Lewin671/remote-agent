@@ -183,4 +183,19 @@ class ScheduledPushIdentityTest {
         }
     }
 
+    @Test fun unspecifiedKindDoesNotShowNotification() {
+        val context = RuntimeEnvironment.getApplication()
+        Push.createChannels(context)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val display = SecurityNotifyDisplay.newBuilder()
+            .setValid(true)
+            .setKind(NotifyKind.NOTIFY_KIND_UNSPECIFIED)
+            .setTitle(CoreText.newBuilder().setLiteral("Unexpected"))
+            .setBody(CoreText.newBuilder().setLiteral("Body"))
+            .build()
+        Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_UNSPECIFIED, display, showContent = true)
+        Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_UNSPECIFIED, null, showContent = false)
+        assertTrue(shadowOf(manager).allNotifications.isEmpty())
+    }
+
 }

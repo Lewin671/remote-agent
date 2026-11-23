@@ -170,14 +170,6 @@ class ImagesTest {
     }
 
     @Test
-    fun aMessageTakesSixAtMostInPickOrder() {
-        val (taken, left) = takePicked(4, listOf("a", "b", "c", "d"))
-        assertEquals(listOf("a", "b"), taken)
-        assertEquals(2, left)
-        assertEquals(emptyList<String>() to 1, takePicked(6, listOf("x")))
-    }
-
-    @Test
     fun compressionShrinksTheLongSideOnly() {
         assertEquals(2048 to 1536, fitLongSide(4032, 3024))
         assertEquals(1536 to 2048, fitLongSide(3024, 4032))

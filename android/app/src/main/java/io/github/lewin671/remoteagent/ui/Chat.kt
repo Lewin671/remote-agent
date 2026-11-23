@@ -55,6 +55,10 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -62,13 +66,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionInputNoticeKind
+import io.github.lewin671.remoteagent.core.proto.SessionMessageTextSegment
 import io.github.lewin671.remoteagent.core.proto.SessionNoteKind
 import io.github.lewin671.remoteagent.core.proto.SessionNoteTone
 import io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionToolStatus
-import io.github.lewin671.remoteagent.proto.SentFile
-import io.github.lewin671.remoteagent.proto.SharedFile
 import kotlin.math.roundToInt
 
 /** Side gutter of rows inside a chat (design-system §3). */
@@ -100,13 +103,15 @@ fun MeBubble(
     foldScheduled: Boolean = false,
     animated: Boolean = false,
     settling: Boolean = false,
+    richText: AnnotatedString? = null,
 ) {
     val p = pal
-    var expanded by remember(text) { mutableStateOf(false) }
-    var long by remember(text) { mutableStateOf(false) }
+    val body = richText ?: text?.let { AnnotatedString(it) }
+    var expanded by remember(body) { mutableStateOf(false) }
+    var long by remember(body) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(horizontal = if (padded) ChatSide else 0.dp, vertical = 8.dp), horizontalAlignment = Alignment.End) {
         top?.invoke()
-        if (text != null) Box(Modifier.fillMaxWidth(0.84f), contentAlignment = Alignment.CenterEnd) {
+        if (body != null) Box(Modifier.fillMaxWidth(0.84f), contentAlignment = Alignment.CenterEnd) {
             val shape = Radii.R22
             Box(
                 Modifier.clip(shape).background(if (failed) p.fill2 else p.bubble)
@@ -114,7 +119,7 @@ fun MeBubble(
             ) {
                 SelectionContainer {
                     Text(
-                        text,
+                        body,
                         style = T.s17,
                         color = p.ink,
                         maxLines = if (foldScheduled && !expanded) 6 else Int.MAX_VALUE,
@@ -364,8 +369,25 @@ internal fun TimelineItemView(
         }
         SessionTimelineItem.KindCase.USER_MESSAGE -> {
             val um = item.userMessage
+            val richBody = if (um.textSegmentsCount > 0) {
+                buildAnnotatedString {
+                    for (seg in um.textSegmentsList) {
+                        when (seg.kindCase) {
+                            SessionMessageTextSegment.KindCase.IMAGE_INDEX -> {
+                                val label = if (seg.hasImageLabel()) uiText(seg.imageLabel) else "[Image #${seg.imageIndex}]"
+                                pushStyle(SpanStyle(color = p.ink2, fontWeight = platformWeight(FontWeight.Medium)))
+                                append(label)
+                                pop()
+                            }
+                            SessionMessageTextSegment.KindCase.TEXT -> append(seg.text)
+                            else -> Unit
+                        }
+                    }
+                }.takeIf { it.isNotEmpty() }
+            } else null
             MeBubble(
-                text = um.text.ifEmpty { null },
+                text = if (richBody != null) null else um.text.ifEmpty { null },
+                richText = richBody,
                 caption = if (um.hasOriginCaption()) uiText(um.originCaption) else null,
                 captionIcon = if (um.isScheduled) Lucide.Clock else null,
                 foldScheduled = um.isScheduled,
@@ -374,7 +396,7 @@ internal fun TimelineItemView(
                     {
                         if (um.imagesCount > 0) ImageRow(um.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) })
                         if (um.filesCount > 0) {
-                            FileChips(um.filesList.map { f -> SentFile.newBuilder().setName(f.name).setSizeBytes(f.sizeBytes).build() })
+                            FileChips(um.filesList)
                         }
                     }
                 } else null,
@@ -414,7 +436,7 @@ internal fun TimelineItemView(
                         ToolCallRow(
                             call,
                             "${item.id}:$cid",
-                            item.seq,
+                            call.seq.takeIf { it > 0L } ?: item.seq,
                             expanded = cid in commands,
                             onToggle = { commands = if (cid in commands) commands - cid else commands + cid },
                             modifier = Modifier.padding(start = 10.dp),
@@ -424,20 +446,7 @@ internal fun TimelineItemView(
             }
         }
         SessionTimelineItem.KindCase.SHARED_FILES -> if (chat != null) {
-            SharedFilesBlock(
-                item.sharedFiles.filesList.map { f ->
-                    SharedFile.newBuilder()
-                        .setFileId(f.fileId)
-                        .setName(f.name)
-                        .setPath(f.path)
-                        .setSizeBytes(f.sizeBytes)
-                        .build()
-                },
-                chat.sid,
-                chat.machineName,
-                chat.machineOnline,
-                chat.sessionExited,
-            )
+            SharedFilesBlock(item.sharedFiles.filesList, chat.sid)
         }
         SessionTimelineItem.KindCase.GENERATED_IMAGES -> {
             val g = item.generatedImages

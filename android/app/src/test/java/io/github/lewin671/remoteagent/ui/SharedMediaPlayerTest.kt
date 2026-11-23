@@ -41,8 +41,9 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.core.app.ApplicationProvider
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
 import io.github.lewin671.remoteagent.data.ThemeMode
-import io.github.lewin671.remoteagent.proto.SharedFile
 import org.robolectric.shadows.ShadowDialog
 import java.io.File
 import java.nio.file.Files
@@ -114,7 +115,7 @@ class SharedMediaPlayerTest {
     val ui = createComposeRule()
 
     private val owner = TestLifecycleOwner()
-    private val actions = mutableListOf<SharedMenuAction>()
+    private val actions = mutableListOf<SharedFileMenuAction>()
     private var closed = 0
     private lateinit var tempDir: File
 
@@ -156,7 +157,7 @@ class SharedMediaPlayerTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 SharedMediaPlayerDialog(
-                    SharedFile.newBuilder().setName(file.name).build(), file, video = true,
+                    SessionSharedFileItem.newBuilder().setName(file.name).setDisplayName(file.name).build(), file, video = true,
                     onDismiss = {}, onAction = {},
                 )
             }
@@ -185,7 +186,7 @@ class SharedMediaPlayerTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 if (visible) SharedMediaPlayerDialog(
-                    SharedFile.newBuilder().setName(file.name).build(), file, video = false,
+                    SessionSharedFileItem.newBuilder().setName(file.name).setDisplayName(file.name).build(), file, video = false,
                     onDismiss = { visible = false }, onAction = {},
                 )
             }
@@ -217,7 +218,7 @@ class SharedMediaPlayerTest {
             CompositionLocalProvider(androidx.compose.ui.platform.LocalConfiguration provides configuration) {
                 RaTheme(ThemeMode.LIGHT) {
                     SharedMediaPlayerDialog(
-                        SharedFile.newBuilder().setName(file.name).build(), file, video = true,
+                        SessionSharedFileItem.newBuilder().setName(file.name).setDisplayName(file.name).build(), file, video = true,
                         onDismiss = {}, onAction = {},
                     )
                 }
@@ -430,7 +431,7 @@ class SharedMediaPlayerTest {
         ui.onNodeWithText("播放不了这个文件").assertExists()
         ui.onAllNodesWithContentDescription("播放").assertCountEquals(0)
         ui.onNodeWithText("用其他应用打开").performClick()
-        assertEquals(listOf(SharedMenuAction.OPEN_WITH), actions)
+        assertEquals(listOf(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH), actions)
         ui.onNodeWithContentDescription("关闭").performClick()
         assertEquals(1, closed)
     }
@@ -443,7 +444,7 @@ class SharedMediaPlayerTest {
         ui.onNodeWithText("存到「下载」").assertExists()
         ui.onNodeWithText("分享…").assertExists()
         ui.onNodeWithText("用其他应用打开").performClick()
-        assertEquals(listOf(SharedMenuAction.OPEN_WITH), actions)
+        assertEquals(listOf(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH), actions)
         ui.onAllNodesWithText("存到相册").assertCountEquals(0)
     }
 

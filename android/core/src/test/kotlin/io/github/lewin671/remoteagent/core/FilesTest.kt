@@ -10,33 +10,27 @@ import java.security.MessageDigest
 
 class FilesTest {
     @get:org.junit.Rule val hangGuard = hangGuard()
-    private fun machine(supported: Boolean, count: Int = 6, bytes: Long = MAX_FILE_BYTES) = MachineView("m", true, 0,
-        MachineMeta.newBuilder().setProtocolVersion(PEER_PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder()
-            .setFileUpload(supported).setMaxFilesPerMessage(count).setMaxFileUploadBytes(bytes)).build())
-
-    @Test fun capabilityAndIndependentLimits() {
-        assertFalse(filesSupported(null))
-        assertFalse(filesSupported(machine(false)))
-        assertTrue(filesSupported(machine(true)))
-        assertEquals(2, maxFiles(machine(true, 2)))
-        assertEquals(12L, maxFileBytes(machine(true, bytes = 12)))
-        assertEquals(6, maxFiles(machine(true, 99)))
-        assertNull(fileLimitError(0, 0, 6, MAX_FILE_BYTES))
-        assertNull(fileLimitError(MAX_FILE_BYTES, 5, 6, MAX_FILE_BYTES))
-        assertTrue(fileLimitError(MAX_FILE_BYTES + 1, 0, 6, MAX_FILE_BYTES)!!.contains("文件太大"))
-        assertTrue(fileLimitError(1, 6, 6, MAX_FILE_BYTES)!!.contains("最多 6 个文件"))
-        assertNotNull(fileLimitError(-1, 0, 6, MAX_FILE_BYTES))
-    }
-
-    @Test fun middleEllipsisKeepsExtensionAndUnicode() {
-        assertEquals("a.zip", fileChipName("a.zip"))
-        val name = "😀非常长的季度分析报告".repeat(5) + ".csv"
-        val shown = fileChipName(name)
-        assertTrue(shown.startsWith("😀非常"))
-        assertTrue(shown.endsWith(".csv"))
-        assertEquals(32, shown.codePointCount(0, shown.length))
-        assertFalse(shown.contains('\uFFFD'))
-    }
+    private val hundredMiB = 100L * 1024 * 1024
+    private suspend fun testUploadFile(
+        ch: UploadChannel,
+        transferId: String,
+        name: String,
+        total: Long,
+        open: () -> InputStream,
+        onPrepared: (Long) -> Unit = {},
+        onProgress: (Long, Long) -> Unit = { _, _ -> },
+    ) = uploadFile(
+        ch = ch,
+        transferId = transferId,
+        name = name,
+        total = total,
+        open = open,
+        maxBytes = hundredMiB,
+        maxNameBytes = 255,
+        maxSizeText = "100.0 MB",
+        onPrepared = onPrepared,
+        onProgress = onProgress,
+    )
 
     private class Channel(val expected: ByteArray, val lost: Boolean = false) : UploadChannel {
         var bytes = java.io.ByteArrayOutputStream()
@@ -72,7 +66,7 @@ class FilesTest {
         val ch = Channel(expected, lost = true)
         var opened = 0
         val progress = mutableListOf<Long>()
-        val result = uploadFile(ch, "transfer", "data.zip", expected.size.toLong(), {
+        val result = testUploadFile(ch, "transfer", "data.zip", expected.size.toLong(), {
             opened++
             object : ByteArrayInputStream(expected) {
                 override fun read(b: ByteArray, off: Int, len: Int): Int {
@@ -102,22 +96,22 @@ class FilesTest {
                 return daemon.complete(transferId)
             }
         }
-        val result = uploadFile(ch, "same-transfer", "data.zip", data.size.toLong(), { ByteArrayInputStream(data) })
+        val result = testUploadFile(ch, "same-transfer", "data.zip", data.size.toLong(), { ByteArrayInputStream(data) })
         assertEquals("file-id", result.fileId)
         assertEquals(4, puts)
         assertEquals(4, completes)
     }
 
     @Test fun acceptsEmptyFilesAndRejectsAChangedSource() = runBlocking {
-        assertEquals("file-id", uploadFile(Channel(byteArrayOf()), "t", "data.zip", 0, { ByteArrayInputStream(byteArrayOf()) }).fileId)
+        assertEquals("file-id", testUploadFile(Channel(byteArrayOf()), "t", "data.zip", 0, { ByteArrayInputStream(byteArrayOf()) }).fileId)
         val bytes = byteArrayOf(1, 2)
         for (hint in listOf(0L, 1L, 999L)) {
             var actual = -1L
-            uploadFile(Channel(bytes), "t", "data.zip", hint, { ByteArrayInputStream(bytes) }, onPrepared = { actual = it })
+            testUploadFile(Channel(bytes), "t", "data.zip", hint, { ByteArrayInputStream(bytes) }, onPrepared = { actual = it })
             assertEquals(2L, actual)
         }
         var opens = 0
-        val changed = runCatching { uploadFile(Channel(bytes), "t", "data.zip", 2, { ByteArrayInputStream(if (opens++ == 0) bytes else byteArrayOf(2, 1)) }) }
+        val changed = runCatching { testUploadFile(Channel(bytes), "t", "data.zip", 2, { ByteArrayInputStream(if (opens++ == 0) bytes else byteArrayOf(2, 1)) }) }
         assertTrue(changed.exceptionOrNull() is FileContentChanged)
     }
 
@@ -132,7 +126,7 @@ class FilesTest {
             fun receiving() = ImageUploadStatus.newBuilder().setState(ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING).setPersistedBytes(uploaded).build()
             override suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray): ImageUploadStatus = error("image")
             override suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray): ImageUploadStatus {
-                assertEquals(MAX_FILE_BYTES, total)
+                assertEquals(hundredMiB, total)
                 assertArrayEquals(expectedHash, sha256)
                 return receiving()
             }
@@ -152,10 +146,10 @@ class FilesTest {
         }
         var opens = 0
         var closes = 0
-        uploadFile(channel, "large", "large.bin", MAX_FILE_BYTES, {
+        testUploadFile(channel, "large", "large.bin", hundredMiB, {
             opens++
             object : InputStream() {
-                var remaining = MAX_FILE_BYTES
+                var remaining = hundredMiB
                 override fun read(): Int { if (remaining == 0L) return -1; remaining--; return 0 }
                 override fun read(b: ByteArray, off: Int, len: Int): Int {
                     assertTrue(len <= DEFAULT_CHUNK_BYTES)
@@ -168,7 +162,7 @@ class FilesTest {
                 override fun close() { closes++ }
             }
         })
-        assertEquals(MAX_FILE_BYTES, uploaded)
+        assertEquals(hundredMiB, uploaded)
         assertEquals(2, opens)
         assertEquals(2, closes)
     }

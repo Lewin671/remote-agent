@@ -29,29 +29,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.window.DialogWindowProvider
-import androidx.compose.runtime.SideEffect
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -59,13 +54,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -77,16 +70,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.positionOnScreen
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -94,16 +81,20 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -113,37 +104,32 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.CardVisualState
-import io.github.lewin671.remoteagent.core.SharedFileFailureKind
-import io.github.lewin671.remoteagent.core.SharedFileKind
-import io.github.lewin671.remoteagent.core.SharedFileTileStyle
-import io.github.lewin671.remoteagent.core.SharedFileTransferState
-import io.github.lewin671.remoteagent.core.SharedFileUiState
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.classifySharedFile
-import io.github.lewin671.remoteagent.core.displaySharedPath
-import io.github.lewin671.remoteagent.core.formatMediaDuration
-import io.github.lewin671.remoteagent.core.formatSharedFileSize
-import io.github.lewin671.remoteagent.core.formatSharedProgress
-import io.github.lewin671.remoteagent.core.resolveSharedFileUiState
-import io.github.lewin671.remoteagent.core.sanitizeSharedFileName
-import io.github.lewin671.remoteagent.core.splitMiddleTruncateName
-import io.github.lewin671.remoteagent.core.supportsAlbumSave
-import io.github.lewin671.remoteagent.core.tileStyle
-import io.github.lewin671.remoteagent.core.typeMessage
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus
+import io.github.lewin671.remoteagent.core.proto.SharedFileKind
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
+import io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import io.github.lewin671.remoteagent.data.isSharedTextFile
 import io.github.lewin671.remoteagent.data.readSharedTextFile
-import io.github.lewin671.remoteagent.proto.SharedFile
 import java.io.File
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -211,26 +197,26 @@ private fun Modifier.sharedFloatingShadow(
 }
 
 internal data class SharedFileMenuRequest(
-    val file: SharedFile,
-    val machineName: String,
+    val item: SessionSharedFileItem,
     /** Where the pressed card is on the screen, in pixels; the lifted card is drawn exactly there. */
     val cardBoundsOnScreen: Rect,
-    val uiState: SharedFileUiState,
     val thumbnail: ImageBitmap?,
     /** Which card on the page was pressed: the same file can be on the page more than once. */
     val token: Any,
 )
 
-/** Where a downloaded file opens. */
+/** Where a downloaded file opens on Android. */
 internal enum class SharedFileOpenRoute { IMAGE_VIEWER, VIDEO_PLAYER, AUDIO_PLAYER, TEXT_VIEWER, PDF_VIEWER, SYSTEM_CHOOSER }
 
 private val PlayerVideoExts = setOf("mp4", "mov", "m4v", "webm", "mkv")
 private val PlayerAudioExts = setOf("mp3", "m4a", "wav", "aac", "flac", "ogg")
 
-internal fun sharedFileOpenRoute(name: String): SharedFileOpenRoute {
-    if (classifySharedFile(name) == SharedFileKind.IMAGE) return SharedFileOpenRoute.IMAGE_VIEWER
-    if (isSharedTextFile(name)) return SharedFileOpenRoute.TEXT_VIEWER
-    val ext = sanitizeSharedFileName(name).substringAfterLast('.', "").lowercase(java.util.Locale.ROOT)
+internal fun sharedFileOpenRoute(displayName: String, kind: SharedFileKind = SharedFileKind.SHARED_FILE_KIND_UNSPECIFIED): SharedFileOpenRoute {
+    if (kind == SharedFileKind.SHARED_FILE_KIND_IMAGE) return SharedFileOpenRoute.IMAGE_VIEWER
+    if (kind == SharedFileKind.SHARED_FILE_KIND_PDF) return SharedFileOpenRoute.PDF_VIEWER
+    if (isSharedTextFile(displayName)) return SharedFileOpenRoute.TEXT_VIEWER
+    val ext = displayName.substringAfterLast('/', displayName).substringAfterLast('\\')
+        .trim().substringAfterLast('.', "").lowercase(Locale.ROOT)
     return when (ext) {
         "pdf" -> SharedFileOpenRoute.PDF_VIEWER
         in PlayerVideoExts -> SharedFileOpenRoute.VIDEO_PLAYER
@@ -239,47 +225,45 @@ internal fun sharedFileOpenRoute(name: String): SharedFileOpenRoute {
     }
 }
 
-internal data class SharedFileImagePreview(
-    val file: SharedFile,
+internal data class SharedFilePreviewTarget(
+    val item: SessionSharedFileItem,
     val localFile: File,
 )
 
 internal data class SharedFilePlayerTarget(
-    val file: SharedFile,
+    val item: SessionSharedFileItem,
     val localFile: File,
     val video: Boolean,
 )
 
-internal data class SharedFileTextPreview(val file: SharedFile, val localFile: File, val text: String)
+internal data class SharedFileTextPreview(
+    val item: SessionSharedFileItem,
+    val localFile: File,
+    val text: String,
+)
 
 internal class SharedFileHostState(
     val manager: SharedFileManager,
     val sessionId: String,
-    initialMachineName: String,
-    initialMachineOnline: Boolean,
-    initialSessionExited: Boolean,
 ) {
     private val autoOpenFiles = mutableSetOf<String>()
 
-    fun startDownload(file: SharedFile) {
-        autoOpenFiles += file.fileId
-        manager.startOrResume(sessionId, file, userInitiated = true)
+    fun startDownload(item: SessionSharedFileItem) {
+        autoOpenFiles += item.fileId
+        manager.startOrResume(sessionId, item, userInitiated = true)
     }
 
     fun leavePage() { autoOpenFiles.clear() }
 
     fun consumeAutoOpen(fileId: String): Boolean = autoOpenFiles.remove(fileId)
 
-    var machineName by mutableStateOf(initialMachineName)
-    var machineOnline by mutableStateOf(initialMachineOnline)
-    var sessionExited by mutableStateOf(initialSessionExited)
     var menuTarget by mutableStateOf<SharedFileMenuRequest?>(null)
-    var imagePreview by mutableStateOf<SharedFileImagePreview?>(null)
-    var pendingTextPreview by mutableStateOf<SharedFileImagePreview?>(null)
+    var imagePreview by mutableStateOf<SharedFilePreviewTarget?>(null)
+    var pendingTextPreview by mutableStateOf<SharedFilePreviewTarget?>(null)
     var textPreview by mutableStateOf<SharedFileTextPreview?>(null)
-    var pdfPreview by mutableStateOf<SharedFileImagePreview?>(null)
+    var pdfPreview by mutableStateOf<SharedFilePreviewTarget?>(null)
     var playerTarget by mutableStateOf<SharedFilePlayerTarget?>(null)
-    var unopenableTarget by mutableStateOf<SharedFileImagePreview?>(null)
+    var unopenableTarget by mutableStateOf<SharedFilePreviewTarget?>(null)
     var pendingSaveAction by mutableStateOf<(() -> Unit)?>(null)
     var requestStoragePermission: (() -> Unit)? = null
 }
@@ -288,14 +272,12 @@ internal val LocalSharedFileHost = compositionLocalOf<SharedFileHostState?> { nu
 
 /**
  * Wraps the chat area so that completed downloads auto-open when on the same session screen,
- * long-press blurs the underlying chat, and in-app image previews or "no app" prompts work cleanly.
+ * long-press blurs the underlying chat, and in-app viewers or "no app" prompts work cleanly.
  */
 @Composable
 internal fun SharedFileHost(
     sessionId: String,
-    machineName: String,
-    machineOnline: Boolean,
-    sessionExited: Boolean,
+    itemsById: Map<String, SessionSharedFileItem> = emptyMap(),
     modifier: Modifier = Modifier,
     manager: SharedFileManager = RaApp.instance.sharedFiles,
     content: @Composable () -> Unit,
@@ -307,11 +289,8 @@ internal fun SharedFileHost(
     val states by manager.store.states.collectAsState()
 
     val liveHost = remember(manager, sessionId) {
-        SharedFileHostState(manager, sessionId, machineName, machineOnline, sessionExited)
+        SharedFileHostState(manager, sessionId)
     }
-    liveHost.machineName = machineName
-    liveHost.machineOnline = machineOnline
-    liveHost.sessionExited = sessionExited
 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val pending = liveHost.pendingSaveAction
@@ -338,14 +317,16 @@ internal fun SharedFileHost(
         manager.store.completions.collect { comp ->
             if (comp.sessionId != sessionId) return@collect
             Motion.tap(view)
-            view.announceForAccessibility(copy(UiMessages.sharedFileA11YDownloadedAnnounce(name = comp.fileName)))
+            view.announceForAccessibility(copy(UiMessages.sharedFileA11YDownloadedAnnounce(name = comp.displayName)))
             if (comp.userInitiated && liveHost.consumeAutoOpen(comp.fileId)) {
-                val sf = SharedFile.newBuilder()
+                val item = itemsById[comp.fileId] ?: SessionSharedFileItem.newBuilder()
                     .setFileId(comp.fileId)
-                    .setName(comp.fileName)
-                    .setSizeBytes(comp.localFile.length())
+                    .setDisplayName(comp.displayName)
+                    .setName(comp.displayName)
+                    .setSizeBytes(comp.sizeBytes)
+                    .setKind(comp.kind)
                     .build()
-                openSharedFile(context, sf, comp.localFile, liveHost)
+                openSharedFile(context, item, comp.localFile, liveHost)
             }
         }
     }
@@ -355,19 +336,20 @@ internal fun SharedFileHost(
             content()
 
             liveHost.menuTarget?.let { target ->
-                val tr = states["$sessionId:${target.file.fileId}"] ?: SharedFileTransferState.Idle
-                val freshState = resolveSharedFileUiState(target.file, tr, machineOnline, sessionExited)
-                if (freshState.visual == CardVisualState.CLEANED_UP) {
+                val freshItem = itemsById[target.item.fileId] ?: target.item
+                val localFile = (states["$sessionId:${freshItem.fileId}"] as? io.github.lewin671.remoteagent.core.SharedFileTransferState.Downloaded)
+                    ?.localFile?.takeIf { it.isFile }
+                if (freshItem.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_CLEANED || freshItem.menuItemsCount == 0) {
                     liveHost.menuTarget = null
                 } else {
                     SharedFileContextMenuOverlay(
-                        request = target.copy(uiState = freshState, machineName = machineName),
+                        request = target.copy(item = freshItem),
                         onDismiss = { liveHost.menuTarget = null },
                         onAction = { action ->
                             handleMenuAction(
                                 action = action,
-                                file = target.file,
-                                localFile = freshState.localFile,
+                                item = freshItem,
+                                localFile = localFile,
                                 sessionId = sessionId,
                                 manager = manager,
                                 context = context,
@@ -375,6 +357,9 @@ internal fun SharedFileHost(
                                 scope = scope,
                                 copy = copy,
                             )
+                        },
+                        onDisabledAction = { reason ->
+                            if (reason.isNotEmpty()) Toast.makeText(context, reason, Toast.LENGTH_SHORT).show()
                         },
                     )
                 }
@@ -385,71 +370,79 @@ internal fun SharedFileHost(
     LaunchedEffect(liveHost.pendingTextPreview) {
         val pending = liveHost.pendingTextPreview ?: return@LaunchedEffect
         val text = withContext(Dispatchers.IO) { readSharedTextFile(pending.localFile) }
+        val name = pending.item.displayName.ifEmpty { pending.item.name }
         if (text != null) {
-            liveHost.textPreview = SharedFileTextPreview(pending.file, pending.localFile, text)
-        } else if (!manager.openExternal(context, pending.localFile, pending.file.name)) {
+            liveHost.textPreview = SharedFileTextPreview(pending.item, pending.localFile, text)
+        } else if (!manager.openExternal(context, pending.localFile, name)) {
             liveHost.unopenableTarget = pending
         }
         liveHost.pendingTextPreview = null
     }
 
     liveHost.textPreview?.let { preview ->
+        val name = preview.item.displayName.ifEmpty { preview.item.name }
         SharedFileTextViewerDialog(
-            fileName = preview.file.name,
+            fileName = name,
+            nameHead = preview.item.nameHead,
+            nameTail = preview.item.nameTail,
             text = preview.text,
             onDismiss = { liveHost.textPreview = null },
             onAction = { action ->
-                handleMenuAction(action, preview.file, preview.localFile, sessionId, manager, context, liveHost, scope, copy)
+                handleMenuAction(action, preview.item, preview.localFile, sessionId, manager, context, liveHost, scope, copy)
             },
         )
     }
 
     liveHost.pdfPreview?.let { preview ->
+        val name = preview.item.displayName.ifEmpty { preview.item.name }
         SharedFilePdfViewer(
-            fileName = preview.file.name,
+            fileName = name,
+            nameHead = preview.item.nameHead,
+            nameTail = preview.item.nameTail,
             localFile = preview.localFile,
             onDismiss = { liveHost.pdfPreview = null },
             onUnsupported = {
                 liveHost.pdfPreview = null
-                if (!manager.openExternal(context, preview.localFile, preview.file.name)) {
+                if (!manager.openExternal(context, preview.localFile, name)) {
                     liveHost.unopenableTarget = preview
                 }
             },
             onAction = { action ->
-                handleMenuAction(action, preview.file, preview.localFile, sessionId, manager, context, liveHost, scope, copy)
+                handleMenuAction(action, preview.item, preview.localFile, sessionId, manager, context, liveHost, scope, copy)
             },
         )
     }
 
     liveHost.imagePreview?.let { preview ->
+        val name = preview.item.displayName.ifEmpty { preview.item.name }
         SharedFileImageViewerDialog(
-            file = preview.file,
+            item = preview.item,
             localFile = preview.localFile,
             onDismiss = { liveHost.imagePreview = null },
             onSave = {
                 runWithStoragePermission(context, liveHost) {
                     scope.launch {
-                        val res = manager.saveToAlbum(preview.localFile, SharedFileKind.IMAGE, preview.file.name)
+                        val res = manager.saveToAlbum(preview.localFile, SharedFileKind.SHARED_FILE_KIND_IMAGE, name)
                         if (res.isSuccess) {
                             Toast.makeText(context, copy(UiMessages.sharedFileToastSavedToAlbum()), Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
             },
-            onShare = { manager.shareFile(context, preview.localFile, preview.file.name) },
+            onShare = { manager.shareFile(context, preview.localFile, name) },
         )
     }
 
     liveHost.playerTarget?.let { target ->
         SharedMediaPlayerDialog(
-            file = target.file,
+            item = target.item,
             localFile = target.localFile,
             video = target.video,
             onDismiss = { liveHost.playerTarget = null },
             onAction = { action ->
                 handleMenuAction(
                     action = action,
-                    file = target.file,
+                    item = target.item,
                     localFile = target.localFile,
                     sessionId = sessionId,
                     manager = manager,
@@ -463,15 +456,16 @@ internal fun SharedFileHost(
     }
 
     liveHost.unopenableTarget?.let { target ->
+        val name = target.item.displayName.ifEmpty { target.item.name }
         Alert(
-            title = target.file.name,
+            title = name,
             text = copy(UiMessages.sharedFileOpenNoApp()),
             confirm = copy(UiMessages.sharedFileActionSaveToPhone()),
             onDismiss = { liveHost.unopenableTarget = null },
             onConfirm = {
                 runWithStoragePermission(context, liveHost) {
                     scope.launch {
-                        val res = manager.saveToDownloads(target.localFile, target.file.name)
+                        val res = manager.saveToDownloads(target.localFile, name)
                         if (res.isSuccess) {
                             Toast.makeText(context, copy(UiMessages.sharedFileToastSavedToDownloads()), Toast.LENGTH_SHORT).show()
                         }
@@ -480,18 +474,6 @@ internal fun SharedFileHost(
             },
         )
     }
-}
-
-internal enum class SharedMenuAction {
-    DOWNLOAD,
-    PAUSE,
-    RESUME,
-    CANCEL,
-    SAVE_TO_ALBUM,
-    SAVE_TO_DOWNLOADS,
-    SHARE,
-    OPEN_WITH,
-    DELETE_LOCAL,
 }
 
 private fun runWithStoragePermission(
@@ -510,8 +492,8 @@ private fun runWithStoragePermission(
 }
 
 private fun handleMenuAction(
-    action: SharedMenuAction,
-    file: SharedFile,
+    action: SharedFileMenuAction,
+    item: SessionSharedFileItem,
     localFile: File?,
     sessionId: String,
     manager: SharedFileManager,
@@ -520,63 +502,67 @@ private fun handleMenuAction(
     scope: kotlinx.coroutines.CoroutineScope,
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
 ) {
+    val name = item.displayName.ifEmpty { item.name }
     when (action) {
-        SharedMenuAction.DOWNLOAD, SharedMenuAction.RESUME -> host.startDownload(file)
-        SharedMenuAction.PAUSE -> manager.pause(sessionId, file)
-        SharedMenuAction.CANCEL -> manager.cancel(sessionId, file)
-        SharedMenuAction.SAVE_TO_ALBUM -> {
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DOWNLOAD,
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_RESUME,
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_RETRY -> host.startDownload(item)
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_PAUSE -> manager.pause(sessionId, item)
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD -> manager.cancel(sessionId, item)
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM -> {
             val local = localFile ?: return
-            val kind = classifySharedFile(file.name)
             runWithStoragePermission(context, host) {
                 scope.launch {
-                    val res = manager.saveToAlbum(local, kind, file.name)
+                    val res = manager.saveToAlbum(local, item.kind, name)
                     if (res.isSuccess) {
                         Toast.makeText(context, copy(UiMessages.sharedFileToastSavedToAlbum()), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
-        SharedMenuAction.SAVE_TO_DOWNLOADS -> {
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE -> {
             val local = localFile ?: return
             runWithStoragePermission(context, host) {
                 scope.launch {
-                    val res = manager.saveToDownloads(local, file.name)
+                    val res = manager.saveToDownloads(local, name)
                     if (res.isSuccess) {
                         Toast.makeText(context, copy(UiMessages.sharedFileToastSavedToDownloads()), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
-        SharedMenuAction.SHARE -> {
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE -> {
             val local = localFile ?: return
-            manager.shareFile(context, local, file.name)
+            manager.shareFile(context, local, name)
         }
-        SharedMenuAction.OPEN_WITH -> {
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH -> {
             val local = localFile ?: return
-            if (!manager.openExternal(context, local, file.name)) {
-                host.unopenableTarget = SharedFileImagePreview(file, local)
+            if (!manager.openExternal(context, local, name)) {
+                host.unopenableTarget = SharedFilePreviewTarget(item, local)
             }
         }
-        SharedMenuAction.DELETE_LOCAL -> manager.deleteLocal(sessionId, file)
+        SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DELETE_LOCAL -> manager.deleteLocal(sessionId, item)
+        else -> Unit
     }
 }
 
 internal fun openSharedFile(
     context: Context,
-    file: SharedFile,
+    item: SessionSharedFileItem,
     localFile: File,
     host: SharedFileHostState?,
 ) {
-    when (val route = sharedFileOpenRoute(file.name)) {
-        SharedFileOpenRoute.PDF_VIEWER -> host?.pdfPreview = SharedFileImagePreview(file, localFile)
-        SharedFileOpenRoute.TEXT_VIEWER -> host?.pendingTextPreview = SharedFileImagePreview(file, localFile)
-        SharedFileOpenRoute.IMAGE_VIEWER -> host?.imagePreview = SharedFileImagePreview(file, localFile)
+    val name = item.displayName.ifEmpty { item.name }
+    when (val route = sharedFileOpenRoute(name, item.kind)) {
+        SharedFileOpenRoute.PDF_VIEWER -> host?.pdfPreview = SharedFilePreviewTarget(item, localFile)
+        SharedFileOpenRoute.TEXT_VIEWER -> host?.pendingTextPreview = SharedFilePreviewTarget(item, localFile)
+        SharedFileOpenRoute.IMAGE_VIEWER -> host?.imagePreview = SharedFilePreviewTarget(item, localFile)
         SharedFileOpenRoute.VIDEO_PLAYER, SharedFileOpenRoute.AUDIO_PLAYER ->
-            host?.playerTarget = SharedFilePlayerTarget(file, localFile, route == SharedFileOpenRoute.VIDEO_PLAYER)
+            host?.playerTarget = SharedFilePlayerTarget(item, localFile, route == SharedFileOpenRoute.VIDEO_PLAYER)
         SharedFileOpenRoute.SYSTEM_CHOOSER -> {
-            val opened = host?.manager?.openExternal(context, localFile, file.name) ?: false
+            val opened = host?.manager?.openExternal(context, localFile, name) ?: false
             if (!opened) {
-                host?.unopenableTarget = SharedFileImagePreview(file, localFile)
+                host?.unopenableTarget = SharedFilePreviewTarget(item, localFile)
             }
         }
     }
@@ -585,14 +571,10 @@ internal fun openSharedFile(
 /** In-chat container rendering one or more Agent-shared file cards stacked with 8dp gaps. */
 @Composable
 internal fun SharedFilesBlock(
-    files: List<SharedFile>,
+    files: List<SessionSharedFileItem>,
     sessionId: String,
-    machineName: String,
-    machineOnline: Boolean,
-    sessionExited: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val copy = uiText()
     val context = LocalContext.current
     val host = LocalSharedFileHost.current
     val manager = host?.manager ?: RaApp.instance.sharedFiles
@@ -602,20 +584,18 @@ internal fun SharedFilesBlock(
         modifier = modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        for (file in files) {
-            LaunchedEffect(sessionId, file.fileId) {
+        for (item in files) {
+            LaunchedEffect(sessionId, item.fileId) {
                 withContext(Dispatchers.IO) {
-                    manager.registerFile(sessionId, file)
+                    manager.registerFile(sessionId, item)
                 }
             }
-            val transfer = transferMap["$sessionId:${file.fileId}"]
-                ?: SharedFileTransferState.Idle
-            val uiState = resolveSharedFileUiState(file, transfer, machineOnline, sessionExited)
-            val kind = classifySharedFile(file.name)
+            val localFile = (transferMap["$sessionId:${item.fileId}"] as? io.github.lewin671.remoteagent.core.SharedFileTransferState.Downloaded)
+                ?.localFile?.takeIf { it.isFile }
             val thumbPx = with(LocalDensity.current) { SharedTileSize.roundToPx() }
-            val thumb by produceState<ImageBitmap?>(null, uiState.localFile?.absolutePath, uiState.visual) {
-                value = if (uiState.visual == CardVisualState.DOWNLOADED && uiState.localFile != null) {
-                    manager.loadThumbnail(uiState.localFile!!, kind, thumbPx)
+            val thumb by produceState<ImageBitmap?>(null, localFile?.absolutePath, item.status, item.kind) {
+                value = if (item.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED && localFile != null) {
+                    manager.loadThumbnail(localFile, item.kind, thumbPx)
                 } else {
                     null
                 }
@@ -625,40 +605,41 @@ internal fun SharedFilesBlock(
             val token = remember { Any() }
             // The pressed card is drawn lifted in the overlay: never show it twice.
             val hiddenBehindOverlay = host?.menuTarget?.token === token
+            val disabledReason = if (item.hasPrimaryDisabledReason()) uiText(item.primaryDisabledReason) else ""
 
             val handlePrimaryClick: () -> Unit = {
-                when (uiState.visual) {
-                    CardVisualState.AVAILABLE, CardVisualState.PAUSED, CardVisualState.FAILED ->
-                        if (host != null) host.startDownload(file)
-                        else manager.startOrResume(sessionId, file, userInitiated = true)
-                    CardVisualState.DOWNLOADING -> manager.pause(sessionId, file)
-                    CardVisualState.DOWNLOADED -> uiState.localFile?.let { local ->
-                        openSharedFile(context, file, local, host)
+                if (!item.primaryEnabled) {
+                    if (disabledReason.isNotEmpty()) {
+                        Toast.makeText(context, disabledReason, Toast.LENGTH_SHORT).show()
                     }
-                    CardVisualState.MACHINE_OFFLINE -> {
-                        Toast.makeText(context, copy(UiMessages.sharedFileSubtitleOffline()), Toast.LENGTH_SHORT).show()
-                    }
-                    CardVisualState.CLEANED_UP -> {
-                        Toast.makeText(context, copy(UiMessages.sharedFileToastCleaned()), Toast.LENGTH_SHORT).show()
+                } else {
+                    when (item.primaryAction) {
+                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_DOWNLOAD,
+                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_RESUME,
+                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_RETRY ->
+                            if (host != null) host.startDownload(item)
+                            else manager.startOrResume(sessionId, item, userInitiated = true)
+                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_PAUSE -> manager.pause(sessionId, item)
+                        SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN -> localFile?.let { local ->
+                            openSharedFile(context, item, local, host)
+                        }
+                        else -> Unit
                     }
                 }
             }
 
             SharedFileCard(
-                file = file,
-                uiState = uiState,
+                item = item,
                 thumbnail = thumb,
                 lifted = false,
                 onClick = handlePrimaryClick,
                 onButtonClick = handlePrimaryClick,
                 onLongClick = {
                     val coords = cardCoords
-                    if (uiState.visual != CardVisualState.CLEANED_UP && host != null && coords != null && coords.isAttached) {
+                    if (item.menuItemsCount > 0 && host != null && coords != null && coords.isAttached) {
                         host.menuTarget = SharedFileMenuRequest(
-                            file = file,
-                            machineName = machineName,
+                            item = item,
                             cardBoundsOnScreen = Rect(coords.positionOnScreen(), coords.size.toSize()),
-                            uiState = uiState,
                             thumbnail = thumb,
                             token = token,
                         )
@@ -676,8 +657,7 @@ internal fun SharedFilesBlock(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun SharedFileCard(
-    file: SharedFile,
-    uiState: SharedFileUiState,
+    item: SessionSharedFileItem,
     thumbnail: ImageBitmap?,
     lifted: Boolean,
     onClick: () -> Unit,
@@ -686,26 +666,9 @@ internal fun SharedFileCard(
     modifier: Modifier = Modifier,
     shadowAlpha: Float = 1f,
 ) {
-    val copy = uiText()
     val p = pal
-    val kind = classifySharedFile(file.name)
-    val a11yState = when (uiState.visual) {
-        CardVisualState.AVAILABLE -> copy(UiMessages.sharedFileA11YStateAvailable())
-        CardVisualState.DOWNLOADING -> copy(UiMessages.sharedFileA11YStateDownloading())
-        CardVisualState.PAUSED -> copy(UiMessages.sharedFileA11YStatePaused())
-        CardVisualState.DOWNLOADED -> copy(UiMessages.sharedFileA11YStateDownloaded())
-        CardVisualState.FAILED -> sharedFileFailureSubtitle(uiState, copy)
-        CardVisualState.MACHINE_OFFLINE -> copy(UiMessages.sharedFileSubtitleOffline())
-        CardVisualState.CLEANED_UP -> copy(UiMessages.sharedFileSubtitleCleaned())
-    }
-    val cardDesc = copy(
-        UiMessages.sharedFileA11YCard(
-            name = file.name,
-            kind = copy(kind.typeMessage()),
-            size = formatSharedFileSize(file.sizeBytes),
-            state = a11yState,
-        ),
-    )
+    val displayName = item.displayName.ifEmpty { item.name }
+    val cardDesc = if (item.hasA11YLabel()) uiText(item.a11YLabel) else displayName
 
     val bg = if (lifted) SharedFileSpec.liftSurface(p.dark) else p.bubble
     val hairlineColor = SharedFileSpec.darkHairline(p.dark)
@@ -748,34 +711,43 @@ internal fun SharedFileCard(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SharedFileTile(
-            kind = kind,
-            visualState = uiState.visual,
+            kind = item.kind,
+            status = item.status,
             thumbnail = thumbnail,
         )
 
         Column(modifier = Modifier.weight(1f)) {
             MiddleEllipsizedFileName(
-                name = file.name,
-                color = when (uiState.visual) {
-                    CardVisualState.MACHINE_OFFLINE -> p.ink2
-                    CardVisualState.CLEANED_UP -> p.ink3
+                name = displayName,
+                head = item.nameHead,
+                tail = item.nameTail,
+                color = when (item.status) {
+                    SharedFileCardStatus.SHARED_FILE_CARD_STATUS_OFFLINE -> p.ink2
+                    SharedFileCardStatus.SHARED_FILE_CARD_STATUS_CLEANED -> p.ink3
                     else -> p.ink
                 },
             )
             Spacer(Modifier.height(2.dp))
-            SharedFileSubtitle(
-                kind = kind,
-                sizeBytes = file.sizeBytes,
-                uiState = uiState,
-                copy = copy,
+            val subtitleText = if (item.hasSubtitle()) uiText(item.subtitle) else ""
+            val subtitleColor = when {
+                item.subtitleIsError -> p.red
+                item.status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_CLEANED -> p.ink3
+                else -> p.ink2
+            }
+            // Never an ellipsis: a long line wraps to a second one and the card grows.
+            Text(
+                text = subtitleText,
+                style = SharedSubtitleStyle,
+                color = subtitleColor,
+                maxLines = 2,
+                overflow = TextOverflow.Clip,
             )
         }
 
-        if (uiState.visual != CardVisualState.CLEANED_UP) {
+        if (item.primaryAction != SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_UNSPECIFIED) {
             SharedFileTrailingControl(
-                uiState = uiState,
+                item = item,
                 onClick = onButtonClick,
-                copy = copy,
             )
         }
     }
@@ -785,8 +757,8 @@ internal fun SharedFileCard(
 @Composable
 internal fun SharedFileAudioArtwork(modifier: Modifier = Modifier) {
     SharedFileTile(
-        kind = SharedFileKind.AUDIO,
-        visualState = CardVisualState.DOWNLOADED,
+        kind = SharedFileKind.SHARED_FILE_KIND_AUDIO,
+        status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED,
         thumbnail = null,
         size = 96.dp,
         radius = 24.dp,
@@ -797,24 +769,26 @@ internal fun SharedFileAudioArtwork(modifier: Modifier = Modifier) {
 @Composable
 private fun SharedFileTile(
     kind: SharedFileKind,
-    visualState: CardVisualState,
+    status: SharedFileCardStatus,
     thumbnail: ImageBitmap?,
     size: Dp = SharedFileSpec.TileSize,
     radius: Dp = SharedFileSpec.TileRadius,
     modifier: Modifier = Modifier,
 ) {
-    val muted = visualState == CardVisualState.MACHINE_OFFLINE || visualState == CardVisualState.CLEANED_UP
-    val (rawStart, rawEnd) = when (kind.tileStyle()) {
-        SharedFileTileStyle.VIDEO -> Color(0xFF7D7AFF) to Color(0xFF5856D6)
-        SharedFileTileStyle.IMAGE -> Color(0xFF5AC8FA) to Color(0xFF2F9BF0)
-        SharedFileTileStyle.AUDIO -> Color(0xFFFFB45E) to Color(0xFFFF9500)
-        SharedFileTileStyle.ARCHIVE_OR_OTHER -> Color(0xFFB0B0B8) to Color(0xFF8E8E93)
-        SharedFileTileStyle.PDF_OR_DOC -> Color(0xFFFF8A80) to Color(0xFFFF453A)
+    val muted = status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_OFFLINE ||
+        status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_CLEANED
+    val (rawStart, rawEnd) = when (kind) {
+        SharedFileKind.SHARED_FILE_KIND_VIDEO -> Color(0xFF7D7AFF) to Color(0xFF5856D6)
+        SharedFileKind.SHARED_FILE_KIND_IMAGE -> Color(0xFF5AC8FA) to Color(0xFF2F9BF0)
+        SharedFileKind.SHARED_FILE_KIND_AUDIO -> Color(0xFFFFB45E) to Color(0xFFFF9500)
+        SharedFileKind.SHARED_FILE_KIND_PDF,
+        SharedFileKind.SHARED_FILE_KIND_DOC -> Color(0xFFFF8A80) to Color(0xFFFF453A)
+        else -> Color(0xFFB0B0B8) to Color(0xFF8E8E93)
     }
     val startColor = if (muted) toGrayscale(rawStart) else rawStart
     val endColor = if (muted) toGrayscale(rawEnd) else rawEnd
 
-    val showThumb = visualState == CardVisualState.DOWNLOADED && thumbnail != null
+    val showThumb = status == SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED && thumbnail != null
     val thumbAlpha by animateFloatAsState(
         targetValue = if (showThumb) 1f else 0f,
         animationSpec = tween(Motion.BASE),
@@ -838,11 +812,11 @@ private fun SharedFileTile(
     ) {
         Icon(
             imageVector = when (kind) {
-                SharedFileKind.VIDEO -> SharedFileIcons.Video
-                SharedFileKind.IMAGE -> SharedFileIcons.Image
-                SharedFileKind.AUDIO -> SharedFileIcons.Audio
-                SharedFileKind.ARCHIVE -> SharedFileIcons.Zip
-                SharedFileKind.PDF, SharedFileKind.DOC, SharedFileKind.OTHER -> SharedFileIcons.Doc
+                SharedFileKind.SHARED_FILE_KIND_VIDEO -> SharedFileIcons.Video
+                SharedFileKind.SHARED_FILE_KIND_IMAGE -> SharedFileIcons.Image
+                SharedFileKind.SHARED_FILE_KIND_AUDIO -> SharedFileIcons.Audio
+                SharedFileKind.SHARED_FILE_KIND_ARCHIVE -> SharedFileIcons.Zip
+                else -> SharedFileIcons.Doc
             },
             contentDescription = null,
             tint = Color.White,
@@ -856,7 +830,7 @@ private fun SharedFileTile(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().alpha(thumbAlpha),
             )
-            if (kind == SharedFileKind.VIDEO) {
+            if (kind == SharedFileKind.SHARED_FILE_KIND_VIDEO) {
                 Canvas(Modifier.fillMaxSize().alpha(thumbAlpha)) {
                     drawRect(
                         brush = Brush.radialGradient(
@@ -891,6 +865,8 @@ internal fun sharedFileNameMaxLines(fontScale: Float): Int =
 @Composable
 private fun MiddleEllipsizedFileName(
     name: String,
+    head: String,
+    tail: String,
     color: Color,
 ) {
     val style = T.s15b.copy(
@@ -901,8 +877,8 @@ private fun MiddleEllipsizedFileName(
     val textMeasurer = rememberTextMeasurer()
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val maxWidthPx = constraints.maxWidth
-        val display = remember(name, style, maxWidthPx, maxLines) {
-            fitMiddleEllipsizedName(name, style, maxWidthPx, maxLines, textMeasurer)
+        val display = remember(name, head, tail, style, maxWidthPx, maxLines) {
+            fitMiddleEllipsizedName(name, head, tail, style, maxWidthPx, maxLines, textMeasurer)
         }
         Text(
             text = display,
@@ -915,8 +891,11 @@ private fun MiddleEllipsizedFileName(
     }
 }
 
+/** Fits Core's pre-split `(head, tail)` into [maxWidthPx] on [maxLines] using Compose's [TextMeasurer]. */
 internal fun fitMiddleEllipsizedName(
     name: String,
+    head: String,
+    tail: String,
     style: TextStyle,
     maxWidthPx: Int,
     maxLines: Int,
@@ -936,13 +915,6 @@ internal fun fitMiddleEllipsizedName(
     }
 
     if (fits(name)) return name
-
-    val (base, suffix) = splitMiddleTruncateName(name)
-    // Both the fixed suffix and the searched prefix must end on character boundaries.
-    val splitPair = base.lastOrNull()?.let(Character::isHighSurrogate) == true &&
-        suffix.firstOrNull()?.let(Character::isLowSurrogate) == true
-    val head = if (splitPair) base.dropLast(1) else base
-    val tail = if (splitPair) base.last() + suffix else suffix
     if (tail.isEmpty() || head.isEmpty()) return name
 
     var lo = 0
@@ -966,104 +938,26 @@ internal fun fitMiddleEllipsizedName(
 }
 
 @Composable
-private fun SharedFileSubtitle(
-    kind: SharedFileKind,
-    sizeBytes: Long,
-    uiState: SharedFileUiState,
-    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
-) {
-    val p = pal
-    val text = when (uiState.visual) {
-        CardVisualState.AVAILABLE ->
-            copy(UiMessages.sharedFileSubtitleKindSize(kind = copy(kind.typeMessage()), size = formatSharedFileSize(sizeBytes)))
-        CardVisualState.DOWNLOADING -> {
-            val (dl, total) = formatSharedProgress(uiState.downloadedBytes, uiState.totalBytes)
-            val eta = uiState.etaSeconds
-            if (eta != null) {
-                val etaStr = if (eta >= 60L) {
-                    copy(UiMessages.sharedFileEtaMinutes(((eta + 30L) / 60L).toInt()))
-                } else {
-                    copy(UiMessages.sharedFileEtaSeconds(eta.coerceAtLeast(1L).toInt()))
-                }
-                copy(UiMessages.sharedFileSubtitleDownloadingEta(downloaded = dl, total = total, eta = etaStr))
-            } else {
-                copy(UiMessages.sharedFileSubtitleDownloading(downloaded = dl, total = total))
-            }
-        }
-        CardVisualState.PAUSED -> {
-            val (dl, total) = formatSharedProgress(uiState.downloadedBytes, uiState.totalBytes)
-            copy(UiMessages.sharedFileSubtitlePaused(downloaded = dl, total = total))
-        }
-        CardVisualState.DOWNLOADED -> {
-            val dur = uiState.durationMs
-            if ((kind == SharedFileKind.VIDEO || kind == SharedFileKind.AUDIO) && dur != null) {
-                copy(UiMessages.sharedFileSubtitleMediaSize(duration = formatMediaDuration(dur), size = formatSharedFileSize(sizeBytes)))
-            } else {
-                copy(UiMessages.sharedFileSubtitleKindSize(kind = copy(kind.typeMessage()), size = formatSharedFileSize(sizeBytes)))
-            }
-        }
-        CardVisualState.FAILED -> sharedFileFailureSubtitle(uiState, copy)
-        CardVisualState.MACHINE_OFFLINE -> copy(UiMessages.sharedFileSubtitleOffline())
-        CardVisualState.CLEANED_UP -> copy(UiMessages.sharedFileSubtitleCleaned())
-    }
-    val color = when (uiState.visual) {
-        CardVisualState.FAILED -> p.red
-        CardVisualState.CLEANED_UP -> p.ink3
-        else -> p.ink2
-    }
-    // Never an ellipsis: a long line wraps to a second one and the card grows.
-    Text(
-        text = text,
-        style = SharedSubtitleStyle,
-        color = color,
-        maxLines = 2,
-        overflow = TextOverflow.Clip,
-    )
-}
-
-internal fun sharedFileFailureSubtitle(
-    uiState: SharedFileUiState,
-    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
-): String {
-    val reason = when (uiState.failureKind) {
-        SharedFileFailureKind.CHECKSUM_MISMATCH -> copy(UiMessages.sharedFileReasonChecksumMismatch())
-        SharedFileFailureKind.DISK_FULL -> copy(UiMessages.sharedFileReasonDiskFull())
-        SharedFileFailureKind.DISCONNECTED, null -> copy(UiMessages.sharedFileReasonDisconnected())
-        SharedFileFailureKind.OTHER -> uiState.failureDetail.ifBlank { copy(UiMessages.sharedFileReasonDisconnected()) }
-    }
-    return copy(UiMessages.sharedFileSubtitleFailed(reason = reason))
-}
-
-@Composable
 private fun SharedFileTrailingControl(
-    uiState: SharedFileUiState,
+    item: SessionSharedFileItem,
     onClick: () -> Unit,
-    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
 ) {
     val p = pal
     val fill2 = SharedFileSpec.controlFill(p.dark)
     val blue = p.blue
-
-    val buttonDesc = when (uiState.visual) {
-        CardVisualState.AVAILABLE, CardVisualState.MACHINE_OFFLINE -> copy(UiMessages.sharedFileActionDownload())
-        CardVisualState.DOWNLOADING -> copy(UiMessages.sharedFileActionPause())
-        CardVisualState.PAUSED -> copy(UiMessages.sharedFileActionResume())
-        CardVisualState.DOWNLOADED -> copy(UiMessages.sharedFileActionOpen())
-        CardVisualState.FAILED -> copy(UiMessages.sharedFileActionRetry())
-        CardVisualState.CLEANED_UP -> ""
-    }
+    val buttonDesc = if (item.hasPrimaryLabel()) uiText(item.primaryLabel) else ""
 
     AnimatedContent(
-        targetState = uiState.visual,
+        targetState = item.primaryAction,
         transitionSpec = {
             (fadeIn(tween(Motion.BASE)) + scaleIn(tween(Motion.BASE), initialScale = 0.9f)) togetherWith
                 (fadeOut(tween(Motion.FAST)) + scaleOut(tween(Motion.FAST), targetScale = 0.9f))
         },
         contentAlignment = Alignment.Center,
-    ) { state ->
-        when (state) {
-            CardVisualState.AVAILABLE, CardVisualState.MACHINE_OFFLINE -> {
-                val iconTint = if (state == CardVisualState.MACHINE_OFFLINE) p.ink3 else blue
+    ) { action ->
+        when (action) {
+            SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_DOWNLOAD -> {
+                val iconTint = if (!item.primaryEnabled) p.ink3 else blue
                 TouchTargetBox(
                     visualWidth = 30.dp,
                     description = buttonDesc,
@@ -1082,15 +976,16 @@ private fun SharedFileTrailingControl(
                     }
                 }
             }
-            CardVisualState.DOWNLOADING, CardVisualState.PAUSED -> {
-                val targetFraction =
-                    if (uiState.totalBytes > 0L) {
-                        (uiState.downloadedBytes.toFloat() / uiState.totalBytes.toFloat()).coerceIn(0.03f, 1f)
-                    } else 0.05f
+            SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_PAUSE,
+            SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_RESUME -> {
+                val targetFraction = if (item.sizeBytes > 0L) {
+                    item.progress.toFloat().coerceIn(0.03f, 1f)
+                } else 0.05f
                 val animFraction by animateFloatAsState(
                     targetValue = targetFraction,
                     animationSpec = tween(180, easing = LinearEasing),
                 )
+                val ringColor = if (item.primaryEnabled) blue else p.ink3
                 TouchTargetBox(
                     visualWidth = 30.dp,
                     description = buttonDesc,
@@ -1115,7 +1010,7 @@ private fun SharedFileTrailingControl(
                                 style = Stroke(width = strokePx),
                             )
                             drawArc(
-                                color = blue,
+                                color = ringColor,
                                 startAngle = -90f,
                                 sweepAngle = 360f * animFraction,
                                 useCenter = false,
@@ -1124,28 +1019,26 @@ private fun SharedFileTrailingControl(
                                 style = Stroke(width = strokePx, cap = StrokeCap.Round),
                             )
                         }
-                        if (state == CardVisualState.DOWNLOADING) {
+                        if (action == SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_PAUSE) {
                             Box(
                                 modifier = Modifier
                                     .size(9.dp)
                                     .clip(RoundedCornerShape(2.5.dp))
-                                    .background(blue),
+                                    .background(ringColor),
                             )
                         } else {
                             Icon(
                                 imageVector = SharedFileIcons.Down,
                                 contentDescription = null,
-                                tint = blue,
+                                tint = ringColor,
                                 modifier = Modifier.size(13.dp),
                             )
                         }
                     }
                 }
             }
-            CardVisualState.DOWNLOADED, CardVisualState.FAILED -> {
-                val label =
-                    if (state == CardVisualState.DOWNLOADED) copy(UiMessages.sharedFileActionOpen())
-                    else copy(UiMessages.sharedFileActionRetry())
+            SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN,
+            SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_RETRY -> {
                 Box(
                     modifier = Modifier
                         .height(30.dp)
@@ -1160,14 +1053,14 @@ private fun SharedFileTrailingControl(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = label,
+                        text = buttonDesc,
                         style = T.s15b.copy(lineHeight = 20.sp),
                         color = blue,
                         maxLines = 1,
                     )
                 }
             }
-            CardVisualState.CLEANED_UP -> Unit
+            else -> Unit
         }
     }
 }
@@ -1178,7 +1071,7 @@ private fun SharedFileTrailingControl(
  */
 @Composable
 private fun TouchTargetBox(
-    visualWidth: androidx.compose.ui.unit.Dp,
+    visualWidth: Dp,
     description: String,
     onClick: () -> Unit,
     content: @Composable () -> Unit,
@@ -1210,9 +1103,9 @@ private fun TouchTargetBox(
 internal fun SharedFileContextMenuOverlay(
     request: SharedFileMenuRequest,
     onDismiss: () -> Unit,
-    onAction: (SharedMenuAction) -> Unit,
+    onAction: (SharedFileMenuAction) -> Unit,
+    onDisabledAction: (String) -> Unit = {},
 ) {
-    val copy = uiText()
     val p = pal
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -1233,15 +1126,13 @@ internal fun SharedFileContextMenuOverlay(
     }
     LaunchedEffect(Unit) { progress.animateTo(1f, tween(Motion.BASE, easing = Motion.Decelerate)) }
 
-    val kind = classifySharedFile(shown.file.name)
-    val items = remember(shown.uiState.visual, kind) { buildMenuEntries(shown.uiState.visual, kind) }
     val blurred = remember {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             context.getSystemService(android.view.WindowManager::class.java)?.isCrossWindowBlurEnabled == true
     }
     val reduced = Motion.reduced
     val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
-    var rootOnScreen by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var rootOnScreen by remember { mutableStateOf(Offset.Zero) }
 
     val parentView = LocalView.current
     Dialog(
@@ -1287,11 +1178,11 @@ internal fun SharedFileContextMenuOverlay(
         }
 
         val scrim = SharedFileSpec.scrim(p.dark, blurred)
+        val sourceCaption = if (shown.item.hasSourceCaption()) uiText(shown.item.sourceCaption) else ""
         Layout(
             content = {
                 SharedFileCard(
-                    file = shown.file,
-                    uiState = shown.uiState,
+                    item = shown.item,
                     thumbnail = shown.thumbnail,
                     lifted = true,
                     onClick = { close() },
@@ -1305,14 +1196,14 @@ internal fun SharedFileContextMenuOverlay(
                     shadowAlpha = progress.value,
                 )
                 SharedFileContextMenuCard(
-                    path = displaySharedPath(shown.file.path, shown.file.name),
-                    machineName = shown.machineName,
-                    entries = items,
+                    path = shown.item.displayPath,
+                    sourceCaption = sourceCaption,
+                    entries = shown.item.menuItemsList,
                     onAction = { action ->
                         onAction(action)
                         close()
                     },
-                    copy = copy,
+                    onDisabledAction = onDisabledAction,
                     modifier = Modifier.testTag(SharedFileMenuTag).graphicsLayer {
                         alpha = progress.value
                         translationY = if (reduced) 0f else (1f - progress.value) * SharedFileSpec.MenuRiseDp.toPx()
@@ -1349,57 +1240,42 @@ internal fun SharedFileContextMenuOverlay(
     }
 }
 
-internal data class MenuEntry(
-    val action: SharedMenuAction,
-    val label: @Composable () -> String,
-    val icon: ImageVector,
-    val destructive: Boolean = false,
-    val isDestructiveGap: Boolean = false,
-)
-
-/** What the player's ⋯ menu offers: the same actions as a downloaded card's menu, minus delete. */
-internal fun playerMenuEntries(video: Boolean): List<MenuEntry> = buildList {
-    if (video) add(MenuEntry(SharedMenuAction.SAVE_TO_ALBUM, { uiText(UiMessages.sharedFileMenuSaveToAlbum()) }, SharedFileIcons.Image))
-    add(MenuEntry(SharedMenuAction.SAVE_TO_DOWNLOADS, { uiText(UiMessages.sharedFileMenuSaveToDownloads()) }, SharedFileIcons.Save))
-    add(MenuEntry(SharedMenuAction.SHARE, { uiText(UiMessages.sharedFileMenuShare()) }, SharedFileIcons.Share))
-    add(MenuEntry(SharedMenuAction.OPEN_WITH, { uiText(UiMessages.sharedFileMenuOpenWith()) }, SharedFileIcons.OpenWith))
+internal fun sharedFileMenuIcon(action: SharedFileMenuAction): ImageVector = when (action) {
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DOWNLOAD,
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_RESUME,
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_RETRY -> SharedFileIcons.Down
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_PAUSE -> SharedFileIcons.Pause
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD -> SharedFileIcons.Close
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM -> SharedFileIcons.Image
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE -> SharedFileIcons.Save
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE -> SharedFileIcons.Share
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH -> SharedFileIcons.OpenWith
+    SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DELETE_LOCAL -> SharedFileIcons.Trash
+    else -> SharedFileIcons.Doc
 }
 
-private fun buildMenuEntries(
-    visual: CardVisualState,
-    kind: SharedFileKind,
-): List<MenuEntry> =
-    when (visual) {
-        CardVisualState.AVAILABLE, CardVisualState.FAILED -> listOf(
-            MenuEntry(SharedMenuAction.DOWNLOAD, { uiText(UiMessages.sharedFileActionDownload()) }, SharedFileIcons.Down),
-        )
-        CardVisualState.DOWNLOADING -> listOf(
-            MenuEntry(SharedMenuAction.PAUSE, { uiText(UiMessages.sharedFileActionPause()) }, SharedFileIcons.Pause),
-            MenuEntry(SharedMenuAction.CANCEL, { uiText(UiMessages.sharedFileActionCancelDownload()) }, SharedFileIcons.Close, destructive = true, isDestructiveGap = true),
-        )
-        CardVisualState.PAUSED -> listOf(
-            MenuEntry(SharedMenuAction.RESUME, { uiText(UiMessages.sharedFileActionResume()) }, SharedFileIcons.Down),
-            MenuEntry(SharedMenuAction.CANCEL, { uiText(UiMessages.sharedFileActionCancelDownload()) }, SharedFileIcons.Close, destructive = true, isDestructiveGap = true),
-        )
-        CardVisualState.DOWNLOADED -> buildList {
-            if (kind.supportsAlbumSave()) {
-                add(MenuEntry(SharedMenuAction.SAVE_TO_ALBUM, { uiText(UiMessages.sharedFileMenuSaveToAlbum()) }, SharedFileIcons.Image))
-            }
-            add(MenuEntry(SharedMenuAction.SAVE_TO_DOWNLOADS, { uiText(UiMessages.sharedFileMenuSaveToDownloads()) }, SharedFileIcons.Save))
-            add(MenuEntry(SharedMenuAction.SHARE, { uiText(UiMessages.sharedFileMenuShare()) }, SharedFileIcons.Share))
-            add(MenuEntry(SharedMenuAction.OPEN_WITH, { uiText(UiMessages.sharedFileMenuOpenWith()) }, SharedFileIcons.OpenWith))
-            add(MenuEntry(SharedMenuAction.DELETE_LOCAL, { uiText(UiMessages.sharedFileMenuDeleteLocal()) }, SharedFileIcons.Trash, destructive = true, isDestructiveGap = true))
-        }
-        CardVisualState.MACHINE_OFFLINE, CardVisualState.CLEANED_UP -> emptyList()
-    }
+internal fun viewerMenuItem(action: SharedFileMenuAction, labelKey: String): SharedFileMenuItemView =
+    SharedFileMenuItemView.newBuilder()
+        .setAction(action)
+        .setLabel(CoreText.newBuilder().setKey(labelKey))
+        .setEnabled(true)
+        .build()
+
+/** What the player's ⋯ menu offers: the same actions as a downloaded card's menu, minus delete. */
+internal fun playerMenuEntries(video: Boolean): List<SharedFileMenuItemView> = buildList {
+    if (video) add(viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM, UiMessages.sharedFileMenuSaveToAlbum().key))
+    add(viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE, UiMessages.sharedFileMenuSaveToDownloads().key))
+    add(viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE, UiMessages.sharedFileMenuShare().key))
+    add(viewerMenuItem(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH, UiMessages.sharedFileMenuOpenWith().key))
+}
 
 @Composable
 internal fun SharedFileContextMenuCard(
     path: String,
-    machineName: String,
-    entries: List<MenuEntry>,
-    onAction: (SharedMenuAction) -> Unit,
-    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
+    sourceCaption: String,
+    entries: List<SharedFileMenuItemView>,
+    onAction: (SharedFileMenuAction) -> Unit,
+    onDisabledAction: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     palette: Palette = pal,
 ) {
@@ -1408,7 +1284,7 @@ internal fun SharedFileContextMenuCard(
     val gapBg = SharedFileSpec.menuDestructiveGap(p.dark)
     val hairlineColor = SharedFileSpec.darkHairline(p.dark)
 
-    val hasHeader = path.isNotEmpty() || machineName.isNotEmpty()
+    val hasHeader = path.isNotEmpty() || sourceCaption.isNotEmpty()
     Column(
         modifier = modifier
             .width(SharedFileSpec.MenuWidth)
@@ -1447,10 +1323,10 @@ internal fun SharedFileContextMenuCard(
                 ),
                 color = p.ink2,
             )
-            if (machineName.isNotEmpty()) {
+            if (sourceCaption.isNotEmpty()) {
                 if (path.isNotEmpty()) Spacer(Modifier.height(3.dp))
                 Text(
-                    text = copy(UiMessages.sharedFileMenuFromMachine(machine = machineName)),
+                    text = sourceCaption,
                     style = T.s12.copy(lineHeight = 16.sp),
                     color = p.ink3,
                 )
@@ -1458,18 +1334,26 @@ internal fun SharedFileContextMenuCard(
         }
 
         entries.forEachIndexed { index, entry ->
-            if (entry.isDestructiveGap) {
+            if (entry.separated) {
                 Box(Modifier.fillMaxWidth().height(8.dp).background(gapBg))
             } else if (hasHeader || index > 0) {
                 Box(Modifier.fillMaxWidth().height(0.5.dp).background(p.sep))
             }
-            val itemColor = if (entry.destructive) p.red else p.ink
-            val labelText = entry.label()
+            val itemColor = when {
+                !entry.enabled -> p.ink3
+                entry.destructive -> p.red
+                else -> p.ink
+            }
+            val labelText = uiText(entry.label)
+            val disabledText = if (entry.hasDisabledReason()) uiText(entry.disabledReason) else ""
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp)
-                    .clickable { onAction(entry.action) }
+                    .clickable {
+                        if (entry.enabled) onAction(entry.action)
+                        else onDisabledAction(disabledText)
+                    }
                     .padding(horizontal = 16.dp)
                     .semantics {
                         contentDescription = labelText
@@ -1486,7 +1370,7 @@ internal fun SharedFileContextMenuCard(
                     modifier = Modifier.weight(1f),
                 )
                 Icon(
-                    imageVector = entry.icon,
+                    imageVector = sharedFileMenuIcon(entry.action),
                     contentDescription = null,
                     tint = itemColor,
                     modifier = Modifier.size(19.dp),
@@ -1498,13 +1382,15 @@ internal fun SharedFileContextMenuCard(
 
 @Composable
 private fun SharedFileImageViewerDialog(
-    file: SharedFile,
+    item: SessionSharedFileItem,
     localFile: File,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onShare: () -> Unit,
 ) {
     val copy = uiText()
+    val name = item.displayName.ifEmpty { item.name }
+    val sizeLabel = if (item.hasSizeText()) uiText(item.sizeText) else ""
     val bitmap by produceState<ImageBitmap?>(null, localFile.absolutePath) {
         value = withContext(Dispatchers.IO) {
             runCatching {
@@ -1531,12 +1417,12 @@ private fun SharedFileImageViewerDialog(
             onClose = onDismiss,
             picture = {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    bitmap?.let { ViewerBitmap(it, sanitizeSharedFileName(file.name)) }
+                    bitmap?.let { ViewerBitmap(it, name) }
                 }
             },
             info = {
-                Text(sanitizeSharedFileName(file.name), color = Color.White, style = T.s15b)
-                Text(formatSharedFileSize(file.sizeBytes), color = Color.White.copy(alpha = 0.8f), style = T.s13)
+                Text(name, color = Color.White, style = T.s15b)
+                if (sizeLabel.isNotEmpty()) Text(sizeLabel, color = Color.White.copy(alpha = 0.8f), style = T.s13)
                 Row {
                     TextButton(onClick = onSave) {
                         Text(copy(UiMessages.sharedFileMenuSaveToAlbum()), color = Color(0xFF9EC1FF))

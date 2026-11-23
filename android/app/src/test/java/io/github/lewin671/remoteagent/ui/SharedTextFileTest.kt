@@ -5,11 +5,11 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.test.core.app.ApplicationProvider
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import io.github.lewin671.remoteagent.data.SharedTextMaxBytes
 import io.github.lewin671.remoteagent.data.isSharedMarkdownFile
 import io.github.lewin671.remoteagent.data.readSharedTextFile
-import io.github.lewin671.remoteagent.proto.SharedFile
 import java.io.File
 import java.util.Locale
 import org.junit.Assert.*
@@ -172,8 +172,8 @@ class SharedTextFileTest {
     }
 
     @Test fun openingTextDefersIoToTheHostAndDoesNotStartAnActivity() {
-        val host = SharedFileHostState(manager, "text-test", "Test computer", true, false)
-        val file = SharedFile.newBuilder().setFileId("text").setName("notes.md").build()
+        val host = SharedFileHostState(manager, "text-test")
+        val file = SessionSharedFileItem.newBuilder().setFileId("text").setName("notes.md").setDisplayName("notes.md").build()
         openSharedFile(context, file, local, host)
         assertEquals(local, host.pendingTextPreview?.localFile)
         assertNull(host.textPreview)

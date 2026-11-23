@@ -15,9 +15,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
+import io.github.lewin671.remoteagent.core.toSharedFileTarget
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import io.github.lewin671.remoteagent.data.SharedTextMaxBytes
-import io.github.lewin671.remoteagent.proto.SharedFile
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -46,7 +48,7 @@ class SharedTextViewerUiTest {
     private fun mountHost() {
         ui.setContent {
             RaTheme(LightPalette) {
-                SharedFileHost("text", "Test computer", true, false, manager = manager) {
+                SharedFileHost("text", manager = manager) {
                     host = LocalSharedFileHost.current!!
                 }
             }
@@ -55,8 +57,13 @@ class SharedTextViewerUiTest {
     }
 
     private fun open(bytes: ByteArray) {
-        val file = SharedFile.newBuilder().setFileId("text").setName("notes.md").setSizeBytes(bytes.size.toLong()).build()
-        val local = manager.store.localFileFor("text", file).apply { parentFile!!.mkdirs(); writeBytes(bytes) }
+        val file = SessionSharedFileItem.newBuilder()
+            .setFileId("text")
+            .setName("notes.md")
+            .setDisplayName("notes.md")
+            .setSizeBytes(bytes.size.toLong())
+            .build()
+        val local = manager.store.localFileFor("text", file.toSharedFileTarget()).apply { parentFile!!.mkdirs(); writeBytes(bytes) }
         ui.runOnIdle { openSharedFile(context, file, local, host) }
         ui.waitUntil(5_000) {
             ui.mainClock.advanceTimeByFrame()
@@ -104,7 +111,7 @@ class SharedTextViewerUiTest {
     }
 
     @Test fun toolbarAndMenuDispatchTheExistingActions() {
-        val actions = mutableListOf<SharedMenuAction>()
+        val actions = mutableListOf<SharedFileMenuAction>()
         var closed = false
         ui.setContent {
             RaTheme(DarkPalette) {
@@ -119,7 +126,14 @@ class SharedTextViewerUiTest {
         ui.onNodeWithText(copy(UiMessages.sharedFileMenuOpenWith())).performClick()
         ui.onNodeWithContentDescription(copy(UiMessages.commonAndroidMore())).performClick()
         ui.onNodeWithText(copy(UiMessages.sharedFileMenuSaveToDownloads())).performClick()
-        assertEquals(listOf(SharedMenuAction.SHARE, SharedMenuAction.OPEN_WITH, SharedMenuAction.SAVE_TO_DOWNLOADS), actions)
+        assertEquals(
+            listOf(
+                SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SHARE,
+                SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH,
+                SharedFileMenuAction.SHARED_FILE_MENU_ACTION_SAVE,
+            ),
+            actions,
+        )
         ui.onNodeWithContentDescription(copy(UiMessages.commonBack())).performClick()
         assertTrue(closed)
     }
@@ -128,8 +142,11 @@ class SharedTextViewerUiTest {
         lateinit var measurer: androidx.compose.ui.text.TextMeasurer
         ui.setContent { measurer = androidx.compose.ui.text.rememberTextMeasurer() }
         ui.runOnIdle {
+            val head = "🪴".repeat(57)
+            val tail = "🪴".repeat(3) + ".markdown"
+            val full = head + tail
             for (width in 100..240) {
-                val title = fitMiddleEllipsizedName("🪴".repeat(60) + ".markdown", T.s17b, width, 1, measurer)
+                val title = fitMiddleEllipsizedName(full, head, tail, T.s17b, width, 1, measurer)
                 assertTrue(title.endsWith(".markdown"))
                 assertTrue(title.contains('…'))
                 assertEquals(title, title.toByteArray().toString(Charsets.UTF_8))

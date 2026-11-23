@@ -1,8 +1,8 @@
 package io.github.lewin671.remoteagent.data
 
 import android.content.ActivityNotFoundException
-import android.content.ContentValues
 import android.content.ComponentName
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -21,18 +21,16 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.FileProvider
 import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.SHARED_FILE_BLOCK_BYTES
 import io.github.lewin671.remoteagent.core.SharedFileChunkFetcher
-import io.github.lewin671.remoteagent.core.SharedFileKind
 import io.github.lewin671.remoteagent.core.SharedFileStore
-import io.github.lewin671.remoteagent.core.classifySharedFile
-import io.github.lewin671.remoteagent.core.sanitizeSharedFileName
+import io.github.lewin671.remoteagent.core.SharedFileTarget
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SharedFileKind
 import io.github.lewin671.remoteagent.core.sharedFileBlockBytes
-import io.github.lewin671.remoteagent.proto.SharedFile
+import io.github.lewin671.remoteagent.core.toSharedFileTarget
 import java.io.File
 import java.io.IOException
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -62,47 +60,55 @@ class SharedFileManager(
             val mid = st?.sessions?.get(sid)?.machineId
             sharedFileBlockBytes(mid?.let { st.machines[it] })
         },
-        durationExtractor = { file -> extractMediaDurationMs(file) },
+        durationExtractor = { file, hasMediaDuration ->
+            if (hasMediaDuration) extractMediaDurationMs(file) else null
+        },
+        onLocalStateEvent = { event ->
+            remoteProvider()?.sendSharedFileLocalState(event)
+        },
     )
 
     private val thumbCache = LruCache<String, ImageBitmap>(64)
-    private val knownFiles = ConcurrentHashMap<String, SharedFile>()
 
-    fun registerFile(sessionId: String, file: SharedFile) {
-        knownFiles["$sessionId:${file.fileId}"] = file
-        store.hydrate(sessionId, file)
+    /** Replays full local state (`replace_all = true`) when attaching a fresh Remote / Core instance. */
+    fun attachRemote(remote: Remote) {
+        remote.sendSharedFileLocalState(store.buildFullLocalStateEvent())
     }
 
-    fun startOrResume(sessionId: String, file: SharedFile, userInitiated: Boolean = true) {
-        knownFiles["$sessionId:${file.fileId}"] = file
-        store.startOrResume(sessionId, file, userInitiated)
+    fun registerFile(sessionId: String, item: SessionSharedFileItem) {
+        store.hydrate(sessionId, item.toSharedFileTarget())
     }
 
-    fun pause(sessionId: String, file: SharedFile) {
-        knownFiles["$sessionId:${file.fileId}"] = file
-        store.pause(sessionId, file)
+    fun startOrResume(sessionId: String, item: SessionSharedFileItem, userInitiated: Boolean = true) {
+        store.startOrResume(sessionId, item.toSharedFileTarget(), userInitiated)
     }
 
-    fun cancel(sessionId: String, file: SharedFile) {
-        knownFiles["$sessionId:${file.fileId}"] = file
-        store.cancel(sessionId, file)
+    fun pause(sessionId: String, item: SessionSharedFileItem) {
+        store.pause(sessionId, item.toSharedFileTarget())
     }
 
-    fun deleteLocal(sessionId: String, file: SharedFile) {
-        store.deleteLocal(sessionId, file)
+    fun cancel(sessionId: String, item: SessionSharedFileItem) {
+        store.cancel(sessionId, item.toSharedFileTarget())
+    }
+
+    fun deleteLocal(sessionId: String, item: SessionSharedFileItem) {
+        store.deleteLocal(sessionId, item.toSharedFileTarget())
         thumbCache.evictAll()
     }
 
+    fun localFileIfDownloaded(sessionId: String, fileId: String): File? =
+        store.localFileIfDownloaded(sessionId, fileId)
+
+    fun localFileFor(sessionId: String, target: SharedFileTarget): File =
+        store.localFileFor(sessionId, target)
+
     fun removeSession(sessionId: String) {
         store.removeSession(sessionId)
-        val prefix = "$sessionId:"
-        knownFiles.keys.filter { it.startsWith(prefix) }.forEach { knownFiles.remove(it) }
         thumbCache.evictAll()
     }
 
     fun clearAll() {
         store.clearAll()
-        knownFiles.clear()
         thumbCache.evictAll()
     }
 
@@ -114,7 +120,7 @@ class SharedFileManager(
 
     suspend fun loadThumbnail(file: File, kind: SharedFileKind, targetPx: Int): ImageBitmap? {
         if (!file.isFile) return null
-        if (kind != SharedFileKind.IMAGE && kind != SharedFileKind.VIDEO) return null
+        if (kind != SharedFileKind.SHARED_FILE_KIND_IMAGE && kind != SharedFileKind.SHARED_FILE_KIND_VIDEO) return null
         val key = "${file.absolutePath}:${file.lastModified()}:$targetPx"
         thumbCache.get(key)?.let { return it }
         val decoded = withContext(Dispatchers.IO) {
@@ -127,8 +133,8 @@ class SharedFileManager(
     private fun decodeThumbnail(file: File, kind: SharedFileKind, targetPx: Int): ImageBitmap? =
         runCatching {
             val bmp = when (kind) {
-                SharedFileKind.IMAGE -> decodeImageThumb(file, targetPx)
-                SharedFileKind.VIDEO -> decodeVideoThumb(file, targetPx)
+                SharedFileKind.SHARED_FILE_KIND_IMAGE -> decodeImageThumb(file, targetPx)
+                SharedFileKind.SHARED_FILE_KIND_VIDEO -> decodeVideoThumb(file, targetPx)
                 else -> null
             }
             bmp?.asImageBitmap()
@@ -175,8 +181,6 @@ class SharedFileManager(
     }
 
     private fun extractMediaDurationMs(file: File): Long? {
-        val kind = classifySharedFile(file.name)
-        if (kind != SharedFileKind.VIDEO && kind != SharedFileKind.AUDIO) return null
         val mmr = MediaMetadataRetriever()
         return try {
             mmr.setDataSource(file.absolutePath)
@@ -188,11 +192,16 @@ class SharedFileManager(
         }
     }
 
+    private fun safeName(displayName: String): String =
+        displayName.substringAfterLast('/').substringAfterLast('\\').trim().takeIf {
+            it.isNotEmpty() && it != "." && it != ".."
+        } ?: "file"
+
     fun contentUri(file: File): Uri =
         FileProvider.getUriForFile(context, "${context.packageName}.files", file)
 
-    fun mimeTypeFor(name: String): String {
-        val clean = sanitizeSharedFileName(name)
+    fun mimeTypeFor(displayName: String): String {
+        val clean = safeName(displayName)
         val ext = clean.substringAfterLast('.', "").lowercase(Locale.ROOT)
         if (ext.isEmpty()) return "application/octet-stream"
         return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
@@ -216,8 +225,9 @@ class SharedFileManager(
      * over; returns false, showing nothing, when no app can open it.
      */
     fun openExternal(activityContext: Context, file: File, displayName: String): Boolean {
+        val safe = safeName(displayName)
         val uri = contentUri(file)
-        val mime = if (isSharedTextFile(displayName)) "text/plain" else mimeTypeFor(displayName)
+        val mime = if (isSharedTextFile(safe)) "text/plain" else mimeTypeFor(safe)
         val view = Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, mime)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -226,7 +236,7 @@ class SharedFileManager(
         // Markdown-only readers are additional choices; wildcard/plain-text readers appear once.
         val markdown = Intent(view).setDataAndType(uri, "text/markdown")
         @Suppress("DEPRECATION")
-        val initial = if (isSharedMarkdownFile(displayName)) {
+        val initial = if (isSharedMarkdownFile(safe)) {
             val plainPackages = handlers.map { it.activityInfo.packageName }.toSet()
             activityContext.packageManager.queryIntentActivities(markdown, PackageManager.MATCH_DEFAULT_ONLY)
                 .filter { it.activityInfo.packageName !in plainPackages }
@@ -234,7 +244,7 @@ class SharedFileManager(
                 .map { Intent(markdown).setComponent(ComponentName(it.activityInfo.packageName, it.activityInfo.name)) }
         } else emptyList()
         if (handlers.isEmpty() && initial.isEmpty()) return false
-        val chooser = Intent.createChooser(view, sanitizeSharedFileName(displayName))
+        val chooser = Intent.createChooser(view, safe)
             .putExtra(Intent.EXTRA_AUTO_LAUNCH_SINGLE_CHOICE, false)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (initial.isNotEmpty()) chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, initial.toTypedArray())
@@ -247,14 +257,15 @@ class SharedFileManager(
     }
 
     fun shareFile(activityContext: Context, file: File, displayName: String) {
+        val safe = safeName(displayName)
         val uri = contentUri(file)
-        val mime = mimeTypeFor(displayName)
+        val mime = mimeTypeFor(safe)
         val intent = Intent(Intent.ACTION_SEND)
             .setType(mime)
             .putExtra(Intent.EXTRA_STREAM, uri)
-            .putExtra(Intent.EXTRA_TITLE, sanitizeSharedFileName(displayName))
+            .putExtra(Intent.EXTRA_TITLE, safe)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        val chooser = Intent.createChooser(intent, sanitizeSharedFileName(displayName))
+        val chooser = Intent.createChooser(intent, safe)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         activityContext.startActivity(chooser)
     }
@@ -262,30 +273,30 @@ class SharedFileManager(
     suspend fun saveToAlbum(file: File, kind: SharedFileKind, displayName: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val safeName = sanitizeSharedFileName(displayName)
-                val mime = mimeTypeFor(safeName)
+                val safe = safeName(displayName)
+                val mime = mimeTypeFor(safe)
                 val collection = when (kind) {
-                    SharedFileKind.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                    SharedFileKind.SHARED_FILE_KIND_VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
                     else -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
                 }
                 val relDir = when (kind) {
-                    SharedFileKind.VIDEO -> Environment.DIRECTORY_MOVIES + "/remote-agent"
+                    SharedFileKind.SHARED_FILE_KIND_VIDEO -> Environment.DIRECTORY_MOVIES + "/remote-agent"
                     else -> Environment.DIRECTORY_PICTURES + "/remote-agent"
                 }
-                insertMediaStoreFile(collection, relDir, safeName, mime, file)
+                insertMediaStoreFile(collection, relDir, safe, mime, file)
             }
         }
 
     suspend fun saveToDownloads(file: File, displayName: String): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val safeName = sanitizeSharedFileName(displayName)
-                val mime = mimeTypeFor(safeName)
+                val safe = safeName(displayName)
+                val mime = mimeTypeFor(safe)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     insertMediaStoreFile(
                         MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                         Environment.DIRECTORY_DOWNLOADS + "/RemoteAgent",
-                        safeName,
+                        safe,
                         mime,
                         file,
                     )
@@ -293,7 +304,7 @@ class SharedFileManager(
                     @Suppress("DEPRECATION")
                     val downloadsDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "RemoteAgent")
                     downloadsDir.mkdirs()
-                    val dest = uniqueDest(downloadsDir, safeName)
+                    val dest = uniqueDest(downloadsDir, safe)
                     file.inputStream().use { input ->
                         dest.outputStream().use { output -> input.copyTo(output) }
                     }

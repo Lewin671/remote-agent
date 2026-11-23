@@ -1,6 +1,5 @@
 package io.github.lewin671.remoteagent.data
 
-import io.github.lewin671.remoteagent.core.sanitizeSharedFileName
 import java.io.File
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -16,7 +15,11 @@ private val TextExtensions = setOf(
     "sh", "py", "js", "ts", "tsx", "jsx", "go", "kt", "swift", "java", "c", "h", "cpp", "rs", "rb", "sql", "diff", "patch", "html",
 )
 
-private fun extension(name: String) = sanitizeSharedFileName(name).substringAfterLast('.', "").lowercase(Locale.ROOT)
+private fun extension(name: String): String {
+    val base = name.substringAfterLast('/').substringAfterLast('\\').trim()
+    val dot = base.lastIndexOf('.')
+    return if (dot >= 0 && dot < base.length - 1) base.substring(dot + 1).lowercase(Locale.ROOT) else ""
+}
 
 internal fun isSharedTextFile(name: String): Boolean = extension(name) in TextExtensions
 internal fun isSharedMarkdownFile(name: String): Boolean = extension(name) in setOf("md", "markdown")

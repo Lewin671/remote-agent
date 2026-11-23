@@ -52,4 +52,52 @@ class FileCapabilityGateTest {
             assertFalse(Outbox.keeping("capability")); assertTrue(Outbox.of("capability").isEmpty())
         } finally { r.close(); AccountMemory.clear() }
     }
+
+    @Test fun draftExceedingLoweredCapabilitiesReturnsCoreBlockReason() {
+        val r = remote()
+        try {
+            r.showForTest(
+                RemoteState(
+                    conn = ConnState.ONLINE,
+                    machines = mapOf(
+                        "computer" to MachineView(
+                            "computer",
+                            true,
+                            0,
+                            MachineMeta.newBuilder()
+                                .setCapabilities(
+                                    MachineCapabilities.newBuilder()
+                                        .setImageUpload(true)
+                                        .setFileUpload(true)
+                                        .setMaxImagesPerMessage(1)
+                                        .setMaxFilesPerMessage(1)
+                                        .setMaxFileUploadBytes(10L * 1024 * 1024),
+                                )
+                                .build(),
+                        ),
+                    ),
+                    sessions = mapOf("capability" to SessionView("capability", "computer")),
+                ),
+            )
+            val f1 = PendingImage("f1", "content://documents/f1", "a.txt", 10, retainSource = false)
+            val f2 = PendingImage("f2", "content://documents/f2", "b.txt", 10, retainSource = false)
+            val overCount = evaluateDraftAttachmentsBlocked(r, "computer", "capability", documents = listOf(f1, f2))
+            assertNotNull(overCount)
+            assertTrue("got=$overCount", overCount!!.contains("1"))
+
+            val tooBig = PendingImage("big", "content://documents/big", "big.bin", 12L * 1024 * 1024, retainSource = false)
+            val overSize = evaluateDraftAttachmentsBlocked(r, "computer", "capability", documents = listOf(tooBig))
+            assertNotNull(overSize)
+            assertTrue("got=$overSize", overSize!!.contains("big.bin") && overSize.contains("10"))
+
+            val p1 = PendingImage("p1", null, retainSource = false)
+            val p2 = PendingImage("p2", null, retainSource = false)
+            val overImgs = evaluateDraftAttachmentsBlocked(r, "computer", "capability", documents = emptyList(), pictures = listOf(p1, p2))
+            assertNotNull(overImgs)
+            assertTrue("got=$overImgs", overImgs!!.contains("1"))
+        } finally {
+            r.close()
+            AccountMemory.clear()
+        }
+    }
 }

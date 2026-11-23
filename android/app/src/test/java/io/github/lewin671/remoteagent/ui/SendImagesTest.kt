@@ -50,7 +50,7 @@ class SendImagesTest {
         }
         Outbox.of(sid) += Outgoing("same-request", listOf(image), original = true)
         val draft = ImageDraft("session:recover", MemoryFiles())
-        assertTrue(Outbox.takeBack(sid, "same-request", draft))
+        assertTrue(Outbox.takeBack(sid, "same-request", draft, maxImages = 6, maxFiles = 6))
         assertSame(image, draft.images.single())
         assertTrue(draft.original)
         assertTrue(needsUpload(image, "mac"))
