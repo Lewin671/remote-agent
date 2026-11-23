@@ -117,6 +117,13 @@ export function Composer({
   const submit = (force = false, sendMode: SendMode = defaultMode) => {
     tray?.refreshExpired();
     if (!canSend || (images && !tray!.ready())) return;
+    if (images) {
+      const blocked = tray!.checkSendBlocked();
+      if (blocked) {
+        tray!.setNote(blocked);
+        return;
+      }
+    }
     if (t.startsWith("/") && !force && !images) return setSlash(sendMode);
     onSend(t, sendMode);
     setText("");

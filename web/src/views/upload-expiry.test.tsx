@@ -22,7 +22,7 @@ it("renews on the deadline and on return from a suspended page, and cancels when
   let tray!: Tray;
   function Draft() {
     useRemote(remote);
-    tray = useTray(remote, "s", "mac", { maxImages: 6, maxFiles: 6, maxFileBytes: 100 * 1024 * 1024, supportsFiles: true, blocked: "" });
+    tray = useTray(remote, "s", "mac", { maxImages: 6, maxFiles: 6, supportsFiles: true, blocked: "" });
     return <span>{tray.ready() ? "ready" : "waiting"}</span>;
   }
   const host = document.createElement("div");

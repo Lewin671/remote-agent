@@ -121,9 +121,8 @@ export class Tray {
   sessionId = "";
   machineId = "";
   fileSupported = false;
-  maxFiles = 6;
-  maxFileBytes = 100 * 1024 * 1024;
-  galleryAcceptMime = "image/*";
+  maxFiles = 0;
+  galleryAcceptMime = "";
   originalImageHint = "";
   fileMetadataNotice = "";
   fileBlocked = "";
@@ -140,10 +139,25 @@ export class Tray {
     private prepare: Prepare,
     private upload: Upload,
     private onChange: () => void,
-    public max = 6,
+    public max = 0,
     evaluate?: AttachmentEvaluator,
   ) {
     this.evaluate = evaluate;
+  }
+
+  private syncLimits(ev: AttachmentEvalViewModel) {
+    this.max = ev.maxImages;
+    this.maxFiles = ev.maxFiles;
+    this.fileSupported = ev.supportsFiles;
+    this.galleryAcceptMime = ev.galleryAcceptMime;
+    this.originalImageHint = renderText(ev.originalImageHint);
+    this.fileMetadataNotice = renderText(ev.fileMetadataNotice);
+    this.fileBlocked = renderText(ev.fileUploadBlockedReason);
+  }
+
+  setNote(text: string) {
+    this.note = text;
+    this.onChange();
   }
 
   /** Evaluates whether the gallery or file picker can be opened right now via Core AttachmentEval. */
@@ -155,12 +169,64 @@ export class Tray {
       currentImages: this.images().length,
       currentFiles: this.files().length,
     });
+    this.syncLimits(ev);
     if (forFiles) {
       if (ev.canPickFiles) return "";
       return renderText(ev.filesPickBlockedReason) || fallbackBlocked;
     }
     if (ev.canPickGallery) return "";
     return renderText(ev.galleryBlockedReason) || fallbackBlocked;
+  }
+
+  /** Re-evaluates all queued attachments against Core AttachmentEval before sending. */
+  checkSendBlocked(): string {
+    if (!this.items.length || !this.evaluate) return "";
+    const ev = this.evaluate({
+      machineId: this.machineId,
+      sessionId: this.sessionId,
+      currentImages: 0,
+      currentFiles: 0,
+      candidates: this.items.map((item, idx) =>
+        create(AttachmentCandidateInputSchema, {
+          name:
+            item.kind === "file"
+              ? (item.name ?? "")
+              : item.file instanceof File && item.file.name
+                ? item.file.name
+                : `image-${idx + 1}.png`,
+          mimeType:
+            item.kind === "file"
+              ? item.file.type
+              : item.prepared
+                ? "image/" + item.prepared.format
+                : item.file.type || "image/png",
+          sizeBytes: BigInt(Math.max(0, Math.floor(item.bytes ?? item.file.size))),
+          sizeUnknown: false,
+          forceFile: item.kind === "file",
+        }),
+      ),
+    });
+    this.syncLimits(ev);
+    const rejected = ev.decisions.find((d) => !d.accepted);
+    if (!rejected) return "";
+    return renderText(ev.notice) || renderText(rejected.rejectReason);
+  }
+
+  /** Checks against Core AttachmentEval whether adding the given counts fits in the current draft. */
+  canFit(addImages: number, addFiles: number): { images: boolean; files: boolean } {
+    if (this.evaluate) {
+      const ev = this.evaluate({
+        machineId: this.machineId,
+        sessionId: this.sessionId,
+        currentImages: this.images().length,
+        currentFiles: this.files().length,
+      });
+      this.syncLimits(ev);
+    }
+    return {
+      images: this.images().length + addImages <= this.max,
+      files: this.files().length + addFiles <= this.maxFiles,
+    };
   }
 
   /** Evaluates a picked/dropped/pasted batch synchronously via Core AttachmentEval and queues accepted items. */
@@ -185,6 +251,7 @@ export class Tray {
         }),
       ),
     });
+    this.syncLimits(ev);
 
     let added = false;
     ev.decisions.forEach((d, idx) => {
@@ -260,7 +327,7 @@ export class Tray {
    * uploaded again: the machine may have cleaned up the old file. All or nothing:
    * false, with nothing added, when they do not all fit. */
   restore(images: { imageId: string; thumb?: Blob; file?: Blob }[], original = false): boolean {
-    if (this.restoring || this.images().length + images.length > this.max) return false;
+    if (this.restoring || !this.canFit(images.length, 0).images) return false;
     if (!this.images().length) this.original = original;
     for (const im of images) {
       const item: TrayItem = { key: "t" + ++keys, file: im.file ?? im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.file && !im.thumb };
@@ -277,7 +344,7 @@ export class Tray {
 
   private evalFileMeta(items: readonly { name: string; mimeType: string; sizeBytes: number }[]) {
     if (!this.evaluate || !items.length) return undefined;
-    return this.evaluate({
+    const ev = this.evaluate({
       machineId: this.machineId,
       sessionId: this.sessionId,
       currentImages: 0,
@@ -291,17 +358,17 @@ export class Tray {
         }),
       ),
     });
+    this.syncLimits(ev);
+    return ev;
   }
 
   restoreFiles(files: { fileId: string; name: string; size: number; file?: Blob }[]): boolean {
     const meta = this.evalFileMeta(
       files.map((f) => ({ name: f.name, mimeType: f.file?.type ?? "", sizeBytes: f.size })),
     );
-    if (files.length && !this.fileSupported) {
-      this.note =
-        renderText(meta?.fileUploadBlockedReason) ||
-        this.fileBlocked ||
-        i18n.t("attachment.update_required");
+    const blocked = renderText(meta?.fileUploadBlockedReason) || this.fileBlocked;
+    if (files.length && (!this.fileSupported || blocked)) {
+      this.note = blocked;
       this.onChange();
       return false;
     }
@@ -392,7 +459,7 @@ export class Tray {
   }
 
   full(): boolean {
-    return this.images().length >= this.max;
+    return this.max > 0 && this.images().length >= this.max;
   }
 
   /** Every image is on the current machine. */
@@ -546,11 +613,7 @@ export class Tray {
           { name: item.name ?? "", mimeType: item.file.type, sizeBytes: item.file.size },
         ]);
         if (!this.fileSupported || check?.fileUploadBlockedReason) {
-          throw new Error(
-            renderText(check?.fileUploadBlockedReason) ||
-              this.fileBlocked ||
-              i18n.t("attachment.update_required"),
-          );
+          throw new Error(renderText(check?.fileUploadBlockedReason) || this.fileBlocked);
         }
         const decision = check?.decisions[0];
         if (decision && !decision.accepted) {

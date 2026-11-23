@@ -228,7 +228,6 @@ it("says at once that a video over the file limit is too big, and uploads nothin
   expect(t.note).toContain(message("attachment.named_size_limit", {"name":"long.mp4","limit":100}));
   expect(upload).not.toHaveBeenCalled();
   // At the file count limit, a video is not taken either.
-  t.maxFiles = 1;
   t.setCaps({ fileUpload: true, maxFiles: 1 });
   await choose("照片和视频", [sized("a.mp4", "video/mp4", 10), sized("b.mp4", "video/mp4", 10)]);
   expect(t.files().map((f) => f.name)).toEqual(["a.mp4"]);

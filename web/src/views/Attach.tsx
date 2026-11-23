@@ -17,7 +17,6 @@ export interface TrayCapabilities {
   sessionId?: string;
   maxImages: number;
   maxFiles: number;
-  maxFileBytes: bigint | number;
   supportsFiles: boolean;
   galleryAcceptMime?: string;
   originalImageHint?: string;
@@ -29,7 +28,6 @@ export interface TrayCapabilities {
 /** The tray of a draft (a session's input, or a project's new-session
  * card), kept on the Remote so it survives leaving the page. */
 export function useTray(remote: Remote, key: string, machineId: string, caps: TrayCapabilities): Tray {
-  const max = caps.maxImages > 0 ? caps.maxImages : 6;
   let t = remote.trays.get(key);
   const evaluate = (req: Parameters<NonNullable<Tray["evaluate"]>>[0]) =>
     getCoreHost(remote).evalAttachments(req);
@@ -38,7 +36,7 @@ export function useTray(remote: Remote, key: string, machineId: string, caps: Tr
       remote.prepareImage,
       (m, p, progress, started) => remote.uploadImage(m, p, progress, started),
       () => { remote.persistDraft(key); remote.touch(); },
-      max,
+      caps.maxImages,
       evaluate,
     );
     t.machineId = machineId;
@@ -47,11 +45,10 @@ export function useTray(remote: Remote, key: string, machineId: string, caps: Tr
   }
   t.evaluate = evaluate;
   t.sessionId = caps.sessionId ?? "";
-  t.max = max;
+  t.max = caps.maxImages;
   t.fileSupported = caps.supportsFiles;
-  t.maxFiles = caps.maxFiles > 0 ? caps.maxFiles : 6;
-  t.maxFileBytes = Number(caps.maxFileBytes) > 0 ? Number(caps.maxFileBytes) : 100 * 1024 * 1024;
-  t.galleryAcceptMime = caps.galleryAcceptMime || (caps.supportsFiles ? "image/*,video/*" : "image/*");
+  t.maxFiles = caps.maxFiles;
+  t.galleryAcceptMime = caps.galleryAcceptMime ?? "";
   t.originalImageHint = caps.originalImageHint ?? "";
   t.fileMetadataNotice = caps.fileMetadataNotice ?? "";
   t.fileBlocked = caps.fileBlocked ?? "";
@@ -122,7 +119,7 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
       <div className="attach-menu glass" role="menu">
         <button role="menuitem" onClick={() => pick(false)}><ImageIcon />{i18n.t("attachment.photos_videos")}</button>
         <button role="menuitem" onClick={() => pick(true)}><FileIcon />{i18n.t("attachment.file")}</button>
-        <p>{tray.fileMetadataNotice || i18n.t("attachment.metadata")}</p>
+        {tray.fileMetadataNotice && <p>{tray.fileMetadataNotice}</p>}
       </div>
     )}
     <FilePickers tray={tray} accept={tray.galleryAcceptMime} media={input} files={files} />
@@ -287,7 +284,7 @@ function Attachments({ tray, note, remote }: { tray: Tray; note?: ReactNode; rem
           </div>
         </>
       )}
-      {tray.original && images.length > 0 && <div className="att-hint">{tray.originalImageHint || i18n.t("image.original_hint")}</div>}
+      {tray.original && images.length > 0 && tray.originalImageHint && <div className="att-hint">{tray.originalImageHint}</div>}
       {files.length > 0 && (
         <div className="file-chips">
           {files.map((i) => (
@@ -303,7 +300,7 @@ function Attachments({ tray, note, remote }: { tray: Tray; note?: ReactNode; rem
           ))}
         </div>
       )}
-      {tray.files().length > 0 && <div className="att-hint">{tray.fileMetadataNotice || i18n.t("attachment.metadata")}</div>}
+      {tray.files().length > 0 && tray.fileMetadataNotice && <div className="att-hint">{tray.fileMetadataNotice}</div>}
       {failedFiles.length > 0 && <Banner kind="err">{i18n.t("attachment.failed_send_hint", { reason: failedFiles[0].error ?? "" })}</Banner>}
       {failed.length > 0 && failureSummary && (
         <Banner kind="err">

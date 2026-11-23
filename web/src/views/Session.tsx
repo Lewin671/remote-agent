@@ -1419,7 +1419,6 @@ export function SessionPage({
     sessionId,
     maxImages: caps?.maxImages ?? 0,
     maxFiles: caps?.maxFiles ?? 0,
-    maxFileBytes: caps?.maxFileBytes ?? 0n,
     supportsFiles: !!caps?.supportsFiles,
     galleryAcceptMime: caps?.galleryAcceptMime || undefined,
     originalImageHint: renderText(caps?.originalImageHint),
@@ -1452,7 +1451,7 @@ export function SessionPage({
           return;
         }
       }
-      if (tray.files().length + files.length > tray.maxFiles) {
+      if (!tray.canFit(0, files.length).files) {
         toastRef.current(i18n.t("composer.restore_files_full", { count: files.length }));
         return;
       }
@@ -1654,13 +1653,13 @@ export function SessionPage({
         toastRef.current(fileWhy);
         return;
       }
-      if (tray.files().length + files.length > tray.maxFiles) {
+      if (!tray.canFit(0, files.length).files) {
         toastRef.current(i18n.t("composer.restore_files_full", { count: files.length }));
         return;
       }
       pendingRestoreFiles.current.set(reqId, files);
     }
-    if ((it?.imageIds.length ?? 0) > 0 && tray.images().length + it!.imageIds.length > tray.max) {
+    if ((it?.imageIds.length ?? 0) > 0 && !tray.canFit(it!.imageIds.length, 0).images) {
       toastRef.current(
         i18n.t("composer.restore_images_full", { existing: tray.images().length, count: it!.imageIds.length }),
       );

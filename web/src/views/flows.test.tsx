@@ -4848,3 +4848,68 @@ it.each([false, true])("queues agy sends without a 做完再发 button (attachme
   expect(submit).toHaveBeenCalled();
   expect(submit.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
 });
+
+it("blocks opening pickers at the limit and blocks sending when an uploaded draft exceeds lowered caps", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-idle")!;
+  updateDemoMachine(r, s.machineId, (m) => {
+    m.meta!.capabilities!.fileUpload = true;
+    m.meta!.capabilities!.maxImagesPerMessage = 2;
+    m.meta!.capabilities!.maxFilesPerMessage = 1;
+  });
+  r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+  let seq = 0;
+  r.uploadImage = async (_m, p) => ({
+    imageId: p.format === "file" ? "" : "img-" + ++seq,
+    fileId: p.format === "file" ? "file-" + ++seq : undefined,
+    expiresMs: Number.MAX_SAFE_INTEGER,
+  });
+  const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
+  await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
+
+  // Fill both image (2/2) and file (1/1) trays.
+  await act(async () => {
+    const gallery = host.querySelector<HTMLInputElement>("input[type=file][accept]")!;
+    Object.defineProperty(gallery, "files", {
+      value: [new File(["a"], "a.png", { type: "image/png" }), new File(["b"], "b.png", { type: "image/png" })],
+      configurable: true,
+    });
+    gallery.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await act(async () => {
+    const filesInput = host.querySelector<HTMLInputElement>("input[type=file]:not([accept])")!;
+    Object.defineProperty(filesInput, "files", {
+      value: [new File(["x"], "note.txt", { type: "text/plain" })],
+      configurable: true,
+    });
+    filesInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await vi.waitFor(() => expect(r.trays.get(s.id)?.ready()).toBe(true));
+
+  // Clicking 文件 and 照片和视频 at their limits shows Core's blocked reasons without opening pickers.
+  const plus = () => host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.ios_attach")}"]`)!;
+  const clicks = [...host.querySelectorAll<HTMLInputElement>("input[type=file]")].map((el) =>
+    vi.spyOn(el, "click").mockImplementation(() => undefined),
+  );
+  await click(plus());
+  await click([...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === message("attachment.file"))!);
+  expect(host.querySelector(".toast")?.textContent).toBe(message("attachment.max_files", { count: 1 }));
+  await click(plus());
+  await click([...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === message("attachment.photos_videos"))!);
+  expect(host.querySelector(".toast")?.textContent).toBe(message("attachment.max_images", { count: 2 }));
+  expect(clicks.every((c) => c.mock.calls.length === 0)).toBe(true);
+
+  // Lower machine image cap below the already-uploaded draft (2 images > 1) and click Send.
+  updateDemoMachine(r, s.machineId, (m) => {
+    m.meta!.capabilities!.maxImagesPerMessage = 1;
+  });
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "keep draft");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  expect(submit).not.toHaveBeenCalled();
+  expect(host.textContent).toContain(message("attachment.images_limit", { limit: 1, count: 1 }));
+  expect(host.querySelector<HTMLTextAreaElement>("textarea.draft")!.value).toBe("keep draft");
+});

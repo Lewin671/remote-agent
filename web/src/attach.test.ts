@@ -31,7 +31,7 @@ function setup(opts: { failUpload?: (n: number) => boolean; slow?: boolean; file
     if (opts.slow) await new Promise((r) => setTimeout(r, 30));
     progress(p.bytes.length, p.bytes.length);
     if (opts.failUpload?.(i)) throw new Error("连接超时");
-    return { imageId: "id" + i, expiresMs: Number.MAX_SAFE_INTEGER };
+    return { imageId: p.format === "file" ? "" : "id" + i, fileId: p.format === "file" ? "f" + i : undefined, expiresMs: Number.MAX_SAFE_INTEGER };
   });
   const evalHost = makeEval({ fileUpload: opts.fileUpload });
   const tray = new Tray(prepare, upload, () => undefined, 6, evalHost.evaluate);
@@ -296,7 +296,7 @@ it("rejects unsupported, oversized and long-named files before reading any bytes
   const source = new File(["data"], "x.csv");
   const read = vi.spyOn(source, "arrayBuffer");
   tray.addFiles([source]); expect(tray.note).toBe(message("attachment.update_required"));
-  tray.fileSupported = true; tray.maxFileBytes = 3; evalHost.setCaps({ fileUpload: true, maxFileBytes: 3 });
+  tray.fileSupported = true; evalHost.setCaps({ fileUpload: true, maxFileBytes: 3 });
   tray.addFiles([source]); expect(tray.note).toContain("超过单个文件");
   tray.addFiles([new File([], "中".repeat(86))]); expect(tray.note).toBe(message("attachment.filename_limit"));
   expect(tray.items).toHaveLength(0); expect(read).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
@@ -379,4 +379,18 @@ it("rejects file restoration synchronously when the refreshed capability is off"
   expect(tray.note).toContain(message("session.update_computer"));
   expect(tray.items).toHaveLength(0);
   expect(read).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
+});
+
+it("blocks opening pickers at the limit and blocks sending when a draft exceeds lowered caps", async () => {
+  const { tray, evalHost } = setup({ fileUpload: true });
+  evalHost.setCaps({ fileUpload: true, maxImages: 2, maxFiles: 1 });
+  tray.add([file("a"), file("b")]);
+  tray.addFiles([new File(["x"], "one.txt", { type: "text/plain" })]);
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  expect(tray.checkPickBlocked(true, "")).toBe(message("attachment.max_files", { count: 1 }));
+  expect(tray.checkPickBlocked(false, "")).toBe(message("attachment.max_images", { count: 2 }));
+  expect(tray.checkSendBlocked()).toBe("");
+  // Lower the computer's image cap below the already-uploaded draft.
+  evalHost.setCaps({ fileUpload: true, maxImages: 1, maxFiles: 1 });
+  expect(tray.checkSendBlocked()).toBe(message("attachment.images_limit", { limit: 1, count: 1 }));
 });

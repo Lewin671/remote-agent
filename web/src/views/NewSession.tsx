@@ -101,7 +101,6 @@ export function NewBoxView(p: {
     ? useTray(remote, "new:" + projectKey, machineId, {
         maxImages: vm.maxImages,
         maxFiles: vm.maxFiles,
-        maxFileBytes: vm.maxFileBytes,
         supportsFiles: vm.supportsFiles,
         galleryAcceptMime: vm.galleryAcceptMime || undefined,
         originalImageHint: renderText(vm.originalImageHint),
@@ -154,6 +153,13 @@ export function NewBoxView(p: {
     if (tray) {
       tray.refreshExpired();
       if (tray.items.length ? !tray.ready() : !vm.prompt.trim()) return;
+      if (tray.items.length) {
+        const blocked = tray.checkSendBlocked();
+        if (blocked) {
+          tray.setNote(blocked);
+          return;
+        }
+      }
     } else if (!vm.prompt.trim()) return;
     onSubmit();
   };
