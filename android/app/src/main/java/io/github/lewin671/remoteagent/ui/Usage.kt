@@ -88,128 +88,29 @@ import io.github.lewin671.remoteagent.core.USAGE_RETENTION_DAYS
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.clampUsageCustomRange
+import io.github.lewin671.remoteagent.core.proto.UsageBannerKind
+import io.github.lewin671.remoteagent.core.proto.UsageBannerView
 import io.github.lewin671.remoteagent.core.proto.UsageBarBucketView
+import io.github.lewin671.remoteagent.core.proto.UsageEmptyKind
 import io.github.lewin671.remoteagent.core.proto.UsageHeroView
 import io.github.lewin671.remoteagent.core.proto.UsageMetricStripView
-import io.github.lewin671.remoteagent.core.proto.UsageModelRowView
 import io.github.lewin671.remoteagent.core.proto.UsageSortColumn
 import io.github.lewin671.remoteagent.core.proto.UsageViewModel
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.UsageBucketGranularity
 import io.github.lewin671.remoteagent.proto.UsageRangePreset
-import io.github.lewin671.remoteagent.proto.UsageSourceState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.round
 import kotlin.math.roundToInt
 
 private const val DAY_MS = 86_400_000L
 private const val EN_DASH = "–"
-private const val UNIT_K = "k"
-private const val UNIT_M = "M"
-private const val UNIT_B = "B"
-private const val UNIT_PCT = "%"
-private const val ENGLISH_WAN_MARKER = "10k"
-
-fun formatUsageCommaUint(n: Long): String {
-    val clamped = max(0L, n)
-    return String.format(Locale.US, "%,d", clamped)
-}
-
-private fun formatUsageScaled(value: Double, unit: String, maxOneDec: Double = 100.0): String {
-    if (value < maxOneDec) {
-        val rounded = round(value * 10.0) / 10.0
-        val whole = round(rounded)
-        val numStr =
-            if (abs(rounded - whole) < 1e-6) whole.toLong().toString()
-            else String.format(Locale.US, "%.1f", rounded)
-        return numStr + unit
-    }
-    return formatUsageCommaUint(round(value).toLong()) + unit
-}
-
-fun formatUsageTokens(
-    n: Long,
-    wanUnit: String,
-    yiUnit: String,
-    chinese: Boolean,
-): String {
-    if (n <= 0L) return "0"
-    val v = n.toDouble()
-    if (!chinese) {
-        if (v < 1000.0) return formatUsageCommaUint(n)
-        if (v < 999_500.0) return formatUsageScaled(v / 1000.0, UNIT_K)
-        if (v < 999_500_000.0) return formatUsageScaled(v / 1_000_000.0, UNIT_M)
-        return formatUsageScaled(v / 1_000_000_000.0, UNIT_B)
-    }
-    if (v < 10_000.0) return formatUsageCommaUint(n)
-    if (v < 99_950_000.0) {
-        val w = v / 10_000.0
-        return if (w < 100.0) formatUsageScaled(w, wanUnit, 100.0)
-        else formatUsageCommaUint(round(w).toLong()) + wanUnit
-    }
-    if (v < 100_000_000.0) return "1$yiUnit"
-    if (v < 99_995_000_000.0) return formatUsageScaled(v / 100_000_000.0, yiUnit, 1000.0)
-    return formatUsageCommaUint(round(v / 100_000_000.0).toLong()) + yiUnit
-}
-
-fun formatUsageTokens(n: Long, copy: MessageResolver): String {
-    val wan = copy(UiMessages.usageUnitWan())
-    val yi = copy(UiMessages.usageUnitYi())
-    return formatUsageTokens(n, wan, yi, chinese = wan != ENGLISH_WAN_MARKER)
-}
-
-fun formatUsageCacheHit(rate: Double): String {
-    if (!rate.isFinite() || rate <= 0.0) return "0$UNIT_PCT"
-    if (rate >= 1.0) return "100$UNIT_PCT"
-    val pct = rate * 100.0
-    if (pct < 1.0 || pct > 99.0) {
-        val rounded = round(pct * 10.0) / 10.0
-        val whole = round(rounded)
-        val numStr =
-            if (abs(rounded - whole) < 1e-6) whole.toLong().toString()
-            else String.format(Locale.US, "%.1f", rounded)
-        return numStr + UNIT_PCT
-    }
-    return "${round(pct).toInt()}$UNIT_PCT"
-}
-
-fun formatUsageSpeed(tokPerSec: Double): String {
-    if (!tokPerSec.isFinite() || tokPerSec <= 0.0) return "0"
-    if (tokPerSec < 10.0) {
-        val rounded = round(tokPerSec * 10.0) / 10.0
-        val whole = round(rounded)
-        return if (abs(rounded - whole) < 1e-6) whole.toLong().toString()
-        else String.format(Locale.US, "%.1f", rounded)
-    }
-    return formatUsageCommaUint(round(tokPerSec).toLong())
-}
-
-fun formatUsageTtftSeconds(ms: Double): String {
-    if (!ms.isFinite() || ms <= 0.0) return "0.0s"
-    if (ms < 10_000.0) {
-        val sec = max(0.1, round(ms / 100.0) / 10.0)
-        return String.format(Locale.US, "%.1fs", sec)
-    }
-    return "${round(ms / 1000.0).toLong()}s"
-}
-
-fun formatUsageDeltaTriangle(pct: Double, flatText: String): String {
-    if (!pct.isFinite() || abs(pct) < 0.5) return flatText
-    val rounded = round(abs(pct)).toLong()
-    val arrow = if (pct > 0.0) "▲" else "▼"
-    return "$arrow${formatUsageCommaUint(rounded)}$UNIT_PCT"
-}
-
-fun formatUsageDeltaTriangle(pct: Double, copy: MessageResolver): String =
-    formatUsageDeltaTriangle(pct, copy(UiMessages.usageFlat()))
 
 enum class UsageTickAlign { START, CENTER, END }
 
@@ -389,12 +290,6 @@ fun formatUsageCustomRange(
     }
 }
 
-private fun formatCachedAt(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String {
-    if (ms <= 0L) return ""
-    val zdt = Instant.ofEpochMilli(ms).atZone(zone)
-    return String.format(Locale.US, "%02d:%02d", zdt.hour, zdt.minute)
-}
-
 @Composable
 fun UsageScreen(
     machineId: String,
@@ -486,36 +381,7 @@ fun UsageScreenContent(
     }
     var customPickerOpen by remember { mutableStateOf(false) }
 
-    val name = vm.machineName.ifEmpty { vm.machineId.ifEmpty { copy(UiMessages.commonUnknownComputer()) } }
-    val subtitle = if (vm.found && !vm.online) copy(UiMessages.usageSubtitleOffline(name)) else name
-    val errStr = if (vm.hasErrorText()) uiText(vm.errorText) else ""
-
-    val allSourcesUnavailable =
-        vm.found &&
-            vm.supported &&
-            !vm.hasAnyUsage &&
-            !vm.loading &&
-            errStr.isEmpty() &&
-            (vm.online || vm.cachedOffline) &&
-            vm.sourcesList.isNotEmpty() &&
-            vm.sourcesList.all { it.state == UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE }
-
-    val showOfflineEmpty =
-        vm.found && vm.supported && !vm.online && !vm.hasAnyUsage && !vm.cachedOffline && !vm.loading
-
-    val showEmptyRecords =
-        vm.found &&
-            vm.supported &&
-            !vm.hasAnyUsage &&
-            !vm.loading &&
-            errStr.isEmpty() &&
-            !showOfflineEmpty &&
-            !allSourcesUnavailable
-
-    val unavailAgentNames = vm.sourcesList
-        .filter { it.state == UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE }
-        .joinToString(", ") { agentName(it.agent, copy = copy) }
-        .ifEmpty { agentName(Agent.AGENT_ANTIGRAVITY, copy = copy) }
+    val subtitle = uiText(vm.subtitle)
 
     val ranges = listOf(
         UsageRangePreset.USAGE_RANGE_PRESET_TODAY to copy(UiMessages.usageRangeToday()),
@@ -569,7 +435,7 @@ fun UsageScreenContent(
                 val rightScroll = rememberScrollState()
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                     Column(Modifier.widthIn(max = 1120.dp).fillMaxSize().padding(horizontal = 28.dp)) {
-                        UsageBanners(vm, name, errStr, onRetry, copy, Modifier.padding(top = 8.dp))
+                        UsageBanners(vm.bannersList, onRetry, copy, Modifier.padding(top = 8.dp))
                         Row(
                             Modifier.weight(1f).fillMaxWidth().padding(top = 6.dp),
                             horizontalArrangement = Arrangement.spacedBy(48.dp),
@@ -641,67 +507,55 @@ fun UsageScreenContent(
                                 }
                             }
 
-                            UsageBanners(vm, name, errStr, onRetry, copy, Modifier.padding(top = 8.dp))
+                            UsageBanners(vm.bannersList, onRetry, copy, Modifier.padding(top = 8.dp))
 
-                            when {
-                                !vm.found -> {
-                                    if (vm.loading && showSkeleton) UsageLoadingSkeleton()
-                                    else PageNote(copy(UiMessages.settingsAndroidThisComputerIsOutsideTheCurrentTrustedDirectoryCheckThe()))
-                                }
-                                !vm.supported -> {
-                                    Spacer(Modifier.height(14.dp))
-                                    val body = if (vm.hasUnsupportedFootnote()) uiText(vm.unsupportedFootnote) else ""
-                                    Notice(
-                                        "${copy(UiMessages.usageUnsupportedTitle())}\n${body.ifEmpty { copy(UiMessages.usageUnsupportedBody(name)) }}",
-                                        tone = NoticeTone.WARN,
-                                    )
-                                }
-                                showOfflineEmpty -> {
-                                    Spacer(Modifier.height(14.dp))
-                                    Notice(
-                                        "${copy(UiMessages.usageOfflineEmptyTitle(name))}\n${copy(UiMessages.usageOfflineEmptyBody(name))}",
-                                        tone = NoticeTone.WARN,
-                                        action = copy(UiMessages.commonRetry()),
-                                        onAction = onRetry,
-                                    )
-                                }
-                                vm.loading && !vm.hasAnyUsage -> {
+                            when (vm.emptyKind) {
+                                UsageEmptyKind.USAGE_EMPTY_KIND_LOADING -> {
                                     if (showSkeleton) UsageLoadingSkeleton()
                                 }
-                                errStr.isNotEmpty() && !vm.hasAnyUsage -> {
+                                UsageEmptyKind.USAGE_EMPTY_KIND_NOT_FOUND -> {
+                                    PageNote(uiText(vm.emptyTitle).ifEmpty { copy(UiMessages.settingsAndroidThisComputerIsOutsideTheCurrentTrustedDirectoryCheckThe()) })
+                                }
+                                UsageEmptyKind.USAGE_EMPTY_KIND_UNSUPPORTED,
+                                UsageEmptyKind.USAGE_EMPTY_KIND_OFFLINE_EMPTY,
+                                UsageEmptyKind.USAGE_EMPTY_KIND_LOAD_ERROR,
+                                UsageEmptyKind.USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE -> {
                                     Spacer(Modifier.height(14.dp))
+                                    val msg = listOf(uiText(vm.emptyTitle), uiText(vm.emptyBody))
+                                        .filter { it.isNotEmpty() }
+                                        .joinToString("\n")
+                                    val tone = when (vm.emptyKind) {
+                                        UsageEmptyKind.USAGE_EMPTY_KIND_LOAD_ERROR -> NoticeTone.ERROR
+                                        UsageEmptyKind.USAGE_EMPTY_KIND_UNSUPPORTED,
+                                        UsageEmptyKind.USAGE_EMPTY_KIND_OFFLINE_EMPTY -> NoticeTone.WARN
+                                        else -> NoticeTone.PLAIN
+                                    }
                                     Notice(
-                                        "${copy(UiMessages.usageLoadErrorTitle())}\n$errStr",
-                                        tone = NoticeTone.ERROR,
-                                        action = copy(UiMessages.commonRetry()),
-                                        onAction = onRetry,
+                                        msg,
+                                        tone = tone,
+                                        action = if (vm.emptyCanRetry) copy(UiMessages.commonRetry()) else null,
+                                        onAction = if (vm.emptyCanRetry) onRetry else null,
                                     )
                                 }
-                                allSourcesUnavailable -> {
-                                    Spacer(Modifier.height(14.dp))
-                                    val title = if (vm.hasUnsupportedFootnote()) uiText(vm.unsupportedFootnote) else ""
-                                    Notice(
-                                        "${title.ifEmpty { copy(UiMessages.usageOnlyUnavailableTitle(unavailAgentNames)) }}\n${copy(UiMessages.usageOnlyUnavailableBody(unavailAgentNames))}",
-                                        tone = NoticeTone.PLAIN,
-                                    )
-                                }
-                                showEmptyRecords -> {
+                                UsageEmptyKind.USAGE_EMPTY_KIND_NO_RECORDS -> {
                                     UsageEmptyRecordsView(vm = vm, preset = preset, isWide = false, copy = copy)
                                 }
-                                vm.hasAnyUsage -> {
-                                    UsageHeroBlock(
-                                        vm = vm,
-                                        isWide = false,
-                                        copy = copy,
-                                        onClearSeries = { onSelectSeries("", false) },
-                                    )
-                                    Spacer(Modifier.height(16.dp))
-                                    UsageChartsStack(
-                                        vm = vm,
-                                        isWide = false,
-                                        copy = copy,
-                                        onScrub = onScrub,
-                                    )
+                                else -> {
+                                    if (vm.hasAnyUsage) {
+                                        UsageHeroBlock(
+                                            vm = vm,
+                                            isWide = false,
+                                            copy = copy,
+                                            onClearSeries = { onSelectSeries("", false) },
+                                        )
+                                        Spacer(Modifier.height(16.dp))
+                                        UsageChartsStack(
+                                            vm = vm,
+                                            isWide = false,
+                                            copy = copy,
+                                            onScrub = onScrub,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -889,36 +743,26 @@ private fun UsageCustomRangeTrigger(text: String, onClick: () -> Unit) {
 
 @Composable
 private fun UsageBanners(
-    vm: UsageViewModel,
-    name: String,
-    errStr: String,
+    banners: List<UsageBannerView>,
     onRetry: () -> Unit,
     copy: MessageResolver,
     modifier: Modifier = Modifier,
 ) {
-    if (!(vm.found && vm.supported)) return
-    if (!vm.cachedOffline && !vm.backfilling && !(errStr.isNotEmpty() && vm.hasAnyUsage)) return
+    if (banners.isEmpty()) return
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (vm.cachedOffline && vm.hasAnyUsage) {
+        for (banner in banners) {
+            val text = uiText(banner.text)
+            if (text.isEmpty()) continue
+            val tone = when {
+                banner.isError -> NoticeTone.ERROR
+                banner.kind == UsageBannerKind.USAGE_BANNER_KIND_OFFLINE_CACHED -> NoticeTone.WARN
+                else -> NoticeTone.PLAIN
+            }
             Notice(
-                copy(UiMessages.usageOfflineBanner(name = name, time = formatCachedAt(vm.cachedAtMs))),
-                tone = NoticeTone.WARN,
-                action = copy(UiMessages.commonRetry()),
-                onAction = onRetry,
-            )
-        }
-        if (vm.backfilling) {
-            Notice(
-                copy(UiMessages.usageBackfillingBanner(scanned = vm.backfillScannedDays, total = max(1, vm.backfillTotalDays))),
-                tone = NoticeTone.PLAIN,
-            )
-        }
-        if (errStr.isNotEmpty() && vm.hasAnyUsage) {
-            Notice(
-                errStr,
-                tone = NoticeTone.ERROR,
-                action = copy(UiMessages.commonRetry()),
-                onAction = onRetry,
+                text,
+                tone = tone,
+                action = if (banner.canRetry) copy(UiMessages.commonRetry()) else null,
+                onAction = if (banner.canRetry) onRetry else null,
             )
         }
     }
@@ -996,7 +840,7 @@ private fun UsageHeroBlock(
             }
             else -> {
                 Text(
-                    copy(UiMessages.usageScopeAllModels(hero.totalModelCount)),
+                    uiText(hero.scopeText),
                     style = T.s12,
                     color = p.ink2,
                     maxLines = 1,
@@ -1013,7 +857,7 @@ private fun UsageHeroBlock(
         verticalAlignment = Alignment.Top,
     ) {
         Column(Modifier.weight(1f)) {
-            val bigText = formatUsageTokens(hero.totalTokens, copy)
+            val bigText = uiText(hero.totalTokensText)
             val unitText = copy(UiMessages.usageKpiUnitTokens())
             Text(
                 text = buildAnnotatedString {
@@ -1044,7 +888,7 @@ private fun UsageHeroBlock(
                 softWrap = false,
             )
             Spacer(Modifier.height(3.dp))
-            val subText = if (hero.scrubbing) "" else buildHeroSubline(vm, hero, copy)
+            val subText = if (hero.scrubbing) "" else uiText(hero.sublineText)
             Box(Modifier.height(17.dp), contentAlignment = Alignment.CenterStart) {
                 if (subText.isNotEmpty()) {
                     Text(
@@ -1065,13 +909,13 @@ private fun UsageHeroBlock(
                 val compTextSize = if (isWide) 12.5.sp else 12.sp
                 val compLineH = if (isWide) 18.sp else 17.sp
                 val items = listOf(
-                    Triple(copy(UiMessages.usageCompUncached()), comp.uncachedInputTokens, false),
-                    Triple(copy(UiMessages.usageCompCacheRead()), comp.cacheReadTokens, false),
-                    Triple(copy(UiMessages.usageCompCacheWrite()), comp.cacheWriteTokens, false),
-                    Triple(copy(UiMessages.usageCompOutput()), comp.outputTokens, false),
-                    Triple(copy(UiMessages.usageCompReasoningLabel()), comp.reasoningOutputTokens, true),
-                ).filter { it.second > 0L }
-                items.forEach { (label, amount, indent) ->
+                    Triple(copy(UiMessages.usageCompUncached()), uiText(comp.uncachedInputText), false),
+                    Triple(copy(UiMessages.usageCompCacheRead()), uiText(comp.cacheReadText), false),
+                    Triple(copy(UiMessages.usageCompCacheWrite()), uiText(comp.cacheWriteText), false),
+                    Triple(copy(UiMessages.usageCompOutput()), uiText(comp.outputText), false),
+                    Triple(copy(UiMessages.usageCompReasoningLabel()), uiText(comp.reasoningOutputText), true),
+                ).filter { it.second.isNotEmpty() }
+                items.forEach { (label, amountText, indent) ->
                     Row(
                         Modifier.fillMaxWidth().height(compLineH.value.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1085,7 +929,7 @@ private fun UsageHeroBlock(
                             maxLines = 1,
                         )
                         Text(
-                            formatUsageTokens(amount, copy),
+                            amountText,
                             style = TextStyle(
                                 fontFamily = UiFamily,
                                 fontSize = compTextSize,
@@ -1099,28 +943,6 @@ private fun UsageHeroBlock(
             }
         }
     }
-}
-
-private fun buildHeroSubline(vm: UsageViewModel, hero: UsageHeroView, copy: MessageResolver): String {
-    val parts = ArrayList<String>(3)
-    parts += copy(UiMessages.usageHeroReqs(count = hero.requestCount.toInt(), formatted = formatUsageCommaUint(hero.requestCount)))
-    if (hero.hasSharePercent) {
-        val shareText = if (hero.shareRatio < 0.01) "<1%" else "${round(hero.shareRatio * 100.0).toInt()}%"
-        parts += copy(UiMessages.usageHeroShare(shareText))
-    }
-    if (hero.previousBackfilling) {
-        parts += copy(UiMessages.usageBackfillingCell())
-    } else if (hero.hasTokensDelta) {
-        if (abs(hero.tokensDeltaPercent) < 0.5) {
-            parts += copy(UiMessages.usageFlat())
-        } else {
-            val periodLabel =
-                if (vm.rangeDays <= 1) copy(UiMessages.usageVsYesterday())
-                else copy(UiMessages.usageVsPrevDays(vm.rangeDays))
-            parts += "${formatUsageDeltaTriangle(hero.tokensDeltaPercent, copy)} $periodLabel"
-        }
-    }
-    return parts.joinToString(" · ")
 }
 
 @Composable
@@ -1144,12 +966,12 @@ private fun UsageEmptyRecordsView(
         )
     }
     Spacer(Modifier.height(if (isWide) 14.dp else 18.dp))
-    Text(copy(UiMessages.usageScopeAllEmpty()), style = T.s12, color = p.ink2, maxLines = 1)
+    Text(uiText(vm.hero.scopeText).ifEmpty { copy(UiMessages.usageScopeAllEmpty()) }, style = T.s12, color = p.ink2, maxLines = 1)
     Spacer(Modifier.height(2.dp))
     Text(
         text = buildAnnotatedString {
             withStyle(SpanStyle(fontSize = bigSize, fontWeight = platformWeight(FontWeight.Bold), color = p.ink3)) {
-                append("0")
+                append(uiText(vm.hero.totalTokensText).ifEmpty { "0" })
             }
             append(" ")
             withStyle(SpanStyle(fontSize = 13.sp, fontWeight = platformWeight(FontWeight.Medium), color = p.ink2)) {
@@ -1162,7 +984,7 @@ private fun UsageEmptyRecordsView(
     Spacer(Modifier.height(20.dp + 16.dp))
     Column(Modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().height(barHeight), contentAlignment = Alignment.Center) {
-            Text(copy(UiMessages.usageEmptyNoRecords()), style = T.s13, color = p.ink2)
+            Text(uiText(vm.emptyTitle).ifEmpty { copy(UiMessages.usageEmptyNoRecords()) }, style = T.s13, color = p.ink2)
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(p.faint))
         Spacer(Modifier.height(4.dp))
@@ -1203,13 +1025,9 @@ private fun UsageChartsStack(
         )
     }
 
-    val chartsA11y = copy(
-        UiMessages.usageChartsA11Y(
-            count = vm.rowsCount,
-            name = vm.machineName.ifEmpty { vm.machineId },
-            total = formatUsageTokens(hero?.totalTokens ?: 0L, copy),
-        ),
-    )
+    val chartsA11y = uiText(vm.chartsA11YLabel)
+    val maxLabel = if (barChart != null) uiText(barChart.yMaxText) else ""
+    val midLabel = if (barChart != null) uiText(barChart.yMidText) else ""
 
     val labelStrokePaint = remember(p.paper, density) {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -1329,15 +1147,17 @@ private fun UsageChartsStack(
                             }
                         }
 
-                        val maxLabel = formatUsageTokens(barChart?.yMax ?: 0L, copy)
-                        val midLabel = formatUsageTokens(barChart?.yMid ?: 0L, copy)
                         val labelOffset = 4.dp.toPx()
                         drawIntoCanvas { canvas ->
                             val nc = canvas.nativeCanvas
-                            nc.drawText(maxLabel, w, topPx - labelOffset, labelStrokePaint)
-                            nc.drawText(maxLabel, w, topPx - labelOffset, labelFillPaint)
-                            nc.drawText(midLabel, w, midY - labelOffset, labelStrokePaint)
-                            nc.drawText(midLabel, w, midY - labelOffset, labelFillPaint)
+                            if (maxLabel.isNotEmpty()) {
+                                nc.drawText(maxLabel, w, topPx - labelOffset, labelStrokePaint)
+                                nc.drawText(maxLabel, w, topPx - labelOffset, labelFillPaint)
+                            }
+                            if (midLabel.isNotEmpty()) {
+                                nc.drawText(midLabel, w, midY - labelOffset, labelStrokePaint)
+                                nc.drawText(midLabel, w, midY - labelOffset, labelFillPaint)
+                            }
                         }
                     }
 
@@ -1350,7 +1170,6 @@ private fun UsageChartsStack(
                     label = copy(UiMessages.usageStripCacheHit()),
                     unit = null,
                     strip = if (vm.hasCacheHitStrip()) vm.cacheHitStrip else null,
-                    formatVal = ::formatUsageCacheHit,
                     scrubbing = scrubbing,
                     scrubIdx = scrubIdx,
                     stripHeight = stripH,
@@ -1362,7 +1181,6 @@ private fun UsageChartsStack(
                     label = copy(UiMessages.usageStripSpeed()),
                     unit = copy(UiMessages.usageKpiUnitToks()),
                     strip = if (vm.hasOutputSpeedStrip()) vm.outputSpeedStrip else null,
-                    formatVal = ::formatUsageSpeed,
                     scrubbing = scrubbing,
                     scrubIdx = scrubIdx,
                     stripHeight = stripH,
@@ -1374,7 +1192,6 @@ private fun UsageChartsStack(
                     label = copy(UiMessages.usageStripTtft()),
                     unit = null,
                     strip = if (vm.hasTtftStrip()) vm.ttftStrip else null,
-                    formatVal = ::formatUsageTtftSeconds,
                     scrubbing = scrubbing,
                     scrubIdx = scrubIdx,
                     stripHeight = stripH,
@@ -1400,7 +1217,6 @@ private fun UsageMetricStrip(
     label: String,
     unit: String?,
     strip: UsageMetricStripView?,
-    formatVal: (Double) -> String,
     scrubbing: Boolean,
     scrubIdx: Int,
     stripHeight: androidx.compose.ui.unit.Dp,
@@ -1417,10 +1233,10 @@ private fun UsageMetricStrip(
         return
     }
 
-    val curStr = if (strip.hasValue) formatVal(strip.currentValue) else EN_DASH
-    val minStr = formatVal(strip.minValue)
-    val maxStr = formatVal(strip.maxValue)
-    val showRange = minStr != maxStr
+    val curStr = if (strip.hasValue) uiText(strip.currentValueText).ifEmpty { EN_DASH } else EN_DASH
+    val minStr = uiText(strip.minValueText)
+    val maxStr = uiText(strip.maxValueText)
+    val showRange = strip.showRange && minStr.isNotEmpty() && maxStr.isNotEmpty()
 
     Row(Modifier.fillMaxWidth().height(17.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = T.s12, color = p.ink2, maxLines = 1)
@@ -1620,11 +1436,7 @@ private fun UsageModelTable(
                         overflow = TextOverflow.MiddleEllipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    val deltaStr = when {
-                        row.previousBackfilling -> copy(UiMessages.usageBackfillingCell())
-                        row.hasTokensDelta -> formatUsageDeltaTriangle(row.tokensDeltaPercent, copy)
-                        else -> ""
-                    }
+                    val deltaStr = uiText(row.deltaText)
                     if (deltaStr.isNotEmpty()) {
                         Text(deltaStr, style = T.s12.copy(fontSize = 11.5.sp).digits(), color = p.ink2, maxLines = 1)
                     }
@@ -1657,7 +1469,7 @@ private fun UsageModelTable(
                     }
 
                     Text(
-                        formatUsageTokens(row.totalTokens, copy),
+                        uiText(row.totalTokensText),
                         style = T.s13b.digits(),
                         color = p.ink,
                         textAlign = TextAlign.End,
@@ -1665,19 +1477,19 @@ private fun UsageModelTable(
                         modifier = Modifier.width(62.dp),
                     )
                     MetricCell(
-                        text = if (row.hasCacheHit) formatUsageCacheHit(row.cacheHitRate) else EN_DASH,
+                        text = if (row.hasCacheHit) uiText(row.cacheHitText).ifEmpty { EN_DASH } else EN_DASH,
                         hasValue = row.hasCacheHit,
                         width = 42.dp,
                         noSampleA11y = noSampleA11y,
                     )
                     MetricCell(
-                        text = if (row.hasSpeed) formatUsageSpeed(row.speedP50) else EN_DASH,
+                        text = if (row.hasSpeed) uiText(row.speedText).ifEmpty { EN_DASH } else EN_DASH,
                         hasValue = row.hasSpeed,
                         width = 46.dp,
                         noSampleA11y = noSampleA11y,
                     )
                     MetricCell(
-                        text = if (row.hasTtft) formatUsageTtftSeconds(row.ttftP50Ms) else EN_DASH,
+                        text = if (row.hasTtft) uiText(row.ttftText).ifEmpty { EN_DASH } else EN_DASH,
                         hasValue = row.hasTtft,
                         width = 44.dp,
                         noSampleA11y = noSampleA11y,

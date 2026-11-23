@@ -1017,15 +1017,13 @@ internal fun DeviceScreenContent(
                     if (vm.showUsageEntry) {
                         add {
                             val usageEmpty = uiText(vm.usageEmptyText)
+                            val usageTok = uiText(vm.usageTokensText)
                             val usageSummary = when {
                                 usageEmpty.isNotEmpty() -> usageEmpty
-                                vm.usageTotalTokens > 0L -> {
-                                    val tok = formatUsageTokens(vm.usageTotalTokens, copy)
-                                    when {
-                                        vm.usageCachedOffline -> copy(UiMessages.settingsUsageSummaryCached(tok))
-                                        vm.usageFallbackThirtyDays -> copy(UiMessages.settingsUsageSummary30D(tok))
-                                        else -> copy(UiMessages.settingsUsageSummary7D(tok))
-                                    }
+                                usageTok.isNotEmpty() -> when {
+                                    vm.usageCachedOffline -> copy(UiMessages.settingsUsageSummaryCached(usageTok))
+                                    vm.usageFallbackThirtyDays -> copy(UiMessages.settingsUsageSummary30D(usageTok))
+                                    else -> copy(UiMessages.settingsUsageSummary7D(usageTok))
                                 }
                                 else -> copy(UiMessages.settingsUsageSummaryEmpty())
                             }

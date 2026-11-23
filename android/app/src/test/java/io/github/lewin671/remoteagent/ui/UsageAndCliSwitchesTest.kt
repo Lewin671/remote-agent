@@ -102,16 +102,16 @@ class UsageAndCliSwitchesTest {
         agentName: String,
         model: String,
         totalTokens: Long,
+        totalTokensText: String,
         shareRatio: Double,
         selected: Boolean = false,
         hasCacheHit: Boolean = true,
-        cacheHitRate: Double = 0.88,
+        cacheHitText: String = "88%",
         hasSpeed: Boolean = true,
-        speedP50: Double = 72.0,
+        speedText: String = "72",
         hasTtft: Boolean = true,
-        ttftP50Ms: Double = 520.0,
-        hasDelta: Boolean = true,
-        deltaPct: Double = 18.0,
+        ttftText: String = "0.5s",
+        deltaText: String = "▲18%",
     ): UsageModelRowView = UsageModelRowView.newBuilder()
         .setAgent(agent)
         .setAgentName(agentName)
@@ -120,25 +120,37 @@ class UsageAndCliSwitchesTest {
         .setSelected(selected)
         .setShareRatio(shareRatio)
         .setTotalTokens(totalTokens)
+        .setTotalTokensText(coreLit(totalTokensText))
         .setHasCacheHit(hasCacheHit)
-        .setCacheHitRate(cacheHitRate)
+        .setCacheHitText(coreLit(cacheHitText))
         .setHasSpeed(hasSpeed)
-        .setSpeedP50(speedP50)
+        .setSpeedText(coreLit(speedText))
         .setHasTtft(hasTtft)
-        .setTtftP50Ms(ttftP50Ms)
-        .setHasTokensDelta(hasDelta)
-        .setTokensDeltaPercent(deltaPct)
+        .setTtftText(coreLit(ttftText))
+        .setDeltaText(coreLit(deltaText))
         .setUsageRequestCount(22L)
         .setSpeedRequestCount(if (hasSpeed) 18L else 0L)
         .build()
 
-    private fun sampleStrip(cur: Double, min: Double, max: Double, hasSelected: Boolean = false): UsageMetricStripView {
+    private fun sampleStrip(
+        cur: Double,
+        min: Double,
+        max: Double,
+        curText: String,
+        minText: String,
+        maxText: String,
+        hasSelected: Boolean = false,
+    ): UsageMetricStripView {
         val b = UsageMetricStripView.newBuilder()
             .setHasValue(true)
             .setCurrentValue(cur)
+            .setCurrentValueText(coreLit(curText))
             .setHasRange(true)
             .setMinValue(min)
             .setMaxValue(max)
+            .setMinValueText(coreLit(minText))
+            .setMaxValueText(coreLit(maxText))
+            .setShowRange(minText != maxText)
             .setScaleMin(min * 0.9)
             .setScaleMax(max * 1.1)
             .setLastValidIndex(1)
@@ -152,35 +164,7 @@ class UsageAndCliSwitchesTest {
     }
 
     @Test
-    fun pureFormattersCustomRangeClampingTzOffsetAndSevenDayBuckets() {
-        // Locale formatting: zh uses 万/亿 (keeping 1 decimal < 1000亿), en uses k/M/B
-        assertEquals("9,999", formatUsageTokens(9_999L, "万", "亿", chinese = true))
-        assertEquals("12.3万", formatUsageTokens(123_456L, "万", "亿", chinese = true))
-        assertEquals("1亿", formatUsageTokens(99_990_000L, "万", "亿", chinese = true))
-        assertEquals("1.5亿", formatUsageTokens(150_000_000L, "万", "亿", chinese = true))
-        assertEquals("128.6亿", formatUsageTokens(12_860_000_000L, "万", "亿", chinese = true))
-        assertEquals("999", formatUsageTokens(999L, "10k", "100M", chinese = false))
-        assertEquals("12.3k", formatUsageTokens(12_345L, "10k", "100M", chinese = false))
-        assertEquals("1.5M", formatUsageTokens(1_500_000L, "10k", "100M", chinese = false))
-        assertEquals("2.4B", formatUsageTokens(2_400_000_000L, "10k", "100M", chinese = false))
-
-        assertEquals("0%", formatUsageCacheHit(0.0))
-        assertEquals("0.4%", formatUsageCacheHit(0.004))
-        assertEquals("84%", formatUsageCacheHit(0.842))
-        assertEquals("99.4%", formatUsageCacheHit(0.994))
-        assertEquals("100%", formatUsageCacheHit(1.0))
-
-        assertEquals("6.8", formatUsageSpeed(6.82))
-        assertEquals("124", formatUsageSpeed(124.2))
-        assertEquals("0.4s", formatUsageTtftSeconds(420.0))
-        assertEquals("1.2s", formatUsageTtftSeconds(1_240.0))
-        assertEquals("12s", formatUsageTtftSeconds(12_100.0))
-
-        val flat = messageTextForTest(UiMessages.usageFlat(), "zh-CN")
-        assertEquals("▲1,240%", formatUsageDeltaTriangle(1240.0, flat))
-        assertEquals("▼72%", formatUsageDeltaTriangle(-72.2, flat))
-        assertEquals(flat, formatUsageDeltaTriangle(0.2, flat))
-
+    fun customRangeClampingTzOffsetAndSevenDayBuckets() {
         // East-of-UTC timezone offset sign
         val shanghai = ZoneId.of("Asia/Shanghai")
         val la = ZoneId.of("America/Los_Angeles")
@@ -439,8 +423,8 @@ class UsageAndCliSwitchesTest {
                                 .setVisible(true)
                                 .setSupported(true)
                                 .setHasData(true)
-                                .setSubtitle(coreLit("最近 7 天"))
-                                .setValueText(coreLit("12.5万 · 82% · 68 tok/s"))
+                                .setFormattedSubtitle(coreLit("最近 7 天"))
+                                .setTotalTokensText(coreLit("12.5万 · 82% · 68 tok/s"))
                                 .setFootnote(coreLit("统计所有本地对话")),
                         ),
                 )
@@ -504,9 +488,11 @@ class UsageAndCliSwitchesTest {
         val vm = UsageViewModel.newBuilder()
             .setMachineId("m1")
             .setMachineName("Mac Studio")
+            .setSubtitle(coreLit("Mac Studio"))
             .setFound(true)
             .setSupported(true)
             .setOnline(true)
+            .setEmptyKind(io.github.lewin671.remoteagent.core.proto.UsageEmptyKind.USAGE_EMPTY_KIND_NONE)
             .setGranularity(UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_HOUR)
             .setPreset(UsageRangePreset.USAGE_RANGE_PRESET_TODAY)
             .setRangeDays(1)
@@ -516,6 +502,9 @@ class UsageAndCliSwitchesTest {
                 UsageHeroView.newBuilder()
                     .setTotalModelCount(3)
                     .setTotalTokens(720_000_000L)
+                    .setTotalTokensText(coreLit("7.2亿"))
+                    .setScopeText(coreLit(messageTextForTest(UiMessages.usageScopeAllModels(3))))
+                    .setSublineText(coreLit("862 次请求 · ▼72% 较昨日"))
                     .setRequestCount(862L)
                     .setHasTokensDelta(true)
                     .setTokensDeltaPercent(-72.0)
@@ -523,16 +512,23 @@ class UsageAndCliSwitchesTest {
                     .setComposition(
                         UsageCompositionView.newBuilder()
                             .setUncachedInputTokens(42_260_000L)
+                            .setUncachedInputText(coreLit("4,226万"))
                             .setCacheReadTokens(670_000_000L)
+                            .setCacheReadText(coreLit("6.7亿"))
                             .setCacheWriteTokens(4_400_000L)
+                            .setCacheWriteText(coreLit("440万"))
                             .setOutputTokens(3_240_000L)
-                            .setReasoningOutputTokens(1_360_000L),
+                            .setOutputText(coreLit("324万"))
+                            .setReasoningOutputTokens(1_360_000L)
+                            .setReasoningOutputText(coreLit("136万")),
                     ),
             )
             .setBarChart(
                 UsageBarChartView.newBuilder()
                     .setYMax(100_000_000L)
                     .setYMid(50_000_000L)
+                    .setYMaxText(coreLit("1亿"))
+                    .setYMidText(coreLit("5,000万"))
                     .addBuckets(
                         UsageBarBucketView.newBuilder()
                             .setStartMs(now - 7_200_000L)
@@ -548,12 +544,12 @@ class UsageAndCliSwitchesTest {
                             .setHasData(true),
                     ),
             )
-            .setCacheHitStrip(sampleStrip(0.94, 0.92, 0.96))
-            .setOutputSpeedStrip(sampleStrip(95.0, 86.0, 112.0))
-            .setTtftStrip(sampleStrip(900.0, 600.0, 1000.0))
-            .addRows(sampleRow(Agent.AGENT_ANTIGRAVITY, "Antigravity", "gemini-flash-workhorse", 380_000_000L, 1.0, speedP50 = 118.0, ttftP50Ms = 400.0))
-            .addRows(sampleRow(Agent.AGENT_CLAUDE, "Claude Code", "claude-opus-4-6-thinking", 16_800_000L, 0.04, speedP50 = 62.0, ttftP50Ms = 2300.0, deltaPct = -12.0))
-            .addRows(sampleRow(Agent.AGENT_CODEX, "Codex", "gpt-5.4-codex-mini", 2_000_000L, 0.005, hasCacheHit = false, hasSpeed = false, hasTtft = false, hasDelta = false))
+            .setCacheHitStrip(sampleStrip(0.94, 0.92, 0.96, "94%", "92%", "96%"))
+            .setOutputSpeedStrip(sampleStrip(95.0, 86.0, 112.0, "95", "86", "112"))
+            .setTtftStrip(sampleStrip(900.0, 600.0, 1000.0, "0.9s", "0.6s", "1.0s"))
+            .addRows(sampleRow(Agent.AGENT_ANTIGRAVITY, "Antigravity", "gemini-flash-workhorse", 380_000_000L, "3.8亿", 1.0, speedText = "118", ttftText = "0.4s"))
+            .addRows(sampleRow(Agent.AGENT_CLAUDE, "Claude Code", "claude-opus-4-6-thinking", 16_800_000L, "1,680万", 0.04, speedText = "62", ttftText = "2.3s", deltaText = "▼12%"))
+            .addRows(sampleRow(Agent.AGENT_CODEX, "Codex", "gpt-5.4-codex-mini", 2_000_000L, "200万", 0.005, hasCacheHit = false, cacheHitText = "", hasSpeed = false, speedText = "", hasTtft = false, ttftText = "", deltaText = ""))
             .build()
 
         val vmState = mutableStateOf(vm)
@@ -604,10 +600,11 @@ class UsageAndCliSwitchesTest {
                     .setSelectedModel("claude-opus-4-6-thinking")
                     .setSelectedSeriesKey("${Agent.AGENT_CLAUDE_VALUE}:claude-opus-4-6-thinking")
                     .setTotalTokens(16_800_000L)
+                    .setTotalTokensText(coreLit("1,680万"))
                     .setHasSharePercent(true)
                     .setShareRatio(0.04),
             )
-            .setCacheHitStrip(sampleStrip(0.90, 0.88, 0.92, hasSelected = true))
+            .setCacheHitStrip(sampleStrip(0.90, 0.88, 0.92, "90%", "88%", "92%", hasSelected = true))
             .build()
         vmState.value = focusedVm
         ui.waitForIdle()
@@ -619,25 +616,33 @@ class UsageAndCliSwitchesTest {
         vmState.value = UsageViewModel.newBuilder()
             .setMachineId("m1")
             .setMachineName("VPS-dev")
+            .setSubtitle(coreLit("VPS-dev"))
             .setFound(true)
             .setSupported(true)
             .setOnline(true)
             .setPreset(UsageRangePreset.USAGE_RANGE_PRESET_TODAY)
             .setGranularity(UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_HOUR)
             .setHasAnyUsage(false)
+            .setEmptyKind(io.github.lewin671.remoteagent.core.proto.UsageEmptyKind.USAGE_EMPTY_KIND_NO_RECORDS)
+            .setEmptyTitle(coreLit(messageTextForTest(UiMessages.usageEmptyNoRecords())))
+            .setHero(UsageHeroView.newBuilder().setTotalTokensText(coreLit("0")).setScopeText(coreLit(messageTextForTest(UiMessages.usageScopeAllEmpty()))))
             .build()
         ui.waitForIdle()
         ui.onNodeWithText(messageTextForTest(UiMessages.usageScopeAllEmpty())).assertIsDisplayed()
         ui.onNodeWithText(messageTextForTest(UiMessages.usageEmptyNoRecords())).assertIsDisplayed()
 
-        // Edge state: offline & error retry
+        // Edge state: load error retry
         vmState.value = UsageViewModel.newBuilder()
             .setMachineId("m1")
             .setMachineName("Mac Studio")
+            .setSubtitle(coreLit("Mac Studio"))
             .setFound(true)
             .setSupported(true)
             .setOnline(true)
-            .setErrorText(coreLit("boom"))
+            .setEmptyKind(io.github.lewin671.remoteagent.core.proto.UsageEmptyKind.USAGE_EMPTY_KIND_LOAD_ERROR)
+            .setEmptyTitle(coreLit(messageTextForTest(UiMessages.usageLoadErrorTitle())))
+            .setEmptyBody(coreLit("boom"))
+            .setEmptyCanRetry(true)
             .build()
         ui.waitForIdle()
         ui.onNodeWithText(messageTextForTest(UiMessages.commonRetry())).performClick()
@@ -648,8 +653,12 @@ class UsageAndCliSwitchesTest {
         vmState.value = UsageViewModel.newBuilder()
             .setMachineId("m1")
             .setMachineName("Mac Studio")
+            .setSubtitle(coreLit("Mac Studio"))
             .setFound(true)
             .setSupported(false)
+            .setEmptyKind(io.github.lewin671.remoteagent.core.proto.UsageEmptyKind.USAGE_EMPTY_KIND_UNSUPPORTED)
+            .setEmptyTitle(coreLit(messageTextForTest(UiMessages.usageUnsupportedTitle())))
+            .setEmptyBody(coreLit(messageTextForTest(UiMessages.usageUnsupportedBody("Mac Studio"))))
             .build()
         ui.waitForIdle()
         assertTrue(ui.onAllNodesWithText(messageTextForTest(UiMessages.usageUnsupportedTitle()), substring = true).fetchSemanticsNodes().isNotEmpty())
@@ -658,9 +667,13 @@ class UsageAndCliSwitchesTest {
         vmState.value = UsageViewModel.newBuilder()
             .setMachineId("m1")
             .setMachineName("Mac Studio")
+            .setSubtitle(coreLit("Mac Studio"))
             .setFound(true)
             .setSupported(true)
             .setOnline(true)
+            .setEmptyKind(io.github.lewin671.remoteagent.core.proto.UsageEmptyKind.USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE)
+            .setEmptyTitle(coreLit(messageTextForTest(UiMessages.usageOnlyUnavailableTitle("Antigravity"))))
+            .setEmptyBody(coreLit(messageTextForTest(UiMessages.usageOnlyUnavailableBody("Antigravity"))))
             .addSources(UsageAgentSource.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY).setState(UsageSourceState.USAGE_SOURCE_STATE_UNAVAILABLE))
             .build()
         ui.waitForIdle()
