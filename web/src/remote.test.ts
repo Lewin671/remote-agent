@@ -979,7 +979,7 @@ it.each(["canceled", "deadline_exceeded", "aborted", "not_found", "permission_de
   return {result:await r.seal({kind:6,sessionId:"s",requestId:h.requestId},CommandResultSchema,create(CommandResultSchema,{errorCode:code,errorMessage:"fixture"}))};
  });
  (r as unknown as {api:object}).api={forward};
- const error=await r.getSharedFileChunk("s","file",0n).catch(e=>e);
+ const error=await r.command("s",{case:"getSharedFileChunk",value:{sessionId:"s",fileId:"file",offset:0n}}).catch(e=>e);
  expect(error).toMatchObject({code,fromDaemon:true,readOnly:true});
  expect(uncertain(error)).toBe(false);expect(forward).toHaveBeenCalledTimes(1);
 });
