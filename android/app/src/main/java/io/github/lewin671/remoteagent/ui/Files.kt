@@ -172,6 +172,7 @@ internal fun FileStrip(
     if (files.isEmpty() && blocked == null) return
     val metadataNotice = effectiveCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty()
     Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        blocked?.let { Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp)) }
         files.forEach { file ->
             FileChip(
                 name = file.fileName!!,
@@ -181,7 +182,6 @@ internal fun FileStrip(
                 onRemove = { draft.remove(file) },
             )
         }
-        blocked?.let { Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp)) }
         if (files.isNotEmpty() && metadataNotice.isNotEmpty()) Text(metadataNotice, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
     }
 }

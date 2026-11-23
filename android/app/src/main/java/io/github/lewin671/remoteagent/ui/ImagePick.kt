@@ -243,7 +243,6 @@ internal fun ImageStrip(
     }
     val effectiveCaps = caps ?: remember(remote, machineId, sessionId) { remote.attachmentCapsFor(machineId, sessionId) }
     val docMetaById = rememberEvaluatedDocuments(remote, machineId, draft.documents)
-    FileStrip(draft, remote, machineId, effectiveCaps, docMetaById, sessionId = sessionId)
 
     val failedPictures = draft.pictures.mapNotNull { img ->
         (img.state as? PendingImage.State.Failed)?.failure?.input?.let { img.id to it }
@@ -263,9 +262,8 @@ internal fun ImageStrip(
     if (thumbs.isEmpty()) {
         val line = notice ?: draft.notice.takeIf { it.isNotEmpty() }
         if (line != null) Text(line, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s13, color = p.orangeInk)
-        return
-    }
-    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+    } else {
+        Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 6.dp)) {
             for (img in thumbs) {
                 val index = draft.pictures.indexOf(img)
@@ -365,7 +363,9 @@ internal fun ImageStrip(
             val hint = effectiveCaps.originalImageHint?.let { uiText(it) }.orEmpty()
             if (hint.isNotEmpty()) Text(hint, style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         }
+        }
     }
+    FileStrip(draft, remote, machineId, effectiveCaps, docMetaById, sessionId = sessionId)
     viewing?.let {
         DraftImageViewer(
             draft = draft,

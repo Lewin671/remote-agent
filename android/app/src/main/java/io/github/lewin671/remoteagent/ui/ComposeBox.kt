@@ -16,15 +16,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,6 +59,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -155,15 +160,36 @@ fun ComposeBox(
                 }
             }
 
+            val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+            val maxDraftHeight = if (imeOpen) 116.dp else 220.dp
+            val maxDraftRatio = if (imeOpen) 0.40f else 0.45f
+
             if (tools != null) {
-                Column(Modifier.fillMaxWidth().glass(p, Radii.R22, onGrey = LocalOnSoft.current).animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter).padding(start = 7.dp, end = 7.dp, top = 10.dp, bottom = 7.dp)) {
-                    field(Modifier.fillMaxWidth().heightIn(min = 26.dp).padding(horizontal = 8.dp, vertical = 2.dp), 8)
-                    top?.invoke()
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        AttachButton(onPlus, onFile, plusEnabled, fileMetadataNotice, menu)
-                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { tools() }
-                        send()
-                    }
+                Box(
+                    Modifier.fillMaxWidth()
+                        .glass(p, Radii.R22, onGrey = LocalOnSoft.current)
+                        .animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter)
+                        .padding(start = 7.dp, end = 7.dp, top = 10.dp, bottom = 7.dp),
+                ) {
+                    NewSessionComposerLayout(
+                        maxTopHeight = maxDraftHeight,
+                        maxTopRatio = maxDraftRatio,
+                        field = { field(Modifier.fillMaxWidth().heightIn(min = 26.dp).padding(horizontal = 8.dp, vertical = 2.dp), 8) },
+                        top = {
+                            if (top != null) {
+                                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                                    top()
+                                }
+                            }
+                        },
+                        bottomRow = {
+                            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                AttachButton(onPlus, onFile, plusEnabled, fileMetadataNotice, menu)
+                                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { tools() }
+                                send()
+                            }
+                        },
+                    )
                 }
             } else {
                 Column(
@@ -174,38 +200,148 @@ fun ComposeBox(
                         .animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter),
                 ) {
                     pendingTray?.invoke()
-                    Column(
+                    Box(
                         Modifier
                             .fillMaxWidth()
                             .padding(start = 7.dp, end = 7.dp, top = if (useTwoRow) 10.dp else 7.dp, bottom = 7.dp),
                     ) {
-                        top?.invoke()
-                        ComposerInputLayout(
-                            useTwoRow = useTwoRow,
-                            attach = { AttachButton(onPlus, onFile, plusEnabled, fileMetadataNotice, menu) },
-                            field = {
-                                val fieldMod = if (useTwoRow) {
-                                    Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(horizontal = 8.dp, vertical = 2.dp)
-                                } else {
-                                    Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp)
-                                }
-                                field(fieldMod, 6)
-                            },
-                            trailing = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    if (showSendAfter) {
-                                        onQueue?.let { SendAfterButton(enabled = canSend, onClick = it) }
+                        ComposerDraftedLayout(
+                            maxTopHeight = maxDraftHeight,
+                            maxTopRatio = maxDraftRatio,
+                            top = {
+                                if (top != null) {
+                                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                                        top()
                                     }
-                                    send()
                                 }
+                            },
+                            input = {
+                                ComposerInputLayout(
+                                    useTwoRow = useTwoRow,
+                                    attach = { AttachButton(onPlus, onFile, plusEnabled, fileMetadataNotice, menu) },
+                                    field = {
+                                        val fieldMod = if (useTwoRow) {
+                                            Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(horizontal = 8.dp, vertical = 2.dp)
+                                        } else {
+                                            Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp)
+                                        }
+                                        field(fieldMod, 6)
+                                    },
+                                    trailing = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            if (showSendAfter) {
+                                                onQueue?.let { SendAfterButton(enabled = canSend, onClick = it) }
+                                            }
+                                            send()
+                                        }
+                                    },
+                                )
                             },
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Measures the input row first at its full intrinsic height so `+`, the text field, and send
+ * controls are never squashed or clipped; the attachment draft area above gets at most the
+ * remaining space capped by [maxTopHeight] and [maxTopRatio], scrolling internally when taller.
+ */
+@Composable
+private fun ComposerDraftedLayout(
+    maxTopHeight: Dp,
+    maxTopRatio: Float,
+    top: @Composable () -> Unit,
+    input: @Composable () -> Unit,
+) {
+    Layout(
+        content = {
+            Box(Modifier.fillMaxWidth()) { top() }
+            Box(Modifier.fillMaxWidth()) { input() }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { measurables, constraints ->
+        val slotConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+        val inputPlaceable = measurables[1].measure(slotConstraints)
+        val capPx = maxTopHeight.roundToPx()
+        val topMaxPx = if (constraints.hasBoundedHeight) {
+            val remaining = (constraints.maxHeight - inputPlaceable.height).coerceAtLeast(0)
+            val ratioCap = (constraints.maxHeight * maxTopRatio).toInt().coerceAtLeast(0)
+            minOf(remaining, capPx, ratioCap)
+        } else {
+            capPx
+        }
+        val topPlaceable = measurables[0].measure(slotConstraints.copy(maxHeight = topMaxPx))
+        val width = if (constraints.hasBoundedWidth) {
+            constraints.maxWidth
+        } else {
+            maxOf(topPlaceable.width, inputPlaceable.width)
+        }
+        val height = (topPlaceable.height + inputPlaceable.height).let { total ->
+            if (constraints.hasBoundedHeight) total.coerceAtMost(constraints.maxHeight) else total
+        }
+        layout(width, height) {
+            topPlaceable.placeRelative(0, 0)
+            inputPlaceable.placeRelative(0, topPlaceable.height)
+        }
+    }
+}
+
+/**
+ * Same input-first priority for the new-session box: the prompt field and bottom tools/send bar
+ * always keep their full height while [top] scrolls inside the bounded space between them.
+ */
+@Composable
+private fun NewSessionComposerLayout(
+    maxTopHeight: Dp,
+    maxTopRatio: Float,
+    field: @Composable () -> Unit,
+    top: @Composable () -> Unit,
+    bottomRow: @Composable () -> Unit,
+) {
+    Layout(
+        content = {
+            Box(Modifier.fillMaxWidth()) { field() }
+            Box(Modifier.fillMaxWidth()) { top() }
+            Box(Modifier.fillMaxWidth()) { bottomRow() }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { measurables, constraints ->
+        val slotConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+        val bottomPlaceable = measurables[2].measure(slotConstraints)
+        val fieldMaxPx = if (constraints.hasBoundedHeight) {
+            (constraints.maxHeight - bottomPlaceable.height).coerceAtLeast(0)
+        } else {
+            constraints.maxHeight
+        }
+        val fieldPlaceable = measurables[0].measure(slotConstraints.copy(maxHeight = fieldMaxPx))
+        val capPx = maxTopHeight.roundToPx()
+        val topMaxPx = if (constraints.hasBoundedHeight) {
+            val remaining = (constraints.maxHeight - fieldPlaceable.height - bottomPlaceable.height).coerceAtLeast(0)
+            val ratioCap = (constraints.maxHeight * maxTopRatio).toInt().coerceAtLeast(0)
+            minOf(remaining, capPx, ratioCap)
+        } else {
+            capPx
+        }
+        val topPlaceable = measurables[1].measure(slotConstraints.copy(maxHeight = topMaxPx))
+        val width = if (constraints.hasBoundedWidth) {
+            constraints.maxWidth
+        } else {
+            maxOf(fieldPlaceable.width, topPlaceable.width, bottomPlaceable.width)
+        }
+        val height = (fieldPlaceable.height + topPlaceable.height + bottomPlaceable.height).let { total ->
+            if (constraints.hasBoundedHeight) total.coerceAtMost(constraints.maxHeight) else total
+        }
+        layout(width, height) {
+            fieldPlaceable.placeRelative(0, 0)
+            topPlaceable.placeRelative(0, fieldPlaceable.height)
+            bottomPlaceable.placeRelative(0, fieldPlaceable.height + topPlaceable.height)
         }
     }
 }
