@@ -32,7 +32,7 @@ enum SyncStateAdapter {
         s.leaseEndMs = UInt64(max(0, v.leaseEndMs))
         s.recoveryPending = v.recoveryPending
         s.recoveryReadyMs = UInt64(max(0, v.recoveryReadyMs))
-        s.recoveryStatusStale = false
+        s.recoveryStatusStale = v.recoveryStatusStale
         s.removed = v.removed
         s.clockWarning = v.accountClockSkewed ? L10n.errorsIosThisDeviceIsOver5MinutesBehindTheSecurity() : ""
         s.displayGrace = v.displayGrace

@@ -13,10 +13,17 @@ struct DeviceManagementActions: View {
     @State private var done = ""
 
     var body: some View {
-        let state = app.state
-        let access = AuthorityAccess(state: state, me: context.me)
-        let present = state.devices[id] != nil
-        if access.isAuthority && id != context.me {
+        let settings = context.core.settings
+        let isManager = settings.security.isManager
+        let present: Bool = if machine {
+            settings.machines.first(where: { $0.machineID == id })?.inDeviceDirectory ?? false
+        } else {
+            context.core.clientDetail.deviceID == id
+                ? context.core.clientDetail.found
+                : context.core.devices.clients.contains(where: { $0.deviceID == id })
+        }
+        let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: settings.security.authorityName))
+        if isManager && id != context.me {
             GroupCard {
                 if present {
                     GRow(machine ? L10n.settingsRemoveComputerEllipsis() : L10n.securityRemoveDevice(), danger: true, enabled: !action.running) { removing = true }
@@ -29,7 +36,7 @@ struct DeviceManagementActions: View {
             }
             if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
             if !done.isEmpty { GroupBanner(done) }
-        } else if !access.isAuthority { GroupNote(access.addHint) }
+        } else if !isManager { GroupNote(addHint) }
         Color.clear.frame(height: 0)
             .confirm(isPresented: $removing, title: L10n.securityRemoveDeviceDeviceManagement(),
                 text: L10n.securityIosAfterRemovalThisDeviceCanNoLongerOperateThe(),

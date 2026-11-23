@@ -22,9 +22,9 @@ struct ClientScreen: View {
 
     var body: some View {
         let vm = context.core.clientDetail
-        let online = model.state.conn == .online
+        let online = context.core.settings.online
         SettingsPage(refresh: refresh(online)) {
-            if !vm.found && online && !model.state.devices.isEmpty {
+            if !vm.found && online && !context.core.devices.clients.isEmpty {
                 // The list is read and it is not in it.
                 PageNote(L10n.settingsIosThisClientIsNotInTheCurrentTrustedDirectory())
             } else {

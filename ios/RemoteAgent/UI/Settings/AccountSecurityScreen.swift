@@ -6,15 +6,15 @@ import SwiftUI
 var iosAuthorityNotice: String { L10n.securityIosTheIosAppHasNoBackgroundSecurityAlertsOpen() }
 
 struct RecoveryPendingEntry: View {
-    @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     var body: some View {
-        if AuthorityAccess(state: app.state, me: context.me).isAuthority {
-            if app.state.recoveryPending {
-                GroupBanner(L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(value: String(describing: securityTime(app.state.recoveryReadyMs))),
+        let sec = context.core.settings.security
+        if sec.isManager {
+            if sec.recoveryPending {
+                GroupBanner(L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(value: String(describing: securityTime(UInt64(max(0, sec.recoveryReadyMs))))),
                     tone: .warn, action: L10n.dockHandle()) { nav.open(.accountSecurity) }
-            } else if app.state.recoveryStatusStale {
+            } else if sec.recoveryStatusStale {
                 GroupBanner(L10n.errorsIosRecoveryRequestStateMayBeOutOfDateConnect(), tone: .warn)
             }
         }
@@ -23,14 +23,13 @@ struct RecoveryPendingEntry: View {
 
 struct AccountSecurityGroup: View {
     var summary: String? = nil
-    @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     var body: some View {
-        let access = AuthorityAccess(state: app.state, me: context.me)
+        let sec = context.core.settings.security
         GroupLabel(L10n.securityAccountSecurity())
         RecoveryPendingEntry()
-        GroupCard { GRow(L10n.securityAccountSecurity(), value: summary ?? (access.isAuthority ? L10n.securityThisDeviceManagesTheAccount() : access.name), chevron: true) { nav.open(.accountSecurity) } }
+        GroupCard { GRow(L10n.securityAccountSecurity(), value: summary ?? (sec.isManager ? L10n.securityThisDeviceManagesTheAccount() : sec.authorityName), chevron: true) { nav.open(.accountSecurity) } }
     }
 }
 
@@ -43,21 +42,22 @@ struct AccountSecurityDetails: View {
     @State private var action = ActionRunner()
     @State private var renewed = false
     var body: some View {
-        let access = AuthorityAccess(state: app.state, me: context.me)
-        if app.state.recoveryPending {
-            GroupBanner(L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(value: String(describing: securityTime(app.state.recoveryReadyMs))), tone: .warn, action: access.isAuthority ? L10n.securityReject() : nil) { nav.open(.recoveryCode) }
+        let settings = context.core.settings
+        let sec = settings.security
+        if sec.recoveryPending {
+            GroupBanner(L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(value: String(describing: securityTime(UInt64(max(0, sec.recoveryReadyMs))))), tone: .warn, action: sec.isManager ? L10n.securityReject() : nil) { nav.open(.recoveryCode) }
         }
         if app.recoveryRotationRequired {
             GroupBanner(L10n.securityIosRecoveryCodeBackupIsUnconfirmedReplaceTheCodeAnd(), tone: .warn, action: L10n.securityIosReplaceCode()) { nav.open(.recoveryCode) }
         }
-        if access.isAuthority && app.state.leaseEndMs == 0 && app.state.devices[context.me]?.meta?.handoffRecoveryEd.count == 32 {
+        if sec.isManager && sec.leaseEndMs == 0 && sec.hasHandoffOffer_p {
             GroupBanner(L10n.securityIosCompletingTakeoverWaitingForRemoteControlRenewal())
         }
         if pending { GroupCard { GRow(L10n.securityUnfinishedSecurityOperation(), chevron: true) { onPending() } } }
         GroupCard {
-            GRow(L10n.securityCurrentManagingClient(), value: access.isAuthority ? L10n.securityThisDevice() : access.name)
-            GRow(L10n.securityRemoteControlExpiry(), value: securityTime(app.state.leaseEndMs))
-            if access.isAuthority {
+            GRow(L10n.securityCurrentManagingClient(), value: sec.isManager ? L10n.securityThisDevice() : sec.authorityName)
+            GRow(L10n.securityRemoteControlExpiry(), value: securityTime(UInt64(max(0, sec.leaseEndMs))))
+            if sec.isManager {
                 GRow(action.running ? L10n.securityIosRenewing() : L10n.securityRenewNow(), action: true, enabled: !action.running) {
                     renewed = false
                     action.run {
@@ -72,12 +72,12 @@ struct AccountSecurityDetails: View {
         }
         GroupNote(L10n.securityIosAutomaticallyRenewsWhenYouReturnToTheManagingClient())
         GroupNote(iosAuthorityNotice)
-        if !access.isAuthority { GroupNote(L10n.securityOpenToRenew(value: String(describing: access.name))) }
+        if !sec.isManager { GroupNote(L10n.securityOpenToRenew(value: String(describing: sec.authorityName))) }
         GroupCard {
-            if access.isAuthority {
+            if sec.isManager {
                 GRow(L10n.securityRecoveryCode(), chevron: true) { nav.open(.recoveryCode) }
                 GRow(L10n.securityTransferManagement(), chevron: true) { nav.open(.handoff) }
-            } else if access.isClient {
+            } else if settings.hasAccount && !sec.unlinked {
                 GRow(L10n.securityTakeOverManagement(), chevron: true) { nav.open(.handoff) }
             }
         }
@@ -126,7 +126,10 @@ struct AccountSecurityScreen: View {
                 }
             }
         }
-        .task { await read() }
+        .task {
+            await context.coreHost.openSettings()
+            await read()
+        }
         .confirm(isPresented: $abandon, title: L10n.securityIosAbandonThisSecurityOperation(),
             text: pending?.kind == "handoffOffer"
                 ? L10n.securityIosTheSuccessorSPublicKeyMayAlreadyBePublished()
@@ -189,9 +192,11 @@ struct RecoveryCodeScreen: View {
     @State private var action = ActionRunner()
     @State private var confirm = false
     var body: some View {
-        let access = AuthorityAccess(state: app.state, me: context.me)
+        let settings = context.core.settings
+        let isManager = settings.security.isManager
+        let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: settings.security.authorityName))
         SettingsPage {
-            if access.isAuthority {
+            if isManager {
                 RecoveryPendingEntry()
                 GroupLabel(L10n.securityRecoveryCode())
                 GroupNote(L10n.securityReplacingTheRecoveryCodeImmediatelyInvalidatesTheOldCode())
@@ -213,10 +218,13 @@ struct RecoveryCodeScreen: View {
                 }
                 if draft.success { GroupBanner(L10n.securityIosTheNewRecoveryCodeIsActiveTheOldCode()) }
                 if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
-            } else { GroupNote(access.addHint) }
+            } else { GroupNote(addHint) }
         }
         .navBar(L10n.securityRecoveryCode())
-        .task { draft = context.memory.value { RecoveryCodeDraft() } }
+        .task {
+            await context.coreHost.openSettings()
+            draft = context.memory.value { RecoveryCodeDraft() }
+        }
         .confirm(isPresented: $confirm, title: L10n.securityIosPublishNewRecoveryCode(), text: L10n.securityIosTheOldRecoveryCodeIsImmediatelyInvalidatedAndPending(), confirm: L10n.securityIosPublish()) {
             action.run {
                 guard draft.code != nil, draft.saved else { throw UserError(L10nMessage.securityIosSaveTheRecoveryCodeOfflineFirst()) }

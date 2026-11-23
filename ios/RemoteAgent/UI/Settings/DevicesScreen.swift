@@ -64,7 +64,6 @@ struct DevicesScreen: View {
     }
 
     @ViewBuilder private func list(_ vm: PBDevicesViewModel) -> some View {
-        let access = AuthorityAccess(state: model.state, me: context.me)
         let err = vm.errorText.rendered()
         if !err.isEmpty { GroupBanner(err, tone: .error) }
         if !removeAction.error.isEmpty { GroupBanner(removeAction.error, tone: .error) }
@@ -90,7 +89,7 @@ struct DevicesScreen: View {
                     ClientRow(
                         client: c,
                         onRename: vm.online ? { renaming = c } : nil,
-                        onRemove: access.isAuthority && !c.isSelf ? { removing = c } : nil
+                        onRemove: vm.isManager && !c.isSelf ? { removing = c } : nil
                     )
                 }
                 if vm.canAddDevice {

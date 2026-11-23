@@ -182,7 +182,7 @@ struct ClientRow: View {
             valueColor: client.pairingIncomplete ? DS.orangeInk : nil
         ) { nav.open(.client(id: client.deviceID)) }
         .lead {
-            SymbolImage(clientIcon(description: client.description_p), size: 20, color: DS.ink2)
+            SymbolImage(client.kind == .machine ? "laptopcomputer" : clientIcon(description: client.description_p), size: 20, color: DS.ink2)
                 .frame(width: 22, alignment: .center)
         }
         .contextMenu {

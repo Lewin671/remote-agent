@@ -16,14 +16,13 @@ struct ConnectionCheckScreen: View {
     @State private var run = 0
 
     var body: some View {
-        let state = model.state
         let settingsVM = context.core.settings
         // Online first: those are the ones measured.
         let byName = settingsVM.machines
         let machines = byName.filter(\.online) + byName.filter { !$0.online }
         SettingsPage {
             GroupCard {
-                let network = state.link != .noNetwork
+                let network = settingsVM.connCheck.networkAvailable
                 GRow(L10n.connectionLocalNetwork(), value: network ? L10n.connectionWorking() : L10n.connectionUnavailable()).valueLead { Dot(network ? DS.green : DS.ink3) }
                 result(L10n.securityServer(), sub: hostOf(context.account.server), check?.server ?? .wait, slow: slowServerMs)
                 for m in machines {
@@ -58,12 +57,13 @@ struct ConnectionCheckScreen: View {
             await context.coreHost.openSettings()
             let made = check ?? ConnectionCheckModel(probes: probes)
             check = made
-            // The computers the server lists as online now, not as of the last drawing.
-            let online = context.remote.current.machines.values.filter { $0.pathState.reachable }.map(\.id)
+            // The computers Core lists as online now, after openSettings() refreshed the view model.
+            let freshMachines = context.core.settings.machines
+            let online = freshMachines.filter { $0.online && ($0.member || model.isDemo) }.map(\.machineID)
             context.dispatch {
                 $0.connCheckStatus.serverState = .checking
             }
-            await made.measure(online: model.isDemo ? machines.filter(\.online).map(\.machineID) : online)
+            await made.measure(online: online)
             reportProbeStatus(made.server)
         }
     }
@@ -118,7 +118,12 @@ struct ConnectionCheckScreen: View {
         if model.isDemo { return .demo(model.state.link == .online ? SettingsDemo.state : "serverDown") }
         #endif
         let remote = context.remote
-        return ConnectionProbes(server: { try await remote.pingServer() }, machine: { try await remote.pingMachine($0) }, canProbe: { id, reached in remote.current.peer(id).canProbe(reached) })
+        let directByID = Dictionary(uniqueKeysWithValues: context.core.settings.machines.map { ($0.machineID, $0.directReady) })
+        return ConnectionProbes(
+            server: { try await remote.pingServer() },
+            machine: { try await remote.pingMachine($0) },
+            canProbe: { id, reached in reached || (directByID[id] ?? false) }
+        )
     }
 }
 

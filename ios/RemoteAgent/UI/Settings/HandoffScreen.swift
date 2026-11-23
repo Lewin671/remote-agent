@@ -25,15 +25,19 @@ struct HandoffScreen: View {
     @State private var handedOff = false
 
     var body: some View {
-        let access = AuthorityAccess(state: app.state, me: context.me)
+        let settings = context.core.settings
+        let sec = settings.security
+        let isClient = settings.hasAccount && !sec.unlinked
+        let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: sec.authorityName))
         SettingsPage {
-            if access.isAuthority { outgoing }
-            else if access.isClient { incoming }
-            else { GroupNote(access.addHint) }
+            if sec.isManager { outgoing }
+            else if isClient { incoming(hasHandoffOffer: sec.hasHandoffOffer_p) }
+            else { GroupNote(addHint) }
             if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
         }
-        .navBar(access.isAuthority ? L10n.securityTransferManagement() : L10n.securityTakeOverManagement())
+        .navBar(sec.isManager ? L10n.securityTransferManagement() : L10n.securityTakeOverManagement())
         .task {
+            await context.coreHost.openSettings()
             draft = context.memory.value { HandoffDraft() }
             if app.isDemo {
                 #if DEBUG
@@ -43,16 +47,15 @@ struct HandoffScreen: View {
                         PBSecurityHandoffCandidate.with {
                             $0.deviceID = d.id
                             $0.recoveryEd = d.meta?.handoffRecoveryEd ?? Data()
+                            $0.displayName = clientName(d, id: d.id, among: app.state.devices)
                         }
                     }
                 #endif
-            } else if access.isAuthority { loadCandidates() }
+            } else if context.core.settings.security.isManager { loadCandidates() }
         }
         .confirm(isPresented: $confirming, title: L10n.securityIosTransferManagement(),
             text: L10n.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(
-                value: String(describing: target.map {
-                    clientName(app.state.devices[$0.deviceID], id: $0.deviceID, among: app.state.devices)
-                } ?? L10n.securityIosSuccessorDevice())),
+                value: String(describing: target.flatMap { $0.displayName.isEmpty ? nil : $0.displayName } ?? L10n.securityIosSuccessorDevice())),
             confirm: L10n.securityConfirmTransfer(), danger: true) {
                 action.run {
                     guard let target else { return }
@@ -72,7 +75,7 @@ struct HandoffScreen: View {
             GroupNote(L10n.securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts())
             GroupCard {
                 ForEach(candidates, id: \.deviceID) { candidate in
-                    let label = clientName(app.state.devices[candidate.deviceID], id: candidate.deviceID, among: app.state.devices)
+                    let label = candidate.displayName.or(candidate.deviceID)
                     GRow(L10n.securityIosTransferTo(value: String(describing: label)),
                         chevron: true, enabled: !action.running) { target = candidate; confirming = true }
                 }
@@ -82,7 +85,7 @@ struct HandoffScreen: View {
             if handedOff { GroupBanner(L10n.securityIosManagementTransferredThisDeviceWasRemoved()) }
         }
     }
-    private var incoming: some View {
+    private func incoming(hasHandoffOffer: Bool) -> some View {
         Group {
             GroupLabel(L10n.securityTakeOverManagement())
             GroupNote(L10n.securitySaveTheNewRecoveryCodeFirstThenAskThe())
@@ -105,10 +108,10 @@ struct HandoffScreen: View {
                     }
                 }.padding(.horizontal, 16)
             } else if !app.isDemo {
-                if draft.offered || app.state.devices[context.me]?.meta?.handoffRecoveryEd.count == 32 {
+                if draft.offered || hasHandoffOffer {
                     GroupBanner(L10n.securityRecoveryCodeSavedAndConfirmedWaitingForTheCurrent())
                 }
-                Btn(draft.offered || app.state.devices[context.me]?.meta?.handoffRecoveryEd.count == 32 ? L10n.securityRegenerateRecoveryCode() : L10n.securityGenerateNewRecoveryCode(), kind: .primary, enabled: !action.running) {
+                Btn(draft.offered || hasHandoffOffer ? L10n.securityRegenerateRecoveryCode() : L10n.securityGenerateNewRecoveryCode(), kind: .primary, enabled: !action.running) {
                     action.run {
                         draft.code = try await context.remote.prepareHandoffCode()
                         draft.saved = false
