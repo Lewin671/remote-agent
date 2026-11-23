@@ -338,7 +338,9 @@ struct SessionScreen: View {
                     Text(parts.filter { !$0.isEmpty }.joined(separator: " · "))
                 }
                 .font(.headline).foregroundStyle(DS.ink)
-                Text(header.shortPath.isEmpty ? shortPath(header.cwd) : header.shortPath).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
+                if !header.shortPath.isEmpty {
+                    Text(header.shortPath).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
+                }
             }
         }
         .onChange(of: actions.fork.status) { old, new in

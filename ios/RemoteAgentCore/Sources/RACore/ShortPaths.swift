@@ -7,8 +7,6 @@ private let pathToken = Rx("(\\A|[\(Jre.s)=\\:(\\[\\{,])(?:([\"'])(/[^\"'\\n]*)\
 private let homeDir = Rx("\\A/(?:Users|home)/[^/:]+")
 private let lineSuffix = Rx(":\(Jre.digit)+(?::\(Jre.digit)+)*")
 private let privatePrefix = Rx("\\A/private(?=/(?:tmp|var|etc)(?:/|\(Jre.end)))")
-private let usersHome = Rx("\\A/Users/[^/]+")
-private let linuxHome = Rx("\\A/home/[^/]+")
 
 /// macOS reports /tmp, /var and /etc under /private: the same place.
 private func samePlace(_ p: String) -> String { privatePrefix.replace(p, first: true) { _ in "" } }
@@ -54,9 +52,4 @@ public func shortenPath(_ path: String, cwd: String, home: String = "") -> Strin
     let hm = h.ifEmpty(homeDir.find(p)?.value ?? "")
     if let r = under(p, hm) { return "~\(r)" }
     return path
-}
-
-/// A path with the home folder as ~, for a line that has no session folder to be relative to.
-public func shortPath(_ p: String) -> String {
-    linuxHome.replace(usersHome.replace(p, with: "~"), with: "~")
 }

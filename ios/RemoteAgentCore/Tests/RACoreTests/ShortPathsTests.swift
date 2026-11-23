@@ -65,8 +65,5 @@ import Testing
         #expect(shortenPaths("cat /Users/me/项目x/a", cwd: "/Users/me/项目", home: "/Users/me") == "cat ~/项目x/a")
         // A token ends at ASCII whitespace only: an ideographic space is part of the path.
         #expect(shortenPaths("cat /Users/me/a\u{3000}b c", cwd: "", home: "/Users/me") == "cat ~/a\u{3000}b c")
-        #expect(shortPath("/Users/me/Code/foo") == "~/Code/foo")
-        #expect(shortPath("/home/me") == "~")
-        #expect(shortPath("/srv/Users/me") == "/srv/Users/me")
     }
 }
