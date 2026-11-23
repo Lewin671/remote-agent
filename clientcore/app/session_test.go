@@ -2585,4 +2585,20 @@ func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
 	if len(ev.GetProblems()) != 2 || ev.GetFailureSummary().GetKey() != "image.attach_failed" {
 		t.Fatalf("unexpected problems/summary: %+v / %+v", ev.GetProblems(), ev.GetFailureSummary())
 	}
+	if ev.GetImagesPickBlockedReason() != nil || ev.GetFilesPickBlockedReason() != nil {
+		t.Fatalf("pick reasons must be unset below the limits: %+v / %+v", ev.GetImagesPickBlockedReason(), ev.GetFilesPickBlockedReason())
+	}
+
+	full, err := c.View(&corev1.Screen{Screen: &corev1.Screen_AttachmentEval{AttachmentEval: &corev1.AttachmentEvalScreenRequest{
+		SessionId: "s-att", CurrentImages: 6, CurrentFiles: 6,
+	}}})
+	if err != nil {
+		t.Fatalf("AttachmentEval View error: %v", err)
+	}
+	fev := full.GetAttachmentEval()
+	if fev.GetCanPickImages() || fev.GetCanPickFiles() ||
+		fev.GetImagesPickBlockedReason().GetKey() != "attachment.max_images" ||
+		fev.GetFilesPickBlockedReason().GetKey() != "attachment.max_files" {
+		t.Fatalf("at the limits the core must explain why picking is blocked: %+v / %+v", fev.GetImagesPickBlockedReason(), fev.GetFilesPickBlockedReason())
+	}
 }
