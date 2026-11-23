@@ -95,13 +95,13 @@ func setup(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u.current = Health{Format: 1, Version: "1.1.0", Channel: "release", Protocol: 6, State: 1, PID: 100, Executable: u.exe, IdleSince: time.Now().Add(-time.Minute)}
+	u.current = Health{Format: 1, Version: "1.1.0", Channel: "release", Protocol: 6, RelayProtocol: 6, State: 1, PID: 100, Executable: u.exe, IdleSince: time.Now().Add(-time.Minute)}
 	u.platform = "linux-amd64"
 	u.stableFor = 0
 	u.healthTimeout = 20 * time.Millisecond
 	f := &fixture{u: u, live: u.current, archive: archive(t, nil)}
 	h := sha256.Sum256(f.archive)
-	f.metadata = []byte(fmt.Sprintf("version=1.2.0\nprotocol=6\ndaemonUpdate=1\ndaemonState=1\ndaemonAutomatic=true\ndaemon.linux-amd64.sha256=%s\ndaemon.linux-amd64.size=%d\nnotes=Unicode 中文 and escaped\\nnotes\\\\path\n", hex.EncodeToString(h[:]), len(f.archive)))
+	f.metadata = []byte(fmt.Sprintf("version=1.2.0\nprotocol=6\nrelayProtocol=6\ndaemonUpdate=1\ndaemonState=1\ndaemonAutomatic=true\ndaemon.linux-amd64.sha256=%s\ndaemon.linux-amd64.size=%d\nnotes=Unicode 中文 and escaped\\nnotes\\\\path\n", hex.EncodeToString(h[:]), len(f.archive)))
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/latest.properties") {
 			w.Write(f.metadata)
@@ -153,12 +153,19 @@ func TestApplyAndRetainPrevious(t *testing.T) {
 }
 
 func TestPolicyBlocksBeforeDownload(t *testing.T) {
-	for _, tc := range []struct{ name, from, to string }{{"protocol", "protocol=6", "protocol=7"}, {"storage", "daemonState=1", "daemonState=2"}, {"manual", "daemonAutomatic=true", "daemonAutomatic=false"}, {"oldManifest", "daemonUpdate=1", "daemonUpdate=0"}} {
+	for _, tc := range []struct{ name, from, to, wantReason string }{
+		{"protocol", "protocol=6", "protocol=7", "peer protocol"},
+		{"relayProtocol", "relayProtocol=6", "relayProtocol=7", "relay protocol"},
+		{"missingRelayProtocol", "relayProtocol=6\n", "", "missing relayProtocol"},
+		{"storage", "daemonState=1", "daemonState=2", "stored data"},
+		{"manual", "daemonAutomatic=true", "daemonAutomatic=false", "manual upgrade"},
+		{"oldManifest", "daemonUpdate=1", "daemonUpdate=0", "manifest"},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := setup(t)
 			f.metadata = bytes.ReplaceAll(f.metadata, []byte(tc.from), []byte(tc.to))
 			r, err := f.u.Apply(context.Background(), "", false)
-			if err == nil || r.Outcome != "blocked" || f.downloads != 0 || f.restarts != 0 {
+			if err == nil || r.Outcome != "blocked" || !strings.Contains(err.Error(), tc.wantReason) || f.downloads != 0 || f.restarts != 0 {
 				t.Fatalf("result=%+v error=%v downloads=%d", r, err, f.downloads)
 			}
 		})
@@ -269,7 +276,7 @@ func TestInterruptedTransactionsRecoverBeforeNetwork(t *testing.T) {
 			if err := atomicFile(f.u.exe+".rollback", []byte("old"), 0755); err != nil {
 				t.Fatal(err)
 			}
-			tr := transaction{Previous: f.live, Target: Release{Version: "1.2.0", Protocol: 6, State: 1}, BackupSHA256: digest}
+			tr := transaction{Previous: f.live, Target: Release{Version: "1.2.0", Protocol: 6, RelayProtocol: 6, State: 1}, BackupSHA256: digest}
 			if err := writeJSON(f.u.exe+".update-transaction.json", tr); err != nil {
 				t.Fatal(err)
 			}
@@ -375,7 +382,7 @@ func TestAutomaticOffByDefault(t *testing.T) {
 }
 
 func TestManifestValidation(t *testing.T) {
-	for _, tc := range []struct{ from, to string }{{"version=1.2.0", "version=../../evil"}, {"daemonState=1", "daemonState=0"}, {"daemonAutomatic=true", "daemonAutomatic=yes"}, {"protocol=6", "protocol=bad"}, {"daemon.linux-amd64.size=", "duplicate=1\nduplicate=2\ndaemon.linux-amd64.size="}} {
+	for _, tc := range []struct{ from, to string }{{"version=1.2.0", "version=../../evil"}, {"daemonState=1", "daemonState=0"}, {"daemonAutomatic=true", "daemonAutomatic=yes"}, {"protocol=6", "protocol=bad"}, {"relayProtocol=6", "relayProtocol=bad"}, {"relayProtocol=6", "relayProtocol=0"}, {"daemon.linux-amd64.size=", "duplicate=1\nduplicate=2\ndaemon.linux-amd64.size="}} {
 		f := setup(t)
 		f.metadata = bytes.ReplaceAll(f.metadata, []byte(tc.from), []byte(tc.to))
 		if _, err := f.u.Check(context.Background(), ""); err == nil {
@@ -427,7 +434,7 @@ func TestRecoveryAttemptLimit(t *testing.T) {
 	f := setup(t)
 	_ = os.MkdirAll(f.u.state, 0700)
 	digest, _ := fileDigest(f.u.exe)
-	tr := transaction{Previous: f.live, Target: Release{Version: "1.2.0", Protocol: 6, State: 1}, BackupSHA256: digest, Attempts: 3}
+	tr := transaction{Previous: f.live, Target: Release{Version: "1.2.0", Protocol: 6, RelayProtocol: 6, State: 1}, BackupSHA256: digest, Attempts: 3}
 	if err := writeJSON(f.u.exe+".update-transaction.json", tr); err != nil {
 		t.Fatal(err)
 	}

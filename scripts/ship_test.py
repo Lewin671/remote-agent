@@ -30,7 +30,7 @@ class DeploymentMetadataTests(unittest.TestCase):
 
 
 class WebOnlyShipTests(unittest.TestCase):
-    def run_ship(self, protocol='13', prebuilt_core=False):
+    def run_ship(self, peer='17', relay='17', prebuilt_core=False, presplit=False, missing_commit=False):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / 'scripts').mkdir()
@@ -61,8 +61,24 @@ if name=='git':
     elif args[:2]==['worktree','add']:
         work=pathlib.Path(args[-2]); (work/'web').mkdir(parents=True)
     elif args[:2]==['worktree','remove']: shutil.rmtree(args[-1])
+    elif args[:2]==['cat-file','-e']:
+        spec = args[2]
+        if os.environ.get('SHIP_TEST_MISSING_COMMIT') == '1' and spec.startswith('bbbbbbb'):
+            sys.exit(1)
+        if os.environ.get('SHIP_TEST_PRESPLIT') == '1' and spec == 'bbbbbbb:internal/relayproto/relayproto.go':
+            sys.exit(1)
     elif args[:1]==['show']:
-        print('const Version = '+(os.environ['SHIP_TEST_PROTOCOL'] if args[1].startswith('bbbbbbb:') else '13'))
+        spec = args[1]
+        is_prev = spec.startswith('bbbbbbb:')
+        if spec.endswith('internal/relayproto/relayproto.go'):
+            if is_prev and os.environ.get('SHIP_TEST_PRESPLIT') == '1':
+                sys.exit('fatal: path does not exist')
+            print('const Version = '+(os.environ['SHIP_TEST_RELAY'] if is_prev else '17'))
+        else:
+            if is_prev and os.environ.get('SHIP_TEST_PRESPLIT') == '1':
+                print('const Version = '+os.environ['SHIP_TEST_PEER'])
+            else:
+                print('const PeerVersion = '+(os.environ['SHIP_TEST_PEER'] if is_prev else '17'))
 elif name=='gh':
     if args[:2]==['run','list']: print('123')
     elif args[:2]==['run','view']: print('completed success' if 'jobs' in args else 'completed')
@@ -80,7 +96,10 @@ elif name in ('ssh','daemon','curl'): sys.exit('forbidden non-web operation')
             for command in ('git', 'gh', 'pnpm', 'ssh', 'daemon', 'curl'):
                 (root / 'bin' / command).symlink_to(fake)
             env = dict(os.environ, PATH=str(root / 'bin') + ':' + os.environ['PATH'],
-                       TMPDIR=str(root / 'temp'), SHIP_TEST_ROOT=str(root), SHIP_TEST_PROTOCOL=protocol,
+                       TMPDIR=str(root / 'temp'), SHIP_TEST_ROOT=str(root),
+                       SHIP_TEST_PEER=peer, SHIP_TEST_RELAY=relay,
+                       SHIP_TEST_PRESPLIT='1' if presplit else '0',
+                       SHIP_TEST_MISSING_COMMIT='1' if missing_commit else '0',
                        BIN=str(root / 'bin' / 'daemon'))
             result = subprocess.run(['sh', str(root / 'scripts/ship.sh'), '--web-only', 'v0.56.3'],
                                     cwd=root, env=env, text=True, capture_output=True, timeout=120)
@@ -101,9 +120,32 @@ elif name in ('ssh','daemon','curl'): sys.exit('forbidden non-web operation')
         self.assertTrue(reused)
         self.assertIn('pnpm run deploy', calls)
 
-    def test_protocol_change_stops_before_deployment(self):
-        result, calls, _ = self.run_ship('12')
+    def test_peer_protocol_change_stops_before_deployment(self):
+        result, calls, _ = self.run_ship(peer='16', relay='17')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('cannot change protocol', result.stderr)
         self.assertNotIn('pnpm run deploy', calls)
         self.assertFalse(any(line.startswith(('ssh ', 'daemon ', 'curl ')) for line in calls.splitlines()), calls)
+
+    def test_relay_protocol_change_stops_before_deployment(self):
+        result, calls, _ = self.run_ship(peer='17', relay='16')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('cannot change protocol', result.stderr)
+        self.assertNotIn('pnpm run deploy', calls)
+        self.assertFalse(any(line.startswith(('ssh ', 'daemon ', 'curl ')) for line in calls.splitlines()), calls)
+
+    def test_presplit_deployed_commit_uses_legacy_protocol_fallback(self):
+        result, calls, _ = self.run_ship(peer='17', presplit=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('pnpm run deploy', calls)
+        result_mismatch, calls_mismatch, _ = self.run_ship(peer='16', presplit=True)
+        self.assertNotEqual(result_mismatch.returncode, 0)
+        self.assertIn('cannot change protocol', result_mismatch.stderr)
+        self.assertNotIn('pnpm run deploy', calls_mismatch)
+
+    def test_missing_local_commit_reports_missing_commit(self):
+        result, calls, _ = self.run_ship(missing_commit=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('not found locally', result.stderr)
+        self.assertNotIn('cannot change protocol', result.stderr)
+        self.assertNotIn('pnpm run deploy', calls)

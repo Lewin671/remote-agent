@@ -14,7 +14,7 @@ var version = "1.1.0"
 
 func main() {
 	exe, _ := os.Executable()
-	h := map[string]any{"format": 1, "version": version, "channel": "release", "protocol": 6, "state": 1, "pid": os.Getpid(), "executable": exe, "idleSince": time.Now().Add(-time.Minute)}
+	h := map[string]any{"format": 1, "version": version, "channel": "release", "protocol": 6, "relayProtocol": 6, "state": 1, "pid": os.Getpid(), "executable": exe, "idleSince": time.Now().Add(-time.Minute)}
 	if len(os.Args) == 2 && os.Args[1] == "update-build-info" {
 		_ = json.NewEncoder(os.Stdout).Encode(h)
 		return

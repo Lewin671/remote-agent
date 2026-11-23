@@ -194,13 +194,19 @@ class PublishTests(unittest.TestCase):
 
     def test_daemon_metadata_must_match_checked_payloads(self):
         manifest = self.dist / 'latest.properties'
-        base = manifest.read_text() + 'protocol=6\ndaemonUpdate=1\ndaemonState=1\ndaemonAutomatic=true\n'
+        base = manifest.read_text() + 'protocol=6\nrelayProtocol=6\ndaemonUpdate=1\ndaemonState=1\ndaemonAutomatic=true\n'
         for target in ('darwin-arm64', 'darwin-amd64', 'linux-arm64', 'linux-amd64'):
             archive = self.dist / f'remote-agent-{self.tag}-{target}.tar.gz'
             base += f'daemon.{target}.sha256={publisher.sha256(archive)}\ndaemon.{target}.size={archive.stat().st_size}\n'
         manifest.write_text(base)
         publisher.validate(self.tag, self.dist, self.notes)
         manifest.write_text(base.replace('daemonState=1', 'daemonState=bad'))
+        with self.assertRaises(ValueError):
+            publisher.validate(self.tag, self.dist, self.notes)
+        manifest.write_text(base.replace('relayProtocol=6\n', ''))
+        with self.assertRaises(ValueError):
+            publisher.validate(self.tag, self.dist, self.notes)
+        manifest.write_text(base.replace('relayProtocol=6', 'relayProtocol=0'))
         with self.assertRaises(ValueError):
             publisher.validate(self.tag, self.dist, self.notes)
         manifest.write_text(base + 'daemon.linux-amd64.size=1\n')

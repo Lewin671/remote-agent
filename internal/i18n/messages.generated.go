@@ -193,6 +193,22 @@ func CommonSave(locale string) string {
 	return render(locale, "common.save", map[string]any{})
 }
 
+func ErrorsUpdaterInvalidReleaseRelayProtocol(locale string) string {
+	return render(locale, "errors.updater_invalid_release_relay_protocol", map[string]any{})
+}
+
+func ErrorsUpdaterMissingRelayProtocol(locale string) string {
+	return render(locale, "errors.updater_missing_relay_protocol", map[string]any{})
+}
+
+func ErrorsUpdaterPeerProtocolChanged(locale string) string {
+	return render(locale, "errors.updater_peer_protocol_changed", map[string]any{})
+}
+
+func ErrorsUpdaterRelayProtocolChanged(locale string) string {
+	return render(locale, "errors.updater_relay_protocol_changed", map[string]any{})
+}
+
 func ImageAttachFailed(locale string, count int) string {
 	return render(locale, "image.attach_failed", map[string]any{"count": count})
 }

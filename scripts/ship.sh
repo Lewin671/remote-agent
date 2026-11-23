@@ -140,13 +140,31 @@ cloudflare_source() {
 	(cd "$work/web" && pnpm exec wrangler pages deployment list --project-name remote-agent --environment production --json) >"$cloudflare_record" || return 1
 	python3 "$ROOT/scripts/web-deployment.py" --source <"$cloudflare_record"
 }
+commit_peer_protocol() {
+	git -C "$ROOT" cat-file -e "$1^{commit}" 2>/dev/null || fail "commit $1 not found locally"
+	# Pre-split commits used `const Version`; drop that pattern after the first
+	# release containing internal/relayproto is live.
+	git -C "$ROOT" show "$1:internal/protocol/protocol.go" | sed -n -e 's/^const PeerVersion = //p' -e 's/^const Version = //p'
+}
+commit_relay_protocol() {
+	git -C "$ROOT" cat-file -e "$1^{commit}" 2>/dev/null || fail "commit $1 not found locally"
+	if git -C "$ROOT" cat-file -e "$1:internal/relayproto/relayproto.go" 2>/dev/null; then
+		git -C "$ROOT" show "$1:internal/relayproto/relayproto.go" | sed -n 's/^const Version = //p'
+	else
+		# Pre-split commits had no internal/relayproto; remove this fallback after
+		# the first release containing internal/relayproto is live.
+		commit_peer_protocol "$1"
+	fi
+}
 if [ "$web_only" = true ]; then
 	(cd "$work/web" && pnpm install --frozen-lockfile --prefer-offline --silent)
 	cloudflare_record=$(mktemp "${TMPDIR:-/tmp}/remote-agent-web.XXXXXX")
 	deployed_web=$(cloudflare_source) || fail "cannot verify the deployed web source through Cloudflare"
-	previous_protocol=$(git -C "$ROOT" show "$deployed_web:internal/protocol/protocol.go" | sed -n 's/^const Version = //p')
-	target_protocol=$(git -C "$ROOT" show "$commit:internal/protocol/protocol.go" | sed -n 's/^const Version = //p')
-	[ -n "$previous_protocol" ] && [ "$previous_protocol" = "$target_protocol" ] || fail "web-only deployment cannot change protocol; coordinate a full ship"
+	previous_peer=$(commit_peer_protocol "$deployed_web")
+	target_peer=$(commit_peer_protocol "$commit")
+	previous_relay=$(commit_relay_protocol "$deployed_web")
+	target_relay=$(commit_relay_protocol "$commit")
+	[ -n "$previous_peer" ] && [ "$previous_peer" = "$target_peer" ] && [ -n "$previous_relay" ] && [ "$previous_relay" = "$target_relay" ] || fail "web-only deployment cannot change protocol; coordinate a full ship"
 fi
 # One of the page's scripts carries the commit it was built from.
 web_has() {

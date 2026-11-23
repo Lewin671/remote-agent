@@ -20,6 +20,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/internal/buildinfo"
 	"github.com/Lewin671/remote-agent/internal/protocol"
+	"github.com/Lewin671/remote-agent/internal/relayproto"
 )
 
 //go:embed policy.json
@@ -41,21 +42,22 @@ func BuildPolicy() Policy {
 // Health is served only on the daemon's owner-only Unix socket. It is not a
 // client/relay RPC and exposes no session content or account information.
 type Health struct {
-	Format     int       `json:"format"`
-	Version    string    `json:"version"`
-	Commit     string    `json:"commit"`
-	Channel    string    `json:"channel"`
-	IdleSince  time.Time `json:"idleSince"`
-	Protocol   int       `json:"protocol"`
-	State      int       `json:"state"`
-	PID        int       `json:"pid"`
-	Executable string    `json:"executable"`
-	Busy       bool      `json:"busy"`
-	BusyReason string    `json:"busyReason,omitempty"`
+	Format        int       `json:"format"`
+	Version       string    `json:"version"`
+	Commit        string    `json:"commit"`
+	Channel       string    `json:"channel"`
+	IdleSince     time.Time `json:"idleSince"`
+	Protocol      int       `json:"protocol"`
+	RelayProtocol int       `json:"relayProtocol"`
+	State         int       `json:"state"`
+	PID           int       `json:"pid"`
+	Executable    string    `json:"executable"`
+	Busy          bool      `json:"busy"`
+	BusyReason    string    `json:"busyReason,omitempty"`
 }
 
 func Build() Health {
-	return Health{Format: 1, Version: buildinfo.Version, Commit: buildinfo.Commit, Channel: buildinfo.Channel, Protocol: protocol.PeerVersion, State: BuildPolicy().State, PID: os.Getpid()}
+	return Health{Format: 1, Version: buildinfo.Version, Commit: buildinfo.Commit, Channel: buildinfo.Channel, Protocol: protocol.PeerVersion, RelayProtocol: relayproto.Version, State: BuildPolicy().State, PID: os.Getpid()}
 }
 
 type service interface {
@@ -260,7 +262,7 @@ func (u *Updater) waitHealthy(ctx context.Context, want Health, changedPID bool)
 	for {
 		h, err := u.health(ctx)
 		servicePID, pidErr := u.service.PID(ctx)
-		if err == nil && pidErr == nil && h.PID == servicePID && h.Version == want.Version && h.Protocol == want.Protocol && h.State == want.State && h.Executable == u.exe && (!changedPID || h.PID != want.PID) {
+		if err == nil && pidErr == nil && h.PID == servicePID && h.Version == want.Version && h.Protocol == want.Protocol && h.RelayProtocol == want.RelayProtocol && h.State == want.State && h.Executable == u.exe && (!changedPID || h.PID != want.PID) {
 			if pid != h.PID || since.IsZero() {
 				since = time.Now()
 				pid = h.PID
@@ -350,7 +352,7 @@ func (u *Updater) recover(ctx context.Context, scheduled bool) (bool, error) {
 	if err = writeJSON(u.exe+".update-transaction.json", t); err != nil {
 		return true, err
 	}
-	want := Health{Version: t.Target.Version, Protocol: t.Target.Protocol, State: t.Target.State, PID: t.Previous.PID}
+	want := Health{Version: t.Target.Version, Protocol: t.Target.Protocol, RelayProtocol: t.Target.RelayProtocol, State: t.Target.State, PID: t.Previous.PID}
 	outcome := "recovered"
 	if err = u.waitHealthy(ctx, want, true); err == nil {
 		err = u.finish()
@@ -461,7 +463,7 @@ func (u *Updater) Apply(ctx context.Context, version string, scheduled bool) (re
 	if pidErr != nil || pid != before.PID {
 		return result, errors.New("running daemon is not the process managed by the service")
 	}
-	if before.Version != u.current.Version || before.Protocol != u.current.Protocol || before.State != u.current.State || before.Executable != u.exe {
+	if before.Version != u.current.Version || before.Protocol != u.current.Protocol || before.RelayProtocol != u.current.RelayProtocol || before.State != u.current.State || before.Executable != u.exe {
 		return result, errors.New("installed command and running daemon differ; restart the managed daemon first")
 	}
 	if !idle(before) {
@@ -488,7 +490,7 @@ func (u *Updater) Apply(ctx context.Context, version string, scheduled bool) (re
 	if err != nil {
 		return result, err
 	}
-	if info.Format != 1 || info.Channel != "release" || info.Version != r.Version || info.Protocol != r.Protocol || info.State != r.State {
+	if info.Format != 1 || info.Channel != "release" || info.Version != r.Version || info.Protocol != r.Protocol || info.RelayProtocol != r.RelayProtocol || info.State != r.State {
 		return result, errors.New("downloaded build disagrees with release manifest")
 	}
 	// Downloading may have taken minutes. Recheck immediately before replacement.
@@ -540,7 +542,7 @@ func (u *Updater) Apply(ctx context.Context, version string, scheduled bool) (re
 		err = u.service.Restart(ctx)
 	}
 	if err == nil {
-		err = u.waitHealthy(ctx, Health{Version: r.Version, Protocol: r.Protocol, State: r.State, PID: before.PID}, true)
+		err = u.waitHealthy(ctx, Health{Version: r.Version, Protocol: r.Protocol, RelayProtocol: r.RelayProtocol, State: r.State, PID: before.PID}, true)
 	}
 	if err != nil {
 		cause := err

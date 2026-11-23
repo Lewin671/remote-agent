@@ -19,9 +19,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Lewin671/remote-agent/internal/i18n"
 )
 
 const releases = "https://github.com/Lewin671/remote-agent/releases"
+const updaterLocale = "en"
 const maxArchive = 32 << 20
 const maxBinary = 64 << 20
 
@@ -29,16 +32,17 @@ var semver = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9
 var digestPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 type Release struct {
-	Version   string `json:"version"`
-	Protocol  int    `json:"protocol"`
-	State     int    `json:"state"`
-	Automatic bool   `json:"automatic"`
-	Archive   string `json:"archive"`
-	SHA256    string `json:"sha256"`
-	Size      int64  `json:"size"`
-	Available bool   `json:"available"`
-	Allowed   bool   `json:"allowed"`
-	Reason    string `json:"reason,omitempty"`
+	Version       string `json:"version"`
+	Protocol      int    `json:"protocol"`
+	RelayProtocol int    `json:"relayProtocol"`
+	State         int    `json:"state"`
+	Automatic     bool   `json:"automatic"`
+	Archive       string `json:"archive"`
+	SHA256        string `json:"sha256"`
+	Size          int64  `json:"size"`
+	Available     bool   `json:"available"`
+	Allowed       bool   `json:"allowed"`
+	Reason        string `json:"reason,omitempty"`
 }
 
 func versionParts(v string) ([3]uint64, error) {
@@ -180,6 +184,12 @@ func (u *Updater) Check(ctx context.Context, version string) (Release, error) {
 	if err != nil || r.Protocol < 1 {
 		return r, errors.New("invalid release protocol")
 	}
+	if rawRelay, hasRelay := m["relayProtocol"]; hasRelay && rawRelay != "" {
+		r.RelayProtocol, err = strconv.Atoi(rawRelay)
+		if err != nil || r.RelayProtocol < 1 {
+			return r, errors.New(i18n.ErrorsUpdaterInvalidReleaseRelayProtocol(updaterLocale))
+		}
+	}
 	r.State, err = strconv.Atoi(m["daemonState"])
 	if err != nil || r.State < 1 {
 		return r, errors.New("invalid release state generation")
@@ -198,8 +208,12 @@ func (u *Updater) Check(ctx context.Context, version string) (Release, error) {
 	switch {
 	case u.current.Channel != "release":
 		r.Reason = "self-update requires an official release installation"
+	case r.RelayProtocol == 0:
+		r.Reason = i18n.ErrorsUpdaterMissingRelayProtocol(updaterLocale)
 	case r.Protocol != u.current.Protocol:
-		r.Reason = "protocol changed; coordinate the upgrade with your clients"
+		r.Reason = i18n.ErrorsUpdaterPeerProtocolChanged(updaterLocale)
+	case r.RelayProtocol != u.current.RelayProtocol:
+		r.Reason = i18n.ErrorsUpdaterRelayProtocolChanged(updaterLocale)
 	case r.State != u.current.State:
 		r.Reason = "stored data changed; use the manual upgrade instructions"
 	case !r.Automatic:

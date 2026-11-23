@@ -4718,5 +4718,10 @@
     "path": "internal/relayproto/relayproto.go",
     "literal": "%s speaks relay protocol version %d and this relay speaks version %d; update to a matching release",
     "reason": "Relay ConnectRPC wire error split from internal/protocol/protocol.go; server wire errors remain English and are matched by clients (such as web/src/views/Pairing.tsx) before rendering localized copy."
+  },
+  {
+    "path": "internal/updater/release.go",
+    "literal": "relayProtocol",
+    "reason": "latest.properties manifest field key name; lexical sink scanner false positive adjacent to errors.New."
   }
 ]

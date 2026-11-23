@@ -67,6 +67,7 @@ def prepare(kind):
     version, code = read_version()
     if previous and previous != "v" + version:
         raise ValueError("main version must match the latest release tag before bumping")
+    check_relay_automatic_policy(previous)
     major, minor, patch = map(int, version.split("."))
     if kind == "major":
         major, minor, patch = major + 1, 0, 0
@@ -96,6 +97,7 @@ def validate(tag):
         _, old_code = read_version(git("show", last + ":version.properties"))
         if code <= old_code:
             raise ValueError("Android versionCode must increase")
+        check_relay_automatic_policy(last)
     return {"version": version, "tag": tag, "androidVersionCode": code, "commit": git("rev-parse", "HEAD")}
 
 
@@ -111,8 +113,63 @@ def notes(tag):
     print(git("log", "--format=- %s (%h)", rev))
 
 
-def protocol_version():
-    return int(re.search(r"^const Version = (\d+)$", (ROOT / "internal/protocol/protocol.go").read_text(), re.M).group(1))
+def peer_protocol_version(text=None):
+    source = (ROOT / "internal/protocol/protocol.go").read_text() if text is None else text
+    # Pre-split tags used `const Version`; tighten to `const PeerVersion` after
+    # the first tag containing internal/relayproto is published.
+    match = re.search(r"^const (?:Peer)?Version = (\d+)$", source, re.M)
+    if not match:
+        raise ValueError("Peer protocol version not found")
+    return int(match.group(1))
+
+
+def relay_protocol_version(text=None):
+    source = (ROOT / "internal/relayproto/relayproto.go").read_text() if text is None else text
+    match = re.search(r"^const Version = (\d+)$", source, re.M)
+    if not match:
+        raise ValueError("Relay protocol version not found")
+    return int(match.group(1))
+
+
+def tag_relay_protocol_version(tag):
+    # Pre-split tags had no internal/relayproto and stored the shared protocol
+    # version in internal/protocol/protocol.go. Remove that fallback after the
+    # first tag containing internal/relayproto is published.
+    for rel, parser in (
+        ("internal/relayproto/relayproto.go", relay_protocol_version),
+        ("internal/protocol/protocol.go", peer_protocol_version),
+    ):
+        res = subprocess.run(["git", "show", f"{tag}:{rel}"], cwd=ROOT, text=True, capture_output=True)
+        if res.returncode == 0:
+            return parser(res.stdout)
+    return None
+
+
+def read_daemon_policy():
+    policy_file = ROOT / "internal/updater/policy.json"
+    if not policy_file.exists():
+        return None
+    policy = json.loads(policy_file.read_text())
+    if type(policy.get("state")) is not int or policy["state"] < 1 or type(policy.get("automatic")) is not bool:
+        raise ValueError("Invalid daemon update policy")
+    return policy
+
+
+def check_relay_automatic_policy(previous_tag):
+    if not previous_tag:
+        return
+    policy = read_daemon_policy()
+    if policy is None:
+        return
+    old_relay = tag_relay_protocol_version(previous_tag)
+    if old_relay is None:
+        return
+    new_relay = relay_protocol_version()
+    if new_relay != old_relay and policy["automatic"]:
+        raise ValueError(
+            f"Relay protocol version changed ({old_relay} -> {new_relay}) since {previous_tag}; "
+            "internal/updater/policy.json must set automatic=false"
+        )
 
 
 def property_value(text):
@@ -126,18 +183,16 @@ def manifest(tag, apk):
     fields = {
         "version": metadata["version"],
         "versionCode": metadata["androidVersionCode"],
-        "protocol": protocol_version(),
+        "protocol": peer_protocol_version(),
+        "relayProtocol": relay_protocol_version(),
         "apk": f"remote-agent-{tag}.apk",
         "sha256": hashlib.sha256(data).hexdigest(),
         "size": len(data),
         # The tag's message is written for users: what changed and what upgrading needs.
         "notes": git("tag", "--list", tag, "--format=%(contents)"),
     }
-    policy_file = ROOT / "internal/updater/policy.json"
-    if policy_file.exists():
-        policy = json.loads(policy_file.read_text())
-        if type(policy.get("state")) is not int or policy["state"] < 1 or type(policy.get("automatic")) is not bool:
-            raise ValueError("Invalid daemon update policy")
+    policy = read_daemon_policy()
+    if policy is not None:
         dist = Path(apk).parent
         sums = {}
         for line in (dist / "SHA256SUMS").read_text().splitlines():

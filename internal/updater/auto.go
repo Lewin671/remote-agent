@@ -149,7 +149,7 @@ func (u *Updater) Auto(ctx context.Context, enabled bool, at string) error {
 		if e != nil {
 			return e
 		}
-		if disk.Version != u.current.Version || disk.Channel != "release" || disk.Protocol != u.current.Protocol || disk.State != u.current.State {
+		if disk.Version != u.current.Version || disk.Channel != "release" || disk.Protocol != u.current.Protocol || disk.RelayProtocol != u.current.RelayProtocol || disk.State != u.current.State {
 			return errors.New("installed binary differs from the running command")
 		}
 		current, err := os.ReadFile(u.exe)

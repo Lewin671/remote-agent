@@ -90,7 +90,8 @@ class ReleaseTests(unittest.TestCase):
             release.validate('v0.2.0')
 
     def test_manifest_is_one_line_per_field(self):
-        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst Version = 4\n')
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst PeerVersion = 4\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 5\n')
         self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
         self.commit()
         # A message of several lines, with what a properties file gives meaning to.
@@ -101,6 +102,7 @@ class ReleaseTests(unittest.TestCase):
             'version=0.1.1\n'
             'versionCode=2\n'
             'protocol=4\n'
+            'relayProtocol=5\n'
             'apk=remote-agent-v0.1.1.apk\n'
             'sha256=3b8c56b5c5f3b4a4f4c2a4a1a4b0d6d3e0a3d4a5c7b8e9f0a1b2c3d4e5f60718\n'
             'size=9\n'
@@ -108,7 +110,8 @@ class ReleaseTests(unittest.TestCase):
         ).replace('3b8c56b5c5f3b4a4f4c2a4a1a4b0d6d3e0a3d4a5c7b8e9f0a1b2c3d4e5f60718', __import__('hashlib').sha256(b'apk bytes').hexdigest()))
 
     def test_daemon_manifest_uses_checked_release_payloads(self):
-        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst Version = 6\n')
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst PeerVersion = 6\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 6\n')
         self.write('internal/updater/policy.json', '{"state":1,"automatic":true}')
         self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
         self.commit()
@@ -126,6 +129,8 @@ class ReleaseTests(unittest.TestCase):
         sums = dist / 'SHA256SUMS'
         sums.write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n' for p in payloads))
         manifest = dict(line.split('=', 1) for line in release.manifest('v0.1.1', apk).splitlines())
+        self.assertEqual(manifest['protocol'], '6')
+        self.assertEqual(manifest['relayProtocol'], '6')
         self.assertEqual(manifest['daemonUpdate'], '1')
         self.assertEqual(manifest['daemonState'], '1')
         self.assertEqual(manifest['daemonAutomatic'], 'true')
@@ -136,6 +141,48 @@ class ReleaseTests(unittest.TestCase):
         payloads[-1].write_bytes(b'corrupt')
         with self.assertRaises(ValueError):
             release.manifest('v0.1.1', apk)
+
+    def test_relay_protocol_change_requires_automatic_false(self):
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst PeerVersion = 17\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 17\n')
+        self.write('internal/updater/policy.json', '{"state":4,"automatic":true}\n')
+        self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
+        self.commit()
+        self.git('tag', 'v0.1.1')
+
+        # Bump relay protocol while keeping automatic=true -> rejected.
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 18\n')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'automatic=false'):
+            release.prepare('minor')
+
+        # Setting automatic=false allows prepare and validate.
+        self.write('internal/updater/policy.json', '{"state":4,"automatic":false}\n')
+        self.commit()
+        res = release.prepare('minor')
+        self.assertEqual(res['tag'], 'v0.2.0')
+        self.commit()
+        self.git('tag', 'v0.2.0')
+        self.assertEqual(release.validate('v0.2.0')['tag'], 'v0.2.0')
+
+    def test_relay_protocol_change_from_presplit_tag_requires_automatic_false(self):
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst Version = 17\n')
+        self.write('internal/updater/policy.json', '{"state":4,"automatic":true}\n')
+        self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
+        self.commit()
+        self.git('tag', 'v0.1.1')
+
+        # Split without changing value -> automatic=true is still allowed.
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst PeerVersion = 17\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 17\n')
+        self.commit()
+        self.assertEqual(release.prepare('minor')['tag'], 'v0.2.0')
+        # Revert version.properties and bump relay version -> automatic=true rejected.
+        self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 18\n')
+        self.commit()
+        with self.assertRaisesRegex(ValueError, 'automatic=false'):
+            release.prepare('minor')
 
     def test_non_increasing_android_code_rejected(self):
         self.write('version.properties', 'version=0.1.1\nandroidVersionCode=1\n')

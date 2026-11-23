@@ -2291,5 +2291,61 @@
       "zh-CN": "source"
     },
     "zh-CN": "连不上服务器"
+  },
+  {
+    "en": "invalid release relay protocol",
+    "key": "errors.updater_invalid_release_relay_protocol",
+    "notes": "daemon 更新程序解析 latest.properties 时发现 relayProtocol 字段不是合法正整数的错误提示。无变量。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "发布清单里的中继协议版本无效"
+  },
+  {
+    "en": "release manifest is missing relayProtocol; use the manual upgrade instructions",
+    "key": "errors.updater_missing_relay_protocol",
+    "notes": "daemon 更新程序发现 latest.properties 缺少 relayProtocol 字段时拒绝自动安装的提示。保留键名 relayProtocol。无变量。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "发布清单缺少 relayProtocol 字段，请按手动升级说明升级"
+  },
+  {
+    "en": "peer protocol changed; coordinate the upgrade with your clients",
+    "key": "errors.updater_peer_protocol_changed",
+    "notes": "daemon 更新程序发现新版本的端到端协议号变化时拒绝自动安装的提示。无变量。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "端到端协议版本已变化，请与客户端协调升级"
+  },
+  {
+    "en": "relay protocol changed; coordinate the upgrade with your relay and clients",
+    "key": "errors.updater_relay_protocol_changed",
+    "notes": "daemon 更新程序发现新版本的中继协议号变化时拒绝自动安装的提示。无变量。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "中继协议版本已变化，请与中继和客户端协调升级"
   }
 ]

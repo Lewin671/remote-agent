@@ -57,7 +57,8 @@ def validate(tag, dist, notes, web_public=None):
     if "daemonUpdate" in manifest:
         if (manifest["daemonUpdate"] != "1" or manifest.get("daemonAutomatic") not in ("true", "false")
                 or not re.fullmatch(r"[1-9][0-9]*", manifest.get("daemonState", ""))
-                or not re.fullmatch(r"[1-9][0-9]*", manifest.get("protocol", ""))):
+                or not re.fullmatch(r"[1-9][0-9]*", manifest.get("protocol", ""))
+                or not re.fullmatch(r"[1-9][0-9]*", manifest.get("relayProtocol", ""))):
             raise ValueError("Invalid daemon update policy")
         for target in public_scan.TARGETS:
             name = f"remote-agent-{tag}-{target}.tar.gz"
