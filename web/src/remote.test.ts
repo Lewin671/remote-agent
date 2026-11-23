@@ -26,9 +26,8 @@ afterEach(async () => {
 import {
   CommandError,
   COMMAND_TTL_MS,
-  COMMAND_EXPIRY_SKEW_MS,
   newSlot,
-  restoreSlot,
+  RequestSlot,
   Remote,
   uncertain,
   type CommandKind,
@@ -579,7 +578,6 @@ it("restores, for the next visit's first paint, the model lists and settings the
 });
 
 it("keeps an unauthenticated command result unknown and retries its slot", async () => {
-  const { Attempt } = await import("./remote");
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
   const { create } = await import("@bufbuild/protobuf");
   const { CommandResultSchema } = await import(
@@ -605,9 +603,8 @@ it("keeps an unauthenticated command result unknown and retries its slot", async
       return { result };
     },
   };
-  const attempt = new Attempt<null>();
+  const slot = newSlot();
   for (let i = 0; i < 2; i++) {
-    const { slot } = attempt.next(null);
     const error = await r
       .machineCommand(
         r.machine,
@@ -616,8 +613,7 @@ it("keeps an unauthenticated command result unknown and retries its slot", async
       )
       .catch((e) => e);
     expect(uncertain(error)).toBe(true);
-    attempt.settle(error);
-    expect(attempt.frozen).toBe(true);
+    expect(slot.evidence.unresolved).toBe(true);
   }
   expect(ids[1]).toBe(ids[0]);
 });
@@ -995,42 +991,11 @@ it("retries an unsigned in-flight abort with the same request slot", async () =>
   } finally { vi.useRealTimers(); }
 });
 
-it.each(["createSession", "forkSession"] as const)("expires a frozen %s through real forward dispatch", async (kind) => {
-  const r = await probe();
-  const forward = vi.fn(async () => { throw new ConnectError("no signed result", Code.Aborted); });
-  (r as unknown as { api: object }).api = { forward };
-  const { Attempt } = await import("./remote");
-  const a = new Attempt<CommandKind>();
-  const first = a.next(kind === "createSession"
-    ? { case: "createSession", value: {} }
-    : { case: "forkSession", value: { sessionId: "s" } });
-  // Near enough to the deadline that the initial abort is not auto-retried.
-  const now = first.slot.deadline - 1;
-  const clock = vi.spyOn(Date, "now").mockReturnValue(now);
-  const dispatch = () => kind === "createSession"
-    ? r.machineCommand(r.machine, first.payload, first.slot)
-    : r.command("s", first.payload, first.slot);
-  a.settle(await dispatch().catch(e => e), first);
-  expect(a.frozen).toBe(true);
-  expect(a.expired).toBe(false);
-  clock.mockReturnValue(first.slot.deadline + COMMAND_EXPIRY_SKEW_MS - 1);
-  const retry = a.next(first.payload);
-  a.settle(await dispatch().catch(e => e), retry);
-  expect(a.expired).toBe(false);
-  clock.mockReturnValue(first.slot.deadline + COMMAND_EXPIRY_SKEW_MS);
-  a.settle(await dispatch().catch(e => e), a.next(first.payload));
-  expect(a.frozen).toBe(true);
-  expect(a.expired).toBe(false);
-  expect(forward).toHaveBeenCalledTimes(3);
-  a.abandon();
-  expect(a.next(first.payload).slot.requestId).not.toBe(first.slot.requestId);
-});
-
 it.each([999, 1000, 1001])("bounds abort retry against remaining deadline %i ms", async remaining => {
   const r = await probe();
   let now = Date.now();
   vi.spyOn(Date, "now").mockImplementation(() => now);
-  const slot = restoreSlot({requestId: newSlot().requestId, deadline: now + remaining, prepared: undefined}, false);
+  const slot = new RequestSlot(newSlot().requestId, now + remaining, undefined, false);
   const forward = vi.fn(async () => { throw new ConnectError("no signed result", Code.Aborted); });
   (r as unknown as { api: object }).api = { forward };
   // Advance only this request's retry delay. Advancing the synthetic clock

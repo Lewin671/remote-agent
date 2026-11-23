@@ -204,7 +204,7 @@ import { type StoredAccount } from "./storage";
 
 export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 
-export interface MachineView { id: string; online: boolean; lastSeenMs: bigint; meta?: MachineMeta; metaRev: bigint; keptOnline?: boolean; }
+export interface MachineView { id: string; online: boolean; lastSeenMs: bigint; meta?: MachineMeta; metaRev: bigint; }
 export interface SessionView { id: string; machineId: string; historyError?: string; info?: Session; checkpoint?: LiveSnapshot; checkpointStatus?: "ready" | "waiting" | "invalid"; metaRev: bigint; lastSeq: bigint; updatedMs: bigint; endedMs: bigint; }
 
 // --- Transitional Step 3/4 command helper (remove when Session migrates to Core) ---
@@ -231,8 +231,6 @@ export class RequestSlot {
   }
 }
 
-export const restoreSlot = (saved: Pick<RequestSlot, "requestId" | "deadline" | "prepared">, prior: boolean) =>
-  new RequestSlot(saved.requestId, saved.deadline, saved.prepared, prior);
 export const newSlot = (now = Date.now()) => new RequestSlot(newRequestID(), now + COMMAND_TTL_MS, undefined, false);
 
 export class CommandError extends Error {
@@ -261,40 +259,6 @@ export function uncertain(e: unknown): boolean {
   return e instanceof ConnectError;
 }
 
-export function stillUnknown(error: unknown, wasUnknown: boolean): boolean {
-  if (!(error instanceof CommandError)) return wasUnknown || uncertain(error);
-  if (error.fromDaemon && error.outcome !== "not_sent" && !uncertain(error)) return false;
-  return error.outcome === "not_sent" ? wasUnknown : (error.outcome === "unknown" || wasUnknown);
-}
-
-export class Attempt<P> {
-  private pending?: { payload: P; slot: RequestSlot; tries: number; expired: boolean; frozen: boolean };
-  get expired() { return !!this.pending?.expired; }
-  get frozen() { return !!this.pending?.frozen; }
-  get payload(): P | undefined { return this.pending?.payload; }
-  next(payload: P): { payload: P; slot: RequestSlot } {
-    this.pending ??= { payload, slot: newSlot(), tries: 0, expired: false, frozen: false };
-    this.pending.tries++;
-    if (Date.now() >= this.pending.slot.deadline && !this.pending.slot.evidence.unresolved) {
-      this.pending = { payload, slot: newSlot(), tries: 1, expired: false, frozen: false };
-    }
-    return { payload: this.pending.payload, slot: this.pending.slot };
-  }
-  settle(error?: unknown, sent?: { slot: RequestSlot }) {
-    const p = this.pending;
-    if (!p || (sent && sent.slot !== p.slot)) return;
-    const final = error instanceof CommandError && error.fromDaemon && error.outcome !== "not_sent" && !uncertain(error);
-    if (error !== undefined && (stillUnknown(error, p.tries > 1 || p.frozen || !!p.slot.evidence.unresolved) || (!!p.slot.evidence.unresolved && !final))) {
-      p.frozen = true;
-      p.slot.evidence.includePrior(true);
-      if (Date.now() >= p.slot.deadline + RESULT_RETENTION_MS) p.expired = true;
-      return;
-    }
-    this.pending = undefined;
-  }
-  abandon() { this.pending = undefined; }
-}
-
 export function apiBase(server: string): string {
   const origin = checkServer(server);
   return import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : origin;
@@ -311,9 +275,8 @@ export function readOnlyCommand(cmd: CommandKind): boolean {
   );
 }
 
-export function isInteractiveCommand(cmd: CommandKind): boolean {
-  return ["send", "interrupt", "resolveApproval", "answerQuestion", "answerPlan", "cancelInput", "resumeInput"].includes(cmd?.case ?? "");
-}
+const EMPTY_PREFS: ReadonlyMap<string, string> = new Map();
+const SYNCING_PREFS: ReadonlyMap<string, string> = new Map([["", "syncing"]]);
 
 /** Largest piece of an image upload: each is sealed into one command, which must stay under 1 MiB. */
 const UPLOAD_CHUNK = 768 * 1024;
@@ -328,7 +291,7 @@ const SCOPE_STORAGE_KEY = "ra-scope";
 const SCOPE_HMAC_KEY_VALUE = "scope-hmac-key";
 
 export type ImageResult = { kind: "ok"; blob: Blob; width: number; height: number; format: ImageFormat } | { kind: "expired" } | { kind: "missing" } | { kind: "bad"; why?: string };
-export interface PrefsState { status: "loading" | "ready" | "error"; error: string; snap?: { revision: bigint; prefs: ProjectPrefs }; pending: Map<string, string>; failed?: { op: { id: string; kind: string; path: string }; error: string }; changedAt?: number; }
+export interface PrefsState { status: "loading" | "ready" | "error"; error: string; snap?: { revision: bigint; prefs: ProjectPrefs }; pending: ReadonlyMap<string, string>; failed?: { op: { id: string; kind: string; path: string }; error: string }; changedAt?: number; }
 const emptyPrefs = () => create(ProjectPrefsSchema, { schema: 1 });
 
 const PAYLOAD_PURPOSES: Partial<Record<PayloadKind, Purpose>> = {
@@ -413,7 +376,6 @@ export class Remote implements CoreExecutor {
   private unwatchSecurityPush?: () => void;
   private securityTimer?: ReturnType<typeof setInterval>;
   private foreground = true;
-  private cachedSyncMachines = new Map<string, SyncMachineView>();
   private token = "";
   private tokenExpires = 0;
   private tokenWarmed = false;
@@ -449,10 +411,9 @@ export class Remote implements CoreExecutor {
   private readonly localNotices = new Map<string, string>();
   readonly notices = new Map<string, string>();
 
-  private cachedMachineMap = new Map<string, MachineView>();
-  private cachedSessionMap = new Map<string, SessionView>();
-  private cachedDeviceMap = new Map<string, DeviceInfo>();
-  private cachedPrefPending = new Map<string, string>();
+  private cachedMachineMap?: Map<string, MachineView>;
+  private cachedSessionMap?: Map<string, SessionView>;
+  private cachedDeviceMap?: Map<string, DeviceInfo>;
   private cachedInfoWarmed = false;
   private imageCache = new Map<string, ImageResult>();
   private models = new Map<string, Promise<ListModelsResponse>>();
@@ -502,17 +463,17 @@ export class Remote implements CoreExecutor {
     this.deviceLink = new DeviceLink(
       new RelayPath(
         (id) => {
-          const m = this.machines.get(id);
-          const sm = this.cachedSyncMachines.get(id);
+          const sm = this.syncMachine(id);
           const direct = !!sm?.directReady;
+          const authorized = !this.removed && this.isMachineAuthorized(id);
           return {
             relayRequired: !direct,
             unlinked: this.unlinked,
-            reachable: direct || !!m?.online,
+            reachable: direct || (authorized && !!sm?.online),
             ready: direct || this.conn === "online",
-            authorized: !this.removed && this.isMachineAuthorized(id),
-            protocolVersion: direct ? PEER_PROTOCOL_VERSION : (sm?.protocolVersion || m?.meta?.protocolVersion),
-            capabilities: sm?.meta?.capabilities ?? m?.meta?.capabilities,
+            authorized,
+            protocolVersion: direct ? PEER_PROTOCOL_VERSION : (sm?.protocolVersion || sm?.meta?.protocolVersion),
+            capabilities: sm?.meta?.capabilities,
           };
         },
         () => this.relayEpoch(),
@@ -782,12 +743,12 @@ export class Remote implements CoreExecutor {
 
   changePrefs(kind: "pin" | "unpin" | "hide" | "unhide", path: string) {
     this.ensureHost().changeProjectPref(kind, path);
-    if (!this.syncStateView?.prefsSyncing && this.cachedPrefPending.size === 0) {
+    if (!this.syncStateView?.prefsSyncing) {
       return Promise.resolve(true);
     }
     return new Promise<boolean>((resolve) => {
       const unsub = this.subscribe(() => {
-        if (!this.syncStateView?.prefsSyncing && this.cachedPrefPending.size === 0) {
+        if (!this.syncStateView?.prefsSyncing) {
           unsub();
           resolve(true);
         }
@@ -796,6 +757,14 @@ export class Remote implements CoreExecutor {
   }
 
   // --- SyncStateView projection ---
+
+  private syncMachine(id: string): SyncMachineView | undefined {
+    return this.syncStateView?.machines.find((m) => m.machineId === id);
+  }
+
+  private syncSession(id: string): SyncSessionView | undefined {
+    return this.syncStateView?.sessions.find((s) => s.sessionId === id);
+  }
 
   private isMachineAuthorized(id: string): boolean {
     const v = this.syncStateView;
@@ -807,38 +776,21 @@ export class Remote implements CoreExecutor {
   applySyncStateView(view: SyncStateView) {
     const wasOnline = this.conn === "online";
     this.syncStateView = view;
+    this.cachedMachineMap = undefined;
+    this.cachedSessionMap = undefined;
+    this.cachedDeviceMap = undefined;
     if (view.authorityDeviceId) this.authorityDeviceId = view.authorityDeviceId;
     this.clockWarning = view.accountClockSkewed || this.securityStatusSnapshot?.clockSkewed
       ? l10n.t("errors.this_device_s_clock_is_behind_the_account_state")
       : "";
-
-    const nextMachines = new Map<string, MachineView>();
-    for (const pm of view.machines) {
-      const authorized = this.isMachineAuthorized(pm.machineId);
-      nextMachines.set(pm.machineId, { id: pm.machineId, online: authorized && pm.online, lastSeenMs: pm.lastSeenMs, meta: pm.meta, metaRev: pm.metaRev, keptOnline: !view.machinesListed ? authorized && pm.online : undefined });
-      if (view.securityLoaded && !authorized) {
-        void this.keepValue("schedules:" + pm.machineId, undefined);
+    if (view.securityLoaded) {
+      for (const pm of view.machines) {
+        if (!this.isMachineAuthorized(pm.machineId)) {
+          void this.keepValue("schedules:" + pm.machineId, undefined);
+        }
       }
     }
-    this.cachedMachineMap = nextMachines;
-    this.cachedSyncMachines = new Map(view.machines.map((pm) => [pm.machineId, pm]));
-
-    const nextSessions = new Map<string, SessionView>();
-    for (const sv of view.sessions) {
-      nextSessions.set(sv.sessionId, syncSessionToView(sv));
-    }
-    this.cachedSessionMap = nextSessions;
-
-    const nextDevices = new Map<string, DeviceInfo>();
-    for (const dv of view.devices) {
-      if (view.securityLoaded && !dv.trusted) continue;
-      nextDevices.set(dv.deviceId, { id: dv.deviceId, kind: dv.kind, pairingIncomplete: dv.createdMs === 0n && !dv.meta, createdMs: dv.createdMs, lastSeenMs: dv.lastSeenMs, meta: dv.meta, metaRev: dv.metaRev });
-    }
-    this.cachedDeviceMap = nextDevices;
     if (view.devices.length > 0 || view.machinesListed) this.devicesStatus = "ready";
-
-    this.cachedPrefPending.clear();
-    if (view.prefsSyncing) this.cachedPrefPending.set("", "syncing");
     while (this.devicesSyncWaiters.length) this.devicesSyncWaiters.shift()!();
     this.changed();
     if (!wasOnline && (this.conn as ConnState) === "online" && !this.closed) void restorePushPrefs(this);
@@ -848,7 +800,6 @@ export class Remote implements CoreExecutor {
     if (this.removed) return "offline";
     return this.syncStateView?.connection === CoreConnState.CONNECTED ? "online" : this.syncStateView?.connection === CoreConnState.OFFLINE ? "offline" : "connecting";
   }
-  get error(): string { return renderText(this.syncStateView?.connectionReason); }
   get connError(): string { return renderText(this.syncStateView?.connectionReason); }
   get failures(): number { return this.syncStateView?.connectionReason ? 1 : 0; }
   get connStep(): string { return renderText(this.syncStateView?.connectionStep); }
@@ -865,56 +816,55 @@ export class Remote implements CoreExecutor {
   get displayGrace(): boolean { return Boolean(this.syncStateView?.displayGrace); }
   get reachabilityUnknown(): boolean { return Boolean(this.syncStateView?.reachabilityUnknown); }
   get showWaiting(): boolean { return !this.displayGrace && this.conn !== "online" && this.link === "waiting"; }
-  get awaiting(): boolean { return (this.syncStateView?.connection ?? CoreConnState.CONNECTING) === CoreConnState.CONNECTING; }
   get unlinked(): boolean { return !this.reachabilityUnknown && (this.link === "no-network" || this.link === "no-server" || (this.link === "waiting" && !this.listed)); }
   get lostAt(): number | undefined { const ms = Number(this.syncStateView?.disconnectedAtMs ?? 0n); return ms > 0 ? ms : undefined; }
   get listed(): boolean { return !!(this.syncStateView?.machinesListed && this.syncStateView?.sessionsListed); }
   get listError(): string { return renderText(this.syncStateView?.sessionListError); }
   get moreSessions(): boolean { return this.syncStateView?.hasMoreSessions ?? false; }
-  get sessionsOpen(): boolean { return this.moreSessions || !this.listed; }
-  get loadingSessions(): boolean { return this.syncStateView?.loadingMoreSessions ?? false; }
-  get machines(): ReadonlyMap<string, MachineView> { return this.cachedMachineMap; }
-  get presence(): ReadonlyMap<string, MachineView> {
-    if (!this.listed) return new Map<string, MachineView>();
-    let projected: Map<string, MachineView> | undefined;
-    for (const [id, machine] of this.cachedMachineMap) {
-      const online = this.peer(id).reachable;
-      if (online !== machine.online) { projected ??= new Map(this.cachedMachineMap); projected.set(id, { ...machine, online }); }
+  get machines(): ReadonlyMap<string, MachineView> {
+    if (!this.cachedMachineMap) {
+      const m = new Map<string, MachineView>();
+      for (const pm of this.syncStateView?.machines ?? []) {
+        const authorized = this.isMachineAuthorized(pm.machineId);
+        m.set(pm.machineId, { id: pm.machineId, online: authorized && pm.online, lastSeenMs: pm.lastSeenMs, meta: pm.meta, metaRev: pm.metaRev });
+      }
+      this.cachedMachineMap = m;
     }
-    return projected ?? this.cachedMachineMap;
+    return this.cachedMachineMap;
   }
-  get sessions(): ReadonlyMap<string, SessionView> { return this.cachedSessionMap; }
-  get devices(): ReadonlyMap<string, DeviceInfo> { return this.cachedDeviceMap; }
+  get sessions(): ReadonlyMap<string, SessionView> {
+    if (!this.cachedSessionMap) {
+      const m = new Map<string, SessionView>();
+      for (const sv of this.syncStateView?.sessions ?? []) m.set(sv.sessionId, syncSessionToView(sv));
+      this.cachedSessionMap = m;
+    }
+    return this.cachedSessionMap;
+  }
+  get devices(): ReadonlyMap<string, DeviceInfo> {
+    if (!this.cachedDeviceMap) {
+      const v = this.syncStateView;
+      const m = new Map<string, DeviceInfo>();
+      for (const dv of v?.devices ?? []) {
+        if (v?.securityLoaded && !dv.trusted) continue;
+        m.set(dv.deviceId, { id: dv.deviceId, kind: dv.kind, pairingIncomplete: dv.createdMs === 0n && !dv.meta, createdMs: dv.createdMs, lastSeenMs: dv.lastSeenMs, meta: dv.meta, metaRev: dv.metaRev });
+      }
+      this.cachedDeviceMap = m;
+    }
+    return this.cachedDeviceMap;
+  }
   deviceKind(id: string): DeviceKind | undefined {
-    return this.cachedDeviceMap.get(id)?.kind ?? this.syncStateView?.devices.find((d) => d.deviceId === id)?.kind;
+    return this.syncStateView?.devices.find((d) => d.deviceId === id)?.kind;
   }
   get prefs(): PrefsState {
     const v = this.syncStateView;
-    return { status: (v?.prefsLoadFailed || v?.prefsBroken) && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading", error: "", snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined, pending: this.cachedPrefPending };
+    return { status: (v?.prefsLoadFailed || v?.prefsBroken) && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading", error: "", snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined, pending: v?.prefsSyncing ? SYNCING_PREFS : EMPTY_PREFS };
   }
   projectPrefs(): ProjectPrefs { return this.syncStateView?.prefs ?? emptyPrefs(); }
   get securityStatus(): SecurityWorkflowStatus | undefined { return this.securityStatusSnapshot; }
   get securityClient(): SecurityClient { return this.ensureHost().securityClient; }
-  get isAuthority() { return Boolean(this.securityStatusSnapshot?.isAuthority || (this.authorityDeviceId || this.syncStateView?.authorityDeviceId) === this.account.deviceId); }
-  get recoveryPending() { return this.syncStateView?.recoveryPending ?? this.securityStatusSnapshot?.recoveryPending ?? false; }
-  get recoveryReadyMs() { return this.syncStateView?.recoveryReadyMs || this.securityStatusSnapshot?.recoveryReadyMs || 0n; }
   get recoveryStatusStale() { return this.securityStatusSnapshot?.recoveryStatusStale ?? false; }
-  get leaseEndMs(): bigint | null | undefined {
-    const st = this.securityStatusSnapshot;
-    if (!st) return undefined;
-    return st.leaseEndMs > 0n ? st.leaseEndMs : null;
-  }
-  get needsRecoveryCodeRotation() { return this.securityStatusSnapshot?.needsRecoveryCodeRotation ?? false; }
-  get hasAccountPublicProfile() { return this.securityStatusSnapshot?.hasAccountPublicProfile ?? true; }
-  get takingOver() { return this.securityStatusSnapshot?.takingOver ?? false; }
-  get hasHandoffOffer() { return this.securityStatusSnapshot?.hasHandoffOffer ?? false; }
   demoFlag(_name: string): boolean { return false; }
   peer(machineId: string | undefined) { return this.deviceLink.status(machineId ?? ""); }
-  onlineOf(m: MachineView): boolean { return this.listed ? this.peer(m.id).reachable : (m.keptOnline ?? this.peer(m.id).reachable); }
-  pastPages(s: SessionView): boolean {
-    const cursor = this.syncStateView?.nextCursor;
-    return !!(this.moreSessions && cursor && (s.endedMs < cursor.endedMs || (s.endedMs === cursor.endedMs && s.id > cursor.sessionId)));
-  }
 
   // --- CoreExecutor: Stream / Auth / Security / Cache / RPC ---
 
@@ -1114,7 +1064,7 @@ export class Remote implements CoreExecutor {
     try {
       const cap = limit > 0 ? limit : CACHE_PAGE_SIZE;
       const rows = newest && this.cache.readNewest ? await this.cache.readNewest(sessionId, cap) : await this.cache.read(sessionId, afterSeq, cap);
-      const knownLast = this.sessions.get(sessionId)?.lastSeq;
+      const knownLast = this.syncSession(sessionId)?.lastSeq;
       if (newest && knownLast !== undefined && rows.length && rows[rows.length - 1].seq > knownLast) {
         return create(CacheEventsLoadedEventSchema, { opId, sessionId, broken: true });
       }
@@ -1792,7 +1742,7 @@ export class Remote implements CoreExecutor {
   async command(sid: string, cmd: CommandKind, slot = newSlot()): Promise<CommandResult> {
     const authorized = this.authorizedCommands.get(slot) ?? (slot.prepared && this.preparePayload("", "", cmd, slot));
     if (authorized) return this.forwardCall(authorized.machineId, authorized.sid, authorized.cmd, slot);
-    const s = this.sessions.get(sid);
+    const s = this.syncSession(sid);
     if (!s) throw new Error(l10n.t("session.android_unknown"));
     return this.forwardCall(s.machineId, sid, cmd, slot);
   }
@@ -1806,10 +1756,10 @@ export class Remote implements CoreExecutor {
     machineId = prepared.machineId; sid = prepared.sid; cmd = prepared.cmd;
     const { requestId, deadline, plain } = prepared;
     if (!slot.evidence.unresolved && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS) throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
-    const m = this.machines.get(machineId);
+    const sm = this.syncMachine(machineId);
     const theirs = this.peer(machineId).protocolVersion;
     if (theirs !== undefined && theirs !== PEER_PROTOCOL_VERSION) {
-      throw new CommandError("failed_precondition", theirs < PEER_PROTOCOL_VERSION ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(m)) }) : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"), false, false, slot.evidence.unresolved ? "unknown" : "not_sent");
+      throw new CommandError("failed_precondition", theirs < PEER_PROTOCOL_VERSION ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(sm ? { id: sm.machineId, meta: sm.meta } : undefined)) }) : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"), false, false, slot.evidence.unresolved ? "unknown" : "not_sent");
     }
     this.checkFileCapability(machineId, cmd, slot.evidence.unresolved);
     await slot.beforeDispatch?.(slot);
@@ -1922,25 +1872,20 @@ export class Remote implements CoreExecutor {
   sharedFilesHost() {
     return {
       getChunk: (sid: string, fileId: string, offset: bigint) => this.getSharedFileChunk(sid, fileId, offset),
-      isConnected: (sid: string) => this.peer(this.sessions.get(sid)?.machineId).ready,
+      isConnected: (sid: string) => this.peer(this.syncSession(sid)?.machineId).ready,
       isMachineOnline: (sid: string) => {
-        const s = this.sessions.get(sid);
+        const s = this.syncSession(sid);
         return !!(s && this.peer(s.machineId).reachable);
       },
       isSessionEnded: (sid: string) => {
-        const s = this.sessions.get(sid);
-        return s?.info?.status === SessionStatus.EXITED || (s?.endedMs ?? 0n) > 0n;
+        const s = this.syncSession(sid);
+        return s?.info?.status === SessionStatus.EXITED || (s?.listedEndedMs ?? 0n) > 0n;
       },
       sharedFileChunkBytes: (sid: string) => {
-        const s = this.sessions.get(sid);
+        const s = this.syncSession(sid);
         return (s && this.peer(s.machineId).capabilities?.sharedFileChunkBytes) || 0;
       },
     };
-  }
-
-  hasSharedFilesCapability(sid: string): boolean {
-    const s = this.sessions.get(sid);
-    return !!(s && this.peer(s.machineId).capabilities?.sharedFiles === true);
   }
 
   async readScheduleCache(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent> {

@@ -6,7 +6,7 @@ import { webMember } from "./test/security-fixture";
 import { parseTestHeader, unpackTestBody } from "./test/stored-security-fixture";
 import { CommandSchema, CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
 import { type Envelope } from "./gen/remoteagent/v1/envelope_pb";
-import { newSlot, restoreSlot } from "./remote";
+import { newSlot, RequestSlot } from "./remote";
 
 const raw = Uint8Array.from(atob(fixture.plain), (c) => c.charCodeAt(0));
 
@@ -17,7 +17,8 @@ test("create retries and a fresh client preserve the first payload bytes across 
     const plain = fromBinary(CommandSchema, raw);
     expect(plain.kind.case).toBe("createSession");
     expect(toBinary(CommandSchema, plain)).not.toEqual(raw);
-    const slot = restoreSlot({ ...newSlot(), prepared: { machineId: r.machine, sid: "", plain: raw.slice() } }, false);
+    const base = newSlot();
+    const slot = new RequestSlot(base.requestId, base.deadline, { machineId: r.machine, sid: "", plain: raw.slice() }, false);
     const bodies: Uint8Array[] = [];
     const epochs: bigint[] = [];
     function install(target: SyntheticRemote) {
@@ -41,7 +42,7 @@ test("create retries and a fresh client preserve the first payload bytes across 
     install(fresh);
     const saved = JSON.parse(JSON.stringify({ ...slot, prepared: { ...slot.prepared, plain: Array.from(slot.prepared!.plain) } }));
     saved.prepared.plain = new Uint8Array(saved.prepared.plain);
-    await fresh.machineCommand(r.machine, plain.kind, restoreSlot(saved, true));
+    await fresh.machineCommand(r.machine, plain.kind, new RequestSlot(saved.requestId, saved.deadline, saved.prepared, true));
     expect(bodies).toHaveLength(3);
     for (const b of bodies) expect(b).toEqual(raw);
     expect(epochs[1]).toBeGreaterThan(epochs[0]);

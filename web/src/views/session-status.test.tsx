@@ -91,26 +91,6 @@ describe("a list row", () => {
   });
 });
 
-it("counts a computer as the copy kept in the browser had it until the lists are in", () => {
-  const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
-  r.start();
-  const m = [...r.machines.values()][0];
-  patchSyncState(r, {
-    listed: false,
-    machines: new Map([[m.id, { ...m, online: true }]]),
-  });
-  const mKept = r.machines.get(m.id)!;
-  expect(r.onlineOf(mKept)).toBe(true);
-  expect(r.presence.get(mKept.id)).toBeUndefined();
-  patchSyncState(r, {
-    listed: true,
-    machines: new Map([[m.id, { ...m, online: false }]]),
-  });
-  const mListed = r.machines.get(m.id)!;
-  expect(r.onlineOf(mListed)).toBe(false);
-  expect(r.presence.get(mListed.id)).toBe(mListed);
-});
-
 it("does not overlay HistoryOpening skeleton or replace Composer with EndCard when cached rows exist during unknown reachability", async () => {
   vi.useFakeTimers();
   try {

@@ -2294,12 +2294,7 @@ export class DemoRemote extends Remote {
   private demoPendingOp?: ReturnType<typeof create<typeof SecurityPendingOpSummarySchema>>;
   private demoPairings = new Map<string, { code: string; expiresMs: bigint; url: string; approved: boolean }>();
 
-  override get recoveryPending() { return this.demoRecoveryPending; }
-  override get recoveryReadyMs() { return this.demoRecoveryReadyMs; }
   override get recoveryStatusStale() { return this.demoRecoveryStatusStale; }
-  override get leaseEndMs(): bigint | null | undefined { return this.demoLeaseEndMs > 0n ? this.demoLeaseEndMs : null; }
-  override get needsRecoveryCodeRotation() { return this.demoNeedsRotation; }
-  override get hasAccountPublicProfile() { return this.demoHasProfile; }
   override get securityStatus(): SecurityWorkflowStatus {
     return create(SecurityWorkflowStatusSchema, {
       bootstrap: SecurityBootstrapKind.READY,
