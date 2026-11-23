@@ -135,6 +135,9 @@ func IsPartialWellFormed(p PartialMeta) bool {
 	if p.ExpectedSizeBytes <= 0 || p.ChunkBytes <= 0 || !HasValidSHA256(p.Sha256) || p.CommittedOffset <= 0 {
 		return false
 	}
+	if p.CommittedOffset > p.ExpectedSizeBytes {
+		return false
+	}
 	step := int64(p.ChunkBytes)
 	if p.CommittedOffset < p.ExpectedSizeBytes {
 		if p.CommittedOffset%step != 0 {
@@ -142,20 +145,13 @@ func IsPartialWellFormed(p PartialMeta) bool {
 		}
 		return p.BytesOnDisk >= p.CommittedOffset
 	}
-	// Completed all blocks (either exact size or final block-aligned offset from older metadata).
-	if p.CommittedOffset != p.ExpectedSizeBytes && (p.CommittedOffset%step != 0 || p.CommittedOffset >= p.ExpectedSizeBytes+step) {
-		return false
-	}
 	return p.BytesOnDisk >= p.ExpectedSizeBytes
 }
 
-// EffectivePartialBytes returns the clamped downloaded byte count for a well-formed partial.
+// EffectivePartialBytes returns the validated downloaded byte count for a well-formed partial.
 func EffectivePartialBytes(p PartialMeta) int64 {
-	if p.CommittedOffset <= 0 || p.ExpectedSizeBytes <= 0 {
+	if p.CommittedOffset <= 0 || p.ExpectedSizeBytes <= 0 || p.CommittedOffset > p.ExpectedSizeBytes {
 		return 0
-	}
-	if p.CommittedOffset >= p.ExpectedSizeBytes {
-		return p.ExpectedSizeBytes
 	}
 	return p.CommittedOffset
 }
@@ -176,7 +172,7 @@ func CanResumePartial(p PartialMeta, file *v1.SharedFile, chunkBytes int32) (res
 	if !bytes.Equal(p.Sha256, file.Sha256) {
 		return 0, false, false
 	}
-	if p.CommittedOffset >= file.SizeBytes {
+	if p.CommittedOffset == file.SizeBytes {
 		return file.SizeBytes, true, true
 	}
 	return p.CommittedOffset, false, true

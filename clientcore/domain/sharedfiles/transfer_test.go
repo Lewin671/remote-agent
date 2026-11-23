@@ -235,13 +235,11 @@ func TestCanResumePartial(t *testing.T) {
 			wantOK:    true,
 		},
 		{
-			name:      "legacy padded block-aligned final offset jumps straight to verify",
-			partial:   PartialMeta{ExpectedSizeBytes: 2000, ChunkBytes: 1024, CommittedOffset: 2048, BytesOnDisk: 2000, Sha256: hashA},
-			file:      file,
-			chunk:     1024,
-			wantOff:   2000,
-			wantReady: true,
-			wantOK:    true,
+			name:    "committed offset exceeding expected size rejected",
+			partial: PartialMeta{ExpectedSizeBytes: 2000, ChunkBytes: 1024, CommittedOffset: 2048, BytesOnDisk: 2000, Sha256: hashA},
+			file:    file,
+			chunk:   1024,
+			wantOK:  false,
 		},
 		{
 			name:    "truncated part file on disk rejected",
