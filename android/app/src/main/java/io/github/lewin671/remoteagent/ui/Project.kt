@@ -455,7 +455,8 @@ fun CoreProjectSettingsSheet(
                 Hint(uiText(UiMessages.newSessionAndroidChangeMachineHint()))
             }
             "model" -> {
-                SheetHead(uiText(UiMessages.modelsTitle()), uiText(UiMessages.commonDone()), onClose, onBack = back)
+                val modelTitle = if (open.isEmpty() && back == null) UiMessages.projectsAndroidSettings() else UiMessages.modelsTitle()
+                SheetHead(uiText(modelTitle), uiText(UiMessages.commonDone()), onClose, onBack = back)
                 if (blockedPrefs != null) Notice(uiText(blockedPrefs))
                 if (!view.settled) Hint(uiText(UiMessages.newSessionReadingPrevious()))
                 if (saveError != null) Notice(
