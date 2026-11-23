@@ -296,6 +296,16 @@ class SharedFilesTest {
             assertTrue(evicted.completed)
             assertEquals(-1L, evicted.bytesOnDisk)
             assertTrue(File(root, "s-evict/f-evict").exists())
+
+            // Crash between renameTo(finalFile) and writing committed.meta leaves an orphan file/ dir.
+            val orphanDir = File(root, "s-crash/f-crash/file").apply { mkdirs() }
+            File(orphanDir, "clip.mp4").writeBytes(ByteArray(32))
+            val scanned2 = executor.executeScanLocal(SharedFileScanLocalEffect.newBuilder().setOpId(10L).build())
+            val orphan = scanned2.entriesList.single { it.fileId == "f-crash" }
+            assertEquals("s-crash", orphan.sessionId)
+            assertTrue(orphan.completed)
+            assertEquals(-1L, orphan.bytesOnDisk)
+            assertTrue(orphanDir.exists())
         } finally {
             executor.close()
             root.deleteRecursively()

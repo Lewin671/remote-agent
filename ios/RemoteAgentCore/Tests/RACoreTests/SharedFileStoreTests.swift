@@ -277,6 +277,32 @@ import Testing
         #expect(retry.ok)
     }
 
+    @Test func verifyLeavesPartIntactWhenMetaWriteFails() throws {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SharedFileStore(root: dir)
+        let content = pattern(1000)
+        let hash = Data(SHA256.hash(data: content))
+
+        #expect(store.writeChunk(writeEffect(
+            opID: 1, offset: 0, data: content, total: 1000,
+            committedOffset: 1000, sha256: hash, resetPartial: true)).ok)
+
+        let fm = FileManager.default
+        let fileDir = dir.appending(path: "s1/f1", directoryHint: .isDirectory)
+        let meta = fileDir.appending(path: ".meta")
+        let part = fileDir.appending(path: ".part")
+        // Replace .meta with a non-empty directory so atomic writeMeta fails deterministically.
+        try fm.removeItem(at: meta)
+        try fm.createDirectory(at: meta, withIntermediateDirectories: true)
+        try Data("lock".utf8).write(to: meta.appending(path: "blocker"))
+
+        let res = store.verifyAndCommit(verifyEffect(opID: 2, total: 1000, sha256: hash))
+        #expect(!res.ok)
+        #expect(res.errorKind == .other)
+        #expect(fm.fileExists(atPath: part.path))
+        #expect(store.existingLocalURL(key, name: "clip.mp4") == nil)
+    }
+
     @Test func folderAndFileNamesStaySafe() {
         #expect(sharedFileFolderName("a1b2-c_3") == "a1b2-c_3")
         #expect(sharedFileFolderName("../x/y") == "___x_y")

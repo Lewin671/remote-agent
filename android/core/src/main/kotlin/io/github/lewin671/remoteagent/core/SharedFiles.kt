@@ -328,6 +328,18 @@ class SharedFileIoExecutor(
                 .build()
         }
 
+        // Crash between renameTo(finalFile) and writing committed.meta leaves an orphan file/ directory.
+        // Report it truthfully as a malformed completed entry so Core emits SharedFileDeleteLocalEffect.
+        val orphanFileDir = File(fidDir, COMMITTED_FILE_DIR)
+        if (orphanFileDir.isDirectory && orphanFileDir.listFiles().orEmpty().isNotEmpty()) {
+            return SharedFileLocalEntry.newBuilder()
+                .setSessionId(fallbackSid)
+                .setFileId(fallbackFid)
+                .setCompleted(true)
+                .setBytesOnDisk(-1L)
+                .build()
+        }
+
         val partialMeta = partialMetaFile(fidDir)
         if (partialMeta.exists()) {
             val props = readMeta(partialMeta)

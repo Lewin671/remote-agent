@@ -376,8 +376,9 @@ public struct SharedFileStore: Sendable {
             if let stale = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) {
                 for item in stale { try? fm.removeItem(at: item) }
             }
-            try fm.moveItem(at: part, to: final)
 
+            // Write committed .meta BEFORE moving .part into file/<name>: if writing .meta fails
+            // (e.g. disk full), .part remains untouched and resumable without leaving an orphan file.
             let meta = Meta(
                 schemaVersion: Self.metaSchemaVersion,
                 sessionId: effect.sessionID,
@@ -390,6 +391,7 @@ public struct SharedFileStore: Sendable {
                 durationMs: existingMeta?.durationMs
             )
             try Self.writeMeta(meta, to: metaFile)
+            try fm.moveItem(at: part, to: final)
 
             return .with {
                 $0.opID = effect.opID
