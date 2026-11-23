@@ -56,6 +56,9 @@ final class SharedFileCenter {
         center = SharedFileCenter(remote: remote, root: root, report: report)
         #endif
         centers[ObjectIdentifier(remote)] = center
+        #if DEBUG
+        if SharedFileDebug.hasForcedStates { return }
+        #endif
         Task { await center.syncAllToCore() }
     }
 
@@ -213,6 +216,12 @@ final class SharedFileCenter {
     }
 
     private func reportTransfer(key: SharedFileKey, transfer: SharedFileTransfer, previous: SharedFileTransfer?) {
+        #if DEBUG
+        if SharedFileDebug.hasForcedStates { return }
+        #endif
+        if transfer == .idle && (previous == nil || previous == .idle) {
+            return
+        }
         // Duration-only update on an already-downloaded file uses `metadata_only = true`.
         if case .downloaded(let prevURL, let prevMs) = previous,
            case .downloaded(let nextURL, let nextMs) = transfer,
@@ -522,12 +531,11 @@ enum QuickLook {
     }
 }
 
-@MainActor
 private final class DocumentOpener: NSObject, UIDocumentInteractionControllerDelegate {
     let controller: UIDocumentInteractionController
     init(controller: UIDocumentInteractionController) { self.controller = controller }
     func documentInteractionControllerDidDismissOpenInMenu(_ controller: UIDocumentInteractionController) {
-        SystemSheets.opener = nil
+        MainActor.assumeIsolated { SystemSheets.opener = nil }
     }
 }
 

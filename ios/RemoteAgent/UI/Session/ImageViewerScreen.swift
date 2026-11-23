@@ -75,7 +75,7 @@ struct ImageViewerScreen: View {
             onClose: closeViewer,
             picture: { i, drag in
                 let img = all[i]
-                ViewerPage(
+                return ViewerPage(
                     loader: loader,
                     image: img,
                     previewRef: previews[ViewerPreviewKey(seq: img.seq, index: img.eventImageIndex)],
@@ -88,7 +88,7 @@ struct ImageViewerScreen: View {
             },
             info: { i in
                 let img = all[i]
-                info(
+                return info(
                     img,
                     previewRef: previews[ViewerPreviewKey(seq: img.seq, index: img.eventImageIndex)],
                     header: header,

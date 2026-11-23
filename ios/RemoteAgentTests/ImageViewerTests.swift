@@ -113,7 +113,6 @@ import UIKit
             "s-view": [
                 .with {
                     $0.seq = 1
-                    $0.timestampMs = 1_000
                     $0.userMessage = .with {
                         $0.text = "[Image #1] [Image #2] compare"
                         $0.images = [
@@ -126,9 +125,10 @@ import UIKit
         ]
         var stateWithSession = initial
         stateWithSession.sessions["s-view"] = SessionView(id: "s-view", machineId: "mac", info: .with { $0.title = "Viewer" })
+        let snapshot = stateWithSession
         model.setForeground(true)
-        model.showDemo(account: Demo.account, remote: demoRemote, initial: stateWithSession, events: events) {
-            await demoRemote.showForTest(state: stateWithSession)
+        model.showDemo(account: Demo.account, remote: demoRemote, initial: snapshot, events: events) {
+            await demoRemote.showForTest(state: snapshot)
         }
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)

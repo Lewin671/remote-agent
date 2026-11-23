@@ -44,7 +44,7 @@ enum SharedFileDebug {
         var updates: [PBSharedFileLocalStateUpdate] = []
         for (sid, events) in sessionEvents {
             for ev in events {
-                guard case .toolCall(let tc)? = ev.payload else { continue }
+                guard case .toolCall(let tc)? = ev.kind else { continue }
                 for f in tc.sharedFiles {
                     guard let word = forced[f.fileID] else { continue }
                     let parts = word.split(separator: ":").map(String.init)
